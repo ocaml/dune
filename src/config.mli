@@ -30,8 +30,6 @@ val inside_ci : bool
 
 val show_full_command_on_error : unit -> bool
 
-val default_build_profile : string
-
 (** Dune configuration *)
 
 module Terminal_persistence: sig

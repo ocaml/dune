@@ -197,7 +197,7 @@ module Map = struct
       ; "ext_lib"        , string context.lib_config.ext_lib
       ; "ext_dll"        , string context.lib_config.ext_dll
       ; "ext_exe"        , string context.ext_exe
-      ; "profile"        , string context.profile
+      ; "profile"        , string (Profile.to_string context.profile)
       ; "workspace_root" , values [Value.Dir (Path.build context.build_dir)]
       ; "context_name"   , string (Context.name context)
       ; "ROOT"           , renamed_in ~version:(1, 0) ~new_name:"workspace_root"

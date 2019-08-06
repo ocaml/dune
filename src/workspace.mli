@@ -12,7 +12,7 @@ module Context : sig
   module Common : sig
     type t =
       { loc          : Loc.t
-      ; profile      : string
+      ; profile      : Profile.t
       ; targets      : Target.t list
       ; env          : Dune_env.Stanza.t
       ; toolchain    : string option
@@ -54,10 +54,10 @@ type t = private
   ; env            : Dune_env.Stanza.t
   }
 
-val load : ?x:string -> ?profile:string -> Path.t -> t
+val load : ?x:string -> ?profile:Profile.t -> Path.t -> t
 
 (** Default name of workspace files *)
 val filename : string
 
 (** Default configuration *)
-val default : ?x:string -> ?profile:string -> unit -> t
+val default : ?x:string -> ?profile:Profile.t -> unit -> t

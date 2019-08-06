@@ -48,7 +48,7 @@ module Context = struct
   module Common = struct
     type t =
       { loc          : Loc.t
-      ; profile      : string
+      ; profile      : Profile.t
       ; targets      : Target.t list
       ; env          : Dune_env.Stanza.t
       ; toolchain    : string option
@@ -60,7 +60,7 @@ module Context = struct
     let t ~profile =
       let+ env = env_field
       and+ targets = field "targets" (repeat Target.t) ~default:[Target.Native]
-      and+ profile = field "profile" string ~default:profile
+      and+ profile = field "profile" Profile.decode ~default:profile
       and+ host_context =
         field_o "host" (Syntax.since syntax (1, 10) >>> string)
       and+ toolchain =
@@ -178,8 +178,7 @@ module Context = struct
     Default
       { loc = Loc.of_pos __POS__
       ; targets = [Option.value x ~default:Target.Native]
-      ; profile = Option.value profile
-                    ~default:Config.default_build_profile
+      ; profile = Option.value profile ~default:Profile.default
       ; name = "default"
       ; host_context = None
       ; env = Dune_env.Stanza.empty
@@ -243,7 +242,7 @@ let t ?x ?profile:cmdline_profile () =
   let* () = Versioned_file.no_more_lang in
   let* env = env_field in
   let* profile =
-    field "profile" string ~default:Config.default_build_profile in
+    field "profile" Profile.decode ~default:Profile.default in
   let profile = Option.value cmdline_profile ~default:profile in
   let+ contexts = multi_field "context" (Context.t ~profile ~x) in
   let defined_names = ref String.Set.empty in

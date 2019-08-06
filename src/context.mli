@@ -42,7 +42,7 @@ type t =
   { name : string
   ; kind : Kind.t
 
-  ; profile : string
+  ; profile : Profile.t
 
   ; (** [true] if this context is used for the .merlin files *)
     merlin : bool

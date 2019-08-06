@@ -22,7 +22,7 @@ module Stanza : sig
     }
 
   type pattern =
-    | Profile of string
+    | Profile of Profile.t
     | Any
 
   type t =
@@ -38,7 +38,7 @@ module Stanza : sig
 
   val empty : t
 
-  val find : t -> profile:string -> config
+  val find : t -> profile:Profile.t -> config
 end
 
 type stanza +=

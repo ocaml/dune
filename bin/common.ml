@@ -4,6 +4,7 @@ module Config = Dune.Config
 module Colors = Dune.Colors
 module Clflags = Dune.Clflags
 module Package = Dune.Package
+module Profile = Dune.Profile
 
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
@@ -19,7 +20,7 @@ type t =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
-  ; profile               : string option
+  ; profile               : Profile.t option
   ; workspace_file        : Arg.Path.t option
   ; root                  : Workspace_root.t
   ; target_prefix         : string
@@ -165,7 +166,7 @@ module Options_implied_by_dash_p = struct
     ; only_packages : string option
     ; ignore_promoted_rules : bool
     ; config_file : config_file
-    ; profile : string option
+    ; profile : Profile.t option
     ; default_target : string
     ; always_show_command_line : bool
     ; promote_install_files : bool
@@ -226,14 +227,14 @@ module Options_implied_by_dash_p = struct
       let doc =
         "Build profile. dev if unspecified or release if -p is set." in
       Arg.(value
-           & opt (some string) None
+           & opt (some profile) None
            & info ["profile"] ~docs
                ~env:(Arg.env_var ~doc "DUNE_PROFILE")
                ~doc:
                  (sprintf
                     {|Select the build profile, for instance $(b,dev) or
                         $(b,release). The default is $(b,%s).|}
-                    Config.default_build_profile))
+                    (Profile.to_string Dune.Profile.default)))
     and+ default_target =
       Arg.(value
            & opt string "@@default"
@@ -281,7 +282,7 @@ module Options_implied_by_dash_p = struct
     ; only_packages = pkgs
     ; ignore_promoted_rules = true
     ; config_file = No_config
-    ; profile = Some "release"
+    ; profile = Some Profile.Release
     ; default_target = "@install"
     ; always_show_command_line = true
     ; promote_install_files = true

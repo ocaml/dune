@@ -36,7 +36,7 @@ end
 type t =
   { name                    : string
   ; kind                    : Kind.t
-  ; profile                 : string
+  ; profile                 : Profile.t
   ; merlin                  : bool
   ; for_host                : t option
   ; implicit                : bool
@@ -101,7 +101,7 @@ let to_dyn t : Dyn.t =
   record
     [ "name", String t.name
     ; "kind", Kind.to_dyn t.kind
-    ; "profile", String t.profile
+    ; "profile", Profile.to_dyn t.profile
     ; "merlin", Bool t.merlin
     ; "for_host",
       option string (Option.map t.for_host ~f:(fun t -> t.name))

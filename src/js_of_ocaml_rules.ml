@@ -4,7 +4,7 @@ open! No_io
 
 module SC = Super_context
 
-let dev_mode sctx = SC.profile sctx = "dev"
+let dev_mode sctx = Profile.is_dev (SC.profile sctx)
 
 let separate_compilation_enabled = dev_mode
 

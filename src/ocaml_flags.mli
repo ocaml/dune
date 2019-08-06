@@ -18,7 +18,7 @@ val make
            -> (unit, string list) Build.t)
   -> t
 
-val default : dune_version:Syntax.Version.t -> profile:string -> t
+val default : dune_version:Syntax.Version.t -> profile:Profile.t -> t
 
 val empty : t
 

@@ -27,6 +27,7 @@ module Report_error   = Dune.Report_error
 module Dune_project   = Dune.Dune_project
 module Workspace      = Dune.Workspace
 module Cached_digest  = Dune.Cached_digest
+module Profile        = Dune.Profile
 
 include Common.Let_syntax
 

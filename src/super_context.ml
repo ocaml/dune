@@ -6,7 +6,7 @@ module Env_context = struct
   type data = (Path.Build.t, Env_node.t) Table.t
   type t = {
     env : data;
-    profile : string;
+    profile : Profile.t;
     scopes : Scope.DB.t;
     context_env : Env.t;
     default_env : Env_node.t lazy_t;
@@ -787,7 +787,7 @@ module Action = struct
 end
 
 let opaque t =
-  t.context.profile = "dev"
+  Profile.is_dev t.context.profile
   && Ocaml_version.supports_opaque_for_mli t.context.version
 
 let dir_status_db t = t.dir_status_db

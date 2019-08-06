@@ -60,7 +60,7 @@ let default_warnings =
   "-40"
 
 let default_flags ~dune_version ~profile =
-  if profile = "dev" then
+  if Profile.is_dev profile then
     [ "-w"; dev_mode_warnings ~dune_version ^ default_warnings
     ; "-strict-sequence"
     ; "-strict-formats"

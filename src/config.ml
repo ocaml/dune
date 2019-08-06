@@ -29,8 +29,6 @@ let inside_ci = Option.is_some (Env.get Env.initial "CI")
 let show_full_command_on_error () =
   inside_dune || inside_ci || !Clflags.always_show_command_line
 
-let default_build_profile = "dev"
-
 open Dune_lang.Decoder
 
 (* the configuration file use the same version numbers as dune-project

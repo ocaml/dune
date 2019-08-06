@@ -200,7 +200,7 @@ let bootstrap () =
     let profile = ref None in
     Arg.parse
       [ "-j"           , String concurrency_arg, "JOBS concurrency"
-      ; "--release"    , Unit (fun () -> profile := Some "release"),
+      ; "--release"    , Unit (fun () -> profile := Some Profile.Release),
         " set release mode"
       ; "--display"    , display_mode          , " set the display mode"
       ; "--subst"      , Unit subst            ,
@@ -213,10 +213,10 @@ let bootstrap () =
     Clflags.debug_dep_path := true;
     let config =
       (* Only load the configuration with --dev *)
-      if !profile <> Some "release" then
-        Config.load_user_config_file ()
-      else
+      if !profile = Some Profile.Release then
         Config.default
+      else
+        Config.load_user_config_file ()
     in
     let config =
       Config.merge config

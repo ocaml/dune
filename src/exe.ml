@@ -8,7 +8,7 @@ module SC = Super_context
 module Program = struct
   type t =
     { name             : string
-    ; main_module_name : Module.Name.t
+    ; main_module_name : Module_name.t
     ; loc              : Loc.t
     }
 end

@@ -14,7 +14,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename
   let sctx       = CC.super_context cctx in
   let obj_dir    = CC.obj_dir       cctx in
   let dir        = CC.dir           cctx in
-  let name = Module.Name.of_string basename in
+  let name = Module_name.of_string basename in
   let wrapped = Result.ok_exn (Lib.wrapped lib) in
   let module_ =
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in

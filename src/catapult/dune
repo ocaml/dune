@@ -1,5 +1,4 @@
 (library
  (name catapult)
  (synopsis "Emit catapult trace files, compatible with chrome://tracing")
- (libraries stdune)
-)
+ (libraries stdune))

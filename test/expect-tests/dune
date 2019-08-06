@@ -4,11 +4,18 @@
   (deps
    (source_tree ../unit-tests/findlib-db)
    (source_tree ../unit-tests/toolchain.d)))
- (libraries dune_tests_common stdune dune fiber dune_lang memo
-            ;; This is because of the (implicit_transitive_deps false)
-            ;; in dune-project
-            ppx_expect.config
-            ppx_expect.common
-            base
-            ppx_inline_test.config)
- (preprocess (pps ppx_expect)))
+ (libraries
+  dune_tests_common
+  stdune
+  dune
+  fiber
+  dune_lang
+  memo
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

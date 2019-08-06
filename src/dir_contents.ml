@@ -9,13 +9,13 @@ module Dir_modules = struct
     { libraries : Modules.t Lib_name.Map.t
     ; executables : Modules.t String.Map.t
     ; (* Map from modules to the buildable they are part of *)
-      rev_map : Buildable.t Module.Name.Map.t
+      rev_map : Buildable.t Module_name.Map.t
     }
 
   let empty =
     { libraries = Lib_name.Map.empty
     ; executables = String.Map.empty
-    ; rev_map = Module.Name.Map.empty
+    ; rev_map = Module_name.Map.empty
     }
 end
 
@@ -65,7 +65,7 @@ let c_sources_of_library t ~name =
   C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name
 
 let lookup_module t name =
-  Module.Name.Map.find (Memo.Lazy.force t.modules).rev_map name
+  Module_name.Map.find (Memo.Lazy.force t.modules).rev_map name
 
 let mlds t (doc : Documentation.t) =
   let map = Memo.Lazy.force t.mlds in
@@ -88,7 +88,7 @@ let coq_modules_of_library t ~name =
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
   let make_module dialect base fn =
-    (Module.Name.of_string base,
+    (Module_name.of_string base,
      Module.File.make dialect (Path.relative dir fn))
   in
   let impl_files, intf_files =
@@ -105,14 +105,14 @@ let modules_of_files ~dialects ~dir ~files =
         end
       | None -> Skip)
   in
-  let parse_one_set (files : (Module.Name.t * Module.File.t) list)  =
-    match Module.Name.Map.of_list files with
+  let parse_one_set (files : (Module_name.t * Module.File.t) list)  =
+    match Module_name.Map.of_list files with
     | Ok x -> x
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
         [ Pp.textf "Too many files for module %s in %s:"
-            (Module.Name.to_string name)
+            (Module_name.to_string name)
             (Path.Source.to_string_maybe_quoted src_dir)
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted f1.path)
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted f2.path)
@@ -120,7 +120,7 @@ let modules_of_files ~dialects ~dir ~files =
   in
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
-  Module.Name.Map.merge impls intfs ~f:(fun name impl intf ->
+  Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
     Some (Module.Source.make name ?impl ?intf))
 
 let build_mlds_map (d : _ Dir_with_dune.t) ~files =
@@ -332,10 +332,10 @@ end = struct
           (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
           (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
       in
-      match Module.Name.Map.of_list rev_modules with
+      match Module_name.Map.of_list rev_modules with
       | Ok x -> x
       | Error (name, _, _) ->
-        let open Module.Name.Infix in
+        let open Module_name.Infix in
         let locs =
           List.filter_map rev_modules ~f:(fun (n, b) ->
             Option.some_if (n = name) b.loc)
@@ -343,7 +343,7 @@ end = struct
         in
         User_error.raise ~loc:(Loc.drop_position (List.hd locs))
           [ Pp.textf "Module %S is used in several stanzas:"
-              (Module.Name.to_string name)
+              (Module_name.to_string name)
           ; Pp.enumerate locs ~f:(fun loc ->
               Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text
@@ -519,10 +519,10 @@ end = struct
         check_no_qualified Loc.none qualif_mode;
         let modules =
           let dialects = Dune_project.dialects (Scope.project d.scope) in
-          List.fold_left ((dir, [], files) :: subdirs) ~init:Module.Name.Map.empty
+          List.fold_left ((dir, [], files) :: subdirs) ~init:Module_name.Map.empty
             ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
               let modules = modules_of_files ~dialects ~dir ~files in
-              Module.Name.Map.union acc modules ~f:(fun name x y ->
+              Module_name.Map.union acc modules ~f:(fun name x y ->
                 User_error.raise
                   ~loc:(Loc.in_file
                           (Path.source (match File_tree.Dir.dune_file ft_dir with
@@ -531,7 +531,7 @@ end = struct
                                  "_unknown_"
                              | Some d -> File_tree.Dune_file.path d)))
                   [ Pp.textf "Module %S appears in several directories:"
-                      (Module.Name.to_string name)
+                      (Module_name.to_string name)
                   ; Pp.textf "- %s"
                       (Path.to_string_maybe_quoted (Module.Source.src_dir x))
                   ; Pp.textf "- %s"

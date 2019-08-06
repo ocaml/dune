@@ -2,4 +2,5 @@
  (name dune_bench)
  (libraries stdune fiber dune)
  (library_flags -linkall)
- (preprocess (pps ppx_bench)))
+ (preprocess
+  (pps ppx_bench)))

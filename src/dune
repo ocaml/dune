@@ -1,24 +1,14 @@
 (library
- (name        dune)
- (libraries   unix
-              stdune
-              fiber
-              incremental_cycles
-              dag
-              memo
-              xdg
-              dune_re
-              threads.posix
-              opam_file_format
-              dune_lang
-              ocaml_config
-              catapult)
- (synopsis    "Internal Dune library, do not use!")
- (preprocess  future_syntax))
+ (name dune)
+ (libraries unix stdune fiber incremental_cycles dag memo xdg dune_re
+   threads.posix opam_file_format dune_lang ocaml_config catapult)
+ (synopsis "Internal Dune library, do not use!")
+ (preprocess future_syntax))
 
 (ocamllex meta_lexer glob_lexer dune_lexer ocamlobjinfo)
 
 (rule
  (targets setup.ml)
- (mode    fallback)
- (action  (copy# setup.defaults.ml setup.ml)))
+ (mode fallback)
+ (action
+  (copy# setup.defaults.ml setup.ml)))

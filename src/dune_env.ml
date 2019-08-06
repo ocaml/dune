@@ -50,7 +50,7 @@ module Stanza = struct
   }
 
   type pattern =
-    | Profile of string
+    | Profile of Profile.t
     | Any
 
   type t =
@@ -96,7 +96,7 @@ module Stanza = struct
     enter
       (let+ pat =
          match_keyword [("_", return Any)]
-           ~fallback:(string >>| fun s -> Profile s)
+           ~fallback:(let+ p = Profile.decode in Profile p)
        and+ configs = fields config
        in
        (pat, configs))

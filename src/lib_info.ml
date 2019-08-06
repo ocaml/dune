@@ -176,7 +176,7 @@ let of_library_stanza ~dir
     match conf.stdlib with
     | Some { exit_module = Some m; _ } ->
       let obj_name =
-        Path.Build.relative dir (Module.Name.uncapitalize m) in
+        Path.Build.relative dir (Module_name.uncapitalize m) in
       { Mode.Dict.
         byte =
           Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ::

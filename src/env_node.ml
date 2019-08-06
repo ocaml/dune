@@ -126,7 +126,7 @@ let rec inline_tests t ~profile =
       | {inline_tests = None; _} ->
         begin match t.inherit_from with
         | None ->
-          if profile = "release" then
+          if Profile.is_inline_test profile then
             Disabled
           else
             Enabled

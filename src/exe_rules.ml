@@ -34,20 +34,20 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope
 
   let programs =
     List.map exes.names ~f:(fun (loc, name) ->
-      let mod_name = Module.Name.of_string name in
+      let mod_name = Module_name.of_string name in
       match Modules.find modules mod_name with
       | Some m ->
         if not (Module.has m ~ml_kind:Impl) then
           User_error.raise ~loc
             [ Pp.textf "Module %S has no implementation."
-                (Module.Name.to_string mod_name)
+                (Module_name.to_string mod_name)
             ]
         else
           { Exe.Program.name; main_module_name = mod_name ; loc }
       | None ->
         User_error.raise ~loc
           [ Pp.textf "Module %S doesn't exist."
-              (Module.Name.to_string mod_name)
+              (Module_name.to_string mod_name)
           ])
   in
 

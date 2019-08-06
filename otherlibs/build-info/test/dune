@@ -1,6 +1,8 @@
 (alias
  (name runtest)
- (deps (package dune) (package dune-build-info))
+ (deps
+  (package dune)
+  (package dune-build-info))
  (action
   (progn
    (run %{exe:../../../test/blackbox-tests/cram.exe} -test %{dep:run.t})

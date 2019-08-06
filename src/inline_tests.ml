@@ -219,7 +219,7 @@ include Sub_system.Register_end_point(
 
       let name = "run" in
       let main_module =
-        let name = Module.Name.of_string name in
+        let name = Module_name.of_string name in
         let src_dir = Path.build inline_test_dir in
         Module.generated ~src_dir name
       in

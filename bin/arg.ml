@@ -25,3 +25,9 @@ let path = Path.conv
 
 [@@@ocaml.warning "-32"]
 let file = path
+
+
+let profile = conv (
+  (fun p -> Ok (Profile.of_string p))
+, (fun fmt t -> Format.pp_print_string fmt (Profile.to_string t))
+)

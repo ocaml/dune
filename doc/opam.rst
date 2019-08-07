@@ -5,8 +5,56 @@ opam
 ****
 
 opam_ is the official package manager for OCaml, and dune offers some
-integration with it. Here's a complete example of a dune file with opam metadata
-specification:
+integration with it.
+
+Invocation from opam
+====================
+
+You should set the ``build:`` field of your ``<package>.opam`` file as
+follows:
+
+::
+
+    build: [
+      ["dune" "subst"] {pinned}
+      ["dune" "build" "-p" name "-j" jobs]
+    ]
+
+``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
+release --default-target @install``. ``-p`` is the short version of
+``--for-release-of-packages``.
+
+This has the following effects:
+
+-  it tells dune to build everything that is installable and to
+   ignore packages other than ``name`` defined in your project
+-  it sets the root to prevent dune from looking it up
+-  it silently ignores all rules with ``(mode promote)``
+-  it sets the build profile to ``release``
+-  it uses whatever concurrency option opam provides
+-  it sets the default target to ``@install`` rather than ``@@default``
+
+Note that ``name`` and ``jobs`` are variables expanded by opam. ``name`` expands
+to the package name and ``jobs`` to the number of jobs available to build the
+package.
+
+Tests
+-----
+
+To setup the building and running of tests in opam, add this line to your
+``<package>.opam`` file:
+
+::
+
+    build: [
+      (* Previous lines here... *)
+      ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+    ]
+
+Generating ``opam`` files
+=========================
+
+Here's a complete example of a dune file with opam metadata specification:
 
 .. code:: scheme
 

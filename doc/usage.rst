@@ -389,7 +389,7 @@ to the package name and ``jobs`` to the number of jobs available to build the
 package.
 
 Tests
-=====
+-----
 
 To setup the building and running of tests in opam, add this line to your
 ``<package>.opam`` file:

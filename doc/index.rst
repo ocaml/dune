@@ -26,7 +26,6 @@ Welcome to dune's documentation!
    common-items
    executables
    tests
-   foreign-code
    documentation
    installation
    usage

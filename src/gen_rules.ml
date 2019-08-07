@@ -216,7 +216,6 @@ module Gen(P : sig val sctx : Super_context.t end) = struct
         |> SC.add_rules ~dir:ctx_dir sctx
       | _ -> ());
     let dyn_deps =
-      (* DUNE2: no need to filter out js targets anymore *)
       let pred =
         let id = lazy (
           let open Dyn.Encoder in

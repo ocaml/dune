@@ -13,6 +13,7 @@ Welcome to dune's documentation!
    overview
    terminology
    project-layout-specification
+   dune-project-files
    dune-files
    dune-workspace-files
    common-items

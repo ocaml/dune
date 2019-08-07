@@ -211,3 +211,9 @@ should be rewritten to the following dune file:
 --------------------------
 
 ``# DUNE_GEN`` should be used instead of ``# JBUILDER_GEN`` in META templates.
+
+jbuild-ignore (deprecated)
+--------------------------
+
+``jbuild-ignore`` files are deprecated and replaced by
+:ref:`dune-subdirs` stanzas in ``dune`` files.

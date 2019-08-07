@@ -18,8 +18,6 @@ Welcome to dune's documentation!
    documentation
    usage
    advanced-topics
-   menhir
-   jsoo
    opam
    variants
    formatting

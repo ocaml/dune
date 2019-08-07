@@ -13,14 +13,13 @@ Welcome to dune's documentation!
    project-layout-specification
    dune-files
    concepts
-   otherlibs
    tests
    documentation
+   opam
+   formatting
    usage
    advanced-topics
-   opam
-   variants
-   formatting
+   otherlibs
    faq
    known-issues
    migration

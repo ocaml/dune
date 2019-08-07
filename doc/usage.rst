@@ -269,6 +269,19 @@ There's a few aliases that dune automatically creates for the user
   tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti``, and
   .merlin files.
 
+Variables for artifacts
+-----------------------
+
+It is possible to build specific artifacts by using the corresponding variable
+on the command line, eg:
+
+.. code::
+
+    dune build '%{cmi:foo}'
+
+See :ref:`variables-for-artifacts` for more information.
+
+
 Finding external libraries
 ==========================
 

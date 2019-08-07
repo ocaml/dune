@@ -20,6 +20,7 @@ Welcome to dune's documentation!
    user-actions
    ordered-set-language
    blang
+   preprocessing
    common-items
    executables
    tests

@@ -7,8 +7,23 @@ General concepts
 Variables expansion
 ===================
 
-Some fields can contains variables of the form ``%{var}`` that are
-expanded by dune.
+Some fields can contains variables that are expanded by dune.  Their
+interpretation often depend on the context in which they appear.
+
+The syntax of variables is as follow:
+
+.. code::
+
+   %{var}
+
+or, for more complex forms that take an argument:
+
+.. code::
+
+   %{fun:arg}
+
+In order to write a plain ``%{``, you need to write ``\%{`` in a
+string.
 
 Dune supports the following variables:
 

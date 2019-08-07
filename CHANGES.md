@@ -79,7 +79,8 @@
 - Set up formatting rules by default. They can be configured through a new
   `(formatting)` stanza in `dune-project` (#2347, fixes #2315, @emillon)
 
-- Change default target from `@install` to `@all`. (#2449, @rgrinberg)
+- Change default target from `@install` to `@all`. (#2449, fixes #1220,
+  @rgrinberg)
 
 1.11.0 (23/07/2019)
 -------------------

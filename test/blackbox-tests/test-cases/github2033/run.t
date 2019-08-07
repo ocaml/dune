@@ -1,2 +1,2 @@
 . should be allowed in c names
-  $ dune build
+  $ dune build @install

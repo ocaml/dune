@@ -735,10 +735,20 @@ end = struct
             match File_tree.find_dir t.file_tree src_dir with
             | None -> aliases
             | Some dir ->
+              let default_alias =
+                let dune_version =
+                  File_tree.Dir.project dir
+                  |> Dune_project.dune_version
+                in
+                if dune_version >= (2, 0) then
+                  "all"
+                else
+                  "install"
+              in
               String.Map.set aliases "default"
                 { deps = Path.Set.empty
                 ; dyn_deps =
-                    (Alias0.dep_rec_internal ~name:"install" ~dir ~ctx_dir
+                    (Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
                      >>^ fun (_ : bool) ->
                      Path.Set.empty)
                 ; actions = Appendable_list.empty

@@ -52,5 +52,5 @@ However, public binaries may accept private dependencies
       ocamlopt publicbin.exe
 
 Private dependencies shouldn't make the library optional
-  $ dune build --display short --root optional
+  $ dune build @install --display short --root optional
   Entering directory 'optional'

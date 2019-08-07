@@ -38,7 +38,7 @@ variants and finally default implementation.
 
 Check that variant data is installed in the dune package file.
 
-  $ dune build --root dune-package
+  $ dune build @install --root dune-package
   Entering directory 'dune-package'
   $ cat  dune-package/_build/install/default/lib/a/dune-package
   (lang dune 2.0)

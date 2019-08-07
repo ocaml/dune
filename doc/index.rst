@@ -26,6 +26,7 @@ Welcome to dune's documentation!
    installation
    usage
    advanced-topics
+   sandboxing
    configurator
    menhir
    jsoo

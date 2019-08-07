@@ -46,6 +46,20 @@ This section gives simple usage examples of dune. You can also look at
 `examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
 examples of projects using dune.
 
+Project Layout
+==============
+
+A typical dune project will have a ``dune-project`` and one or more
+``<package>.opam`` file at the root as well as ``dune`` files wherever
+interesting things are: libraries, executables, tests, documents to install,
+etc...
+
+It is recommended to organize your project so that you have exactly one library
+per directory. You can have several executables in the same directory, as long
+as they share the same build configuration. If you'd like to have multiple
+executables with different configurations in the same directory, you will have
+to make an explicit module list for every executable using ``modules``.
+
 Terminology
 ===========
 
@@ -90,7 +104,7 @@ Terminology
 -  **build context root**: the root of a build context named ``foo`` is
    ``<root>/_build/<foo>``
 
-- **alias**: an alias is a build target that doesn't produce any file and has
+-  **alias**: an alias is a build target that doesn't produce any file and has
    configurable dependencies. Aliases are per-directory. However, on the command
    line, asking for an alias to be built in a given directory will trigger the
    construction of the alias in all children directories recursively. Dune

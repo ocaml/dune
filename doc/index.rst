@@ -10,7 +10,6 @@ Welcome to dune's documentation!
    :maxdepth: 3
 
    overview
-   project-layout-specification
    dune-files
    concepts
    tests

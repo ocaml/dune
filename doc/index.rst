@@ -22,6 +22,7 @@ Welcome to dune's documentation!
    blang
    preprocessing
    dependencies
+   diffing-promotion
    common-items
    executables
    tests

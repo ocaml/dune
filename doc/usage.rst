@@ -1,6 +1,6 @@
-*****
-Usage
-*****
+******************
+Command-line usage
+******************
 
 This section describe usage of dune from the shell.
 

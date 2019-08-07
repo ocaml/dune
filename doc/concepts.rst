@@ -896,9 +896,9 @@ The following sections are available:
 - ``lib`` installs to ``<prefix>/lib/<pkgname>/``
 - ``lib_root`` installs to ``<prefix>/lib/``
 - ``libexec`` installs to ``<prefix>/lib/<pkgname>/`` with the
-   executable bit set
+  executable bit set
 - ``libexec_root`` installs to ``<prefix>/lib/`` with the executable
-   bit set
+  bit set
 - ``bin`` installs to ``<prefix>/bin/`` with the executable bit set
 - ``sbin`` installs to ``<prefix>/sbin/`` with the executable bit set
 - ``toplevel`` installs to ``<prefix>/lib/toplevel/``
@@ -907,14 +907,14 @@ The following sections are available:
 - ``etc`` installs to ``<prefix>/etc/<pkgname>/``
 - ``doc`` installs to ``<prefix>/doc/<pkgname>/``
 - ``stublibs`` installs to ``<prefix>/lib/stublibs/`` with the
-   executable bit set
+  executable bit set
 - ``man`` installs relative to ``<prefix>/man`` with the destination
-   directory extracted from the extension of the source file (so that
-   installing ``foo.1`` is equivalent to a destination of
-   ``man1/foo.1``)
+  directory extracted from the extension of the source file (so that
+  installing ``foo.1`` is equivalent to a destination of
+  ``man1/foo.1``)
 - ``misc`` requires files to specify an absolute destination, and the
-   user will be prompted before the installation when it is done via
-   opam. Only use this for advanced cases.
+  user will be prompted before the installation when it is done via
+  opam. Only use this for advanced cases.
 
 Normally, Dune uses the basename of the file to install to determine
 the name of the file once installed.  However, you can change that

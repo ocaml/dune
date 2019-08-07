@@ -127,9 +127,9 @@ let rec inline_tests t ~profile =
         begin match t.inherit_from with
         | None ->
           if Profile.is_inline_test profile then
-            Disabled
-          else
             Enabled
+          else
+            Disabled
         | Some (lazy t) -> inline_tests t ~profile
         end
       | {inline_tests = Some s; _} -> s

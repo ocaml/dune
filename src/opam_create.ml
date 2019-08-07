@@ -42,10 +42,11 @@ let package_fields
       ; path = _
       ; version = _
       ; kind = _
-      ; tags = _
+      ; tags
       ; loc = _
-      } =
+      } ~project =
   let open Opam_file.Create in
+  let tags = if tags = [] then [] else ["tags", string_list tags] in
   let optional =
     [ "synopsis", synopsis
     ; "description", description
@@ -65,7 +66,15 @@ let package_fields
       | [] -> None
       | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
   in
-  optional @ dep_fields
+  let fields = [ optional; dep_fields ] in
+  let fields =
+    let dune_version = Dune_project.dune_version project in
+    if dune_version >= (2, 0) && tags <> [] then
+      tags :: fields
+    else
+      fields
+  in
+  List.concat fields
 
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
@@ -90,7 +99,7 @@ let opam_fields project (package : Package.t) =
       else
         { package with depends = dune_dep :: package.depends }
   in
-  let package_fields = package_fields package in
+  let package_fields = package_fields package ~project in
   let open Opam_file.Create in
   let optional_fields =
     [ "bug-reports", Dune_project.bug_reports project

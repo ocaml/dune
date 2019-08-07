@@ -79,6 +79,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name cmdliner-dep-conf)
+ (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
+ (action
+  (chdir
+   test-cases/cmdliner-dep-conf
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name configurator)
  (deps (package dune) (source_tree test-cases/configurator))
  (action
@@ -745,6 +753,14 @@
  (action
   (chdir
    test-cases/github24
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name github2499)
+ (deps (package dune) (source_tree test-cases/github2499))
+ (action
+  (chdir
+   test-cases/github2499
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1700,6 +1716,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
@@ -1780,6 +1797,7 @@
   (alias github2228)
   (alias github2272)
   (alias github24)
+  (alias github2499)
   (alias github25)
   (alias github534)
   (alias github568)
@@ -1902,6 +1920,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
@@ -1977,6 +1996,7 @@
   (alias github2228)
   (alias github2272)
   (alias github24)
+  (alias github2499)
   (alias github25)
   (alias github534)
   (alias github568)

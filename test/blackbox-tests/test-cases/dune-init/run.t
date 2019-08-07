@@ -299,10 +299,17 @@ Can init and build a new executable project
   dune
   test_exec_proj.ml
 
-  $ cd test_exec_proj && dune build
+  $ dune exec --root test_exec_proj ./bin/main.exe
+  Entering directory 'test_exec_proj'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)
   | (name test_exec_proj)
+  Entering directory 'test_exec_proj'
+  Hello, World!
+
+  $ dune exec --root test_exec_proj ./test/test_exec_proj.exe
+  Entering directory 'test_exec_proj'
+  Entering directory 'test_exec_proj'
   $ rm -rf ./test_exec_proj
 
 Can init and build a new library project
@@ -320,10 +327,25 @@ Can init and build a new library project
   dune
   test_lib_proj.ml
 
-  $ cd test_lib_proj && dune build
+  $ dune build --root test_lib_proj @install --display short
+  Entering directory 'test_lib_proj'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)
   | (name test_lib_proj)
+        ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
+        ocamlc lib/test_lib_proj.cma
+      ocamlopt lib/.test_lib_proj.objs/native/test_lib_proj.{cmx,o}
+      ocamlopt lib/test_lib_proj.{a,cmxa}
+      ocamlopt lib/test_lib_proj.cmxs
+
+  $ dune runtest --root test_lib_proj --display short
+  Entering directory 'test_lib_proj'
+      ocamldep test/.test_lib_proj.eobjs/test_lib_proj.ml.d
+        ocamlc test/.test_lib_proj.eobjs/byte/dune__exe__Test_lib_proj.{cmi,cmo,cmt}
+      ocamlopt test/.test_lib_proj.eobjs/native/dune__exe__Test_lib_proj.{cmx,o}
+      ocamlopt test/test_lib_proj.exe
+  test_lib_proj alias test/runtest
+
 Can init and build a project using Esy
 
   $ dune init proj test_esy_proj --pkg esy

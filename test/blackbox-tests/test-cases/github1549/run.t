@@ -1,6 +1,6 @@
 Reproduction case for #1549: too many parentheses in installed .dune files
 
-  $ dune build --root backend
+  $ dune build @install --root backend
   Entering directory 'backend'
 
   $ cat backend/_build/install/default/lib/dune_inline_tests/dune-package

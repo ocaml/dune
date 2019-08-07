@@ -27,7 +27,7 @@ let build_targets =
   let name_ = Arg.info [] ~docv:"TARGET" in
   let term =
     let+ common = Common.term
-    and+ targets = Arg.(value & pos_all string [] name_)
+    and+ targets = Arg.(value & pos_all dep [] name_)
     in
     let targets =
       match targets with
@@ -56,10 +56,14 @@ let runtest =
     and+ dirs = Arg.(value & pos_all string ["."] name_)
     in
     Common.set_common common
-      ~targets:(List.map dirs ~f:(function
-        | "" | "." -> "@runtest"
-        | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
-        | dir -> sprintf "@%s/runtest" dir));
+      ~targets:(List.map dirs ~f:(fun s ->
+        let prefix =
+          match s with
+          | "" | "." -> ""
+          | dir when dir.[String.length dir - 1] = '/' -> dir
+          | dir -> dir ^ "/"
+        in
+        Arg.Dep.alias_rec (prefix ^ "runtest")));
     let log = Log.create common in
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->

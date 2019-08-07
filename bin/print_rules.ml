@@ -109,6 +109,7 @@ let term =
          & Arg.info [] ~docv:"TARGET")
   in
   let out = Option.map ~f:Path.of_string out in
+  let targets = List.map ~f:Arg.Dep.file targets in
   Common.set_common common ~targets;
   let log = Log.create common in
   Scheduler.go ~log ~common (fun () ->

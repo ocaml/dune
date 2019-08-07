@@ -2,6 +2,7 @@
 (name dune)
 
 (generate_opam_files true)
+(formatting (enabled_for dune))
 
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")

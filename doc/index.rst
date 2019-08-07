@@ -20,6 +20,7 @@ Welcome to dune's documentation!
    usage
    other-topics
    otherlibs
+   metadata-format
    faq
    known-issues
    migration

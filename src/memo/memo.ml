@@ -811,6 +811,8 @@ module Lazy = struct
 
   let force f = f ()
 
+  let map x ~f = create (fun () -> f (force x))
+
   let map2 x y ~f = create (fun () -> f (x ()) (y ()))
 
   let bind x ~f = create (fun () -> force (f (force x)))

@@ -7,6 +7,15 @@
 open! Stdune
 open Import
 
+module Dir_artifacts : sig
+  type t
+
+  val lookup_module :
+    t -> Module_name.t -> Path.Build.t Obj_dir.Module.Single.t option
+
+  val lookup_library : t -> Lib_name.t -> Dune_file.Library.t option
+end
+
 type t
 
 val dir : t -> Path.Build.t
@@ -29,6 +38,9 @@ val c_sources_of_executables : t -> first_exe:string -> C.Sources.t
 
 (** Find out what buildable a module is part of *)
 val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
+
+(** Artifacts defined in this directory *)
+val artifacts : t -> Dir_artifacts.t
 
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list

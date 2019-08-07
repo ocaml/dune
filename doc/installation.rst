@@ -1,6 +1,8 @@
-*********************************
-Installing packages on the system
-*********************************
+.. _packages:
+
+*********************
+Package specification
+*********************
 
 Installation is the process of copying freshly built libraries,
 binaries and other files from the build directory to the system.  Dune

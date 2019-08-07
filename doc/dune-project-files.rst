@@ -136,8 +136,8 @@ defined in the project:
 package
 -------
 
-Package specific information is specified in the ``(package <package>)`` stanza.
-It contains the following fields:
+Package specific information is specified in the ``(package <package>)`` stanza,
+see :ref:`packages`. It contains the following fields:
 
 - ``(name <string>)`` is the name of the package. This must be specified.
 

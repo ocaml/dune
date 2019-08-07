@@ -24,7 +24,6 @@ Welcome to dune's documentation!
    opam
    variants
    formatting
-   coq
    faq
    known-issues
    migration

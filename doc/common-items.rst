@@ -502,14 +502,6 @@ follows:
 
     (flags (:standard <my options>))
 
-.. _dune-jsoo:
-
-js_of_ocaml
------------
-
-A :ref:`dune-jsoo-field` exists in executable and libraries stanzas that allows
-one to customize options relevant to jsoo.
-
 Sandboxing
 ----------
 

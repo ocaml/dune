@@ -12,14 +12,14 @@ in ``src/foo/dune`` will be run from ``$build/<context>/src/foo``.
 
 The argument of ``(action ...)`` fields is a small DSL that is interpreted by
 dune directly and doesn't require an external shell. All atoms in the DSL
-support `Variables expansion`_. Moreover, you don't need to specify dependencies
+support :ref:`variables`. Moreover, you don't need to specify dependencies
 explicitly for the special ``%{<kind>:...}`` forms, these are recognized and
 automatically handled by dune.
 
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or configurator_ for configuration related tasks.
+scripts or :ref:`configurator` for configuration related tasks.
 
 The following constructions are available:
 
@@ -46,13 +46,13 @@ The following constructions are available:
 - ``(bash <cmd>)`` to execute a command using ``/bin/bash``. This is obviously
   not very portable
 - ``(diff <file1> <file2>)`` is similar to ``(run diff <file1>
-  <file2>)`` but is better and allows promotion.  See `Diffing and
-  promotion`_ for more details
+  <file2>)`` but is better and allows promotion.  See :ref:`diffing-and-promotion`
+  for more details
 - ``(diff? <file1> <file2>)`` is the same as ``(diff <file1>
   <file2>)`` except that it is ignored when ``<file1>`` or ``<file2>``
   doesn't exists
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
-  <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
+  <file2>)`` but allows promotion.  See :ref:`diffing-and-promotion` for
   more details
 
 As mentioned ``copy#`` inserts a line directive at the beginning of

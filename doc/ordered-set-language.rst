@@ -34,5 +34,5 @@ This restriction will allow to add this feature without introducing a
 breaking changes. If you want to write a list where the first element
 doesn't start by `-`, you can simply quote it: ``("x" y z)``.
 
-Most fields using the ordered set language also support `Variables expansion`_.
+Most fields using the ordered set language also support :ref:`variables`.
 Variables are expanded after the set language is interpreted.

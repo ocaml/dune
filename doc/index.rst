@@ -16,6 +16,7 @@ Welcome to dune's documentation!
    dune-project-files
    dune-files
    dune-workspace-files
+   variables
    user-actions
    ordered-set-language
    common-items

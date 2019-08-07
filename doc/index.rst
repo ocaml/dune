@@ -17,7 +17,6 @@ Welcome to dune's documentation!
    otherlibs
    tests
    documentation
-   installation
    usage
    advanced-topics
    menhir

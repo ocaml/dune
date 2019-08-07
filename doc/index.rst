@@ -18,7 +18,7 @@ Welcome to dune's documentation!
    opam
    formatting
    usage
-   advanced-topics
+   other-topics
    otherlibs
    faq
    known-issues

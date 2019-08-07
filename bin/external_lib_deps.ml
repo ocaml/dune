@@ -118,7 +118,7 @@ let term =
              ~doc:{|Only print out missing dependencies|})
   and+ targets =
     Arg.(non_empty
-         & pos_all string []
+         & pos_all dep []
          & Arg.info [] ~docv:"TARGET")
   and+ by_dir =
     Arg.(value

@@ -79,6 +79,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name cmdliner-dep-conf)
+ (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
+ (action
+  (chdir
+   test-cases/cmdliner-dep-conf
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name configurator)
  (deps (package dune) (source_tree test-cases/configurator))
  (action
@@ -1700,6 +1708,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
@@ -1902,6 +1911,7 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)

@@ -39,7 +39,7 @@ let term =
     Arg.(value
          & pos_right 0 string [] (Arg.info [] ~docv:"ARGS"))
   in
-  Common.set_common common ~targets:[prog];
+  Common.set_common common ~targets:[Arg.Dep.file prog];
   let log = Log.create common in
   let setup =
     Scheduler.go ~log ~common (fun () -> Import.Main.setup ~log common) in

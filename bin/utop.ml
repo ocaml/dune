@@ -25,7 +25,7 @@ let term =
             (Path.of_string (Common.prefix_target common dir))) then
     User_error.raise
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
-  let utop_target = Filename.concat dir Utop.utop_exe in
+  let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
   Common.set_common_other common ~targets:[utop_target];
   let log = Log.create common in
   let (context, utop_path) =

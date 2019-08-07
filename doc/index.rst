@@ -13,7 +13,6 @@ Welcome to dune's documentation!
    project-layout-specification
    dune-files
    concepts
-   common-items
    otherlibs
    tests
    documentation

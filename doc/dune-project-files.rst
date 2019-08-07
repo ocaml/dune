@@ -40,3 +40,21 @@ Enables or disables :ref:`implicit-transitive-deps`:
 .. code:: scheme
 
     (implicit_transitive_deps <bool>)
+
+wrapped_executables
+-------------------
+
+Enables or disables :ref:`wrapped-executables`:
+
+.. code:: scheme
+
+    (wrapped_executables <bool>)
+
+explicit_js_mode
+----------------
+
+Enables :ref:`explicit-js-mode`:
+
+.. code:: scheme
+
+    (explicit_js_mode)

@@ -1,6 +1,6 @@
-***************
-Advanced topics
-***************
+************
+Other topics
+************
 
 This section describes some details of dune for advanced users.
 

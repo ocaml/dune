@@ -17,6 +17,7 @@ Welcome to dune's documentation!
    dune-files
    dune-workspace-files
    user-actions
+   ordered-set-language
    common-items
    executables
    tests

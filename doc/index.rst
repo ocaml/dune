@@ -21,6 +21,7 @@ Welcome to dune's documentation!
    ordered-set-language
    blang
    preprocessing
+   dependencies
    common-items
    executables
    tests

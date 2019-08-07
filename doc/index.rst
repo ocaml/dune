@@ -9,9 +9,7 @@ Welcome to dune's documentation!
 .. toctree::
    :maxdepth: 3
 
-   quick-start
    overview
-   terminology
    project-layout-specification
    dune-project-files
    dune-files

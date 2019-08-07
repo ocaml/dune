@@ -14,13 +14,12 @@ Welcome to dune's documentation!
    dune-files
    concepts
    common-items
-   executables
+   otherlibs
    tests
    documentation
    installation
    usage
    advanced-topics
-   configurator
    menhir
    jsoo
    opam

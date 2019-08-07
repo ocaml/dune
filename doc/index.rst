@@ -11,9 +11,7 @@ Welcome to dune's documentation!
 
    overview
    project-layout-specification
-   dune-project-files
    dune-files
-   dune-workspace-files
    variables
    user-actions
    ordered-set-language

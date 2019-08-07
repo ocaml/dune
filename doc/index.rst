@@ -12,13 +12,7 @@ Welcome to dune's documentation!
    overview
    project-layout-specification
    dune-files
-   variables
-   user-actions
-   ordered-set-language
-   blang
-   preprocessing
-   dependencies
-   diffing-promotion
+   concepts
    common-items
    executables
    tests
@@ -26,7 +20,6 @@ Welcome to dune's documentation!
    installation
    usage
    advanced-topics
-   sandboxing
    configurator
    menhir
    jsoo

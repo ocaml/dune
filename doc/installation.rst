@@ -206,7 +206,7 @@ command:
 This command takes a list of package names to install.  If no packages
 are specified, Dune will install all the packages available in the
 workspace.  When several build contexts are specified via a
-`dune-workspace`_ file, the installation will be performed in all the
+:ref:`workspace-configuration` file, the installation will be performed in all the
 build contexts.
 
 Destination directory

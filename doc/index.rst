@@ -19,6 +19,7 @@ Welcome to dune's documentation!
    variables
    user-actions
    ordered-set-language
+   blang
    common-items
    executables
    tests

@@ -1,14 +1,11 @@
-**********
-dune files
-**********
+**************
+``dune`` files
+**************
 
 ``dune`` files are the main part of dune. They are used to describe libraries,
 executables, tests, and everything dune needs to know about.
 
 The syntax of ``dune`` files is described in :ref:`metadata-format` section.
-
-Stanzas
-=======
 
 ``dune`` files are composed of stanzas. For instance a typical
 ``dune`` looks like:

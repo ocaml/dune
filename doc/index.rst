@@ -19,7 +19,6 @@ Welcome to dune's documentation!
    usage
    advanced-topics
    dune-libs
-   menhir
    opam
    variants
    formatting

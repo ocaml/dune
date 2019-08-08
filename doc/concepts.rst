@@ -2,6 +2,25 @@
 General concepts
 ****************
 
+.. _scopes:
+
+Scopes
+======
+
+Any directory containing at least one ``<package>.opam`` file defines
+a scope. This scope is the sub-tree starting from this directory,
+excluding any other scopes rooted in sub-direcotries.
+
+Typically, any given project will define a single scope. Libraries and
+executables that are not meant to be installed will be visible inside
+this scope only.
+
+Because scopes are exclusive, if you wish to include the dependencies
+of the project you are currently working on into your workspace, you
+may copy them in a ``vendor`` directory, or any other name of your
+choice. Dune will look for them there rather than in the installed
+world and there will be no overlap between the various scopes.
+
 .. _ordered-set-language:
 
 Ordered set language

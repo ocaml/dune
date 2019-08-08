@@ -11,7 +11,6 @@ Welcome to dune's documentation!
 
    overview
    quick-start
-   project-layout-specification
    dune-files
    concepts
    tests

@@ -107,12 +107,6 @@ let is_standard t =
   | Ast.Standard -> true
   | _ -> false
 
-module type Value = sig
-  type t
-  type key
-  val key : t -> key
-end
-
 module type Key = sig
   type t
   val compare : t -> t -> Ordering.t
@@ -120,14 +114,21 @@ module type Key = sig
 end
 
 module type S = sig
-  type value
-  type 'a map
+  module Key : Key
 
   val eval_unordered
     :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value map
-    -> value map
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:'a Key.Map.t
+    -> 'a Key.Map.t
+
+  val eval_unordered_loc
+    :  t
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:(Loc.t * 'a) Key.Map.t
+    -> (Loc.t * 'a) Key.Map.t
 end
 
 module Named_values = struct
@@ -172,74 +173,55 @@ let eval t ~parse ~eq ~standard =
     let named_values = Named_values.ordered eq in
     gen_eval named_values t ~parse ~standard
 
-module Make(Key : Key)(Value : Value with type key = Key.t) = struct
-  module type Named_values = sig
-    type t
+module Make(Key : Key) = struct
+  module Key = Key
 
-    val singleton : Value.t -> t
-    val union : t list -> t
-    val diff : t -> t -> t
-  end
+  module Unordered = struct
+    let singleton ~key x = Key.Map.singleton (key x) x
 
-  module Make(M : Named_values) = struct
-    let eval t ~parse ~standard =
-      let rec of_ast (t : ast_expanded) =
-        let open Ast in
-        match t with
-        | Element (loc, s) ->
-          let x = parse ~loc s in
-          M.singleton x
-        | Standard -> standard
-        | Union elts -> M.union (List.map elts ~f:of_ast)
-        | Diff (left, right) ->
-          let left  = of_ast left  in
-          let right = of_ast right in
-          M.diff left right
-      in
-      of_ast t.ast
-  end
-
-  module Unordered = Make(struct
-      type t = Value.t Key.Map.t
-
-      let singleton x = Key.Map.singleton (Value.key x) x
-
-      let union l =
-        List.fold_left l ~init:Key.Map.empty ~f:(fun acc t ->
-          Key.Map.merge acc t ~f:(fun _name x y ->
-            match x, y with
-            | Some x, _ | _, Some x -> Some x
-            | _ -> None))
-
-      let diff a b =
-        Key.Map.merge a b ~f:(fun _name x y ->
+    let union l =
+      List.fold_left l ~init:Key.Map.empty ~f:(fun acc t ->
+        Key.Map.merge acc t ~f:(fun _name x y ->
           match x, y with
-          | Some _, None -> x
-          | _ -> None)
-    end)
+          | Some x, _ | _, Some x -> Some x
+          | _ -> None))
 
-  type value = Value.t
-  type 'a map = 'a Key.Map.t
+    let diff a b =
+      Key.Map.merge a b ~f:(fun _name x y ->
+        match x, y with
+        | Some _, None -> x
+        | _ -> None)
+  end
 
-  let eval_unordered t ~parse ~standard =
+
+  let eval t ~parse ~key ~standard =
+    let module M = Unordered in
+    let rec of_ast (t : ast_expanded) =
+      let open Ast in
+      match t with
+      | Element (loc, s) ->
+        let x = parse ~loc s in
+        M.singleton ~key x
+      | Standard -> standard
+      | Union elts -> M.union (List.map elts ~f:of_ast)
+      | Diff (left, right) ->
+        let left  = of_ast left  in
+        let right = of_ast right in
+        M.diff left right
+    in
+    of_ast t.ast
+
+  let eval_unordered t ~parse ~key ~standard =
     if is_standard t then
       standard (* inline common case *)
     else
-      Unordered.eval t ~parse ~standard
-end
-
-module Make_loc(Key : Key)(Value : Value with type key = Key.t) = struct
-  module No_loc = Make(Key)(struct
-      type t = Loc.t * Value.t
-      type key = Key.t
-      let key (_loc, s) = Value.key s
-    end)
+      eval t ~parse ~key ~standard
 
   let loc_parse f ~loc s = (loc, f ~loc s)
 
-  let eval_unordered t ~parse ~standard =
-    No_loc.eval_unordered t
-      ~parse:(loc_parse parse)
+  let eval_unordered_loc t ~parse ~key ~standard =
+    eval_unordered t
+      ~parse:(loc_parse parse) ~key:(fun (_, x) -> key x)
       ~standard
 end
 
@@ -422,8 +404,4 @@ module Unexpanded = struct
     { t with ast = expand t.ast }
 end
 
-module String = Make(String)(struct
-    type t = string
-    type key = string
-    let key x = x
-  end)
+module String = Make(String)

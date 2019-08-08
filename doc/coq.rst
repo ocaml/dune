@@ -19,7 +19,7 @@ language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
 
-Basic Usage
+Basic usage
 ===========
 
 The basic form for defining Coq libraries is very similar to the OCaml form:
@@ -60,7 +60,7 @@ writers avoid boilerplate we provide a `(coqpp ...)` stanza:
 
     (coq.pp (modules <mlg_list>))
 
-which for each ``g_mod`` in ``<mlg_list>```is equivalent to:
+which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
 
 .. code:: scheme
 
@@ -69,7 +69,7 @@ which for each ``g_mod`` in ``<mlg_list>```is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
-Recursive Qualification of Modules
+Recursive qualification of modules
 ==================================
 
 If you add:

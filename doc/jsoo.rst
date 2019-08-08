@@ -63,7 +63,7 @@ The default value for ``(flags ...)`` depends on the selected build profile. The
 build profile ``dev`` (the default) will enable sourcemap and the pretty
 JavaScript output.
 
-Separate Compilation
+Separate compilation
 ====================
 
 Dune supports two modes of compilation

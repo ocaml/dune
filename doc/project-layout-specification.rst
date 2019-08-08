@@ -1,5 +1,5 @@
 *****************************************
-Project Layout and Metadata Specification
+Project layout and metadata specification
 *****************************************
 
 A typical dune project will have a ``dune-project`` and one or more

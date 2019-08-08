@@ -114,7 +114,7 @@ load all the plugins installed for your tool by listing the existing packages:
 
 .. _advanced-cross-compilation:
 
-Cross Compilation
+Cross compilation
 =================
 
 Dune allows for cross compilation by defining build contexts with
@@ -235,7 +235,7 @@ format is subject to change between versions.
 
 .. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
 
-Implicit Transitive Deps
+Implicit transitive deps
 ========================
 
 By default, dune allows transitive dependencies of dependencies to be used
@@ -252,7 +252,7 @@ Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
 
-Name Mangling of Executables
+Name mangling of executables
 ============================
 
 Executables are made of compilation units whose names may collide with the

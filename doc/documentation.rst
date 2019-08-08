@@ -1,7 +1,7 @@
 .. _documentation:
 
 ************************
-Generating Documentation
+Generating documentation
 ************************
 
 Prerequisites
@@ -15,7 +15,7 @@ should likely be done with opam:
 
   $ opam install odoc
 
-Writing Documentation
+Writing documentation
 =====================
 
 Documentation comments will be automatically extracted from your OCaml source
@@ -25,7 +25,7 @@ the `OCaml manual <http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html>`_.
 Additional documentation pages may by attached to a package can be attached
 using the :ref:`doc-stanza`.
 
-Building Documentation
+Building documentation
 ======================
 
 Building the documentation using the ``@doc`` alias. Hence, all that is required
@@ -54,7 +54,7 @@ belong to any particular package. But the generated html will still be found in
 
 .. _doc-stanza:
 
-Documentation Stanza
+Documentation stanza
 ====================
 
 Documentation pages will be automatically generated for from .ml and .mli files

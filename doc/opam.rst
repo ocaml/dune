@@ -107,7 +107,7 @@ Here's a complete example of a dune file with opam metadata specification:
      (async (>= v0.10.0))
      (async (< v0.12))))
 
-Opam Template
+Opam template
 -------------
 
 A user may want to manually fill in some field in the opam file. In these

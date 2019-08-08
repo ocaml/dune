@@ -16,7 +16,7 @@ language version is absent, dune will automatically add this line with the
 latest menhir version to the project file once a menhir stanza is used anywhere.
 
 
-Basic Usage
+Basic usage
 ===========
 
 The basic form for defining menhir_ parsers (analogous to ocamlyacc) is:
@@ -26,7 +26,7 @@ The basic form for defining menhir_ parsers (analogous to ocamlyacc) is:
     (menhir
      (modules <parser1> <parser2> ...))
 
-Modular Menhir
+Modular menhir
 ==============
 
 Modular parsers can be defined by adding a ``merge_into`` field. This correspond

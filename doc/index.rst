@@ -21,7 +21,7 @@ Welcome to dune's documentation!
    documentation
    usage
    advanced-topics
-   configurator
+   dune-libs
    menhir
    jsoo
    opam

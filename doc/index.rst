@@ -17,11 +17,11 @@ Welcome to dune's documentation!
    foreign-code
    documentation
    usage
-   advanced-topics
-   dune-libs
    opam
    variants
    formatting
+   dune-libs
+   advanced-topics
    lexical-conventions
    faq
    known-issues

@@ -15,7 +15,6 @@ Welcome to dune's documentation!
    project-layout-specification
    dune-files
    concepts
-   executables
    tests
    foreign-code
    documentation

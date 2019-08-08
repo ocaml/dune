@@ -38,3 +38,9 @@ val to_dyn : t -> Dyn.t
 (** Parses a form "a.b.c" to a module *)
 val parse : dir:Path.Build.t -> loc:Loc.t -> string -> t
 module Eval : Ordered_set_lang.S with type value := t
+
+val eval
+  :  dir:Path.Build.t
+  -> standard:t list
+  -> Ordered_set_lang.t
+  -> t list

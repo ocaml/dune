@@ -544,7 +544,7 @@ let extend_paths t ~env =
     let f (var, t) =
       let parse ~loc:_ s = s in
       let standard = Env.path env |> List.map ~f:Path.to_string in
-      var, Eval.eval t ~parse ~standard
+      var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
     in
     List.map ~f t
   in

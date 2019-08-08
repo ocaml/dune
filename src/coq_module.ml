@@ -59,3 +59,9 @@ module Value = struct
 end
 
 module Eval = Ordered_set_lang.Make(String)(Value)
+
+let eval =
+  let eq_key x y = String.equal (Value.key x) (Value.key y) in
+  fun ~dir ~standard osl ->
+    Ordered_set_lang.eval ~parse:(parse ~dir)
+      ~standard ~eq:eq_key osl

@@ -123,18 +123,54 @@ module type S = sig
   type value
   type 'a map
 
-  val eval
-    :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value list
-    -> value list
-
   val eval_unordered
     :  t
     -> parse:(loc:Loc.t -> string -> value)
     -> standard:value map
     -> value map
 end
+
+module Named_values = struct
+  type ('value, 't) t =
+    { singleton : 'value -> 't
+    ; union : 't list -> 't
+    ; diff : 't -> 't -> 't
+    }
+
+  let list_diff a b ~eq =
+    List.filter a ~f:(fun x ->
+      List.for_all b ~f:(fun y ->
+        not (eq x y)))
+
+  let ordered eq =
+    { singleton = List.singleton
+    ; union = List.flatten
+    ; diff = list_diff ~eq
+    }
+end
+
+let gen_eval { Named_values. singleton; union; diff }
+      t ~parse ~standard =
+  let rec of_ast (t : ast_expanded) =
+    match t with
+    | Element (loc, s) ->
+      let x = parse ~loc s in
+      singleton x
+    | Standard -> standard
+    | Union elts -> union (List.map elts ~f:of_ast)
+    | Diff (left, right) ->
+      let left  = of_ast left  in
+      let right = of_ast right in
+      diff left right
+  in
+  of_ast t.ast
+
+let eval t ~parse ~eq ~standard =
+  if is_standard t then
+    standard
+  else
+    let named_values = Named_values.ordered eq in
+    gen_eval named_values t ~parse ~standard
 
 module Make(Key : Key)(Value : Value with type key = Key.t) = struct
   module type Named_values = sig
@@ -163,17 +199,6 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
       of_ast t.ast
   end
 
-  module Ordered = Make(struct
-      type t = Value.t list
-
-      let singleton x = [x]
-      let union = List.flatten
-      let diff a b =
-        List.filter a ~f:(fun x ->
-          List.for_all b ~f:(fun y ->
-            Ordering.neq (Key.compare (Value.key x) (Value.key y))))
-    end)
-
   module Unordered = Make(struct
       type t = Value.t Key.Map.t
 
@@ -196,12 +221,6 @@ module Make(Key : Key)(Value : Value with type key = Key.t) = struct
   type value = Value.t
   type 'a map = 'a Key.Map.t
 
-  let eval t ~parse ~standard =
-    if is_standard t then
-      standard (* inline common case *)
-    else
-      Ordered.eval t ~parse ~standard
-
   let eval_unordered t ~parse ~standard =
     if is_standard t then
       standard (* inline common case *)
@@ -218,16 +237,16 @@ module Make_loc(Key : Key)(Value : Value with type key = Key.t) = struct
 
   let loc_parse f ~loc s = (loc, f ~loc s)
 
-  let eval t ~parse ~standard =
-    No_loc.eval t
-      ~parse:(loc_parse parse)
-      ~standard
-
   let eval_unordered t ~parse ~standard =
     No_loc.eval_unordered t
       ~parse:(loc_parse parse)
       ~standard
 end
+
+let eval_loc t ~parse ~eq ~standard =
+  let loc_parse f ~loc s = (loc, f ~loc s) in
+  let eq (_, a) (_, b) = eq a b in
+  eval t ~parse:(loc_parse parse) ~standard ~eq
 
 let standard =
   { ast = Ast.Standard

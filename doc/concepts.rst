@@ -1,6 +1,6 @@
-********
-Concepts
-********
+****************
+General concepts
+****************
 
 .. _ordered-set-language:
 

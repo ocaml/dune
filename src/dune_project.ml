@@ -831,7 +831,7 @@ let make_jbuilder_project ~dir opam_packages =
   ; generate_opam_files = false
   ; wrapped_executables = false
   ; dialects
-  ; explicit_js_mode = false
+  ; explicit_js_mode = explicit_js_mode_default ~lang
   ; format_config = None
   }
 

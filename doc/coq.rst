@@ -60,7 +60,7 @@ writers avoid boilerplate we provide a `(coqpp ...)` stanza:
 
     (coq.pp (modules <mlg_list>))
 
-which for each ``g_mod`` in ``<mlg_list>```is equivalent to:
+which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
 
 .. code:: scheme
 

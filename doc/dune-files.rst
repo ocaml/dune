@@ -35,6 +35,15 @@ Sets the version of the project:
 
     (version <version>)
 
+implicit_transitive_deps
+------------------------
+
+Enables or disables :ref:`implicit-transitive-deps`:
+
+.. code:: scheme
+
+    (implicit_transitive_deps <bool>)
+
 ``dune``
 ========
 

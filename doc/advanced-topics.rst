@@ -235,6 +235,8 @@ format is subject to change between versions.
 
 .. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
 
+.. _implicit-transitive-deps:
+
 Implicit transitive deps
 ========================
 

@@ -1,8 +1,11 @@
+**************
+Dune libraries
+**************
+
 .. _configurator:
 
-************
 Configurator
-************
+============
 
 Configurator is a small library designed to query features available on the
 system, in order to generate configuration for dune builds. Such generated
@@ -27,7 +30,7 @@ Configurator started as an `independent library
 not need to install anything to use configurator.
 
 Usage
-=====
+-----
 
 We'll describe configurator with a simple example. Everything else can be easily
 learned by studying `configurator's API
@@ -88,7 +91,7 @@ in the above example ``flags.sexp``, with
 ``Configurator.V1.write_flags "flags.sexp" flags``.
 
 Upgrading from the old Configurator
-===================================
+-----------------------------------
 
 The old configurator is the independent `configurator
 <https://github.com/janestreet/configurator>`__ opam package. It is deprecated

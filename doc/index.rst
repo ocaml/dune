@@ -22,7 +22,6 @@ Welcome to dune's documentation!
    opam
    variants
    formatting
-   coq
    lexical-conventions
    faq
    known-issues

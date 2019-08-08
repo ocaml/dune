@@ -1,3 +1,5 @@
+.. _opam-generation:
+
 ****
 opam
 ****
@@ -7,71 +9,6 @@ integration with it.
 
 Generating opam files
 =====================
-
-Dune is able to use metadata specified in the ``dune-project`` file to generate
-``.opam`` files. To enable this integration, add the following field to the
-``dune-project`` file:
-
-.. code:: scheme
-
-   (generate_opam_files true)
-
-Dune uses the following global fields to set the metadata for all packages
-defined in the project:
-
-- ``(license <name>)`` - Specifies the license of the project, ideally as an
-  identifier from the `SPDX License List <https://spdx.org/licenses/>`__
-
-- ``(authors <authors>)`` - A list of authors
-
-- ``(maintainers <maintainers>)`` - A list of maintainers
-
-- ``(source <source>)`` - where the source is specified two ways:
-  ``(github <user/repo>)`` or ``(uri <uri>)``
-
-- ``(bug_reports <url>)`` - Where to report bugs. This defaults to the GitHub
-  issue tracker if the source is specified as a GitHub repository
-
-- ``(homepage <url>)`` - The homepage of the project
-
-- ``(documentation <url>)`` - Where the documentation is hosted
-
-Package specific information is specified in the ``(package <package>)`` stanza.
-It contains the following fields:
-
-- ``(name <string>)`` is the name of the package. This must be specified.
-
-- ``(synopsis <string>)`` is a short package description
-
-- ``(description <string>)`` is a longer package description
-
-- ``(depends <dep-specification>)`` are package dependencies
-
-- ``(conflicts <dep-specification)`` are package conflicts
-
-- ``(depopts <dep-specification)`` are optional package dependencies
-
-- ``(tags <tags>)`` are the list of tags for the package
-
-The list of dependencies ``<dep-specification>`` is modeled after opam's own
-language: The syntax is as a list of the following elements:
-
-.. code::
-
-   op := '=' | '<' | '>' | '<>' | '>=' | '<='
-
-   stage := :with_test | :build | :dev
-
-   constr := (<op> <version>)
-
-   logop := or | and
-
-   dep := (name <stage>)
-        | (name <constr>)
-        | (name (<logop> (<stage> | <constr>)*))
-
-   dep-specification = dep+
-
 
 Here's a complete example of a dune file with opam metadata specification:
 

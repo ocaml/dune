@@ -132,13 +132,7 @@ module type S = sig
 end
 
 module Eval = struct
-  type ('k, 'map) t =
-    { singleton : 'k -> 'map
-    ; union : 'map list -> 'map
-    ; diff : 'map -> 'map -> 'map
-    }
-
-  let of_ast { diff ; singleton; union } t ~parse ~standard =
+  let of_ast ~diff ~singleton ~union t ~parse ~standard =
     let rec loop (t : ast_expanded) =
       match t with
       | Element (loc, s) ->
@@ -151,50 +145,50 @@ module Eval = struct
         let right = loop right in
         diff left right
     in
-    loop t.ast
+    if is_standard t then
+      standard
+    else
+      loop t.ast
 
-  let ordered (type a) (eq : a -> a -> bool) =
-    { singleton = List.singleton
-    ; union = (fun x -> List.flatten x)
-    ; diff = fun a b ->
-        List.filter a ~f:(fun x ->
-          List.for_all b ~f:(fun y ->
-            not (eq x y)))
-    }
+  let ordered eq =
+    let singleton = List.singleton in
+    let union = List.flatten in
+    let diff a b =
+      List.filter a ~f:(fun x ->
+        List.for_all b ~f:(fun y ->
+          not (eq x y)))
+    in
+    of_ast ~diff ~singleton ~union
+
+  let unordered ~singleton ~empty ~merge ~key =
+    let singleton x = singleton (key x) x in
+    let union =
+      List.fold_left ~init:empty ~f:(fun acc t ->
+        merge acc t ~f:(fun _name x y ->
+          match x, y with
+          | Some x, _ | _, Some x -> Some x
+          | _ -> None))
+    in
+    let diff a b =
+      merge a b ~f:(fun _name x y ->
+        match x, y with
+        | Some _, None -> x
+        | _ -> None)
+    in
+    of_ast ~diff ~singleton ~union
 end
 
 let eval t ~parse ~eq ~standard =
-  if is_standard t then
-    standard
-  else
-    let named_values = Eval.ordered eq in
-    Eval.of_ast named_values t ~parse ~standard
+  Eval.ordered eq t ~parse ~standard
 
 module Make(Key : Key) = struct
   module Key = Key
 
-  let unordered ~key =
-    { Eval.
-      singleton = (fun x -> Key.Map.singleton (key x) x)
-    ; union =
-        List.fold_left ~init:Key.Map.empty ~f:(fun acc t ->
-          Key.Map.merge acc t ~f:(fun _name x y ->
-            match x, y with
-            | Some x, _ | _, Some x -> Some x
-            | _ -> None))
-    ; diff =
-        Key.Map.merge ~f:(fun _name x y ->
-          match x, y with
-          | Some _, None -> x
-          | _ -> None)
-    }
-
   let eval_unordered t ~parse ~key ~standard =
-    if is_standard t then
-      standard (* inline common case *)
-    else
-      let eval = unordered ~key in
-      Eval.of_ast eval t ~parse ~standard
+    let singleton = Key.Map.singleton in
+    let empty = Key.Map.empty in
+    let merge = Key.Map.merge in
+    Eval.unordered ~singleton ~empty ~merge ~key t ~parse ~standard
 
   let loc_parse f ~loc s = (loc, f ~loc s)
 

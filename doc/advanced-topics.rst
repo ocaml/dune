@@ -254,6 +254,8 @@ Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
 
+.. _wrapped-executables:
+
 Name mangling of executables
 ============================
 

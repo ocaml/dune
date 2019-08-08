@@ -44,6 +44,15 @@ Enables or disables :ref:`implicit-transitive-deps`:
 
     (implicit_transitive_deps <bool>)
 
+wrapped_executables
+-------------------
+
+Enables or disables :ref:`wrapped-executables`:
+
+.. code:: scheme
+
+    (wrapped_executables <bool>)
+
 ``dune``
 ========
 

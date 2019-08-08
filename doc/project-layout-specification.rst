@@ -140,35 +140,6 @@ descriptions. For instance:
     (body
       This is a simple example of using S-expressions))
 
-.. _opam-files:
-
-<package>.opam files
-====================
-
-When a ``<package>.opam`` file is present, dune will know that the
-package named ``<package>`` exists. It will know how to construct a
-``<package>.install`` file in the same directory to handle installation
-via `opam <https://opam.ocaml.org/>`__. Dune also defines the
-recursive ``install`` alias, which depends on all the buildable
-``<package>.install`` files in the workspace. So for instance to build
-everything that is installable in a workspace, run at the root:
-
-::
-
-    $ dune build @install
-
-Declaring a package this way will allow you to add elements such as libraries,
-executables, documentation, ... to your package by declaring them in ``dune``
-files.
-
-Such elements can only be declared in the scope defined by the
-corresponding ``<package>.opam`` file. Typically, your
-``<package>.opam`` files should be at the root of your project, since
-this is where ``opam pin ...`` will look for them.
-
-Note that ``<package>`` must be non-empty, so in particular ``.opam``
-files are ignored.
-
 .. _scopes:
 
 Scopes

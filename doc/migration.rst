@@ -65,7 +65,7 @@ Distant future
 Once we are sure there are no more `jbuild` files out there, Dune will
 completely ignore `jbuild` and other Jbuilder configuration files.
 
-Check List
+Check list
 ==========
 
 This section is a concise list of migration tasks that will be required to
@@ -132,7 +132,7 @@ it is not preserved for `dune-workspace` files. I.e. a
 
 This rule was only useful when we didn't have project files.
 
-Variable Syntax
+Variable syntax
 ---------------
 
 ``${foo} and $(foo)`` are no longer valid variable syntax in dune files.
@@ -146,19 +146,19 @@ The ``files_recursively_in`` dependency specification is invalid in dune files.
 A :ref:`source_tree <source_tree>` stanza has been introduced to reflect the
 actual function of this stanza.
 
-Escape Sequences
+Escape sequences
 ----------------
 
 Invalid escape sequences of the form ``\x`` where ``x`` is a character other
 than ``[0-9]``, ``x``, ``n``, ``r``, ``t``, ``b`` are not allowed in dune files.
 
-Comments Syntax
+Comments syntax
 ---------------
 
 Block comments of the form ``#| ... |#`` and comments of the form ``#;`` are not
 supported in dune files.
 
-Renamed Variables
+Renamed variables
 -----------------
 
 All existing variables have been lowercased for consistency. Other variables
@@ -183,7 +183,7 @@ Jbuild                    Dune
 ``${MAKE}``               ``%{make}``
 ======================== ============
 
-Removed Variables
+Removed variables
 -----------------
 
 ``${path-no-dep:file}`` and ``${<}`` have been removed.

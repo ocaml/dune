@@ -1,5 +1,5 @@
 ****************************
-Virtual Libraries & Variants
+Virtual libraries & variants
 ****************************
 
 Virtual libraries correspond to dune's ability to compile parameterized
@@ -19,7 +19,7 @@ have ``clock.unix`` and ``clock.win`` implementations. Executable using
 ``clock`` or libraries that use ``clock`` would conditionally select one of the
 implementations, depending on the target platform.
 
-Virtual Library
+Virtual library
 ===============
 
 To define a virtual library, a ``virtual_modules`` field must be added to an

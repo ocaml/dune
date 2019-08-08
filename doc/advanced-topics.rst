@@ -522,56 +522,6 @@ This will enable support for the ``coq.theory`` stanza in the current project. I
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
-Basic usage
------------
-
-The basic form for defining Coq libraries is very similar to the OCaml form:
-
-.. code:: scheme
-
-    (coq.theory
-     (name <module_prefix>)
-     (public_name <package.lib_name>)
-     (synopsis <text>)
-     (modules <ordered_set_lang>)
-     (libraries <ocaml_libraries>)
-     (flags <coq_flags>))
-
-The stanza will build all `.v` files on the given directory. The semantics of fields is:
-
-- ``<module_prefix>>`` will be used as the default Coq library prefix ``-R``,
-- the ``modules`` field does allow to constraint the set of modules
-  included in the library, similarly to its OCaml counterpart,
-- ``public_name`` will make Dune generate install rules for the `.vo`
-  files; files will be installed in
-  ``lib/coq/user-contrib/<module_prefix>``, as customary in the
-  make-based Coq package eco-system. For compatibility, we also installs the `.cmxs`
-  files appearing in `<ocaml-librarie>` under the `user-contrib` prefix.
-- ``<coq_flags>`` will be passed to ``coqc``,
-- the path to installed locations of ``<ocaml_libraries>`` will be passed to
-  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
-  library to depend on a ML plugin.
-
-Preprocessing with ``coqpp``
-----------------------------
-
-Coq plugin writers usually need to write ``.mlg`` files to extend Coq
-grammar. Such files are pre-processed with `coqpp`; to help plugin
-writers avoid boilerplate we provide a `(coqpp ...)` stanza:
-
-.. code:: scheme
-
-    (coq.pp (modules <mlg_list>))
-
-which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
-
-.. code:: scheme
-
-    (rule
-     (targets g_mod.ml)
-     (deps (:mlg-file g_mod.mlg))
-     (action (run coqpp %{mlg-file})))
-
 Recursive qualification of modules
 ----------------------------------
 

@@ -53,6 +53,15 @@ Enables or disables :ref:`wrapped-executables`:
 
     (wrapped_executables <bool>)
 
+explicit_js_mode
+----------------
+
+Enables :ref:`explicit-js-mode`:
+
+.. code:: scheme
+
+    (explicit_js_mode)
+
 ``dune``
 ========
 

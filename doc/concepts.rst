@@ -37,12 +37,12 @@ This restriction will allow to add this feature without introducing a
 breaking changes. If you want to write a list where the first element
 doesn't start by `-`, you can simply quote it: ``("x" y z)``.
 
-Most fields using the ordered set language also support `Variables expansion`_.
+Most fields using the ordered set language also support :ref:`variables`.
 Variables are expanded after the set language is interpreted.
 
 .. _blang:
 
-Boolean Language
+Boolean language
 ================
 
 The boolean language allows the user to define simple boolean expressions that
@@ -70,11 +70,24 @@ an flambda compiler with the help of variable expansion:
 
 .. _variables:
 
-Variables expansion
-===================
+Variables
+=========
 
-Some fields can contains variables of the form ``%{var}`` that are
-expanded by dune.
+Some fields can contains variables that are expanded by dune.
+The syntax of variables is as follow:
+
+.. code::
+
+   %{var}
+
+or, for more complex forms that take an argument:
+
+.. code::
+
+   %{fun:arg}
+
+In order to write a plain ``%{``, you need to write ``\%{`` in a
+string.
 
 Dune supports the following variables:
 
@@ -455,7 +468,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
   - ``preserve_file_kind``: the action needs the files it reads to look
   like normal files (so dune won't use symlinks for sandboxing)
 
-In all these cases, the argument supports `Variables expansion`_.
+In all these cases, the argument supports :ref:`variables`.
 
 Named Dependencies
 ------------------
@@ -552,7 +565,7 @@ in ``src/foo/dune`` will be run from ``$build/<context>/src/foo``.
 
 The argument of ``(action ...)`` fields is a small DSL that is interpreted by
 dune directly and doesn't require an external shell. All atoms in the DSL
-support `Variables expansion`_. Moreover, you don't need to specify dependencies
+support :ref:`variables`. Moreover, you don't need to specify dependencies
 explicitly for the special ``%{<kind>:...}`` forms, these are recognized and
 automatically handled by dune.
 

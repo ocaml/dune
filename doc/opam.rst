@@ -1,6 +1,6 @@
-****
-opam
-****
+****************
+opam integration
+****************
 
 opam_ is the official package manager for OCaml, and dune offers some
 integration with it.

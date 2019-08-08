@@ -53,7 +53,7 @@ let make (d : _ Dir_with_dune.t)
       | Library lib ->
         let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t)
               validate osl =
-          Ordered_set_lang.String.eval_unordered_loc osl
+          Ordered_set_lang.Unordered_string.eval_loc osl
             ~key:(fun x -> x)
             ~parse:(fun ~loc s ->
               let s = validate ~loc s in

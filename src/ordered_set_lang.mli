@@ -22,7 +22,7 @@ module type S = sig
   module Key : Key
 
   (** Same as [eval] but the result is unordered *)
-  val eval_unordered
+  val eval
     :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
@@ -30,7 +30,7 @@ module type S = sig
     -> 'a Key.Map.t
 
   (** Same as [eval] but the result is unordered *)
-  val eval_unordered_loc
+  val eval_loc
     :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
@@ -45,7 +45,7 @@ val eval
   -> standard:'a list
   -> 'a list
 
-module Make(Key : Key) : S with module Key := Key
+module Unordered(Key : Key) : S with module Key := Key
 
 val eval_loc
     :  t
@@ -111,4 +111,4 @@ module Unexpanded : sig
     -> 'a
 end with type expanded := t
 
-module String : S with module Key := String
+module Unordered_string : S with module Key := String

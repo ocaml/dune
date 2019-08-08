@@ -135,7 +135,8 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
     | Documentation doc ->
       let mlds =
         let mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.String.eval_unordered doc.mld_files ~key:(fun x -> x)
+        Ordered_set_lang.Unordered_string.eval doc.mld_files
+          ~key:(fun x -> x)
           ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
             | Some s ->

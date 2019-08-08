@@ -25,7 +25,7 @@ let eval =
     | Error s -> s
     | Ok m -> Module.Source.name m
   in
-  let module Eval = Ordered_set_lang.Make(Module_name) in
+  let module Unordered = Ordered_set_lang.Unordered(Module_name) in
   let parse ~all_modules ~fake_modules ~loc s =
     let name = Module_name.of_string s in
     match Module_name.Map.find all_modules name with
@@ -37,7 +37,7 @@ let eval =
   fun ~loc ~fake_modules ~all_modules ~standard osl ->
     let parse = parse ~fake_modules ~all_modules in
     let standard = Module_name.Map.map standard ~f:(fun m -> loc, Ok m) in
-    let modules = Eval.eval_unordered_loc ~parse ~standard ~key osl in
+    let modules = Unordered.eval_loc ~parse ~standard ~key osl in
     Module_name.Map.filter_map modules ~f:(fun (loc, m) ->
       match m with
       | Ok m -> Some (loc, m)

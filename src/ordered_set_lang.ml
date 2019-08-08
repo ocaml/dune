@@ -116,14 +116,14 @@ end
 module type S = sig
   module Key : Key
 
-  val eval_unordered
+  val eval
     :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
     -> standard:'a Key.Map.t
     -> 'a Key.Map.t
 
-  val eval_unordered_loc
+  val eval_loc
     :  t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
@@ -181,10 +181,10 @@ end
 let eval t ~parse ~eq ~standard =
   Eval.ordered eq t ~parse ~standard
 
-module Make(Key : Key) = struct
+module Unordered(Key : Key) = struct
   module Key = Key
 
-  let eval_unordered t ~parse ~key ~standard =
+  let eval t ~parse ~key ~standard =
     let singleton = Key.Map.singleton in
     let empty = Key.Map.empty in
     let merge = Key.Map.merge in
@@ -192,8 +192,8 @@ module Make(Key : Key) = struct
 
   let loc_parse f ~loc s = (loc, f ~loc s)
 
-  let eval_unordered_loc t ~parse ~key ~standard =
-    eval_unordered t
+  let eval_loc t ~parse ~key ~standard =
+    eval t
       ~parse:(loc_parse parse) ~key:(fun (_, x) -> key x)
       ~standard
 end
@@ -377,4 +377,4 @@ module Unexpanded = struct
     { t with ast = expand t.ast }
 end
 
-module String = Make(String)
+module Unordered_string = Unordered(String)

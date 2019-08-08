@@ -28,6 +28,7 @@ Welcome to dune's documentation!
    variants
    formatting
    coq
+   lexical-conventions
    faq
    known-issues
    migration

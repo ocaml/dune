@@ -20,7 +20,6 @@ Welcome to dune's documentation!
    advanced-topics
    dune-libs
    menhir
-   jsoo
    opam
    variants
    formatting

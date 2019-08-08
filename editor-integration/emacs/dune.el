@@ -63,7 +63,7 @@
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test" "dirs"
                "env" "ignored_subdirs" "include_subdirs" "data_only_dirs"
-               "cinaps" "coqlib" "coq.theory" "coq.pp")
+               "documentation" "cinaps" "coqlib" "coq.theory" "coq.pp")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 

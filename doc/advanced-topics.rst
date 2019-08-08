@@ -30,8 +30,8 @@ dune you can write the following ``META.foo.template`` file:
    # DUNE_GEN
    blah = "..."
 
-Findlib integration and limitations
-===================================
+Findlib integration
+===================
 
 Dune uses ``META`` files to support external libraries. However, it
 doesn't export the full power of findlib to the user, and especially

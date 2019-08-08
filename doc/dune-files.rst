@@ -1701,7 +1701,7 @@ certain limitations:
   fast actions with very large sets of dependencies.
 
 Per-action sandboxing confuguration
-..........
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Some actions may rely on sandboxing to work correctly.
 For example an action may need the input directory to contain nothing
 except the input files, or the action might create temporary files that
@@ -1720,7 +1720,7 @@ specification language (see :ref:`deps-field`).
 
 
 Global sandboxing configuration
-..........
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Dune always respects per-action sandboxing specification.
 You can configure it globally to prefer a certain sandboxing mode if
 the action allows it.
@@ -1730,7 +1730,7 @@ This is controlled by:
 - ``dune --sandbox <...>`` cli flag (see ``man dune-build``)
 - ``DUNE_SANDBOX`` environment (see ``man dune-build``)
 - ``(sandboxing_preference ..)`` field in the dune config (see ``man dune-config``)
-    
+
 Locks
 -----
 

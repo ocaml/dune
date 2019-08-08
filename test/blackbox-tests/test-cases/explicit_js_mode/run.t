@@ -46,12 +46,16 @@ Check that building a JS-enabled executable that depends on a library works.
   $ dune clean
   $ dune build --root mode-specified --display short e.bc.js
   Entering directory 'mode-specified'
+
+Anonymous projects have explicit_js_mode enabled
+
+  $ dune build --root anon --display short @all
+  Entering directory 'anon'
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.0)
+      ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-      ocamldep .foo.objs/c.ml.d
-        ocamlc .foo.objs/byte/foo__C.{cmi,cmo,cmt}
         ocamlc foo.cma
-   js_of_ocaml .foo.objs/foo.cma.js
-   js_of_ocaml .js/stdlib/stdlib.cma.js
-        ocamlc .e.eobjs/byte/e.{cmi,cmo,cmt}
-   js_of_ocaml .e.eobjs/byte/e.cmo.js
-     jsoo_link e.bc.js
+      ocamlopt .foo.objs/native/foo.{cmx,o}
+      ocamlopt foo.{a,cmxa}
+      ocamlopt foo.cmxs

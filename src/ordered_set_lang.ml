@@ -135,12 +135,12 @@ module Eval = struct
   let of_ast ~diff ~singleton ~union t ~parse ~standard =
     let rec loop (t : ast_expanded) =
       match t with
-      | Element (loc, s) ->
+      | Ast.Element (loc, s) ->
         let x = parse ~loc s in
         singleton x
-      | Standard -> standard
-      | Union elts -> union (List.map elts ~f:loop)
-      | Diff (left, right) ->
+      | Ast.Standard -> standard
+      | Ast.Union elts -> union (List.map elts ~f:loop)
+      | Ast.Diff (left, right) ->
         let left  = loop left  in
         let right = loop right in
         diff left right

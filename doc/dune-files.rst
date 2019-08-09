@@ -35,14 +35,30 @@ Sets the version of the project:
 
     (version <version>)
 
+.. _implicit-transitive-deps:
+
 implicit_transitive_deps
 ------------------------
 
-Enables or disables :ref:`implicit-transitive-deps`:
+By default, dune allows transitive dependencies of dependencies to be used
+directly when compiling OCaml. However, this setting can be controlled per
+project:
 
 .. code:: scheme
 
     (implicit_transitive_deps <bool>)
+
+Once this setting is enabled, all dependencies that are directly used by a
+library or an executable must be directly added in the ``libraries`` field. We
+recommend users to experiment with this mode and report any problems.
+
+Starting from dune 2.0, dune enables this mode by default. However, this can
+still be turned off using ``(implicit_transitive_deps false)``.
+
+Note that you must use ``threads.posix`` instead of ``threads`` when using this
+mode. This is not an important limitation as ``threads.vm`` are deprecated
+anyways.
+
 
 .. _wrapped-executables:
 

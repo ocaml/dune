@@ -1,6 +1,6 @@
-***************
-Advanced topics
-***************
+************
+Other topics
+************
 
 This section describes some details of dune for advanced users.
 
@@ -30,8 +30,8 @@ dune you can write the following ``META.foo.template`` file:
    # DUNE_GEN
    blah = "..."
 
-Findlib integration and limitations
-===================================
+Findlib integration
+===================
 
 Dune uses ``META`` files to support external libraries. However, it
 doesn't export the full power of findlib to the user, and especially
@@ -312,3 +312,223 @@ alias, see :ref:`formatting-main`.
 
 When not using a custom syntax or formatting action, a dialect is nothing but a
 way to specify custom file extensions for OCaml code.
+
+Package version
+===============
+
+Note that dune will try to determine the version number of packages
+defined in the workspace. While dune itself makes no use of version
+numbers, it can be use by external tools such as
+`ocamlfind <http://projects.camlcity.org/projects/findlib.html>`__.
+
+Dune determines the version of a package by trying the following
+methods in order:
+
+- it looks in the ``<package>.opam`` file for a ``version`` variable
+- it looks for a ``<package>.version`` file in the same directory and
+  reads the first line
+- it looks for the version specified in the ``dune-project`` if present
+- it looks for a ``version`` file and reads the first line
+- it looks for a ``VERSION`` file and reads the first line
+
+``<package>.version``, ``version`` and ``VERSION`` files may be
+generated.
+
+If the version can't be determined, dune just won't assign one.
+
+js_of_ocaml
+===========
+
+js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
+translating OCaml bytecode to JS files. The compiler can be installed with
+opam:
+
+.. code:: bash
+
+   $ opam install js_of_ocaml-compiler
+
+Compiling to JS
+---------------
+
+Dune has full support building js_of_ocaml libraries and executables transparently.
+There's no need to customize or enable anything to compile ocaml
+libraries/executables to JS.
+
+To build a JS executable, just define an executable as you would normally.
+Consider this example:
+
+.. code:: bash
+
+   echo 'print_endline "hello from js"' > foo.ml
+
+With the following dune file:
+
+.. code:: scheme
+
+  (executable (name foo))
+
+And then request the ``.js`` target:
+
+.. code:: bash
+
+   $ dune build ./foo.bc.js
+   $ node _build/default/foo.bc.js
+   hello from js
+
+Similar targets are created for libraries, but we recommend sticking to the
+executable targets.
+
+.. _dune-jsoo-field:
+
+``js_of_ocaml`` field
+---------------------
+
+In ``library`` and ``executables`` stanzas, you can specify js_of_ocaml options
+using ``(js_of_ocaml (<js_of_ocaml-options>))``.
+
+``<js_of_ocaml-options>`` are all optional:
+
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
+  supports ``(:include ...)`` forms
+
+- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
+  runtime files.
+
+``<flags>`` is specified in the :ref:`ordered-set-language`.
+
+The default value for ``(flags ...)`` depends on the selected build profile. The
+build profile ``dev`` (the default) will enable sourcemap and the pretty
+JavaScript output.
+
+Separate compilation
+--------------------
+
+Dune supports two modes of compilation
+
+- Direct compilation of a bytecode program to JavaScript. This mode allows
+  js_of_ocaml to perform whole program deadcode elimination and whole program
+  inlining.
+
+- Separate compilation, where compilation units are compiled to JavaScript
+  separately and then linked together. This mode is useful during development as
+  it builds more quickly.
+
+The separate compilation mode will be selected when the build profile is
+``dev``, which is the default. There is currently no other way to control this
+behaviour.
+
+.. _js_of_ocaml: http://ocsigen.org/js_of_ocaml/
+
+.. _menhir-main:
+
+Menhir
+======
+
+To use menhir in a dune project, the language version should be selected in the
+``dune-project`` file. For example:
+
+.. code:: scheme
+
+  (using menhir 2.0)
+
+This will enable support for menhir stanzas in the current project. If the
+language version is absent, dune will automatically add this line with the
+latest menhir version to the project file once a menhir stanza is used anywhere.
+
+Basic usage
+-----------
+
+The basic form for defining menhir_ parsers (analogous to ocamlyacc) is:
+
+.. code:: scheme
+
+    (menhir
+     (modules <parser1> <parser2> ...))
+
+Modular menhir
+--------------
+
+Modular parsers can be defined by adding a ``merge_into`` field. This correspond
+to the ``--base`` command line option of ``menhir``. With this option, a single
+parser named ``base_name`` is generated.
+
+.. code:: scheme
+
+    (menhir
+     (merge_into <base_name>)
+     (modules <parser1> <parser2> ...))
+
+Flags
+-----
+
+Extra flags can be passed to menhir using the ``flags`` flag:
+
+.. code:: scheme
+
+    (menhir
+     (flags <option1> <option2> ...)
+     (modules <parser1> <parser2> ...))
+
+``--infer`` mode
+----------------
+
+Menhir language 2.0 automatically enables using menhir with type inference. This
+ability can also be manually controlled with the ``infer`` field manually.
+
+.. code:: scheme
+
+  (menhir
+    (infer false)
+    (modules <parser1> <parser2> ...))
+
+
+cmly targets
+------------
+
+Menhir supports writing the grammar and automaton to ``.cmly`` file. Therefore,
+if this is flag is passed to menhir, dune will know to introduce a ``.cmly``
+target for the module.
+
+.. _menhir: https://gitlab.inria.fr/fpottier/menhir
+
+.. _coq-main:
+
+Coq
+===
+
+Dune is also able to build Coq developments. A Coq project is a mix of
+Coq ``.v`` files and (optionally) OCaml libraries linking to the Coq
+API (in which case we say the project is a *Coq plugin*). To enable
+Coq support in a dune project, the language version should be selected
+in the ``dune-project`` file. For example:
+
+.. code:: scheme
+
+    (using coq 0.1)
+
+This will enable support for the ``coq.theory`` stanza in the current project. If the
+language version is absent, dune will automatically add this line with the
+latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
+
+Recursive qualification of modules
+----------------------------------
+
+If you add:
+
+.. code:: scheme
+
+    (include_subdirs qualified)
+
+to a ``dune`` file, Dune will to consider that all the modules in their
+directory and sub-directories, adding a prefix to the module name in the usual
+Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
+``A.b.C``.
+
+Limitations
+-----------
+
+- composition and scoping of Coq libraries is still not possible. For now,
+  libraries are located using Coq's built-in library management,
+- .v always depend on the native version of a plugin,
+- a ``foo.mlpack`` file must the present for locally defined plugins to work,
+  this is a limitation of coqdep.

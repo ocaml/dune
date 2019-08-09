@@ -9,25 +9,19 @@ Welcome to dune's documentation!
 .. toctree::
    :maxdepth: 3
 
-   quick-start
    overview
-   terminology
-   project-layout-specification
+   quick-start
    dune-files
    concepts
-   executables
    tests
    foreign-code
    documentation
    usage
-   advanced-topics
-   configurator
-   menhir
-   jsoo
    opam
    variants
    formatting
-   coq
+   dune-libs
+   advanced-topics
    lexical-conventions
    faq
    known-issues

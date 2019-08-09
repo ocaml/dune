@@ -86,6 +86,8 @@
   presence of directories with only sub-directories and no files
   (#2514, fixes #2499, @diml)
 
+- Include building stubs in `@check` rules. (@rgrinberg, #2530)
+
 1.11.0 (23/07/2019)
 -------------------
 

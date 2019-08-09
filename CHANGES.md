@@ -1,4 +1,4 @@
-1.11.1 (unreleased)
+1.11.1 (09/08/2019)
 -------------------
 
 - Fix config file dependencies of ocamlformat (#2471, fixes #2646,

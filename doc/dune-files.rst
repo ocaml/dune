@@ -919,6 +919,39 @@ A ``cinaps`` stanza is available to support the ``cinaps`` tool.  See
 the `cinaps website <https://github.com/janestreet/cinaps>`_ for more
 details.
 
+.. _documentation-stanza:
+
+documentation
+-------------
+
+Additional manual pages may be attached to packages using the ``documentation``
+stanza. These ``.mld`` files must contain text in the same syntax as ocamldoc
+comments.
+
+.. code-block:: scheme
+
+  (documentation (<optional-fields>)))
+
+Where ``<optional-fields>`` are:
+
+- ``(package <name>)`` the package this documentation should be attached to. If
+  this absent, dune will try to infer it based on the location of the
+  stanza.
+
+- ``(mld_files <arg>)`` where ``<arg>`` field follows the
+  :ref:`ordered-set-language`. This is a set of extension-less, mld file base
+  names that are attached to the package. Where ``:standard`` refers to all the
+  ``.mld`` files in the stanza's directory.
+
+The ``index.mld`` file (specified as ``index`` in ``mld_files``) is treated
+specially by dune. This will be the file used to generate the entry page for the
+package. This is the page that will be linked from the main package listing. If
+you omit writing an ``index.mld``, dune will generate one with the entry modules
+for your package. But this generated will not be installed.
+
+All mld files attached to a package will be included in the generated
+``.install`` file for that package, and hence will be installed by opam.
+
 .. _alias-stanza:
 
 alias

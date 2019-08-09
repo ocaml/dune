@@ -44,14 +44,27 @@ Enables or disables :ref:`implicit-transitive-deps`:
 
     (implicit_transitive_deps <bool>)
 
+.. _wrapped-executables:
+
 wrapped_executables
 -------------------
 
-Enables or disables :ref:`wrapped-executables`:
+Executables are made of compilation units whose names may collide with the
+compilation units of libraries. To avoid this possibility, dune prefixes these
+compilation unit names with ``Dune__exe__``. This is entirely transparent to
+users except for when such executables are debugged. In which case the mangled
+names will be visible in the debugger.
+
+Starting from dune 1.11, an option is available to turn on/off name mangling for
+executables on a per project basis:
 
 .. code:: scheme
 
     (wrapped_executables <bool>)
+
+Starting from dune 2.0, dune mangles compilation units of executables by
+default. However, this can still be turned off using ``(wrapped_executables
+false)``
 
 .. _explicit-js-mode:
 

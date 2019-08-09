@@ -254,24 +254,6 @@ Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
 
-.. _wrapped-executables:
-
-Name mangling of executables
-============================
-
-Executables are made of compilation units whose names may collide with the
-compilation units of libraries. To avoid this possibility, dune prefixes these
-compilation unit names with ``Dune__exe__``. This is entirely transparent to
-users except for when such executables are debugged. In which case the mangled
-names will be visible in the debugger.
-
-Starting from dune 1.11, the ``(wrapped_executables <bool>)`` option is
-available to turn on/off name mangling for executables on a per project basis.
-
-Starting from dune 2.0, dune mangles compilation units of executables by
-default. However, this can still be turned off using ``(wrapped_executables
-false)``
-
 Package version
 ===============
 

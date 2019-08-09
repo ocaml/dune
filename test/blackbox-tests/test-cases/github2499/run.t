@@ -11,9 +11,7 @@ Reproduction case for #2499: dune doesn't cleanup stale directories
   >  (action (with-stdout-to list (system "find data -type f | sort"))))
   > EOF
 
-
-  $ mkdir -p data/{a,b}
-  $ touch data/{a,b}/x
+  $ mkdir -p data/a data/b; touch data/a/x data/b/x
 
   $ dune build list
   $ cat _build/default/list

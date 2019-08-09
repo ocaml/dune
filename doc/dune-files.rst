@@ -1488,7 +1488,7 @@ context or can be the description of an opam switch, as follows:
   :ref:`finding-root`.
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
-setup cross compilation. See :ref:`advanced-cross-compilation` for more
+setup cross compilation. See :ref:`cross-compilation` for more
 information.
 
 Merlin reads compilation artifacts and it can only read the compilation

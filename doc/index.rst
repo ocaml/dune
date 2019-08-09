@@ -21,6 +21,7 @@ Welcome to dune's documentation!
    opam
    variants
    formatting
+   cross-compilation
    dune-libs
    advanced-topics
    lexical-conventions

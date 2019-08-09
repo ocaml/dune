@@ -41,7 +41,7 @@ let dirs =
   ; "vendor/boot"                   , None
   ; "src/dune_lang"                 , Some "Dune_lang"
   ; "otherlibs/build-info/src"      , None
-  ; "src"                           , None
+  ; "src/dune"                      , None
   ]
 
 open Printf

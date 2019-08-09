@@ -10,13 +10,6 @@ val decode : t Dune_lang.Decoder.t
 (** Return the location of the set. [loc standard] returns [None] *)
 val loc : t -> Loc.t option
 
-(** Value parsed from elements in the DSL *)
-module type Value = sig
-  type t
-  type key
-  val key : t -> key
-end
-
 module type Key = sig
   type t
   val compare : t -> t -> Ordering.t
@@ -26,43 +19,40 @@ end
 module type S = sig
   (** Evaluate an ordered set. [standard] is the interpretation of [:standard]
       inside the DSL. *)
-  type value
-  type 'a map
-
-  val eval
-    :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value list
-    -> value list
+  module Key : Key
 
   (** Same as [eval] but the result is unordered *)
-  val eval_unordered
-    :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value map
-    -> value map
-end
-
-module Make(Key : Key)(Value : Value with type key = Key.t)
-  : S with type value = Value.t
-       and type 'a map = 'a Key.Map.t
-
-(** same as [Make] but will retain the source location of the values in the
-    evaluated results *)
-module Make_loc (Key : Key)(Value : Value with type key = Key.t) : sig
   val eval
     :  t
-    -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:(Loc.t * Value.t) list
-    -> (Loc.t * Value.t) list
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:'a Key.Map.t
+    -> 'a Key.Map.t
 
   (** Same as [eval] but the result is unordered *)
-  val eval_unordered
+  val eval_loc
     :  t
-    -> parse:(loc:Loc.t -> string -> Value.t)
-    -> standard:(Loc.t * Value.t) Key.Map.t
-    -> (Loc.t * Value.t) Key.Map.t
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:(Loc.t * 'a) Key.Map.t
+    -> (Loc.t * 'a) Key.Map.t
 end
+
+val eval
+  : t
+  -> parse:(loc:Loc.t -> string -> 'a)
+  -> eq:('a -> 'a -> bool)
+  -> standard:'a list
+  -> 'a list
+
+module Unordered(Key : Key) : S with module Key := Key
+
+val eval_loc
+    :  t
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> eq:('a -> 'a -> bool)
+    -> standard:(Loc.t * 'a) list
+    -> (Loc.t * 'a) list
 
 val standard : t
 val is_standard : t -> bool
@@ -121,4 +111,4 @@ module Unexpanded : sig
     -> 'a
 end with type expanded := t
 
-module String : S with type value = string and type 'a map = 'a String.Map.t
+module Unordered_string : S with module Key := String

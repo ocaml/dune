@@ -135,7 +135,8 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
     | Documentation doc ->
       let mlds =
         let mlds = Memo.Lazy.force mlds in
-        Ordered_set_lang.String.eval_unordered doc.mld_files
+        Ordered_set_lang.Unordered_string.eval doc.mld_files
+          ~key:(fun x -> x)
           ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
             | Some s ->
@@ -172,8 +173,7 @@ let coq_modules_of_files ~subdirs =
 let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
   List.fold_left d.data ~init:Lib_name.Map.empty ~f:(fun map -> function
     | Coq.T coq ->
-      let modules = Coq_module.Eval.eval coq.modules
-        ~parse:(Coq_module.parse ~dir) ~standard:modules in
+      let modules = Coq_module.eval coq.modules ~dir ~standard:modules in
       Lib_name.Map.set map (Dune_file.Coq.best_name coq) modules
     | _ -> map)
 

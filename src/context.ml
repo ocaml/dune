@@ -532,19 +532,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   native :: List.filter_opt others
 
 let extend_paths t ~env =
-  let module Eval =
-    Ordered_set_lang.Make(String)
-      (struct
-        type t = string
-        type key = string
-        let key x = x
-      end)
-  in
   let t =
     let f (var, t) =
       let parse ~loc:_ s = s in
       let standard = Env.path env |> List.map ~f:Path.to_string in
-      var, Eval.eval t ~parse ~standard
+      var, Ordered_set_lang.eval t ~parse ~standard ~eq:String.equal
     in
     List.map ~f t
   in

@@ -27,16 +27,6 @@ let c_name, cxx_name =
   , make "C++"
   )
 
-module Eval = struct
-  module Value = struct
-    type t = string
-    type key = string
-    let key s = s
-  end
-
-  include Ordered_set_lang.Make_loc(String)(Value)
-end
-
 let load_sources ~dune_version ~dir ~files =
   let init = C.Kind.Dict.make_both String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
@@ -63,7 +53,8 @@ let make (d : _ Dir_with_dune.t)
       | Library lib ->
         let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t)
               validate osl =
-          Eval.eval_unordered osl
+          Ordered_set_lang.Unordered_string.eval_loc osl
+            ~key:(fun x -> x)
             ~parse:(fun ~loc s ->
               let s = validate ~loc s in
               let s' = Filename.basename s in

@@ -107,12 +107,6 @@ let is_standard t =
   | Ast.Standard -> true
   | _ -> false
 
-module type Value = sig
-  type t
-  type key
-  val key : t -> key
-end
-
 module type Key = sig
   type t
   val compare : t -> t -> Ordering.t
@@ -120,114 +114,94 @@ module type Key = sig
 end
 
 module type S = sig
-  type value
-  type 'a map
+  module Key : Key
 
   val eval
     :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value list
-    -> value list
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:'a Key.Map.t
+    -> 'a Key.Map.t
 
-  val eval_unordered
+  val eval_loc
     :  t
-    -> parse:(loc:Loc.t -> string -> value)
-    -> standard:value map
-    -> value map
+    -> parse:(loc:Loc.t -> string -> 'a)
+    -> key:('a -> Key.t)
+    -> standard:(Loc.t * 'a) Key.Map.t
+    -> (Loc.t * 'a) Key.Map.t
 end
 
-module Make(Key : Key)(Value : Value with type key = Key.t) = struct
-  module type Named_values = sig
-    type t
+module Eval = struct
+  let of_ast ~diff ~singleton ~union t ~parse ~standard =
+    let rec loop (t : ast_expanded) =
+      match t with
+      | Ast.Element (loc, s) ->
+        let x = parse ~loc s in
+        singleton x
+      | Ast.Standard -> standard
+      | Ast.Union elts -> union (List.map elts ~f:loop)
+      | Ast.Diff (left, right) ->
+        let left  = loop left  in
+        let right = loop right in
+        diff left right
+    in
+    if is_standard t then
+      standard
+    else
+      loop t.ast
 
-    val singleton : Value.t -> t
-    val union : t list -> t
-    val diff : t -> t -> t
-  end
+  let ordered eq =
+    let singleton = List.singleton in
+    let union = List.flatten in
+    let diff a b =
+      List.filter a ~f:(fun x ->
+        List.for_all b ~f:(fun y ->
+          not (eq x y)))
+    in
+    of_ast ~diff ~singleton ~union
 
-  module Make(M : Named_values) = struct
-    let eval t ~parse ~standard =
-      let rec of_ast (t : ast_expanded) =
-        let open Ast in
-        match t with
-        | Element (loc, s) ->
-          let x = parse ~loc s in
-          M.singleton x
-        | Standard -> standard
-        | Union elts -> M.union (List.map elts ~f:of_ast)
-        | Diff (left, right) ->
-          let left  = of_ast left  in
-          let right = of_ast right in
-          M.diff left right
-      in
-      of_ast t.ast
-  end
-
-  module Ordered = Make(struct
-      type t = Value.t list
-
-      let singleton x = [x]
-      let union = List.flatten
-      let diff a b =
-        List.filter a ~f:(fun x ->
-          List.for_all b ~f:(fun y ->
-            Ordering.neq (Key.compare (Value.key x) (Value.key y))))
-    end)
-
-  module Unordered = Make(struct
-      type t = Value.t Key.Map.t
-
-      let singleton x = Key.Map.singleton (Value.key x) x
-
-      let union l =
-        List.fold_left l ~init:Key.Map.empty ~f:(fun acc t ->
-          Key.Map.merge acc t ~f:(fun _name x y ->
-            match x, y with
-            | Some x, _ | _, Some x -> Some x
-            | _ -> None))
-
-      let diff a b =
-        Key.Map.merge a b ~f:(fun _name x y ->
+  let unordered ~singleton ~empty ~merge ~key =
+    let singleton x = singleton (key x) x in
+    let union =
+      List.fold_left ~init:empty ~f:(fun acc t ->
+        merge acc t ~f:(fun _name x y ->
           match x, y with
-          | Some _, None -> x
-          | _ -> None)
-    end)
-
-  type value = Value.t
-  type 'a map = 'a Key.Map.t
-
-  let eval t ~parse ~standard =
-    if is_standard t then
-      standard (* inline common case *)
-    else
-      Ordered.eval t ~parse ~standard
-
-  let eval_unordered t ~parse ~standard =
-    if is_standard t then
-      standard (* inline common case *)
-    else
-      Unordered.eval t ~parse ~standard
+          | Some x, _ | _, Some x -> Some x
+          | _ -> None))
+    in
+    let diff a b =
+      merge a b ~f:(fun _name x y ->
+        match x, y with
+        | Some _, None -> x
+        | _ -> None)
+    in
+    of_ast ~diff ~singleton ~union
 end
 
-module Make_loc(Key : Key)(Value : Value with type key = Key.t) = struct
-  module No_loc = Make(Key)(struct
-      type t = Loc.t * Value.t
-      type key = Key.t
-      let key (_loc, s) = Value.key s
-    end)
+let eval t ~parse ~eq ~standard =
+  Eval.ordered eq t ~parse ~standard
+
+module Unordered(Key : Key) = struct
+  module Key = Key
+
+  let eval t ~parse ~key ~standard =
+    let singleton = Key.Map.singleton in
+    let empty = Key.Map.empty in
+    let merge = Key.Map.merge in
+    Eval.unordered ~singleton ~empty ~merge ~key t ~parse ~standard
 
   let loc_parse f ~loc s = (loc, f ~loc s)
 
-  let eval t ~parse ~standard =
-    No_loc.eval t
-      ~parse:(loc_parse parse)
-      ~standard
-
-  let eval_unordered t ~parse ~standard =
-    No_loc.eval_unordered t
-      ~parse:(loc_parse parse)
+  let eval_loc t ~parse ~key ~standard =
+    eval t
+      ~parse:(loc_parse parse) ~key:(fun (_, x) -> key x)
       ~standard
 end
+
+let eval_loc t ~parse ~eq ~standard =
+  let loc_parse f ~loc s = (loc, f ~loc s) in
+  let eq (_, a) (_, b) = eq a b in
+  eval t ~parse:(loc_parse parse) ~standard ~eq
 
 let standard =
   { ast = Ast.Standard
@@ -403,8 +377,4 @@ module Unexpanded = struct
     { t with ast = expand t.ast }
 end
 
-module String = Make(String)(struct
-    type t = string
-    type key = string
-    let key x = x
-  end)
+module Unordered_string = Unordered(String)

@@ -491,3 +491,66 @@ to the user's workspace. However, one can customize this directory by using the
 
    # Absolute paths are also allowed
    $ dune build --build-dir /tmp/build foo.exe
+
+Installing a package
+====================
+
+Via opam
+--------
+
+When releasing a package using Dune in opam there is nothing special
+to do.  Dune generates a file called ``<package-name>.install`` at the
+root of the project.  This contains a list of files to install and
+opam reads it in order to perform the installation.
+
+Manually
+--------
+
+When not using opam or when you want to manually install a package,
+you can ask Dune to perform the installation via the ``install``
+command:
+
+::
+
+    $ dune install [PACKAGE]...
+
+This command takes a list of package names to install.  If no packages
+are specified, Dune will install all the packages available in the
+workspace.  When several build contexts are specified via a
+:ref:`dune-workspace` file, the installation will be performed in all the
+build contexts.
+
+Destination directory
+---------------------
+
+The ``<prefix>`` directory is determined as follows for a given build
+context:
+
+#. if an explicit ``--prefix <path>`` argument is passed, use this path
+#. if ``opam`` is present in the ``PATH`` and is configured, use the
+   output of ``opam config var prefix``
+#. otherwise, take the parent of the directory where ``ocamlc`` was found.
+
+As an exception to this rule, library files might be copied to a
+different location. The reason for this is that they often need to be
+copied to a particular location for the various build system used in
+OCaml projects to find them and this location might be different from
+``<prefix>/lib`` on some systems.
+
+Historically, the location where to store OCaml library files was
+configured through `findlib
+<http://projects.camlcity.org/projects/findlib.html>`__ and the
+``ocamlfind`` command line tool was used to both install these files
+and locate them. Many Linux distributions or other packaging systems
+are using this mechanism to setup where OCaml library files should be
+copied.
+
+As a result, if none of ``--libdir`` and ``--prefix`` is passed to ``dune
+install`` and ``ocamlfind`` is present in the ``PATH``, then library files will
+be copied to the directory reported by ``ocamlfind printconf destdir``. This
+ensures that ``dune install`` can be used without opam. When using opam,
+``ocamlfind`` is configured to point to the opam directory, so this rule makes
+no difference.
+
+Note that ``--prefix`` and ``--libdir`` are only supported if a single build
+context is in use.

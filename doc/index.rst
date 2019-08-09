@@ -19,7 +19,6 @@ Welcome to dune's documentation!
    tests
    foreign-code
    documentation
-   installation
    usage
    advanced-topics
    configurator
@@ -29,6 +28,7 @@ Welcome to dune's documentation!
    variants
    formatting
    coq
+   lexical-conventions
    faq
    known-issues
    migration

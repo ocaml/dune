@@ -53,14 +53,27 @@ Enables or disables :ref:`wrapped-executables`:
 
     (wrapped_executables <bool>)
 
+.. _explicit-js-mode:
+
 explicit_js_mode
 ----------------
 
-Enables :ref:`explicit-js-mode`:
+Traditionally, Javascript targets were defined for every bytecode executable.
+This was not very precise and did not interact well with the ``@all`` alias.
+
+You can opt out of this behaviour by using:
 
 .. code:: scheme
 
     (explicit_js_mode)
+
+When this mode is enabled, an explicit ``js`` mode needs to be added to the
+``(modes ...)`` field of executables in order to trigger Javascript
+compilation. Explicit JS targets declared like this will be attached to the
+``@all`` alias.
+
+Starting from dune 2.0 this behaviour is the default, and there is no way to
+disable it.
 
 .. _dialect:
 

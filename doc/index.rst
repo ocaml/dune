@@ -16,6 +16,7 @@ Welcome to dune's documentation!
    tests
    foreign-code
    documentation
+   jsoo
    usage
    opam
    variants

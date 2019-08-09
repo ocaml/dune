@@ -1356,7 +1356,7 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
-.. _dune-workspace-file:
+.. _dune-workspace:
 
 ``dune-workspace``
 ==================

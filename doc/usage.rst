@@ -84,11 +84,6 @@ Consult the manual page ``dune init --help`` for more details.
 Finding the root
 ================
 
-.. _dune-workspace:
-
-dune-workspace
---------------
-
 The root of the current workspace is determined by looking up a
 ``dune-workspace`` or ``dune-project`` file in the current directory
 and parent directories.
@@ -120,7 +115,7 @@ always use the outermost one.
 
 In addition to determining the root, ``dune`` will read this file as
 to setup the configuration of the workspace unless the ``--workspace``
-command line option is used. See the section :ref:`dune-workspace-file`
+command line option is used. See the section :ref:`dune-workspace`
 for the syntax of this file.
 
 The ``Entering directory`` message can be suppressed with the

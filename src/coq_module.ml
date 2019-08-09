@@ -52,10 +52,9 @@ let parse ~dir ~loc s =
     let source = Path.Build.relative source (name ^ ".v") in
     make ~name ~source ~prefix
 
-module Value = struct
-  type nonrec t = t
-  type key = string
-  let key x = String.concat ~sep:"." (x.prefix @ [x.name])
-end
-
-module Eval = Ordered_set_lang.Make(String)(Value)
+let eval =
+  let key x = String.concat ~sep:"." (x.prefix @ [x.name]) in
+  let eq_key x y = String.equal (key x) (key y) in
+  fun ~dir ~standard osl ->
+    Ordered_set_lang.eval ~parse:(parse ~dir)
+      ~standard ~eq:eq_key osl

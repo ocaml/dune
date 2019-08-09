@@ -21,16 +21,11 @@ type kind =
   | Exe_or_normal_lib
 
 let eval =
-  let module Value = struct
-    type t = (Module.Source.t, Module_name.t) result
-
-    type key = Module_name.t
-
-    let key = function
-      | Error s -> s
-      | Ok m -> Module.Source.name m
-  end in
-  let module Eval = Ordered_set_lang.Make_loc(Module_name)(Value) in
+  let key = function
+    | Error s -> s
+    | Ok m -> Module.Source.name m
+  in
+  let module Unordered = Ordered_set_lang.Unordered(Module_name) in
   let parse ~all_modules ~fake_modules ~loc s =
     let name = Module_name.of_string s in
     match Module_name.Map.find all_modules name with
@@ -42,7 +37,7 @@ let eval =
   fun ~loc ~fake_modules ~all_modules ~standard osl ->
     let parse = parse ~fake_modules ~all_modules in
     let standard = Module_name.Map.map standard ~f:(fun m -> loc, Ok m) in
-    let modules = Eval.eval_unordered ~parse ~standard osl in
+    let modules = Unordered.eval_loc ~parse ~standard ~key osl in
     Module_name.Map.filter_map modules ~f:(fun (loc, m) ->
       match m with
       | Ok m -> Some (loc, m)

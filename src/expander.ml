@@ -558,7 +558,7 @@ let expand_and_eval_set t set ~standard =
         ~files_contents:Path.Map.empty ~f
     in
     standard >>^ fun standard ->
-    Ordered_set_lang.String.eval set ~standard ~parse
+    Ordered_set_lang.eval set ~standard ~parse ~eq:String.equal
   | paths ->
     List.map paths ~f:(fun f -> Build.read_sexp f syntax)
     |> Build.all
@@ -566,7 +566,7 @@ let expand_and_eval_set t set ~standard =
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f
-    |> Ordered_set_lang.String.eval ~standard ~parse
+    |> Ordered_set_lang.eval ~standard ~parse ~eq:String.equal
 
 let eval_blang t = function
   | Blang.Const x -> x (* common case *)

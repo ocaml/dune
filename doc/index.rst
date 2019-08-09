@@ -11,13 +11,13 @@ Welcome to dune's documentation!
 
    overview
    quick-start
+   usage
    dune-files
    concepts
    tests
    foreign-code
    documentation
    jsoo
-   usage
    opam
    variants
    formatting

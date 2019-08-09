@@ -251,6 +251,7 @@ let build_stubs lib ~sctx ~dir ~expander ~requires ~dir_contents
     else
       []
   in
+  Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> ()
   | o_files -> build_self_stubs lib ~sctx ~dir ~expander ~o_files

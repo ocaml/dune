@@ -6,6 +6,7 @@
 
   $ dune build --root lib @check --display short && ls lib/.merlin
   Entering directory 'lib'
+        ocamlc bar$ext_obj
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
   lib/.merlin

@@ -1,2 +1,3 @@
 (library
- (name foo))
+ (name foo)
+ (c_names bar))

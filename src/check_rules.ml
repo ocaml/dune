@@ -25,3 +25,9 @@ let add_obj_dir sctx ~obj_dir =
       (Alias.check ~dir:(Obj_dir.dir obj_dir))
       ~dyn_deps
       Path.Set.empty
+
+let add_files sctx ~dir files =
+  if (Super_context.context sctx).merlin then
+    let alias = Alias.check ~dir in
+    let files = Path.Set.of_list files in
+    Rules.Produce.Alias.add_deps alias files

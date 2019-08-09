@@ -802,6 +802,8 @@ To use a different rule mode, use the long form:
      (modules <names>)
      (mode    <mode>))
 
+.. _ocamlyacc:
+
 ocamlyacc
 ---------
 
@@ -823,11 +825,50 @@ To use a different rule mode, use the long form:
      (modules <names>)
      (mode    <mode>))
 
+.. _menhir:
+
 menhir
 ------
 
-A ``menhir`` stanza is available to support the menhir_ parser generator. See
-the :ref:`menhir-main` section for details.
+A ``menhir`` stanza is available to support the menhir_ parser generator.
+
+To use menhir in a dune project, the language version should be selected in the
+``dune-project`` file. For example:
+
+.. code:: scheme
+
+  (using menhir 2.0)
+
+This will enable support for menhir stanzas in the current project. If the
+language version is absent, dune will automatically add this line with the
+latest menhir version to the project file once a menhir stanza is used anywhere.
+
+The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`) is:
+
+.. code:: scheme
+
+    (menhir
+     (modules <parser1> <parser2> ...)
+     <optional-fields>)
+
+``<optional-fields>`` are:
+
+- ``(merge_into <base_name>)`` is used to define modular parsers. This
+  correspond to the ``--base`` command line option of ``menhir``. With this
+  option, a single parser named ``base_name`` is generated.
+
+- ``(flags <option1> <option2> ...)`` can be used to pass extra flags can be
+  passed to menhir.
+
+- ``(infer <bool>)`` can be used to enable using menhir with type
+  inference. This option is enabled by default with Menhir language 2.0.
+
+Menhir supports writing the grammar and automaton to ``.cmly`` file. Therefore,
+if this is flag is passed to menhir, dune will know to introduce a ``.cmly``
+target for the module.
+
+.. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
+
 
 cinaps
 ------

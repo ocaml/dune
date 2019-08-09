@@ -388,7 +388,7 @@ to use the :ref:`include_subdirs` stanza.
   dependencies here. You don't need to do so unless you use dune to
   synthesize the ``depends`` and ``depopts`` sections of your opam file
 
-- ``js_of_ocaml``. See the section about :ref:`dune-jsoo-field`
+- ``js_of_ocaml`` sets options for Javascript compilation, see :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   :ref:`ocaml-flags`
@@ -452,6 +452,30 @@ tools such as ``pkg-config``, however it integrates easily with configurator_ by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
 
 .. _configurator: https://github.com/janestreet/configurator
+
+.. _jsoo-field:
+
+js_of_ocaml
+~~~~~~~~~~~
+
+In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
+options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
+
+``<js_of_ocaml-options>`` are all optional:
+
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
+  supports ``(:include ...)`` forms
+
+- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
+  runtime files.
+
+``<flags>`` is specified in the :ref:`ordered-set-language`.
+
+The default value for ``(flags ...)`` depends on the selected build profile. The
+build profile ``dev`` (the default) will enable sourcemap and the pretty
+JavaScript output.
+
+See :ref:`jsoo` for more information.
 
 executable
 ----------
@@ -532,7 +556,7 @@ Executables can also be linked as object or shared object files. See
 - ``(preprocessor_deps (<deps-conf list>))`` is the same as the
   ``(preprocessor_deps ...)`` field of `library`_
 
-- ``js_of_ocaml``. See the section about :ref:`dune-jsoo-field`
+- ``js_of_ocaml``. See the section about :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   specifying :ref:`ocaml-flags`

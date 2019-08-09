@@ -258,6 +258,8 @@ generated.
 
 If the version can't be determined, dune just won't assign one.
 
+.. _jsoo:
+
 js_of_ocaml
 ===========
 
@@ -299,28 +301,6 @@ And then request the ``.js`` target:
 
 Similar targets are created for libraries, but we recommend sticking to the
 executable targets.
-
-.. _dune-jsoo-field:
-
-``js_of_ocaml`` field
----------------------
-
-In ``library`` and ``executables`` stanzas, you can specify js_of_ocaml options
-using ``(js_of_ocaml (<js_of_ocaml-options>))``.
-
-``<js_of_ocaml-options>`` are all optional:
-
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
-  supports ``(:include ...)`` forms
-
-- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
-  runtime files.
-
-``<flags>`` is specified in the :ref:`ordered-set-language`.
-
-The default value for ``(flags ...)`` depends on the selected build profile. The
-build profile ``dev`` (the default) will enable sourcemap and the pretty
-JavaScript output.
 
 Separate compilation
 --------------------

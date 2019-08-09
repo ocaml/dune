@@ -2,8 +2,8 @@
 Stanza reference
 ****************
 
-``dune-project``
-================
+dune-project
+============
 
 These files are used to mark the root of projects as well as define project-wide
 parameters. These files are required to have a ``lang`` which controls the names
@@ -58,7 +58,6 @@ still be turned off using ``(implicit_transitive_deps false)``.
 Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
-
 
 .. _wrapped-executables:
 
@@ -162,6 +161,25 @@ to a corresponding dialect).
   dialect will be formatted as any other OCaml code. Otherwise no special
   formatting will be done.
 
+.. _formatting:
+
+formatting
+----------
+
+Starting in dune 2.0, :ref:`formatting-main` is automatically enabled. This can be
+controlled by using
+
+.. code:: scheme
+
+    (formatting <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that automatic formatting is disabled
+
+- ``(enabled_for <languages>)`` can be used to restrict the languages that are
+  considered for formatting.
+
 generate_opam_files
 -------------------
 
@@ -232,8 +250,8 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
-``dune``
-========
+dune
+====
 
 ``dune`` files are the main part of dune. They are used to describe libraries,
 executables, tests, and everything dune needs to know about.
@@ -335,7 +353,7 @@ to use the :ref:`include_subdirs` stanza.
   deprecation notice for the unwrapped modules.
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files if
-  needed. The default is ``no_processing``. Other options are described in the
+  needed. The default is ``no_preprocessing``. Other options are described in the
   :ref:`preprocessing-spec` section
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra dependencies of the
@@ -1382,8 +1400,8 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
 
 .. _dune-workspace:
 
-``dune-workspace``
-==================
+dune-workspace
+==============
 
 By default, a workspace has only one build context named ``default`` which
 correspond to the environment in which ``dune`` is run. You can define more

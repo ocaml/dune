@@ -62,10 +62,23 @@ Enables :ref:`explicit-js-mode`:
 
     (explicit_js_mode)
 
+.. _dialect:
+
 dialect
 -------
 
-Defines :ref:`dialects-main` for this project:
+A dialect is an alternative frontend to OCaml (such as ReasonML). It is
+described by a pair of file extensions, one corresponding to interfaces and one
+to implementations.
+
+A dialect can use the standard OCaml syntax or it can specify an action to
+convert from a custom syntax to a binary OCaml abstract syntax tree.
+
+Similarly, a dialect can specify a custom formatter to implement the ``@fmt``
+alias, see :ref:`formatting-main`.
+
+When not using a custom syntax or formatting action, a dialect is nothing but a
+way to specify custom file extensions for OCaml code.
 
 .. code:: scheme
 
@@ -83,7 +96,8 @@ given project.
 
 ``(extension <string>)`` specifies the file extension used for this dialect, for
 interfaces and implementations. The extension string must not contain any dots,
-and be unique in a given project.
+and be unique in a given project (so that a given extension can be mapped back
+to a corresponding dialect).
 
 ``<optional fields>`` are:
 

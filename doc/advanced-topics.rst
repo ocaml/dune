@@ -292,27 +292,6 @@ attached to the ``@all`` alias.
 Starting from dune 2.0 this new behaviour will be the default and JS compilation
 of binaries will need to be explicitly declared.
 
-.. _dialects-main:
-
-Dialects
-========
-
-A dialect is an alternative frontend to OCaml (such as ReasonML). It is
-described by a pair of file extensions, one corresponding to interfaces and one
-to implementations.
-
-The extensions are unique among all dialects of a given project, so that a given
-extension can be mapped back to the corresponding dialect.
-
-A dialect can use the standard OCaml syntax or it can specify an action to
-convert from a custom syntax to a binary OCaml abstract syntax tree.
-
-Similarly, a dialect can specify a custom formatter to implement the ``@fmt``
-alias, see :ref:`formatting-main`.
-
-When not using a custom syntax or formatting action, a dialect is nothing but a
-way to specify custom file extensions for OCaml code.
-
 Package version
 ===============
 

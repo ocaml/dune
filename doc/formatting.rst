@@ -10,7 +10,7 @@ It can use ocamlformat_ to format OCaml source code (``*.ml`` and ``*.mli``
 files) and refmt_ to format Reason source code (``*.re`` and ``*.rei`` files).
 
 Furthermore it can be used to format code of any defined dialect (see
-:ref:`dialects-main`).
+:ref:`dialect`).
 
 .. _ocamlformat: https://github.com/ocaml-ppx/ocamlformat
 .. _refmt: https://github.com/facebook/reason/tree/master/src/refmt
@@ -99,7 +99,7 @@ Version history
 (using fmt 1.2)
 ---------------
 
-* Format :ref:`dialects-main`.
+* Format dialects (see :ref:`dialect`).
 
 (using fmt 1.1)
 ---------------

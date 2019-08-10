@@ -27,21 +27,25 @@ module String = struct
      sub s ~pos ~len:(String.length s - pos))
 end
 
+type subdirs =
+  | No
+  | Unqualified
+
 (* Directories with library names *)
 let dirs =
-  [ "src/stdune/result"             , Some "Dune_result"
-  ; "src/stdune/caml"               , Some "Dune_caml"
-  ; "src/stdune"                    , Some "Stdune"
-  ; "src/fiber"                     , Some "Fiber"
-  ; "src/xdg"                       , Some "Xdg"
-  ; "vendor/incremental-cycles/src" , Some "Incremental_cycles"
-  ; "src/dag"                       , Some "Dag"
-  ; "src/memo"                      , Some "Memo"
-  ; "src/ocaml-config"              , Some "Ocaml_config"
-  ; "vendor/boot"                   , None
-  ; "src/dune_lang"                 , Some "Dune_lang"
-  ; "otherlibs/build-info/src"      , None
-  ; "src/dune"                      , None
+  [ "src/stdune/result"             , Some "Dune_result", No
+  ; "src/stdune/caml"               , Some "Dune_caml", No
+  ; "src/stdune"                    , Some "Stdune", No
+  ; "src/fiber"                     , Some "Fiber", No
+  ; "src/xdg"                       , Some "Xdg", No
+  ; "vendor/incremental-cycles/src" , Some "Incremental_cycles", No
+  ; "src/dag"                       , Some "Dag", No
+  ; "src/memo"                      , Some "Memo", No
+  ; "src/ocaml-config"              , Some "Ocaml_config", No
+  ; "vendor/boot"                   , None, No
+  ; "src/dune_lang"                 , Some "Dune_lang", No
+  ; "otherlibs/build-info/src"      , None, No
+  ; "src/dune"                      , None, Unqualified
   ]
 
 open Printf
@@ -233,13 +237,32 @@ let cleanup ~keep_ml_file =
   with _ ->
     ()
 
+let readdir path =
+  Sys.readdir path
+  |> Array.to_list
+  |> List.map ~f:(Filename.concat path)
+
+let find =
+  let rec loop acc = function
+    | [] -> List.sort ~cmp:String.compare acc
+    | p :: ps ->
+      let (dirs, files) =
+        readdir p
+        |> List.partition ~f:Sys.is_directory
+      in
+      loop (List.rev_append files acc) (List.rev_append ps dirs)
+  in
+  fun path -> loop [] [path]
+
 let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
       ~pp =
   (* Map from module names to ml/mli filenames *)
   let modules =
-    let files_of (dir, libname) =
-      Sys.readdir dir |> Array.to_list |> List.map ~f:(fun fn ->
-        (Filename.concat dir fn, libname))
+    let files_of (dir, libname, qualified) =
+      (match qualified with
+        | No -> readdir
+        | Unqualified -> find) dir
+      |> List.map ~f:(fun p -> p, libname)
     in
     let impls, intfs =
       List.map dirs ~f:files_of
@@ -553,7 +576,7 @@ let pp =
       ~generated_file:"boot_pp.ml"
       ~exe:"boot-pp.exe"
       ~main:"let () = ()"
-      ~dirs:["src/ocaml-syntax-shims", None]
+      ~dirs:["src/ocaml-syntax-shims", None, No]
       ~flags:"-I +compiler-libs"
       ~byte_flags:"ocamlcommon.cma"
       ~native_flags:(Some "ocamlcommon.cmxa")

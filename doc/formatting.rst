@@ -10,7 +10,7 @@ It can use ocamlformat_ to format OCaml source code (``*.ml`` and ``*.mli``
 files) and refmt_ to format Reason source code (``*.re`` and ``*.rei`` files).
 
 Furthermore it can be used to format code of any defined dialect (see
-:ref:`dialects-main`).
+:ref:`dialect`).
 
 .. _ocamlformat: https://github.com/ocaml-ppx/ocamlformat
 .. _refmt: https://github.com/facebook/reason/tree/master/src/refmt
@@ -19,12 +19,16 @@ Configuring automatic formatting (dune 2.0)
 ===========================================
 
 If using ``(lang dune 2.0)``, there is nothing to do, formatting will be set up
-by default. It is possible to disable it by adding the following to
-``dune-project``:
+by default.
 
-.. code:: scheme
+By default, formatting will be enabled for all languages and dialects present in
+the project that dune knows about. This is not always desirable, for example if
+in a mixed Reason/OCaml project, one only wants to format the Reason files to
+avoid pulling ``ocamlformat`` as a dependency.
 
-    (formatting disabled)
+It is possible to restrict the languages considered for formatting or disable it
+altogether by using the :ref:`formatting` stanza.
+
 
 Formatting a project
 ====================
@@ -55,21 +59,6 @@ replace the source files by the corrected versions.
 As usual with promotion, it is possible to combine these two steps by running
 ``dune build @fmt --auto-promote``.
 
-Only enabling it for certain languages
-======================================
-
-By default, formatting will be enabled for all languages and dialects present in
-the project that dune knows about. This is not always desirable, for example if
-in a mixed Reason/OCaml project, one only wants to format the Reason files to
-avoid pulling ``ocamlformat`` as a dependency.
-
-In these cases, it is possible to use the ``enabled_for`` argument to restrict
-the languages that are considered for formatting.
-
-.. code:: scheme
-
-    (formatting (enabled_for reason))
-
 Enabling and configuring automatic formatting (dune 1.x)
 ========================================================
 
@@ -99,7 +88,7 @@ Version history
 (using fmt 1.2)
 ---------------
 
-* Format :ref:`dialects-main`.
+* Format dialects (see :ref:`dialect`).
 
 (using fmt 1.1)
 ---------------

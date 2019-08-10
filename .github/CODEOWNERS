@@ -5,9 +5,9 @@ src/memo/* @diml
 src/xdg/* @diml
 src/catapult/* @emillon
 
-src/scheduler.* @diml
-src/build_system.* @diml
-src/build.* @diml
+src/dune/scheduler.* @diml
+src/dune/build_system.* @diml
+src/dune/build.* @diml
 
 bootstrap.ml @diml
 
@@ -19,20 +19,20 @@ src/which_program/* @diml @rgrinberg
 
 src/dune_lang/* @diml @rgrinberg
 
-src/menhir.* @fpottier
+src/dune/menhir.* @fpottier
 
-src/odoc.* @rginberg @antron
+src/dune/odoc.* @rginberg @antron
 
-src/merlin.* @aalekseyev
+src/dune/merlin.* @aalekseyev
 
 src/configurator/* @rgrinberg
 
-src/format_rules.* @emillon
+src/dune/format_rules.* @emillon
 
-src/js_of_ocaml* @hhugo
+src/dune/js_of_ocaml* @hhugo
 
 editor_integration/emacs/* @Chris00
 
-doc/* @emillon @rgrinberg
+doc/* @emillon @rgrinberg @nojb
 
-src/coq_* @ejgallego
+src/dune/coq_* @ejgallego

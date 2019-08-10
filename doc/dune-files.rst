@@ -2,8 +2,8 @@
 Stanza reference
 ****************
 
-``dune-project``
-================
+dune-project
+============
 
 These files are used to mark the root of projects as well as define project-wide
 parameters. These files are required to have a ``lang`` which controls the names
@@ -35,37 +35,91 @@ Sets the version of the project:
 
     (version <version>)
 
+.. _implicit-transitive-deps:
+
 implicit_transitive_deps
 ------------------------
 
-Enables or disables :ref:`implicit-transitive-deps`:
+By default, dune allows transitive dependencies of dependencies to be used
+directly when compiling OCaml. However, this setting can be controlled per
+project:
 
 .. code:: scheme
 
     (implicit_transitive_deps <bool>)
 
+Once this setting is enabled, all dependencies that are directly used by a
+library or an executable must be directly added in the ``libraries`` field. We
+recommend users to experiment with this mode and report any problems.
+
+Starting from dune 2.0, dune enables this mode by default. However, this can
+still be turned off using ``(implicit_transitive_deps false)``.
+
+Note that you must use ``threads.posix`` instead of ``threads`` when using this
+mode. This is not an important limitation as ``threads.vm`` are deprecated
+anyways.
+
+.. _wrapped-executables:
+
 wrapped_executables
 -------------------
 
-Enables or disables :ref:`wrapped-executables`:
+Executables are made of compilation units whose names may collide with the
+compilation units of libraries. To avoid this possibility, dune prefixes these
+compilation unit names with ``Dune__exe__``. This is entirely transparent to
+users except for when such executables are debugged. In which case the mangled
+names will be visible in the debugger.
+
+Starting from dune 1.11, an option is available to turn on/off name mangling for
+executables on a per project basis:
 
 .. code:: scheme
 
     (wrapped_executables <bool>)
 
+Starting from dune 2.0, dune mangles compilation units of executables by
+default. However, this can still be turned off using ``(wrapped_executables
+false)``
+
+.. _explicit-js-mode:
+
 explicit_js_mode
 ----------------
 
-Enables :ref:`explicit-js-mode`:
+Traditionally, Javascript targets were defined for every bytecode executable.
+This was not very precise and did not interact well with the ``@all`` alias.
+
+You can opt out of this behaviour by using:
 
 .. code:: scheme
 
     (explicit_js_mode)
 
+When this mode is enabled, an explicit ``js`` mode needs to be added to the
+``(modes ...)`` field of executables in order to trigger Javascript
+compilation. Explicit JS targets declared like this will be attached to the
+``@all`` alias.
+
+Starting from dune 2.0 this behaviour is the default, and there is no way to
+disable it.
+
+.. _dialect:
+
 dialect
 -------
 
-Defines :ref:`dialects-main` for this project:
+A dialect is an alternative frontend to OCaml (such as ReasonML). It is
+described by a pair of file extensions, one corresponding to interfaces and one
+to implementations.
+
+A dialect can use the standard OCaml syntax or it can specify an action to
+convert from a custom syntax to a binary OCaml abstract syntax tree.
+
+Similarly, a dialect can specify a custom formatter to implement the ``@fmt``
+alias, see :ref:`formatting-main`.
+
+When not using a custom syntax or formatting action, a dialect is nothing but a
+way to specify custom file extensions for OCaml code.
 
 .. code:: scheme
 
@@ -83,7 +137,8 @@ given project.
 
 ``(extension <string>)`` specifies the file extension used for this dialect, for
 interfaces and implementations. The extension string must not contain any dots,
-and be unique in a given project.
+and be unique in a given project (so that a given extension can be mapped back
+to a corresponding dialect).
 
 ``<optional fields>`` are:
 
@@ -105,6 +160,25 @@ and be unique in a given project.
   (so that the dialect consists of valid OCaml code), then by default the
   dialect will be formatted as any other OCaml code. Otherwise no special
   formatting will be done.
+
+.. _formatting:
+
+formatting
+----------
+
+Starting in dune 2.0, :ref:`formatting-main` is automatically enabled. This can be
+controlled by using
+
+.. code:: scheme
+
+    (formatting <setting>)
+
+where ``<setting>`` is one of:
+
+- ``disabled``, meaning that automatic formatting is disabled
+
+- ``(enabled_for <languages>)`` can be used to restrict the languages that are
+  considered for formatting.
 
 generate_opam_files
 -------------------
@@ -176,8 +250,8 @@ language: The syntax is as a list of the following elements:
 
    dep-specification = dep+
 
-``dune``
-========
+dune
+====
 
 ``dune`` files are the main part of dune. They are used to describe libraries,
 executables, tests, and everything dune needs to know about.
@@ -279,7 +353,7 @@ to use the :ref:`include_subdirs` stanza.
   deprecation notice for the unwrapped modules.
 
 - ``(preprocess <preprocess-spec>)`` specifies how to preprocess files if
-  needed. The default is ``no_processing``. Other options are described in the
+  needed. The default is ``no_preprocessing``. Other options are described in the
   :ref:`preprocessing-spec` section
 
 - ``(preprocessor_deps (<deps-conf list>))`` specifies extra dependencies of the
@@ -332,7 +406,7 @@ to use the :ref:`include_subdirs` stanza.
   dependencies here. You don't need to do so unless you use dune to
   synthesize the ``depends`` and ``depopts`` sections of your opam file
 
-- ``js_of_ocaml``. See the section about :ref:`dune-jsoo-field`
+- ``js_of_ocaml`` sets options for Javascript compilation, see :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   :ref:`ocaml-flags`
@@ -396,6 +470,30 @@ tools such as ``pkg-config``, however it integrates easily with configurator_ by
 using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
 
 .. _configurator: https://github.com/janestreet/configurator
+
+.. _jsoo-field:
+
+js_of_ocaml
+~~~~~~~~~~~
+
+In ``library`` and ``executables`` stanzas, you can specify ``js_of_ocaml``
+options using ``(js_of_ocaml (<js_of_ocaml-options>))``.
+
+``<js_of_ocaml-options>`` are all optional:
+
+- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
+  supports ``(:include ...)`` forms
+
+- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
+  runtime files.
+
+``<flags>`` is specified in the :ref:`ordered-set-language`.
+
+The default value for ``(flags ...)`` depends on the selected build profile. The
+build profile ``dev`` (the default) will enable sourcemap and the pretty
+JavaScript output.
+
+See :ref:`jsoo` for more information.
 
 executable
 ----------
@@ -476,7 +574,7 @@ Executables can also be linked as object or shared object files. See
 - ``(preprocessor_deps (<deps-conf list>))`` is the same as the
   ``(preprocessor_deps ...)`` field of `library`_
 
-- ``js_of_ocaml``. See the section about :ref:`dune-jsoo-field`
+- ``js_of_ocaml``. See the section about :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   specifying :ref:`ocaml-flags`
@@ -746,6 +844,8 @@ To use a different rule mode, use the long form:
      (modules <names>)
      (mode    <mode>))
 
+.. _ocamlyacc:
+
 ocamlyacc
 ---------
 
@@ -767,11 +867,50 @@ To use a different rule mode, use the long form:
      (modules <names>)
      (mode    <mode>))
 
+.. _menhir:
+
 menhir
 ------
 
-A ``menhir`` stanza is available to support the menhir_ parser generator. See
-the :ref:`menhir-main` section for details.
+A ``menhir`` stanza is available to support the menhir_ parser generator.
+
+To use menhir in a dune project, the language version should be selected in the
+``dune-project`` file. For example:
+
+.. code:: scheme
+
+  (using menhir 2.0)
+
+This will enable support for menhir stanzas in the current project. If the
+language version is absent, dune will automatically add this line with the
+latest menhir version to the project file once a menhir stanza is used anywhere.
+
+The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`) is:
+
+.. code:: scheme
+
+    (menhir
+     (modules <parser1> <parser2> ...)
+     <optional-fields>)
+
+``<optional-fields>`` are:
+
+- ``(merge_into <base_name>)`` is used to define modular parsers. This
+  correspond to the ``--base`` command line option of ``menhir``. With this
+  option, a single parser named ``base_name`` is generated.
+
+- ``(flags <option1> <option2> ...)`` can be used to pass extra flags can be
+  passed to menhir.
+
+- ``(infer <bool>)`` can be used to enable using menhir with type
+  inference. This option is enabled by default with Menhir language 2.0.
+
+Menhir supports writing the grammar and automaton to ``.cmly`` file. Therefore,
+if this is flag is passed to menhir, dune will know to introduce a ``.cmly``
+target for the module.
+
+.. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
+
 
 cinaps
 ------
@@ -779,6 +918,39 @@ cinaps
 A ``cinaps`` stanza is available to support the ``cinaps`` tool.  See
 the `cinaps website <https://github.com/janestreet/cinaps>`_ for more
 details.
+
+.. _documentation-stanza:
+
+documentation
+-------------
+
+Additional manual pages may be attached to packages using the ``documentation``
+stanza. These ``.mld`` files must contain text in the same syntax as ocamldoc
+comments.
+
+.. code-block:: scheme
+
+  (documentation (<optional-fields>)))
+
+Where ``<optional-fields>`` are:
+
+- ``(package <name>)`` the package this documentation should be attached to. If
+  this absent, dune will try to infer it based on the location of the
+  stanza.
+
+- ``(mld_files <arg>)`` where ``<arg>`` field follows the
+  :ref:`ordered-set-language`. This is a set of extension-less, mld file base
+  names that are attached to the package. Where ``:standard`` refers to all the
+  ``.mld`` files in the stanza's directory.
+
+The ``index.mld`` file (specified as ``index`` in ``mld_files``) is treated
+specially by dune. This will be the file used to generate the entry page for the
+package. This is the page that will be linked from the main package listing. If
+you omit writing an ``index.mld``, dune will generate one with the entry modules
+for your package. But this generated will not be installed.
+
+All mld files attached to a package will be included in the generated
+``.install`` file for that package, and hence will be installed by opam.
 
 .. _alias-stanza:
 
@@ -1170,11 +1342,26 @@ live inside the virtual library project.
 This will add `lib-foo` to the list of known implementations of `vlib`. For more
 details see :ref:`dune-variants`
 
+.. _coq-theory:
+
 coq.theory
 ----------
 
-The basic form for defining Coq libraries is very similar to the OCaml form
-(see :ref:`coq-main` for more):
+Dune is also able to build Coq developments. A Coq project is a mix of
+Coq ``.v`` files and (optionally) OCaml libraries linking to the Coq
+API (in which case we say the project is a *Coq plugin*). To enable
+Coq support in a dune project, the language version should be selected
+in the ``dune-project`` file. For example:
+
+.. code:: scheme
+
+    (using coq 0.1)
+
+This will enable support for the ``coq.theory`` stanza in the current project. If the
+language version is absent, dune will automatically add this line with the
+latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
+
+The basic form for defining Coq libraries is very similar to the OCaml form:
 
 .. code:: scheme
 
@@ -1188,7 +1375,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form
 
 The stanza will build all `.v` files on the given directory. The semantics of fields is:
 
-- ``<module_prefix>>`` will be used as the default Coq library prefix ``-R``,
+- ``<module_prefix>`` will be used as the default Coq library prefix ``-R``,
 - the ``modules`` field does allow to constraint the set of modules
   included in the library, similarly to its OCaml counterpart,
 - ``public_name`` will make Dune generate install rules for the `.vo`
@@ -1200,6 +1387,29 @@ The stanza will build all `.v` files on the given directory. The semantics of fi
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   library to depend on a ML plugin.
+
+Recursive qualification of modules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you add:
+
+.. code:: scheme
+
+    (include_subdirs qualified)
+
+to a ``dune`` file, Dune will to consider that all the modules in their
+directory and sub-directories, adding a prefix to the module name in the usual
+Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
+``A.b.C``.
+
+Limitations
+~~~~~~~~~~~
+
+- composition and scoping of Coq libraries is still not possible. For now,
+  libraries are located using Coq's built-in library management,
+- .v always depend on the native version of a plugin,
+- a ``foo.mlpack`` file must the present for locally defined plugins to work,
+  this is a limitation of coqdep.
 
 coq.pp
 ------
@@ -1221,10 +1431,10 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
-.. _dune-workspace-file:
+.. _dune-workspace:
 
-``dune-workspace``
-==================
+dune-workspace
+==============
 
 By default, a workspace has only one build context named ``default`` which
 correspond to the environment in which ``dune`` is run. You can define more
@@ -1329,7 +1539,7 @@ context or can be the description of an opam switch, as follows:
   :ref:`finding-root`.
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
-setup cross compilation. See :ref:`advanced-cross-compilation` for more
+setup cross compilation. See :ref:`cross-compilation` for more
 information.
 
 Merlin reads compilation artifacts and it can only read the compilation

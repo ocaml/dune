@@ -11,15 +11,17 @@ Welcome to dune's documentation!
 
    overview
    quick-start
+   usage
    dune-files
    concepts
    tests
    foreign-code
    documentation
-   usage
+   jsoo
    opam
    variants
    formatting
+   cross-compilation
    dune-libs
    advanced-topics
    lexical-conventions

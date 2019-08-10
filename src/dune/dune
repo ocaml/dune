@@ -7,7 +7,7 @@
  (synopsis "Internal Dune library, do not use!")
  (preprocess future_syntax))
 
-(ocamllex meta_lexer glob_lexer dune_lexer ocamlobjinfo)
+(ocamllex glob_lexer dune_lexer ocamlobjinfo)
 
 (rule
  (targets setup.ml)

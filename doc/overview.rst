@@ -128,10 +128,3 @@ per directory. You can have several executables in the same directory, as long
 as they share the same build configuration. If you'd like to have multiple
 executables with different configurations in the same directory, you will have
 to make an explicit module list for every executable using ``modules``.
-
-The next sections describe the format of dune metadata files.
-
-Note that the dune metadata format is versioned in order to ensure forward
-compatibility. There is currently only one version available, but to be future
-proof, you should still specify it in your ``dune`` files. If no version is
-specified, the latest one will be used.

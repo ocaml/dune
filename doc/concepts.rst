@@ -481,11 +481,12 @@ Dependencies in ``dune`` files can be specified using one of the following:
   If this variable becomes set, becomes unset, or changes value, the target
   will be rebuilt.
 - ``(sandbox <config>)``: require a particular sandboxing configuration.
-  Config can be one (or many) of:
+  ``<config>`` can be one (or many) of:
+
   - ``always``: the action requires a clean environment.
   - ``none``: the action must run in the build directory.
   - ``preserve_file_kind``: the action needs the files it reads to look
-  like normal files (so dune won't use symlinks for sandboxing)
+    like normal files (so dune won't use symlinks for sandboxing)
 
 In all these cases, the argument supports :ref:`variables`.
 

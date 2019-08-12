@@ -473,9 +473,8 @@ module Client = struct
         ]
     and repo =
       match repo with
-      | Some _ ->
-          (* FIXME *)
-          []
+      | Some idx ->
+          [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
       | None ->
           []
     in
@@ -486,7 +485,7 @@ module Client = struct
          :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
          :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
          :: repo ));
-    Result.Ok []
+    Result.Ok ()
 
   let set_build_dir client path =
     send client.socket

@@ -23,7 +23,22 @@ val stop : t -> unit
 val endpoint : t -> string option
 
 module Client : sig
-  include Dune_memory.memory
+  type t
+
+  val promote :
+       t
+    -> (Path.t * Digest.t) list
+    -> Dune_memory.key
+    -> Dune_memory.metadata
+    -> int option
+    -> (unit, string) Result.t
+
+  val search :
+       t
+    -> Dune_memory.key
+    -> ( Dune_memory.metadata * (Path.t * Path.t * Digest.t) list
+       , string )
+       Result.t
 
   val set_build_dir : t -> Path.t -> unit
 

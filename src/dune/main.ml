@@ -186,6 +186,10 @@ let bootstrap () =
     let anon s =
       raise (Arg.Bad (Printf.sprintf "don't know what to do with %s\n" s))
     in
+    let init (config : Config.t) =
+      Console.init config.display;
+      Log.init ()
+    in
     let subst () =
       let config : Config.t =
         { display = Quiet
@@ -194,6 +198,7 @@ let bootstrap () =
         ; sandboxing_preference = []
         }
       in
+      init config;
       Scheduler.go ~config Watermarks.subst;
       exit 0
     in
@@ -245,8 +250,7 @@ let bootstrap () =
       Config.adapt_display config
         ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
     in
-    Console.init config.display;
-    Log.init ();
+    init config;
     Scheduler.go ~config (fun () ->
         let* () = set_concurrency config in
         let* workspace =

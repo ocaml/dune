@@ -41,10 +41,7 @@ let which ~path prog =
   let prog = add_exe prog in
   List.find_map path ~f:(fun dir ->
       let fn = Path.relative dir prog in
-      if exists fn then
-        Some fn
-      else
-        None)
+      Option.some_if (exists fn) fn)
 
 let make ~path =
   match which ~path "gmake" with None -> which ~path "make" | some -> some

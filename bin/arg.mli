@@ -1,11 +1,15 @@
 open Stdune
 open Dune
 
-include module type of struct include Cmdliner.Arg end
+include module type of struct
+  include Cmdliner.Arg
+end
 
 module Path : sig
   type t
+
   val path : t -> Path.t
+
   val arg : t -> string
 end
 

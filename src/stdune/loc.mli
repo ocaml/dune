@@ -1,4 +1,6 @@
-include module type of struct include Loc0 end
+include module type of struct
+  include Loc0
+end
 
 val in_file : Path.t -> t
 
@@ -19,9 +21,10 @@ val dyn_of_position_no_file : Lexing.position -> Dyn.t
 val equal : t -> t -> bool
 
 (** To be used with [__POS__] *)
-val of_pos : (string * int * int * int) -> t
+val of_pos : string * int * int * int -> t
 
 val to_file_colon_line : t -> string
+
 val pp_file_colon_line : Format.formatter -> t -> unit
 
 val print : Format.formatter -> t -> unit

@@ -1,4 +1,3 @@
 module Configurator = Configurator.V1
 
-let () =
-  Configurator.main ~name:"test_configurator" (fun _ -> ())
+let () = Configurator.main ~name:"test_configurator" (fun _ -> ())

@@ -1,9 +1,7 @@
 open! Stdune
 
 module Virtual : sig
-  type t =
-    { virtual_modules : Ordered_set_lang.t
-    }
+  type t = { virtual_modules : Ordered_set_lang.t }
 end
 
 module Implementation : sig
@@ -18,8 +16,8 @@ type kind =
   | Implementation of Implementation.t
   | Exe_or_normal_lib
 
-val eval
-  :  modules:(Module.Source.t Module_name.Map.t)
+val eval :
+     modules:Module.Source.t Module_name.Map.t
   -> buildable:Dune_file.Buildable.t
   -> private_modules:Ordered_set_lang.t
   -> kind:kind

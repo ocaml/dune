@@ -1,17 +1,23 @@
 open! Import
 
-type t = Byte | Native
+type t =
+  | Byte
+  | Native
 
 val decode : t Dune_lang.Decoder.t
 
 val all : t list
 
 val compiled_unit_ext : t -> string
+
 val compiled_lib_ext : t -> string
+
 val exe_ext : t -> string
+
 val plugin_ext : t -> string
 
 val cm_kind : t -> Cm_kind.t
+
 val of_cm_kind : Cm_kind.t -> t
 
 val variant : t -> Variant.t
@@ -24,7 +30,7 @@ module Dict : sig
   type mode = t
 
   type 'a t =
-    { byte   : 'a
+    { byte : 'a
     ; native : 'a
     }
 
@@ -34,11 +40,16 @@ module Dict : sig
 
   module List : sig
     type 'a dict
+
     type 'a t = 'a list dict
+
     val empty : 'a t
+
     val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+
     val encode : 'a Dune_lang.Encoder.t -> 'a t -> Dune_lang.t list
-  end with type 'a dict := 'a t
+  end
+  with type 'a dict := 'a t
 
   val get : 'a t -> mode -> 'a
 
@@ -47,6 +58,7 @@ module Dict : sig
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
   val mapi : 'a t -> f:(mode -> 'a -> 'b) -> 'b t
 
   val make_both : 'a -> 'a t
@@ -54,13 +66,19 @@ module Dict : sig
   val make : byte:'a -> native:'a -> 'a t
 
   module Set : sig
-
     type nonrec t = bool t
+
     val encode : t -> Dune_lang.t list
+
     val all : t
+
     val is_empty : t -> bool
+
     val to_list : t -> mode list
+
     val of_list : mode list -> t
+
     val iter : t -> f:(mode -> unit) -> unit
   end
-end with type mode := t
+end
+with type mode := t

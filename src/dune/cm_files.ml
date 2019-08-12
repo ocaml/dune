@@ -9,31 +9,25 @@ type t =
 
 let make ~obj_dir ~modules ~top_sorted_modules ~ext_obj =
   let modules = Modules.impl_only modules in
-  { obj_dir
-  ; modules
-  ; top_sorted_modules
-  ; ext_obj
-  }
+  { obj_dir; modules; top_sorted_modules; ext_obj }
 
 let objects_and_cms t ~mode modules =
   let kind = Mode.cm_kind mode in
   let cm_files = Obj_dir.Module.L.cm_files t.obj_dir modules ~kind in
   match mode with
-  | Byte -> cm_files
+  | Byte ->
+      cm_files
   | Native ->
-    Obj_dir.Module.L.o_files t.obj_dir modules ~ext_obj:t.ext_obj
-    |> List.rev_append cm_files
+      Obj_dir.Module.L.o_files t.obj_dir modules ~ext_obj:t.ext_obj
+      |> List.rev_append cm_files
 
-let unsorted_objects_and_cms t ~mode =
-  objects_and_cms t ~mode t.modules
+let unsorted_objects_and_cms t ~mode = objects_and_cms t ~mode t.modules
 
 let top_sorted_cms t ~mode =
   let kind = Mode.cm_kind mode in
   let open Build.O in
-  t.top_sorted_modules
-  >>^ Obj_dir.Module.L.cm_files t.obj_dir ~kind
+  t.top_sorted_modules >>^ Obj_dir.Module.L.cm_files t.obj_dir ~kind
 
 let top_sorted_objects_and_cms t ~mode =
   let open Build.O in
-  t.top_sorted_modules
-  >>^ objects_and_cms t ~mode
+  t.top_sorted_modules >>^ objects_and_cms t ~mode

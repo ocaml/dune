@@ -2,8 +2,4 @@
 
 open! Import
 
-val gen
-  :  package:string
-  -> version:string option
-  -> Lib.t list
-  -> Meta.t
+val gen : package:string -> version:string option -> Lib.t list -> Meta.t

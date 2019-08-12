@@ -17,8 +17,7 @@ val encode : _ t Dune_lang.Encoder.t
 val to_dyn : _ t -> Dyn.t
 
 (**[create id ~f] creates a predicate defined by [f] identified uniquely with
-   [id]. [id] is used to safely compare predicates for equality for
-   memoization *)
+   [id]. [id] is used to safely compare predicates for equality for memoization *)
 val create : id:Dyn.t Lazy.t -> f:('a -> bool) -> 'a t
 
 val test : 'a t -> 'a -> bool

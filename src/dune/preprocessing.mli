@@ -8,8 +8,8 @@ type t
 
 val dummy : t
 
-val make
-  :  Super_context.t
+val make :
+     Super_context.t
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> dep_kind:Lib_deps_info.Kind.t
@@ -20,22 +20,17 @@ val make
   -> scope:Scope.t
   -> t
 
-(** Setup the preprocessing rules for the following modules and
-    returns the translated modules *)
-val pp_module :  t -> ?lint:bool -> Module.t -> Module.t
+(** Setup the preprocessing rules for the following modules and returns the
+    translated modules *)
+val pp_module : t -> ?lint:bool -> Module.t -> Module.t
 
-(** Preprocess a single module, using the configuration for the given
-    module name. *)
-val pp_module_as
-  :  t
-  -> ?lint:bool
-  -> Module_name.t
-  -> Module.t
-  -> Module.t
+(** Preprocess a single module, using the configuration for the given module
+    name. *)
+val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
-val get_ppx_driver
-  :  Super_context.t
+val get_ppx_driver :
+     Super_context.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> scope:Scope.t
@@ -48,8 +43,8 @@ val gen_rules : Super_context.t -> string list -> unit
 
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
-val action_for_pp
-  :  Super_context.t
+val action_for_pp :
+     Super_context.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> loc:Loc.t
   -> expander:Expander.t
@@ -58,8 +53,5 @@ val action_for_pp
   -> target:Path.Build.t option
   -> ('a, Action.t) Build.t
 
-val ppx_exe
-  :  Super_context.t
-  -> scope:Scope.t
-  -> Lib_name.t
-  -> Path.Build.t Or_exn.t
+val ppx_exe :
+  Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Or_exn.t

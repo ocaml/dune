@@ -6,11 +6,11 @@ open! Import
 val local_install_dir : context:string -> Path.Build.t
 
 val local_install_bin_dir : context:string -> Path.Build.t
+
 val local_install_man_dir : context:string -> Path.Build.t
-val local_install_lib_dir
-  :  context:string
-  -> package:Package.Name.t
-  -> Path.Build.t
+
+val local_install_lib_dir :
+  context:string -> package:Package.Name.t -> Path.Build.t
 
 val dev_null : Path.t
 
@@ -32,25 +32,29 @@ val show_full_command_on_error : unit -> bool
 
 (** Dune configuration *)
 
-module Terminal_persistence: sig
+module Terminal_persistence : sig
   type t =
     | Preserve
     | Clear_on_rebuild
 
-  val all: (string * t) list
-  val of_string: string -> (t, string) result
-  val to_string: t -> string
+  val all : (string * t) list
+
+  val of_string : string -> (t, string) result
+
+  val to_string : t -> string
+
   val decode : t Dune_lang.Decoder.t
 end
 
 module Display : sig
   type t = Stdune.Console.Display.t =
-    | Progress (** Single interactive status line *)
-    | Short    (** One line per command           *)
-    | Verbose  (** Display all commands fully     *)
-    | Quiet    (** Only display errors            *)
+    | Progress  (** Single interactive status line *)
+    | Short  (** One line per command *)
+    | Verbose  (** Display all commands fully *)
+    | Quiet  (** Only display errors *)
 
   val decode : t Dune_lang.Decoder.t
+
   val all : (string * t) list
 end
 
@@ -60,6 +64,7 @@ module Concurrency : sig
     | Auto
 
   val of_string : string -> (t, string) result
+
   val to_string : t -> string
 end
 
@@ -71,9 +76,9 @@ module type S = sig
   type 'a field
 
   type t =
-    { display     : Display.t     field
+    { display : Display.t field
     ; concurrency : Concurrency.t field
-    ; terminal_persistence : Terminal_persistence.t  field
+    ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
     }
 end
@@ -87,10 +92,13 @@ val decode : t Dune_lang.Decoder.t
 val merge : t -> Partial.t -> t
 
 val default : t
+
 val user_config_file : Path.t
+
 val load_user_config_file : unit -> t
+
 val load_config_file : Path.t -> t
 
-(** Set display mode to [Quiet] if it is [Progress], the output is not
-    a tty and we are not running inside emacs. *)
+(** Set display mode to [Quiet] if it is [Progress], the output is not a tty
+    and we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t

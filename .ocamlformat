@@ -1,0 +1,13 @@
+version=0.11.0
+break-sequences=true
+doc-comments=before
+field-space=loose
+let-and=sparse
+sequence-style=terminator
+type-decl=sparse
+wrap-comments=true
+if-then-else=k-r
+let-and=sparse
+space-around-records
+space-around-lists
+space-around-arrays

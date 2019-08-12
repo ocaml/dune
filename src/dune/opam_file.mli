@@ -1,7 +1,6 @@
 (** Parsing and interpretation of opam files *)
 
 open! Stdune
-
 open OpamParserTypes
 
 (** Type of opam files *)
@@ -19,8 +18,7 @@ val parse : Lexing.lexbuf -> t
 (** Parse just a value *)
 val parse_value : Lexing.lexbuf -> value
 
-(** Replace all [pos] value by a triplet [(fname, line,
-    absolute_offset)] *)
+(** Replace all [pos] value by a triplet [(fname, line, absolute_offset)] *)
 val absolutify_positions : file_contents:string -> opamfile -> opamfile
 
 val nopos : OpamParserTypes.pos

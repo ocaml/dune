@@ -4,25 +4,32 @@ let path_sep =
   else
     ':'
 
-let parse_path ?(sep=path_sep) s =
+let parse_path ?(sep = path_sep) s =
   String.split s ~on:sep
   |> List.filter_map ~f:(function
-    | "" -> None
-    | p -> Some (Path.of_filename_relative_to_initial_cwd p))
+       | "" ->
+           None
+       | p ->
+           Some (Path.of_filename_relative_to_initial_cwd p))
 
 let cons_path p ~_PATH =
   let p = Path.to_absolute_filename p in
-  match _PATH with
-  | None -> p
-  | Some s -> Printf.sprintf "%s%c%s" p path_sep s
+  match _PATH with None -> p | Some s -> Printf.sprintf "%s%c%s" p path_sep s
 
-let exe = if Sys.win32 then ".exe" else ""
+let exe =
+  if Sys.win32 then
+    ".exe"
+  else
+    ""
 
 let exists fn =
   match Unix.stat (Path.to_string fn) with
-  | { st_kind = S_DIR; _ } -> false
-  | exception (Unix.Unix_error _) -> false
-  | _ -> true
+  | { st_kind = S_DIR; _ } ->
+      false
+  | exception Unix.Unix_error _ ->
+      false
+  | _ ->
+      true
 
 let best_prog dir prog =
   let fn = Path.relative dir (prog ^ ".opt" ^ exe) in
@@ -37,15 +44,12 @@ let best_prog dir prog =
 
 let which ~path prog =
   let rec search = function
-    | [] -> None
-    | dir :: rest ->
-      match best_prog dir prog with
-      | None -> search rest
-      | Some fn -> Some fn
+    | [] ->
+        None
+    | dir :: rest -> (
+      match best_prog dir prog with None -> search rest | Some fn -> Some fn )
   in
   search path
 
 let make ~path =
-  match which ~path "gmake" with
-  | None -> which ~path "make"
-  | some -> some
+  match which ~path "gmake" with None -> which ~path "make" | some -> some

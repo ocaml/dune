@@ -33,15 +33,9 @@ let fake time_ref buf =
   let close () = () in
   let get_time () = !time_ref in
   let gc_stat () = fake_gc_stat in
-  { print
-  ; close
-  ; get_time
-  ; gc_stat
-  ; after_first_event = false
-  ; next_id = 0
-  }
+  { print; close; get_time; gc_stat; after_first_event = false; next_id = 0 }
 
-let close {print; close; _} =
+let close { print; close; _ } =
   print "]\n";
   close ()
 
@@ -51,14 +45,15 @@ let make path =
   let close () = Pervasives.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
-  {print; close; get_time; gc_stat; after_first_event = false; next_id = 0}
+  { print; close; get_time; gc_stat; after_first_event = false; next_id = 0 }
 
 let next_leading_char t =
   match t.after_first_event with
-  | true -> ','
+  | true ->
+      ','
   | false ->
-    t.after_first_event <- true;
-    '['
+      t.after_first_event <- true;
+      '['
 
 let printf t format_string =
   let c = next_leading_char t in
@@ -67,42 +62,32 @@ let printf t format_string =
 let pp_args l =
   l
   |> List.map ~f:(Printf.sprintf "%S")
-  |> String.concat ~sep:","
-  |> Printf.sprintf "[%s]"
+  |> String.concat ~sep:"," |> Printf.sprintf "[%s]"
 
 let pp_time f =
-  let n = int_of_float @@ f *. 1_000_000. in
+  let n = int_of_float @@ (f *. 1_000_000.) in
   Printf.sprintf "%d" n
 
 type event = int * string
 
 let on_process_end t (id, name) =
   let time = t.get_time () in
-  printf
-    t
+  printf t
     {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "e", "ts": %s}|}
-    name
-    id
-    (pp_time time)
+    name id (pp_time time)
 
 let gen_emit_counter t key pvalue value =
   let time = t.get_time () in
-  printf
-    t
+  printf t
     {|{"name": %S, "pid": 0, "tid": 0, "ph": "C", "ts": %s, "args": {%S: %a}}|}
-    key
-    (pp_time time)
-    "value"
-    pvalue
-    value
+    key (pp_time time) "value" pvalue value
 
 let emit_counter t key value =
   gen_emit_counter t key (Fn.const Int.to_string) value
 
 let emit_counter_float =
   let float () f = Printf.sprintf "%.2f" f in
-  fun t key value ->
-    gen_emit_counter t key float value
+  fun t key value -> gen_emit_counter t key float value
 
 let emit_gc_counters t =
   let stat = t.gc_stat () in
@@ -127,11 +112,7 @@ let on_process_start t ~program ~args =
   let name = Filename.basename program in
   let id = next_id t in
   let time = t.get_time () in
-  printf
-    t
+  printf t
     {|{"cat": "process", "name": %S, "id": %d, "pid": 0, "ph": "b", "ts": %s, "args": %s}|}
-    name
-    id
-    (pp_time time)
-    (pp_args args);
+    name id (pp_time time) (pp_args args);
   (id, name)

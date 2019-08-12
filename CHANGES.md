@@ -1407,6 +1407,9 @@
 - Fix bad interaction between promotion and incremental builds on OSX
   (#460, fix #456)
 
+- Make the beginning of a new build more explicit in watch mode
+  (#2542 @diml)
+
 1.0+beta16 (05/11/2017)
 -----------------------
 

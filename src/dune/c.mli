@@ -16,26 +16,27 @@ module Kind : sig
     | Not_allowed_until of Syntax.Version.t
     | Recognized of string * t
 
-  val split_extension
-    :  string
-    -> dune_version:Syntax.Version.t
-    -> split
+  val split_extension : string -> dune_version:Syntax.Version.t -> split
 
-  (** [possible_fns t s] returns the possible filenames given the extension-less
-      basenames [s] *)
-  val possible_fns : t -> string -> dune_version:Syntax.Version.t -> string list
+  (** [possible_fns t s] returns the possible filenames given the
+      extension-less basenames [s] *)
+  val possible_fns :
+    t -> string -> dune_version:Syntax.Version.t -> string list
 
   module Dict : sig
     type kind
+
     type 'a t =
       { c : 'a
       ; cxx : 'a
       }
 
     val c : 'a t -> 'a
+
     val cxx : 'a t -> 'a
 
     val map : 'a t -> f:('a -> 'b) -> 'b t
+
     val mapi : 'a t -> f:(kind:kind -> 'a -> 'b) -> 'b t
 
     val make_both : 'a -> 'a t
@@ -47,14 +48,17 @@ module Kind : sig
     val merge : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
     val get : 'a t -> kind -> 'a
-  end with type kind := t
+  end
+  with type kind := t
 end
 
 module Source : sig
   type t
 
   val kind : t -> Kind.t
+
   val path : t -> Path.Build.t
+
   val src_dir : t -> Path.Build.t
 
   val make : kind:Kind.t -> path:Path.Build.t -> t

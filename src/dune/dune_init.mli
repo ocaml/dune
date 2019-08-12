@@ -10,6 +10,7 @@ module Kind : sig
     | Test
 
   val to_string : t -> string
+
   (* val kind_strings : string list *)
   val commands : (string * t) list
 end
@@ -24,10 +25,9 @@ module Init_context : sig
   val make : string option -> t
 end
 
-(** A [Component.t] is a set of files that can be built or included as part of a
-    build. *)
+(** A [Component.t] is a set of files that can be built or included as part of
+    a build. *)
 module Component : sig
-
   (** Options determining the details of a generated component *)
   module Options : sig
     module Common : sig
@@ -39,9 +39,7 @@ module Component : sig
     end
 
     module Executable : sig
-      type t =
-        { public : string option
-        }
+      type t = { public : string option }
     end
 
     module Library : sig
@@ -57,13 +55,13 @@ module Component : sig
     end
 
     module Project : sig
-
       module Template : sig
         type t =
           | Exec
           | Lib
 
         val of_string : string -> t option
+
         val commands : (string * t) list
       end
 
@@ -78,7 +76,7 @@ module Component : sig
 
       type t =
         { template : Template.t
-        ; inline_tests: bool
+        ; inline_tests : bool
         ; pkg : Pkg.t
         }
     end
@@ -97,10 +95,11 @@ module Component : sig
     | Project : Options.Project.t Options.t -> Options.Project.t t
     | Test : Options.Test.t Options.t -> Options.Test.t t
 
-  (** Create or update the component specified by the ['options t],
-      where ['options] is *)
+  (** Create or update the component specified by the ['options t], where
+      ['options] is *)
   val init : 'options t -> unit
 end
 
 val validate_component_name : string -> unit
+
 val print_completion : Kind.t -> string -> unit

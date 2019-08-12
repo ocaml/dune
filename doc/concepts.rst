@@ -190,7 +190,8 @@ In addition, ``(action ...)`` fields support the following special variables:
 
 - ``version:<package>`` expands to the version of the given
   package. Note that this is only supported for packages that are
-  being defined in the current scope
+  being defined in the current scope. How dune determines the version
+  of a package is described :ref:`here <package-version>`
 - ``read:<path>`` expands to the contents of the given file
 - ``read-lines:<path>`` expands to the list of lines in the given
   file

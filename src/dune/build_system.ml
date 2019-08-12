@@ -1495,7 +1495,7 @@ end = struct
       if force || something_changed then (
         List.iter targets_as_list ~f:(fun p ->
                                       Path.unlink_no_err (Path.build p));
-        match lookup_cache (get_build_system ()).memory force rule_digest with
+        match lookup_cache t.memory force rule_digest with
         | Result.Ok files ->
            let retrieve (dest, source, _) =
              Log.infof log "retrieve %s from cache" (Path.to_string dest);
@@ -1552,8 +1552,7 @@ end = struct
             let targets, targets_digest =
               compute_targets_digest_after_rule_execution ~info targets_as_list
             in
-            Option.iter
-              (get_build_system ()).memory
+            Option.iter t.memory
               ~f:(fun memory -> ignore (Dune_memory.Memory.promote memory targets rule_digest [] None));
             Trace.set (Path.build head_target) { rule_digest; targets_digest }
       ) else

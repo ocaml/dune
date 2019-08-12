@@ -69,6 +69,8 @@ let set_dirs c =
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
 let set_common_other c ~targets =
+  Console.init c.config.display;
+  Log.init ();
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;

@@ -286,10 +286,9 @@ let install_uninstall ~what =
                all defined contexts.")
     in
     Common.set_common common ~targets:[];
-    let log = Log.create common in
-    Scheduler.go ~log ~common (fun () ->
+    Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* workspace = Import.Main.scan_workspace ~log common in
+        let* workspace = Import.Main.scan_workspace common in
         let contexts =
           match context with
           | None ->

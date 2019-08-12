@@ -16,7 +16,7 @@ let term =
   Common.set_common common ~targets:[];
   let capture_outputs = Common.capture_outputs common in
   let env = Import.Main.setup_env ~capture_outputs in
-  Scheduler.go ~log:(Log.create common) ~common (fun () ->
+  Scheduler.go ~common (fun () ->
       let open Fiber.O in
       let* ctxs = Context.create ~env (Workspace.default ()) in
       let ctx = List.hd ctxs in

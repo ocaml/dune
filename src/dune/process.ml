@@ -587,7 +587,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         Temp.destroy fn;
         s
   in
-  Log.command (Scheduler.log scheduler) ~command_line ~output ~exit_status;
+  Log.command ~command_line ~output ~exit_status;
   let exit_status : Exit_status.t =
     match exit_status with
     | WEXITED n when code_is_ok ok_codes n ->

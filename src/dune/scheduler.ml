@@ -519,13 +519,10 @@ end = struct
 end
 
 type t =
-  { log : Log.t
-  ; original_cwd : string
+  { original_cwd : string
   ; mutable concurrency : int
   ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
   }
-
-let log t = t.log
 
 let with_chdir t ~dir ~f =
   Sys.chdir (Path.to_string dir);
@@ -589,9 +586,9 @@ let rec restart_waiting_for_available_job t =
     let* () = Fiber.Ivar.fill ivar t in
     restart_waiting_for_available_job t
 
-let got_signal t signal =
+let got_signal signal =
   if Console.display () = Verbose then
-    Log.infof t.log "Got signal %s, exiting." (Signal.name signal)
+    Log.infof "Got signal %s, exiting." (Signal.name signal)
 
 type saw_signal =
   | Ok
@@ -604,16 +601,15 @@ let kill_and_wait_for_all_processes t () =
   while Event.pending_jobs () > 0 do
     match Event.next () with
     | Signal signal ->
-        got_signal t signal;
+        got_signal signal;
         saw_signal := Got_signal
     | _ ->
         ()
   done;
   !saw_signal
 
-let prepare ?(log = Log.no_log) ?(config = Config.default) () =
-  Console.init config.Config.display;
-  Log.infof log "Workspace root: %s"
+let prepare ?(config = Config.default) () =
+  Log.infof "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   (* The signal watcher must be initialized first so that signals are blocked
      in all threads. *)
@@ -648,8 +644,7 @@ let prepare ?(log = Log.no_log) ?(config = Config.default) () =
       else
         cwd );
   let t =
-    { log
-    ; original_cwd = cwd
+    { original_cwd = cwd
     ; concurrency = (match config.concurrency with Auto -> 1 | Fixed n -> n)
     ; waiting_for_available_job = Queue.create ()
     }
@@ -687,7 +682,7 @@ end = struct
       | Files_changed ->
           Fiber.return Files_changed
       | Signal signal ->
-          got_signal t signal;
+          got_signal signal;
           Fiber.return Got_signal
     )
 
@@ -746,8 +741,8 @@ end = struct
         res
 end
 
-let go ?log ?config f =
-  let t = prepare ?log ?config () in
+let go ?config f =
+  let t = prepare ?config () in
   match Run_once.run_and_cleanup t f with
   | Error (Exn (exn, bt)) ->
       Exn.raise_with_backtrace exn bt
@@ -786,8 +781,8 @@ let maybe_clear_screen ~config =
            ; Pp.nop
            ])
 
-let poll ?log ?config ~once ~finally () =
-  let t = prepare ?log ?config () in
+let poll ?config ~once ~finally () =
+  let t = prepare ?config () in
   let watcher = File_watcher.create () in
   let block_waiting_for_changes () =
     match Event.next () with
@@ -796,7 +791,7 @@ let poll ?log ?config ~once ~finally () =
     | Files_changed ->
         Continue
     | Signal signal ->
-        got_signal t signal;
+        got_signal signal;
         Exit
   in
   let wait msg =

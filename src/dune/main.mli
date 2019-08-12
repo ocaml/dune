@@ -18,8 +18,7 @@ val package_install_file :
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
 val scan_workspace :
-     ?log:Log.t
-  -> ?workspace:Workspace.t
+     ?workspace:Workspace.t
   -> ?workspace_file:Path.t
   -> ?x:string
   -> ?capture_outputs:bool
@@ -42,7 +41,7 @@ val find_context_exn : workspace -> name:string -> Context.t
 val setup_env : capture_outputs:bool -> Env.t
 
 (** Set the concurrency level according to the user configuration *)
-val set_concurrency : ?log:Log.t -> Config.t -> unit Fiber.t
+val set_concurrency : Config.t -> unit Fiber.t
 
 (**/**)
 

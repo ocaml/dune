@@ -3,15 +3,14 @@
 open! Stdune
 
 (** [go ?log ?config fiber] runs the fiber until it terminates. *)
-val go : ?log:Log.t -> ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a
+val go : ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if
     Fiber.Never was encountered.
 
     If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
-     ?log:Log.t
-  -> ?config:Config.t
+     ?config:Config.t
   -> once:(unit -> unit Fiber.t)
   -> finally:(unit -> unit)
   -> unit
@@ -42,9 +41,6 @@ type t
 (** Wait until fewer than [!Clflags.concurrency] external processes are running
     and return the scheduler information. *)
 val wait_for_available_job : unit -> t Fiber.t
-
-(** Logger *)
-val log : t -> Log.t
 
 (** Execute the given callback with current directory temporarily changed *)
 val with_chdir : t -> dir:Path.t -> f:(unit -> 'a) -> 'a

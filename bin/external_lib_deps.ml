@@ -134,14 +134,11 @@ let term =
     Arg.(value & flag & info [ "sexp" ] ~doc:{|Produce a s-expression output|})
   in
   Common.set_common common ~targets:[];
-  let log = Log.create common in
   let setup, lib_deps =
-    Scheduler.go ~log ~common (fun () ->
+    Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* setup =
-          Import.Main.setup ~log common ~external_lib_deps_mode:true
-        in
-        let targets = Target.resolve_targets_exn ~log common setup targets in
+        let* setup = Import.Main.setup common ~external_lib_deps_mode:true in
+        let targets = Target.resolve_targets_exn common setup targets in
         let request = Target.request setup targets in
         let+ deps = Build_system.all_lib_deps ~request in
         (setup, deps))

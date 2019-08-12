@@ -36,8 +36,8 @@ let setup_env ~capture_outputs =
   in
   Env.add env ~var:"INSIDE_DUNE" ~value:"1"
 
-let scan_workspace ?(log = Log.no_log) ?workspace ?workspace_file ?x
-    ?(capture_outputs = true) ?profile ~ancestor_vcs () =
+let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
+    ?profile ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs () in
   let workspace =
@@ -65,7 +65,7 @@ let scan_workspace ?(log = Log.no_log) ?workspace ?workspace_file ?x
   in
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-      Log.infof log "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
+      Log.infof "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
         (Dyn.pp (Context.to_dyn ctx)));
   { contexts; conf; env }
 
@@ -113,7 +113,7 @@ let init_build_system ?only_packages ?external_lib_deps_mode
 
 let auto_concurrency =
   let v = ref None in
-  fun ?(log = Log.no_log) () ->
+  fun () ->
     match !v with
     | Some n ->
         Fiber.return n
@@ -162,17 +162,17 @@ let auto_concurrency =
             in
             loop commands
         in
-        Log.infof log "Auto-detected concurrency: %d" n;
+        Log.infof "Auto-detected concurrency: %d" n;
         v := Some n;
         n
 
-let set_concurrency ?log (config : Config.t) =
+let set_concurrency (config : Config.t) =
   let+ n =
     match config.concurrency with
     | Fixed n ->
         Fiber.return n
     | Auto ->
-        auto_concurrency ?log ()
+        auto_concurrency ()
   in
   if n >= 1 then Scheduler.set_concurrency n
 
@@ -245,11 +245,12 @@ let bootstrap () =
       Config.adapt_display config
         ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
     in
-    let log = Log.create ~display:config.display () in
-    Scheduler.go ~log ~config (fun () ->
+    Console.init config.display;
+    Log.init ();
+    Scheduler.go ~config (fun () ->
         let* () = set_concurrency config in
         let* workspace =
-          scan_workspace ~log
+          scan_workspace
             ~workspace:(Workspace.default ?profile:!profile ())
             ?profile:!profile ~ancestor_vcs:None ()
         in

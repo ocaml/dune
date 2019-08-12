@@ -9,6 +9,8 @@ let init =
     lazy
       ( Printexc.record_backtrace false;
         Path.set_root (Path.External.cwd ());
-        Path.Build.set_build_dir (Path.Build.Kind.of_string "_build") )
+        Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");
+        Console.init Quiet;
+        Log.init () )
   in
   fun () -> Lazy.force init

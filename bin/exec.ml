@@ -39,10 +39,7 @@ let term =
       & info [ "no-build" ] ~doc:"don't rebuild target before executing")
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
-  let log = Log.create common in
-  let setup =
-    Scheduler.go ~log ~common (fun () -> Import.Main.setup ~log common)
-  in
+  let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
   let context = Import.Main.find_context_exn setup.workspace ~name:context in
   let prog_where =
     match Filename.analyze_program_name prog with
@@ -72,7 +69,7 @@ let term =
         | `This_abs _ ->
             [] )
       |> List.map ~f:(fun p -> Target.Path p)
-      |> Target.resolve_targets_mixed ~log common setup
+      |> Target.resolve_targets_mixed common setup
       |> List.concat_map ~f:(function Ok targets -> targets | Error _ -> []) )
   in
   let real_prog =
@@ -81,7 +78,7 @@ let term =
       | [] ->
           ()
       | targets ->
-          Scheduler.go ~log ~common (fun () -> do_build setup targets);
+          Scheduler.go ~common (fun () -> do_build setup targets);
           Hooks.End_of_build.run () );
     match prog_where with
     | `Search prog ->

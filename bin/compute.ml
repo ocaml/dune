@@ -30,12 +30,11 @@ let term =
              ~doc:"Use $(docv) as the input to the function.")
      in
      Common.set_common common ~targets:[];
-     let log = Log.create common in
      let action =
-       Scheduler.go ~log ~common (fun () ->
+       Scheduler.go ~common (fun () ->
            let open Fiber.O in
            let* _setup =
-             Import.Main.setup ~log common ~external_lib_deps_mode:true
+             Import.Main.setup common ~external_lib_deps_mode:true
            in
            match (fn, inp) with
            | "list", None ->

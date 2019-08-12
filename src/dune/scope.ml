@@ -19,8 +19,7 @@ module DB = struct
   type scope = t
 
   type t =
-    { by_name : scope list Dune_project.Name.Map.t
-    ; by_dir : scope Path.Source.Map.t
+    { by_dir : scope Path.Source.Map.t
     ; context : string
     }
 
@@ -134,15 +133,9 @@ module DB = struct
       scopes_by_dir context ~projects ~lib_config ~public_libs internal_libs
         variant_implementations
     in
-    let by_name =
-      List.map projects ~f:(fun project ->
-          let root = Dune_project.root project in
-          let scope = Path.Source.Map.find_exn by_dir root in
-          (Dune_project.name project, scope))
-      |> Dune_project.Name.Map.of_list_multi
-    in
-    Fdecl.set t { by_name; by_dir; context };
-    (Fdecl.get t, public_libs)
+    let value = { by_dir; context } in
+    Fdecl.set t value;
+    (value, public_libs)
 
   let find_by_dir t dir =
     if Path.Build.is_root dir then
@@ -151,6 +144,4 @@ module DB = struct
         ; ("context", Dyn.Encoder.string t.context)
         ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
-
-  let find_by_name t name = Dune_project.Name.Map.find_exn t.by_name name
 end

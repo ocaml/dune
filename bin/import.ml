@@ -30,11 +30,14 @@ include Common.Let_syntax
 
 (* FIXME: leverage fibers to actually connect in the background *)
 let make_memory ?log () =
-  match Dune_memory.make ?log () with
-  | Result.Ok m ->
-      Fiber.return m
-  | Result.Error e ->
-      User_error.raise [Pp.textf "%s" e]
+  match Sys.getenv_opt "DUNE_CACHE" with
+  | Some _ ->
+     (match Dune_memory.make ?log () with
+           | Result.Ok m ->
+              Fiber.return (Some m)
+           | Result.Error e ->
+              User_error.raise [Pp.textf "%s" e])
+  | _ -> Fiber.return None
 
 module Main = struct
   include Dune.Main
@@ -58,7 +61,7 @@ module Main = struct
     scan_workspace ~log common
     >>= init_build_system
           ~sandboxing_preference:(Common.config common).sandboxing_preference
-          ?external_lib_deps_mode ?only_packages ~memory
+          ?external_lib_deps_mode ?only_packages ?memory
 end
 
 module Log = struct

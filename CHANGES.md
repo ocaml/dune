@@ -92,6 +92,10 @@
   relies on the version written in the `dune-project` file and no
   longer read `VERSION` or similar files (#2541, @diml)
 
+- On Windows, an .exe suffix is no longer added implicitly to binary names that
+  already end in .exe. Second, when resolving binary names, .opt variants are no
+  longer chosen automatically. (#2543, @nojb)
+
 1.11.0 (23/07/2019)
 -------------------
 

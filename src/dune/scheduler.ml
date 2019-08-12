@@ -755,10 +755,21 @@ let go ?log ?config f =
 type exit_or_continue = Exit | Continue
 
 let maybe_clear_screen ~config =
-  match config with
-  | Some { Config.terminal_persistence = Clear_on_rebuild; _} ->
-     Console.reset_terminal ()
-  | _ -> ()
+  match
+    match config with
+    | Some cfg -> cfg.Config.terminal_persistence
+    | None -> Preserve
+  with
+  | Clear_on_rebuild ->
+    Console.reset_terminal ()
+  | Preserve ->
+    Console.print_user_message
+      (User_message.make
+         [ Pp.nop
+         ; Pp.tag ~tag:User_message.Style.Success
+             (Pp.verbatim "********** NEW BUILD **********")
+         ; Pp.nop
+         ])
 
 let poll ?log ?config ~once ~finally () =
   let t = prepare ?log ?config () in

@@ -39,7 +39,7 @@ let make_memory ?log () =
 module Main = struct
   include Dune.Main
 
-  let scan_workspace ~log (common : Common.t) =
+  let scan_workspace (common : Common.t) =
     let workspace_file =
       Common.workspace_file common |> Option.map ~f:Arg.Path.path
     in
@@ -47,44 +47,36 @@ module Main = struct
     let profile = Common.profile common in
     let capture_outputs = Common.capture_outputs common in
     let ancestor_vcs = (Common.root common).ancestor_vcs in
-    scan_workspace ~log ?workspace_file ?x ?profile ~capture_outputs
-      ~ancestor_vcs ()
+    scan_workspace ?workspace_file ?x ?profile ~capture_outputs ~ancestor_vcs
+      ()
 
-  let setup ~log ?external_lib_deps_mode common =
+  let setup ?external_lib_deps_mode common =
     let open Fiber.O in
     let only_packages = Common.only_packages common in
-    make_memory ~log ()
+    make_memory ()
     >>= fun memory ->
-    scan_workspace ~log common
+    scan_workspace common
     >>= init_build_system
           ~sandboxing_preference:(Common.config common).sandboxing_preference
           ?external_lib_deps_mode ?only_packages ?memory
-end
-
-module Log = struct
-  include Stdune.Log
-
-  let create common =
-    let display = (Common.config common).display in
-    Log.create ~display ()
 end
 
 module Scheduler = struct
   include Dune.Scheduler
   open Fiber.O
 
-  let go ?log ~(common : Common.t) f =
+  let go ~(common : Common.t) f =
     let config = Common.config common in
-    let f () = Main.set_concurrency ?log config >>= f in
-    Scheduler.go ?log ~config f
+    let f () = Main.set_concurrency config >>= f in
+    Scheduler.go ~config f
 
-  let poll ?log ~(common : Common.t) ~once ~finally () =
+  let poll ~(common : Common.t) ~once ~finally () =
     let config = Common.config common in
     let once () =
-      let* () = Main.set_concurrency ?log config in
+      let* () = Main.set_concurrency config in
       once ()
     in
-    Scheduler.poll ?log ~config ~once ~finally ()
+    Scheduler.poll ~config ~once ~finally ()
 end
 
 let restore_cwd_and_execve (common : Common.t) prog argv env =

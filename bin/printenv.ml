@@ -26,10 +26,9 @@ let term =
   let+ common = Common.term
   and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH") in
   Common.set_common common ~targets:[];
-  let log = Log.create common in
-  Scheduler.go ~log ~common (fun () ->
+  Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup ~log common in
+      let* setup = Import.Main.setup common in
       let dir = Path.of_string dir in
       let checked = Util.check_path setup.workspace.contexts dir in
       let request =

@@ -73,8 +73,6 @@ val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
-val find_scope_by_name : t -> Dune_project.Name.t -> Scope.t list
-
 val find_scope_by_project : t -> Dune_project.t -> Scope.t
 
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
@@ -185,16 +183,6 @@ module Action : sig
     -> (Path.t Bindings.t, Action.t) Build.t
 
   val map_exe : t -> Path.t -> Path.t
-end
-
-module Pkg_version : sig
-  val set :
-       t
-    -> Package.t
-    -> (unit, string option) Build.t
-    -> (unit, string option) Build.t
-
-  val read : t -> Package.t -> (unit, string option) Build.t
 end
 
 val opaque : t -> bool

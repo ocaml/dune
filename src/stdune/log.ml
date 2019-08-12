@@ -2,14 +2,11 @@ type real =
   { oc : out_channel
   ; buf : Buffer.t
   ; ppf : Format.formatter
-  ; display : Console.Display.t
   }
 
-type t = real option
+let t = Fdecl.create ()
 
-let no_log = None
-
-let create ?(display = Console.Display.Quiet) ?path () =
+let init ?path () =
   let path =
     match path with
     | Some p ->
@@ -30,9 +27,13 @@ let create ?(display = Console.Display.Quiet) ?path () =
         "unset" );
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
-  Some { oc; buf; ppf; display }
+  Fdecl.set t (Some { oc; buf; ppf })
 
-let info_internal { ppf; display; _ } str =
+let init_disabled () = Fdecl.set t None
+
+let t () = Fdecl.get t
+
+let info_internal { ppf; _ } str =
   let write ppf =
     List.iter (String.split_lines str) ~f:(function
       | "" ->
@@ -42,12 +43,16 @@ let info_internal { ppf; display; _ } str =
     Format.pp_print_flush ppf ()
   in
   write ppf;
-  if display = Verbose then Console.print (Format.asprintf "%t" write)
+  match Console.display () with
+  | Verbose ->
+      Console.print (Format.asprintf "%t" write)
+  | _ ->
+      ()
 
-let info t str = match t with None -> () | Some t -> info_internal t str
+let info s = match t () with None -> () | Some t -> info_internal t s
 
-let infof t fmt =
-  match t with
+let infof fmt =
+  match t () with
   | None ->
       Format.ikfprintf ignore Format.str_formatter fmt
   | Some t ->
@@ -59,8 +64,8 @@ let infof t fmt =
           info_internal t s)
         t.ppf fmt
 
-let command t ~command_line ~output ~exit_status =
-  match t with
+let command ~command_line ~output ~exit_status =
+  match t () with
   | None ->
       ()
   | Some { oc; _ } ->

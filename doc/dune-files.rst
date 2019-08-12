@@ -211,6 +211,8 @@ defined in the project:
 
 - ``(documentation <url>)`` - Where the documentation is hosted
 
+.. _package:
+
 package
 -------
 

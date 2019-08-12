@@ -87,6 +87,19 @@ let expand_env t pform s : Value.t list option =
       else
         Some [ String (Option.value ~default (Env.get t.env var)) ]
 
+let expand_version scope pform s =
+  match
+    Package.Name.Map.find
+      (Dune_project.packages (Scope.project scope))
+      (Package.Name.of_string s)
+  with
+  | None ->
+      User_error.raise
+        ~loc:(String_with_vars.Var.loc pform)
+        [ Pp.textf "Package %S doesn't exist in the current project." s ]
+  | Some p -> (
+    match p.version with None -> [ Value.String "" ] | Some s -> [ String s ] )
+
 let expand_var_exn t var syn =
   t.expand_var t var syn
   |> Option.map ~f:(function
@@ -120,6 +133,8 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
              Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
          | Macro (Env, s) ->
              Option.map ~f:Result.ok (expand_env t var s)
+         | Macro (Version, s) ->
+             Some (Ok (expand_version scope var s))
          | Var Project_root ->
              Some (Ok [ Value.Dir (Path.build (Scope.root scope)) ])
          | expansion ->
@@ -234,12 +249,8 @@ let parse_lib_file ~loc s =
   | Some (lib, f) ->
       (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
 
-type dynamic = { read_package : Package.t -> (unit, string option) Build.t }
-
-let error_expansion_kind = { read_package = (fun _ -> assert false) }
-
 type expansion_kind =
-  | Dynamic of dynamic
+  | Dynamic
   | Static
 
 let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
@@ -254,7 +265,7 @@ let resolve_binary t ~loc ~prog =
   | Error e ->
       Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
 
-let expand_and_record acc ~map_exe ~dep_kind ~scope ~expansion_kind
+let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     ~(dir : Path.Build.t) ~pform t expansion
     ~(cc : dir:Path.Build.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
@@ -268,11 +279,8 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope ~expansion_kind
             [ Pp.textf "%s cannot be used in this position"
                 (String_with_vars.Var.describe pform)
             ]
-    | Dynamic _ ->
+    | Dynamic ->
         Resolved_forms.add_ddep acc ~key
-  in
-  let { read_package } =
-    match expansion_kind with Static -> error_expansion_kind | Dynamic d -> d
   in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
@@ -284,7 +292,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope ~expansion_kind
       | Target
       | Named_local
       | Values _ )
-  | Macro ((Ocaml_config | Env), _) ->
+  | Macro ((Ocaml_config | Env | Version), _) ->
       assert false
   | Var Cc ->
       add_ddep (cc ~dir).c
@@ -350,28 +358,6 @@ let expand_and_record acc ~map_exe ~dep_kind ~scope ~expansion_kind
       let path = relative dir s in
       let data = Build.strings path >>^ Value.L.strings in
       add_ddep data
-  | Macro (Version, s) -> (
-    match
-      Package.Name.Map.find
-        (Dune_project.packages (Scope.project scope))
-        (Package.Name.of_string s)
-    with
-    | Some p ->
-        let open Build.O in
-        let x =
-          read_package p
-          >>^ function None -> [ Value.String "" ] | Some s -> [ String s ]
-        in
-        add_ddep x
-    | None ->
-        Resolved_forms.add_fail acc
-          { fail =
-              (fun () ->
-                User_error.raise ~loc
-                  [ Pp.textf "Package %S doesn't exist in the current project."
-                      s
-                  ])
-          } )
 
 let check_multiplicity ~pform ~declaration ~use =
   let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
@@ -392,7 +378,7 @@ let check_multiplicity ~pform ~declaration ~use =
   | Multiple, One ->
       error "targets" "target"
 
-let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
+let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
     ~targets_written_by_user ~map_exe ~expand_var ~cc t pform syntax_version =
   let res =
     let targets ~(multiplicity : Dune_file.Rule.Targets.Multiplicity.t) =
@@ -424,7 +410,8 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
              Some s
          | Error (expansion : Pform.Expansion.t) -> (
            match expansion with
-           | Var (Project_root | Values _) | Macro ((Ocaml_config | Env), _) ->
+           | Var (Project_root | Values _)
+           | Macro ((Ocaml_config | Env | Version), _) ->
                assert false (* these have been expanded statically *)
            | Var (First_dep | Deps | Named_local) ->
                None
@@ -433,8 +420,7 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~read_package ~dep_kind
            | Var Target ->
                targets ~multiplicity:One
            | _ ->
-               expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope
-                 ~expansion_kind:(Dynamic { read_package })
+               expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
                  ~dir ~pform ~cc t expansion ))
   in
   Option.iter res ~f:(fun v ->
@@ -450,7 +436,7 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
          | Ok s ->
              Some s
          | Error (expansion : Pform.Expansion.t) ->
-             expand_and_record acc ~map_exe ~dep_kind ~scope:t.scope ~cc
+             expand_and_record acc ~map_exe ~dep_kind ~cc
                ~expansion_kind:Static ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
@@ -474,8 +460,8 @@ let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
   in
   { t with expand_var; bindings }
 
-let with_record_deps t resolved_forms ~read_package ~targets_written_by_user =
-  let expand = expand_and_record_deps ~read_package ~targets_written_by_user in
+let with_record_deps t resolved_forms ~targets_written_by_user =
+  let expand = expand_and_record_deps ~targets_written_by_user in
   gen_with_record_deps ~expand t resolved_forms
 
 let with_record_no_ddeps = gen_with_record_deps ~expand:expand_no_ddeps

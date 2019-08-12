@@ -133,28 +133,22 @@ format is subject to change between versions.
 
 .. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
 
+.. _package-version:
+
 Package version
 ===============
 
-Note that dune will try to determine the version number of packages
-defined in the workspace. While dune itself makes no use of version
-numbers, it can be use by external tools such as
-`ocamlfind <http://projects.camlcity.org/projects/findlib.html>`__.
+Dune determine the version of a package by looking at the ``version``
+field in the :ref:`package stanza <package>`. If the version field is
+not set, it looks at the toplevel ``version`` field in the
+``dune-project`` field. If neither are set, dune assume that we are in
+development mode and reads the version from the VCS if any. The way it
+obtains the version from the VCS in described in :ref:`the build-info
+section <build-info>`.
 
-Dune determines the version of a package by trying the following
-methods in order:
-
-- it looks in the ``<package>.opam`` file for a ``version`` variable
-- it looks for a ``<package>.version`` file in the same directory and
-  reads the first line
-- it looks for the version specified in the ``dune-project`` if present
-- it looks for a ``version`` file and reads the first line
-- it looks for a ``VERSION`` file and reads the first line
-
-``<package>.version``, ``version`` and ``VERSION`` files may be
-generated.
-
-If the version can't be determined, dune just won't assign one.
+When installing the files of a package on the system, dune
+automatically inserts the package version into various metadata files
+such as ``META`` and ``dune-package`` files.
 
 .. _ocaml-syntax:
 

@@ -27,12 +27,12 @@ let request (setup : Dune.Main.build_system) targets =
             Build_system.Alias.dep_multi_contexts )
             ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts)
 
-let log_targets ~log targets =
+let log_targets targets =
   List.iter targets ~f:(function
     | File path ->
-        Log.info log @@ "- " ^ Path.to_string path
+        Log.info @@ "- " ^ Path.to_string path
     | Alias a ->
-        Log.info log (Alias.to_log_string a));
+        Log.info (Alias.to_log_string a));
   flush stdout
 
 let target_hint (_setup : Dune.Main.build_system) path =
@@ -149,7 +149,7 @@ let resolve_target common ~setup = function
   | dep ->
       Error (dep, [])
 
-let resolve_targets_mixed ~log common setup user_targets =
+let resolve_targets_mixed common setup user_targets =
   match user_targets with
   | [] ->
       []
@@ -165,22 +165,22 @@ let resolve_targets_mixed ~log common setup user_targets =
       in
       let config = Common.config common in
       if config.display = Verbose then (
-        Log.info log "Actual targets:";
+        Log.info "Actual targets:";
         List.concat_map targets ~f:(function
           | Ok targets ->
               targets
           | Error _ ->
               [])
-        |> log_targets ~log
+        |> log_targets
       );
       targets
 
-let resolve_targets ~log common (setup : Dune.Main.build_system) user_targets =
+let resolve_targets common (setup : Dune.Main.build_system) user_targets =
   List.map ~f:(fun dep -> Dep dep) user_targets
-  |> resolve_targets_mixed ~log common setup
+  |> resolve_targets_mixed common setup
 
-let resolve_targets_exn ~log common setup user_targets =
-  resolve_targets ~log common setup user_targets
+let resolve_targets_exn common setup user_targets =
+  resolve_targets common setup user_targets
   |> List.concat_map ~f:(function
        | Error (dep, hints) ->
            User_error.raise

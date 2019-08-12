@@ -20,14 +20,6 @@ module Name : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Version_source : sig
-  (** Wether this version comes from the project wide version or the package
-      particular version *)
-  type t =
-    | Package
-    | Project
-end
-
 module Dependency : sig
   module Op : sig
     type t =
@@ -82,7 +74,7 @@ type t =
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
   ; path : Path.Source.t
-  ; version : (string * Version_source.t) option
+  ; version : string option
   ; kind : Kind.t
   ; tags : string list
   }

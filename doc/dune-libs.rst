@@ -123,6 +123,8 @@ The following steps must be taken to transition from the old configurator:
 
 .. _pkg-config: https://www.freedesktop.org/wiki/Software/pkg-config/
 
+.. _build-info:
+
 build-info
 ==========
 

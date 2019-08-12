@@ -1,44 +1,10 @@
 open Stdune
-open Utils
-
-let runtime_dir =
-  let xdg =
-    try Sys.getenv "XDG_RUNTIME_DIR"
-    with Not_found -> User_error.raise [Pp.textf "XDG_RUNTIME_DIR is not set"]
-  in
-  Filename.concat xdg "dune-manager"
+open Dune_manager.Utils
 
 let path_option name var help =
   ( Printf.sprintf "--%s" name
   , Arg.String (fun p -> var := Path.of_string p)
   , Printf.sprintf "%s (default: %s)" help (Path.to_string !var) )
-
-let max_port_size = 1024
-
-let check_port_file ?(close = true) p =
-  let p = Path.to_string p in
-  match Result.try_with (fun () -> Unix.openfile p [Unix.O_RDONLY] 0o600) with
-  | Result.Ok fd ->
-      let f () =
-        let open Result.O in
-        retry (fun () ->
-            match Fcntl.lock_get fd Fcntl.Write with
-            | None ->
-                Some None
-            | Some (Fcntl.Read, pid) ->
-                Some (Some pid)
-            | Some (Fcntl.Write, _) ->
-                None )
-        >>| Option.map ~f:(fun pid ->
-                let buf = Bytes.make max_port_size ' ' in
-                let read = Unix.read fd buf 0 max_port_size in
-                (Bytes.sub_string buf ~pos:0 ~len:read, pid, fd) )
-      and finally () = if close then Unix.close fd in
-      Exn.protect ~f ~finally
-  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) ->
-      Result.Ok None
-  | Result.Error e ->
-      Result.Error e
 
 let make_port_file path contents =
   Option.iter ~f:Path.mkdir_p (Path.parent path) ;
@@ -53,7 +19,7 @@ let make_port_file path contents =
       cancel () ;
       User_error.raise
         [Pp.textf "couldn't write whole endpoint to port file \"%s\"" p] )
-    else ( Fcntl.lock fd Fcntl.Read ; Some fd )
+    else (Fcntl.lock fd Fcntl.Read ; Some fd)
   else None
 
 let daemonize dir f =
@@ -87,7 +53,7 @@ module Modes = Map.Make (String)
 let modes = Modes.empty
 
 let start () =
-  let port_path = ref (Path.of_string (Filename.concat runtime_dir "port"))
+  let port_path = ref (Dune_manager.default_port_file ())
   and root = ref (Dune_memory.default_root ())
   and foreground = ref false
   and usage = Printf.sprintf "start [OPTIONS]" in
@@ -101,10 +67,11 @@ let start () =
     ; ("--foreground", Arg.Set foreground, "do not daemonize") ]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     usage ;
-  match Result.ok_exn (check_port_file !port_path) with
+  match Result.ok_exn (Dune_manager.check_port_file !port_path) with
   | None ->
       let f () =
-        Path.mkdir_p (Path.of_string runtime_dir) ;
+        Option.iter ~f:Path.mkdir_p
+          (Path.parent (Dune_manager.default_port_file ())) ;
         let f () =
           let manager =
             Dune_manager.make ~root:!root
@@ -113,6 +80,7 @@ let start () =
                    if !foreground then Console.Display.Verbose
                    else Console.Display.Quiet
                  and path = Path.L.relative !root ["log"] in
+                 Option.iter ~f:Path.mkdir_p (Path.parent path) ;
                  Log.create ~display ~path ())
               ()
           in
@@ -149,7 +117,7 @@ let start () =
                 (Printf.sprintf "waiting for port file \"%s\" to be created"
                    path) (fun () ->
                 try Some (Unix.openfile path [Unix.O_RDONLY] 0o600)
-                with Unix.Unix_error (Unix.ENOENT, _, _) -> None )
+                with Unix.Unix_error (Unix.ENOENT, _, _) -> None)
           >>= fun fd ->
           retry
             ~message:
@@ -161,7 +129,7 @@ let start () =
                     true
                 | _ ->
                     false )
-                () ) ) ;
+                ()) ) ;
         report_endpoint () )
   | Some (e, pid, _) ->
       if !foreground then
@@ -171,12 +139,14 @@ let start () =
 let modes = Modes.add_exn modes "start" start
 
 let stop () =
-  let port_path = ref (Path.of_string (Filename.concat runtime_dir "port")) in
+  let port_path = ref (Dune_manager.default_port_file ()) in
   Arg.parse_argv ~current:Arg.current Sys.argv
     [path_option "port" port_path "file to read listening port from"]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     "stop [OPTIONS]" ;
-  match Result.ok_exn (check_port_file ~close:false !port_path) with
+  match
+    Result.ok_exn (Dune_manager.check_port_file ~close:false !port_path)
+  with
   | None ->
       User_error.raise [Pp.textf "not running"]
   | Some (_, pid, fd) ->

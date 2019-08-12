@@ -1,5 +1,7 @@
 open Stdune
 open Dune_memory
+module Utils = Utils
+open Utils
 
 type version = int * int
 
@@ -13,6 +15,44 @@ type client =
   ; mutable repositories: (string * string * string) list (* client owned *)
   ; mutable version: version option (* client owned*) }
 
+let default_port_file () =
+  let runtime_dir =
+    let xdg =
+      try Sys.getenv "XDG_RUNTIME_DIR"
+      with Not_found ->
+        User_error.raise [Pp.textf "XDG_RUNTIME_DIR is not set"]
+    in
+    Filename.concat xdg "dune-manager"
+  in
+  Path.of_string (Filename.concat runtime_dir "port")
+
+let max_port_size = 1024
+
+let check_port_file ?(close = true) p =
+  let p = Path.to_string p in
+  match Result.try_with (fun () -> Unix.openfile p [Unix.O_RDONLY] 0o600) with
+  | Result.Ok fd ->
+      let f () =
+        let open Result.O in
+        retry (fun () ->
+            match Fcntl.lock_get fd Fcntl.Write with
+            | None ->
+                Some None
+            | Some (Fcntl.Read, pid) ->
+                Some (Some pid)
+            | Some (Fcntl.Write, _) ->
+                None)
+        >>| Option.map ~f:(fun pid ->
+                let buf = Bytes.make max_port_size ' ' in
+                let read = Unix.read fd buf 0 max_port_size in
+                (Bytes.sub_string buf ~pos:0 ~len:read, pid, fd))
+      and finally () = if close then Unix.close fd in
+      Exn.protect ~f ~finally
+  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) ->
+      Result.Ok None
+  | Result.Error e ->
+      Result.Error e
+
 let make_path client path =
   if Filename.is_relative path then
     match client.build_root with
@@ -23,10 +63,10 @@ let make_path client path =
   else Result.ok (Path.of_string path)
 
 let send client sexp =
-  output_string client.output (Csexp.to_string sexp) ;
+  output_string client (Csexp.to_string sexp) ;
   (* We need to flush when sending the version. Other
      instances are more debatable. *)
-  flush client.output
+  flush client
 
 module ClientsKey = struct
   type t = Unix.file_descr
@@ -77,7 +117,15 @@ let stop manager =
   | _ ->
       ()
 
-let my_versions : version list = [(2, 0)]
+let my_versions : version list = [(1, 0)]
+
+let my_versions_command =
+  Sexp.List
+    ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
+    :: (List.map ~f:(function maj, min ->
+            Sexp.List
+              [Sexp.Atom (string_of_int maj); Sexp.Atom (string_of_int min)]))
+         my_versions )
 
 module Int_map = Map.Make (Int)
 
@@ -191,7 +239,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         | [] ->
             ()
         | dedup ->
-            send client (Sexp.List (Sexp.Atom "dedup" :: dedup)) )
+            send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup)) )
     | args ->
         invalid_args args
   and handle_set_root client = function
@@ -199,7 +247,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Result.map_error
           ~f:(function
             | _ ->
-                send client
+                send client.output
                   (Sexp.List
                      [ Sexp.Atom "cannot-read-dune-memory"
                      ; Sexp.List [Sexp.Atom "supported-formats"; Sexp.Atom "v2"]
@@ -272,7 +320,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           raise e
     in
     manager.socket <- Some sock ;
-    Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_of_string "0.0.0.0", port)) ;
+    Unix.bind sock
+      (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port)) ;
     let addr, port = getsockname (Unix.getsockname sock) in
     let endpoint =
       Printf.sprintf "%s:%i" (Unix.string_of_inet_addr addr) port
@@ -283,14 +332,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     while Option.is_some manager.socket do
       let client_thread client =
         let f () =
-          send client
-            (Sexp.List
-               ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
-               :: (List.map ~f:(function maj, min ->
-                       Sexp.List
-                         [ Sexp.Atom (string_of_int maj)
-                         ; Sexp.Atom (string_of_int min) ]))
-                    my_versions )) ;
+          send client.output my_versions_command ;
           Log.infof manager.log "accept client: %s" (peer_name client.peer) ;
           let rec input =
             Stream.of_channel (Unix.in_channel_of_descr client.fd)
@@ -369,3 +411,61 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       [Pp.textf "unable to %s: %s\n" f (Unix.error_message errno)]
 
 let endpoint m = m.endpoint
+
+let err msg = User_error.E (User_error.make [Pp.text msg])
+
+module Client = struct
+  type t = {socket: out_channel; memory: Dune_memory.Memory.t}
+
+  let make ?log () =
+    let open Result.O in
+    let* memory = Result.map_error ~f:err (Dune_memory.make ?log ()) in
+    let* port = check_port_file (default_port_file ()) in
+    let* addr, port =
+      match port with
+      | Some (port, _, _) -> (
+        match String.split_on_char ~sep:':' port with
+        | [addr; port] -> (
+          match int_of_string_opt port with
+          | Some i ->
+              Result.Ok (Unix.inet_addr_of_string addr, i)
+          | None ->
+              Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
+        | _ ->
+            Result.Error (err (Printf.sprintf "invalid endpoint: %s" port)) )
+      | None ->
+          Result.Error (err "dune-cache-manager is not started")
+    in
+    let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    let* _ =
+      Result.try_with (fun () ->
+          Unix.connect socket (Unix.ADDR_INET (addr, port)))
+    in
+    let socket = Unix.out_channel_of_descr socket in
+    send socket my_versions_command ;
+    Result.Ok {socket; memory}
+
+  let promote client paths key metadata repo =
+    let key = Dune_memory.key_to_string key
+    and f (path, digest) =
+      Sexp.List
+        [Sexp.Atom (Path.to_string path); Sexp.Atom (Digest.to_string digest)]
+    and repo =
+      match repo with
+      | Some _ ->
+          (* FIXME *)
+          []
+      | None ->
+          []
+    in
+    send client.socket
+      (Sexp.List
+         ( Sexp.Atom "promote"
+         :: Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
+         :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
+         :: Sexp.List [Sexp.Atom "metadata"; Sexp.List metadata]
+         :: repo )) ;
+    Result.Ok []
+
+  let search client key = Dune_memory.Memory.search client.memory key
+end

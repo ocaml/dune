@@ -74,7 +74,8 @@ let set_max_timestamp cache (stat : Unix.stats) =
 
 let refresh fn =
   let cache = Lazy.force cache in
-  let stat, digest = Digest.path_stat_digest fn in
+  let stat = Path.stat fn in
+  let digest = Digest.file_with_stats fn stat in
   let permissions = stat.st_perm in
   needs_dumping := true;
   set_max_timestamp cache stat;
@@ -112,7 +113,7 @@ let file fn =
         x.size <- stat.st_size
       end;
       if !dirty then
-        x.digest <- snd (Digest.path_stat_digest ~stat fn);
+        x.digest <- Digest.file_with_stats fn stat;
       x.stats_checked <- cache.checked_key;
       x.digest
     end

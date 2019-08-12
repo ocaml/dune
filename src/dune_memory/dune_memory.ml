@@ -154,7 +154,7 @@ module Memory = struct
         dest
       in
       let tmp = hardlink path in
-      let effective_hash = snd (Digest.path_stat_digest tmp) in
+      let effective_hash = Digest.file_with_stats tmp (Path.stat tmp) in
       if Digest.compare effective_hash expected_hash != Ordering.Eq then (
         let message =
           Printf.sprintf "hash mismatch: %s != %s"

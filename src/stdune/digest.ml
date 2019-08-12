@@ -29,13 +29,10 @@ let to_string_raw s = s
 
 let generic a = string (Marshal.to_string a [])
 
-let dir_digest (stat : Unix.stats) =
-  generic (stat.st_size, stat.st_perm, stat.st_mtime, stat.st_ctime)
-
-let path_stat_digest ?stat p =
-  let stat = match stat with Some s -> s | None -> Path.stat p in
-  let digest =
-    if stat.Unix.st_kind = Unix.S_DIR then dir_digest stat
-    else generic (file p, stat.st_perm land 0o100 (* Only take USR_X in account *))
-  in
-  (stat, digest)
+let file_with_stats p (stats : Unix.stats) =
+  match stats.st_kind with
+  | S_DIR ->
+    generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
+  | _ ->
+    generic (file p,
+             stats.st_perm land 0o100 (* Only take USR_X in account *))

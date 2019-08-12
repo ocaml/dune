@@ -26,11 +26,10 @@ let term =
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
   Common.set_common_other common ~targets:[ utop_target ];
-  let log = Log.create common in
   let context, utop_path =
-    Scheduler.go ~log ~common (fun () ->
+    Scheduler.go ~common (fun () ->
         let open Fiber.O in
-        let* setup = Import.Main.setup ~log common in
+        let* setup = Import.Main.setup common in
         let context =
           Import.Main.find_context_exn setup.workspace ~name:ctx_name
         in

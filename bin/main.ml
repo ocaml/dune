@@ -1,10 +1,10 @@
 open! Stdune
 open Import
 
-let run_build_command ~log ~common ~targets =
+let run_build_command ~common ~targets =
   let once () =
     let open Fiber.O in
-    let* setup = Main.setup ~log common in
+    let* setup = Main.setup common in
     do_build setup (targets setup)
   in
   if Common.watch common then
@@ -12,9 +12,9 @@ let run_build_command ~log ~common ~targets =
       Cached_digest.invalidate_cached_timestamps ();
       once ()
     in
-    Scheduler.poll ~log ~common ~once ~finally:Hooks.End_of_build.run ()
+    Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run ()
   else
-    Scheduler.go ~log ~common once
+    Scheduler.go ~common once
 
 let build_targets =
   let doc =
@@ -38,9 +38,8 @@ let build_targets =
           targets
     in
     Common.set_common common ~targets;
-    let log = Log.create common in
-    let targets setup = Target.resolve_targets_exn ~log common setup targets in
-    run_build_command ~log ~common ~targets
+    let targets setup = Target.resolve_targets_exn common setup targets in
+    run_build_command ~common ~targets
   in
   (term, Term.info "build" ~doc ~man)
 
@@ -70,7 +69,6 @@ let runtest =
                    dir ^ "/"
              in
              Arg.Dep.alias_rec (prefix ^ "runtest")));
-    let log = Log.create common in
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
@@ -78,7 +76,7 @@ let runtest =
             (Alias.in_dir ~name:"runtest" ~recursive:true
                ~contexts:setup.workspace.contexts dir))
     in
-    run_build_command ~log ~common ~targets
+    run_build_command ~common ~targets
   in
   (term, Term.info "runtest" ~doc ~man)
 

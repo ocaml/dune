@@ -116,12 +116,9 @@ let term =
   let out = Option.map ~f:Path.of_string out in
   let targets = List.map ~f:Arg.Dep.file targets in
   Common.set_common common ~targets;
-  let log = Log.create common in
-  Scheduler.go ~log ~common (fun () ->
+  Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup =
-        Import.Main.setup ~log common ~external_lib_deps_mode:true
-      in
+      let* setup = Import.Main.setup common ~external_lib_deps_mode:true in
       let request =
         match targets with
         | [] ->
@@ -130,7 +127,7 @@ let term =
                    Path.build p :: acc)
             |> Build.paths
         | _ ->
-            Target.resolve_targets_exn ~log common setup targets
+            Target.resolve_targets_exn common setup targets
             |> Target.request setup
       in
       let* rules = Build_system.evaluate_rules ~request ~recursive in

@@ -1,5 +1,4 @@
-(** DSL to define sets that are defined by a membership : 'a -> bool
-    function. *)
+(** DSL to define sets that are defined by a membership : 'a -> bool function. *)
 
 open! Stdune
 
@@ -18,6 +17,7 @@ val true_ : t
 val false_ : t
 
 val exec : t -> standard:t -> string -> bool
+
 val filter : t -> standard:t -> string list -> string list
 
 val of_glob : Glob.t -> t

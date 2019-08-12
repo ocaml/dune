@@ -6,11 +6,17 @@ module type S = sig
   module Map : Map_intf.S with type key = t
 
   val gen : unit -> t
+
   val peek : unit -> t
+
   val to_int : t -> int
+
   val compare : t -> t -> Ordering.t
+
   val equal : t -> t -> bool
+
   val hash : t -> int
+
   val to_dyn : t -> Dyn.t
 end
 
@@ -32,7 +38,10 @@ module Make () : S = struct
   let to_int x = x
 
   let compare = Int.compare
+
   let equal = Int.equal
+
   let hash (t : t) = t
+
   let to_dyn t = Dyn.Int t
 end

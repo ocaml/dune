@@ -1,7 +1,7 @@
 open Stdune
 
 val gen_rules :
-  Super_context.t -> (dir:Path.Build.t -> Build_system.Subdir_set.t)
+  Super_context.t -> dir:Path.Build.t -> Build_system.Subdir_set.t
 
 val init_meta : Super_context.t -> dir:Path.Build.t -> unit
 

@@ -1,15 +1,22 @@
 module List = Dune_caml.ListLabels
 module String = Dune_caml.StringLabels
+
 type t = exn
 
-external raise         : exn -> _ = "%raise"
+external raise : exn -> _ = "%raise"
+
 external raise_notrace : exn -> _ = "%raise_notrace"
-external reraise       : exn -> _ = "%reraise"
+
+external reraise : exn -> _ = "%reraise"
 
 let protectx x ~f ~finally =
   match f x with
-  | y           -> finally x; y
-  | exception e -> finally x; raise e
+  | y ->
+      finally x;
+      y
+  | exception e ->
+      finally x;
+      raise e
 
 let protect ~f ~finally = protectx () ~f ~finally
 
@@ -22,26 +29,27 @@ let pp_uncaught ~backtrace fmt exn =
   in
   let line = String.make 71 '-' in
   Format.fprintf fmt
-    "/%s\n\
-     | @{<error>Internal error@}: Uncaught exception.\n\
-     %s\n\
-     \\%s@."
-    line s line
+    "/%s\n| @{<error>Internal error@}: Uncaught exception.\n%s\n\\%s@." line s
+    line
 
-let pp fmt exn =
-  Format.pp_print_string fmt (Printexc.to_string exn)
+let pp fmt exn = Format.pp_print_string fmt (Printexc.to_string exn)
 
-include
-  ((struct
+include (
+  struct
     [@@@warning "-32-3"]
-    let raise_with_backtrace exn _ = reraise exn
-    include Printexc
-    let raise_with_backtrace exn bt = raise_with_backtrace exn bt
-  end) : (sig
-     val raise_with_backtrace: exn -> Printexc.raw_backtrace -> _
-   end))
 
-let equal = (=)
+    let raise_with_backtrace exn _ = reraise exn
+
+    include Printexc
+
+    let raise_with_backtrace exn bt = raise_with_backtrace exn bt
+  end :
+    sig
+      val raise_with_backtrace : exn -> Printexc.raw_backtrace -> _
+    end )
+
+let equal = ( = )
+
 let hash = Dune_caml.Hashtbl.hash
 
 let to_dyn exn = Dyn.String (Printexc.to_string exn)

@@ -32,7 +32,7 @@ end
 
 module Expansion : sig
   type t =
-    | Var   of Var.t
+    | Var of Var.t
     | Macro of Macro.t * string
 
   val to_dyn : t -> Dyn.t

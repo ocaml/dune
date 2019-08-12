@@ -10,10 +10,9 @@ end
 
 type t =
   { dir : string
-  ; to_cwd : string list (** How to reach the cwd from the root *)
-  ; kind : Kind.t
-  ; (** Closest VCS in directories strictly above the root *)
-    ancestor_vcs : Dune.Vcs.t option
+  ; to_cwd : string list  (** How to reach the cwd from the root *)
+  ; kind : Kind.t  (** Closest VCS in directories strictly above the root *)
+  ; ancestor_vcs : Dune.Vcs.t option
   }
 
 val create : specified_by_user:string option -> t

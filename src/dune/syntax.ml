@@ -7,8 +7,10 @@ module Version = struct
 
     let compare (major_a, minor_a) (major_b, minor_b) =
       match Int.compare major_a major_b with
-      | (Gt | Lt) as ne -> ne
-      | Eq -> Int.compare minor_a minor_b
+      | (Gt | Lt) as ne ->
+          ne
+      | Eq ->
+          Int.compare minor_a minor_b
 
     let to_dyn t =
       let open Dyn.Encoder in
@@ -16,8 +18,7 @@ module Version = struct
   end
 
   include T
-
-  module Infix = Comparator.Operators(T)
+  module Infix = Comparator.Operators (T)
 
   let equal = Infix.equal
 
@@ -31,19 +32,18 @@ module Version = struct
 
   let decode : t Dune_lang.Decoder.t =
     let open Dune_lang.Decoder in
-    raw >>| function
-    | Atom (loc, A s) -> begin
-        try
-          Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
-        with _ ->
-          User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ]
-      end
+    raw
+    >>| function
+    | Atom (loc, A s) -> (
+      try Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
+      with _ ->
+        User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
     | sexp ->
-      User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
+        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+          [ Pp.text "Atom expected" ]
 
-  let can_read
-        ~parser_version:(parser_major, parser_minor)
-        ~data_version:(data_major, data_minor) =
+  let can_read ~parser_version:(parser_major, parser_minor)
+      ~data_version:(data_major, data_minor) =
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
 end
@@ -59,53 +59,53 @@ module Supported_versions = struct
 
   let is_supported t (major, minor) =
     match Int.Map.find t major with
-    | Some minor' -> minor' >= minor
-    | None -> false
+    | Some minor' ->
+        minor' >= minor
+    | None ->
+        false
 
   let supported_ranges t =
-    Int.Map.to_list t |> List.map ~f:(fun (major, minor) ->
-      ((major, 0), (major, minor)))
+    Int.Map.to_list t
+    |> List.map ~f:(fun (major, minor) -> ((major, 0), (major, minor)))
 end
 
 type t =
   { name : string
   ; desc : string
-  ; key  : Version.t Univ_map.Key.t
+  ; key : Version.t Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   }
 
 module Error_msg = struct
   let since t ver ~what =
-    Printf.sprintf "%s is only available since version %s of %s"
-      what (Version.to_string ver) t.desc
+    Printf.sprintf "%s is only available since version %s of %s" what
+      (Version.to_string ver) t.desc
 end
 
 module Error = struct
   let since loc t ver ~what =
-    User_error.raise ~loc
-      [ Pp.text (Error_msg.since t ver ~what) ]
+    User_error.raise ~loc [ Pp.text (Error_msg.since t ver ~what) ]
 
   let renamed_in loc t ver ~what ~to_ =
     User_error.raise ~loc
-      [ Pp.textf "%s was renamed to '%s' in the %s version of %s"
-          what to_ (Version.to_string ver) t.desc
+      [ Pp.textf "%s was renamed to '%s' in the %s version of %s" what to_
+          (Version.to_string ver) t.desc
       ]
 
-  let deleted_in loc t ?(repl=[]) ver ~what =
+  let deleted_in loc t ?(repl = []) ver ~what =
     User_error.raise ~loc
-      (Pp.textf "%s was deleted in version %s of %s"
-         what (Version.to_string ver) t.desc
-       :: repl)
+      ( Pp.textf "%s was deleted in version %s of %s" what
+          (Version.to_string ver) t.desc
+      :: repl )
 end
 
 module Warning = struct
-  let deprecated_in loc t ?(repl=[]) ver ~what =
+  let deprecated_in loc t ?(repl = []) ver ~what =
     User_warning.emit ~loc
-      (Pp.textf "%s was deprecated in version %s of %s."
-         what (Version.to_string ver) t.desc
-       :: repl)
+      ( Pp.textf "%s was deprecated in version %s of %s." what
+          (Version.to_string ver) t.desc
+      :: repl )
 end
-
 
 let create ~name ~desc supported_versions =
   { name
@@ -119,8 +119,8 @@ let name t = t.name
 let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
     User_error.raise ~loc
-      [ Pp.textf "Version %s of %s is not supported."
-          (Version.to_string ver) t.name
+      [ Pp.textf "Version %s of %s is not supported." (Version.to_string ver)
+          t.name
       ; Pp.text "Supported versions:"
       ; Pp.enumerate (Supported_versions.supported_ranges t.supported_versions)
           ~f:(fun (a, b) ->
@@ -128,9 +128,7 @@ let check_supported t (loc, ver) =
             if a = b then
               Pp.text (Version.to_string a)
             else
-              Pp.textf "%s to %s"
-                (Version.to_string a)
-                (Version.to_string b))
+              Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
 
 let greatest_supported_version t =
@@ -140,67 +138,70 @@ let key t = t.key
 
 open Dune_lang.Decoder
 
-let set t ver parser =
-  set t.key ver parser
+let set t ver parser = set t.key ver parser
 
 let get_exn t =
-  get t.key >>= function
-  | Some x -> return x
+  get t.key
+  >>= function
+  | Some x ->
+      return x
   | None ->
-    let+ context = get_all in
-    Code_error.raise "Syntax identifier is unset"
-      [ "name", Dyn.Encoder.string t.name
-      ; "supported_versions", Supported_versions.to_dyn t.supported_versions
-      ; "context", Univ_map.to_dyn context
-      ]
+      let+ context = get_all in
+      Code_error.raise "Syntax identifier is unset"
+        [ ("name", Dyn.Encoder.string t.name)
+        ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
+        ; ("context", Univ_map.to_dyn context)
+        ]
 
 let desc () =
   let+ kind = kind in
   match kind with
-  | Values (loc, None) -> (loc, "This syntax")
-  | Fields (loc, None) -> (loc, "This field")
-  | Values (loc, Some s) -> (loc, sprintf "'%s'" s)
-  | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
+  | Values (loc, None) ->
+      (loc, "This syntax")
+  | Fields (loc, None) ->
+      (loc, "This field")
+  | Values (loc, Some s) ->
+      (loc, sprintf "'%s'" s)
+  | Fields (loc, Some s) ->
+      (loc, sprintf "Field '%s'" s)
 
 let deleted_in t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
-  else begin
-    let* (loc, what) = desc () in
+  else
+    let* loc, what = desc () in
     Error.deleted_in loc t ver ~what
-  end
 
 let deprecated_in t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
-  else begin
-    let+ (loc, what) = desc () in
-    Warning.deprecated_in loc t ver ~what;
-  end
+  else
+    let+ loc, what = desc () in
+    Warning.deprecated_in loc t ver ~what
 
 let renamed_in t ver ~to_ =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
-  else begin
-    let+ (loc, what) = desc () in
+  else
+    let+ loc, what = desc () in
     Error.renamed_in loc t ver ~what ~to_
-  end
 
-let since ?(fatal=true) t ver =
+let since ?(fatal = true) t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver >= ver then
     return ()
   else
-    desc () >>= function
-    | (loc, what) when fatal -> Error.since loc t ver ~what
-    | (loc, what) ->
-      User_warning.emit ~loc
-        [ Pp.text (Error_msg.since t ver ~what) ];
-      return ()
+    desc ()
+    >>= function
+    | loc, what when fatal ->
+        Error.since loc t ver ~what
+    | loc, what ->
+        User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
+        return ()

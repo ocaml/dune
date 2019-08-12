@@ -2,28 +2,22 @@
 
 open! Stdune
 
-(** Return the absolute path to the shell and the argument to pass it
-    (-c or /c). Raise in case in cannot be found. *)
+(** Return the absolute path to the shell and the argument to pass it (-c or
+    /c). Raise in case in cannot be found. *)
 val system_shell_exn : needed_to:string -> Path.t * string
 
 (** Same as [system_shell_exn] but for bash *)
 val bash_exn : needed_to:string -> Path.t
 
 (** Raise an error about a program not found in the PATH or in the tree *)
-val program_not_found
-  :  ?context:string
-  -> ?hint:string
-  -> loc:Loc.t option
-  -> string
-  -> _
+val program_not_found :
+  ?context:string -> ?hint:string -> loc:Loc.t option -> string -> _
 
 (** Raise an error about a library not found *)
 val library_not_found : ?context:string -> ?hint:string -> string -> _
 
-val install_file
-  :  package:Package.Name.t
-  -> findlib_toolchain:string option
-  -> string
+val install_file :
+  package:Package.Name.t -> findlib_toolchain:string option -> string
 
 (** Produce a line directive *)
 val line_directive : filename:string -> line_number:int -> string

@@ -2,7 +2,9 @@ open Stdune
 
 module type S = sig
   val always : (unit -> unit) -> unit
+
   val once : (unit -> unit) -> unit
+
   val run : unit -> unit
 end
 
@@ -11,11 +13,9 @@ module Hooks_manager = struct
 
   let one_off_hooks = ref []
 
-  let always hook =
-    persistent_hooks := hook :: !persistent_hooks
+  let always hook = persistent_hooks := hook :: !persistent_hooks
 
-  let once hook =
-    one_off_hooks := hook :: !one_off_hooks
+  let once hook = one_off_hooks := hook :: !one_off_hooks
 
   let run () =
     List.iter !one_off_hooks ~f:(fun f -> f ());

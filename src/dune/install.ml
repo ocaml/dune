@@ -30,278 +30,315 @@ module Dst : sig
 
   val to_string : t -> string
 
-  val to_install_file
-    :  t
-    -> src_basename:string
-    -> section:Section0.t
-    -> string option
-  val of_install_file
-    : string option
-    -> src_basename:string
-    -> section:Section0.t -> t
+  val to_install_file :
+    t -> src_basename:string -> section:Section0.t -> string option
+
+  val of_install_file :
+    string option -> src_basename:string -> section:Section0.t -> t
 
   val explicit : string -> t
+
   val compare : t -> t -> Ordering.t
+
   val infer : src_basename:string -> Section0.t -> t
 end = struct
-
   type t = string
 
   let to_string t = t
+
   let explicit t = t
 
   let compare = compare
 
   let man_subdir s =
-    let s = match String.drop_suffix ~suffix:".gz" s with
-      | Some s -> s
-      | None -> s
+    let s =
+      match String.drop_suffix ~suffix:".gz" s with Some s -> s | None -> s
     in
     match String.rsplit2 ~on:'.' s with
-    | None -> None
-    | Some (_, "") -> None
-    | Some (_, r) ->
+    | None ->
+        None
+    | Some (_, "") ->
+        None
+    | Some (_, r) -> (
       match r.[0] with
-      | '1'..'8' as c -> Some (sprintf "man%c" c)
-      | _ ->  None
+      | '1' .. '8' as c ->
+          Some (sprintf "man%c" c)
+      | _ ->
+          None )
 
   let infer ~src_basename:p section =
     match section with
-    | Section0.Man ->
-      begin
-        match man_subdir p with
-        | Some subdir -> Filename.concat subdir p
-        | None -> p
-      end
-    | _ -> p
+    | Section0.Man -> (
+      match man_subdir p with
+      | Some subdir ->
+          Filename.concat subdir p
+      | None ->
+          p )
+    | _ ->
+        p
 
-  let of_install_file t ~src_basename ~section = match t with
-    | None -> infer ~src_basename section
-    | Some s -> s
+  let of_install_file t ~src_basename ~section =
+    match t with None -> infer ~src_basename section | Some s -> s
 
   let to_install_file t ~src_basename ~section =
     match t with
     | s ->
-      let s' = infer ~src_basename section in
-      if String.equal s s'
-      then
-        None
-      else
-        Some s
+        let s' = infer ~src_basename section in
+        if String.equal s s' then
+          None
+        else
+          Some s
 end
 
 module Section = struct
   include Section0
-
-  module Map = Map.Make(Section0)
+  module Map = Map.Make (Section0)
 
   let to_string = function
-    | Lib          -> "lib"
-    | Lib_root     -> "lib_root"
-    | Libexec      -> "libexec"
-    | Libexec_root -> "libexec_root"
-    | Bin          -> "bin"
-    | Sbin         -> "sbin"
-    | Toplevel     -> "toplevel"
-    | Share        -> "share"
-    | Share_root   -> "share_root"
-    | Etc          -> "etc"
-    | Doc          -> "doc"
-    | Stublibs     -> "stublibs"
-    | Man          -> "man"
-    | Misc         -> "misc"
+    | Lib ->
+        "lib"
+    | Lib_root ->
+        "lib_root"
+    | Libexec ->
+        "libexec"
+    | Libexec_root ->
+        "libexec_root"
+    | Bin ->
+        "bin"
+    | Sbin ->
+        "sbin"
+    | Toplevel ->
+        "toplevel"
+    | Share ->
+        "share"
+    | Share_root ->
+        "share_root"
+    | Etc ->
+        "etc"
+    | Doc ->
+        "doc"
+    | Stublibs ->
+        "stublibs"
+    | Man ->
+        "man"
+    | Misc ->
+        "misc"
 
   let of_string = function
-    |"lib"          -> Some Lib
-    |"lib_root"     -> Some Lib_root
-    |"libexec"      -> Some Libexec
-    |"libexec_root" -> Some Libexec_root
-    |"bin"          -> Some Bin
-    |"sbin"         -> Some Sbin
-    |"toplevel"     -> Some Toplevel
-    |"share"        -> Some Share
-    |"share_root"   -> Some Share_root
-    |"etc"          -> Some Etc
-    |"doc"          -> Some Doc
-    |"stublibs"     -> Some Stublibs
-    |"man"          -> Some Man
-    |"misc"         -> Some Misc
-    | _             -> None
+    | "lib" ->
+        Some Lib
+    | "lib_root" ->
+        Some Lib_root
+    | "libexec" ->
+        Some Libexec
+    | "libexec_root" ->
+        Some Libexec_root
+    | "bin" ->
+        Some Bin
+    | "sbin" ->
+        Some Sbin
+    | "toplevel" ->
+        Some Toplevel
+    | "share" ->
+        Some Share
+    | "share_root" ->
+        Some Share_root
+    | "etc" ->
+        Some Etc
+    | "doc" ->
+        Some Doc
+    | "stublibs" ->
+        Some Stublibs
+    | "man" ->
+        Some Man
+    | "misc" ->
+        Some Misc
+    | _ ->
+        None
 
   let decode =
     let open Dune_lang.Decoder in
     enum
-      [ "lib"          , Lib
-      ; "lib_root"     , Lib_root
-      ; "libexec"      , Libexec
-      ; "libexec_root" , Libexec_root
-      ; "bin"          , Bin
-      ; "sbin"         , Sbin
-      ; "toplevel"     , Toplevel
-      ; "share"        , Share
-      ; "share_root"   , Share_root
-      ; "etc"          , Etc
-      ; "doc"          , Doc
-      ; "stublibs"     , Stublibs
-      ; "man"          , Man
-      ; "misc"         , Misc
+      [ ("lib", Lib)
+      ; ("lib_root", Lib_root)
+      ; ("libexec", Libexec)
+      ; ("libexec_root", Libexec_root)
+      ; ("bin", Bin)
+      ; ("sbin", Sbin)
+      ; ("toplevel", Toplevel)
+      ; ("share", Share)
+      ; ("share_root", Share_root)
+      ; ("etc", Etc)
+      ; ("doc", Doc)
+      ; ("stublibs", Stublibs)
+      ; ("man", Man)
+      ; ("misc", Misc)
       ]
 
   let should_set_executable_bit = function
-    | Lib
-    | Lib_root
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Man
-    | Misc
-      -> false
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Stublibs
-      -> true
+    | Lib | Lib_root | Toplevel | Share | Share_root | Etc | Doc | Man | Misc
+      ->
+        false
+    | Libexec | Libexec_root | Bin | Sbin | Stublibs ->
+        true
 
   module Paths = struct
     type t =
-      { lib          : Path.t
-      ; lib_root     : Path.t
-      ; libexec      : Path.t
+      { lib : Path.t
+      ; lib_root : Path.t
+      ; libexec : Path.t
       ; libexec_root : Path.t
-      ; bin          : Path.t
-      ; sbin         : Path.t
-      ; toplevel     : Path.t
-      ; share        : Path.t
-      ; share_root   : Path.t
-      ; etc          : Path.t
-      ; doc          : Path.t
-      ; stublibs     : Path.t
-      ; man          : Path.t
+      ; bin : Path.t
+      ; sbin : Path.t
+      ; toplevel : Path.t
+      ; share : Path.t
+      ; share_root : Path.t
+      ; etc : Path.t
+      ; doc : Path.t
+      ; stublibs : Path.t
+      ; man : Path.t
       }
 
-    let make ~package ~destdir ?(libdir=Path.relative destdir "lib") () =
+    let make ~package ~destdir ?(libdir = Path.relative destdir "lib") () =
       let package = Package.Name.to_string package in
-      let lib_root     = libdir                        in
-      let libexec_root = libdir                        in
-      let share_root   = Path.relative destdir "share" in
-      let etc_root     = Path.relative destdir "etc"   in
-      let doc_root     = Path.relative destdir "doc"   in
+      let lib_root = libdir in
+      let libexec_root = libdir in
+      let share_root = Path.relative destdir "share" in
+      let etc_root = Path.relative destdir "etc" in
+      let doc_root = Path.relative destdir "doc" in
       { lib_root
       ; libexec_root
       ; share_root
-      ; bin          = Path.relative destdir "bin"
-      ; sbin         = Path.relative destdir "sbin"
-      ; man          = Path.relative destdir "man"
-      ; toplevel     = Path.relative libdir  "toplevel"
-      ; stublibs     = Path.relative libdir  "stublibs"
-      ; lib          = Path.relative lib_root     package
-      ; libexec      = Path.relative libexec_root package
-      ; share        = Path.relative share_root   package
-      ; etc          = Path.relative etc_root     package
-      ; doc          = Path.relative doc_root     package
+      ; bin = Path.relative destdir "bin"
+      ; sbin = Path.relative destdir "sbin"
+      ; man = Path.relative destdir "man"
+      ; toplevel = Path.relative libdir "toplevel"
+      ; stublibs = Path.relative libdir "stublibs"
+      ; lib = Path.relative lib_root package
+      ; libexec = Path.relative libexec_root package
+      ; share = Path.relative share_root package
+      ; etc = Path.relative etc_root package
+      ; doc = Path.relative doc_root package
       }
 
     let get t section =
       match section with
-      | Lib          -> t.lib
-      | Lib_root     -> t.lib_root
-      | Libexec      -> t.libexec
-      | Libexec_root -> t.libexec_root
-      | Bin          -> t.bin
-      | Sbin         -> t.sbin
-      | Toplevel     -> t.toplevel
-      | Share        -> t.share
-      | Share_root   -> t.share_root
-      | Etc          -> t.etc
-      | Doc          -> t.doc
-      | Stublibs     -> t.stublibs
-      | Man          -> t.man
-      | Misc         -> Code_error.raise "Install.Paths.get" []
+      | Lib ->
+          t.lib
+      | Lib_root ->
+          t.lib_root
+      | Libexec ->
+          t.libexec
+      | Libexec_root ->
+          t.libexec_root
+      | Bin ->
+          t.bin
+      | Sbin ->
+          t.sbin
+      | Toplevel ->
+          t.toplevel
+      | Share ->
+          t.share
+      | Share_root ->
+          t.share_root
+      | Etc ->
+          t.etc
+      | Doc ->
+          t.doc
+      | Stublibs ->
+          t.stublibs
+      | Man ->
+          t.man
+      | Misc ->
+          Code_error.raise "Install.Paths.get" []
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
-
   end
 end
 
 module Entry = struct
   type t =
-    { src     : Path.Build.t
-    ; dst     : Dst.t
+    { src : Path.Build.t
+    ; dst : Dst.t
     ; section : Section.t
     }
 
   let compare x y =
     let c = Path.Build.compare x.src y.src in
-    if c <> Eq then c
+    if c <> Eq then
+      c
     else
       let c = Dst.compare x.dst y.dst in
-      if c <> Eq then c
+      if c <> Eq then
+        c
       else
         Section.compare x.section y.section
 
   let adjust_dst ~src ~dst ~section =
     let error var =
-      User_error.raise ~loc:(String_with_vars.Var.loc var)
+      User_error.raise
+        ~loc:(String_with_vars.Var.loc var)
         [ Pp.textf
-            "Because this file is installed in the 'bin' section, you \
-             cannot use the variable %s in its basename."
+            "Because this file is installed in the 'bin' section, you cannot \
+             use the variable %s in its basename."
             (String_with_vars.Var.describe var)
         ]
     in
     let is_source_executable () =
       let has_ext ext =
         match String_with_vars.Partial.is_suffix ~suffix:ext src with
-        | Unknown var -> error var
+        | Unknown var ->
+            error var
         | Yes ->
-          true
+            true
         | No ->
-          false
+            false
       in
       has_ext ".exe" || has_ext ".bc"
     in
     let src_basename () =
       match src with
-      | Expanded s -> Filename.basename s
-      | Unexpanded src ->
+      | Expanded s ->
+          Filename.basename s
+      | Unexpanded src -> (
         match String_with_vars.known_suffix src with
-        | Full s -> Filename.basename s
-        | Partial (var, suffix) ->
+        | Full s ->
+            Filename.basename s
+        | Partial (var, suffix) -> (
           match String.rsplit2 ~on:'/' suffix with
           | Some (_, basename) ->
-            basename
-          | None -> error var
+              basename
+          | None ->
+              error var ) )
     in
     match dst with
-    | Some dst' when Filename.extension dst' = ".exe" -> Dst.explicit dst'
+    | Some dst' when Filename.extension dst' = ".exe" ->
+        Dst.explicit dst'
     | _ ->
-      let dst =
-        match dst with
-        | None ->
-          Dst.infer ~src_basename:(src_basename ()) section
-        | Some dst ->
-          Dst.explicit dst
-      in
-      let is_executable = is_source_executable () in
-      if Sys.win32
-         && is_executable
-         && Filename.extension (Dst.to_string dst) <> ".exe"
-      then
-        Dst.explicit (Dst.to_string dst ^ ".exe")
-      else
-        dst
-  ;;
+        let dst =
+          match dst with
+          | None ->
+              Dst.infer ~src_basename:(src_basename ()) section
+          | Some dst ->
+              Dst.explicit dst
+        in
+        let is_executable = is_source_executable () in
+        if
+          Sys.win32 && is_executable
+          && Filename.extension (Dst.to_string dst) <> ".exe"
+        then
+          Dst.explicit (Dst.to_string dst ^ ".exe")
+        else
+          dst
 
   let make section ?dst src =
     let dst =
-      adjust_dst ~src:(Expanded (Path.to_string (Path.build src))) ~dst ~section in
-    { src
-    ; dst
-    ; section
-    }
+      adjust_dst
+        ~src:(Expanded (Path.to_string (Path.build src)))
+        ~dst ~section
+    in
+    { src; dst; section }
 
   let set_src t src = { t with src }
 
@@ -312,8 +349,7 @@ module Entry = struct
     let opam_will_install_in_this_dir = Section.Paths.get paths t.section in
     let i_want_to_install_the_file_as =
       relative_installed_path t ~paths
-      |> Path.as_in_source_tree_exn
-      |> Path.append_source prefix
+      |> Path.as_in_source_tree_exn |> Path.append_source prefix
     in
     let dst =
       Path.reach i_want_to_install_the_file_as
@@ -322,17 +358,16 @@ module Entry = struct
     { t with dst = Dst.explicit dst }
 
   let of_install_file ~src ~dst ~section =
-    { src;
-      section;
-      dst = Dst.of_install_file ~section
-              ~src_basename:(Path.Build.basename src) dst;
+    { src
+    ; section
+    ; dst =
+        Dst.of_install_file ~section ~src_basename:(Path.Build.basename src)
+          dst
     }
-
 end
 
 let files entries =
-  List.fold_left entries ~init:Path.Set.empty
-    ~f:(fun acc (entry : Entry.t) ->
+  List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
       Path.Set.add acc (Path.build entry.src))
 
 let group entries =
@@ -343,69 +378,75 @@ let gen_install_file entries =
   let buf = Buffer.create 4096 in
   let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
   Section.Map.iteri (group entries) ~f:(fun section entries ->
-    pr "%s: [" (Section.to_string section);
-    List.sort ~compare:Entry.compare entries
-    |> List.iter ~f:(fun (e : Entry.t) ->
-      let src = Path.to_string (Path.build e.src) in
-      match
-        Dst.to_install_file ~src_basename:(Path.Build.basename e.src)
-          ~section:e.section e.dst
-      with
-      | None     -> pr "  %S"      src
-      | Some dst -> pr "  %S {%S}" src dst);
-    pr "]");
+      pr "%s: [" (Section.to_string section);
+      List.sort ~compare:Entry.compare entries
+      |> List.iter ~f:(fun (e : Entry.t) ->
+             let src = Path.to_string (Path.build e.src) in
+             match
+               Dst.to_install_file
+                 ~src_basename:(Path.Build.basename e.src)
+                 ~section:e.section e.dst
+             with
+             | None ->
+                 pr "  %S" src
+             | Some dst ->
+                 pr "  %S {%S}" src dst);
+      pr "]");
   Buffer.contents buf
 
 let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function
-  | Bool         (pos, _)       -> pos
-  | Int          (pos, _)       -> pos
-  | String       (pos, _)       -> pos
-  | Relop        (pos, _, _, _) -> pos
-  | Prefix_relop (pos, _, _)    -> pos
-  | Logop        (pos, _, _, _) -> pos
-  | Pfxop        (pos, _, _)    -> pos
-  | Ident        (pos, _)       -> pos
-  | List         (pos, _)       -> pos
-  | Group        (pos, _)       -> pos
-  | Option       (pos, _, _)    -> pos
-  | Env_binding  (pos, _, _, _) -> pos
+  | Bool (pos, _) ->
+      pos
+  | Int (pos, _) ->
+      pos
+  | String (pos, _) ->
+      pos
+  | Relop (pos, _, _, _) ->
+      pos
+  | Prefix_relop (pos, _, _) ->
+      pos
+  | Logop (pos, _, _, _) ->
+      pos
+  | Pfxop (pos, _, _) ->
+      pos
+  | Ident (pos, _) ->
+      pos
+  | List (pos, _) ->
+      pos
+  | Group (pos, _) ->
+      pos
+  | Option (pos, _, _) ->
+      pos
+  | Env_binding (pos, _, _, _) ->
+      pos
 
 let load_install_file path =
   let open OpamParserTypes in
   let file = Opam_file.load path in
   let fail (fname, line, col) msg =
     let pos : Lexing.position =
-      { pos_fname = fname
-      ; pos_lnum = line
-      ; pos_bol = 0
-      ; pos_cnum = col
-      }
+      { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }
     in
-    User_error.raise ~loc:{ start =  pos; stop = pos }
-      [ Pp.text msg ]
+    User_error.raise ~loc:{ start = pos; stop = pos } [ Pp.text msg ]
   in
   List.concat_map file.file_contents ~f:(function
-    | Variable (pos, section, files) -> begin
-        match Section.of_string section with
-        | None -> fail pos "Unknown install section"
-        | Some section -> begin
-            match files with
-            | List (_, l) ->
-              List.map l ~f:(function
-                | String (_, src) ->
+    | Variable (pos, section, files) -> (
+      match Section.of_string section with
+      | None ->
+          fail pos "Unknown install section"
+      | Some section -> (
+        match files with
+        | List (_, l) ->
+            List.map l ~f:(function
+              | String (_, src) ->
                   let src = Path.as_in_build_dir_exn (Path.of_string src) in
                   Entry.of_install_file ~src ~dst:None ~section
-                | Option (_, String (_, src),
-                          [String (_, dst)]) ->
+              | Option (_, String (_, src), [ String (_, dst) ]) ->
                   let src = Path.as_in_build_dir_exn (Path.of_string src) in
                   Entry.of_install_file ~src ~dst:(Some dst) ~section
-                | v ->
-                  fail (pos_of_opam_value v)
-                    "Invalid value in .install file")
-            | v ->
-              fail (pos_of_opam_value v)
-                "Invalid value for install section"
-          end
-      end
+              | v ->
+                  fail (pos_of_opam_value v) "Invalid value in .install file")
+        | v ->
+            fail (pos_of_opam_value v) "Invalid value for install section" ) )
     | Section (pos, _) ->
-      fail pos "Sections are not allowed in .install file")
+        fail pos "Sections are not allowed in .install file")

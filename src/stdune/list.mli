@@ -1,8 +1,9 @@
-include module type of struct include ListLabels end
+include module type of struct
+  include ListLabels
+end
 
-(* ocaml/ocaml#1892 "Allow shadowing of items coming from an include"
-   helps making this work in 4.08, as OCaml now includes a `List.t`
-   type. *)
+(* ocaml/ocaml#1892 "Allow shadowing of items coming from an include" helps
+   making this work in 4.08, as OCaml now includes a `List.t` type. *)
 type 'a t = 'a list
 
 val is_empty : _ t -> bool
@@ -15,33 +16,36 @@ val filteri : 'a t -> f:(int -> 'a -> bool) -> 'a t
 
 val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 
-val     partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
+val partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
+
 val rev_partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 
 type ('a, 'b) skip_or_either =
   | Skip
-  | Left  of 'a
+  | Left of 'a
   | Right of 'b
 
-val filter_partition_map
-  :  'a t
-  -> f:('a -> ('b, 'c) skip_or_either)
-  -> 'b t * 'c t
-val rev_filter_partition_map
-  :  'a t
-  -> f:('a -> ('b, 'c) skip_or_either)
-  -> 'b t * 'c t
+val filter_partition_map :
+  'a t -> f:('a -> ('b, 'c) skip_or_either) -> 'b t * 'c t
 
-val find     : 'a t -> f:('a -> bool     ) -> 'a option
-val find_exn : 'a t -> f:('a -> bool     ) -> 'a
+val rev_filter_partition_map :
+  'a t -> f:('a -> ('b, 'c) skip_or_either) -> 'b t * 'c t
+
+val find : 'a t -> f:('a -> bool) -> 'a option
+
+val find_exn : 'a t -> f:('a -> bool) -> 'a
+
 val find_map : 'a t -> f:('a -> 'b option) -> 'b option
 
 val last : 'a t -> 'a option
+
 val destruct_last : 'a t -> ('a list * 'a) option
 
-val        sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
+val sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
+
 val stable_sort : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
-val   sort_uniq : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
+
+val sort_uniq : 'a t -> compare:('a -> 'a -> Ordering.t) -> 'a t
 
 val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t
 
@@ -64,4 +68,3 @@ val hash : ('a -> int) -> 'a list -> int
 val cons : 'a t -> 'a -> 'a t
 
 val fold_map : 'a list -> init:'b -> f:('b -> 'a -> 'b * 'c) -> 'b * 'c list
-

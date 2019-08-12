@@ -5,8 +5,8 @@ type t = Module_name.Set.t Ml_kind.Dict.t
 
 val to_dyn : t -> Dyn.t
 
-val rules
-  :  dir:Path.Build.t
+val rules :
+     dir:Path.Build.t
   -> ctx:Context.t
   -> unit:Path.t
   -> Action.t Build.s * t Build.s

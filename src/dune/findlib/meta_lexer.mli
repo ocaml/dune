@@ -1,5 +1,5 @@
 type token =
-  | Name   of string
+  | Name of string
   | String of string
   | Minus
   | Lparen

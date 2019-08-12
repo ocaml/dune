@@ -6,9 +6,7 @@ module Ppx_args : sig
       }
   end
 
-  type t =
-    { cookies : Cookie.t list
-    }
+  type t = { cookies : Cookie.t list }
 end
 
 type t =

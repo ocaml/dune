@@ -6,24 +6,20 @@ type 'a t =
   }
 
 let compare x y = Dyn.compare (Lazy.force x.id) (Lazy.force y.id)
+
 let equal x y = compare x y = Ordering.Eq
+
 let hash t = Dyn.hash (Lazy.force t.id)
 
 let to_dyn t =
   let open Dyn in
-  Record
-    ["id", Lazy.force t.id]
+  Record [ ("id", Lazy.force t.id) ]
 
 let encode _ = Dune_lang.Encoder.string "predicate <opaque>"
 
-let create ~id ~f =
-  { id
-  ; f
-  }
+let create ~id ~f = { id; f }
 
 let test t e = t.f e
 
 let contramap t ~f ~map_id =
-  { f = (fun s -> t.f (f s))
-  ; id = lazy (map_id (Lazy.force t.id))
-  }
+  { f = (fun s -> t.f (f s)); id = lazy (map_id (Lazy.force t.id)) }

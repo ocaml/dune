@@ -21,8 +21,8 @@ module Name : sig
 end
 
 module Version_source : sig
-  (** Wether this version comes from the project wide version or the
-      package particular version *)
+  (** Wether this version comes from the project wide version or the package
+      particular version *)
   type t =
     | Package
     | Project
@@ -67,28 +67,30 @@ end
 
 module Kind : sig
   type has_opam = bool
+
   type t =
     | Dune of has_opam
     | Opam
 end
 
 type t =
-  { name                   : Name.t
-  ; loc                    : Loc.t
-  ; synopsis               : string option
-  ; description            : string option
-  ; depends                : Dependency.t list
-  ; conflicts              : Dependency.t list
-  ; depopts                : Dependency.t list
-  ; path                   : Path.Source.t
-  ; version                : (string * Version_source.t) option
-  ; kind                   : Kind.t
-  ; tags                   : string list
+  { name : Name.t
+  ; loc : Loc.t
+  ; synopsis : string option
+  ; description : string option
+  ; depends : Dependency.t list
+  ; conflicts : Dependency.t list
+  ; depopts : Dependency.t list
+  ; path : Path.Source.t
+  ; version : (string * Version_source.t) option
+  ; kind : Kind.t
+  ; tags : string list
   }
 
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 
 val opam_file : t -> Path.Source.t
+
 val meta_file : t -> Path.Source.t
 
 val to_dyn : t -> Dyn.t

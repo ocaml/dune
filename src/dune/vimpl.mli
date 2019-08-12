@@ -5,8 +5,8 @@ open Stdune
 
 type t
 
-val make
-  :  vlib:Lib.t
+val make :
+     vlib:Lib.t
   -> impl:Dune_file.Library.t
   -> vlib_modules:Modules.t
   -> vlib_foreign_objects:Path.t list

@@ -3,15 +3,12 @@ open Stdune
 module Source : sig
   type t
 
-  val make
-    :  dir:Path.Build.t
-    -> loc:Loc.t
-    -> main:string
-    -> name:string
-    -> t
+  val make : dir:Path.Build.t -> loc:Loc.t -> main:string -> name:string -> t
 
   val loc : t -> Loc.t
+
   val modules : t -> Modules.t
+
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end
 
@@ -22,8 +19,8 @@ val setup_rules : t -> unit
 val make : cctx:Compilation_context.t -> source:Source.t -> t
 
 module Stanza : sig
-  val setup
-    :  sctx:Super_context.t
+  val setup :
+       sctx:Super_context.t
     -> dir:Path.Build.t
     -> toplevel:Dune_file.Toplevel.t
     -> unit

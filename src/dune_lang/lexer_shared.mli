@@ -10,7 +10,7 @@ module Token : sig
   end
 
   type t =
-    | Atom          of Atom.t
+    | Atom of Atom.t
     | Quoted_string of string
     | Lparen
     | Rparen

@@ -2,9 +2,9 @@
 
 open! Stdune
 
+(** Return the name of the utop target inside a directory where some libraries
+    are defined. *)
 val utop_exe : string
-(** Return the name of the utop target inside a directory where some
-    libraries are defined. *)
 
 val is_utop_dir : Path.Build.t -> bool
 

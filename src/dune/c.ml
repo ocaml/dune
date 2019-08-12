@@ -7,9 +7,7 @@ module Kind = struct
     | C
     | Cxx
 
-  let to_string = function
-    | C -> "c"
-    | Cxx -> "cpp"
+  let to_string = function C -> "c" | Cxx -> "cpp"
 
   let pp fmt t : unit = Format.pp_print_string fmt (to_string t)
 
@@ -26,32 +24,35 @@ module Kind = struct
 
   let split_extension fn ~dune_version =
     match String.rsplit2 fn ~on:'.' with
-    | Some (obj, "c") -> Recognized (obj, C)
-    | Some (obj, "cpp") -> Recognized (obj, Cxx)
+    | Some (obj, "c") ->
+        Recognized (obj, C)
+    | Some (obj, "cpp") ->
+        Recognized (obj, Cxx)
     | Some (obj, "cxx") ->
-      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
+        cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
     | Some (obj, "cc") ->
-      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
-    | _ -> Unrecognized
+        cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
+    | _ ->
+        Unrecognized
 
   let possible_exts ~dune_version = function
-    | C -> [".c"]
+    | C ->
+        [ ".c" ]
     | Cxx ->
-      let exts = [".cpp"] in
-      let exts =
-        if dune_version >= (1, 10) then
-          ".cc" :: exts
+        let exts = [ ".cpp" ] in
+        let exts =
+          if dune_version >= (1, 10) then
+            ".cc" :: exts
+          else
+            exts
+        in
+        if dune_version >= (1, 8) then
+          ".cxx" :: exts
         else
           exts
-      in
-      if dune_version >= (1, 8) then
-        ".cxx" :: exts
-      else
-        exts
 
   let possible_fns t fn ~dune_version =
-    possible_exts t ~dune_version
-    |> List.map ~f:(fun ext -> fn ^ ext)
+    possible_exts t ~dune_version |> List.map ~f:(fun ext -> fn ^ ext)
 
   module Dict = struct
     type 'a t =
@@ -60,42 +61,27 @@ module Kind = struct
       }
 
     let c t = t.c
+
     let cxx t = t.cxx
 
-    let map { c ; cxx } ~f =
-      { c = f c
-      ; cxx = f cxx
-      }
+    let map { c; cxx } ~f = { c = f c; cxx = f cxx }
 
-    let mapi { c ; cxx } ~f =
-      { c = f ~kind:C c
-      ; cxx = f ~kind:Cxx cxx
-      }
+    let mapi { c; cxx } ~f = { c = f ~kind:C c; cxx = f ~kind:Cxx cxx }
 
-    let make_both a =
-      { c = a
-      ; cxx = a
-      }
+    let make_both a = { c = a; cxx = a }
 
     let make ~c ~cxx = { c; cxx }
 
-    let get { c; cxx } = function
-      | C -> c
-      | Cxx -> cxx
+    let get { c; cxx } = function C -> c | Cxx -> cxx
 
     let add t k v =
-      match k with
-      | C -> { t with c = v }
-      | Cxx -> { t with cxx = v }
+      match k with C -> { t with c = v } | Cxx -> { t with cxx = v }
 
     let update t k ~f =
       let v = get t k in
       add t k (f v)
 
-    let merge t1 t2 ~f =
-      { c = f t1.c t2.c
-      ; cxx = f t1.cxx t2.cxx
-      }
+    let merge t1 t2 ~f = { c = f t1.c t2.c; cxx = f t1.cxx t2.cxx }
   end
 end
 
@@ -106,13 +92,12 @@ module Source = struct
     }
 
   let kind t = t.kind
+
   let path t = t.path
+
   let src_dir t = Path.Build.parent_exn t.path
 
-  let make ~kind ~path =
-    { kind
-    ; path
-    }
+  let make ~kind ~path = { kind; path }
 end
 
 module Sources = struct
@@ -123,18 +108,16 @@ module Sources = struct
     |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
 
   let split_by_kind t =
-    let (c, cxx) =
+    let c, cxx =
       String.Map.partition t ~f:(fun (_, s) ->
-        match (Source.kind s : Kind.t) with
-        | C -> true
-        | Cxx -> false)
+          match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
     in
-    {Kind.Dict. c; cxx}
+    { Kind.Dict.c; cxx }
 end
 
 let all_possible_exts =
   let exts = Kind.possible_exts ~dune_version:Stanza.latest_version in
-  header_ext :: exts C @ exts Cxx
+  (header_ext :: exts C) @ exts Cxx
 
 let c_cxx_or_header ~fn =
   let ext = Filename.extension fn in

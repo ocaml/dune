@@ -259,6 +259,7 @@ let install_uninstall ~what =
       Arg.(value
            & opt (some string) None
            & info ["libdir"]
+               ~env:(env_var "DUNE_LIBDIR")
                ~docv:"PATH"
                ~doc:"Directory where library files are copied, relative to \
                      $(b,prefix) or absolute. If $(b,--prefix) \

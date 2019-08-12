@@ -70,18 +70,17 @@ let metadata = [Sexp.List [Sexp.Atom "test"; Sexp.Atom "metadata"]]
 let key = Digest.generic "dummy-hash"
 
 let%expect_test _ =
-  let f p =
-    print_endline (Dune_memory.promotion_to_string (clean_promotion p))
-  in
+  let f p = print_endline (Dune_memory.promotion_to_string (clean_promotion p))
+  and stats = Unix.stat (Path.to_string file1) in
   let open Result.O in
   match
     Dune_memory.Memory.promote memory
-      [(file1, snd (Digest.path_stat_digest file1))]
+      [(file1, Digest.file_with_stats file1 stats)]
       key metadata None
     >>= fun promotions ->
     List.iter ~f promotions ;
     Dune_memory.Memory.promote memory
-      [(file1, snd (Digest.path_stat_digest file1))]
+      [(file1, Digest.file_with_stats file1 stats)]
       key metadata None
     >>= fun promotions ->
     List.iter ~f promotions ;

@@ -100,8 +100,6 @@ let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 
-let find_scope_by_name t name = Scope.DB.find_by_name t.scopes name
-
 let find_scope_by_project t = Scope.DB.find_by_project t.scopes
 
 let find_project_by_key t =

@@ -104,6 +104,8 @@
   This makes corrections work with sandboxing and in general reduces build 
   directory pollution. (#2486, @aalekseyev, fixes #2482)
 
+- Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

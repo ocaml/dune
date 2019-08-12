@@ -88,6 +88,10 @@
 
 - Include building stubs in `@check` rules. (@rgrinberg, #2530)
 
+- Get rid of ad-hoc rules for guessing the version. Dune now only
+  relies on the version written in the `dune-project` file and no
+  longer read `VERSION` or similar files (#2541, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

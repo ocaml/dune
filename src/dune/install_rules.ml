@@ -256,7 +256,7 @@ end = struct
     Memo.exec memo
 end
 
-let gen_dune_package sctx ~version ~pkg =
+let gen_dune_package sctx pkg =
   let ctx = Super_context.context sctx in
   let dune_package_file = Package_paths.dune_package_file ctx pkg in
   let meta_template = Package_paths.meta_template ctx pkg in
@@ -265,45 +265,49 @@ let gen_dune_package sctx ~version ~pkg =
   Build.if_file_exists (Path.build meta_template)
     ~then_:(Build.return Dune_package.Or_meta.Use_meta)
     ~else_:
-      ( version
-      >>^ fun version ->
-      let dune_package =
-        let pkg_root =
-          Config.local_install_lib_dir ~context:ctx.name ~package:name
-        in
-        let lib_root lib =
-          let _, subdir = Lib_name.split (Lib.name lib) in
-          Path.Build.L.relative pkg_root subdir
-        in
-        let libs =
-          Super_context.libs_of_package sctx pkg.name
-          |> Lib.Local.Set.to_list
-          |> List.map ~f:(fun lib ->
-                 let dir_contents =
-                   let info = Lib.Local.info lib in
-                   let dir = Lib_info.src_dir info in
-                   Dir_contents.get sctx ~dir
-                 in
-                 let obj_dir = Lib.Local.obj_dir lib in
-                 let lib = Lib.Local.to_lib lib in
-                 let name = Lib.name lib in
-                 let foreign_objects =
-                   let dir = Obj_dir.obj_dir obj_dir in
-                   Dir_contents.c_sources_of_library dir_contents ~name
-                   |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
-                   |> List.map ~f:Path.build
-                 in
-                 let modules =
-                   Dir_contents.modules_of_library dir_contents ~name
-                 in
-                 Lib.to_dune_lib lib
-                   ~dir:(Path.build (lib_root lib))
-                   ~modules ~foreign_objects)
-        in
-        Dune_package.Or_meta.Dune_package
-          { Dune_package.version; name; libs; dir = Path.build pkg_root }
-      in
-      dune_package )
+      (Build.delayed (fun () ->
+           let dune_package =
+             let pkg_root =
+               Config.local_install_lib_dir ~context:ctx.name ~package:name
+             in
+             let lib_root lib =
+               let _, subdir = Lib_name.split (Lib.name lib) in
+               Path.Build.L.relative pkg_root subdir
+             in
+             let libs =
+               Super_context.libs_of_package sctx pkg.name
+               |> Lib.Local.Set.to_list
+               |> List.map ~f:(fun lib ->
+                      let dir_contents =
+                        let info = Lib.Local.info lib in
+                        let dir = Lib_info.src_dir info in
+                        Dir_contents.get sctx ~dir
+                      in
+                      let obj_dir = Lib.Local.obj_dir lib in
+                      let lib = Lib.Local.to_lib lib in
+                      let name = Lib.name lib in
+                      let foreign_objects =
+                        let dir = Obj_dir.obj_dir obj_dir in
+                        Dir_contents.c_sources_of_library dir_contents ~name
+                        |> C.Sources.objects ~dir
+                             ~ext_obj:ctx.lib_config.ext_obj
+                        |> List.map ~f:Path.build
+                      in
+                      let modules =
+                        Dir_contents.modules_of_library dir_contents ~name
+                      in
+                      Lib.to_dune_lib lib
+                        ~dir:(Path.build (lib_root lib))
+                        ~modules ~foreign_objects)
+             in
+             Dune_package.Or_meta.Dune_package
+               { Dune_package.version = pkg.version
+               ; name
+               ; libs
+               ; dir = Path.build pkg_root
+               }
+           in
+           dune_package))
   >>^ (fun pkg ->
         Dune_package.Or_meta.encode ~dune_version pkg
         |> Format.asprintf "%a@."
@@ -311,55 +315,17 @@ let gen_dune_package sctx ~version ~pkg =
   >>> Build.write_file_dyn dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
-type version_method =
-  | File of string
-  | From_metadata of Package.Version_source.t
-
-(* DUNE2: delete this since we have formalised version management via the vcs *)
-let pkg_version ~path ~(pkg : Package.t) =
-  let rec loop = function
-    | [] ->
-        Build.return None
-    | candidate :: rest -> (
-      match candidate with
-      | File fn ->
-          let p = Path.Build.relative path fn |> Path.build in
-          Build.if_file_exists p
-            ~then_:
-              ( Build.lines_of p
-              >>^ function ver :: _ -> Some ver | _ -> Some "" )
-            ~else_:(loop rest)
-      | From_metadata source -> (
-        match pkg.version with
-        | Some (v, source') when source = source' ->
-            Build.return (Some v)
-        | _ ->
-            loop rest ) )
-  in
-  loop
-    [ From_metadata Package
-    ; File (Package.Name.version_fn pkg.name)
-    ; From_metadata Project
-    ; File "version"
-    ; File "VERSION"
-    ]
-
 let init_meta sctx ~dir =
   let ctx = Super_context.context sctx in
   Super_context.find_scope_by_dir sctx dir
   |> Scope.project |> Dune_project.packages
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
          let libs = Super_context.libs_of_package sctx pkg.name in
-         let path = Package_paths.build_dir ctx pkg in
          let meta = Package_paths.meta_file ctx pkg in
          let meta_template =
            Path.build (Package_paths.meta_template ctx pkg)
          in
-         let version =
-           let get = pkg_version ~pkg ~path in
-           Super_context.Pkg_version.set sctx pkg get
-         in
-         gen_dune_package sctx ~version ~pkg;
+         gen_dune_package sctx pkg;
          let template =
            (* XXX this should really be lazy as it's only necessary for the
               then clause. There's no way to express this in the build arrow
@@ -390,36 +356,34 @@ let init_meta sctx ~dir =
                      } )
              ~else_:(Build.return [ "# DUNE_GEN" ])
          in
-         let meta_contents =
-           version
-           >>^ fun version ->
-           Gen_meta.gen
-             ~package:(Package.Name.to_string pkg.name)
-             ~version
-             (Lib.Local.Set.to_list libs |> List.map ~f:Lib.Local.to_lib)
-         in
          let ctx = Super_context.context sctx in
          Super_context.add_rule sctx ~dir:ctx.build_dir
-           ( Build.fanout meta_contents template
-           >>^ (fun ((meta : Meta.t), template) ->
-                 let buf = Buffer.create 1024 in
-                 let ppf = Format.formatter_of_buffer buf in
-                 Format.pp_open_vbox ppf 0;
-                 List.iter template ~f:(fun s ->
-                     if String.is_prefix s ~prefix:"#" then
-                       match
-                         String.extract_blank_separated_words (String.drop s 1)
-                       with
-                       | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
-                           Format.fprintf ppf "%a@," Meta.pp meta.entries
-                       | _ ->
-                           Format.fprintf ppf "%s@," s
-                     else
-                       Format.fprintf ppf "%s@," s);
-                 Format.pp_close_box ppf ();
-                 Format.pp_print_flush ppf ();
-                 Buffer.contents buf)
-           >>> Build.write_file_dyn meta ))
+           (let open Build.S.O in
+           (let+ template = template in
+            let meta =
+              Gen_meta.gen
+                ~package:(Package.Name.to_string pkg.name)
+                ~version:pkg.version
+                (Lib.Local.Set.to_list libs |> List.map ~f:Lib.Local.to_lib)
+            in
+            let buf = Buffer.create 1024 in
+            let ppf = Format.formatter_of_buffer buf in
+            Format.pp_open_vbox ppf 0;
+            List.iter template ~f:(fun s ->
+                if String.is_prefix s ~prefix:"#" then
+                  match
+                    String.extract_blank_separated_words (String.drop s 1)
+                  with
+                  | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
+                      Format.fprintf ppf "%a@," Meta.pp meta.entries
+                  | _ ->
+                      Format.fprintf ppf "%s@," s
+                else
+                  Format.fprintf ppf "%s@," s);
+            Format.pp_close_box ppf ();
+            Format.pp_print_flush ppf ();
+            Buffer.contents buf)
+           >>> Build.write_file_dyn meta))
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Install.Entry.t) list) ~install_paths =

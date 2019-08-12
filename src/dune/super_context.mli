@@ -187,16 +187,6 @@ module Action : sig
   val map_exe : t -> Path.t -> Path.t
 end
 
-module Pkg_version : sig
-  val set :
-       t
-    -> Package.t
-    -> (unit, string option) Build.t
-    -> (unit, string option) Build.t
-
-  val read : t -> Package.t -> (unit, string option) Build.t
-end
-
 val opaque : t -> bool
 
 val expander : t -> dir:Path.Build.t -> Expander.t

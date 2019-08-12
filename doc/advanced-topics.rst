@@ -133,29 +133,6 @@ format is subject to change between versions.
 
 .. _Catapult trace-viewer: https://github.com/catapult-project/catapult/blob/master/tracing/README.md
 
-Package version
-===============
-
-Note that dune will try to determine the version number of packages
-defined in the workspace. While dune itself makes no use of version
-numbers, it can be use by external tools such as
-`ocamlfind <http://projects.camlcity.org/projects/findlib.html>`__.
-
-Dune determines the version of a package by trying the following
-methods in order:
-
-- it looks in the ``<package>.opam`` file for a ``version`` variable
-- it looks for a ``<package>.version`` file in the same directory and
-  reads the first line
-- it looks for the version specified in the ``dune-project`` if present
-- it looks for a ``version`` file and reads the first line
-- it looks for a ``VERSION`` file and reads the first line
-
-``<package>.version``, ``version`` and ``VERSION`` files may be
-generated.
-
-If the version can't be determined, dune just won't assign one.
-
 .. _ocaml-syntax:
 
 OCaml syntax

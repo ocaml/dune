@@ -306,7 +306,7 @@ let setup_toplevel_index_rule sctx =
              match pkg.Package.version with
              | None ->
                  ""
-             | Some (v, _) ->
+             | Some v ->
                  sp {| <span class="version">%s</span>|} v
            in
            Some (sp "<li>%s%s</li>" link version_suffix))

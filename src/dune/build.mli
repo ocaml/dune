@@ -52,6 +52,9 @@ val all : ('a, 'b) t list -> ('a, 'b list) t
     contains no targets. *)
 val lazy_no_targets : ('a, 'b) t Lazy.t -> ('a, 'b) t
 
+(** Delay a static computation until the arrow is evaluated *)
+val delayed : (unit -> 'a) -> (unit, 'a) t
+
 (* CR-someday diml: this API is not great, what about:
 
    {[ module Action_with_deps : sig type t val add_file_dependency : t ->

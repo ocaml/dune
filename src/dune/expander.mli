@@ -89,7 +89,6 @@ end
 val with_record_deps :
      t
   -> Resolved_forms.t
-  -> read_package:(Package.t -> (unit, string option) Build.t)
   -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)

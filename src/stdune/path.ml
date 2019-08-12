@@ -1141,9 +1141,12 @@ let extract_build_context_dir_maybe_sandboxed = function
         ~f:(fun (base, rest) -> (in_build_dir base, rest))
 
 let drop_optional_sandbox_root = function
-  | (In_source_tree _ | External _) as x -> x
-  | In_build_dir t -> match (Build.split_sandbox_root t) with
-    | _sandbox_root, t -> (In_build_dir t : t)
+  | (In_source_tree _ | External _) as x ->
+      x
+  | In_build_dir t -> (
+    match Build.split_sandbox_root t with
+    | _sandbox_root, t ->
+        (In_build_dir t : t) )
 
 let extract_build_context_dir_exn t =
   match extract_build_context_dir t with

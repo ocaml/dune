@@ -32,12 +32,9 @@ include Common.Let_syntax
 let make_memory ?log () =
   match Sys.getenv_opt "DUNE_CACHE" with
   | Some _ ->
-     (match Dune_memory.make ?log () with
-           | Result.Ok m ->
-              Fiber.return (Some m)
-           | Result.Error e ->
-              User_error.raise [Pp.textf "%s" e])
-  | _ -> Fiber.return None
+      Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ?log ())))
+  | _ ->
+      Fiber.return None
 
 module Main = struct
   include Dune.Main

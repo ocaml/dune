@@ -24,6 +24,8 @@ val create : (module Key with type t = 'k) -> int -> ('k, 'v) t
 
 val find : ('k, 'v) t -> 'k -> 'v option
 
+val find_exn : ('k, 'v) t -> 'k -> 'v
+
 val set : ('k, 'v) t -> 'k -> 'v -> unit
 
 val add_exn : ('k, 'v) t -> 'k -> 'v -> unit
@@ -31,3 +33,21 @@ val add_exn : ('k, 'v) t -> 'k -> 'v -> unit
 val add : ('k, 'v) t -> 'k -> 'v -> (unit, 'v) Result.t
 
 val clear : ('k, 'v) t -> unit
+
+val mem : ('k, _) t -> 'k -> bool
+
+val keys : ('k, _) t -> 'k list
+
+val foldi : ('k, 'v) t -> init:'init -> f:('k -> 'v -> 'init -> 'init) -> 'init
+
+val fold : (_, 'v) t -> init:'init -> f:('v -> 'init -> 'init) -> 'init
+
+val to_dyn : ('v -> Dyn.t) -> (_, 'v) t -> Dyn.t
+
+val find_or_add : ('k, 'v) t -> 'k -> f:('k -> 'v) -> 'v
+
+val remove : ('k, _) t -> 'k -> unit
+
+val iter : (_, 'v) t -> f:('v -> unit) -> unit
+
+val filteri_inplace : ('a, 'b) t -> f:(key:'a -> data:'b -> bool) -> unit

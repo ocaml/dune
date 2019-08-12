@@ -7,7 +7,7 @@ let run_build_command ~log ~common ~targets =
     let* setup = Main.setup ~log common in
     do_build setup (targets setup)
   in
-  if common.watch then begin
+  if Common.watch common then begin
     let once () =
       Cached_digest.invalidate_cached_timestamps ();
       once ()
@@ -25,14 +25,14 @@ let build_targets =
     ]
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
-  let default_target =
-    match Wp.t with
-    | Dune     -> "@@default"
-    | Jbuilder -> "@install"
-  in
   let term =
     let+ common = Common.term
-    and+ targets = Arg.(value & pos_all string [default_target] name_)
+    and+ targets = Arg.(value & pos_all dep [] name_)
+    in
+    let targets =
+      match targets with
+      | [] -> [Common.default_target common]
+      | _ :: _ -> targets
     in
     Common.set_common common ~targets;
     let log = Log.create common in
@@ -56,10 +56,14 @@ let runtest =
     and+ dirs = Arg.(value & pos_all string ["."] name_)
     in
     Common.set_common common
-      ~targets:(List.map dirs ~f:(function
-        | "" | "." -> "@runtest"
-        | dir when dir.[String.length dir - 1] = '/' -> sprintf "@%sruntest" dir
-        | dir -> sprintf "@%s/runtest" dir));
+      ~targets:(List.map dirs ~f:(fun s ->
+        let prefix =
+          match s with
+          | "" | "." -> ""
+          | dir when dir.[String.length dir - 1] = '/' -> dir
+          | dir -> dir ^ "/"
+        in
+        Arg.Dep.alias_rec (prefix ^ "runtest")));
     let log = Log.create common in
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
@@ -173,7 +177,7 @@ let default =
        ; `Blocks Common.help_secs
        ])
 
-let main () =
+let () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with

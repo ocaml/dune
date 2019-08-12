@@ -4,11 +4,13 @@ type key = Digest.t
 
 type metadata = Sexp.t list
 
+type 'a result = ('a, string) Result.t
+
 val default_root : unit -> Path.t
 
 val key_to_string : key -> string
 
-val key_of_string : string -> key
+val key_of_string : string -> key result
 
 type promotion =
   | Already_promoted of Path.t * Path.t

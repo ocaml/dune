@@ -14,6 +14,6 @@ val in_dir
   -> Path.t
   -> t
 
-val of_string : Common.t -> string -> contexts:Dune.Context.t list -> t option
+val of_string : Common.t -> recursive:bool -> string -> contexts:Dune.Context.t list -> t
 
 val to_log_string : t -> string

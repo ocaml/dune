@@ -1,37 +1,3 @@
-ppx artifacts installed for rewriters
-
-  $ dune build --root ppx
-  Entering directory 'ppx'
-  File "ppx-old/jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-  lib: [
-    "_build/install/default/lib/foo/META"
-    "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/opam"
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib" {"ppx_rewriter_dune/foo_ppx_rewriter_dune$ext_lib"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cma" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cma"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmi"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmt" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmt"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmx" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmx"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxa"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.cmxs"}
-    "_build/install/default/lib/foo/ppx_rewriter_dune/foo_ppx_rewriter_dune.ml" {"ppx_rewriter_dune/foo_ppx_rewriter_dune.ml"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild$ext_lib"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cma"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmi"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmt" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmt"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmx" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmx"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxa" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxa"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxs" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.cmxs"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.ml" {"ppx_rewriter_jbuild/foo_ppx_rewriter_jbuild.ml"}
-  ]
-  libexec: [
-    "_build/install/default/lib/foo/ppx_rewriter_dune/ppx.exe" {"ppx_rewriter_dune/ppx.exe"}
-    "_build/install/default/lib/foo/ppx_rewriter_jbuild/ppx.exe" {"ppx_rewriter_jbuild/ppx.exe"}
-  ]
-
 stubs and js files installed
 
   $ dune build --root stubs

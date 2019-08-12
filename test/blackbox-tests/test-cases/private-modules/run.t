@@ -7,6 +7,8 @@
   Entering directory 'inaccessible-in-deps'
         ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt} (exit 2)
   File "foo.ml", line 1, characters 0-5:
+  1 | X.run ();;
+      ^^^^^
   Error: Unbound module X
 
 Private modules are not excluded from the install file, but installed in the .private subdir

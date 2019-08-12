@@ -46,17 +46,12 @@ let is_valid (A t) = function
   | File_syntax.Jbuild -> is_valid_jbuild t
   | Dune   -> is_valid_dune t
 
-let print ((A atom) as t) syntax =
-  if is_valid t syntax then
+let print ((A atom) as t) =
+  if is_valid t Dune then
     atom
   else
-    match syntax with
-    | Jbuild ->
-      Code_error.raise "atom cannot be printed in jbuild syntax"
-        ["atom", String atom]
-    | Dune ->
-      Code_error.raise "atom cannot be printed in dune syntax"
-        ["atom", String atom]
+    Code_error.raise "atom cannot be printed in dune syntax"
+      ["atom", String atom]
 
 let of_int i = of_string (string_of_int i)
 let of_float x = of_string (string_of_float x)

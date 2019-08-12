@@ -1,6 +1,14 @@
 2.0.0 (unreleased)
 ------------------
 
+- Add field `(optional)` for executable stanzas (#2463, fixes #2433, @bobot)
+
+- Infer targets for rule stanzas expressed in long form (#2494, fixes #2469,
+  @NathanReb)
+
+- Indicate the progress of the initial file tree loading (#2459, fixes #2374,
+  @bobot)
+
 - Build `.cm[ox]` files for executables more eagerly. This speeds up builds at
   the cost of building unnecessary artifacts in some cases. Some of these extra
   artifacts can fail to built, so this is a breaking change. (#2268, @rgrinberg)
@@ -16,6 +24,69 @@
   executable. (#2364, fixes #2292, @rgrinberg)
 
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
+
+- Add an option to clear the console in-between builds with
+ `--terminal-persistence=clear-on-rebuild`
+
+- Stop symlinking object files to main directory for stanzas defined `jbuild`
+  files (#2440, @rgrinberg)
+
+- Library names are now validated in a strict fashion. Previously, invalid names
+  would be allowed for unwrapped libraries (#2442, @rgrinberg)
+
+- mli only modules must now be explicitly declared. This was previously a
+  warning and is now an error. (#2442, @rgrinberg)
+
+- Modules filtered out from the module list via the Ordered Set Language must
+  now be actual modules. (#2442, @rgrinberg)
+
+- Actions which introduce targets where new targets are forbidden (e.g.
+  preprocessing) are now an error instead of a warning. (#2442, @rgrinberg)
+
+- No longer install a `jbuilder` binary. (#2441, @diml)
+
+- Stub names are no longer allowed relative paths. This was previously a warning
+  and is now an error (#2443, @rgrinberg).
+
+- Define (paths ...) fields in (context ...) definitions in order to set or
+  extend any PATH-like variable in the context environment. (#2426, @nojb)
+
+- The `diff` action will always normalize newlines before diffing. Perviousy, it
+  would not do this normalization for rules defined in jbuild files. (#2457,
+  @rgrinberg)
+
+- Modules may no longer belong to more than one stanza. This was previously
+  allowed only in stanzas defined in `jbuild` files. (#2458, @rgrinberg)
+
+- Remove support for `jbuild-ignore` files. They have been replaced by the the
+  `dirs` stanza in `dune` files. (#2456, @rgrinberg)
+
+- Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
+  and the dep spec `sandbox` in dune language. These let the user control the level of
+  sandboxing done by dune per rule and globally. The rule specification takes precedence.
+  The global configuration merely specifies the default.
+  (#2213, @aalekseyev, @diml)
+
+- Remove support for old style subsystems. Dune will now emit a warning to
+  reinstall the library with the old style subsystem. (#2480, @rgrinberg)
+
+- Add action (with-stdin-from <file> <action>) to redirect input from <file>
+  when performing <action>. (#2487, @nojb)
+
+- Change the automatically generated odoc index to only list public modules.
+  This only affects unwrapped libraries (#2479, @rgrinberg)
+
+- Set up formatting rules by default. They can be configured through a new
+  `(formatting)` stanza in `dune-project` (#2347, fixes #2315, @emillon)
+
+- Change default target from `@install` to `@all`. (#2449, fixes #1220,
+  @rgrinberg)
+
+- Cleanup stale directories when using `(source_tree ...)` in the
+  presence of directories with only sub-directories and no files
+  (#2514, fixes #2499, @diml)
+
+- Include building stubs in `@check` rules. (@rgrinberg, #2530)
 
 1.11.0 (23/07/2019)
 -------------------

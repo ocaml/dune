@@ -1,6 +1,0 @@
-(alias
- (name jbuild-are-ok)
- (deps vendored/lib.cmxa)
- (action (echo "There should be no jbuild warning above!")))
-
-(vendored_dirs vendored)

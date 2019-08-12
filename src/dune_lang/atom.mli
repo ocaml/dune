@@ -10,7 +10,7 @@ val is_valid : t -> File_syntax.t -> bool
 val of_string : string -> t
 val to_string : t -> string
 
-val print : t -> File_syntax.t -> string
+val print : t -> string
 
 val of_int : int -> t
 val of_float : float -> t

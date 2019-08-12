@@ -5,23 +5,18 @@ module Kind = struct
   type t =
     | Explicit
     | Dune_workspace
-    | Jbuild_workspace
     | Dune_project
     | Cwd
 
   let priority = function
     | Explicit -> 0
     | Dune_workspace -> 1
-    | Jbuild_workspace -> 2
-    | Dune_project -> 3
-    | Cwd -> 4
+    | Dune_project -> 2
+    | Cwd -> 3
 
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then
       Some Dune_workspace
-    else if Wp.t = Jbuilder && String.Set.exists files ~f:(fun fn ->
-      String.is_prefix fn ~prefix:"jbuild-workspace") then
-      Some Jbuild_workspace
     else if String.Set.mem files Dune_project.filename then
       Some Dune_project
     else

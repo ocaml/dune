@@ -45,7 +45,7 @@ module Template : sig
 
   val string_of_var : var -> string
 
-  val to_string : t -> syntax:File_syntax.t -> string
+  val to_string : t -> string
 
   val remove_locs : t -> t
 end
@@ -66,14 +66,14 @@ val atom_or_quoted_string : string -> t
 val unsafe_atom_of_string : string -> t
 
 (** Serialize a S-expression *)
-val to_string : t -> syntax:File_syntax.t -> string
+val to_string : t -> string
 
 (** Serialize a S-expression using indentation to improve readability *)
-val pp : File_syntax.t -> t -> _ Pp.t
+val pp : t -> _ Pp.t
 
 module Deprecated : sig
   (** Serialize a S-expression using indentation to improve readability *)
-  val pp : File_syntax.t -> Format.formatter -> t -> unit
+  val pp : Format.formatter -> t -> unit
 
   (** Same as [pp ~syntax:Dune], but split long strings. The formatter
       must have been prepared with [prepare_formatter]. *)
@@ -372,11 +372,13 @@ module Decoder : sig
       <values>...)] *)
   val fields : 'a fields_parser -> 'a t
 
-  (** [record fp = enter (fields fp)] *)
-  val record : 'a fields_parser -> 'a t
-
-  (** Consume the next element of the input as a string, int, char, ... *)
-  include Combinators.S with type 'a t := 'a t
+  (** Consume the next element of the input as a string, int, bool, ... *)
+  val string : string t
+  val int    : int t
+  val bool   : bool t
+  val pair   : 'a t -> 'b t -> ('a * 'b) t
+  val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
+  val option : 'a t -> 'a option t
 
   (** Unparsed next element of the input *)
   val raw : ast t
@@ -431,8 +433,11 @@ module Decoder : sig
     -> 'a t
     -> 'a option fields_parser
 
+  (** Parser for mutually exclusive fields. If [default] is provided, allow
+      fields absence. *)
   val fields_mutually_exclusive
     : ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
+    -> ?default:'a
     -> (string * 'a t) list
     -> 'a fields_parser
 

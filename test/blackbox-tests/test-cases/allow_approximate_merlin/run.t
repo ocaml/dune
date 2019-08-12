@@ -17,8 +17,7 @@ For lang >= 1.9, a warning is printed:
 
 Indeed, adding this will suppress the warning:
 
-  $ echo '(lang dune 1.9)' > dune-project
-  $ echo '(allow_approximate_merlin)' >> dune-project
+  $ printf '(lang dune 1.9)\n(allow_approximate_merlin)\n' > dune-project
   $ dune build @check
 
 However, the warning is not emitted if it is not fixable (#2399).

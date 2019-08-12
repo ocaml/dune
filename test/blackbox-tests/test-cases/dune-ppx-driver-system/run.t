@@ -46,18 +46,12 @@ Same, but with error pointing to .ppx
 
   $ dune build --root driver-tests .ppx/foo.ppx1+foo.ppx2/ppx.exe
   Entering directory 'driver-tests'
-  File "_build/default/.ppx/foo.ppx1+foo.ppx2/ppx.exe", line 1, characters 0-0:
-  Error: Failed to create on-demand ppx rewriter for foo.ppx1 and foo.ppx2; too
-  many incompatible ppx drivers were found: foo.driver2 and foo.driver1.
+  Error: invalid ppx key for default/.ppx/foo.ppx1+foo.ppx2/ppx.exe
   [1]
 
   $ dune build --root driver-tests .ppx/foo.ppx-other/ppx.exe
   Entering directory 'driver-tests'
-  File "_build/default/.ppx/foo.ppx-other/ppx.exe", line 1, characters 0-0:
-  Error: Failed to create on-demand ppx rewriter for foo.ppx-other; no ppx
-  driver were found. It seems that foo.ppx-other is not compatible with Dune.
-  Examples of ppx rewriters that are compatible with Dune are ones using
-  ocaml-migrate-parsetree, ppxlib or ppx_driver.
+  Error: invalid ppx key for default/.ppx/foo.ppx-other/ppx.exe
   [1]
 
 Test the argument syntax
@@ -171,54 +165,6 @@ Test using installed drivers
   File "dune", line 5, characters 13-57:
   5 |  (preprocess (pps -arg1 replacesdriver -arg2 -- -foo bar)))
                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: Rule failed to generate the following targets:
-  - driveruser.pp.ml
-  [1]
-
-  $ dune build --display short --root jbuild-driver @all
-  Entering directory 'jbuild-driver'
-  File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-        ocamlc .testdriver.objs/byte/testdriver.{cmi,cmo,cmt}
-        ocamlc testdriver.cma
-      ocamlopt .testdriver.objs/native/testdriver.{cmx,o}
-      ocamlopt testdriver.{a,cmxa}
-      ocamlopt testdriver.cmxs
-      ocamlopt .ppx/jbuild/631757a4a4789e0bd29628f7a73480f7/ppx.exe
-           ppx test_ppx_args.pp.ml
-      ocamldep .test_ppx_args.objs/test_ppx_args.pp.ml.d
-        ocamlc .test_ppx_args.objs/byte/test_ppx_args.{cmi,cmo,cmt}
-        ocamlc test_ppx_args.cma
-      ocamlopt .test_ppx_args.objs/native/test_ppx_args.{cmx,o}
-      ocamlopt test_ppx_args.{a,cmxa}
-      ocamlopt test_ppx_args.cmxs
-
-  $ dune build --display short --root jbuild-driver @install
-  Entering directory 'jbuild-driver'
-  File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-  $ OCAMLPATH=jbuild-driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
-  Entering directory 'use-external-driver'
-           ppx driveruser.pp.ml
-  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
-  -arg1
-  -arg2
-  -foo
-  bar
-  --cookie
-  library-name="driveruser"
-  -o
-  driveruser.pp.ml
-  --impl
-  driveruser.ml
-  --as-ppx
-  File "dune", line 6, characters 13-53:
-  6 |  (preprocess (pps -arg1 testdriver -arg2 -- -foo bar)))
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: Rule failed to generate the following targets:
   - driveruser.pp.ml
   [1]

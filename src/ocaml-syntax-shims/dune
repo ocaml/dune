@@ -7,10 +7,14 @@
 (ocamllex let_trail)
 
 (rule
- (with-stdout-to impl (run ocaml %{dep:select-impl} %{ocaml_version})))
+ (with-stdout-to
+  impl
+  (run ocaml %{dep:select-impl} %{ocaml_version})))
 
 (rule
- (with-stdout-to shims (run ocaml %{dep:select-shims} %{ocaml_version})))
+ (with-stdout-to
+  shims
+  (run ocaml %{dep:select-shims} %{ocaml_version})))
 
 (rule
  (copy# pp.%{read:impl}.ml pp.ml))
@@ -19,7 +23,11 @@
  (copy# shims.%{read:shims}.ml shims.ml))
 
 (rule
- (with-stdout-to pp.nop.ml (echo "")))
+ (with-stdout-to
+  pp.nop.ml
+  (echo "")))
 
 (rule
- (with-stdout-to shims.nop.ml (echo "")))
+ (with-stdout-to
+  shims.nop.ml
+  (echo "")))

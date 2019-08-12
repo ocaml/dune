@@ -5,6 +5,8 @@ type key = Digest.t
 
 type metadata = Sexp.t list
 
+type 'a result = ('a, string) Result.t
+
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"; "v2"]
 
@@ -14,7 +16,12 @@ type promotion =
 
 let key_to_string = Digest.to_string
 
-let key_of_string = Digest.from_hex
+let key_of_string s =
+  match Digest.from_hex s with
+  | Some d ->
+      Result.Ok d
+  | None ->
+      Result.Error (Printf.sprintf "invalid key: %s" s)
 
 let promotion_to_string = function
   | Already_promoted (original, promoted) ->
@@ -56,10 +63,14 @@ module FirstTwoCharsSubdir : FSScheme = struct
     Path.L.relative root [short_hash; hash]
 
   let digest path =
-    try Digest.from_hex (Path.basename (fst (Path.split_extension path)))
-    with Invalid_argument _ ->
-      Code_error.raise "strange cached file path (not a valid hash)"
-        [(Path.to_string path, Path.to_dyn path)]
+    match
+      Digest.from_hex (Path.basename (fst (Path.split_extension path)))
+    with
+    | Some digest ->
+        digest
+    | None ->
+        Code_error.raise "strange cached file path (not a valid hash)"
+          [(Path.to_string path, Path.to_dyn path)]
 
   let list root =
     let f dir =

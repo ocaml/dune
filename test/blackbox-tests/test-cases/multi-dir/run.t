@@ -22,9 +22,9 @@ Test with C stubs in sub-directories
   File "dune", line 9, characters 16-25:
   9 |  (c_names stub1 sub/stub2))
                       ^^^^^^^^^
-  Warning: relative part of stub are no longer necessary and are ignored.
-          main alias runtest
-  Hello, world!
+  Error: relative part of stub is not necessary and should be removed. To
+  include sources in subdirectories, use the include_subdirs stanza
+  [1]
 
 Test some error cases
 ---------------------

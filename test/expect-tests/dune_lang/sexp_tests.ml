@@ -12,7 +12,7 @@ let sexp = lazy (Dune_lang.parse_string ~fname:"" ~mode:Single {|
 
 let print_ast ast =
   let no_loc = Dune_lang.Ast.remove_locs ast in
-  print (Dune_lang.pp Dune no_loc)
+  print (Dune_lang.pp no_loc)
 
 let%expect_test _ =
   Lazy.force sexp
@@ -23,7 +23,7 @@ let%expect_test _ =
 
 let of_sexp =
   let open Dune_lang.Decoder in
-  record (field "foo" int)
+  enter (fields (field "foo" int))
 
 let%expect_test _ =
   begin try
@@ -36,7 +36,7 @@ Error: Field "foo" is present too many times
 |}]
 
 let of_sexp : int list t =
-  record (multi_field "foo" int)
+  enter (fields (multi_field "foo" int))
 
 let%expect_test _ =
   parse of_sexp Univ_map.empty (Lazy.force sexp)
@@ -273,7 +273,7 @@ let dyn_of_sexp (S (syntax, dlang)) =
         (syntax, dlang)
     ]
 
-let print_sexp ppf (S (syntax, sexp)) = Dune_lang.Deprecated.pp syntax ppf sexp
+let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
 
 type round_trip_result =
   | Round_trip_success
@@ -292,7 +292,7 @@ let test syntax sexp =
     (S (syntax, sexp),
     let s =
       Format.asprintf "%a"
-        (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp syntax x)) sexp
+        (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp x)) sexp
     in
     match
       Dune_lang.parse_string s ~mode:Single ~fname:""
@@ -322,12 +322,28 @@ let%expect_test _ =
 let%expect_test _ =
   test Dune (t [Text "x%{"]);
   [%expect.unreachable]
-[@@expect.uncaught_exn {| ("(\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+[@@expect.uncaught_exn {|
+  ( "({pos_fname = \"<none>\";\
+   \n   start = {pos_lnum = 1;\
+   \n             pos_bol = 0;\
+   \n             pos_cnum = 0};\
+   \n   stop = {pos_lnum = 1;\
+   \n            pos_bol = 0;\
+   \n            pos_cnum = 0}},\
+   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
 
 let%expect_test _ =
 test Dune (t [Text "x%"; Text "{"]);
 [%expect.unreachable]
-[@@expect.uncaught_exn {| ("(\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+[@@expect.uncaught_exn {|
+  ( "({pos_fname = \"<none>\";\
+   \n   start = {pos_lnum = 1;\
+   \n             pos_bol = 0;\
+   \n             pos_cnum = 0};\
+   \n   stop = {pos_lnum = 1;\
+   \n            pos_bol = 0;\
+   \n            pos_cnum = 0}},\
+   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
 
 let%expect_test _ =
   (* This round trip failure is expected *)

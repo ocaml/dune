@@ -13,6 +13,10 @@ module Display = struct
     ]
 end
 
+let reset_terminal () =
+  print_string "\x1bc";
+  flush stdout
+
 module T = struct
 
   type t = {

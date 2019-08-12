@@ -1,11 +1,15 @@
 (library
  (name dune_catapult_tests)
  (inline_tests)
- (libraries dune_tests_common stdune catapult
-            ;; This is because of the (implicit_transitive_deps false)
-            ;; in dune-project
-            ppx_expect.config
-            ppx_expect.common
-            base
-            ppx_inline_test.config)
- (preprocess (pps ppx_expect)))
+ (libraries
+  dune_tests_common
+  stdune
+  catapult
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

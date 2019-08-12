@@ -1,3 +1,4 @@
+module Stdune_table = Table
 module type S = sig
   type t
   val hash : t -> int
@@ -46,7 +47,7 @@ end
 
 module Make(R : Settings)() = struct
 
-  let ids = Hashtbl.create 1024
+  let ids = Table.create (module String) 1024
   let next = ref 0
 
   module Table = struct
@@ -86,13 +87,13 @@ module Make(R : Settings)() = struct
   let names = Table.create ~default_value:""
 
   let make s =
-    Hashtbl.find_or_add ids s ~f:(fun s ->
+    Stdune_table.find_or_add ids s ~f:(fun s ->
       let n = !next in
       next := n + 1;
       Table.set names ~key:n ~data:s;
       n)
 
-  let get s = Hashtbl.find ids s
+  let get s = Stdune_table.find ids s
 
   let to_string t = Table.get names t
   let hash t = String.hash (to_string t)
@@ -154,20 +155,20 @@ module No_interning(R : Settings)() = struct
   module Table = struct
     type 'a t =
       { default_value: 'a
-      ; data: (string, 'a) Hashtbl.t
+      ; data: (string, 'a) Stdune_table.t
       }
 
     let create ~default_value =
       { default_value
-      ; data = Hashtbl.create R.initial_size
+      ; data = Stdune_table.create (module String) R.initial_size
       }
 
     let get t k =
-      match Hashtbl.find t.data k with
+      match Stdune_table.find t.data k with
       | None -> t.default_value
       | Some s -> s
 
     let set t ~key ~data =
-      Hashtbl.replace t.data ~key ~data
+      Stdune_table.set t.data key data
   end
 end

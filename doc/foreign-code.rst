@@ -76,8 +76,8 @@ just C libraries.
 To do that, follow the following procedure:
 
 - put all the foreign code in a sub-directory
-- tell Dune not to interpret configuration files in this directory via
-  an :ref:`ignored_subdirs <dune-ignored_subdirs>` stanza
+- tell Dune not to interpret configuration files in this directory via an
+  :ref:`data_only_dirs <dune-data_only_dirs>` stanza
 - write a custom rule that:
 
   - depend on this directory recursively via :ref:`source_tree <source_tree>`
@@ -97,7 +97,7 @@ for instance in ``src/libfoo``. Then tell dune to consider
 
 .. code:: scheme
 
-          (ignored_subdirs (libfoo))
+          (data_only_dirs libfoo)
 
 The next step is to setup the rule to build ``libfoo``. For this,
 writing the following code ``src/dune``:

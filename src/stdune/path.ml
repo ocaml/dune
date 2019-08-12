@@ -652,6 +652,27 @@ module Build = struct
         )
     end
 
+  let split_sandbox_root t_original =
+    match split_first_component t_original with
+    | Some (".sandbox", t) ->
+      (match split_first_component t with
+       | Some (sandbox_name, t) ->
+         Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), t
+       | None -> None, t_original
+      )
+    | Some _ | None -> None, t_original
+
+  let extract_build_context_dir_maybe_sandboxed t =
+    let sandbox_root, t = split_sandbox_root t in
+    Option.map (extract_build_context_dir t)
+      ~f:(fun (ctx_dir, src_dir) ->
+        let ctx_dir =
+          match sandbox_root with
+          | None -> ctx_dir
+          | Some root -> append root ctx_dir
+        in
+        (ctx_dir, src_dir))
+
   let extract_build_context_dir_exn t =
     match extract_build_context_dir t with
     | Some t -> t
@@ -914,16 +935,6 @@ let append_local a b =
 let append_local = append_local
 let append_source = append_local
 
-let append a b =
-  match b with
-  | In_build_dir _ | External _ ->
-    Code_error.raise "Path.append called with directory that's \
-                    not in the source tree"
-      [ "a", to_dyn a
-      ; "b", to_dyn b
-      ]
-  | In_source_tree b -> append_local a b
-
 let basename t =
   match kind t with
   | In_source_dir t -> Local.basename t
@@ -964,6 +975,14 @@ let as_in_source_tree = function
   | In_build_dir _
   | External _ -> None
 
+let as_in_source_tree_exn t =
+  match as_in_source_tree t with
+  | Some t -> t
+  | None ->
+    Code_error.raise
+      "[as_in_source_tree_exn] called on something not in source tree"
+      ["t", to_dyn t]
+
 let as_in_build_dir = function
   | In_build_dir b -> Some b
   | In_source_tree _
@@ -997,6 +1016,13 @@ let extract_build_context_dir = function
     Option.map (Build.extract_build_context_dir t)
       ~f:(fun (base, rest) -> in_build_dir base, rest)
 
+let extract_build_context_dir_maybe_sandboxed = function
+  | In_source_tree _
+  | External _ -> None
+  | In_build_dir t ->
+    Option.map (Build.extract_build_context_dir_maybe_sandboxed t)
+      ~f:(fun (base, rest) -> in_build_dir base, rest)
+
 let extract_build_context_dir_exn t =
   match extract_build_context_dir t with
   | Some t -> t
@@ -1013,6 +1039,11 @@ let drop_build_context_exn t =
 
 let drop_optional_build_context t =
   match extract_build_context t with
+  | None -> t
+  | Some (_, t) -> in_source_tree t
+
+let drop_optional_build_context_maybe_sandboxed t =
+  match extract_build_context_dir_maybe_sandboxed t with
   | None -> t
   | Some (_, t) -> in_source_tree t
 

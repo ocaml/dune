@@ -212,7 +212,7 @@ let for_all =
 
 let maybe_quoted s =
   let escaped = escaped s in
-  if s == escaped || s = escaped then
+  if (s == escaped || s = escaped) && not (String.contains s ' ') then
     s
   else
     Printf.sprintf {|"%s"|} escaped

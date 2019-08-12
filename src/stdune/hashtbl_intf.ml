@@ -1,6 +1,8 @@
 module type S = sig
   include MoreLabels.Hashtbl.S
 
+  val iter : 'a t -> f:('a -> unit) -> unit
+
   val set : 'a t -> key -> 'a -> unit
 
   val add_exn : 'a t -> key -> 'a -> unit
@@ -14,4 +16,9 @@ module type S = sig
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
 
   val of_list_exn : (key * 'a) list -> 'a t
+  val keys : _ t -> key list
+
+  val to_dyn : ('v -> Dyn.t) -> 'v t -> Dyn.t
+
+  val filteri_inplace : 'a t -> f:(key:key -> data:'a -> bool) -> unit
 end

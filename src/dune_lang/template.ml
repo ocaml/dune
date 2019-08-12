@@ -32,18 +32,13 @@ let compare_no_loc t1 t2 =
   | Ordering.Lt | Gt as a -> a
   | Eq -> Bool.compare t1.quoted t2.quoted
 
-let var_enclosers = function
-  | Percent      -> "%{", "}"
-  | Dollar_brace -> "${", "}"
-  | Dollar_paren -> "$(", ")"
-
 module Pp : sig
-  val to_string : t -> syntax:File_syntax.t -> string
+  val to_string : t -> string
 end = struct
   let buf = Buffer.create 16
 
-  let add_var { loc = _; syntax; name; payload } =
-    let before, after = var_enclosers syntax in
+  let add_var { loc = _; syntax = _; name; payload } =
+    let before, after = "%{", "}" in
     Buffer.add_string buf before;
     Buffer.add_string buf name;
     begin match payload with
@@ -54,23 +49,22 @@ end = struct
     end;
     Buffer.add_string buf after
 
-  (* TODO use the loc for the error *)
-  let check_valid_unquoted s ~syntax ~loc:_ =
-    if not (Atom.is_valid (Atom.of_string s) syntax) then
-      Code_error.raise "Invalid text in unquoted template"
+  let check_valid_unquoted s ~loc =
+    if not (Atom.is_valid (Atom.of_string s) Dune) then
+      Code_error.raise ~loc "Invalid text in unquoted template"
         ["s", String s]
 
-  let to_string { parts; quoted; loc } ~syntax =
+  let to_string { parts; quoted; loc } =
     Buffer.clear buf;
     if quoted then Buffer.add_char buf '"';
     let commit_text s =
       if s = "" then
         ()
       else if not quoted then begin
-        check_valid_unquoted ~loc ~syntax s;
+        check_valid_unquoted ~loc s;
         Buffer.add_string buf s
       end else
-        Buffer.add_string buf (Escape.escaped ~syntax s)
+        Buffer.add_string buf (Escape.escaped s)
     in
     let rec add_parts acc_text = function
       | [] ->
@@ -89,16 +83,15 @@ end
 
 let to_string = Pp.to_string
 
-let string_of_var { loc = _; syntax; name; payload } =
-  let before, after = var_enclosers syntax in
+let string_of_var { loc = _; syntax = _; name; payload } =
+  let before, after = "%{", "}" in
   match payload with
   | None -> before ^ name ^ after
   | Some p -> before ^ name ^ ":" ^ p ^ after
 
-let pp syntax t = Stdune.Pp.verbatim (Pp.to_string ~syntax t)
+let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
 let pp_split_strings ppf (t : t) =
-  let syntax = File_syntax.Dune in
   if t.quoted || List.exists t.parts ~f:(function
     | Text s -> String.contains s '\n'
     | Var _ -> false) then begin
@@ -108,7 +101,7 @@ let pp_split_strings ppf (t : t) =
       | Text s ->
         begin match String.split s ~on:'\n' with
         | [] -> assert false
-        | [s] -> Format.pp_print_string ppf (Escape.escaped ~syntax s)
+        | [s] -> Format.pp_print_string ppf (Escape.escaped s)
         | split ->
           Format.pp_print_list
             ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
@@ -119,7 +112,7 @@ let pp_split_strings ppf (t : t) =
     Format.fprintf ppf "@}\"@]"
   end
   else
-    Format.pp_print_string ppf (Pp.to_string ~syntax t)
+    Format.pp_print_string ppf (Pp.to_string t)
 
 let remove_locs t =
   { t with

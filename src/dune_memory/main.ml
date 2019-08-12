@@ -78,7 +78,9 @@ let main () =
       lift_result
         ( parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
         >>= fun metadata ->
-        Memory.promote memory produced (key_of_string key) metadata None
+        key_of_string key
+        >>= fun key ->
+        Memory.promote memory produced key metadata None
         >>| fun promotions ->
         List.iter
           ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
@@ -86,7 +88,9 @@ let main () =
   | "search" ->
       lift_result
         (let open Result.O in
-        Memory.search memory (key_of_string Sys.argv.(3))
+        key_of_string Sys.argv.(3)
+        >>= fun key ->
+        Memory.search memory key
         >>| fun (_, paths) ->
         List.iter
           ~f:(fun (sym, act, d) ->

@@ -79,6 +79,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name cmdliner-dep-conf)
+ (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
+ (action
+  (chdir
+   test-cases/cmdliner-dep-conf
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name configurator)
  (deps (package dune) (source_tree test-cases/configurator))
  (action
@@ -125,6 +133,14 @@
  (action
   (chdir
    test-cases/coq
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name corrections)
+ (deps (package dune) (source_tree test-cases/corrections))
+ (action
+  (chdir
+   test-cases/corrections
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -197,14 +213,6 @@
  (action
   (chdir
    test-cases/deps-conf-vars
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
- (name dev-flag-1103)
- (deps (package dune) (source_tree test-cases/dev-flag-1103))
- (action
-  (chdir
-   test-cases/dev-flag-1103
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -379,7 +387,7 @@
 
 (alias
  (name env-bins)
- (deps (package dune) (source_tree test-cases/env-bins))
+ (deps (package dune) (source_tree test-cases/env-bins) (sandbox none))
  (action
   (chdir
    test-cases/env-bins
@@ -628,6 +636,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name github1541)
+ (deps (package dune) (source_tree test-cases/github1541))
+ (action
+  (chdir
+   test-cases/github1541
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name github1549)
  (deps (package dune) (source_tree test-cases/github1549))
  (action
@@ -737,6 +753,14 @@
  (action
   (chdir
    test-cases/github24
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name github2499)
+ (deps (package dune) (source_tree test-cases/github2499))
+ (action
+  (chdir
+   test-cases/github2499
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -879,6 +903,14 @@
  (action
   (chdir
    test-cases/include-qualified
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name incremental-rebuilds)
+ (deps (package dune) (source_tree test-cases/incremental-rebuilds))
+ (action
+  (chdir
+   test-cases/incremental-rebuilds
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1135,14 +1167,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name ocamllex-jbuild)
- (deps (package dune) (source_tree test-cases/ocamllex-jbuild))
- (action
-  (chdir
-   test-cases/ocamllex-jbuild
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name odig-files-workspace)
  (deps (package dune) (source_tree test-cases/odig-files-workspace))
  (action
@@ -1194,6 +1218,14 @@
  (action
   (chdir
    test-cases/optional
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name optional-executable)
+ (deps (package dune) (source_tree test-cases/optional-executable))
+ (action
+  (chdir
+   test-cases/optional-executable
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1323,6 +1355,22 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name rule-target-inferrence)
+ (deps (package dune) (source_tree test-cases/rule-target-inferrence))
+ (action
+  (chdir
+   test-cases/rule-target-inferrence
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name sandboxing)
+ (deps (package dune) (source_tree test-cases/sandboxing))
+ (action
+  (chdir
+   test-cases/sandboxing
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name scope-bug)
  (deps (package dune) (source_tree test-cases/scope-bug))
  (action
@@ -1434,14 +1482,6 @@
  (action
   (chdir
    test-cases/tests-stanza-action-syntax-version
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
- (name too-many-parens)
- (deps (package dune) (source_tree test-cases/too-many-parens))
- (action
-  (chdir
-   test-cases/too-many-parens
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1623,6 +1663,22 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name with-stdin-from)
+ (deps (package dune) (source_tree test-cases/with-stdin-from))
+ (action
+  (chdir
+   test-cases/with-stdin-from
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name workspace-paths)
+ (deps (package dune) (source_tree test-cases/workspace-paths))
+ (action
+  (chdir
+   test-cases/workspace-paths
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name workspaces)
  (deps (package dune) (source_tree test-cases/workspaces))
  (action
@@ -1660,11 +1716,13 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias corrections)
   (alias cross-compilation)
   (alias custom-build-dir)
   (alias custom-cross-compilation)
@@ -1674,7 +1732,6 @@
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
-  (alias dev-flag-1103)
   (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
@@ -1725,6 +1782,7 @@
   (alias github1395)
   (alias github1426)
   (alias github1529)
+  (alias github1541)
   (alias github1549)
   (alias github1560)
   (alias github1616)
@@ -1739,6 +1797,7 @@
   (alias github2228)
   (alias github2272)
   (alias github24)
+  (alias github2499)
   (alias github25)
   (alias github534)
   (alias github568)
@@ -1756,6 +1815,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
+  (alias incremental-rebuilds)
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
@@ -1786,13 +1846,13 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias odoc)
   (alias odoc-package-mld-link)
   (alias odoc-unique-mlds)
   (alias old-dune-subsystem)
   (alias optional)
+  (alias optional-executable)
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
@@ -1808,6 +1868,8 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias rule-target-inferrence)
+  (alias sandboxing)
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
@@ -1822,16 +1884,12 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
   (alias upgrader)
   (alias use-meta)
-  (alias utop)
-  (alias utop-default)
-  (alias utop-default-implementation)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)
@@ -1844,6 +1902,8 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-stdin-from)
+  (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
@@ -1860,11 +1920,13 @@
   (alias byte-code-only)
   (alias c-stubs)
   (alias check-alias)
+  (alias cmdliner-dep-conf)
   (alias configurator)
   (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias corrections)
   (alias custom-build-dir)
   (alias custom-cross-compilation)
   (alias cxx-extension)
@@ -1873,7 +1935,6 @@
   (alias dep-vars)
   (alias depend-on-the-universe)
   (alias deps-conf-vars)
-  (alias dev-flag-1103)
   (alias dialects)
   (alias dir-target-dep)
   (alias double-echo)
@@ -1920,6 +1981,7 @@
   (alias github1395)
   (alias github1426)
   (alias github1529)
+  (alias github1541)
   (alias github1549)
   (alias github1560)
   (alias github1616)
@@ -1934,6 +1996,7 @@
   (alias github2228)
   (alias github2272)
   (alias github24)
+  (alias github2499)
   (alias github25)
   (alias github534)
   (alias github568)
@@ -1949,6 +2012,7 @@
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
+  (alias incremental-rebuilds)
   (alias inline_tests)
   (alias install-multiple-contexts)
   (alias install-partial-package)
@@ -1973,10 +2037,10 @@
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
-  (alias ocamllex-jbuild)
   (alias odig-files-workspace)
   (alias old-dune-subsystem)
   (alias optional)
+  (alias optional-executable)
   (alias output-obj)
   (alias path-variables)
   (alias pkg-config-quoting)
@@ -1988,6 +2052,8 @@
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
+  (alias rule-target-inferrence)
+  (alias sandboxing)
   (alias scope-bug)
   (alias select)
   (alias several-packages)
@@ -2001,7 +2067,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias too-many-parens)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -2019,13 +2084,20 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-stdin-from)
+  (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
 (alias
  (name runtest-disabled)
- (deps (alias cinaps) (alias envs-and-contexts)))
+ (deps
+  (alias cinaps)
+  (alias envs-and-contexts)
+  (alias utop)
+  (alias utop-default)
+  (alias utop-default-implementation)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

@@ -1,18 +1,28 @@
 type t =
   { message : string
   ; data : (string * Dyn.t) list
+  ; loc : Loc0.t option
   }
 
 exception E of t
 
-let raise message data =
-  raise (E { message; data })
+let raise ?loc message data =
+  raise (E { message; data ; loc })
 
-let to_dyn { message; data } : Dyn.t =
-  Tuple
-    [ String message
-    ; Record data
-    ]
+let dyn_fields_without_loc { loc = _ ; message; data } =
+  [Dyn.String message; Record data]
+
+let to_dyn_without_loc t : Dyn.t =
+  Tuple (dyn_fields_without_loc t)
+
+let to_dyn t : Dyn.t =
+  let fields = dyn_fields_without_loc t in
+  let fields =
+    match t.loc with
+    | None -> fields
+    | Some loc -> Loc0.to_dyn loc :: fields
+  in
+  Tuple fields
 
 let () =
   Printexc.register_printer (function

@@ -4,6 +4,7 @@ module Config = Dune.Config
 module Colors = Dune.Colors
 module Clflags = Dune.Clflags
 module Package = Dune.Package
+module Profile = Dune.Profile
 
 module Term = Cmdliner.Term
 module Manpage = Cmdliner.Manpage
@@ -19,7 +20,7 @@ type t =
   { debug_dep_path        : bool
   ; debug_findlib         : bool
   ; debug_backtraces      : bool
-  ; profile               : string option
+  ; profile               : Profile.t option
   ; workspace_file        : Arg.Path.t option
   ; root                  : Workspace_root.t
   ; target_prefix         : string
@@ -36,13 +37,23 @@ type t =
   ; (* Original arguments for the external-lib-deps hint *)
     orig_args             : string list
   ; config                : Dune.Config.t
-  ; default_target        : string
+  ; default_target        : Arg.Dep.t
   (* For build & runtest only *)
   ; watch : bool
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
   }
+
+let workspace_file t = t.workspace_file
+let x t = t.x
+let profile t = t.profile
+let capture_outputs t = t.capture_outputs
+let root t = t.root
+let config t = t.config
+let only_packages t = t.only_packages
+let watch t = t.watch
+let default_target t = t.default_target
 
 let prefix_target common s = common.target_prefix ^ s
 
@@ -68,7 +79,7 @@ let set_common_other c ~targets =
     List.concat
       [ ["dune"; "external-lib-deps"; "--missing"]
       ; c.orig_args
-      ; targets
+      ; List.map ~f:Arg.Dep.to_string_maybe_quoted targets
       ];
   Clflags.always_show_command_line :=
     c.always_show_command_line;
@@ -155,8 +166,8 @@ module Options_implied_by_dash_p = struct
     ; only_packages : string option
     ; ignore_promoted_rules : bool
     ; config_file : config_file
-    ; profile : string option
-    ; default_target : string
+    ; profile : Profile.t option
+    ; default_target : Arg.Dep.t
     ; always_show_command_line : bool
     ; promote_install_files : bool
     }
@@ -213,48 +224,20 @@ module Options_implied_by_dash_p = struct
       in
       Option.value x ~default:Default
     and+ profile =
-      Term.ret @@
-      let+ dev =
-        Term.ret @@
-        let+ dev =
-          Arg.(value
-               & flag
-               & info ["dev"] ~docs
-                   ~doc:{|Same as $(b,--profile dev)|})
-        in
-        match dev, Wp.t with
-        | false, (Dune | Jbuilder) -> `Ok false
-        | true, Jbuilder -> `Ok true
-        | true, Dune ->
-          `Error
-            (true, "--dev is no longer accepted as it is now the default.")
-      and+ profile =
-        let doc =
-          "Build profile. dev if unspecified or release if -p is set." in
-        Arg.(value
-             & opt (some string) None
-             & info ["profile"] ~docs
-                 ~env:(Arg.env_var ~doc "DUNE_PROFILE")
-                 ~doc:
-                   (sprintf
-                      {|Select the build profile, for instance $(b,dev) or
-                        $(b,release). The default is $(b,%s).|}
-                      Config.default_build_profile))
-      in
-      match dev, profile with
-      | false, x    -> `Ok x
-      | true , None -> `Ok (Some "dev")
-      | true , Some _ ->
-        `Error (true,
-                "Cannot use --dev and --profile simultaneously")
-    and+ default_target =
-      let default =
-        match Wp.t with
-        | Dune     -> "@@default"
-        | Jbuilder -> "@install"
-      in
+      let doc =
+        "Build profile. dev if unspecified or release if -p is set." in
       Arg.(value
-           & opt string default
+           & opt (some profile) None
+           & info ["profile"] ~docs
+               ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+               ~doc:
+                 (sprintf
+                    {|Select the build profile, for instance $(b,dev) or
+                        $(b,release). The default is $(b,%s).|}
+                    (Profile.to_string Dune.Profile.default)))
+    and+ default_target =
+      Arg.(value
+           & opt dep (Dep.alias "default")
            & info ["default-target"] ~docs ~docv:"TARGET"
                ~doc:{|Set the default target that when none is specified to
                       $(b,dune build).|})
@@ -265,14 +248,11 @@ module Options_implied_by_dash_p = struct
            & flag
            & info ["always-show-command-line"] ~docs ~doc)
     and+ promote_install_files =
-      if Wp.dune2 then
-        let doc =
-          "Promote the generated <package>.install files to the source tree" in
-        Arg.(value
-             & flag
-             & info ["promote-install-files"] ~docs ~doc)
-      else
-        Term.const true
+      let doc =
+        "Promote the generated <package>.install files to the source tree" in
+      Arg.(value
+           & flag
+           & info ["promote-install-files"] ~docs ~doc)
     in
     { root
     ; only_packages
@@ -302,8 +282,8 @@ module Options_implied_by_dash_p = struct
     ; only_packages = pkgs
     ; ignore_promoted_rules = true
     ; config_file = No_config
-    ; profile = Some "release"
-    ; default_target = "@install"
+    ; profile = Some Profile.Release
+    ; default_target = Arg.Dep.alias_rec "install"
     ; always_show_command_line = true
     ; promote_install_files = true
     }
@@ -327,6 +307,31 @@ let term =
          & info ["j"] ~docs ~docv:"JOBS"
              ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|}
         )
+  and+ sandboxing_preference =
+    let arg =
+      Arg.conv
+        ((fun s ->
+           Result.map_error (Dune.Sandbox_mode.of_string s)
+             ~f:(fun s -> `Msg s)),
+         (fun pp x ->
+            Format.pp_print_string pp (Dune.Sandbox_mode.to_string x)))
+    in
+    Arg.(value
+         & opt (some arg) None
+         & info ["sandbox"]
+             ~env:(
+               Arg.env_var
+                 ~doc:"Sandboxing mode to use by default. (see --sandbox)"
+                 "DUNE_SANDBOX")
+             ~doc:(
+               Printf.sprintf
+                 "Sandboxing mode to use by default. Some actions require \
+                  a certain sandboxing mode, so they will ignore this \
+                  setting. The allowed values are: %s."
+                 (String.concat ~sep: ", " (
+                    List.map Dune.Sandbox_mode.all
+                      ~f:Dune.Sandbox_mode.to_string))
+             ))
   and+ debug_dep_path =
     Arg.(value
          & flag
@@ -344,6 +349,12 @@ let term =
          & flag
          & info ["debug-backtraces"] ~docs
              ~doc:{|Always print exception backtraces.|})
+  and+ terminal_persistence =
+    Arg.(value
+         & opt (some (enum (Config.Terminal_persistence.all))) None
+         & info ["terminal-persistence"] ~docs ~docv:"MODE" ~doc: {|
+         Changes how the log of build results are displayed to the
+         console between rebuilds while in --watch mode. |})
   and+ display =
     one_of
       (let+ verbose =
@@ -462,6 +473,9 @@ let term =
     Config.merge config
       { display
       ; concurrency
+      ; sandboxing_preference =
+          Option.map sandboxing_preference ~f:(fun x -> [x])
+      ; terminal_persistence
       }
   in
   let config =

@@ -21,13 +21,3 @@ argument of "package".
        ^^^^^^^^^^^^^
   Error: This field is useless without a (public_name ...) field.
   [1]
-
-  $ cd package-without-pub-name-jbuild && dune build -p foo
-  File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
-  Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 3, characters 2-15:
-  3 |   (package foo)))
-        ^^^^^^^^^^^^^
-  Warning: This field is useless without a (public_name ...) field.

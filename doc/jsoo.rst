@@ -1,10 +1,11 @@
-***********
-js_of_ocaml
-***********
+.. _jsoo:
+
+**********************
+Javascript compilation
+**********************
 
 js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by
-translating OCaml bytecode to JS files. The compiler can be installed with
-opam:
+translating OCaml bytecode to JS files. The compiler can be installed with opam:
 
 .. code:: bash
 
@@ -41,29 +42,7 @@ And then request the ``.js`` target:
 Similar targets are created for libraries, but we recommend sticking to the
 executable targets.
 
-.. _dune-jsoo-field:
-
-``js_of_ocaml`` field
-=====================
-
-In ``library`` and ``executables`` stanzas, you can specify js_of_ocaml options
-using ``(js_of_ocaml (<js_of_ocaml-options>))``.
-
-``<js_of_ocaml-options>`` are all optional:
-
-- ``(flags <flags>)`` to specify flags passed to ``js_of_ocaml``. This field
-  supports ``(:include ...)`` forms
-
-- ``(javascript_files (<files-list>))`` to specify ``js_of_ocaml`` JavaScript
-  runtime files.
-
-``<flags>`` is specified in the :ref:`ordered-set-language`.
-
-The default value for ``(flags ...)`` depends on the selected build profile. The
-build profile ``dev`` (the default) will enable sourcemap and the pretty
-JavaScript output.
-
-Separate Compilation
+Separate compilation
 ====================
 
 Dune supports two modes of compilation

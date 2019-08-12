@@ -1,4 +1,6 @@
-(library
- (name      main)
- (libraries memo dune_lang wp fiber stdune unix dune dune_memory cmdliner build_info)
+(executable
+ (name main)
+ (public_name dune)
+ (package dune)
+ (libraries memo dune_lang fiber stdune unix dune_memory dune cmdliner build_info)
  (preprocess future_syntax))

@@ -1,7 +1,7 @@
 PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
 LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG)
-BIN := ./_boot/default/bin/main/main_dune.exe
+BIN := ./_boot/default/bin/main.exe
 
 -include Makefile.dev
 
@@ -36,6 +36,9 @@ test-all:
 
 check:
 	$(BIN) build @check
+
+fmt:
+	$(BIN) build @fmt --auto-promote
 
 promote:
 	$(BIN) promote
@@ -75,7 +78,7 @@ dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
 .PHONY: default install uninstall reinstall clean test doc
-.PHONY: promote accept-corrections opam-release dune check
+.PHONY: promote accept-corrections opam-release dune check fmt
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests

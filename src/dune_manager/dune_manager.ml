@@ -160,7 +160,9 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                    (Sexp.to_string (Sexp.List cmd)))
         and file = function
           | Sexp.List [Sexp.Atom path; Sexp.Atom hash] ->
-              make_path client path >>| fun path -> (path, Digest.from_hex hash)
+              make_path client path
+              >>= fun path ->
+              Dune_memory.key_of_string hash >>| fun d -> (path, d)
           | sexp ->
               Result.Error
                 (Printf.sprintf "invalid file in promotion message: %s"
@@ -179,8 +181,9 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         >>= fun repo ->
         Result.List.map ~f:file files
         >>= fun files ->
-        Dune_memory.Memory.promote client.memory files
-          (Dune_memory.key_of_string key)
+        Dune_memory.key_of_string key
+        >>= fun key ->
+        Dune_memory.Memory.promote client.memory files key
           (metadata @ client.common_metadata)
           (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
         >>| fun promotions ->

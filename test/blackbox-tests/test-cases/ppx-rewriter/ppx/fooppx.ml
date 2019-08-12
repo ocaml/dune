@@ -16,6 +16,6 @@ let () =
        if !arg = "" then (
          Format.eprintf "pass -arg to fooppx@.%!"
        );
-       Format.eprintf "-arg: %s%@." !arg;
+       Format.eprintf "-arg: %s@." !arg;
        Migrate_parsetree.Ast_405.shallow_identity
     )

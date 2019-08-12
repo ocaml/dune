@@ -33,8 +33,6 @@ module DB : sig
 
   val find_by_dir : t -> Path.Build.t -> scope
 
-  val find_by_name : t -> Dune_project.Name.t -> scope list
-
   val find_by_project : t -> Dune_project.t -> scope
 end
 with type scope := t

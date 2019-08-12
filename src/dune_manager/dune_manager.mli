@@ -25,5 +25,7 @@ val endpoint : t -> string option
 module Client : sig
   include Dune_memory.memory
 
+  val set_build_dir : t -> Path.t -> unit
+
   val make : ?log:Stdune.Log.t -> unit -> (t, exn) Result.t
 end

@@ -1959,4 +1959,7 @@ let init ~contexts ?memory ~file_tree ~hook ~sandboxing_preference =
     ; memory
     ; sandboxing_preference= sandboxing_preference @ Sandbox_mode.all }
   in
+  Option.iter
+    ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
+    t.memory ;
   set t

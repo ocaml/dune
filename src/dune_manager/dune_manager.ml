@@ -449,7 +449,8 @@ module Client = struct
     let key = Dune_memory.key_to_string key
     and f (path, digest) =
       Sexp.List
-        [Sexp.Atom (Path.to_string path); Sexp.Atom (Digest.to_string digest)]
+        [ Sexp.Atom (Path.reach ~from:Path.build_dir path)
+        ; Sexp.Atom (Digest.to_string digest) ]
     and repo =
       match repo with
       | Some _ ->
@@ -466,6 +467,12 @@ module Client = struct
          :: Sexp.List [Sexp.Atom "metadata"; Sexp.List metadata]
          :: repo )) ;
     Result.Ok []
+
+  let set_build_dir client path =
+    send client.socket
+      (Sexp.List
+         [ Sexp.Atom "set-build-root"
+         ; Sexp.Atom (Path.to_absolute_filename path) ])
 
   let search client key = Dune_memory.Memory.search client.memory key
 end

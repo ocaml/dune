@@ -31,25 +31,17 @@ let exists fn =
   | _ ->
       true
 
-let best_prog dir prog =
-  let fn = Path.relative dir (prog ^ ".opt" ^ exe) in
-  if exists fn then
-    Some fn
+let add_exe prog =
+  if String.is_suffix (String.lowercase prog) ~suffix:exe then
+    prog
   else
-    let fn = Path.relative dir (prog ^ exe) in
-    if exists fn then
-      Some fn
-    else
-      None
+    prog ^ exe
 
 let which ~path prog =
-  let rec search = function
-    | [] ->
-        None
-    | dir :: rest -> (
-      match best_prog dir prog with None -> search rest | Some fn -> Some fn )
-  in
-  search path
+  let prog = add_exe prog in
+  List.find_map path ~f:(fun dir ->
+      let fn = Path.relative dir prog in
+      Option.some_if (exists fn) fn)
 
 let make ~path =
   match which ~path "gmake" with None -> which ~path "make" | some -> some

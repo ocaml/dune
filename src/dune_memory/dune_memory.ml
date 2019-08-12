@@ -119,10 +119,10 @@ module Memory = struct
 
   let with_lock memory f =
     let lock =
-      Stdune.Lockf.lock
-        (Path.to_string (Path.L.relative memory.root [".lock"]))
+      Stdune.Lock_file.create
+        (Path.L.relative memory.root [".lock"])
     in
-    let finally () = Stdune.Lockf.unlock lock in
+    let finally () = Stdune.Lock_file.unlock lock in
     Exn.protect ~f ~finally
 
   let search memory hash file =

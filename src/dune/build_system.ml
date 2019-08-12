@@ -1433,7 +1433,6 @@ end = struct
           () )
 
   let execute_rule_impl rule =
-    let log = Scheduler.log (Scheduler.info ()) in
     let t = t () in
     let { Internal_rule.dir
         ; targets
@@ -1531,7 +1530,7 @@ end = struct
         match lookup_cache t.memory force rule_digest with
         | Result.Ok files ->
             let retrieve (dest, source, _) =
-              Log.infof log "retrieve %s from cache" (Path.to_string dest);
+              Log.infof "retrieve %s from cache" (Path.to_string dest);
               Unix.link (Path.to_string source) (Path.to_string dest)
             and digest (_, _, digest) = digest in
             List.iter ~f:retrieve files;
@@ -1541,7 +1540,7 @@ end = struct
               };
             Fiber.return ()
         | Result.Error e ->
-            Log.infof log "cache miss: %s" e;
+            Log.infof "cache miss: %s" e;
             pending_targets := Path.Build.Set.union targets !pending_targets;
             let loc = Rule.Info.loc info in
             let sandboxed, action =

@@ -29,10 +29,10 @@ module Profile = Dune.Profile
 include Common.Let_syntax
 
 (* FIXME: leverage fibers to actually connect in the background *)
-let make_memory ?log () =
+let make_memory () =
   match Sys.getenv_opt "DUNE_CACHE" with
   | Some _ ->
-      Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ?log ())))
+      Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
   | _ ->
       Fiber.return None
 

@@ -35,6 +35,6 @@ end
 
 module Memory : memory
 
-val make : ?log:Log.t -> ?root:Path.t -> unit -> (Memory.t, string) Result.t
+val make : ?root:Path.t -> unit -> (Memory.t, string) Result.t
 
 val trim : Memory.t -> int -> int * Path.t list

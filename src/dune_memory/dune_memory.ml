@@ -8,7 +8,7 @@ type metadata = Sexp.t list
 type 'a result = ('a, string) Result.t
 
 let default_root () =
-  Path.L.relative (Path.of_string Xdg.cache_dir) ["dune"; "db"; "v2"]
+  Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
 
 type promotion =
   | Already_promoted of Path.t * Path.t
@@ -31,18 +31,25 @@ let promotion_to_string = function
       Printf.sprintf "%s promoted as %s" (Path.to_string original)
         (Path.to_string promoted)
 
-(* How to handle collisions. E.g. another version could assume collisions are not possible *)
+(* How to handle collisions. E.g. another version could assume collisions are
+   not possible *)
 module Collision = struct
-  type res = Found of Path.t | Not_found of Path.t
+  type res =
+    | Found of Path.t
+    | Not_found of Path.t
 
-  (* We need to ensure we do not create holes in the suffix numbering for this to work *)
+  (* We need to ensure we do not create holes in the suffix numbering for this
+     to work *)
   let search path file =
     let rec loop n =
       let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
       if Sys.file_exists (Path.to_string path) then
-        if Io.compare_files path file == Ordering.Eq then Found path
-        else loop (n + 1)
-      else Not_found path
+        if Io.compare_files path file == Ordering.Eq then
+          Found path
+        else
+          loop (n + 1)
+      else
+        Not_found path
     in
     loop 1
 end
@@ -60,7 +67,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
   let path root hash =
     let hash = Digest.to_string hash in
     let short_hash = String.sub hash ~pos:0 ~len:2 in
-    Path.L.relative root [short_hash; hash]
+    Path.L.relative root [ short_hash; hash ]
 
   let digest path =
     match
@@ -70,19 +77,20 @@ module FirstTwoCharsSubdir : FSScheme = struct
         digest
     | None ->
         Code_error.raise "strange cached file path (not a valid hash)"
-          [(Path.to_string path, Path.to_dyn path)]
+          [ (Path.to_string path, Path.to_dyn path) ]
 
   let list root =
     let f dir =
       let is_hex_char c =
         let char_in s e = Char.compare c s >= 0 && Char.compare c e <= 0 in
         char_in 'a' 'f' || char_in '0' '9'
-      and root = Path.L.relative root [dir] in
+      and root = Path.L.relative root [ dir ] in
       if String.for_all ~f:is_hex_char dir then
         Array.map
-          ~f:(fun filename -> Path.L.relative root [filename])
+          ~f:(fun filename -> Path.L.relative root [ filename ])
           (Sys.readdir (Path.to_string root))
-      else Array.of_list []
+      else
+        Array.of_list []
     in
     Array.to_list
       (Array.concat
@@ -109,18 +117,17 @@ module type memory = sig
 end
 
 module Memory = struct
-  type t = {root: Path.t; log: Log.t}
+  type t = { root : Path.t }
 
-  let path_files memory = Path.L.relative memory.root ["files"]
+  let path_files memory = Path.L.relative memory.root [ "files" ]
 
-  let path_meta memory = Path.L.relative memory.root ["meta"]
+  let path_meta memory = Path.L.relative memory.root [ "meta" ]
 
-  let path_tmp memory = Path.L.relative memory.root ["temp"]
+  let path_tmp memory = Path.L.relative memory.root [ "temp" ]
 
   let with_lock memory f =
     let lock =
-      Stdune.Lock_file.create
-        (Path.L.relative memory.root [".lock"])
+      Stdune.Lock_file.create (Path.L.relative memory.root [ ".lock" ])
     in
     let finally () = Stdune.Lock_file.unlock lock in
     Exn.protect ~f ~finally
@@ -134,23 +141,30 @@ module Memory = struct
       apply
         ~f:(fun metadata (remote, commit) ->
           metadata
-          @ [ Sexp.List [Sexp.Atom "repo"; Sexp.Atom remote]
-            ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ])
+          @ [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom remote ]
+            ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+            ])
         repo metadata
     in
     let promote (path, expected_hash) =
-      Log.infof memory.log "promote %s" (Path.to_string path) ;
+      Log.infof "promote %s" (Path.to_string path);
       let stat = Unix.lstat (Path.to_string path) in
-      ( if stat.st_kind != S_REG then Result.Error "invalid file type"
-      else Result.Ok stat )
+      ( if stat.st_kind != S_REG then
+        Result.Error "invalid file type"
+      else
+        Result.Ok stat )
       >>= fun stat ->
       let hardlink path =
         let tmp = path_tmp memory in
-        (* dune-memory uses a single writer model, the promoted file name can be constant *)
-        let dest = Path.L.relative tmp ["promoting"] in
+        (* dune-memory uses a single writer model, the promoted file name can
+           be constant *)
+        let dest = Path.L.relative tmp [ "promoting" ] in
         (let dest = Path.to_string dest in
-         if Sys.file_exists dest then Unix.unlink dest else mkpath tmp ;
-         Unix.link (Path.to_string path) dest) ;
+         if Sys.file_exists dest then
+           Unix.unlink dest
+         else
+           mkpath tmp;
+         Unix.link (Path.to_string path) dest);
         dest
       in
       let tmp = hardlink path in
@@ -161,26 +175,26 @@ module Memory = struct
             (Digest.to_string effective_hash)
             (Digest.to_string expected_hash)
         in
-        Log.infof memory.log "%s" message ;
-        Result.Error message )
-      else
+        Log.infof "%s" message;
+        Result.Error message
+      ) else
         match search memory effective_hash tmp with
         | Collision.Found p ->
-            Unix.unlink (Path.to_string tmp) ;
+            Unix.unlink (Path.to_string tmp);
             Result.Ok (Already_promoted (path, p))
         | Collision.Not_found p ->
-            mkpath (Path.parent_exn p) ;
+            mkpath (Path.parent_exn p);
             let dest = Path.to_string p in
-            Unix.rename (Path.to_string tmp) dest ;
+            Unix.rename (Path.to_string tmp) dest;
             (* Remove write permissions *)
-            Unix.chmod dest (stat.st_perm land 0o555) ;
+            Unix.chmod dest (stat.st_perm land 0o555);
             Result.Ok (Promoted (path, p))
     in
     let f () =
       Result.List.map ~f:promote paths
       >>| fun promoted ->
       let metadata_path = FSSchemeImpl.path (path_meta memory) key in
-      mkpath (Path.parent_exn metadata_path) ;
+      mkpath (Path.parent_exn metadata_path);
       Io.write_file metadata_path
         (Csexp.to_string
            (Sexp.List
@@ -193,8 +207,11 @@ module Memory = struct
                            | Promoted (o, p) | Already_promoted (o, p) ->
                                Sexp.List
                                  [ Sexp.Atom (Path.to_string o)
-                                 ; Sexp.Atom (Path.to_string p) ])
-                         promoted) ] ])) ;
+                                 ; Sexp.Atom (Path.to_string p)
+                                 ])
+                         promoted)
+                  ]
+              ]));
       promoted
     in
     with_lock memory f
@@ -211,15 +228,18 @@ module Memory = struct
             | Sexp.List l -> Result.ok l | _ -> Result.Error "invalid metadata")
       >>= function
       | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
-        ; Sexp.List [Sexp.Atom s_produced; Sexp.List produced] ] -> (
+        ; Sexp.List [ Sexp.Atom s_produced; Sexp.List produced ]
+        ] -> (
           if
             (not (String.equal s_metadata "metadata"))
             && String.equal s_produced "produced-files"
-          then Result.Error "invalid metadata scheme: wrong key"
+          then
+            Result.Error "invalid metadata scheme: wrong key"
           else
             Result.List.map produced ~f:(function
-              | Sexp.List [Sexp.Atom f; Sexp.Atom t] ->
-                  let f = Path.of_string f and t = Path.of_string t in
+              | Sexp.List [ Sexp.Atom f; Sexp.Atom t ] ->
+                  let f = Path.of_string f
+                  and t = Path.of_string t in
                   Result.Ok (f, t, FSSchemeImpl.digest t)
               | _ ->
                   Result.Error "invalid metadata scheme in produced files list")
@@ -230,29 +250,32 @@ module Memory = struct
     with_lock memory f
 end
 
-let make ?log ?(root = default_root ()) () =
-  if Path.basename root <> "v2" then Result.Error "unable to read dune-memory"
+let make ?(root = default_root ()) () =
+  if Path.basename root <> "v2" then
+    Result.Error "unable to read dune-memory"
   else
-    Result.ok
-      { Memory.root
-      ; Memory.log= (match log with Some log -> log | None -> Log.no_log) }
+    Result.ok { Memory.root }
 
 let trim memory free =
   let path = Memory.path_files memory in
   let files = FSSchemeImpl.list path in
   let f path =
     let stat = Unix.stat (Path.to_string path) in
-    if stat.st_nlink = 1 then Some (path, stat.st_size, stat.st_ctime)
-    else None
+    if stat.st_nlink = 1 then
+      Some (path, stat.st_size, stat.st_ctime)
+    else
+      None
   and compare (_, _, t1) (_, _, t2) =
     Ordering.of_int (Pervasives.compare t1 t2)
   in
   let files = List.sort ~compare (List.filter_map ~f files)
   and delete (freed, res) (path, size, _) =
-    if freed >= free then (freed, res)
+    if freed >= free then
+      (freed, res)
     else (
-      Unix.unlink (Path.to_string path) ;
-      (freed + size, path :: res) )
+      Unix.unlink (Path.to_string path);
+      (freed + size, path :: res)
+    )
   in
   Memory.with_lock memory (fun () ->
       List.fold_left ~init:(0, []) ~f:delete files)

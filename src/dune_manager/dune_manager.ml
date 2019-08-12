@@ -6,21 +6,22 @@ open Utils
 type version = int * int
 
 type client =
-  { fd: Unix.file_descr
-  ; peer: Unix.sockaddr
-  ; output: out_channel
-  ; mutable build_root: Path.t option (* client owned *)
-  ; mutable common_metadata: Sexp.t list (* client owned *)
-  ; mutable memory: Dune_memory.Memory.t (* client owned*)
-  ; mutable repositories: (string * string * string) list (* client owned *)
-  ; mutable version: version option (* client owned*) }
+  { fd : Unix.file_descr
+  ; peer : Unix.sockaddr
+  ; output : out_channel
+  ; mutable build_root : Path.t option (* client owned *)
+  ; mutable common_metadata : Sexp.t list (* client owned *)
+  ; mutable memory : Dune_memory.Memory.t (* client owned*)
+  ; mutable repositories : (string * string * string) list (* client owned *)
+  ; mutable version : version option (* client owned*)
+  }
 
 let default_port_file () =
   let runtime_dir =
     let xdg =
       try Sys.getenv "XDG_RUNTIME_DIR"
       with Not_found ->
-        User_error.raise [Pp.textf "XDG_RUNTIME_DIR is not set"]
+        User_error.raise [ Pp.textf "XDG_RUNTIME_DIR is not set" ]
     in
     Filename.concat xdg "dune-manager"
   in
@@ -30,7 +31,9 @@ let max_port_size = 1024
 
 let check_port_file ?(close = true) p =
   let p = Path.to_string p in
-  match Result.try_with (fun () -> Unix.openfile p [Unix.O_RDONLY] 0o600) with
+  match
+    Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600)
+  with
   | Result.Ok fd ->
       let f () =
         let open Result.O in
@@ -60,12 +63,13 @@ let make_path client path =
         Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
     | None ->
         Result.Error "relative path while no build root was set"
-  else Result.ok (Path.of_string path)
+  else
+    Result.ok (Path.of_string path)
 
 let send client sexp =
-  output_string client (Csexp.to_string sexp) ;
-  (* We need to flush when sending the version. Other
-     instances are more debatable. *)
+  output_string client (Csexp.to_string sexp);
+  (* We need to flush when sending the version. Other instances are more
+     debatable. *)
   flush client
 
 module ClientsKey = struct
@@ -79,22 +83,21 @@ end
 module Clients = Map.Make (ClientsKey)
 
 type t =
-  { root: Path.t option
-  ; log: Log.t
-  ; mutable socket: Unix.file_descr option
-  ; mutable clients: (client * Thread.t) Clients.t
-  ; mutable endpoint: string option }
+  { root : Path.t option
+  ; mutable socket : Unix.file_descr option
+  ; mutable clients : (client * Thread.t) Clients.t
+  ; mutable endpoint : string option
+  }
 
 exception Error of string
 
-let make ?root ?log () : t =
-  let log = match log with Some log -> log | None -> Log.create () in
-  {root; log; socket= None; clients= Clients.empty; endpoint= None}
+let make ?root () : t =
+  { root; socket = None; clients = Clients.empty; endpoint = None }
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
       User_error.raise
-        [Pp.textf "got a Unix socket connection on our TCP socket ?"]
+        [ Pp.textf "got a Unix socket connection on our TCP socket ?" ]
   | Unix.ADDR_INET (addr, port) ->
       (addr, port)
 
@@ -107,31 +110,32 @@ exception Stop
 let stop manager =
   match manager.socket with
   | Some fd ->
-      Log.infof manager.log "stop" ;
-      manager.socket <- None ;
+      Log.infof "stop";
+      manager.socket <- None;
       let clean f = ignore (Clients.iter ~f manager.clients) in
-      clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL) ;
-      clean (fun (_, tid) -> Thread.join tid) ;
-      clean (fun (client, _) -> Unix.close client.fd) ;
+      clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL);
+      clean (fun (_, tid) -> Thread.join tid);
+      clean (fun (client, _) -> Unix.close client.fd);
       Unix.close fd
   | _ ->
       ()
 
-let my_versions : version list = [(1, 0)]
+let my_versions : version list = [ (1, 0) ]
 
 let my_versions_command =
   Sexp.List
     ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
     :: (List.map ~f:(function maj, min ->
             Sexp.List
-              [Sexp.Atom (string_of_int maj); Sexp.Atom (string_of_int min)]))
+              [ Sexp.Atom (string_of_int maj); Sexp.Atom (string_of_int min) ]))
          my_versions )
 
 module Int_map = Map.Make (Int)
 
 let find_highest_common_version (a : version list) (b : version list) :
     version option =
-  let a = Int_map.of_list_exn a and b = Int_map.of_list_exn b in
+  let a = Int_map.of_list_exn a
+  and b = Int_map.of_list_exn b in
   let common =
     Int_map.merge
       ~f:(fun _ minor_in_a minor_in_b ->
@@ -164,7 +168,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
   let handle_lang client = function
     | Sexp.Atom "dune-memory-protocol" :: versions -> (
         let decode_version = function
-          | Sexp.List [Sexp.Atom major; Sexp.Atom minor] ->
+          | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
               int_of_string ~where:"lang command version" major
               >>= fun major ->
               int_of_string ~where:"lang command version" minor
@@ -178,24 +182,25 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         >>| find_highest_common_version my_versions
         >>= function
         | None ->
-            Unix.close client.fd ; Result.Error "no compatible versions"
+            Unix.close client.fd;
+            Result.Error "no compatible versions"
         | Some (major, minor) as v ->
-            Log.infof manager.log "%s: negotiated version: %i.%i"
-              (peer_name client.peer) major minor ;
-            client.version <- v ;
+            Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer)
+              major minor;
+            client.version <- v;
             Result.ok () )
     | args ->
         invalid_args args
   and handle_promote client = function
-    | Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
+    | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
       :: Sexp.List (Sexp.Atom "files" :: files)
-         :: Sexp.List [Sexp.Atom "metadata"; Sexp.List metadata] :: rest as cmd
-      -> (
+         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ] :: rest as
+      cmd -> (
         let repo =
           match rest with
           | [] ->
               Result.ok None
-          | [Sexp.List [Sexp.Atom "repo"; Sexp.Atom repo]] -> (
+          | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] -> (
               int_of_string ~where:"repository index" repo
               >>= fun repo ->
               try Result.Ok (List.nth client.repositories repo)
@@ -207,7 +212,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 (Printf.sprintf "invalid promotion message: %s"
                    (Sexp.to_string (Sexp.List cmd)))
         and file = function
-          | Sexp.List [Sexp.Atom path; Sexp.Atom hash] ->
+          | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
               make_path client path
               >>= fun path ->
               Dune_memory.key_of_string hash >>| fun d -> (path, d)
@@ -216,12 +221,14 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 (Printf.sprintf "invalid file in promotion message: %s"
                    (Sexp.to_string sexp))
         and f promotion =
-          print_endline (Dune_memory.promotion_to_string promotion) ;
+          print_endline (Dune_memory.promotion_to_string promotion);
           match promotion with
           | Already_promoted (f, t) ->
               Some
                 (Sexp.List
-                   [Sexp.Atom (Path.to_string f); Sexp.Atom (Path.to_string t)])
+                   [ Sexp.Atom (Path.to_string f)
+                   ; Sexp.Atom (Path.to_string t)
+                   ])
           | _ ->
               None
         in
@@ -243,35 +250,37 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     | args ->
         invalid_args args
   and handle_set_root client = function
-    | [Sexp.Atom dir] ->
+    | [ Sexp.Atom dir ] ->
         Result.map_error
           ~f:(function
             | _ ->
                 send client.output
                   (Sexp.List
                      [ Sexp.Atom "cannot-read-dune-memory"
-                     ; Sexp.List [Sexp.Atom "supported-formats"; Sexp.Atom "v2"]
-                     ]) ;
+                     ; Sexp.List
+                         [ Sexp.Atom "supported-formats"; Sexp.Atom "v2" ]
+                     ]);
                 "unable to read Dune memory")
           ( Dune_memory.make ~root:(Path.of_string dir) ()
           >>| fun memory -> client.memory <- memory )
     | args ->
         invalid_args args
   and handle_set_build_root client = function
-    | [Sexp.Atom dir] ->
-        client.build_root <- Some (Path.of_string dir) ;
+    | [ Sexp.Atom dir ] ->
+        client.build_root <- Some (Path.of_string dir);
         Result.ok ()
     | args ->
         invalid_args args
   and handle_set_metadata client arg =
-    client.common_metadata <- arg ;
+    client.common_metadata <- arg;
     Result.ok ()
   and handle_set_repos client arg =
     let convert = function
       | Sexp.List
-          [ Sexp.List [Sexp.Atom "dir"; Sexp.Atom dir]
-          ; Sexp.List [Sexp.Atom "remote"; Sexp.Atom remote]
-          ; Sexp.List [Sexp.Atom "commit_id"; Sexp.Atom commit] ] ->
+          [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom dir ]
+          ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
+          ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+          ] ->
           Result.ok (dir, remote, commit)
       | invalid ->
           Result.Error
@@ -283,9 +292,9 @@ let run ?(port_f = ignore) ?(port = 0) manager =
   let handle_cmd client = function
     | Sexp.List (Sexp.Atom cmd :: args) ->
         if cmd <> "lang" && Option.is_none client.version then (
-          Unix.shutdown client.fd Unix.SHUTDOWN_ALL ;
-          Result.Error "version was not negotiated" )
-        else
+          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
+          Result.Error "version was not negotiated"
+        ) else
           Result.map_error
             ~f:(fun s -> cmd ^ ": " ^ s)
             ( match cmd with
@@ -313,37 +322,44 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     let rec accept () =
       try Unix.accept sock with
       | Unix.Unix_error (Unix.EINTR, _, _) ->
-          if Option.is_none manager.socket then raise Stop else accept ()
+          if Option.is_none manager.socket then
+            raise Stop
+          else
+            accept ()
       | Unix.Unix_error (Unix.EBADF, _, _) as e ->
-          if Option.is_none manager.socket then raise Stop else raise e
+          if Option.is_none manager.socket then
+            raise Stop
+          else
+            raise e
       | e ->
           raise e
     in
-    manager.socket <- Some sock ;
+    manager.socket <- Some sock;
     Unix.bind sock
-      (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port)) ;
+      (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port));
     let addr, port = getsockname (Unix.getsockname sock) in
     let endpoint =
       Printf.sprintf "%s:%i" (Unix.string_of_inet_addr addr) port
     in
-    manager.endpoint <- Some endpoint ;
-    port_f endpoint ;
-    Unix.listen sock 1024 ;
+    manager.endpoint <- Some endpoint;
+    port_f endpoint;
+    Unix.listen sock 1024;
     while Option.is_some manager.socket do
       let client_thread client =
         let f () =
-          send client.output my_versions_command ;
-          Log.infof manager.log "accept client: %s" (peer_name client.peer) ;
+          send client.output my_versions_command;
+          Log.infof "accept client: %s" (peer_name client.peer);
           let rec input =
             Stream.of_channel (Unix.in_channel_of_descr client.fd)
           and handle input =
-            if Option.is_none manager.socket then ()
+            if Option.is_none manager.socket then
+              ()
             else
               match Stream.peek input with
               | None ->
-                  Log.infof manager.log "%s: ended" (peer_name client.peer)
+                  Log.infof "%s: ended" (peer_name client.peer)
               | Some '\n' ->
-                  Stream.junk input ;
+                  Stream.junk input;
                   (handle [@tailcall]) input
                   (* Skip toplevel newlines, for easy netcat interaction *)
               | _ ->
@@ -353,28 +369,27 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                       ~f:(fun r -> "parse error: " ^ r)
                       (Csexp.parse input)
                     >>= fun cmd ->
-                    Log.infof manager.log "%s: received command: %s"
-                      (peer_name client.peer) (Sexp.to_string cmd) ;
+                    Log.infof "%s: received command: %s"
+                      (peer_name client.peer) (Sexp.to_string cmd);
                     handle_cmd client cmd
                   with
                   | Result.Error e ->
-                      Log.infof manager.log "%s: command error: %s"
-                        (peer_name client.peer) e
+                      Log.infof "%s: command error: %s" (peer_name client.peer)
+                        e
                   | _ ->
-                      ()) ;
+                      ());
                   (handle [@tailcall]) input
           in
           handle input
         and finally () =
           ( try
-              Unix.shutdown client.fd Unix.SHUTDOWN_ALL ;
+              Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
               Unix.close client.fd
             with
           | Unix.Unix_error (Unix.EBADF, _, _) ->
-              Log.infof manager.log "%s: ended" (peer_name client.peer)
+              Log.infof "%s: ended" (peer_name client.peer)
           | Sys_error msg ->
-              Log.infof manager.log "%s: ended: %s" (peer_name client.peer) msg
-          ) ;
+              Log.infof "%s: ended: %s" (peer_name client.peer) msg );
           manager.clients <- Clients.remove manager.clients client.fd
         in
         try Exn.protect ~f ~finally
@@ -384,17 +399,18 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       let client =
         { fd
         ; peer
-        ; output= Unix.out_channel_of_descr fd
-        ; version= None
-        ; build_root= None
-        ; common_metadata= []
-        ; repositories= []
-        ; memory=
+        ; output = Unix.out_channel_of_descr fd
+        ; version = None
+        ; build_root = None
+        ; common_metadata = []
+        ; repositories = []
+        ; memory =
             ( match Dune_memory.make ?root:manager.root () with
             | Result.Ok m ->
                 m
             | Result.Error e ->
-                User_error.raise [Pp.textf "%s" e] ) }
+                User_error.raise [ Pp.textf "%s" e ] )
+        }
       in
       let tid = Thread.create client_thread client in
       manager.clients <-
@@ -402,30 +418,33 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         | Result.Ok v ->
             v
         | Result.Error _ ->
-            User_error.raise [Pp.textf "duplicate socket"] )
+            User_error.raise [ Pp.textf "duplicate socket" ] )
     done
   in
   try Exn.protect ~f ~finally
   with Unix.Unix_error (errno, f, _) ->
     User_error.raise
-      [Pp.textf "unable to %s: %s\n" f (Unix.error_message errno)]
+      [ Pp.textf "unable to %s: %s\n" f (Unix.error_message errno) ]
 
 let endpoint m = m.endpoint
 
-let err msg = User_error.E (User_error.make [Pp.text msg])
+let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
 module Client = struct
-  type t = {socket: out_channel; memory: Dune_memory.Memory.t}
+  type t =
+    { socket : out_channel
+    ; memory : Dune_memory.Memory.t
+    }
 
-  let make ?log () =
+  let make () =
     let open Result.O in
-    let* memory = Result.map_error ~f:err (Dune_memory.make ?log ()) in
+    let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port = check_port_file (default_port_file ()) in
     let* addr, port =
       match port with
       | Some (port, _, _) -> (
         match String.split_on_char ~sep:':' port with
-        | [addr; port] -> (
+        | [ addr; port ] -> (
           match int_of_string_opt port with
           | Some i ->
               Result.Ok (Unix.inet_addr_of_string addr, i)
@@ -442,15 +461,16 @@ module Client = struct
           Unix.connect socket (Unix.ADDR_INET (addr, port)))
     in
     let socket = Unix.out_channel_of_descr socket in
-    send socket my_versions_command ;
-    Result.Ok {socket; memory}
+    send socket my_versions_command;
+    Result.Ok { socket; memory }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key
     and f (path, digest) =
       Sexp.List
         [ Sexp.Atom (Path.reach ~from:Path.build_dir path)
-        ; Sexp.Atom (Digest.to_string digest) ]
+        ; Sexp.Atom (Digest.to_string digest)
+        ]
     and repo =
       match repo with
       | Some _ ->
@@ -462,17 +482,18 @@ module Client = struct
     send client.socket
       (Sexp.List
          ( Sexp.Atom "promote"
-         :: Sexp.List [Sexp.Atom "key"; Sexp.Atom key]
+         :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
          :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
-         :: Sexp.List [Sexp.Atom "metadata"; Sexp.List metadata]
-         :: repo )) ;
+         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
+         :: repo ));
     Result.Ok []
 
   let set_build_dir client path =
     send client.socket
       (Sexp.List
          [ Sexp.Atom "set-build-root"
-         ; Sexp.Atom (Path.to_absolute_filename path) ])
+         ; Sexp.Atom (Path.to_absolute_filename path)
+         ])
 
   let search client key = Dune_memory.Memory.search client.memory key
 end

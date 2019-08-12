@@ -7,7 +7,7 @@ exception Stop
 
 exception Error of string
 
-val make : ?root:Path.t -> ?log:Log.t -> unit -> t
+val make : ?root:Path.t -> unit -> t
 
 val default_port_file : unit -> Path.t
 
@@ -27,5 +27,5 @@ module Client : sig
 
   val set_build_dir : t -> Path.t -> unit
 
-  val make : ?log:Stdune.Log.t -> unit -> (t, exn) Result.t
+  val make : unit -> (t, exn) Result.t
 end

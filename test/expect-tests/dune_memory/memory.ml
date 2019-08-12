@@ -2,9 +2,7 @@
 
 open Stdune
 
-let () =
-  Path.Build.set_build_dir
-    (Path.Build.Kind.of_string (Filename.get_temp_dir_name ()))
+let () = Dune_tests_common.init ()
 
 let dir =
   let rand_digits () =
@@ -15,11 +13,12 @@ let dir =
     let root = Filename.get_temp_dir_name () in
     let raise_err msg = raise (Sys_error msg) in
     let rec loop count =
-      if count < 0 then raise_err "mk_temp_dir: too many failing attemps"
+      if count < 0 then
+        raise_err "mk_temp_dir: too many failing attemps"
       else
         let dir = Printf.sprintf "%s%s" pat (rand_digits ()) in
         try
-          Unix.mkdir (root ^ "/" ^ dir) 0o700 ;
+          Unix.mkdir (root ^ "/" ^ dir) 0o700;
           Path.of_string dir
         with
         | Unix.Unix_error (Unix.EEXIST, _, _) ->
@@ -37,7 +36,8 @@ let () = Path.mkdir_p dir
 
 let make_file p =
   let path = Path.of_string (Path.to_string dir ^ "/" ^ p) in
-  Io.write_file path p ; path
+  Io.write_file path p;
+  path
 
 let memory =
   match
@@ -48,7 +48,7 @@ let memory =
   | Result.Ok memory ->
       memory
   | Result.Error msg ->
-      User_error.raise [Pp.textf "%s" msg]
+      User_error.raise [ Pp.textf "%s" msg ]
 
 let clean_path p =
   let prefix = Path.to_string dir in
@@ -64,7 +64,7 @@ let clean_promotion = function
 (* Promote a file twice and check we can search it *)
 let file1 = make_file "file1"
 
-let metadata = [Sexp.List [Sexp.Atom "test"; Sexp.Atom "metadata"]]
+let metadata = [ Sexp.List [ Sexp.Atom "test"; Sexp.Atom "metadata" ] ]
 
 (* The key is internal to dune and opaque to us, we can use anything *)
 let key = Digest.generic "dummy-hash"
@@ -75,29 +75,32 @@ let%expect_test _ =
   let open Result.O in
   match
     Dune_memory.Memory.promote memory
-      [(file1, Digest.file_with_stats file1 stats)]
+      [ (file1, Digest.file_with_stats file1 stats) ]
       key metadata None
     >>= fun promotions ->
-    List.iter ~f promotions ;
+    List.iter ~f promotions;
     Dune_memory.Memory.promote memory
-      [(file1, Digest.file_with_stats file1 stats)]
+      [ (file1, Digest.file_with_stats file1 stats) ]
       key metadata None
     >>= fun promotions ->
-    List.iter ~f promotions ;
+    List.iter ~f promotions;
     Dune_memory.Memory.search memory key
     >>| fun searched ->
     ( match searched with
-    | stored_metadata, [(original, promoted, _)] ->
+    | stored_metadata, [ (original, promoted, _) ] ->
         if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
           failwith "Metadata mismatch"
         else if Path.equal original file1 then
-          if Io.compare_files promoted file1 = Ordering.Eq then ()
-          else failwith "promoted file content does not match"
-        else failwith "original file path does not match"
+          if Io.compare_files promoted file1 = Ordering.Eq then
+            ()
+          else
+            failwith "promoted file content does not match"
+        else
+          failwith "original file path does not match"
     | _ ->
-        failwith "wrong number of file found" ) ;
+        failwith "wrong number of file found" );
     (* Check write permissions where removed *)
-    assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0) ;
+    assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);
     Path.rm_rf dir
   with
   | Result.Ok () ->

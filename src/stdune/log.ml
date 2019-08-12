@@ -1,30 +1,39 @@
+module File = struct
+  type t =
+    | Default
+    | No_log_file
+    | This of Path.t
+end
+
 type real =
-  { oc : out_channel
+  { oc : out_channel option
   ; buf : Buffer.t
   ; ppf : Format.formatter
   }
 
 let t = Fdecl.create ()
 
-let init ?path () =
-  let path =
-    match path with
-    | Some p ->
-        p
-    | None ->
+let init ?(file = File.Default) () =
+  let oc =
+    match file with
+    | No_log_file ->
+        None
+    | This path ->
+        Some (Io.open_out path)
+    | Default ->
         Path.ensure_build_dir_exists ();
-        Path.relative Path.build_dir "log"
+        Some (Io.open_out (Path.relative Path.build_dir "log"))
   in
-  let oc = Io.open_out path in
-  Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
-    (String.concat
-       (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
-       ~sep:" ")
-    ( match Env.get Env.initial "OCAMLPARAM" with
-    | Some s ->
-        Printf.sprintf "%S" s
-    | None ->
-        "unset" );
+  Option.iter oc ~f:(fun oc ->
+      Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
+        (String.concat
+           (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
+           ~sep:" ")
+        ( match Env.get Env.initial "OCAMLPARAM" with
+        | Some s ->
+            Printf.sprintf "%S" s
+        | None ->
+            "unset" ));
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
   Fdecl.set t (Some { oc; buf; ppf })
@@ -66,9 +75,9 @@ let infof fmt =
 
 let command ~command_line ~output ~exit_status =
   match t () with
-  | None ->
+  | None | Some { oc = None; _ } ->
       ()
-  | Some { oc; _ } ->
+  | Some { oc = Some oc; _ } ->
       Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);
       List.iter (String.split_lines output) ~f:(fun s ->
           match Ansi_color.strip s with

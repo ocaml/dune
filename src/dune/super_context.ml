@@ -276,43 +276,13 @@ let source_files t ~src_path =
   | Some dir ->
       File_tree.Dir.files dir
 
-(* DUNE2: delete this since we have formalised version management via the vcs *)
-module Pkg_version = struct
-  open Build.O
-
-  let file sctx (p : Package.t) =
-    Path.Build.relative
-      (Path.Build.append_source sctx.context.build_dir p.path)
-      (sprintf "%s.version.sexp" (Package.Name.to_string p.name))
-
-  let read_file fn =
-    let fn = Path.build fn in
-    Build.memoize "package version"
-      ( Build.contents fn
-      >>^ fun s ->
-      Dune_lang.Decoder.(parse (option string))
-        Univ_map.empty
-        (Dune_lang.parse_string ~fname:(Path.to_string fn) ~mode:Single s) )
-
-  let read sctx p = read_file (file sctx p)
-
-  let set sctx p get =
-    let fn = file sctx p in
-    add_rule sctx ~dir:(build_dir sctx)
-      ( get
-      >>^ (fun v -> Dune_lang.Encoder.(option string) v |> Dune_lang.to_string)
-      >>> Build.write_file_dyn fn );
-    read_file fn
-end
-
 let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
     =
   let acc = Expander.Resolved_forms.empty () in
-  let read_package = Pkg_version.read sctx in
   let c_flags ~dir = Env.c_flags sctx.env_context ~dir in
   let expander =
     Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~read_package ~c_flags
+      ~map_exe ~c_flags
   in
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)

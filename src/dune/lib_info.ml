@@ -256,7 +256,7 @@ let of_library_stanza ~dir
   let version =
     match status with
     | Public (_, pkg) ->
-        Option.map pkg.version ~f:fst
+        pkg.version
     | Installed | Private _ ->
         None
   in

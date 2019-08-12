@@ -52,6 +52,8 @@ let arr f = Arr f
 
 let return x = Arr (fun _ -> x)
 
+let delayed = arr
+
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
 
 module O = struct

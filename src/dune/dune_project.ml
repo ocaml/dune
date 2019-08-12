@@ -773,8 +773,7 @@ let parse ~dir ~lang ~opam_packages ~file =
        match version with
        | None ->
            packages
-       | Some version ->
-           let version = Some (version, Package.Version_source.Project) in
+       | Some _ ->
            Package.Name.Map.map packages ~f:(fun p ->
                match p.version with Some _ -> p | None -> { p with version })
      in
@@ -915,11 +914,7 @@ let load ~dir ~files =
                          None
                    in
                    let* version = Opam_file.get_field opam "version" in
-                   match version with
-                   | String (_, s) ->
-                       Some (s, Package.Version_source.Package)
-                   | _ ->
-                       None
+                   match version with String (_, s) -> Some s | _ -> None
                  in
                  { Package.name
                  ; loc

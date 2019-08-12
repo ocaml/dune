@@ -136,7 +136,7 @@ let build_info_code cctx ~libs ~api_version =
   in
   let version_of_package (p : Package.t) =
     match p.version with
-    | Some (v, _) ->
+    | Some v ->
         sprintf "Some %S" v
     | None ->
         placeholder p.path

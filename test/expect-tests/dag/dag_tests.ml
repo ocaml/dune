@@ -3,19 +3,16 @@ open Dune_tests_common
 
 let () = init ()
 
-type mynode = {
-  name : string;
-}
+type mynode = { name : string }
 
 module DagF = Dag
 
 module Dag = struct
-  include Dag.Make(struct
-      type t = mynode
-    end)
+  include Dag.Make (struct
+    type t = mynode
+  end)
 
-  let node dag data =
-    { info = create_node_info dag; data }
+  let node dag data = { info = create_node_info dag; data }
 end
 
 open Dag
@@ -23,9 +20,13 @@ open Dag
 let dag = Dag.create ()
 
 let node = Dag.node dag { name = "root" }
+
 let node11 = Dag.node dag { name = "child 1 1" }
+
 let node12 = Dag.node dag { name = "child 1 2" }
+
 let node21 = Dag.node dag { name = "child 2 1" }
+
 let node31 = Dag.node dag { name = "child 3 1" }
 
 let () =
@@ -34,9 +35,9 @@ let () =
   Dag.add dag node12 node21;
   Dag.add dag node21 node31
 
-let pp_mynode fmt n =
-  Format.fprintf fmt "%s" n.name;;
-let dag_pp_mynode = (Dag.pp_node pp_mynode);;
+let pp_mynode fmt n = Format.fprintf fmt "%s" n.name
+
+let dag_pp_mynode = Dag.pp_node pp_mynode
 
 let%expect_test _ =
   Format.printf "%a@." dag_pp_mynode node;
@@ -47,13 +48,11 @@ let%expect_test _ =
   try
     Dag.add dag node41 node;
     print_endline "no cycle"
-  with
-  | Dag.Cycle cycle ->
+  with Dag.Cycle cycle ->
     let cycle = List.map cycle ~f:name in
-    List.map ~f:Pp.text cycle
-    |> Pp.concat ~sep:Pp.space
-    |> print;
-    [%expect{|
+    List.map ~f:Pp.text cycle |> Pp.concat ~sep:Pp.space |> print;
+    [%expect
+      {|
 (1: k=1) (root) [(3: k=1) (child 1 2) [(4: k=1) (child 2 1) [(5: k=2) (child 3 1) [
                                                              ]]];
                   (2: k=1) (child 1 1) []]
@@ -65,22 +64,19 @@ child 4 1 child 3 1 child 2 1 child 1 2 root child 4
 1
 |}]
 
-
-
-let rec adjacent_pairs l = match l with
-  | [] | [_] -> []
-  | x :: y :: rest -> (x, y) :: adjacent_pairs (y :: rest)
+let rec adjacent_pairs l =
+  match l with
+  | [] | [ _ ] ->
+      []
+  | x :: y :: rest ->
+      (x, y) :: adjacent_pairs (y :: rest)
 
 let cycle_test variant =
-  let module Dag =
-    DagF.Make(struct
-      type t = int
-    end)
-  in
+  let module Dag = DagF.Make (struct
+    type t = int
+  end) in
   let open Dag in
-  let node dag data =
-    { info = create_node_info dag; data }
-  in
+  let node dag data = { info = create_node_info dag; data } in
   let edges = ref [] in
   let add d n1 n2 =
     edges := (n1.data, n2.data) :: !edges;
@@ -90,12 +86,14 @@ let cycle_test variant =
   let _n1 = node d 1 in
   let n2 = node d 2 in
   let n3 = node d 3 in
-  ((* the two variants are equivalent, but they end up taking a different
-      code path when producing the cycle for some reason (or at least they did in
-      2019-03) *)
-    match variant with
-    | `a -> add d n2 n3
-    | `b -> ());
+  ( (* the two variants are equivalent, but they end up taking a different code
+       path when producing the cycle for some reason (or at least they did in
+       2019-03) *)
+  match variant with
+  | `a ->
+      add d n2 n3
+  | `b ->
+      () );
   let n4 = node d 4 in
   add d n3 n4;
   let n5 = node d 5 in
@@ -152,33 +150,28 @@ let cycle_test variant =
   let _n31 = node d 31 in
   add d n14 n20;
   match add d n23 n11 with
-  | _ -> assert false
+  | _ ->
+      assert false
   | exception Cycle c ->
-    let c = List.map c ~f:(fun x -> x.data) in
-    List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
-      match (
-        List.exists !edges ~f:(fun edge ->
-          edge = (a, b))
-      ) with
-      | true ->
-        ()
-      | false ->
-        Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
-    List.map c ~f:(Pp.textf "%d")
-    |> Pp.concat ~sep:Pp.space
-    |> print
-
+      let c = List.map c ~f:(fun x -> x.data) in
+      List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
+          match List.exists !edges ~f:(fun edge -> edge = (a, b)) with
+          | true ->
+              ()
+          | false ->
+              Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
+      List.map c ~f:(Pp.textf "%d") |> Pp.concat ~sep:Pp.space |> print
 
 let%expect_test _ =
   cycle_test `a;
-  [%expect{|
+  [%expect {|
 23 22 21 20 14 13 12 11
 23
 |}]
 
 let%expect_test _ =
   cycle_test `b;
-  [%expect{|
+  [%expect {|
 23 22 21 20 14 13 12 11
 23
 |}]

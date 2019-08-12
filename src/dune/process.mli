@@ -9,14 +9,15 @@ type accepted_codes =
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  (** Fail if the process exits with anything else than [0] *)
+      (** Fail if the process exits with anything else than [0] *)
   | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
-  (** Accept the following non-zero exit codes, and return [Error
-      code] if the process exists with one of these codes. *)
+      (** Accept the following non-zero exit codes, and return [Error code] if
+          the process exists with one of these codes. *)
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)
   type input = Input
+
   type output = Output
 
   type 'a mode =
@@ -26,11 +27,12 @@ module Io : sig
   type 'a t
 
   val stdout : output t
+
   val stderr : output t
+
   val stdin : input t
 
-  (** Return a buffered channel for this output. The channel is
-      created lazily. *)
+  (** Return a buffered channel for this output. The channel is created lazily. *)
   val out_channel : output t -> out_channel
 
   (** Create a [t] representing redirecting the input or to a file or reading
@@ -53,8 +55,8 @@ type purpose =
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination *)
-val run
-  :  ?dir:Path.t
+val run :
+     ?dir:Path.t
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
@@ -66,8 +68,8 @@ val run
   -> 'a Fiber.t
 
 (** Run a command and capture its output *)
-val run_capture
-  :  ?dir:Path.t
+val run_capture :
+     ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> env:Env.t
@@ -76,8 +78,9 @@ val run_capture
   -> Path.t
   -> string list
   -> 'a Fiber.t
-val run_capture_line
-  :  ?dir:Path.t
+
+val run_capture_line :
+     ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> env:Env.t
@@ -86,8 +89,9 @@ val run_capture_line
   -> Path.t
   -> string list
   -> 'a Fiber.t
-val run_capture_lines
-  :  ?dir:Path.t
+
+val run_capture_lines :
+     ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
   -> env:Env.t

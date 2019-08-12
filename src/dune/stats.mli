@@ -7,4 +7,5 @@ val enable : string -> unit
 val record : unit -> unit
 
 (** Collect data about a subprocess *)
-val with_process : program:string -> args:string list -> 'a Fiber.t -> 'a Fiber.t
+val with_process :
+  program:string -> args:string list -> 'a Fiber.t -> 'a Fiber.t

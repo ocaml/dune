@@ -4,14 +4,12 @@ let sprintf = Printf.sprintf
 
 module Sexp = struct
   let fields fields =
-    List.map fields ~f:(fun (k, s) ->
-      Dune_lang.List (Dune_lang.atom k :: s))
+    List.map fields ~f:(fun (k, s) -> Dune_lang.List (Dune_lang.atom k :: s))
 
   let strings fields =
     Dune_lang.List (List.map fields ~f:Dune_lang.atom_or_quoted_string)
 
-  let constr name args =
-    Dune_lang.List (Dune_lang.atom name :: args)
+  let constr name args = Dune_lang.List (Dune_lang.atom name :: args)
 
   let parse s =
     Dune_lang.parse_string ~fname:"gen_tests.ml" ~mode:Single s
@@ -19,56 +17,56 @@ module Sexp = struct
 end
 
 module Platform = struct
-  type t = Win | Mac
+  type t =
+    | Win
+    | Mac
 
   open Dune_lang
 
-  let to_string = function
-    | Win -> "win"
-    | Mac -> "macosx"
+  let to_string = function Win -> "win" | Mac -> "macosx"
 
   let t t = atom (to_string t)
 
   let system_var = Sexp.parse "%{ocaml-config:system}"
 
   let enabled_if = function
-    | [] -> None
-    | [x] -> Some (List [atom "<>"; system_var; t x])
+    | [] ->
+        None
+    | [ x ] ->
+        Some (List [ atom "<>"; system_var; t x ])
     | ps ->
-      Some (List (
-        atom "and"
-        :: List.map ps ~f:(fun p -> List [atom "<>"; system_var; t p])
-      ))
+        Some
+          (List
+             ( atom "and"
+             :: List.map ps ~f:(fun p -> List [ atom "<>"; system_var; t p ])
+             ))
 end
 
 let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
-    (Sexp.fields (
-       [ "name", [Dune_lang.atom name]
-       ; "deps", deps
-       ] @ (match action with
-         | None -> []
-         | Some a -> ["action", [a]])
-       @ (match enabled_if with
-         | None -> []
-         | Some e -> ["enabled_if", [e]])))
+    (Sexp.fields
+       ( [ ("name", [ Dune_lang.atom name ]); ("deps", deps) ]
+       @ (match action with None -> [] | Some a -> [ ("action", [ a ]) ])
+       @
+       match enabled_if with None -> [] | Some e -> [ ("enabled_if", [ e ]) ]
+       ))
 
 module Test = struct
   type t =
-    { name           : string
-    ; env            : (string * Dune_lang.t) option
-    ; skip_ocaml     : string option
+    { name : string
+    ; env : (string * Dune_lang.t) option
+    ; skip_ocaml : string option
     ; skip_platforms : Platform.t list
-    ; enabled        : bool
-    ; js             : bool
-    ; coq            : bool
-    ; external_deps  : bool
+    ; enabled : bool
+    ; js : bool
+    ; coq : bool
+    ; external_deps : bool
     ; disable_sandboxing : bool
     }
 
-  let make
-        ?env ?skip_ocaml ?(skip_platforms=[]) ?(enabled=true) ?(js=false)
-        ?(coq=false) ?(external_deps=false) ?(disable_sandboxing=false) name =
+  let make ?env ?skip_ocaml ?(skip_platforms = []) ?(enabled = true)
+      ?(js = false) ?(coq = false) ?(external_deps = false)
+      ?(disable_sandboxing = false) name =
     let external_deps = external_deps || coq in
     { name
     ; env
@@ -84,9 +82,7 @@ module Test = struct
   let pp_sexp fmt t =
     let open Dune_lang in
     let skip_version =
-      match t.skip_ocaml with
-      | None -> []
-      | Some s -> ["-skip-versions"; s]
+      match t.skip_ocaml with None -> [] | Some s -> [ "-skip-versions"; s ]
     in
     let enabled_if = Platform.enabled_if t.skip_platforms in
     let action =
@@ -96,39 +92,33 @@ module Test = struct
         ; List
             [ atom "progn"
             ; Dune_lang.List
-                ([ atom "run"
-                 ; Sexp.parse "%{exe:cram.exe}" ]
-                 @ (List.map ~f:Dune_lang.atom_or_quoted_string
-                      (skip_version @ ["-test"; "run.t"])))
-            ; Sexp.strings ["diff?"; "run.t"; "run.t.corrected"]
+                ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
+                @ List.map ~f:Dune_lang.atom_or_quoted_string
+                    (skip_version @ [ "-test"; "run.t" ]) )
+            ; Sexp.strings [ "diff?"; "run.t"; "run.t.corrected" ]
             ]
         ]
     in
     let action =
       match t.env with
-      | None -> action
+      | None ->
+          action
       | Some (k, v) ->
-        List [ atom "setenv"
-             ; atom_or_quoted_string k
-             ; v
-             ; action ] in
-    alias t.name
-      ?enabled_if
-      ~deps:(
-        (List.concat  [
-           [ Sexp.strings ["package"; "dune"]
-           ; Sexp.strings [ "source_tree"
-                          ; sprintf "test-cases/%s" t.name]
-           ];
-           (if t.disable_sandboxing then [
-              Sexp.strings ["sandbox"; "none"]
-            ]
-            else
-              []);
-         ])
-      ) ~action
-    |> Dune_lang.pp
-    |> Pp.render_ignore_tags fmt
+          List [ atom "setenv"; atom_or_quoted_string k; v; action ]
+    in
+    alias t.name ?enabled_if
+      ~deps:
+        (List.concat
+           [ [ Sexp.strings [ "package"; "dune" ]
+             ; Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
+             ]
+           ; ( if t.disable_sandboxing then
+               [ Sexp.strings [ "sandbox"; "none" ] ]
+             else
+               [] )
+           ])
+      ~action
+    |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 end
 
 let exclusions =
@@ -154,64 +144,67 @@ let exclusions =
   ; make "package-dep" ~external_deps:true
   ; make "merlin-tests" ~external_deps:true
   ; make "use-meta" ~external_deps:true
-  ; make "output-obj" ~skip_platforms:[Mac; Win] ~skip_ocaml:"<4.06.0"
+  ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~skip_ocaml:"<4.06.0"
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
-  ; make "menhir"~external_deps:true
+  ; make "menhir" ~external_deps:true
   ; make "utop" ~external_deps:true ~enabled:false
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
-  ; make "utop-default-implementation" ~enabled:false
-      ~external_deps:true ~skip_ocaml:"<4.05.0"
+  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
+      ~enabled:false
+  ; make "utop-default-implementation" ~enabled:false ~external_deps:true
+      ~skip_ocaml:"<4.05.0"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
-  ; make "configurator" ~skip_platforms:[Win]
-  ; make "github764" ~skip_platforms:[Win]
+  ; make "configurator" ~skip_platforms:[ Win ]
+  ; make "github764" ~skip_platforms:[ Win ]
   ; make "gen-opam-install-file" ~external_deps:true
   ; make "scope-ppx-bug" ~external_deps:true
   ; make "findlib-dynload" ~external_deps:true
-  (* The next test is disabled as it relies on configured opam
-     swtiches and it's hard to get that working properly *)
+    (* The next test is disabled as it relies on configured opam swtiches and
+       it's hard to get that working properly *)
   ; make "envs-and-contexts" ~external_deps:true ~enabled:false
   ; make "env" ~skip_ocaml:"<4.06.0"
   ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ; make "explicit_js_mode" ~external_deps:true ~js:true
-  (* for the following tests sandboxing is disabled because absolute paths end up
-     appearing in the output if we sandbox *)
+    (* for the following tests sandboxing is disabled because absolute paths
+       end up appearing in the output if we sandbox *)
   ; make "env-bins" ~disable_sandboxing:true
   ]
 
-let all_tests = lazy (
-  Sys.readdir "test-cases"
-  |> Array.to_list
-  |> List.filter ~f:(fun s -> not (String.contains s '.'))
-  |> List.sort ~compare:String.compare
-  |> List.map ~f:(fun name ->
-    match List.find exclusions ~f:(fun (t : Test.t) -> t.name = name) with
-    | None -> Test.make name
-    | Some t -> t
-  )
-)
+let all_tests =
+  lazy
+    ( Sys.readdir "test-cases" |> Array.to_list
+    |> List.filter ~f:(fun s -> not (String.contains s '.'))
+    |> List.sort ~compare:String.compare
+    |> List.map ~f:(fun name ->
+           match
+             List.find exclusions ~f:(fun (t : Test.t) -> t.name = name)
+           with
+           | None ->
+               Test.make name
+           | Some t ->
+               t) )
 
 let pp_group fmt (name, tests) =
-  alias name ~deps:(
-    (List.map tests ~f:(fun (t : Test.t) ->
-       Sexp.strings ["alias"; t.name])))
-  |> Dune_lang.pp
-  |> Pp.render_ignore_tags fmt
+  alias name
+    ~deps:
+      (List.map tests ~f:(fun (t : Test.t) -> Sexp.strings [ "alias"; t.name ]))
+  |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 
 let () =
   let tests = Lazy.force all_tests in
-  (* The runtest target has a "special" definition. It includes all
-     tests except for js, coq, and disabled tests *)
+  (* The runtest target has a "special" definition. It includes all tests
+     except for js, coq, and disabled tests *)
   tests |> List.iter ~f:(fun t -> Format.printf "%a@.@." Test.pp_sexp t);
-  [ "runtest", (fun (t : Test.t) -> not t.js && not t.coq && t.enabled)
-  ; "runtest-no-deps", (fun (t : Test.t) -> not t.external_deps && t.enabled)
-  ; "runtest-disabled", (fun (t : Test.t) -> not t.enabled)
-  ; "runtest-js", (fun (t : Test.t) -> t.js && t.enabled)
-  ; "runtest-coq", (fun (t : Test.t) -> t.coq && t.enabled) ]
+  [ ("runtest", fun (t : Test.t) -> (not t.js) && (not t.coq) && t.enabled)
+  ; ("runtest-no-deps", fun (t : Test.t) -> (not t.external_deps) && t.enabled)
+  ; ("runtest-disabled", fun (t : Test.t) -> not t.enabled)
+  ; ("runtest-js", fun (t : Test.t) -> t.js && t.enabled)
+  ; ("runtest-coq", fun (t : Test.t) -> t.coq && t.enabled)
+  ]
   |> List.map ~f:(fun (name, predicate) ->
-    (name, List.filter tests ~f:predicate))
+         (name, List.filter tests ~f:predicate))
   |> Format.pp_print_list
        ~pp_sep:(fun fmt () -> Format.fprintf fmt "@.@.")
        pp_group Format.std_formatter

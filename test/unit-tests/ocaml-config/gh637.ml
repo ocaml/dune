@@ -2,8 +2,9 @@ open! Stdune
 
 let pwd = Sys.getcwd ()
 
-let valid_ocaml_config = Printf.sprintf
-{|version: 4.02.3
+let valid_ocaml_config =
+  Printf.sprintf
+    {|version: 4.02.3
 standard_library_default: %s
 standard_library: %s
 standard_runtime: /usr/bin/ocamlrun
@@ -40,17 +41,19 @@ ast_impl_magic_number: Caml1999M016
 ast_intf_magic_number: Caml1999N015
 cmxs_magic_number: Caml2007D002
 cmt_magic_number: Caml2012T004|}
-pwd pwd
+    pwd pwd
 
 let () =
   match
     match
-      valid_ocaml_config
-      |> String.split_lines
-      |> Ocaml_config.Vars.of_lines
+      valid_ocaml_config |> String.split_lines |> Ocaml_config.Vars.of_lines
     with
-    | Ok x -> Ocaml_config.make x
-    | Error msg -> Error (Ocamlc_config, msg)
+    | Ok x ->
+        Ocaml_config.make x
+    | Error msg ->
+        Error (Ocamlc_config, msg)
   with
-  | Error (_, e) -> failwith e
-  | Ok (_ : Ocaml_config.t) -> ()
+  | Error (_, e) ->
+      failwith e
+  | Ok (_ : Ocaml_config.t) ->
+      ()

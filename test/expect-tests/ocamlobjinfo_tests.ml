@@ -4,7 +4,8 @@ open Dune_tests_common
 
 let () = init ()
 
-let fixture = {ocamlobjinfo|
+let fixture =
+  {ocamlobjinfo|
 File _build/install/default/lib/dune/_stdune/stdune__Env.cmx
 Name: Stdune__Env
 CRC of implementation: b678d7aae434ca3158721e3a37a15776
@@ -76,14 +77,12 @@ Send functions:
 Force link: no
 |ocamlobjinfo}
 
-let parse s =
-  Ocamlobjinfo.parse s
-  |> Ocamlobjinfo.to_dyn
-  |> print_dyn
+let parse s = Ocamlobjinfo.parse s |> Ocamlobjinfo.to_dyn |> print_dyn
 
 let%expect_test _ =
   parse fixture;
-  [%expect{|
+  [%expect
+    {|
 {impl =
    set {"Printf"; "Stdune__Array"; "Stdune__Bin"; "Stdune__Exn";
    "Stdune__List"; "Stdune__Map"; "Stdune__Set"; "Stdune__Sexp";

@@ -1,13 +1,11 @@
-(** Output trace data to a file in catapult format.
-    This format is compatible with [chrome://tracing]. *)
+(** Output trace data to a file in catapult format. This format is compatible
+    with [chrome://tracing]. *)
 
-(** The (mutable) state of reporters.
-    It is basically an output channel. *)
+(** The (mutable) state of reporters. It is basically an output channel. *)
 type t
 
 (** Create a reporter: open a trace file and further events will be logged into
-    it. It is necessary to call [close] on the reporter to make the file valid.
-*)
+    it. It is necessary to call [close] on the reporter to make the file valid. *)
 val make : string -> t
 
 (** Return a fake reporter that reads time in a reference and writes JSON
@@ -19,8 +17,8 @@ val close : t -> unit
 
 type event
 
-(** Prepare data related to the processus. This will capture the current time to
-    compute the start and duration. *)
+(** Prepare data related to the processus. This will capture the current time
+    to compute the start and duration. *)
 val on_process_start : t -> program:string -> args:string list -> event
 
 (** Capture the current time and output a complete event. *)

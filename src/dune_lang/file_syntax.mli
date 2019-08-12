@@ -1,6 +1,8 @@
 open Stdune
 
-type t = Jbuild | Dune
+type t =
+  | Jbuild
+  | Dune
 
 val equal : t -> t -> bool
 

@@ -3,27 +3,36 @@ module String = Dune_caml.String
 
 include struct
   [@@@warning "-32-3"]
-  let capitalize_ascii   = String.capitalize
+
+  let capitalize_ascii = String.capitalize
+
   let uncapitalize_ascii = String.uncapitalize
-  let uppercase_ascii    = String.uppercase
-  let lowercase_ascii    = String.lowercase
-  let equal (a:string) b = Pervasives.(=) a b
+
+  let uppercase_ascii = String.uppercase
+
+  let lowercase_ascii = String.lowercase
+
+  let equal (a : string) b = Pervasives.( = ) a b
+
   let index_opt s ch =
-    match String.index s ch with
-    | i -> Some i
-    | exception Not_found -> None
+    match String.index s ch with i -> Some i | exception Not_found -> None
+
   let index_from_opt s i ch =
     match String.index_from s i ch with
-    | i -> Some i
-    | exception Not_found -> None
+    | i ->
+        Some i
+    | exception Not_found ->
+        None
+
   let rindex_opt s ch =
-    match String.rindex s ch with
-    | i -> Some i
-    | exception Not_found -> None
+    match String.rindex s ch with i -> Some i | exception Not_found -> None
+
   let rindex_from_opt s i ch =
     match String.rindex_from s i ch with
-    | i -> Some i
-    | exception Not_found -> None
+    | i ->
+        Some i
+    | exception Not_found ->
+        None
 end
 
 include StringLabels
@@ -32,51 +41,59 @@ let compare a b = Ordering.of_int (String.compare a b)
 
 module T = struct
   type t = StringLabels.t
+
   let compare = compare
+
   let equal (x : t) (y : t) = x = y
+
   let hash (s : t) = Hashtbl.hash s
+
   let to_dyn s = Dyn.String s
 end
 
 let to_dyn = T.to_dyn
 
-let equal : string -> string -> bool = (=)
+let equal : string -> string -> bool = ( = )
+
 let hash = Hashtbl.hash
 
-let capitalize   = capitalize_ascii
+let capitalize = capitalize_ascii
+
 let uncapitalize = uncapitalize_ascii
-let uppercase    = uppercase_ascii
-let lowercase    = lowercase_ascii
+
+let uppercase = uppercase_ascii
+
+let lowercase = lowercase_ascii
 
 let index = index_opt
+
 let index_from = index_from_opt
+
 let rindex = rindex_opt
+
 let rindex_from = rindex_from_opt
 
-let break s ~pos =
-  (sub s ~pos:0 ~len:pos,
-   sub s ~pos ~len:(length s - pos))
+let break s ~pos = (sub s ~pos:0 ~len:pos, sub s ~pos ~len:(length s - pos))
 
 let is_empty s = length s = 0
 
 let rec check_prefix s ~prefix len i =
-  i = len || s.[i] = prefix.[i] && check_prefix s ~prefix len (i + 1)
+  i = len || (s.[i] = prefix.[i] && check_prefix s ~prefix len (i + 1))
 
 let rec check_suffix s ~suffix suffix_len offset i =
-  i = suffix_len ||
-  s.[offset + i] = suffix.[i] &&
-  check_suffix s ~suffix suffix_len offset (i + 1)
+  i = suffix_len
+  || s.[offset + i] = suffix.[i]
+     && check_suffix s ~suffix suffix_len offset (i + 1)
 
 let is_prefix s ~prefix =
   let len = length s in
   let prefix_len = length prefix in
-  len >= prefix_len && (check_prefix s ~prefix prefix_len 0)
+  len >= prefix_len && check_prefix s ~prefix prefix_len 0
 
 let is_suffix s ~suffix =
   let len = length s in
   let suffix_len = length suffix in
-  len >= suffix_len &&
-  (check_suffix s ~suffix suffix_len (len - suffix_len) 0)
+  len >= suffix_len && check_suffix s ~suffix suffix_len (len - suffix_len) 0
 
 let drop_prefix s ~prefix =
   if is_prefix s ~prefix then
@@ -106,7 +123,7 @@ let extract_words s ~is_word_char =
       skip_blanks (i + 1)
   and parse_word i j =
     if j = length s then
-      [sub s ~pos:i ~len:(j - i)]
+      [ sub s ~pos:i ~len:(j - i) ]
     else if is_word_char s.[j] then
       parse_word i (j + 1)
     else
@@ -116,38 +133,34 @@ let extract_words s ~is_word_char =
 
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
-    | ',' | ' ' | '\t' | '\n' -> false
-    | _ -> true)
+    | ',' | ' ' | '\t' | '\n' ->
+        false
+    | _ ->
+        true)
 
 let extract_blank_separated_words s =
-  extract_words s ~is_word_char:(function
-    | ' ' | '\t' -> false
-    | _ -> true)
+  extract_words s ~is_word_char:(function ' ' | '\t' -> false | _ -> true)
 
 let lsplit2 s ~on =
   match index s on with
-  | None -> None
+  | None ->
+      None
   | Some i ->
-    Some
-      (sub s ~pos:0 ~len:i,
-       sub s ~pos:(i + 1) ~len:(length s - i - 1))
+      Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
 let lsplit2_exn s ~on =
   match lsplit2 s ~on with
-  | Some s -> s
+  | Some s ->
+      s
   | None ->
-    Code_error.raise "lsplit2_exn"
-      [ "s", String s
-      ; "on", Char on
-      ]
+      Code_error.raise "lsplit2_exn" [ ("s", String s); ("on", Char on) ]
 
 let rsplit2 s ~on =
   match rindex s on with
-  | None -> None
+  | None ->
+      None
   | Some i ->
-    Some
-      (sub s ~pos:0 ~len:i,
-       sub s ~pos:(i + 1) ~len:(length s - i - 1))
+      Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
 include String_split
 
@@ -155,42 +168,44 @@ let escape_only c s =
   let n = ref 0 in
   let len = length s in
   for i = 0 to len - 1 do
-    if unsafe_get s i = c then incr n;
+    if unsafe_get s i = c then incr n
   done;
-  if !n = 0 then s
-  else (
+  if !n = 0 then
+    s
+  else
     let b = Bytes.create (len + !n) in
     n := 0;
     for i = 0 to len - 1 do
       if unsafe_get s i = c then (
         Bytes.unsafe_set b !n '\\';
-        incr n;
+        incr n
       );
       Bytes.unsafe_set b !n (unsafe_get s i);
       incr n
     done;
     Bytes.unsafe_to_string b
-  )
 
 let longest_map l ~f =
-  List.fold_left l ~init:0 ~f:(fun acc x ->
-    max acc (length (f x)))
+  List.fold_left l ~init:0 ~f:(fun acc x -> max acc (length (f x)))
 
 let longest l = longest_map l ~f:Fn.id
 
 let longest_prefix = function
-  | [] -> ""
-  | [x] -> x
+  | [] ->
+      ""
+  | [ x ] ->
+      x
   | x :: xs ->
-    let rec loop len i =
-      if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
-        loop len (i + 1)
-      else
-        i
-    in
-    let len =
-      List.fold_left ~init:(length x) ~f:(fun acc x -> min acc (length x)) xs in
-    sub ~pos:0 x ~len:(loop len 0)
+      let rec loop len i =
+        if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
+          loop len (i + 1)
+        else
+          i
+      in
+      let len =
+        List.fold_left ~init:(length x) ~f:(fun acc x -> min acc (length x)) xs
+      in
+      sub ~pos:0 x ~len:(loop len 0)
 
 let exists =
   let rec loop s i len f =
@@ -199,16 +214,13 @@ let exists =
     else
       f (unsafe_get s i) || loop s (i + 1) len f
   in
-  fun s ~f ->
-    loop s 0 (length s) f
+  fun s ~f -> loop s 0 (length s) f
 
 let for_all =
   let rec loop s i len f =
-    i = len ||
-    (f (unsafe_get s i) && loop s (i + 1) len f)
+    i = len || (f (unsafe_get s i) && loop s (i + 1) len f)
   in
-  fun s ~f ->
-    loop s 0 (length s) f
+  fun s ~f -> loop s 0 (length s) f
 
 let maybe_quoted s =
   let escaped = escaped s in
@@ -217,49 +229,52 @@ let maybe_quoted s =
   else
     Printf.sprintf {|"%s"|} escaped
 
-module O = Comparable.Make(T)
+module O = Comparable.Make (T)
+
 module Set = struct
   include O.Set
 
   let pp fmt t =
     Format.fprintf fmt "Set (@[%a@])"
-      (Format.pp_print_list Format.pp_print_string
-         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ "))
+      (Format.pp_print_list Format.pp_print_string ~pp_sep:(fun fmt () ->
+           Format.fprintf fmt "@ "))
       (to_list t)
 end
 
 module Map = struct
   include O.Map
+
   let pp f fmt t =
-    Format.pp_print_list (fun fmt (k, v) ->
-      Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v
-    ) fmt (to_list t)
+    Format.pp_print_list
+      (fun fmt (k, v) -> Format.fprintf fmt "@[<hov 2>(%s@ =@ %a)@]" k f v)
+      fmt (to_list t)
 end
-module Table = Hashtbl.Make(T)
+
+module Table = Hashtbl.Make (T)
 
 let enumerate_gen s =
   let s = " " ^ s ^ " " in
   let rec loop = function
-    | [] -> []
-    | [x] -> [x]
-    | [x; y] -> [x; s; y]
-    | x :: l -> x :: ", " :: loop l
+    | [] ->
+        []
+    | [ x ] ->
+        [ x ]
+    | [ x; y ] ->
+        [ x; s; y ]
+    | x :: l ->
+        x :: ", " :: loop l
   in
   fun l -> concat (loop l) ~sep:""
 
 let enumerate_and = enumerate_gen "and"
-let enumerate_or  = enumerate_gen "or"
-let enumerate_one_of = function
-  | [x] -> x
-  | s -> "One of " ^ enumerate_or s
 
-let concat ~sep = function
-  | [] -> ""
-  | [x] -> x
-  | xs -> concat ~sep xs
+let enumerate_or = enumerate_gen "or"
 
-let take s len =
-  sub s ~pos:0 ~len:(min (length s) len)
+let enumerate_one_of = function [ x ] -> x | s -> "One of " ^ enumerate_or s
+
+let concat ~sep = function [] -> "" | [ x ] -> x | xs -> concat ~sep xs
+
+let take s len = sub s ~pos:0 ~len:(min (length s) len)
 
 let drop s n =
   let len = length s in
@@ -268,9 +283,7 @@ let drop s n =
 let split_n s n =
   let len = length s in
   let n = min n len in
-  ( sub s ~pos:0 ~len:n
-  , sub s ~pos:n ~len:(len - n)
-  )
+  (sub s ~pos:0 ~len:n, sub s ~pos:n ~len:(len - n))
 
 let findi =
   let rec loop s len ~f i =
@@ -288,7 +301,8 @@ let need_quoting s =
   len = 0
   ||
   let rec loop i =
-    if i = len then false
+    if i = len then
+      false
     else
       match s.[i] with
       | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' ->
@@ -298,4 +312,8 @@ let need_quoting s =
   in
   loop 0
 
-let quote_for_shell s = if need_quoting s then Dune_caml.Filename.quote s else s
+let quote_for_shell s =
+  if need_quoting s then
+    Dune_caml.Filename.quote s
+  else
+    s

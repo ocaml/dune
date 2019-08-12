@@ -1,9 +1,9 @@
 open! Stdune
 open! Import
 
-(** Because the dune_init utility deals with the addition of stanzas and
-    fields to dune projects and files, we need to inspect and manipulate the
-    concrete syntax tree (CST) a good deal. *)
+(** Because the dune_init utility deals with the addition of stanzas and fields
+    to dune projects and files, we need to inspect and manipulate the concrete
+    syntax tree (CST) a good deal. *)
 module Cst = Dune_lang.Cst
 
 module Kind = struct
@@ -14,57 +14,58 @@ module Kind = struct
     | Test
 
   let to_string = function
-    | Executable -> "executable"
-    | Library -> "library"
-    | Project -> "project"
-    | Test -> "test"
+    | Executable ->
+        "executable"
+    | Library ->
+        "library"
+    | Project ->
+        "project"
+    | Test ->
+        "test"
 
   let commands =
-    [ "executable", Executable
-    ; "library", Library
-    ; "project", Project
-    ; "test", Test
+    [ ("executable", Executable)
+    ; ("library", Library)
+    ; ("project", Project)
+    ; ("test", Test)
     ]
 end
 
 (** Abstractions around the kinds of files handled during initialization *)
 module File = struct
-
   type dune =
-    { path: Path.t
-    ; name: string
-    ; content: Cst.t list
+    { path : Path.t
+    ; name : string
+    ; content : Cst.t list
     }
 
   type text =
-    { path: Path.t
-    ; name: string
-    ; content: string
+    { path : Path.t
+    ; name : string
+    ; content : string
     }
 
   type t =
     | Dune of dune
     | Text of text
 
-  let make_text path name content =
-    Text {path; name; content}
+  let make_text path name content = Text { path; name; content }
 
   let full_path = function
-    | Dune {path; name; _} | Text {path; name; _} ->
-      Path.relative path name
+    | Dune { path; name; _ } | Text { path; name; _ } ->
+        Path.relative path name
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
-
     let pp s =
-      match Cst.to_sexp s with
-      | None -> Pp.nop
-      | Some s -> Dune_lang.pp s
+      match Cst.to_sexp s with None -> Pp.nop | Some s -> Dune_lang.pp s
 
-    let libraries_conflict (a: Dune_file.Library.t) (b: Dune_file.Library.t) =
+    let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t)
+        =
       a.name = b.name
 
-    let executables_conflict (a : Dune_file.Executables.t) (b : Dune_file.Executables.t) =
+    let executables_conflict (a : Dune_file.Executables.t)
+        (b : Dune_file.Executables.t) =
       let a_names = List.map ~f:snd a.names |> String.Set.of_list in
       let b_names = List.map ~f:snd b.names |> String.Set.of_list in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
@@ -74,60 +75,72 @@ module File = struct
 
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
-      match a, b with
-      | Executables a, Executables b -> executables_conflict a b
-      | Library a, Library b -> libraries_conflict a b
-      | Tests a, Tests b -> tests_conflict a b
+      match (a, b) with
+      | Executables a, Executables b ->
+          executables_conflict a b
+      | Library a, Library b ->
+          libraries_conflict a b
+      | Tests a, Tests b ->
+          tests_conflict a b
       (* NOTE No other stanza types currently supported *)
-      | _ -> false
+      | _ ->
+          false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.Stanzas.of_ast project in
-      begin
-        let open Option.O in
-        let* a_ast = Cst.abstract a in
-        let+ b_ast = Cst.abstract b in
-        let a_asts = of_ast a_ast in
-        let b_asts = of_ast b_ast in
-        List.exists ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts) b_asts
-      end
+      (let open Option.O in
+      let* a_ast = Cst.abstract a in
+      let+ b_ast = Cst.abstract b in
+      let a_asts = of_ast a_ast in
+      let b_asts = of_ast b_ast in
+      List.exists
+        ~f:(fun x -> List.exists ~f:(stanzas_conflict x) a_asts)
+        b_asts)
       |> Option.value ~default:false
 
     (* TODO(shonfeder): replace with stanza merging *)
     let find_conflicting project new_stanzas existing_stanzas =
       let conflicting_stanza stanza =
         match List.find ~f:(csts_conflict project stanza) existing_stanzas with
-        | Some conflict -> Some (stanza, conflict)
-        | None -> None
+        | Some conflict ->
+            Some (stanza, conflict)
+        | None ->
+            None
       in
       List.find_map ~f:conflicting_stanza new_stanzas
 
     let add (project : Dune_project.t) stanzas = function
-      | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
-      | Dune f ->
+      | Text f ->
+          Text f (* Adding a stanza to a text file isn't meaningful *)
+      | Dune f -> (
         match find_conflicting project stanzas f.content with
-        | None -> Dune {f with content = f.content @ stanzas}
+        | None ->
+            Dune { f with content = f.content @ stanzas }
         | Some (a, b) ->
-          User_error.raise
-            [ Pp.text "Updating existing stanzas is not yet supported."
-            ; Pp.text "A preexisting dune stanza conflicts with a \
-                       generated stanza:"
-            ; Pp.nop
-            ; Pp.text "Generated stanza:"
-            ; pp a
-            ; Pp.nop
-            ; Pp.text "Pre-existing stanza:"
-            ; pp b
-            ]
-  end (* Stanza *)
+            User_error.raise
+              [ Pp.text "Updating existing stanzas is not yet supported."
+              ; Pp.text
+                  "A preexisting dune stanza conflicts with a generated stanza:"
+              ; Pp.nop
+              ; Pp.text "Generated stanza:"
+              ; pp a
+              ; Pp.nop
+              ; Pp.text "Pre-existing stanza:"
+              ; pp b
+              ] )
+  end
+
+  (* Stanza *)
 
   let create_dir path =
-    try Path.mkdir_p path with
-    | Unix.Unix_error (EACCES, _, _) ->
+    try Path.mkdir_p path
+    with Unix.Unix_error (EACCES, _, _) ->
       User_error.raise
-        [ Pp.textf "A project directory cannot be created or accessed: \
-                    Lacking permissions needed to create directory %s"
-            (Path.to_string_maybe_quoted path) ]
+        [ Pp.textf
+            "A project directory cannot be created or accessed: Lacking \
+             permissions needed to create directory %s"
+            (Path.to_string_maybe_quoted path)
+        ]
 
   let load_dune_file ~path =
     let name = "dune" in
@@ -137,14 +150,16 @@ module File = struct
         []
       else
         match Format_dune_lang.parse_file (Some full_path) with
-        | Format_dune_lang.Sexps content -> content
+        | Format_dune_lang.Sexps content ->
+            content
         | Format_dune_lang.OCaml_syntax _ ->
-          User_error.raise
-            [ Pp.textf "Cannot load dune file %s because it uses OCaml \
-                        syntax"
-                (Path.to_string_maybe_quoted full_path) ]
+            User_error.raise
+              [ Pp.textf
+                  "Cannot load dune file %s because it uses OCaml syntax"
+                  (Path.to_string_maybe_quoted full_path)
+              ]
     in
-    Dune {path; name; content}
+    Dune { path; name; content }
 
   let write_dune_file (dune_file : dune) =
     let path = Path.relative dune_file.path dune_file.name in
@@ -153,12 +168,13 @@ module File = struct
   let write f =
     let path = full_path f in
     match f with
-    | Dune f -> Ok (write_dune_file f)
+    | Dune f ->
+        Ok (write_dune_file f)
     | Text f ->
-      if Path.exists path then
-        Error path
-      else
-        Ok (Io.write_file ~binary:false path f.content)
+        if Path.exists path then
+          Error path
+        else
+          Ok (Io.write_file ~binary:false path f.content)
 end
 
 (** The context in which the initialization is executed *)
@@ -170,23 +186,23 @@ module Init_context = struct
 
   let make path =
     let project =
-      match Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty with
-      | Some p -> p
-      | None   -> Lazy.force Dune_project.anonymous
+      match
+        Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
+      with
+      | Some p ->
+          p
+      | None ->
+          Lazy.force Dune_project.anonymous
     in
     let dir =
-      match path with
-      | None -> Path.root
-      | Some p -> Path.of_string p
+      match path with None -> Path.root | Some p -> Path.of_string p
     in
     File.create_dir dir;
     { dir; project }
 end
 
 module Component = struct
-
   module Options = struct
-
     module Common = struct
       type t =
         { name : string
@@ -196,15 +212,13 @@ module Component = struct
     end
 
     module Executable = struct
-      type t =
-        { public: string option
-        }
+      type t = { public : string option }
     end
 
     module Library = struct
       type t =
-        { public: string option
-        ; inline_tests: bool
+        { public : string option
+        ; inline_tests : bool
         }
     end
 
@@ -213,17 +227,18 @@ module Component = struct
         type t =
           | Exec
           | Lib
-          (* TODO(shonfeder) Add custom templates *)
+
+        (* TODO(shonfeder) Add custom templates *)
 
         let of_string = function
-          | "executable" -> Some Exec
-          | "library" -> Some Lib
-          | _ -> None
+          | "executable" ->
+              Some Exec
+          | "library" ->
+              Some Lib
+          | _ ->
+              None
 
-        let commands =
-          [ "executable", Exec
-          ; "library", Lib
-          ]
+        let commands = [ ("executable", Exec); ("library", Lib) ]
       end
 
       module Pkg = struct
@@ -231,16 +246,13 @@ module Component = struct
           | Opam
           | Esy
 
-        let commands =
-          [ "opam", Opam
-          ; "esy", Esy
-          ]
+        let commands = [ ("opam", Opam); ("esy", Esy) ]
       end
 
       type t =
-        { template: Template.t
-        ; inline_tests: bool
-        ; pkg: Pkg.t
+        { template : Template.t
+        ; inline_tests : bool
+        ; pkg : Pkg.t
         }
     end
 
@@ -253,7 +265,9 @@ module Component = struct
       ; common : Common.t
       ; options : 'options
       }
-  end (* Options *)
+  end
+
+  (* Options *)
 
   type 'options t =
     | Executable : Options.Executable.t Options.t -> Options.Executable.t t
@@ -273,15 +287,18 @@ module Component = struct
 
     module Field = struct
       let atoms = List.map ~f:atom
-      let public_name name = List [atom "public_name"; atom name]
-      let name name = List [atom "name"; atom name]
-      let inline_tests = List [atom "inline_tests"]
-      let libraries libs = List (atom "libraries" :: atoms libs)
-      let pps pps = List [atom "preprocess"; List (atom "pps" :: atoms pps)]
 
-      let optional_field ~f = function
-        | [] -> []
-        | args -> [f args]
+      let public_name name = List [ atom "public_name"; atom name ]
+
+      let name name = List [ atom "name"; atom name ]
+
+      let inline_tests = List [ atom "inline_tests" ]
+
+      let libraries libs = List (atom "libraries" :: atoms libs)
+
+      let pps pps = List [ atom "preprocess"; List (atom "pps" :: atoms pps) ]
+
+      let optional_field ~f = function [] -> [] | args -> [ f args ]
 
       let common (options : Options.Common.t) =
         let optional_fields =
@@ -291,57 +308,56 @@ module Component = struct
         name options.name :: optional_fields
     end
 
-    let make kind common_options fields  =
+    let make kind common_options fields =
       (* Form the AST *)
-      List (atom kind
-            :: fields
-            @ Field.common common_options)
+      List ((atom kind :: fields) @ Field.common common_options)
       (* Convert to a CST *)
       |> Dune_lang.add_loc ~loc:Loc.none
-      |> Cst.concrete
-      (* Package as a list CSTs *)
-      |> List.singleton
+      |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
 
     let add_to_list_set elem set =
-      if List.mem elem ~set then set else elem :: set
+      if List.mem elem ~set then
+        set
+      else
+        elem :: set
 
     let public_name_field ~default = function
-      | None -> []
-      | Some "" -> [Field.public_name default]
-      | Some n  -> [Field.public_name n]
+      | None ->
+          []
+      | Some "" ->
+          [ Field.public_name default ]
+      | Some n ->
+          [ Field.public_name n ]
 
-    let executable (common : Options.Common.t) (options : Options.Executable.t) =
+    let executable (common : Options.Common.t) (options : Options.Executable.t)
+        =
       let public_name =
         public_name_field ~default:common.name options.public
       in
-      make "executable" {common with name = "main"} public_name
+      make "executable" { common with name = "main" } public_name
 
-    let library (common : Options.Common.t) (options: Options.Library.t) =
-      let (common, inline_tests) =
+    let library (common : Options.Common.t) (options : Options.Library.t) =
+      let common, inline_tests =
         if not options.inline_tests then
           (common, [])
         else
-          let pps =
-            add_to_list_set "ppx_inline_test" common.pps
-          in
-          ({common with pps}, [Field.inline_tests])
+          let pps = add_to_list_set "ppx_inline_test" common.pps in
+          ({ common with pps }, [ Field.inline_tests ])
       in
       let public_name =
         public_name_field ~default:common.name options.public
       in
       make "library" common (public_name @ inline_tests)
 
-    let test common ((): Options.Test.t) =
-      make "test" common []
+    let test common (() : Options.Test.t) = make "test" common []
   end
 
   (* TODO Support for merging in changes to an existing stanza *)
   let add_stanza_to_dune_file ~(project : Dune_project.t) ~dir stanza =
-    File.load_dune_file ~path:dir
-    |> File.Stanza.add project stanza
+    File.load_dune_file ~path:dir |> File.Stanza.add project stanza
 
   module Make = struct
-    let bin ({context; common; options} : Options.Executable.t Options.t) =
+    let bin ({ context; common; options } : Options.Executable.t Options.t) =
       let dir = context.dir in
       let bin_dune =
         Stanza_cst.executable common options
@@ -352,19 +368,19 @@ module Component = struct
         let content = sprintf "let () = print_endline \"Hello, World!\"\n" in
         File.make_text dir name content
       in
-      let files = [bin_dune; bin_ml] in
-      [{dir; files}]
+      let files = [ bin_dune; bin_ml ] in
+      [ { dir; files } ]
 
-    let src ({context; common; options} : Options.Library.t Options.t) =
+    let src ({ context; common; options } : Options.Library.t Options.t) =
       let dir = context.dir in
       let lib_dune =
         Stanza_cst.library common options
         |> add_stanza_to_dune_file ~project:context.project ~dir
       in
-      let files = [lib_dune] in
-      [{dir; files}]
+      let files = [ lib_dune ] in
+      [ { dir; files } ]
 
-    let test ({context; common; options}: Options.Test.t Options.t) =
+    let test ({ context; common; options } : Options.Test.t Options.t) =
       (* Marking the current absence of test-specific options *)
       let dir = context.dir in
       let test_dune =
@@ -376,77 +392,95 @@ module Component = struct
         let content = "" in
         File.make_text dir name content
       in
-      let files = [test_dune; test_ml] in
-      [{dir; files}]
+      let files = [ test_dune; test_ml ] in
+      [ { dir; files } ]
 
-    let proj_exec dir ({context; common; options} : Options.Project.t Options.t) =
+    let proj_exec dir
+        ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
-        src { context = {context with dir = Path.relative dir "lib"}
-            ; options = {public = None; inline_tests = options.inline_tests}
-            ; common
-            }
+        src
+          { context = { context with dir = Path.relative dir "lib" }
+          ; options = { public = None; inline_tests = options.inline_tests }
+          ; common
+          }
       in
       let test_target =
-        test { context = {context with dir = Path.relative dir "test"}
-             ; options = ()
-             ; common
-             }
+        test
+          { context = { context with dir = Path.relative dir "test" }
+          ; options = ()
+          ; common
+          }
       in
       let bin_target =
         (* Add the lib_target as a library to the executable*)
-        let libraries = Stanza_cst.add_to_list_set common.name common.libraries in
-        bin { context = {context with dir = Path.relative dir "bin"}
-            ; options = {public = Some common. name}
-            ; common = {common with libraries}
-            }
+        let libraries =
+          Stanza_cst.add_to_list_set common.name common.libraries
+        in
+        bin
+          { context = { context with dir = Path.relative dir "bin" }
+          ; options = { public = Some common.name }
+          ; common = { common with libraries }
+          }
       in
       bin_target @ lib_target @ test_target
 
-    let proj_lib dir ({context; common; options} : Options.Project.t Options.t) =
+    let proj_lib dir
+        ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
-        src { context = {context with dir = Path.relative dir "lib"}
-            ; options = {public = Some common.name; inline_tests = options.inline_tests}
-            ; common
-            }
+        src
+          { context = { context with dir = Path.relative dir "lib" }
+          ; options =
+              { public = Some common.name
+              ; inline_tests = options.inline_tests
+              }
+          ; common
+          }
       in
       let test_target =
-        test { context = {context with dir = Path.relative dir "test"}
-             ; options = ()
-             ; common
-             }
+        test
+          { context = { context with dir = Path.relative dir "test" }
+          ; options = ()
+          ; common
+          }
       in
       lib_target @ test_target
 
-    let proj ({context; common; options} as opts : Options.Project.t Options.t) =
-      let {template; pkg; _} : Options.Project.t = options in
+    let proj
+        ({ context; common; options } as opts : Options.Project.t Options.t) =
+      let ({ template; pkg; _ } : Options.Project.t) = options in
       let dir = Path.relative context.dir common.name in
       let name = common.name in
       let proj_target =
         let files =
           match (pkg : Options.Project.Pkg.t) with
-          | Opam -> [File.make_text dir (name ^ ".opam") ""]
-          | Esy  -> [File.make_text dir "package.json" ""]
+          | Opam ->
+              [ File.make_text dir (name ^ ".opam") "" ]
+          | Esy ->
+              [ File.make_text dir "package.json" "" ]
         in
-        {dir; files}
+        { dir; files }
       in
       let component_targets =
         match (template : Options.Project.Template.t) with
-        | Exec -> proj_exec dir opts
-        | Lib  -> proj_lib dir opts
+        | Exec ->
+            proj_exec dir opts
+        | Lib ->
+            proj_lib dir opts
       in
       proj_target :: component_targets
   end
 
   let report_uncreated_file = function
-    | Ok _ -> ()
+    | Ok _ ->
+        ()
     | Error path ->
-      let open Pp.O in
-      User_warning.emit
-        [ Pp.textf "File " ++
-          Pp.tag ~tag:User_message.Style.Kwd
-            (Pp.verbatim (Path.to_string_maybe_quoted path)) ++
-          Pp.text " was not created because it already exists"
-        ]
+        let open Pp.O in
+        User_warning.emit
+          [ Pp.textf "File "
+            ++ Pp.tag ~tag:User_message.Style.Kwd
+                 (Pp.verbatim (Path.to_string_maybe_quoted path))
+            ++ Pp.text " was not created because it already exists"
+          ]
 
   (** Creates a component, writing the files to disk *)
   let create target =
@@ -456,31 +490,36 @@ module Component = struct
   let init (type options) (t : options t) =
     let target =
       match t with
-      | Executable params -> Make.bin params
-      | Library params    -> Make.src params
-      | Project params    -> Make.proj params
-      | Test params       -> Make.test params
+      | Executable params ->
+          Make.bin params
+      | Library params ->
+          Make.src params
+      | Project params ->
+          Make.proj params
+      | Test params ->
+          Make.test params
     in
-    List.concat_map ~f:create target
-    |> List.iter ~f:report_uncreated_file
+    List.concat_map ~f:create target |> List.iter ~f:report_uncreated_file
 end
 
 let validate_component_name name =
   match Lib_name.Local.of_string name with
-  | Ok _ -> ()
-  | _    ->
-    User_error.raise
-      [ Pp.textf "A component named '%s' cannot be created because it \
-                  is an invalid library name."
-          name ]
-      ~hints:[Lib_name.Local.valid_format_doc]
+  | Ok _ ->
+      ()
+  | _ ->
+      User_error.raise
+        [ Pp.textf
+            "A component named '%s' cannot be created because it is an \
+             invalid library name."
+            name
+        ]
+        ~hints:[ Lib_name.Local.valid_format_doc ]
 
 let print_completion kind name =
   let open Pp.O in
   Console.print_user_message
     (User_message.make
-       [ Pp.tag (Pp.verbatim "Success")
-           ~tag:User_message.Style.Ok
-         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind) ++
-         Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
+       [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
+         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
+         ++ Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
        ])

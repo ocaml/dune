@@ -1,5 +1,5 @@
-(** This module deals with management of hooks that run
-    after specific events (e.g. end of build). *)
+(** This module deals with management of hooks that run after specific events
+    (e.g. end of build). *)
 
 module type S = sig
   (** Register a hook called every time the event occurs. *)

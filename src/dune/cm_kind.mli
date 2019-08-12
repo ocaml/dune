@@ -1,10 +1,16 @@
 open Stdune
 
-type t = Cmi | Cmo | Cmx
+type t =
+  | Cmi
+  | Cmo
+  | Cmx
 
 val all : t list
+
 val pp : t Fmt.t
+
 val ext : t -> string
+
 val source : t -> Ml_kind.t
 
 val to_dyn : t -> Dyn.t
@@ -23,4 +29,5 @@ module Dict : sig
   val of_func : (cm_kind:cm_kind -> 'a) -> 'a t
 
   val make_all : 'a -> 'a t
-end with type cm_kind := t
+end
+with type cm_kind := t

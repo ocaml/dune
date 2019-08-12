@@ -1,19 +1,20 @@
 (** Log file *)
 
-type t
+(** Initialise the log file *)
+val init : ?path:Path.t -> unit -> unit
 
-val no_log : t
+(** Initialise this module with a disabled logger, i.e. swallowing error
+    messages. *)
+val init_disabled : unit -> unit
 
-val create : ?display:Console.Display.t -> ?path:Path.t -> unit -> t
+(** Print an informative message in the log *)
+val info : string -> unit
 
-(** Print an information message in the log *)
-val info  : t -> string -> unit
-val infof : t -> ('a, Format.formatter, unit, unit) format4 -> 'a
+val infof : ('a, Format.formatter, unit, unit) format4 -> 'a
 
 (** Print an executed command in the log *)
-val command
-  :  t
-  -> command_line:string
+val command :
+     command_line:string
   -> output:string
   -> exit_status:Unix.process_status
   -> unit

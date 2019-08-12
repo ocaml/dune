@@ -3,22 +3,22 @@ open! Import
 
 type workspace =
   { contexts : Context.t list
-  ; conf     : Dune_load.conf
-  ; env      : Env.t
+  ; conf : Dune_load.conf
+  ; env : Env.t
   }
 
 type build_system =
-  { workspace    : workspace
-  ; scontexts    : Super_context.t String.Map.t
+  { workspace : workspace
+  ; scontexts : Super_context.t String.Map.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)
-val package_install_file : workspace -> Package.Name.t -> (Path.Source.t, unit) result
+val package_install_file :
+  workspace -> Package.Name.t -> (Path.Source.t, unit) result
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
-val scan_workspace
-  :  ?log:Log.t
-  -> ?workspace:Workspace.t
+val scan_workspace :
+     ?workspace:Workspace.t
   -> ?workspace_file:Path.t
   -> ?x:string
   -> ?capture_outputs:bool
@@ -28,8 +28,8 @@ val scan_workspace
   -> workspace Fiber.t
 
 (** Load dune files and initializes the build system *)
-val init_build_system
-  :  ?only_packages:Package.Name.Set.t
+val init_build_system :
+     ?only_packages:Package.Name.Set.t
   -> ?external_lib_deps_mode:bool
   -> sandboxing_preference:Sandbox_mode.t list
   -> workspace
@@ -41,7 +41,7 @@ val find_context_exn : workspace -> name:string -> Context.t
 val setup_env : capture_outputs:bool -> Env.t
 
 (** Set the concurrency level according to the user configuration *)
-val set_concurrency : ?log:Log.t -> Config.t -> unit Fiber.t
+val set_concurrency : Config.t -> unit Fiber.t
 
 (**/**)
 

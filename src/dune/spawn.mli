@@ -6,8 +6,8 @@ module Env : sig
   val of_array : string array -> t
 end
 
-val spawn
-  :  ?env:Env.t
+val spawn :
+     ?env:Env.t
   -> prog:string
   -> argv:string list
   -> ?stdin:Unix.file_descr

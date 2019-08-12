@@ -3,19 +3,19 @@ module T2 : sig
 
   val hash : ('a -> int) -> ('b -> int) -> ('a, 'b) t -> int
 
-  val equal
-    : ('a -> 'a -> bool)
+  val equal :
+       ('a -> 'a -> bool)
     -> ('b -> 'b -> bool)
     -> ('a, 'b) t
     -> ('a, 'b) t
     -> bool
 
-  val compare
-    :  ('a -> 'a -> Ordering.t)
+  val compare :
+       ('a -> 'a -> Ordering.t)
     -> ('b -> 'b -> Ordering.t)
     -> ('a, 'b) t
     -> ('a, 'b) t
     -> Ordering.t
 
-  val swap : ('a * 'b) -> ('b * 'a)
+  val swap : 'a * 'b -> 'b * 'a
 end

@@ -3,9 +3,9 @@ open Stdune
 
 module Program : sig
   type t =
-    { name             : string
+    { name : string
     ; main_module_name : Module_name.t
-    ; loc              : Loc.t
+    ; loc : Loc.t
     }
 end
 
@@ -27,12 +27,7 @@ module Linkage : sig
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
 
-  val make
-    :  mode:Mode.t
-    -> ext:string
-    -> ?flags:string list
-    -> unit
-    -> t
+  val make : mode:Mode.t -> ext:string -> ?flags:string list -> unit -> t
 
   val of_user_config : Context.t -> Dune_file.Executables.Link_mode.t -> t
 end
@@ -41,24 +36,24 @@ end
 
 (** Build and link one or more executables *)
 
-val build_and_link
-  :  program:Program.t
+val build_and_link :
+     program:Program.t
   -> linkages:Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
   -> unit
 
-val build_and_link_many
-  :  programs:Program.t list
+val build_and_link_many :
+     programs:Program.t list
   -> linkages:Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
   -> Compilation_context.t
   -> unit
 
-val exe_path
-  :  Compilation_context.t
+val exe_path :
+     Compilation_context.t
   -> program:Program.t
   -> linkage:Linkage.t
   -> Path.Build.t

@@ -3,7 +3,9 @@
 open Stdune
 
 module Kind : sig
-  type t = Git | Hg
+  type t =
+    | Git
+    | Hg
 
   val of_dir_contents : String.Set.t -> t option
 end
@@ -26,4 +28,5 @@ val files : t -> Path.t list Fiber.t
 
 (** VCS commands *)
 val git : Path.t Lazy.t
+
 val hg : Path.t Lazy.t

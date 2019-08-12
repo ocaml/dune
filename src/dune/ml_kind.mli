@@ -1,6 +1,8 @@
 open Stdune
 
-type t = Impl | Intf
+type t =
+  | Impl
+  | Intf
 
 val all : t list
 
@@ -40,4 +42,5 @@ module Dict : sig
   val mapi : 'a t -> f:(kind -> 'a -> 'b) -> 'b t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
-end with type kind := t
+end
+with type kind := t

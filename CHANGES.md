@@ -91,6 +91,18 @@
 - Get rid of ad-hoc rules for guessing the version. Dune now only
   relies on the version written in the `dune-project` file and no
   longer read `VERSION` or similar files (#2541, @diml)
+  
+- In `(diff? x y)` action, require `x` to exist and register a 
+  dependency on that file. (#2486, @aalekseyev)
+
+- On Windows, an .exe suffix is no longer added implicitly to binary names that
+  already end in .exe. Second, when resolving binary names, .opt variants are no
+  longer chosen automatically. (#2543, @nojb)
+
+- Make `(diff? x y)` move the correction file (`y`) away from the build 
+  directory to promotion staging area.
+  This makes corrections work with sandboxing and in general reduces build 
+  directory pollution. (#2486, @aalekseyev, fixes #2482)
 
 1.11.0 (23/07/2019)
 -------------------

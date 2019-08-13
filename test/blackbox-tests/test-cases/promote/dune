@@ -4,6 +4,8 @@
  (name blah)
  (action (diff x x.gen)))
 
+(rule (with-stdout-to x.gen.copy (cat x.gen)))
+
 (rule (with-stdout-to y.gen (echo "titi")))
 
 (alias

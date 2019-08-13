@@ -33,5 +33,5 @@ let decode_binary path =
   { optional = false; file1; file2; mode = Binary }
 
 let eq_files { optional; mode; file1; file2 } =
-  (optional && not (Path.exists file1 && Path.exists file2))
+  (optional && not (Path.exists file2))
   || Mode.compare_files mode file1 file2 = Eq

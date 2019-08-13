@@ -415,7 +415,7 @@ module Infer = struct
           List.fold_left l ~init:acc ~f:( +< )
       | Diff { optional; file1; file2; mode = _ } ->
           if optional then
-            acc
+            acc +< file1
           else
             acc +< file1 +< file2
       | Merge_files_into (sources, _extras, target) ->

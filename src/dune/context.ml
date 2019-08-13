@@ -151,7 +151,20 @@ let opam_config_var ~env ~cache var =
         | Error _ ->
             None ) )
 
-let which ~cache ~path x = Table.find_or_add cache x ~f:(Bin.which ~path)
+let best_prog dir prog =
+  let fn = Path.relative dir (prog ^ ".opt" ^ Bin.exe) in
+  if Bin.exists fn then
+    Some fn
+  else
+    let fn = Path.relative dir (prog ^ Bin.exe) in
+    if Bin.exists fn then
+      Some fn
+    else
+      None
+
+let which ~path prog = List.find_map path ~f:(fun dir -> best_prog dir prog)
+
+let which ~cache ~path x = Table.find_or_add cache x ~f:(which ~path)
 
 let ocamlpath_sep =
   if Sys.cygwin then
@@ -273,7 +286,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let get_ocaml_tool prog =
       match get_tool_using_findlib_config prog with
       | None ->
-          Bin.best_prog dir prog
+          best_prog dir prog
       | Some _ as x ->
           x
     in

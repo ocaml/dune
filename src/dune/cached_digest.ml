@@ -69,15 +69,6 @@ let invalidate_cached_timestamps () =
     cache.checked_key <- cache.checked_key + 1 );
   delete_very_recent_entries ()
 
-let dir_digest (stat : Unix.stats) =
-  Digest.generic (stat.st_size, stat.st_perm, stat.st_mtime, stat.st_ctime)
-
-let path_stat_digest fn stat =
-  if stat.Unix.st_kind = Unix.S_DIR then
-    dir_digest stat
-  else
-    Digest.generic (Digest.file fn, stat.st_perm)
-
 let set_max_timestamp cache (stat : Unix.stats) =
   cache.max_timestamp <- Float.max cache.max_timestamp stat.st_mtime
 
@@ -123,7 +114,7 @@ let file fn =
           dirty := true;
           x.size <- stat.st_size
         );
-        if !dirty then x.digest <- path_stat_digest fn stat;
+        if !dirty then x.digest <- Digest.file_with_stats fn stat;
         x.stats_checked <- cache.checked_key;
         x.digest
       )

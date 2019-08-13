@@ -531,7 +531,7 @@ let expand_and_eval_set t set ~standard =
     else
       Build.return []
   in
-  let syntax, files =
+  let files =
     let f template =
       expand t ~mode:Single ~template
       |> Value.to_path ~error_loc:(String_with_vars.loc template) ~dir
@@ -549,7 +549,7 @@ let expand_and_eval_set t set ~standard =
       >>^ fun standard ->
       Ordered_set_lang.eval set ~standard ~parse ~eq:String.equal
   | paths ->
-      List.map paths ~f:(fun f -> Build.read_sexp f syntax)
+      List.map paths ~f:Build.read_sexp
       |> Build.all |> Build.fanout standard
       >>^ fun (standard, sexps) ->
       let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in

@@ -8,32 +8,32 @@ module Includes = struct
   let make ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
-        Cm_kind.Dict.make_all
-          (Command.Args.Fail { fail = (fun () -> raise exn) })
+      Cm_kind.Dict.make_all
+        (Command.Args.Fail { fail = (fun () -> raise exn) })
     | Ok libs ->
-        let iflags = Lib.L.include_flags libs in
-        let cmi_includes =
-          Command.Args.S
-            [ iflags; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ]) ]
-        in
-        let cmx_includes =
-          Command.Args.S
-            [ iflags
-            ; Hidden_deps
-                ( if opaque then
-                  List.map libs ~f:(fun lib ->
-                      ( lib
-                      , if Lib.is_local lib then
-                          [ Lib_file_deps.Group.Cmi ]
-                        else
-                          [ Cmi; Cmx ] ))
-                  |> Lib_file_deps.deps_with_exts
-                else
-                  Lib_file_deps.deps libs
-                    ~groups:[ Lib_file_deps.Group.Cmi; Cmx ] )
-            ]
-        in
-        { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
+      let iflags = Lib.L.include_flags libs in
+      let cmi_includes =
+        Command.Args.S
+          [ iflags; Hidden_deps (Lib_file_deps.deps libs ~groups:[ Cmi ]) ]
+      in
+      let cmx_includes =
+        Command.Args.S
+          [ iflags
+          ; Hidden_deps
+              ( if opaque then
+                List.map libs ~f:(fun lib ->
+                    ( lib
+                    , if Lib.is_local lib then
+                        [ Lib_file_deps.Group.Cmi ]
+                      else
+                        [ Cmi; Cmx ] ))
+                |> Lib_file_deps.deps_with_exts
+              else
+                Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Cmi; Cmx ]
+              )
+          ]
+      in
+      { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
 
   let empty = Cm_kind.Dict.make_all (Command.Args.As [])
 end

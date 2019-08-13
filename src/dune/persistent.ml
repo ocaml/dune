@@ -21,12 +21,12 @@ module Make (D : Desc) = struct
       Io.with_file_in file ~f:(fun ic ->
           match really_input_string ic (String.length magic) with
           | exception End_of_file ->
-              None
+            None
           | s ->
-              if s = magic then
-                Some (Marshal.from_channel ic : D.t)
-              else
-                None)
+            if s = magic then
+              Some (Marshal.from_channel ic : D.t)
+            else
+              None)
     else
       None
 end

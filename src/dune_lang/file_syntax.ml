@@ -10,11 +10,11 @@ let hash = Hashtbl.hash
 
 let of_basename = function
   | "jbuild" ->
-      Some Jbuild
+    Some Jbuild
   | "dune" ->
-      Some Dune
+    Some Dune
   | _ ->
-      None
+    None
 
 let to_dyn =
   let open Dyn.Encoder in

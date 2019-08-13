@@ -32,18 +32,18 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         let mod_name = Module_name.of_string name in
         match Modules.find modules mod_name with
         | Some m ->
-            if not (Module.has m ~ml_kind:Impl) then
-              User_error.raise ~loc
-                [ Pp.textf "Module %S has no implementation."
-                    (Module_name.to_string mod_name)
-                ]
-            else
-              { Exe.Program.name; main_module_name = mod_name; loc }
-        | None ->
+          if not (Module.has m ~ml_kind:Impl) then
             User_error.raise ~loc
-              [ Pp.textf "Module %S doesn't exist."
+              [ Pp.textf "Module %S has no implementation."
                   (Module_name.to_string mod_name)
-              ])
+              ]
+          else
+            { Exe.Program.name; main_module_name = mod_name; loc }
+        | None ->
+          User_error.raise ~loc
+            [ Pp.textf "Module %S doesn't exist."
+                (Module_name.to_string mod_name)
+            ])
   in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
   let linkages =
@@ -63,9 +63,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
           match (has_native, mode.mode) with
           | false, Native ->
-              None
+            None
           | _ ->
-              Some (Exe.Linkage.of_user_config ctx mode))
+            Some (Exe.Linkage.of_user_config ctx mode))
     in
     (* If bytecode was requested but not native or best version, add custom
        linking *)

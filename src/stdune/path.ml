@@ -28,9 +28,9 @@ let explode_path =
     else
       match start [] path (String.length path - 1) with
       | "." :: xs ->
-          xs
+        xs
       | xs ->
-          xs
+        xs
 
 module External : sig
   include Path_intf.S
@@ -108,10 +108,10 @@ end = struct
     if p <> t then (
       try Unix.mkdir t_s 0o777 with
       | Unix.Unix_error (EEXIST, _, _) ->
-          ()
+        ()
       | Unix.Unix_error (ENOENT, _, _) ->
-          mkdir_p p;
-          Unix.mkdir t_s 0o777
+        mkdir_p p;
+        Unix.mkdir t_s 0o777
     )
 
   let basename t = Filename.basename (to_string t)
@@ -157,9 +157,9 @@ end = struct
   let parent_exn t =
     match parent t with
     | None ->
-        Code_error.raise "Path.External.parent_exn called on a root path" []
+      Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p ->
-        p
+      p
 
   let is_descendant b ~of_:a =
     if is_root a then
@@ -234,9 +234,9 @@ end = struct
       else
         match t.[i - 1] with
         | '/' ->
-            loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
+          loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
         | _ ->
-            loop t acc (i - 1) j
+          loop t acc (i - 1) j
     in
     fun t ->
       if is_root t then
@@ -253,9 +253,9 @@ end = struct
       let t = to_string t in
       match String.rindex_from t (String.length t - 1) '/' with
       | None ->
-          Some root
+        Some root
       | Some i ->
-          Some (make (String.take t i))
+        Some (make (String.take t i))
 
   let basename t =
     if is_root t then
@@ -265,9 +265,9 @@ end = struct
       let len = String.length t in
       match String.rindex_from t (len - 1) '/' with
       | None ->
-          t
+        t
       | Some i ->
-          String.sub t ~pos:(i + 1) ~len:(len - i - 1)
+        String.sub t ~pos:(i + 1) ~len:(len - i - 1)
 
   let to_dyn t = Dyn.String (to_string t)
 
@@ -276,36 +276,36 @@ end = struct
       let rec loop t components =
         match components with
         | [] ->
-            Result.Ok t
+          Result.Ok t
         | "." :: rest ->
-            loop t rest
+          loop t rest
         | ".." :: rest -> (
-            if is_root t then
-              Result.Error ()
-            else
-              match parent t with
-              | None ->
-                  Error ()
-              | Some parent ->
-                  loop parent rest )
+          if is_root t then
+            Result.Error ()
+          else
+            match parent t with
+            | None ->
+              Error ()
+            | Some parent ->
+              loop parent rest )
         | fn :: rest ->
-            if is_root t then
-              loop (make fn) rest
-            else
-              loop (make (to_string t ^ "/" ^ fn)) rest
+          if is_root t then
+            loop (make fn) rest
+          else
+            loop (make (to_string t ^ "/" ^ fn)) rest
       in
       loop t components
 
     let relative ?error_loc t components =
       match relative_result t components with
       | Result.Ok t ->
-          t
+        t
       | Error () ->
-          User_error.raise ?loc:error_loc
-            [ Pp.textf "path outside the workspace: %s from %s"
-                (String.concat ~sep:"/" components)
-                (to_string t)
-            ]
+        User_error.raise ?loc:error_loc
+          [ Pp.textf "path outside the workspace: %s from %s"
+              (String.concat ~sep:"/" components)
+              (to_string t)
+          ]
   end
 
   let relative ?error_loc t path =
@@ -314,12 +314,10 @@ end = struct
         [ ("t", to_dyn t); ("path", String path) ];
     match L.relative_result t (explode_path path) with
     | Result.Ok t ->
-        t
+      t
     | Error () ->
-        User_error.raise ?loc:error_loc
-          [ Pp.textf "path outside the workspace: %s from %s" path
-              (to_string t)
-          ]
+      User_error.raise ?loc:error_loc
+        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -328,22 +326,22 @@ end = struct
       else
         match s.[i] with
         | '/' ->
-            false
+          false
         | '.' ->
-            before_dot_slash s (i - 1)
+          before_dot_slash s (i - 1)
         | _ ->
-            in_component s (i - 1)
+          in_component s (i - 1)
     and before_dot_slash s i =
       if i < 0 then
         false
       else
         match s.[i] with
         | '/' ->
-            false
+          false
         | '.' ->
-            before_dot_dot_slash s (i - 1)
+          before_dot_dot_slash s (i - 1)
         | _ ->
-            in_component s (i - 1)
+          in_component s (i - 1)
     and before_dot_dot_slash s i =
       if i < 0 then
         false
@@ -355,9 +353,9 @@ end = struct
       else
         match s.[i] with
         | '/' ->
-            before_slash s (i - 1)
+          before_slash s (i - 1)
         | _ ->
-            in_component s (i - 1)
+          in_component s (i - 1)
     in
     fun s ->
       let len = String.length s in
@@ -366,22 +364,22 @@ end = struct
   let parse_string_exn ~loc s =
     match s with
     | "" | "." ->
-        root
+      root
     | _ when is_canonicalized s ->
-        make s
+      make s
     | _ ->
-        relative root s ~error_loc:loc
+      relative root s ~error_loc:loc
 
   let of_string s = parse_string_exn ~loc:Loc0.none s
 
   let append a b =
     match (is_root a, is_root b) with
     | true, _ ->
-        b
+      b
     | _, true ->
-        a
+      a
     | _, _ ->
-        make (to_string a ^ "/" ^ to_string b)
+      make (to_string a ^ "/" ^ to_string b)
 
   let descendant t ~of_ =
     if is_root of_ then
@@ -412,13 +410,13 @@ end = struct
     let rec loop t from =
       match (t, from) with
       | a :: t, b :: from when a = b ->
-          loop t from
+        loop t from
       | _ -> (
         match List.fold_left from ~init:t ~f:(fun acc _ -> ".." :: acc) with
         | [] ->
-            "."
+          "."
         | l ->
-            String.concat l ~sep:"/" )
+          String.concat l ~sep:"/" )
     in
     loop (to_list t) (to_list from)
 
@@ -467,9 +465,9 @@ end = struct
       let t = to_string t in
       match String.lsplit2 t ~on:'/' with
       | None ->
-          Some (t, root)
+        Some (t, root)
       | Some (before, after) ->
-          Some (before, after |> of_string)
+        Some (before, after |> of_string)
 
   let explode p =
     if is_root p then
@@ -482,9 +480,9 @@ end = struct
   let parent_exn t =
     match parent t with
     | None ->
-        Code_error.raise "Path.Local.parent:exn t is root" [ ("t", to_dyn t) ]
+      Code_error.raise "Path.Local.parent:exn t is root" [ ("t", to_dyn t) ]
     | Some parent ->
-        parent
+      parent
 
   module Fix_root (Root : sig
     type w
@@ -594,15 +592,15 @@ end = struct
       let t_s = to_string t in
       try Unix.mkdir t_s 0o777 with
       | Unix.Unix_error (EEXIST, _, _) ->
-          ()
+        ()
       | Unix.Unix_error (ENOENT, _, _) as e ->
-          let parent = parent_exn t in
-          if is_root parent then
-            raise e
-          else (
-            mkdir_p parent;
-            Unix.mkdir t_s 0o777
-          )
+        let parent = parent_exn t in
+        if is_root parent then
+          raise e
+        else (
+          mkdir_p parent;
+          Unix.mkdir t_s 0o777
+        )
 end
 
 module Source0 = Local
@@ -612,20 +610,20 @@ let abs_root, set_root =
   let set_root new_root =
     match !root_dir with
     | None ->
-        root_dir := Some new_root
+      root_dir := Some new_root
     | Some root_dir ->
-        Code_error.raise "set_root: cannot set root_dir more than once"
-          [ ("root_dir", External.to_dyn root_dir)
-          ; ("new_root_dir", External.to_dyn new_root)
-          ]
+      Code_error.raise "set_root: cannot set root_dir more than once"
+        [ ("root_dir", External.to_dyn root_dir)
+        ; ("new_root_dir", External.to_dyn new_root)
+        ]
   in
   let abs_root =
     lazy
       ( match !root_dir with
       | None ->
-          Code_error.raise "root_dir: cannot use root dir before it's set" []
+        Code_error.raise "root_dir: cannot use root dir before it's set" []
       | Some root_dir ->
-          root_dir )
+        root_dir )
   in
   (abs_root, set_root)
 
@@ -637,16 +635,16 @@ module Kind = struct
   let to_absolute_filename t =
     match t with
     | External s ->
-        External.to_string s
+      External.to_string s
     | In_source_dir l ->
-        External.to_string
-          (External.relative (Lazy.force abs_root) (Local.to_string l))
+      External.to_string
+        (External.relative (Lazy.force abs_root) (Local.to_string l))
 
   let to_string = function
     | In_source_dir t ->
-        Local.to_string t
+      Local.to_string t
     | External t ->
-        External.to_string t
+      External.to_string t
 
   let to_dyn t = Dyn.String (to_string t)
 
@@ -658,16 +656,16 @@ module Kind = struct
 
   let mkdir_p = function
     | In_source_dir t ->
-        Relative_to_source_root.mkdir_p t
+      Relative_to_source_root.mkdir_p t
     | External t ->
-        External.mkdir_p t
+      External.mkdir_p t
 
   let append_local x y =
     match x with
     | In_source_dir x ->
-        In_source_dir (Local.append x y)
+      In_source_dir (Local.append x y)
     | External x ->
-        External (External.relative x (Local.to_string y))
+      External (External.relative x (Local.to_string y))
 end
 
 module Build = struct
@@ -683,9 +681,9 @@ module Build = struct
     let t = Local.to_string t in
     match String.lsplit2 t ~on:'/' with
     | None ->
-        Some (t, Source0.root)
+      Some (t, Source0.root)
     | Some (before, after) ->
-        Some (before, after |> Source0.of_string)
+      Some (before, after |> Source0.of_string)
 
   let extract_first_component = extract_build_context
 
@@ -693,20 +691,20 @@ module Build = struct
     let t_str = Local.to_string t in
     match String.lsplit2 t_str ~on:'/' with
     | None ->
-        Some (t, Source0.root)
+      Some (t, Source0.root)
     | Some (before, after) ->
-        Some (Local.of_string before, after |> Source0.of_string)
+      Some (Local.of_string before, after |> Source0.of_string)
 
   let split_sandbox_root t_original =
     match split_first_component t_original with
     | Some (".sandbox", t) -> (
       match split_first_component t with
       | Some (sandbox_name, t) ->
-          (Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), t)
+        (Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), t)
       | None ->
-          (None, t_original) )
+        (None, t_original) )
     | Some _ | None ->
-        (None, t_original)
+      (None, t_original)
 
   let extract_build_context_dir_maybe_sandboxed t =
     let sandbox_root, t = split_sandbox_root t in
@@ -714,36 +712,36 @@ module Build = struct
         let ctx_dir =
           match sandbox_root with
           | None ->
-              ctx_dir
+            ctx_dir
           | Some root ->
-              append root ctx_dir
+            append root ctx_dir
         in
         (ctx_dir, src_dir))
 
   let extract_build_context_dir_exn t =
     match extract_build_context_dir t with
     | Some t ->
-        t
+      t
     | None ->
-        Code_error.raise "Path.Build.extract_build_context_dir_exn"
-          [ ("t", to_dyn t) ]
+      Code_error.raise "Path.Build.extract_build_context_dir_exn"
+        [ ("t", to_dyn t) ]
 
   let extract_build_context_exn t =
     match extract_build_context t with
     | Some t ->
-        t
+      t
     | None ->
-        Code_error.raise "Path.Build.extract_build_context_exn"
-          [ ("t", to_dyn t) ]
+      Code_error.raise "Path.Build.extract_build_context_exn"
+        [ ("t", to_dyn t) ]
 
   let drop_build_context t = Option.map (extract_build_context t) ~f:snd
 
   let drop_build_context_exn t =
     match drop_build_context t with
     | Some d ->
-        d
+      d
     | None ->
-        Code_error.raise "Path.Build.drop_build_context_exn" [ ("t", to_dyn t) ]
+      Code_error.raise "Path.Build.drop_build_context_exn" [ ("t", to_dyn t) ]
 
   (* CR-someday rgrinberg: I think we should just move this function to the
      alias module. *)
@@ -756,61 +754,59 @@ module Build = struct
     let set_build_dir (new_build_dir : Kind.t) =
       match !build_dir with
       | None ->
-          ( match new_build_dir with
-          | External _ ->
-              ()
-          | In_source_dir p ->
-              if Local.is_root p || Local.parent_exn p <> Local.root then
-                User_error.raise
-                  [ Pp.textf "Invalid build directory: %s"
-                      (Local.to_string p |> String.maybe_quoted)
-                  ; Pp.text
-                      "The build directory must be an absolute path or a \
-                       sub-directory of the root of the workspace."
-                  ] );
-          build_dir := Some new_build_dir;
-          build_dir_prefix :=
-            Some
-              ( match new_build_dir with
-              | In_source_dir p ->
-                  Local.Prefix.make p
-              | External _ ->
-                  Local.Prefix.invalid )
+        ( match new_build_dir with
+        | External _ ->
+          ()
+        | In_source_dir p ->
+          if Local.is_root p || Local.parent_exn p <> Local.root then
+            User_error.raise
+              [ Pp.textf "Invalid build directory: %s"
+                  (Local.to_string p |> String.maybe_quoted)
+              ; Pp.text
+                  "The build directory must be an absolute path or a \
+                   sub-directory of the root of the workspace."
+              ] );
+        build_dir := Some new_build_dir;
+        build_dir_prefix :=
+          Some
+            ( match new_build_dir with
+            | In_source_dir p ->
+              Local.Prefix.make p
+            | External _ ->
+              Local.Prefix.invalid )
       | Some build_dir ->
-          Code_error.raise "set_build_dir: cannot set build_dir more than once"
-            [ ("build_dir", Kind.to_dyn build_dir)
-            ; ("new_build_dir", Kind.to_dyn new_build_dir)
-            ]
+        Code_error.raise "set_build_dir: cannot set build_dir more than once"
+          [ ("build_dir", Kind.to_dyn build_dir)
+          ; ("new_build_dir", Kind.to_dyn new_build_dir)
+          ]
     in
     let build_dir =
       lazy
         ( match !build_dir with
         | None ->
-            Code_error.raise "build_dir: cannot use build dir before it's set"
-              []
+          Code_error.raise "build_dir: cannot use build dir before it's set" []
         | Some build_dir ->
-            build_dir )
+          build_dir )
     in
     let build_dir_prefix =
       lazy
         ( match !build_dir_prefix with
         | None ->
-            Code_error.raise "build_dir: cannot use build dir before it's set"
-              []
+          Code_error.raise "build_dir: cannot use build dir before it's set" []
         | Some prefix ->
-            prefix )
+          prefix )
     in
     (build_dir, build_dir_prefix, set_build_dir)
 
   let to_string p =
     match Lazy.force build_dir_kind with
     | In_source_dir b ->
-        Local.to_string (Local.append b p)
+      Local.to_string (Local.append b p)
     | External b ->
-        if Local.is_root p then
-          External.to_string b
-        else
-          Filename.concat (External.to_string b) (Local.to_string p)
+      if Local.is_root p then
+        External.to_string b
+      else
+        Filename.concat (External.to_string b) (Local.to_string p)
 
   module Kind = Kind
 end
@@ -843,19 +839,19 @@ end = struct
   let compare x y =
     match (x, y) with
     | External x, External y ->
-        External.compare x y
+      External.compare x y
     | External _, _ ->
-        Lt
+      Lt
     | _, External _ ->
-        Gt
+      Gt
     | In_source_tree x, In_source_tree y ->
-        Local.compare x y
+      Local.compare x y
     | In_source_tree _, _ ->
-        Lt
+      Lt
     | _, In_source_tree _ ->
-        Gt
+      Gt
     | In_build_dir x, In_build_dir y ->
-        Local.compare x y
+      Local.compare x y
 
   let equal (x : t) (y : t) = x = y
 
@@ -871,11 +867,11 @@ end = struct
     let open Dyn in
     match t with
     | In_build_dir s ->
-        Variant ("In_build_dir", [ Local.to_dyn s ])
+      Variant ("In_build_dir", [ Local.to_dyn s ])
     | In_source_tree s ->
-        Variant ("In_source_tree", [ Local.to_dyn s ])
+      Variant ("In_source_tree", [ Local.to_dyn s ])
     | External s ->
-        Variant ("External", [ External.to_dyn s ])
+      Variant ("External", [ External.to_dyn s ])
 end
 
 include T
@@ -886,34 +882,34 @@ let build_dir = in_build_dir Local.root
 
 let is_root = function
   | In_source_tree s ->
-      Local.is_root s
+    Local.is_root s
   | In_build_dir _ | External _ ->
-      false
+    false
 
 module Map = Map.Make (T)
 
 let kind = function
   | In_build_dir p ->
-      Kind.append_local (Lazy.force Build.build_dir_kind) p
+    Kind.append_local (Lazy.force Build.build_dir_kind) p
   | In_source_tree s ->
-      Kind.In_source_dir s
+    Kind.In_source_dir s
   | External s ->
-      Kind.External s
+    Kind.External s
 
 let is_managed = function
   | In_build_dir _ | In_source_tree _ ->
-      true
+    true
   | External _ ->
-      false
+    false
 
 let to_string t =
   match t with
   | In_source_tree p ->
-      Local.to_string p
+    Local.to_string p
   | External p ->
-      External.to_string p
+    External.to_string p
   | In_build_dir p ->
-      Build.to_string p
+    Build.to_string p
 
 let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 
@@ -922,36 +918,36 @@ let root = in_source_tree Local.root
 let make_local_path p =
   match Local.Prefix.drop (Lazy.force Build.build_dir_prefix) p with
   | None ->
-      in_source_tree p
+    in_source_tree p
   | Some p ->
-      in_build_dir p
+    in_build_dir p
 
 let of_local = make_local_path
 
 let relative ?error_loc t fn =
   match fn with
   | "" | "." ->
-      t
+    t
   | _ when not (Filename.is_relative fn) ->
-      external_ (External.of_string fn)
+    external_ (External.of_string fn)
   | _ -> (
     match t with
     | In_source_tree p ->
-        make_local_path (Local.relative p fn ?error_loc)
+      make_local_path (Local.relative p fn ?error_loc)
     | In_build_dir p ->
-        in_build_dir (Local.relative p fn ?error_loc)
+      in_build_dir (Local.relative p fn ?error_loc)
     | External s ->
-        external_ (External.relative s fn) )
+      external_ (External.relative s fn) )
 
 let parse_string_exn ~loc s =
   match s with
   | "" | "." ->
-      in_source_tree Local.root
+    in_source_tree Local.root
   | s ->
-      if Filename.is_relative s then
-        make_local_path (Local.parse_string_exn ~loc s)
-      else
-        external_ (External.parse_string_exn ~loc s)
+    if Filename.is_relative s then
+      make_local_path (Local.parse_string_exn ~loc s)
+    else
+      external_ (External.parse_string_exn ~loc s)
 
 let of_string s = parse_string_exn ~loc:Loc0.none s
 
@@ -959,11 +955,11 @@ let to_dyn =
   let open Dyn.Encoder in
   function
   | In_build_dir s ->
-      constr "In_build_dir" [ Local.to_dyn s ]
+    constr "In_build_dir" [ Local.to_dyn s ]
   | In_source_tree s ->
-      constr "In_source_tree" [ Local.to_dyn s ]
+    constr "In_source_tree" [ Local.to_dyn s ]
   | External s ->
-      constr "External" [ External.to_dyn s ]
+    constr "External" [ External.to_dyn s ]
 
 let of_filename_relative_to_initial_cwd fn =
   external_
@@ -983,30 +979,30 @@ let external_of_in_source_tree x =
 let reach t ~from =
   match (t, from) with
   | External t, _ ->
-      External.to_string t
+    External.to_string t
   | In_source_tree t, In_source_tree from | In_build_dir t, In_build_dir from
     ->
-      Local.reach t ~from
+    Local.reach t ~from
   | In_source_tree t, In_build_dir from -> (
     match Lazy.force Build.build_dir_kind with
     | In_source_dir b ->
-        Local.reach t ~from:(Local.append b from)
+      Local.reach t ~from:(Local.append b from)
     | External _ ->
-        external_of_in_source_tree t )
+      external_of_in_source_tree t )
   | In_build_dir t, In_source_tree from -> (
     match Lazy.force Build.build_dir_kind with
     | In_source_dir b ->
-        Local.reach (Local.append b t) ~from
+      Local.reach (Local.append b t) ~from
     | External b ->
-        external_of_local t ~root:b )
+      external_of_local t ~root:b )
   | In_source_tree t, External _ ->
-      external_of_in_source_tree t
+    external_of_in_source_tree t
   | In_build_dir t, External _ -> (
     match Lazy.force Build.build_dir_kind with
     | In_source_dir b ->
-        external_of_in_source_tree (Local.append b t)
+      external_of_in_source_tree (Local.append b t)
     | External b ->
-        external_of_local t ~root:b )
+      external_of_local t ~root:b )
 
 let reach_for_running ?(from = root) t =
   let fn = reach t ~from in
@@ -1015,25 +1011,25 @@ let reach_for_running ?(from = root) t =
 let descendant t ~of_ =
   match (t, of_) with
   | In_source_tree t, In_source_tree of_ | In_build_dir t, In_build_dir of_ ->
-      Option.map ~f:in_source_tree (Local.descendant t ~of_)
+    Option.map ~f:in_source_tree (Local.descendant t ~of_)
   | _ ->
-      None
+    None
 
 let is_descendant t ~of_ =
   match (t, of_) with
   | In_source_tree t, In_source_tree of_ | In_build_dir t, In_build_dir of_ ->
-      Local.is_descendant t ~of_
+    Local.is_descendant t ~of_
   | _ ->
-      false
+    false
 
 let append_local a b =
   match a with
   | In_source_tree a ->
-      in_source_tree (Local.append a b)
+    in_source_tree (Local.append a b)
   | In_build_dir a ->
-      in_build_dir (Local.append a b)
+    in_build_dir (Local.append a b)
   | External a ->
-      external_ (External.relative a (Local.to_string b))
+    external_ (External.relative a (Local.to_string b))
 
 let append_local = append_local
 
@@ -1042,186 +1038,185 @@ let append_source = append_local
 let basename t =
   match kind t with
   | In_source_dir t ->
-      Local.basename t
+    Local.basename t
   | External t ->
-      External.basename t
+    External.basename t
 
 let parent = function
   | External s ->
-      Option.map (External.parent s) ~f:external_
+    Option.map (External.parent s) ~f:external_
   | In_source_tree l ->
-      Local.parent l |> Option.map ~f:in_source_tree
+    Local.parent l |> Option.map ~f:in_source_tree
   | In_build_dir l ->
-      Local.parent l |> Option.map ~f:in_build_dir
+    Local.parent l |> Option.map ~f:in_build_dir
 
 let parent_exn t =
   match parent t with
   | Some p ->
-      p
+    p
   | None ->
-      Code_error.raise "Path.parent:exn t is root" [ ("t", to_dyn t) ]
+    Code_error.raise "Path.parent:exn t is root" [ ("t", to_dyn t) ]
 
 let is_strict_descendant_of_build_dir = function
   | In_build_dir p ->
-      not (Local.is_root p)
+    not (Local.is_root p)
   | In_source_tree _ | External _ ->
-      false
+    false
 
 let is_in_build_dir = function
   | In_build_dir _ ->
-      true
+    true
   | In_source_tree _ | External _ ->
-      false
+    false
 
 let is_in_source_tree = function
   | In_source_tree _ ->
-      true
+    true
   | In_build_dir _ | External _ ->
-      false
+    false
 
 let as_in_source_tree = function
   | In_source_tree s ->
-      Some s
+    Some s
   | In_build_dir _ | External _ ->
-      None
+    None
 
 let as_in_source_tree_exn t =
   match as_in_source_tree t with
   | Some t ->
-      t
+    t
   | None ->
-      Code_error.raise
-        "[as_in_source_tree_exn] called on something not in source tree"
-        [ ("t", to_dyn t) ]
+    Code_error.raise
+      "[as_in_source_tree_exn] called on something not in source tree"
+      [ ("t", to_dyn t) ]
 
 let as_in_build_dir = function
   | In_build_dir b ->
-      Some b
+    Some b
   | In_source_tree _ | External _ ->
-      None
+    None
 
 let as_in_build_dir_exn t =
   match t with
   | External _ | In_source_tree _ ->
-      Code_error.raise
-        "[as_in_build_dir_exn] called on something not in build dir"
-        [ ("t", to_dyn t) ]
+    Code_error.raise
+      "[as_in_build_dir_exn] called on something not in build dir"
+      [ ("t", to_dyn t) ]
   | In_build_dir p ->
-      p
+    p
 
 let extract_build_context = function
   | In_source_tree _ | External _ ->
-      None
+    None
   | In_build_dir p when Local.is_root p ->
-      None
+    None
   | In_build_dir t ->
-      Build.extract_build_context t
+    Build.extract_build_context t
 
 let extract_build_dir_first_component = extract_build_context
 
 let extract_build_context_exn t =
   match extract_build_context t with
   | Some t ->
-      t
+    t
   | None ->
-      Code_error.raise "Path.extract_build_context_exn" [ ("t", to_dyn t) ]
+    Code_error.raise "Path.extract_build_context_exn" [ ("t", to_dyn t) ]
 
 let extract_build_context_dir = function
   | In_source_tree _ | External _ ->
-      None
+    None
   | In_build_dir t ->
-      Option.map (Build.extract_build_context_dir t) ~f:(fun (base, rest) ->
-          (in_build_dir base, rest))
+    Option.map (Build.extract_build_context_dir t) ~f:(fun (base, rest) ->
+        (in_build_dir base, rest))
 
 let extract_build_context_dir_maybe_sandboxed = function
   | In_source_tree _ | External _ ->
-      None
+    None
   | In_build_dir t ->
-      Option.map (Build.extract_build_context_dir_maybe_sandboxed t)
-        ~f:(fun (base, rest) -> (in_build_dir base, rest))
+    Option.map (Build.extract_build_context_dir_maybe_sandboxed t)
+      ~f:(fun (base, rest) -> (in_build_dir base, rest))
 
 let drop_optional_sandbox_root = function
   | (In_source_tree _ | External _) as x ->
-      x
+    x
   | In_build_dir t -> (
     match Build.split_sandbox_root t with
     | _sandbox_root, t ->
-        (In_build_dir t : t) )
+      (In_build_dir t : t) )
 
 let extract_build_context_dir_exn t =
   match extract_build_context_dir t with
   | Some t ->
-      t
+    t
   | None ->
-      Code_error.raise "Path.extract_build_context_dir_exn" [ ("t", to_dyn t) ]
+    Code_error.raise "Path.extract_build_context_dir_exn" [ ("t", to_dyn t) ]
 
 let drop_build_context t = Option.map (extract_build_context t) ~f:snd
 
 let drop_build_context_exn t =
   match extract_build_context t with
   | None ->
-      Code_error.raise "Path.drop_build_context_exn" [ ("t", to_dyn t) ]
+    Code_error.raise "Path.drop_build_context_exn" [ ("t", to_dyn t) ]
   | Some (_, t) ->
-      t
+    t
 
 let drop_optional_build_context t =
   match extract_build_context t with
   | None ->
-      t
+    t
   | Some (_, t) ->
-      in_source_tree t
+    in_source_tree t
 
 let drop_optional_build_context_maybe_sandboxed t =
   match extract_build_context_dir_maybe_sandboxed t with
   | None ->
-      t
+    t
   | Some (_, t) ->
-      in_source_tree t
+    in_source_tree t
 
 let drop_optional_build_context_src_exn t =
   match t with
   | External _ ->
-      Code_error.raise
-        "drop_optional_build_context_src_exn called on an external path" []
+    Code_error.raise
+      "drop_optional_build_context_src_exn called on an external path" []
   | In_build_dir _ -> (
     match extract_build_context t with
     | Some (_, s) ->
-        s
+      s
     | None ->
-        Code_error.raise
-          "drop_optional_build_context_src_exn called on a build directory \
-           itself"
-          [] )
+      Code_error.raise
+        "drop_optional_build_context_src_exn called on a build directory itself"
+        [] )
   | In_source_tree p ->
-      p
+    p
 
 let split_first_component t =
   match (kind t, is_root t) with
   | In_source_dir t, false -> (
-      let t = Local.to_string t in
-      match String.lsplit2 t ~on:'/' with
-      | None ->
-          Some (t, root)
-      | Some (before, after) ->
-          Some (before, after |> Local.of_string |> in_source_tree) )
+    let t = Local.to_string t in
+    match String.lsplit2 t ~on:'/' with
+    | None ->
+      Some (t, root)
+    | Some (before, after) ->
+      Some (before, after |> Local.of_string |> in_source_tree) )
   | _, _ ->
-      None
+    None
 
 let explode t =
   match kind t with
   | In_source_dir p when Local.is_root p ->
-      Some []
+    Some []
   | In_source_dir s ->
-      Some (String.split (Local.to_string s) ~on:'/')
+    Some (String.split (Local.to_string s) ~on:'/')
   | External _ ->
-      None
+    None
 
 let explode_exn t =
   match explode t with
   | Some s ->
-      s
+    s
   | None ->
-      Code_error.raise "Path.explode_exn" [ ("path", to_dyn t) ]
+    Code_error.raise "Path.explode_exn" [ ("path", to_dyn t) ]
 
 let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
@@ -1229,11 +1224,11 @@ let readdir_unsorted =
   let rec loop dh acc =
     match Unix.readdir dh with
     | "." | ".." ->
-        loop dh acc
+      loop dh acc
     | s ->
-        loop dh (s :: acc)
+      loop dh (s :: acc)
     | exception End_of_file ->
-        acc
+      acc
   in
   fun t ->
     try
@@ -1242,9 +1237,9 @@ let readdir_unsorted =
         ~f:(fun () ->
           match loop dh [] with
           | exception Unix.Unix_error (e, _, _) ->
-              Error e
+            Error e
           | s ->
-              Result.Ok s)
+            Result.Ok s)
         ~finally:(fun () -> Unix.closedir dh)
     with Unix.Unix_error (e, _, _) -> Error e
 
@@ -1279,28 +1274,28 @@ let build_dir_exists () = is_directory build_dir
 let ensure_build_dir_exists () =
   match kind build_dir with
   | In_source_dir p ->
-      Relative_to_source_root.mkdir_p p
+    Relative_to_source_root.mkdir_p p
   | External p -> (
-      let p = External.to_string p in
-      try Unix.mkdir p 0o777 with
-      | Unix.Unix_error (EEXIST, _, _) ->
-          ()
-      | Unix.Unix_error (ENOENT, _, _) ->
-          User_error.raise
-            [ Pp.textf
-                "Cannot create external build directory %s. Make sure that \
-                 the parent dir %s exists."
-                p (Filename.dirname p)
-            ] )
+    let p = External.to_string p in
+    try Unix.mkdir p 0o777 with
+    | Unix.Unix_error (EEXIST, _, _) ->
+      ()
+    | Unix.Unix_error (ENOENT, _, _) ->
+      User_error.raise
+        [ Pp.textf
+            "Cannot create external build directory %s. Make sure that the \
+             parent dir %s exists."
+            p (Filename.dirname p)
+        ] )
 
 let extend_basename t ~suffix =
   match t with
   | In_source_tree t ->
-      in_source_tree (Local.extend_basename t ~suffix)
+    in_source_tree (Local.extend_basename t ~suffix)
   | In_build_dir t ->
-      in_build_dir (Local.extend_basename t ~suffix)
+    in_build_dir (Local.extend_basename t ~suffix)
   | External t ->
-      external_ (External.extend_basename t ~suffix)
+    external_ (External.extend_basename t ~suffix)
 
 let insert_after_build_dir_exn =
   let error a b =
@@ -1310,9 +1305,9 @@ let insert_after_build_dir_exn =
   fun a b ->
     match a with
     | In_build_dir a ->
-        in_build_dir (Local.append (Local.of_string b) a)
+      in_build_dir (Local.append (Local.of_string b) a)
     | In_source_tree _ | External _ ->
-        error a b
+      error a b
 
 let rm_rf =
   let rec loop dir =
@@ -1320,9 +1315,9 @@ let rm_rf =
         let fn = Filename.concat dir fn in
         match Unix.lstat fn with
         | { st_kind = S_DIR; _ } ->
-            loop fn
+          loop fn
         | _ ->
-            unlink_operation fn);
+          unlink_operation fn);
     Unix.rmdir dir
   in
   fun t ->
@@ -1331,72 +1326,72 @@ let rm_rf =
     let fn = to_string t in
     match Unix.lstat fn with
     | exception Unix.Unix_error (ENOENT, _, _) ->
-        ()
+      ()
     | _ ->
-        loop fn
+      loop fn
 
 let mkdir_p = function
   | External s ->
-      External.mkdir_p s
+    External.mkdir_p s
   | In_source_tree s ->
-      Relative_to_source_root.mkdir_p s
+    Relative_to_source_root.mkdir_p s
   | In_build_dir k ->
-      Kind.mkdir_p (Kind.append_local (Lazy.force Build.build_dir_kind) k)
+    Kind.mkdir_p (Kind.append_local (Lazy.force Build.build_dir_kind) k)
 
 let compare x y =
   match (x, y) with
   | External x, External y ->
-      External.compare x y
+    External.compare x y
   | External _, _ ->
-      Lt
+    Lt
   | _, External _ ->
-      Gt
+    Gt
   | In_source_tree x, In_source_tree y ->
-      Local.compare x y
+    Local.compare x y
   | In_source_tree _, _ ->
-      Lt
+    Lt
   | _, In_source_tree _ ->
-      Gt
+    Gt
   | In_build_dir x, In_build_dir y ->
-      Local.compare x y
+    Local.compare x y
 
 let extension t =
   match t with
   | External t ->
-      External.extension t
+    External.extension t
   | In_build_dir t | In_source_tree t ->
-      Local.extension t
+    Local.extension t
 
 let split_extension t =
   match t with
   | External t ->
-      let t, ext = External.split_extension t in
-      (external_ t, ext)
+    let t, ext = External.split_extension t in
+    (external_ t, ext)
   | In_build_dir t ->
-      let t, ext = Local.split_extension t in
-      (in_build_dir t, ext)
+    let t, ext = Local.split_extension t in
+    (in_build_dir t, ext)
   | In_source_tree t ->
-      let t, ext = Local.split_extension t in
-      (in_source_tree t, ext)
+    let t, ext = Local.split_extension t in
+    (in_source_tree t, ext)
 
 let set_extension t ~ext =
   match t with
   | External t ->
-      external_ (External.set_extension t ~ext)
+    external_ (External.set_extension t ~ext)
   | In_build_dir t ->
-      in_build_dir (Local.set_extension t ~ext)
+    in_build_dir (Local.set_extension t ~ext)
   | In_source_tree t ->
-      in_source_tree (Local.set_extension t ~ext)
+    in_source_tree (Local.set_extension t ~ext)
 
 let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 
 let pp_debug ppf = function
   | In_source_tree s ->
-      Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
+    Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
   | In_build_dir s ->
-      Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
+    Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
   | External s ->
-      Format.fprintf ppf "(External %S)" (External.to_string s)
+    Format.fprintf ppf "(External %S)" (External.to_string s)
 
 module O = Comparable.Make (T)
 
@@ -1422,11 +1417,11 @@ end
 
 let local_part = function
   | External e ->
-      Local.of_string (External.as_local e)
+    Local.of_string (External.as_local e)
   | In_source_tree l ->
-      l
+    l
   | In_build_dir l ->
-      l
+    l
 
 let stat t = Unix.stat (to_string t)
 

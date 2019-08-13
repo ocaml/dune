@@ -21,15 +21,15 @@ let parse_deps_exn ~file lines =
   in
   match lines with
   | [] | _ :: _ :: _ ->
-      invalid ()
+    invalid ()
   | [ line ] -> (
     match String.lsplit2 line ~on:':' with
     | None ->
-        invalid ()
+      invalid ()
     | Some (basename, deps) ->
-        let basename = Filename.basename basename in
-        if basename <> Path.basename file then invalid ();
-        String.extract_blank_separated_words deps )
+      let basename = Filename.basename basename in
+      if basename <> Path.basename file then invalid ();
+      String.extract_blank_separated_words deps )
 
 let interpret_deps cctx ~unit deps =
   let dir = CC.dir cctx in
@@ -60,9 +60,9 @@ let interpret_deps cctx ~unit deps =
                ]);
   match Modules.alias_for modules unit with
   | None ->
-      deps
+    deps
   | Some m ->
-      m :: deps
+    m :: deps
 
 let deps_of ~cctx ~ml_kind unit =
   let modules = Compilation_context.modules cctx in

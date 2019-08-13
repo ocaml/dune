@@ -127,11 +127,11 @@ let one_of term1 term2 =
      and+ y, args2 = Term.with_used_args term2 in
      match (args1, args2) with
      | _, [] ->
-         `Ok x
+       `Ok x
      | [], _ ->
-         `Ok y
+       `Ok y
      | arg1 :: _, arg2 :: _ ->
-         `Error (true, sprintf "Cannot use %s and %s simultaneously" arg1 arg2)
+       `Error (true, sprintf "Cannot use %s and %s simultaneously" arg1 arg2)
 
 let build_info =
   let+ build_info =
@@ -155,11 +155,11 @@ let build_info =
     in
     ( match libs with
     | [] ->
-        ()
+      ()
     | _ ->
-        pr "statically linked libraries:";
-        let longest = String.longest_map libs ~f:fst in
-        List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v) );
+      pr "statically linked libraries:";
+      let longest = String.longest_map libs ~f:fst in
+      List.iter libs ~f:(fun (name, v) -> pr "- %-*s %s" longest name v) );
     exit 0
   )
 
@@ -489,14 +489,14 @@ let term =
   let config =
     match config_file with
     | No_config ->
-        Config.default
+      Config.default
     | This fname ->
-        Config.load_config_file fname
+      Config.load_config_file fname
     | Default ->
-        if Config.inside_dune then
-          Config.default
-        else
-          Config.load_user_config_file ()
+      if Config.inside_dune then
+        Config.default
+      else
+        Config.load_user_config_file ()
   in
   let config =
     Config.merge config

@@ -29,18 +29,18 @@ let () =
                  Dune_lang.parse_string ~lexer ~fname:"" ~mode:Single s
                with
                | exception _ ->
-                   false
+                 false
                | Atom (_, A s') ->
-                   s = s'
+                 s = s'
                | _ ->
-                   false
+                 false
              in
              let printed_as_atom =
                match Dune_lang.atom_or_quoted_string s with
                | Atom _ ->
-                   true
+                 true
                | _ ->
-                   false
+                 false
              in
              let valid_dune_atom = validator (Dune_lang.Atom.of_string s) in
              if valid_dune_atom <> parser_recognizes_as_atom then (

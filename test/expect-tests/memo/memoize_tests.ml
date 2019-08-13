@@ -27,9 +27,9 @@ let run f v =
   with Fiber.Never -> (
     match !exn with
     | Some exn ->
-        Exn_with_backtrace.reraise exn
+      Exn_with_backtrace.reraise exn
     | None ->
-        raise Fiber.Never )
+      raise Fiber.Never )
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Fiber.return (x ^ x)

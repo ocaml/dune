@@ -19,9 +19,9 @@ let encode =
   let open Dune_lang.Encoder in
   function
   | Simple b ->
-      bool b
+    bool b
   | Yes_with_transition m ->
-      pair string string ("transition", m)
+    pair string string ("transition", m)
 
 let to_bool = function Simple b -> b | Yes_with_transition _ -> true
 
@@ -29,6 +29,6 @@ let to_dyn =
   let open Dyn.Encoder in
   function
   | Simple s ->
-      constr "Simple" [ bool s ]
+    constr "Simple" [ bool s ]
   | Yes_with_transition s ->
-      constr "Yes_with_transition" [ string s ]
+    constr "Yes_with_transition" [ string s ]

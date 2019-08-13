@@ -31,15 +31,14 @@ module Platform = struct
 
   let enabled_if = function
     | [] ->
-        None
+      None
     | [ x ] ->
-        Some (List [ atom "<>"; system_var; t x ])
+      Some (List [ atom "<>"; system_var; t x ])
     | ps ->
-        Some
-          (List
-             ( atom "and"
-             :: List.map ps ~f:(fun p -> List [ atom "<>"; system_var; t p ])
-             ))
+      Some
+        (List
+           ( atom "and"
+           :: List.map ps ~f:(fun p -> List [ atom "<>"; system_var; t p ]) ))
 end
 
 let alias ?enabled_if ?action name ~deps =
@@ -102,9 +101,9 @@ module Test = struct
     let action =
       match t.env with
       | None ->
-          action
+        action
       | Some (k, v) ->
-          List [ atom "setenv"; atom_or_quoted_string k; v; action ]
+        List [ atom "setenv"; atom_or_quoted_string k; v; action ]
     in
     alias t.name ?enabled_if
       ~deps:
@@ -182,9 +181,9 @@ let all_tests =
              List.find exclusions ~f:(fun (t : Test.t) -> t.name = name)
            with
            | None ->
-               Test.make name
+             Test.make name
            | Some t ->
-               t) )
+             t) )
 
 let pp_group fmt (name, tests) =
   alias name

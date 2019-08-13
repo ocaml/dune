@@ -5,44 +5,44 @@ let compare_var_syntax x y =
   match (x, y) with
   | Percent, Percent | Dollar_brace, Dollar_brace | Dollar_paren, Dollar_paren
     ->
-      Ordering.Eq
+    Ordering.Eq
   | Percent, (Dollar_brace | Dollar_paren) ->
-      Ordering.Lt
+    Ordering.Lt
   | (Dollar_brace | Dollar_paren), Percent ->
-      Ordering.Gt
+    Ordering.Gt
   | Dollar_brace, Dollar_paren ->
-      Ordering.Lt
+    Ordering.Lt
   | Dollar_paren, Dollar_brace ->
-      Ordering.Gt
+    Ordering.Gt
 
 let compare_var_no_loc v1 v2 =
   match String.compare v1.name v2.name with
   | (Ordering.Lt | Gt) as a ->
-      a
+    a
   | Eq -> (
     match Option.compare String.compare v1.payload v2.payload with
     | (Ordering.Lt | Gt) as a ->
-        a
+      a
     | Eq ->
-        compare_var_syntax v1.syntax v2.syntax )
+      compare_var_syntax v1.syntax v2.syntax )
 
 let compare_part p1 p2 =
   match (p1, p2) with
   | Text s1, Text s2 ->
-      String.compare s1 s2
+    String.compare s1 s2
   | Var v1, Var v2 ->
-      compare_var_no_loc v1 v2
+    compare_var_no_loc v1 v2
   | Text _, Var _ ->
-      Ordering.Lt
+    Ordering.Lt
   | Var _, Text _ ->
-      Ordering.Gt
+    Ordering.Gt
 
 let compare_no_loc t1 t2 =
   match List.compare ~compare:compare_part t1.parts t2.parts with
   | (Ordering.Lt | Gt) as a ->
-      a
+    a
   | Eq ->
-      Bool.compare t1.quoted t2.quoted
+    Bool.compare t1.quoted t2.quoted
 
 module Pp : sig
   val to_string : t -> string
@@ -55,10 +55,10 @@ end = struct
     Buffer.add_string buf name;
     ( match payload with
     | None ->
-        ()
+      ()
     | Some payload ->
-        Buffer.add_char buf ':';
-        Buffer.add_string buf payload );
+      Buffer.add_char buf ':';
+      Buffer.add_string buf payload );
     Buffer.add_string buf after
 
   let check_valid_unquoted s ~loc =
@@ -80,18 +80,18 @@ end = struct
     in
     let rec add_parts acc_text = function
       | [] ->
-          commit_text acc_text
+        commit_text acc_text
       | Text s :: rest ->
-          add_parts
-            ( if acc_text = "" then
-              s
-            else
-              acc_text ^ s )
-            rest
+        add_parts
+          ( if acc_text = "" then
+            s
+          else
+            acc_text ^ s )
+          rest
       | Var v :: rest ->
-          commit_text acc_text;
-          add_var v;
-          add_parts "" rest
+        commit_text acc_text;
+        add_var v;
+        add_parts "" rest
     in
     add_parts "" parts;
     if quoted then Buffer.add_char buf '"';
@@ -104,9 +104,9 @@ let string_of_var { loc = _; syntax = _; name; payload } =
   let before, after = ("%{", "}") in
   match payload with
   | None ->
-      before ^ name ^ after
+    before ^ name ^ after
   | Some p ->
-      before ^ name ^ ":" ^ p ^ after
+    before ^ name ^ ":" ^ p ^ after
 
 let pp t = Stdune.Pp.verbatim (Pp.to_string t)
 
@@ -115,23 +115,23 @@ let pp_split_strings ppf (t : t) =
     t.quoted
     || List.exists t.parts ~f:(function
          | Text s ->
-             String.contains s '\n'
+           String.contains s '\n'
          | Var _ ->
-             false)
+           false)
   then (
     List.iter t.parts ~f:(function
       | Var s ->
-          Format.pp_print_string ppf (string_of_var s)
+        Format.pp_print_string ppf (string_of_var s)
       | Text s -> (
         match String.split s ~on:'\n' with
         | [] ->
-            assert false
+          assert false
         | [ s ] ->
-            Format.pp_print_string ppf (Escape.escaped s)
+          Format.pp_print_string ppf (Escape.escaped s)
         | split ->
-            Format.pp_print_list
-              ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
-              Format.pp_print_string ppf split ));
+          Format.pp_print_list
+            ~pp_sep:(fun ppf () -> Format.fprintf ppf "@,\\n")
+            Format.pp_print_string ppf split ));
     Format.fprintf ppf "@}\"@]"
   ) else
     Format.pp_print_string ppf (Pp.to_string t)
@@ -142,20 +142,20 @@ let remove_locs t =
   ; parts =
       List.map t.parts ~f:(function
         | Var v ->
-            Var { v with loc = Loc.none }
+          Var { v with loc = Loc.none }
         | Text _ as s ->
-            s)
+          s)
   }
 
 let dyn_of_var_syntax =
   let open Dyn.Encoder in
   function
   | Dollar_brace ->
-      constr "Dollar_brace" []
+    constr "Dollar_brace" []
   | Dollar_paren ->
-      constr "Dollar_paren" []
+    constr "Dollar_paren" []
   | Percent ->
-      constr "Percent" []
+    constr "Percent" []
 
 let dyn_of_var { loc = _; name; payload; syntax } =
   let open Dyn.Encoder in
@@ -169,9 +169,9 @@ let dyn_of_part =
   let open Dyn.Encoder in
   function
   | Text s ->
-      constr "Text" [ string s ]
+    constr "Text" [ string s ]
   | Var v ->
-      constr "Var" [ dyn_of_var v ]
+    constr "Var" [ dyn_of_var v ]
 
 let to_dyn { quoted; parts; loc = _ } =
   let open Dyn.Encoder in

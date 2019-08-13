@@ -87,11 +87,11 @@ let term_supports_color =
   lazy
     ( match Sys.getenv "TERM" with
     | exception Not_found ->
-        false
+      false
     | "dumb" ->
-        false
+      false
     | _ ->
-        true )
+      true )
 
 let stdout_supports_color =
   lazy (Lazy.force term_supports_color && Unix.isatty Unix.stdout)
@@ -131,10 +131,10 @@ let strip str =
     else
       match str.[i] with
       | '\027' ->
-          skip (i + 1)
+        skip (i + 1)
       | c ->
-          Buffer.add_char buf c;
-          loop (i + 1)
+        Buffer.add_char buf c;
+        loop (i + 1)
   and skip i =
     if i = len then
       Buffer.contents buf
@@ -156,31 +156,31 @@ let parse_line str styles =
   let rec loop styles i acc =
     match String.index_from str i '\027' with
     | None ->
-        (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
+      (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
     | Some seq_start -> (
-        let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
-        (* Skip the "\027[" *)
-        let seq_start = seq_start + 2 in
-        if seq_start >= len || str.[seq_start - 1] <> '[' then
+      let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
+      (* Skip the "\027[" *)
+      let seq_start = seq_start + 2 in
+      if seq_start >= len || str.[seq_start - 1] <> '[' then
+        (styles, acc)
+      else
+        match String.index_from str seq_start 'm' with
+        | None ->
           (styles, acc)
-        else
-          match String.index_from str seq_start 'm' with
-          | None ->
-              (styles, acc)
-          | Some seq_end ->
-              let styles =
-                if seq_start = seq_end then
-                  (* Some commands output "\027[m", which seems to be
-                     interpreted the same as "\027[0m" by terminals *)
-                  []
-                else
-                  String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
-                  |> String.split ~on:';'
-                  |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                         match s with "0" -> [] | _ -> s :: styles)
-                  |> List.rev
-              in
-              loop styles (seq_end + 1) acc )
+        | Some seq_end ->
+          let styles =
+            if seq_start = seq_end then
+              (* Some commands output "\027[m", which seems to be interpreted
+                 the same as "\027[0m" by terminals *)
+              []
+            else
+              String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
+              |> String.split ~on:';'
+              |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
+                     match s with "0" -> [] | _ -> s :: styles)
+              |> List.rev
+          in
+          loop styles (seq_end + 1) acc )
   in
   loop styles 0 Pp.nop
 
@@ -188,9 +188,9 @@ let parse =
   let rec loop styles lines acc =
     match lines with
     | [] ->
-        Pp.vbox (Pp.concat ~sep:Pp.cut (List.rev acc))
+      Pp.vbox (Pp.concat ~sep:Pp.cut (List.rev acc))
     | line :: lines ->
-        let styles, pp = parse_line line styles in
-        loop styles lines (pp :: acc)
+      let styles, pp = parse_line line styles in
+      loop styles lines (pp :: acc)
   in
   fun str -> loop [] (String.split_lines str) []

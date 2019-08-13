@@ -7,19 +7,19 @@ type t =
 
 let of_string = function
   | "dev" ->
-      Dev
+    Dev
   | "release" ->
-      Release
+    Release
   | s ->
-      User_defined s
+    User_defined s
 
 let to_string = function
   | Dev ->
-      "dev"
+    "dev"
   | Release ->
-      "release"
+    "release"
   | User_defined s ->
-      s
+    s
 
 let default = Dev
 
@@ -38,8 +38,8 @@ let to_dyn =
   let open Dyn.Encoder in
   function
   | Dev ->
-      constr "Dyn" []
+    constr "Dyn" []
   | Release ->
-      constr "Release" []
+    constr "Release" []
   | User_defined s ->
-      constr "User_defined" [ string s ]
+    constr "User_defined" [ string s ]

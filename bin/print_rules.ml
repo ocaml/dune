@@ -61,9 +61,9 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
            ]
          ; ( match rule.context with
            | None ->
-               []
+             []
            | Some c ->
-               [ ("context", Dune_lang.atom_or_quoted_string c.name) ] )
+             [ ("context", Dune_lang.atom_or_quoted_string c.name) ] )
          ; [ ("action", sexp_of_action rule.action) ]
          ])
   in
@@ -84,9 +84,9 @@ module Syntax = struct
 
   let print_rule = function
     | Makefile ->
-        print_rule_makefile
+      print_rule_makefile
     | Sexp ->
-        print_rule_sexp
+      print_rule_sexp
 
   let print_rules syntax ppf rules =
     Dune_lang.Deprecated.prepare_formatter ppf;
@@ -122,13 +122,12 @@ let term =
       let request =
         match targets with
         | [] ->
-            Build_system.all_targets ()
-            |> Path.Build.Set.fold ~init:[] ~f:(fun p acc ->
-                   Path.build p :: acc)
-            |> Build.paths
+          Build_system.all_targets ()
+          |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
+          |> Build.paths
         | _ ->
-            Target.resolve_targets_exn common setup targets
-            |> Target.request setup
+          Target.resolve_targets_exn common setup targets
+          |> Target.request setup
       in
       let* rules = Build_system.evaluate_rules ~request ~recursive in
       let print oc =
@@ -138,8 +137,8 @@ let term =
       in
       match out with
       | None ->
-          print stdout
+        print stdout
       | Some fn ->
-          Io.with_file_out fn ~f:print)
+        Io.with_file_out fn ~f:print)
 
 let command = (term, info)

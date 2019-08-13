@@ -20,16 +20,16 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
     let gen_module = Module.generated ~src_dir name in
     match wrapped with
     | None ->
-        gen_module
+      gen_module
     | Some (Yes_with_transition _) ->
-        assert false
+      assert false
     | Some (Simple false) ->
-        gen_module
+      gen_module
     | Some (Simple true) ->
-        let main_module_name =
-          Lib.main_module_name lib |> Result.ok_exn |> Option.value_exn
-        in
-        Module.with_wrapper gen_module ~main_module_name
+      let main_module_name =
+        Lib.main_module_name lib |> Result.ok_exn |> Option.value_exn
+      in
+      Module.with_wrapper gen_module ~main_module_name
   in
   SC.add_rule ~dir sctx
     (let ml =
@@ -62,15 +62,15 @@ let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
 let prlist buf name l ~f =
   match l with
   | [] ->
-      pr buf "let %s = []" name
+    pr buf "let %s = []" name
   | x :: l ->
-      pr buf "let %s =" name;
-      Printf.bprintf buf "  [ ";
-      f x;
-      List.iter l ~f:(fun x ->
-          Printf.bprintf buf "  ; ";
-          f x);
-      pr buf "  ]"
+    pr buf "let %s =" name;
+    Printf.bprintf buf "  [ ";
+    f x;
+    List.iter l ~f:(fun x ->
+        Printf.bprintf buf "  ; ";
+        f x);
+    pr buf "  ]"
 
 let findlib_init_code ~preds ~libs =
   let public_libs =
@@ -97,7 +97,7 @@ let findlib_init_code ~preds ~libs =
 let build_info_code cctx ~libs ~api_version =
   ( match api_version with
   | Dune_file.Library.Special_builtin_support.Build_info.V1 ->
-      () );
+    () );
   let sctx = CC.super_context cctx in
   let file_tree = Super_context.file_tree sctx in
   (* [placeholders] is a mapping from source path to variable names. For each
@@ -115,57 +115,57 @@ let build_info_code cctx ~libs ~api_version =
   let placeholder p =
     match File_tree.nearest_vcs file_tree p with
     | None ->
-        "None"
+      "None"
     | Some vcs -> (
-        let p =
-          Option.value
-            (Path.as_in_source_tree vcs.root)
-            (* The only VCS root that is potentially not in the source tree is
-               the VCS at the root of the repo. For this VCS, it is enough to
-               use the source tree root in the placeholder given that we take
-               the nearest VCS when performing the actual substitution. *)
-            ~default:Path.Source.root
-        in
-        match Path.Source.Map.find !placeholders p with
-        | Some var ->
-            var
-        | None ->
-            let var = gen_placeholder_var () in
-            placeholders := Path.Source.Map.set !placeholders p var;
-            var )
+      let p =
+        Option.value
+          (Path.as_in_source_tree vcs.root)
+          (* The only VCS root that is potentially not in the source tree is
+             the VCS at the root of the repo. For this VCS, it is enough to use
+             the source tree root in the placeholder given that we take the
+             nearest VCS when performing the actual substitution. *)
+          ~default:Path.Source.root
+      in
+      match Path.Source.Map.find !placeholders p with
+      | Some var ->
+        var
+      | None ->
+        let var = gen_placeholder_var () in
+        placeholders := Path.Source.Map.set !placeholders p var;
+        var )
   in
   let version_of_package (p : Package.t) =
     match p.version with
     | Some v ->
-        sprintf "Some %S" v
+      sprintf "Some %S" v
     | None ->
-        placeholder p.path
+      placeholder p.path
   in
   let version =
     match Compilation_context.package cctx with
     | Some p ->
-        version_of_package p
+      version_of_package p
     | None ->
-        let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
-        placeholder p
+      let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
+      placeholder p
   in
   let libs =
     List.map libs ~f:(fun lib ->
         ( Lib.name lib
         , match Lib_info.version (Lib.info lib) with
           | Some v ->
-              sprintf "Some %S" v
+            sprintf "Some %S" v
           | None -> (
             match Lib_info.status (Lib.info lib) with
             | Installed ->
-                "None"
+              "None"
             | Public (_, p) ->
-                version_of_package p
+              version_of_package p
             | Private _ ->
-                let p =
-                  Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
-                in
-                placeholder p ) ))
+              let p =
+                Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
+              in
+              placeholder p ) ))
   in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
@@ -201,55 +201,55 @@ let handle_special_libs cctx =
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
     | [] ->
-        { to_link = List.rev to_link_rev; force_linkall }
+      { to_link = List.rev to_link_rev; force_linkall }
     | lib :: libs -> (
       match Lib_info.special_builtin_support (Lib.info lib) with
       | None ->
-          process_libs libs
-            ~to_link_rev:(LM.Lib lib :: to_link_rev)
-            ~force_linkall
+        process_libs libs
+          ~to_link_rev:(LM.Lib lib :: to_link_rev)
+          ~force_linkall
       | Some special -> (
         match special with
         | Build_info { data_module; api_version } ->
-            let module_ =
-              generate_and_compile_module cctx ~name:data_module ~lib
-                ~code:
-                  (Build.arr (fun () ->
-                       build_info_code cctx ~libs:all_libs ~api_version))
-                ~requires:(Ok [ lib ])
-                ~precompiled_cmi:true
-            in
-            process_libs libs
-              ~to_link_rev:
-                (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
-              ~force_linkall
+          let module_ =
+            generate_and_compile_module cctx ~name:data_module ~lib
+              ~code:
+                (Build.arr (fun () ->
+                     build_info_code cctx ~libs:all_libs ~api_version))
+              ~requires:(Ok [ lib ])
+              ~precompiled_cmi:true
+          in
+          process_libs libs
+            ~to_link_rev:
+              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~force_linkall
         | Findlib_dynload ->
-            (* If findlib.dynload is linked, we stores in the binary the
-               packages linked by linking just after findlib.dynload a module
-               containing the info *)
-            let requires =
-              (* This shouldn't fail since findlib.dynload depends on dynlink
-                 and findlib. That's why it's ok to use a dummy location. *)
-              let+ dynlink =
-                Lib.DB.resolve (SC.public_libs sctx)
-                  (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
-              and+ findlib =
-                Lib.DB.resolve (SC.public_libs sctx)
-                  (Loc.none, Lib_name.of_string_exn ~loc:None "findlib")
-              in
-              [ dynlink; findlib ]
+          (* If findlib.dynload is linked, we stores in the binary the packages
+             linked by linking just after findlib.dynload a module containing
+             the info *)
+          let requires =
+            (* This shouldn't fail since findlib.dynload depends on dynlink and
+               findlib. That's why it's ok to use a dummy location. *)
+            let+ dynlink =
+              Lib.DB.resolve (SC.public_libs sctx)
+                (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
+            and+ findlib =
+              Lib.DB.resolve (SC.public_libs sctx)
+                (Loc.none, Lib_name.of_string_exn ~loc:None "findlib")
             in
-            let module_ =
-              generate_and_compile_module cctx ~lib ~name:"findlib_initl"
-                ~code:
-                  (Build.arr (fun () ->
-                       findlib_init_code ~preds:Findlib.Package.preds
-                         ~libs:all_libs))
-                ~requires ~precompiled_cmi:false
-            in
-            process_libs libs
-              ~to_link_rev:
-                (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
-              ~force_linkall:true ) )
+            [ dynlink; findlib ]
+          in
+          let module_ =
+            generate_and_compile_module cctx ~lib ~name:"findlib_initl"
+              ~code:
+                (Build.arr (fun () ->
+                     findlib_init_code ~preds:Findlib.Package.preds
+                       ~libs:all_libs))
+              ~requires ~precompiled_cmi:false
+          in
+          process_libs libs
+            ~to_link_rev:
+              (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~force_linkall:true ) )
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

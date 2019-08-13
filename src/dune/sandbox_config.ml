@@ -17,12 +17,12 @@ module Partial = struct
   let get_unique eq l =
     match l with
     | [] ->
-        Ok None
+      Ok None
     | x :: xs ->
-        if List.for_all xs ~f:(eq x) then
-          Ok (Some x)
-        else
-          Error Conflict
+      if List.for_all xs ~f:(eq x) then
+        Ok (Some x)
+      else
+        Error Conflict
 
   (** [merge] behaves like [inter] when there is no error, but it can detect a
       nonsensical configuration where [inter] can't. *)
@@ -34,18 +34,18 @@ module Partial = struct
                Sandbox_mode.Dict.get item field))
       with
       | Error Conflict ->
-          User_error.raise ~loc
-            [ Pp.text
-                (sprintf
-                   "Inconsistent sandboxing configuration. Sandboxing mode %s \
-                    is both allowed and disallowed"
-                   (Sandbox_mode.to_string field))
-            ]
+        User_error.raise ~loc
+          [ Pp.text
+              (sprintf
+                 "Inconsistent sandboxing configuration. Sandboxing mode %s \
+                  is both allowed and disallowed"
+                 (Sandbox_mode.to_string field))
+          ]
       | Ok None ->
-          (* allowed if not forbidden *)
-          true
+        (* allowed if not forbidden *)
+        true
       | Ok (Some v) ->
-          v
+        v
     in
     Sandbox_mode.Set.of_func (fun mode -> merge_field mode)
 
@@ -54,9 +54,9 @@ module Partial = struct
   let no_sandboxing =
     Sandbox_mode.Dict.of_func (function
       | None ->
-          Some true
+        Some true
       | Some _ ->
-          Some false)
+        Some false)
 
   let needs_sandboxing =
     Sandbox_mode.Dict.of_func (function None -> Some false | _ -> None)

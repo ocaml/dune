@@ -80,18 +80,18 @@ struct
             ())
     with
     | () ->
-        None
+      None
     | exception Found e ->
-        Some e
+      Some e
 
   let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Key.to_dyn)
 
   let choose_exn t =
     match choose t with
     | Some e ->
-        e
+      e
     | None ->
-        Code_error.raise "Set.choose_exn" [ ("t", to_dyn t) ]
+      Code_error.raise "Set.choose_exn" [ ("t", to_dyn t) ]
 
   let of_keys = M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
 

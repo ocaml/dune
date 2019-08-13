@@ -5,9 +5,9 @@ let pp_external_libs libs =
   Pp.enumerate (Lib_name.Map.to_list libs) ~f:(fun (name, kind) ->
       match (kind : Lib_deps_info.Kind.t) with
       | Optional ->
-          Pp.textf "%s (optional)" (Lib_name.to_string name)
+        Pp.textf "%s (optional)" (Lib_name.to_string name)
       | Required ->
-          Pp.textf "%s" (Lib_name.to_string name))
+        Pp.textf "%s" (Lib_name.to_string name))
 
 let doc = "Print out external libraries needed to build the given targets."
 
@@ -78,9 +78,9 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                         |> List.filter_map ~f:(fun (name, kind) ->
                                match (kind : Lib_deps_info.Kind.t) with
                                | Optional ->
-                                   None
+                                 None
                                | Required ->
-                                   Some (Lib_name.package_name name))
+                                 Some (Lib_name.package_name name))
                         |> Package.Name.Set.of_list |> Package.Name.Set.to_list
                         |> List.map ~f:(fun p ->
                                Pp.verbatim (Package.Name.to_string p)) ) )

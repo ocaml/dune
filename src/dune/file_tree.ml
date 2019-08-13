@@ -10,9 +10,9 @@ module File = struct
   let compare a b =
     match Int.compare a.ino b.ino with
     | Eq ->
-        Int.compare a.dev b.dev
+      Int.compare a.dev b.dev
     | ne ->
-        ne
+      ne
 
   let dummy = { ino = 0; dev = 0 }
 
@@ -167,46 +167,45 @@ type readdir =
 let readdir path =
   match Path.readdir_unsorted (Path.source path) with
   | Error unix_error ->
-      User_warning.emit
-        [ Pp.textf "Unable to read directory %s. Ignoring."
-            (Path.Source.to_string_maybe_quoted path)
-        ; Pp.text "Remove this message by ignoring by adding:"
-        ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
-        ; Pp.textf "to the dune file: %s"
-            (Path.Source.to_string_maybe_quoted
-               (Path.Source.relative (Path.Source.parent_exn path) "dune"))
-        ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
-        ];
-      Error unix_error
+    User_warning.emit
+      [ Pp.textf "Unable to read directory %s. Ignoring."
+          (Path.Source.to_string_maybe_quoted path)
+      ; Pp.text "Remove this message by ignoring by adding:"
+      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
+      ; Pp.textf "to the dune file: %s"
+          (Path.Source.to_string_maybe_quoted
+             (Path.Source.relative (Path.Source.parent_exn path) "dune"))
+      ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+      ];
+    Error unix_error
   | Ok unsorted_contents ->
-      let files, dirs =
-        List.filter_partition_map unsorted_contents ~f:(fun fn ->
-            let path = Path.Source.relative path fn in
-            if Path.Source.is_in_build_dir path then
+    let files, dirs =
+      List.filter_partition_map unsorted_contents ~f:(fun fn ->
+          let path = Path.Source.relative path fn in
+          if Path.Source.is_in_build_dir path then
+            Skip
+          else
+            let is_directory, file =
+              match Path.stat (Path.source path) with
+              | exception _ ->
+                (false, File.dummy)
+              | { st_kind = S_DIR; _ } as st ->
+                (true, File.of_stats st)
+              | _ ->
+                (false, File.dummy)
+            in
+            if is_directory then
+              Right (fn, path, file)
+            else if is_temp_file fn then
               Skip
             else
-              let is_directory, file =
-                match Path.stat (Path.source path) with
-                | exception _ ->
-                    (false, File.dummy)
-                | { st_kind = S_DIR; _ } as st ->
-                    (true, File.of_stats st)
-                | _ ->
-                    (false, File.dummy)
-              in
-              if is_directory then
-                Right (fn, path, file)
-              else if is_temp_file fn then
-                Skip
-              else
-                Left fn)
-      in
-      { files = String.Set.of_list files
-      ; dirs =
-          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) ->
-              String.compare a b)
-      }
-      |> Result.ok
+              Left fn)
+    in
+    { files = String.Set.of_list files
+    ; dirs =
+        List.sort dirs ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+    }
+    |> Result.ok
 
 let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
   let open Result.O in
@@ -231,21 +230,21 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
         match
           List.find_map dirs ~f:(function
             | ".git", _, _ ->
-                Some Vcs.Kind.Git
+              Some Vcs.Kind.Git
             | ".hg", _, _ ->
-                Some Vcs.Kind.Hg
+              Some Vcs.Kind.Hg
             | _ ->
-                None)
+              None)
         with
         | Some kind ->
-            Some kind
+          Some kind
         | None ->
-            Vcs.Kind.of_dir_contents files
+          Vcs.Kind.of_dir_contents files
       with
       | Some kind ->
-          Some { Vcs.kind; root = Path.(append_source root) path }
+        Some { Vcs.kind; root = Path.(append_source root) path }
       | None ->
-          vcs
+        vcs
     in
     let contents =
       lazy
@@ -258,51 +257,50 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
                  List.filter [ "dune"; "jbuild" ] ~f:(String.Set.mem files)
                with
                | [] ->
-                   (None, Sub_dirs.default)
+                 (None, Sub_dirs.default)
                | [ fn ] ->
-                   let file = Path.Source.relative path fn in
-                   let warn_about_jbuild =
-                     warn_when_seeing_jbuild_file && dir_status <> Vendored
-                   in
-                   if fn = "dune" then
-                     ignore
-                       ( Dune_project.ensure_project_file_exists project
-                         : Dune_project.created_or_already_exist )
-                   else if Dune_project.dune_version project >= (2, 0) then
-                     User_warning.emit
-                       ~loc:(Loc.in_file (Path.source file))
-                       [ Pp.text
-                           "jbuild files are not allowed inside Dune 2.0 \
-                            projects, please convert this file to a dune file \
-                            instead."
-                       ; Pp.text
-                           "Note: You can use \"dune upgrade\" to convert \
-                            your project to dune."
-                       ]
-                   else if warn_about_jbuild then
-                     User_warning.emit
-                       ~loc:(Loc.in_file (Path.source file))
-                       [ Pp.text
-                           "jbuild files are deprecated, please convert this \
-                            file to a dune file instead."
-                       ; Pp.text
-                           "Note: You can use \"dune upgrade\" to convert \
-                            your project to dune."
-                       ];
-                   let dune_file, sub_dirs =
-                     Dune_file.load file ~project
-                       ~kind:
-                         (Option.value_exn
-                            (Dune_lang.File_syntax.of_basename fn))
-                   in
-                   (Some dune_file, sub_dirs)
-               | _ ->
-                   User_error.raise
-                     [ Pp.textf
-                         "Directory %s has both a 'dune' and 'jbuild' file.\n\
-                          This is not allowed"
-                         (Path.Source.to_string_maybe_quoted path)
+                 let file = Path.Source.relative path fn in
+                 let warn_about_jbuild =
+                   warn_when_seeing_jbuild_file && dir_status <> Vendored
+                 in
+                 if fn = "dune" then
+                   ignore
+                     ( Dune_project.ensure_project_file_exists project
+                       : Dune_project.created_or_already_exist )
+                 else if Dune_project.dune_version project >= (2, 0) then
+                   User_warning.emit
+                     ~loc:(Loc.in_file (Path.source file))
+                     [ Pp.text
+                         "jbuild files are not allowed inside Dune 2.0 \
+                          projects, please convert this file to a dune file \
+                          instead."
+                     ; Pp.text
+                         "Note: You can use \"dune upgrade\" to convert your \
+                          project to dune."
                      ]
+                 else if warn_about_jbuild then
+                   User_warning.emit
+                     ~loc:(Loc.in_file (Path.source file))
+                     [ Pp.text
+                         "jbuild files are deprecated, please convert this \
+                          file to a dune file instead."
+                     ; Pp.text
+                         "Note: You can use \"dune upgrade\" to convert your \
+                          project to dune."
+                     ];
+                 let dune_file, sub_dirs =
+                   Dune_file.load file ~project
+                     ~kind:
+                       (Option.value_exn (Dune_lang.File_syntax.of_basename fn))
+                 in
+                 (Some dune_file, sub_dirs)
+               | _ ->
+                 User_error.raise
+                   [ Pp.textf
+                       "Directory %s has both a 'dune' and 'jbuild' file.\n\
+                        This is not allowed"
+                       (Path.Source.to_string_maybe_quoted path)
+                   ]
              in
              (dune_file, sub_dirs)
          in
@@ -321,41 +319,40 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
                   in
                   match status with
                   | Ignored ->
-                      acc
+                    acc
                   | Status status -> (
-                      let dir_status : Sub_dirs.Status.t =
-                        match (dir_status, status) with
-                        | Data_only, _ ->
-                            Data_only
-                        | Vendored, Normal ->
-                            Vendored
-                        | _, _ ->
-                            status
-                      in
-                      let dirs_visited =
-                        if Sys.win32 then
-                          dirs_visited
-                        else
-                          match File.Map.find dirs_visited file with
-                          | None ->
-                              File.Map.set dirs_visited file path
-                          | Some first_path ->
-                              User_error.raise
-                                [ Pp.textf
-                                    "Path %s has already been scanned. Cannot \
-                                     scan it again through symlink %s"
-                                    (Path.Source.to_string_maybe_quoted
-                                       first_path)
-                                    (Path.Source.to_string_maybe_quoted path)
-                                ]
-                      in
-                      match
-                        walk path ~dirs_visited ~project ~dir_status ~vcs
-                      with
-                      | Ok dir ->
-                          String.Map.set acc fn dir
-                      | Error _ ->
-                          acc ))
+                    let dir_status : Sub_dirs.Status.t =
+                      match (dir_status, status) with
+                      | Data_only, _ ->
+                        Data_only
+                      | Vendored, Normal ->
+                        Vendored
+                      | _, _ ->
+                        status
+                    in
+                    let dirs_visited =
+                      if Sys.win32 then
+                        dirs_visited
+                      else
+                        match File.Map.find dirs_visited file with
+                        | None ->
+                          File.Map.set dirs_visited file path
+                        | Some first_path ->
+                          User_error.raise
+                            [ Pp.textf
+                                "Path %s has already been scanned. Cannot \
+                                 scan it again through symlink %s"
+                                (Path.Source.to_string_maybe_quoted first_path)
+                                (Path.Source.to_string_maybe_quoted path)
+                            ]
+                    in
+                    match
+                      walk path ~dirs_visited ~project ~dir_status ~vcs
+                    with
+                    | Ok dir ->
+                      String.Map.set acc fn dir
+                    | Error _ ->
+                      acc ))
          in
          { Dir.files; sub_dirs; dune_file })
     in
@@ -371,23 +368,23 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
   Console.clear_status_line ();
   match walk with
   | Ok dir ->
-      dir
+    dir
   | Error m ->
-      User_error.raise
-        [ Pp.textf "Unable to load source %s.@.Reason:%s@."
-            (Path.Source.to_string_maybe_quoted path)
-            (Unix.error_message m)
-        ]
+    User_error.raise
+      [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+          (Path.Source.to_string_maybe_quoted path)
+          (Unix.error_message m)
+      ]
 
 let fold = Dir.fold
 
 let rec find_dir t = function
   | [] ->
-      Some t
+    Some t
   | comp :: components ->
-      let open Option.O in
-      let* t = String.Map.find (Dir.sub_dirs t) comp in
-      find_dir t components
+    let open Option.O in
+    let* t = String.Map.find (Dir.sub_dirs t) comp in
+    find_dir t components
 
 let find_dir t path =
   let components = Path.Source.explode path in
@@ -395,13 +392,13 @@ let find_dir t path =
 
 let rec nearest_dir t = function
   | [] ->
-      t
+    t
   | comp :: components -> (
     match String.Map.find (Dir.sub_dirs t) comp with
     | None ->
-        t
+      t
     | Some t ->
-        nearest_dir t components )
+      nearest_dir t components )
 
 let nearest_dir t path =
   let components = Path.Source.explode path in
@@ -412,19 +409,19 @@ let nearest_vcs t path = Dir.vcs (nearest_dir t path)
 let files_of t path =
   match find_dir t path with
   | None ->
-      Path.Source.Set.empty
+    Path.Source.Set.empty
   | Some dir ->
-      Path.Source.Set.of_list
-        (List.map
-           (String.Set.to_list (Dir.files dir))
-           ~f:(Path.Source.relative path))
+    Path.Source.Set.of_list
+      (List.map
+         (String.Set.to_list (Dir.files dir))
+         ~f:(Path.Source.relative path))
 
 let file_exists t path =
   match find_dir t (Path.Source.parent_exn path) with
   | None ->
-      false
+    false
   | Some dir ->
-      String.Set.mem (Dir.files dir) (Path.Source.basename path)
+    String.Set.mem (Dir.files dir) (Path.Source.basename path)
 
 let dir_exists t path = Option.is_some (find_dir t path)
 

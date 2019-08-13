@@ -15,16 +15,16 @@ module Bin = struct
     else
       match String.Map.find t.local_bins name with
       | Some path ->
-          Ok (Path.build path)
+        Ok (Path.build path)
       | None -> (
         match Context.which t.context name with
         | Some p ->
-            Ok p
+          Ok p
         | None ->
-            Error
-              (let context = t.context.name in
-               Action.Prog.Not_found.create ~program:name ?hint ~context ~loc
-                 ()) )
+          Error
+            (let context = t.context.name in
+             Action.Prog.Not_found.create ~program:name ?hint ~context ~loc ())
+        )
 
   let add_binaries t ~dir l =
     let local_bins =
@@ -71,9 +71,9 @@ module Public_libs = struct
       let lib_install_dir =
         match rest with
         | [] ->
-            lib_install_dir
+          lib_install_dir
         | _ ->
-            Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
+          Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
       in
       Path.build (Path.Build.relative lib_install_dir file)
     else

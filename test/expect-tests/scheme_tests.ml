@@ -25,9 +25,9 @@ module Directory_rules = struct
   let rec force l =
     List.concat_map (Appendable_list.to_list l) ~f:(function
       | File t ->
-          [ t ]
+        [ t ]
       | Thunk f ->
-          force (f ()))
+        force (f ()))
 end
 
 module Scheme = struct
@@ -45,19 +45,19 @@ module Scheme = struct
     let rec go ~path t =
       match t with
       | Empty ->
-          Empty
+        Empty
       | Union (t1, t2) ->
-          Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
+        Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
       | Approximation (dirs, rules) ->
-          let path = "t" :: path in
-          Approximation (dirs, go ~path rules)
+        let path = "t" :: path in
+        Approximation (dirs, go ~path rules)
       | Finite m ->
-          Finite m
+        Finite m
       | Thunk t ->
-          Thunk
-            (fun () ->
-              print path "thunk";
-              t ())
+        Thunk
+          (fun () ->
+            print path "thunk";
+            t ())
     in
     go ~path:[]
 
@@ -72,23 +72,23 @@ module Scheme = struct
     let rec go (t : _ t) ~dir =
       match t with
       | Empty ->
-          Directory_rules.empty
+        Directory_rules.empty
       | Union (a, b) ->
-          Directory_rules.union (go a ~dir) (go b ~dir)
+        Directory_rules.union (go a ~dir) (go b ~dir)
       | Approximation (dirs, t) -> (
         match Dune.Dir_set.mem dirs dir with
         | true ->
-            go t ~dir
+          go t ~dir
         | false ->
-            Directory_rules.empty )
+          Directory_rules.empty )
       | Finite rules -> (
         match Path.Build.Map.find rules dir with
         | None ->
-            Directory_rules.empty
+          Directory_rules.empty
         | Some rule ->
-            rule )
+          rule )
       | Thunk f ->
-          go (f ()) ~dir
+        go (f ()) ~dir
     in
     go
 
@@ -109,11 +109,11 @@ module Path = struct
     L.relative root
       ( match String.split str ~on:'/' with
       | [ "" ] ->
-          []
+        []
       | [ "." ] ->
-          []
+        []
       | other ->
-          other )
+        other )
 end
 
 let record_calls scheme ~f =

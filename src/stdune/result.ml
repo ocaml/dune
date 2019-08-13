@@ -25,7 +25,7 @@ let errorf fmt = Printf.ksprintf (fun x -> Error x) fmt
 let both a b =
   match a with
   | Error e ->
-      Error e
+    Error e
   | Ok a -> (
     match b with Error e -> Error e | Ok b -> Ok (a, b) )
 
@@ -49,27 +49,27 @@ module List = struct
   let map t ~f =
     let rec loop acc = function
       | [] ->
-          Ok (List.rev acc)
+        Ok (List.rev acc)
       | x :: xs ->
-          f x >>= fun x -> loop (x :: acc) xs
+        f x >>= fun x -> loop (x :: acc) xs
     in
     loop [] t
 
   let all =
     let rec loop acc = function
       | [] ->
-          Ok (List.rev acc)
+        Ok (List.rev acc)
       | t :: l ->
-          t >>= fun x -> loop (x :: acc) l
+        t >>= fun x -> loop (x :: acc) l
     in
     fun l -> loop [] l
 
   let concat_map =
     let rec loop f acc = function
       | [] ->
-          Ok (List.rev acc)
+        Ok (List.rev acc)
       | x :: l ->
-          f x >>= fun y -> loop f (List.rev_append y acc) l
+        f x >>= fun y -> loop f (List.rev_append y acc) l
     in
     fun l ~f -> loop f [] l
 
@@ -79,9 +79,9 @@ module List = struct
   let rec fold_left t ~f ~init =
     match t with
     | [] ->
-        Ok init
+      Ok init
     | x :: xs ->
-        f init x >>= fun init -> fold_left xs ~f ~init
+      f init x >>= fun init -> fold_left xs ~f ~init
 end
 
 let hash h1 h2 t =
@@ -90,11 +90,11 @@ let hash h1 h2 t =
 let equal e1 e2 x y =
   match (x, y) with
   | Ok x, Ok y ->
-      e1 x y
+    e1 x y
   | Error x, Error y ->
-      e2 x y
+    e2 x y
   | _, _ ->
-      false
+    false
 
 module Option = struct
   let iter t ~f = match t with None -> Ok () | Some x -> x >>= f
@@ -102,6 +102,6 @@ end
 
 let to_dyn ok err = function
   | Ok e ->
-      Dyn.Encoder.constr "Ok" [ ok e ]
+    Dyn.Encoder.constr "Ok" [ ok e ]
   | Error e ->
-      Dyn.Encoder.constr "Error" [ err e ]
+    Dyn.Encoder.constr "Error" [ err e ]

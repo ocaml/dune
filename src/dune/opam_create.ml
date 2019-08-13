@@ -65,9 +65,9 @@ let package_fields
     |> List.filter_map ~f:(fun (k, v) ->
            match v with
            | [] ->
-               None
+             None
            | _ :: _ ->
-               Some (k, list Package.Dependency.opam_depend v))
+             Some (k, list Package.Dependency.opam_depend v))
   in
   let fields = [ optional; dep_fields ] in
   let fields =
@@ -153,9 +153,9 @@ let add_rule sctx ~project ~pkg =
   let opam_rule =
     ( match opam_template sctx ~pkg with
     | Some p ->
-        Build.contents (Path.build p)
+      Build.contents (Path.build p)
     | None ->
-        Build.return "" )
+      Build.return "" )
     >>> Build.arr (fun template ->
             let opam_path = Path.build opam_path in
             let opamfile =
@@ -201,6 +201,6 @@ let add_rules sctx ~dir =
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
            match pkg.kind with
            | Dune _ ->
-               add_rule sctx ~project ~pkg
+             add_rule sctx ~project ~pkg
            | Opam ->
-               ())
+             ())

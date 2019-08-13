@@ -19,14 +19,14 @@ let decode =
   plain_string (fun ~loc ->
     function
     | "public" ->
-        Public
+      Public
     | "private" ->
-        Private
+      Private
     | _ ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Not a valid visibility. Valid visibility is public or private"
-          ])
+      User_error.raise ~loc
+        [ Pp.text
+            "Not a valid visibility. Valid visibility is public or private"
+        ])
 
 let is_public = function Public -> true | Private -> false
 
@@ -42,7 +42,7 @@ module Map = struct
 
   let find { private_; public } = function
     | Private ->
-        private_
+      private_
     | Public ->
-        public
+      public
 end

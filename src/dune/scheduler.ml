@@ -27,11 +27,11 @@ module Signal = struct
 
   let to_int = function
     | Int ->
-        Sys.sigint
+      Sys.sigint
     | Quit ->
-        Sys.sigquit
+      Sys.sigquit
     | Term ->
-        Sys.sigterm
+      Sys.sigterm
 
   let of_int =
     List.map all ~f:(fun t -> (to_int t, t))
@@ -129,30 +129,30 @@ end = struct
       done;
       match Signal.Set.choose !signals with
       | Some signal ->
-          signals := Signal.Set.remove !signals signal;
-          Signal signal
+        signals := Signal.Set.remove !signals signal;
+        Signal signal
       | None -> (
         match !files_changed with
         | [] ->
-            let job, status = Queue.pop jobs_completed in
-            decr pending_jobs;
-            Job_completed (job, status)
+          let job, status = Queue.pop jobs_completed in
+          decr pending_jobs;
+          Job_completed (job, status)
         | fns ->
-            files_changed := [];
-            let only_ignored_files =
-              List.fold_left fns ~init:true ~f:(fun acc fn ->
-                  let fn = Path.to_absolute_filename fn in
-                  if String.Table.mem ignored_files fn then (
-                    (* only use ignored record once *)
-                    String.Table.remove ignored_files fn;
-                    acc
-                  ) else
-                    false)
-            in
-            if only_ignored_files then
-              loop ()
-            else
-              Files_changed )
+          files_changed := [];
+          let only_ignored_files =
+            List.fold_left fns ~init:true ~f:(fun acc fn ->
+                let fn = Path.to_absolute_filename fn in
+                if String.Table.mem ignored_files fn then (
+                  (* only use ignored record once *)
+                  String.Table.remove ignored_files fn;
+                  acc
+                ) else
+                  false)
+          in
+          if only_ignored_files then
+            loop ()
+          else
+            Files_changed )
     in
     let ev = loop () in
     Mutex.unlock mutex;
@@ -212,48 +212,48 @@ end = struct
        let path = Path.to_string_maybe_quoted Path.root in
        match Bin.which ~path:(Env.path Env.initial) "inotifywait" with
        | Some inotifywait ->
-           (* On Linux, use inotifywait. *)
-           let excludes = String.concat ~sep:"|" excludes in
-           ( inotifywait
-           , [ "-r"
-             ; path
-             ; "--exclude"
-             ; excludes
-             ; "-e"
-             ; "close_write"
-             ; "-e"
-             ; "delete"
-             ; "--format"
-             ; "%w%f"
-             ; "-m"
-             ; "-q"
-             ] )
+         (* On Linux, use inotifywait. *)
+         let excludes = String.concat ~sep:"|" excludes in
+         ( inotifywait
+         , [ "-r"
+           ; path
+           ; "--exclude"
+           ; excludes
+           ; "-e"
+           ; "close_write"
+           ; "-e"
+           ; "delete"
+           ; "--format"
+           ; "%w%f"
+           ; "-m"
+           ; "-q"
+           ] )
        | None -> (
          (* On all other platforms, try to use fswatch. fswatch's event
             filtering is not reliable (at least on Linux), so don't try to use
             it, instead act on all events. *)
          match Bin.which ~path:(Env.path Env.initial) "fswatch" with
          | Some fswatch ->
-             let excludes =
-               List.concat_map excludes ~f:(fun x -> [ "--exclude"; x ])
-             in
-             ( fswatch
-             , [ "-r"
-               ; path
-               ; "--event"
-               ; "Created"
-               ; "--event"
-               ; "Updated"
-               ; "--event"
-               ; "Removed"
-               ]
-               @ excludes )
+           let excludes =
+             List.concat_map excludes ~f:(fun x -> [ "--exclude"; x ])
+           in
+           ( fswatch
+           , [ "-r"
+             ; path
+             ; "--event"
+             ; "Created"
+             ; "--event"
+             ; "Updated"
+             ; "--event"
+             ; "Removed"
+             ]
+             @ excludes )
          | None ->
-             User_error.raise
-               [ Pp.text
-                   "fswatch (or inotifywait) was not found. One of them needs \
-                    to be installed for watch mode to work."
-               ] ))
+           User_error.raise
+             [ Pp.text
+                 "fswatch (or inotifywait) was not found. One of them needs \
+                  to be installed for watch mode to work."
+             ] ))
 
   let buffering_time = 0.5 (* seconds *)
 
@@ -376,25 +376,25 @@ end = struct
     let add job =
       match Table.find table job.pid with
       | None ->
-          Table.set table job.pid (Running job);
-          incr running_count;
-          if !running_count = 1 then Condition.signal something_is_running_cv
+        Table.set table job.pid (Running job);
+        incr running_count;
+        if !running_count = 1 then Condition.signal something_is_running_cv
       | Some (Zombie status) ->
-          Table.remove table job.pid;
-          Event.send_job_completed job status
+        Table.remove table job.pid;
+        Event.send_job_completed job status
       | Some (Running _) ->
-          assert false
+        assert false
 
     let remove ~pid status =
       match Table.find table pid with
       | None ->
-          Table.set table pid (Zombie status)
+        Table.set table pid (Zombie status)
       | Some (Running job) ->
-          decr running_count;
-          Table.remove table pid;
-          Event.send_job_completed job status
+        decr running_count;
+        Table.remove table pid;
+        Event.send_job_completed job status
       | Some (Zombie _) ->
-          assert false
+        assert false
 
     let iter ~f =
       Table.iter table ~f:(fun data ->
@@ -499,18 +499,18 @@ end = struct
       Event.send_signal signal;
       match signal with
       | Int | Quit | Term ->
-          let now = Unix.gettimeofday () in
-          Queue.push now last_exit_signals;
-          (* Discard old signals *)
-          while
-            Queue.length last_exit_signals >= 0
-            && now -. Queue.peek last_exit_signals > 1.
-          do
-            ignore (Queue.pop last_exit_signals : float)
-          done;
-          let n = Queue.length last_exit_signals in
-          if n = 2 then prerr_endline warning;
-          if n = 3 then sys_exit 1
+        let now = Unix.gettimeofday () in
+        Queue.push now last_exit_signals;
+        (* Discard old signals *)
+        while
+          Queue.length last_exit_signals >= 0
+          && now -. Queue.peek last_exit_signals > 1.
+        do
+          ignore (Queue.pop last_exit_signals : float)
+        done;
+        let n = Queue.length last_exit_signals in
+        if n = 2 then prerr_endline warning;
+        if n = 3 then sys_exit 1
     done
 
   let init = lazy (ignore (Thread.create run () : Thread.t))
@@ -542,16 +542,16 @@ let update_status_line () =
   let gen_status_line = !status_line_generator () in
   match gen_status_line with
   | { message = None; _ } ->
-      Console.clear_status_line ()
+    Console.clear_status_line ()
   | { message = Some status_line; show_jobs } ->
-      let status_line =
-        if show_jobs then
-          Pp.seq status_line
-            (Pp.verbatim (Printf.sprintf " (jobs: %u)" (Event.pending_jobs ())))
-        else
-          status_line
-      in
-      Console.update_status_line status_line
+    let status_line =
+      if show_jobs then
+        Pp.seq status_line
+          (Pp.verbatim (Printf.sprintf " (jobs: %u)" (Event.pending_jobs ())))
+      else
+        status_line
+    in
+    Console.update_status_line status_line
 
 let set_status_line_generator gen =
   status_line_generator := gen;
@@ -601,10 +601,10 @@ let kill_and_wait_for_all_processes t () =
   while Event.pending_jobs () > 0 do
     match Event.next () with
     | Signal signal ->
-        got_signal signal;
-        saw_signal := Got_signal
+      got_signal signal;
+      saw_signal := Got_signal
     | _ ->
-        ()
+      ()
   done;
   !saw_signal
 
@@ -622,25 +622,25 @@ let prepare ?(config = Config.default) () =
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
           | None | Some "" ->
-              None
+            None
           | Some s ->
-              Some (String.drop s 1)
+            Some (String.drop s 1)
         in
         match descendant_simple cwd ~of_:initial_cwd with
         | Some s ->
-            s
+          s
         | None -> (
           match descendant_simple initial_cwd ~of_:cwd with
           | None ->
-              cwd
+            cwd
           | Some s ->
-              let rec loop acc dir =
-                if dir = Filename.current_dir_name then
-                  acc
-                else
-                  loop (Filename.concat acc "..") (Filename.dirname dir)
-              in
-              loop ".." (Filename.dirname s) )
+            let rec loop acc dir =
+              if dir = Filename.current_dir_name then
+                acc
+              else
+                loop (Filename.concat acc "..") (Filename.dirname dir)
+            in
+            loop ".." (Filename.dirname s) )
       else
         cwd );
   let t =
@@ -676,14 +676,14 @@ end = struct
       update_status_line ();
       match Event.next () with
       | Job_completed (job, status) ->
-          let* () = Fiber.Ivar.fill job.ivar status in
-          let* () = restart_waiting_for_available_job t in
-          pump_events t
+        let* () = Fiber.Ivar.fill job.ivar status in
+        let* () = restart_waiting_for_available_job t in
+        pump_events t
       | Files_changed ->
-          Fiber.return Files_changed
+        Fiber.return Files_changed
       | Signal signal ->
-          got_signal signal;
-          Fiber.return Got_signal
+        got_signal signal;
+        Fiber.return Got_signal
     )
 
   type run_error =
@@ -704,59 +704,59 @@ end = struct
          Fiber.return (pump_events_result, user_action_result))
     with
     | exception Fiber.Never ->
-        Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
+      Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
     | exception exn ->
-        Error (Exn (exn, Printexc.get_raw_backtrace ()))
+      Error (Exn (exn, Printexc.get_raw_backtrace ()))
     | a, b -> (
-        let b = Fiber.Future.peek b in
-        match (a, b) with
-        | Done, None ->
-            Error Never
-        | Done, Some res ->
-            Ok res
-        | Got_signal, _ ->
-            Error Got_signal
-        | Files_changed, _ ->
-            Error Files_changed )
+      let b = Fiber.Future.peek b in
+      match (a, b) with
+      | Done, None ->
+        Error Never
+      | Done, Some res ->
+        Ok res
+      | Got_signal, _ ->
+        Error Got_signal
+      | Files_changed, _ ->
+        Error Files_changed )
 
   let run_and_cleanup t f =
     let res = run t f in
     ( match res with
     | Error Files_changed ->
-        set_status_line_generator (fun () ->
-            { message =
-                Some
-                  (Pp.seq
-                     (Pp.tag ~tag:User_message.Style.Error
-                        (Pp.verbatim "Had errors"))
-                     (Pp.verbatim ", killing current build..."))
-            ; show_jobs = false
-            })
+      set_status_line_generator (fun () ->
+          { message =
+              Some
+                (Pp.seq
+                   (Pp.tag ~tag:User_message.Style.Error
+                      (Pp.verbatim "Had errors"))
+                   (Pp.verbatim ", killing current build..."))
+          ; show_jobs = false
+          })
     | _ ->
-        () );
+      () );
     match kill_and_wait_for_all_processes t () with
     | Got_signal ->
-        Error Got_signal
+      Error Got_signal
     | Ok ->
-        res
+      res
 end
 
 let go ?config f =
   let t = prepare ?config () in
   match Run_once.run_and_cleanup t f with
   | Error (Exn (exn, bt)) ->
-      Exn.raise_with_backtrace exn bt
+    Exn.raise_with_backtrace exn bt
   | Ok res ->
-      res
+    res
   | Error Got_signal ->
-      raise Report_error.Already_reported
+    raise Report_error.Already_reported
   | Error Never ->
-      raise Fiber.Never
+    raise Fiber.Never
   | Error Files_changed ->
-      Code_error.raise
-        "Scheduler.go: files changed even though we're running without \
-         filesystem watcher"
-        []
+    Code_error.raise
+      "Scheduler.go: files changed even though we're running without \
+       filesystem watcher"
+      []
 
 type exit_or_continue =
   | Exit
@@ -766,20 +766,20 @@ let maybe_clear_screen ~config =
   match
     match config with
     | Some cfg ->
-        cfg.Config.terminal_persistence
+      cfg.Config.terminal_persistence
     | None ->
-        Preserve
+      Preserve
   with
   | Clear_on_rebuild ->
-      Console.reset_terminal ()
+    Console.reset_terminal ()
   | Preserve ->
-      Console.print_user_message
-        (User_message.make
-           [ Pp.nop
-           ; Pp.tag ~tag:User_message.Style.Success
-               (Pp.verbatim "********** NEW BUILD **********")
-           ; Pp.nop
-           ])
+    Console.print_user_message
+      (User_message.make
+         [ Pp.nop
+         ; Pp.tag ~tag:User_message.Style.Success
+             (Pp.verbatim "********** NEW BUILD **********")
+         ; Pp.nop
+         ])
 
 let poll ?config ~once ~finally () =
   let t = prepare ?config () in
@@ -787,12 +787,12 @@ let poll ?config ~once ~finally () =
   let block_waiting_for_changes () =
     match Event.next () with
     | Job_completed _ ->
-        assert false
+      assert false
     | Files_changed ->
-        Continue
+      Continue
     | Signal signal ->
-        got_signal signal;
-        Exit
+      got_signal signal;
+      Exit
   in
   let wait msg =
     let old_generator = !status_line_generator in
@@ -812,28 +812,28 @@ let poll ?config ~once ~finally () =
     finally ();
     match res with
     | Ok () ->
-        wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
-        |> after_wait
+      wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
+      |> after_wait
     | Error Got_signal ->
-        (Report_error.Already_reported, None)
+      (Report_error.Already_reported, None)
     | Error Never ->
-        wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
-        |> after_wait
+      wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+      |> after_wait
     | Error Files_changed ->
-        loop ()
+      loop ()
     | Error (Exn (exn, bt)) ->
-        (exn, Some bt)
+      (exn, Some bt)
   and after_wait = function
     | Exit ->
-        (Report_error.Already_reported, None)
+      (Report_error.Already_reported, None)
     | Continue ->
-        loop ()
+      loop ()
   in
   let exn, bt = loop () in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
   ignore (kill_and_wait_for_all_processes t () : saw_signal);
   match bt with
   | None ->
-      Exn.raise exn
+    Exn.raise exn
   | Some bt ->
-      Exn.raise_with_backtrace exn bt
+    Exn.raise_with_backtrace exn bt

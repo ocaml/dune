@@ -45,13 +45,13 @@ end = struct
     let compare a b =
       match (a, b) with
       | Named x, Named y ->
-          String.compare x y
+        String.compare x y
       | Anonymous x, Anonymous y ->
-          Path.Source.compare x y
+        Path.Source.compare x y
       | Named _, Anonymous _ ->
-          Lt
+        Lt
       | Anonymous _, Named _ ->
-          Gt
+        Gt
 
     let equal a b = Ordering.is_eq (compare a b)
 
@@ -59,9 +59,9 @@ end = struct
       let open Dyn.Encoder in
       function
       | Named n ->
-          constr "Named" [ string n ]
+        constr "Named" [ string n ]
       | Anonymous p ->
-          constr "Anonymous" [ Path.Source.to_dyn p ]
+        constr "Anonymous" [ Path.Source.to_dyn p ]
   end
 
   include T
@@ -72,9 +72,9 @@ end = struct
 
   let to_string_hum = function
     | Named s ->
-        s
+      s
     | Anonymous p ->
-        sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
+      sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
 
   let validate name =
     let len = String.length name in
@@ -98,17 +98,17 @@ end = struct
 
   let to_encoded_string = function
     | Named s ->
-        s
+      s
     | Anonymous p ->
-        if Path.Source.is_root p then
-          "."
-        else
-          "."
-          ^ String.map (Path.Source.to_string p) ~f:(function
-              | '/' ->
-                  '.'
-              | c ->
-                  c)
+      if Path.Source.is_root p then
+        "."
+      else
+        "."
+        ^ String.map (Path.Source.to_string p) ~f:(function
+            | '/' ->
+              '.'
+            | c ->
+              c)
 
   let of_encoded_string =
     let invalid s =
@@ -119,22 +119,22 @@ end = struct
     fun s ->
       match s with
       | "" ->
-          invalid s
+        invalid s
       | "." ->
-          anonymous_root
+        anonymous_root
       | _ when s.[0] = '.' -> (
         match
           String.split s ~on:'.' |> List.tl |> String.concat ~sep:"/"
           |> Path.of_string |> Path.as_in_source_tree
         with
         | Some p ->
-            Anonymous p
+          Anonymous p
         | None ->
-            invalid s )
+          invalid s )
       | _ when validate s ->
-          Named s
+        Named s
       | _ ->
-          invalid s
+        invalid s
 end
 
 module Project_file = struct
@@ -162,15 +162,15 @@ module Source_kind = struct
     let open Dyn.Encoder in
     function
     | Github (user, repo) ->
-        constr "Github" [ string user; string repo ]
+      constr "Github" [ string user; string repo ]
     | Url url ->
-        constr "Url" [ string url ]
+      constr "Url" [ string url ]
 
   let pp fmt = function
     | Github (user, repo) ->
-        Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
+      Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
     | Url u ->
-        Format.pp_print_string fmt u
+      Format.pp_print_string fmt u
 
   let decode =
     let open Dune_lang.Decoder in
@@ -179,10 +179,10 @@ module Source_kind = struct
         , plain_string (fun ~loc s ->
               match String.split ~on:'/' s with
               | [ user; repo ] ->
-                  Github (user, repo)
+                Github (user, repo)
               | _ ->
-                  User_error.raise ~loc
-                    [ Pp.textf "GitHub repository must be of form user/repo" ])
+                User_error.raise ~loc
+                  [ Pp.textf "GitHub repository must be of form user/repo" ])
         )
       ; ("uri", string >>| fun s -> Url s)
       ]
@@ -366,15 +366,13 @@ module Project_file_edit = struct
       let lines =
         match t.project_name with
         | Anonymous _ ->
-            lines
+          lines
         | Named s ->
-            lines
-            @ [ Dune_lang.to_string
-                  (List
-                     [ Dune_lang.atom "name"
-                     ; Dune_lang.atom_or_quoted_string s
-                     ])
-              ]
+          lines
+          @ [ Dune_lang.to_string
+                (List
+                   [ Dune_lang.atom "name"; Dune_lang.atom_or_quoted_string s ])
+            ]
       in
       notify_user
         [ Pp.textf "Creating file %s with this contents:"
@@ -460,13 +458,13 @@ module Extension = struct
   let instantiate ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
     match Table.find extensions name with
     | None ->
-        User_error.raise ~loc:name_loc
-          [ Pp.textf "Unknown extension %S." name ]
-          ~hints:
-            (User_message.did_you_mean name ~candidates:(Table.keys extensions))
+      User_error.raise ~loc:name_loc
+        [ Pp.textf "Unknown extension %S." name ]
+        ~hints:
+          (User_message.did_you_mean name ~candidates:(Table.keys extensions))
     | Some t ->
-        Syntax.check_supported (syntax t) (ver_loc, ver);
-        { extension = t; version = ver; loc; parse_args }
+      Syntax.check_supported (syntax t) (ver_loc, ver);
+      { extension = t; version = ver; loc; parse_args }
 
   (* Extensions that are not selected in the dune-project file are
      automatically available at their latest version. When used, dune will
@@ -520,52 +518,52 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
            (Syntax.name (Extension.syntax e.extension), e.loc)))
   with
   | Error (name, _, loc) ->
-      User_error.raise ~loc
-        [ Pp.textf "Extension %S specified for the second time." name ]
+    User_error.raise ~loc
+      [ Pp.textf "Extension %S specified for the second time." name ]
   | Ok map ->
-      let implicit_extensions =
-        Extension.automatic ~project_file ~f:(fun name ->
-            not (String.Map.mem map name))
-      in
-      let extensions =
-        List.map ~f:(fun e -> (e, true)) explicit_extensions
-        @ List.map ~f:(fun e -> (e, false)) implicit_extensions
-      in
-      let acc = Univ_map.singleton (Syntax.key lang.syntax) lang.version in
-      let parsing_context =
-        List.fold_left extensions ~init:acc
-          ~f:(fun acc ((ext : Extension.instance), _) ->
-            Univ_map.add acc
-              (Syntax.key (Extension.syntax ext.extension))
-              ext.version)
-      in
-      let extension_args, extension_stanzas =
-        List.fold_left extensions ~init:(Univ_map.empty, [])
-          ~f:(fun (args_acc, stanzas_acc)
-                  ((instance : Extension.instance), is_explicit)
-                  ->
-            let extension = instance.extension in
-            let (Extension.Extension e) = extension in
-            let args =
-              let+ arg, stanzas =
-                Dune_lang.Decoder.set_many parsing_context e.stanzas
-              in
-              let new_args_acc =
-                if is_explicit then
-                  Univ_map.add args_acc e.key arg
-                else
-                  args_acc
-              in
-              (new_args_acc, stanzas)
+    let implicit_extensions =
+      Extension.automatic ~project_file ~f:(fun name ->
+          not (String.Map.mem map name))
+    in
+    let extensions =
+      List.map ~f:(fun e -> (e, true)) explicit_extensions
+      @ List.map ~f:(fun e -> (e, false)) implicit_extensions
+    in
+    let acc = Univ_map.singleton (Syntax.key lang.syntax) lang.version in
+    let parsing_context =
+      List.fold_left extensions ~init:acc
+        ~f:(fun acc ((ext : Extension.instance), _) ->
+          Univ_map.add acc
+            (Syntax.key (Extension.syntax ext.extension))
+            ext.version)
+    in
+    let extension_args, extension_stanzas =
+      List.fold_left extensions ~init:(Univ_map.empty, [])
+        ~f:(fun (args_acc, stanzas_acc)
+                ((instance : Extension.instance), is_explicit)
+                ->
+          let extension = instance.extension in
+          let (Extension.Extension e) = extension in
+          let args =
+            let+ arg, stanzas =
+              Dune_lang.Decoder.set_many parsing_context e.stanzas
             in
-            let new_args_acc, stanzas = instance.parse_args args in
-            (new_args_acc, stanzas :: stanzas_acc))
-      in
-      let stanzas = List.concat (lang.data :: extension_stanzas) in
-      let stanza_parser =
-        Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
-      in
-      (parsing_context, stanza_parser, extension_args)
+            let new_args_acc =
+              if is_explicit then
+                Univ_map.add args_acc e.key arg
+              else
+                args_acc
+            in
+            (new_args_acc, stanzas)
+          in
+          let new_args_acc, stanzas = instance.parse_args args in
+          (new_args_acc, stanzas :: stanzas_acc))
+    in
+    let stanzas = List.concat (lang.data :: extension_stanzas) in
+    let stanza_parser =
+      Dune_lang.Decoder.(set_many parsing_context (sum stanzas))
+    in
+    (parsing_context, stanza_parser, extension_args)
 
 let key = Univ_map.Key.create ~name:"dune-project" to_dyn
 
@@ -644,23 +642,23 @@ let anonymous =
 let default_name ~dir ~packages =
   match Package.Name.Map.choose packages with
   | None ->
-      Name.anonymous dir
+    Name.anonymous dir
   | Some (_, pkg) -> (
-      let pkg =
-        let open Package.Name.Infix in
-        Package.Name.Map.fold packages ~init:pkg ~f:(fun pkg acc ->
-            if acc.Package.name <= pkg.Package.name then
-              acc
-            else
-              pkg)
-      in
-      let name = Package.Name.to_string pkg.name in
-      match Name.named name with
-      | Some x ->
-          x
-      | None ->
-          User_error.raise ~loc:pkg.loc
-            [ Pp.textf "%S is not a valid opam package name." name ] )
+    let pkg =
+      let open Package.Name.Infix in
+      Package.Name.Map.fold packages ~init:pkg ~f:(fun pkg acc ->
+          if acc.Package.name <= pkg.Package.name then
+            acc
+          else
+            pkg)
+    in
+    let name = Package.Name.to_string pkg.name in
+    match Name.named name with
+    | Some x ->
+      x
+    | None ->
+      User_error.raise ~loc:pkg.loc
+        [ Pp.textf "%S is not a valid opam package name." name ] )
 
 let parse ~dir ~lang ~opam_packages ~file =
   fields
@@ -715,16 +713,16 @@ let parse ~dir ~lang ~opam_packages ~file =
      let homepage =
        match (homepage, source) with
        | None, Some (Github (user, repo)) ->
-           Some (sprintf "https://github.com/%s/%s" user repo)
+         Some (sprintf "https://github.com/%s/%s" user repo)
        | s, _ ->
-           s
+         s
      in
      let bug_reports =
        match (bug_reports, source) with
        | None, Some (Github (user, repo)) ->
-           Some (sprintf "https://github.com/%s/%s/issues" user repo)
+         Some (sprintf "https://github.com/%s/%s/issues" user repo)
        | s, _ ->
-           s
+         s
      in
      let packages =
        if List.is_empty packages then
@@ -732,50 +730,49 @@ let parse ~dir ~lang ~opam_packages ~file =
        else (
          ( match (packages, name) with
          | [ p ], Some (Named name) ->
-             if Package.Name.to_string p.name <> name then
-               User_error.raise ~loc:p.loc
-                 [ Pp.textf
-                     "when a single package is defined, it must have the same \
-                      name as the project name: %s"
-                     name
-                 ]
+           if Package.Name.to_string p.name <> name then
+             User_error.raise ~loc:p.loc
+               [ Pp.textf
+                   "when a single package is defined, it must have the same \
+                    name as the project name: %s"
+                   name
+               ]
          | _, _ ->
-             () );
+           () );
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> (p.name, p))
          with
          | Error (_, _, p) ->
-             User_error.raise ~loc:p.loc
-               [ Pp.textf "package %s is already defined"
-                   (Package.Name.to_string p.name)
-               ]
+           User_error.raise ~loc:p.loc
+             [ Pp.textf "package %s is already defined"
+                 (Package.Name.to_string p.name)
+             ]
          | Ok packages ->
-             Package.Name.Map.merge packages opam_packages
-               ~f:(fun _name dune opam ->
-                 match (dune, opam) with
-                 | _, None ->
-                     dune
-                 | Some p, _ ->
-                     Some { p with kind = Dune (Option.is_some opam) }
-                 | None, Some (loc, _) ->
-                     User_error.raise ~loc
-                       [ Pp.text
-                           "This opam file doesn't have a corresponding \
-                            (package ...) stanza in the dune-project_file. \
-                            Since you have at least one other (package ...) \
-                            stanza in your dune-project file, you must a \
-                            (package ...) stanza for each opam package in \
-                            your project."
-                       ])
+           Package.Name.Map.merge packages opam_packages
+             ~f:(fun _name dune opam ->
+               match (dune, opam) with
+               | _, None ->
+                 dune
+               | Some p, _ ->
+                 Some { p with kind = Dune (Option.is_some opam) }
+               | None, Some (loc, _) ->
+                 User_error.raise ~loc
+                   [ Pp.text
+                       "This opam file doesn't have a corresponding (package \
+                        ...) stanza in the dune-project_file. Since you have \
+                        at least one other (package ...) stanza in your \
+                        dune-project file, you must a (package ...) stanza \
+                        for each opam package in your project."
+                   ])
        )
      in
      let packages =
        match version with
        | None ->
-           packages
+         packages
        | Some _ ->
-           Package.Name.Map.map packages ~f:(fun p ->
-               match p.version with Some _ -> p | None -> { p with version })
+         Package.Name.Map.map packages ~f:(fun p ->
+             match p.version with Some _ -> p | None -> { p with version })
      in
      let name =
        match name with Some n -> n | None -> default_name ~dir ~packages
@@ -892,46 +889,46 @@ let load ~dir ~files =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
         match Filename.split_extension fn with
         | pkg, ".opam" when pkg <> "" ->
-            let name = Package.Name.of_string pkg in
-            let opam_file = Path.Source.relative dir fn in
-            let loc = Loc.in_file (Path.source opam_file) in
-            let pkg =
-              lazy
-                (let version =
-                   let open Option.O in
-                   let* opam =
-                     match Opam_file.load (Path.source opam_file) with
-                     | s ->
-                         Some s
-                     | exception exn ->
-                         User_warning.emit
-                           ~loc:(Loc.in_file (Path.source opam_file))
-                           [ Pp.text
-                               "Unable to read opam file. This package's \
-                                version field will be ignored."
-                           ; Pp.textf "Reason: %s" (Printexc.to_string exn)
-                           ];
-                         None
-                   in
-                   let* version = Opam_file.get_field opam "version" in
-                   match version with String (_, s) -> Some s | _ -> None
+          let name = Package.Name.of_string pkg in
+          let opam_file = Path.Source.relative dir fn in
+          let loc = Loc.in_file (Path.source opam_file) in
+          let pkg =
+            lazy
+              (let version =
+                 let open Option.O in
+                 let* opam =
+                   match Opam_file.load (Path.source opam_file) with
+                   | s ->
+                     Some s
+                   | exception exn ->
+                     User_warning.emit
+                       ~loc:(Loc.in_file (Path.source opam_file))
+                       [ Pp.text
+                           "Unable to read opam file. This package's version \
+                            field will be ignored."
+                       ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+                       ];
+                     None
                  in
-                 { Package.name
-                 ; loc
-                 ; path = dir
-                 ; version
-                 ; conflicts = []
-                 ; depends = []
-                 ; depopts = []
-                 ; synopsis = None
-                 ; description = None
-                 ; kind = Opam
-                 ; tags = []
-                 })
-            in
-            (name, (loc, pkg)) :: acc
+                 let* version = Opam_file.get_field opam "version" in
+                 match version with String (_, s) -> Some s | _ -> None
+               in
+               { Package.name
+               ; loc
+               ; path = dir
+               ; version
+               ; conflicts = []
+               ; depends = []
+               ; depopts = []
+               ; synopsis = None
+               ; description = None
+               ; kind = Opam
+               ; tags = []
+               })
+          in
+          (name, (loc, pkg)) :: acc
         | _ ->
-            acc)
+          acc)
     |> Package.Name.Map.of_list_exn
   in
   if String.Set.mem files filename then

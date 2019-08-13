@@ -18,6 +18,6 @@ let rec deep_fold l ~init ~f =
 and inner_fold t inner_list l ~init ~f =
   match inner_list with
   | [] ->
-      deep_fold l ~init ~f
+    deep_fold l ~init ~f
   | x :: inner_list ->
-      inner_fold t inner_list l ~init:(f t x init) ~f
+    inner_fold t inner_list l ~init:(f t x init) ~f

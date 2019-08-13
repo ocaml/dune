@@ -27,15 +27,14 @@ module DB = struct
     let rec loop d =
       match Path.Source.Map.find t.by_dir d with
       | Some s ->
-          s
+        s
       | None -> (
         match Path.Source.parent d with
         | Some d ->
-            loop d
+          loop d
         | None ->
-            Code_error.raise "find_by_dir: invalid directory"
-              [ ("d", Path.Source.to_dyn d); ("dir", Path.Source.to_dyn dir) ]
-        )
+          Code_error.raise "find_by_dir: invalid directory"
+            [ ("d", Path.Source.to_dyn d); ("dir", Path.Source.to_dyn dir) ] )
     in
     loop dir
 
@@ -45,10 +44,10 @@ module DB = struct
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
     | None ->
-        Not_found
+      Not_found
     | Some project ->
-        let scope = find_by_project (Fdecl.get t) project in
-        Redirect (Some scope.db, name)
+      let scope = find_by_project (Fdecl.get t) project in
+      Redirect (Some scope.db, name)
 
   let public_libs t ~stdlib_dir ~installed_libs internal_libs =
     let public_libs =
@@ -59,7 +58,7 @@ module DB = struct
       |> Lib_name.Map.of_list
       |> function
       | Ok x ->
-          x
+        x
       | Error (name, _, _) -> (
         match
           List.filter_map internal_libs ~f:(fun (_dir, lib) ->
@@ -69,14 +68,14 @@ module DB = struct
                     lib.buildable.loc))
         with
         | [] | [ _ ] ->
-            assert false
+          assert false
         | loc1 :: loc2 :: _ ->
-            User_error.raise
-              [ Pp.textf "Public library %s is defined twice:"
-                  (Lib_name.to_string name)
-              ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-              ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-              ] )
+          User_error.raise
+            [ Pp.textf "Public library %s is defined twice:"
+                (Lib_name.to_string name)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+            ] )
     in
     let resolve = resolve t public_libs in
     Lib.DB.create () ~stdlib_dir ~parent:installed_libs ~resolve

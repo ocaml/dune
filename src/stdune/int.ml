@@ -22,9 +22,9 @@ let hash (t : t) = t
 let of_string_exn s =
   match int_of_string s with
   | exception Failure _ ->
-      failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
+    failwith (Printf.sprintf "of_string_exn: invalid int %S" s)
   | s ->
-      s
+    s
 
 let to_string i = string_of_int i
 

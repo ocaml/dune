@@ -34,27 +34,27 @@ let get t k = Map.find t.vars k
 let to_unix t =
   match t.unix with
   | Some v ->
-      v
+    v
   | None ->
-      let res =
-        Map.foldi ~init:[]
-          ~f:(fun k v acc -> Printf.sprintf "%s=%s" k v :: acc)
-          t.vars
-        |> Array.of_list
-      in
-      t.unix <- Some res;
-      res
+    let res =
+      Map.foldi ~init:[]
+        ~f:(fun k v acc -> Printf.sprintf "%s=%s" k v :: acc)
+        t.vars
+      |> Array.of_list
+    in
+    t.unix <- Some res;
+    res
 
 let of_unix arr =
   Array.to_list arr
   |> List.map ~f:(fun s ->
          match String.lsplit2 s ~on:'=' with
          | None ->
-             Code_error.raise
-               "Env.of_unix: entry without '=' found in the environ"
-               [ ("var", String s) ]
+           Code_error.raise
+             "Env.of_unix: entry without '=' found in the environ"
+             [ ("var", String s) ]
          | Some (k, v) ->
-             (k, v))
+           (k, v))
   |> Map.of_list_multi
   |> Map.map ~f:(function [] -> assert false | x :: _ -> x)
 

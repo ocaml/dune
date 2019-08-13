@@ -17,9 +17,9 @@ let is_a_source_file path =
   | ".png"
   | ".ttf"
   | ".woff" ->
-      false
+    false
   | _ ->
-      true )
+    true )
   && Path.is_file path
 
 let make_watermark_map ~name ~version ~commit =
@@ -30,33 +30,33 @@ let make_watermark_map ~name ~version ~commit =
   let opam_var name sep =
     match Opam_file.get_field opam_file name with
     | None ->
-        Error (sprintf "variable %S not found in opam file" name)
+      Error (sprintf "variable %S not found in opam file" name)
     | Some value -> (
-        let err () =
-          Error (sprintf "invalid value for variable %S in opam file" name)
-        in
-        match value with
-        | String (_, s) ->
-            Ok s
-        | List (_, l) -> (
-          match
-            List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
-                match acc with
-                | Error _ ->
-                    acc
-                | Ok l -> (
-                  match v with
-                  | OpamParserTypes.String (_, s) ->
-                      Ok (s :: l)
-                  | _ ->
-                      err () ))
-          with
-          | Error _ as e ->
-              e
-          | Ok l ->
-              Ok (String.concat ~sep (List.rev l)) )
-        | _ ->
-            err () )
+      let err () =
+        Error (sprintf "invalid value for variable %S in opam file" name)
+      in
+      match value with
+      | String (_, s) ->
+        Ok s
+      | List (_, l) -> (
+        match
+          List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
+              match acc with
+              | Error _ ->
+                acc
+              | Ok l -> (
+                match v with
+                | OpamParserTypes.String (_, s) ->
+                  Ok (s :: l)
+                | _ ->
+                  err () ))
+        with
+        | Error _ as e ->
+          e
+        | Ok l ->
+          Ok (String.concat ~sep (List.rev l)) )
+      | _ ->
+        err () )
   in
   String.Map.of_list_exn
     [ ("NAME", Ok name)
@@ -90,9 +90,9 @@ let subst_string s path ~map =
       else
         match s.[i] with
         | '\n' ->
-            loop (lnum + 1) (i + 1) (i + 1)
+          loop (lnum + 1) (i + 1) (i + 1)
         | _ ->
-            loop lnum bol (i + 1)
+          loop lnum bol (i + 1)
     in
     loop 1 0 0
   in
@@ -102,29 +102,29 @@ let subst_string s path ~map =
     else
       match s.[i] with
       | '%' ->
-          after_percent (i + 1) acc
+        after_percent (i + 1) acc
       | _ ->
-          loop (i + 1) acc
+        loop (i + 1) acc
   and after_percent i acc =
     if i = len then
       acc
     else
       match s.[i] with
       | '%' ->
-          after_double_percent ~start:(i - 1) (i + 1) acc
+        after_double_percent ~start:(i - 1) (i + 1) acc
       | _ ->
-          loop (i + 1) acc
+        loop (i + 1) acc
   and after_double_percent ~start i acc =
     if i = len then
       acc
     else
       match s.[i] with
       | '%' ->
-          after_double_percent ~start:(i - 1) (i + 1) acc
+        after_double_percent ~start:(i - 1) (i + 1) acc
       | 'A' .. 'Z' | '_' ->
-          in_var ~start (i + 1) acc
+        in_var ~start (i + 1) acc
       | _ ->
-          loop (i + 1) acc
+        loop (i + 1) acc
   and in_var ~start i acc =
     if i - start > longest_var + double_percent_len then
       loop i acc
@@ -133,47 +133,47 @@ let subst_string s path ~map =
     else
       match s.[i] with
       | '%' ->
-          end_of_var ~start (i + 1) acc
+        end_of_var ~start (i + 1) acc
       | 'A' .. 'Z' | '_' ->
-          in_var ~start (i + 1) acc
+        in_var ~start (i + 1) acc
       | _ ->
-          loop (i + 1) acc
+        loop (i + 1) acc
   and end_of_var ~start i acc =
     if i = len then
       acc
     else
       match s.[i] with
       | '%' -> (
-          let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
-          match String.Map.find map var with
-          | None ->
-              in_var ~start:(i - 1) (i + 1) acc
-          | Some (Ok repl) ->
-              let acc = (start, i + 1, repl) :: acc in
-              loop (i + 1) acc
-          | Some (Error msg) ->
-              let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
-              User_error.raise ~loc [ Pp.text msg ] )
-      | _ ->
+        let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
+        match String.Map.find map var with
+        | None ->
+          in_var ~start:(i - 1) (i + 1) acc
+        | Some (Ok repl) ->
+          let acc = (start, i + 1, repl) :: acc in
           loop (i + 1) acc
+        | Some (Error msg) ->
+          let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
+          User_error.raise ~loc [ Pp.text msg ] )
+      | _ ->
+        loop (i + 1) acc
   in
   match List.rev (loop 0 []) with
   | [] ->
-      None
+    None
   | repls ->
-      let result_len =
-        List.fold_left repls ~init:(String.length s)
-          ~f:(fun acc (a, b, repl) -> acc - (b - a) + String.length repl)
-      in
-      let buf = Buffer.create result_len in
-      let pos =
-        List.fold_left repls ~init:0 ~f:(fun pos (a, b, repl) ->
-            Buffer.add_substring buf s pos (a - pos);
-            Buffer.add_string buf repl;
-            b)
-      in
-      Buffer.add_substring buf s pos (len - pos);
-      Some (Buffer.contents buf)
+    let result_len =
+      List.fold_left repls ~init:(String.length s) ~f:(fun acc (a, b, repl) ->
+          acc - (b - a) + String.length repl)
+    in
+    let buf = Buffer.create result_len in
+    let pos =
+      List.fold_left repls ~init:0 ~f:(fun pos (a, b, repl) ->
+          Buffer.add_substring buf s pos (a - pos);
+          Buffer.add_string buf repl;
+          b)
+    in
+    Buffer.add_substring buf s pos (len - pos);
+    Some (Buffer.contents buf)
 
 let subst_file path ~map =
   let s = Io.read_file path in
@@ -188,9 +188,9 @@ let subst_file path ~map =
   in
   match subst_string s ~map path with
   | None ->
-      ()
+    ()
   | Some s ->
-      Io.write_file path s
+    Io.write_file path s
 
 (* Minimal API for dune-project files that makes as little assumption about the
    contents as possible and keeps enough info for editing the file. *)
@@ -219,9 +219,9 @@ module Dune_project = struct
         let+ loc, x = located (field_o name (located arg)) in
         match x with
         | Some (loc_of_arg, arg) ->
-            Some { loc; loc_of_arg; arg }
+          Some { loc; loc_of_arg; arg }
         | None ->
-            None
+          None
       in
       enter
         (fields
@@ -243,39 +243,39 @@ module Dune_project = struct
       in
       match t.version with
       | Some v ->
-          (* There is a [version] field, overwrite its argument *)
-          replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
-            (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
+        (* There is a [version] field, overwrite its argument *)
+        replace_text v.loc_of_arg.start.pos_cnum v.loc_of_arg.stop.pos_cnum
+          (Dune_lang.to_string (Dune_lang.atom_or_quoted_string version))
       | None ->
-          let version_field =
-            Dune_lang.to_string
-              (List
-                 [ Dune_lang.atom "version"
-                 ; Dune_lang.atom_or_quoted_string version
-                 ])
-            ^ "\n"
-          in
-          let ofs =
-            ref
-              ( match t.name with
-              | Some { loc; _ } ->
-                  (* There is no [version] field but there is a [name] one, add
-                     the version after it *)
-                  loc.stop.pos_cnum
-              | None ->
-                  (* If all else fails, add the [version] field after the first
-                     line of the file *)
-                  0 )
-          in
-          let len = String.length t.contents in
-          while !ofs < len && t.contents.[!ofs] <> '\n' do
-            incr ofs
-          done;
-          if !ofs < len && t.contents.[!ofs] = '\n' then (
-            incr ofs;
-            replace_text !ofs !ofs version_field
-          ) else
-            replace_text !ofs !ofs ("\n" ^ version_field)
+        let version_field =
+          Dune_lang.to_string
+            (List
+               [ Dune_lang.atom "version"
+               ; Dune_lang.atom_or_quoted_string version
+               ])
+          ^ "\n"
+        in
+        let ofs =
+          ref
+            ( match t.name with
+            | Some { loc; _ } ->
+              (* There is no [version] field but there is a [name] one, add the
+                 version after it *)
+              loc.stop.pos_cnum
+            | None ->
+              (* If all else fails, add the [version] field after the first
+                 line of the file *)
+              0 )
+        in
+        let len = String.length t.contents in
+        while !ofs < len && t.contents.[!ofs] <> '\n' do
+          incr ofs
+        done;
+        if !ofs < len && t.contents.[!ofs] = '\n' then (
+          incr ofs;
+          replace_text !ofs !ofs version_field
+        ) else
+          replace_text !ofs !ofs ("\n" ^ version_field)
     in
     let s = Option.value (subst_string s ~map file) ~default:s in
     if s <> t.contents then Io.write_file file s
@@ -286,37 +286,36 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
     List.filter_map files ~f:(fun fn ->
         match Path.parent fn with
         | Some p when Path.is_root p -> (
-            let fn = Path.basename fn in
-            match Filename.split_extension fn with
-            | s, ".opam" ->
-                Some s
-            | _ ->
-                None )
+          let fn = Path.basename fn in
+          match Filename.split_extension fn with
+          | s, ".opam" ->
+            Some s
+          | _ ->
+            None )
         | _ ->
-            None)
+          None)
   in
   if package_names = [] then
     User_error.raise [ Pp.textf "No <package>.opam files found." ];
   let loc, name =
     match dune_project with
     | None ->
-        User_error.raise
-          [ Pp.text
-              "There is no dune-project file in the current directory, please \
-               add one with a (name <name>) field in it."
+      User_error.raise
+        [ Pp.text
+            "There is no dune-project file in the current directory, please \
+             add one with a (name <name>) field in it."
+        ]
+        ~hints:
+          [ Pp.text "dune subst must be executed from the root of the project."
           ]
-          ~hints:
-            [ Pp.text
-                "dune subst must be executed from the root of the project."
-            ]
     | Some { name = None; _ } ->
-        User_error.raise
-          [ Pp.textf
-              "The project name is not defined, please add a (name <name>) \
-               field to your dune-project file."
-          ]
+      User_error.raise
+        [ Pp.textf
+            "The project name is not defined, please add a (name <name>) \
+             field to your dune-project file."
+        ]
     | Some { name = Some n; _ } ->
-        (n.loc_of_arg, n.arg)
+      (n.loc_of_arg, n.arg)
   in
   if not (List.mem name ~set:package_names) then
     if Loc.is_none loc then
@@ -358,6 +357,6 @@ let subst () =
     |> Vcs.Kind.of_dir_contents
   with
   | None ->
-      Fiber.return ()
+    Fiber.return ()
   | Some kind ->
-      subst { kind; root = Path.root }
+    subst { kind; root = Path.root }

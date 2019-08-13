@@ -63,9 +63,9 @@ let dyn_of_parse_result f =
   let open Dyn.Encoder in
   function
   | Same r ->
-      constr "Same" [ Result.to_dyn f string r ]
+    constr "Same" [ Result.to_dyn f string r ]
   | Different r ->
-      constr "Different" [ dyn_of_parse_result_diff f r ]
+    constr "Different" [ dyn_of_parse_result_diff f r ]
 
 let string_of_user_error (msg : User_message.t) =
   Format.asprintf "%a" Pp.render_ignore_tags
@@ -81,9 +81,9 @@ let parse s =
         |> List.map ~f:Dune_lang.Ast.remove_locs )
     with
     | User_error.E msg ->
-        Error (string_of_user_error msg)
+      Error (string_of_user_error msg)
     | e ->
-        Error (Printexc.to_string e)
+      Error (Printexc.to_string e)
   in
   let jbuild = f ~lexer:Dune_lang.Lexer.jbuild_token in
   let dune = f ~lexer:Dune_lang.Lexer.token in
@@ -292,11 +292,11 @@ let dyn_of_round_trip_result =
   let open Dyn.Encoder in
   function
   | Round_trip_success ->
-      constr "Round_trip_success" []
+    constr "Round_trip_success" []
   | Did_not_round_trip s ->
-      constr "Did_not_round_trip" [ Dune_lang.to_dyn s ]
+    constr "Did_not_round_trip" [ Dune_lang.to_dyn s ]
   | Did_not_parse_back s ->
-      constr "Did_not_parse_back" [ string s ]
+    constr "Did_not_parse_back" [ string s ]
 
 let test syntax sexp =
   let res =
@@ -311,18 +311,18 @@ let test syntax sexp =
           ~lexer:
             ( match syntax with
             | Jbuild ->
-                Dune_lang.Lexer.jbuild_token
+              Dune_lang.Lexer.jbuild_token
             | Dune ->
-                Dune_lang.Lexer.token )
+              Dune_lang.Lexer.token )
       with
       | sexp' ->
-          let sexp' = Dune_lang.Ast.remove_locs sexp' in
-          if sexp = sexp' then
-            Round_trip_success
-          else
-            Did_not_round_trip sexp'
+        let sexp' = Dune_lang.Ast.remove_locs sexp' in
+        if sexp = sexp' then
+          Round_trip_success
+        else
+          Did_not_round_trip sexp'
       | exception User_error.E msg ->
-          Did_not_parse_back (string_of_user_error msg) )
+        Did_not_parse_back (string_of_user_error msg) )
   in
   let open Dyn.Encoder in
   pair dyn_of_sexp dyn_of_round_trip_result res |> print_dyn

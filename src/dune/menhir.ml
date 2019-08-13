@@ -135,11 +135,11 @@ module Run (P : PARAMS) : sig end = struct
   let stanzas : stanza list =
     match stanza.merge_into with
     | None ->
-        List.map
-          ~f:(fun m -> { stanza with modules = [ m ]; merge_into = Some m })
-          stanza.modules
+      List.map
+        ~f:(fun m -> { stanza with modules = [ m ]; merge_into = Some m })
+        stanza.modules
     | Some _ ->
-        [ stanza ]
+      [ stanza ]
 
   (* ------------------------------------------------------------------------ *)
 
@@ -152,22 +152,22 @@ module Run (P : PARAMS) : sig end = struct
           ~f:(fun _pos sw () ->
             match String_with_vars.text_only sw with
             | None ->
-                ()
+              ()
             | Some text ->
-                if
-                  List.mem text
-                    ~set:
-                      [ "--depend"
-                      ; "--raw-depend"
-                      ; "--infer"
-                      ; "--infer-write-query"
-                      ; "--infer-read-reply"
-                      ]
-                then
-                  User_error.raise ~loc:(String_with_vars.loc sw)
-                    [ Pp.textf
-                        "The flag %s must not be used in a menhir stanza." text
-                    ]))
+              if
+                List.mem text
+                  ~set:
+                    [ "--depend"
+                    ; "--raw-depend"
+                    ; "--infer"
+                    ; "--infer-write-query"
+                    ; "--infer-read-reply"
+                    ]
+              then
+                User_error.raise ~loc:(String_with_vars.loc sw)
+                  [ Pp.textf "The flag %s must not be used in a menhir stanza."
+                      text
+                  ]))
 
   (* ------------------------------------------------------------------------ *)
 
@@ -255,15 +255,15 @@ module Run (P : PARAMS) : sig end = struct
         ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
           match pos with
           | Neg ->
-              acc
+            acc
           | Pos -> (
             match String_with_vars.text_only sw with
             | Some "--only-tokens" ->
-                (true, cmly)
+              (true, cmly)
             | Some "--cmly" ->
-                (only_tokens, true)
+              (only_tokens, true)
             | Some _ | None ->
-                acc ))
+              acc ))
     in
     if ocaml_type_inference_disabled || not stanza.infer then
       process1 base stanza ~cmly

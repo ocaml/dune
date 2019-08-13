@@ -64,18 +64,18 @@ let remove t key = Int.Map.remove t (Key.id key)
 let find t key =
   match Int.Map.find t (Key.id key) with
   | None ->
-      None
+    None
   | Some (Binding.T (key', v)) ->
-      let eq = Key.eq key' key in
-      Some (Type_eq.cast eq v)
+    let eq = Key.eq key' key in
+    Some (Type_eq.cast eq v)
 
 let find_exn t key =
   match Int.Map.find t (Key.id key) with
   | None ->
-      failwith "Univ_map.find_exn"
+    failwith "Univ_map.find_exn"
   | Some (Binding.T (key', v)) ->
-      let eq = Key.eq key' key in
-      Type_eq.cast eq v
+    let eq = Key.eq key' key in
+    Type_eq.cast eq v
 
 let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 

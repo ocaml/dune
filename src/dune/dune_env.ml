@@ -25,11 +25,11 @@ module Stanza = struct
 
     let to_string = function
       | Enabled ->
-          "enabled"
+        "enabled"
       | Disabled ->
-          "disabled"
+        "disabled"
       | Ignored ->
-          "ignored"
+        "ignored"
   end
 
   type config =
@@ -68,10 +68,10 @@ module Stanza = struct
       >>| fun (loc, pairs) ->
       match Env.Map.of_list pairs with
       | Ok vars ->
-          Env.extend Env.empty ~vars
+        Env.extend Env.empty ~vars
       | Error (k, _, _) ->
-          User_error.raise ~loc
-            [ Pp.textf "Variable %s is specified several times" k ] )
+        User_error.raise ~loc
+          [ Pp.textf "Variable %s is specified several times" k ] )
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode
@@ -107,9 +107,9 @@ module Stanza = struct
     @@ List.find_map t.rules ~f:(fun (pat, cfg) ->
            match pat with
            | Any ->
-               Some cfg
+             Some cfg
            | Profile a ->
-               Option.some_if (a = profile) cfg)
+             Option.some_if (a = profile) cfg)
 end
 
 type stanza += T of Stanza.t

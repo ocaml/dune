@@ -19,11 +19,11 @@ let mlds_by_package_def =
       |> List.concat_map ~f:(fun (w : _ Dir_with_dune.t) ->
              List.filter_map w.data ~f:(function
                | Documentation d ->
-                   let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
-                   let mlds = Dir_contents.mlds dc d in
-                   Some (d.package.name, mlds)
+                 let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
+                 let mlds = Dir_contents.mlds dc d in
+                 Some (d.package.name, mlds)
                | _ ->
-                   None))
+                 None))
       |> Package.Name.Map.of_list_reduce ~f:List.rev_append)
 
 let mlds_by_package = Memo.With_implicit_output.exec mlds_by_package_def

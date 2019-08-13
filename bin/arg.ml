@@ -52,9 +52,9 @@ module Dep = struct
   let parser s =
     match parse_alias s with
     | Some (true, s) ->
-        `Ok (alias_rec s)
+      `Ok (alias_rec s)
     | Some (false, s) ->
-        `Ok (alias s)
+      `Ok (alias s)
     | None -> (
       match
         Dune_lang.Decoder.parse dep_parser Univ_map.empty
@@ -62,9 +62,9 @@ module Dep = struct
              ~mode:Dune_lang.Parser.Mode.Single s)
       with
       | x ->
-          `Ok x
+        `Ok x
       | exception User_error.E msg ->
-          `Error (User_message.to_string msg) )
+        `Error (User_message.to_string msg) )
 
   let string_of_alias ~recursive sv =
     let prefix =
@@ -79,20 +79,20 @@ module Dep = struct
     let s =
       match t with
       | Dep_conf.Alias sv ->
-          string_of_alias ~recursive:false sv
+        string_of_alias ~recursive:false sv
       | Alias_rec sv ->
-          string_of_alias ~recursive:true sv
+        string_of_alias ~recursive:true sv
       | File sv ->
-          Some (Dune_lang.to_string (String_with_vars.encode sv))
+        Some (Dune_lang.to_string (String_with_vars.encode sv))
       | _ ->
-          None
+        None
     in
     let s =
       match s with
       | Some s ->
-          s
+        s
       | None ->
-          Dune_lang.to_string (Dep_conf.encode t)
+        Dune_lang.to_string (Dep_conf.encode t)
     in
     Format.pp_print_string ppf s
 

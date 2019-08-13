@@ -9,16 +9,16 @@ let quote_length s =
       +
       match String.unsafe_get s i with
       | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
-          2
+        2
       | '%' ->
-          if i + 1 < len && s.[i + 1] = '{' then
-            2
-          else
-            1
-      | ' ' .. '~' ->
+        if i + 1 < len && s.[i + 1] = '{' then
+          2
+        else
           1
+      | ' ' .. '~' ->
+        1
       | _ ->
-          4
+        4
   done;
   !n
 
@@ -28,40 +28,40 @@ let escape_to s ~dst:s' ~ofs =
   for i = 0 to len - 1 do
     ( match String.unsafe_get s i with
     | ('\"' | '\\') as c ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n c
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n c
     | '\n' ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n 'n'
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n 'n'
     | '\t' ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n 't'
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n 't'
     | '\r' ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n 'r'
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n 'r'
     | '\b' ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n 'b'
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n 'b'
     | '%' when i + 1 < len && s.[i + 1] = '{' ->
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n '%'
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n '%'
     | ' ' .. '~' as c ->
-        Bytes.unsafe_set s' !n c
+      Bytes.unsafe_set s' !n c
     | c ->
-        let a = Char.code c in
-        Bytes.unsafe_set s' !n '\\';
-        incr n;
-        Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 100)));
-        incr n;
-        Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10 mod 10)));
-        incr n;
-        Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a mod 10))) );
+      let a = Char.code c in
+      Bytes.unsafe_set s' !n '\\';
+      incr n;
+      Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 100)));
+      incr n;
+      Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a / 10 mod 10)));
+      incr n;
+      Bytes.unsafe_set s' !n (Char.unsafe_chr (48 + (a mod 10))) );
     incr n
   done
 

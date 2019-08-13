@@ -81,15 +81,15 @@ let clear_status_line () = T.clear_status_line (t ())
 let print msg =
   match !t_var with
   | None ->
-      Printf.eprintf "%s%!" msg
+    Printf.eprintf "%s%!" msg
   | Some t ->
-      T.print t msg
+    T.print t msg
 
 let print_user_message ?config msg =
   match !t_var with
   | None ->
-      User_message.prerr ?config msg
+    User_message.prerr ?config msg
   | Some t ->
-      T.print_user_message t ?config msg
+    T.print_user_message t ?config msg
 
 let () = User_warning.set_reporter print_user_message

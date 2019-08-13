@@ -24,10 +24,10 @@ let eval =
     let name = Module_name.of_string s in
     match Module_name.Map.find all_modules name with
     | Some m ->
-        Ok m
+      Ok m
     | None ->
-        fake_modules := Module_name.Map.set !fake_modules name loc;
-        Error name
+      fake_modules := Module_name.Map.set !fake_modules name loc;
+      Error name
   in
   fun ~loc ~fake_modules ~all_modules ~standard osl ->
     let parse = parse ~fake_modules ~all_modules in
@@ -36,13 +36,13 @@ let eval =
     Module_name.Map.filter_map modules ~f:(fun (loc, m) ->
         match m with
         | Ok m ->
-            Some (loc, m)
+          Some (loc, m)
         | Error s ->
-            (* We are going to fail only if the module appear in the final set,
-               foo \ bar doesn't fail if bar doesn't exists (for jbuild file
-               compatibility) *)
-            User_error.raise ~loc
-              [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
+          (* We are going to fail only if the module appear in the final set,
+             foo \ bar doesn't fail if bar doesn't exists (for jbuild file
+             compatibility) *)
+          User_error.raise ~loc
+            [ Pp.textf "Module %s doesn't exist." (Module_name.to_string s) ])
 
 type single_module_error =
   | Spurious_module_intf
@@ -119,9 +119,9 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
     Module_name.Set.filter existing_virtual_modules ~f:(fun module_name ->
         match Module_name.Map.find all module_name with
         | None ->
-            true
+          true
         | Some m ->
-            not (Module.Source.has m ~ml_kind:Impl))
+          not (Module.Source.has m ~ml_kind:Impl))
   in
   { errors; unimplemented_virt_modules }
 
@@ -163,10 +163,9 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
     let print before l after =
       match l with
       | [] ->
-          ()
+        ()
       | (loc, _) :: _ ->
-          User_error.raise ~loc
-            (List.concat [ before; [ line_list l ]; after ])
+        User_error.raise ~loc (List.concat [ before; [ line_list l ]; after ])
     in
     print
       [ Pp.text "The folowing modules are implementations of virtual modules:" ]
@@ -216,30 +215,30 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
     ( if missing_intf_only <> [] then
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->
-          User_error.raise ~loc:buildable.loc
-            [ Pp.text "Some modules don't have an implementation."
-            ; Pp.textf
-                "You need to add the following field to this stanza:\n\n\
-                \  %s\n\n\
-                 This will become an error in the future."
-                (let tag =
-                   Dune_lang.unsafe_atom_of_string
-                     "modules_without_implementation"
-                 in
-                 let modules =
-                   missing_intf_only |> uncapitalized
-                   |> List.map ~f:Dune_lang.Encoder.string
-                 in
-                 Dune_lang.to_string (List (tag :: modules)))
-            ]
+        User_error.raise ~loc:buildable.loc
+          [ Pp.text "Some modules don't have an implementation."
+          ; Pp.textf
+              "You need to add the following field to this stanza:\n\n\
+              \  %s\n\n\
+               This will become an error in the future."
+              (let tag =
+                 Dune_lang.unsafe_atom_of_string
+                   "modules_without_implementation"
+               in
+               let modules =
+                 missing_intf_only |> uncapitalized
+                 |> List.map ~f:Dune_lang.Encoder.string
+               in
+               Dune_lang.to_string (List (tag :: modules)))
+          ]
       | Some loc ->
-          User_error.raise ~loc
-            [ Pp.text
-                "The following modules must be listed here as they don't have \
-                 an implementation:"
-            ; line_list missing_intf_only
-            ; Pp.text "This will become an error in the future."
-            ] );
+        User_error.raise ~loc
+          [ Pp.text
+              "The following modules must be listed here as they don't have \
+               an implementation:"
+          ; line_list missing_intf_only
+          ; Pp.text "This will become an error in the future."
+          ] );
     print
       [ Pp.text
           "The following modules have an implementation, they cannot be \
@@ -267,23 +266,23 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   let allow_new_public_modules =
     match kind with
     | Exe_or_normal_lib | Virtual _ ->
-        true
+      true
     | Implementation { allow_new_public_modules; _ } ->
-        allow_new_public_modules
+      allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
     | Exe_or_normal_lib | Virtual _ ->
-        Module_name.Set.empty
+      Module_name.Set.empty
     | Implementation { existing_virtual_modules; _ } ->
-        existing_virtual_modules
+      existing_virtual_modules
   in
   let virtual_modules =
     match kind with
     | Exe_or_normal_lib | Implementation _ ->
-        Module_name.Map.empty
+      Module_name.Map.empty
     | Virtual { virtual_modules } ->
-        eval ~standard:Module_name.Map.empty virtual_modules
+      eval ~standard:Module_name.Map.empty virtual_modules
   in
   let private_modules = eval ~standard:Module_name.Map.empty private_modules in
   Module_name.Map.iteri !fake_modules ~f:(fun m loc ->

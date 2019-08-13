@@ -12,12 +12,12 @@ let extension_start =
     else
       match s.[i] with
       | '.' ->
-          check_at_least_one_non_dot s len candidate (i - 1)
+        check_at_least_one_non_dot s len candidate (i - 1)
       | c ->
-          if is_dir_sep c then
-            len
-          else
-            candidate
+        if is_dir_sep c then
+          len
+        else
+          candidate
   in
   let rec search_dot s len i =
     if i <= 0 then
@@ -25,12 +25,12 @@ let extension_start =
     else
       match s.[i] with
       | '.' ->
-          check_at_least_one_non_dot s len i (i - 1)
+        check_at_least_one_non_dot s len i (i - 1)
       | c ->
-          if is_dir_sep c then
-            len
-          else
-            search_dot s len (i - 1)
+        if is_dir_sep c then
+          len
+        else
+          search_dot s len (i - 1)
   in
   fun s ->
     let len = String.length s in

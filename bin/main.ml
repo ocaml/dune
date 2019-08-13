@@ -33,9 +33,9 @@ let build_targets =
     let targets =
       match targets with
       | [] ->
-          [ Common.default_target common ]
+        [ Common.default_target common ]
       | _ :: _ ->
-          targets
+        targets
     in
     Common.set_common common ~targets;
     let targets setup = Target.resolve_targets_exn common setup targets in
@@ -62,11 +62,11 @@ let runtest =
              let prefix =
                match s with
                | "" | "." ->
-                   ""
+                 ""
                | dir when dir.[String.length dir - 1] = '/' ->
-                   dir
+                 dir
                | dir ->
-                   dir ^ "/"
+                 dir ^ "/"
              in
              Arg.Dep.alias_rec (prefix ^ "runtest")));
     let targets (setup : Main.build_system) =
@@ -123,17 +123,17 @@ let promote =
     Promotion.promote_files_registered_in_last_run
       ( match files with
       | [] ->
-          All
+        All
       | _ ->
-          let files =
-            List.map files ~f:(fun fn ->
-                Path.Source.of_string (Common.prefix_target common fn))
-          in
-          let on_missing fn =
-            Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
-              Path.Source.pp fn
-          in
-          These (files, on_missing) )
+        let files =
+          List.map files ~f:(fun fn ->
+              Path.Source.of_string (Common.prefix_target common fn))
+        in
+        let on_missing fn =
+          Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
+            Path.Source.pp fn
+        in
+        These (files, on_missing) )
   in
   (term, Term.info "promote" ~doc ~man)
 
@@ -170,9 +170,9 @@ let default =
       ~version:
         ( match Build_info.V1.version () with
         | None ->
-            "n/a"
+          "n/a"
         | Some v ->
-            Build_info.V1.Version.to_string v )
+          Build_info.V1.Version.to_string v )
       ~man:
         [ `S "DESCRIPTION"
         ; `P
@@ -196,13 +196,13 @@ let () =
   try
     match Term.eval_choice default all ~catch:false with
     | `Error _ ->
-        exit 1
+      exit 1
     | _ ->
-        exit 0
+      exit 0
   with
   | Fiber.Never ->
-      exit 1
+    exit 1
   | exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      Report_error.report exn;
-      exit 1
+    let exn = Exn_with_backtrace.capture exn in
+    Report_error.report exn;
+    exit 1

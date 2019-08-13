@@ -16,10 +16,10 @@ module Kind = struct
 
   let to_dyn : t -> Dyn.t = function
     | Default ->
-        Dyn.Encoder.string "default"
+      Dyn.Encoder.string "default"
     | Opam o ->
-        Dyn.Encoder.(
-          record [ ("root", option string o.root); ("switch", string o.switch) ])
+      Dyn.Encoder.(
+        record [ ("root", option string o.root); ("switch", string o.switch) ])
 end
 
 module Env_nodes = struct
@@ -136,20 +136,20 @@ let opam = lazy (Bin.which ~path:(Env.path Env.initial) "opam")
 let opam_config_var ~env ~cache var =
   match Table.find cache var with
   | Some _ as x ->
-      Fiber.return x
+    Fiber.return x
   | None -> (
     match Lazy.force opam with
     | None ->
-        Fiber.return None
+      Fiber.return None
     | Some fn -> (
-        Process.run_capture (Accept All) fn ~env [ "config"; "var"; var ]
-        >>| function
-        | Ok s ->
-            let s = String.trim s in
-            Table.set cache var s;
-            Some s
-        | Error _ ->
-            None ) )
+      Process.run_capture (Accept All) fn ~env [ "config"; "var"; var ]
+      >>| function
+      | Ok s ->
+        let s = String.trim s in
+        Table.set cache var s;
+        Some s
+      | Error _ ->
+        None ) )
 
 let best_prog dir prog =
   let fn = Path.relative dir (prog ^ ".opt" ^ Bin.exe) in
@@ -187,25 +187,25 @@ module Build_environment_kind = struct
     let opam_prefix = Env.get env "OPAM_SWITCH_PREFIX" in
     match findlib_toolchain with
     | Some s ->
-        Cross_compilation_using_findlib_toolchain s
+      Cross_compilation_using_findlib_toolchain s
     | None -> (
       match kind with
       | Opam _ -> (
         match opam_prefix with
         | Some s ->
-            Opam2_environment s
+          Opam2_environment s
         | None ->
-            Opam1_environment )
+          Opam1_environment )
       | Default -> (
         match Setup.library_path with
         | Some l ->
-            Hardcoded_path l
+          Hardcoded_path l
         | None -> (
           match opam_prefix with
           | Some s ->
-              Opam2_environment s
+            Opam2_environment s
           | None ->
-              Unknown ) ) )
+            Unknown ) ) )
 end
 
 let ocamlfind_printconf_path ~env ~ocamlfind ~toolchain =
@@ -221,9 +221,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let opam_var_cache = Table.create (module String) 128 in
   ( match kind with
   | Opam { root = Some root; _ } ->
-      Table.set opam_var_cache "root" root
+    Table.set opam_var_cache "root" root
   | _ ->
-      () );
+    () );
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -241,19 +241,19 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           sigh... *)
        ( match Env.get env "OCAMLFIND_CONF" with
        | Some s ->
-           Fiber.return s
+         Fiber.return s
        | None ->
-           Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
+         Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
        >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~name ~implicit ~findlib_toolchain ~host ~merlin =
     let* findlib_config =
       match findlib_toolchain with
       | None ->
-          Fiber.return None
+        Fiber.return None
       | Some toolchain ->
-          let+ path = Lazy.force findlib_config_path in
-          Some (Findlib.Config.load path ~toolchain ~context:name)
+        let+ path = Lazy.force findlib_config_path in
+        Some (Findlib.Config.load path ~toolchain ~context:name)
     in
     let get_tool_using_findlib_config prog =
       let open Option.O in
@@ -261,20 +261,20 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let* s = Findlib.Config.get conf prog in
       match Filename.analyze_program_name s with
       | In_path | Relative_to_current_dir ->
-          which s
+        which s
       | Absolute ->
-          Some (Path.of_filename_relative_to_initial_cwd s)
+        Some (Path.of_filename_relative_to_initial_cwd s)
     in
     let ocamlc =
       match get_tool_using_findlib_config "ocamlc" with
       | Some x ->
-          x
+        x
       | None -> (
         match which "ocamlc" with
         | Some x ->
-            x
+          x
         | None ->
-            prog_not_found_in_path "ocamlc" )
+          prog_not_found_in_path "ocamlc" )
     in
     let dir = Path.parent_exn ocamlc in
     let ocaml_tool_not_found prog =
@@ -286,16 +286,16 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let get_ocaml_tool prog =
       match get_tool_using_findlib_config prog with
       | None ->
-          best_prog dir prog
+        best_prog dir prog
       | Some _ as x ->
-          x
+        x
     in
     let get_ocaml_tool_exn prog =
       match get_ocaml_tool prog with
       | None ->
-          ocaml_tool_not_found prog
+        ocaml_tool_not_found prog
       | Some fn ->
-          fn
+        fn
     in
     let build_dir = Path.Build.relative Path.Build.root name in
     let ocamlpath =
@@ -303,7 +303,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let var = "OCAMLPATH" in
         match (kind, findlib_toolchain) with
         | Default, None ->
-            Env.get env var
+          Env.get env var
         | _ -> (
           (* If we are not in the default context, we can only use the
              OCAMLPATH variable if it is specific to this build context *)
@@ -311,57 +311,57 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
              build contexts *)
           match (Env.get env var, Env.get Env.initial var) with
           | None, None ->
-              None
+            None
           | Some s, None ->
-              Some s
+            Some s
           | None, Some _ ->
-              None
+            None
           | Some x, Some y ->
-              Option.some_if (x <> y) x )
+            Option.some_if (x <> y) x )
       with
       | None ->
-          []
+        []
       | Some s ->
-          Bin.parse_path s ~sep:ocamlpath_sep
+        Bin.parse_path s ~sep:ocamlpath_sep
     in
     let findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
-          let ocamlfind = which_exn "ocamlfind" in
-          ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
+        let ocamlfind = which_exn "ocamlfind" in
+        ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:(Some toolchain)
       | Hardcoded_path l ->
-          Fiber.return
-            (ocamlpath @ List.map l ~f:Path.of_filename_relative_to_initial_cwd)
+        Fiber.return
+          (ocamlpath @ List.map l ~f:Path.of_filename_relative_to_initial_cwd)
       | Opam2_environment opam_prefix ->
-          let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
-          let p = Path.relative p "lib" in
-          Fiber.return (ocamlpath @ [ p ])
+        let p = Path.of_filename_relative_to_initial_cwd opam_prefix in
+        let p = Path.relative p "lib" in
+        Fiber.return (ocamlpath @ [ p ])
       | Opam1_environment -> (
-          opam_config_var ~env ~cache:opam_var_cache "lib"
-          >>| function
-          | Some s ->
-              ocamlpath @ [ Path.of_filename_relative_to_initial_cwd s ]
-          | None ->
-              Utils.program_not_found "opam" ~loc:None )
+        opam_config_var ~env ~cache:opam_var_cache "lib"
+        >>| function
+        | Some s ->
+          ocamlpath @ [ Path.of_filename_relative_to_initial_cwd s ]
+        | None ->
+          Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
         match which "ocamlfind" with
         | Some ocamlfind ->
-            ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
+          ocamlfind_printconf_path ~env ~ocamlfind ~toolchain:None
         | None ->
-            Fiber.return
-              (ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ]) )
+          Fiber.return
+            (ocamlpath @ [ Path.relative (Path.parent_exn dir) "lib" ]) )
     in
     let ocaml_config_ok_exn = function
       | Ok x ->
-          x
+        x
       | Error (Ocaml_config.Origin.Ocamlc_config, msg) ->
-          User_error.raise
-            [ Pp.textf "Failed to parse the output of '%s -config':"
-                (Path.to_string ocamlc)
-            ; Pp.text msg
-            ]
+        User_error.raise
+          [ Pp.textf "Failed to parse the output of '%s -config':"
+              (Path.to_string ocamlc)
+          ; Pp.text msg
+          ]
       | Error (Makefile_config file, msg) ->
-          User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
+        User_error.raise ~loc:(Loc.in_file file) [ Pp.text msg ]
     in
     let* findlib_paths, ocfg =
       Fiber.fork_and_join findlib_paths (fun () ->
@@ -371,9 +371,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           ocaml_config_ok_exn
             ( match Ocaml_config.Vars.of_lines lines with
             | Ok vars ->
-                Ocaml_config.make vars
+              Ocaml_config.make vars
             | Error msg ->
-                Error (Ocamlc_config, msg) ))
+              Error (Ocamlc_config, msg) ))
     in
     let version = Ocaml_version.of_ocaml_config ocfg in
     let env =
@@ -390,9 +390,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let value =
           match Env.get env "OCAMLPARAM" with
           | None ->
-              "color=always,_"
+            "color=always,_"
           | Some s ->
-              "color=always," ^ s
+            "color=always," ^ s
         in
         Env.add env ~var:"OCAMLPARAM" ~value
       else
@@ -404,9 +404,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let v = Filename.concat cwd (Path.to_string v) in
         match Env.get env var with
         | None ->
-            (var, v)
+          (var, v)
         | Some prev ->
-            (var, sprintf "%s%c%s" v path_sep prev)
+          (var, sprintf "%s%c%s" v path_sep prev)
       in
       let vars =
         let local_lib_path =
@@ -430,13 +430,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       |> Env.update ~var:"PATH" ~f:(fun _ ->
              match host with
              | None ->
-                 let _key, path =
-                   Path.build (Config.local_install_bin_dir ~context:name)
-                   |> extend_var "PATH"
-                 in
-                 Some path
+               let _key, path =
+                 Path.build (Config.local_install_bin_dir ~context:name)
+                 |> extend_var "PATH"
+               in
+               Some path
              | Some host ->
-                 Env.get host.env "PATH")
+               Env.get host.env "PATH")
       |> Env.extend_env
            (Option.value ~default:Env.empty
               (Option.map findlib_config ~f:Findlib.Config.env))
@@ -480,9 +480,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml =
           ( match which "ocaml" with
           | Some p ->
-              p
+            p
           | None ->
-              prog_not_found_in_path "ocaml" )
+            prog_not_found_in_path "ocaml" )
       ; ocamlc
       ; ocamlopt
       ; ocamldep = get_ocaml_tool_exn "ocamldep"
@@ -552,12 +552,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let+ others =
     Fiber.parallel_map targets ~f:(function
       | Native ->
-          Fiber.return None
+        Fiber.return None
       | Named findlib_toolchain ->
-          let name = sprintf "%s.%s" name findlib_toolchain in
-          create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
-            ~findlib_toolchain:(Some findlib_toolchain)
-          >>| Option.some)
+        let name = sprintf "%s.%s" name findlib_toolchain in
+        create_one ~implicit:false ~name ~host:(Some native) ~merlin:false
+          ~findlib_toolchain:(Some findlib_toolchain)
+        >>| Option.some)
   in
   native :: List.filter_opt others
 
@@ -593,32 +593,32 @@ let opam_version =
   fun opam env ->
     match !res with
     | Some future ->
-        Fiber.Future.wait future
+      Fiber.Future.wait future
     | None ->
-        let* future =
-          Fiber.fork (fun () ->
-              let+ version =
-                Process.run_capture_line Strict ~env opam [ "--version" ]
-              in
-              try Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c))
-              with _ ->
-                User_error.raise
-                  [ Pp.textf "`%s config --version' returned invalid output:"
-                      (Path.to_string_maybe_quoted opam)
-                  ; Pp.verbatim version
-                  ])
-        in
-        res := Some future;
-        Fiber.Future.wait future
+      let* future =
+        Fiber.fork (fun () ->
+            let+ version =
+              Process.run_capture_line Strict ~env opam [ "--version" ]
+            in
+            try Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c))
+            with _ ->
+              User_error.raise
+                [ Pp.textf "`%s config --version' returned invalid output:"
+                    (Path.to_string_maybe_quoted opam)
+                ; Pp.verbatim version
+                ])
+      in
+      res := Some future;
+      Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain =
   let opam =
     match Lazy.force opam with
     | None ->
-        Utils.program_not_found "opam" ~loc:None
+      Utils.program_not_found "opam" ~loc:None
     | Some fn ->
-        fn
+      fn
   in
   let* version = opam_version opam env in
   let args =
@@ -641,26 +641,26 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     |> Env.Map.mapi ~f:(fun var values ->
            match List.rev values with
            | [] ->
-               assert false
+             assert false
            | [ x ] ->
-               x
+             x
            | x :: _ ->
-               Format.eprintf
-                 "@{<warning>Warning@}: variable %S present multiple times in \
-                  the output of:\n\
-                  @{<details>%s@}@."
-                 var
-                 (String.concat ~sep:" "
-                    (List.map ~f:String.quote_for_shell
-                       (Path.to_string opam :: args)));
-               x)
+             Format.eprintf
+               "@{<warning>Warning@}: variable %S present multiple times in \
+                the output of:\n\
+                @{<details>%s@}@."
+               var
+               (String.concat ~sep:" "
+                  (List.map ~f:String.quote_for_shell
+                     (Path.to_string opam :: args)));
+             x)
   in
   let path =
     match Env.Map.find vars "PATH" with
     | None ->
-        Env.path env
+      Env.path env
     | Some s ->
-        Bin.parse_path s
+      Bin.parse_path s
   in
   let env = Env.extend env ~vars in
   create
@@ -685,19 +685,19 @@ let instantiate_context env (workspace : Workspace.t)
       ; paths
       ; loc = _
       } ->
-      let merlin =
-        workspace.merlin_context = Some (Workspace.Context.name context)
-      in
-      let host_toolchain =
-        match toolchain with
-        | Some _ ->
-            toolchain
-        | None ->
-            Env.get env "OCAMLFIND_TOOLCHAIN"
-      in
-      let env = extend_paths ~env paths in
-      default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
-        ~host_toolchain
+    let merlin =
+      workspace.merlin_context = Some (Workspace.Context.name context)
+    in
+    let host_toolchain =
+      match toolchain with
+      | Some _ ->
+        toolchain
+      | None ->
+        Env.get env "OCAMLFIND_TOOLCHAIN"
+    in
+    let env = extend_paths ~env paths in
+    default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
+      ~host_toolchain
   | Opam
       { base =
           { targets
@@ -713,9 +713,9 @@ let instantiate_context env (workspace : Workspace.t)
       ; root
       ; merlin
       } ->
-      let env = extend_paths ~env paths in
-      create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
-        ~targets ~host_context ~host_toolchain:toolchain
+    let env = extend_paths ~env paths in
+    create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
+      ~targets ~host_context ~host_toolchain:toolchain
 
 let create ~env (workspace : Workspace.t) =
   let rec contexts : t list Fiber.Once.t String.Map.t Lazy.t =
@@ -726,19 +726,19 @@ let create ~env (workspace : Workspace.t) =
                   let* host_context =
                     match Workspace.Context.host_context context with
                     | None ->
-                        Fiber.return None
+                      Fiber.return None
                     | Some context -> (
-                        let+ contexts =
-                          String.Map.find_exn (Lazy.force contexts) context
-                          |> Fiber.Once.get
-                        in
-                        match contexts with
-                        | [ x ] ->
-                            Some x
-                        | [] ->
-                            assert false (* checked by workspace *)
-                        | _ :: _ ->
-                            assert false )
+                      let+ contexts =
+                        String.Map.find_exn (Lazy.force contexts) context
+                        |> Fiber.Once.get
+                      in
+                      match contexts with
+                      | [ x ] ->
+                        Some x
+                      | [] ->
+                        assert false (* checked by workspace *)
+                      | _ :: _ ->
+                        assert false )
                     (* target cannot be host *)
                   in
                   instantiate_context env workspace ~context ~host_context)
@@ -757,25 +757,24 @@ let install_prefix t =
   opam_config_var t "prefix"
   >>| function
   | Some x ->
-      Path.of_filename_relative_to_initial_cwd x
+    Path.of_filename_relative_to_initial_cwd x
   | None ->
-      Path.parent_exn t.ocaml_bin
+    Path.parent_exn t.ocaml_bin
 
 let install_ocaml_libdir t =
   match (t.kind, t.findlib_toolchain, Setup.library_destdir) with
   | Default, None, Some d ->
-      Fiber.return (Some (Path.of_filename_relative_to_initial_cwd d))
+    Fiber.return (Some (Path.of_filename_relative_to_initial_cwd d))
   | _ -> (
     (* If ocamlfind is present, it has precedence over everything else. *)
     match which t "ocamlfind" with
     | Some fn ->
-        let+ s =
-          Process.run_capture_line ~env:t.env Strict fn
-            [ "printconf"; "destdir" ]
-        in
-        Some (Path.of_filename_relative_to_initial_cwd s)
+      let+ s =
+        Process.run_capture_line ~env:t.env Strict fn [ "printconf"; "destdir" ]
+      in
+      Some (Path.of_filename_relative_to_initial_cwd s)
     | None ->
-        Fiber.return None )
+      Fiber.return None )
 
 let compiler t (mode : Mode.t) =
   match mode with Byte -> Some t.ocamlc | Native -> t.ocamlopt

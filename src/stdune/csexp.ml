@@ -7,18 +7,18 @@ type t = Sexp.t
 let peek s =
   match Stream.peek s with
   | Some v ->
-      ok v
+    ok v
   | None ->
-      Error "unexpected end of file"
+    Error "unexpected end of file"
 
 let read_string s l =
   let res = Bytes.make l ' ' in
   let rec read = function
     | v when v = l ->
-        ()
+      ()
     | v ->
-        BytesLabels.set res v (Stream.next s);
-        read (v + 1)
+      BytesLabels.set res v (Stream.next s);
+      read (v + 1)
   in
   try
     read 0;
@@ -42,21 +42,21 @@ let parse stream =
     peek stream
     >>= function
     | '(' ->
-        Stream.junk stream;
-        parse_list () >>| fun l -> Sexp.List l
+      Stream.junk stream;
+      parse_list () >>| fun l -> Sexp.List l
     | _ ->
-        read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
+      read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
   and parse_list () =
     peek stream
     >>= function
     | ')' ->
-        Stream.junk stream;
-        ok []
+      Stream.junk stream;
+      ok []
     | ':' ->
-        Error "missing size"
+      Error "missing size"
     | _ ->
-        let head = parse () in
-        head >>= fun head -> parse_list () >>| fun tail -> head :: tail
+      let head = parse () in
+      head >>= fun head -> parse_list () >>| fun tail -> head :: tail
   in
   parse ()
 
@@ -65,13 +65,13 @@ let buffer () = Buffer.create 1024
 let to_buffer ~buf sexp =
   let rec loop = function
     | Sexp.Atom str ->
-        Buffer.add_string buf (string_of_int (String.length str));
-        Buffer.add_string buf ":";
-        Buffer.add_string buf str
+      Buffer.add_string buf (string_of_int (String.length str));
+      Buffer.add_string buf ":";
+      Buffer.add_string buf str
     | Sexp.List (e : t list) ->
-        Buffer.add_char buf '(';
-        ignore (List.map ~f:loop e);
-        Buffer.add_char buf ')'
+      Buffer.add_char buf '(';
+      ignore (List.map ~f:loop e);
+      Buffer.add_char buf ')'
   in
   ignore (loop sexp)
 

@@ -50,31 +50,31 @@ module Dependency = struct
       let open Dyn.Encoder in
       function
       | Eq ->
-          string "Eq"
+        string "Eq"
       | Gt ->
-          string "Gt"
+        string "Gt"
       | Gte ->
-          string "Gte"
+        string "Gte"
       | Lte ->
-          string "Lte"
+        string "Lte"
       | Lt ->
-          string "Lt"
+        string "Lt"
       | Neq ->
-          string "Neq"
+        string "Neq"
 
     let to_relop : t -> OpamParserTypes.relop = function
       | Eq ->
-          `Eq
+        `Eq
       | Gte ->
-          `Geq
+        `Geq
       | Lte ->
-          `Leq
+        `Leq
       | Gt ->
-          `Gt
+        `Gt
       | Lt ->
-          `Lt
+        `Lt
       | Neq ->
-          `Neq
+        `Neq
   end
 
   module Constraint = struct
@@ -129,26 +129,26 @@ module Dependency = struct
           peek_exn
           >>= function
           | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
-              let+ () = junk in
-              Bvar (Var (String.drop s 1))
+            let+ () = junk in
+            Bvar (Var (String.drop s 1))
           | _ ->
-              sum (ops @ logops))
+            sum (ops @ logops))
 
     let rec to_dyn =
       let open Dyn.Encoder in
       function
       | Bvar (QVar v) ->
-          constr "Bvar" [ Dyn.String v ]
+        constr "Bvar" [ Dyn.String v ]
       | Bvar (Var v) ->
-          constr "Bvar" [ Dyn.String (":" ^ v) ]
+        constr "Bvar" [ Dyn.String (":" ^ v) ]
       | Uop (b, QVar v) ->
-          constr "Uop" [ Op.to_dyn b; Dyn.String v ]
+        constr "Uop" [ Op.to_dyn b; Dyn.String v ]
       | Uop (b, Var v) ->
-          constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
+        constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
       | And t ->
-          constr "And" (List.map ~f:to_dyn t)
+        constr "And" (List.map ~f:to_dyn t)
       | Or t ->
-          constr "Or" (List.map ~f:to_dyn t)
+        constr "Or" (List.map ~f:to_dyn t)
   end
 
   type t =
@@ -172,19 +172,19 @@ module Dependency = struct
     let nopos = Opam_file.nopos in
     function
     | Bvar v ->
-        Constraint.Var.to_opam v
+      Constraint.Var.to_opam v
     | Uop (op, v) ->
-        Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
+      Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
     | And [ c ] ->
-        opam_constraint c
+      opam_constraint c
     | And (c :: cs) ->
-        Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
+      Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
     | Or [ c ] ->
-        opam_constraint c
+      opam_constraint c
     | Or (c :: cs) ->
-        Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
+      Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
     | And [] | Or [] ->
-        Code_error.raise "opam_constraint" []
+      Code_error.raise "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -193,9 +193,9 @@ module Dependency = struct
       let pkg : OpamParserTypes.value = String (nopos, Name.to_string name) in
       match constraint_ with
       | None ->
-          pkg
+        pkg
       | Some c ->
-          Option (nopos, pkg, [ c ])
+        Option (nopos, pkg, [ c ])
 
   let to_dyn { name; constraint_ } =
     let open Dyn.Encoder in

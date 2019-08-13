@@ -14,8 +14,8 @@ let nl = Format.pp_print_newline
 
 let ocaml_list pp fmt = function
   | [] ->
-      Format.pp_print_string fmt "[]"
+    Format.pp_print_string fmt "[]"
   | l ->
-      Format.fprintf fmt "@[<hv>[ %a@ ]@]"
-        (list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@,; ") pp)
-        l
+    Format.fprintf fmt "@[<hv>[ %a@ ]@]"
+      (list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@,; ") pp)
+      l

@@ -13,6 +13,6 @@ let raise ?loc ?hints paragraphs = raise (E (make ?loc ?hints paragraphs))
 let () =
   Printexc.register_printer (function
     | E t ->
-        Some (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp t))
+      Some (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp t))
     | _ ->
-        None)
+      None)

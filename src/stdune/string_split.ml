@@ -26,19 +26,19 @@ let split_lines s =
     else
       match s.[j] with
       | '\r' ->
-          loop ~last_is_cr:true ~acc i (j + 1)
+        loop ~last_is_cr:true ~acc i (j + 1)
       | '\n' ->
-          let line =
-            let len =
-              if last_is_cr then
-                j - i - 1
-              else
-                j - i
-            in
-            sub s ~pos:i ~len
+        let line =
+          let len =
+            if last_is_cr then
+              j - i - 1
+            else
+              j - i
           in
-          loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
+          sub s ~pos:i ~len
+        in
+        loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
       | _ ->
-          loop ~acc i (j + 1) ~last_is_cr:false
+        loop ~acc i (j + 1) ~last_is_cr:false
   in
   loop ~acc:[] 0 0 ~last_is_cr:false

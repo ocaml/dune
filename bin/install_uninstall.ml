@@ -4,42 +4,42 @@ open Import
 let interpret_destdir ~destdir path =
   match destdir with
   | None ->
-      path
+    path
   | Some prefix ->
-      Path.append_local (Path.of_string prefix) (Path.local_part path)
+    Path.append_local (Path.of_string prefix) (Path.local_part path)
 
 let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
   match prefix_from_command_line with
   | Some p ->
-      let prefix = Path.of_string p in
-      let dir = Option.value ~default:"lib" libdir_from_command_line in
-      Fiber.return (prefix, Some (Path.relative prefix dir))
+    let prefix = Path.of_string p in
+    let dir = Option.value ~default:"lib" libdir_from_command_line in
+    Fiber.return (prefix, Some (Path.relative prefix dir))
   | None ->
-      let open Fiber.O in
-      let* prefix = Context.install_prefix context in
-      let libdir =
-        match libdir_from_command_line with
-        | None ->
-            Context.install_ocaml_libdir context
-        | Some l ->
-            Fiber.return (Some (Path.relative prefix l))
-      in
-      let+ libdir = libdir in
-      (prefix, libdir)
+    let open Fiber.O in
+    let* prefix = Context.install_prefix context in
+    let libdir =
+      match libdir_from_command_line with
+      | None ->
+        Context.install_ocaml_libdir context
+      | Some l ->
+        Fiber.return (Some (Path.relative prefix l))
+    in
+    let+ libdir = libdir in
+    (prefix, libdir)
 
 let resolve_package_install setup pkg =
   match Import.Main.package_install_file setup pkg with
   | Ok path ->
-      path
+    path
   | Error () ->
-      let pkg = Package.Name.to_string pkg in
-      User_error.raise
-        [ Pp.textf "Unknown package %s!" pkg ]
-        ~hints:
-          (User_message.did_you_mean pkg
-             ~candidates:
-               ( Package.Name.Map.keys setup.conf.packages
-               |> List.map ~f:Package.Name.to_string ))
+    let pkg = Package.Name.to_string pkg in
+    User_error.raise
+      [ Pp.textf "Unknown package %s!" pkg ]
+      ~hints:
+        (User_message.did_you_mean pkg
+           ~candidates:
+             ( Package.Name.Map.keys setup.conf.packages
+             |> List.map ~f:Package.Name.to_string ))
 
 let print_unix_error f =
   try f ()
@@ -98,12 +98,12 @@ module File_ops_real (W : Workspace) : File_operations = struct
     in
     match f ic with
     | exception _ ->
-        User_warning.emit
-          ~loc:(Loc.in_file (Path.build src))
-          [ Pp.text "Failed to parse file, not adding version information." ];
-        plain_copy ()
+      User_warning.emit
+        ~loc:(Loc.in_file (Path.build src))
+        [ Pp.text "Failed to parse file, not adding version information." ];
+      plain_copy ()
     | No_version_needed ->
-        plain_copy ()
+      plain_copy ()
     | Need_version print -> (
       match
         let open Option.O in
@@ -114,13 +114,13 @@ module File_ops_real (W : Workspace) : File_operations = struct
         get_vcs package.path
       with
       | None ->
-          plain_copy ()
+        plain_copy ()
       | Some vcs ->
-          let open Fiber.O in
-          let+ version = Dune.Vcs.describe vcs in
-          let ppf = Format.formatter_of_out_channel oc in
-          print ppf ~version;
-          Format.pp_print_flush ppf () )
+        let open Fiber.O in
+        let+ version = Dune.Vcs.describe vcs in
+        let ppf = Format.formatter_of_out_channel oc in
+        print ppf ~version;
+        Format.pp_print_flush ppf () )
 
   let process_meta ic =
     let lb = Lexing.from_channel ic in
@@ -155,9 +155,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
     if
       List.exists dp ~f:(function
         | Dune_lang.List (Atom (A "version") :: _) ->
-            true
+          true
         | _ ->
-            false)
+          false)
     then
       No_version_needed
     else
@@ -172,11 +172,11 @@ module File_ops_real (W : Workspace) : File_operations = struct
           let dp =
             match dp with
             | lang :: name :: rest ->
-                lang :: name :: version :: rest
+              lang :: name :: version :: rest
             | [ lang ] ->
-                [ lang; version ]
+              [ lang; version ]
             | [] ->
-                [ version ]
+              [ version ]
           in
           Format.pp_open_vbox ppf 0;
           List.iter dp ~f:(fun x ->
@@ -199,13 +199,12 @@ module File_ops_real (W : Workspace) : File_operations = struct
       (fun () ->
         match Path.Build.explode src with
         | [ "install"; _ctx; "lib"; package_name; "META" ] ->
-            copy_special_file ~src ~package_name ~ic ~oc ~f:process_meta
+          copy_special_file ~src ~package_name ~ic ~oc ~f:process_meta
         | [ "install"; _ctx; "lib"; package_name; "dune-package" ] ->
-            copy_special_file ~src ~package_name ~ic ~oc
-              ~f:process_dune_package
+          copy_special_file ~src ~package_name ~ic ~oc ~f:process_dune_package
         | _ ->
-            Dune.Artifact_substitution.copy ~get_vcs ~input:(input ic)
-              ~output:(output oc))
+          Dune.Artifact_substitution.copy ~get_vcs ~input:(input ic)
+            ~output:(output oc))
 
   let remove_if_exists dst =
     if Path.exists dst then (
@@ -217,14 +216,13 @@ module File_ops_real (W : Workspace) : File_operations = struct
     if Path.exists dir then
       match Path.readdir_unsorted dir with
       | Ok [] ->
-          Printf.eprintf "Deleting empty directory %s\n%!"
-            (Path.to_string_maybe_quoted dir);
-          print_unix_error (fun () -> Path.rmdir dir)
+        Printf.eprintf "Deleting empty directory %s\n%!"
+          (Path.to_string_maybe_quoted dir);
+        print_unix_error (fun () -> Path.rmdir dir)
       | Error e ->
-          User_message.prerr
-            (User_error.make [ Pp.text (Unix.error_message e) ])
+        User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
       | _ ->
-          ()
+        ()
 
   let mkdir_p = Path.mkdir_p
 end
@@ -292,16 +290,16 @@ let install_uninstall ~what =
         let contexts =
           match context with
           | None ->
-              workspace.contexts
+            workspace.contexts
           | Some name ->
-              [ Import.Main.find_context_exn workspace ~name ]
+            [ Import.Main.find_context_exn workspace ~name ]
         in
         let pkgs =
           match pkgs with
           | [] ->
-              Package.Name.Map.keys workspace.conf.packages
+            Package.Name.Map.keys workspace.conf.packages
           | l ->
-              l
+            l
         in
         let install_files, missing_install_files =
           List.concat_map pkgs ~f:(fun pkg ->
@@ -327,13 +325,13 @@ let install_uninstall ~what =
             (contexts, prefix_from_command_line, libdir_from_command_line)
           with
         | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
-            User_error.raise
-              [ Pp.text
-                  "Cannot specify --prefix or --libdir when installing into \
-                   multiple contexts!"
-              ]
+          User_error.raise
+            [ Pp.text
+                "Cannot specify --prefix or --libdir when installing into \
+                 multiple contexts!"
+            ]
         | _ ->
-            () );
+          () );
         let module CMap = Map.Make (Context) in
         let install_files_by_context =
           CMap.of_list_multi install_files
@@ -349,18 +347,17 @@ let install_uninstall ~what =
                                entry.src)
                        with
                        | [] ->
-                           (package, entries)
+                         (package, entries)
                        | missing_files ->
-                           User_error.raise
-                             [ Pp.textf
-                                 "The following files which are listed in %s \
-                                  cannot be installed because they do not \
-                                  exist:"
-                                 (Path.to_string_maybe_quoted install_file)
-                             ; Pp.enumerate missing_files ~f:(fun p ->
-                                   Pp.verbatim
-                                     (Path.Build.to_string_maybe_quoted p))
-                             ])
+                         User_error.raise
+                           [ Pp.textf
+                               "The following files which are listed in %s \
+                                cannot be installed because they do not exist:"
+                               (Path.to_string_maybe_quoted install_file)
+                           ; Pp.enumerate missing_files ~f:(fun p ->
+                                 Pp.verbatim
+                                   (Path.Build.to_string_maybe_quoted p))
+                           ])
                  in
                  (context, entries_per_package))
         in

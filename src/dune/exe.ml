@@ -48,70 +48,70 @@ module Linkage = struct
     let real_mode : Mode.t =
       match m.mode with
       | Byte ->
-          Byte
+        Byte
       | Native ->
-          Native
+        Native
       | Best ->
-          if Option.is_some ctx.ocamlopt then
-            Native
-          else
-            Byte
+        if Option.is_some ctx.ocamlopt then
+          Native
+        else
+          Byte
     in
     let ext =
       match (wanted_mode, m.kind) with
       | Byte, C ->
-          ".bc.c"
+        ".bc.c"
       | Native, C ->
-          User_error.raise ~loc:m.loc
-            [ Pp.text "C file generation only supports bytecode!" ]
+        User_error.raise ~loc:m.loc
+          [ Pp.text "C file generation only supports bytecode!" ]
       | Byte, Exe ->
-          ".bc"
+        ".bc"
       | Native, Exe ->
-          ".exe"
+        ".exe"
       | Byte, Object ->
-          ".bc" ^ ctx.lib_config.ext_obj
+        ".bc" ^ ctx.lib_config.ext_obj
       | Native, Object ->
-          ".exe" ^ ctx.lib_config.ext_obj
+        ".exe" ^ ctx.lib_config.ext_obj
       | Byte, Shared_object ->
-          ".bc" ^ ctx.lib_config.ext_dll
+        ".bc" ^ ctx.lib_config.ext_dll
       | Native, Shared_object ->
-          ctx.lib_config.ext_dll
+        ctx.lib_config.ext_dll
       | Byte, Js ->
-          ".bc.js"
+        ".bc.js"
       | Native, Js ->
-          User_error.raise ~loc:m.loc
-            [ Pp.text "Javascript generation only supports bytecode!" ]
+        User_error.raise ~loc:m.loc
+          [ Pp.text "Javascript generation only supports bytecode!" ]
     in
     let flags =
       match m.kind with
       | C ->
-          c_flags
+        c_flags
       | Js ->
-          []
+        []
       | Exe -> (
         match (wanted_mode, real_mode) with
         | Native, Byte ->
-            [ "-custom" ]
+          [ "-custom" ]
         | _ ->
-            [] )
+          [] )
       | Object ->
-          o_flags
+        o_flags
       | Shared_object -> (
-          let so_flags =
-            if String.equal ctx.os_type "Win32" then
-              so_flags_windows
-            else
-              so_flags_unix
-          in
-          match real_mode with
-          | Native ->
-              (* The compiler doesn't pass these flags in native mode. This
-                 looks like a bug in the compiler. *)
-              List.concat_map ctx.native_c_libraries ~f:(fun flag ->
-                  [ "-cclib"; flag ])
-              @ so_flags
-          | Byte ->
-              so_flags )
+        let so_flags =
+          if String.equal ctx.os_type "Win32" then
+            so_flags_windows
+          else
+            so_flags_unix
+        in
+        match real_mode with
+        | Native ->
+          (* The compiler doesn't pass these flags in native mode. This looks
+             like a bug in the compiler. *)
+          List.concat_map ctx.native_c_libraries ~f:(fun flag ->
+              [ "-cclib"; flag ])
+          @ so_flags
+        | Byte ->
+          so_flags )
     in
     { ext; mode = real_mode; flags }
 end

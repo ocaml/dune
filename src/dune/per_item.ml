@@ -38,9 +38,9 @@ module Make (Key : Map.Key) : S with type key = Key.t = struct
     |> List.concat |> Map.of_list
     |> function
     | Ok map ->
-        Ok { map; values }
+      Ok { map; values }
     | Error (key, x, y) ->
-        Error (key, values.(x), values.(y))
+      Error (key, values.(x), values.(y))
 
   let get t key =
     let index = match Map.find t.map key with None -> 0 | Some i -> i in

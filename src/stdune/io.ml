@@ -7,18 +7,18 @@ let close_out = close_out
 let close_both (ic, oc) =
   match close_out oc with
   | () ->
-      close_in ic
+    close_in ic
   | exception exn ->
-      close_in ic;
-      Exn.reraise exn
+    close_in ic;
+    Exn.reraise exn
 
 let input_lines =
   let rec loop ic acc =
     match input_line ic with
     | exception End_of_file ->
-        List.rev acc
+      List.rev acc
     | line ->
-        loop ic (line :: acc)
+      loop ic (line :: acc)
   in
   fun ic -> loop ic []
 
@@ -28,10 +28,10 @@ let copy_channels =
   let rec loop ic oc =
     match input ic buf 0 buf_len with
     | 0 ->
-        ()
+      ()
     | n ->
-        output oc buf 0 n;
-        loop ic oc
+      output oc buf 0 n;
+      loop ic oc
   in
   loop
 
@@ -144,30 +144,30 @@ struct
       let rec find_next_crnl i =
         match String.index_from src i '\r' with
         | None ->
-            None
+          None
         | Some j ->
-            if j + 1 < len && src.[j + 1] = '\n' then
-              Some j
-            else
-              find_next_crnl (j + 1)
+          if j + 1 < len && src.[j + 1] = '\n' then
+            Some j
+          else
+            find_next_crnl (j + 1)
       in
       let rec loop src_pos dst_pos =
         match find_next_crnl src_pos with
         | None ->
-            let len =
-              if len > src_pos && src.[len - 1] = '\r' then
-                len - 1 - src_pos
-              else
-                len - src_pos
-            in
-            Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
-            Bytes.sub_string dst ~pos:0 ~len:(dst_pos + len)
+          let len =
+            if len > src_pos && src.[len - 1] = '\r' then
+              len - 1 - src_pos
+            else
+              len - src_pos
+          in
+          Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
+          Bytes.sub_string dst ~pos:0 ~len:(dst_pos + len)
         | Some i ->
-            let len = i - src_pos in
-            Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
-            let dst_pos = dst_pos + len in
-            Bytes.set dst dst_pos '\n';
-            loop (i + 2) (dst_pos + 1)
+          let len = i - src_pos in
+          Bytes.blit_string ~src ~src_pos ~dst ~dst_pos ~len;
+          let dst_pos = dst_pos + len in
+          Bytes.set dst dst_pos '\n';
+          loop (i + 2) (dst_pos + 1)
       in
       loop 0 0
 

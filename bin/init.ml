@@ -6,12 +6,12 @@ open Dune.Dune_init
 let validate_component_options kind unsupported_options =
   let report_invalid_option = function
     | _, false ->
-        () (* The option wasn't supplied *)
+      () (* The option wasn't supplied *)
     | option_name, true ->
-        User_error.raise
-          [ Pp.textf "The %s component does not support the %s option"
-              (Kind.to_string kind) option_name
-          ]
+      User_error.raise
+        [ Pp.textf "The %s component does not support the %s option"
+            (Kind.to_string kind) option_name
+        ]
   in
   List.iter ~f:report_invalid_option unsupported_options
 
@@ -129,27 +129,27 @@ let term =
   let check_unsupported_options = validate_component_options kind in
   ( match kind with
   | Kind.Executable ->
-      check_unsupported_options
-        [ ("inline-tests", inline_tests)
-        ; ("kind", given_template)
-        ; ("pkg", given_pkg)
-        ];
-      init @@ Executable { context; common; options = { public } }
+    check_unsupported_options
+      [ ("inline-tests", inline_tests)
+      ; ("kind", given_template)
+      ; ("pkg", given_pkg)
+      ];
+    init @@ Executable { context; common; options = { public } }
   | Kind.Library ->
-      check_unsupported_options [ ("kind", given_template); ("pkg", given_pkg) ];
-      init @@ Library { context; common; options = { public; inline_tests } }
+    check_unsupported_options [ ("kind", given_template); ("pkg", given_pkg) ];
+    init @@ Library { context; common; options = { public; inline_tests } }
   | Kind.Project ->
-      check_unsupported_options [ ("public", given_public) ];
-      init
-      @@ Project { context; common; options = { inline_tests; pkg; template } }
+    check_unsupported_options [ ("public", given_public) ];
+    init
+    @@ Project { context; common; options = { inline_tests; pkg; template } }
   | Kind.Test ->
-      check_unsupported_options
-        [ ("public", given_public)
-        ; ("inline-tests", inline_tests)
-        ; ("kind", given_template)
-        ; ("pkg", given_pkg)
-        ];
-      init @@ Test { context; common; options = () } );
+    check_unsupported_options
+      [ ("public", given_public)
+      ; ("inline-tests", inline_tests)
+      ; ("kind", given_template)
+      ; ("pkg", given_pkg)
+      ];
+    init @@ Test { context; common; options = () } );
   print_completion kind name
 
 let command = (term, info)

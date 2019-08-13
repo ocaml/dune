@@ -18,11 +18,11 @@ type build_system =
 let package_install_file w pkg =
   match Package.Name.Map.find w.conf.packages pkg with
   | None ->
-      Error ()
+    Error ()
   | Some p ->
-      Ok
-        (Path.Source.relative p.path
-           (Utils.install_file ~package:p.name ~findlib_toolchain:None))
+    Ok
+      (Path.Source.relative p.path
+         (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup_env ~capture_outputs =
   let env =
@@ -43,25 +43,25 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
   let workspace =
     match workspace with
     | Some w ->
-        w
+      w
     | None -> (
       match workspace_file with
       | Some p ->
-          if not (Path.exists p) then
-            User_error.raise
-              [ Pp.textf "Workspace file %s does not exist"
-                  (Path.to_string_maybe_quoted p)
-              ];
-          Workspace.load ?x ?profile p
+        if not (Path.exists p) then
+          User_error.raise
+            [ Pp.textf "Workspace file %s does not exist"
+                (Path.to_string_maybe_quoted p)
+            ];
+        Workspace.load ?x ?profile p
       | None -> (
         match
           let p = Path.of_string Workspace.filename in
           Option.some_if (Path.exists p) p
         with
         | Some p ->
-            Workspace.load ?x ?profile p
+          Workspace.load ?x ?profile p
         | None ->
-            Workspace.default ?x ?profile () ) )
+          Workspace.default ?x ?profile () ) )
   in
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
@@ -97,9 +97,9 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   let hook (hook : Build_system.hook) =
     match hook with
     | Rule_started ->
-        incr rule_total
+      incr rule_total
     | Rule_completed ->
-        incr rule_done
+      incr rule_done
   in
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
@@ -116,63 +116,61 @@ let auto_concurrency =
   fun () ->
     match !v with
     | Some n ->
-        Fiber.return n
+      Fiber.return n
     | None ->
-        let+ n =
-          if Sys.win32 then
-            match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-            | None ->
-                Fiber.return 1
-            | Some s -> (
-              match int_of_string s with
-              | exception _ ->
-                  Fiber.return 1
-              | n ->
-                  Fiber.return n )
-          else
-            let commands =
-              [ ("nproc", [])
-              ; ("getconf", [ "_NPROCESSORS_ONLN" ])
-              ; ("getconf", [ "NPROCESSORS_ONLN" ])
-              ]
-            in
-            let rec loop = function
-              | [] ->
-                  Fiber.return 1
-              | (prog, args) :: rest -> (
-                match Bin.which ~path:(Env.path Env.initial) prog with
-                | None ->
-                    loop rest
-                | Some prog -> (
-                    let* result =
-                      Process.run_capture (Accept All) prog args
-                        ~env:Env.initial
-                        ~stderr_to:
-                          (Process.Io.file Config.dev_null Process.Io.Out)
-                    in
-                    match result with
-                    | Error _ ->
-                        loop rest
-                    | Ok s -> (
-                      match int_of_string (String.trim s) with
-                      | n ->
-                          Fiber.return n
-                      | exception _ ->
-                          loop rest ) ) )
-            in
-            loop commands
-        in
-        Log.infof "Auto-detected concurrency: %d" n;
-        v := Some n;
-        n
+      let+ n =
+        if Sys.win32 then
+          match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
+          | None ->
+            Fiber.return 1
+          | Some s -> (
+            match int_of_string s with
+            | exception _ ->
+              Fiber.return 1
+            | n ->
+              Fiber.return n )
+        else
+          let commands =
+            [ ("nproc", [])
+            ; ("getconf", [ "_NPROCESSORS_ONLN" ])
+            ; ("getconf", [ "NPROCESSORS_ONLN" ])
+            ]
+          in
+          let rec loop = function
+            | [] ->
+              Fiber.return 1
+            | (prog, args) :: rest -> (
+              match Bin.which ~path:(Env.path Env.initial) prog with
+              | None ->
+                loop rest
+              | Some prog -> (
+                let* result =
+                  Process.run_capture (Accept All) prog args ~env:Env.initial
+                    ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
+                in
+                match result with
+                | Error _ ->
+                  loop rest
+                | Ok s -> (
+                  match int_of_string (String.trim s) with
+                  | n ->
+                    Fiber.return n
+                  | exception _ ->
+                    loop rest ) ) )
+          in
+          loop commands
+      in
+      Log.infof "Auto-detected concurrency: %d" n;
+      v := Some n;
+      n
 
 let set_concurrency (config : Config.t) =
   let+ n =
     match config.concurrency with
     | Fixed n ->
-        Fiber.return n
+      Fiber.return n
     | Auto ->
-        auto_concurrency ()
+      auto_concurrency ()
   in
   if n >= 1 then Scheduler.set_concurrency n
 
@@ -212,9 +210,9 @@ let bootstrap () =
     let concurrency_arg x =
       match Config.Concurrency.of_string x with
       | Error msg ->
-          raise (Arg.Bad msg)
+        raise (Arg.Bad msg)
       | Ok c ->
-          concurrency := Some c
+        concurrency := Some c
     in
     let terminal_persistence = Some Config.Terminal_persistence.Preserve in
     let profile = ref None in
@@ -268,15 +266,15 @@ let bootstrap () =
   in
   try main () with
   | Fiber.Never ->
-      exit 1
+    exit 1
   | exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      Report_error.report exn;
-      exit 1
+    let exn = Exn_with_backtrace.capture exn in
+    Report_error.report exn;
+    exit 1
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with
   | Some ctx ->
-      ctx
+    ctx
   | None ->
-      User_error.raise [ Pp.textf "Context %S not found!" name ]
+    User_error.raise [ Pp.textf "Context %S not found!" name ]

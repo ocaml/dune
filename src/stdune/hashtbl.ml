@@ -25,20 +25,20 @@ struct
     let find_exn t key =
       match find_opt t key with
       | Some v ->
-          v
+        v
       | None ->
-          Code_error.raise "Hashtbl.find_exn" [ ("key", H.to_dyn key) ]
+        Code_error.raise "Hashtbl.find_exn" [ ("key", H.to_dyn key) ]
 
     let set t key data = add t ~key ~data
 
     let find_or_add t key ~f =
       match find t key with
       | Some x ->
-          x
+        x
       | None ->
-          let x = f key in
-          set t key x;
-          x
+        let x = f key in
+        set t key x;
+        x
 
     let foldi t ~init ~f =
       fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
@@ -50,40 +50,40 @@ struct
     let h = create (List.length l) in
     let rec loop = function
       | [] ->
-          Result.Ok h
+        Result.Ok h
       | (k, v) :: xs -> (
         match find h k with
         | None ->
-            set h k v;
-            loop xs
+          set h k v;
+          loop xs
         | Some v' ->
-            Error (k, v', v) )
+          Error (k, v', v) )
     in
     loop l
 
   let of_list_exn l =
     match of_list l with
     | Result.Ok h ->
-        h
+      h
     | Error (key, _, _) ->
-        Code_error.raise "Hashtbl.of_list_exn duplicate keys"
-          [ ("key", H.to_dyn key) ]
+      Code_error.raise "Hashtbl.of_list_exn duplicate keys"
+        [ ("key", H.to_dyn key) ]
 
   let add_exn t key data =
     match find t key with
     | None ->
-        set t key data
+      set t key data
     | Some _ ->
-        Code_error.raise "Hastbl.add_exn: key already exists"
-          [ ("key", H.to_dyn key) ]
+      Code_error.raise "Hastbl.add_exn: key already exists"
+        [ ("key", H.to_dyn key) ]
 
   let add t key data =
     match find t key with
     | None ->
-        set t key data;
-        Result.Ok ()
+      set t key data;
+      Result.Ok ()
     | Some p ->
-        Result.Error p
+      Result.Error p
 
   let keys t = foldi t ~init:[] ~f:(fun key _ acc -> key :: acc)
 
@@ -100,9 +100,9 @@ struct
     iter t ~f:(fun ~key ~data ->
         match f ~key ~data with
         | false ->
-            to_delete := key :: !to_delete
+          to_delete := key :: !to_delete
         | true ->
-            ());
+          ());
     List.iter !to_delete ~f:(fun k -> remove t k)
 
   let iter t ~f = iter t ~f:(fun ~key:_ ~data -> f data)

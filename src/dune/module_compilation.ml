@@ -21,9 +21,9 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 let opens modules m =
   match Modules.alias_for modules m with
   | None ->
-      Command.Args.S []
+    Command.Args.S []
   | Some (m : Module.t) ->
-      As [ "-open"; Module_name.to_string (Module.name m) ]
+    As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx = CC.super_context cctx in
@@ -73,30 +73,29 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                        the cmi and to produce the cmx we have to wait to avoid
                        race conditions. *)
                     | Cmo, None, false ->
-                        copy_interface ();
-                        ( []
-                        , []
-                        , [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ]
-                        )
+                      copy_interface ();
+                      ( []
+                      , []
+                      , [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ]
+                      )
                     | Cmo, None, true | (Cmo | Cmx), _, _ ->
-                        ( force_read_cmi src
-                        , [ Path.build
-                              (Obj_dir.Module.cm_file_unsafe obj_dir m
-                                 ~kind:Cmi)
-                          ]
-                        , [] )
+                      ( force_read_cmi src
+                      , [ Path.build
+                            (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)
+                        ]
+                      , [] )
                     | Cmi, _, _ ->
-                        copy_interface ();
-                        ([], [], [])
+                      copy_interface ();
+                      ([], [], [])
                 in
                 let other_targets =
                   match cm_kind with
                   | Cmx ->
-                      Obj_dir.Module.obj_file obj_dir m ~kind:Cmx
-                        ~ext:ctx.lib_config.ext_obj
-                      :: other_targets
+                    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx
+                      ~ext:ctx.lib_config.ext_obj
+                    :: other_targets
                   | Cmi | Cmo ->
-                      other_targets
+                    other_targets
                 in
                 let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
                 let opaque = CC.opaque cctx in
@@ -125,13 +124,13 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                 let other_targets, cmt_args =
                   match cm_kind with
                   | Cmx ->
-                      (other_targets, Command.Args.S [])
+                    (other_targets, Command.Args.S [])
                   | Cmi | Cmo ->
-                      let fn =
-                        Option.value_exn
-                          (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-                      in
-                      (fn :: other_targets, A "-bin-annot")
+                    let fn =
+                      Option.value_exn
+                        (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                    in
+                    (fn :: other_targets, A "-bin-annot")
                 in
                 let opaque_arg =
                   let intf_only =
@@ -153,12 +152,12 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                     , Ocaml_version.supports_no_keep_locs ctx.version )
                   with
                   | true, Cmi, true ->
-                      (ctx.build_dir, Command.Args.As [ "-no-keep-locs" ])
+                    (ctx.build_dir, Command.Args.As [ "-no-keep-locs" ])
                   | true, Cmi, false ->
-                      (Obj_dir.byte_dir obj_dir, As [])
+                    (Obj_dir.byte_dir obj_dir, As [])
                   (* emulated -no-keep-locs *)
                   | true, (Cmo | Cmx), _ | false, _, _ ->
-                      (ctx.build_dir, As [])
+                    (ctx.build_dir, As [])
                 in
                 let flags =
                   let flags =
@@ -166,10 +165,10 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                   in
                   match Module.pp_flags m with
                   | None ->
-                      flags
+                    flags
                   | Some pp ->
-                      Build.fanout flags pp
-                      >>^ fun (flags, pp_flags) -> flags @ pp_flags
+                    Build.fanout flags pp
+                    >>^ fun (flags, pp_flags) -> flags @ pp_flags
                 in
                 let modules = Compilation_context.modules cctx in
                 SC.add_rule sctx ~sandbox ~dir
@@ -196,11 +195,11 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                         ; As
                             ( match stdlib with
                             | None ->
-                                []
+                              []
                             | Some _ ->
-                                (* XXX why aren't these just normal library
-                                   flags? *)
-                                [ "-nopervasives"; "-nostdlib" ] )
+                              (* XXX why aren't these just normal library
+                                 flags? *)
+                              [ "-nopervasives"; "-nostdlib" ] )
                         ; A "-o"
                         ; Target dst
                         ; A "-c"
@@ -307,19 +306,19 @@ let build_all cctx ~dep_graphs =
   Modules.iter_no_vlib modules ~f:(fun m ->
       match Module.kind m with
       | Alias ->
-          let cctx = Compilation_context.for_alias_module cctx in
-          let dir = Compilation_context.dir cctx in
-          build_alias_module ~loc:Loc.none ~alias_module:m ~dir ~cctx
+        let cctx = Compilation_context.for_alias_module cctx in
+        let dir = Compilation_context.dir cctx in
+        build_alias_module ~loc:Loc.none ~alias_module:m ~dir ~cctx
       | Wrapped_compat ->
-          let cctx = Lazy.force for_wrapped_compat in
-          build_module cctx ~dep_graphs m
+        let cctx = Lazy.force for_wrapped_compat in
+        build_module cctx ~dep_graphs m
       | _ ->
-          let cctx =
-            if Modules.is_stdlib_alias modules m then
-              (* XXX it would probably be simpler if the flags were just for
-                 this module in the definition of the stanza *)
-              Compilation_context.for_alias_module cctx
-            else
-              cctx
-          in
-          build_module cctx ~dep_graphs m)
+        let cctx =
+          if Modules.is_stdlib_alias modules m then
+            (* XXX it would probably be simpler if the flags were just for this
+               module in the definition of the stanza *)
+            Compilation_context.for_alias_module cctx
+          else
+            cctx
+        in
+        build_module cctx ~dep_graphs m)

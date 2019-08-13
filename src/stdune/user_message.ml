@@ -20,27 +20,27 @@ module Print_config = struct
 
   let default : Style.t -> _ = function
     | Loc ->
-        [ bold ]
+      [ bold ]
     | Error ->
-        [ bold; fg_red ]
+      [ bold; fg_red ]
     | Warning ->
-        [ bold; fg_magenta ]
+      [ bold; fg_magenta ]
     | Kwd ->
-        [ bold; fg_blue ]
+      [ bold; fg_blue ]
     | Id ->
-        [ bold; fg_yellow ]
+      [ bold; fg_yellow ]
     | Prompt ->
-        [ bold; fg_green ]
+      [ bold; fg_green ]
     | Details ->
-        [ dim; fg_white ]
+      [ dim; fg_white ]
     | Ok ->
-        [ dim; fg_green ]
+      [ dim; fg_green ]
     | Debug ->
-        [ underlined; fg_bright_cyan ]
+      [ underlined; fg_bright_cyan ]
     | Success ->
-        [ bold; fg_green ]
+      [ bold; fg_green ]
     | Ansi_styles l ->
-        l
+      l
 end
 
 type t =
@@ -53,11 +53,11 @@ let make ?loc ?prefix ?(hints = []) paragraphs =
   let paragraphs =
     match (prefix, paragraphs) with
     | None, l ->
-        l
+      l
     | Some p, [] ->
-        [ p ]
+      [ p ]
     | Some p, x :: l ->
-        Pp.concat ~sep:Pp.space [ p; x ] :: l
+      Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
   { loc; hints; paragraphs }
 
@@ -65,24 +65,24 @@ let pp { loc; paragraphs; hints } =
   let paragraphs =
     match hints with
     | [] ->
-        paragraphs
+      paragraphs
     | _ ->
-        List.append paragraphs
-          (List.map hints ~f:(fun hint ->
-               Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
+      List.append paragraphs
+        (List.map hints ~f:(fun hint ->
+             Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =
     match loc with
     | None ->
-        paragraphs
+      paragraphs
     | Some { Loc0.start; stop } ->
-        let start_c = start.pos_cnum - start.pos_bol in
-        let stop_c = stop.pos_cnum - start.pos_bol in
-        Pp.tag ~tag:Style.Loc
-          (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
-             start.pos_lnum start_c stop_c)
-        :: paragraphs
+      let start_c = start.pos_cnum - start.pos_bol in
+      let stop_c = stop.pos_cnum - start.pos_bol in
+      Pp.tag ~tag:Style.Loc
+        (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
+           start.pos_lnum start_c stop_c)
+      :: paragraphs
   in
   Pp.vbox
     (Pp.concat_map paragraphs ~sep:Pp.nop ~f:(fun pp -> Pp.seq pp Pp.cut))
@@ -131,9 +131,9 @@ let did_you_mean s ~candidates =
   in
   match candidates with
   | [] ->
-      []
+    []
   | l ->
-      [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
+    [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
 
 let to_string t =
   Format.asprintf "%a" Pp.render_ignore_tags (pp { t with loc = None })

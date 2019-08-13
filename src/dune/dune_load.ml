@@ -17,9 +17,9 @@ module Dune_file = struct
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
           | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
-              false
+            false
           | _ ->
-              true)
+            true)
       else
         stanzas
     in
@@ -31,9 +31,9 @@ module Dune_file = struct
   and inner_fold t inner_list l ~init ~f =
     match inner_list with
     | [] ->
-        fold_stanzas l ~init ~f
+      fold_stanzas l ~init ~f
     | x :: inner_list ->
-        inner_fold t inner_list l ~init:(f t x init) ~f
+      inner_fold t inner_list l ~init:(f t x init) ~f
 end
 
 module Dune_files = struct
@@ -63,52 +63,48 @@ module Dune_files = struct
     let rec loop n lines acc =
       match lines with
       | [] ->
-          acc
+        acc
       | line :: lines ->
-          let acc =
-            match Scanf.sscanf line "#require %S" (fun x -> x) with
-            | exception _ ->
-                acc
-            | s -> (
-                let loc : Loc.t =
-                  let start : Lexing.position =
-                    { pos_fname = Path.to_string path
-                    ; pos_lnum = n
-                    ; pos_cnum = 0
-                    ; pos_bol = 0
-                    }
-                  in
-                  { start
-                  ; stop = { start with pos_cnum = String.length line }
-                  }
-                in
-                ( match (kind : Dune_lang.File_syntax.t) with
-                | Jbuild ->
-                    ()
-                | Dune ->
-                    User_error.raise ~loc
-                      [ Pp.text
-                          "#require is no longer supported in dune files."
-                      ; Pp.text
-                          "You can use the following function instead of \
-                           Unix.open_process_in:\n\n\
-                          \  (** Execute a command and read it's output *)\n\
-                          \  val run_and_read_lines : string -> string list"
-                      ] );
-                match String.split s ~on:',' with
-                | [] ->
-                    acc
-                | [ "unix" ] ->
-                    Unix
-                | _ ->
-                    User_error.raise ~loc
-                      [ Pp.text
-                          "Using libraries other that \"unix\" is not \
-                           supported."
-                      ; Pp.text "See the manual for details."
-                      ] )
-          in
-          loop (n + 1) lines acc
+        let acc =
+          match Scanf.sscanf line "#require %S" (fun x -> x) with
+          | exception _ ->
+            acc
+          | s -> (
+            let loc : Loc.t =
+              let start : Lexing.position =
+                { pos_fname = Path.to_string path
+                ; pos_lnum = n
+                ; pos_cnum = 0
+                ; pos_bol = 0
+                }
+              in
+              { start; stop = { start with pos_cnum = String.length line } }
+            in
+            ( match (kind : Dune_lang.File_syntax.t) with
+            | Jbuild ->
+              ()
+            | Dune ->
+              User_error.raise ~loc
+                [ Pp.text "#require is no longer supported in dune files."
+                ; Pp.text
+                    "You can use the following function instead of \
+                     Unix.open_process_in:\n\n\
+                    \  (** Execute a command and read it's output *)\n\
+                    \  val run_and_read_lines : string -> string list"
+                ] );
+            match String.split s ~on:',' with
+            | [] ->
+              acc
+            | [ "unix" ] ->
+              Unix
+            | _ ->
+              User_error.raise ~loc
+                [ Pp.text
+                    "Using libraries other that \"unix\" is not supported."
+                ; Pp.text "See the manual for details."
+                ] )
+        in
+        loop (n + 1) lines acc
     in
     loop 1 (String.split str ~on:'\n') No_requires
 
@@ -185,9 +181,9 @@ end
     let static, dynamic =
       List.partition_map dune_files ~f:(function
         | Literal x ->
-            Left x
+          Left x
         | Script x ->
-            Right x)
+          Right x)
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
         let generated_dune_file =
@@ -247,15 +243,15 @@ type conf =
 let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
   match dune_file.contents with
   | Plain p ->
-      let dune_file =
-        Dune_files.Literal
-          (Dune_file.parse p.sexps ~dir ~file:p.path ~project
-             ~kind:dune_file.kind)
-      in
-      p.sexps <- [];
-      dune_file
+    let dune_file =
+      Dune_files.Literal
+        (Dune_file.parse p.sexps ~dir ~file:p.path ~project
+           ~kind:dune_file.kind)
+    in
+    p.sexps <- [];
+    dune_file
   | Ocaml_script file ->
-      Script { dir; project; file; kind = dune_file.kind }
+    Script { dir; project; file; kind = dune_file.kind }
 
 let load ~ancestor_vcs () =
   let ftree = File_tree.load Path.Source.root ~ancestor_vcs in
@@ -277,20 +273,20 @@ let load ~ancestor_vcs () =
           ~f:(fun name a b ->
             match (a, b) with
             | None, None ->
-                None
+              None
             | None, Some _ ->
-                b
+              b
             | Some _, None ->
-                a
+              a
             | Some a, Some b ->
-                User_error.raise
-                  [ Pp.textf "Too many opam files for package %S:"
-                      (Package.Name.to_string name)
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file a))
-                  ; Pp.textf "- %s"
-                      (Path.Source.to_string_maybe_quoted (Package.opam_file b))
-                  ]))
+              User_error.raise
+                [ Pp.textf "Too many opam files for package %S:"
+                    (Package.Name.to_string name)
+                ; Pp.textf "- %s"
+                    (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+                ; Pp.textf "- %s"
+                    (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                ]))
   in
   let rec walk dir dune_files =
     if File_tree.Dir.ignored dir then
@@ -302,10 +298,10 @@ let load ~ancestor_vcs () =
       let dune_files =
         match File_tree.Dir.dune_file dir with
         | None ->
-            dune_files
+          dune_files
         | Some dune_file ->
-            let dune_file = interpret ~dir:path ~project ~dune_file in
-            dune_file :: dune_files
+          let dune_file = interpret ~dir:path ~project ~dune_file in
+          dune_file :: dune_files
       in
       String.Map.fold sub_dirs ~init:dune_files ~f:walk
   in

@@ -40,23 +40,21 @@ let runtime_file ~dir ~sctx file =
       ~file
   with
   | Error _ -> (
-      let fail =
-        let fail () =
-          Utils.library_not_found ~context:(SC.context sctx).name
-            ~hint:install_jsoo_hint "js_of_ocaml-compiler"
-        in
-        Build.fail { fail }
+    let fail =
+      let fail () =
+        Utils.library_not_found ~context:(SC.context sctx).name
+          ~hint:install_jsoo_hint "js_of_ocaml-compiler"
       in
-      match jsoo ~dir sctx with
-      | Ok path ->
-          let path = Path.relative (Path.parent_exn path) file in
-          Build.if_file_exists path
-            ~then_:(Build.arr (fun _ -> path))
-            ~else_:fail
-      | _ ->
-          fail )
+      Build.fail { fail }
+    in
+    match jsoo ~dir sctx with
+    | Ok path ->
+      let path = Path.relative (Path.parent_exn path) file in
+      Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
+    | _ ->
+      fail )
   | Ok f ->
-      Build.arr (fun _ -> f)
+    Build.arr (fun _ -> f)
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
@@ -102,12 +100,12 @@ let jsoo_archives ~ctx lib =
   let jsoo_archive = Lib_info.jsoo_archive info in
   match jsoo_archive with
   | Some a ->
-      [ a ]
+    [ a ]
   | None ->
-      let archives = Lib_info.archives info in
-      List.map archives.byte ~f:(fun archive ->
-          in_build_dir ~ctx
-            [ Lib_name.to_string (Lib.name lib); Path.basename archive ^ ".js" ])
+    let archives = Lib_info.archives info in
+    List.map archives.byte ~f:(fun archive ->
+        in_build_dir ~ctx
+          [ Lib_name.to_string (Lib.name lib); Path.basename archive ^ ".js" ])
 
 let link_rule cc ~runtime ~target cm =
   let sctx = Compilation_context.super_context cc in
@@ -155,42 +153,42 @@ let setup_separate_compilation_rules sctx components =
   if separate_compilation_enabled sctx then
     match components with
     | [] | _ :: _ :: _ ->
-        ()
+      ()
     | [ pkg ] -> (
-        let pkg = Lib_name.of_string_exn ~loc:None pkg in
-        let ctx = SC.context sctx in
-        match Lib.DB.find (SC.installed_libs sctx) pkg with
-        | None ->
-            ()
-        | Some pkg ->
-            let info = Lib.info pkg in
-            let archives = (Lib_info.archives info).byte in
-            let archives =
-              (* Special case for the stdlib because it is not referenced in
-                 the META *)
-              match Lib_name.to_string (Lib.name pkg) with
-              | "stdlib" ->
-                  Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
-              | _ ->
-                  archives
+      let pkg = Lib_name.of_string_exn ~loc:None pkg in
+      let ctx = SC.context sctx in
+      match Lib.DB.find (SC.installed_libs sctx) pkg with
+      | None ->
+        ()
+      | Some pkg ->
+        let info = Lib.info pkg in
+        let archives = (Lib_info.archives info).byte in
+        let archives =
+          (* Special case for the stdlib because it is not referenced in the
+             META *)
+          match Lib_name.to_string (Lib.name pkg) with
+          | "stdlib" ->
+            Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
+          | _ ->
+            archives
+        in
+        List.iter archives ~f:(fun fn ->
+            let name = Path.basename fn in
+            let src_dir = Lib_info.src_dir info in
+            let src = Path.relative src_dir name in
+            let lib_name = Lib_name.to_string (Lib.name pkg) in
+            let target =
+              in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ]
+              |> Path.as_in_build_dir_exn
             in
-            List.iter archives ~f:(fun fn ->
-                let name = Path.basename fn in
-                let src_dir = Lib_info.src_dir info in
-                let src = Path.relative src_dir name in
-                let lib_name = Lib_name.to_string (Lib.name pkg) in
-                let target =
-                  in_build_dir ~ctx [ lib_name; sprintf "%s.js" name ]
-                  |> Path.as_in_build_dir_exn
-                in
-                let dir =
-                  Path.as_in_build_dir_exn (in_build_dir ~ctx [ lib_name ])
-                in
-                let spec = Command.Args.Dep src in
-                SC.add_rule sctx ~dir
-                  (js_of_ocaml_rule sctx ~dir
-                     ~flags:(As (standard sctx))
-                     ~spec ~target)) )
+            let dir =
+              Path.as_in_build_dir_exn (in_build_dir ~ctx [ lib_name ])
+            in
+            let spec = Command.Args.Dep src in
+            SC.add_rule sctx ~dir
+              (js_of_ocaml_rule sctx ~dir
+                 ~flags:(As (standard sctx))
+                 ~spec ~target)) )
 
 let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags ~promote
     =

@@ -12,24 +12,24 @@ let system_shell_exn =
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path ->
-        (path, arg)
+      (path, arg)
     | None ->
-        User_error.raise
-          [ Pp.textf
-              "I need %s to %s but I couldn't find it :(\n\
-               Who doesn't have %s%s?!"
-              cmd needed_to cmd os
-          ]
+      User_error.raise
+        [ Pp.textf
+            "I need %s to %s but I couldn't find it :(\n\
+             Who doesn't have %s%s?!"
+            cmd needed_to cmd os
+        ]
 
 let bash_exn =
   let bin = lazy (Bin.which ~path:(Env.path Env.initial) "bash") in
   fun ~needed_to ->
     match Lazy.force bin with
     | Some path ->
-        path
+      path
     | None ->
-        User_error.raise
-          [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
+      User_error.raise
+        [ Pp.textf "I need bash to %s but I couldn't find it :(" needed_to ]
 
 let not_found fmt ?loc ?context ?hint x =
   User_error.raise ?loc
@@ -37,9 +37,9 @@ let not_found fmt ?loc ?context ?hint x =
     ::
     ( match context with
     | None ->
-        []
+      []
     | Some name ->
-        [ Pp.textf " (context: %s)" name ] ) )
+      [ Pp.textf " (context: %s)" name ] ) )
     ~hints:(match hint with None -> [] | Some hint -> [ Pp.text hint ])
 
 let program_not_found ?context ?hint ~loc prog =
@@ -53,9 +53,9 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
   match findlib_toolchain with
   | None ->
-      package ^ ".install"
+    package ^ ".install"
   | Some x ->
-      sprintf "%s-%s.install" package x
+    sprintf "%s-%s.install" package x
 
 let line_directive ~filename:fn ~line_number =
   let directive =

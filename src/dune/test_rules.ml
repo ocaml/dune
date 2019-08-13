@@ -20,10 +20,10 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       let run_action =
         match t.action with
         | Some a ->
-            a
+          a
         | None ->
-            Action_unexpanded.Run
-              (String_with_vars.make_var loc test_var_name, [])
+          Action_unexpanded.Run
+            (String_with_vars.make_var loc test_var_name, [])
       in
       let extra_bindings =
         let test_exe = s ^ ".exe" in
@@ -48,23 +48,23 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       in
       match test_kind (loc, s) with
       | `Regular ->
-          add_alias ~loc ~action:run_action ~locks:[]
+        add_alias ~loc ~action:run_action ~locks:[]
       | `Expect diff ->
-          let rule =
-            { Dune_file.Rule.targets = Infer
-            ; deps = Bindings.empty
-            ; action =
-                ( loc
-                , Action_unexpanded.Redirect_out
-                    (Stdout, diff.file2, run_action) )
-            ; mode = Standard
-            ; locks = t.locks
-            ; loc
-            ; enabled_if = t.enabled_if
-            }
-          in
-          add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
-          ignore
-            ( Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
-              : Path.Build.Set.t ));
+        let rule =
+          { Dune_file.Rule.targets = Infer
+          ; deps = Bindings.empty
+          ; action =
+              ( loc
+              , Action_unexpanded.Redirect_out (Stdout, diff.file2, run_action)
+              )
+          ; mode = Standard
+          ; locks = t.locks
+          ; loc
+          ; enabled_if = t.enabled_if
+          }
+        in
+        add_alias ~loc ~action:(Diff diff) ~locks:t.locks;
+        ignore
+          ( Simple_rules.user_rule sctx rule ~extra_bindings ~dir ~expander
+            : Path.Build.Set.t ));
   Exe_rules.rules t.exes ~sctx ~dir ~scope ~expander ~dir_contents

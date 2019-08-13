@@ -35,9 +35,9 @@ end = struct
   let descend t dir =
     match String.Map.find t.by_child dir with
     | None ->
-        empty
+      empty
     | Some res ->
-        Memo.Lazy.force res
+      Memo.Lazy.force res
 
   let union_option ~f a b =
     match (a, b) with None, x | x, None -> x | Some x, Some y -> Some (f x y)
@@ -62,16 +62,16 @@ end = struct
     ; by_child =
         ( match Dir_set.default dirs with
         | true ->
-            (* This is forcing the lazy potentially too early if the directory
-               the user is interested in is not actually in the set. We're not
-               fully committed to supporting this case though, anyway. *)
-            String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
-                Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
+          (* This is forcing the lazy potentially too early if the directory
+             the user is interested in is not actually in the set. We're not
+             fully committed to supporting this case though, anyway. *)
+          String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
+              Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
         | false ->
-            String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-                Memo.lazy_ (fun () ->
-                    restrict v
-                      (Memo.lazy_ (fun () -> descend (Memo.Lazy.force t) dir))))
+          String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
+              Memo.lazy_ (fun () ->
+                  restrict v
+                    (Memo.lazy_ (fun () -> descend (Memo.Lazy.force t) dir))))
         )
     }
 
@@ -80,13 +80,13 @@ end = struct
   let singleton path rules =
     let rec go = function
       | [] ->
-          { by_child = String.Map.empty
-          ; rules_here = Memo.Lazy.of_val (Some rules)
-          }
+        { by_child = String.Map.empty
+        ; rules_here = Memo.Lazy.of_val (Some rules)
+        }
       | x :: xs ->
-          { by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs))
-          ; rules_here = Memo.Lazy.of_val None
-          }
+        { by_child = String.Map.singleton x (Memo.Lazy.of_val (go xs))
+        ; rules_here = Memo.Lazy.of_val None
+        }
     in
     go (Path.Build.explode path)
 
@@ -105,40 +105,39 @@ end
 let evaluate ~union_rules =
   let rec loop ~env = function
     | Empty ->
-        Evaluated.empty
+      Evaluated.empty
     | Union (x, y) ->
-        Evaluated.union ~union_rules (loop ~env x) (loop ~env y)
+      Evaluated.union ~union_rules (loop ~env x) (loop ~env y)
     | Approximation (paths, rules) ->
-        if
-          (not (Dir_set.is_subset paths ~of_:env))
-          && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
-        then
-          Code_error.raise
-            "inner [Approximate] specifies a set such that neither it, nor \
-             its negation, are a subset of directories specified by the outer \
-             [Approximate]."
-            [ ("inner", Dir_set.to_dyn paths); ("outer", Dir_set.to_dyn env) ]
-        else
-          let paths = Dir_set.inter paths env in
-          Evaluated.restrict paths
-            (Memo.lazy_ (fun () -> loop ~env:paths rules))
+      if
+        (not (Dir_set.is_subset paths ~of_:env))
+        && not (Dir_set.is_subset (Dir_set.negate paths) ~of_:env)
+      then
+        Code_error.raise
+          "inner [Approximate] specifies a set such that neither it, nor its \
+           negation, are a subset of directories specified by the outer \
+           [Approximate]."
+          [ ("inner", Dir_set.to_dyn paths); ("outer", Dir_set.to_dyn env) ]
+      else
+        let paths = Dir_set.inter paths env in
+        Evaluated.restrict paths (Memo.lazy_ (fun () -> loop ~env:paths rules))
     | Finite rules ->
-        let violations =
-          List.filter (Path.Build.Map.keys rules) ~f:(fun p ->
-              not (Dir_set.mem env p))
-        in
-        ( match violations with
-        | [] ->
-            ()
-        | _ :: _ ->
-            Code_error.raise
-              "Scheme attempted to generate rules in a directory it promised \
-               not to touch"
-              [ ("directories", (Dyn.Encoder.list Path.Build.to_dyn) violations)
-              ] );
-        Evaluated.finite ~union_rules rules
+      let violations =
+        List.filter (Path.Build.Map.keys rules) ~f:(fun p ->
+            not (Dir_set.mem env p))
+      in
+      ( match violations with
+      | [] ->
+        ()
+      | _ :: _ ->
+        Code_error.raise
+          "Scheme attempted to generate rules in a directory it promised not \
+           to touch"
+          [ ("directories", (Dyn.Encoder.list Path.Build.to_dyn) violations) ]
+      );
+      Evaluated.finite ~union_rules rules
     | Thunk f ->
-        loop ~env (f ())
+      loop ~env (f ())
   in
   fun t -> loop ~env:Dir_set.universal t
 

@@ -29,10 +29,10 @@ end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
     | Normal | Ppx_deriver _ ->
-        []
+      []
     | Ppx_rewriter _ ->
-        let name = Dune_file.Library.best_name lib in
-        [ Preprocessing.ppx_exe sctx ~scope name |> Result.ok_exn ]
+      let name = Dune_file.Library.best_name lib in
+      [ Preprocessing.ppx_exe sctx ~scope name |> Result.ok_exn ]
 
   let lib_install_files sctx ~scope ~dir_contents ~dir ~sub_dir:lib_subdir
       (lib : Library.t) =
@@ -50,9 +50,9 @@ end = struct
              in
              match sub_dir with
              | None ->
-                 dst
+               dst
              | Some dir ->
-                 sprintf "%s/%s" dir dst) )
+               sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
       Dir_contents.modules_of_library dir_contents
@@ -111,11 +111,11 @@ end = struct
             let sub_dir =
               match ((visibility : Visibility.t), lib_subdir) with
               | Public, _ ->
-                  lib_subdir
+                lib_subdir
               | Private, None ->
-                  Some ".private"
+                Some ".private"
               | Private, Some dir ->
-                  Some (Filename.concat dir ".private")
+                Some (Filename.concat dir ".private")
             in
             make_entry ?sub_dir Lib file)
       ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
@@ -133,22 +133,22 @@ end = struct
     Option.some_if
       ( match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-          Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       | Dune_file.Documentation _ | Dune_file.Install _ ->
-          true
+        true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-          let compile_info =
-            Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-              exes.names exes.buildable.libraries
-              ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-              ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-              ~variants:exes.variants ~optional:exes.optional
-          in
-          Result.is_ok (Lib.Compile.direct_requires compile_info)
+        let compile_info =
+          Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+            exes.names exes.buildable.libraries
+            ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+            ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+            ~variants:exes.variants ~optional:exes.optional
+        in
+        Result.is_ok (Lib.Compile.direct_requires compile_info)
       | Dune_file.Coq.T d ->
-          Option.is_some d.public
+        Option.is_some d.public
       | _ ->
-          false )
+        false )
       stanza
 
   let is_odig_doc_file fn =
@@ -177,10 +177,10 @@ end = struct
                ::
                ( match pkg.kind with
                | Dune false ->
-                   []
+                 []
                | Dune true | Opam ->
-                   let opam_file = Package_paths.opam_file ctx pkg in
-                   [ (None, Install.Entry.make Lib opam_file ~dst:"opam") ] )
+                 let opam_file = Package_paths.opam_file ctx pkg in
+                 [ (None, Install.Entry.make Lib opam_file ~dst:"opam") ] )
              in
              String.Set.fold files ~init ~f:(fun fn acc ->
                  if is_odig_doc_file fn then
@@ -200,43 +200,42 @@ end = struct
         in
         match res with
         | None ->
-            acc
+          acc
         | Some (stanza, package) ->
-            let new_entries =
-              match (stanza : Stanza.t) with
-              | Dune_file.Install i
-              | Dune_file.Executables { install_conf = Some i; _ } ->
-                  let expander = Super_context.expander sctx ~dir in
-                  let path_expander =
-                    File_binding.Unexpanded.expand ~dir
-                      ~f:(Expander.expand_str expander)
-                  in
-                  let section = i.section in
-                  List.map i.files ~f:(fun unexpanded ->
-                      let fb = path_expander unexpanded in
-                      let loc = File_binding.Expanded.src_loc fb in
-                      let src = File_binding.Expanded.src fb in
-                      let dst = File_binding.Expanded.dst fb in
-                      (Some loc, Install.Entry.make section src ?dst))
-              | Dune_file.Library lib ->
-                  let sub_dir = (Option.value_exn lib.public).sub_dir in
-                  let dir_contents = Dir_contents.get sctx ~dir in
-                  lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-              | Dune_file.Coq.T coqlib ->
-                  Coq_rules.install_rules ~sctx ~dir coqlib
-              | Dune_file.Documentation d ->
-                  let dc = Dir_contents.get sctx ~dir in
-                  let mlds = Dir_contents.mlds dc d in
-                  List.map mlds ~f:(fun mld ->
-                      ( None
-                      , Install.Entry.make
-                          ~dst:
-                            (sprintf "odoc-pages/%s" (Path.Build.basename mld))
-                          Install.Section.Doc mld ))
-              | _ ->
-                  []
-            in
-            Package.Name.Map.Multi.add_all acc package.name new_entries)
+          let new_entries =
+            match (stanza : Stanza.t) with
+            | Dune_file.Install i
+            | Dune_file.Executables { install_conf = Some i; _ } ->
+              let expander = Super_context.expander sctx ~dir in
+              let path_expander =
+                File_binding.Unexpanded.expand ~dir
+                  ~f:(Expander.expand_str expander)
+              in
+              let section = i.section in
+              List.map i.files ~f:(fun unexpanded ->
+                  let fb = path_expander unexpanded in
+                  let loc = File_binding.Expanded.src_loc fb in
+                  let src = File_binding.Expanded.src fb in
+                  let dst = File_binding.Expanded.dst fb in
+                  (Some loc, Install.Entry.make section src ?dst))
+            | Dune_file.Library lib ->
+              let sub_dir = (Option.value_exn lib.public).sub_dir in
+              let dir_contents = Dir_contents.get sctx ~dir in
+              lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
+            | Dune_file.Coq.T coqlib ->
+              Coq_rules.install_rules ~sctx ~dir coqlib
+            | Dune_file.Documentation d ->
+              let dc = Dir_contents.get sctx ~dir in
+              let mlds = Dir_contents.mlds dc d in
+              List.map mlds ~f:(fun mld ->
+                  ( None
+                  , Install.Entry.make
+                      ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
+                      Install.Section.Doc mld ))
+            | _ ->
+              []
+          in
+          Package.Name.Map.Multi.add_all acc package.name new_entries)
 
   let stanzas_to_entries =
     let memo =
@@ -339,21 +338,21 @@ let init_meta sctx ~dir =
              ~then_:
                ( match vlib with
                | None ->
-                   Build.lines_of meta_template
+                 Build.lines_of meta_template
                | Some vlib ->
-                   Build.fail
-                     { fail =
-                         (fun () ->
-                           let name = Lib.name (Lib.Local.to_lib vlib) in
-                           User_error.raise
-                             ~loc:(Loc.in_file meta_template)
-                             [ Pp.textf
-                                 "Package %s defines virtual library %s and \
-                                  has a META template. This is not allowed."
-                                 (Package.Name.to_string pkg.name)
-                                 (Lib_name.to_string name)
-                             ])
-                     } )
+                 Build.fail
+                   { fail =
+                       (fun () ->
+                         let name = Lib.name (Lib.Local.to_lib vlib) in
+                         User_error.raise
+                           ~loc:(Loc.in_file meta_template)
+                           [ Pp.textf
+                               "Package %s defines virtual library %s and has \
+                                a META template. This is not allowed."
+                               (Package.Name.to_string pkg.name)
+                               (Lib_name.to_string name)
+                           ])
+                   } )
              ~else_:(Build.return [ "# DUNE_GEN" ])
          in
          let ctx = Super_context.context sctx in
@@ -375,9 +374,9 @@ let init_meta sctx ~dir =
                     String.extract_blank_separated_words (String.drop s 1)
                   with
                   | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
-                      Format.fprintf ppf "%a@," Meta.pp meta.entries
+                    Format.fprintf ppf "%a@," Meta.pp meta.entries
                   | _ ->
-                      Format.fprintf ppf "%s@," s
+                    Format.fprintf ppf "%s@," s
                 else
                   Format.fprintf ppf "%s@," s);
             Format.pp_close_box ppf ();
@@ -401,9 +400,9 @@ let symlink_installed_artifacts_to_build_install sctx
       let loc =
         match loc with
         | Some l ->
-            l
+          l
         | None ->
-            Loc.in_file (Path.build entry.src)
+          Loc.in_file (Path.build entry.src)
       in
       Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
         (Build.symlink ~src:(Path.build entry.src) ~dst);
@@ -478,13 +477,13 @@ let install_rules sctx (package : Package.t) =
           let entries =
             match ctx.findlib_toolchain with
             | None ->
-                entries
+              entries
             | Some toolchain ->
-                let prefix = Path.of_string (toolchain ^ "-sysroot") in
-                List.map entries
-                  ~f:
-                    (Install.Entry.add_install_prefix ~paths:install_paths
-                       ~prefix)
+              let prefix = Path.of_string (toolchain ^ "-sysroot") in
+              List.map entries
+                ~f:
+                  (Install.Entry.add_install_prefix ~paths:install_paths
+                     ~prefix)
           in
           Install.gen_install_file entries)
     >>> Build.write_file_dyn install_file )

@@ -48,11 +48,10 @@ module Dir_rules = struct
 
   let data_to_dyn = function
     | Rule rule ->
-        Dyn.Variant
-          ( "Rule"
-          , [ Record [ ("targets", Path.Build.Set.to_dyn rule.targets) ] ] )
+      Dyn.Variant
+        ("Rule", [ Record [ ("targets", Path.Build.Set.to_dyn rule.targets) ] ])
     | Alias alias ->
-        Dyn.Variant ("Alias", [ Record [ ("name", Dyn.String alias.name) ] ])
+      Dyn.Variant ("Alias", [ Record [ ("name", Dyn.String alias.name) ] ])
 
   let to_dyn t = Dyn.Encoder.(list data_to_dyn) (Id.Map.values t)
 
@@ -66,17 +65,17 @@ module Dir_rules = struct
     let rules =
       List.filter_map data ~f:(function
         | Rule rule ->
-            Some rule
+          Some rule
         | Alias _ ->
-            None)
+          None)
     in
     let aliases =
       String.Map.of_list_multi
         (List.filter_map data ~f:(function
           | Rule _ ->
-              None
+            None
           | Alias { name; spec } ->
-              Some (name, spec)))
+            Some (name, spec)))
       |> String.Map.map ~f:(fun specs ->
              List.fold_left specs ~init:Alias_spec.empty ~f:Alias_spec.union)
     in
@@ -188,9 +187,9 @@ end
 let produce_dir ~dir rules =
   match Dir_rules.Nonempty.create rules with
   | None ->
-      ()
+    ()
   | Some rules ->
-      produce (Path.Build.Map.singleton dir rules)
+    produce (Path.Build.Map.singleton dir rules)
 
 let produce_dir' ~dir rules =
   let dir = Path.as_in_build_dir_exn dir in
@@ -214,9 +213,9 @@ let map t ~f =
       |> List.map ~f:(fun (id, data) ->
              match f data with
              | `No_change ->
-                 (id, data)
+               (id, data)
              | `Changed data ->
-                 (Id.gen (), data))
+               (Id.gen (), data))
       |> Id.Map.of_list_exn |> Dir_rules.Nonempty.create |> Option.value_exn)
 
 let is_subset t ~of_ =
@@ -225,17 +224,17 @@ let is_subset t ~of_ =
 let map_rules t ~f =
   map t ~f:(function
     | (Alias _ : Dir_rules.data) ->
-        `No_change
+      `No_change
     | Rule r ->
-        `Changed (Rule (f r) : Dir_rules.data))
+      `Changed (Rule (f r) : Dir_rules.data))
 
 let find t p =
   match Path.as_in_build_dir p with
   | None ->
-      Dir_rules.empty
+    Dir_rules.empty
   | Some p -> (
     match Path.Build.Map.find t p with
     | Some dir_rules ->
-        (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
+      (dir_rules : Dir_rules.Nonempty.t :> Dir_rules.t)
     | None ->
-        Dir_rules.empty )
+      Dir_rules.empty )

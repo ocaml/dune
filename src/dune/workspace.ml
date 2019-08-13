@@ -20,12 +20,12 @@ module Context = struct
     let add ts x =
       match x with
       | None ->
-          ts
+        ts
       | Some t ->
-          if List.mem t ~set:ts then
-            ts
-          else
-            ts @ [ t ]
+        if List.mem t ~set:ts then
+          ts
+        else
+          ts @ [ t ]
   end
 
   module Name = struct
@@ -69,13 +69,12 @@ module Context = struct
             Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> (s, loc)) l)
           with
           | Ok _ ->
-              List.map ~f:(fun ((_, s), x) -> (s, x)) l
+            List.map ~f:(fun ((_, s), x) -> (s, x)) l
           | Error (var, _, loc) ->
-              User_error.raise ~loc
-                [ Pp.textf
-                    "the variable %S can appear at most once in this stanza."
-                    var
-                ]
+            User_error.raise ~loc
+              [ Pp.textf
+                  "the variable %S can appear at most once in this stanza." var
+              ]
         in
         field "paths" ~default:[]
           ( Syntax.since Stanza.syntax (1, 12)
@@ -85,13 +84,13 @@ module Context = struct
       Option.iter host_context ~f:(fun _ ->
           match targets with
           | [ Target.Native ] ->
-              ()
+            ()
           | _ ->
-              User_error.raise ~loc
-                [ Pp.text
-                    "`targets` and `host` options cannot be used in the same \
-                     context."
-                ]);
+            User_error.raise ~loc
+              [ Pp.text
+                  "`targets` and `host` options cannot be used in the same \
+                   context."
+              ]);
       { targets
       ; profile
       ; loc
@@ -142,7 +141,7 @@ module Context = struct
 
   let host_context = function
     | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
-        host_context
+      host_context
 
   let t ~profile ~x =
     sum
@@ -161,9 +160,9 @@ module Context = struct
     n
     :: List.filter_map (targets t) ~f:(function
          | Native ->
-             None
+           None
          | Named s ->
-             Some (n ^ "." ^ s))
+           Some (n ^ "." ^ s))
 
   let default ?x ?profile () =
     Default
@@ -194,10 +193,10 @@ let bad_configuration_check map =
   let find_exn loc name host =
     match String.Map.find map host with
     | Some host_ctx ->
-        host_ctx
+      host_ctx
     | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
+      User_error.raise ~loc
+        [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
   in
   let check elt =
     Context.host_context elt
@@ -222,16 +221,16 @@ let top_sort contexts =
   let deps def =
     match Context.host_context def with
     | None ->
-        []
+      []
     | Some ctx ->
-        [ String.Map.find_exn map ctx ]
+      [ String.Map.find_exn map ctx ]
   in
   bad_configuration_check map;
   match Top_closure.String.top_closure ~key ~deps contexts with
   | Ok topo_contexts ->
-      topo_contexts
+    topo_contexts
   | Error _ ->
-      assert false
+    assert false
 
 let t ?x ?profile:cmdline_profile () =
   let* () = Versioned_file.no_more_lang in
@@ -251,35 +250,35 @@ let t ?x ?profile:cmdline_profile () =
             (String.Set.of_list (Context.all_names ctx));
         match (ctx, acc) with
         | Opam { merlin = true; _ }, Some _ ->
-            User_error.raise ~loc:(Context.loc ctx)
-              [ Pp.text "you can only have one context for merlin" ]
+          User_error.raise ~loc:(Context.loc ctx)
+            [ Pp.text "you can only have one context for merlin" ]
         | Opam { merlin = true; _ }, None ->
-            Some name
+          Some name
         | _ ->
-            acc)
+          acc)
   in
   let contexts =
     match contexts with
     | [] ->
-        [ Context.default ?x ~profile () ]
+      [ Context.default ?x ~profile () ]
     | _ ->
-        contexts
+      contexts
   in
   let merlin_context =
     match merlin_context with
     | Some _ ->
-        merlin_context
+      merlin_context
     | None ->
-        if
-          List.exists contexts ~f:(function
-            | Context.Default _ ->
-                true
-            | _ ->
-                false)
-        then
-          Some "default"
-        else
-          None
+      if
+        List.exists contexts ~f:(function
+          | Context.Default _ ->
+            true
+          | _ ->
+            false)
+      then
+        Some "default"
+      else
+        None
   in
   { merlin_context; contexts = top_sort (List.rev contexts); env }
 

@@ -19,36 +19,36 @@ module Style = struct
 
   let of_string = function
     | "loc" ->
-        Some Loc
+      Some Loc
     | "error" ->
-        Some Error
+      Some Error
     | "warning" ->
-        Some Warning
+      Some Warning
     | "kwd" ->
-        Some Kwd
+      Some Kwd
     | "id" ->
-        Some Id
+      Some Id
     | "prompt" ->
-        Some Prompt
+      Some Prompt
     | "details" ->
-        Some Details
+      Some Details
     | "ok" ->
-        Some Ok
+      Some Ok
     | "debug" ->
-        Some Debug
+      Some Debug
     | _ ->
-        None
+      None
 end
 
 let mark_open_tag s =
   match Style.of_string s with
   | Some style ->
-      Ansi_color.Style.escape_sequence (Style.to_styles style)
+    Ansi_color.Style.escape_sequence (Style.to_styles style)
   | None ->
-      if s <> "" && s.[0] = '\027' then
-        s
-      else
-        ""
+    if s <> "" && s.[0] = '\027' then
+      s
+    else
+      ""
 
 let setup_err_formatter_colors () =
   let open Format in

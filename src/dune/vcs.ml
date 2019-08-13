@@ -51,9 +51,9 @@ let git, hg =
     lazy
       ( match Bin.which ~path:(Env.path Env.initial) prog with
       | Some x ->
-          x
+        x
       | None ->
-          Utils.program_not_found prog ~loc:None )
+        Utils.program_not_found prog ~loc:None )
   in
   (get "git", get "hg")
 
@@ -80,23 +80,23 @@ let hg_describe t =
   let id, dirty_suffix =
     match String.drop_suffix id ~suffix:"+" with
     | Some id ->
-        (id, "-dirty")
+      (id, "-dirty")
     | None ->
-        (id, "")
+      (id, "")
   in
   let s =
     let s, dist = Option.value_exn (String.rsplit2 s ~on:' ') in
     match s with
     | "null" ->
-        id
+      id
     | _ -> (
       match int_of_string dist with
       | 1 ->
-          s
+        s
       | n ->
-          sprintf "%s-%d-%s" s (n - 1) id
+        sprintf "%s-%d-%s" s (n - 1) id
       | exception _ ->
-          sprintf "%s-%s-%s" s dist id )
+        sprintf "%s-%s-%s" s dist id )
   in
   s ^ dirty_suffix
 

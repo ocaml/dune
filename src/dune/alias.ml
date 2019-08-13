@@ -25,13 +25,13 @@ end = struct
   let of_user_written_path ~loc path =
     match Path.as_in_build_dir path with
     | Some path ->
-        { dir = Path.Build.parent_exn path; name = Path.Build.basename path }
+      { dir = Path.Build.parent_exn path; name = Path.Build.basename path }
     | None ->
-        User_error.raise ~loc
-          [ Pp.text "Invalid alias!"
-          ; Pp.textf "Tried to reference path outside build dir: %S"
-              (Path.to_string_maybe_quoted path)
-          ]
+      User_error.raise ~loc
+        [ Pp.text "Invalid alias!"
+        ; Pp.textf "Tried to reference path outside build dir: %S"
+            (Path.to_string_maybe_quoted path)
+        ]
 end
 
 include T
@@ -39,9 +39,9 @@ include T
 let compare x y =
   match String.compare x.name y.name with
   | (Lt | Gt) as x ->
-      x
+    x
   | Eq ->
-      Path.Build.compare x.dir y.dir
+    Path.Build.compare x.dir y.dir
 
 let equal x y = compare x y = Eq
 
@@ -73,13 +73,12 @@ let stamp_file t = Path.Build.relative (stamp_file_dir t) (t.name ^ suffix)
 let find_dir_specified_on_command_line ~dir ~file_tree =
   match File_tree.find_dir file_tree dir with
   | None ->
-      User_error.raise
-        [ Pp.textf
-            "Don't know about directory %s specified on the command line!"
-            (Path.Source.to_string_maybe_quoted dir)
-        ]
+    User_error.raise
+      [ Pp.textf "Don't know about directory %s specified on the command line!"
+          (Path.Source.to_string_maybe_quoted dir)
+      ]
   | Some dir ->
-      dir
+    dir
 
 let standard_aliases = Table.create (module String) 7
 

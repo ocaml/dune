@@ -7,13 +7,13 @@ type some =
 let compare_some a b =
   match (a, b) with
   | Symlink, Symlink ->
-      Eq
+    Eq
   | Symlink, _ ->
-      Lt
+    Lt
   | _, Symlink ->
-      Gt
+    Gt
   | Copy, Copy ->
-      Eq
+    Eq
 
 type t = some option
 
@@ -78,18 +78,18 @@ let error =
 
 let of_string = function
   | "none" ->
-      Ok None
+    Ok None
   | "symlink" ->
-      Ok (Some Symlink : t)
+    Ok (Some Symlink : t)
   | "copy" ->
-      Ok (Some Copy)
+    Ok (Some Copy)
   | _ ->
-      error
+    error
 
 let to_string = function
   | None ->
-      "none"
+    "none"
   | Some Symlink ->
-      "symlink"
+    "symlink"
   | Some Copy ->
-      "copy"
+    "copy"

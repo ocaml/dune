@@ -49,27 +49,27 @@ module Terminal_persistence = struct
 
   let of_string = function
     | "preserve" ->
-        Ok Preserve
+      Ok Preserve
     | "clear-on-rebuild" ->
-        Ok Clear_on_rebuild
+      Ok Clear_on_rebuild
     | _ ->
-        Error
-          "invalid terminal-persistence value, must be 'preserve' or \
-           'clear-on-rebuild'"
+      Error
+        "invalid terminal-persistence value, must be 'preserve' or \
+         'clear-on-rebuild'"
 
   let to_string = function
     | Preserve ->
-        "preserve"
+      "preserve"
     | Clear_on_rebuild ->
-        "clear-on-rebuild"
+      "clear-on-rebuild"
 
   let decode =
     plain_string (fun ~loc s ->
         match of_string s with
         | Error m ->
-            User_error.raise ~loc [ Pp.text m ]
+          User_error.raise ~loc [ Pp.text m ]
         | Ok s ->
-            s)
+          s)
 end
 
 module Display = struct
@@ -88,24 +88,24 @@ module Concurrency = struct
 
   let of_string = function
     | "auto" ->
-        Ok Auto
+      Ok Auto
     | s -> (
       match int_of_string s with
       | exception _ ->
-          error
+        error
       | n ->
-          if n >= 1 then
-            Ok (Fixed n)
-          else
-            error )
+        if n >= 1 then
+          Ok (Fixed n)
+        else
+          error )
 
   let decode =
     plain_string (fun ~loc s ->
         match of_string s with
         | Error m ->
-            User_error.raise ~loc [ Pp.text m ]
+          User_error.raise ~loc [ Pp.text m ]
         | Ok s ->
-            s)
+          s)
 
   let to_string = function Auto -> "auto" | Fixed n -> string_of_int n
 end
@@ -118,9 +118,9 @@ module Sandboxing_preference = struct
       (plain_string (fun ~loc s ->
            match Sandbox_mode.of_string s with
            | Error m ->
-               User_error.raise ~loc [ Pp.text m ]
+             User_error.raise ~loc [ Pp.text m ]
            | Ok s ->
-               s))
+             s))
 end
 
 module type S = sig

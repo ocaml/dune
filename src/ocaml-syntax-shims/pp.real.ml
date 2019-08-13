@@ -35,45 +35,45 @@ module Wrap_lexer = struct
     ) else
       match lexer lb with
       | (LET | AND) as tok ->
-          let loc = save_loc lb in
-          ( match Let_trail.op lb with
-          | None ->
-              ()
-          | Some op ->
-              register_custom_operator tok op loc (save_loc lb) );
-          restore_loc lb loc;
-          tok
+        let loc = save_loc lb in
+        ( match Let_trail.op lb with
+        | None ->
+          ()
+        | Some op ->
+          register_custom_operator tok op loc (save_loc lb) );
+        restore_loc lb loc;
+        tok
       | LPAREN ->
-          let loc1 = save_loc lb in
-          let tok2 = lexer lb in
-          let loc2 = save_loc lb in
-          let tok, loc =
-            match tok2 with
-            | LET | AND -> (
-              match Let_trail.op lb with
-              | None ->
-                  add (tok2, loc2);
-                  (Parser.LPAREN, loc1)
-              | Some op -> (
-                  let loc3 = save_loc lb in
-                  match lexer lb with
-                  | RPAREN ->
-                      ( LIDENT (encode_op tok2 op)
-                      , { loc2 with loc_end = loc3.loc_end } )
-                  | tok4 ->
-                      let loc4 = save_loc lb in
-                      add (tok2, loc2);
-                      add (tok4, loc4);
-                      register_custom_operator tok2 op loc2 loc3;
-                      (LPAREN, loc1) ) )
-            | _ ->
+        let loc1 = save_loc lb in
+        let tok2 = lexer lb in
+        let loc2 = save_loc lb in
+        let tok, loc =
+          match tok2 with
+          | LET | AND -> (
+            match Let_trail.op lb with
+            | None ->
+              add (tok2, loc2);
+              (Parser.LPAREN, loc1)
+            | Some op -> (
+              let loc3 = save_loc lb in
+              match lexer lb with
+              | RPAREN ->
+                ( LIDENT (encode_op tok2 op)
+                , { loc2 with loc_end = loc3.loc_end } )
+              | tok4 ->
+                let loc4 = save_loc lb in
                 add (tok2, loc2);
-                (LPAREN, loc1)
-          in
-          restore_loc lb loc;
-          tok
+                add (tok4, loc4);
+                register_custom_operator tok2 op loc2 loc3;
+                (LPAREN, loc1) ) )
+          | _ ->
+            add (tok2, loc2);
+            (LPAREN, loc1)
+        in
+        restore_loc lb loc;
+        tok
       | tok ->
-          tok
+        tok
 
   let () = Lexer.set_preprocessor (fun () -> Queue.clear pending) wrap
 end
@@ -87,9 +87,9 @@ module Map_ast = struct
   let get_op vb =
     match Hashtbl.find custom_operators vb.pvb_loc.loc_start with
     | exception Not_found ->
-        None
+      None
     | loc, op ->
-        Some (Exp.ident ~loc { txt = Lident op; loc })
+      Some (Exp.ident ~loc { txt = Lident op; loc })
 
   let mapper =
     let super = default_mapper in
@@ -99,76 +99,76 @@ module Map_ast = struct
         | Pexp_let (rf, (vb :: _ as vbs), body) -> (
           match get_op vb with
           | None ->
-              expr
-          | Some op ->
-              if rf = Recursive then
-                Location.raise_errorf ~loc:expr.pexp_loc
-                  "Custom 'let' operators cannot be recursive";
-              let patts, exprs =
-                List.map vbs ~f:(fun vb ->
-                    let { pvb_pat = patt
-                        ; pvb_expr = expr
-                        ; pvb_attributes = attrs
-                        ; pvb_loc = loc
-                        } =
-                      vb
-                    in
-                    ( match attrs with
-                    | [] ->
-                        ()
-                    | ({ loc; _ }, _) :: _ ->
-                        Location.raise_errorf ~loc
-                          "This attribute will be discarded" );
-                    let op =
-                      match get_op vb with
-                      | Some op ->
-                          Hashtbl.remove custom_operators vb.pvb_loc.loc_start;
-                          op
-                      | None ->
-                          Location.raise_errorf ~loc
-                            "Custom 'and' operator expected, got stantard \
-                             'and' keyword"
-                    in
-                    (patt, (loc, op, expr)))
-                |> List.split
-              in
-              let patt =
-                List.fold_left (List.tl patts) ~init:(List.hd patts)
-                  ~f:(fun acc patt ->
-                    let loc = patt.ppat_loc in
-                    Pat.tuple ~loc [ acc; patt ])
-              in
-              let vars =
-                List.mapi exprs ~f:(fun i _ ->
-                    Printf.sprintf "__future_syntax__%d__" i)
-              in
-              let pvars =
-                List.map2 vars patts ~f:(fun v p ->
-                    let loc = { p.ppat_loc with loc_ghost = true } in
-                    Pat.var ~loc { txt = v; loc })
-              in
-              let evars =
-                List.map2 vars exprs ~f:(fun v (_, _, e) ->
-                    let loc = { e.pexp_loc with loc_ghost = true } in
-                    Exp.ident ~loc { txt = Lident v; loc })
-              in
-              let expr =
-                List.fold_left2 (List.tl evars) (List.tl exprs)
-                  ~init:(List.hd evars) ~f:(fun acc var (loc, op, _) ->
-                    Exp.apply ~loc op [ (nolabel, acc); (nolabel, var) ])
-              in
-              let body =
-                let loc = expr.pexp_loc in
-                Exp.apply ~loc op
-                  [ (nolabel, expr)
-                  ; (nolabel, Exp.fun_ ~loc nolabel None patt body)
-                  ]
-              in
-              List.fold_right2 pvars exprs ~init:body
-                ~f:(fun var (loc, _, expr) acc ->
-                  Exp.let_ Nonrecursive ~loc [ Vb.mk ~loc var expr ] acc) )
-        | _ ->
             expr
+          | Some op ->
+            if rf = Recursive then
+              Location.raise_errorf ~loc:expr.pexp_loc
+                "Custom 'let' operators cannot be recursive";
+            let patts, exprs =
+              List.map vbs ~f:(fun vb ->
+                  let { pvb_pat = patt
+                      ; pvb_expr = expr
+                      ; pvb_attributes = attrs
+                      ; pvb_loc = loc
+                      } =
+                    vb
+                  in
+                  ( match attrs with
+                  | [] ->
+                    ()
+                  | ({ loc; _ }, _) :: _ ->
+                    Location.raise_errorf ~loc
+                      "This attribute will be discarded" );
+                  let op =
+                    match get_op vb with
+                    | Some op ->
+                      Hashtbl.remove custom_operators vb.pvb_loc.loc_start;
+                      op
+                    | None ->
+                      Location.raise_errorf ~loc
+                        "Custom 'and' operator expected, got stantard 'and' \
+                         keyword"
+                  in
+                  (patt, (loc, op, expr)))
+              |> List.split
+            in
+            let patt =
+              List.fold_left (List.tl patts) ~init:(List.hd patts)
+                ~f:(fun acc patt ->
+                  let loc = patt.ppat_loc in
+                  Pat.tuple ~loc [ acc; patt ])
+            in
+            let vars =
+              List.mapi exprs ~f:(fun i _ ->
+                  Printf.sprintf "__future_syntax__%d__" i)
+            in
+            let pvars =
+              List.map2 vars patts ~f:(fun v p ->
+                  let loc = { p.ppat_loc with loc_ghost = true } in
+                  Pat.var ~loc { txt = v; loc })
+            in
+            let evars =
+              List.map2 vars exprs ~f:(fun v (_, _, e) ->
+                  let loc = { e.pexp_loc with loc_ghost = true } in
+                  Exp.ident ~loc { txt = Lident v; loc })
+            in
+            let expr =
+              List.fold_left2 (List.tl evars) (List.tl exprs)
+                ~init:(List.hd evars) ~f:(fun acc var (loc, op, _) ->
+                  Exp.apply ~loc op [ (nolabel, acc); (nolabel, var) ])
+            in
+            let body =
+              let loc = expr.pexp_loc in
+              Exp.apply ~loc op
+                [ (nolabel, expr)
+                ; (nolabel, Exp.fun_ ~loc nolabel None patt body)
+                ]
+            in
+            List.fold_right2 pvars exprs ~init:body
+              ~f:(fun var (loc, _, expr) acc ->
+                Exp.let_ Nonrecursive ~loc [ Vb.mk ~loc var expr ] acc) )
+        | _ ->
+          expr
       in
       super.expr self expr
     in
@@ -197,16 +197,14 @@ let process_file fn ~magic ~parse ~print ~map ~mk_ext =
     with exn -> (
       match error_of_exn exn with
       | Some error ->
-          if !dump_ast then
-            [ mk_ext ?loc:None ?attrs:None
-                (Ast_mapper.extension_of_error error)
-            ]
-          else (
-            Location.report_error Format.err_formatter error;
-            exit 1
-          )
+        if !dump_ast then
+          [ mk_ext ?loc:None ?attrs:None (Ast_mapper.extension_of_error error) ]
+        else (
+          Location.report_error Format.err_formatter error;
+          exit 1
+        )
       | None ->
-          raise exn )
+        raise exn )
   in
   if !dump_ast then (
     set_binary_mode_out stdout true;
@@ -221,22 +219,22 @@ let process_file fn =
   let ext =
     match String.rindex fn '.' with
     | exception Not_found ->
-        ""
+      ""
     | i ->
-        String.sub fn ~pos:i ~len:(String.length fn - i)
+      String.sub fn ~pos:i ~len:(String.length fn - i)
   in
   match ext with
   | ".ml" ->
-      process_file fn ~magic:Config.ast_impl_magic_number
-        ~parse:Parse.implementation ~print:Pprintast.structure
-        ~map:Map_ast.structure ~mk_ext:Ast_helper.Str.extension
+    process_file fn ~magic:Config.ast_impl_magic_number
+      ~parse:Parse.implementation ~print:Pprintast.structure
+      ~map:Map_ast.structure ~mk_ext:Ast_helper.Str.extension
   | ".mli" ->
-      process_file fn ~magic:Config.ast_intf_magic_number
-        ~parse:Parse.interface ~print:Pprintast.signature
-        ~map:Map_ast.signature ~mk_ext:Ast_helper.Sig.extension
+    process_file fn ~magic:Config.ast_intf_magic_number ~parse:Parse.interface
+      ~print:Pprintast.signature ~map:Map_ast.signature
+      ~mk_ext:Ast_helper.Sig.extension
   | _ ->
-      Printf.eprintf "%s: Don't know what to do with %s.\n%!" prog_name fn;
-      exit 2
+    Printf.eprintf "%s: Don't know what to do with %s.\n%!" prog_name fn;
+    exit 2
 
 let () =
   let args =

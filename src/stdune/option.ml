@@ -24,9 +24,9 @@ let value t ~default = match t with Some x -> x | None -> default
 
 let value_exn = function
   | Some x ->
-      x
+    x
   | None ->
-      Code_error.raise "Option.value_exn" []
+    Code_error.raise "Option.value_exn" []
 
 let some x = Some x
 
@@ -47,24 +47,24 @@ let to_list = function None -> [] | Some x -> [ x ]
 let equal eq x y =
   match (x, y) with
   | None, None ->
-      true
+    true
   | Some _, None ->
-      false
+    false
   | None, Some _ ->
-      false
+    false
   | Some sx, Some sy ->
-      eq sx sy
+    eq sx sy
 
 let compare cmp x y =
   match (x, y) with
   | None, None ->
-      Ordering.Eq
+    Ordering.Eq
   | Some _, None ->
-      Gt
+    Gt
   | None, Some _ ->
-      Lt
+    Lt
   | Some x, Some y ->
-      cmp x y
+    cmp x y
 
 let try_with f = match f () with exception _ -> None | s -> Some s
 
@@ -72,17 +72,17 @@ module List = struct
   let all =
     let rec loop acc = function
       | [] ->
-          Some (List.rev acc)
+        Some (List.rev acc)
       | None :: _ ->
-          None
+        None
       | Some x :: xs ->
-          loop (x :: acc) xs
+        loop (x :: acc) xs
     in
     fun xs -> loop [] xs
 end
 
 let hash f = function
   | None ->
-      Dune_caml.Hashtbl.hash None
+    Dune_caml.Hashtbl.hash None
   | Some s ->
-      Dune_caml.Hashtbl.hash (f s)
+    Dune_caml.Hashtbl.hash (f s)

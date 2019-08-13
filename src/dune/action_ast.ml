@@ -11,11 +11,11 @@ module Outputs = struct
 
   let to_string = function
     | Stdout ->
-        "stdout"
+      "stdout"
     | Stderr ->
-        "stderr"
+      "stderr"
     | Outputs ->
-        "outputs"
+      "outputs"
 end
 
 module Inputs = struct
@@ -131,66 +131,65 @@ struct
     let target = Target.encode in
     function
     | Run (a, xs) ->
-        List (atom "run" :: program a :: List.map xs ~f:string)
+      List (atom "run" :: program a :: List.map xs ~f:string)
     | Chdir (a, r) ->
-        List [ atom "chdir"; path a; encode r ]
+      List [ atom "chdir"; path a; encode r ]
     | Setenv (k, v, r) ->
-        List [ atom "setenv"; string k; string v; encode r ]
+      List [ atom "setenv"; string k; string v; encode r ]
     | Redirect_out (outputs, fn, r) ->
-        List
-          [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
-          ; target fn
-          ; encode r
-          ]
+      List
+        [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
+        ; target fn
+        ; encode r
+        ]
     | Redirect_in (inputs, fn, r) ->
-        List
-          [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
-          ; path fn
-          ; encode r
-          ]
+      List
+        [ atom (sprintf "with-%s-from" (Inputs.to_string inputs))
+        ; path fn
+        ; encode r
+        ]
     | Ignore (outputs, r) ->
-        List
-          [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
+      List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
     | Progn l ->
-        List (atom "progn" :: List.map l ~f:encode)
+      List (atom "progn" :: List.map l ~f:encode)
     | Echo xs ->
-        List (atom "echo" :: List.map xs ~f:string)
+      List (atom "echo" :: List.map xs ~f:string)
     | Cat x ->
-        List [ atom "cat"; path x ]
+      List [ atom "cat"; path x ]
     | Copy (x, y) ->
-        List [ atom "copy"; path x; target y ]
+      List [ atom "copy"; path x; target y ]
     | Symlink (x, y) ->
-        List [ atom "symlink"; path x; target y ]
+      List [ atom "symlink"; path x; target y ]
     | Copy_and_add_line_directive (x, y) ->
-        List [ atom "copy#"; path x; target y ]
+      List [ atom "copy#"; path x; target y ]
     | System x ->
-        List [ atom "system"; string x ]
+      List [ atom "system"; string x ]
     | Bash x ->
-        List [ atom "bash"; string x ]
+      List [ atom "bash"; string x ]
     | Write_file (x, y) ->
-        List [ atom "write-file"; target x; string y ]
+      List [ atom "write-file"; target x; string y ]
     | Rename (x, y) ->
-        List [ atom "rename"; target x; target y ]
+      List [ atom "rename"; target x; target y ]
     | Remove_tree x ->
-        List [ atom "remove-tree"; target x ]
+      List [ atom "remove-tree"; target x ]
     | Mkdir x ->
-        List [ atom "mkdir"; path x ]
+      List [ atom "mkdir"; path x ]
     | Digest_files paths ->
-        List [ atom "digest-files"; List (List.map paths ~f:path) ]
+      List [ atom "digest-files"; List (List.map paths ~f:path) ]
     | Diff { optional; file1; file2; mode = Binary } ->
-        assert (not optional);
-        List [ atom "cmp"; path file1; path file2 ]
+      assert (not optional);
+      List [ atom "cmp"; path file1; path file2 ]
     | Diff { optional = false; file1; file2; mode = _ } ->
-        List [ atom "diff"; path file1; path file2 ]
+      List [ atom "diff"; path file1; path file2 ]
     | Diff { optional = true; file1; file2; mode = _ } ->
-        List [ atom "diff?"; path file1; path file2 ]
+      List [ atom "diff?"; path file1; path file2 ]
     | Merge_files_into (srcs, extras, into) ->
-        List
-          [ atom "merge-files-into"
-          ; List (List.map ~f:path srcs)
-          ; List (List.map ~f:string extras)
-          ; target into
-          ]
+      List
+        [ atom "merge-files-into"
+        ; List (List.map ~f:path srcs)
+        ; List (List.map ~f:string extras)
+        ; target into
+        ]
 
   let run prog args = Run (prog, args)
 

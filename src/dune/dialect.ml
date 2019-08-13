@@ -62,29 +62,29 @@ let decode =
 
 let extension { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
   | Ml_kind.Intf ->
-      intf.extension
+    intf.extension
   | Impl ->
-      impl.extension
+    impl.extension
 
 let preprocess { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
   | Ml_kind.Intf ->
-      intf.preprocess
+    intf.preprocess
   | Impl ->
-      impl.preprocess
+    impl.preprocess
 
 let format { file_kinds = { Ml_kind.Dict.intf; impl }; _ } = function
   | Ml_kind.Intf ->
-      intf.format
+    intf.format
   | Impl ->
-      impl.format
+    impl.format
 
 let ocaml =
   let format kind =
     let flag_of_kind = function
       | Ml_kind.Impl ->
-          "--impl"
+        "--impl"
       | Intf ->
-          "--intf"
+        "--intf"
     in
     let module S = String_with_vars in
     Action_dune_lang.chdir
@@ -139,9 +139,9 @@ let reason =
 let ml_suffix { file_kinds = { Ml_kind.Dict.intf; impl }; _ } ml_kind =
   match (ml_kind, intf.preprocess, impl.preprocess) with
   | Ml_kind.Intf, None, _ | Impl, _, None ->
-      None
+    None
   | _ ->
-      Some (extension ocaml ml_kind)
+    Some (extension ocaml ml_kind)
 
 module DB = struct
   type dialect = t
@@ -157,20 +157,20 @@ module DB = struct
     let by_name =
       match String.Map.add by_name dialect.name dialect with
       | Ok by_name ->
-          by_name
+        by_name
       | Error _ ->
-          User_error.raise ~loc
-            [ Pp.textf "dialect %S is already defined" dialect.name ]
+        User_error.raise ~loc
+          [ Pp.textf "dialect %S is already defined" dialect.name ]
     in
     let add_ext map ext =
       match String.Map.add map ext dialect with
       | Ok map ->
-          map
+        map
       | Error dialect ->
-          User_error.raise ~loc
-            [ Pp.textf "extension %S is already registered by dialect %S"
-                (String.drop ext 1) dialect.name
-            ]
+        User_error.raise ~loc
+          [ Pp.textf "extension %S is already registered by dialect %S"
+              (String.drop ext 1) dialect.name
+          ]
     in
     let by_extension =
       add_ext

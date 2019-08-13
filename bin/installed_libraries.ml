@@ -42,9 +42,9 @@ let term =
             let ver =
               match Dune_package.Lib.version pkg with
               | Some v ->
-                  v
+                v
               | _ ->
-                  "n/a"
+                "n/a"
             in
             Printf.printf "%-*s (version: %s)\n" max_len
               (Lib_name.to_string (Dune_package.Lib.name pkg))

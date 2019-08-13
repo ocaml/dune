@@ -8,10 +8,10 @@ let roundtrip x =
   let str = to_string x in
   match parse (Stream.of_string str) with
   | Result.Error e ->
-      failwith e
+    failwith e
   | Result.Ok exp ->
-      assert (Sexp.compare exp x = Ordering.Eq);
-      print (Pp.text str)
+    assert (Sexp.compare exp x = Ordering.Eq);
+    print (Pp.text str)
 
 let%expect_test _ =
   roundtrip (Sexp.Atom "foo");

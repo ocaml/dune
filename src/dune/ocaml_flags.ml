@@ -24,20 +24,20 @@ let dev_mode_warnings =
       Int.Set.fold ws ~init:([], None) ~f:(fun x (acc, last_range) ->
           match last_range with
           | None ->
-              assert (acc = []);
-              ([], Some (x, x))
+            assert (acc = []);
+            ([], Some (x, x))
           | Some (l, u) ->
-              if succ u = x then
-                (acc, Some (l, succ u))
-              else
-                (wrange_to_flag (l, u) :: acc, Some (x, x)))
+            if succ u = x then
+              (acc, Some (l, succ u))
+            else
+              (wrange_to_flag (l, u) :: acc, Some (x, x)))
     in
     let acc =
       match last_range with
       | None ->
-          acc
+        acc
       | Some (x, y) ->
-          wrange_to_flag (x, y) :: acc
+        wrange_to_flag (x, y) :: acc
     in
     List.rev acc |> String.concat ~sep:""
   in

@@ -85,14 +85,14 @@ module Backend = struct
               let* lib = resolve x in
               match get ~loc lib with
               | None ->
-                  Error
-                    (User_error.E
-                       (User_error.make ~loc
-                          [ Pp.textf "%S is not an %s"
-                              (Lib_name.to_string name) (desc ~plural:false)
-                          ]))
+                Error
+                  (User_error.E
+                     (User_error.make ~loc
+                        [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
+                            (desc ~plural:false)
+                        ]))
               | Some t ->
-                  Ok t))
+                Ok t))
       }
 
     let encode t =
@@ -293,13 +293,13 @@ include Sub_system.Register_end_point (struct
       List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
           match mode with
           | Native ->
-              Exe.Linkage.native
+            Exe.Linkage.native
           | Best ->
-              Exe.Linkage.native_or_custom (Super_context.context sctx)
+            Exe.Linkage.native_or_custom (Super_context.context sctx)
           | Byte ->
-              Exe.Linkage.byte
+            Exe.Linkage.byte
           | Javascript ->
-              Exe.Linkage.js)
+            Exe.Linkage.js)
     in
     Exe.build_and_link cctx
       ~program:{ name; main_module_name = Module.name main_module; loc }
@@ -326,18 +326,18 @@ include Sub_system.Register_end_point (struct
         let ext =
           match mode with
           | Native | Best ->
-              ".exe"
+            ".exe"
           | Javascript ->
-              ".bc.js"
+            ".bc.js"
           | Byte ->
-              ".bc"
+            ".bc"
         in
         let custom_runner =
           match mode with
           | Native | Best | Byte ->
-              None
+            None
           | Javascript ->
-              Some "node"
+            Some "node"
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
           ~stamp:("ppx-runner", name)
@@ -347,11 +347,10 @@ include Sub_system.Register_end_point (struct
            let exe, runner_args =
              match custom_runner with
              | None ->
-                 (Ok exe, Command.Args.As [])
+               (Ok exe, Command.Args.As [])
              | Some runner ->
-                 ( Super_context.resolve_program ~dir sctx ~loc:(Some loc)
-                     runner
-                 , Dep exe )
+               ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
+               , Dep exe )
            in
            Build.fanout
              (Super_context.Deps.interpret sctx info.deps ~expander)

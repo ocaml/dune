@@ -76,16 +76,16 @@ end = struct
   let rec forward_error t exn =
     match t.on_error with
     | None ->
-        (* We can't let the exception leak at this point, so we just dump the
-           error on stderr and exit *)
-        Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
-        sys_exit 42
+      (* We can't let the exception leak at this point, so we just dump the
+         error on stderr and exit *)
+      Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
+      sys_exit 42
     | Some { ctx; run } -> (
-        current := ctx;
-        try run exn
-        with exn ->
-          let exn = Exn_with_backtrace.capture exn in
-          forward_error ctx exn )
+      current := ctx;
+      try run exn
+      with exn ->
+        let exn = Exn_with_backtrace.capture exn in
+        forward_error ctx exn )
 
   let rec deref t =
     let n = !(t.fibers) - 1 in
@@ -212,10 +212,10 @@ let sequential_map l ~f =
   let rec loop l acc =
     match l with
     | [] ->
-        return (List.rev acc)
+      return (List.rev acc)
     | x :: l ->
-        let* x = f x in
-        loop l (x :: acc)
+      let* x = f x in
+      loop l (x :: acc)
   in
   loop l []
 
@@ -223,10 +223,10 @@ let sequential_iter l ~f =
   let rec loop l =
     match l with
     | [] ->
-        return ()
+      return ()
     | x :: l ->
-        let* () = f x in
-        loop l
+      let* () = f x in
+      loop l
   in
   loop l
 
@@ -241,21 +241,21 @@ let fork_and_join fa fb k =
   EC.apply fa () (fun a ->
       match !state with
       | Nothing_yet ->
-          EC.deref ();
-          state := Got_a a
+        EC.deref ();
+        state := Got_a a
       | Got_a _ ->
-          assert false
+        assert false
       | Got_b b ->
-          k (a, b));
+        k (a, b));
   fb () (fun b ->
       match !state with
       | Nothing_yet ->
-          EC.deref ();
-          state := Got_b b
+        EC.deref ();
+        state := Got_b b
       | Got_a a ->
-          k (a, b)
+        k (a, b)
       | Got_b _ ->
-          assert false)
+        assert false)
 
 let fork_and_join_unit fa fb k =
   let state = ref Nothing_yet in
@@ -263,21 +263,21 @@ let fork_and_join_unit fa fb k =
   EC.apply fa () (fun () ->
       match !state with
       | Nothing_yet ->
-          EC.deref ();
-          state := Got_a ()
+        EC.deref ();
+        state := Got_a ()
       | Got_a _ ->
-          assert false
+        assert false
       | Got_b b ->
-          k b);
+        k b);
   fb () (fun b ->
       match !state with
       | Nothing_yet ->
-          EC.deref ();
-          state := Got_b b
+        EC.deref ();
+        state := Got_b b
       | Got_a () ->
-          k b
+        k b
       | Got_b _ ->
-          assert false)
+        assert false)
 
 let list_of_option_array =
   let rec loop arr i acc =
@@ -287,50 +287,50 @@ let list_of_option_array =
       let i = i - 1 in
       match arr.(i) with
       | None ->
-          assert false
+        assert false
       | Some x ->
-          loop arr i (x :: acc)
+        loop arr i (x :: acc)
   in
   fun a -> loop a (Array.length a) []
 
 let parallel_map l ~f k =
   match l with
   | [] ->
-      k []
+    k []
   | [ x ] ->
-      f x (fun x -> k [ x ])
+    f x (fun x -> k [ x ])
   | _ ->
-      let n = List.length l in
-      EC.add_refs (n - 1);
-      let left_over = ref n in
-      let results = Array.make n None in
-      List.iteri l ~f:(fun i x ->
-          EC.apply f x (fun y ->
-              results.(i) <- Some y;
-              decr left_over;
-              if !left_over = 0 then
-                k (list_of_option_array results)
-              else
-                EC.deref ()))
+    let n = List.length l in
+    EC.add_refs (n - 1);
+    let left_over = ref n in
+    let results = Array.make n None in
+    List.iteri l ~f:(fun i x ->
+        EC.apply f x (fun y ->
+            results.(i) <- Some y;
+            decr left_over;
+            if !left_over = 0 then
+              k (list_of_option_array results)
+            else
+              EC.deref ()))
 
 let parallel_iter l ~f k =
   match l with
   | [] ->
-      k ()
+    k ()
   | [ x ] ->
-      f x k
+    f x k
   | _ ->
-      let n = List.length l in
-      EC.add_refs (n - 1);
-      let left_over = ref n in
-      let k () =
-        decr left_over;
-        if !left_over = 0 then
-          k ()
-        else
-          EC.deref ()
-      in
-      List.iter l ~f:(fun x -> EC.apply f x k)
+    let n = List.length l in
+    EC.add_refs (n - 1);
+    let left_over = ref n in
+    let k () =
+      decr left_over;
+      if !left_over = 0 then
+        k ()
+      else
+        EC.deref ()
+    in
+    List.iter l ~f:(fun x -> EC.apply f x k)
 
 module Var = struct
   include Univ_map.Key
@@ -381,11 +381,11 @@ module Ivar = struct
   let fill t x k =
     match t.state with
     | Full _ ->
-        failwith "Fiber.Ivar.fill"
+      failwith "Fiber.Ivar.fill"
     | Empty q ->
-        t.state <- Full x;
-        K.run_queue q x;
-        k ()
+      t.state <- Full x;
+      K.run_queue q x;
+      k ()
 
   let read t k =
     match t.state with Full x -> k x | Empty q -> Queue.push (K.create k) q
@@ -410,19 +410,19 @@ let fork f k =
 let nfork_map l ~f k =
   match l with
   | [] ->
-      k []
+    k []
   | [ x ] ->
-      fork (fun () -> f x) (fun ivar -> k [ ivar ])
+    fork (fun () -> f x) (fun ivar -> k [ ivar ])
   | l ->
-      let n = List.length l in
-      EC.add_refs (n - 1);
-      let ivars =
-        List.map l ~f:(fun x ->
-            let ivar = Ivar.create () in
-            EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-            ivar)
-      in
-      k ivars
+    let n = List.length l in
+    EC.add_refs (n - 1);
+    let ivars =
+      List.map l ~f:(fun x ->
+          let ivar = Ivar.create () in
+          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
+          ivar)
+    in
+    k ivars
 
 let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
 
@@ -439,14 +439,14 @@ module Once = struct
   let get t =
     match t.state with
     | Running fut ->
-        Future.wait fut
+      Future.wait fut
     | Not_started f ->
-        t.state <- Starting;
-        let* fut = fork f in
-        t.state <- Running fut;
-        Future.wait fut
+      t.state <- Starting;
+      let* fut = fork f in
+      t.state <- Running fut;
+      Future.wait fut
     | Starting ->
-        failwith "Fiber.Once.get: recursive evaluation"
+      failwith "Fiber.Once.get: recursive evaluation"
 
   let peek t = match t.state with Running fut -> Future.peek fut | _ -> None
 
@@ -496,8 +496,8 @@ let run t =
     | [] -> (
       match !result with None -> raise Never | Some x -> x )
     | to_run ->
-        suspended := [];
-        K.run_list to_run ();
-        loop ()
+      suspended := [];
+      K.run_list to_run ();
+      loop ()
   in
   loop ()

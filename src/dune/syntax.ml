@@ -8,9 +8,9 @@ module Version = struct
     let compare (major_a, minor_a) (major_b, minor_b) =
       match Int.compare major_a major_b with
       | (Gt | Lt) as ne ->
-          ne
+        ne
       | Eq ->
-          Int.compare minor_a minor_b
+        Int.compare minor_a minor_b
 
     let to_dyn t =
       let open Dyn.Encoder in
@@ -39,8 +39,7 @@ module Version = struct
       with _ ->
         User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
     | sexp ->
-        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
-          [ Pp.text "Atom expected" ]
+      User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read ~parser_version:(parser_major, parser_minor)
       ~data_version:(data_major, data_minor) =
@@ -60,9 +59,9 @@ module Supported_versions = struct
   let is_supported t (major, minor) =
     match Int.Map.find t major with
     | Some minor' ->
-        minor' >= minor
+      minor' >= minor
     | None ->
-        false
+      false
 
   let supported_ranges t =
     Int.Map.to_list t
@@ -144,26 +143,26 @@ let get_exn t =
   get t.key
   >>= function
   | Some x ->
-      return x
+    return x
   | None ->
-      let+ context = get_all in
-      Code_error.raise "Syntax identifier is unset"
-        [ ("name", Dyn.Encoder.string t.name)
-        ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
-        ; ("context", Univ_map.to_dyn context)
-        ]
+    let+ context = get_all in
+    Code_error.raise "Syntax identifier is unset"
+      [ ("name", Dyn.Encoder.string t.name)
+      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
+      ; ("context", Univ_map.to_dyn context)
+      ]
 
 let desc () =
   let+ kind = kind in
   match kind with
   | Values (loc, None) ->
-      (loc, "This syntax")
+    (loc, "This syntax")
   | Fields (loc, None) ->
-      (loc, "This field")
+    (loc, "This field")
   | Values (loc, Some s) ->
-      (loc, sprintf "'%s'" s)
+    (loc, sprintf "'%s'" s)
   | Fields (loc, Some s) ->
-      (loc, sprintf "Field '%s'" s)
+    (loc, sprintf "Field '%s'" s)
 
 let deleted_in t ver =
   let open Version.Infix in
@@ -201,7 +200,7 @@ let since ?(fatal = true) t ver =
     desc ()
     >>= function
     | loc, what when fatal ->
-        Error.since loc t ver ~what
+      Error.since loc t ver ~what
     | loc, what ->
-        User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
-        return ()
+      User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
+      return ()

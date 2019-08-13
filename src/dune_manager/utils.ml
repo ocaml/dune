@@ -12,7 +12,7 @@ let retry ?message ?(count = 100) f =
       | Some v ->
           Result.Ok v
       | None ->
-          Thread.delay 0.1 ;
+          Thread.delay 0.1;
           loop (x + 1) )
   in
   loop 0

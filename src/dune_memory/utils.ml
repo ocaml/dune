@@ -12,5 +12,6 @@ let unix f =
 let rec mkpath p =
   let s = Path.to_string p in
   if not (Sys.file_exists s) then (
-    mkpath (Path.parent_exn p) ;
-    Unix.mkdir s 0o700 )
+    mkpath (Path.parent_exn p);
+    Unix.mkdir s 0o700
+  )

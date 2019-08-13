@@ -322,8 +322,7 @@ module Unexpanded = struct
       | Diff (l, r) ->
           loop (loop acc l) r
     in
-    let syntax = dune_kind t in
-    (syntax, loop Path.Set.empty t.ast)
+    loop Path.Set.empty t.ast
 
   let has_special_forms t =
     let rec loop (t : ast) =

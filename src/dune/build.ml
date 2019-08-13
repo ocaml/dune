@@ -131,11 +131,11 @@ let lines_of p = Lines_of p
 
 let strings p = lines_of p >>^ fun l -> List.map l ~f:Scanf.unescaped
 
-let read_sexp p syntax =
+let read_sexp p =
   contents p
   >>^ fun s ->
   Dune_lang.parse_string s
-    ~lexer:(Dune_lang.Lexer.of_syntax syntax)
+    ~lexer:Dune_lang.Lexer.token
     ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =

@@ -184,7 +184,7 @@ module Memory = struct
         match search memory effective_hash tmp with
         | Collision.Found p ->
             Unix.unlink (Path.to_string tmp);
-            Path.touch tmp;
+            Path.touch p;
             Result.Ok (Already_promoted (path, p))
         | Collision.Not_found p ->
             mkpath (Path.parent_exn p);

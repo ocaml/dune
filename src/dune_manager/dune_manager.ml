@@ -5,6 +5,8 @@ open Utils
 
 type version = int * int
 
+type config = { exit_no_client : bool }
+
 type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
@@ -87,12 +89,13 @@ type t =
   ; mutable socket : Unix.file_descr option
   ; mutable clients : (client * Thread.t) Clients.t
   ; mutable endpoint : string option
+  ; config : config
   }
 
 exception Error of string
 
-let make ?root () : t =
-  { root; socket = None; clients = Clients.empty; endpoint = None }
+let make ?root ~config () : t =
+  { root; socket = None; clients = Clients.empty; endpoint = None; config }
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -385,15 +388,17 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           ( try
               Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
               Unix.close client.fd
-            with
-          | Unix.Unix_error (Unix.EBADF, _, _) ->
-              Log.infof "%s: ended" (peer_name client.peer)
-          | Sys_error msg ->
-              Log.infof "%s: ended: %s" (peer_name client.peer) msg );
-          manager.clients <- Clients.remove manager.clients client.fd
+            with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+          manager.clients <- Clients.remove manager.clients client.fd;
+          if manager.config.exit_no_client && Clients.is_empty manager.clients
+          then
+            stop manager
         in
-        try Exn.protect ~f ~finally
-        with Unix.Unix_error (Unix.EBADF, _, _) -> ()
+        try Exn.protect ~f ~finally with
+        | Unix.Unix_error (Unix.EBADF, _, _) ->
+            Log.infof "%s: ended" (peer_name client.peer)
+        | Sys_error msg ->
+            Log.infof "%s: ended: %s" (peer_name client.peer) msg
       in
       let fd, peer = accept () in
       let client =

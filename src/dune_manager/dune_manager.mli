@@ -7,7 +7,9 @@ exception Stop
 
 exception Error of string
 
-val make : ?root:Path.t -> unit -> t
+type config = { exit_no_client : bool }
+
+val make : ?root:Path.t -> config:config -> unit -> t
 
 val default_port_file : unit -> Path.t
 

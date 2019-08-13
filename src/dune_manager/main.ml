@@ -60,6 +60,14 @@ module Modes = Map.Make (String)
 let modes = Modes.empty
 
 let start () =
+  let config =
+    let get item =
+      try Some (Sys.getenv ("DUNE_CACHE_" ^ String.uppercase item))
+      with Not_found -> None
+    in
+    let bool item = Option.is_some (get item) in
+    { Dune_manager.exit_no_client = bool "exit_no_client" }
+  in
   let port_path = ref (Dune_manager.default_port_file ())
   and root = ref (Dune_memory.default_root ())
   and foreground = ref false
@@ -88,7 +96,7 @@ let start () =
               Quiet );
           let log_file = Path.relative !root "log" in
           Log.init ~file:(This log_file) ();
-          let manager = Dune_manager.make ~root:!root () in
+          let manager = Dune_manager.make ~root:!root ~config () in
           let port_f port =
             if make_port_file !port_path port = None then
               Dune_manager.stop manager

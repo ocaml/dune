@@ -113,7 +113,10 @@ module type memory = sig
     -> (promotion list, string) Result.t
 
   val search :
-    t -> key -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
+       t
+    -> ?touch:bool
+    -> key
+    -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
 end
 
 module Memory = struct
@@ -181,6 +184,7 @@ module Memory = struct
         match search memory effective_hash tmp with
         | Collision.Found p ->
             Unix.unlink (Path.to_string tmp);
+            Path.touch tmp;
             Result.Ok (Already_promoted (path, p))
         | Collision.Not_found p ->
             mkpath (Path.parent_exn p);
@@ -216,7 +220,7 @@ module Memory = struct
     in
     with_lock memory f
 
-  let search memory key =
+  let search memory ?(touch = true) key =
     let path = FSSchemeImpl.path (path_meta memory) key in
     let f () =
       let open Result.O in
@@ -243,7 +247,13 @@ module Memory = struct
                   Result.Ok (f, t, FSSchemeImpl.digest t)
               | _ ->
                   Result.Error "invalid metadata scheme in produced files list")
-            >>| function produced -> (metadata, produced) )
+            >>| function
+            | produced ->
+                if touch then
+                  List.iter
+                    ~f:(function _, source, _ -> Path.touch source)
+                    produced;
+                (metadata, produced) )
       | _ ->
           Result.Error "invalid metadata scheme"
     in

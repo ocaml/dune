@@ -30,7 +30,10 @@ module type memory = sig
     -> (promotion list, string) Result.t
 
   val search :
-    t -> key -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
+       t
+    -> ?touch:bool
+    -> key
+    -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
 end
 
 module Memory : memory

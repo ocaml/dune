@@ -59,7 +59,7 @@ Test the argument syntax
   $ dune build --root driver-tests test_ppx_args.cma
   Entering directory 'driver-tests'
            ppx test_ppx_args.pp.ml
-  .ppx/031272d0b003c307d6a59ce4a911dd3b/ppx.exe
+  .ppx/a45c15d61f473f6a301551552d3f7586/ppx.exe
   -arg1
   -arg2
   -arg3=Oreo

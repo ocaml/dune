@@ -1,0 +1,11 @@
+(rule
+ (target bar1)
+ (action (with-stdout-to %{target} (echo "Hello from bar!"))))
+
+(rule
+ (target bar2)
+ (action (with-stdout-to %{target} (echo "Hello from bar!"))))
+
+(rule
+ (target bar3)
+ (action (with-stdout-to %{target} (echo "Hello from bar!"))))

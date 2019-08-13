@@ -1,0 +1,5 @@
+(library
+ (name dune_action)
+ (public_name dune._dune_action)
+ (libraries stdune)
+ (synopsis "Monadic interface for defining scripts with dynamic or complex set of depencencies."))

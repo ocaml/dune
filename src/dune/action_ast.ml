@@ -57,6 +57,10 @@ struct
           , let+ prog = Program.decode
             and+ args = repeat String.decode in
             Run (prog, args) )
+        ; ( "run-dynamic"
+          , let+ prog = Program.decode
+            and+ args = repeat String.decode in
+            Run_dynamic (prog, args) )
         ; ( "chdir"
           , let+ dn = path
             and+ t = t in
@@ -129,6 +133,8 @@ struct
     let target = Target.encode in
     function
     | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
+    | Run_dynamic (a, xs) ->
+      List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
     | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
     | Redirect_out (outputs, fn, r) ->

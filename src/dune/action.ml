@@ -151,6 +151,7 @@ let fold_one_step t ~init:acc ~f =
     f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
+   |Run_dynamic _
    |Echo _
    |Cat _
    |Copy _
@@ -253,6 +254,7 @@ let is_useful_to_sandbox =
     | Digest_files _ -> false
     | Merge_files_into _ -> false
     | Run _ -> true
+    | Run_dynamic _ -> true
     | System _ -> true
     | Bash _ -> true
   in

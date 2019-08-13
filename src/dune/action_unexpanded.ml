@@ -95,8 +95,7 @@ module Partial = struct
   end
 
   let rec expand t ~map_exe ~expander : Unresolved.t =
-    match t with
-    | Run (prog, args) ->
+    let expand_run prog args =
       let args = List.concat_map args ~f:(E.strings ~expander) in
       let prog, more_args = E.prog_and_args ~expander prog in
       let prog =
@@ -104,7 +103,15 @@ module Partial = struct
         | Search _ -> prog
         | This path -> This (map_exe path)
       in
-      Run (prog, more_args @ args)
+      (prog, more_args @ args)
+    in
+    match t with
+    | Run (prog, args) ->
+      let prog, args = expand_run prog args in
+      Run (prog, args)
+    | Run_dynamic (prog, args) ->
+      let prog, args = expand_run prog args in
+      Run_dynamic (prog, args)
     | Chdir (fn, t) ->
       let fn = E.path ~expander fn in
       let expander =
@@ -189,8 +196,7 @@ module E = struct
 end
 
 let rec partial_expand t ~map_exe ~expander : Partial.t =
-  match t with
-  | Run (prog, args) -> (
+  let partial_expand_exe prog args =
     let args =
       List.concat_map args ~f:(fun arg ->
         match E.strings ~expander arg with
@@ -205,8 +211,16 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
         | Search _ -> prog
         | This path -> This (map_exe path)
       in
-      Run (Left prog, more_args @ args)
-    | Right _ as prog -> Run (prog, args) )
+      (Left prog, more_args @ args)
+    | Right _ as prog -> (prog, args)
+  in
+  match t with
+  | Run (prog, args) ->
+    let prog, args = partial_expand_exe prog args in
+    Run (prog, args)
+  | Run_dynamic (prog, args) ->
+    let prog, args = partial_expand_exe prog args in
+    Run_dynamic (prog, args)
   | Chdir (fn, t) -> (
     let res = E.path ~expander fn in
     match res with
@@ -351,6 +365,7 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
+      | Run_dynamic (prog, _) -> acc +<! prog
       | Redirect_out (_, fn, t) -> infer (acc +@+ fn) t
       | Redirect_in (_, fn, t) -> infer (acc +< fn) t
       | Cat fn -> acc +< fn

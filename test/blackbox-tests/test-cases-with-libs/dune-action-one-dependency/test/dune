@@ -1,0 +1,7 @@
+(rule
+ (target bar)
+ (action (with-stdout-to %{target} (echo "Hello from bar!"))))
+
+(alias
+ (name runtest)
+ (action (run-dynamic ./foo.exe)))

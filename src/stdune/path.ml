@@ -1343,6 +1343,18 @@ let mkdir_p = function
   | In_build_dir k ->
       Kind.mkdir_p (Kind.append_local (Lazy.force Build.build_dir_kind) k)
 
+let touch p =
+  let p =
+    match p with
+    | External s ->
+        External.to_string s
+    | In_source_tree s ->
+        Local_gen.to_string s
+    | In_build_dir k ->
+        Kind.to_string (Kind.append_local (Lazy.force Build.build_dir_kind) k)
+  in
+  Unix.utimes p 0.0 0.0
+
 let compare x y =
   match (x, y) with
   | External x, External y ->

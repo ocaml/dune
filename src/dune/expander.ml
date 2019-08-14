@@ -522,7 +522,6 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
 let expand_and_eval_set t set ~standard =
   let open Build.O in
   let dir = Path.build (dir t) in
-  let parse ~loc:_ s = s in
   let standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then
       standard
@@ -536,23 +535,24 @@ let expand_and_eval_set t set ~standard =
     in
     Ordered_set_lang.Unexpanded.files set ~f
   in
-  let f template = expand t ~mode:Many ~template in
+  let expand =
+    let f template = expand t ~mode:Many ~template in
+    Ordered_set_lang.Unexpanded.expand ~dir ~f
+  in
+  let eval =
+    let parse ~loc:_ s = s in
+    Ordered_set_lang.eval ~parse ~eq:String.equal
+  in
   match Path.Set.to_list files with
   | [] ->
-    let set =
-      Ordered_set_lang.Unexpanded.expand set ~dir
-        ~files_contents:Path.Map.empty ~f
-    in
-    standard
-    >>^ fun standard ->
-    Ordered_set_lang.eval set ~standard ~parse ~eq:String.equal
+    let set = expand set ~files_contents:Path.Map.empty in
+    standard >>^ fun standard -> eval set ~standard
   | paths ->
     List.map paths ~f:Build.read_sexp
     |> Build.all |> Build.fanout standard
     >>^ fun (standard, sexps) ->
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-    Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f
-    |> Ordered_set_lang.eval ~standard ~parse ~eq:String.equal
+    expand set ~files_contents |> eval ~standard
 
 let eval_blang t = function
   | Blang.Const x ->

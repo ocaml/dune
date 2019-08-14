@@ -79,7 +79,8 @@ let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 let rule_loc ~file_tree ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
-  | _ ->
+  | Internal
+   |Source_file_copy ->
     let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
       match
@@ -1230,9 +1231,9 @@ end = struct
       | File f -> build_file f
       | Glob g -> Pred.build g
       | Universe
-       |Env _ ->
-        Fiber.return ()
-      | Sandbox_config _ -> Fiber.return ())
+       |Env _
+       |Sandbox_config _ ->
+        Fiber.return ())
 
   let eval_pred = Pred.eval
 

@@ -5,6 +5,7 @@ module Bytes = Bytes
 module Comparator = Comparator
 module Console = Console
 module Csexp = Csexp
+module Daemonize = Daemonize
 module Either = Either
 module Exn = Exn
 module Exn_with_backtrace = Exn_with_backtrace

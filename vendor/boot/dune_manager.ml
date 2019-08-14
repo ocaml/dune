@@ -8,4 +8,6 @@ module Client = struct
   let search _ _ = result
 
   let set_build_dir _ _ = ()
+
+  let teardown _ = ()
 end

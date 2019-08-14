@@ -456,6 +456,7 @@ let err msg = User_error.E (User_error.make [ Pp.text msg ])
 module Client = struct
   type t =
     { socket : out_channel
+    ; fd : Unix.file_descr
     ; memory : Dune_memory.Memory.t
     }
 
@@ -484,14 +485,13 @@ module Client = struct
       | _ ->
         Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))
     in
-    let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     let* _ =
-      Result.try_with (fun () ->
-        Unix.connect socket (Unix.ADDR_INET (addr, port)))
+      Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
     in
-    let socket = Unix.out_channel_of_descr socket in
+    let socket = Unix.out_channel_of_descr fd in
     send socket my_versions_command;
-    Result.Ok { socket; memory }
+    Result.Ok { socket; fd; memory }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key
@@ -524,4 +524,8 @@ module Client = struct
         ])
 
   let search client key = Dune_memory.Memory.search client.memory key
+
+  let teardown memory =
+    flush memory.socket;
+    Unix.shutdown memory.fd Unix.SHUTDOWN_ALL
 end

@@ -38,14 +38,14 @@ let init_disabled () = Fdecl.set t None
 
 let t () = Fdecl.get t
 
-let info_internal { ppf; _ } str =
+let info_internal { oc; _ } str =
   let write ppf =
     List.iter (String.split_lines str) ~f:(function
       | "" -> Format.pp_print_string ppf "#\n"
       | s -> Format.fprintf ppf "# %s\n" s);
     Format.pp_print_flush ppf ()
   in
-  write ppf;
+  Option.iter ~f:(fun o -> write (Format.formatter_of_out_channel o)) oc;
   match Console.display () with
   | Verbose -> Console.print (Format.asprintf "%t" write)
   | _ -> ()

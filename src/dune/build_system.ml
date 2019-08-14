@@ -277,7 +277,8 @@ module Dir_triage = struct
     | Need_step2
 end
 
-module Trace : sig
+(* Stores information needed to determine if rule need to be reexecuted. *)
+module Trace_db : sig
   module Entry : sig
     type t =
       { rule_digest : Digest.t
@@ -1351,7 +1352,7 @@ end = struct
     Fs.mkdir_p dir;
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
-    let prev_trace = Trace.get (Path.build head_target) in
+    let prev_trace = Trace_db.get (Path.build head_target) in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
       | Clearly_not ->
@@ -1455,7 +1456,7 @@ end = struct
         let targets_digest =
           compute_targets_digest_after_rule_execution ~info targets_as_list
         in
-        Trace.set (Path.build head_target) { rule_digest; targets_digest }
+        Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
       ) else
         Fiber.return ()
     in

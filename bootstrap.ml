@@ -123,11 +123,16 @@ let read_lines fn =
   close_in ic;
   lines
 
-let exec fmt =
+let exec pgm fmt =
   ksprintf
-    (fun cmd ->
+    (fun args ->
+      let cmd = Filename.quote pgm ^ " " ^ args in
       print_endline cmd;
-      Sys.command cmd)
+      Sys.command
+        ( if Sys.win32 then
+          "\"" ^ cmd ^ "\""
+        else
+          cmd ))
     fmt
 
 let path_sep =
@@ -210,7 +215,7 @@ let ocamldep = get_prog bin_dir "ocamldep"
 let run_ocamllex src =
   let dst = String.sub src ~pos:0 ~len:(String.length src - 1) in
   let x = Sys.file_exists dst in
-  let n = exec "%s -q %s" ocamllex src in
+  let n = exec ocamllex "-q %s" src in
   if n <> 0 then exit n;
   if not x then add_to_delete dst;
   dst
@@ -341,7 +346,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
     add_to_delete out_fn;
     List.map files_by_lib ~f:(fun (libname, files) ->
         let n =
-          exec "%s -modules%s %s > %s" ocamldep pp
+          exec ocamldep "-modules%s %s > %s" pp
             (String.concat ~sep:" " files)
             out_fn
         in
@@ -526,7 +531,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
   in
   let n =
     try
-      exec "%s -g -w -40 -o %s%s %s %s %s" compiler exe pp flags
+      exec compiler "-g -w -40 -o %s%s %s %s %s" exe pp flags
         backend_specific_flags generated_file
     with e ->
       cleanup ~keep_ml_file:true;

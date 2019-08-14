@@ -1,10 +1,10 @@
 (** Non-fatal user errors *)
 
 (** Warnings are user errors that cannot be proper errors for backward
-    compatibility reasons *)
+  compatibility reasons *)
 
 (** Emit a user warning. The arguments are interpreted in a similar fashion to
-    {!User_error.raise} except that the first paragraph is prefixed with
+  {!User_error.raise} except that the first paragraph is prefixed with
     "Warning: " rather than "Error: ".
 
     If [is_error] is [true], then this function behaves exactly the same as

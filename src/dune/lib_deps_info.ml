@@ -22,12 +22,12 @@ type t = Kind.t Lib_name.Map.t
 
 let merge a b =
   Lib_name.Map.merge a b ~f:(fun _ a b ->
-      match (a, b) with
-      | None, None ->
-          None
-      | x, None | None, x ->
-          x
-      | Some a, Some b ->
-          Some (Kind.merge a b))
+    match (a, b) with
+    | None, None ->
+      None
+    | x, None | None, x ->
+      x
+    | Some a, Some b ->
+      Some (Kind.merge a b))
 
 let to_dyn = Lib_name.Map.to_dyn Kind.to_dyn

@@ -33,12 +33,12 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
   let vlib_obj_map =
     lazy
       ( Modules.obj_map vlib_modules ~f:(function
-          | Normal m ->
-              m
+        | Normal m ->
+          m
           | _ ->
-              assert false)
+            assert false)
       |> Module.Obj_map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
-             Module_name.Map.add_exn acc (Module.real_unit_name m) m) )
+        Module_name.Map.add_exn acc (Module.real_unit_name m) m) )
   in
   { impl
   ; impl_cm_kind
@@ -50,8 +50,8 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
 
 let vlib_stubs_o_files = function
   | None ->
-      []
+    []
   | Some t ->
-      t.vlib_foreign_objects
+    t.vlib_foreign_objects
 
 let vlib_obj_map t = Lazy.force t.vlib_obj_map

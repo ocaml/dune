@@ -11,21 +11,21 @@ module Pub_name = struct
     let s = Lib_name.to_string s in
     match String.split s ~on:'.' with
     | [] ->
-        assert false
+      assert false
     | x :: l ->
-        let rec loop acc l =
-          match l with [] -> acc | x :: l -> loop (Dot (acc, x)) l
-        in
-        loop (Id x) l
+      let rec loop acc l =
+        match l with [] -> acc | x :: l -> loop (Dot (acc, x)) l
+      in
+      loop (Id x) l
 
   let rec root = function Dot (t, _) -> root t | Id n -> n
 
   let to_list =
     let rec loop acc = function
       | Dot (t, n) ->
-          loop (n :: acc) t
+        loop (n :: acc) t
       | Id n ->
-          n :: acc
+        n :: acc
     in
     fun t -> loop [] t
 
@@ -69,23 +69,23 @@ let gen_lib pub_name lib ~version =
   let desc =
     match synopsis with
     | Some s ->
-        s
+      s
     | None -> (
       (* CR-someday jdimino: wut? this looks old *)
       match (pub_name : Pub_name.t) with
       | Dot (p, "runtime-lib") ->
-          sprintf "Runtime library for %s" (Pub_name.to_string p)
+        sprintf "Runtime library for %s" (Pub_name.to_string p)
       | Dot (p, "expander") ->
-          sprintf "Expander for %s" (Pub_name.to_string p)
+        sprintf "Expander for %s" (Pub_name.to_string p)
       | _ ->
-          "" )
+        "" )
   in
   let preds =
     match kind with
     | Normal ->
-        []
+      []
     | Ppx_rewriter _ | Ppx_deriver _ ->
-        [ Pos "ppx_driver" ]
+      [ Pos "ppx_driver" ]
   in
   let lib_deps = Lib.Meta.requires lib in
   let ppx_rt_deps = Lib.Meta.ppx_runtime_deps lib in
@@ -94,56 +94,55 @@ let gen_lib pub_name lib ~version =
     ; [ description desc; requires ~preds lib_deps ]
     ; archives ~preds lib
     ; ( if Lib_name.Set.is_empty ppx_rt_deps then
-        []
+      []
       else
         [ Comment
-            "This is what dune uses to find out the runtime dependencies of"
+          "This is what dune uses to find out the runtime dependencies of"
         ; Comment "a preprocessor"
         ; ppx_runtime_deps ppx_rt_deps
         ] )
     ; ( match kind with
       | Normal ->
-          []
+        []
       | Ppx_rewriter _ | Ppx_deriver _ ->
-          (* Deprecated ppx method support *)
-          let no_ppx_driver = Neg "ppx_driver"
-          and no_custom_ppx = Neg "custom_ppx" in
-          List.concat
-            [ [ Comment
-                  "This line makes things transparent for people mixing \
-                   preprocessors"
-              ; Comment "and normal dependencies"
-              ; requires ~preds:[ no_ppx_driver ]
-                  (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
+        (* Deprecated ppx method support *)
+        let no_ppx_driver = Neg "ppx_driver"
+        and no_custom_ppx = Neg "custom_ppx" in
+        List.concat
+          [ [ Comment
+            "This line makes things transparent for people mixing preprocessors"
+            ; Comment "and normal dependencies"
+            ; requires ~preds:[ no_ppx_driver ]
+              (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
+            ]
+          ; ( match kind with
+            | Normal ->
+              assert false
+            | Ppx_rewriter _ ->
+              [ rule "ppx"
+                [ no_ppx_driver; no_custom_ppx ]
+                  Set "./ppx.exe --as-ppx"
               ]
-            ; ( match kind with
-              | Normal ->
-                  assert false
-              | Ppx_rewriter _ ->
-                  [ rule "ppx"
-                      [ no_ppx_driver; no_custom_ppx ]
-                      Set "./ppx.exe --as-ppx"
-                  ]
-              | Ppx_deriver _ ->
-                  [ rule "requires"
-                      [ no_ppx_driver; no_custom_ppx ]
-                      Add "ppx_deriving"
-                  ; rule "ppxopt"
-                      [ no_ppx_driver; no_custom_ppx ]
-                      Set
-                      ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
-                  ] )
-            ] )
+            | Ppx_deriver _ ->
+              [ rule "requires"
+                [ no_ppx_driver; no_custom_ppx ]
+                  Add "ppx_deriving"
+              ; rule "ppxopt"
+                [ no_ppx_driver; no_custom_ppx ]
+                  Set
+                  ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+              ] )
+          ] )
     ; ( match Lib_info.jsoo_runtime info with
       | [] ->
-          []
+        []
       | l ->
-          let root = Pub_name.root pub_name in
-          let l = List.map l ~f:Path.basename in
-          [ rule "linkopts" [ Pos "javascript" ] Set
-              (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
-          ; rule "jsoo_runtime" [] Set (String.concat l ~sep:" ")
-          ] )
+        let root = Pub_name.root pub_name in
+        let l = List.map l ~f:Path.basename in
+        [ rule "linkopts" [ Pos "javascript" ] Set
+          (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
+        ; rule "jsoo_runtime" [] Set (String.concat l ~sep:" ")
+        ] )
     ]
 
 let gen ~package ~version libs =
@@ -152,33 +151,33 @@ let gen ~package ~version libs =
   in
   let pkgs =
     List.map libs ~f:(fun lib ->
-        let pub_name = Pub_name.parse (Lib.name lib) in
-        (pub_name, gen_lib pub_name lib ~version))
+      let pub_name = Pub_name.parse (Lib.name lib) in
+      (pub_name, gen_lib pub_name lib ~version))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
-        match Pub_name.to_list pn with
-        | [] ->
-            assert false
-        | _package :: path ->
-            (path, meta))
+      match Pub_name.to_list pn with
+      | [] ->
+        assert false
+      | _package :: path ->
+        (path, meta))
   in
   let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec loop name pkgs =
     let entries, sub_pkgs =
       List.partition_map pkgs ~f:(function
         | [], entries ->
-            Left entries
+          Left entries
         | x :: p, entries ->
-            Right (x, (p, entries)))
+          Right (x, (p, entries)))
     in
     let entries = List.concat entries in
     let subs =
       String.Map.of_list_multi sub_pkgs
       |> String.Map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
-             let pkg = loop name pkgs in
-             Package { pkg with entries = directory name :: pkg.entries })
+        let pkg = loop name pkgs in
+        Package { pkg with entries = directory name :: pkg.entries })
     in
     { name = Some (Lib_name.of_string_exn ~loc:None name)
     ; entries = entries @ subs

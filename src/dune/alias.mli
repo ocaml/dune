@@ -12,7 +12,7 @@ val make : string -> dir:Path.Build.t -> t
 
 (** The following always holds:
 
-    {[ make (name t) ~dir:(dir t) = t ]} *)
+  {[ make (name t) ~dir:(dir t) = t ]} *)
 val name : t -> string
 
 val dir : t -> Path.Build.t

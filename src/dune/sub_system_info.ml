@@ -30,21 +30,21 @@ module Register (M : S) : sig end = struct
   let () =
     match Sub_system_name.Table.get all name with
     | Some _ ->
-        Code_error.raise "Sub_system_info.register: already registered"
-          [ ("name", Dyn.Encoder.string (Sub_system_name.to_string name)) ]
+      Code_error.raise "Sub_system_info.register: already registered"
+        [ ("name", Dyn.Encoder.string (Sub_system_name.to_string name)) ]
     | None -> (
-        Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
-        let p = !record_parser in
-        let name_s = Sub_system_name.to_string name in
-        record_parser :=
-          fun acc ->
-            field_o name_s parse
-            >>= function
-            | None ->
-                p acc
-            | Some x ->
-                let acc = Sub_system_name.Map.set acc name (T x) in
-                p acc )
+      Sub_system_name.Table.set all ~key:name ~data:(Some (module M : S));
+      let p = !record_parser in
+      let name_s = Sub_system_name.to_string name in
+      record_parser :=
+        fun acc ->
+          field_o name_s parse
+          >>= function
+          | None ->
+            p acc
+          | Some x ->
+            let acc = Sub_system_name.Map.set acc name (T x) in
+            p acc )
 end
 
 let record_parser () = !record_parser Sub_system_name.Map.empty

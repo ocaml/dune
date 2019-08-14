@@ -20,9 +20,9 @@ include struct
   let index_from_opt s i ch =
     match String.index_from s i ch with
     | i ->
-        Some i
+      Some i
     | exception Not_found ->
-        None
+      None
 
   let rindex_opt s ch =
     match String.rindex s ch with i -> Some i | exception Not_found -> None
@@ -30,9 +30,9 @@ include struct
   let rindex_from_opt s i ch =
     match String.rindex_from s i ch with
     | i ->
-        Some i
+      Some i
     | exception Not_found ->
-        None
+      None
 end
 
 include StringLabels
@@ -83,7 +83,7 @@ let rec check_prefix s ~prefix len i =
 let rec check_suffix s ~suffix suffix_len offset i =
   i = suffix_len
   || s.[offset + i] = suffix.[i]
-     && check_suffix s ~suffix suffix_len offset (i + 1)
+    && check_suffix s ~suffix suffix_len offset (i + 1)
 
 let is_prefix s ~prefix =
   let len = length s in
@@ -134,9 +134,9 @@ let extract_words s ~is_word_char =
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
     | ',' | ' ' | '\t' | '\n' ->
-        false
+      false
     | _ ->
-        true)
+      true)
 
 let extract_blank_separated_words s =
   extract_words s ~is_word_char:(function ' ' | '\t' -> false | _ -> true)
@@ -144,23 +144,23 @@ let extract_blank_separated_words s =
 let lsplit2 s ~on =
   match index s on with
   | None ->
-      None
+    None
   | Some i ->
-      Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
+    Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
 let lsplit2_exn s ~on =
   match lsplit2 s ~on with
   | Some s ->
-      s
+    s
   | None ->
-      Code_error.raise "lsplit2_exn" [ ("s", String s); ("on", Char on) ]
+    Code_error.raise "lsplit2_exn" [ ("s", String s); ("on", Char on) ]
 
 let rsplit2 s ~on =
   match rindex s on with
   | None ->
-      None
+    None
   | Some i ->
-      Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
+    Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
 include String_split
 
@@ -192,20 +192,20 @@ let longest l = longest_map l ~f:Fn.id
 
 let longest_prefix = function
   | [] ->
-      ""
+    ""
   | [ x ] ->
-      x
+    x
   | x :: xs ->
-      let rec loop len i =
-        if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
-          loop len (i + 1)
-        else
-          i
-      in
-      let len =
-        List.fold_left ~init:(length x) ~f:(fun acc x -> min acc (length x)) xs
-      in
-      sub ~pos:0 x ~len:(loop len 0)
+    let rec loop len i =
+      if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
+        loop len (i + 1)
+      else
+        i
+    in
+    let len =
+      List.fold_left ~init:(length x) ~f:(fun acc x -> min acc (length x)) xs
+    in
+    sub ~pos:0 x ~len:(loop len 0)
 
 let exists =
   let rec loop s i len f =
@@ -237,7 +237,7 @@ module Set = struct
   let pp fmt t =
     Format.fprintf fmt "Set (@[%a@])"
       (Format.pp_print_list Format.pp_print_string ~pp_sep:(fun fmt () ->
-           Format.fprintf fmt "@ "))
+        Format.fprintf fmt "@ "))
       (to_list t)
 end
 
@@ -256,13 +256,13 @@ let enumerate_gen s =
   let s = " " ^ s ^ " " in
   let rec loop = function
     | [] ->
-        []
+      []
     | [ x ] ->
-        [ x ]
+      [ x ]
     | [ x; y ] ->
-        [ x; s; y ]
+      [ x; s; y ]
     | x :: l ->
-        x :: ", " :: loop l
+      x :: ", " :: loop l
   in
   fun l -> concat (loop l) ~sep:""
 
@@ -306,9 +306,9 @@ let need_quoting s =
     else
       match s.[i] with
       | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' ->
-          true
+        true
       | _ ->
-          loop (i + 1)
+        loop (i + 1)
   in
   loop 0
 

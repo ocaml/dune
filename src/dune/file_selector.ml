@@ -10,9 +10,9 @@ let dir t = t.dir
 let compare x y =
   match Path.compare x.dir y.dir with
   | (Ordering.Lt | Gt) as a ->
-      a
+    a
   | Eq ->
-      Predicate.compare x.predicate y.predicate
+    Predicate.compare x.predicate y.predicate
 
 let create ~dir predicate = { dir; predicate }
 

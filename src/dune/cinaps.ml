@@ -50,19 +50,19 @@ let gen_rules sctx t ~dir ~scope =
       (Path.Build.drop_build_context_exn dir)
     |> Path.Source.Set.to_list
     |> List.filter_map ~f:(fun p ->
-           if
-             Predicate_lang.exec t.files (Path.Source.basename p)
-               ~standard:Predicate_lang.true_
-           then
-             Some (Path.Build.append_source (Super_context.build_dir sctx) p)
-           else
-             None)
+      if
+        Predicate_lang.exec t.files (Path.Source.basename p)
+          ~standard:Predicate_lang.true_
+      then
+        Some (Path.Build.append_source (Super_context.build_dir sctx) p)
+      else
+        None)
   in
   (* Ask cinaps to produce a .ml file to build *)
   Super_context.add_rule sctx ~loc:t.loc ~dir
     (Command.run ~dir:(Path.build dir)
-       (Super_context.resolve_program sctx ~dir ~loc:(Some loc) "cinaps"
-          ~hint:"opam pin add --dev cinaps")
+      (Super_context.resolve_program sctx ~dir ~loc:(Some loc) "cinaps"
+        ~hint:"opam pin add --dev cinaps")
        [ A "-staged"
        ; Target cinaps_ml
        ; Deps (List.map cinapsed_files ~f:Path.build)
@@ -88,7 +88,7 @@ let gen_rules sctx t ~dir ~scope =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (t.loc, name) ]
       ( Dune_file.Lib_dep.Direct
-          (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
+        (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
       :: t.libraries )
       ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
       ~variants:None ~optional:false
@@ -113,8 +113,8 @@ let gen_rules sctx t ~dir ~scope =
     >>^ fun () ->
     A.chdir (Path.build dir)
       (A.progn
-         ( A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
-         :: List.map cinapsed_files ~f:(fun fn ->
-                let fn = Path.build fn in
-                A.diff ~optional:true fn
-                  (Path.extend_basename fn ~suffix:".cinaps-corrected")) )))
+        ( A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]
+        :: List.map cinapsed_files ~f:(fun fn ->
+          let fn = Path.build fn in
+          A.diff ~optional:true fn
+            (Path.extend_basename fn ~suffix:".cinaps-corrected")) )))

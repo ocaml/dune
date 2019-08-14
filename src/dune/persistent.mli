@@ -1,7 +1,7 @@
 (** Persistent values *)
 
 (** This module allows to store values on disk so that they persist after Dune
-    has exited and can be re-used by the next run of Dune.
+  has exited and can be re-used by the next run of Dune.
 
     Values are simply marshaled using the [Marshal] module and manually
     versioned. As such, it is important to remember to increase the version
@@ -21,7 +21,7 @@ module type Desc = sig
 end
 
 (** Create a pair of functions to write/read a persistent value to/from a file.
-    [D.name] must be unique.
+  [D.name] must be unique.
 
     In the future, we plan to add a command [dune dump <file>] that will
     pretty-print the contents of any persistent file. This command will use the

@@ -3,7 +3,7 @@
 open! Stdune
 
 (** Type of potentially infinite sets of directories. Not all sets can be
-    represented, only ones that can be efficiently inspected. *)
+  represented, only ones that can be efficiently inspected. *)
 type 'w t
 
 (** [mem t p] is [true] if and only if [p] is in [t] *)
@@ -20,7 +20,7 @@ val universal : 'w t
 
 (** [trivial b] is such that for all path [p]:
 
-    {[ mem (trivial b) p = b ]}
+  {[ mem (trivial b) p = b ]}
 
     i.e. [trivial false] is [empty] and [trivial true] is [universal]. *)
 val trivial : bool -> 'w t
@@ -30,12 +30,12 @@ val is_empty : 'w t -> bool
 val is_universal : 'w t -> bool
 
 (** [descend t comp] is the set [t'] such that for all path [p], [p] is in [t']
-    iff [comp/p] is in [t]. [comp] must be a path component, i.e. without
+  iff [comp/p] is in [t]. [comp] must be a path component, i.e. without
     directory separator characters. *)
 val descend : 'w t -> string -> Path.Local.w t
 
 (** [exceptions t] is the set of all bindings of the form [(comp, t']] such
-    that:
+  that:
 
     - [t' = descend t comp] - [t' <> trivial (default t)]
 
@@ -44,7 +44,7 @@ val descend : 'w t -> string -> Path.Local.w t
 val exceptions : 'w t -> Path.Local.w t String.Map.t
 
 (** Default membership value for paths that are neither empty nor part of the
-    exceptions. I.e. for all non-empty path [p] whose first component is not in
+  exceptions. I.e. for all non-empty path [p] whose first component is not in
     [exceptions t], [mem t p = default t]. *)
 val default : 'w t -> bool
 

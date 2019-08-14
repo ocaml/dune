@@ -2,7 +2,7 @@ open! Stdune
 open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files for
-   simplicity *)
+  simplicity *)
 let syntax = Stanza.syntax
 
 let env_field =
@@ -20,26 +20,26 @@ module Context = struct
     let add ts x =
       match x with
       | None ->
-          ts
+        ts
       | Some t ->
-          if List.mem t ~set:ts then
-            ts
-          else
-            ts @ [ t ]
+        if List.mem t ~set:ts then
+          ts
+        else
+          ts @ [ t ]
   end
 
   module Name = struct
     let t =
       plain_string (fun ~loc name ->
-          if
-            name = ""
-            || String.is_prefix name ~prefix:"."
-            || name = "log" || name = "install" || String.contains name '/'
-            || String.contains name '\\'
-          then
-            User_error.raise ~loc
-              [ Pp.textf "%S is not allowed as a build context name" name ];
-          name)
+        if
+          name = ""
+          || String.is_prefix name ~prefix:"."
+          || name = "log" || name = "install" || String.contains name '/'
+          || String.contains name '\\'
+        then
+          User_error.raise ~loc
+            [ Pp.textf "%S is not allowed as a build context name" name ];
+        name)
   end
 
   module Common = struct
@@ -69,13 +69,12 @@ module Context = struct
             Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> (s, loc)) l)
           with
           | Ok _ ->
-              List.map ~f:(fun ((_, s), x) -> (s, x)) l
+            List.map ~f:(fun ((_, s), x) -> (s, x)) l
           | Error (var, _, loc) ->
-              User_error.raise ~loc
-                [ Pp.textf
-                    "the variable %S can appear at most once in this stanza."
-                    var
-                ]
+            User_error.raise ~loc
+              [ Pp.textf
+                "the variable %S can appear at most once in this stanza." var
+              ]
         in
         field "paths" ~default:[]
           ( Syntax.since Stanza.syntax (1, 12)
@@ -83,15 +82,14 @@ module Context = struct
           )
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
-          match targets with
-          | [ Target.Native ] ->
-              ()
-          | _ ->
-              User_error.raise ~loc
-                [ Pp.text
-                    "`targets` and `host` options cannot be used in the same \
-                     context."
-                ]);
+        match targets with
+        | [ Target.Native ] ->
+          ()
+        | _ ->
+          User_error.raise ~loc
+            [ Pp.text
+              "`targets` and `host` options cannot be used in the same context."
+            ]);
       { targets
       ; profile
       ; loc
@@ -142,7 +140,7 @@ module Context = struct
 
   let host_context = function
     | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
-        host_context
+      host_context
 
   let t ~profile ~x =
     sum
@@ -160,10 +158,10 @@ module Context = struct
     let n = name t in
     n
     :: List.filter_map (targets t) ~f:(function
-         | Native ->
-             None
+      | Native ->
+        None
          | Named s ->
-             Some (n ^ "." ^ s))
+           Some (n ^ "." ^ s))
 
   let default ?x ?profile () =
     Default
@@ -194,25 +192,24 @@ let bad_configuration_check map =
   let find_exn loc name host =
     match String.Map.find map host with
     | Some host_ctx ->
-        host_ctx
+      host_ctx
     | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
+      User_error.raise ~loc
+        [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
   in
   let check elt =
     Context.host_context elt
     |> Option.iter ~f:(fun host ->
-           let name = Context.name elt in
-           let loc = Context.loc elt in
-           let host_elt = find_exn loc name host in
-           Context.host_context host_elt
-           |> Option.iter ~f:(fun host_of_host ->
-                  User_error.raise ~loc:(Context.loc host_elt)
-                    [ Pp.textf
-                        "Context '%s' is both a host (for '%s') and a target \
-                         (for '%s')."
-                        host name host_of_host
-                    ]))
+      let name = Context.name elt in
+      let loc = Context.loc elt in
+      let host_elt = find_exn loc name host in
+      Context.host_context host_elt
+      |> Option.iter ~f:(fun host_of_host ->
+        User_error.raise ~loc:(Context.loc host_elt)
+          [ Pp.textf
+            "Context '%s' is both a host (for '%s') and a target (for '%s')."
+              host name host_of_host
+          ]))
   in
   String.Map.iter map ~f:check
 
@@ -222,16 +219,16 @@ let top_sort contexts =
   let deps def =
     match Context.host_context def with
     | None ->
-        []
+      []
     | Some ctx ->
-        [ String.Map.find_exn map ctx ]
+      [ String.Map.find_exn map ctx ]
   in
   bad_configuration_check map;
   match Top_closure.String.top_closure ~key ~deps contexts with
   | Ok topo_contexts ->
-      topo_contexts
+    topo_contexts
   | Error _ ->
-      assert false
+    assert false
 
 let t ?x ?profile:cmdline_profile () =
   let* () = Versioned_file.no_more_lang in
@@ -242,44 +239,44 @@ let t ?x ?profile:cmdline_profile () =
   let defined_names = ref String.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
-        let name = Context.name ctx in
-        if String.Set.mem !defined_names name then
-          User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.textf "second definition of build context %S" name ];
-        defined_names :=
-          String.Set.union !defined_names
-            (String.Set.of_list (Context.all_names ctx));
-        match (ctx, acc) with
-        | Opam { merlin = true; _ }, Some _ ->
-            User_error.raise ~loc:(Context.loc ctx)
-              [ Pp.text "you can only have one context for merlin" ]
-        | Opam { merlin = true; _ }, None ->
-            Some name
-        | _ ->
-            acc)
+      let name = Context.name ctx in
+      if String.Set.mem !defined_names name then
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.textf "second definition of build context %S" name ];
+      defined_names :=
+        String.Set.union !defined_names
+          (String.Set.of_list (Context.all_names ctx));
+      match (ctx, acc) with
+      | Opam { merlin = true; _ }, Some _ ->
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.text "you can only have one context for merlin" ]
+      | Opam { merlin = true; _ }, None ->
+        Some name
+      | _ ->
+        acc)
   in
   let contexts =
     match contexts with
     | [] ->
-        [ Context.default ?x ~profile () ]
+      [ Context.default ?x ~profile () ]
     | _ ->
-        contexts
+      contexts
   in
   let merlin_context =
     match merlin_context with
     | Some _ ->
-        merlin_context
+      merlin_context
     | None ->
-        if
-          List.exists contexts ~f:(function
-            | Context.Default _ ->
-                true
-            | _ ->
-                false)
-        then
-          Some "default"
-        else
-          None
+      if
+        List.exists contexts ~f:(function
+          | Context.Default _ ->
+            true
+          | _ ->
+            false)
+      then
+        Some "default"
+      else
+        None
   in
   { merlin_context; contexts = top_sort (List.rev contexts); env }
 
@@ -294,11 +291,11 @@ let default ?x ?profile () =
 let load ?x ?profile p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   Io.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lexer.eof_reached lb then
-        default ?x ?profile ()
-      else
-        let first_line = Dune_lexer.first_line lb in
-        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
+    if Dune_lexer.eof_reached lb then
+      default ?x ?profile ()
+    else
+      let first_line = Dune_lexer.first_line lb in
+      parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
 
 let default ?x ?profile () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in

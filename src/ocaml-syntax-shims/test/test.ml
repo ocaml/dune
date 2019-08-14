@@ -11,9 +11,9 @@ let t =
 let () =
   match t with
   | `Let (`And (`And (1, 2), 3), f) ->
-      assert (f ((1, 2), 3) = (1, 2, 3))
+    assert (f ((1, 2), 3) = (1, 2, 3))
   | _ ->
-      assert false
+    assert false
 
 (* Make sure the evaluation order is the same as with OCaml >= 4.08 *)
 

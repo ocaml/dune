@@ -40,47 +40,47 @@ module Parse = struct
       peek_exn
       >>= function
       | Atom (loc, A "\\") ->
-          User_error.raise ~loc [ Pp.text "unexpected \\" ]
+        User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "") | Quoted_string (_, _) | Template _ ->
-          elt
+        elt
       | Atom (loc, A s) -> (
         match s with
         | ":standard" ->
-            junk >>> return Standard
+          junk >>> return Standard
         | ":include" ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "Invalid use of :include, should be: (:include <filename>)"
-              ]
+          User_error.raise ~loc
+            [ Pp.text
+              "Invalid use of :include, should be: (:include <filename>)"
+            ]
         | _ when s.[0] = ':' ->
-            User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+          User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
         | _ ->
-            elt )
+          elt )
       | List (_, Atom (loc, A s) :: _) -> (
         match (s, kind) with
         | ":include", _ ->
-            inc
+          inc
         | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "This atom must be quoted because it is the first element \
-                   of a list and doesn't start with - or:"
-              ]
+          User_error.raise ~loc
+            [ Pp.text
+              "This atom must be quoted because it is the first element of a \
+               list and doesn't start with - or:"
+            ]
         | _ ->
-            enter (many [] kind) )
+          enter (many [] kind) )
       | List _ ->
-          enter (many [] kind)
+        enter (many [] kind)
     and many acc kind =
       peek
       >>= function
       | None ->
-          return (Union (List.rev acc))
+        return (Union (List.rev acc))
       | Some (Atom (_, A "\\")) ->
-          let+ to_remove = junk >>> many [] kind in
-          Diff (Union (List.rev acc), to_remove)
+        let+ to_remove = junk >>> many [] kind in
+        Diff (Union (List.rev acc), to_remove)
       | Some _ ->
-          let* x = one kind in
-          many (x :: acc) kind
+        let* x = one kind in
+        many (x :: acc) kind
     in
     let* kind = Stanza.file_kind () in
     match kind with Dune -> many [] kind | Jbuild -> one kind
@@ -94,9 +94,9 @@ module Parse = struct
     generic ~elt
       ~inc:
         (enter
-           (let* loc = loc in
-            User_error.raise ~loc
-              [ Pp.text "(:include ...) is not allowed here" ]))
+          (let* loc = loc in
+           User_error.raise ~loc
+             [ Pp.text "(:include ...) is not allowed here" ]))
 end
 
 let decode =
@@ -105,7 +105,7 @@ let decode =
   and+ loc, ast =
     located
       (Parse.without_include
-         ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
+        ~elt:(plain_string (fun ~loc s -> Ast.Element (loc, s))))
   in
   { ast; loc = Some loc; context }
 
@@ -143,16 +143,16 @@ module Eval = struct
     let rec loop (t : ast_expanded) =
       match t with
       | Ast.Element (loc, s) ->
-          let x = parse ~loc s in
-          singleton x
+        let x = parse ~loc s in
+        singleton x
       | Ast.Standard ->
-          standard
+        standard
       | Ast.Union elts ->
-          union (List.map elts ~f:loop)
+        union (List.map elts ~f:loop)
       | Ast.Diff (left, right) ->
-          let left = loop left in
-          let right = loop right in
-          diff left right
+        let left = loop left in
+        let right = loop right in
+        diff left right
     in
     if is_standard t then
       standard
@@ -171,12 +171,12 @@ module Eval = struct
     let singleton x = singleton (key x) x in
     let union =
       List.fold_left ~init:empty ~f:(fun acc t ->
-          merge acc t ~f:(fun _name x y ->
-              match (x, y) with Some x, _ | _, Some x -> Some x | _ -> None))
+        merge acc t ~f:(fun _name x y ->
+          match (x, y) with Some x, _ | _, Some x -> Some x | _ -> None))
     in
     let diff a b =
       merge a b ~f:(fun _name x y ->
-          match (x, y) with Some _, None -> x | _ -> None)
+        match (x, y) with Some _, None -> x | _ -> None)
     in
     of_ast ~diff ~singleton ~union
 end
@@ -208,17 +208,17 @@ let standard = { ast = Ast.Standard; loc = None; context = Univ_map.empty }
 let dune_kind t =
   match Univ_map.find t.context (Syntax.key Stanza.syntax) with
   | Some (0, _) ->
-      Dune_lang.File_syntax.Jbuild
+    Dune_lang.File_syntax.Jbuild
   | None | Some (_, _) ->
-      Dune
+    Dune
 
 let field ?(default = standard) ?check name =
   let decode =
     match check with
     | None ->
-        decode
+      decode
     | Some x ->
-        Dune_lang.Decoder.( >>> ) x decode
+      Dune_lang.Decoder.( >>> ) x decode
   in
   Dune_lang.Decoder.field name decode ~default
 
@@ -233,7 +233,7 @@ module Unexpanded = struct
     and+ loc, ast =
       located
         (Parse.with_include
-           ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
+          ~elt:(String_with_vars.decode >>| fun s -> Ast.Element s))
     in
     { ast; loc = Some loc; context }
 
@@ -242,15 +242,15 @@ module Unexpanded = struct
       let open Ast in
       function
       | Element sw ->
-          Element (f sw)
+        Element (f sw)
       | Include sw ->
-          Include (f sw)
+        Include (f sw)
       | Union xs ->
-          Union (List.map ~f:map_ast xs)
+        Union (List.map ~f:map_ast xs)
       | Diff (x, y) ->
-          Diff (map_ast x, map_ast y)
+        Diff (map_ast x, map_ast y)
       | Standard as t ->
-          t
+        t
     in
     { t with ast = map_ast t.ast }
 
@@ -258,33 +258,33 @@ module Unexpanded = struct
     let open Ast in
     let rec loop = function
       | Element s ->
-          String_with_vars.encode s
+        String_with_vars.encode s
       | Standard ->
-          Dune_lang.atom ":standard"
+        Dune_lang.atom ":standard"
       | Union l ->
-          List (List.map l ~f:loop)
+        List (List.map l ~f:loop)
       | Diff (a, b) ->
-          List [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
+        List [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
       | Include fn ->
-          List
-            [ Dune_lang.unsafe_atom_of_string ":include"
-            ; String_with_vars.encode fn
-            ]
+        List
+          [ Dune_lang.unsafe_atom_of_string ":include"
+          ; String_with_vars.encode fn
+          ]
     in
     match t.ast with
     | Union l ->
-        List.map l ~f:loop
+      List.map l ~f:loop
     | Diff (a, b) ->
-        [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
+      [ loop a; Dune_lang.unsafe_atom_of_string "\\"; loop b ]
     | ast ->
-        [ loop ast ]
+      [ loop ast ]
 
   let upgrade_to_dune t =
     match dune_kind t with
     | Dune ->
-        t
+      t
     | Jbuild ->
-        map t ~f:(String_with_vars.upgrade_to_dune ~allow_first_dep_var:false)
+      map t ~f:(String_with_vars.upgrade_to_dune ~allow_first_dep_var:false)
 
   let encode_and_upgrade t = encode (upgrade_to_dune t)
 
@@ -292,9 +292,9 @@ module Unexpanded = struct
 
   let of_strings ~pos l =
     { ast =
-        Ast.Union
-          (List.map l ~f:(fun x ->
-               Ast.Element (String_with_vars.virt_text pos x)))
+      Ast.Union
+        (List.map l ~f:(fun x ->
+          Ast.Element (String_with_vars.virt_text pos x)))
     ; loc = Some (Loc.of_pos pos)
     ; context = Univ_map.empty
     }
@@ -303,9 +303,9 @@ module Unexpanded = struct
     let decode =
       match check with
       | None ->
-          decode
+        decode
       | Some x ->
-          Dune_lang.Decoder.( >>> ) x decode
+        Dune_lang.Decoder.( >>> ) x decode
     in
     Dune_lang.Decoder.field name decode ~default
 
@@ -314,29 +314,28 @@ module Unexpanded = struct
       let open Ast in
       match ast with
       | Element _ | Standard ->
-          acc
+        acc
       | Include fn ->
-          Path.Set.add acc (f fn)
+        Path.Set.add acc (f fn)
       | Union l ->
-          List.fold_left l ~init:acc ~f:loop
+        List.fold_left l ~init:acc ~f:loop
       | Diff (l, r) ->
-          loop (loop acc l) r
+        loop (loop acc l) r
     in
-    let syntax = dune_kind t in
-    (syntax, loop Path.Set.empty t.ast)
+    loop Path.Set.empty t.ast
 
   let has_special_forms t =
     let rec loop (t : ast) =
       let open Ast in
       match t with
       | Standard | Include _ ->
-          true
+        true
       | Element _ ->
-          false
+        false
       | Union l ->
-          List.exists l ~f:loop
+        List.exists l ~f:loop
       | Diff (l, r) ->
-          loop l || loop r
+        loop l || loop r
     in
     loop t.ast
 
@@ -349,15 +348,15 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Standard | Include _ ->
-          acc
+        acc
       | Element x ->
-          f pos x acc
+        f pos x acc
       | Union l ->
-          List.fold_left l ~init:acc ~f:(fun acc x -> loop x pos acc)
+        List.fold_left l ~init:acc ~f:(fun acc x -> loop x pos acc)
       | Diff (l, r) ->
-          let acc = loop l pos acc in
-          let pos = match pos with Pos -> Neg | Neg -> Pos in
-          loop r pos acc
+        let acc = loop l pos acc in
+        let pos = match pos with Pos -> Neg | Neg -> Pos in
+        loop r pos acc
     in
     loop t.ast Pos init
 
@@ -372,32 +371,32 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Element s ->
-          f_elems s
+        f_elems s
       | Standard ->
-          Standard
+        Standard
       | Include fn ->
-          let sexp =
-            let path =
-              match f fn with
-              | [ x ] ->
-                  Value.to_path ~dir x
-              | _ ->
-                  User_error.raise ~loc:(String_with_vars.loc fn)
-                    [ Pp.text
-                        "An unquoted templated expanded to more than one \
-                         value. A file path is expected in this position."
-                    ]
-            in
-            Path.Map.find_exn files_contents path
+        let sexp =
+          let path =
+            match f fn with
+            | [ x ] ->
+              Value.to_path ~dir x
+            | _ ->
+              User_error.raise ~loc:(String_with_vars.loc fn)
+                [ Pp.text
+                  "An unquoted templated expanded to more than one value. A \
+                   file path is expected in this position."
+                ]
           in
-          let open Dune_lang.Decoder in
-          parse
-            (Parse.without_include ~elt:(String_with_vars.decode >>| f_elems))
-            context sexp
+          Path.Map.find_exn files_contents path
+        in
+        let open Dune_lang.Decoder in
+        parse
+          (Parse.without_include ~elt:(String_with_vars.decode >>| f_elems))
+          context sexp
       | Union l ->
-          Union (List.map l ~f:expand)
+        Union (List.map l ~f:expand)
       | Diff (l, r) ->
-          Diff (expand l, expand r)
+        Diff (expand l, expand r)
     in
     { t with ast = expand t.ast }
 end

@@ -17,11 +17,11 @@ module Expanded = struct
   let dst_basename { src = _, src; dst } =
     match dst with
     | Some (_, dst) ->
-        dst
+      dst
     | None ->
-        let basename = Path.Build.basename src in
-        String.drop_suffix basename ~suffix:".exe"
-        |> Option.value ~default:basename
+      let basename = Path.Build.basename src in
+      String.drop_suffix basename ~suffix:".exe"
+      |> Option.value ~default:basename
 
   let dst_path t ~dir = Path.Build.relative dir (dst_basename t)
 end
@@ -48,11 +48,11 @@ module Unexpanded = struct
     in
     { src
     ; dst =
-        (let f sw =
-           let loc, p = f sw in
-           (loc, p)
-         in
-         Option.map ~f t.dst)
+      (let f sw =
+        let loc, p = f sw in
+        (loc, p)
+       in
+       Option.map ~f t.dst)
     }
 
   module L = struct
@@ -78,18 +78,18 @@ module Unexpanded = struct
       peek_exn
       >>= function
       | Atom _ | Quoted_string _ | Template _ ->
-          decode >>| fun src -> { src; dst = None }
+        decode >>| fun src -> { src; dst = None }
       | List (_, [ _; Atom (_, A "as"); _ ]) ->
-          enter
-            (let* src = decode in
-             keyword "as"
-             >>> let* dst = decode in
-                 return { src; dst = Some dst })
+        enter
+          (let* src = decode in
+           keyword "as"
+           >>> let* dst = decode in
+             return { src; dst = Some dst })
       | sexp ->
-          User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
-            [ Pp.text
-                "invalid format, <name> or (<name> as <install-as>) expected"
-            ]
+        User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
+          [ Pp.text
+            "invalid format, <name> or (<name> as <install-as>) expected"
+          ]
 
     let decode =
       let open Dune_lang.Decoder in

@@ -21,8 +21,8 @@ val remove_locs : t -> t
 
 (** Infer dependencies and targets.
 
-    This currently doesn't support well (rename ...) and (remove-tree ...).
-    However these are not exposed in the DSL. *)
+  This currently doesn't support well (rename ...) and (remove-tree ...).
+  However these are not exposed in the DSL. *)
 module Infer : sig
   module Outcome : sig
     type t =
@@ -34,7 +34,7 @@ module Infer : sig
   val infer : Action.t -> Outcome.t
 
   (** If [all_targets] is [true] and a target cannot be determined statically,
-      fail *)
+    fail *)
   val partial : all_targets:bool -> Partial.t -> Outcome.t
 
   (** Return the list of targets of an unexpanded action. *)

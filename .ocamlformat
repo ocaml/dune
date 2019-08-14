@@ -11,3 +11,5 @@ let-and=sparse
 space-around-records
 space-around-lists
 space-around-arrays
+cases-exp-indent=2
+max-indent=2

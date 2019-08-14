@@ -19,23 +19,22 @@ let check_mkdir loc path =
   if not (Path.is_managed path) then
     User_error.raise ~loc
       [ Pp.text
-          "(mkdir ...) is not supported for paths outside of the workspace:"
+        "(mkdir ...) is not supported for paths outside of the workspace:"
       ; Pp.seq (Pp.verbatim "  ")
-          (Dune_lang.pp
-             (List
-                [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
+        (Dune_lang.pp
+          (List [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
       ]
 
 let as_in_build_dir ~loc p =
   match Path.as_in_build_dir p with
   | Some p ->
-      p
+    p
   | None ->
-      User_error.raise ?loc
-        [ Pp.textf
-            "target %s is outside the build directory. This is not allowed."
-            (Path.to_string_maybe_quoted p)
-        ]
+    User_error.raise ?loc
+      [ Pp.textf
+        "target %s is outside the build directory. This is not allowed."
+          (Path.to_string_maybe_quoted p)
+      ]
 
 module Partial = struct
   module Program = Unresolved.Program
@@ -54,11 +53,11 @@ module Partial = struct
   module E = struct
     let expand ~expander ~mode ~l ~r =
       Either.map ~l ~r:(fun s ->
-          let dir = Path.build (Expander.dir expander) in
-          r
-            ~loc:(Some (String_with_vars.loc s))
-            (Expander.expand expander ~template:s ~mode)
-            ~dir)
+        let dir = Path.build (Expander.dir expander) in
+        r
+          ~loc:(Some (String_with_vars.loc s))
+          (Expander.expand expander ~template:s ~mode)
+          ~dir)
 
     let string = expand ~mode:Single ~l:Fn.id ~r:(ignore_loc Value.to_string)
 
@@ -67,9 +66,9 @@ module Partial = struct
 
     let loc = function
       | Left _ ->
-          None
+        None
       | Right r ->
-          Some (String_with_vars.loc r)
+        Some (String_with_vars.loc r)
 
     let path e =
       let error_loc = loc e in
@@ -80,22 +79,21 @@ module Partial = struct
       expand e ~mode:Single ~l:Fn.id
         ~r:
           (ignore_loc (fun v ~dir ->
-               Value.to_path ?error_loc v ~dir
-               |> as_in_build_dir ~loc:error_loc))
+            Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))
 
     let prog_and_args_of_values ~loc p ~dir =
       match p with
       | [] ->
-          (Unresolved.Program.Search (loc, ""), [])
+        (Unresolved.Program.Search (loc, ""), [])
       | Value.Dir p :: _ ->
-          User_error.raise ?loc
-            [ Pp.textf "%s is a directory and cannot be used as an executable"
-                (Path.to_string_maybe_quoted p)
-            ]
+        User_error.raise ?loc
+          [ Pp.textf "%s is a directory and cannot be used as an executable"
+            (Path.to_string_maybe_quoted p)
+          ]
       | Value.Path p :: xs ->
-          (This p, Value.L.to_strings ~dir xs)
+        (This p, Value.L.to_strings ~dir xs)
       | String s :: xs ->
-          (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
+        (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
 
     let prog_and_args =
       expand ~mode:Many ~l:(fun x -> (x, [])) ~r:prog_and_args_of_values
@@ -104,76 +102,75 @@ module Partial = struct
   let rec expand t ~map_exe ~expander : Unresolved.t =
     match t with
     | Run (prog, args) ->
-        let args = List.concat_map args ~f:(E.strings ~expander) in
-        let prog, more_args = E.prog_and_args ~expander prog in
-        let prog =
-          match prog with Search _ -> prog | This path -> This (map_exe path)
-        in
-        Run (prog, more_args @ args)
+      let args = List.concat_map args ~f:(E.strings ~expander) in
+      let prog, more_args = E.prog_and_args ~expander prog in
+      let prog =
+        match prog with Search _ -> prog | This path -> This (map_exe path)
+      in
+      Run (prog, more_args @ args)
     | Chdir (fn, t) ->
-        let fn = E.path ~expander fn in
-        let expander =
-          (* TODO this conversion doesn't look safe. It's possible to chdir
-             outside the build dir *)
-          Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn)
-        in
-        Chdir (fn, expand t ~expander ~map_exe)
+      let fn = E.path ~expander fn in
+      let expander =
+        (* TODO this conversion doesn't look safe. It's possible to chdir
+          outside the build dir *)
+        Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn)
+      in
+      Chdir (fn, expand t ~expander ~map_exe)
     | Setenv (var, value, t) ->
-        let var = E.string ~expander var in
-        let value = E.string ~expander value in
-        let expander = Expander.set_env expander ~var ~value in
-        Setenv (var, value, expand t ~expander ~map_exe)
+      let var = E.string ~expander var in
+      let value = E.string ~expander value in
+      let expander = Expander.set_env expander ~var ~value in
+      Setenv (var, value, expand t ~expander ~map_exe)
     | Redirect_out (outputs, fn, t) ->
-        Redirect_out
-          (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
+      Redirect_out (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
     | Redirect_in (inputs, fn, t) ->
-        Redirect_in (inputs, E.path ~expander fn, expand t ~map_exe ~expander)
+      Redirect_in (inputs, E.path ~expander fn, expand t ~map_exe ~expander)
     | Ignore (outputs, t) ->
-        Ignore (outputs, expand t ~expander ~map_exe)
+      Ignore (outputs, expand t ~expander ~map_exe)
     | Progn l ->
-        Progn (List.map l ~f:(expand ~expander ~map_exe))
+      Progn (List.map l ~f:(expand ~expander ~map_exe))
     | Echo xs ->
-        Echo (List.concat_map xs ~f:(E.strings ~expander))
+      Echo (List.concat_map xs ~f:(E.strings ~expander))
     | Cat x ->
-        Cat (E.path ~expander x)
+      Cat (E.path ~expander x)
     | Copy (x, y) ->
-        Copy (E.path ~expander x, E.target ~expander y)
+      Copy (E.path ~expander x, E.target ~expander y)
     | Symlink (x, y) ->
-        Symlink (E.path ~expander x, E.target ~expander y)
+      Symlink (E.path ~expander x, E.target ~expander y)
     | Copy_and_add_line_directive (x, y) ->
-        Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
+      Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
     | System x ->
-        System (E.string ~expander x)
+      System (E.string ~expander x)
     | Bash x ->
-        Bash (E.string ~expander x)
+      Bash (E.string ~expander x)
     | Write_file (x, y) ->
-        Write_file (E.target ~expander x, E.string ~expander y)
+      Write_file (E.target ~expander x, E.string ~expander y)
     | Rename (x, y) ->
-        Rename (E.target ~expander x, E.target ~expander y)
+      Rename (E.target ~expander x, E.target ~expander y)
     | Remove_tree x ->
-        Remove_tree (E.target ~expander x)
+      Remove_tree (E.target ~expander x)
     | Mkdir x -> (
       match x with
       | Left path ->
-          Mkdir path
+        Mkdir path
       | Right tmpl ->
-          let path = E.path ~expander x in
-          check_mkdir (String_with_vars.loc tmpl) path;
-          Mkdir path )
+        let path = E.path ~expander x in
+        check_mkdir (String_with_vars.loc tmpl) path;
+        Mkdir path )
     | Digest_files x ->
-        Digest_files (List.map x ~f:(E.path ~expander))
+      Digest_files (List.map x ~f:(E.path ~expander))
     | Diff { optional; file1; file2; mode } ->
-        Diff
-          { optional
-          ; file1 = E.path ~expander file1
-          ; file2 = E.path ~expander file2
-          ; mode
-          }
+      Diff
+        { optional
+        ; file1 = E.path ~expander file1
+        ; file2 = E.path ~expander file2
+        ; mode
+        }
     | Merge_files_into (sources, extras, target) ->
-        Merge_files_into
-          ( List.map ~f:(E.path ~expander) sources
-          , List.map ~f:(E.string ~expander) extras
-          , E.target ~expander target )
+      Merge_files_into
+        ( List.map ~f:(E.path ~expander) sources
+        , List.map ~f:(E.string ~expander) extras
+        , E.target ~expander target )
 end
 
 module E = struct
@@ -182,10 +179,10 @@ module E = struct
     let f = Expander.expand_var_exn expander in
     match String_with_vars.partial_expand ~mode ~dir ~f x with
     | Expanded e ->
-        let loc = Some (String_with_vars.loc x) in
-        Left (map ~loc e ~dir)
+      let loc = Some (String_with_vars.loc x) in
+      Left (map ~loc e ~dir)
     | Unexpanded x ->
-        Right x
+      Right x
 
   let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
 
@@ -210,113 +207,109 @@ end
 let rec partial_expand t ~map_exe ~expander : Partial.t =
   match t with
   | Run (prog, args) -> (
-      let args =
-        List.concat_map args ~f:(fun arg ->
-            match E.strings ~expander arg with
-            | Left args ->
-                List.map args ~f:Either.left
-            | Right _ as x ->
-                [ x ])
+    let args =
+      List.concat_map args ~f:(fun arg ->
+        match E.strings ~expander arg with
+        | Left args ->
+          List.map args ~f:Either.left
+        | Right _ as x ->
+          [ x ])
+    in
+    match E.prog_and_args ~expander prog with
+    | Left (prog, more_args) ->
+      let more_args = List.map more_args ~f:Either.left in
+      let prog =
+        match prog with Search _ -> prog | This path -> This (map_exe path)
       in
-      match E.prog_and_args ~expander prog with
-      | Left (prog, more_args) ->
-          let more_args = List.map more_args ~f:Either.left in
-          let prog =
-            match prog with
-            | Search _ ->
-                prog
-            | This path ->
-                This (map_exe path)
-          in
-          Run (Left prog, more_args @ args)
-      | Right _ as prog ->
-          Run (prog, args) )
+      Run (Left prog, more_args @ args)
+    | Right _ as prog ->
+      Run (prog, args) )
   | Chdir (fn, t) -> (
-      let res = E.path ~expander fn in
-      match res with
-      | Left dir ->
-          let expander =
-            (* TODO this conversion doesn't look safe. It's possible to chdir
-               outside the build dir *)
-            Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir)
-          in
-          Chdir (res, partial_expand t ~expander ~map_exe)
-      | Right fn ->
-          let loc = String_with_vars.loc fn in
-          User_error.raise ~loc
-            [ Pp.text "This directory cannot be evaluated statically."
-            ; Pp.text "This is not allowed by dune"
-            ] )
-  | Setenv (var, value, t) ->
-      let var =
-        match E.string ~expander var with
-        | Left l ->
-            l
-        | Right sw ->
-            User_error.raise ~loc:(String_with_vars.loc sw)
-              [ Pp.text "environment variable names must be static" ]
-      in
-      let value = E.string ~expander value in
+    let res = E.path ~expander fn in
+    match res with
+    | Left dir ->
       let expander =
-        match value with
-        | Left value ->
-            Expander.set_env expander ~var ~value
-        | Right _ ->
-            Expander.hide_env expander ~var
+        (* TODO this conversion doesn't look safe. It's possible to chdir
+          outside the build dir *)
+        Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir)
       in
-      Setenv (Left var, value, partial_expand t ~expander ~map_exe)
-  | Redirect_out (outputs, fn, t) ->
-      Redirect_out
-        (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
-  | Redirect_in (inputs, fn, t) ->
-      Redirect_in
-        (inputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
-  | Ignore (outputs, t) ->
-      Ignore (outputs, partial_expand t ~expander ~map_exe)
-  | Progn l ->
-      Progn (List.map l ~f:(partial_expand ~map_exe ~expander))
-  | Echo xs ->
-      Echo (List.map xs ~f:(E.cat_strings ~expander))
-  | Cat x ->
-      Cat (E.path ~expander x)
-  | Copy (x, y) ->
-      Copy (E.path ~expander x, E.target ~expander y)
-  | Symlink (x, y) ->
-      Symlink (E.path ~expander x, E.target ~expander y)
-  | Copy_and_add_line_directive (x, y) ->
-      Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
-  | System x ->
-      System (E.string ~expander x)
-  | Bash x ->
-      Bash (E.string ~expander x)
-  | Write_file (x, y) ->
-      Write_file (E.target ~expander x, E.string ~expander y)
-  | Rename (x, y) ->
-      Rename (E.target ~expander x, E.target ~expander y)
-  | Remove_tree x ->
-      Remove_tree (E.target ~expander x)
-  | Mkdir x ->
-      let res = E.path ~expander x in
-      ( match res with
-      | Left path ->
-          check_mkdir (String_with_vars.loc x) path
+      Chdir (res, partial_expand t ~expander ~map_exe)
+    | Right fn ->
+      let loc = String_with_vars.loc fn in
+      User_error.raise ~loc
+        [ Pp.text "This directory cannot be evaluated statically."
+        ; Pp.text "This is not allowed by dune"
+        ] )
+  | Setenv (var, value, t) ->
+    let var =
+      match E.string ~expander var with
+      | Left l ->
+        l
+      | Right sw ->
+        User_error.raise ~loc:(String_with_vars.loc sw)
+          [ Pp.text "environment variable names must be static" ]
+    in
+    let value = E.string ~expander value in
+    let expander =
+      match value with
+      | Left value ->
+        Expander.set_env expander ~var ~value
       | Right _ ->
-          () );
-      Mkdir res
+        Expander.hide_env expander ~var
+    in
+    Setenv (Left var, value, partial_expand t ~expander ~map_exe)
+  | Redirect_out (outputs, fn, t) ->
+    Redirect_out
+      (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
+  | Redirect_in (inputs, fn, t) ->
+    Redirect_in
+      (inputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
+  | Ignore (outputs, t) ->
+    Ignore (outputs, partial_expand t ~expander ~map_exe)
+  | Progn l ->
+    Progn (List.map l ~f:(partial_expand ~map_exe ~expander))
+  | Echo xs ->
+    Echo (List.map xs ~f:(E.cat_strings ~expander))
+  | Cat x ->
+    Cat (E.path ~expander x)
+  | Copy (x, y) ->
+    Copy (E.path ~expander x, E.target ~expander y)
+  | Symlink (x, y) ->
+    Symlink (E.path ~expander x, E.target ~expander y)
+  | Copy_and_add_line_directive (x, y) ->
+    Copy_and_add_line_directive (E.path ~expander x, E.target ~expander y)
+  | System x ->
+    System (E.string ~expander x)
+  | Bash x ->
+    Bash (E.string ~expander x)
+  | Write_file (x, y) ->
+    Write_file (E.target ~expander x, E.string ~expander y)
+  | Rename (x, y) ->
+    Rename (E.target ~expander x, E.target ~expander y)
+  | Remove_tree x ->
+    Remove_tree (E.target ~expander x)
+  | Mkdir x ->
+    let res = E.path ~expander x in
+    ( match res with
+    | Left path ->
+      check_mkdir (String_with_vars.loc x) path
+    | Right _ ->
+      () );
+    Mkdir res
   | Digest_files x ->
-      Digest_files (List.map x ~f:(E.path ~expander))
+    Digest_files (List.map x ~f:(E.path ~expander))
   | Diff { optional; file1; file2; mode } ->
-      Diff
-        { optional
-        ; file1 = E.path ~expander file1
-        ; file2 = E.path ~expander file2
-        ; mode
-        }
+    Diff
+      { optional
+      ; file1 = E.path ~expander file1
+      ; file2 = E.path ~expander file2
+      ; mode
+      }
   | Merge_files_into (sources, extras, target) ->
-      Merge_files_into
-        ( List.map sources ~f:(E.path ~expander)
-        , List.map extras ~f:(E.string ~expander)
-        , E.target ~expander target )
+    Merge_files_into
+      ( List.map sources ~f:(E.path ~expander)
+      , List.map extras ~f:(E.string ~expander)
+      , E.target ~expander target )
 
 module Infer = struct
   module Outcome = struct
@@ -374,16 +367,16 @@ module Infer = struct
   end
 
   module Make
-      (Ast : Action_intf.Ast)
+    (Ast : Action_intf.Ast)
       (Sets : Sets)
       (Out : Outcome
-               with type path_set := Sets.Deps.t
-                and type target_set := Sets.Targets.t)
+        with type path_set := Sets.Deps.t
+          and type target_set := Sets.Targets.t)
       (Prim : Primitives
-                with type path := Ast.path
-                with type target := Ast.target
-                with type program := Ast.program
-                with type outcome := Out.t) =
+        with type path := Ast.path
+          with type target := Ast.target
+            with type program := Ast.program
+              with type outcome := Out.t) =
   struct
     open Ast
     open Out
@@ -392,43 +385,43 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) ->
-          acc +<! prog
+        acc +<! prog
       | Redirect_out (_, fn, t) ->
-          infer (acc +@+ fn) t
+        infer (acc +@+ fn) t
       | Redirect_in (_, fn, t) ->
-          infer (acc +< fn) t
+        infer (acc +< fn) t
       | Cat fn ->
-          acc +< fn
+        acc +< fn
       | Write_file (fn, _) ->
-          acc +@+ fn
+        acc +@+ fn
       | Rename (src, dst) ->
-          acc +<+ src +@+ dst
+        acc +<+ src +@+ dst
       | Copy (src, dst)
       | Copy_and_add_line_directive (src, dst)
       | Symlink (src, dst) ->
-          acc +< src +@+ dst
+        acc +< src +@+ dst
       | Chdir (_, t) | Setenv (_, _, t) | Ignore (_, t) ->
-          infer acc t
+        infer acc t
       | Progn l ->
-          List.fold_left l ~init:acc ~f:infer
+        List.fold_left l ~init:acc ~f:infer
       | Digest_files l ->
-          List.fold_left l ~init:acc ~f:( +< )
+        List.fold_left l ~init:acc ~f:( +< )
       | Diff { optional; file1; file2; mode = _ } ->
-          if optional then
-            acc +< file1
-          else
-            acc +< file1 +< file2
+        if optional then
+          acc +< file1
+        else
+          acc +< file1 +< file2
       | Merge_files_into (sources, _extras, target) ->
-          List.fold_left sources ~init:acc ~f:( +< ) +@+ target
+        List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _ | System _ | Bash _ | Remove_tree _ | Mkdir _ ->
-          acc
+        acc
 
     let infer t =
       let { deps; targets } =
         infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
       in
       (* A file can be inferred as both a dependency and a target, for
-         instance:
+        instance:
 
          {[ (progn (copy a b) (copy b c)) ]} *)
       { deps = Sets.Deps.diff deps targets; targets }
@@ -443,23 +436,23 @@ module Infer = struct
 
       let diff deps targets =
         Path.Build.Set.fold targets ~init:deps ~f:(fun target acc ->
-            Path.Set.remove acc (Path.build target))
+          Path.Set.remove acc (Path.build target))
     end
   end
 
   include Make (Action) (Sets) (Outcome)
-            (struct
-              let ( +@+ ) acc fn =
-                { acc with targets = Path.Build.Set.add acc.targets fn }
+    (struct
+      let ( +@+ ) acc fn =
+        { acc with targets = Path.Build.Set.add acc.targets fn }
 
-              let ( +< ) acc fn = { acc with deps = Path.Set.add acc.deps fn }
+      let ( +< ) acc fn = { acc with deps = Path.Set.add acc.deps fn }
 
-              let ( +<+ ) acc fn =
-                { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+      let ( +<+ ) acc fn =
+        { acc with deps = Path.Set.add acc.deps (Path.build fn) }
 
-              let ( +<! ) acc prog =
-                match prog with Ok p -> acc +< p | Error _ -> acc
-            end)
+      let ( +<! ) acc prog =
+        match prog with Ok p -> acc +< p | Error _ -> acc
+          end)
 
   module Partial_with_all_targets =
     Make (Partial.Past) (Sets) (Outcome)
@@ -467,31 +460,31 @@ module Infer = struct
         let ( +@+ ) acc fn =
           match fn with
           | Left fn ->
-              { acc with targets = Path.Build.Set.add acc.targets fn }
+            { acc with targets = Path.Build.Set.add acc.targets fn }
           | Right sw ->
-              User_error.raise ~loc:(String_with_vars.loc sw)
-                [ Pp.text "Cannot determine this target statically." ]
+            User_error.raise ~loc:(String_with_vars.loc sw)
+              [ Pp.text "Cannot determine this target statically." ]
 
         let ( +< ) acc fn =
           match fn with
           | Left fn ->
-              { acc with deps = Path.Set.add acc.deps fn }
+            { acc with deps = Path.Set.add acc.deps fn }
           | Right _ ->
-              acc
+            acc
 
         let ( +<+ ) acc fn =
           match fn with
           | Left fn ->
-              { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
           | Right _ ->
-              acc
+            acc
 
         let ( +<! ) acc fn =
           match (fn : Partial.program) with
           | Left (This fn) ->
-              { acc with deps = Path.Set.add acc.deps fn }
+            { acc with deps = Path.Set.add acc.deps fn }
           | Left (Search _) | Right _ ->
-              acc
+            acc
       end)
 
   module Partial =
@@ -500,30 +493,30 @@ module Infer = struct
         let ( +@+ ) acc fn =
           match fn with
           | Left fn ->
-              { acc with targets = Path.Build.Set.add acc.targets fn }
+            { acc with targets = Path.Build.Set.add acc.targets fn }
           | Right _ ->
-              acc
+            acc
 
         let ( +< ) acc fn =
           match fn with
           | Left fn ->
-              { acc with deps = Path.Set.add acc.deps fn }
+            { acc with deps = Path.Set.add acc.deps fn }
           | Right _ ->
-              acc
+            acc
 
         let ( +<+ ) acc fn =
           match fn with
           | Left fn ->
-              { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
           | Right _ ->
-              acc
+            acc
 
         let ( +<! ) acc fn =
           match (fn : Partial.program) with
           | Left (This fn) ->
-              { acc with deps = Path.Set.add acc.deps fn }
+            { acc with deps = Path.Set.add acc.deps fn }
           | Left (Search _) | Right _ ->
-              acc
+            acc
       end)
 
   let partial ~all_targets t =

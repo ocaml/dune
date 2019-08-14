@@ -28,7 +28,7 @@ module Section : sig
   val decode : t Dune_lang.Decoder.t
 
   (** [true] iff the executable bit should be set for files installed in this
-      location. *)
+    location. *)
   val should_set_executable_bit : t -> bool
 
   module Paths : sig

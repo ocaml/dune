@@ -10,22 +10,22 @@ module Status = struct
     Format.pp_print_string ppf
       ( match t with
       | Installed ->
-          "installed"
+        "installed"
       | Public _ ->
-          "public"
+        "public"
       | Private project ->
-          let name = Dune_project.name project in
-          sprintf "private (%s)" (Dune_project.Name.to_string_hum name) )
+        let name = Dune_project.name project in
+        sprintf "private (%s)" (Dune_project.Name.to_string_hum name) )
 
   let is_private = function Private _ -> true | Installed | Public _ -> false
 
   let project_name = function
     | Installed ->
-        None
+      None
     | Private project ->
-        Some (Dune_project.name project)
+      Some (Dune_project.name project)
     | Public (name, _) ->
-        Some name
+      Some name
 end
 
 module Deps = struct
@@ -37,19 +37,19 @@ module Deps = struct
     let rec loop acc (deps : Dune_file.Lib_dep.t list) =
       match deps with
       | [] ->
-          Some (List.rev acc)
+        Some (List.rev acc)
       | Direct x :: deps ->
-          loop (x :: acc) deps
+        loop (x :: acc) deps
       | Select _ :: _ ->
-          None
+        None
     in
     match loop [] deps with Some l -> Simple l | None -> Complex deps
 
   let to_lib_deps = function
     | Simple l ->
-        List.map l ~f:Dune_file.Lib_dep.direct
+      List.map l ~f:Dune_file.Lib_dep.direct
     | Complex l ->
-        l
+      l
 end
 
 module Source = struct
@@ -99,7 +99,7 @@ type 'path t =
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support :
-      Dune_file.Library.Special_builtin_support.t option
+    Dune_file.Library.Special_builtin_support.t option
   }
 
 let name t = t.name
@@ -168,7 +168,7 @@ let user_written_deps t =
       Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
-    ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
+  ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
     ~known_implementations (conf : Dune_file.Library.t) =
   let _loc, lib_name = conf.name in
   let obj_dir = Dune_file.Library.obj_dir ~dir conf in
@@ -186,9 +186,9 @@ let of_library_stanza ~dir
   let status =
     match conf.public with
     | None ->
-        Status.Private conf.project
+      Status.Private conf.project
     | Some p ->
-        Public (Dune_project.name conf.project, p.package)
+      Public (Dune_project.name conf.project, p.package)
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
   let foreign_archives =
@@ -200,24 +200,24 @@ let of_library_stanza ~dir
     in
     { Mode.Dict.byte = stubs
     ; native =
-        Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-        :: stubs
+      Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+      :: stubs
     }
   in
   let foreign_archives =
     match conf.stdlib with
     | Some { exit_module = Some m; _ } ->
-        let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
-        { Mode.Dict.byte =
-            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
-            :: foreign_archives.byte
-        ; native =
-            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-            :: Path.Build.extend_basename obj_name ~suffix:ext_obj
-            :: foreign_archives.native
-        }
+      let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
+      { Mode.Dict.byte =
+        Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
+        :: foreign_archives.byte
+      ; native =
+        Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+        :: Path.Build.extend_basename obj_name ~suffix:ext_obj
+        :: foreign_archives.native
+      }
     | _ ->
-        foreign_archives
+      foreign_archives
   in
   let jsoo_archive =
     Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
@@ -237,14 +237,14 @@ let of_library_stanza ~dir
   let enabled =
     let enabled_if_result =
       Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
-          match
-            (String_with_vars.Var.name v, String_with_vars.Var.payload v)
-          with
-          | var, None ->
-              let value = Lib_config.get_for_enabled_if lib_config ~var in
-              Some [ String value ]
-          | _ ->
-              None)
+        match
+          (String_with_vars.Var.name v, String_with_vars.Var.payload v)
+        with
+        | var, None ->
+          let value = Lib_config.get_for_enabled_if lib_config ~var in
+          Some [ String value ]
+        | _ ->
+          None)
     in
     if not enabled_if_result then
       Enabled_status.Disabled_because_of_enabled_if
@@ -256,9 +256,9 @@ let of_library_stanza ~dir
   let version =
     match status with
     | Public (_, pkg) ->
-        pkg.version
+      pkg.version
     | Installed | Private _ ->
-        None
+      None
   in
   { loc = conf.buildable.loc
   ; name

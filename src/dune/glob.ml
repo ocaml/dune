@@ -19,9 +19,9 @@ let of_string repr =
 let of_string_exn loc repr =
   match of_string repr with
   | Error (_, msg) ->
-      User_error.raise ~loc [ Pp.textf "invalid glob: :%s" msg ]
+    User_error.raise ~loc [ Pp.textf "invalid glob: :%s" msg ]
   | Ok t ->
-      t
+    t
 
 let decode =
   let open Dune_lang.Decoder in

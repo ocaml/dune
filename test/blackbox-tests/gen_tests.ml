@@ -31,25 +31,23 @@ module Platform = struct
 
   let enabled_if = function
     | [] ->
-        None
+      None
     | [ x ] ->
-        Some (List [ atom "<>"; system_var; t x ])
+      Some (List [ atom "<>"; system_var; t x ])
     | ps ->
-        Some
-          (List
-             ( atom "and"
-             :: List.map ps ~f:(fun p -> List [ atom "<>"; system_var; t p ])
-             ))
+      Some
+        (List
+          ( atom "and"
+          :: List.map ps ~f:(fun p -> List [ atom "<>"; system_var; t p ]) ))
 end
 
 let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields
-       ( [ ("name", [ Dune_lang.atom name ]); ("deps", deps) ]
-       @ (match action with None -> [] | Some a -> [ ("action", [ a ]) ])
-       @
-       match enabled_if with None -> [] | Some e -> [ ("enabled_if", [ e ]) ]
-       ))
+      ( [ ("name", [ Dune_lang.atom name ]); ("deps", deps) ]
+      @ (match action with None -> [] | Some a -> [ ("action", [ a ]) ])
+      @ match enabled_if with None -> [] | Some e -> [ ("enabled_if", [ e ]) ]
+      ))
 
 module Test = struct
   type t =
@@ -65,7 +63,7 @@ module Test = struct
     }
 
   let make ?env ?skip_ocaml ?(skip_platforms = []) ?(enabled = true)
-      ?(js = false) ?(coq = false) ?(external_deps = false)
+    ?(js = false) ?(coq = false) ?(external_deps = false)
       ?(disable_sandboxing = false) name =
     let external_deps = external_deps || coq in
     { name
@@ -90,33 +88,33 @@ module Test = struct
         [ atom "chdir"
         ; atom (sprintf "test-cases/%s" t.name)
         ; List
-            [ atom "progn"
-            ; Dune_lang.List
-                ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
-                @ List.map ~f:Dune_lang.atom_or_quoted_string
-                    (skip_version @ [ "-test"; "run.t" ]) )
-            ; Sexp.strings [ "diff?"; "run.t"; "run.t.corrected" ]
-            ]
+          [ atom "progn"
+          ; Dune_lang.List
+            ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
+            @ List.map ~f:Dune_lang.atom_or_quoted_string
+              (skip_version @ [ "-test"; "run.t" ]) )
+          ; Sexp.strings [ "diff?"; "run.t"; "run.t.corrected" ]
+          ]
         ]
     in
     let action =
       match t.env with
       | None ->
-          action
+        action
       | Some (k, v) ->
-          List [ atom "setenv"; atom_or_quoted_string k; v; action ]
+        List [ atom "setenv"; atom_or_quoted_string k; v; action ]
     in
     alias t.name ?enabled_if
       ~deps:
         (List.concat
-           [ [ Sexp.strings [ "package"; "dune" ]
-             ; Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
-             ]
-           ; ( if t.disable_sandboxing then
-               [ Sexp.strings [ "sandbox"; "none" ] ]
-             else
-               [] )
-           ])
+          [ [ Sexp.strings [ "package"; "dune" ]
+            ; Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
+            ]
+          ; ( if t.disable_sandboxing then
+            [ Sexp.strings [ "sandbox"; "none" ] ]
+            else
+              [] )
+          ])
       ~action
     |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 end
@@ -125,7 +123,7 @@ let exclusions =
   let open Test in
   let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
-      ~env:("NODE", Sexp.parse "%{bin:node}")
+    ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
   ; odoc "odoc"
@@ -151,9 +149,9 @@ let exclusions =
   ; make "menhir" ~external_deps:true
   ; make "utop" ~external_deps:true ~enabled:false
   ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
-      ~enabled:false
+    ~enabled:false
   ; make "utop-default-implementation" ~enabled:false ~external_deps:true
-      ~skip_ocaml:"<4.05.0"
+    ~skip_ocaml:"<4.05.0"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[ Win ]
   ; make "github764" ~skip_platforms:[ Win ]
@@ -161,14 +159,14 @@ let exclusions =
   ; make "scope-ppx-bug" ~external_deps:true
   ; make "findlib-dynload" ~external_deps:true
     (* The next test is disabled as it relies on configured opam swtiches and
-       it's hard to get that working properly *)
+      it's hard to get that working properly *)
   ; make "envs-and-contexts" ~external_deps:true ~enabled:false
   ; make "env" ~skip_ocaml:"<4.06.0"
   ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ; make "explicit_js_mode" ~external_deps:true ~js:true
     (* for the following tests sandboxing is disabled because absolute paths
-       end up appearing in the output if we sandbox *)
+      end up appearing in the output if we sandbox *)
   ; make "env-bins" ~disable_sandboxing:true
   ]
 
@@ -178,13 +176,11 @@ let all_tests =
     |> List.filter ~f:(fun s -> not (String.contains s '.'))
     |> List.sort ~compare:String.compare
     |> List.map ~f:(fun name ->
-           match
-             List.find exclusions ~f:(fun (t : Test.t) -> t.name = name)
-           with
-           | None ->
-               Test.make name
-           | Some t ->
-               t) )
+      match List.find exclusions ~f:(fun (t : Test.t) -> t.name = name) with
+      | None ->
+        Test.make name
+      | Some t ->
+        t) )
 
 let pp_group fmt (name, tests) =
   alias name
@@ -195,7 +191,7 @@ let pp_group fmt (name, tests) =
 let () =
   let tests = Lazy.force all_tests in
   (* The runtest target has a "special" definition. It includes all tests
-     except for js, coq, and disabled tests *)
+    except for js, coq, and disabled tests *)
   tests |> List.iter ~f:(fun t -> Format.printf "%a@.@." Test.pp_sexp t);
   [ ("runtest", fun (t : Test.t) -> (not t.js) && (not t.coq) && t.enabled)
   ; ("runtest-no-deps", fun (t : Test.t) -> (not t.external_deps) && t.enabled)
@@ -204,7 +200,7 @@ let () =
   ; ("runtest-coq", fun (t : Test.t) -> t.coq && t.enabled)
   ]
   |> List.map ~f:(fun (name, predicate) ->
-         (name, List.filter tests ~f:predicate))
+    (name, List.filter tests ~f:predicate))
   |> Format.pp_print_list
-       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@.@.")
-       pp_group Format.std_formatter
+    ~pp_sep:(fun fmt () -> Format.fprintf fmt "@.@.")
+      pp_group Format.std_formatter

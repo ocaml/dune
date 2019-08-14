@@ -24,26 +24,24 @@ let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in
   match checked with
   | External _ ->
-      User_error.raise
-        [ Pp.textf "@@ on the command line must be followed by a relative path"
-        ]
+    User_error.raise
+      [ Pp.textf "@@ on the command line must be followed by a relative path" ]
   | In_source_dir dir ->
-      { dir; recursive; name; contexts }
+    { dir; recursive; name; contexts }
   | In_install_dir _ ->
-      User_error.raise
-        [ Pp.textf "Invalid alias: %s."
-            (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
-        ; Pp.textf "There are no aliases in %s."
-            (Path.to_string_maybe_quoted dir)
-        ]
+    User_error.raise
+      [ Pp.textf "Invalid alias: %s."
+        (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+      ; Pp.textf "There are no aliases in %s."
+        (Path.to_string_maybe_quoted dir)
+      ]
   | In_build_dir (ctx, dir) ->
-      { dir
-      ; recursive
-      ; name
-      ; contexts =
-          [ List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx.name)
-          ]
-      }
+    { dir
+    ; recursive
+    ; name
+    ; contexts =
+      [ List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx.name) ]
+    }
 
 let of_string common ~recursive s ~contexts =
   let path = Path.relative Path.root (Common.prefix_target common s) in

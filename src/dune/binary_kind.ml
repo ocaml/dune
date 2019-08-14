@@ -19,15 +19,15 @@ let decode =
 
 let to_string = function
   | C ->
-      "c"
+    "c"
   | Exe ->
-      "exe"
+    "exe"
   | Object ->
-      "object"
+    "object"
   | Shared_object ->
-      "shared_object"
+    "shared_object"
   | Js ->
-      "js"
+    "js"
 
 let to_dyn t =
   let open Dyn.Encoder in

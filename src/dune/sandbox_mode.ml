@@ -7,13 +7,13 @@ type some =
 let compare_some a b =
   match (a, b) with
   | Symlink, Symlink ->
-      Eq
+    Eq
   | Symlink, _ ->
-      Lt
+    Lt
   | _, Symlink ->
-      Gt
+    Gt
   | Copy, Copy ->
-      Eq
+    Eq
 
 type t = some option
 
@@ -35,7 +35,7 @@ module Dict = struct
       match compare a b with Eq -> k () | Lt -> Lt | Gt -> Gt
     in
     compare_k x.none y.none (fun () ->
-        compare_k x.symlink y.symlink (fun () -> compare x.copy y.copy))
+      compare_k x.symlink y.symlink (fun () -> compare x.copy y.copy))
 
   let of_func (f : key -> _) =
     { none = f None; symlink = f (Some Symlink); copy = f (Some Copy) }
@@ -78,18 +78,18 @@ let error =
 
 let of_string = function
   | "none" ->
-      Ok None
+    Ok None
   | "symlink" ->
-      Ok (Some Symlink : t)
+    Ok (Some Symlink : t)
   | "copy" ->
-      Ok (Some Copy)
+    Ok (Some Copy)
   | _ ->
-      error
+    error
 
 let to_string = function
   | None ->
-      "none"
+    "none"
   | Some Symlink ->
-      "symlink"
+    "symlink"
   | Some Copy ->
-      "copy"
+    "copy"

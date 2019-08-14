@@ -7,7 +7,7 @@ let doc = "Format dune files"
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune format-dune-file) reads a dune file and outputs a formatted
+    {|$(b,dune format-dune-file) reads a dune file and outputs a formatted
            version. This is a low-level command, meant to implement editor
            support for example. To reformat a dune project, see the "Automatic
            formatting" section in the manual.|}

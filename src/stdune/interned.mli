@@ -18,7 +18,7 @@ module type S = sig
   val make : string -> t
 
   (** Like [make] except it returns [None] if the string hasn't been registered
-      with [make] previously. *)
+    with [make] previously. *)
   val get : string -> t option
 
   (** Return the list of all existing [t]s. *)
@@ -37,7 +37,7 @@ module type S = sig
   module Map : Map.S with type key = t
 
   (** Same as a hash table, but optimized for the case where we are using one
-      entry for every possible [t] *)
+    entry for every possible [t] *)
   module Table : sig
     type key = t
 

@@ -1,11 +1,11 @@
 (** Represent the output of [ocamlc -config] and contents of [Makefile.config].
 
-    This library is internal to dune and guarantees no API stability. *)
+  This library is internal to dune and guarantees no API stability. *)
 
 open! Stdune
 
 (** Represent a parsed and interpreted output of [ocamlc -config] and contents
-    of [Makefile.config]. *)
+  of [Makefile.config]. *)
 type t
 
 val to_dyn : t Dyn.Encoder.t
@@ -20,7 +20,7 @@ end
 (** {1 Raw bindings} *)
 
 (** Represent the parsed but uninterpreted output of [ocamlc -config] or
-    contents of [Makefile.config]. *)
+  contents of [Makefile.config]. *)
 module Vars : sig
   type t = string String.Map.t
 
@@ -37,13 +37,13 @@ module Origin : sig
 end
 
 (** Interpret raw bindings (this function also loads the [Makefile.config] file
-    in the stdlib directory). *)
+  in the stdlib directory). *)
 val make : Vars.t -> (t, Origin.t * string) Result.t
 
 (** {1 Query} *)
 
 (** The following parameters match the variables in the output of [ocamlc
-    -config] but are stable across versions of OCaml. *)
+  -config] but are stable across versions of OCaml. *)
 
 val version : t -> int * int * int
 

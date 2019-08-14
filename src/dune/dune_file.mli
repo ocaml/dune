@@ -52,7 +52,7 @@ module Preprocess_map : sig
   val default : t
 
   (** [find module_name] find the preprocessing specification for a given
-      module *)
+    module *)
   val find : Module_name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Lib_name.t) list
@@ -118,7 +118,7 @@ module Dep_conf : sig
     | Universe
     | Env_var of String_with_vars.t
     (* [Sandbox_config] is a way to declare that your action also depends on
-       there being a clean filesystem around its deps. (or, if you require
+      there being a clean filesystem around its deps. (or, if you require
        [no_sandboxing], it's that your action depends on something undeclared
        (e.g. absolute path of cwd) and you want to allow it) *)
     | Sandbox_config of Sandbox_config.t
@@ -153,7 +153,7 @@ module Public_lib : sig
     { name : Loc.t * Lib_name.t  (** Full public name *)
     ; package : Package.t  (** Package it is part of *)
     ; sub_dir : string option
-          (** Subdirectory inside the installation directory *)
+      (** Subdirectory inside the installation directory *)
     }
 
   val name : t -> Lib_name.t
@@ -202,19 +202,19 @@ module Library : sig
 
   module Stdlib : sig
     (** Extra information for the OCaml stdlib. Note: contrary to normal
-        libraries, the library interface of the stdlib (the Stdlib module) is
+      libraries, the library interface of the stdlib (the Stdlib module) is
         used as the alias module when compiling all the other modules. We
         cannot generate an implicit one as that would break hard-coded names
         inside the compiler. *)
     type t =
       { modules_before_stdlib : Module_name.Set.t
-            (** Modules that the Stdlib module depend on. *)
+        (** Modules that the Stdlib module depend on. *)
       ; exit_module : Module_name.t option
-            (** Modules that's implicitely added by the compiler at the end
-                when linking an executable *)
+        (** Modules that's implicitely added by the compiler at the end when
+          linking an executable *)
       ; internal_modules : Glob.t
-            (** Module names that are hardcoded in the compiler and so cannot
-                be wrapped *)
+        (** Module names that are hardcoded in the compiler and so cannot be
+          wrapped *)
       }
   end
 
@@ -392,9 +392,9 @@ module Rule : sig
       | Standard  (** Only use this rule if the source files don't exist. *)
       | Fallback  (** Silently promote the targets to the source tree. *)
       | Promote of Promote.t
-          (** Just ignore the source files entirely. This is for cases where
-              the targets are promoted only in a specific context, such as for
-              .install files. *)
+        (** Just ignore the source files entirely. This is for cases where the
+          targets are promoted only in a specific context, such as for .install
+            files. *)
       | Ignore_source_files
 
     val decode : t Dune_lang.Decoder.t
@@ -532,12 +532,12 @@ module Stanzas : sig
     | Plain
 
   (** [of_ast project ast] is the list of [Stanza.t]s derived from decoding the
-      [ast] according to the syntax given by [kind] in the context of the
+    [ast] according to the syntax given by [kind] in the context of the
       [project] *)
   val of_ast : Dune_project.t -> Dune_lang.Ast.t -> Stanza.t list
 
   (** [parse ~file ~kind project stanza_exprs] is a list of [Stanza.t]s derived
-      from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
+    from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
 
       [file] is used to check for illegal recursive file inclusions and to
       anchor file includes given as relative paths.

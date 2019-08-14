@@ -19,9 +19,9 @@ module Prog = struct
       let hint =
         match program with
         | "refmt" ->
-            Some (Option.value ~default:"try: opam install reason" hint)
+          Some (Option.value ~default:"try: opam install reason" hint)
         | _ ->
-            hint
+          hint
       in
       Utils.program_not_found ?hint ~loc ~context program
   end
@@ -33,9 +33,9 @@ module Prog = struct
 
   let encode = function
     | Ok s ->
-        Dpath.encode s
+      Dpath.encode s
     | Error (e : Not_found.t) ->
-        Dune_lang.Encoder.string e.program
+      Dune_lang.Encoder.string e.program
 end
 
 module type Ast =
@@ -78,9 +78,9 @@ module For_shell = struct
   module rec Ast : Ast = Ast
 
   include Action_ast.Make (String_with_sexp) (String_with_sexp)
-            (String_with_sexp)
-            (String_with_sexp)
-            (Ast)
+    (String_with_sexp)
+      (String_with_sexp)
+        (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)
@@ -89,18 +89,18 @@ let for_shell t =
   let rec loop t ~dir ~f_program ~f_string ~f_path ~f_target =
     match t with
     | Symlink (src, dst) ->
-        let src =
-          match Path.Build.parent dst with
-          | None ->
-              Path.to_string src
-          | Some from ->
-              Path.reach ~from:(Path.build from) src
-        in
-        let dst = Path.reach ~from:dir (Path.build dst) in
-        For_shell.Symlink (src, dst)
+      let src =
+        match Path.Build.parent dst with
+        | None ->
+          Path.to_string src
+        | Some from ->
+          Path.reach ~from:(Path.build from) src
+      in
+      let dst = Path.reach ~from:dir (Path.build dst) in
+      For_shell.Symlink (src, dst)
     | t ->
-        Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
-          ~f_target
+      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
+        ~f_target
   in
   loop t ~dir:Path.root
     ~f_string:(fun ~dir:_ x -> x)
@@ -140,7 +140,7 @@ module Unresolved = struct
       ~f_target:(fun ~dir:_ x -> x)
       ~f_string:(fun ~dir:_ x -> x)
       ~f_program:(fun ~dir:_ -> function This p -> Ok p | Search (loc, s) ->
-            Ok (f loc s))
+        Ok (f loc s))
 end
 
 let fold_one_step t ~init:acc ~f =
@@ -150,9 +150,9 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t) ->
-      f acc t
+    f acc t
   | Progn l ->
-      List.fold_left l ~init:acc ~f
+    List.fold_left l ~init:acc ~f
   | Run _
   | Echo _
   | Cat _
@@ -168,7 +168,7 @@ let fold_one_step t ~init:acc ~f =
   | Digest_files _
   | Diff _
   | Merge_files_into _ ->
-      acc
+    acc
 
 include Action_mapper.Make (Ast) (Ast)
 
@@ -184,35 +184,35 @@ let chdirs =
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
     Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[] ~f:(fun path acc ->
-        match Path.as_in_build_dir path with
-        | None ->
-            (* This can actually raise if we try to sandbox the "copy from
-               source dir" rules. There is no reason to do that though. *)
-            if Path.is_in_source_tree path then
-              Code_error.raise
-                "Action depends on source tree. All actions should depend on \
-                 the copies in build directory instead"
-                [ ("path", Path.to_dyn path) ];
-            acc
-        | Some p ->
-            link path (sandboxed p) :: acc)
+      match Path.as_in_build_dir path with
+      | None ->
+        (* This can actually raise if we try to sandbox the "copy from source
+          dir" rules. There is no reason to do that though. *)
+        if Path.is_in_source_tree path then
+          Code_error.raise
+            "Action depends on source tree. All actions should depend on the \
+             copies in build directory instead"
+            [ ("path", Path.to_dyn path) ];
+        acc
+      | Some p ->
+        link path (sandboxed p) :: acc)
   in
   Progn steps
 
 let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
   match mode with
   | Symlink ->
-      if Sys.win32 then
-        Code_error.raise
-          "Don't have symlinks on win32, but [Symlink] sandboxing mode was \
-           selected. To use emulation via copy, the [Copy] sandboxing mode \
-           should be selected."
-          []
-      else
-        fun a b ->
-      Symlink (a, b)
+    if Sys.win32 then
+      Code_error.raise
+        "Don't have symlinks on win32, but [Symlink] sandboxing mode was \
+         selected. To use emulation via copy, the [Copy] sandboxing mode \
+         should be selected."
+        []
+    else
+      fun a b ->
+    Symlink (a, b)
   | Copy ->
-      fun a b -> Copy (a, b)
+    fun a b -> Copy (a, b)
 
 let maybe_sandbox_path f p =
   match Path.as_in_build_dir p with None -> p | Some p -> Path.build (f p)
@@ -222,7 +222,7 @@ let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
   Progn
     [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
     ; map t ~dir:Path.root
-        ~f_string:(fun ~dir:_ x -> x)
+      ~f_string:(fun ~dir:_ x -> x)
         ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)
         ~f_target:(fun ~dir:_ -> sandboxed)
         ~f_program:(fun ~dir:_ -> Result.map ~f:(maybe_sandbox_path sandboxed))
@@ -236,46 +236,46 @@ let is_useful_to_sandbox =
   let rec loop t =
     match t with
     | Chdir (_, t) ->
-        loop t
+      loop t
     | Setenv (_, _, t) ->
-        loop t
+      loop t
     | Redirect_out (_, _, t) ->
-        loop t
+      loop t
     | Redirect_in (_, _, t) ->
-        loop t
+      loop t
     | Ignore (_, t) ->
-        loop t
+      loop t
     | Progn l ->
-        List.exists l ~f:loop
+      List.exists l ~f:loop
     | Echo _ ->
-        false
+      false
     | Cat _ ->
-        false
+      false
     | Copy _ ->
-        false
+      false
     | Symlink _ ->
-        false
+      false
     | Copy_and_add_line_directive _ ->
-        false
+      false
     | Write_file _ ->
-        false
+      false
     | Rename _ ->
-        false
+      false
     | Remove_tree _ ->
-        false
+      false
     | Diff _ ->
-        false
+      false
     | Mkdir _ ->
-        false
+      false
     | Digest_files _ ->
-        false
+      false
     | Merge_files_into _ ->
-        false
+      false
     | Run _ ->
-        true
+      true
     | System _ ->
-        true
+      true
     | Bash _ ->
-        true
+      true
   in
   fun t -> match loop t with true -> Maybe | false -> Clearly_not

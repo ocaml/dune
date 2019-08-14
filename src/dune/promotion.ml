@@ -48,15 +48,15 @@ module File = struct
           (Path.Source.to_string_maybe_quoted dst)
       else
         (Format.sprintf
-           "Skipping promotion of %s to %s as the %s is missing.@.")
+          "Skipping promotion of %s to %s as the %s is missing.@.")
           (Path.to_string_maybe_quoted (Path.build src))
           (Path.Source.to_string_maybe_quoted dst)
           ( match staging with
           | None ->
-              "file"
+            "file"
           | Some staging ->
-              Format.sprintf "staging file (%s)"
-                (Path.to_string_maybe_quoted (Path.build staging)) ) );
+            Format.sprintf "staging file (%s)"
+              (Path.to_string_maybe_quoted (Path.build staging)) ) );
     if correction_exists then
       Io.copy_file ~src:(Path.build correction_file) ~dst:(Path.source dst) ()
 end
@@ -79,9 +79,9 @@ let dump_db db =
   if Path.build_dir_exists () then
     match db with
     | [] ->
-        if Path.exists db_file then Path.unlink_no_err db_file
+      if Path.exists db_file then Path.unlink_no_err db_file
     | l ->
-        P.dump db_file l
+      P.dump db_file l
 
 let load_db () = Option.value ~default:[] (P.load db_file)
 
@@ -90,7 +90,7 @@ let group_by_targets db =
   |> Path.Source.Map.of_list_multi
   (* Sort the list of possible sources for deterministic behavior *)
   |> Path.Source.Map.map
-       ~f:(List.sort ~compare:(fun (x, _) (y, _) -> Path.Build.compare x y))
+    ~f:(List.sort ~compare:(fun (x, _) (y, _) -> Path.Build.compare x y))
 
 type files_to_promote =
   | All
@@ -101,57 +101,56 @@ let do_promote db files_to_promote =
   let potential_build_contexts =
     match Path.readdir_unsorted Path.build_dir with
     | exception _ ->
-        []
+      []
     | Error _ ->
-        []
+      []
     | Ok files ->
-        List.filter_map files ~f:(fun fn ->
-            if fn = "" || fn.[0] = '.' || fn = "install" then
-              None
-            else
-              let path = Path.(relative build_dir) fn in
-              Option.some_if (Path.is_directory path) path)
+      List.filter_map files ~f:(fun fn ->
+        if fn = "" || fn.[0] = '.' || fn = "install" then
+          None
+        else
+          let path = Path.(relative build_dir) fn in
+          Option.some_if (Path.is_directory path) path)
   in
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
   let promote_one dst srcs =
     match srcs with
     | [] ->
-        assert false
+      assert false
     | (src, staging) :: others ->
-        (* We remove the files from the digest cache to force a rehash on the
-           next run. We do this because on OSX [mtime] is not precise enough
-           and if a file is modified and promoted quickly, it will look like it
-           hasn't changed even though it might have.
+      (* We remove the files from the digest cache to force a rehash on the
+        next run. We do this because on OSX [mtime] is not precise enough and
+         if a file is modified and promoted quickly, it will look like it
+         hasn't changed even though it might have.
 
-           aalekseyev: this is probably unnecessary now, depending on when
-           [do_promote] runs (before or after [invalidate_cached_timestamps]) *)
-        List.iter dirs_to_clear_from_cache ~f:(fun dir ->
-            Cached_digest.remove (Path.append_source dir dst));
-        File.promote { src; staging; dst };
-        List.iter others ~f:(fun (path, _staging) ->
-            Format.eprintf " -> ignored %s.@."
-              (Path.to_string_maybe_quoted (Path.build path)))
+         aalekseyev: this is probably unnecessary now, depending on when
+         [do_promote] runs (before or after [invalidate_cached_timestamps]) *)
+      List.iter dirs_to_clear_from_cache ~f:(fun dir ->
+        Cached_digest.remove (Path.append_source dir dst));
+      File.promote { src; staging; dst };
+      List.iter others ~f:(fun (path, _staging) ->
+        Format.eprintf " -> ignored %s.@."
+          (Path.to_string_maybe_quoted (Path.build path)))
   in
   match files_to_promote with
   | All ->
-      Path.Source.Map.iteri by_targets ~f:promote_one;
-      []
+    Path.Source.Map.iteri by_targets ~f:promote_one;
+    []
   | These (files, on_missing) ->
-      let files = Path.Source.Set.of_list files |> Path.Source.Set.to_list in
-      let by_targets =
-        List.fold_left files ~init:by_targets ~f:(fun map fn ->
-            match Path.Source.Map.find by_targets fn with
-            | None ->
-                on_missing fn;
-                map
-            | Some srcs ->
-                promote_one fn srcs;
-                Path.Source.Map.remove by_targets fn)
-      in
-      Path.Source.Map.to_list by_targets
-      |> List.concat_map ~f:(fun (dst, srcs) ->
-             List.map srcs ~f:(fun (src, staging) ->
-                 { File.src; staging; dst }))
+    let files = Path.Source.Set.of_list files |> Path.Source.Set.to_list in
+    let by_targets =
+      List.fold_left files ~init:by_targets ~f:(fun map fn ->
+        match Path.Source.Map.find by_targets fn with
+        | None ->
+          on_missing fn;
+          map
+        | Some srcs ->
+          promote_one fn srcs;
+          Path.Source.Map.remove by_targets fn)
+    in
+    Path.Source.Map.to_list by_targets
+    |> List.concat_map ~f:(fun (dst, srcs) ->
+      List.map srcs ~f:(fun (src, staging) -> { File.src; staging; dst }))
 
 let finalize () =
   let db =

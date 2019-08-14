@@ -15,7 +15,7 @@ module Name = struct
 end
 
 (* We keep prefix and name separated as the handling of `From Foo Require Bar.`
-   may benefit from it. *)
+  may benefit from it. *)
 type t =
   { source : Path.Build.t
   ; prefix : string list
@@ -46,12 +46,12 @@ let parse ~dir ~loc s =
   let clist = List.rev @@ String.split s ~on:'.' in
   match clist with
   | [] ->
-      User_error.raise ~loc [ Pp.text "Invalid coq module" ]
+    User_error.raise ~loc [ Pp.text "Invalid coq module" ]
   | name :: prefix ->
-      let prefix = List.rev prefix in
-      let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in
-      let source = Path.Build.relative source (name ^ ".v") in
-      make ~name ~source ~prefix
+    let prefix = List.rev prefix in
+    let source = List.fold_left prefix ~init:dir ~f:Path.Build.relative in
+    let source = Path.Build.relative source (name ^ ".v") in
+    make ~name ~source ~prefix
 
 let eval =
   let key x = String.concat ~sep:"." (x.prefix @ [ x.name ]) in

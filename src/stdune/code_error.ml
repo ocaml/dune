@@ -23,6 +23,6 @@ let to_dyn t : Dyn.t =
 let () =
   Printexc.register_printer (function
     | E t ->
-        Some (Dyn.to_string (to_dyn t))
+      Some (Dyn.to_string (to_dyn t))
     | _ ->
-        None)
+      None)

@@ -31,17 +31,17 @@ module Kind = struct
 
   let to_string = function
     | Intf_only ->
-        "intf_only"
+      "intf_only"
     | Virtual ->
-        "virtual"
+      "virtual"
     | Impl ->
-        "impl"
+      "impl"
     | Alias ->
-        "alias"
+      "alias"
     | Impl_vmodule ->
-        "impl_vmodule"
+      "impl_vmodule"
     | Wrapped_compat ->
-        "wrapped_compat"
+      "wrapped_compat"
 
   let to_dyn t = Dyn.Encoder.string (to_string t)
 
@@ -60,9 +60,9 @@ module Kind = struct
 
   let has_impl = function
     | Alias | Impl_vmodule | Wrapped_compat | Impl ->
-        true
+      true
     | Intf_only | Virtual ->
-        false
+      false
 end
 
 (* Only the source of a module, not yet associated to a library *)
@@ -82,10 +82,10 @@ module Source = struct
   let make ?impl ?intf name =
     ( match (impl, intf) with
     | None, None ->
-        Code_error.raise "Module.Source.make called with no files"
-          [ ("name", Module_name.to_dyn name) ]
+      Code_error.raise "Module.Source.make called with no files"
+        [ ("name", Module_name.to_dyn name) ]
     | Some _, _ | _, Some _ ->
-        () );
+      () );
     let files = Ml_kind.Dict.make ~impl ~intf in
     { name; files }
 
@@ -96,9 +96,9 @@ module Source = struct
   let choose_file { files = { impl; intf }; name = _ } =
     match (intf, impl) with
     | None, None ->
-        assert false
+      assert false
     | Some x, Some _ | Some x, None | None, Some x ->
-        x
+      x
 
   let src_dir t = Path.parent_exn (choose_file t).path
 
@@ -125,39 +125,35 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   ( match (kind, visibility) with
   | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
   | (Impl | Intf_only), _ ->
-      ()
+    ()
   | _, _ ->
-      Code_error.raise "Module.of_source: invalid kind, visibility combination"
-        [ ("name", Module_name.to_dyn source.name)
-        ; ("kind", Kind.to_dyn kind)
-        ; ("visibility", Visibility.to_dyn visibility)
-        ] );
+    Code_error.raise "Module.of_source: invalid kind, visibility combination"
+      [ ("name", Module_name.to_dyn source.name)
+      ; ("kind", Kind.to_dyn kind)
+      ; ("visibility", Visibility.to_dyn visibility)
+      ] );
   ( match (kind, source.files.impl, source.files.intf) with
   | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
   | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
   | (Intf_only | Virtual), Some _, _
   | (Intf_only | Virtual), _, None ->
-      let open Dyn.Encoder in
-      Code_error.raise "Module.make: invalid kind, impl, intf combination"
-        [ ("name", Module_name.to_dyn source.name)
-        ; ("kind", Kind.to_dyn kind)
-        ; ("intf", (option File.to_dyn) source.files.intf)
-        ; ("impl", (option File.to_dyn) source.files.impl)
-        ]
+    let open Dyn.Encoder in
+    Code_error.raise "Module.make: invalid kind, impl, intf combination"
+      [ ("name", Module_name.to_dyn source.name)
+      ; ("kind", Kind.to_dyn kind)
+      ; ("intf", (option File.to_dyn) source.files.intf)
+      ; ("impl", (option File.to_dyn) source.files.impl)
+      ]
   | _, _, _ ->
-      () );
+    () );
   let obj_name =
     match obj_name with
     | Some s ->
-        s
+      s
     | None -> (
-        let file = Source.choose_file source in
-        let fn = Path.basename file.path in
-        match String.index fn '.' with
-        | None ->
-            fn
-        | Some i ->
-            String.take fn i )
+      let file = Source.choose_file source in
+      let fn = Path.basename file.path in
+      match String.index fn '.' with None -> fn | Some i -> String.take fn i )
   in
   { source; obj_name; pp = None; visibility; kind }
 
@@ -166,9 +162,9 @@ let real_unit_name t = Module_name.of_string (Filename.basename t.obj_name)
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
   | Impl ->
-      Kind.has_impl t.kind
+    Kind.has_impl t.kind
   | Intf ->
-      Option.is_some t.source.files.intf
+    Option.is_some t.source.files.intf
 
 let source t ~(ml_kind : Ml_kind.t) = Ml_kind.Dict.get t.source.files ml_kind
 
@@ -218,14 +214,12 @@ let wrapped_compat t =
       Some
         { File.dialect = Dialect.ocaml
         ; path =
-            (* Option.value_exn cannot fail because we disallow wrapped
-               compatibility mode for virtual libraries. That means none of the
-               modules are implementing a virtual module, and therefore all
-               have a source dir *)
-            Path.L.relative (src_dir t)
-              [ ".wrapped_compat"
-              ; Module_name.to_string t.source.name ^ ml_gen
-              ]
+          (* Option.value_exn cannot fail because we disallow wrapped
+            compatibility mode for virtual libraries. That means none of the
+             modules are implementing a virtual module, and therefore all have
+             a source dir *)
+          Path.L.relative (src_dir t)
+            [ ".wrapped_compat"; Module_name.to_string t.source.name ^ ml_gen ]
         }
     in
     { t.source with files = { intf = None; impl } }
@@ -253,18 +247,17 @@ module Obj_map = struct
 end
 
 let encode
-    ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t)
-    =
+  ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t) =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
     match kind with
     | Kind.Impl when has_impl ->
-        None
+      None
     | Intf_only when not has_impl ->
-        None
+      None
     | Wrapped_compat | Impl_vmodule | Alias | Impl | Virtual | Intf_only ->
-        Some kind
+      Some kind
   in
   record_fields
     [ field "name" Module_name.encode name
@@ -298,11 +291,11 @@ let decode ~src_dir =
      let kind =
        match kind with
        | Some k ->
-           k
+         k
        | None when impl ->
-           Impl
+         Impl
        | None ->
-           Intf_only
+         Intf_only
      in
      let intf = file intf Intf in
      let impl = file impl Impl in
@@ -312,22 +305,22 @@ let decode ~src_dir =
 let pped =
   let pped_path path ~suffix =
     (* We need to insert the suffix before the extension as some tools inspect
-       the extension *)
+      the extension *)
     let base, ext = Path.split_extension path in
     Path.extend_basename base ~suffix:(suffix ^ ext)
   in
   map_files ~f:(fun _kind (file : File.t) ->
-      let pp_path = pped_path file.path ~suffix:".pp" in
-      { file with path = pp_path })
+    let pp_path = pped_path file.path ~suffix:".pp" in
+    { file with path = pp_path })
 
 let ml_source =
   map_files ~f:(fun ml_kind f ->
-      match Dialect.ml_suffix f.dialect ml_kind with
-      | None ->
-          f
-      | Some suffix ->
-          let path = Path.extend_basename f.path ~suffix in
-          File.make Dialect.ocaml path)
+    match Dialect.ml_suffix f.dialect ml_kind with
+    | None ->
+      f
+    | Some suffix ->
+      let path = Path.extend_basename f.path ~suffix in
+      File.make Dialect.ocaml path)
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
@@ -365,10 +358,10 @@ module Name_map = struct
 
   let impl_only =
     Module_name.Map.fold ~init:[] ~f:(fun m acc ->
-        if has m ~ml_kind:Impl then
-          m :: acc
-        else
-          acc)
+      if has m ~ml_kind:Impl then
+        m :: acc
+      else
+        acc)
 
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn
@@ -377,6 +370,6 @@ module Name_map = struct
 
   let by_obj =
     Module_name.Map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
-        let obj = real_unit_name m in
-        Module_name.Map.add_exn acc obj m)
+      let obj = real_unit_name m in
+      Module_name.Map.add_exn acc obj m)
 end

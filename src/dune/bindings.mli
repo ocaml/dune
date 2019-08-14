@@ -1,5 +1,5 @@
 (** This module represents user defined bindings of the form (:foo bar). These
-    are used in the dependency specification language for example *)
+  are used in the dependency specification language for example *)
 
 open Stdune
 

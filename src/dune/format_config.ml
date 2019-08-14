@@ -15,9 +15,9 @@ module Language = struct
     let open Dyn.Encoder in
     function
     | Dialect name ->
-        constr "dialect" [ string name ]
+      constr "dialect" [ string name ]
     | Dune ->
-        constr "dune" []
+      constr "dune" []
 
   let of_string = function "dune" -> Dune | s -> Dialect s
 
@@ -39,9 +39,9 @@ module Enabled_for = struct
     let open Dyn.Encoder in
     function
     | Only l ->
-        constr "only" (List.map ~f:Language.to_dyn l)
+      constr "only" (List.map ~f:Language.to_dyn l)
     | All ->
-        string "all"
+      string "all"
 
   let includes t =
     match t with Only l -> List.mem ~set:l | All -> fun _ -> true
@@ -53,16 +53,16 @@ module Enabled_for = struct
     and+ ext_version = Syntax.get_exn syntax in
     match (list_opt, ext_version) with
     | Some l, _ ->
-        Only l
+      Only l
     | None, (1, 0) ->
-        Only Language.in_ext_1_0
+      Only Language.in_ext_1_0
     | None, (1, 1) ->
-        Only Language.in_ext_1_1
+      Only Language.in_ext_1_1
     | None, (1, 2) ->
-        All
+      All
     | None, _ ->
-        Code_error.raise "This fmt version does not exist"
-          [ ("version", Syntax.Version.to_dyn ext_version) ]
+      Code_error.raise "This fmt version does not exist"
+        [ ("version", Syntax.Version.to_dyn ext_version) ]
 end
 
 type 'enabled_for generic_t =
@@ -106,9 +106,9 @@ let field =
   let* dune_lang_version = Syntax.get_exn Stanza.syntax in
   match Syntax.Version.compare dune_lang_version (2, 0) with
   | Lt ->
-      return None
+    return None
   | Gt | Eq ->
-      field_dune2
+    field_dune2
 
 let loc t = t.loc
 
@@ -124,33 +124,31 @@ let encode_explicit conf =
 let to_explicit { loc; enabled_for } =
   match enabled_for with
   | Enabled_for.All ->
-      None
+    None
   | Only l ->
-      Some { loc; enabled_for = l }
+    Some { loc; enabled_for = l }
 
 let of_config ~ext ~dune_lang =
   match (ext, dune_lang) with
   | None, None ->
-      None
+    None
   | Some x, None ->
-      Some x
+    Some x
   | None, Some x ->
-      Some x
+    Some x
   | Some ext, Some _ ->
-      let suggestion =
-        match to_explicit ext with
-        | Some explicit ->
-            let dlang = encode_explicit explicit in
-            [ Pp.textf
-                "To port it to the new syntax, you can replace this part by:"
-            ; Pp.tag ~tag:User_message.Style.Details (Dune_lang.pp dlang)
-            ]
-        | None ->
-            [ Pp.textf
-                "To port it to the new syntax, you can delete this part."
-            ]
-      in
-      User_error.raise ~loc:ext.loc
-        ( Pp.textf
-            "Starting with (lang dune 2.0), formatting is enabled by default."
-        :: suggestion )
+    let suggestion =
+      match to_explicit ext with
+      | Some explicit ->
+        let dlang = encode_explicit explicit in
+        [ Pp.textf
+          "To port it to the new syntax, you can replace this part by:"
+        ; Pp.tag ~tag:User_message.Style.Details (Dune_lang.pp dlang)
+        ]
+      | None ->
+        [ Pp.textf "To port it to the new syntax, you can delete this part." ]
+    in
+    User_error.raise ~loc:ext.loc
+      ( Pp.textf
+        "Starting with (lang dune 2.0), formatting is enabled by default."
+      :: suggestion )

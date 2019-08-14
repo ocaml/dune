@@ -29,28 +29,27 @@ and predicate =
 let add_versions t ~get_version =
   let rec map_entries ~rev_path ~has_version ~has_rules = function
     | [] -> (
-        if has_version || not has_rules then
+      if has_version || not has_rules then
+        []
+      else
+        match get_version (List.rev rev_path) with
+        | None ->
           []
-        else
-          match get_version (List.rev rev_path) with
-          | None ->
-              []
-          | Some v ->
-              [ Rule
-                  { var = "version"; predicates = []; action = Set; value = v }
-              ] )
+        | Some v ->
+          [ Rule { var = "version"; predicates = []; action = Set; value = v } ]
+      )
     | entry :: entries -> (
       match entry with
       | Comment _ ->
-          entry :: map_entries entries ~rev_path ~has_version ~has_rules
+        entry :: map_entries entries ~rev_path ~has_version ~has_rules
       | Rule rule ->
-          entry
-          :: map_entries entries ~rev_path
-               ~has_version:(has_version || String.equal rule.var "version")
-               ~has_rules:true
+        entry
+        :: map_entries entries ~rev_path
+          ~has_version:(has_version || String.equal rule.var "version")
+            ~has_rules:true
       | Package t ->
-          Package (map_package t ~rev_path)
-          :: map_entries entries ~rev_path ~has_version ~has_rules )
+        Package (map_package t ~rev_path)
+        :: map_entries entries ~rev_path ~has_version ~has_rules )
   and map_package t ~rev_path =
     let rev_path =
       match t.name with None -> rev_path | Some n -> n :: rev_path
@@ -71,11 +70,11 @@ module Parse = struct
   let package_name lb =
     match next lb with
     | String s ->
-        if String.contains s '.' then
-          error lb "'.' not allowed in sub-package names";
-        Lib_name.of_string_exn ~loc:None s
+      if String.contains s '.' then
+        error lb "'.' not allowed in sub-package names";
+      Lib_name.of_string_exn ~loc:None s
     | _ ->
-        error lb "package name expected"
+      error lb "package name expected"
 
   let string lb =
     match next lb with String s -> s | _ -> error lb "string expected"
@@ -86,69 +85,69 @@ module Parse = struct
   let action lb =
     match next lb with
     | Equal ->
-        Set
+      Set
     | Plus_equal ->
-        Add
+      Add
     | _ ->
-        error lb "'=' or '+=' expected"
+      error lb "'=' or '+=' expected"
 
   let rec predicates_and_action lb acc =
     match next lb with
     | Rparen ->
-        (List.rev acc, action lb)
+      (List.rev acc, action lb)
     | Name n ->
-        after_predicate lb (Pos n :: acc)
+      after_predicate lb (Pos n :: acc)
     | Minus ->
-        let n =
-          match next lb with Name p -> p | _ -> error lb "name expected"
-        in
-        after_predicate lb (Neg n :: acc)
+      let n =
+        match next lb with Name p -> p | _ -> error lb "name expected"
+      in
+      after_predicate lb (Neg n :: acc)
     | _ ->
-        error lb "name, '-' or ')' expected"
+      error lb "name, '-' or ')' expected"
 
   and after_predicate lb acc =
     match next lb with
     | Rparen ->
-        (List.rev acc, action lb)
+      (List.rev acc, action lb)
     | Comma ->
-        predicates_and_action lb acc
+      predicates_and_action lb acc
     | _ ->
-        error lb "')' or ',' expected"
+      error lb "')' or ',' expected"
 
   let rec entries lb depth acc =
     match next lb with
     | Rparen ->
-        if depth > 0 then
-          List.rev acc
-        else
-          error lb "closing parenthesis without matching opening one"
+      if depth > 0 then
+        List.rev acc
+      else
+        error lb "closing parenthesis without matching opening one"
     | Eof ->
-        if depth = 0 then
-          List.rev acc
-        else
-          error lb (sprintf "%d closing parentheses missing" depth)
+      if depth = 0 then
+        List.rev acc
+      else
+        error lb (sprintf "%d closing parentheses missing" depth)
     | Name "package" ->
-        let name = package_name lb in
-        lparen lb;
-        let sub_entries = entries lb (depth + 1) [] in
-        entries lb depth
-          (Package { name = Some name; entries = sub_entries } :: acc)
+      let name = package_name lb in
+      lparen lb;
+      let sub_entries = entries lb (depth + 1) [] in
+      entries lb depth
+        (Package { name = Some name; entries = sub_entries } :: acc)
     | Name var ->
-        let predicates, action =
-          match next lb with
-          | Equal ->
-              ([], Set)
-          | Plus_equal ->
-              ([], Add)
-          | Lparen ->
-              predicates_and_action lb []
-          | _ ->
-              error lb "'=', '+=' or '(' expected"
-        in
-        let value = string lb in
-        entries lb depth (Rule { var; predicates; action; value } :: acc)
+      let predicates, action =
+        match next lb with
+        | Equal ->
+          ([], Set)
+        | Plus_equal ->
+          ([], Add)
+        | Lparen ->
+          predicates_and_action lb []
+        | _ ->
+          error lb "'=', '+=' or '(' expected"
+      in
+      let value = string lb in
+      entries lb depth (Rule { var; predicates; action; value } :: acc)
     | _ ->
-        error lb "'package' or variable name expected"
+      error lb "'package' or variable name expected"
 end
 
 let dyn_of_action =
@@ -205,23 +204,23 @@ let rec simplify t =
     ~f:(fun entry (pkg : Simplified.t) ->
       match entry with
       | Comment _ ->
-          pkg
+        pkg
       | Package sub ->
-          { pkg with subs = simplify sub :: pkg.subs }
+        { pkg with subs = simplify sub :: pkg.subs }
       | Rule rule ->
-          let rules =
-            Option.value
-              (String.Map.find pkg.vars rule.var)
-              ~default:{ set_rules = []; add_rules = [] }
-          in
-          let rules =
-            match rule.action with
-            | Set ->
-                { rules with set_rules = rule :: rules.set_rules }
-            | Add ->
-                { rules with add_rules = rule :: rules.add_rules }
-          in
-          { pkg with vars = String.Map.set pkg.vars rule.var rules })
+        let rules =
+          Option.value
+            (String.Map.find pkg.vars rule.var)
+            ~default:{ set_rules = []; add_rules = [] }
+        in
+        let rules =
+          match rule.action with
+          | Set ->
+            { rules with set_rules = rule :: rules.set_rules }
+          | Add ->
+            { rules with add_rules = rule :: rules.add_rules }
+        in
+        { pkg with vars = String.Map.set pkg.vars rule.var rules })
 
 let parse_entries lb = Parse.entries lb 0 []
 
@@ -256,9 +255,8 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let archives = archives archive_name in
     { name = Some name
     ; entries =
-        requires deps :: version
-        ::
-        (match dir with None -> archives | Some d -> directory d :: archives)
+      requires deps :: version
+      :: (match dir with None -> archives | Some d -> directory d :: archives)
     }
   in
   let dummy name =
@@ -272,14 +270,14 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     in
     { name = Some (Lib_name.of_string_exn ~loc:None "compiler-libs")
     ; entries =
-        [ requires []
-        ; version
-        ; directory "+compiler-libs"
-        ; sub "common" []
-        ; sub "bytecomp" [ "compiler-libs.common" ]
-        ; sub "optcomp" [ "compiler-libs.common" ]
-        ; sub "toplevel" [ "compiler-libs.bytecomp" ]
-        ]
+      [ requires []
+      ; version
+      ; directory "+compiler-libs"
+      ; sub "common" []
+      ; sub "bytecomp" [ "compiler-libs.common" ]
+      ; sub "optcomp" [ "compiler-libs.common" ]
+      ; sub "toplevel" [ "compiler-libs.bytecomp" ]
+      ]
     }
   in
   let str = simple "str" [] ~dir:"+" in
@@ -301,29 +299,29 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
-        [ version
-        ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
-        ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
-        ; directory "+"
-        ; rule "type_of_threads" [] Set "posix"
-        ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
-        ; rule "error"
-            [ Neg "mt_vm"; Neg "mt_posix" ]
-            Set "Missing -thread or -vmthread switch"
-        ; Package
-            (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
-        ; Package
-            (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
-        ]
+      [ version
+      ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
+      ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
+      ; directory "+"
+      ; rule "type_of_threads" [] Set "posix"
+      ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
+      ; rule "error"
+        [ Neg "mt_vm"; Neg "mt_posix" ]
+          Set "Missing -thread or -vmthread switch"
+      ; Package
+        (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
+      ; Package
+        (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
+      ]
     }
   in
   let num =
     { name = Some (Lib_name.of_string_exn ~loc:None "num")
     ; entries =
-        [ requires [ "num.core" ]
-        ; version
-        ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
-        ]
+      [ requires [ "num.core" ]
+      ; version
+      ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
+      ]
     }
   in
   let libs =
@@ -349,7 +347,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
-       produce an error message mentioning a "hidden" package (which could be
+      produce an error message mentioning a "hidden" package (which could be
        confusing). *)
     if Path.exists (Path.relative stdlib_dir "nums.cma") then
       num :: base
@@ -357,7 +355,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       base
   in
   List.filter_map libs ~f:(fun t ->
-      Option.map t.name ~f:(fun name -> (name, simplify t)))
+    Option.map t.name ~f:(fun name -> (name, simplify t)))
   |> Lib_name.Map.of_list_exn
 
 let string_of_action = function Set -> "=" | Add -> "+="
@@ -367,12 +365,12 @@ let string_of_predicate = function Pos p -> p | Neg p -> "-" ^ p
 let pp_list f ppf l =
   match l with
   | [] ->
-      ()
+    ()
   | x :: l ->
-      f ppf x;
-      List.iter l ~f:(fun x ->
-          Format.pp_print_cut ppf ();
-          f ppf x)
+    f ppf x;
+    List.iter l ~f:(fun x ->
+      Format.pp_print_cut ppf ();
+      f ppf x)
 
 let pp_print_text ppf s =
   Format.fprintf ppf "\"@[<hv>";
@@ -392,9 +390,9 @@ let pp_quoted_value var =
   | "ppx_runtime_deps"
   | "linkopts"
   | "jsoo_runtime" ->
-      pp_print_text
+    pp_print_text
   | _ ->
-      pp_print_string
+    pp_print_string
 
 let rec pp ppf entries =
   Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries
@@ -403,16 +401,14 @@ and pp_entry ppf entry =
   let open Format in
   match entry with
   | Comment s ->
-      fprintf ppf "# %s" s
+    fprintf ppf "# %s" s
   | Rule { var; predicates = []; action; value } ->
-      fprintf ppf "@[%s %s %a@]" var (string_of_action action)
-        (pp_quoted_value var) value
+    fprintf ppf "@[%s %s %a@]" var (string_of_action action)
+      (pp_quoted_value var) value
   | Rule { var; predicates; action; value } ->
-      fprintf ppf "@[%s(%s) %s %a@]" var
-        (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
-        (string_of_action action) (pp_quoted_value var) value
+    fprintf ppf "@[%s(%s) %s %a@]" var
+      (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
+      (string_of_action action) (pp_quoted_value var) value
   | Package { name; entries } ->
-      let name =
-        match name with None -> "" | Some l -> Lib_name.to_string l
-      in
-      fprintf ppf "@[<v 2>package %S (@,%a@]@,)" name pp entries
+    let name = match name with None -> "" | Some l -> Lib_name.to_string l in
+    fprintf ppf "@[<v 2>package %S (@,%a@]@,)" name pp entries

@@ -32,9 +32,9 @@ include Common.Let_syntax
 let make_memory () =
   match Sys.getenv_opt "DUNE_CACHE" with
   | Some _ ->
-      Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
+    Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
   | _ ->
-      Fiber.return None
+    Fiber.return None
 
 module Main = struct
   include Dune.Main
@@ -57,8 +57,8 @@ module Main = struct
     >>= fun memory ->
     scan_workspace common
     >>= init_build_system
-          ~sandboxing_preference:(Common.config common).sandboxing_preference
-          ?external_lib_deps_mode ?only_packages ?memory
+      ~sandboxing_preference:(Common.config common).sandboxing_preference
+        ?memory ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

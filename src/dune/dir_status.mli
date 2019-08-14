@@ -7,16 +7,16 @@ type is_component_of_a_group_but_not_the_root =
 
 type t =
   | Standalone of
-      (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
+    (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
   (* Directory not part of a multi-directory group. The argument is [None] for
-     directory that are not from the source tree, such as generated ones. *)
+    directory that are not from the source tree, such as generated ones. *)
   | Group_root of
-      File_tree.Dir.t
-      * Dune_file.Include_subdirs.qualification
-      * Stanza.t list Dir_with_dune.t
+    File_tree.Dir.t
+    * Dune_file.Include_subdirs.qualification
+    * Stanza.t list Dir_with_dune.t
   (* Directory with [(include_subdirs x)] where [x] is not [no] *)
   | Is_component_of_a_group_but_not_the_root of
-      is_component_of_a_group_but_not_the_root
+    is_component_of_a_group_but_not_the_root
 
 (* Sub-directory of a [Group_root _] *)
 

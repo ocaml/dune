@@ -34,6 +34,6 @@ let name =
   fun n ->
     match List.assoc table n with
     | None ->
-        Printf.sprintf "%d\n" n
+      Printf.sprintf "%d\n" n
     | Some s ->
-        s
+      s

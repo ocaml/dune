@@ -20,49 +20,49 @@ type +'a t =
 let rec map_tags t ~f =
   match t with
   | Nop ->
-      Nop
+    Nop
   | Seq (a, b) ->
-      Seq (map_tags a ~f, map_tags b ~f)
+    Seq (map_tags a ~f, map_tags b ~f)
   | Concat (sep, l) ->
-      Concat (map_tags sep ~f, List.map l ~f:(map_tags ~f))
+    Concat (map_tags sep ~f, List.map l ~f:(map_tags ~f))
   | Box (indent, t) ->
-      Box (indent, map_tags t ~f)
+    Box (indent, map_tags t ~f)
   | Vbox (indent, t) ->
-      Vbox (indent, map_tags t ~f)
+    Vbox (indent, map_tags t ~f)
   | Hbox t ->
-      Hbox (map_tags t ~f)
+    Hbox (map_tags t ~f)
   | Hvbox (indent, t) ->
-      Hvbox (indent, map_tags t ~f)
+    Hvbox (indent, map_tags t ~f)
   | Hovbox (indent, t) ->
-      Hovbox (indent, map_tags t ~f)
+    Hovbox (indent, map_tags t ~f)
   | (Verbatim _ | Char _ | Break _ | Newline | Text _) as t ->
-      t
+    t
   | Tag (tag, t) ->
-      Tag (f tag, map_tags t ~f)
+    Tag (f tag, map_tags t ~f)
 
 let rec filter_map_tags t ~f =
   match t with
   | Nop ->
-      Nop
+    Nop
   | Seq (a, b) ->
-      Seq (filter_map_tags a ~f, filter_map_tags b ~f)
+    Seq (filter_map_tags a ~f, filter_map_tags b ~f)
   | Concat (sep, l) ->
-      Concat (filter_map_tags sep ~f, List.map l ~f:(filter_map_tags ~f))
+    Concat (filter_map_tags sep ~f, List.map l ~f:(filter_map_tags ~f))
   | Box (indent, t) ->
-      Box (indent, filter_map_tags t ~f)
+    Box (indent, filter_map_tags t ~f)
   | Vbox (indent, t) ->
-      Vbox (indent, filter_map_tags t ~f)
+    Vbox (indent, filter_map_tags t ~f)
   | Hbox t ->
-      Hbox (filter_map_tags t ~f)
+    Hbox (filter_map_tags t ~f)
   | Hvbox (indent, t) ->
-      Hvbox (indent, filter_map_tags t ~f)
+    Hvbox (indent, filter_map_tags t ~f)
   | Hovbox (indent, t) ->
-      Hovbox (indent, filter_map_tags t ~f)
+    Hovbox (indent, filter_map_tags t ~f)
   | (Verbatim _ | Char _ | Break _ | Newline | Text _) as t ->
-      t
+    t
   | Tag (tag, t) -> (
-      let t = filter_map_tags t ~f in
-      match f tag with None -> t | Some tag -> Tag (tag, t) )
+    let t = filter_map_tags t ~f in
+    match f tag with None -> t | Some tag -> Tag (tag, t) )
 
 module Render = struct
   open Format
@@ -70,49 +70,49 @@ module Render = struct
   let rec render ppf t ~tag_handler =
     match t with
     | Nop ->
-        ()
+      ()
     | Seq (a, b) ->
-        render ppf ~tag_handler a;
-        render ppf ~tag_handler b
+      render ppf ~tag_handler a;
+      render ppf ~tag_handler b
     | Concat (_, []) ->
-        ()
+      ()
     | Concat (sep, x :: l) ->
-        render ppf ~tag_handler x;
-        List.iter l ~f:(fun x ->
-            render ppf ~tag_handler sep;
-            render ppf ~tag_handler x)
+      render ppf ~tag_handler x;
+      List.iter l ~f:(fun x ->
+        render ppf ~tag_handler sep;
+        render ppf ~tag_handler x)
     | Box (indent, t) ->
-        pp_open_box ppf indent;
-        render ppf ~tag_handler t;
-        pp_close_box ppf ()
+      pp_open_box ppf indent;
+      render ppf ~tag_handler t;
+      pp_close_box ppf ()
     | Vbox (indent, t) ->
-        pp_open_vbox ppf indent;
-        render ppf ~tag_handler t;
-        pp_close_box ppf ()
+      pp_open_vbox ppf indent;
+      render ppf ~tag_handler t;
+      pp_close_box ppf ()
     | Hbox t ->
-        pp_open_hbox ppf ();
-        render ppf ~tag_handler t;
-        pp_close_box ppf ()
+      pp_open_hbox ppf ();
+      render ppf ~tag_handler t;
+      pp_close_box ppf ()
     | Hvbox (indent, t) ->
-        pp_open_hvbox ppf indent;
-        render ppf ~tag_handler t;
-        pp_close_box ppf ()
+      pp_open_hvbox ppf indent;
+      render ppf ~tag_handler t;
+      pp_close_box ppf ()
     | Hovbox (indent, t) ->
-        pp_open_hovbox ppf indent;
-        render ppf ~tag_handler t;
-        pp_close_box ppf ()
+      pp_open_hovbox ppf indent;
+      render ppf ~tag_handler t;
+      pp_close_box ppf ()
     | Verbatim x ->
-        pp_print_string ppf x
+      pp_print_string ppf x
     | Char x ->
-        pp_print_char ppf x
+      pp_print_char ppf x
     | Break (nspaces, shift) ->
-        pp_print_break ppf nspaces shift
+      pp_print_break ppf nspaces shift
     | Newline ->
-        pp_force_newline ppf ()
+      pp_force_newline ppf ()
     | Text s ->
-        pp_print_text ppf s
+      pp_print_text ppf s
     | Tag (tag, t) ->
-        tag_handler ppf tag t
+      tag_handler ppf tag t
 end
 
 let render = Render.render
@@ -126,11 +126,11 @@ let seq a b = Seq (a, b)
 
 let concat ?(sep = Nop) = function
   | [] ->
-      Nop
+    Nop
   | [ x ] ->
-      x
+    x
   | l ->
-      Concat (sep, l)
+    Concat (sep, l)
 
 let concat_map ?(sep = Nop) l ~f =
   match l with [] -> Nop | [ x ] -> f x | l -> Concat (sep, List.map l ~f)
@@ -166,20 +166,20 @@ let tag t ~tag = Tag (tag, t)
 let enumerate l ~f =
   vbox
     (concat ~sep:cut
-       (List.map l ~f:(fun x -> box ~indent:2 (seq (verbatim "- ") (f x)))))
+      (List.map l ~f:(fun x -> box ~indent:2 (seq (verbatim "- ") (f x)))))
 
 let chain l ~f =
   vbox
     (concat ~sep:cut
-       (List.mapi l ~f:(fun i x ->
-            box ~indent:3
-              (seq
-                 (verbatim
-                    ( if i = 0 then
-                      "   "
-                    else
-                      "-> " ))
-                 (f x)))))
+      (List.mapi l ~f:(fun i x ->
+        box ~indent:3
+          (seq
+            (verbatim
+              ( if i = 0 then
+                "   "
+              else
+                "-> " ))
+             (f x)))))
 
 module O = struct
   let ( ++ ) = seq

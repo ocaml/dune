@@ -16,10 +16,10 @@ let objects_and_cms t ~mode modules =
   let cm_files = Obj_dir.Module.L.cm_files t.obj_dir modules ~kind in
   match mode with
   | Byte ->
-      cm_files
+    cm_files
   | Native ->
-      Obj_dir.Module.L.o_files t.obj_dir modules ~ext_obj:t.ext_obj
-      |> List.rev_append cm_files
+    Obj_dir.Module.L.o_files t.obj_dir modules ~ext_obj:t.ext_obj
+    |> List.rev_append cm_files
 
 let unsorted_objects_and_cms t ~mode = objects_and_cms t ~mode t.modules
 

@@ -2,8 +2,8 @@
 open! Stdune
 
 (** This module implements a small DSL to specify the command line argument of
-    a program as well as the dependencies and targets of the program at the
-    same time.
+  a program as well as the dependencies and targets of the program at the same
+    time.
 
     For instance to represent the argument of [ocamlc -o src/foo.exe
     src/foo.ml], one might write:
@@ -16,7 +16,7 @@ open! Stdune
 open! Import
 
 (** [A] stands for "atom", it is for command line arguments that are neither
-    dependencies nor targets.
+  dependencies nor targets.
 
     [Path] is similar to [A] in the sense that it defines a command line
     argument that is neither a dependency or target. However, the difference
@@ -50,7 +50,7 @@ module Args : sig
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
-   can use the constructor [S] to concatenate lists instead. *)
+  can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
   -> ?stdout_to:Path.Build.t

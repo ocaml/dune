@@ -1,5 +1,5 @@
 (** A File_selector.t is a predicate that is to be evaluated in a particular
-    directory *)
+  directory *)
 
 open Stdune
 

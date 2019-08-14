@@ -38,7 +38,7 @@ module Key = struct
   let id (type a) (module M : T with type t = a) = M.id
 
   let eq (type a b) (module A : T with type t = a)
-      (module B : T with type t = b) : (a, b) Type_eq.t =
+    (module B : T with type t = b) : (a, b) Type_eq.t =
     match A.T with B.T -> Type_eq.T | _ -> assert false
 end
 
@@ -64,18 +64,18 @@ let remove t key = Int.Map.remove t (Key.id key)
 let find t key =
   match Int.Map.find t (Key.id key) with
   | None ->
-      None
+    None
   | Some (Binding.T (key', v)) ->
-      let eq = Key.eq key' key in
-      Some (Type_eq.cast eq v)
+    let eq = Key.eq key' key in
+    Some (Type_eq.cast eq v)
 
 let find_exn t key =
   match Int.Map.find t (Key.id key) with
   | None ->
-      failwith "Univ_map.find_exn"
+    failwith "Univ_map.find_exn"
   | Some (Binding.T (key', v)) ->
-      let eq = Key.eq key' key in
-      Type_eq.cast eq v
+    let eq = Key.eq key' key in
+    Type_eq.cast eq v
 
 let singleton key v = Int.Map.singleton (Key.id key) (Binding.T (key, v))
 
@@ -86,5 +86,5 @@ let to_dyn (t : t) =
   Dyn.Map
     ( Int.Map.values t
     |> List.map ~f:(fun (Binding.T (key, v)) ->
-           let (module K) = key in
-           (string K.name, K.to_dyn v)) )
+      let (module K) = key in
+      (string K.name, K.to_dyn v)) )

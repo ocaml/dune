@@ -14,8 +14,8 @@ module Code_error_with_memo_backtrace = struct
     { exn : Code_error.t
     ; reverse_backtrace : frame list
     ; (* [outer_call_stack] is a trick to capture some of the information
-         that's lost by the async memo error handler. It can be safely ignored
-         by the sync error handler. *)
+      that's lost by the async memo error handler. It can be safely ignored by
+        the sync error handler. *)
       outer_call_stack : Dyn.t
     }
 
@@ -35,9 +35,9 @@ module Code_error_with_memo_backtrace = struct
   let () =
     Printexc.register_printer (function
       | E t ->
-          Some (Dyn.to_string (to_dyn t))
+        Some (Dyn.to_string (to_dyn t))
       | _ ->
-          None)
+        None)
 end
 
 let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
@@ -69,12 +69,12 @@ module Function = struct
     | Async : ('a -> 'b Fiber.t) -> ('a, 'b, 'a -> 'b Fiber.t) t
 
   let of_type (type a b f) (t : (a, b, f) Function_type.t) (f : f) :
-      (a, b, f) t =
+    (a, b, f) t =
     match t with
     | Function_type.Sync ->
-        Sync f
+      Sync f
     | Function_type.Async ->
-        Async f
+      Async f
 end
 
 module Witness : sig
@@ -96,9 +96,9 @@ end = struct
 
   let create (type a) () =
     ( ( module struct
-        type nonrec a = a
+      type nonrec a = a
 
-        type _ w += W : a w
+      type _ w += W : a w
       end )
       : a t )
 
@@ -153,9 +153,9 @@ module Spec = struct
   let register t =
     match find t.name with
     | Some _ ->
-        Code_error.raise "[Spec.register] called twice on the same function" []
+      Code_error.raise "[Spec.register] called twice on the same function" []
     | None ->
-        Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
+      Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
 end
 
 module Id = Id.Make ()
@@ -187,7 +187,7 @@ end = struct
 end
 
 (* We can get rid of this once we use the memoization system more pervasively
-   and all the dependencies are properly specified *)
+  and all the dependencies are properly specified *)
 module Caches = struct
   let cleaners = ref []
 
@@ -216,7 +216,7 @@ module M = struct
   and State : sig
     type 'a t =
       (* [Running] includes computations that already terminated with an
-         exception or cancelled because we've advanced to the next run. *)
+        exception or cancelled because we've advanced to the next run. *)
       | Running_sync of Run.t
       | Running_async of Run.t * 'a Fiber.Ivar.t
       | Failed of Run.t * Exn_with_backtrace.t
@@ -259,12 +259,12 @@ module Cached_value = struct
   let create x ~deps = { deps; data = x; calculated_at = Run.current () }
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output
-      curr_output =
+    curr_output =
     match node.spec.allow_cutoff with
     | Yes equal ->
-        not (equal prev_output curr_output)
+      not (equal prev_output curr_output)
     | No ->
-        true
+      true
 
   let rec get_sync : type a. a t -> a option =
    fun t ->
@@ -275,34 +275,34 @@ module Cached_value = struct
         | Last_dep.T (node, prev_output) -> (
           match node.state with
           | Failed (run, exn) ->
-              if Run.is_current run then
-                already_reported exn
-              else
-                true
+            if Run.is_current run then
+              already_reported exn
+            else
+              true
           | Running_sync run ->
-              if Run.is_current run then
-                Code_error.raise "dependency_cycle 1" []
-              else
-                true
+            if Run.is_current run then
+              Code_error.raise "dependency_cycle 1" []
+            else
+              true
           | Running_async _ ->
-              Code_error.raise
-                "Synchronous function depends on an asynchronous one. That is \
-                 not allowed. (in fact this case should be unreachable)"
-                []
+            Code_error.raise
+              "Synchronous function depends on an asynchronous one. That is \
+               not allowed. (in fact this case should be unreachable)"
+              []
           | Done t' -> (
-              get_sync t'
-              |> function
-              | None ->
-                  true
-              | Some curr_output ->
-                  dep_changed node prev_output curr_output ) )
+            get_sync t'
+            |> function
+            | None ->
+              true
+            | Some curr_output ->
+              dep_changed node prev_output curr_output ) )
       in
       match List.exists ~f:dep_changed t.deps with
       | true ->
-          None
+        None
       | false ->
-          t.calculated_at <- Run.current ();
-          Some t.data
+        t.calculated_at <- Run.current ();
+        Some t.data
 
   (* Check if a cached value is up to date. If yes, return it *)
   let rec get_async : type a. a t -> a option Fiber.t =
@@ -312,58 +312,58 @@ module Cached_value = struct
     else
       let rec deps_changed acc = function
         | [] ->
-            Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
+          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
           | Failed (run, exn) ->
-              if Run.is_current run then
-                already_reported exn
-              else
-                Fiber.return true
+            if Run.is_current run then
+              already_reported exn
+            else
+              Fiber.return true
           | Running_sync _ ->
-              Code_error.raise
-                "Synchronous function called [Cached_value.get_async]" []
+            Code_error.raise
+              "Synchronous function called [Cached_value.get_async]" []
           | Running_async (run, ivar) ->
-              if not (Run.is_current run) then
+            if not (Run.is_current run) then
+              Fiber.return true
+            else
+              let changed =
+                let+ curr_output = Fiber.Ivar.read ivar in
+                dep_changed node prev_output curr_output
+              in
+              deps_changed (changed :: acc) deps
+          | Done t' ->
+            if Run.is_current t'.calculated_at then
+              if
+                (* handle common case separately to avoid feeding more fibers
+                  to [parallel_map] *)
+                dep_changed node prev_output t'.data
+              then
                 Fiber.return true
               else
-                let changed =
-                  let+ curr_output = Fiber.Ivar.read ivar in
+                deps_changed acc deps
+            else
+              let changed =
+                ( match node.spec.f with
+                | Function.Sync _ ->
+                  Fiber.return (get_sync t')
+                | Function.Async _ ->
+                  get_async t' )
+                >>| function
+                | None ->
+                  true
+                | Some curr_output ->
                   dep_changed node prev_output curr_output
-                in
-                deps_changed (changed :: acc) deps
-          | Done t' ->
-              if Run.is_current t'.calculated_at then
-                if
-                  (* handle common case separately to avoid feeding more fibers
-                     to [parallel_map] *)
-                  dep_changed node prev_output t'.data
-                then
-                  Fiber.return true
-                else
-                  deps_changed acc deps
-              else
-                let changed =
-                  ( match node.spec.f with
-                  | Function.Sync _ ->
-                      Fiber.return (get_sync t')
-                  | Function.Async _ ->
-                      get_async t' )
-                  >>| function
-                  | None ->
-                      true
-                  | Some curr_output ->
-                      dep_changed node prev_output curr_output
-                in
-                deps_changed (changed :: acc) deps )
+              in
+              deps_changed (changed :: acc) deps )
       in
       deps_changed [] t.deps
       >>| function
       | true ->
-          None
+        None
       | false ->
-          t.calculated_at <- Run.current ();
-          Some t.data
+        t.calculated_at <- Run.current ();
+        Some t.data
 end
 
 let ser_input (type a) (node : (a, _, _) Dep_node.t) =
@@ -424,12 +424,12 @@ module Call_stack = struct
   let push_async_frame frame f =
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_key (frame :: stack) (fun () ->
-        Implicit_output.forbid_async f)
+      Implicit_output.forbid_async f)
 
   let push_sync_frame frame f =
     let stack = get_call_stack () in
     Fiber.Var.set_sync call_stack_key (frame :: stack) (fun () ->
-        Implicit_output.forbid_sync f)
+      Implicit_output.forbid_sync f)
 end
 
 let pp_stack () =
@@ -445,32 +445,32 @@ let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 let add_rev_dep dep_node =
   match Call_stack.get_call_stack_tip () with
   | None ->
-      ()
+    ()
   | Some (Dep_node.T rev_dep) -> (
-      (* if the caller doesn't already contain this as a dependent *)
-      let rev_dep = dag_node rev_dep in
-      try
-        if Dag.is_child rev_dep dep_node |> not then
-          Dag.add global_dep_dag rev_dep dep_node
-      with Dag.Cycle cycle ->
-        raise
-          (Cycle_error.E
-             { stack = Call_stack.get_call_stack ()
-             ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-             }) )
+    (* if the caller doesn't already contain this as a dependent *)
+    let rev_dep = dag_node rev_dep in
+    try
+      if Dag.is_child rev_dep dep_node |> not then
+        Dag.add global_dep_dag rev_dep dep_node
+    with Dag.Cycle cycle ->
+      raise
+        (Cycle_error.E
+          { stack = Call_stack.get_call_stack ()
+          ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+          }) )
 
 let get_deps_from_graph_exn dep_node =
   Dag.children (dag_node dep_node)
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
-         match node.state with
-         | Failed _ ->
-             assert false
-         | Running_sync _ ->
-             assert false
-         | Running_async _ ->
-             assert false
-         | Done res ->
-             Last_dep.T (node, res.data))
+    match node.state with
+    | Failed _ ->
+      assert false
+    | Running_sync _ ->
+      assert false
+    | Running_async _ ->
+      assert false
+    | Done res ->
+      Last_dep.T (node, res.data))
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t
@@ -483,12 +483,12 @@ module Stack_frame = struct
   include Stack_frame0
 
   let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) :
-      i option =
+    i option =
     match Witness.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T ->
-        Some t.input
+      Some t.input
     | None ->
-        None
+      None
 end
 
 module Visibility = struct
@@ -504,24 +504,24 @@ module Output = struct
 end
 
 let create (type i o f) name ~doc ~input:(module Input : Input with type t = i)
-    ~visibility ~(output : o Output.t) (typ : (i, o, f) Function_type.t)
-    (f : f) =
+  ~visibility ~(output : o Output.t) (typ : (i, o, f) Function_type.t) (f : f)
+    =
   let name = Function_name.make name in
   let decode : i Dune_lang.Decoder.t =
     match visibility with
     | Visibility.Hidden ->
-        let open Dune_lang.Decoder in
-        let+ loc = loc in
-        User_error.raise ~loc [ Pp.text "<not-implemented>" ]
+      let open Dune_lang.Decoder in
+      let+ loc = loc in
+      User_error.raise ~loc [ Pp.text "<not-implemented>" ]
     | Public decode ->
-        decode
+      decode
   in
   let (output : (module Output_simple with type t = o)), allow_cutoff =
     match output with
     | Simple (module Output) ->
-        ((module Output), Allow_cutoff.No)
+      ((module Output), Allow_cutoff.No)
     | Allow_cutoff (module Output) ->
-        ((module Output), Yes Output.equal)
+      ((module Output), Yes Output.equal)
   in
   let spec =
     { Spec.name
@@ -556,48 +556,47 @@ module Exec_sync = struct
     let res =
       match
         Call_stack.push_sync_frame (T dep_node) (fun () ->
-            match t.spec.f with
-            | Function.Sync f ->
-                (* If [f] raises an exception, [push_sync_frame] re-raises it
-                   twice, so you'd end up with ugly "re-raised by" stack
-                   frames. Catching it here cuts the backtrace to just the
-                   desired part. *)
-                Exn_with_backtrace.try_with (fun () -> f inp))
+          match t.spec.f with
+          | Function.Sync f ->
+            (* If [f] raises an exception, [push_sync_frame] re-raises it
+              twice, so you'd end up with ugly "re-raised by" stack frames.
+               Catching it here cuts the backtrace to just the desired part. *)
+            Exn_with_backtrace.try_with (fun () -> f inp))
       with
       | Error exn -> (
-          dep_node.state <- Failed (run, exn);
-          let code_error (e : Code_error_with_memo_backtrace.t) =
-            let bt = exn.backtrace in
-            let { Code_error_with_memo_backtrace.exn
-                ; reverse_backtrace
-                ; outer_call_stack = _
-                } =
-              e
-            in
-            Code_error_with_memo_backtrace.E
-              { exn
-              ; reverse_backtrace =
-                  { ocaml = Printexc.raw_backtrace_to_string bt
-                  ; memo = Stack_frame.to_dyn (T dep_node)
-                  }
-                  :: reverse_backtrace
-              ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
-              }
+        dep_node.state <- Failed (run, exn);
+        let code_error (e : Code_error_with_memo_backtrace.t) =
+          let bt = exn.backtrace in
+          let { Code_error_with_memo_backtrace.exn
+            ; reverse_backtrace
+              ; outer_call_stack = _
+              } =
+            e
           in
-          match exn.exn with
-          | Code_error.E exn ->
-              raise
-                (code_error
-                   { Code_error_with_memo_backtrace.exn
-                   ; reverse_backtrace = []
-                   ; outer_call_stack = Dyn.String "<n/a>"
-                   })
-          | Code_error_with_memo_backtrace.E e ->
-              raise (code_error e)
-          | _exn ->
-              Exn_with_backtrace.reraise exn )
+          Code_error_with_memo_backtrace.E
+            { exn
+            ; reverse_backtrace =
+              { ocaml = Printexc.raw_backtrace_to_string bt
+              ; memo = Stack_frame.to_dyn (T dep_node)
+              }
+              :: reverse_backtrace
+            ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
+            }
+        in
+        match exn.exn with
+        | Code_error.E exn ->
+          raise
+            (code_error
+              { Code_error_with_memo_backtrace.exn
+              ; reverse_backtrace = []
+              ; outer_call_stack = Dyn.String "<n/a>"
+              })
+        | Code_error_with_memo_backtrace.E e ->
+          raise (code_error e)
+        | _exn ->
+          Exn_with_backtrace.reraise exn )
       | Ok res ->
-          res
+        res
     in
     (* update the output cache with the correct value *)
     let deps = get_deps_from_graph_exn dep_node in
@@ -612,47 +611,47 @@ module Exec_sync = struct
   let exec t inp =
     match Table.find t.cache inp with
     | None ->
-        let run = Run.current () in
-        let dep_node : _ Dep_node.t =
-          { id = Id.gen ()
-          ; input = inp
-          ; spec = t.spec
-          ; dag_node = lazy (assert false)
-          ; state = Running_sync run
-          }
-        in
-        let dag_node : Dag.node =
-          { info = Dag.create_node_info global_dep_dag
-          ; data = Dep_node.T dep_node
-          }
-        in
-        dep_node.dag_node <- lazy dag_node;
-        Table.set t.cache inp dep_node;
-        add_rev_dep dag_node;
-        compute t run inp dep_node
+      let run = Run.current () in
+      let dep_node : _ Dep_node.t =
+        { id = Id.gen ()
+        ; input = inp
+        ; spec = t.spec
+        ; dag_node = lazy (assert false)
+        ; state = Running_sync run
+        }
+      in
+      let dag_node : Dag.node =
+        { info = Dag.create_node_info global_dep_dag
+        ; data = Dep_node.T dep_node
+        }
+      in
+      dep_node.dag_node <- lazy dag_node;
+      Table.set t.cache inp dep_node;
+      add_rev_dep dag_node;
+      compute t run inp dep_node
     | Some dep_node -> (
-        add_rev_dep (dag_node dep_node);
-        match dep_node.state with
-        | Failed (run, exn) ->
-            if Run.is_current run then
-              Nothing.unreachable_code (!on_already_reported exn)
-            else
-              recompute t inp dep_node
-        | Running_async _ ->
-            assert false
-        | Running_sync run ->
-            if Run.is_current run then
-              (* hopefully this branch should be unreachable and [add_rev_dep]
-                 reports a cycle above instead *)
-              Code_error.raise "bug: unreported sync dependency_cycle"
-                [ ("stack", Call_stack.get_call_stack_as_dyn ())
-                ; ("adding", Stack_frame.to_dyn (T dep_node))
-                ]
-            else
-              recompute t inp dep_node
-        | Done cv -> (
-            Cached_value.get_sync cv
-            |> function Some v -> v | None -> recompute t inp dep_node ) )
+      add_rev_dep (dag_node dep_node);
+      match dep_node.state with
+      | Failed (run, exn) ->
+        if Run.is_current run then
+          Nothing.unreachable_code (!on_already_reported exn)
+        else
+          recompute t inp dep_node
+      | Running_async _ ->
+        assert false
+      | Running_sync run ->
+        if Run.is_current run then
+          (* hopefully this branch should be unreachable and [add_rev_dep]
+            reports a cycle above instead *)
+          Code_error.raise "bug: unreported sync dependency_cycle"
+            [ ("stack", Call_stack.get_call_stack_as_dyn ())
+            ; ("adding", Stack_frame.to_dyn (T dep_node))
+            ]
+        else
+          recompute t inp dep_node
+      | Done cv -> (
+        Cached_value.get_sync cv
+        |> function Some v -> v | None -> recompute t inp dep_node ) )
 end
 
 module Exec_async = struct
@@ -661,12 +660,12 @@ module Exec_async = struct
     (* set context of computation then run it *)
     let* res =
       Call_stack.push_async_frame (T dep_node) (fun () ->
-          match t.spec.f with Function.Async f -> f inp)
+        match t.spec.f with Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
     let deps = get_deps_from_graph_exn dep_node in
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
-       errors file running [f]. Currently not doing that because sometimes [f]
+      errors file running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
@@ -682,85 +681,85 @@ module Exec_async = struct
   let exec t inp =
     match Table.find t.cache inp with
     | None ->
-        let ivar = Fiber.Ivar.create () in
-        let dep_node : _ Dep_node.t =
-          { id = Id.gen ()
-          ; input = inp
-          ; spec = t.spec
-          ; dag_node = lazy (assert false)
-          ; state = Running_async (Run.current (), ivar)
-          }
-        in
-        let dag_node : Dag.node =
-          { info = Dag.create_node_info global_dep_dag
-          ; data = Dep_node.T dep_node
-          }
-        in
-        dep_node.dag_node <- lazy dag_node;
-        Table.set t.cache inp dep_node;
-        add_rev_dep dag_node;
-        compute t inp ivar dep_node
+      let ivar = Fiber.Ivar.create () in
+      let dep_node : _ Dep_node.t =
+        { id = Id.gen ()
+        ; input = inp
+        ; spec = t.spec
+        ; dag_node = lazy (assert false)
+        ; state = Running_async (Run.current (), ivar)
+        }
+      in
+      let dag_node : Dag.node =
+        { info = Dag.create_node_info global_dep_dag
+        ; data = Dep_node.T dep_node
+        }
+      in
+      dep_node.dag_node <- lazy dag_node;
+      Table.set t.cache inp dep_node;
+      add_rev_dep dag_node;
+      compute t inp ivar dep_node
     | Some dep_node -> (
-        add_rev_dep (dag_node dep_node);
-        match dep_node.state with
-        | Failed (run, exn) ->
-            if Run.is_current run then
-              already_reported exn
-            else
-              recompute t inp dep_node
-        | Running_sync _ ->
-            assert false
-        | Running_async (run, fut) ->
-            if Run.is_current run then
-              Fiber.Ivar.read fut
-            else
-              recompute t inp dep_node
-        | Done cv -> (
-            Cached_value.get_async cv
-            >>= function
-            | Some v -> Fiber.return v | None -> recompute t inp dep_node ) )
+      add_rev_dep (dag_node dep_node);
+      match dep_node.state with
+      | Failed (run, exn) ->
+        if Run.is_current run then
+          already_reported exn
+        else
+          recompute t inp dep_node
+      | Running_sync _ ->
+        assert false
+      | Running_async (run, fut) ->
+        if Run.is_current run then
+          Fiber.Ivar.read fut
+        else
+          recompute t inp dep_node
+      | Done cv -> (
+        Cached_value.get_async cv
+        >>= function
+        | Some v -> Fiber.return v | None -> recompute t inp dep_node ) )
 end
 
 let exec (type i o f) (t : (i, o, f) t) =
   match t.spec.f with
   | Function.Async _ ->
-      (Exec_async.exec t : f)
+    (Exec_async.exec t : f)
   | Function.Sync _ ->
-      (Exec_sync.exec t : f)
+    (Exec_sync.exec t : f)
 
 let peek t inp =
   match Table.find t.cache inp with
   | None ->
-      None
+    None
   | Some dep_node -> (
-      add_rev_dep (dag_node dep_node);
-      match dep_node.state with
-      | Running_sync _ ->
-          None
-      | Running_async _ ->
-          None
-      | Failed _ ->
-          None
-      | Done cv ->
-          if Run.is_current cv.calculated_at then
-            Some cv.data
-          else
-            None )
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Running_sync _ ->
+      None
+    | Running_async _ ->
+      None
+    | Failed _ ->
+      None
+    | Done cv ->
+      if Run.is_current cv.calculated_at then
+        Some cv.data
+      else
+        None )
 
 let peek_exn t inp = Option.value_exn (peek t inp)
 
 let get_deps t inp =
   match Table.find t.cache inp with
   | None | Some { state = Running_async _; _ } ->
-      None
+    None
   | Some { state = Running_sync _; _ } ->
-      None
+    None
   | Some { state = Failed _; _ } ->
-      None
+    None
   | Some { state = Done cv; _ } ->
-      Some
-        (List.map cv.deps ~f:(fun (Last_dep.T (n, _u)) ->
-             (Function_name.to_string n.spec.name, ser_input n)))
+    Some
+      (List.map cv.deps ~f:(fun (Last_dep.T (n, _u)) ->
+        (Function_name.to_string n.spec.name, ser_input n)))
 
 let get_func name =
   match
@@ -768,9 +767,9 @@ let get_func name =
     Function_name.get name >>= Spec.find
   with
   | None ->
-      User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
+    User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
   | Some spec ->
-      spec
+    spec
 
 let call name input =
   let (Spec.T spec) = get_func name in
@@ -779,9 +778,9 @@ let call name input =
   let+ output =
     ( match spec.f with
     | Function.Async f ->
-        f
+      f
     | Function.Sync f ->
-        fun x -> Fiber.return (f x) )
+      fun x -> Fiber.return (f x) )
       input
   in
   Output.to_dyn output
@@ -801,7 +800,7 @@ let registered_functions () =
   |> List.filter_map ~f:(Function_name.Table.get Spec.by_name)
   |> List.map ~f:Function_info.of_spec
   |> List.sort ~compare:(fun a b ->
-         String.compare a.Function_info.name b.Function_info.name)
+    String.compare a.Function_info.name b.Function_info.name)
 
 let function_info name = get_func name |> Function_info.of_spec
 
@@ -855,7 +854,7 @@ module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
   let create (type i o f io) name ~doc ~input ~visibility
-      ~output:(module O : Output_simple with type t = o) ~implicit_output
+    ~output:(module O : Output_simple with type t = o) ~implicit_output
       (typ : (i, o, f) Function_type.t) (impl : f) =
     let output =
       Output.Simple
@@ -868,25 +867,25 @@ module With_implicit_output = struct
     in
     match typ with
     | Function_type.Sync ->
-        let memo =
-          create name ~doc ~input ~visibility ~output Sync (fun i ->
-              Implicit_output.collect_sync implicit_output (fun () -> impl i))
-        in
-        ( fun input ->
-            let res, output = exec memo input in
-            Implicit_output.produce_opt implicit_output output;
-            res
-          : f )
+      let memo =
+        create name ~doc ~input ~visibility ~output Sync (fun i ->
+          Implicit_output.collect_sync implicit_output (fun () -> impl i))
+      in
+      ( fun input ->
+        let res, output = exec memo input in
+        Implicit_output.produce_opt implicit_output output;
+        res
+        : f )
     | Function_type.Async ->
-        let memo =
-          create name ~doc ~input ~visibility ~output Async (fun i ->
-              Implicit_output.collect_async implicit_output (fun () -> impl i))
-        in
-        ( fun input ->
-            Fiber.map (exec memo input) ~f:(fun (res, output) ->
-                Implicit_output.produce_opt implicit_output output;
-                res)
-          : f )
+      let memo =
+        create name ~doc ~input ~visibility ~output Async (fun i ->
+          Implicit_output.collect_async implicit_output (fun () -> impl i))
+      in
+      ( fun input ->
+        Fiber.map (exec memo input) ~f:(fun (res, output) ->
+          Implicit_output.produce_opt implicit_output output;
+          res)
+        : f )
 
   let exec t = t
 end

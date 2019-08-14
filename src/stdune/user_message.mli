@@ -1,10 +1,10 @@
 (** A message for the user *)
 
 (** User messages are styled document that can be printed to the console or in
-    the log file. *)
+  the log file. *)
 
 (** Symbolic styles that can be used inside messages. These styles are later
-    converted to actual concrete styles depending on the output device. For
+  converted to actual concrete styles depending on the output device. For
     instance, when printed to the terminal they are converted to ansi terminal
     styles ([Ansi_color.Style.t list] values). *)
 module Style : sig
@@ -23,7 +23,7 @@ module Style : sig
 end
 
 (** A user message.contents composed of an optional file location and a list of
-    paragraphs.
+  paragraphs.
 
     The various paragraphs will be printed one after the other and will all
     start at the beginning of a line. They are all wrapped inside a [Pp.box].
@@ -49,9 +49,9 @@ end
 
 (** Construct a user message from a list of paragraphs.
 
-    The first paragraph is prefixed with [prefix] inside the box. [prefix]
-    should not end with a space as a space is automatically inserted by [make]
-    if necessary. *)
+  The first paragraph is prefixed with [prefix] inside the box. [prefix] should
+  not end with a space as a space is automatically inserted by [make] if
+  necessary. *)
 val make :
      ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
@@ -69,5 +69,5 @@ val prerr : ?config:Print_config.t -> t -> unit
 val did_you_mean : string -> candidates:string list -> Style.t Pp.t list
 
 (** Produces a plain text representation of the error message, without the
-    "Error: " prefix. *)
+  "Error: " prefix. *)
 val to_string : t -> string

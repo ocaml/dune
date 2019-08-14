@@ -51,9 +51,9 @@ let git, hg =
     lazy
       ( match Bin.which ~path:(Env.path Env.initial) prog with
       | Some x ->
-          x
+        x
       | None ->
-          Utils.program_not_found prog ~loc:None )
+        Utils.program_not_found prog ~loc:None )
   in
   (get "git", get "hg")
 
@@ -80,23 +80,23 @@ let hg_describe t =
   let id, dirty_suffix =
     match String.drop_suffix id ~suffix:"+" with
     | Some id ->
-        (id, "-dirty")
+      (id, "-dirty")
     | None ->
-        (id, "")
+      (id, "")
   in
   let s =
     let s, dist = Option.value_exn (String.rsplit2 s ~on:' ') in
     match s with
     | "null" ->
-        id
+      id
     | _ -> (
       match int_of_string dist with
       | 1 ->
-          s
+        s
       | n ->
-          sprintf "%s-%d-%s" s (n - 1) id
+        sprintf "%s-%d-%s" s (n - 1) id
       | exception _ ->
-          sprintf "%s-%s-%s" s dist id )
+        sprintf "%s-%s-%s" s dist id )
   in
   s ^ dirty_suffix
 
@@ -111,16 +111,16 @@ let make_fun name ~output ~doc ~git ~hg =
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-       ~doc:"Obtain a nice description of the tip from the vcs"
-       ~output:(Simple (module String))
+    ~doc:"Obtain a nice description of the tip from the vcs"
+      ~output:(Simple (module String))
        ~git:(fun t -> run t [ "describe"; "--always"; "--dirty" ])
        ~hg:hg_describe
 
 let commit_id =
   Staged.unstage
   @@ make_fun "vcs-commit-id" ~doc:"The hash of the head commit"
-       ~output:(Simple (module String))
-       ~git:(fun t -> run t [ "rev-parse"; "HEAD" ])
+    ~output:(Simple (module String))
+      ~git:(fun t -> run t [ "rev-parse"; "HEAD" ])
        ~hg:(fun t -> run t [ "id"; "-i" ])
 
 let files =
@@ -131,12 +131,12 @@ let files =
   in
   Staged.unstage
   @@ make_fun "vcs-files" ~doc:"Return the files committed in the repo"
-       ~output:
-         (Simple
-            ( module struct
-              type t = Path.t list
+    ~output:
+      (Simple
+        ( module struct
+          type t = Path.t list
 
-              let to_dyn = Dyn.Encoder.list Path.to_dyn
-            end ))
+          let to_dyn = Dyn.Encoder.list Path.to_dyn
+        end ))
        ~git:(f [ "ls-tree"; "-r"; "--name-only"; "HEAD" ])
        ~hg:(f [ "files" ])

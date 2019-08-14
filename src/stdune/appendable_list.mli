@@ -1,5 +1,5 @@
 (** Appendable lists: concatenation takes O(1) time, conversion to a list takes
-    O(n). *)
+  O(n). *)
 
 type 'a t
 

@@ -10,13 +10,13 @@ module Kind = struct
 
   let priority = function
     | Explicit ->
-        0
+      0
     | Dune_workspace ->
-        1
+      1
     | Dune_project ->
-        2
+      2
     | Cwd ->
-        3
+      3
 
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then
@@ -41,42 +41,41 @@ let find () =
   let rec loop counter ~candidate ~to_cwd dir =
     match Sys.readdir dir with
     | exception Sys_error msg ->
-        User_warning.emit
-          [ Pp.textf
-              "Unable to read directory %s. Will not look for root in parent \
-               directories."
-              dir
-          ; Pp.textf "Reason: %s" msg
-          ; Pp.text
-              "To remove this warning, set your root explicitly using --root."
-          ];
-        candidate
+      User_warning.emit
+        [ Pp.textf
+          "Unable to read directory %s. Will not look for root in parent \
+           directories."
+          dir
+        ; Pp.textf "Reason: %s" msg
+        ; Pp.text
+          "To remove this warning, set your root explicitly using --root."
+        ];
+      candidate
     | files ->
-        let files = String.Set.of_list (Array.to_list files) in
-        let new_candidate =
-          match Kind.of_dir_contents files with
-          | Some kind when Kind.priority kind <= Kind.priority candidate.kind
-            ->
-              Some { kind; dir; to_cwd; ancestor_vcs = None }
-          | _ ->
-              None
-        in
-        let candidate =
-          match (new_candidate, candidate.ancestor_vcs) with
-          | Some c, _ ->
-              c
-          | None, Some _ ->
-              candidate
-          | None, None -> (
-            match Vcs.Kind.of_dir_contents files with
-            | Some kind ->
-                { candidate with
-                  ancestor_vcs = Some { kind; root = Path.of_string dir }
-                }
-            | None ->
-                candidate )
-        in
-        cont counter ~candidate dir ~to_cwd
+      let files = String.Set.of_list (Array.to_list files) in
+      let new_candidate =
+        match Kind.of_dir_contents files with
+        | Some kind when Kind.priority kind <= Kind.priority candidate.kind ->
+          Some { kind; dir; to_cwd; ancestor_vcs = None }
+        | _ ->
+          None
+      in
+      let candidate =
+        match (new_candidate, candidate.ancestor_vcs) with
+        | Some c, _ ->
+          c
+        | None, Some _ ->
+          candidate
+        | None, None -> (
+          match Vcs.Kind.of_dir_contents files with
+          | Some kind ->
+            { candidate with
+              ancestor_vcs = Some { kind; root = Path.of_string dir }
+            }
+          | None ->
+            candidate )
+      in
+      cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
     if counter > String.length cwd then
       candidate
@@ -94,9 +93,9 @@ let find () =
 let create ~specified_by_user =
   match specified_by_user with
   | Some dn ->
-      make Explicit dn
+    make Explicit dn
   | None ->
-      if Config.inside_dune then
-        make Cwd "."
-      else
-        find ()
+    if Config.inside_dune then
+      make Cwd "."
+    else
+      find ()

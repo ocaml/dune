@@ -8,10 +8,10 @@ let roundtrip x =
   let str = to_string x in
   match parse (Stream.of_string str) with
   | Result.Error e ->
-      failwith e
+    failwith e
   | Result.Ok exp ->
-      assert (Sexp.compare exp x = Ordering.Eq);
-      print (Pp.text str)
+    assert (Sexp.compare exp x = Ordering.Eq);
+    print (Pp.text str)
 
 let%expect_test _ =
   roundtrip (Sexp.Atom "foo");
@@ -28,21 +28,19 @@ let%expect_test _ =
 let%expect_test _ =
   roundtrip
     (Sexp.List
-       [ Sexp.List
-           [ Sexp.Atom "metadata"
-           ; Sexp.List [ Sexp.Atom "foo"; Sexp.Atom "bar" ]
-           ]
-       ; Sexp.List
-           [ Sexp.Atom "produced-files"
-           ; Sexp.List
-               [ Sexp.List
-                   [ Sexp.Atom "/tmp/coin"
-                   ; Sexp.Atom
-                       "/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1"
-                   ]
-               ]
-           ]
-       ]);
+      [ Sexp.List
+        [ Sexp.Atom "metadata"; Sexp.List [ Sexp.Atom "foo"; Sexp.Atom "bar" ] ]
+      ; Sexp.List
+        [ Sexp.Atom "produced-files"
+        ; Sexp.List
+          [ Sexp.List
+            [ Sexp.Atom "/tmp/coin"
+            ; Sexp.Atom
+              "/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1"
+            ]
+          ]
+        ]
+      ]);
   [%expect
     {|((8:metadata(3:foo3:bar))(14:produced-files((9:/tmp/coin63:/tmp/dune-memory/v2/files/b2/b295e63b0b8e8fae971d9c493be0d261.1))))|}]
 

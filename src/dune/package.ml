@@ -50,31 +50,31 @@ module Dependency = struct
       let open Dyn.Encoder in
       function
       | Eq ->
-          string "Eq"
+        string "Eq"
       | Gt ->
-          string "Gt"
+        string "Gt"
       | Gte ->
-          string "Gte"
+        string "Gte"
       | Lte ->
-          string "Lte"
+        string "Lte"
       | Lt ->
-          string "Lt"
+        string "Lt"
       | Neq ->
-          string "Neq"
+        string "Neq"
 
     let to_relop : t -> OpamParserTypes.relop = function
       | Eq ->
-          `Eq
+        `Eq
       | Gte ->
-          `Geq
+        `Geq
       | Lte ->
-          `Leq
+        `Leq
       | Gt ->
-          `Gt
+        `Gt
       | Lt ->
-          `Lt
+        `Lt
       | Neq ->
-          `Neq
+        `Neq
   end
 
   module Constraint = struct
@@ -106,9 +106,9 @@ module Dependency = struct
       let open Dune_lang.Decoder in
       let ops =
         List.map Op.map ~f:(fun (name, op) ->
-            ( name
-            , let+ x = Var.decode in
-              Uop (op, x) ))
+          ( name
+          , let+ x = Var.decode in
+            Uop (op, x) ))
       in
       let ops =
         ( "!="
@@ -117,38 +117,38 @@ module Dependency = struct
         :: ops
       in
       fix (fun t ->
-          let logops =
-            [ ( "and"
-              , let+ x = repeat t in
-                And x )
-            ; ( "or"
-              , let+ x = repeat t in
-                Or x )
-            ]
-          in
-          peek_exn
-          >>= function
-          | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
-              let+ () = junk in
-              Bvar (Var (String.drop s 1))
-          | _ ->
-              sum (ops @ logops))
+        let logops =
+          [ ( "and"
+            , let+ x = repeat t in
+              And x )
+          ; ( "or"
+            , let+ x = repeat t in
+              Or x )
+          ]
+        in
+        peek_exn
+        >>= function
+        | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
+          let+ () = junk in
+          Bvar (Var (String.drop s 1))
+        | _ ->
+          sum (ops @ logops))
 
     let rec to_dyn =
       let open Dyn.Encoder in
       function
       | Bvar (QVar v) ->
-          constr "Bvar" [ Dyn.String v ]
+        constr "Bvar" [ Dyn.String v ]
       | Bvar (Var v) ->
-          constr "Bvar" [ Dyn.String (":" ^ v) ]
+        constr "Bvar" [ Dyn.String (":" ^ v) ]
       | Uop (b, QVar v) ->
-          constr "Uop" [ Op.to_dyn b; Dyn.String v ]
+        constr "Uop" [ Op.to_dyn b; Dyn.String v ]
       | Uop (b, Var v) ->
-          constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
+        constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
       | And t ->
-          constr "And" (List.map ~f:to_dyn t)
+        constr "And" (List.map ~f:to_dyn t)
       | Or t ->
-          constr "Or" (List.map ~f:to_dyn t)
+        constr "Or" (List.map ~f:to_dyn t)
   end
 
   type t =
@@ -172,19 +172,19 @@ module Dependency = struct
     let nopos = Opam_file.nopos in
     function
     | Bvar v ->
-        Constraint.Var.to_opam v
+      Constraint.Var.to_opam v
     | Uop (op, v) ->
-        Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
+      Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
     | And [ c ] ->
-        opam_constraint c
+      opam_constraint c
     | And (c :: cs) ->
-        Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
+      Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
     | Or [ c ] ->
-        opam_constraint c
+      opam_constraint c
     | Or (c :: cs) ->
-        Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
+      Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
     | And [] | Or [] ->
-        Code_error.raise "opam_constraint" []
+      Code_error.raise "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -193,9 +193,9 @@ module Dependency = struct
       let pkg : OpamParserTypes.value = String (nopos, Name.to_string name) in
       match constraint_ with
       | None ->
-          pkg
+        pkg
       | Some c ->
-          Option (nopos, pkg, [ c ])
+        Option (nopos, pkg, [ c ])
 
   let to_dyn { name; constraint_ } =
     let open Dyn.Encoder in
@@ -232,7 +232,7 @@ type t =
   }
 
 (* Package name are globally unique, so we can reasonably expect that there
-   will always be only a single value of type [t] with a given name in memory.
+  will always be only a single value of type [t] with a given name in memory.
    That's why we only hash the name. *)
 let hash t = Name.hash t.name
 
@@ -240,7 +240,7 @@ let decode ~dir =
   let open Dune_lang.Decoder in
   fields
   @@ let+ loc = loc
-     and+ name = field "name" Name.decode
+    and+ name = field "name" Name.decode
      and+ synopsis = field_o "synopsis" string
      and+ description = field_o "description" string
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
@@ -261,18 +261,18 @@ let decode ~dir =
      }
 
 let to_dyn
-    { name
-    ; path
-    ; version
-    ; synopsis
-    ; description
-    ; depends
-    ; conflicts
-    ; depopts
-    ; kind
-    ; tags
-    ; loc = _
-    } =
+  { name
+  ; path
+  ; version
+  ; synopsis
+  ; description
+  ; depends
+  ; conflicts
+  ; depopts
+  ; kind
+  ; tags
+  ; loc = _
+  } =
   let open Dyn.Encoder in
   record
     [ ("name", Name.to_dyn name)

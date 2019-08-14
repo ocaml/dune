@@ -35,11 +35,11 @@ end = struct
 
   let create (type a) (module I : Implicit_output with type t = a) =
     ( ( module struct
-        type nonrec a = a
+      type nonrec a = a
 
-        type _ w += W : a w
+      type _ w += W : a w
 
-        include I
+      include I
       end )
       : a t )
 
@@ -78,19 +78,19 @@ let produce' ~union opt v =
 let produce (type o) (type_ : o t) (value : o) =
   match Fiber.Var.get current_handler with
   | None ->
-      Code_error.raise
-        "Implicit_output.produce called without any handler in dynamic scope"
-        [ ("type", String (Witness.get_name type_)) ]
+    Code_error.raise
+      "Implicit_output.produce called without any handler in dynamic scope"
+      [ ("type", String (Witness.get_name type_)) ]
   | Some (module H : Handler) -> (
     match Witness.same type_ H.type_ with
     | Some Type_eq.T ->
-        produce' ~union:(Witness.get_union type_) H.so_far value
+      produce' ~union:(Witness.get_union type_) H.so_far value
     | None ->
-        Code_error.raise
-          "Implicit_output.produce called with a handler for a different output"
-          [ ("type_handled", String (Witness.get_name H.type_))
-          ; ("type_produced", String (Witness.get_name type_))
-          ] )
+      Code_error.raise
+        "Implicit_output.produce called with a handler for a different output"
+        [ ("type_handled", String (Witness.get_name H.type_))
+        ; ("type_produced", String (Witness.get_name type_))
+        ] )
 
 let produce_opt t v = match v with None -> () | Some v -> produce t v
 
@@ -98,13 +98,13 @@ let collect_async (type o) (type_ : o t) f =
   let output = ref None in
   Fiber.map
     (Fiber.Var.set current_handler
-       ( module struct
-         type nonrec o = o
+      ( module struct
+        type nonrec o = o
 
-         let type_ = type_
+        let type_ = type_
 
-         let so_far = output
-       end )
+        let so_far = output
+      end )
        f)
     ~f:(fun res -> (res, !output))
 

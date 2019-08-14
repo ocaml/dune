@@ -11,9 +11,9 @@ type t =
   ; scope : Scope.t
   ; c_compiler : string
   ; expand_var :
-         t
-      -> (Value.t list, Pform.Expansion.t) result option
-         String_with_vars.expander
+       t
+    -> (Value.t list, Pform.Expansion.t) result option
+      String_with_vars.expander
   }
 
 let scope t = t.scope
@@ -26,18 +26,18 @@ let make_ocaml_config ocaml_config =
   let string s = [ Value.String s ] in
   Ocaml_config.to_list ocaml_config
   |> List.map ~f:(fun (k, v) ->
-         ( k
-         , match (v : Ocaml_config.Value.t) with
-           | Bool x ->
-               string (string_of_bool x)
-           | Int x ->
-               string (string_of_int x)
-           | String x ->
-               string x
-           | Words x ->
-               Value.L.strings x
-           | Prog_and_args x ->
-               Value.L.strings (x.prog :: x.args) ))
+    ( k
+    , match (v : Ocaml_config.Value.t) with
+      | Bool x ->
+        string (string_of_bool x)
+      | Int x ->
+        string (string_of_int x)
+      | String x ->
+        string x
+      | Words x ->
+        Value.L.strings x
+      | Prog_and_args x ->
+        Value.L.strings (x.prog :: x.args) ))
   |> String.Map.of_list_exn
 
 let set_env t ~var ~value =
@@ -66,26 +66,26 @@ let add_bindings t ~bindings =
 let expand_ocaml_config ocaml_config pform name =
   match String.Map.find ocaml_config name with
   | Some x ->
-      x
+    x
   | None ->
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc pform)
-        [ Pp.textf "Unknown ocaml configuration variable %S" name ]
+    User_error.raise
+      ~loc:(String_with_vars.Var.loc pform)
+      [ Pp.textf "Unknown ocaml configuration variable %S" name ]
 
 let expand_env t pform s : Value.t list option =
   match String.rsplit2 s ~on:'=' with
   | None ->
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc pform)
-        [ Pp.textf "%s must always come with a default value."
-            (String_with_vars.Var.describe pform)
-        ]
-        ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
+    User_error.raise
+      ~loc:(String_with_vars.Var.loc pform)
+      [ Pp.textf "%s must always come with a default value."
+        (String_with_vars.Var.describe pform)
+      ]
+      ~hints:[ Pp.text "the syntax is %{env:VAR=DEFAULT-VALUE}" ]
   | Some (var, default) ->
-      if Env.Var.Set.mem t.hidden_env var then
-        None
-      else
-        Some [ String (Option.value ~default (Env.get t.env var)) ]
+    if Env.Var.Set.mem t.hidden_env var then
+      None
+    else
+      Some [ String (Option.value ~default (Env.get t.env var)) ]
 
 let expand_version scope pform s =
   match
@@ -94,51 +94,51 @@ let expand_version scope pform s =
       (Package.Name.of_string s)
   with
   | None ->
-      User_error.raise
-        ~loc:(String_with_vars.Var.loc pform)
-        [ Pp.textf "Package %S doesn't exist in the current project." s ]
+    User_error.raise
+      ~loc:(String_with_vars.Var.loc pform)
+      [ Pp.textf "Package %S doesn't exist in the current project." s ]
   | Some p -> (
     match p.version with None -> [ Value.String "" ] | Some s -> [ String s ] )
 
 let expand_var_exn t var syn =
   t.expand_var t var syn
   |> Option.map ~f:(function
-       | Ok s ->
-           s
+    | Ok s ->
+      s
        | Error _ ->
-           User_error.raise
-             ~loc:(String_with_vars.Var.loc var)
-             [ Pp.textf "%s isn't allowed in this position"
-                 (String_with_vars.Var.describe var)
-             ])
+         User_error.raise
+           ~loc:(String_with_vars.Var.loc var)
+           [ Pp.textf "%s isn't allowed in this position"
+             (String_with_vars.Var.describe var)
+           ])
 
 let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   let expand_var
-      ( { bindings
-        ; ocaml_config
-        ; env = _
-        ; scope
-        ; hidden_env = _
-        ; dir = _
-        ; bin_artifacts_host = _
-        ; expand_var = _
-        ; lib_artifacts = _
-        ; c_compiler = _
-        } as t ) var syntax_version =
+    ( { bindings
+      ; ocaml_config
+      ; env = _
+      ; scope
+      ; hidden_env = _
+      ; dir = _
+      ; bin_artifacts_host = _
+      ; expand_var = _
+      ; lib_artifacts = _
+      ; c_compiler = _
+      } as t ) var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
-         | Pform.Expansion.Var (Values l) ->
-             Some (Ok l)
+      | Pform.Expansion.Var (Values l) ->
+        Some (Ok l)
          | Macro (Ocaml_config, s) ->
-             Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
+           Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
          | Macro (Env, s) ->
-             Option.map ~f:Result.ok (expand_env t var s)
+           Option.map ~f:Result.ok (expand_env t var s)
          | Macro (Version, s) ->
-             Some (Ok (expand_version scope var s))
+           Some (Ok (expand_version scope var s))
          | Var Project_root ->
-             Some (Ok [ Value.Dir (Path.build (Scope.root scope)) ])
+           Some (Ok [ Value.Dir (Path.build (Scope.root scope)) ])
          | expansion ->
-             Some (Error expansion))
+           Some (Error expansion))
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
@@ -179,13 +179,13 @@ let expand_with_reduced_var_set ~(context : Context.t) =
   fun var syn ->
     match Pform.Map.expand bindings var syn with
     | None ->
-        Unknown
+      Unknown
     | Some (Var (Values l)) ->
-        Expanded l
+      Expanded l
     | Some (Macro (Ocaml_config, s)) ->
-        Expanded (expand_ocaml_config (Lazy.force ocaml_config) var s)
+      Expanded (expand_ocaml_config (Lazy.force ocaml_config) var s)
     | Some _ ->
-        Restricted
+      Restricted
 
 module Resolved_forms = struct
   type t =
@@ -245,9 +245,9 @@ let str_exp str = [ Value.String str ]
 let parse_lib_file ~loc s =
   match String.lsplit2 s ~on:':' with
   | None ->
-      User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
+    User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
   | Some (lib, f) ->
-      (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
+    (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
 
 type expansion_kind =
   | Dynamic
@@ -256,17 +256,17 @@ type expansion_kind =
 let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
   let open Build.O in
   C.Kind.Dict.map cc ~f:(fun cc ->
-      cc >>^ fun flags -> Value.L.strings (t.c_compiler :: flags))
+    cc >>^ fun flags -> Value.L.strings (t.c_compiler :: flags))
 
 let resolve_binary t ~loc ~prog =
   match Artifacts.Bin.binary ~loc t.bin_artifacts_host prog with
   | Ok path ->
-      Ok path
+    Ok path
   | Error e ->
-      Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
+    Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
 
 let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
-    ~(dir : Path.Build.t) ~pform t expansion
+  ~(dir : Path.Build.t) ~pform t expansion
     ~(cc : dir:Path.Build.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
@@ -274,90 +274,88 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   let add_ddep =
     match expansion_kind with
     | Static ->
-        fun _ ->
-          User_error.raise ~loc
-            [ Pp.textf "%s cannot be used in this position"
-                (String_with_vars.Var.describe pform)
-            ]
+      fun _ ->
+        User_error.raise ~loc
+          [ Pp.textf "%s cannot be used in this position"
+            (String_with_vars.Var.describe pform)
+          ]
     | Dynamic ->
-        Resolved_forms.add_ddep acc ~key
+      Resolved_forms.add_ddep acc ~key
   in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
   | Var
-      ( Project_root
-      | First_dep
-      | Deps
-      | Targets
-      | Target
-      | Named_local
-      | Values _ )
+    ( Project_root
+    | First_dep
+    | Deps
+    | Targets
+    | Target
+    | Named_local
+    | Values _ )
   | Macro ((Ocaml_config | Env | Version), _) ->
-      assert false
+    assert false
   | Var Cc ->
-      add_ddep (cc ~dir).c
+    add_ddep (cc ~dir).c
   | Var Cxx ->
-      add_ddep (cc ~dir).cxx
+    add_ddep (cc ~dir).cxx
   | Macro (Path_no_dep, s) ->
-      Some [ Value.Dir (relative dir s) ]
+    Some [ Value.Dir (relative dir s) ]
   | Macro (Exe, s) ->
-      Some (path_exp (map_exe (relative dir s)))
+    Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) ->
-      Some (path_exp (relative dir s))
+    Some (path_exp (relative dir s))
   | Macro (Bin, s) -> (
     match resolve_binary ~loc:(Some loc) t ~prog:s with
     | Error fail ->
-        Resolved_forms.add_fail acc fail
+      Resolved_forms.add_fail acc fail
     | Ok path ->
-        Some (path_exp path) )
+      Some (path_exp path) )
   | Macro (Lib, s) -> (
-      let lib_dep, file = parse_lib_file ~loc s in
-      Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-      match
-        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep
-          ~file
-      with
-      | Ok path ->
-          Some (path_exp path)
-      | Error e ->
-          Resolved_forms.add_fail acc { fail = (fun () -> raise e) } )
+    let lib_dep, file = parse_lib_file ~loc s in
+    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+    match
+      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
+    with
+    | Ok path ->
+      Some (path_exp path)
+    | Error e ->
+      Resolved_forms.add_fail acc { fail = (fun () -> raise e) } )
   | Macro (Libexec, s) -> (
-      let lib_dep, file = parse_lib_file ~loc s in
-      Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-      match
-        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep
-          ~file
-      with
-      | Error e ->
-          Resolved_forms.add_fail acc { fail = (fun () -> raise e) }
-      | Ok path ->
-          if (not Sys.win32) || Filename.extension s = ".exe" then
-            Some (path_exp path)
-          else
-            let path_exe = Path.extend_basename path ~suffix:".exe" in
-            let dep =
-              Build.if_file_exists path_exe
-                ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-                ~else_:(Build.path path >>^ fun _ -> path_exp path)
-            in
-            add_ddep dep )
+    let lib_dep, file = parse_lib_file ~loc s in
+    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+    match
+      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
+    with
+    | Error e ->
+      Resolved_forms.add_fail acc { fail = (fun () -> raise e) }
+    | Ok path ->
+      if (not Sys.win32) || Filename.extension s = ".exe" then
+        Some (path_exp path)
+      else
+        let path_exe = Path.extend_basename path ~suffix:".exe" in
+        let dep =
+          Build.if_file_exists path_exe
+            ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
+            ~else_:(Build.path path >>^ fun _ -> path_exp path)
+        in
+        add_ddep dep )
   | Macro (Lib_available, s) ->
-      let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
-      Resolved_forms.add_lib_dep acc lib Optional;
-      Lib.DB.available (Scope.libs t.scope) lib
-      |> string_of_bool |> str_exp |> Option.some
+    let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
+    Resolved_forms.add_lib_dep acc lib Optional;
+    Lib.DB.available (Scope.libs t.scope) lib
+    |> string_of_bool |> str_exp |> Option.some
   | Macro (Read, s) ->
-      let path = relative dir s in
-      let data = Build.contents path >>^ fun s -> [ Value.String s ] in
-      add_ddep data
+    let path = relative dir s in
+    let data = Build.contents path >>^ fun s -> [ Value.String s ] in
+    add_ddep data
   | Macro (Read_lines, s) ->
-      let path = relative dir s in
-      let data = Build.lines_of path >>^ Value.L.strings in
-      add_ddep data
+    let path = relative dir s in
+    let data = Build.lines_of path >>^ Value.L.strings in
+    add_ddep data
   | Macro (Read_strings, s) ->
-      let path = relative dir s in
-      let data = Build.strings path >>^ Value.L.strings in
-      add_ddep data
+    let path = relative dir s in
+    let data = Build.strings path >>^ Value.L.strings in
+    add_ddep data
 
 let check_multiplicity ~pform ~declaration ~use =
   let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
@@ -365,93 +363,92 @@ let check_multiplicity ~pform ~declaration ~use =
   let error declaration use =
     User_error.raise ~loc
       [ Pp.textf
-          "You can only use the variable %%{%s} if you defined the list of \
-           targets using the field [%s] (not [%s])"
-          use use declaration
+        "You can only use the variable %%{%s} if you defined the list of \
+         targets using the field [%s] (not [%s])"
+        use use declaration
       ]
   in
   match (declaration, use) with
   | Multiplicity.One, Multiplicity.One | Multiple, Multiple ->
-      ()
+    ()
   | One, Multiple ->
-      error "target" "targets"
+    error "target" "targets"
   | Multiple, One ->
-      error "targets" "target"
+    error "targets" "target"
 
 let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
-    ~targets_written_by_user ~map_exe ~expand_var ~cc t pform syntax_version =
+  ~targets_written_by_user ~map_exe ~expand_var ~cc t pform syntax_version =
   let res =
     let targets ~(multiplicity : Dune_file.Rule.Targets.Multiplicity.t) =
       let loc = String_with_vars.Var.loc pform in
       match (targets_written_by_user : Targets.t) with
       | Infer ->
-          User_error.raise ~loc
-            [ Pp.textf "You cannot use %s with inferred rules."
-                (String_with_vars.Var.describe pform)
-            ]
+        User_error.raise ~loc
+          [ Pp.textf "You cannot use %s with inferred rules."
+            (String_with_vars.Var.describe pform)
+          ]
       | Forbidden context ->
-          User_error.raise ~loc
-            [ Pp.textf "You cannot use %s in %s."
-                (String_with_vars.Var.describe pform)
-                context
-            ]
+        User_error.raise ~loc
+          [ Pp.textf "You cannot use %s in %s."
+            (String_with_vars.Var.describe pform)
+              context
+          ]
       | Static { targets; multiplicity = declared_multiplicity } ->
-          let value =
-            List.map ~f:Path.build targets |> Value.L.dirs
-            (* XXX hack to signal no dep *)
-          in
-          check_multiplicity ~pform ~declaration:declared_multiplicity
-            ~use:multiplicity;
-          Some value
+        let value =
+          List.map ~f:Path.build targets |> Value.L.dirs
+          (* XXX hack to signal no dep *)
+        in
+        check_multiplicity ~pform ~declaration:declared_multiplicity
+          ~use:multiplicity;
+        Some value
     in
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
-         | Ok s ->
-             Some s
+      | Ok s ->
+        Some s
          | Error (expansion : Pform.Expansion.t) -> (
            match expansion with
            | Var (Project_root | Values _)
            | Macro ((Ocaml_config | Env | Version), _) ->
-               assert false (* these have been expanded statically *)
+             assert false (* these have been expanded statically *)
            | Var (First_dep | Deps | Named_local) ->
-               None
+             None
            | Var Targets ->
-               targets ~multiplicity:Multiple
+             targets ~multiplicity:Multiple
            | Var Target ->
-               targets ~multiplicity:One
+             targets ~multiplicity:One
            | _ ->
-               expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
-                 ~dir ~pform ~cc t expansion ))
+             expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
+               ~dir ~pform ~cc t expansion ))
   in
   Option.iter res ~f:(fun v ->
-      acc.sdeps <-
-        Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
+    acc.sdeps <-
+      Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
   Option.map res ~f:Result.ok
 
 let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
-    syntax_version =
+  syntax_version =
   let res =
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
-         | Ok s ->
-             Some s
+      | Ok s ->
+        Some s
          | Error (expansion : Pform.Expansion.t) ->
-             expand_and_record acc ~map_exe ~dep_kind ~cc
-               ~expansion_kind:Static ~dir ~pform t expansion)
+           expand_and_record acc ~map_exe ~dep_kind ~cc ~expansion_kind:Static
+             ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
-      acc.sdeps <-
-        Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
+    acc.sdeps <-
+      Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
   Option.map res ~f:Result.ok
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-    ~(c_flags : dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
-    =
+  ~(c_flags : dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t) =
   let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
   let expand_var =
     expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir
-         foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
+        foo %{exe:bar}). This should lookup ./bar rather than ./foo/bar *)
       resolved_forms ~dir:t.dir ~dep_kind ~map_exe ~expand_var:t.expand_var ~cc
   in
   let bindings =
@@ -473,45 +470,45 @@ let expand_special_vars ~deps_written_by_user ~var pform =
   | Pform.Expansion.Var Named_local -> (
     match Bindings.find deps_written_by_user key with
     | None ->
-        Code_error.raise "Local named variable not present in named deps"
-          [ ("pform", String_with_vars.Var.to_dyn var)
-          ; ( "deps_written_by_user"
-            , Bindings.to_dyn Path.to_dyn deps_written_by_user )
-          ]
+      Code_error.raise "Local named variable not present in named deps"
+        [ ("pform", String_with_vars.Var.to_dyn var)
+        ; ( "deps_written_by_user"
+          , Bindings.to_dyn Path.to_dyn deps_written_by_user )
+        ]
     | Some x ->
-        Value.L.paths x )
+      Value.L.paths x )
   | Var Deps ->
-      deps_written_by_user |> Bindings.to_list |> Value.L.paths
+    deps_written_by_user |> Bindings.to_list |> Value.L.paths
   | Var First_dep -> (
     match deps_written_by_user with
     | Named _ :: _ ->
-        (* This case is not possible: ${<} only exist in jbuild files and named
-           dependencies are not available in jbuild files *)
-        assert false
+      (* This case is not possible: ${<} only exist in jbuild files and named
+        dependencies are not available in jbuild files *)
+      assert false
     | Unnamed v :: _ ->
-        [ Path v ]
+      [ Path v ]
     | [] ->
-        User_warning.emit ~loc
-          [ Pp.textf "Variable '%s' used with no explicit dependencies" key ];
-        [ Value.String "" ] )
+      User_warning.emit ~loc
+        [ Pp.textf "Variable '%s' used with no explicit dependencies" key ];
+      [ Value.String "" ] )
   | _ ->
-      Code_error.raise "Unexpected variable in step2"
-        [ ("var", String_with_vars.Var.to_dyn var) ]
+    Code_error.raise "Unexpected variable in step2"
+      [ ("var", String_with_vars.Var.to_dyn var) ]
 
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
-    ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var
-    syntax_version =
+  ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var syntax_version
+    =
   let key = String_with_vars.Var.full_name var in
   ( match String.Map.find dynamic_expansions key with
   | Some v ->
-      Some v
+    Some v
   | None ->
-      expand_var t var syntax_version
-      |> Option.map ~f:(function
-           | Error v ->
-               expand_special_vars ~deps_written_by_user ~var v
-           | Ok v ->
-               v) )
+    expand_var t var syntax_version
+    |> Option.map ~f:(function
+      | Error v ->
+        expand_special_vars ~deps_written_by_user ~var v
+         | Ok v ->
+           v) )
   |> Option.map ~f:Result.ok
 
 let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
@@ -524,40 +521,40 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
 let expand_and_eval_set t set ~standard =
   let open Build.O in
   let dir = Path.build (dir t) in
-  let parse ~loc:_ s = s in
   let standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then
       standard
     else
       Build.return []
   in
-  let syntax, files =
+  let files =
     let f template =
       expand t ~mode:Single ~template
       |> Value.to_path ~error_loc:(String_with_vars.loc template) ~dir
     in
     Ordered_set_lang.Unexpanded.files set ~f
   in
-  let f template = expand t ~mode:Many ~template in
+  let expand =
+    let f template = expand t ~mode:Many ~template in
+    Ordered_set_lang.Unexpanded.expand ~dir ~f
+  in
+  let eval =
+    let parse ~loc:_ s = s in
+    Ordered_set_lang.eval ~parse ~eq:String.equal
+  in
   match Path.Set.to_list files with
   | [] ->
-      let set =
-        Ordered_set_lang.Unexpanded.expand set ~dir
-          ~files_contents:Path.Map.empty ~f
-      in
-      standard
-      >>^ fun standard ->
-      Ordered_set_lang.eval set ~standard ~parse ~eq:String.equal
+    let set = expand set ~files_contents:Path.Map.empty in
+    standard >>^ fun standard -> eval set ~standard
   | paths ->
-      List.map paths ~f:(fun f -> Build.read_sexp f syntax)
-      |> Build.all |> Build.fanout standard
-      >>^ fun (standard, sexps) ->
-      let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
-      Ordered_set_lang.Unexpanded.expand set ~dir ~files_contents ~f
-      |> Ordered_set_lang.eval ~standard ~parse ~eq:String.equal
+    List.map paths ~f:Build.read_sexp
+    |> Build.all |> Build.fanout standard
+    >>^ fun (standard, sexps) ->
+    let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
+    expand set ~files_contents |> eval ~standard
 
 let eval_blang t = function
   | Blang.Const x ->
-      x (* common case *)
+    x (* common case *)
   | blang ->
-      Blang.eval blang ~dir:(Path.build t.dir) ~f:(expand_var_exn t)
+    Blang.eval blang ~dir:(Path.build t.dir) ~f:(expand_var_exn t)

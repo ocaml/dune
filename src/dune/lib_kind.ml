@@ -12,12 +12,12 @@ module Ppx_args = struct
       let* () = Syntax.since Stanza.syntax (1, 10) in
       enter
         (let+ name =
-           plain_string (fun ~loc str ->
-               if String.contains str '=' then
-                 User_error.raise ~loc
-                   [ Pp.text "Character '=' is not allowed in cookie names" ]
-               else
-                 str)
+          plain_string (fun ~loc str ->
+            if String.contains str '=' then
+              User_error.raise ~loc
+                [ Pp.text "Character '=' is not allowed in cookie names" ]
+            else
+              str)
          and+ value = String_with_vars.decode in
          { name; value })
 
@@ -62,13 +62,13 @@ let encode t =
   match
     match t with
     | Normal ->
-        Dune_lang.atom "normal"
+      Dune_lang.atom "normal"
     | Ppx_deriver x ->
-        List (Dune_lang.atom "ppx_deriver" :: Ppx_args.encode x)
+      List (Dune_lang.atom "ppx_deriver" :: Ppx_args.encode x)
     | Ppx_rewriter x ->
-        List (Dune_lang.atom "ppx_rewriter" :: Ppx_args.encode x)
+      List (Dune_lang.atom "ppx_rewriter" :: Ppx_args.encode x)
   with
   | List [ x ] ->
-      x
+    x
   | x ->
-      x
+    x

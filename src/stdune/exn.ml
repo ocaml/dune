@@ -12,11 +12,11 @@ external reraise : exn -> _ = "%reraise"
 let protectx x ~f ~finally =
   match f x with
   | y ->
-      finally x;
-      y
+    finally x;
+    y
   | exception e ->
-      finally x;
-      raise e
+    finally x;
+    raise e
 
 let protect ~f ~finally = protectx () ~f ~finally
 

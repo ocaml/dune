@@ -44,9 +44,9 @@ type 'a s = (unit, 'a) t
 let get_if_file_exists_exn state =
   match !state with
   | Decided (_, t) ->
-      t
+    t
   | Undecided _ ->
-      Code_error.raise "Build.get_if_file_exists_exn: got undecided" []
+    Code_error.raise "Build.get_if_file_exists_exn: got undecided" []
 
 let arr f = Arr f
 
@@ -60,9 +60,9 @@ module O = struct
   let ( >>> ) a b =
     match (a, b) with
     | Arr a, Arr b ->
-        Arr (fun x -> b (a x))
+      Arr (fun x -> b (a x))
     | _ ->
-        Compose (a, b)
+      Compose (a, b)
 
   let ( >>^ ) t f = t >>> arr f
 
@@ -91,9 +91,9 @@ let fanout4 a b c d =
 
 let rec all = function
   | [] ->
-      arr (fun _ -> [])
+    arr (fun _ -> [])
   | t :: ts ->
-      t &&& all ts >>> arr (fun (x, y) -> x :: y)
+    t &&& all ts >>> arr (fun (x, y) -> x :: y)
 
 let ignore x = x >>^ ignore
 
@@ -131,11 +131,10 @@ let lines_of p = Lines_of p
 
 let strings p = lines_of p >>^ fun l -> List.map l ~f:Scanf.unescaped
 
-let read_sexp p syntax =
+let read_sexp p =
   contents p
   >>^ fun s ->
-  Dune_lang.parse_string s
-    ~lexer:(Dune_lang.Lexer.of_syntax syntax)
+  Dune_lang.parse_string s ~lexer:Dune_lang.Lexer.token
     ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =
@@ -148,32 +147,32 @@ let file_exists_opt p t =
 
 let paths_existing paths =
   List.fold_left paths ~init:(return true) ~f:(fun acc file ->
-      if_file_exists file ~then_:(path file) ~else_:(arr Fn.id) >>> acc)
+    if_file_exists file ~then_:(path file) ~else_:(arr Fn.id) >>> acc)
 
 let fail ?targets x =
   match targets with
   | None ->
-      Fail x
+    Fail x
   | Some l ->
-      Targets (Path.Build.Set.of_list l) >>> Fail x
+    Targets (Path.Build.Set.of_list l) >>> Fail x
 
 let of_result ?targets = function
   | Ok x ->
-      x
+    x
   | Error e ->
-      fail ?targets { fail = (fun () -> raise e) }
+    fail ?targets { fail = (fun () -> raise e) }
 
 let of_result_map ?targets res ~f =
   match res with
   | Ok x ->
-      f x
+    f x
   | Error e ->
-      fail ?targets { fail = (fun () -> raise e) }
+    fail ?targets { fail = (fun () -> raise e) }
 
 let memoize name t = Memo { name; t; state = Unevaluated }
 
 (* This is to force the rules to be loaded for directories without files when
-   depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
+  depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
    directories in directories that contain no file. *)
 let depend_on_dir_without_files =
   let pred =
@@ -187,23 +186,20 @@ let source_tree ~dir ~file_tree =
     let init = (Path.Set.empty, arr Fn.id) in
     match File_tree.find_dir file_tree dir with
     | None ->
-        init
+      init
     | Some dir ->
-        File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
-          ~f:(fun dir (acc_files, acc_dirs_without_files) ->
-            let path =
-              Path.append_source prefix_with (File_tree.Dir.path dir)
-            in
-            let files = File_tree.Dir.files dir in
-            match String.Set.is_empty files with
-            | true ->
-                ( acc_files
-                , depend_on_dir_without_files path >>> acc_dirs_without_files
-                )
-            | false ->
-                ( String.Set.fold files ~init:acc_files ~f:(fun fn acc ->
-                      Path.Set.add acc (Path.relative path fn))
-                , acc_dirs_without_files ))
+      File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir (acc_files, acc_dirs_without_files) ->
+          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
+          let files = File_tree.Dir.files dir in
+          match String.Set.is_empty files with
+          | true ->
+            ( acc_files
+            , depend_on_dir_without_files path >>> acc_dirs_without_files )
+          | false ->
+            ( String.Set.fold files ~init:acc_files ~f:(fun fn acc ->
+              Path.Set.add acc (Path.relative path fn))
+            , acc_dirs_without_files ))
   in
   dirs_without_files >>> path_set paths >>^ fun _ -> paths
 
@@ -215,10 +211,10 @@ let action ?dir ~targets action =
 let action_dyn ?dir ~targets () =
   match dir with
   | None ->
-      Targets (Path.Build.Set.of_list targets)
+    Targets (Path.Build.Set.of_list targets)
   | Some dir ->
-      Targets (Path.Build.Set.of_list targets)
-      >>^ fun action -> Action.Chdir (dir, action)
+    Targets (Path.Build.Set.of_list targets)
+    >>^ fun action -> Action.Chdir (dir, action)
 
 let write_file fn s = action ~targets:[ fn ] (Write_file (fn, s))
 
@@ -247,7 +243,7 @@ let progn ts = all ts >>^ fun actions -> Action.Progn actions
 let merge_files_dyn ~target =
   dyn_paths (arr fst)
   >>^ (fun (sources, extras) ->
-        Action.Merge_files_into (sources, extras, target))
+    Action.Merge_files_into (sources, extras, target))
   >>> action_dyn ~targets:[ target ] ()
 
 (* Analysis *)
@@ -264,58 +260,58 @@ let static_deps t ~all_targets =
    fun t acc targets_allowed ->
     match t with
     | Arr _ ->
-        acc
+      acc
     | Targets _ ->
-        if not targets_allowed then no_targets_allowed ();
-        acc
+      if not targets_allowed then no_targets_allowed ();
+      acc
     | Compose (a, b) ->
-        loop a (loop b acc targets_allowed) targets_allowed
+      loop a (loop b acc targets_allowed) targets_allowed
     | First t ->
-        loop t acc targets_allowed
+      loop t acc targets_allowed
     | Second t ->
-        loop t acc targets_allowed
+      loop t acc targets_allowed
     | Split (a, b) ->
-        loop a (loop b acc targets_allowed) targets_allowed
+      loop a (loop b acc targets_allowed) targets_allowed
     | Fanout (a, b) ->
-        loop a (loop b acc targets_allowed) targets_allowed
+      loop a (loop b acc targets_allowed) targets_allowed
     | Deps deps ->
-        Static_deps.add_action_deps acc deps
+      Static_deps.add_action_deps acc deps
     | Paths_for_rule fns ->
-        Static_deps.add_rule_paths acc fns
+      Static_deps.add_rule_paths acc fns
     | Paths_glob g ->
-        Static_deps.add_action_dep acc (Dep.glob g)
+      Static_deps.add_action_dep acc (Dep.glob g)
     | If_file_exists (p, state) -> (
       match !state with
       | Decided (_, t) ->
-          loop t acc false
+        loop t acc false
       | Undecided (then_, else_) ->
-          let dir = Path.parent_exn p in
-          let targets = all_targets ~dir in
-          if Path.Set.mem targets p then (
-            state := Decided (true, then_);
-            loop then_ acc false
-          ) else (
-            state := Decided (false, else_);
-            loop else_ acc false
-          ) )
+        let dir = Path.parent_exn p in
+        let targets = all_targets ~dir in
+        if Path.Set.mem targets p then (
+          state := Decided (true, then_);
+          loop then_ acc false
+        ) else (
+          state := Decided (false, else_);
+          loop else_ acc false
+        ) )
     | Dyn_paths t ->
-        loop t acc targets_allowed
+      loop t acc targets_allowed
     | Dyn_deps t ->
-        loop t acc targets_allowed
+      loop t acc targets_allowed
     | Contents p ->
-        Static_deps.add_rule_path acc p
+      Static_deps.add_rule_path acc p
     | Lines_of p ->
-        Static_deps.add_rule_path acc p
+      Static_deps.add_rule_path acc p
     | Record_lib_deps _ ->
-        acc
+      acc
     | Fail _ ->
-        acc
+      acc
     | Memo m ->
-        loop m.t acc targets_allowed
+      loop m.t acc targets_allowed
     | Catch (t, _) ->
-        loop t acc targets_allowed
+      loop t acc targets_allowed
     | Lazy_no_targets t ->
-        loop (Lazy.force t) acc false
+      loop (Lazy.force t) acc false
   in
   loop t Static_deps.empty true
 
@@ -324,45 +320,45 @@ let lib_deps =
    fun t acc ->
     match t with
     | Arr _ ->
-        acc
+      acc
     | Targets _ ->
-        acc
+      acc
     | Compose (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | First t ->
-        loop t acc
+      loop t acc
     | Second t ->
-        loop t acc
+      loop t acc
     | Split (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | Fanout (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | Paths_for_rule _ ->
-        acc
+      acc
     | Paths_glob _ ->
-        acc
+      acc
     | Deps _ ->
-        acc
+      acc
     | Dyn_paths t ->
-        loop t acc
+      loop t acc
     | Dyn_deps t ->
-        loop t acc
+      loop t acc
     | Contents _ ->
-        acc
+      acc
     | Lines_of _ ->
-        acc
+      acc
     | Record_lib_deps deps ->
-        Lib_deps_info.merge deps acc
+      Lib_deps_info.merge deps acc
     | Fail _ ->
-        acc
+      acc
     | If_file_exists (_, state) ->
-        loop (get_if_file_exists_exn state) acc
+      loop (get_if_file_exists_exn state) acc
     | Memo m ->
-        loop m.t acc
+      loop m.t acc
     | Catch (t, _) ->
-        loop t acc
+      loop t acc
     | Lazy_no_targets t ->
-        loop (Lazy.force t) acc
+      loop (Lazy.force t) acc
   in
   fun t -> loop t Lib_name.Map.empty
 
@@ -371,140 +367,140 @@ let targets =
    fun t acc ->
     match t with
     | Arr _ ->
-        acc
+      acc
     | Targets targets ->
-        Path.Build.Set.union targets acc
+      Path.Build.Set.union targets acc
     | Compose (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | First t ->
-        loop t acc
+      loop t acc
     | Second t ->
-        loop t acc
+      loop t acc
     | Split (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | Fanout (a, b) ->
-        loop a (loop b acc)
+      loop a (loop b acc)
     | Paths_for_rule _ ->
-        acc
+      acc
     | Paths_glob _ ->
-        acc
+      acc
     | Deps _ ->
-        acc
+      acc
     | Dyn_paths t ->
-        loop t acc
+      loop t acc
     | Dyn_deps t ->
-        loop t acc
+      loop t acc
     | Contents _ ->
-        acc
+      acc
     | Lines_of _ ->
-        acc
+      acc
     | Record_lib_deps _ ->
-        acc
+      acc
     | Fail _ ->
-        acc
+      acc
     | If_file_exists (_, state) -> (
       match !state with
       | Decided (v, _) ->
-          Code_error.raise "Build_interpret.targets got decided if_file_exists"
-            [ ("exists", Dyn.Encoder.bool v) ]
+        Code_error.raise "Build_interpret.targets got decided if_file_exists"
+          [ ("exists", Dyn.Encoder.bool v) ]
       | Undecided (a, b) ->
-          let a = loop a Path.Build.Set.empty in
-          let b = loop b Path.Build.Set.empty in
-          if Path.Build.Set.is_empty a && Path.Build.Set.is_empty b then
-            acc
-          else
-            Code_error.raise
-              "Build_interpret.targets: cannot have targets under a \
-               [if_file_exists]"
-              [ ("targets-a", Path.Build.Set.to_dyn a)
-              ; ("targets-b", Path.Build.Set.to_dyn b)
-              ] )
+        let a = loop a Path.Build.Set.empty in
+        let b = loop b Path.Build.Set.empty in
+        if Path.Build.Set.is_empty a && Path.Build.Set.is_empty b then
+          acc
+        else
+          Code_error.raise
+            "Build_interpret.targets: cannot have targets under a \
+             [if_file_exists]"
+            [ ("targets-a", Path.Build.Set.to_dyn a)
+            ; ("targets-b", Path.Build.Set.to_dyn b)
+            ] )
     | Memo m ->
-        loop m.t acc
+      loop m.t acc
     | Catch (t, _) ->
-        loop t acc
+      loop t acc
     | Lazy_no_targets _ ->
-        acc
+      acc
   in
   fun t -> loop t Path.Build.Set.empty
 
 (* Execution *)
 
 let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a) :
-    'b * Dep.Set.t =
+  'b * Dep.Set.t =
   let rec exec : type a b. Dep.Set.t ref -> (a, b) t -> a -> b =
    fun dyn_deps t x ->
     match t with
     | Arr f ->
-        f x
+      f x
     | Targets _ ->
-        x
+      x
     | Compose (a, b) ->
-        exec dyn_deps a x |> exec dyn_deps b
+      exec dyn_deps a x |> exec dyn_deps b
     | First t ->
-        let x, y = x in
-        (exec dyn_deps t x, y)
+      let x, y = x in
+      (exec dyn_deps t x, y)
     | Second t ->
-        let x, y = x in
-        (x, exec dyn_deps t y)
+      let x, y = x in
+      (x, exec dyn_deps t y)
     | Split (a, b) ->
-        let x, y = x in
-        let x = exec dyn_deps a x in
-        let y = exec dyn_deps b y in
-        (x, y)
+      let x, y = x in
+      let x = exec dyn_deps a x in
+      let y = exec dyn_deps b y in
+      (x, y)
     | Fanout (a, b) ->
-        let a = exec dyn_deps a x in
-        let b = exec dyn_deps b x in
-        (a, b)
+      let a = exec dyn_deps a x in
+      let b = exec dyn_deps b x in
+      (a, b)
     | Deps _ ->
-        x
+      x
     | Paths_for_rule _ ->
-        x
+      x
     | Paths_glob g ->
-        eval_pred g
+      eval_pred g
     | Contents p ->
-        Io.read_file p
+      Io.read_file p
     | Lines_of p ->
-        Io.lines_of_file p
+      Io.lines_of_file p
     | Dyn_paths t ->
-        let fns = exec dyn_deps t x in
-        dyn_deps := Dep.Set.add_paths !dyn_deps fns;
-        x
+      let fns = exec dyn_deps t x in
+      dyn_deps := Dep.Set.add_paths !dyn_deps fns;
+      x
     | Dyn_deps t ->
-        let fns = exec dyn_deps t x in
-        dyn_deps := Dep.Set.union !dyn_deps fns;
-        x
+      let fns = exec dyn_deps t x in
+      dyn_deps := Dep.Set.union !dyn_deps fns;
+      x
     | Record_lib_deps _ ->
-        x
+      x
     | Fail { fail } ->
-        fail ()
+      fail ()
     | If_file_exists (_, state) ->
-        exec dyn_deps (get_if_file_exists_exn state) x
+      exec dyn_deps (get_if_file_exists_exn state) x
     | Catch (t, on_error) -> (
       try exec dyn_deps t x with exn -> on_error exn )
     | Lazy_no_targets t ->
-        exec dyn_deps (Lazy.force t) x
+      exec dyn_deps (Lazy.force t) x
     | Memo m -> (
       match m.state with
       | Evaluated (x, deps) ->
-          dyn_deps := Dep.Set.union !dyn_deps deps;
-          x
+        dyn_deps := Dep.Set.union !dyn_deps deps;
+        x
       | Evaluating ->
-          User_error.raise
-            [ Pp.textf "Dependency cycle evaluating memoized build arrow %s"
-                m.name
-            ]
+        User_error.raise
+          [ Pp.textf "Dependency cycle evaluating memoized build arrow %s"
+            m.name
+          ]
       | Unevaluated -> (
-          m.state <- Evaluating;
-          let dyn_deps' = ref Dep.Set.empty in
-          match exec dyn_deps' m.t x with
-          | x ->
-              m.state <- Evaluated (x, !dyn_deps');
-              dyn_deps := Dep.Set.union !dyn_deps !dyn_deps';
-              x
-          | exception exn ->
-              m.state <- Unevaluated;
-              reraise exn ) )
+        m.state <- Evaluating;
+        let dyn_deps' = ref Dep.Set.empty in
+        match exec dyn_deps' m.t x with
+        | x ->
+          m.state <- Evaluated (x, !dyn_deps');
+          dyn_deps := Dep.Set.union !dyn_deps !dyn_deps';
+          x
+        | exception exn ->
+          m.state <- Unevaluated;
+          reraise exn ) )
   in
   let dyn_deps = ref Dep.Set.empty in
   let result = exec dyn_deps t x in

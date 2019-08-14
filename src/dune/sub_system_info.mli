@@ -1,13 +1,13 @@
 open Stdune
 
 (** The type of all kind of sub-system information. This type is what we get
-    just after parsing a [jbuild] file. *)
+  just after parsing a [jbuild] file. *)
 type t = ..
 
 type sub_system = t = ..
 
 (** What the user must provide in order to define the parsing part of a
-    sub-system. *)
+  sub-system. *)
 module type S = sig
   type t
 
@@ -31,7 +31,7 @@ module Register (M : S) : sig end
 val record_parser :
      unit
   -> ( sub_system Sub_system_name.Map.t
-     , Dune_lang.Decoder.fields )
+    , Dune_lang.Decoder.fields )
      Dune_lang.Decoder.parser
 
 val get : Sub_system_name.t -> (module S)

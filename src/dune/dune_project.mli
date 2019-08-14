@@ -11,7 +11,7 @@ end
 
 module Name : sig
   (** Invariants: - Named s -> s <> "" and s does not contain '.' or '/' -
-      Anonymous p -> p is a local path in the source tree *)
+    Anonymous p -> p is a local path in the source tree *)
   type t = private
     | Named of string
     | Anonymous of Path.Source.t
@@ -55,7 +55,7 @@ type t
 
 module File_key : sig
   (** File_key encodes the project in a unique way to be used as part of file
-      path. *)
+    path. *)
   type t
 
   val to_string : t -> string
@@ -112,7 +112,7 @@ val file : t -> Path.Source.t
 
 module Lang : sig
   (** [register id stanzas_parser] register a new language. Users will select
-      this language by writing:
+    this language by writing:
 
       {[ (lang <name> <version>) ]}
 
@@ -125,7 +125,7 @@ module Extension : sig
   type 'a t
 
   (** [register id parser] registers a new extension. Users will enable this
-      extension by writing:
+    extension by writing:
 
       {[ (using <name> <version> <args>) ]}
 
@@ -139,7 +139,7 @@ module Extension : sig
     -> 'a t
 
   (** A simple version where the arguments are not used through
-      [find_extension_args]. *)
+    [find_extension_args]. *)
   val register_simple :
        ?experimental:bool
     -> Syntax.t
@@ -148,14 +148,14 @@ module Extension : sig
 end
 
 (** Load a project description from the following directory. [files] is the set
-    of files in this directory. *)
+  of files in this directory. *)
 val load : dir:Path.Source.t -> files:String.Set.t -> t option
 
 (** "dune-project" *)
 val filename : string
 
 (** Represent the scope at the root of the workspace when the root of the
-    workspace contains no [dune-project] or [<package>.opam] files. *)
+  workspace contains no [dune-project] or [<package>.opam] files. *)
 val anonymous : t Lazy.t
 
 type created_or_already_exist =
@@ -172,7 +172,7 @@ val ensure_project_file_exists : t -> created_or_already_exist
 val append_to_project_file : t -> string -> created_or_already_exist
 
 (** Default language version to use for projects that don't have a
-    [dune-project] file. The default value is the latest version of the dune
+  [dune-project] file. The default value is the latest version of the dune
     language. *)
 val default_dune_language_version : Syntax.Version.t ref
 
@@ -183,7 +183,7 @@ val set :
 val get_exn : unit -> (t, 'k) Dune_lang.Decoder.parser
 
 (** Find arguments passed to (using). [None] means that the extension was not
-    written in dune-project. *)
+  written in dune-project. *)
 val find_extension_args : t -> 'a Extension.t -> 'a option
 
 val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t

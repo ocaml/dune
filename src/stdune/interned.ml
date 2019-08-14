@@ -57,10 +57,10 @@ type order =
 
 let new_size ~next ~size = function
   | Conservative ->
-      let increment_size = 512 in
-      (next land lnot (increment_size - 1)) + (increment_size * 2)
+    let increment_size = 512 in
+    (next land lnot (increment_size - 1)) + (increment_size * 2)
   | Greedy ->
-      size * 2
+    size * 2
 
 module type Settings = sig
   val initial_size : int
@@ -109,10 +109,10 @@ module Make (R : Settings) () = struct
 
   let make s =
     Stdune_table.find_or_add ids s ~f:(fun s ->
-        let n = !next in
-        next := n + 1;
-        Table.set names ~key:n ~data:s;
-        n)
+      let n = !next in
+      next := n + 1;
+      Table.set names ~key:n ~data:s;
+      n)
 
   let get s = Stdune_table.find ids s
 
@@ -128,9 +128,9 @@ module Make (R : Settings) () = struct
     let compare =
       match R.order with
       | Fast ->
-          Int.compare
+        Int.compare
       | Natural ->
-          fun x y -> String.compare (to_string x) (to_string y)
+        fun x y -> String.compare (to_string x) (to_string y)
 
     let equal x y = compare x y = Ordering.Eq
 
@@ -200,9 +200,9 @@ module No_interning (R : Settings) () = struct
     let get t k =
       match Stdune_table.find t.data k with
       | None ->
-          t.default_value
+        t.default_value
       | Some s ->
-          s
+        s
 
     let set t ~key ~data = Stdune_table.set t.data key data
   end

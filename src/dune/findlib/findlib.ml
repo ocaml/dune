@@ -31,9 +31,9 @@ module Rule = struct
     let preds_required, preds_forbidden =
       List.partition_map rule.predicates ~f:(function
         | Pos x ->
-            Left x
+          Left x
         | Neg x ->
-            Right x)
+          Right x)
     in
     { preds_required = Ps.make preds_required
     ; preds_forbidden = Ps.make preds_forbidden
@@ -42,12 +42,12 @@ module Rule = struct
 end
 
 (* Set of rules for a given variable of a package. Implements the algorithm
-   described here:
+  described here:
 
    http://projects.camlcity.org/projects/dl/findlib-1.6.3/doc/ref-html/r729.html *)
 module Rules = struct
   (* To implement the algorithm, [set_rules] is sorted by decreasing number of
-     formal predicates, then according to the order of the META file.
+    formal predicates, then according to the order of the META file.
      [add_rules] are in the same order as in the META file. *)
   type t =
     { set_rules : Rule.t list
@@ -64,28 +64,28 @@ module Rules = struct
   let interpret t ~preds =
     let rec find_set_rule = function
       | [] ->
-          None
+        None
       | rule :: rules ->
-          if Rule.matches rule ~preds then
-            Some rule.value
-          else
-            find_set_rule rules
+        if Rule.matches rule ~preds then
+          Some rule.value
+        else
+          find_set_rule rules
     in
     let v = find_set_rule t.set_rules in
     List.fold_left t.add_rules ~init:v ~f:(fun v rule ->
-        if Rule.matches rule ~preds then
-          Some (Option.value ~default:"" v ^ " " ^ rule.value)
-        else
-          v)
+      if Rule.matches rule ~preds then
+        Some (Option.value ~default:"" v ^ " " ^ rule.value)
+      else
+        v)
 
   let of_meta_rules (rules : Meta.Simplified.Rules.t) =
     let add_rules = List.map rules.add_rules ~f:Rule.make in
     let set_rules =
       List.map rules.set_rules ~f:Rule.make
       |> List.stable_sort ~compare:(fun a b ->
-             compare
-               (Rule.formal_predicates_count b)
-               (Rule.formal_predicates_count a))
+        compare
+          (Rule.formal_predicates_count b)
+          (Rule.formal_predicates_count a))
     in
     { add_rules; set_rules }
 end
@@ -95,14 +95,14 @@ module Vars = struct
 
   let get (t : t) var preds =
     Option.map (String.Map.find t var) ~f:(fun r ->
-        Option.value ~default:"" (Rules.interpret r ~preds))
+      Option.value ~default:"" (Rules.interpret r ~preds))
 
   let get_words t var preds =
     match get t var preds with
     | None ->
-        []
+      []
     | Some s ->
-        String.extract_comma_space_separated_words s
+      String.extract_comma_space_separated_words s
 end
 
 module Config = struct
@@ -124,7 +124,7 @@ module Config = struct
     if not (Path.exists conf_file) then
       User_error.raise
         [ Pp.textf "ocamlfind toolchain %s isn't defined in %s (context: %s)"
-            toolchain
+          toolchain
             (Path.to_string_maybe_quoted path)
             context
         ];
@@ -148,18 +148,18 @@ module Unavailable_reason = struct
 
   let to_string = function
     | Not_found ->
-        "not found"
+      "not found"
     | Hidden pkg ->
-        sprintf "in %s is hidden (unsatisfied 'exist_if')"
-          (Path.to_string_maybe_quoted (Dune_package.Lib.dir pkg))
+      sprintf "in %s is hidden (unsatisfied 'exist_if')"
+        (Path.to_string_maybe_quoted (Dune_package.Lib.dir pkg))
 
   let to_dyn =
     let open Dyn.Encoder in
     function
     | Not_found ->
-        constr "Not_found" []
+      constr "Not_found" []
     | Hidden lib ->
-        constr "Hidden" [ Path.to_dyn (Dune_package.Lib.dir lib) ]
+      constr "Hidden" [ Path.to_dyn (Dune_package.Lib.dir lib) ]
 end
 
 type t =
@@ -167,9 +167,9 @@ type t =
   ; paths : Path.t list
   ; builtins : Meta.Simplified.t Lib_name.Map.t
   ; packages :
-      ( Lib_name.t
-      , (Sub_system_info.t Dune_package.Lib.t, Unavailable_reason.t) result )
-      Table.t
+    ( Lib_name.t
+    , (Sub_system_info.t Dune_package.Lib.t, Unavailable_reason.t) result )
+    Table.t
   }
 
 module Package = struct
@@ -191,7 +191,7 @@ module Package = struct
 
   let make_archives t var preds =
     Mode.Dict.of_func (fun ~mode ->
-        get_paths t var (Ps.add preds (Mode.variant mode)))
+      get_paths t var (Ps.add preds (Mode.variant mode)))
 
   let version t = Vars.get t.vars "version" Ps.empty
 
@@ -226,12 +226,12 @@ module Package = struct
     let () =
       dune_file t
       |> Option.iter ~f:(fun p ->
-             User_warning.emit ~loc:(Loc.in_file p)
-               [ Pp.text
-                   ".dune files are ignored since 2.0. Reinstall the library \
-                    with dune >= 2.0 to get rid of this warning and enable \
-                    support for the subsystem this library provides."
-               ])
+        User_warning.emit ~loc:(Loc.in_file p)
+          [ Pp.text
+            ".dune files are ignored since 2.0. Reinstall the library with \
+             dune >= 2.0 to get rid of this warning and enable support for \
+             the subsystem this library provides."
+          ])
     in
     let sub_systems = Sub_system_name.Map.empty in
     let archives = archives t in
@@ -251,51 +251,51 @@ module Package = struct
       ~obj_dir
       ~special_builtin_support:
         ( (* findlib has been around for much longer than dune, so it is
-             acceptable to have a special case in dune for findlib. *)
+          acceptable to have a special case in dune for findlib. *)
         match Lib_name.to_string t.name with
         | "findlib.dynload" ->
-            Some Findlib_dynload
+          Some Findlib_dynload
         | _ ->
-            None )
+          None )
 
   let parse db ~meta_file ~name ~parent_dir ~vars =
     let pkg_dir = Vars.get vars "directory" Ps.empty in
     let dir =
       match pkg_dir with
       | None | Some "" ->
-          parent_dir
+        parent_dir
       | Some pkg_dir ->
-          if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-            Path.relative db.stdlib_dir (String.drop pkg_dir 1)
-          else if Filename.is_relative pkg_dir then
-            Path.relative parent_dir pkg_dir
-          else
-            Path.of_filename_relative_to_initial_cwd pkg_dir
+        if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
+          Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+        else if Filename.is_relative pkg_dir then
+          Path.relative parent_dir pkg_dir
+        else
+          Path.of_filename_relative_to_initial_cwd pkg_dir
     in
     let pkg = { meta_file; name; dir; vars } in
     let exists_if = Vars.get_words vars "exists_if" Ps.empty in
     let exists =
       match exists_if with
       | _ :: _ ->
-          List.for_all exists_if ~f:(fun fn ->
-              Path.exists (Path.relative dir fn))
+        List.for_all exists_if ~f:(fun fn ->
+          Path.exists (Path.relative dir fn))
       | [] -> (
-          if not (Lib_name.Map.mem db.builtins (Lib_name.root_lib name)) then
+        if not (Lib_name.Map.mem db.builtins (Lib_name.root_lib name)) then
+          true
+        else
+          (* The META files for installed packages are sometimes broken, i.e.
+            META files for libraries that were not installed by the compiler
+             are still present:
+
+             https://github.com/ocaml/dune/issues/563
+
+             To workaround this problem, for builtin packages we check that at
+             least one of the archive is present. *)
+          match archives pkg with
+          | { byte = []; native = [] } ->
             true
-          else
-            (* The META files for installed packages are sometimes broken, i.e.
-               META files for libraries that were not installed by the compiler
-               are still present:
-
-               https://github.com/ocaml/dune/issues/563
-
-               To workaround this problem, for builtin packages we check that
-               at least one of the archive is present. *)
-            match archives pkg with
-            | { byte = []; native = [] } ->
-                true
-            | { byte; native } ->
-                List.exists (byte @ native) ~f:Path.exists )
+          | { byte; native } ->
+            List.exists (byte @ native) ~f:Path.exists )
     in
     if exists then
       Ok pkg
@@ -309,10 +309,10 @@ let dummy_package t ~name =
   let dir =
     match t.paths with
     | [] ->
-        t.stdlib_dir
+      t.stdlib_dir
     | dir :: _ ->
-        Lib_name.package_name name |> Opam_package.Name.to_string
-        |> Path.relative dir
+      Lib_name.package_name name |> Opam_package.Name.to_string
+      |> Path.relative dir
   in
   { Package.meta_file = Path.relative dir "META"
   ; name
@@ -367,9 +367,9 @@ end = struct
   let parse_package t ~meta_file ~name ~parent_dir ~vars =
     match Package.parse t ~meta_file ~name ~parent_dir ~vars with
     | Ok pkg ->
-        (pkg.dir, Ok (Package.to_dune pkg))
+      (pkg.dir, Ok (Package.to_dune pkg))
     | Error pkg ->
-        (pkg.dir, Error (Unavailable_reason.Hidden (Package.to_dune pkg)))
+      (pkg.dir, Error (Unavailable_reason.Hidden (Package.to_dune pkg)))
 
   (* Parse all the packages defined in a META file and add them to [t.packages] *)
   let parse_and_acknowledge { dir; meta_file; meta } db =
@@ -380,14 +380,14 @@ end = struct
       in
       Table.set db.packages full_name res;
       List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
-          let full_name =
-            match meta.name with
-            | None ->
-                full_name
-            | Some name ->
-                Lib_name.nest full_name name
-          in
-          loop ~dir ~full_name meta)
+        let full_name =
+          match meta.name with
+          | None ->
+            full_name
+          | Some name ->
+            Lib_name.nest full_name name
+        in
+        loop ~dir ~full_name meta)
     in
     loop ~dir ~full_name:(Option.value_exn meta.name) meta
 end
@@ -399,76 +399,76 @@ module Discovered_package = struct
 end
 
 (* Search for a <package>/{META,dune-package} file in the findlib search path,
-   parse it and add its contents to [t.packages] *)
+  parse it and add its contents to [t.packages] *)
 let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
   let rec loop dirs : Discovered_package.t option =
     match dirs with
     | [] ->
-        Lib_name.Map.find t.builtins root_name
-        |> Option.map ~f:(fun meta ->
-               Discovered_package.Findlib (Meta_source.internal t ~meta))
+      Lib_name.Map.find t.builtins root_name
+      |> Option.map ~f:(fun meta ->
+        Discovered_package.Findlib (Meta_source.internal t ~meta))
     | dir :: dirs -> (
-        let dir = Path.relative dir (Lib_name.to_string root_name) in
-        let dune = Path.relative dir "dune-package" in
-        match
-          if Path.exists dune then
-            Dune_package.Or_meta.load dune
-          else
-            Dune_package.Or_meta.Use_meta
-        with
-        | Dune_package p ->
-            Some (Dune p)
-        | Use_meta -> (
-          match Meta_source.discover ~dir ~name:root_name with
-          | None ->
-              loop dirs
-          | Some meta_source ->
-              Some (Findlib meta_source) ) )
+      let dir = Path.relative dir (Lib_name.to_string root_name) in
+      let dune = Path.relative dir "dune-package" in
+      match
+        if Path.exists dune then
+          Dune_package.Or_meta.load dune
+        else
+          Dune_package.Or_meta.Use_meta
+      with
+      | Dune_package p ->
+        Some (Dune p)
+      | Use_meta -> (
+        match Meta_source.discover ~dir ~name:root_name with
+        | None ->
+          loop dirs
+        | Some meta_source ->
+          Some (Findlib meta_source) ) )
   in
   match loop t.paths with
   | None ->
-      Table.set t.packages root_name (Error Not_found)
+    Table.set t.packages root_name (Error Not_found)
   | Some (Findlib findlib_package) ->
-      Meta_source.parse_and_acknowledge findlib_package t
+    Meta_source.parse_and_acknowledge findlib_package t
   | Some (Dune pkg) ->
-      List.iter pkg.libs ~f:(fun lib ->
-          Table.set t.packages (Dune_package.Lib.name lib) (Ok lib))
+    List.iter pkg.libs ~f:(fun lib ->
+      Table.set t.packages (Dune_package.Lib.name lib) (Ok lib))
 
 let find t name =
   match Table.find t.packages name with
   | Some x ->
-      x
+    x
   | None -> (
-      find_and_acknowledge_package t ~fq_name:name;
-      match Table.find t.packages name with
-      | Some x ->
-          x
-      | None ->
-          let res = Error Unavailable_reason.Not_found in
-          Table.set t.packages name res;
-          res )
+    find_and_acknowledge_package t ~fq_name:name;
+    match Table.find t.packages name with
+    | Some x ->
+      x
+    | None ->
+      let res = Error Unavailable_reason.Not_found in
+      Table.set t.packages name res;
+      res )
 
 let available t name = Result.is_ok (find t name)
 
 let root_packages t =
   let pkgs =
     List.concat_map t.paths ~f:(fun dir ->
-        match Path.readdir_unsorted dir with
-        | Error ENOENT ->
-            []
-        | Error unix_error ->
-            User_error.raise
-              [ Pp.textf "Unable to read directory %s for findlib package"
-                  (Path.to_string_maybe_quoted dir)
-              ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
-              ]
-        | Ok listing ->
-            List.filter_map listing ~f:(fun name ->
-                if Path.exists (Path.relative dir (name ^ "/META")) then
-                  Some (Lib_name.of_string_exn ~loc:None name)
-                else
-                  None))
+      match Path.readdir_unsorted dir with
+      | Error ENOENT ->
+        []
+      | Error unix_error ->
+        User_error.raise
+          [ Pp.textf "Unable to read directory %s for findlib package"
+            (Path.to_string_maybe_quoted dir)
+          ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+          ]
+      | Ok listing ->
+        List.filter_map listing ~f:(fun name ->
+          if Path.exists (Path.relative dir (name ^ "/META")) then
+            Some (Lib_name.of_string_exn ~loc:None name)
+          else
+            None))
     |> Lib_name.Set.of_list
   in
   let builtins = Lib_name.Set.of_list (Lib_name.Map.keys t.builtins) in
@@ -476,12 +476,12 @@ let root_packages t =
 
 let load_all_packages t =
   Lib_name.Set.iter (root_packages t) ~f:(fun pkg ->
-      find_and_acknowledge_package t ~fq_name:pkg)
+    find_and_acknowledge_package t ~fq_name:pkg)
 
 let all_packages t =
   load_all_packages t;
   Table.fold t.packages ~init:[] ~f:(fun x acc ->
-      match x with Ok p -> p :: acc | Error _ -> acc)
+    match x with Ok p -> p :: acc | Error _ -> acc)
   |> List.sort ~compare:Dune_package.Lib.compare_name
 
 let create ~stdlib_dir ~paths ~version =
@@ -494,5 +494,5 @@ let create ~stdlib_dir ~paths ~version =
 let all_unavailable_packages t =
   load_all_packages t;
   Table.foldi t.packages ~init:[] ~f:(fun name x acc ->
-      match x with Ok _ -> acc | Error e -> (name, e) :: acc)
+    match x with Ok _ -> acc | Error e -> (name, e) :: acc)
   |> List.sort ~compare:(fun (a, _) (b, _) -> Lib_name.compare a b)

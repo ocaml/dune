@@ -25,16 +25,16 @@ module Directory_rules = struct
   let rec force l =
     List.concat_map (Appendable_list.to_list l) ~f:(function
       | File t ->
-          [ t ]
+        [ t ]
       | Thunk f ->
-          force (f ()))
+        force (f ()))
 end
 
 module Scheme = struct
   include Dune.Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs, be it a
-     [Thunk] constructor or an [Approximation] function.
+    [Thunk] constructor or an [Approximation] function.
 
      The argument of [print] identifies which thunk got run (the path to that
      thunk within the [Scheme.t] value). *)
@@ -45,24 +45,24 @@ module Scheme = struct
     let rec go ~path t =
       match t with
       | Empty ->
-          Empty
+        Empty
       | Union (t1, t2) ->
-          Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
+        Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
       | Approximation (dirs, rules) ->
-          let path = "t" :: path in
-          Approximation (dirs, go ~path rules)
+        let path = "t" :: path in
+        Approximation (dirs, go ~path rules)
       | Finite m ->
-          Finite m
+        Finite m
       | Thunk t ->
-          Thunk
-            (fun () ->
-              print path "thunk";
-              t ())
+        Thunk
+          (fun () ->
+            print path "thunk";
+            t ())
     in
     go ~path:[]
 
   (* [collect_rules_simple] is oversimplified in two ways: - it does not share
-     the work of scheme flattening, so repeated lookups do repeated work - it
+    the work of scheme flattening, so repeated lookups do repeated work - it
      does not check that approximations are correct
 
      If approximations are not correct, it will honor the approximation. So
@@ -72,23 +72,23 @@ module Scheme = struct
     let rec go (t : _ t) ~dir =
       match t with
       | Empty ->
-          Directory_rules.empty
+        Directory_rules.empty
       | Union (a, b) ->
-          Directory_rules.union (go a ~dir) (go b ~dir)
+        Directory_rules.union (go a ~dir) (go b ~dir)
       | Approximation (dirs, t) -> (
         match Dune.Dir_set.mem dirs dir with
         | true ->
-            go t ~dir
+          go t ~dir
         | false ->
-            Directory_rules.empty )
+          Directory_rules.empty )
       | Finite rules -> (
         match Path.Build.Map.find rules dir with
         | None ->
-            Directory_rules.empty
+          Directory_rules.empty
         | Some rule ->
-            rule )
+          rule )
       | Thunk f ->
-          go (f ()) ~dir
+        go (f ()) ~dir
     in
     go
 
@@ -109,11 +109,11 @@ module Path = struct
     L.relative root
       ( match String.split str ~on:'/' with
       | [ "" ] ->
-          []
+        []
       | [ "." ] ->
-          []
+        []
       | other ->
-          other )
+        other )
 end
 
 let record_calls scheme ~f =
@@ -130,7 +130,7 @@ let print_rules scheme ~dir =
   in
   let res2, calls2 =
     record_calls scheme ~f:(fun scheme ->
-        Scheme.get_rules (Scheme.evaluate scheme) ~dir)
+      Scheme.get_rules (Scheme.evaluate scheme) ~dir)
   in
   if not ((res1 : string list) = res2) then
     Code_error.raise

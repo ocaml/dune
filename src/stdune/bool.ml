@@ -1,11 +1,11 @@
 let compare x y =
   match (x, y) with
   | true, true | false, false ->
-      Ordering.Eq
+    Ordering.Eq
   | true, false ->
-      Gt
+    Gt
   | false, true ->
-      Lt
+    Lt
 
 include Comparator.Operators (struct
   type nonrec t = bool

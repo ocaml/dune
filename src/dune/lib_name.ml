@@ -9,43 +9,43 @@ module Local = struct
 
   let valid_char = function
     | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' ->
-        true
+      true
     | _ ->
-        false
+      false
 
   let of_string (name : string) =
     match name with
     | "" ->
-        Error ()
+      Error ()
     | (s : string) ->
-        if s.[0] = '.' then
-          Error ()
-        else
-          let len = String.length s in
-          let rec loop warn i =
-            if i = len - 1 then
-              if warn then
-                Error ()
-              else
-                Ok s
+      if s.[0] = '.' then
+        Error ()
+      else
+        let len = String.length s in
+        let rec loop warn i =
+          if i = len - 1 then
+            if warn then
+              Error ()
             else
-              let c = String.unsafe_get s i in
-              if valid_char c then
-                loop warn (i + 1)
-              else if c = '.' then
-                loop true (i + 1)
-              else
-                Error ()
-          in
-          loop false 0
+              Ok s
+          else
+            let c = String.unsafe_get s i in
+            if valid_char c then
+              loop warn (i + 1)
+            else if c = '.' then
+              loop true (i + 1)
+            else
+              Error ()
+        in
+        loop false 0
 
   let of_string_exn s =
     match of_string s with
     | Ok s ->
-        s
+      s
     | Error () ->
-        Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
-          [ ("name", String s) ]
+      Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
+        [ ("name", String s) ]
 
   let decode_loc =
     Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, of_string s))
@@ -64,10 +64,10 @@ module Local = struct
   let validate (loc, res) =
     match res with
     | Ok s ->
-        s
+      s
     | Error () ->
-        User_error.raise ~loc ~hints:[ valid_format_doc ]
-          [ Pp.text "Invalid library name." ]
+      User_error.raise ~loc ~hints:[ valid_format_doc ]
+        [ Pp.text "Invalid library name." ]
 
   let to_string s = s
 end
@@ -75,9 +75,9 @@ end
 let split t =
   match String.split t ~on:'.' with
   | [] ->
-      assert false
+    assert false
   | pkg :: rest ->
-      (Package.Name.of_string pkg, rest)
+    (Package.Name.of_string pkg, rest)
 
 let pp = Format.pp_print_string
 

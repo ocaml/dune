@@ -8,7 +8,7 @@ let utop_dir_basename = ".utop"
 
 let utop_exe =
   (* Use the [.exe] version. As the utop executable is declared with [(modes
-     (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
+    (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
      that so that it works without hassle when generating a utop for a library
      with C stubs. *)
   Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Native)
@@ -34,35 +34,33 @@ let libs_under_dir sctx ~db ~dir =
       in
       match Super_context.stanzas_in sctx ~dir with
       | None ->
-          acc
+        acc
       | Some (d : _ Dir_with_dune.t) ->
-          List.fold_left d.data ~init:acc ~f:(fun acc ->
-            function
-            | Dune_file.Library l -> (
-              match
-                Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
-              with
-              | None ->
-                  acc (* library is defined but outside our scope *)
-              | Some lib ->
-                  (* still need to make sure that it's not coming from an
-                     external source *)
-                  let info = Lib.info lib in
-                  let src_dir = Lib_info.src_dir info in
-                  (* Only select libraries that are not implementations.
-                     Implementations are selected using the default
-                     implementation feature. *)
-                  let not_impl = Option.is_none (Lib_info.implements info) in
-                  if
-                    not_impl
-                    && Path.is_descendant ~of_:(Path.build dir) src_dir
-                  then
-                    lib :: acc
-                  else
-                    acc
-                  (* external lib with a name matching our private name *) )
-            | _ ->
-                acc)))
+        List.fold_left d.data ~init:acc ~f:(fun acc ->
+          function
+          | Dune_file.Library l -> (
+            match
+              Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
+            with
+            | None ->
+              acc (* library is defined but outside our scope *)
+            | Some lib ->
+              (* still need to make sure that it's not coming from an external
+                source *)
+              let info = Lib.info lib in
+              let src_dir = Lib_info.src_dir info in
+              (* Only select libraries that are not implementations.
+                Implementations are selected using the default implementation
+                 feature. *)
+              let not_impl = Option.is_none (Lib_info.implements info) in
+              if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
+              then
+                lib :: acc
+              else
+                acc
+              (* external lib with a name matching our private name *) )
+          | _ ->
+            acc)))
   |> Option.value ~default:[]
 
 let setup sctx ~dir =

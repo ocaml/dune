@@ -9,10 +9,9 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let cm_kind =
     match ml_kind with
     | Intf ->
-        Cm_kind.Cmi
+      Cm_kind.Cmi
     | Impl ->
-        Compilation_context.vimpl cctx
-        |> Option.value_exn |> Vimpl.impl_cm_kind
+      Compilation_context.vimpl cctx |> Option.value_exn |> Vimpl.impl_cm_kind
   in
   let sctx = Compilation_context.super_context cctx in
   let dir = Compilation_context.dir cctx in
@@ -32,10 +31,10 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
       >>^ fun (ooi : Ocamlobjinfo.t) ->
       Module_name.Set.to_list ooi.intf
       |> List.filter_map ~f:(fun dep ->
-             if Module.real_unit_name m = dep then
-               None
-             else
-               Module_name.Map.find vlib_obj_map dep) )
+        if Module.real_unit_name m = dep then
+          None
+        else
+          Module_name.Map.find vlib_obj_map dep) )
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
@@ -45,46 +44,46 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
 let deps_of_module cctx ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
-      let modules = Compilation_context.modules cctx in
-      ( match Modules.lib_interface modules with
-      | Some m ->
-          m
-      | None ->
-          Modules.compat_for_exn modules m )
-      |> List.singleton |> Build.return
+    let modules = Compilation_context.modules cctx in
+    ( match Modules.lib_interface modules with
+    | Some m ->
+      m
+    | None ->
+      Modules.compat_for_exn modules m )
+    |> List.singleton |> Build.return
   | _ ->
-      Ocamldep.deps_of ~cctx ~ml_kind m
+    Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
   let vimpl = Option.value_exn (Compilation_context.vimpl cctx) in
   let vlib = Vimpl.vlib vimpl in
   match Lib.Local.of_lib vlib with
   | None ->
-      let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
-      ooi_deps cctx ~vlib_obj_map ~ml_kind m
+    let vlib_obj_map = Vimpl.vlib_obj_map vimpl in
+    ooi_deps cctx ~vlib_obj_map ~ml_kind m
   | Some lib ->
-      let modules = Vimpl.vlib_modules vimpl in
-      let info = Lib.Local.info lib in
-      let vlib_obj_dir = Lib_info.obj_dir info in
-      let dir = Compilation_context.dir cctx in
-      let src =
-        Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build
-      in
-      let dst =
-        let obj_dir = Compilation_context.obj_dir cctx in
-        Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
-      in
-      let sctx = Compilation_context.super_context cctx in
-      Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst);
-      Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
+    let modules = Vimpl.vlib_modules vimpl in
+    let info = Lib.Local.info lib in
+    let vlib_obj_dir = Lib_info.obj_dir info in
+    let dir = Compilation_context.dir cctx in
+    let src =
+      Obj_dir.Module.dep vlib_obj_dir (Transitive (m, ml_kind)) |> Path.build
+    in
+    let dst =
+      let obj_dir = Compilation_context.obj_dir cctx in
+      Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind))
+    in
+    let sctx = Compilation_context.super_context cctx in
+    Super_context.add_rule sctx ~dir (Build.symlink ~src ~dst);
+    Ocamldep.read_deps_of ~obj_dir:vlib_obj_dir ~modules ~ml_kind m
 
 let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
     | Imported_from_vlib m | Normal m ->
-        Module.kind m = Alias
+      Module.kind m = Alias
     | Impl_of_virtual_module _ ->
-        false
+      false
   in
   if is_alias then
     Build.return []
@@ -97,19 +96,19 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     in
     match m with
     | Imported_from_vlib m ->
-        skip_if_source_absent (deps_of_vlib_module cctx ~ml_kind) m
+      skip_if_source_absent (deps_of_vlib_module cctx ~ml_kind) m
     | Normal m ->
-        skip_if_source_absent (deps_of_module cctx ~ml_kind) m
+      skip_if_source_absent (deps_of_module cctx ~ml_kind) m
     | Impl_of_virtual_module impl_or_vlib -> (
-        let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
-        match ml_kind with
-        | Intf ->
-            deps_of cctx ~ml_kind (Imported_from_vlib m)
-        | Impl ->
-            deps_of cctx ~ml_kind (Normal m) )
+      let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
+      match ml_kind with
+      | Intf ->
+        deps_of cctx ~ml_kind (Imported_from_vlib m)
+      | Impl ->
+        deps_of cctx ~ml_kind (Normal m) )
 
 let rules cctx ~modules =
   let dir = Compilation_context.dir cctx in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
-      let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
-      Dep_graph.make ~dir ~per_module)
+    let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
+    Dep_graph.make ~dir ~per_module)

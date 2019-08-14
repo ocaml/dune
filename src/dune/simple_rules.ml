@@ -11,70 +11,68 @@ let dep_bindings ~extra_bindings deps =
   let base = Pform.Map.of_bindings deps in
   match extra_bindings with
   | Some bindings ->
-      Pform.Map.superpose base bindings
+    Pform.Map.superpose base bindings
   | None ->
-      base
+    base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   if Expander.eval_blang expander rule.enabled_if then
     let targets : Expander.Targets.t =
       match rule.targets with
       | Infer ->
-          Infer
+        Infer
       | Static { targets; multiplicity } ->
-          let not_in_dir ~error_loc s =
+        let not_in_dir ~error_loc s =
+          User_error.raise ~loc:error_loc
+            [ Pp.textf "%s does not denote a file in the current directory" s ]
+        in
+        let check_filename ~error_loc fn =
+          match fn with
+          | Value.String ("." | "..") ->
             User_error.raise ~loc:error_loc
-              [ Pp.textf "%s does not denote a file in the current directory" s
-              ]
-          in
-          let check_filename ~error_loc fn =
-            match fn with
-            | Value.String ("." | "..") ->
-                User_error.raise ~loc:error_loc
-                  [ Pp.text "'.' and '..' are not valid filenames" ]
-            | String s ->
-                if Filename.dirname s <> Filename.current_dir_name then
-                  not_in_dir ~error_loc s;
-                Path.Build.relative ~error_loc dir s
-            | Path p ->
-                if
-                  Option.compare Path.compare (Path.parent p)
-                    (Some (Path.build dir))
-                  <> Eq
-                then
-                  not_in_dir ~error_loc (Path.to_string p);
-                Path.as_in_build_dir_exn p
-            | Dir p ->
-                not_in_dir ~error_loc (Path.to_string p)
-          in
-          let targets =
-            List.concat_map targets ~f:(fun target ->
-                let error_loc = String_with_vars.loc target in
-                match multiplicity with
-                | One ->
-                    let res =
-                      Expander.expand expander ~mode:Single ~template:target
-                    in
-                    [ check_filename ~error_loc res ]
-                | Multiple ->
-                    Expander.expand expander ~mode:Many ~template:target
-                    |> List.map ~f:(check_filename ~error_loc))
-          in
-          Expander.Targets.Static { multiplicity; targets }
+              [ Pp.text "'.' and '..' are not valid filenames" ]
+          | String s ->
+            if Filename.dirname s <> Filename.current_dir_name then
+              not_in_dir ~error_loc s;
+            Path.Build.relative ~error_loc dir s
+          | Path p ->
+            if
+              Option.compare Path.compare (Path.parent p)
+                (Some (Path.build dir))
+              <> Eq
+            then
+              not_in_dir ~error_loc (Path.to_string p);
+            Path.as_in_build_dir_exn p
+          | Dir p ->
+            not_in_dir ~error_loc (Path.to_string p)
+        in
+        let targets =
+          List.concat_map targets ~f:(fun target ->
+            let error_loc = String_with_vars.loc target in
+            match multiplicity with
+            | One ->
+              let res =
+                Expander.expand expander ~mode:Single ~template:target
+              in
+              [ check_filename ~error_loc res ]
+            | Multiple ->
+              Expander.expand expander ~mode:Many ~template:target
+              |> List.map ~f:(check_filename ~error_loc))
+        in
+        Expander.Targets.Static { multiplicity; targets }
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
     SC.add_rule_get_targets
       sctx
       (* user rules may have extra requirements, in which case they will be
-         specified as a part of rule.deps, which will be correctly taken care
-         of by the build arrow *)
-      ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-      ~loc:rule.loc
+        specified as a part of rule.deps, which will be correctly taken care of
+         by the build arrow *) ~sandbox:Sandbox_config.no_special_requirements
+      ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       ( SC.Deps.interpret_named sctx ~expander rule.deps
       >>> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
-            ~dep_kind:Required ~targets ~targets_dir:dir )
+        ~dep_kind:Required ~targets ~targets_dir:dir )
   else
     Path.Build.Set.empty
 
@@ -92,7 +90,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     Syntax.Error.since loc Stanza.syntax since
       ~what:
         (sprintf "%s is not a sub-directory of %s. This"
-           (Path.Source.to_string_maybe_quoted glob_in_src)
+          (Path.Source.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.Source.parent_exn glob_in_src in
   let pred =
@@ -114,15 +112,15 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       (File_selector.create ~dir:(Path.build src_in_build) pred)
   in
   Path.Set.map files ~f:(fun file_src ->
-      let basename = Path.basename file_src in
-      let file_dst = Path.Build.relative dir basename in
-      SC.add_rule sctx ~loc ~dir
-        (( if def.add_line_directive then
-           Build.copy_and_add_line_directive
-         else
-           Build.copy )
-           ~src:file_src ~dst:file_dst);
-      Path.build file_dst)
+    let basename = Path.basename file_src in
+    let file_dst = Path.Build.relative dir basename in
+    SC.add_rule sctx ~loc ~dir
+      (( if def.add_line_directive then
+        Build.copy_and_add_line_directive
+       else
+         Build.copy )
+         ~src:file_src ~dst:file_dst);
+    Path.build file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
   let alias = Alias.make name ~dir in
@@ -133,7 +131,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     ( "user-alias"
     , Bindings.map ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
     , Option.map
-        ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
+      ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
         alias_conf.action
     , Option.map extra_bindings ~f:Pform.Map.to_stamp )
   in
@@ -145,12 +143,12 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       >>>
       match alias_conf.action with
       | None ->
-          Build.progn []
+        Build.progn []
       | Some (loc, action) ->
-          let bindings = dep_bindings ~extra_bindings alias_conf.deps in
-          let expander = Expander.add_bindings expander ~bindings in
-          SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
-            ~targets:(Forbidden "aliases") ~targets_dir:dir )
+        let bindings = dep_bindings ~extra_bindings alias_conf.deps in
+        let expander = Expander.add_bindings expander ~bindings in
+        SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+          ~targets:(Forbidden "aliases") ~targets_dir:dir )
   else
     add_alias sctx ~loc ~dir ~name:alias_conf.name ~stamp
       (Build.return (Action.Progn []))

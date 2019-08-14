@@ -1,5 +1,5 @@
 (** [Ordered_set_lang.t] is a sexp-based representation for an ordered list of
-    strings, with some set like operations. *)
+  strings, with some set like operations. *)
 open! Stdune
 
 open Import
@@ -21,7 +21,7 @@ end
 
 module type S = sig
   (** Evaluate an ordered set. [standard] is the interpretation of [:standard]
-      inside the DSL. *)
+    inside the DSL. *)
   module Key : Key
 
   (** Same as [eval] but the result is unordered *)
@@ -91,13 +91,10 @@ module Unexpanded : sig
   val has_special_forms : t -> bool
 
   (** List of files needed to expand this set *)
-  val files :
-       t
-    -> f:(String_with_vars.t -> Path.t)
-    -> Dune_lang.File_syntax.t * Path.Set.t
+  val files : t -> f:(String_with_vars.t -> Path.t) -> Path.Set.t
 
   (** Expand [t] using with the given file contents. [file_contents] is a map
-      from filenames to their parsed contents. Every [(:include fn)] in [t] is
+    from filenames to their parsed contents. Every [(:include fn)] in [t] is
       replaced by [Map.find files_contents fn]. Every element is converted to a
       string using [f]. *)
   val expand :
@@ -112,7 +109,7 @@ module Unexpanded : sig
     | Neg
 
   (** Fold a function over all strings in a set. The callback receive whether
-      the string is in position or negative position, i.e. on the left or right
+    the string is in position or negative position, i.e. on the left or right
       of a [\] operator. *)
   val fold_strings :
     t -> init:'a -> f:(position -> String_with_vars.t -> 'a -> 'a) -> 'a

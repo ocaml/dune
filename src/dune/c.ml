@@ -25,31 +25,31 @@ module Kind = struct
   let split_extension fn ~dune_version =
     match String.rsplit2 fn ~on:'.' with
     | Some (obj, "c") ->
-        Recognized (obj, C)
+      Recognized (obj, C)
     | Some (obj, "cpp") ->
-        Recognized (obj, Cxx)
+      Recognized (obj, Cxx)
     | Some (obj, "cxx") ->
-        cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
+      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
     | Some (obj, "cc") ->
-        cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
+      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
     | _ ->
-        Unrecognized
+      Unrecognized
 
   let possible_exts ~dune_version = function
     | C ->
-        [ ".c" ]
+      [ ".c" ]
     | Cxx ->
-        let exts = [ ".cpp" ] in
-        let exts =
-          if dune_version >= (1, 10) then
-            ".cc" :: exts
-          else
-            exts
-        in
-        if dune_version >= (1, 8) then
-          ".cxx" :: exts
+      let exts = [ ".cpp" ] in
+      let exts =
+        if dune_version >= (1, 10) then
+          ".cc" :: exts
         else
           exts
+      in
+      if dune_version >= (1, 8) then
+        ".cxx" :: exts
+      else
+        exts
 
   let possible_fns t fn ~dune_version =
     possible_exts t ~dune_version |> List.map ~f:(fun ext -> fn ^ ext)
@@ -110,7 +110,7 @@ module Sources = struct
   let split_by_kind t =
     let c, cxx =
       String.Map.partition t ~f:(fun (_, s) ->
-          match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
+        match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
     in
     { Kind.Dict.c; cxx }
 end

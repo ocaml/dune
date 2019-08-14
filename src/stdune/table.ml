@@ -30,7 +30,7 @@ module type Key = sig
 end
 
 let create (type key value) (module Key : Key with type t = key) size :
-    (key, value) t =
+  (key, value) t =
   ( module struct
     module Key = Key
     module H = Hashtbl.Make (Key)
@@ -47,10 +47,10 @@ let find_exn (type input output) (t : (input, output) t) key =
   let (module T) = t in
   match find t key with
   | Some v ->
-      v
+    v
   | None ->
-      Code_error.raise "Table.find_exn: key doesn't exist"
-        [ ("key", T.Key.to_dyn key) ]
+    Code_error.raise "Table.find_exn: key doesn't exist"
+      [ ("key", T.Key.to_dyn key) ]
 
 let set (type input output) ((module T) : (input, output) t) k v =
   T.H.set T.value k v
@@ -59,18 +59,18 @@ let add_exn (type input output) (t : (input, output) t) k v =
   let (module T) = t in
   match find t k with
   | None ->
-      set t k v
+    set t k v
   | Some _ ->
-      Code_error.raise "Table.add_exn: key already exists"
-        [ ("key", T.Key.to_dyn k) ]
+    Code_error.raise "Table.add_exn: key already exists"
+      [ ("key", T.Key.to_dyn k) ]
 
 let add t k v =
   match find t k with
   | None ->
-      set t k v;
-      Result.Ok ()
+    set t k v;
+    Result.Ok ()
   | Some e ->
-      Error e
+    Error e
 
 let clear (type input output) ((module T) : (input, output) t) =
   T.H.clear T.value
@@ -88,11 +88,11 @@ let fold (type input output) ((module T) : (input, output) t) ~init ~f =
   T.H.fold T.value ~init ~f
 
 let to_dyn (type input output) (f : output -> Dyn.t)
-    ((module T) : (input, output) t) =
+  ((module T) : (input, output) t) =
   T.H.to_dyn f T.value
 
 let find_or_add (type input output) ((module T) : (input, output) t)
-    (k : input) ~f =
+  (k : input) ~f =
   T.H.find_or_add T.value k ~f
 
 let remove (type input output) ((module T) : (input, output) t) k =

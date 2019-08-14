@@ -50,10 +50,10 @@ let make path =
 let next_leading_char t =
   match t.after_first_event with
   | true ->
-      ','
+    ','
   | false ->
-      t.after_first_event <- true;
-      '['
+    t.after_first_event <- true;
+    '['
 
 let printf t format_string =
   let c = next_leading_char t in

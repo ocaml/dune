@@ -2,7 +2,7 @@ open! Stdune
 open Import
 
 (* We redirect the output of all commands, so by default the various tools will
-   disable colors. Since we support colors in the output of commands, we force
+  disable colors. Since we support colors in the output of commands, we force
    it via specific environment variables if stderr supports colors. *)
 let setup_env_for_colors env =
   let set env var value =
@@ -19,45 +19,45 @@ module Style = struct
 
   let of_string = function
     | "loc" ->
-        Some Loc
+      Some Loc
     | "error" ->
-        Some Error
+      Some Error
     | "warning" ->
-        Some Warning
+      Some Warning
     | "kwd" ->
-        Some Kwd
+      Some Kwd
     | "id" ->
-        Some Id
+      Some Id
     | "prompt" ->
-        Some Prompt
+      Some Prompt
     | "details" ->
-        Some Details
+      Some Details
     | "ok" ->
-        Some Ok
+      Some Ok
     | "debug" ->
-        Some Debug
+      Some Debug
     | _ ->
-        None
+      None
 end
 
 let mark_open_tag s =
   match Style.of_string s with
   | Some style ->
-      Ansi_color.Style.escape_sequence (Style.to_styles style)
+    Ansi_color.Style.escape_sequence (Style.to_styles style)
   | None ->
-      if s <> "" && s.[0] = '\027' then
-        s
-      else
-        ""
+    if s <> "" && s.[0] = '\027' then
+      s
+    else
+      ""
 
 let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force Ansi_color.stderr_supports_color then
     List.iter [ err_formatter; Report_error.ppf ] ~f:(fun ppf ->
-        let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
-        pp_set_mark_tags ppf true;
-        (pp_set_formatter_tag_functions ppf
-           { funcs with
-             mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
-           ; mark_open_tag
-           } [@warning "-3"]))
+      let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
+      pp_set_mark_tags ppf true;
+      (pp_set_formatter_tag_functions ppf
+        { funcs with
+          mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
+        ; mark_open_tag
+        } [@warning "-3"]))

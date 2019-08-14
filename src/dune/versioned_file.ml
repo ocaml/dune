@@ -64,13 +64,13 @@ struct
       in
       match Table.find langs name with
       | None ->
-          User_error.raise ~loc:name_loc
-            [ Pp.textf "Unknown language %S." name ]
-            ~hints:
-              (User_message.did_you_mean name ~candidates:(Table.keys langs))
+        User_error.raise ~loc:name_loc
+          [ Pp.textf "Unknown language %S." name ]
+          ~hints:
+            (User_message.did_you_mean name ~candidates:(Table.keys langs))
       | Some t ->
-          Syntax.check_supported t.syntax (ver_loc, ver);
-          { syntax = t.syntax; data = t.data; version = ver }
+        Syntax.check_supported t.syntax (ver_loc, ver);
+        { syntax = t.syntax; data = t.data; version = ver }
 
     let get_exn name : Instance.t =
       let t = Table.find_exn langs name in
@@ -92,7 +92,7 @@ struct
 
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->
-        parse_contents lb (Dune_lexer.first_line lb) ~f)
+      parse_contents lb (Dune_lexer.first_line lb) ~f)
 end
 
 let no_more_lang =

@@ -15,22 +15,22 @@ module Status = struct
 
     let find { data_only; vendored; normal } = function
       | Data_only ->
-          data_only
+        data_only
       | Vendored ->
-          vendored
+        vendored
       | Normal ->
-          normal
+        normal
   end
 
   let to_dyn t =
     let open Dyn in
     match t with
     | Data_only ->
-        Variant ("Data_only", [])
+      Variant ("Data_only", [])
     | Vendored ->
-        Variant ("Vendored", [])
+      Variant ("Vendored", [])
     | Normal ->
-        Variant ("Normal", [])
+      Variant ("Normal", [])
 
   module Or_ignored = struct
     type nonrec t =
@@ -50,30 +50,30 @@ module Status = struct
 end
 
 let status { Status.Map.normal; data_only; vendored } ~dir :
-    Status.Or_ignored.t =
+  Status.Or_ignored.t =
   match
     ( String.Set.mem normal dir
     , String.Set.mem data_only dir
     , String.Set.mem vendored dir )
   with
   | true, false, false ->
-      Status Normal
+    Status Normal
   | true, false, true ->
-      Status Vendored
+    Status Vendored
   | true, true, _ ->
-      Status Data_only
+    Status Data_only
   | false, false, _ ->
-      Ignored
+    Ignored
   | false, true, _ ->
-      assert false
+    assert false
 
 let default =
   let standard_dirs =
     Predicate_lang.of_pred (function
       | "" ->
-          false
+        false
       | s ->
-          s.[0] <> '.' && s.[0] <> '_')
+        s.[0] <> '.' && s.[0] <> '_')
   in
   { Status.Map.normal = standard_dirs
   ; data_only = Predicate_lang.empty
@@ -105,15 +105,15 @@ let eval (t : _ Status.Map.t) ~dirs =
   let both_vendored_and_data = String.Set.inter data_only vendored in
   match String.Set.choose both_vendored_and_data with
   | None ->
-      let normal = String.Set.of_list normal in
-      { Status.Map.normal; data_only; vendored }
+    let normal = String.Set.of_list normal in
+    { Status.Map.normal; data_only; vendored }
   | Some dir ->
-      User_error.raise
-        [ Pp.textf
-            "Directory %s was marked as vendored and data_only, it can't be \
-             marked as both."
-            dir
-        ]
+    User_error.raise
+      [ Pp.textf
+        "Directory %s was marked as vendored and data_only, it can't be \
+         marked as both."
+        dir
+      ]
 
 let decode =
   let open Dune_lang.Decoder in
@@ -123,15 +123,15 @@ let decode =
       let+ l =
         enter
           (repeat
-             (plain_string (fun ~loc dn ->
-                  if
-                    Filename.dirname dn <> Filename.current_dir_name
-                    || match dn with "" | "." | ".." -> true | _ -> false
-                  then
-                    User_error.raise ~loc
-                      [ Pp.textf "Invalid sub-directory name %S" dn ]
-                  else
-                    dn)))
+            (plain_string (fun ~loc dn ->
+              if
+                Filename.dirname dn <> Filename.current_dir_name
+                || match dn with "" | "." | ".." -> true | _ -> false
+              then
+                User_error.raise ~loc
+                  [ Pp.textf "Invalid sub-directory name %S" dn ]
+              else
+                dn)))
       in
       Predicate_lang.of_string_set (String.Set.of_list l)
     in
@@ -140,9 +140,8 @@ let decode =
     if version >= (1, 6) then
       User_warning.emit ~loc
         [ Pp.text
-            "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
-             visible directories or data_only_dirs for ignoring only dune \
-             files."
+          "ignored_subdirs is deprecated in 1.6. Use dirs to specify visible \
+           directories or data_only_dirs for ignoring only dune files."
         ];
     ignored
   in
@@ -165,21 +164,20 @@ let decode =
     and+ rest = leftover_fields in
     match (data_only, dirs, ignored_sub_dirs) with
     | None, Some (loc, _), _ :: _ ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Cannot have both dirs and ignored_subdirs stanza in a dune \
-               file. "
-          ]
+      User_error.raise ~loc
+        [ Pp.text
+          "Cannot have both dirs and ignored_subdirs stanza in a dune file. "
+        ]
     | Some (loc, _), None, _ :: _ ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Cannot have both data_only_dirs and ignored_subdirs stanza in \
-               a dune file. "
-          ]
+      User_error.raise ~loc
+        [ Pp.text
+          "Cannot have both data_only_dirs and ignored_subdirs stanza in a \
+           dune file. "
+        ]
     | _ ->
-        let dirs = Option.map ~f:snd dirs in
-        let data_only = Option.map ~f:snd data_only in
-        let vendored_dirs = Option.map ~f:snd vendored_dirs in
-        (make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs, rest)
+      let dirs = Option.map ~f:snd dirs in
+      let data_only = Option.map ~f:snd data_only in
+      let vendored_dirs = Option.map ~f:snd vendored_dirs in
+      (make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs, rest)
   in
   enter (fields decode)

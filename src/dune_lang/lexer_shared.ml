@@ -10,9 +10,9 @@ module Token = struct
       let open Dyn.Encoder in
       function
       | Legacy ->
-          constr "Legacy" []
+        constr "Legacy" []
       | Lines l ->
-          constr "Lines" [ list string l ]
+        constr "Lines" [ list string l ]
   end
 
   type t =
@@ -58,12 +58,12 @@ let eval_decimal_escape c1 c2 c3 =
 let eval_hex_char c =
   match c with
   | '0' .. '9' ->
-      Char.code c - Char.code '0'
+    Char.code c - Char.code '0'
   | 'a' .. 'f' ->
-      Char.code c - Char.code 'a' + 10
+    Char.code c - Char.code 'a' + 10
   | 'A' .. 'F' ->
-      Char.code c - Char.code 'A' + 10
+    Char.code c - Char.code 'A' + 10
   | _ ->
-      -1
+    -1
 
 let eval_hex_escape c1 c2 = (eval_hex_char c1 * 16) + eval_hex_char c2

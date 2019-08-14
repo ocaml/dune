@@ -26,19 +26,19 @@ module Make (Key : Key) : S with type key = Key.t = struct
     let update ~key ~f t =
       match f (find_opt key t) with
       | None ->
-          M.remove key t
+        M.remove key t
       | Some v ->
-          M.add t ~key ~data:v
+        M.add t ~key ~data:v
 
     let union ~f a b =
       M.merge a b ~f:(fun k a b ->
-          match (a, b) with
-          | None, None ->
-              None
-          | Some v, None | None, Some v ->
-              Some v
-          | Some a, Some b ->
-              f k a b)
+        match (a, b) with
+        | None, None ->
+          None
+        | Some v, None | None, Some v ->
+          Some v
+        | Some a, Some b ->
+          f k a b)
   end
 
   include M
@@ -54,10 +54,10 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let add_exn t key v =
     update t key ~f:(function
       | None ->
-          Some v
+        Some v
       | Some _ ->
-          Code_error.raise "Map.add_exn: key already exists"
-            [ ("key", Key.to_dyn key) ])
+        Code_error.raise "Map.add_exn: key already exists"
+          [ ("key", Key.to_dyn key) ])
 
   let add (type e) (t : e t) key v =
     let module M = struct
@@ -67,9 +67,9 @@ module Make (Key : Key) : S with type key = Key.t = struct
       Result.Ok
         (update t key ~f:(function
           | None ->
-              Some v
+            Some v
           | Some e ->
-              raise_notrace (M.Found e)))
+            raise_notrace (M.Found e)))
     with M.Found e -> Error e
 
   let remove t k = remove k t
@@ -117,79 +117,79 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let of_list =
     let rec loop acc = function
       | [] ->
-          Result.Ok acc
+        Result.Ok acc
       | (k, v) :: l -> (
         match find acc k with
         | None ->
-            loop (set acc k v) l
+          loop (set acc k v) l
         | Some v_old ->
-            Error (k, v_old, v) )
+          Error (k, v_old, v) )
     in
     fun l -> loop empty l
 
   let of_list_map =
     let rec loop f acc = function
       | [] ->
-          Result.Ok acc
+        Result.Ok acc
       | x :: l ->
-          let k, v = f x in
-          if not (mem acc k) then
-            loop f (set acc k v) l
-          else
-            Error k
+        let k, v = f x in
+        if not (mem acc k) then
+          loop f (set acc k v) l
+        else
+          Error k
     in
     fun l ~f ->
       match loop f empty l with
       | Result.Ok _ as x ->
-          x
+        x
       | Error k -> (
         match
           List.filter l ~f:(fun x ->
-              match Key.compare (fst (f x)) k with Eq -> true | _ -> false)
+            match Key.compare (fst (f x)) k with Eq -> true | _ -> false)
         with
         | x :: y :: _ ->
-            Error (k, x, y)
+          Error (k, x, y)
         | _ ->
-            assert false )
+          assert false )
 
   let of_list_map_exn t ~f =
     match of_list_map t ~f with
     | Result.Ok x ->
-        x
+      x
     | Error (key, _, _) ->
-        Code_error.raise "Map.of_list_map_exn" [ ("key", Key.to_dyn key) ]
+      Code_error.raise "Map.of_list_map_exn" [ ("key", Key.to_dyn key) ]
 
   let of_list_exn l =
     match of_list l with
     | Result.Ok x ->
-        x
+      x
     | Error (key, _, _) ->
-        Code_error.raise "Map.of_list_exn" [ ("key", Key.to_dyn key) ]
+      Code_error.raise "Map.of_list_exn" [ ("key", Key.to_dyn key) ]
 
   let of_list_reduce l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-        match find acc key with
-        | None ->
-            set acc key data
-        | Some x ->
-            set acc key (f x data))
+      match find acc key with
+      | None ->
+        set acc key data
+      | Some x ->
+        set acc key (f x data))
 
   let of_list_fold l ~init ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-        let x = Option.value (find acc key) ~default:init in
-        set acc key (f x data))
+      let x = Option.value (find acc key) ~default:init in
+      set acc key (f x data))
 
   let of_list_reducei l ~f =
     List.fold_left l ~init:empty ~f:(fun acc (key, data) ->
-        match find acc key with
-        | None ->
-            set acc key data
-        | Some x ->
-            set acc key (f key x data))
+      match find acc key with
+      | None ->
+        set acc key data
+      | Some x ->
+        set acc key (f key x data))
 
   let of_list_multi l =
     List.fold_left (List.rev l) ~init:empty ~f:(fun acc (key, data) ->
-        add_multi acc key data)
+      add_multi acc key data)
 
   let keys t = foldi t ~init:[] ~f:(fun k _ l -> k :: l) |> List.rev
 
@@ -198,12 +198,12 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let find_exn t key =
     match find_opt key t with
     | Some v ->
-        v
+      v
     | None ->
-        Code_error.raise "Map.find_exn: failed to find key"
-          [ ("key", Key.to_dyn key)
-          ; ("keys", Dyn.Encoder.list Key.to_dyn (keys t))
-          ]
+      Code_error.raise "Map.find_exn: failed to find key"
+        [ ("key", Key.to_dyn key)
+        ; ("keys", Dyn.Encoder.list Key.to_dyn (keys t))
+        ]
 
   let min_binding = min_binding_opt
 
@@ -219,7 +219,7 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let filter_mapi t ~f =
     merge t empty ~f:(fun key data _always_none ->
-        match data with None -> assert false | Some data -> f key data)
+      match data with None -> assert false | Some data -> f key data)
 
   let filter_map t ~f = filter_mapi t ~f:(fun _ x -> f x)
 
@@ -229,23 +229,23 @@ module Make (Key : Key) : S with type key = Key.t = struct
     let not_subset () = raise_notrace Exit in
     match
       merge t of_ ~f:(fun _dir t of_ ->
-          match t with
+        match t with
+        | None ->
+          None
+        | Some t -> (
+          match of_ with
           | None ->
+            not_subset ()
+          | Some of_ ->
+            if f t ~of_ then
               None
-          | Some t -> (
-            match of_ with
-            | None ->
-                not_subset ()
-            | Some of_ ->
-                if f t ~of_ then
-                  None
-                else
-                  not_subset () ))
+            else
+              not_subset () ))
     with
     | (_ : _ t) ->
-        true
+      true
     | exception Exit ->
-        false
+      false
 
   module Multi = struct
     type nonrec 'a t = 'a list t
@@ -260,15 +260,11 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
     let add_all t k = function
       | [] ->
-          t
+        t
       | entries ->
-          update t k ~f:(fun v ->
-              Some
-                ( match v with
-                | None ->
-                    entries
-                | Some x ->
-                    List.append x entries ))
+        update t k ~f:(fun v ->
+          Some
+            (match v with None -> entries | Some x -> List.append x entries))
   end
 
   exception Found of Key.t
@@ -276,15 +272,15 @@ module Make (Key : Key) : S with type key = Key.t = struct
   let find_key t ~f =
     match
       iteri t ~f:(fun key _ ->
-          if f key then
-            raise_notrace (Found key)
-          else
-            ())
+        if f key then
+          raise_notrace (Found key)
+        else
+          ())
     with
     | () ->
-        None
+      None
     | exception Found e ->
-        Some e
+      Some e
 
   let to_dyn f t =
     Dyn.Map (to_list t |> List.map ~f:(fun (k, v) -> (Key.to_dyn k, f v)))

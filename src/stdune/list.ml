@@ -9,14 +9,14 @@ let is_empty = function [] -> true | _ -> false
 let rec filter_map l ~f =
   match l with
   | [] ->
-      []
+    []
   | x :: l -> (
     match f x with None -> filter_map l ~f | Some x -> x :: filter_map l ~f )
 
 let rec filter_opt l =
   match l with
   | [] ->
-      []
+    []
   | x :: l -> (
     match x with None -> filter_opt l | Some x -> x :: filter_opt l )
 
@@ -24,13 +24,13 @@ let filteri l ~f =
   let rec filteri l i =
     match l with
     | [] ->
-        []
+      []
     | x :: l ->
-        let i' = succ i in
-        if f i x then
-          x :: filteri l i'
-        else
-          filteri l i'
+      let i' = succ i in
+      if f i x then
+        x :: filteri l i'
+      else
+        filteri l i'
   in
   filteri l 0
 
@@ -40,13 +40,13 @@ let rev_partition_map =
   let rec loop l accl accr ~f =
     match l with
     | [] ->
-        (accl, accr)
+      (accl, accr)
     | x :: l -> (
       match (f x : (_, _) Either.t) with
       | Left y ->
-          loop l (y :: accl) accr ~f
+        loop l (y :: accl) accr ~f
       | Right y ->
-          loop l accl (y :: accr) ~f )
+        loop l accl (y :: accr) ~f )
   in
   fun l ~f -> loop l [] [] ~f
 
@@ -63,15 +63,15 @@ let rev_filter_partition_map =
   let rec loop l accl accr ~f =
     match l with
     | [] ->
-        (accl, accr)
+      (accl, accr)
     | x :: l -> (
       match f x with
       | Skip ->
-          loop l accl accr ~f
+        loop l accl accr ~f
       | Left y ->
-          loop l (y :: accl) accr ~f
+        loop l (y :: accl) accr ~f
       | Right y ->
-          loop l accl (y :: accr) ~f )
+        loop l accl (y :: accr) ~f )
   in
   fun l ~f -> loop l [] [] ~f
 
@@ -82,37 +82,37 @@ let filter_partition_map l ~f =
 let rec find_map l ~f =
   match l with
   | [] ->
-      None
+    None
   | x :: l -> (
     match f x with None -> find_map l ~f | Some _ as res -> res )
 
 let rec find l ~f =
   match l with
   | [] ->
-      None
+    None
   | x :: l ->
-      if f x then
-        Some x
-      else
-        find l ~f
+    if f x then
+      Some x
+    else
+      find l ~f
 
 let find_exn l ~f =
   match find l ~f with
   | Some x ->
-      x
+    x
   | None ->
-      Code_error.raise "List.find_exn" []
+    Code_error.raise "List.find_exn" []
 
 let rec last = function [] -> None | [ x ] -> Some x | _ :: xs -> last xs
 
 let destruct_last =
   let rec loop acc = function
     | [] ->
-        None
+      None
     | [ x ] ->
-        Some (rev acc, x)
+      Some (rev acc, x)
     | x :: xs ->
-        loop (x :: acc) xs
+      loop (x :: acc) xs
   in
   fun xs -> loop [] xs
 
@@ -127,34 +127,34 @@ let sort_uniq t ~compare =
 let rec compare a b ~compare:f : Ordering.t =
   match (a, b) with
   | [], [] ->
-      Eq
+    Eq
   | [], _ :: _ ->
-      Lt
+    Lt
   | _ :: _, [] ->
-      Gt
+    Gt
   | x :: a, y :: b -> (
     match (f x y : Ordering.t) with Eq -> compare a b ~compare:f | ne -> ne )
 
 let rec assoc t x =
   match t with
   | [] ->
-      None
+    None
   | (k, v) :: t ->
-      if x = k then
-        Some v
-      else
-        assoc t x
+    if x = k then
+      Some v
+    else
+      assoc t x
 
 let singleton x = [ x ]
 
 let rec nth t i =
   match (t, i) with
   | [], _ ->
-      None
+    None
   | x :: _, 0 ->
-      Some x
+    Some x
   | _ :: xs, i ->
-      nth xs (i - 1)
+    nth xs (i - 1)
 
 let physically_equal = (Pervasives.( == ) [@warning "-3"])
 
@@ -172,11 +172,11 @@ let hd_opt = function [] -> None | x :: _ -> Some x
 let rec equal eq xs ys =
   match (xs, ys) with
   | [], [] ->
-      true
+    true
   | x :: xs, y :: ys ->
-      eq x y && equal eq xs ys
+    eq x y && equal eq xs ys
   | _, _ ->
-      false
+    false
 
 let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)
 
@@ -187,8 +187,8 @@ let fold_map t ~init ~f =
   let acc = ref init in
   let result =
     map t ~f:(fun x ->
-        let new_acc, y = f !acc x in
-        acc := new_acc;
-        y)
+      let new_acc, y = f !acc x in
+      acc := new_acc;
+      y)
   in
   (!acc, result)

@@ -17,23 +17,23 @@ module Var = struct
     let open Dyn.Encoder in
     function
     | Values values ->
-        constr "Values" [ list Value.to_dyn values ]
+      constr "Values" [ list Value.to_dyn values ]
     | Project_root ->
-        string "Project_root"
+      string "Project_root"
     | First_dep ->
-        string "First_dep"
+      string "First_dep"
     | Deps ->
-        string "Deps"
+      string "Deps"
     | Targets ->
-        string "Targets"
+      string "Targets"
     | Target ->
-        string "Target"
+      string "Target"
     | Named_local ->
-        string "Named_local"
+      string "Named_local"
     | Cc ->
-        string "cc"
+      string "cc"
     | Cxx ->
-        string "cxx"
+      string "cxx"
 end
 
 module Macro = struct
@@ -56,31 +56,31 @@ module Macro = struct
     let open Dyn.Encoder in
     function
     | Exe ->
-        string "Exe"
+      string "Exe"
     | Dep ->
-        string "Dep"
+      string "Dep"
     | Bin ->
-        string "Bin"
+      string "Bin"
     | Lib ->
-        string "Lib"
+      string "Lib"
     | Libexec ->
-        string "Libexec"
+      string "Libexec"
     | Lib_available ->
-        string "Lib_available"
+      string "Lib_available"
     | Version ->
-        string "Version"
+      string "Version"
     | Read ->
-        string "Read"
+      string "Read"
     | Read_strings ->
-        string "Read_strings"
+      string "Read_strings"
     | Read_lines ->
-        string "Read_lines"
+      string "Read_lines"
     | Path_no_dep ->
-        string "Path_no_dep"
+      string "Path_no_dep"
     | Ocaml_config ->
-        string "Ocaml_config"
+      string "Ocaml_config"
     | Env ->
-        string "Env"
+      string "Env"
 end
 
 module Expansion = struct
@@ -92,9 +92,9 @@ module Expansion = struct
     let open Dyn.Encoder in
     match e with
     | Var v ->
-        pair string Var.to_dyn ("Var", v)
+      pair string Var.to_dyn ("Var", v)
     | Macro (m, s) ->
-        triple string Macro.to_dyn string ("Macro", m, s)
+      triple string Macro.to_dyn string ("Macro", m, s)
 end
 
 type 'a t =
@@ -117,19 +117,19 @@ let to_dyn f =
   let open Dyn.Encoder in
   function
   | No_info x ->
-      constr "No_info" [ f x ]
+    constr "No_info" [ f x ]
   | Since (x, v) ->
-      constr "Since" [ f x; Syntax.Version.to_dyn v ]
+    constr "Since" [ f x; Syntax.Version.to_dyn v ]
   | Deleted_in (x, v, repl) ->
-      constr "Deleted_in"
-        [ f x
-        ; Syntax.Version.to_dyn v
-        ; List
-            (List.map repl ~f:(fun pp ->
-                 Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
-        ]
+    constr "Deleted_in"
+      [ f x
+      ; Syntax.Version.to_dyn v
+      ; List
+        (List.map repl ~f:(fun pp ->
+          Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
+      ]
   | Renamed_in (v, s) ->
-      constr "Renamed_in" [ Syntax.Version.to_dyn v; string s ]
+    constr "Renamed_in" [ Syntax.Version.to_dyn v; string s ]
 
 module Map = struct
   type 'a map = 'a t String.Map.t
@@ -147,12 +147,12 @@ module Map = struct
       ; ("project_root", since ~version:(1, 0) Var.Project_root)
       ; ( "<"
         , deleted_in Var.First_dep ~version:(1, 0)
-            ~repl:
-              [ Pp.text
-                  "Use a named dependency instead:\n\n\
-                  \  (deps (:x <dep>) ...)\n\
-                  \   ... %{x} ..."
-              ] )
+          ~repl:
+            [ Pp.text
+              "Use a named dependency instead:\n\n\
+              \  (deps (:x <dep>) ...)\n\
+              \   ... %{x} ..."
+            ] )
       ; ("@", renamed_in ~version:(1, 0) ~new_name:"targets")
       ; ("^", renamed_in ~version:(1, 0) ~new_name:"deps")
       ; ("SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root")
@@ -182,31 +182,31 @@ module Map = struct
     let ocamlopt =
       match context.ocamlopt with
       | None ->
-          Path.relative context.ocaml_bin "ocamlopt"
+        Path.relative context.ocaml_bin "ocamlopt"
       | Some p ->
-          p
+        p
     in
     let string s = values [ Value.String s ] in
     let path p = values [ Value.Path p ] in
     let make =
       match Bin.make ~path:(Env.path context.env) with
       | None ->
-          string "make"
+        string "make"
       | Some p ->
-          path p
+        path p
     in
     let cflags = context.ocamlc_cflags in
     let cxx_flags =
       List.filter context.ocamlc_cflags ~f:(fun s ->
-          not (String.is_prefix s ~prefix:"-std="))
+        not (String.is_prefix s ~prefix:"-std="))
     in
     let strings s = values (Value.L.strings s) in
     let lowercased =
       [ ("cpp", strings ((context.c_compiler :: cflags) @ [ "-E" ]))
       ; ( "pa_cpp"
         , strings
-            ( (context.c_compiler :: cflags)
-            @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
+          ( (context.c_compiler :: cflags)
+          @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
       ; ("cc", strings (context.c_compiler :: cflags))
       ; ("cxx", strings (context.c_compiler :: cxx_flags))
       ; ("ocaml", path context.ocaml)
@@ -218,7 +218,7 @@ module Map = struct
     in
     let uppercased =
       List.map lowercased ~f:(fun (k, _) ->
-          (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
+        (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
     in
     let other =
       [ ("-verbose", values [])
@@ -245,14 +245,13 @@ module Map = struct
       ; ("model", since ~version:(1, 10) (Var.Values [ String context.model ]))
       ; ( "ignoring_promoted_rules"
         , since ~version:(1, 10)
-            (Var.Values
-               [ String (string_of_bool !Clflags.ignore_promoted_rules) ]) )
+          (Var.Values [ String (string_of_bool !Clflags.ignore_promoted_rules) ])
+        )
       ]
     in
     { vars =
-        String.Map.superpose static_vars
-          (String.Map.of_list_exn
-             (List.concat [ lowercased; uppercased; other ]))
+      String.Map.superpose static_vars
+        (String.Map.of_list_exn (List.concat [ lowercased; uppercased; other ]))
     ; macros
     }
 
@@ -269,40 +268,39 @@ module Map = struct
     let describe = String_with_vars.Var.describe in
     match v with
     | No_info v ->
-        Some v
+      Some v
     | Since (v, min_version) ->
-        if syntax_version >= min_version then
-          Some v
-        else
-          Syntax.Error.since
-            (String_with_vars.Var.loc pform)
-            Stanza.syntax min_version ~what:(describe pform)
+      if syntax_version >= min_version then
+        Some v
+      else
+        Syntax.Error.since
+          (String_with_vars.Var.loc pform)
+          Stanza.syntax min_version ~what:(describe pform)
     | Renamed_in (in_version, new_name) ->
-        if syntax_version >= in_version then
-          Syntax.Error.renamed_in
-            (String_with_vars.Var.loc pform)
-            Stanza.syntax syntax_version ~what:(describe pform)
-            ~to_:
-              (describe (String_with_vars.Var.with_name pform ~name:new_name))
-        else
-          expand map ~syntax_version:in_version
-            ~pform:(String_with_vars.Var.with_name pform ~name:new_name)
+      if syntax_version >= in_version then
+        Syntax.Error.renamed_in
+          (String_with_vars.Var.loc pform)
+          Stanza.syntax syntax_version ~what:(describe pform)
+          ~to_:(describe (String_with_vars.Var.with_name pform ~name:new_name))
+      else
+        expand map ~syntax_version:in_version
+          ~pform:(String_with_vars.Var.with_name pform ~name:new_name)
     | Deleted_in (v, in_version, repl) ->
-        if syntax_version < in_version then
-          Some v
-        else
-          Syntax.Error.deleted_in
-            (String_with_vars.Var.loc pform)
-            Stanza.syntax in_version ~what:(describe pform) ~repl
+      if syntax_version < in_version then
+        Some v
+      else
+        Syntax.Error.deleted_in
+          (String_with_vars.Var.loc pform)
+          Stanza.syntax in_version ~what:(describe pform) ~repl
 
   let expand t pform syntax_version =
     match String_with_vars.Var.payload pform with
     | None ->
-        Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->
-            Expansion.Var x)
+      Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->
+        Expansion.Var x)
     | Some payload ->
-        Option.map (expand t.macros ~syntax_version ~pform) ~f:(fun x ->
-            Expansion.Macro (x, payload))
+      Option.map (expand t.macros ~syntax_version ~pform) ~f:(fun x ->
+        Expansion.Macro (x, payload))
 
   let empty = { vars = String.Map.empty; macros = String.Map.empty }
 
@@ -311,29 +309,29 @@ module Map = struct
 
   let of_list_exn pforms =
     { vars =
-        List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
-        |> String.Map.of_list_exn
+      List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
+      |> String.Map.of_list_exn
     ; macros = String.Map.empty
     }
 
   let of_bindings bindings =
     { vars =
-        Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
-            match x with
-            | Unnamed _ ->
-                acc
-            | Named (s, _) ->
-                String.Map.set acc s (No_info Var.Named_local))
+      Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
+        match x with
+        | Unnamed _ ->
+          acc
+        | Named (s, _) ->
+          String.Map.set acc s (No_info Var.Named_local))
     ; macros = String.Map.empty
     }
 
   let input_file path =
     let value = Var.Values (Value.L.paths [ path ]) in
     { vars =
-        String.Map.of_list_exn
-          [ ("input-file", since ~version:(1, 0) value)
-          ; ("<", renamed_in ~new_name:"input-file" ~version:(1, 0))
-          ]
+      String.Map.of_list_exn
+        [ ("input-file", since ~version:(1, 0) value)
+        ; ("<", renamed_in ~new_name:"input-file" ~version:(1, 0))
+        ]
     ; macros = String.Map.empty
     }
 

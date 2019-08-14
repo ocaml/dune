@@ -15,7 +15,7 @@ val local_install_lib_dir :
 val dev_null : Path.t
 
 (** When this file is present in a directory dune will delete nothing in it if
-    it knows to generate this file. *)
+  it knows to generate this file. *)
 val dune_keep_fname : string
 
 (** Are we running inside an emacs shell? *)
@@ -25,7 +25,7 @@ val inside_emacs : bool
 val inside_dune : bool
 
 (** Are we running in CI?. This checks the CI environment variable which is
-    supported by travis, gitlab.*)
+  supported by travis, gitlab.*)
 val inside_ci : bool
 
 val show_full_command_on_error : unit -> bool
@@ -100,5 +100,5 @@ val load_user_config_file : unit -> t
 val load_config_file : Path.t -> t
 
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty
-    and we are not running inside emacs. *)
+  and we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t

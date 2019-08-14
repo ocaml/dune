@@ -1,7 +1,7 @@
 type t = string
 
 include module type of struct
-    include StringLabels
+  include StringLabels
   end
   with type t := t
 
@@ -65,7 +65,7 @@ val split : t -> on:char -> t list
 val split_lines : t -> t list
 
 (** Escace ONLY one character. {!escape} also escapes '\n',... and transforms
-    all chars above '~' into '\xxx' which is not suitable for UTF-8 strings. *)
+  all chars above '~' into '\xxx' which is not suitable for UTF-8 strings. *)
 val escape_only : char -> t -> t
 
 (** Return the length of the longest string in the list *)
@@ -80,7 +80,7 @@ val exists : t -> f:(char -> bool) -> bool
 val for_all : t -> f:(char -> bool) -> bool
 
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
-    lexing conventions and [sprintf "%S" s] otherwise.
+  lexing conventions and [sprintf "%S" s] otherwise.
 
     (* CR-someday aalekseyev: this function is not great: barely anything
     "needs escaping according to OCaml lexing conventions", so the condition
@@ -121,5 +121,5 @@ module Table : Hashtbl.S with type key = t
 val need_quoting : string -> bool
 
 (** [quote_for_shell s] quotes [s] using [Filename.quote] if [need_quoting s]
-    is [true] *)
+  is [true] *)
 val quote_for_shell : string -> string

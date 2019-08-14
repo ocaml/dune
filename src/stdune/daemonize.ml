@@ -41,7 +41,6 @@ let seal_beacon path fd contents =
   )
 
 let check_beacon ?(close = true) p =
-  let p = Path.to_string p in
   match
     Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600)
   with
@@ -70,13 +69,21 @@ let check_beacon ?(close = true) p =
 
 let daemonize ?workdir ?(foreground = false) beacon
     (f : (string -> unit) -> unit) =
-  let open Result.O in
   let f fd =
     let f () = f (fun content -> ignore (seal_beacon beacon fd content))
     and finally () = Unix.truncate (Path.to_string beacon) 0 in
     Exn.protect ~f ~finally
   in
-  check_beacon beacon
+  let path = Path.to_string beacon in
+  let path =
+    match workdir with
+    | Some workdir when Filename.is_relative path ->
+        Filename.concat (Path.to_string workdir) path
+    | _ ->
+        path
+  in
+  let open Result.O in
+  check_beacon path
   >>= function
   | None ->
       if foreground then (
@@ -115,7 +122,6 @@ let daemonize ?workdir ?(foreground = false) beacon
         );
         exit 0
       ) else
-        let path = Path.to_string beacon in
         let open Result.O in
         let* fd =
           retry
@@ -142,7 +148,7 @@ let daemonize ?workdir ?(foreground = false) beacon
 
 let stop beacon =
   let open Result.O in
-  check_beacon ~close:false beacon
+  check_beacon ~close:false (Path.to_string beacon)
   >>= function
   | None ->
       Result.Error "not running"

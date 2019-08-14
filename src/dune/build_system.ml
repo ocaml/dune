@@ -633,9 +633,7 @@ let no_rule_found t ~loc fn =
           (User_message.did_you_mean ctx
             ~candidates:(String.Map.keys t.contexts))
 
-(* +-----------------------------------------------------------------+ | Adding
-  rules to the system |
-   +-----------------------------------------------------------------+ *)
+(* +-------------------- Adding rules to the system --------------------+ *)
 
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t

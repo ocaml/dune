@@ -11,6 +11,7 @@ type config = { exit_no_client : bool }
 type event =
   | Stop
   | New_client of Unix.file_descr * Unix.sockaddr
+  | Client_left of Unix.file_descr
 
 type client =
   { fd : Unix.file_descr
@@ -388,10 +389,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
           Unix.close client.fd
           with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
-        manager.clients <- Clients.remove manager.clients client.fd;
-        if manager.config.exit_no_client && Clients.is_empty manager.clients
-        then
-          stop manager
+        Evt.sync (Evt.send manager.events (Client_left client.fd))
       in
       try Exn.protect ~f ~finally with
       | Unix.Unix_error (Unix.EBADF, _, _) ->
@@ -400,11 +398,9 @@ let run ?(port_f = ignore) ?(port = 0) manager =
         Log.infof "%s: ended: %s" (peer_name client.peer) msg
     in
     let rec handle () =
-      ( match Evt.sync (Evt.receive manager.events) with
-      | Stop -> (
+      let stop () =
         match manager.socket with
         | Some fd ->
-          Log.infof "stop";
           manager.socket <- None;
           let clean f = ignore (Clients.iter ~f manager.clients) in
           clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL);
@@ -412,7 +408,11 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           clean (fun (client, _) -> Unix.close client.fd);
           Unix.close fd
         | _ ->
-          () )
+          Log.infof "stop"
+      in
+      ( match Evt.sync (Evt.receive manager.events) with
+      | Stop ->
+        stop ()
       | New_client (fd, peer) ->
         let client =
           { fd
@@ -436,7 +436,12 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           | Result.Ok v ->
             v
           | Result.Error _ ->
-            User_error.raise [ Pp.textf "duplicate socket" ] ) );
+            User_error.raise [ Pp.textf "duplicate socket" ] )
+      | Client_left fd ->
+        manager.clients <- Clients.remove manager.clients fd;
+        if manager.config.exit_no_client && Clients.is_empty manager.clients
+        then
+          stop () );
       if Option.is_some manager.socket then (handle [@tailcall]) ()
     in
     handle ()

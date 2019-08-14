@@ -536,10 +536,17 @@ let () =
     pending_targets := Path.Build.Set.empty;
     Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
-let compute_targets_digest_after_rule_execution ~info targets =
+let compute_targets_digest targets =
+  match
+    List.map targets ~f:(fun target -> Cached_digest.file (Path.build target))
+  with
+  | l -> Some (Digest.generic l)
+  | exception (Unix.Unix_error _ | Sys_error _) -> None
+
+let compute_targets_digest_or_raise_error ~info targets =
   let good, bad =
-    List.partition_map targets ~f:(fun fn ->
-      let fn = Path.build fn in
+    List.partition_map targets ~f:(fun target ->
+      let fn = Path.build target in
       match Cached_digest.refresh fn with
       | digest -> Left digest
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
@@ -1388,14 +1395,7 @@ end = struct
       in
       Digest.generic trace
     in
-    let targets_digest =
-      match
-        List.map targets_as_list ~f:(fun p ->
-          Cached_digest.file (Path.build p))
-      with
-      | l -> Some (Digest.generic l)
-      | exception (Unix.Unix_error _ | Sys_error _) -> None
-    in
+    let targets_digest = compute_targets_digest targets_as_list in
     let sandbox =
       match sandbox_mode with
       | Some mode ->
@@ -1416,8 +1416,8 @@ end = struct
     in
     let* () =
       if force || something_changed then (
-        List.iter targets_as_list ~f:(fun p ->
-          Path.unlink_no_err (Path.build p));
+        List.iter targets_as_list ~f:(fun target ->
+          Path.unlink_no_err (Path.build target));
         pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
         let sandboxed, action =
@@ -1429,10 +1429,10 @@ end = struct
               Path.Build.append_local sandbox_dir (Path.Build.local path)
             in
             Dep.Set.dirs deps
-            |> Path.Set.iter ~f:(fun p ->
-              match Path.as_in_build_dir p with
-              | None -> Fs.assert_exists ~loc p
-              | Some p -> Fs.mkdir_p (sandboxed p));
+            |> Path.Set.iter ~f:(fun path ->
+              match Path.as_in_build_dir path with
+              | None -> Fs.assert_exists ~loc path
+              | Some path -> Fs.mkdir_p (sandboxed path));
             Fs.mkdir_p (sandboxed dir);
             ( Some sandboxed
             , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
@@ -1454,7 +1454,7 @@ end = struct
         (* All went well, these targets are no longer pending *)
         pending_targets := Path.Build.Set.diff !pending_targets targets;
         let targets_digest =
-          compute_targets_digest_after_rule_execution ~info targets_as_list
+          compute_targets_digest_or_raise_error ~info targets_as_list
         in
         Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
       ) else
@@ -1467,7 +1467,7 @@ end = struct
        |Ignore_source_files ->
         Fiber.return ()
       | Promote { lifetime; into; only } ->
-        Fiber.sequential_iter (Path.Build.Set.to_list targets) ~f:(fun path ->
+        Fiber.sequential_iter targets_as_list ~f:(fun path ->
           let consider_for_promotion =
             match only with
             | None -> true

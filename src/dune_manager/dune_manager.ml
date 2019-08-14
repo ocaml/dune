@@ -432,8 +432,8 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       [ Pp.textf "unable to %s: %s\n" f (Unix.error_message errno) ]
 
 let daemon ~root ~config started =
-  let log_file = Path.relative root "log" in
-  Log.init ~file:(This log_file) ();
+  (* let log_file = Path.relative root "log" in *)
+  (* Log.init ~file:(This log_file) (); *)
   let manager = make ~root ~config () in
   Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _ -> stop manager));
   Sys.set_signal Sys.sigterm (Sys.Signal_handle (fun _ -> stop manager));

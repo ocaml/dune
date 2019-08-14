@@ -24,6 +24,8 @@ val stop : t -> unit
 
 val endpoint : t -> string option
 
+val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
+
 module Client : sig
   type t
 

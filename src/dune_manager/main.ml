@@ -52,8 +52,9 @@ let start () =
     ]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     usage;
+  let root = !root in
   let f started =
-    let port_f content =
+    let started content =
       if !foreground then show_endpoint content;
       started content
     in
@@ -62,22 +63,10 @@ let start () =
         Verbose
       else
         Quiet );
-    let log_file = Path.relative !root "log" in
-    Log.init ~file:(This log_file) ();
-    let manager = Dune_manager.make ~root:!root ~config () in
-    Sys.set_signal Sys.sigint
-      (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
-    Sys.set_signal Sys.sigterm
-      (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
-    try Dune_manager.run ~port_f manager with
-    | Dune_manager.Error s ->
-        Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
-        exit 1
-    | Dune_manager.Stop ->
-        ()
+    Dune_manager.daemon ~root ~config started
   in
   match
-    Daemonize.daemonize ~workdir:!root ~foreground:!foreground !port_path f
+    Daemonize.daemonize ~workdir:root ~foreground:!foreground !port_path f
   with
   | Result.Ok Finished ->
       ()

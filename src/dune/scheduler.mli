@@ -6,7 +6,7 @@ open! Stdune
 val go : ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a
 
 (** Runs [once] in a loop, executing [finally] after every iteration, even if
-    Fiber.Never was encountered.
+  Fiber.Never was encountered.
 
     If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
@@ -31,15 +31,15 @@ val set_concurrency : int -> unit
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
-    This is used with promoted files that are copied back to the source tree
-    after generation *)
+  This is used with promoted files that are copied back to the source tree
+  after generation *)
 val ignore_for_watch : Path.t -> unit
 
 (** Scheduler information *)
 type t
 
 (** Wait until fewer than [!Clflags.concurrency] external processes are running
-    and return the scheduler information. *)
+  and return the scheduler information. *)
 val wait_for_available_job : unit -> t Fiber.t
 
 (** Execute the given callback with current directory temporarily changed *)

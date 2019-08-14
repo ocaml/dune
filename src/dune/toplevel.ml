@@ -69,13 +69,13 @@ let setup_module_rules t =
   let main_ml =
     let open Build.O in
     Build.of_result_map requires_compile ~f:(fun libs ->
-        Build.arr (fun () ->
-            let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
-            let b = Buffer.create 64 in
-            let fmt = Format.formatter_of_buffer b in
-            Source.pp_ml fmt t.source ~include_dirs;
-            Format.pp_print_flush fmt ();
-            Buffer.contents b))
+      Build.arr (fun () ->
+        let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
+        let b = Buffer.create 64 in
+        let fmt = Format.formatter_of_buffer b in
+        Source.pp_ml fmt t.source ~include_dirs;
+        Format.pp_print_flush fmt ();
+        Buffer.contents b))
     >>> Build.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml

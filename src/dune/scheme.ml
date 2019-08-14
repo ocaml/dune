@@ -44,35 +44,32 @@ end = struct
 
   let rec union ~union_rules x y =
     { by_child =
-        String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
-            Some
-              (Memo.Lazy.map2 data1 data2 ~f:(fun x y ->
-                   union ~union_rules x y)))
+      String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
+        Some
+          (Memo.Lazy.map2 data1 data2 ~f:(fun x y -> union ~union_rules x y)))
     ; rules_here =
-        Memo.Lazy.map2 x.rules_here y.rules_here
-          ~f:(union_option ~f:union_rules)
+      Memo.Lazy.map2 x.rules_here y.rules_here ~f:(union_option ~f:union_rules)
     }
 
   let rec restrict (dirs : Path.Local.w Dir_set.t) t : _ t =
     { rules_here =
-        ( if Dir_set.here dirs then
-          Memo.Lazy.bind t ~f:(fun t -> t.rules_here)
-        else
-          Memo.Lazy.of_val None )
+      ( if Dir_set.here dirs then
+        Memo.Lazy.bind t ~f:(fun t -> t.rules_here)
+      else
+        Memo.Lazy.of_val None )
     ; by_child =
-        ( match Dir_set.default dirs with
-        | true ->
-          (* This is forcing the lazy potentially too early if the directory
-             the user is interested in is not actually in the set. We're not
-             fully committed to supporting this case though, anyway. *)
-          String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
-              Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
-        | false ->
-          String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-              Memo.lazy_ (fun () ->
-                  restrict v
-                    (Memo.lazy_ (fun () -> descend (Memo.Lazy.force t) dir))))
-        )
+      ( match Dir_set.default dirs with
+      | true ->
+        (* This is forcing the lazy potentially too early if the directory the
+          user is interested in is not actually in the set. We're not fully
+           committed to supporting this case though, anyway. *)
+        String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
+          Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
+      | false ->
+        String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
+          Memo.lazy_ (fun () ->
+            restrict v (Memo.lazy_ (fun () -> descend (Memo.Lazy.force t) dir))))
+      )
     }
 
   let restrict dirs t = restrict (Dir_set.forget_root dirs) t
@@ -124,7 +121,7 @@ let evaluate ~union_rules =
     | Finite rules ->
       let violations =
         List.filter (Path.Build.Map.keys rules) ~f:(fun p ->
-            not (Dir_set.mem env p))
+          not (Dir_set.mem env p))
       in
       ( match violations with
       | [] ->

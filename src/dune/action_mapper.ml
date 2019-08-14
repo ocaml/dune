@@ -11,7 +11,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     -> Dst.t
 
   let map_one_step f (t : Src.t) ~dir ~f_program ~f_string ~f_path ~f_target :
-      Dst.t =
+    Dst.t =
     let f t ~dir = f t ~dir ~f_program ~f_string ~f_path ~f_target in
     match t with
     | Run (prog, args) ->

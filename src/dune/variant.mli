@@ -1,7 +1,7 @@
 (** Library variants *)
 
 (** Library variants allow to select the implementation of a library at link
-    time.
+  time.
 
     They are directly mapped to findlib predicates. *)
 

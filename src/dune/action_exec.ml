@@ -20,7 +20,7 @@ let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from prog args =
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target.name host.name
           ; Pp.textf "It's not possible to execute binary %s in it."
-              (Path.to_string_maybe_quoted prog)
+            (Path.to_string_maybe_quoted prog)
           ; Pp.nop
           ; Pp.text "This is a bug and should be reported upstream."
           ]
@@ -61,7 +61,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-        Io.copy_channels ic (Process.Io.out_channel stdout_to));
+      Io.copy_channels ic (Process.Io.out_channel stdout_to));
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -85,7 +85,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
       | target ->
         if target <> src then (
           (* @@DRA Win32 remove read-only attribute needed when symlinking
-             enabled *)
+            enabled *)
           Unix.unlink dst;
           Unix.symlink src dst
         )
@@ -94,13 +94,12 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
-        Path.build dst
-        |> Io.with_file_out ~f:(fun oc ->
-               let fn = Path.drop_optional_build_context_maybe_sandboxed src in
-               output_string oc
-                 (Utils.line_directive ~filename:(Path.to_string fn)
-                    ~line_number:1);
-               Io.copy_channels ic oc));
+      Path.build dst
+      |> Io.with_file_out ~f:(fun oc ->
+        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
+        output_string oc
+          (Utils.line_directive ~filename:(Path.to_string fn) ~line_number:1);
+        Io.copy_channels ic oc));
     Fiber.return ()
   | System cmd ->
     let path, arg =
@@ -131,7 +130,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-            (Path.to_string fn, Cached_digest.file fn))
+          (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.generic data
     in
@@ -157,7 +156,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
           if mode = Binary then
             User_error.raise
               [ Pp.textf "Files %s and %s differ."
-                  (Path.to_string_maybe_quoted file1)
+                (Path.to_string_maybe_quoted file1)
                   (Path.to_string_maybe_quoted file2)
               ]
           else
@@ -173,16 +172,16 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
               Promotion.File.register_dep
                 ~source_file:
                   (snd
-                     (Option.value_exn
-                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                    (Option.value_exn
+                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
           | true ->
             if is_copied_from_source_tree file1 then
               Promotion.File.register_intermediate
                 ~source_file:
                   (snd
-                     (Option.value_exn
-                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                    (Option.value_exn
+                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
             else
               remove_intermediate_file () );
@@ -201,7 +200,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     Fiber.return ()
 
 and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
-    =
+  =
   let out = Process.Io.file fn Process.Io.Out in
   let stdout_to, stderr_to =
     match outputs with
@@ -216,7 +215,7 @@ and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   >>| fun () -> Process.Io.release out
 
 and redirect_in inputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from:_
-    =
+  =
   let in_ = Process.Io.file fn Process.Io.In in
   let stdin_from = match inputs with Stdin -> in_ in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from

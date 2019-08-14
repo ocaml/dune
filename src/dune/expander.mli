@@ -1,5 +1,5 @@
 (** An expander is able to expand any dune template. It has two modes of
-    expansion:
+  expansion:
 
     1. Static. In this mode it will only expand variables that do not introduce
     dependncies

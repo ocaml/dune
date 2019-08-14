@@ -83,7 +83,7 @@ let rec check_prefix s ~prefix len i =
 let rec check_suffix s ~suffix suffix_len offset i =
   i = suffix_len
   || s.[offset + i] = suffix.[i]
-     && check_suffix s ~suffix suffix_len offset (i + 1)
+    && check_suffix s ~suffix suffix_len offset (i + 1)
 
 let is_prefix s ~prefix =
   let len = length s in
@@ -237,7 +237,7 @@ module Set = struct
   let pp fmt t =
     Format.fprintf fmt "Set (@[%a@])"
       (Format.pp_print_list Format.pp_print_string ~pp_sep:(fun fmt () ->
-           Format.fprintf fmt "@ "))
+        Format.fprintf fmt "@ "))
       (to_list t)
 end
 

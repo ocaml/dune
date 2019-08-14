@@ -87,8 +87,8 @@ let cycle_test variant =
   let n2 = node d 2 in
   let n3 = node d 3 in
   ( (* the two variants are equivalent, but they end up taking a different code
-       path when producing the cycle for some reason (or at least they did in
-       2019-03) *)
+    path when producing the cycle for some reason (or at least they did in
+      2019-03) *)
   match variant with
   | `a ->
     add d n2 n3
@@ -155,11 +155,11 @@ let cycle_test variant =
   | exception Cycle c ->
     let c = List.map c ~f:(fun x -> x.data) in
     List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
-        match List.exists !edges ~f:(fun edge -> edge = (a, b)) with
-        | true ->
-          ()
-        | false ->
-          Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
+      match List.exists !edges ~f:(fun edge -> edge = (a, b)) with
+      | true ->
+        ()
+      | false ->
+        Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
     List.map c ~f:(Pp.textf "%d") |> Pp.concat ~sep:Pp.space |> print
 
 let%expect_test _ =

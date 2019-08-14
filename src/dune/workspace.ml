@@ -2,7 +2,7 @@ open! Stdune
 open Dune_lang.Decoder
 
 (* workspace files use the same version numbers as dune-project files for
-   simplicity *)
+  simplicity *)
 let syntax = Stanza.syntax
 
 let env_field =
@@ -31,15 +31,15 @@ module Context = struct
   module Name = struct
     let t =
       plain_string (fun ~loc name ->
-          if
-            name = ""
-            || String.is_prefix name ~prefix:"."
-            || name = "log" || name = "install" || String.contains name '/'
-            || String.contains name '\\'
-          then
-            User_error.raise ~loc
-              [ Pp.textf "%S is not allowed as a build context name" name ];
-          name)
+        if
+          name = ""
+          || String.is_prefix name ~prefix:"."
+          || name = "log" || name = "install" || String.contains name '/'
+          || String.contains name '\\'
+        then
+          User_error.raise ~loc
+            [ Pp.textf "%S is not allowed as a build context name" name ];
+        name)
   end
 
   module Common = struct
@@ -73,7 +73,7 @@ module Context = struct
           | Error (var, _, loc) ->
             User_error.raise ~loc
               [ Pp.textf
-                  "the variable %S can appear at most once in this stanza." var
+                "the variable %S can appear at most once in this stanza." var
               ]
         in
         field "paths" ~default:[]
@@ -82,15 +82,14 @@ module Context = struct
           )
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
-          match targets with
-          | [ Target.Native ] ->
-            ()
-          | _ ->
-            User_error.raise ~loc
-              [ Pp.text
-                  "`targets` and `host` options cannot be used in the same \
-                   context."
-              ]);
+        match targets with
+        | [ Target.Native ] ->
+          ()
+        | _ ->
+          User_error.raise ~loc
+            [ Pp.text
+              "`targets` and `host` options cannot be used in the same context."
+            ]);
       { targets
       ; profile
       ; loc
@@ -159,8 +158,8 @@ module Context = struct
     let n = name t in
     n
     :: List.filter_map (targets t) ~f:(function
-         | Native ->
-           None
+      | Native ->
+        None
          | Named s ->
            Some (n ^ "." ^ s))
 
@@ -201,17 +200,16 @@ let bad_configuration_check map =
   let check elt =
     Context.host_context elt
     |> Option.iter ~f:(fun host ->
-           let name = Context.name elt in
-           let loc = Context.loc elt in
-           let host_elt = find_exn loc name host in
-           Context.host_context host_elt
-           |> Option.iter ~f:(fun host_of_host ->
-                  User_error.raise ~loc:(Context.loc host_elt)
-                    [ Pp.textf
-                        "Context '%s' is both a host (for '%s') and a target \
-                         (for '%s')."
-                        host name host_of_host
-                    ]))
+      let name = Context.name elt in
+      let loc = Context.loc elt in
+      let host_elt = find_exn loc name host in
+      Context.host_context host_elt
+      |> Option.iter ~f:(fun host_of_host ->
+        User_error.raise ~loc:(Context.loc host_elt)
+          [ Pp.textf
+            "Context '%s' is both a host (for '%s') and a target (for '%s')."
+              host name host_of_host
+          ]))
   in
   String.Map.iter map ~f:check
 
@@ -241,21 +239,21 @@ let t ?x ?profile:cmdline_profile () =
   let defined_names = ref String.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
-        let name = Context.name ctx in
-        if String.Set.mem !defined_names name then
-          User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.textf "second definition of build context %S" name ];
-        defined_names :=
-          String.Set.union !defined_names
-            (String.Set.of_list (Context.all_names ctx));
-        match (ctx, acc) with
-        | Opam { merlin = true; _ }, Some _ ->
-          User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.text "you can only have one context for merlin" ]
-        | Opam { merlin = true; _ }, None ->
-          Some name
-        | _ ->
-          acc)
+      let name = Context.name ctx in
+      if String.Set.mem !defined_names name then
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.textf "second definition of build context %S" name ];
+      defined_names :=
+        String.Set.union !defined_names
+          (String.Set.of_list (Context.all_names ctx));
+      match (ctx, acc) with
+      | Opam { merlin = true; _ }, Some _ ->
+        User_error.raise ~loc:(Context.loc ctx)
+          [ Pp.text "you can only have one context for merlin" ]
+      | Opam { merlin = true; _ }, None ->
+        Some name
+      | _ ->
+        acc)
   in
   let contexts =
     match contexts with
@@ -293,11 +291,11 @@ let default ?x ?profile () =
 let load ?x ?profile p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   Io.with_lexbuf_from_file p ~f:(fun lb ->
-      if Dune_lexer.eof_reached lb then
-        default ?x ?profile ()
-      else
-        let first_line = Dune_lexer.first_line lb in
-        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
+    if Dune_lexer.eof_reached lb then
+      default ?x ?profile ()
+    else
+      let first_line = Dune_lexer.first_line lb in
+      parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
 
 let default ?x ?profile () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in

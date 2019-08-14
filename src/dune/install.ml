@@ -24,7 +24,7 @@ module Section0 = struct
 end
 
 (* The path after the man section mangling done by opam-installer. This roughly
-   follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
+  follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
 module Dst : sig
   type t
 
@@ -280,8 +280,8 @@ module Entry = struct
       User_error.raise
         ~loc:(String_with_vars.Var.loc var)
         [ Pp.textf
-            "Because this file is installed in the 'bin' section, you cannot \
-             use the variable %s in its basename."
+          "Because this file is installed in the 'bin' section, you cannot \
+           use the variable %s in its basename."
             (String_with_vars.Var.describe var)
         ]
     in
@@ -361,14 +361,13 @@ module Entry = struct
     { src
     ; section
     ; dst =
-        Dst.of_install_file ~section ~src_basename:(Path.Build.basename src)
-          dst
+      Dst.of_install_file ~section ~src_basename:(Path.Build.basename src) dst
     }
 end
 
 let files entries =
   List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
-      Path.Set.add acc (Path.build entry.src))
+    Path.Set.add acc (Path.build entry.src))
 
 let group entries =
   List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
@@ -378,20 +377,20 @@ let gen_install_file entries =
   let buf = Buffer.create 4096 in
   let pr fmt = Printf.bprintf buf (fmt ^^ "\n") in
   Section.Map.iteri (group entries) ~f:(fun section entries ->
-      pr "%s: [" (Section.to_string section);
-      List.sort ~compare:Entry.compare entries
-      |> List.iter ~f:(fun (e : Entry.t) ->
-             let src = Path.to_string (Path.build e.src) in
-             match
-               Dst.to_install_file
-                 ~src_basename:(Path.Build.basename e.src)
-                 ~section:e.section e.dst
-             with
-             | None ->
-               pr "  %S" src
-             | Some dst ->
-               pr "  %S {%S}" src dst);
-      pr "]");
+    pr "%s: [" (Section.to_string section);
+    List.sort ~compare:Entry.compare entries
+    |> List.iter ~f:(fun (e : Entry.t) ->
+      let src = Path.to_string (Path.build e.src) in
+      match
+        Dst.to_install_file
+          ~src_basename:(Path.Build.basename e.src)
+          ~section:e.section e.dst
+      with
+      | None ->
+        pr "  %S" src
+      | Some dst ->
+        pr "  %S {%S}" src dst);
+    pr "]");
   Buffer.contents buf
 
 let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function

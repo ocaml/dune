@@ -28,18 +28,18 @@ module Group = struct
   let to_predicate =
     let preds =
       List.map all ~f:(fun g ->
-          let ext = ext g in
-          (* we cannot use globs because of bootstrapping. *)
-          let id =
-            lazy
-              (let open Dyn.Encoder in
-              constr "Lib_file_deps" [ string ext ])
-          in
-          let pred =
-            Predicate.create ~id ~f:(fun p ->
-                String.equal (Filename.extension p) ext)
-          in
-          (g, pred))
+        let ext = ext g in
+        (* we cannot use globs because of bootstrapping. *)
+        let id =
+          lazy
+            (let open Dyn.Encoder in
+            constr "Lib_file_deps" [ string ext ])
+        in
+        let pred =
+          Predicate.create ~id ~f:(fun p ->
+            String.equal (Filename.extension p) ext)
+        in
+        (g, pred))
     in
     fun g -> Option.value_exn (List.assoc preds g)
 end
@@ -47,8 +47,8 @@ end
 let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.obj_dir lib in
   List.map groups ~f:(fun g ->
-      let dir = Group.obj_dir g obj_dir in
-      Group.to_predicate g |> File_selector.create ~dir |> Dep.glob)
+    let dir = Group.obj_dir g obj_dir in
+    Group.to_predicate g |> File_selector.create ~dir |> Dep.glob)
   |> Dep.Set.of_list
 
 let deps_with_exts =

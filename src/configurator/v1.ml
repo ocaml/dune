@@ -1,7 +1,7 @@
 open! Stdune
 
 (* we shadow this module on purpose because it's unusable without the build dir
-   initialized *)
+  initialized *)
 module Path = struct end
 
 module Io = Io.String_path
@@ -35,11 +35,11 @@ type t =
 
 let rec rm_rf dir =
   Array.iter (Sys.readdir dir) ~f:(fun fn ->
-      let fn = dir ^/ fn in
-      if Sys.is_directory fn then
-        rm_rf fn
-      else
-        Unix.unlink fn);
+    let fn = dir ^/ fn in
+    if Sys.is_directory fn then
+      rm_rf fn
+    else
+      Unix.unlink fn);
   Unix.rmdir dir
 
 module Temp = struct
@@ -128,8 +128,8 @@ module Find_in_path = struct
 
   let which prog =
     List.find_map (get_path ()) ~f:(fun dir ->
-        let fn = dir ^/ prog ^ exe in
-        Option.some_if (Sys.file_exists fn) fn)
+      let fn = dir ^/ prog ^ exe in
+      Option.some_if (Sys.file_exists fn) fn)
 end
 
 let logf t fmt = Printf.ksprintf t.log fmt
@@ -215,7 +215,7 @@ module Process = struct
       { exit_code; stdout; stderr }
 
   (* [cmd] which cannot be quoted (such as [t.c_compiler] which contains some
-     flags) followed by additional arguments. *)
+    flags) followed by additional arguments. *)
   let command_args cmd args =
     String.concat ~sep:" " (cmd :: List.map args ~f:quote_if_needed)
 
@@ -363,10 +363,10 @@ let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
     else
       run_ok
         (List.concat
-           [ c_flags
-           ; [ "-I"; t.stdlib_dir; "-o"; exe_fname; c_fname ]
-           ; link_flags
-           ])
+          [ c_flags
+          ; [ "-I"; t.stdlib_dir; "-o"; exe_fname; c_fname ]
+          ; link_flags
+          ])
   in
   if ok then
     Ok ()
@@ -385,7 +385,7 @@ let compile_c_prog t ?(c_flags = []) code =
   let ok =
     Process.run_command_ok t ~dir
       (Process.command_args t.c_compiler
-         (c_flags @ [ "-I"; t.stdlib_dir; "-o"; obj_fname; "-c"; c_fname ]))
+        (c_flags @ [ "-I"; t.stdlib_dir; "-o"; obj_fname; "-c"; c_fname ]))
   in
   if ok then
     Ok obj_fname
@@ -444,18 +444,18 @@ module C_define = struct
 #define DUNE_SIGN(x) ((x >= 0)? '0': '-')
 |};
     List.iteri vars ~f:(fun i (name, t) ->
-        match t with
-        | Type.Int ->
-          let c_arr_i =
-            let b = Buffer.create 8 in
-            let is = string_of_int i in
-            for i = 0 to String.length is - 1 do
-              Printf.bprintf b "'%c', " is.[i]
-            done;
-            Buffer.contents b
-          in
-          pr
-            {|
+      match t with
+      | Type.Int ->
+        let c_arr_i =
+          let b = Buffer.create 8 in
+          let is = string_of_int i in
+          for i = 0 to String.length is - 1 do
+            Printf.bprintf b "'%c', " is.[i]
+          done;
+          Buffer.contents b
+        in
+        pr
+          {|
 const char s%i[] = {
   'B', 'E', 'G', 'I', 'N', '-', %s'-',
   DUNE_SIGN((%s)),
@@ -463,19 +463,19 @@ const char s%i[] = {
   '-', 'E', 'N', 'D'
 };
 |}
-            i c_arr_i name name
-        | String ->
-          pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
-        | Switch ->
-          pr
-            {|
+          i c_arr_i name name
+      | String ->
+        pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
+      | Switch ->
+        pr
+          {|
 #ifdef %s
 const char *s%i = "BEGIN-%i-true-END";
 #else
 const char *s%i = "BEGIN-%i-false-END";
 #endif
 |}
-            name i i i i);
+          name i i i i);
     Buffer.contents buf
 
   let extract_values obj_file vars =
@@ -484,36 +484,36 @@ const char *s%i = "BEGIN-%i-false-END";
       |> Int.Map.of_list_exn
     in
     List.mapi vars ~f:(fun i (name, t) ->
-        let raw_val =
-          match Int.Map.find values i with
-          | None ->
-            die "Unable to get value for %s" name
-          | Some v ->
-            v
-        in
-        let value =
-          match t with
-          | Type.Switch ->
-            Bool.of_string raw_val |> Option.map ~f:Value.switch
-          | Int ->
-            Int.of_string raw_val |> Option.map ~f:Value.int
-          | String ->
-            Some (String raw_val)
-        in
-        let value =
-          match value with
-          | Some v ->
-            v
-          | None ->
-            let msg =
-              sprintf
-                "Unable to read variable %S of type %s. Invalid value %S in \
-                 %s found"
-                name (Type.name t) raw_val obj_file
-            in
-            raise (Fatal_error msg)
-        in
-        (name, value))
+      let raw_val =
+        match Int.Map.find values i with
+        | None ->
+          die "Unable to get value for %s" name
+        | Some v ->
+          v
+      in
+      let value =
+        match t with
+        | Type.Switch ->
+          Bool.of_string raw_val |> Option.map ~f:Value.switch
+        | Int ->
+          Int.of_string raw_val |> Option.map ~f:Value.int
+        | String ->
+          Some (String raw_val)
+      in
+      let value =
+        match value with
+        | Some v ->
+          v
+        | None ->
+          let msg =
+            sprintf
+              "Unable to read variable %S of type %s. Invalid value %S in %s \
+               found"
+              name (Type.name t) raw_val obj_file
+          in
+          raise (Fatal_error msg)
+      in
+      (name, value))
 
   let import t ?prelude ?c_flags ~includes vars =
     let program = extract_program ?prelude ("stdio.h" :: includes) vars in
@@ -544,15 +544,15 @@ const char *s%i = "BEGIN-%i-false-END";
     in
     let lines =
       List.map vars ~f:(fun (name, value) ->
-          match (value : Value.t) with
-          | Switch false ->
-            sprintf "#undef  %s" name
-          | Switch true ->
-            sprintf "#define %s" name
-          | Int n ->
-            sprintf "#define %s (%d)" name n
-          | String s ->
-            sprintf "#define %s %S" name s)
+        match (value : Value.t) with
+        | Switch false ->
+          sprintf "#undef  %s" name
+        | Switch true ->
+          sprintf "#define %s" name
+        | Int n ->
+          sprintf "#define %s (%d)" name n
+        | String s ->
+          sprintf "#define %s %S" name s)
     in
     let lines =
       List.concat
@@ -589,7 +589,7 @@ module Pkg_config = struct
 
   let get c =
     Option.map (which c "pkg-config") ~f:(fun pkg_config ->
-        { pkg_config; configurator = c })
+      { pkg_config; configurator = c })
 
   type package_conf =
     { libs : string list
@@ -646,7 +646,7 @@ module Pkg_config = struct
             ""
         in
         [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path
-            new_pkg_config_path
+          new_pkg_config_path
         ]
       | _ ->
         None

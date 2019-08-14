@@ -54,7 +54,7 @@ module DB = struct
       List.filter_map internal_libs
         ~f:(fun (_dir, (lib : Dune_file.Library.t)) ->
           Option.map lib.public ~f:(fun p ->
-              (Dune_file.Public_lib.name p, lib.project)))
+            (Dune_file.Public_lib.name p, lib.project)))
       |> Lib_name.Map.of_list
       |> function
       | Ok x ->
@@ -62,17 +62,17 @@ module DB = struct
       | Error (name, _, _) -> (
         match
           List.filter_map internal_libs ~f:(fun (_dir, lib) ->
-              Option.bind lib.public ~f:(fun p ->
-                  Option.some_if
-                    (name = Dune_file.Public_lib.name p)
-                    lib.buildable.loc))
+            Option.bind lib.public ~f:(fun p ->
+              Option.some_if
+                (name = Dune_file.Public_lib.name p)
+                lib.buildable.loc))
         with
         | [] | [ _ ] ->
           assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise
             [ Pp.textf "Public library %s is defined twice:"
-                (Lib_name.to_string name)
+              (Lib_name.to_string name)
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
             ] )
@@ -82,16 +82,16 @@ module DB = struct
       ~all:(fun () -> Lib_name.Map.keys public_libs)
 
   let scopes_by_dir context ~projects ~lib_config ~public_libs internal_libs
-      variant_implementations =
+    variant_implementations =
     let build_context_dir = Path.Build.relative Path.Build.root context in
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
-          (Dune_project.root project, project))
+        (Dune_project.root project, project))
       |> Path.Source.Map.of_list_exn
     in
     let libs_by_project_dir =
       List.map internal_libs ~f:(fun (dir, (lib : Dune_file.Library.t)) ->
-          (Dune_project.root lib.project, (dir, lib)))
+        (Dune_project.root lib.project, (dir, lib)))
       |> Path.Source.Map.of_list_multi
     in
     let variant_implementations_by_project_dir =
@@ -122,7 +122,7 @@ module DB = struct
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config internal_libs
-      variant_implementations =
+    variant_implementations =
     let t = Fdecl.create () in
     let public_libs =
       public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir

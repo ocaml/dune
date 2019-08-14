@@ -28,7 +28,7 @@ type t =
   }
 
 let make ?(sandbox = Sandbox_config.default)
-    ?(mode = Dune_file.Rule.Mode.Standard) ~context ~env ?(locks = [])
+  ?(mode = Dune_file.Rule.Mode.Standard) ~context ~env ?(locks = [])
     ?(info = Info.Internal) build =
   let build = Build.S.seq (Build.dep (Dep.sandbox_config sandbox)) build in
   let targets = Build.targets build in
@@ -44,7 +44,7 @@ let make ?(sandbox = Sandbox_config.default)
       let dir = Path.Build.parent_exn x in
       ( if
         Path.Build.Set.exists targets ~f:(fun path ->
-            Path.Build.( <> ) (Path.Build.parent_exn path) dir)
+          Path.Build.( <> ) (Path.Build.parent_exn path) dir)
       then
         match info with
         | Internal | Source_file_copy ->
@@ -54,7 +54,7 @@ let make ?(sandbox = Sandbox_config.default)
           User_error.raise ~loc
             [ Pp.text "Rule has targets in different directories.\nTargets:"
             ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
-                  Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
+              Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
             ] );
       dir
   in

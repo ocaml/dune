@@ -15,8 +15,8 @@ let make_printer ?(backtrace = false) ?hint ?loc pp =
 
 let rec tag_handler ppf (style : User_message.Style.t) pp =
   (Format.pp_open_tag ppf
-     ( User_message.Print_config.default style
-     |> Ansi_color.Style.escape_sequence ) [@warning "-3"]);
+    ( User_message.Print_config.default style
+    |> Ansi_color.Style.escape_sequence ) [@warning "-3"]);
   Pp.render ppf pp ~tag_handler;
   (Format.pp_close_tag ppf () [@warning "-3"])
 
@@ -27,14 +27,14 @@ let get_printer = function
     { loc = msg.loc
     ; backtrace = false
     ; hint =
-        ( match msg.hints with
-        | [] ->
-          None
-        | hint :: _ ->
-          Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint) )
+      ( match msg.hints with
+      | [] ->
+        None
+      | hint :: _ ->
+        Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint) )
     ; pp =
-        (fun ppf ->
-          render ppf (User_message.pp { msg with loc = None; hints = [] }))
+      (fun ppf ->
+        render ppf (User_message.pp { msg with loc = None; hints = [] }))
     }
   | Code_error.E t ->
     let maybe_pp_loc fmt =
@@ -70,16 +70,15 @@ let i_must_not_segfault =
   let x =
     lazy
       (at_exit (fun () ->
-           prerr_endline
-             "\n\
-              I must not segfault.  Uncertainty is the mind-killer.  \
-              Exceptions are\n\
-              the little-death that brings total obliteration.  I will fully \
-              express\n\
-              my cases.  Execution will pass over me and through me.  And \
-              when it\n\
-              has gone past, I will unwind the stack along its path.  Where the\n\
-              cases are handled there will be nothing.  Only I will remain."))
+        prerr_endline
+          "\n\
+           I must not segfault.  Uncertainty is the mind-killer.  Exceptions \
+           are\n\
+           the little-death that brings total obliteration.  I will fully \
+           express\n\
+           my cases.  Execution will pass over me and through me.  And when it\n\
+           has gone past, I will unwind the stack along its path.  Where the\n\
+           cases are handled there will be nothing.  Only I will remain."))
   in
   fun () -> Lazy.force x
 
@@ -137,7 +136,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
           | Some loc ->
             if Filename.is_relative loc.start.pos_fname then
               (* If the error points to a local file, no need to print the
-                 dependency stack *)
+                dependency stack *)
               []
             else
               drop dependency_path

@@ -7,7 +7,7 @@ module Fd_count = struct
 
   let try_to_use_lsof () =
     (* note: we do not use the Process module here, because it would create a
-       circular dependency *)
+      circular dependency *)
     let temp = Filename.temp_file "dune" ".lsof" in
     let stdout =
       Unix.openfile temp [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ] 0o666
@@ -36,12 +36,12 @@ let catapult = ref None
 
 let record () =
   Option.iter !catapult ~f:(fun reporter ->
-      Catapult.emit_gc_counters reporter;
-      match Fd_count.get () with
-      | This fds ->
-        Catapult.emit_counter reporter "fds" fds
-      | Unknown ->
-        ())
+    Catapult.emit_gc_counters reporter;
+    match Fd_count.get () with
+    | This fds ->
+      Catapult.emit_counter reporter "fds" fds
+    | Unknown ->
+      ())
 
 let enable path =
   let reporter = Catapult.make path in

@@ -53,13 +53,13 @@ let is_universal = function Universal -> true | _ -> false
 
 let merge_exceptions a b ~default ~f =
   String.Map.merge a.exceptions b.exceptions ~f:(fun _ x y ->
-      let x = Option.value x ~default:(trivial a.default) in
-      let y = Option.value y ~default:(trivial b.default) in
-      match (default, f x y) with
-      | false, Empty | true, Universal ->
-        None
-      | _, res ->
-        Some res)
+    let x = Option.value x ~default:(trivial a.default) in
+    let y = Option.value y ~default:(trivial b.default) in
+    match (default, f x y) with
+    | false, Empty | true, Universal ->
+      None
+    | _, res ->
+      Some res)
 
 let merge_nontrivial a b ~f_one ~f_set =
   let default = f_one a.default b.default in

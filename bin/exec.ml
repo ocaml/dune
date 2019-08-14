@@ -7,18 +7,18 @@ let doc =
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|$(b,dune exec -- COMMAND) should behave in the same way as if you
+    {|$(b,dune exec -- COMMAND) should behave in the same way as if you
           do:|}
   ; `Pre "  \\$ dune install\n  \\$ COMMAND"
   ; `P
-      {|In particular if you run $(b,dune exec ocaml), you will have
+    {|In particular if you run $(b,dune exec ocaml), you will have
           access to the libraries defined in the workspace using your usual
           directives ($(b,#require) for instance)|}
   ; `P
-      {|When a leading / is present in the command (absolute path), then the
+    {|When a leading / is present in the command (absolute path), then the
           path is interpreted as an absolute path|}
   ; `P
-      {|When a / is present at any other position (relative path), then the
+    {|When a / is present at any other position (relative path), then the
           path is interpreted as relative to the build context + current
           working directory (or the value of $(b,--root) when ran outside of
           the project root)|}
@@ -56,7 +56,7 @@ let term =
       ( ( match prog_where with
         | `Search p ->
           [ Path.Build.relative
-              (Config.local_install_bin_dir ~context:context.name)
+            (Config.local_install_bin_dir ~context:context.name)
               p
             |> Path.build
           ]
@@ -104,9 +104,9 @@ let term =
     | _ :: _ ->
       User_error.raise
         [ Pp.textf
-            "Program %S isn't built yet. You need to build it first or remove \
-             the --no-build option."
-            prog
+          "Program %S isn't built yet. You need to build it first or remove \
+           the --no-build option."
+          prog
         ] )
   | None, false ->
     User_error.raise [ Pp.textf "Program %S not found!" prog ]

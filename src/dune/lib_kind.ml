@@ -12,12 +12,12 @@ module Ppx_args = struct
       let* () = Syntax.since Stanza.syntax (1, 10) in
       enter
         (let+ name =
-           plain_string (fun ~loc str ->
-               if String.contains str '=' then
-                 User_error.raise ~loc
-                   [ Pp.text "Character '=' is not allowed in cookie names" ]
-               else
-                 str)
+          plain_string (fun ~loc str ->
+            if String.contains str '=' then
+              User_error.raise ~loc
+                [ Pp.text "Character '=' is not allowed in cookie names" ]
+            else
+              str)
          and+ value = String_with_vars.decode in
          { name; value })
 

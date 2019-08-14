@@ -6,17 +6,17 @@ module SC = Super_context
 
 let parse_module_names ~(unit : Module.t) ~modules words =
   List.filter_map words ~f:(fun m ->
-      let m = Module_name.of_string m in
-      Modules.find_dep modules ~of_:unit m)
+    let m = Module_name.of_string m in
+    Modules.find_dep modules ~of_:unit m)
 
 let parse_deps_exn ~file lines =
   let invalid () =
     User_error.raise
       [ Pp.textf "ocamldep returned unexpected output for %s:"
-          (Path.to_string_maybe_quoted file)
+        (Path.to_string_maybe_quoted file)
       ; Pp.vbox
-          (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
-               Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+        (Pp.concat_map lines ~sep:Pp.cut ~f:(fun line ->
+          Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
       ]
   in
   match lines with
@@ -39,25 +39,24 @@ let interpret_deps cctx ~unit deps =
   if Option.is_none stdlib then
     Modules.main_module_name modules
     |> Option.iter ~f:(fun (main_module_name : Module_name.t) ->
-           if
-             Module_name.Infix.(Module.name unit <> main_module_name)
-             && (not (Module.kind unit = Alias))
-             && List.exists deps ~f:(fun x -> Module.name x = main_module_name)
-           then
-             User_error.raise
-               [ Pp.textf "Module %s in directory %s depends on %s."
-                   (Module_name.to_string (Module.name unit))
-                   (Path.to_string_maybe_quoted (Path.build dir))
-                   (Module_name.to_string main_module_name)
-               ; Pp.textf "This doesn't make sense to me."
-               ; Pp.nop
-               ; Pp.textf
-                   "%s is the main module of the library and is the only \
-                    module exposed outside of the library. Consequently, it \
-                    should be the one depending on all the other modules in \
-                    the library."
-                   (Module_name.to_string main_module_name)
-               ]);
+      if
+        Module_name.Infix.(Module.name unit <> main_module_name)
+        && (not (Module.kind unit = Alias))
+        && List.exists deps ~f:(fun x -> Module.name x = main_module_name)
+      then
+        User_error.raise
+          [ Pp.textf "Module %s in directory %s depends on %s."
+            (Module_name.to_string (Module.name unit))
+              (Path.to_string_maybe_quoted (Path.build dir))
+              (Module_name.to_string main_module_name)
+          ; Pp.textf "This doesn't make sense to me."
+          ; Pp.nop
+          ; Pp.textf
+            "%s is the main module of the library and is the only module \
+             exposed outside of the library. Consequently, it should be the \
+             one depending on all the other modules in the library."
+              (Module_name.to_string main_module_name)
+          ]);
   match Modules.alias_for modules unit with
   | None ->
     deps
@@ -77,7 +76,7 @@ let deps_of ~cctx ~ml_kind unit =
   let ocamldep_output = dep (Immediate source) in
   SC.add_rule sctx ~dir
     (let flags =
-       Option.value (Module.pp_flags unit) ~default:(Build.return [])
+      Option.value (Module.pp_flags unit) ~default:(Build.return [])
      in
      Command.run (Ok context.ocamldep)
        ~dir:(Path.build context.build_dir)
@@ -99,7 +98,7 @@ let deps_of ~cctx ~ml_kind unit =
       in
       ml_kind m
       |> Option.map ~f:(fun ml_kind ->
-             Path.build (dep (Transitive (m, ml_kind))))
+        Path.build (dep (Transitive (m, ml_kind))))
     in
     List.filter_map dependencies ~f:dependency_file_path
   in
@@ -108,9 +107,8 @@ let deps_of ~cctx ~ml_kind unit =
     >>^ parse_deps_exn ~file:(Module.File.path source)
     >>^ interpret_deps cctx ~unit
     >>^ (fun modules ->
-          ( build_paths modules
-          , List.map modules ~f:(fun m ->
-                Module_name.to_string (Module.name m)) ))
+      ( build_paths modules
+      , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) ))
     >>> Build.merge_files_dyn ~target:all_deps_file );
   let all_deps_file = Path.build all_deps_file in
   Build.memoize

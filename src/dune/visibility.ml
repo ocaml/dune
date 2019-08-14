@@ -25,7 +25,7 @@ let decode =
     | _ ->
       User_error.raise ~loc
         [ Pp.text
-            "Not a valid visibility. Valid visibility is public or private"
+          "Not a valid visibility. Valid visibility is public or private"
         ])
 
 let is_public = function Public -> true | Private -> false

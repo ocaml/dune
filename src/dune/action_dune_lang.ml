@@ -24,9 +24,9 @@ module type Uast =
 module rec Uast : Uast = Uast
 
 include Action_ast.Make (String_with_vars) (String_with_vars)
-          (String_with_vars)
-          (String_with_vars)
-          (Uast)
+  (String_with_vars)
+    (String_with_vars)
+      (Uast)
 module Mapper = Action_mapper.Make (Uast) (Uast)
 
 let upgrade_to_dune =
@@ -57,8 +57,8 @@ let decode =
       >>| fun loc ->
       User_error.raise ~loc
         [ Pp.textf
-            "if you meant for this to be executed with bash, write (bash \
-             \"...\") instead"
+          "if you meant for this to be executed with bash, write (bash \
+           \"...\") instead"
         ] )
 
 let to_dyn a = Dune_lang.to_dyn (encode a)

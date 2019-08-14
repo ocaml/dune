@@ -1,5 +1,5 @@
 (** Manage printing user message and keeping progress information in the status
-    line *)
+  line *)
 
 module Display : sig
   type t =

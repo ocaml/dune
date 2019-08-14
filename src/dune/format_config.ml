@@ -142,7 +142,7 @@ let of_config ~ext ~dune_lang =
       | Some explicit ->
         let dlang = encode_explicit explicit in
         [ Pp.textf
-            "To port it to the new syntax, you can replace this part by:"
+          "To port it to the new syntax, you can replace this part by:"
         ; Pp.tag ~tag:User_message.Style.Details (Dune_lang.pp dlang)
         ]
       | None ->
@@ -150,5 +150,5 @@ let of_config ~ext ~dune_lang =
     in
     User_error.raise ~loc:ext.loc
       ( Pp.textf
-          "Starting with (lang dune 2.0), formatting is enabled by default."
+        "Starting with (lang dune 2.0), formatting is enabled by default."
       :: suggestion )

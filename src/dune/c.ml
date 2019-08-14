@@ -110,7 +110,7 @@ module Sources = struct
   let split_by_kind t =
     let c, cxx =
       String.Map.partition t ~f:(fun (_, s) ->
-          match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
+        match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
     in
     { Kind.Dict.c; cxx }
 end

@@ -15,7 +15,7 @@ let fail fmt =
 
 (* {1 encoding/decoding tests}
 
-   Test that encoding and decoding round trip *)
+  Test that encoding and decoding round trip *)
 
 let () =
   for n = 0 to 3 do
@@ -57,18 +57,18 @@ let () =
 
 (* {2 Test harness}
 
-   The test harness implements a slower but much simpler version of the
-   substution algorithm and compare the result for various inputs between the
-   simpler implementation and the real one. *)
+  The test harness implements a slower but much simpler version of the
+  substution algorithm and compare the result for various inputs between the
+  simpler implementation and the real one. *)
 
 let simple_subst =
   let re =
     Re.compile
       (Re.seq
-         [ Re.str "%%DUNE_PLACEHOLDER:"
-         ; Re.group (Re.rep1 Re.digit)
-         ; Re.char ':'
-         ])
+        [ Re.str "%%DUNE_PLACEHOLDER:"
+        ; Re.group (Re.rep1 Re.digit)
+        ; Re.char ':'
+        ])
   in
   fun s ->
     let slen = String.length s in
@@ -106,18 +106,18 @@ let simple_subst =
         | Some (len, subst) ->
           Buffer.add_string buf
             (Artifact_substitution.encode_replacement ~len
-               ~repl:
-                 ( match subst with
-                 | Repeat (n, s) ->
-                   Array.make n s |> Array.to_list |> String.concat ~sep:""
-                 | _ ->
-                   failwith "substitution value not supported" ));
+              ~repl:
+                ( match subst with
+                | Repeat (n, s) ->
+                  Array.make n s |> Array.to_list |> String.concat ~sep:""
+                | _ ->
+                  failwith "substitution value not supported" ));
           loop (pos + len)
     in
     loop 0
 
 (* Replace long sequences of the same character by the character followed by a
-   number between "\\{" and "}" *)
+  number between "\\{" and "}" *)
 let compress_string s =
   let buf = Buffer.create (String.length s * 2) in
   let chain_length = ref 0 in
@@ -177,7 +177,7 @@ let () =
 let () =
   test
     (String.concat ~sep:""
-       [ "foo "; Artifact_substitution.encode (Repeat (2, "xyz")); " bar" ])
+      [ "foo "; Artifact_substitution.encode (Repeat (2, "xyz")); " bar" ])
 
 let () =
   let s = Artifact_substitution.encode (Repeat (2, "xyz")) in

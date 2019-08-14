@@ -1,6 +1,6 @@
 (* CR-someday diml: we should define a GADT for this:
 
-   {[ type 'a t = | Int : int t | Box : ... | Colored : ... ]}
+  {[ type 'a t = | Int : int t | Box : ... | Colored : ... ]}
 
    This way we could separate the creation of messages from the actual
    rendering. *)

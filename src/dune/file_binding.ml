@@ -48,11 +48,11 @@ module Unexpanded = struct
     in
     { src
     ; dst =
-        (let f sw =
-           let loc, p = f sw in
-           (loc, p)
-         in
-         Option.map ~f t.dst)
+      (let f sw =
+        let loc, p = f sw in
+        (loc, p)
+       in
+       Option.map ~f t.dst)
     }
 
   module L = struct
@@ -84,11 +84,11 @@ module Unexpanded = struct
           (let* src = decode in
            keyword "as"
            >>> let* dst = decode in
-               return { src; dst = Some dst })
+             return { src; dst = Some dst })
       | sexp ->
         User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
           [ Pp.text
-              "invalid format, <name> or (<name> as <install-as>) expected"
+            "invalid format, <name> or (<name> as <install-as>) expected"
           ]
 
     let decode =

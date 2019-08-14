@@ -86,7 +86,7 @@ let simplify act =
     | Diff { optional = true; file1; file2; mode = _ } ->
       Sh
         (Printf.sprintf "test ! -e file1 -o ! -e file2 || diff %s %s"
-           (String.quote_for_shell file1)
+          (String.quote_for_shell file1)
            (String.quote_for_shell file2))
       :: acc
     | Diff { optional = false; file1; file2; mode = _ } ->
@@ -94,8 +94,8 @@ let simplify act =
     | Merge_files_into (srcs, extras, target) ->
       Sh
         (Printf.sprintf "{ echo -ne %s; cat %s; } | sort -u > %s"
-           (Filename.quote
-              (List.map extras ~f:(sprintf "%s\n") |> String.concat ~sep:""))
+          (Filename.quote
+            (List.map extras ~f:(sprintf "%s\n") |> String.concat ~sep:""))
            (List.map srcs ~f:String.quote_for_shell |> String.concat ~sep:" ")
            (String.quote_for_shell target))
       :: acc
@@ -113,24 +113,24 @@ let rec block l =
   | l ->
     Pp.box
       (Pp.concat
-         [ Pp.hvbox ~indent:2
-             (Pp.concat
-                [ Pp.char '{'
-                ; Pp.space
-                ; Pp.hvbox
-                    (Pp.concat_map l ~sep:Pp.space ~f:(fun x ->
-                         Pp.seq (pp x) (Pp.char ';')))
-                ])
-         ; Pp.space
-         ; Pp.char '}'
-         ])
+        [ Pp.hvbox ~indent:2
+          (Pp.concat
+            [ Pp.char '{'
+            ; Pp.space
+            ; Pp.hvbox
+              (Pp.concat_map l ~sep:Pp.space ~f:(fun x ->
+                Pp.seq (pp x) (Pp.char ';')))
+            ])
+        ; Pp.space
+        ; Pp.char '}'
+        ])
 
 and pp = function
   | Run (prog, args) ->
     Pp.hovbox ~indent:2
       (Pp.concat
-         ( quote prog
-         :: List.concat_map args ~f:(fun arg -> [ Pp.space; quote arg ]) ))
+        ( quote prog
+        :: List.concat_map args ~f:(fun arg -> [ Pp.space; quote arg ]) ))
   | Chdir dir ->
     Pp.hovbox ~indent:2 (Pp.concat [ Pp.verbatim "cd"; Pp.space; quote dir ])
   | Setenv (k, v) ->
@@ -141,29 +141,29 @@ and pp = function
     let body = block l in
     Pp.hovbox ~indent:2
       (Pp.concat
-         [ body
-         ; Pp.space
-         ; Pp.verbatim (match inputs with Stdin -> "<")
-         ; Pp.space
-         ; quote src
-         ])
+        [ body
+        ; Pp.space
+        ; Pp.verbatim (match inputs with Stdin -> "<")
+        ; Pp.space
+        ; quote src
+        ])
   | Redirect_out (l, outputs, dest) ->
     let body = block l in
     Pp.hovbox ~indent:2
       (Pp.concat
-         [ body
-         ; Pp.space
-         ; Pp.verbatim
-             ( match outputs with
-             | Stdout ->
-               ">"
-             | Stderr ->
-               "2>"
-             | Outputs ->
-               "&>" )
-         ; Pp.space
-         ; quote (match dest with Dev_null -> "/dev/null" | File fn -> fn)
-         ])
+        [ body
+        ; Pp.space
+        ; Pp.verbatim
+          ( match outputs with
+          | Stdout ->
+            ">"
+          | Stderr ->
+            "2>"
+          | Outputs ->
+            "&>" )
+        ; Pp.space
+        ; quote (match dest with Dev_null -> "/dev/null" | File fn -> fn)
+        ])
 
 let rec pp_seq = function
   | [] ->

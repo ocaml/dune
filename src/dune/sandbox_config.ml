@@ -25,21 +25,21 @@ module Partial = struct
         Error Conflict
 
   (** [merge] behaves like [inter] when there is no error, but it can detect a
-      nonsensical configuration where [inter] can't. *)
+    nonsensical configuration where [inter] can't. *)
   let merge ~loc items =
     let merge_field field =
       match
         get_unique Bool.equal
           (List.filter_map items ~f:(fun item ->
-               Sandbox_mode.Dict.get item field))
+            Sandbox_mode.Dict.get item field))
       with
       | Error Conflict ->
         User_error.raise ~loc
           [ Pp.text
-              (sprintf
-                 "Inconsistent sandboxing configuration. Sandboxing mode %s \
-                  is both allowed and disallowed"
-                 (Sandbox_mode.to_string field))
+            (sprintf
+              "Inconsistent sandboxing configuration. Sandboxing mode %s is \
+               both allowed and disallowed"
+               (Sandbox_mode.to_string field))
           ]
       | Ok None ->
         (* allowed if not forbidden *)
@@ -63,10 +63,10 @@ module Partial = struct
 
   let disallow (mode : Sandbox_mode.t) =
     Sandbox_mode.Dict.of_func (fun mode' ->
-        if Sandbox_mode.equal mode mode' then
-          Some false
-        else
-          None)
+      if Sandbox_mode.equal mode mode' then
+        Some false
+      else
+        None)
 end
 
 let disallow (mode : Sandbox_mode.t) =

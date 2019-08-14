@@ -283,16 +283,16 @@ module Vars = struct
     in
     let* vars = loop [] lines in
     Result.map_error (String.Map.of_list vars) ~f:(fun (var, _, _) ->
-        Printf.sprintf "Variable %S present twice." var)
+      Printf.sprintf "Variable %S present twice." var)
 
   let load_makefile_config file =
     let lines = Io.lines_of_file file in
     List.filter_map lines ~f:(fun line ->
-        let line = String.trim line in
-        if line = "" || line.[0] = '#' then
-          None
-        else
-          String.lsplit2 line ~on:'=')
+      let line = String.trim line in
+      if line = "" || line.[0] = '#' then
+        None
+      else
+        String.lsplit2 line ~on:'=')
     |> String.Map.of_list_reduce ~f:(fun _ x -> x)
 
   exception E of Origin.t * string
@@ -328,11 +328,11 @@ module Vars = struct
 
     let get_int_opt t var =
       Option.bind (get_opt t var) ~f:(fun s ->
-          match int_of_string s with
-          | x ->
-            Some x
-          | exception _ ->
-            fail "Value of %S is not an integer: %s." var s)
+        match int_of_string s with
+        | x ->
+          Some x
+        | exception _ ->
+          fail "Value of %S is not an integer: %s." var s)
 
     let get_words t var =
       match get_opt t var with
@@ -343,13 +343,13 @@ module Vars = struct
 
     let get_prog_or_dummy t var =
       Option.map (get_opt t var) ~f:(fun v ->
-          match split_prog v with
-          | None ->
-            { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
-            ; args = []
-            }
-          | Some s ->
-            s)
+        match split_prog v with
+        | None ->
+          { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
+          ; args = []
+          }
+        | Some s ->
+          s)
 
     let get_prog_or_dummy_exn t var =
       match get_prog_or_dummy t var with

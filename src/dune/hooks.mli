@@ -1,5 +1,5 @@
 (** This module deals with management of hooks that run after specific events
-    (e.g. end of build). *)
+  (e.g. end of build). *)
 
 module type S = sig
   (** Register a hook called every time the event occurs. *)
@@ -13,5 +13,5 @@ module type S = sig
 end
 
 (** Every time a build ends, which includes every iteration in watch mode,
-    including cancellation of build because of file changes. *)
+  including cancellation of build because of file changes. *)
 module End_of_build : S

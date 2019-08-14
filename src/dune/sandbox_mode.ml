@@ -35,7 +35,7 @@ module Dict = struct
       match compare a b with Eq -> k () | Lt -> Lt | Gt -> Gt
     in
     compare_k x.none y.none (fun () ->
-        compare_k x.symlink y.symlink (fun () -> compare x.copy y.copy))
+      compare_k x.symlink y.symlink (fun () -> compare x.copy y.copy))
 
   let of_func (f : key -> _) =
     { none = f None; symlink = f (Some Symlink); copy = f (Some Copy) }

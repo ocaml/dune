@@ -16,7 +16,7 @@ module Register_backend (M : Backend) = struct
   let top_closure l ~deps =
     match
       Lib.L.top_closure l ~key:M.lib ~deps:(fun t ->
-          match deps t with Ok l -> l | Error e -> raise_notrace e)
+        match deps t with Ok l -> l | Error e -> raise_notrace e)
     with
     | Ok _ as res ->
       res
@@ -42,10 +42,10 @@ module Register_backend (M : Backend) = struct
     | None ->
       Error
         (User_error.E
-           (User_error.make ~loc
-              [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
-                  M.desc_article (M.desc ~plural:false)
-              ]))
+          (User_error.make ~loc
+            [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
+              M.desc_article (M.desc ~plural:false)
+            ]))
     | Some t ->
       Ok t
 
@@ -60,19 +60,19 @@ module Register_backend (M : Backend) = struct
       | Too_many_backends backends ->
         User_error.E
           (User_error.make ~loc
-             [ Pp.textf "Too many independent %s found:" (M.desc ~plural:true)
-             ; Pp.enumerate backends ~f:(fun t ->
-                   let lib = M.lib t in
-                   let info = Lib.info lib in
-                   let src_dir = Lib_info.src_dir info in
-                   Pp.textf "%S in %s"
-                     (Lib_name.to_string (Lib.name lib))
-                     (Path.to_string_maybe_quoted src_dir))
-             ])
+            [ Pp.textf "Too many independent %s found:" (M.desc ~plural:true)
+            ; Pp.enumerate backends ~f:(fun t ->
+              let lib = M.lib t in
+              let info = Lib.info lib in
+              let src_dir = Lib_info.src_dir info in
+              Pp.textf "%S in %s"
+                (Lib_name.to_string (Lib.name lib))
+                (Path.to_string_maybe_quoted src_dir))
+            ])
       | No_backend_found ->
         User_error.E
           (User_error.make ~loc
-             [ Pp.textf "No %s found." (M.desc ~plural:false) ])
+            [ Pp.textf "No %s found." (M.desc ~plural:false) ])
       | Other exn ->
         exn
 
@@ -104,7 +104,7 @@ module Register_backend (M : Backend) = struct
     let roots =
       let all = Set.of_list backends in
       List.fold_left backends ~init:all ~f:(fun acc t ->
-          Set.diff acc (Set.of_list (Result.ok_exn (extends t))))
+        Set.diff acc (Set.of_list (Result.ok_exn (extends t))))
       |> Set.to_list
     in
     if List.length roots = 1 then
@@ -148,7 +148,7 @@ module Register_end_point (M : End_point) = struct
       in
       M.Backend.Selection_error.or_exn ~loc:(M.Info.loc info)
         (M.Backend.select_extensible_backends ?written_by_user
-           ~extends:M.Backend.extends (deps @ pps))
+          ~extends:M.Backend.extends (deps @ pps))
     in
     let fail, backends =
       match backends with
@@ -162,7 +162,7 @@ module Register_end_point (M : End_point) = struct
       M.gen_rules c ~info ~backends
     | Some fail ->
       Build_system.prefix_rules (Build.fail fail) ~f:(fun () ->
-          M.gen_rules c ~info ~backends)
+        M.gen_rules c ~info ~backends)
 
   include Lib.Sub_system.Register (struct
     module Info = M.Info

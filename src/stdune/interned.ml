@@ -109,10 +109,10 @@ module Make (R : Settings) () = struct
 
   let make s =
     Stdune_table.find_or_add ids s ~f:(fun s ->
-        let n = !next in
-        next := n + 1;
-        Table.set names ~key:n ~data:s;
-        n)
+      let n = !next in
+      next := n + 1;
+      Table.set names ~key:n ~data:s;
+      n)
 
   let get s = Stdune_table.find ids s
 

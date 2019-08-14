@@ -30,7 +30,7 @@ let make_var ?quoted loc ?payload name =
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
 
 (* This module implements the "old" template parsing that is only used in
-   jbuild files *)
+  jbuild files *)
 module Jbuild : sig
   val parse : string -> loc:Loc.t -> quoted:bool -> Dune_lang.Template.t
 end = struct
@@ -106,7 +106,7 @@ end = struct
         ; name
         ; payload
         ; syntax =
-            (match a with Parens -> Dollar_paren | Braces -> Dollar_brace)
+          (match a with Parens -> Dollar_paren | Braces -> Dollar_brace)
         }
       :: of_tokens loc rest
     | token :: rest -> (
@@ -193,9 +193,9 @@ end
 let invalid_multivalue (v : var) x =
   User_error.raise ~loc:v.loc
     [ Pp.textf
-        "Variable %s expands to %d values, however a single value is expected \
-         here. Please quote this atom."
-        (string_of_var v) (List.length x)
+      "Variable %s expands to %d values, however a single value is expected \
+       here. Please quote this atom."
+      (string_of_var v) (List.length x)
     ]
 
 module Var = struct
@@ -346,8 +346,8 @@ end
 open Private
 
 let partial_expand :
-      'a.    t -> mode:'a Mode.t -> dir:Path.t
-      -> f:Value.t list option expander -> 'a Partial.t =
+  'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list option expander
+  -> 'a Partial.t =
  fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
   let commit_text acc_text acc =
     let s = concat_rev acc_text in
@@ -400,20 +400,20 @@ let partial_expand :
 let expand t ~mode ~dir ~f =
   match
     partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
-        match f var syntax_version with
-        | None -> (
-          match var.syntax with
-          | Percent ->
-            if Var.is_macro var then
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown macro %s" (Var.describe var) ]
-            else
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown variable %S" (Var.name var) ]
-          | Dollar_brace | Dollar_paren ->
-            Some [ Value.String (string_of_var var) ] )
-        | s ->
-          s)
+      match f var syntax_version with
+      | None -> (
+        match var.syntax with
+        | Percent ->
+          if Var.is_macro var then
+            User_error.raise ~loc:var.loc
+              [ Pp.textf "Unknown macro %s" (Var.describe var) ]
+          else
+            User_error.raise ~loc:var.loc
+              [ Pp.textf "Unknown variable %S" (Var.name var) ]
+        | Dollar_brace | Dollar_paren ->
+          Some [ Value.String (string_of_var var) ] )
+      | s ->
+        s)
   with
   | Partial.Expanded s ->
     s
@@ -470,9 +470,9 @@ module Upgrade_var = struct
     let static_vars =
       [ ( "<"
         , Deleted
-            "Use a named dependency instead:\n\n\
-            \  (deps (:x <dep>) ...)\n\
-            \   ... %{x} ..." )
+          "Use a named dependency instead:\n\n\
+          \  (deps (:x <dep>) ...)\n\
+          \   ... %{x} ..." )
       ; ("@", Renamed_to "targets")
       ; ("^", Renamed_to "deps")
       ; ("SCOPE_ROOT", Renamed_to "project_root")
@@ -534,7 +534,7 @@ let upgrade_to_dune t ~allow_first_dep_var =
           else
             User_error.raise ~loc:v.loc
               [ Pp.textf "%s is not supported in dune files.%s"
-                  (Var.describe v) repl
+                (Var.describe v) repl
               ]
         | Keep ->
           Some v.name
@@ -553,7 +553,7 @@ let upgrade_to_dune t ~allow_first_dep_var =
     in
     { syntax_version = make_syntax
     ; template =
-        { t.template with parts = List.map t.template.parts ~f:map_part }
+      { t.template with parts = List.map t.template.parts ~f:map_part }
     }
 
 module Partial = struct

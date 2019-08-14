@@ -22,8 +22,7 @@ let accepted_codes : type a b. (a, b) failure_mode -> accepted_codes = function
     All
 
 let map_result :
-    type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t
-    =
+  type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t =
  fun mode t ~f ->
   match mode with
   | Strict ->
@@ -155,9 +154,9 @@ module Temp = struct
 
   let () =
     at_exit (fun () ->
-        let fns = !tmp_files in
-        tmp_files := Path.Set.empty;
-        Path.Set.iter fns ~f:Path.unlink_no_err)
+      let fns = !tmp_files in
+      tmp_files := Path.Set.empty;
+      Path.Set.iter fns ~f:Path.unlink_no_err)
 
   let create prefix suffix =
     let fn = Path.of_string (Filename.temp_file prefix suffix) in
@@ -170,7 +169,7 @@ module Temp = struct
 end
 
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
-    ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
+  ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
@@ -273,10 +272,9 @@ module Fancy = struct
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag
-           (Pp.verbatim (String.quote_for_shell fn))
-           ~tag:
-             (User_message.Style.Ansi_styles
-                Ansi_color.Style.[ bold; fg_green ])
+        (Pp.verbatim (String.quote_for_shell fn))
+          ~tag:
+            (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
       :: colorize_args rest
     | x :: rest ->
       Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
@@ -325,13 +323,13 @@ module Fancy = struct
         List.map target_names ~f:Filename.split_extension_after_dot
         |> String.Map.of_list_multi |> String.Map.to_list
         |> List.map ~f:(fun (prefix, suffixes) ->
-               match suffixes with
-               | [] ->
-                 assert false
-               | [ suffix ] ->
-                 prefix ^ suffix
-               | _ ->
-                 sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
+          match suffixes with
+          | [] ->
+            assert false
+          | [ suffix ] ->
+            prefix ^ suffix
+          | _ ->
+            sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
         |> String.concat ~sep:","
       in
       let pp = Pp.verbatim targets in
@@ -342,9 +340,9 @@ module Fancy = struct
         let open Pp.O in
         pp ++ Pp.char ' '
         ++ Pp.tag ~tag:User_message.Style.Details
-             ( Pp.char '['
-             ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:Pp.verbatim
-             ++ Pp.char ']' ) )
+          ( Pp.char '['
+          ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:Pp.verbatim
+          ++ Pp.char ']' ) )
 end
 
 let gen_id =
@@ -355,7 +353,7 @@ let gen_id =
 
 let cmdline_approximate_length prog args =
   List.fold_left args ~init:(String.length prog) ~f:(fun acc arg ->
-      acc + String.length arg)
+    acc + String.length arg)
 
 let pp_id id =
   let open Pp.O in
@@ -376,10 +374,10 @@ module Exit_status = struct
     | s ->
       Some
         (Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
-             User_message.Style.Ansi_styles styles))
+          User_message.Style.Ansi_styles styles))
 
   (* In this module, we don't need the "Error: " prefix given that it is
-     already included in the error message from the command. *)
+    already included in the error message from the command. *)
   let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
 
   let handle_verbose t ~id ~output ~command_line =
@@ -388,18 +386,18 @@ module Exit_status = struct
     match t with
     | Ok n ->
       Option.iter output ~f:(fun output ->
-          Console.print_user_message
-            (User_message.make
-               [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Output")
-                 ++ pp_id id ++ Pp.char ':'
-               ; output
-               ]));
+        Console.print_user_message
+          (User_message.make
+            [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Output")
+              ++ pp_id id ++ Pp.char ':'
+            ; output
+            ]));
       if n <> 0 then
         User_warning.emit
           [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
             ++ Pp.space ++ pp_id id
             ++ Pp.textf
-                 " exited with code %d, but I'm ignoring it, hope that's OK." n
+              " exited with code %d, but I'm ignoring it, hope that's OK." n
           ];
       n
     | Error err ->
@@ -414,11 +412,11 @@ module Exit_status = struct
         ( Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
         :: Pp.tag ~tag:User_message.Style.Prompt (Pp.char '$')
-           ++ Pp.char ' ' ++ command_line
+          ++ Pp.char ' ' ++ command_line
         :: Option.to_list output )
 
   (* Check if the command output starts with a location, ignoring ansi escape
-     sequences *)
+    sequences *)
   let outputs_starts_with_location =
     let rec loop s pos len prefix =
       match prefix with
@@ -461,10 +459,10 @@ module Exit_status = struct
       then
         Console.print_user_message
           (User_message.make
-             ( if show_command then
-               progname_and_purpose Ok :: Option.to_list output
-             else
-               Option.to_list output ));
+            ( if show_command then
+              progname_and_purpose Ok :: Option.to_list output
+            else
+              Option.to_list output ));
       n
     | Error err ->
       let msg =
@@ -485,7 +483,7 @@ module Exit_status = struct
 end
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
-    ?(stdin_from = Io.stdin) ~env ~purpose fail_mode prog args =
+  ?(stdin_from = Io.stdin) ~env ~purpose fail_mode prog args =
   let* scheduler = Scheduler.wait_for_available_job () in
   let display = Console.display () in
   let dir =
@@ -514,9 +512,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       Console.print_user_message
         (User_message.make
-           [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Running")
-             ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
-           ]);
+          [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Running")
+            ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
+          ]);
       cmdline
     | _ ->
       Pp.nop
@@ -529,9 +527,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       | Zero_terminated_strings arg ->
         let fn = Temp.create "responsefile" ".data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
-            List.iter args ~f:(fun arg ->
-                output_string oc arg;
-                output_char oc '\000'));
+          List.iter args ~f:(fun arg ->
+            output_string oc arg;
+            output_char oc '\000'));
         ([ arg; Path.to_string fn ], Some fn)
     ) else
       (args, None)
@@ -555,7 +553,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   in
   let run =
     (* Output.fd might create the file with Unix.openfile. We need to make sure
-       to call it before doing the chdir as the path might be relative. *)
+      to call it before doing the chdir as the path might be relative. *)
     let stdout = Io.fd stdout_to in
     let stderr = Io.fd stderr_to in
     let stdin = Io.fd stdin_from in
@@ -609,18 +607,18 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       ~output ~purpose ~display
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
-    fail_mode prog args =
+  fail_mode prog args =
   map_result fail_mode
     (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose
-       fail_mode prog args)
+      fail_mode prog args)
     ~f:ignore
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
-    fail_mode prog args ~f =
+  fail_mode prog args ~f =
   let fn = Temp.create "dune" ".output" in
   map_result fail_mode
     (run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from
-       ~env ~purpose fail_mode prog args)
+      ~env ~purpose fail_mode prog args)
     ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
@@ -631,7 +629,7 @@ let run_capture = run_capture_gen ~f:Stdune.Io.read_file
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
 let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
-    fail_mode prog args =
+  fail_mode prog args =
   run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
@@ -654,6 +652,6 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
           User_error.raise
             [ Pp.textf "command returned too many lines: %s" cmdline
             ; Pp.vbox
-                (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
-                     Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
+              (Pp.concat_map l ~sep:Pp.cut ~f:(fun line ->
+                Pp.seq (Pp.verbatim "> ") (Pp.verbatim line)))
             ] ))

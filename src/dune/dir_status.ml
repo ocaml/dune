@@ -9,16 +9,16 @@ module T = struct
 
   type t =
     | Standalone of
-        (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
+      (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
     (* Directory not part of a multi-directory group. The argument is [None]
-       for directory that are not from the source tree, such as generated ones. *)
+      for directory that are not from the source tree, such as generated ones. *)
     | Group_root of
-        File_tree.Dir.t
-        * Include_subdirs.qualification
-        * Stanza.t list Dir_with_dune.t
+      File_tree.Dir.t
+      * Include_subdirs.qualification
+      * Stanza.t list Dir_with_dune.t
     (* Directory with [(include_subdirs x)] where [x] is not [no] *)
     | Is_component_of_a_group_but_not_the_root of
-        is_component_of_a_group_but_not_the_root
+      is_component_of_a_group_but_not_the_root
 
   (* Sub-directory of a [Group_root _] *)
 
@@ -41,31 +41,30 @@ let current_group dir = function
 
 let get_include_subdirs stanzas =
   List.fold_left stanzas ~init:None ~f:(fun acc stanza ->
-      match stanza with
-      | Include_subdirs (loc, x) ->
-        if Option.is_some acc then
-          User_error.raise ~loc
-            [ Pp.text
-                "The 'include_subdirs' stanza cannot appear more than once"
-            ];
-        Some x
-      | _ ->
-        acc)
+    match stanza with
+    | Include_subdirs (loc, x) ->
+      if Option.is_some acc then
+        User_error.raise ~loc
+          [ Pp.text "The 'include_subdirs' stanza cannot appear more than once"
+          ];
+      Some x
+    | _ ->
+      acc)
 
 let check_no_module_consumer stanzas =
   List.iter stanzas ~f:(fun stanza ->
-      match stanza with
-      | Library { buildable; _ }
-      | Executables { buildable; _ }
-      | Tests { exes = { buildable; _ }; _ } ->
-        User_error.raise ~loc:buildable.loc
-          [ Pp.text
-              "This stanza is not allowed in a sub-directory of directory \
-               with (include_subdirs unqualified)."
-          ]
-          ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
-      | _ ->
-        ())
+    match stanza with
+    | Library { buildable; _ }
+    | Executables { buildable; _ }
+    | Tests { exes = { buildable; _ }; _ } ->
+      User_error.raise ~loc:buildable.loc
+        [ Pp.text
+          "This stanza is not allowed in a sub-directory of directory with \
+           (include_subdirs unqualified)."
+        ]
+        ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
+    | _ ->
+      ())
 
 module DB = struct
   type nonrec t =
@@ -133,7 +132,7 @@ module DB = struct
 
   let make file_tree ~stanzas_per_dir =
     (* CR-someday aalekseyev: This local recursive module is a bit awkward. In
-       the future the plan is to move the memo to the top-level to make it less
+      the future the plan is to move the memo to the top-level to make it less
        awkward (and to dissolve the [DB] datatype). *)
     let module M = struct
       module rec Res : sig
@@ -143,11 +142,11 @@ module DB = struct
           { file_tree
           ; stanzas_per_dir
           ; fn =
-              Memo.create "get-dir-status"
-                ~input:(module Path.Build)
-                ~visibility:Hidden
-                ~output:(Simple (module T))
-                ~doc:"Get a directory status." Sync Fn.get
+            Memo.create "get-dir-status"
+              ~input:(module Path.Build)
+              ~visibility:Hidden
+              ~output:(Simple (module T))
+              ~doc:"Get a directory status." Sync Fn.get
           }
       end
 

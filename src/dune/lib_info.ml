@@ -99,7 +99,7 @@ type 'path t =
   ; main_module_name : Dune_file.Library.Main_module_name.t
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support :
-      Dune_file.Library.Special_builtin_support.t option
+    Dune_file.Library.Special_builtin_support.t option
   }
 
 let name t = t.name
@@ -168,7 +168,7 @@ let user_written_deps t =
       Dune_file.Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
-    ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
+  ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
     ~known_implementations (conf : Dune_file.Library.t) =
   let _loc, lib_name = conf.name in
   let obj_dir = Dune_file.Library.obj_dir ~dir conf in
@@ -200,8 +200,8 @@ let of_library_stanza ~dir
     in
     { Mode.Dict.byte = stubs
     ; native =
-        Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-        :: stubs
+      Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+      :: stubs
     }
   in
   let foreign_archives =
@@ -209,12 +209,12 @@ let of_library_stanza ~dir
     | Some { exit_module = Some m; _ } ->
       let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
       { Mode.Dict.byte =
-          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
-          :: foreign_archives.byte
+        Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
+        :: foreign_archives.byte
       ; native =
-          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          :: Path.Build.extend_basename obj_name ~suffix:ext_obj
-          :: foreign_archives.native
+        Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+        :: Path.Build.extend_basename obj_name ~suffix:ext_obj
+        :: foreign_archives.native
       }
     | _ ->
       foreign_archives
@@ -237,14 +237,14 @@ let of_library_stanza ~dir
   let enabled =
     let enabled_if_result =
       Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
-          match
-            (String_with_vars.Var.name v, String_with_vars.Var.payload v)
-          with
-          | var, None ->
-            let value = Lib_config.get_for_enabled_if lib_config ~var in
-            Some [ String value ]
-          | _ ->
-            None)
+        match
+          (String_with_vars.Var.name v, String_with_vars.Var.payload v)
+        with
+        | var, None ->
+          let value = Lib_config.get_for_enabled_if lib_config ~var in
+          Some [ String value ]
+        | _ ->
+          None)
     in
     if not enabled_if_result then
       Enabled_status.Disabled_because_of_enabled_if

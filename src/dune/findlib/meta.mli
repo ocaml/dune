@@ -31,7 +31,7 @@ and predicate =
 val parse_entries : Lexing.lexbuf -> entry list
 
 (** Add version fields to all package in [t] that don't have and have at least
-    one rule. [get_version] is used to obtain the version. It receives as
+  one rule. [get_version] is used to obtain the version. It receives as
     argument the package path. *)
 val add_versions : t -> get_version:(Lib_name.t list -> string option) -> t
 
@@ -55,7 +55,7 @@ end
 val load : Path.t -> name:Lib_name.t option -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when
-    ocamlfind is not installed. *)
+  ocamlfind is not installed. *)
 val builtins :
   stdlib_dir:Path.t -> version:Ocaml_version.t -> Simplified.t Lib_name.Map.t
 

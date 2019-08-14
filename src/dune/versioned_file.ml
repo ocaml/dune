@@ -92,7 +92,7 @@ struct
 
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->
-        parse_contents lb (Dune_lexer.first_line lb) ~f)
+      parse_contents lb (Dune_lexer.first_line lb) ~f)
 end
 
 let no_more_lang =

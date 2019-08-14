@@ -32,7 +32,7 @@ let analyse_target (fn as original_fn) : target_kind =
         Alias
           ( ctx
           , Path.Source.relative
-              (Path.Source.of_local (Path.Local.parent_exn fn))
+            (Path.Source.of_local (Path.Local.parent_exn fn))
               basename ) )
   | Some ("install", sub) -> (
     match Path.Local.split_first_component sub with
@@ -102,10 +102,10 @@ let decode =
   let open Dune_lang.Decoder in
   let external_ =
     plain_string (fun ~loc t ->
-        if Filename.is_relative t then
-          User_error.raise ~loc [ Pp.text "Absolute path expected" ]
-        else
-          Path.parse_string_exn ~loc t)
+      if Filename.is_relative t then
+        User_error.raise ~loc [ Pp.text "Absolute path expected" ]
+      else
+        Path.parse_string_exn ~loc t)
   in
   sum
     [ ("In_build_dir", string >>| Path.(relative build_dir))

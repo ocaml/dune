@@ -1,7 +1,7 @@
 (** Universal maps *)
 
 (** A universal map is a map that can store values for arbitrary keys. It is
-    the the key that conveys the type of the data associated to it. *)
+  the the key that conveys the type of the data associated to it. *)
 type t
 
 module Key : sig

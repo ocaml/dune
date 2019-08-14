@@ -1,7 +1,7 @@
 (** Sandboxing configuration of build rules *)
 
 (** This module manages the sandboxing configuration written by the user in
-    dune files or inside the build arrow.
+  dune files or inside the build arrow.
 
     The sandboxing configuration of a build rule represent what the rule
     expects in terms of sandboxing. For instance, a rule might not work
@@ -27,8 +27,8 @@ val needs_sandboxing : t
 
 (** The default sandboxing config for actions that don't bother specifying it.
 
-    Often this means that they don't have special requirements, but it also
-    often means that we're not quite sure.
+  Often this means that they don't have special requirements, but it also often
+  means that we're not quite sure.
 
     Currently we have [default = no_special_requirements]. *)
 val default : t
@@ -41,7 +41,7 @@ module Partial : sig
   type t = bool option Sandbox_mode.Dict.t
 
   (** [merge] distributes across [inter] when there is no error, but it can
-      detect a nonsensical configuration where [inter] can't.
+    detect a nonsensical configuration where [inter] can't.
 
       Can raise a User_error. *)
   val merge : loc:Loc.t -> t list -> Sandbox_mode.Set.t

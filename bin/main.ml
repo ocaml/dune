@@ -59,22 +59,22 @@ let runtest =
     Common.set_common common
       ~targets:
         (List.map dirs ~f:(fun s ->
-             let prefix =
-               match s with
-               | "" | "." ->
-                 ""
-               | dir when dir.[String.length dir - 1] = '/' ->
-                 dir
-               | dir ->
-                 dir ^ "/"
-             in
-             Arg.Dep.alias_rec (prefix ^ "runtest")));
+          let prefix =
+            match s with
+            | "" | "." ->
+              ""
+            | dir when dir.[String.length dir - 1] = '/' ->
+              dir
+            | dir ->
+              dir ^ "/"
+          in
+          Arg.Dep.alias_rec (prefix ^ "runtest")));
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
-          let dir = Path.(relative root) (Common.prefix_target common dir) in
-          Target.Alias
-            (Alias.in_dir ~name:"runtest" ~recursive:true
-               ~contexts:setup.workspace.contexts dir))
+        let dir = Path.(relative root) (Common.prefix_target common dir) in
+        Target.Alias
+          (Alias.in_dir ~name:"runtest" ~recursive:true
+            ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets
   in
@@ -85,7 +85,7 @@ let clean =
   let man =
     [ `S "DESCRIPTION"
     ; `P
-        {|Removes files added by dune such as _build, <package>.install, and .merlin|}
+      {|Removes files added by dune such as _build, <package>.install, and .merlin|}
     ; `Blocks Common.help_secs
     ]
   in
@@ -103,7 +103,7 @@ let promote =
   let man =
     [ `S "DESCRIPTION"
     ; `P
-        {|Considering all actions of the form $(b,(diff a b)) that failed
+      {|Considering all actions of the form $(b,(diff a b)) that failed
            in the last run of dune, $(b,dune promote) does the following:
 
            If $(b,a) is present in the source tree but $(b,b) isn't, $(b,b) is
@@ -127,7 +127,7 @@ let promote =
       | _ ->
         let files =
           List.map files ~f:(fun fn ->
-              Path.Source.of_string (Common.prefix_target common fn))
+            Path.Source.of_string (Common.prefix_target common fn))
         in
         let on_missing fn =
           Format.eprintf "@{<warning>Warning@}: Nothing to promote for %a.@."
@@ -163,27 +163,27 @@ let default =
   let term =
     Term.ret
     @@ let+ _ = Common.term in
-       `Help (`Pager, None)
+      `Help (`Pager, None)
   in
   ( term
   , Term.info "dune" ~doc
-      ~version:
-        ( match Build_info.V1.version () with
-        | None ->
-          "n/a"
-        | Some v ->
-          Build_info.V1.Version.to_string v )
+    ~version:
+      ( match Build_info.V1.version () with
+      | None ->
+        "n/a"
+      | Some v ->
+        Build_info.V1.Version.to_string v )
       ~man:
         [ `S "DESCRIPTION"
         ; `P
-            {|Dune is a build system designed for OCaml projects only. It
+          {|Dune is a build system designed for OCaml projects only. It
               focuses on providing the user with a consistent experience and takes
               care of most of the low-level details of OCaml compilation. All you
               have to do is provide a description of your project and Dune will
               do the rest.
             |}
         ; `P
-            {|The scheme it implements is inspired from the one used inside Jane
+          {|The scheme it implements is inspired from the one used inside Jane
               Street and adapted to the open source world. It has matured over a
               long time and is used daily by hundreds of developers, which means
               that it is highly tested and productive.

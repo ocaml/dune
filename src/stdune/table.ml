@@ -30,7 +30,7 @@ module type Key = sig
 end
 
 let create (type key value) (module Key : Key with type t = key) size :
-    (key, value) t =
+  (key, value) t =
   ( module struct
     module Key = Key
     module H = Hashtbl.Make (Key)
@@ -88,11 +88,11 @@ let fold (type input output) ((module T) : (input, output) t) ~init ~f =
   T.H.fold T.value ~init ~f
 
 let to_dyn (type input output) (f : output -> Dyn.t)
-    ((module T) : (input, output) t) =
+  ((module T) : (input, output) t) =
   T.H.to_dyn f T.value
 
 let find_or_add (type input output) ((module T) : (input, output) t)
-    (k : input) ~f =
+  (k : input) ~f =
   T.H.find_or_add T.value k ~f
 
 let remove (type input output) ((module T) : (input, output) t) k =

@@ -18,8 +18,7 @@ let deps_of t (m : Module.t) =
       [ ("dir", Path.Build.to_dyn t.dir)
       ; ( "modules"
         , Dyn.Encoder.(list string)
-            (Module.Obj_map.keys t.per_module |> List.map ~f:Module.obj_name)
-        )
+          (Module.Obj_map.keys t.per_module |> List.map ~f:Module.obj_name) )
       ; ("m", Module.to_dyn m)
       ]
 
@@ -35,9 +34,9 @@ let top_closed t modules =
   | Error cycle ->
     User_error.raise
       [ Pp.textf "dependency cycle between modules in %s:"
-          (Path.Build.to_string t.dir)
+        (Path.Build.to_string t.dir)
       ; Pp.chain cycle ~f:(fun m ->
-            Pp.verbatim (Module_name.to_string (Module.name m)))
+        Pp.verbatim (Module_name.to_string (Module.name m)))
       ]
 
 let top_closed_implementations t modules =

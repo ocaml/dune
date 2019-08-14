@@ -42,7 +42,7 @@ module Version = struct
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read ~parser_version:(parser_major, parser_minor)
-      ~data_version:(data_major, data_minor) =
+    ~data_version:(data_major, data_minor) =
     let open Int.Infix in
     parser_major = data_major && parser_minor >= data_minor
 end
@@ -88,13 +88,13 @@ module Error = struct
   let renamed_in loc t ver ~what ~to_ =
     User_error.raise ~loc
       [ Pp.textf "%s was renamed to '%s' in the %s version of %s" what to_
-          (Version.to_string ver) t.desc
+        (Version.to_string ver) t.desc
       ]
 
   let deleted_in loc t ?(repl = []) ver ~what =
     User_error.raise ~loc
       ( Pp.textf "%s was deleted in version %s of %s" what
-          (Version.to_string ver) t.desc
+        (Version.to_string ver) t.desc
       :: repl )
 end
 
@@ -102,7 +102,7 @@ module Warning = struct
   let deprecated_in loc t ?(repl = []) ver ~what =
     User_warning.emit ~loc
       ( Pp.textf "%s was deprecated in version %s of %s." what
-          (Version.to_string ver) t.desc
+        (Version.to_string ver) t.desc
       :: repl )
 end
 
@@ -119,15 +119,15 @@ let check_supported t (loc, ver) =
   if not (Supported_versions.is_supported t.supported_versions ver) then
     User_error.raise ~loc
       [ Pp.textf "Version %s of %s is not supported." (Version.to_string ver)
-          t.name
+        t.name
       ; Pp.text "Supported versions:"
       ; Pp.enumerate (Supported_versions.supported_ranges t.supported_versions)
-          ~f:(fun (a, b) ->
-            let open Version.Infix in
-            if a = b then
-              Pp.text (Version.to_string a)
-            else
-              Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
+        ~f:(fun (a, b) ->
+          let open Version.Infix in
+          if a = b then
+            Pp.text (Version.to_string a)
+          else
+            Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
 
 let greatest_supported_version t =

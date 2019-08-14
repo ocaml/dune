@@ -3,7 +3,7 @@
 open! Stdune
 
 (** Return the absolute path to the shell and the argument to pass it (-c or
-    /c). Raise in case in cannot be found. *)
+  /c). Raise in case in cannot be found. *)
 val system_shell_exn : needed_to:string -> Path.t * string
 
 (** Same as [system_shell_exn] but for bash *)
@@ -23,5 +23,5 @@ val install_file :
 val line_directive : filename:string -> line_number:int -> string
 
 (** [local_bin dir] The directory which contains the local binaries viewed by
-    rules defined in [dir] *)
+  rules defined in [dir] *)
 val local_bin : Path.Build.t -> Path.Build.t

@@ -21,11 +21,11 @@ val make :
   -> t
 
 (** Setup the preprocessing rules for the following modules and returns the
-    translated modules *)
+  translated modules *)
 val pp_module : t -> ?lint:bool -> Module.t -> Module.t
 
 (** Preprocess a single module, using the configuration for the given module
-    name. *)
+  name. *)
 val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)

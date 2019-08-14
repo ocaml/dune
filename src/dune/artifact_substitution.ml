@@ -1,7 +1,7 @@
 open Import
 
 (* Artifact substitutions works as follow: the substitution is encoded as a
-   string of the form:
+  string of the form:
 
    {v %%DUNE_PLACEHOLDER:<len>:<symbolic-value>%% v}
 
@@ -96,7 +96,7 @@ let encode ?(min_len = 0) t =
   s ^ String.make (len - String.length s) '%'
 
 (* This function is not called very often, so the focus is on readibility
-   rather than speed. *)
+  rather than speed. *)
 let decode s =
   let fail () = raise_notrace Exit in
   let parse_int s = try int_of_string s with _ -> fail () in
@@ -147,7 +147,7 @@ let decode s =
 (* Scan a buffer for "%%DUNE_PLACEHOLDER:<len>:" *)
 module Scanner = struct
   (* The following module implement a scanner for special placeholders strings.
-     The scanner needs to be fast as possible as it will scan every single byte
+    The scanner needs to be fast as possible as it will scan every single byte
      of the input so this module is carefully written with performances in
      mind.
 
@@ -177,19 +177,19 @@ module Scanner = struct
     (* State after seeing at least two '%' *)
     | Scan_prefix of int
     (* [Scan_prefix placeholer_start] is the state after seeing [pos -
-       placeholer_start] characters from [prefix] *)
+      placeholer_start] characters from [prefix] *)
     | Scan_length of int * int
     (* [Scan_length (placeholer_start, acc)] is the state after seeing all of
-       [prefix] and the beginning of the length field. [acc] is the length
+      [prefix] and the beginning of the length field. [acc] is the length
        accumulated so far. *)
     | Scan_placeholder of int * int
 
   (* [Scan_placeholder (placeholer_start, len)] is the state after seeing all
-     of [prefix] and the length field, i.e. just after the second ':' of the
+    of [prefix] and the length field, i.e. just after the second ':' of the
      placeholder *)
 
   (* The [run] function at the end of this module is the main function that
-     consume a buffer and return the new DFA state. If the beginning of
+    consume a buffer and return the new DFA state. If the beginning of
      placeholder is found before reaching the end of the buffer, [run]
      immediately returns [Scan_placeholder (placeholder_start, len)].
 
@@ -279,7 +279,7 @@ module Scanner = struct
         let acc = (acc * 10) + n in
         if acc = 0 || acc > max_len then
           (* We don't allow leading zeros in length fields and a length of [0]
-             is not possible, so [acc = 0] here correspond to an invalid
+            is not possible, so [acc = 0] here correspond to an invalid
              placeholder *)
           scan0 ~buf ~pos ~end_of_data
         else
@@ -287,7 +287,7 @@ module Scanner = struct
       | ':' ->
         if acc < pos - placeholder_start then
           (* If the length is too small, then this is surely not a valid
-             placeholder *)
+            placeholder *)
           scan0 ~buf ~pos ~end_of_data
         else
           Scan_placeholder (placeholder_start, acc)
@@ -320,18 +320,18 @@ let copy ~get_vcs ~input ~output =
   let open Fiber.O in
   (* The copy algorithm works as follow:
 
-     read some data from the input | | v feed data to
-     [Scanner.run]<-----------------------------------------\ | | | | v |
-     commit all the data we are sure are not | part of a placeholder to the
-     output | | | | | v | was the begining of a placeholder found by
-     [Scanner.run]? | (i.e. "%%DUNE_PLACEHOLDER:<len>:") | and if yes, is the
-     whole placeholder currently in [buf]? | | | | | YES | NO | v v | extract
-     the placeholder read more data from the input | and try to parse it with |
-     | [Artifact_substitution.decode] \-------------------------| | | | |
-     SUCCESS | | v | | output the replacement | | | | FAILURE | | v | |
-     consider that this | | wasn't a placeholder | | | | |
-     \---------------------------------------------| | |
-     \--------------------------------------------------------------------------/ *)
+    read some data from the input | | v feed data to
+    [Scanner.run]<-----------------------------------------\ | | | | v | commit
+    all the data we are sure are not | part of a placeholder to the output | |
+    | | | v | was the begining of a placeholder found by [Scanner.run]? | (i.e.
+    "%%DUNE_PLACEHOLDER:<len>:") | and if yes, is the whole placeholder
+    currently in [buf]? | | | | | YES | NO | v v | extract the placeholder read
+    more data from the input | and try to parse it with | |
+    [Artifact_substitution.decode] \-------------------------| | | | | SUCCESS
+    | | v | | output the replacement | | | | FAILURE | | v | | consider that
+    this | | wasn't a placeholder | | | | |
+    \---------------------------------------------| | |
+    \--------------------------------------------------------------------------/ *)
   let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =
@@ -348,7 +348,7 @@ let copy ~get_vcs ~input ~output =
         placeholder_start
     in
     (* All the data before [placeholder_start] can be sent to the output
-       immediately since we know for sure that they are not part of a
+      immediately since we know for sure that they are not part of a
        placeholder *)
     if placeholder_start > beginning_of_data then
       output buf beginning_of_data (placeholder_start - beginning_of_data);
@@ -365,18 +365,18 @@ let copy ~get_vcs ~input ~output =
         loop Scan0 ~beginning_of_data:pos ~pos ~end_of_data
       | None ->
         (* Restart just after [prefix] since we know for sure that a
-           placeholder cannot start before that. *)
+          placeholder cannot start before that. *)
         loop Scan0 ~beginning_of_data:placeholder_start
           ~pos:(placeholder_start + prefix_len)
           ~end_of_data )
     | scanner_state -> (
       (* We reached the end of the buffer: move the leftover data back to the
-         beginning of [buf] and refill the buffer *)
+        beginning of [buf] and refill the buffer *)
       if leftover > 0 then
         Bytes.blit ~src:buf ~dst:buf ~src_pos:placeholder_start ~dst_pos:0
           ~len:leftover;
       (* Reset [placeholder_start] to [0] since we moved back the leftover data
-         to the beginning of [buf] *)
+        to the beginning of [buf] *)
       let scanner_state : Scanner.state =
         match scanner_state with
         | Scan0 | Scan1 | Scan2 ->
@@ -393,11 +393,11 @@ let copy ~get_vcs ~input ~output =
         match scanner_state with
         | Scan_placeholder _ ->
           (* There might still be another placeholder after this invalid one
-             with a length that is too long *)
+            with a length that is too long *)
           loop Scan0 ~beginning_of_data:0 ~pos:prefix_len ~end_of_data:leftover
         | _ ->
           (* Nothing more to read; [leftover] is definitely not the beginning
-             of a placeholder, send it and end the copy *)
+            of a placeholder, send it and end the copy *)
           output buf 0 leftover;
           Fiber.return () )
       | n ->

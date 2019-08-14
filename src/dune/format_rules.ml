@@ -23,7 +23,7 @@ let depend_on_files ~named dir =
 let formatted = ".formatted"
 
 let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
-    ~output_dir =
+  ~output_dir =
   assert (formatted = Path.Build.basename output_dir);
   let loc = Format_config.loc config in
   let dir = Path.Build.parent_exn output_dir in
@@ -75,13 +75,13 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         in
         Build.S.seq extra_deps
           (Preprocessing.action_for_pp sctx
-             ~dep_kind:Lib_deps_info.Kind.Required ~loc ~expander ~action ~src
+            ~dep_kind:Lib_deps_info.Kind.Required ~loc ~expander ~action ~src
              ~target:(Some output))
     in
     Option.iter formatter ~f:(fun arr ->
-        Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-        add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
-          ~output:(Path.build output))
+      Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
+      add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
+        ~output:(Path.build output))
   in
   File_tree.files_of (Super_context.file_tree sctx) source_dir
   |> Path.Source.Set.iter ~f:setup_formatting;

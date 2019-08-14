@@ -43,12 +43,12 @@ let find () =
     | exception Sys_error msg ->
       User_warning.emit
         [ Pp.textf
-            "Unable to read directory %s. Will not look for root in parent \
-             directories."
-            dir
+          "Unable to read directory %s. Will not look for root in parent \
+           directories."
+          dir
         ; Pp.textf "Reason: %s" msg
         ; Pp.text
-            "To remove this warning, set your root explicitly using --root."
+          "To remove this warning, set your root explicitly using --root."
         ];
       candidate
     | files ->

@@ -48,16 +48,16 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         in
         let targets =
           List.concat_map targets ~f:(fun target ->
-              let error_loc = String_with_vars.loc target in
-              match multiplicity with
-              | One ->
-                let res =
-                  Expander.expand expander ~mode:Single ~template:target
-                in
-                [ check_filename ~error_loc res ]
-              | Multiple ->
-                Expander.expand expander ~mode:Many ~template:target
-                |> List.map ~f:(check_filename ~error_loc))
+            let error_loc = String_with_vars.loc target in
+            match multiplicity with
+            | One ->
+              let res =
+                Expander.expand expander ~mode:Single ~template:target
+              in
+              [ check_filename ~error_loc res ]
+            | Multiple ->
+              Expander.expand expander ~mode:Many ~template:target
+              |> List.map ~f:(check_filename ~error_loc))
         in
         Expander.Targets.Static { multiplicity; targets }
     in
@@ -66,14 +66,13 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     SC.add_rule_get_targets
       sctx
       (* user rules may have extra requirements, in which case they will be
-         specified as a part of rule.deps, which will be correctly taken care
-         of by the build arrow *)
-      ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-      ~loc:rule.loc
+        specified as a part of rule.deps, which will be correctly taken care of
+         by the build arrow *) ~sandbox:Sandbox_config.no_special_requirements
+      ~dir ~mode:rule.mode ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       ( SC.Deps.interpret_named sctx ~expander rule.deps
       >>> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
-            ~dep_kind:Required ~targets ~targets_dir:dir )
+        ~dep_kind:Required ~targets ~targets_dir:dir )
   else
     Path.Build.Set.empty
 
@@ -91,7 +90,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     Syntax.Error.since loc Stanza.syntax since
       ~what:
         (sprintf "%s is not a sub-directory of %s. This"
-           (Path.Source.to_string_maybe_quoted glob_in_src)
+          (Path.Source.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.Source.parent_exn glob_in_src in
   let pred =
@@ -113,15 +112,15 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       (File_selector.create ~dir:(Path.build src_in_build) pred)
   in
   Path.Set.map files ~f:(fun file_src ->
-      let basename = Path.basename file_src in
-      let file_dst = Path.Build.relative dir basename in
-      SC.add_rule sctx ~loc ~dir
-        (( if def.add_line_directive then
-           Build.copy_and_add_line_directive
-         else
-           Build.copy )
-           ~src:file_src ~dst:file_dst);
-      Path.build file_dst)
+    let basename = Path.basename file_src in
+    let file_dst = Path.Build.relative dir basename in
+    SC.add_rule sctx ~loc ~dir
+      (( if def.add_line_directive then
+        Build.copy_and_add_line_directive
+       else
+         Build.copy )
+         ~src:file_src ~dst:file_dst);
+    Path.build file_dst)
 
 let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
   let alias = Alias.make name ~dir in
@@ -132,7 +131,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     ( "user-alias"
     , Bindings.map ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
     , Option.map
-        ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
+      ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
         alias_conf.action
     , Option.map extra_bindings ~f:Pform.Map.to_stamp )
   in

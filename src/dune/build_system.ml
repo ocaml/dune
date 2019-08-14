@@ -128,7 +128,7 @@ module Internal_rule = struct
       ; env : Env.t option
       ; locks : Path.t list
       ; (* Reverse dependencies discovered so far, labelled by the requested
-           target *)
+        target *)
         mutable rev_deps : (Path.t * t) list
       ; (* Transitive reverse dependencies discovered so far. *)
         mutable transitive_rev_deps : Id.Set.t
@@ -153,16 +153,16 @@ module Internal_rule = struct
 
   let lib_deps t =
     (* Forcing this lazy ensures that the various globs and [if_file_exists]
-       are resolved inside the [Build.t] value. *)
+      are resolved inside the [Build.t] value. *)
     let+ _ = Fiber.Once.get t.static_deps in
     Build.lib_deps t.build
 
   (* Represent the build goal given by the user. This rule is never actually
-     executed and is only used starting point of all dependency paths. *)
+    executed and is only used starting point of all dependency paths. *)
   let root =
     { id = Id.gen ()
     ; static_deps =
-        Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
+      Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
     ; targets = Path.Build.Set.empty
     ; context = None
     ; build = Build.return (Action.Progn [])
@@ -190,10 +190,10 @@ module Alias0 = struct
       (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
     Build.paths
       (List.map contexts ~f:(fun ctx ->
-           let dir =
-             Path.Build.append_source (Path.Build.(relative root) ctx) dir
-           in
-           Path.build (stamp_file (make ~dir name))))
+        let dir =
+          Path.Build.append_source (Path.Build.(relative root) ctx) dir
+        in
+        Path.build (stamp_file (make ~dir name))))
 
   open Build.O
 
@@ -201,17 +201,17 @@ module Alias0 = struct
     Build.lazy_no_targets
       ( lazy
         (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-           ~init:(Build.return true) ~f:(fun dir acc ->
-             let path =
-               Path.Build.append_source ctx_dir (File_tree.Dir.path dir)
-             in
-             let fn = stamp_file (make ~dir:path name) in
-             acc
-             >>>
-             let fn = Path.build fn in
-             Build.if_file_exists fn
-               ~then_:(Build.path fn >>^ Fn.const false)
-               ~else_:(Build.arr Fn.id))) )
+          ~init:(Build.return true) ~f:(fun dir acc ->
+            let path =
+              Path.Build.append_source ctx_dir (File_tree.Dir.path dir)
+            in
+            let fn = stamp_file (make ~dir:path name) in
+            acc
+            >>>
+            let fn = Path.build fn in
+            Build.if_file_exists fn
+              ~then_:(Build.path fn >>^ Fn.const false)
+              ~else_:(Build.arr Fn.id))) )
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =
@@ -221,11 +221,11 @@ module Alias0 = struct
     | None ->
       Build.fail
         { fail =
-            (fun () ->
-              User_error.raise ~loc
-                [ Pp.textf "Don't know about directory %s!"
-                    (Path.Source.to_string_maybe_quoted src_dir)
-                ])
+          (fun () ->
+            User_error.raise ~loc
+              [ Pp.textf "Don't know about directory %s!"
+                (Path.Source.to_string_maybe_quoted src_dir)
+              ])
         }
     | Some dir ->
       let name = Alias.name t in
@@ -235,7 +235,7 @@ module Alias0 = struct
         User_error.raise ~loc
           [ Pp.text "This alias is empty."
           ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-              name
+            name
               (Path.Source.to_string_maybe_quoted src_dir)
           ]
 
@@ -244,15 +244,15 @@ module Alias0 = struct
     let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
     Build.all
       (List.map contexts ~f:(fun ctx ->
-           let ctx_dir = Path.Build.(relative root) ctx in
-           dep_rec_internal ~name ~dir ~ctx_dir))
+        let ctx_dir = Path.Build.(relative root) ctx in
+        dep_rec_internal ~name ~dir ~ctx_dir))
     >>^ fun is_empty_list ->
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
       User_error.raise
         [ Pp.textf "Alias %S specified on the command line is empty." name
         ; Pp.textf "It is not defined in %s or any of its descendants."
-            (Path.Source.to_string_maybe_quoted src_dir)
+          (Path.Source.to_string_maybe_quoted src_dir)
         ]
 
   let package_install ~(context : Context.t) ~pkg =
@@ -421,10 +421,10 @@ type t =
   ; file_tree : File_tree.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
-      (   Context_or_install.t
-       -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
-          option)
-      Fdecl.t
+    (   Context_or_install.t
+     -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
+       option)
+    Fdecl.t
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
@@ -453,8 +453,8 @@ let t = get_build_system
 
 let pp_paths set =
   Pp.enumerate (Path.Set.to_list set) ~f:(fun p ->
-      Pp.verbatim
-        (Path.to_string_maybe_quoted (Path.drop_optional_build_context p)))
+    Pp.verbatim
+      (Path.to_string_maybe_quoted (Path.drop_optional_build_context p)))
 
 let set_rule_generators ~init ~gen_rules =
   let t = t () in
@@ -467,35 +467,35 @@ let get_dir_triage t ~dir =
   | Some dir ->
     Dir_triage.Known
       (Non_build
-         (Path.set_of_source_paths (File_tree.files_of t.file_tree dir)))
+        (Path.set_of_source_paths (File_tree.files_of t.file_tree dir)))
   | None ->
     let allowed_subdirs =
       Subdir_set.to_dir_set
         (Subdir_set.of_list
-           ([ ".aliases"; "install" ] @ String.Map.keys t.contexts))
+          ([ ".aliases"; "install" ] @ String.Map.keys t.contexts))
     in
     if Path.equal dir Path.build_dir then
       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
     else if Path.equal dir (Path.relative Path.build_dir "install") then
       Dir_triage.Known
         (Loaded.no_rules
-           ~allowed_subdirs:
-             (Subdir_set.to_dir_set
-                (Subdir_set.of_list (String.Map.keys t.contexts))))
+          ~allowed_subdirs:
+            (Subdir_set.to_dir_set
+              (Subdir_set.of_list (String.Map.keys t.contexts))))
     else if not (Path.is_managed dir) then
       Dir_triage.Known
         (Non_build
-           ( match Path.readdir_unsorted dir with
-           | Error Unix.ENOENT ->
-             Path.Set.empty
-           | Error m ->
-             User_warning.emit
-               [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-               ; Pp.textf "Reason: %s" (Unix.error_message m)
-               ];
-             Path.Set.empty
-           | Ok filenames ->
-             Path.Set.of_listing ~dir ~filenames ))
+          ( match Path.readdir_unsorted dir with
+          | Error Unix.ENOENT ->
+            Path.Set.empty
+          | Error m ->
+            User_warning.emit
+              [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
+              ; Pp.textf "Reason: %s" (Unix.error_message m)
+              ];
+            Path.Set.empty
+          | Ok filenames ->
+            Path.Set.of_listing ~dir ~filenames ))
     else
       let ctx, sub_dir = Path.extract_build_context_exn dir in
       if ctx = ".aliases" then
@@ -531,7 +531,7 @@ let rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
   let fn = Path.build fn in
   User_error.raise
     [ Pp.textf "Multiple rules generated for %s:"
-        (Path.to_string_maybe_quoted fn)
+      (Path.to_string_maybe_quoted fn)
     ; Pp.textf "- %s" (describe rule')
     ; Pp.textf "- %s" (describe rule)
     ]
@@ -539,30 +539,30 @@ let rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
       ( match (rule.info, rule'.info) with
       | Source_file_copy, _ | _, Source_file_copy ->
         [ Pp.textf "rm -f %s"
-            (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
+          (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
       | _ ->
         [] )
 
 (* This contains the targets of the actions that are being executed. On exit,
-   we need to delete them as they might contain garbage *)
+  we need to delete them as they might contain garbage *)
 let pending_targets = ref Path.Build.Set.empty
 
 let () =
   Hooks.End_of_build.always (fun () ->
-      let fns = !pending_targets in
-      pending_targets := Path.Build.Set.empty;
-      Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
+    let fns = !pending_targets in
+    pending_targets := Path.Build.Set.empty;
+    Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
 let compute_targets_digest_after_rule_execution ~info targets =
   let good, bad =
     List.partition_map targets ~f:(fun fn ->
-        let fn = Path.build fn in
-        match Cached_digest.refresh fn with
-        | digest ->
-          Left digest
-        | exception (Unix.Unix_error _ | Sys_error _) ->
-          Right fn)
+      let fn = Path.build fn in
+      match Cached_digest.refresh fn with
+      | digest ->
+        Left digest
+      | exception (Unix.Unix_error _ | Sys_error _) ->
+        Right fn)
   in
   match bad with
   | [] ->
@@ -594,25 +594,25 @@ let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
     ()
   | Ok files ->
     List.iter files ~f:(fun fn ->
-        let path = Path.Build.relative dir fn in
-        let path_is_a_target = Path.Build.Table.mem t.files path in
-        if path_is_a_target then
-          ()
-        else
-          match Unix.lstat (Path.Build.to_string path) with
-          | { st_kind = S_DIR; _ } -> (
-            match subdirs_to_keep with
-            | All ->
+      let path = Path.Build.relative dir fn in
+      let path_is_a_target = Path.Build.Table.mem t.files path in
+      if path_is_a_target then
+        ()
+      else
+        match Unix.lstat (Path.Build.to_string path) with
+        | { st_kind = S_DIR; _ } -> (
+          match subdirs_to_keep with
+          | All ->
+            ()
+          | These set ->
+            if String.Set.mem set fn then
               ()
-            | These set ->
-              if String.Set.mem set fn then
-                ()
-              else
-                Path.rm_rf (Path.build path) )
-          | exception _ ->
-            Path.unlink (Path.build path)
-          | _ ->
-            Path.unlink (Path.build path))
+            else
+              Path.rm_rf (Path.build path) )
+        | exception _ ->
+          Path.unlink (Path.build path)
+        | _ ->
+          Path.unlink (Path.build path))
 
 let no_rule_found t ~loc fn =
   let fail fn ~loc =
@@ -628,25 +628,25 @@ let no_rule_found t ~loc fn =
     else
       User_error.raise
         [ Pp.textf "Trying to build %s but build context %s doesn't exist."
-            (Path.Build.to_string_maybe_quoted fn)
+          (Path.Build.to_string_maybe_quoted fn)
             ctx
         ]
         ~hints:
           (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+            ~candidates:(String.Map.keys t.contexts))
   | Install (ctx, _) ->
     if String.Map.mem t.contexts ctx then
       fail fn ~loc
     else
       User_error.raise
         [ Pp.textf
-            "Trying to build %s for install but build context %s doesn't exist."
+          "Trying to build %s for install but build context %s doesn't exist."
             (Path.Build.to_string_maybe_quoted fn)
             ctx
         ]
         ~hints:
           (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+            ~candidates:(String.Map.keys t.contexts))
   | Alias (ctx, fn') ->
     if String.Map.mem t.contexts ctx then
       fail fn ~loc
@@ -654,16 +654,16 @@ let no_rule_found t ~loc fn =
       let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
       User_error.raise
         [ Pp.textf
-            "Trying to build alias %s but build context %s doesn't exist."
+          "Trying to build alias %s but build context %s doesn't exist."
             (Path.to_string_maybe_quoted fn)
             ctx
         ]
         ~hints:
           (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+            ~candidates:(String.Map.keys t.contexts))
 
 (* +-----------------------------------------------------------------+ | Adding
-   rules to the system |
+  rules to the system |
    +-----------------------------------------------------------------+ *)
 
 module rec Load_rules : sig
@@ -700,25 +700,24 @@ end = struct
 
   let static_deps build =
     Fiber.Once.create (fun () ->
-        Fiber.return (Build.static_deps build ~all_targets:targets_of))
+      Fiber.return (Build.static_deps build ~all_targets:targets_of))
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
     |> List.map ~f:(fun path ->
-           let ctx_path = Path.Build.append_source ctx_dir path in
-           let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
-           Pre_rule.make
-           (* There's an [assert false] in [prepare_managed_paths] that blows
-              up if we try to sandbox this. *)
-             ~sandbox:Sandbox_config.no_sandboxing build ~context:None
-             ~env:None ~info:Source_file_copy)
+      let ctx_path = Path.Build.append_source ctx_dir path in
+      let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
+      Pre_rule.make
+      (* There's an [assert false] in [prepare_managed_paths] that blows up if
+        we try to sandbox this. *) ~sandbox:Sandbox_config.no_sandboxing build
+        ~context:None ~env:None ~info:Source_file_copy)
 
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
-        let targets, rule = compile_rule rule in
-        assert (Path.Build.( = ) dir rule.Internal_rule.dir);
-        List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
-            (target, rule)))
+      let targets, rule = compile_rule rule in
+      assert (Path.Build.( = ) dir rule.Internal_rule.dir);
+      List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
+        (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:rule_conflict
 
   let targets_of ~dir =
@@ -730,7 +729,7 @@ end = struct
       |> List.map ~f:Path.build |> Path.Set.of_list
 
   let compute_alias_rules t ~context_name ~(collected : Rules.Dir_rules.ready)
-      ~dir ~sub_dir =
+    ~dir ~sub_dir =
     let alias_dir =
       Path.Build.append_source
         (Path.Build.relative Alias.alias_dir context_name)
@@ -763,29 +762,23 @@ end = struct
               String.Map.set aliases "default"
                 { deps = Path.Set.empty
                 ; dyn_deps =
-                    ( Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
-                    >>^ fun (_ : bool) -> Path.Set.empty )
+                  ( Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
+                  >>^ fun (_ : bool) -> Path.Set.empty )
                 ; actions = Appendable_list.empty
                 } )
       in
       String.Map.foldi aliases ~init:[]
         ~f:(fun name
-                { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
-                rules
-                ->
+          { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
+            rules
+              ->
           let base_path = Path.Build.relative alias_dir name in
           let rules, action_stamp_files =
             List.fold_left (Appendable_list.to_list actions)
               ~init:(rules, Path.Set.empty)
               ~f:(fun (rules, action_stamp_files)
-                      { Rules.Dir_rules.stamp
-                      ; action
-                      ; locks
-                      ; context
-                      ; loc
-                      ; env
-                      }
-                      ->
+                { Rules.Dir_rules.stamp; action; locks; context; loc; env }
+                  ->
                 let path =
                   Path.Build.extend_basename base_path
                     ~suffix:("-" ^ Digest.to_string stamp)
@@ -806,9 +799,9 @@ end = struct
             ( Build.path_set deps >>> dyn_deps
             >>> Build.dyn_path_set (Build.arr Fn.id)
             >>^ (fun dyn_deps ->
-                  let deps = Path.Set.union deps dyn_deps in
-                  Action.with_stdout_to path
-                    (Action.digest_files (Path.Set.to_list deps)))
+              let deps = Path.Set.union deps dyn_deps in
+              Action.with_stdout_to path
+                (Action.digest_files (Path.Set.to_list deps)))
             >>> Build.action_dyn () ~targets:[ path ] )
           :: rules)
     in
@@ -820,52 +813,51 @@ end = struct
 
   let filter_out_fallback_rules t ~to_copy ~dir rules =
     List.filter rules ~f:(fun (rule : Pre_rule.t) ->
-        match rule.mode with
-        | Standard | Promote _ | Ignore_source_files ->
+      match rule.mode with
+      | Standard | Promote _ | Ignore_source_files ->
+        true
+      | Fallback ->
+        let source_files_for_targtes =
+          (* All targets are in [dir] and we know it correspond to a directory
+            of a build context since there are source files to copy, so this
+             call can't fail. *)
+          Path.Build.Set.to_list rule.targets
+          |> List.map ~f:Path.Build.drop_build_context_exn
+          |> Path.Source.Set.of_list
+        in
+        if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy then
+          (* All targets are present *)
+          false
+        else if
+          Path.Source.Set.is_empty
+            (Path.Source.Set.inter source_files_for_targtes to_copy)
+        then
+          (* No target is present *)
           true
-        | Fallback ->
-          let source_files_for_targtes =
-            (* All targets are in [dir] and we know it correspond to a
-               directory of a build context since there are source files to
-               copy, so this call can't fail. *)
-            Path.Build.Set.to_list rule.targets
-            |> List.map ~f:Path.Build.drop_build_context_exn
-            |> Path.Source.Set.of_list
+        else
+          let absent_targets =
+            Path.Source.Set.diff source_files_for_targtes to_copy
           in
-          if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
-          then
-            (* All targets are present *)
-            false
-          else if
-            Path.Source.Set.is_empty
-              (Path.Source.Set.inter source_files_for_targtes to_copy)
-          then
-            (* No target is present *)
-            true
-          else
-            let absent_targets =
-              Path.Source.Set.diff source_files_for_targtes to_copy
-            in
-            let present_targets =
-              Path.Source.Set.diff source_files_for_targtes absent_targets
-            in
-            User_error.raise
-              ~loc:(rule_loc ~file_tree:t.file_tree ~info:rule.info ~dir)
-              [ Pp.text
-                  "Some of the targets of this fallback rule are present in \
-                   the source tree, and some are not. This is not allowed. \
-                   Either none of the targets must be present in the source \
-                   tree, either they must all be."
-              ; Pp.nop
-              ; Pp.text "The following targets are present:"
-              ; pp_paths (Path.set_of_source_paths present_targets)
-              ; Pp.nop
-              ; Pp.text "The following targets are not:"
-              ; pp_paths (Path.set_of_source_paths absent_targets)
-              ])
+          let present_targets =
+            Path.Source.Set.diff source_files_for_targtes absent_targets
+          in
+          User_error.raise
+            ~loc:(rule_loc ~file_tree:t.file_tree ~info:rule.info ~dir)
+            [ Pp.text
+              "Some of the targets of this fallback rule are present in the \
+               source tree, and some are not. This is not allowed. Either \
+               none of the targets must be present in the source tree, either \
+               they must all be."
+            ; Pp.nop
+            ; Pp.text "The following targets are present:"
+            ; pp_paths (Path.set_of_source_paths present_targets)
+            ; Pp.nop
+            ; Pp.text "The following targets are not:"
+            ; pp_paths (Path.set_of_source_paths absent_targets)
+            ])
 
   (** If both [a] and [a/b] are source directories, we don't allow the rules
-      for [a] to define generated directories under [a/b] (e.g.
+    for [a] to define generated directories under [a/b] (e.g.
       [a/b/.generated-by-a]).
 
       The purpose is to avoid dependency cycles when computing the list of
@@ -892,7 +884,7 @@ end = struct
     val allowed_by_parent : dir:Path.Build.t -> restriction
 
     (** Used by the parent to check what are the subdirs that it's allowed to
-        generate rules in. *)
+      generate rules in. *)
     val is_allowed_to_generate_rules_in :
       dir:Path.Build.t -> subdir:Path.Build.t -> bool
   end = struct
@@ -928,13 +920,13 @@ end = struct
           if
             Option.is_none
               (corresponding_source_dir
-                 ~dir:(Path.Local_gen.relative dir child))
+                ~dir:(Path.Local_gen.relative dir child))
           then
             (* allowed to generate directories inside itself *)
             true
           else
             (* allowed to generate rules in child directories as long as the
-               directory itself is not generated *)
+              directory itself is not generated *)
             Option.is_some (corresponding_source_dir ~dir:subdir) )
 
     let allowed_dirs ~dir ~subdir : restriction =
@@ -943,11 +935,11 @@ end = struct
       else
         Restricted
           (Memo.Lazy.create (fun () ->
-               match load_dir ~dir:(Path.build dir) with
-               | Non_build _ ->
-                 Dir_set.just_the_root
-               | Build { allowed_subdirs; _ } ->
-                 Dir_set.descend allowed_subdirs subdir))
+            match load_dir ~dir:(Path.build dir) with
+            | Non_build _ ->
+              Dir_set.just_the_root
+            | Build { allowed_subdirs; _ } ->
+              Dir_set.descend allowed_subdirs subdir))
 
     let allowed_by_parent ~dir =
       allowed_dirs
@@ -1003,7 +995,7 @@ end = struct
         File_tree.find_dir t.file_tree sub_dir
     in
     (* Compute the set of targets and the set of source files that must not be
-       copied *)
+      copied *)
     let source_files_to_ignore =
       List.fold_left rules ~init:Path.Build.Set.empty
         ~f:(fun acc_ignored { Pre_rule.targets; mode; _ } ->
@@ -1013,9 +1005,9 @@ end = struct
           | Promote { only = Some pred; _ } ->
             let to_ignore =
               Path.Build.Set.filter targets ~f:(fun target ->
-                  Predicate_lang.exec pred
-                    (Path.reach (Path.build target) ~from:(Path.build dir))
-                    ~standard:Predicate_lang.true_)
+                Predicate_lang.exec pred
+                  (Path.reach (Path.build target) ~from:(Path.build dir))
+                  ~standard:Predicate_lang.true_)
             in
             Path.Build.Set.union to_ignore acc_ignored
           | _ ->
@@ -1060,7 +1052,7 @@ end = struct
       match to_copy with
       | None ->
         (* If there are no source files to copy, fallback rules are
-           automatically kept *)
+          automatically kept *)
         rules
       | Some (_, to_copy) ->
         filter_out_fallback_rules t ~to_copy ~dir rules
@@ -1099,13 +1091,13 @@ end = struct
       Dir_set.of_list
         ( Path.Build.Map.keys (Rules.to_map rules_produced)
         |> List.filter_map ~f:(fun subdir ->
-               Path.Local_gen.descendant ~of_:dir subdir) )
+          Path.Local_gen.descendant ~of_:dir subdir) )
     in
     let allowed_granddescendants_of_parent =
       match allowed_by_parent with
       | Unrestricted ->
         (* in this case the parent isn't allowed to create any generated
-           granddescendant directories *)
+          granddescendant directories *)
         Dir_set.empty
       | Restricted restriction ->
         Memo.Lazy.force restriction
@@ -1136,7 +1128,7 @@ end = struct
         [ ("dir", Path.Build.to_dyn dir)
         ; ( "creates-rules-in"
           , Dyn.Encoder.(list (pair Path.Build.to_dyn Rules.Dir_rules.to_dyn))
-              (Path.Build.Map.to_list violations) )
+            (Path.Build.Map.to_list violations) )
         ];
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts t ~dir ~subdirs_to_keep;
@@ -1152,11 +1144,7 @@ end = struct
       ; rules_produced
       ; targets_here
       ; targets_of_alias_dir =
-          ( match alias_targets with
-          | None ->
-            Path.Build.Map.empty
-          | Some v ->
-            v )
+        (match alias_targets with None -> Path.Build.Map.empty | Some v -> v)
       }
 
   let load_dir_impl t ~dir : Loaded.t =
@@ -1168,11 +1156,11 @@ end = struct
       | Non_build _ ->
         Code_error.raise "Can only forward to a build dir" []
       | Build
-          { targets_here = _
-          ; targets_of_alias_dir
-          ; rules_produced
-          ; allowed_subdirs
-          } ->
+        { targets_here = _
+        ; targets_of_alias_dir
+        ; rules_produced
+        ; allowed_subdirs
+        } ->
         Loaded.Build
           { targets_here = targets_of_alias_dir
           ; targets_of_alias_dir = Path.Build.Map.empty
@@ -1204,12 +1192,12 @@ let load_dir_and_get_buildable_targets ~dir =
 
 let get_rule_other fn =
   Option.bind (Path.as_in_build_dir fn) ~f:(fun fn ->
-      let dir = Path.Build.parent_exn fn in
-      match load_dir ~dir:(Path.build dir) with
-      | Non_build _ ->
-        assert false
-      | Build { targets_here; _ } ->
-        Path.Build.Map.find targets_here fn)
+    let dir = Path.Build.parent_exn fn in
+    match load_dir ~dir:(Path.build dir) with
+    | Non_build _ ->
+      assert false
+    | Build { targets_here; _ } ->
+      Path.Build.Map.find targets_here fn)
 
 and get_rule t path =
   let dir = Path.parent_exn path in
@@ -1232,21 +1220,21 @@ and get_rule t path =
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-         File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
-           ~f:(fun dir acc ->
-             match
-               load_dir
-                 ~dir:
-                   (Path.build
-                      (Path.Build.append_source ctx.Context.build_dir
-                         (File_tree.Dir.path dir)))
-             with
-             | Non_build _ ->
-               acc
-             | Build { targets_here; targets_of_alias_dir; _ } ->
-               List.fold_left ~init:acc ~f:Path.Build.Set.add
-                 ( Path.Build.Map.keys targets_of_alias_dir
-                 @ Path.Build.Map.keys targets_here )))
+    File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
+      ~f:(fun dir acc ->
+        match
+          load_dir
+            ~dir:
+              (Path.build
+                (Path.Build.append_source ctx.Context.build_dir
+                  (File_tree.Dir.path dir)))
+        with
+        | Non_build _ ->
+          acc
+        | Build { targets_here; targets_of_alias_dir; _ } ->
+          List.fold_left ~init:acc ~f:Path.Build.Set.add
+            ( Path.Build.Map.keys targets_of_alias_dir
+            @ Path.Build.Map.keys targets_here )))
 
 module type Rec = sig
   val build_file : Path.t -> unit Fiber.t
@@ -1267,7 +1255,7 @@ module type Rec = sig
 end
 
 (* Separation between [Used_recursively] and [Exported] is necessary because at
-   least one module in the recursive module group must be pure (only expose
+  least one module in the recursive module group must be pure (only expose
    functions) *)
 module rec Used_recursively : Rec = Exported
 
@@ -1321,39 +1309,39 @@ end = struct
     Memo.exec evaluate_action_and_dynamic_deps_memo
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
-      ~sandboxing_preference =
+    ~sandboxing_preference =
     match
       List.find_map sandboxing_preference ~f:(fun preference ->
-          match Sandbox_mode.Set.mem config preference with
-          | false ->
-            None
-          | true -> (
-            match preference with
-            | Some Symlink ->
-              if Sandbox_mode.Set.mem config Sandbox_mode.copy then
-                Some
-                  ( if Sys.win32 then
-                    Sandbox_mode.copy
-                  else
-                    Sandbox_mode.symlink )
-              else
-                User_error.raise ~loc
-                  [ Pp.text
-                      "This rule requires sandboxing with symlinks, but that \
-                       won't work on Windows."
-                  ]
-            | _ ->
-              Some preference ))
+        match Sandbox_mode.Set.mem config preference with
+        | false ->
+          None
+        | true -> (
+          match preference with
+          | Some Symlink ->
+            if Sandbox_mode.Set.mem config Sandbox_mode.copy then
+              Some
+                ( if Sys.win32 then
+                  Sandbox_mode.copy
+                else
+                  Sandbox_mode.symlink )
+            else
+              User_error.raise ~loc
+                [ Pp.text
+                  "This rule requires sandboxing with symlinks, but that \
+                   won't work on Windows."
+                ]
+          | _ ->
+            Some preference ))
     with
     | None ->
       (* This is not trivial to reach because the user rules are checked at
-         parse time and [sandboxing_preference] always includes all possible
+        parse time and [sandboxing_preference] always includes all possible
          modes. However, it can still be reached if multiple sandbox config
          specs are combined into an unsatisfiable one. *)
       User_error.raise ~loc
         [ Pp.text
-            "This rule forbids all sandboxing modes (but it also requires \
-             sandboxing)"
+          "This rule forbids all sandboxing modes (but it also requires \
+           sandboxing)"
         ]
     | Some choice ->
       choice
@@ -1366,7 +1354,7 @@ end = struct
     (action, action_deps)
 
   (* Same as the function just bellow, but with less opportunity for
-     parallelism. We keep this dead code here for documentation purposes as it
+    parallelism. We keep this dead code here for documentation purposes as it
      is easier to read the one bellow. The reader only has to check that both
      function do the same thing. *)
   let _evaluate_rule_and_wait_for_dependencies rule =
@@ -1375,14 +1363,14 @@ end = struct
     (action, action_deps)
 
   (* The following function does exactly the same as the function above with
-     the difference that it starts the build of static dependencies before we
+    the difference that it starts the build of static dependencies before we
      know the final action and set of dynamic dependencies. We do this to
      increase opportunities for parallelism. *)
   let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let static_action_deps = Static_deps.action_deps static_deps in
     (* Build the static dependencies in parallel with evaluation the action and
-       dynamic dependencies *)
+      dynamic dependencies *)
     let* action, dynamic_action_deps =
       Fiber.fork_and_join_unit
         (fun () -> build_deps static_action_deps)
@@ -1396,7 +1384,7 @@ end = struct
   let start_rule t _rule = t.hook Rule_started
 
   (* Same as [rename] except that if the source doesn't exist we delete the
-     destination *)
+    destination *)
   let rename_optional_file ~src ~dst =
     let src = Path.Build.to_string src in
     let dst = Path.Build.to_string dst in
@@ -1413,7 +1401,7 @@ end = struct
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.dir
-        ; targets
+      ; targets
         ; env
         ; context
         ; mode
@@ -1443,9 +1431,9 @@ end = struct
           User_error.raise
             ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
             [ Pp.text
-                "Rule dependencies are configured to require sandboxing, but \
-                 the rule has no actions that could potentially require \
-                 sandboxing."
+              "Rule dependencies are configured to require sandboxing, but \
+               the rule has no actions that could potentially require \
+               sandboxing."
             ]
       | Maybe ->
         select_sandbox_mode
@@ -1474,7 +1462,7 @@ end = struct
     let targets_digest =
       match
         List.map targets_as_list ~f:(fun p ->
-            Cached_digest.file (Path.build p))
+          Cached_digest.file (Path.build p))
       with
       | l ->
         Some (Digest.generic l)
@@ -1504,7 +1492,7 @@ end = struct
     let* () =
       if force || something_changed then (
         List.iter targets_as_list ~f:(fun p ->
-            Path.unlink_no_err (Path.build p));
+          Path.unlink_no_err (Path.build p));
         pending_targets := Path.Build.Set.union targets !pending_targets;
         let loc = Rule.Info.loc info in
         let sandboxed, action =
@@ -1518,29 +1506,28 @@ end = struct
             in
             Dep.Set.dirs deps
             |> Path.Set.iter ~f:(fun p ->
-                   match Path.as_in_build_dir p with
-                   | None ->
-                     Fs.assert_exists ~loc p
-                   | Some p ->
-                     Fs.mkdir_p (sandboxed p));
+              match Path.as_in_build_dir p with
+              | None ->
+                Fs.assert_exists ~loc p
+              | Some p ->
+                Fs.mkdir_p (sandboxed p));
             Fs.mkdir_p (sandboxed dir);
             ( Some sandboxed
             , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
-                ~eval_pred )
+              ~eval_pred )
         in
         let chdirs = Action.chdirs action in
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
-              Fiber.map (Action_exec.exec ~context ~env ~targets action)
-                ~f:(fun () ->
-                  match sandboxed with
-                  | None ->
-                    ()
-                  | Some sandboxed ->
-                    List.iter targets_as_list ~f:(fun target ->
-                        rename_optional_file ~src:(sandboxed target)
-                          ~dst:target)))
+            Fiber.map (Action_exec.exec ~context ~env ~targets action)
+              ~f:(fun () ->
+                match sandboxed with
+                | None ->
+                  ()
+                | Some sandboxed ->
+                  List.iter targets_as_list ~f:(fun target ->
+                    rename_optional_file ~src:(sandboxed target) ~dst:target)))
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
@@ -1558,44 +1545,43 @@ end = struct
         Fiber.return ()
       | Promote { lifetime; into; only } ->
         Fiber.sequential_iter (Path.Build.Set.to_list targets) ~f:(fun path ->
-            let consider_for_promotion =
-              match only with
+          let consider_for_promotion =
+            match only with
+            | None ->
+              true
+            | Some pred ->
+              Predicate_lang.exec pred
+                (Path.reach (Path.build path) ~from:(Path.build dir))
+                ~standard:Predicate_lang.true_
+          in
+          if consider_for_promotion then
+            let in_source_tree = Path.Build.drop_build_context_exn path in
+            let in_source_tree =
+              match into with
               | None ->
-                true
-              | Some pred ->
-                Predicate_lang.exec pred
-                  (Path.reach (Path.build path) ~from:(Path.build dir))
-                  ~standard:Predicate_lang.true_
+                in_source_tree
+              | Some { loc; dir } ->
+                Path.Source.relative
+                  (Path.Source.relative
+                    (Path.Source.parent_exn in_source_tree)
+                     dir ~error_loc:loc)
+                  (Path.Source.basename in_source_tree)
             in
-            if consider_for_promotion then
-              let in_source_tree = Path.Build.drop_build_context_exn path in
-              let in_source_tree =
-                match into with
-                | None ->
-                  in_source_tree
-                | Some { loc; dir } ->
-                  Path.Source.relative
-                    (Path.Source.relative
-                       (Path.Source.parent_exn in_source_tree)
-                       dir ~error_loc:loc)
-                    (Path.Source.basename in_source_tree)
-              in
-              let path = Path.build path in
-              let in_source_tree = Path.source in_source_tree in
-              if
-                (not (Path.exists in_source_tree))
-                || Cached_digest.file path <> Cached_digest.file in_source_tree
-              then (
-                if lifetime = Until_clean then
-                  Promoted_to_delete.add in_source_tree;
-                Scheduler.ignore_for_watch in_source_tree;
-                Artifact_substitution.copy_file () ~src:path
-                  ~dst:in_source_tree
-                  ~get_vcs:(File_tree.nearest_vcs t.file_tree)
-              ) else
-                Fiber.return ()
-            else
-              Fiber.return ())
+            let path = Path.build path in
+            let in_source_tree = Path.source in_source_tree in
+            if
+              (not (Path.exists in_source_tree))
+              || Cached_digest.file path <> Cached_digest.file in_source_tree
+            then (
+              if lifetime = Until_clean then
+                Promoted_to_delete.add in_source_tree;
+              Scheduler.ignore_for_watch in_source_tree;
+              Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
+                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
+            ) else
+              Fiber.return ()
+          else
+            Fiber.return ())
     in
     t.hook Rule_completed
 
@@ -1604,13 +1590,13 @@ end = struct
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
-        get_rule t path
-        >>= function
-        | None ->
-          (* file already exists *)
-          Fiber.return ()
-        | Some rule ->
-          execute_rule rule)
+      get_rule t path
+      >>= function
+      | None ->
+        (* file already exists *)
+        Fiber.return ()
+      | Some rule ->
+        execute_rule rule)
 
   module Pred = struct
     let build_impl g =
@@ -1623,14 +1609,14 @@ end = struct
     let eval =
       Memo.exec
         (Memo.create "eval-pred" ~doc:"Evaluate a predicate in a directory"
-           ~input:(module File_selector)
+          ~input:(module File_selector)
            ~output:(Allow_cutoff (module Path.Set))
            ~visibility:Hidden Sync eval_impl)
 
     let build =
       Memo.exec
         (Memo.create "build-pred" ~doc:"build a predicate"
-           ~input:(module File_selector)
+          ~input:(module File_selector)
            ~output:(Allow_cutoff (module Unit))
            ~visibility:Hidden Async build_impl)
   end
@@ -1655,18 +1641,16 @@ end = struct
 
   let () =
     Fdecl.set Rule_fn.loc_decl (fun () ->
-        let stack = Memo.get_call_stack () in
-        List.find_map stack ~f:(fun frame ->
-            match
-              Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo
-            with
-            | Some input ->
-              Some input
-            | None ->
-              Memo.Stack_frame.as_instance_of frame
-                ~of_:evaluate_action_and_dynamic_deps_memo)
-        |> Option.bind ~f:(fun (rule : Internal_rule.t) ->
-               Rule.Info.loc rule.info))
+      let stack = Memo.get_call_stack () in
+      List.find_map stack ~f:(fun frame ->
+        match Memo.Stack_frame.as_instance_of frame ~of_:execute_rule_memo with
+        | Some input ->
+          Some input
+        | None ->
+          Memo.Stack_frame.as_instance_of frame
+            ~of_:evaluate_action_and_dynamic_deps_memo)
+      |> Option.bind ~f:(fun (rule : Internal_rule.t) ->
+        Rule.Info.loc rule.info))
 end
 
 open Exported
@@ -1695,7 +1679,7 @@ let process_memcycle exn =
   let cycle =
     Memo.Cycle_error.get exn
     |> List.filter_map
-         ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
+      ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
   in
   match List.last cycle with
   | None ->
@@ -1713,7 +1697,7 @@ let process_memcycle exn =
     User_error.raise
       [ Pp.text "Dependency cycle between the following files:"
       ; Pp.chain cycle ~f:(fun p ->
-            Pp.verbatim (Path.to_string_maybe_quoted p))
+        Pp.verbatim (Path.to_string_maybe_quoted p))
       ]
 
 module Rule = struct
@@ -1750,7 +1734,7 @@ let package_deps pkg files =
     match Path.as_in_build_dir fn with
     | None ->
       (* if this file isn't in the build dir, it doesnt belong to any packages
-         and it doesn't have dependencies that do *)
+        and it doesn't have dependencies that do *)
       acc
     | Some fn -> (
       let pkgs = Fdecl.get t.packages fn in
@@ -1772,7 +1756,7 @@ let package_deps pkg files =
       else (
         rules_seen := Internal_rule.Set.add !rules_seen ir;
         (* We know that at this point of execution, all the relevant ivars have
-           been filled so the following calls to [X.peek_exn] cannot raise. *)
+          been filled so the following calls to [X.peek_exn] cannot raise. *)
         let static_deps = Fiber.Once.peek_exn ir.static_deps in
         let static_action_deps = Static_deps.action_deps static_deps in
         let _act, dynamic_action_deps =
@@ -1790,13 +1774,13 @@ let package_deps pkg files =
   Build.paths_for_rule files
   >>^ fun () ->
   (* We know that at this point of execution, all the relevant ivars have been
-     filled *)
+    filled *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
-      match Path.as_in_build_dir fn with
-      | None ->
-        acc
-      | Some fn ->
-        loop_deps fn acc)
+    match Path.as_in_build_dir fn with
+    | None ->
+      acc
+    | Some fn ->
+      loop_deps fn acc)
 
 let prefix_rules prefix ~f =
   let targets = Build.targets prefix in
@@ -1806,7 +1790,7 @@ let prefix_rules prefix ~f =
   let res, rules = Rules.collect f in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with build = Build.O.( >>> ) prefix rule.build }));
+      { rule with build = Build.O.( >>> ) prefix rule.build }));
   res
 
 module Alias = Alias0
@@ -1860,71 +1844,69 @@ end = struct
   let rules_for_files rules deps =
     Dep.Set.paths deps ~eval_pred
     |> Path.Set.fold ~init:Rule.Set.empty ~f:(fun path acc ->
-           match
-             Path.as_in_build_dir path
-             |> Option.bind ~f:(Path.Build.Map.find rules)
-           with
-           | None ->
-             acc
-           | Some rule ->
-             Rule.Set.add acc rule)
+      match
+        Path.as_in_build_dir path |> Option.bind ~f:(Path.Build.Map.find rules)
+      with
+      | None ->
+        acc
+      | Some rule ->
+        Rule.Set.add acc rule)
     |> Rule.Set.to_list
 
   let evaluate_rules ~recursive ~request =
     entry_point_sync ~f:(fun () ->
-        let rules = ref Internal_rule.Id.Map.empty in
-        let rec run_rule (rule : Internal_rule.t) =
-          if Internal_rule.Id.Map.mem !rules rule.id then
-            Fiber.return ()
+      let rules = ref Internal_rule.Id.Map.empty in
+      let rec run_rule (rule : Internal_rule.t) =
+        if Internal_rule.Id.Map.mem !rules rule.id then
+          Fiber.return ()
+        else
+          let* action, deps = evaluate_rule rule in
+          let rule =
+            { Rule.id = rule.id
+            ; dir = rule.dir
+            ; deps
+            ; targets = rule.targets
+            ; context = rule.context
+            ; action
+            }
+          in
+          rules := Internal_rule.Id.Map.set !rules rule.id rule;
+          if recursive then
+            Dep.Set.parallel_iter_files deps ~f:proc_rule ~eval_pred
           else
-            let* action, deps = evaluate_rule rule in
-            let rule =
-              { Rule.id = rule.id
-              ; dir = rule.dir
-              ; deps
-              ; targets = rule.targets
-              ; context = rule.context
-              ; action
-              }
-            in
-            rules := Internal_rule.Id.Map.set !rules rule.id rule;
-            if recursive then
-              Dep.Set.parallel_iter_files deps ~f:proc_rule ~eval_pred
-            else
-              Fiber.return ()
-        and proc_rule dep =
-          match get_rule_other dep with
-          | None ->
-            Fiber.return () (* external files *)
-          | Some rule ->
-            run_rule rule
-        in
-        let rule_shim = shim_of_build_goal request in
-        let* _act, goal = evaluate_rule rule_shim in
-        let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
-        let rules =
-          Internal_rule.Id.Map.fold !rules ~init:Path.Build.Map.empty
-            ~f:(fun (r : Rule.t) acc ->
-              Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-                  Path.Build.Map.set acc fn r))
-        in
-        match
-          Rule.Id.Top_closure.top_closure
-            (rules_for_files rules goal)
-            ~key:(fun (r : Rule.t) -> r.id)
-            ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
-        with
-        | Ok l ->
-          l
-        | Error cycle ->
-          User_error.raise
-            [ Pp.text "Dependency cycle detected:"
-            ; Pp.chain cycle ~f:(fun rule ->
-                  Pp.verbatim
-                    (Path.to_string_maybe_quoted
-                       (Path.build
-                          (Path.Build.Set.choose_exn rule.Rule.targets))))
-            ])
+            Fiber.return ()
+      and proc_rule dep =
+        match get_rule_other dep with
+        | None ->
+          Fiber.return () (* external files *)
+        | Some rule ->
+          run_rule rule
+      in
+      let rule_shim = shim_of_build_goal request in
+      let* _act, goal = evaluate_rule rule_shim in
+      let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
+      let rules =
+        Internal_rule.Id.Map.fold !rules ~init:Path.Build.Map.empty
+          ~f:(fun (r : Rule.t) acc ->
+            Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
+              Path.Build.Map.set acc fn r))
+      in
+      match
+        Rule.Id.Top_closure.top_closure
+          (rules_for_files rules goal)
+          ~key:(fun (r : Rule.t) -> r.id)
+          ~deps:(fun (r : Rule.t) -> rules_for_files rules r.deps)
+      with
+      | Ok l ->
+        l
+      | Error cycle ->
+        User_error.raise
+          [ Pp.text "Dependency cycle detected:"
+          ; Pp.chain cycle ~f:(fun rule ->
+            Pp.verbatim
+              (Path.to_string_maybe_quoted
+                (Path.build (Path.Build.Set.choose_exn rule.Rule.targets))))
+          ])
 end
 
 include Print_rules
@@ -1939,7 +1921,7 @@ end = struct
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-        match get_rule_other path with None -> acc | Some rule -> rule :: acc)
+      match get_rule_other path with None -> acc | Some rule -> rule :: acc)
     |> Internal_rule.Set.of_list |> Internal_rule.Set.to_list
 
   let rules_for_targets targets =
@@ -1956,10 +1938,10 @@ end = struct
       User_error.raise
         [ Pp.text "Dependency cycle detected:"
         ; Pp.chain cycle ~f:(fun rule ->
-              Pp.verbatim
-                (Path.to_string_maybe_quoted
-                   (Path.build
-                      (Path.Build.Set.choose_exn rule.Internal_rule.targets))))
+          Pp.verbatim
+            (Path.to_string_maybe_quoted
+              (Path.build
+                (Path.Build.Set.choose_exn rule.Internal_rule.targets))))
         ]
 
   let all_lib_deps ~request =
@@ -1968,22 +1950,22 @@ end = struct
     let* rules = rules_for_targets targets in
     let+ lib_deps =
       Fiber.parallel_map rules ~f:(fun rule ->
-          let+ deps = Internal_rule.lib_deps rule in
-          (rule, deps))
+        let+ deps = Internal_rule.lib_deps rule in
+        (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->
-        if Lib_name.Map.is_empty deps then
+      if Lib_name.Map.is_empty deps then
+        acc
+      else
+        match Path.Build.extract_build_context rule.Internal_rule.dir with
+        | None ->
           acc
-        else
-          match Path.Build.extract_build_context rule.Internal_rule.dir with
-          | None ->
-            acc
-          | Some (context, p) ->
-            (context, (p, deps)) :: acc)
+        | Some (context, p) ->
+          (context, (p, deps)) :: acc)
     |> String.Map.of_list_multi
     |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
     |> String.Map.map
-         ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
+      ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 end
 
 include All_lib_deps

@@ -28,7 +28,7 @@ module Entry = struct
     | Preprocess l ->
       Pp.textf "%s"
         (Dyn.to_string
-           (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) l ]))
+          (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) l ]))
     | Loc loc ->
       Pp.text (Loc.to_file_colon_line loc)
 end
@@ -39,10 +39,10 @@ module Entries = struct
   let pp t =
     Pp.vbox
       (Pp.concat ~sep:Pp.cut
-         (List.map t ~f:(fun x ->
-              Pp.box ~indent:3
-                (Pp.seq (Pp.verbatim "-> ")
-                   (Pp.seq (Pp.text "required by ") (Entry.pp x))))))
+        (List.map t ~f:(fun x ->
+          Pp.box ~indent:3
+            (Pp.seq (Pp.verbatim "-> ")
+              (Pp.seq (Pp.text "required by ") (Entry.pp x))))))
 end
 
 exception E of exn * Entry.t list

@@ -12,7 +12,7 @@ val supports_no_keep_locs : t -> bool
 val supports_opaque_for_mli : t -> bool
 
 (** Does it read the [.cmi] file of module alias even when [-no-alias-deps] is
-    passed? *)
+  passed? *)
 val always_reads_alias_cmi : t -> bool
 
 (** Does this support ['color'] in [OCAMLPARAM]? *)

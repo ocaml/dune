@@ -47,8 +47,8 @@ module Main = struct
     let only_packages = Common.only_packages common in
     scan_workspace common
     >>= init_build_system
-          ~sandboxing_preference:(Common.config common).sandboxing_preference
-          ?external_lib_deps_mode ?only_packages
+      ~sandboxing_preference:(Common.config common).sandboxing_preference
+        ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

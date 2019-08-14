@@ -69,7 +69,7 @@ let pp { loc; paragraphs; hints } =
     | _ ->
       List.append paragraphs
         (List.map hints ~f:(fun hint ->
-             Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
+          Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =
@@ -81,7 +81,7 @@ let pp { loc; paragraphs; hints } =
       let stop_c = stop.pos_cnum - start.pos_bol in
       Pp.tag ~tag:Style.Loc
         (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
-           start.pos_lnum start_c stop_c)
+          start.pos_lnum start_c stop_c)
       :: paragraphs
   in
   Pp.vbox
@@ -98,7 +98,7 @@ let levenshtein_distance s t =
   let m = String.length s
   and n = String.length t in
   (* for all i and j, d.(i).(j) will hold the Levenshtein distance between the
-     first i characters of s and the first j characters of t *)
+    first i characters of s and the first j characters of t *)
   let d = Array.make_matrix ~dimx:(m + 1) ~dimy:(n + 1) 0 in
   for i = 0 to m do
     (* the distance of any first string to an empty second string *)
@@ -118,7 +118,7 @@ let levenshtein_distance s t =
           min
             (d.(i - 1).(j) + 1) (* a deletion *)
             (min
-               (d.(i).(j - 1) + 1) (* an insertion *)
+              (d.(i).(j - 1) + 1) (* an insertion *)
                (d.(i - 1).(j - 1) + 1) (* a substitution *))
     done
   done;
@@ -127,7 +127,7 @@ let levenshtein_distance s t =
 let did_you_mean s ~candidates =
   let candidates =
     List.filter candidates ~f:(fun candidate ->
-        levenshtein_distance s candidate < 3)
+      levenshtein_distance s candidate < 3)
   in
   match candidates with
   | [] ->

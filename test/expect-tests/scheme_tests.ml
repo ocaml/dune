@@ -34,7 +34,7 @@ module Scheme = struct
   include Dune.Scheme
 
   (* Calls [print] every time any code embedded in the scheme runs, be it a
-     [Thunk] constructor or an [Approximation] function.
+    [Thunk] constructor or an [Approximation] function.
 
      The argument of [print] identifies which thunk got run (the path to that
      thunk within the [Scheme.t] value). *)
@@ -62,7 +62,7 @@ module Scheme = struct
     go ~path:[]
 
   (* [collect_rules_simple] is oversimplified in two ways: - it does not share
-     the work of scheme flattening, so repeated lookups do repeated work - it
+    the work of scheme flattening, so repeated lookups do repeated work - it
      does not check that approximations are correct
 
      If approximations are not correct, it will honor the approximation. So
@@ -130,7 +130,7 @@ let print_rules scheme ~dir =
   in
   let res2, calls2 =
     record_calls scheme ~f:(fun scheme ->
-        Scheme.get_rules (Scheme.evaluate scheme) ~dir)
+      Scheme.get_rules (Scheme.evaluate scheme) ~dir)
   in
   if not ((res1 : string list) = res2) then
     Code_error.raise

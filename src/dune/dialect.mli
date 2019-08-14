@@ -2,9 +2,9 @@ open! Stdune
 
 (** Dialects
 
-    A dialect is an alternative frontend to OCaml (such as ReasonML). It is
-    described by a pair of file extensions, one corresponding to interfaces and
-    one to implementations.
+  A dialect is an alternative frontend to OCaml (such as ReasonML). It is
+  described by a pair of file extensions, one corresponding to interfaces and
+  one to implementations.
 
     The extensions are unique among all dialects of a given project, so that a
     given extension can be mapped back to the corresponding dialect.

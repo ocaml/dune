@@ -123,8 +123,6 @@ let peer_name s =
   let addr, port = getsockname s in
   Printf.sprintf "%s:%d" (Unix.string_of_inet_addr addr) port
 
-exception Stop
-
 let stop manager = Evt.sync (Evt.send manager.events Stop)
 
 let my_versions : version list = [ (1, 0) ]
@@ -360,22 +358,12 @@ let client_thread (events, client) =
 let run ?(port_f = ignore) ?(port = 0) manager =
   let rec accept_thread sock =
     let rec accept () =
-      try Unix.accept sock with
-      | Unix.Unix_error (Unix.EINTR, _, _) ->
-        if Option.is_none manager.socket then
-          raise Stop
-        else
-          accept ()
-      | Unix.Unix_error (Unix.EBADF, _, _) as e ->
-        if Option.is_none manager.socket then
-          raise Stop
-        else
-          raise e
-      | e ->
-        raise e
+      try Unix.accept sock
+      with Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
     in
     let fd, peer = accept () in
-    Evt.sync (Evt.send manager.events (New_client (fd, peer)));
+    ( try Evt.sync (Evt.send manager.events (New_client (fd, peer)))
+      with Unix.Unix_error (Unix.EBADF, _, _) -> () );
     (accept_thread [@tailcall]) sock
   in
   let f () =
@@ -449,14 +437,17 @@ let daemon ~root ~config started =
   let log_file = Path.relative root "log" in
   Log.init ~file:(This log_file) ();
   let manager = make ~root ~config () in
-  Sys.set_signal Sys.sigint (Sys.Signal_handle (fun _ -> stop manager));
-  Sys.set_signal Sys.sigterm (Sys.Signal_handle (fun _ -> stop manager));
-  try run ~port_f:started manager with
-  | Error s ->
+  let handler _ =
+    Log.info "caught signal";
+    ignore (Thread.create stop manager)
+  in
+  (* Unfortunately it seems using Event prevents signals from working :-( *)
+  Sys.set_signal Sys.sigint (Sys.Signal_handle handler);
+  Sys.set_signal Sys.sigterm (Sys.Signal_handle handler);
+  try run ~port_f:started manager
+  with Error s ->
     Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
     exit 1
-  | Stop ->
-    ()
 
 let endpoint m = m.endpoint
 

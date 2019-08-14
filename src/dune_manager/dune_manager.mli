@@ -3,8 +3,6 @@ module Utils = Utils
 
 type t
 
-exception Stop
-
 exception Error of string
 
 type config = { exit_no_client : bool }
@@ -41,7 +39,7 @@ module Client : sig
        t
     -> Dune_memory.key
     -> ( Dune_memory.metadata * (Path.t * Path.t * Digest.t) list
-       , string )
+      , string )
        Result.t
 
   val set_build_dir : t -> Path.t -> unit

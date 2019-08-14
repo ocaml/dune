@@ -14,23 +14,17 @@ module Status = struct
       }
 
     let find { data_only; vendored; normal } = function
-      | Data_only ->
-        data_only
-      | Vendored ->
-        vendored
-      | Normal ->
-        normal
+      | Data_only -> data_only
+      | Vendored -> vendored
+      | Normal -> normal
   end
 
   let to_dyn t =
     let open Dyn in
     match t with
-    | Data_only ->
-      Variant ("Data_only", [])
-    | Vendored ->
-      Variant ("Vendored", [])
-    | Normal ->
-      Variant ("Normal", [])
+    | Data_only -> Variant ("Data_only", [])
+    | Vendored -> Variant ("Vendored", [])
+    | Normal -> Variant ("Normal", [])
 
   module Or_ignored = struct
     type nonrec t =
@@ -56,24 +50,17 @@ let status { Status.Map.normal; data_only; vendored } ~dir :
     , String.Set.mem data_only dir
     , String.Set.mem vendored dir )
   with
-  | true, false, false ->
-    Status Normal
-  | true, false, true ->
-    Status Vendored
-  | true, true, _ ->
-    Status Data_only
-  | false, false, _ ->
-    Ignored
-  | false, true, _ ->
-    assert false
+  | true, false, false -> Status Normal
+  | true, false, true -> Status Vendored
+  | true, true, _ -> Status Data_only
+  | false, false, _ -> Ignored
+  | false, true, _ -> assert false
 
 let default =
   let standard_dirs =
     Predicate_lang.of_pred (function
-      | "" ->
-        false
-      | s ->
-        s.[0] <> '.' && s.[0] <> '_')
+      | "" -> false
+      | s -> s.[0] <> '.' && s.[0] <> '_')
   in
   { Status.Map.normal = standard_dirs
   ; data_only = Predicate_lang.empty
@@ -126,7 +113,13 @@ let decode =
             (plain_string (fun ~loc dn ->
               if
                 Filename.dirname dn <> Filename.current_dir_name
-                || match dn with "" | "." | ".." -> true | _ -> false
+                ||
+                match dn with
+                | ""
+                 |"."
+                 |".." ->
+                  true
+                | _ -> false
               then
                 User_error.raise ~loc
                   [ Pp.textf "Invalid sub-directory name %S" dn ]

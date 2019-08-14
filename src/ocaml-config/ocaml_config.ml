@@ -21,28 +21,18 @@ module Value = struct
   let to_dyn : t -> Dyn.t =
     let open Dyn.Encoder in
     function
-    | Bool x ->
-      Bool x
-    | Int x ->
-      Int x
-    | String x ->
-      String x
-    | Words x ->
-      (list string) x
-    | Prog_and_args { prog; args } ->
-      (list string) (prog :: args)
+    | Bool x -> Bool x
+    | Int x -> Int x
+    | String x -> String x
+    | Words x -> (list string) x
+    | Prog_and_args { prog; args } -> (list string) (prog :: args)
 
   let to_string = function
-    | Bool x ->
-      string_of_bool x
-    | Int x ->
-      string_of_int x
-    | String x ->
-      x
-    | Words x ->
-      String.concat x ~sep:" "
-    | Prog_and_args x ->
-      String.concat ~sep:" " (x.prog :: x.args)
+    | Bool x -> string_of_bool x
+    | Int x -> string_of_int x
+    | String x -> x
+    | Words x -> String.concat x ~sep:" "
+    | Prog_and_args x -> String.concat ~sep:" " (x.prog :: x.args)
 end
 
 type t =
@@ -258,18 +248,15 @@ end
 
 let split_prog s =
   match String.extract_blank_separated_words s with
-  | [] ->
-    None
-  | prog :: args ->
-    Some { prog; args }
+  | [] -> None
+  | prog :: args -> Some { prog; args }
 
 module Vars = struct
   type t = string String.Map.t
 
   let of_lines lines =
     let rec loop acc = function
-      | [] ->
-        Ok acc
+      | [] -> Ok acc
       | line :: lines -> (
         match String.index line ':' with
         | Some i ->
@@ -278,8 +265,7 @@ module Vars = struct
             , String.drop line (i + 2) (* skipping the space *) )
           in
           loop (x :: acc) lines
-        | None ->
-          Error (Printf.sprintf "Unrecognized line: %S" line) )
+        | None -> Error (Printf.sprintf "Unrecognized line: %S" line) )
     in
     let* vars = loop [] lines in
     Result.map_error (String.Map.of_list vars) ~f:(fun (var, _, _) ->
@@ -308,38 +294,29 @@ module Vars = struct
 
     let get t var =
       match get_opt t var with
-      | Some s ->
-        s
-      | None ->
-        fail "Variable %S not found." var
+      | Some s -> s
+      | None -> fail "Variable %S not found." var
 
     let get_bool t ?(default = false) var =
       match get_opt t var with
-      | None ->
-        default
+      | None -> default
       | Some s -> (
         match s with
-        | "true" ->
-          true
-        | "false" ->
-          false
-        | s ->
-          fail "Value of %S is neither 'true' neither 'false': %s." var s )
+        | "true" -> true
+        | "false" -> false
+        | s -> fail "Value of %S is neither 'true' neither 'false': %s." var s
+        )
 
     let get_int_opt t var =
       Option.bind (get_opt t var) ~f:(fun s ->
         match int_of_string s with
-        | x ->
-          Some x
-        | exception _ ->
-          fail "Value of %S is not an integer: %s." var s)
+        | x -> Some x
+        | exception _ -> fail "Value of %S is not an integer: %s." var s)
 
     let get_words t var =
       match get_opt t var with
-      | None ->
-        []
-      | Some s ->
-        String.extract_blank_separated_words s
+      | None -> []
+      | Some s -> String.extract_blank_separated_words s
 
     let get_prog_or_dummy t var =
       Option.map (get_opt t var) ~f:(fun v ->
@@ -348,15 +325,12 @@ module Vars = struct
           { prog = Printf.sprintf "%s-not-found-in-ocaml-config" var
           ; args = []
           }
-        | Some s ->
-          s)
+        | Some s -> s)
 
     let get_prog_or_dummy_exn t var =
       match get_prog_or_dummy t var with
-      | None ->
-        fail "Variable %S not found." var
-      | Some s ->
-        s
+      | None -> fail "Variable %S not found." var
+      | Some s -> s
   end
 
   module Ocamlc_config_getters = Getters (struct
@@ -371,14 +345,11 @@ let get_arch_sixtyfour stdlib_dir =
     if Sys.file_exists file then
       let rec loop ic =
         match input_line ic with
-        | exception End_of_file ->
-          false
+        | exception End_of_file -> false
         | line -> (
           match String.extract_blank_separated_words line with
-          | [ "#define"; "ARCH_SIXTYFOUR" ] ->
-            true
-          | _ ->
-            loop ic )
+          | [ "#define"; "ARCH_SIXTYFOUR" ] -> true
+          | _ -> loop ic )
       in
       Exn.protectx (open_in file) ~finally:close_in ~f:loop
     else
@@ -428,8 +399,7 @@ let make vars =
     let asm = get_prog_or_dummy_exn vars "asm" in
     let word_size =
       match get_int_opt vars "word_size" with
-      | Some n ->
-        n
+      | Some n -> n
       | None ->
         if get_arch_sixtyfour standard_library then
           64
@@ -438,10 +408,8 @@ let make vars =
     in
     let int_size =
       match get_int_opt vars "int_size" with
-      | Some n ->
-        n
-      | None ->
-        word_size - 1
+      | Some n -> n
+      | None -> word_size - 1
     in
     let ext_obj = get vars "ext_obj" in
     let ext_asm = get vars "ext_asm" in
@@ -449,8 +417,7 @@ let make vars =
     let ext_dll = get vars "ext_dll" in
     let ext_exe =
       match get_opt vars "exe_ext" with
-      | Some s ->
-        s
+      | Some s -> s
       | None ->
         if os_type = "Win32" then
           ".exe"
@@ -540,7 +507,5 @@ let make vars =
     ; windows_unicode
     }
   with
-  | t ->
-    Ok t
-  | exception Vars.E (origin, msg) ->
-    Error (origin, msg)
+  | t -> Ok t
+  | exception Vars.E (origin, msg) -> Error (origin, msg)

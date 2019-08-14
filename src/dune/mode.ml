@@ -11,7 +11,9 @@ let decode =
   let open Dune_lang.Decoder in
   enum [ ("byte", Byte); ("native", Native) ]
 
-let choose byte native = function Byte -> byte | Native -> native
+let choose byte native = function
+  | Byte -> byte
+  | Native -> native
 
 let to_string = choose "byte" "native"
 
@@ -33,7 +35,11 @@ let cm_kind = choose Cm_kind.Cmo Cmx
 
 let exe_ext = choose ".bc" ".exe"
 
-let of_cm_kind : Cm_kind.t -> t = function Cmi | Cmo -> Byte | Cmx -> Native
+let of_cm_kind : Cm_kind.t -> t = function
+  | Cmi
+   |Cmo ->
+    Byte
+  | Cmx -> Native
 
 module Dict = struct
   type 'a t =
@@ -47,7 +53,9 @@ module Dict = struct
     let open Dyn.Encoder in
     record [ ("byte", to_dyn byte); ("native", to_dyn native) ]
 
-  let get t = function Byte -> t.byte | Native -> t.native
+  let get t = function
+    | Byte -> t.byte
+    | Native -> t.native
 
   let of_func f = { byte = f ~mode:Byte; native = f ~mode:Native }
 

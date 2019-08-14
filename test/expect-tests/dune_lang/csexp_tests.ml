@@ -7,8 +7,7 @@ let () = init ()
 let roundtrip x =
   let str = to_string x in
   match parse (Stream.of_string str) with
-  | Result.Error e ->
-    failwith e
+  | Result.Error e -> failwith e
   | Result.Ok exp ->
     assert (Sexp.compare exp x = Ordering.Eq);
     print (Pp.text str)

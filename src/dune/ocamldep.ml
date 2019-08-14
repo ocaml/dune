@@ -20,12 +20,12 @@ let parse_deps_exn ~file lines =
       ]
   in
   match lines with
-  | [] | _ :: _ :: _ ->
+  | []
+   |_ :: _ :: _ ->
     invalid ()
   | [ line ] -> (
     match String.lsplit2 line ~on:':' with
-    | None ->
-      invalid ()
+    | None -> invalid ()
     | Some (basename, deps) ->
       let basename = Filename.basename basename in
       if basename <> Path.basename file then invalid ();
@@ -58,10 +58,8 @@ let interpret_deps cctx ~unit deps =
               (Module_name.to_string main_module_name)
           ]);
   match Modules.alias_for modules unit with
-  | None ->
-    deps
-  | Some m ->
-    m :: deps
+  | None -> deps
+  | Some m -> m :: deps
 
 let deps_of ~cctx ~ml_kind unit =
   let modules = Compilation_context.modules cctx in

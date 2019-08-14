@@ -11,8 +11,7 @@ let make ~dir ~per_module = { dir; per_module }
 
 let deps_of t (m : Module.t) =
   match Module.Obj_map.find t.per_module m with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     Code_error.raise "Ocamldep.Dep_graph.deps_of"
       [ ("dir", Path.Build.to_dyn t.dir)
@@ -29,8 +28,7 @@ let top_closed t modules =
   >>^ fun per_module ->
   let per_module = Module.Obj_map.of_list_exn per_module in
   match Module.Obj_map.top_closure per_module modules with
-  | Ok modules ->
-    modules
+  | Ok modules -> modules
   | Error cycle ->
     User_error.raise
       [ Pp.textf "dependency cycle between modules in %s:"

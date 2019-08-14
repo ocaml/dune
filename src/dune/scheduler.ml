@@ -26,12 +26,9 @@ module Signal = struct
   let all = [ Int; Quit; Term ]
 
   let to_int = function
-    | Int ->
-      Sys.sigint
-    | Quit ->
-      Sys.sigquit
-    | Term ->
-      Sys.sigterm
+    | Int -> Sys.sigint
+    | Quit -> Sys.sigquit
+    | Term -> Sys.sigterm
 
   let of_int =
     List.map all ~f:(fun t -> (to_int t, t))
@@ -382,23 +379,22 @@ end = struct
       | Some (Zombie status) ->
         Table.remove table job.pid;
         Event.send_job_completed job status
-      | Some (Running _) ->
-        assert false
+      | Some (Running _) -> assert false
 
     let remove ~pid status =
       match Table.find table pid with
-      | None ->
-        Table.set table pid (Zombie status)
+      | None -> Table.set table pid (Zombie status)
       | Some (Running job) ->
         decr running_count;
         Table.remove table pid;
         Event.send_job_completed job status
-      | Some (Zombie _) ->
-        assert false
+      | Some (Zombie _) -> assert false
 
     let iter ~f =
       Table.iter table ~f:(fun data ->
-        match data with Running job -> f job | Zombie _ -> ())
+        match data with
+        | Running job -> f job
+        | Zombie _ -> ())
 
     let running_count () = !running_count
   end
@@ -498,7 +494,9 @@ end = struct
       let signal = wait_signal () in
       Event.send_signal signal;
       match signal with
-      | Int | Quit | Term ->
+      | Int
+       |Quit
+       |Term ->
         let now = Unix.gettimeofday () in
         Queue.push now last_exit_signals;
         (* Discard old signals *)
@@ -541,8 +539,7 @@ let status_line_generator =
 let update_status_line () =
   let gen_status_line = !status_line_generator () in
   match gen_status_line with
-  | { message = None; _ } ->
-    Console.clear_status_line ()
+  | { message = None; _ } -> Console.clear_status_line ()
   | { message = Some status_line; show_jobs } ->
     let status_line =
       if show_jobs then
@@ -603,8 +600,7 @@ let kill_and_wait_for_all_processes t () =
     | Signal signal ->
       got_signal signal;
       saw_signal := Got_signal
-    | _ ->
-      ()
+    | _ -> ()
   done;
   !saw_signal
 
@@ -621,18 +617,16 @@ let prepare ?(config = Config.default) () =
       ( if Config.inside_dune then
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
-          | None | Some "" ->
+          | None
+           |Some "" ->
             None
-          | Some s ->
-            Some (String.drop s 1)
+          | Some s -> Some (String.drop s 1)
         in
         match descendant_simple cwd ~of_:initial_cwd with
-        | Some s ->
-          s
+        | Some s -> s
         | None -> (
           match descendant_simple initial_cwd ~of_:cwd with
-          | None ->
-            cwd
+          | None -> cwd
           | Some s ->
             let rec loop acc dir =
               if dir = Filename.current_dir_name then
@@ -645,7 +639,10 @@ let prepare ?(config = Config.default) () =
         cwd );
   let t =
     { original_cwd = cwd
-    ; concurrency = (match config.concurrency with Auto -> 1 | Fixed n -> n)
+    ; concurrency =
+      ( match config.concurrency with
+      | Auto -> 1
+      | Fixed n -> n )
     ; waiting_for_available_job = Queue.create ()
     }
   in
@@ -679,8 +676,7 @@ end = struct
         let* () = Fiber.Ivar.fill job.ivar status in
         let* () = restart_waiting_for_available_job t in
         pump_events t
-      | Files_changed ->
-        Fiber.return Files_changed
+      | Files_changed -> Fiber.return Files_changed
       | Signal signal ->
         got_signal signal;
         Fiber.return Got_signal
@@ -705,19 +701,14 @@ end = struct
     with
     | exception Fiber.Never ->
       Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
-    | exception exn ->
-      Error (Exn (exn, Printexc.get_raw_backtrace ()))
+    | exception exn -> Error (Exn (exn, Printexc.get_raw_backtrace ()))
     | a, b -> (
       let b = Fiber.Future.peek b in
       match (a, b) with
-      | Done, None ->
-        Error Never
-      | Done, Some res ->
-        Ok res
-      | Got_signal, _ ->
-        Error Got_signal
-      | Files_changed, _ ->
-        Error Files_changed )
+      | Done, None -> Error Never
+      | Done, Some res -> Ok res
+      | Got_signal, _ -> Error Got_signal
+      | Files_changed, _ -> Error Files_changed )
 
   let run_and_cleanup t f =
     let res = run t f in
@@ -731,26 +722,19 @@ end = struct
                (Pp.verbatim ", killing current build..."))
         ; show_jobs = false
         })
-    | _ ->
-      () );
+    | _ -> () );
     match kill_and_wait_for_all_processes t () with
-    | Got_signal ->
-      Error Got_signal
-    | Ok ->
-      res
+    | Got_signal -> Error Got_signal
+    | Ok -> res
 end
 
 let go ?config f =
   let t = prepare ?config () in
   match Run_once.run_and_cleanup t f with
-  | Error (Exn (exn, bt)) ->
-    Exn.raise_with_backtrace exn bt
-  | Ok res ->
-    res
-  | Error Got_signal ->
-    raise Report_error.Already_reported
-  | Error Never ->
-    raise Fiber.Never
+  | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
+  | Ok res -> res
+  | Error Got_signal -> raise Report_error.Already_reported
+  | Error Never -> raise Fiber.Never
   | Error Files_changed ->
     Code_error.raise
       "Scheduler.go: files changed even though we're running without \
@@ -764,13 +748,10 @@ type exit_or_continue =
 let maybe_clear_screen ~config =
   match
     match config with
-    | Some cfg ->
-      cfg.Config.terminal_persistence
-    | None ->
-      Preserve
+    | Some cfg -> cfg.Config.terminal_persistence
+    | None -> Preserve
   with
-  | Clear_on_rebuild ->
-    Console.reset_terminal ()
+  | Clear_on_rebuild -> Console.reset_terminal ()
   | Preserve ->
     Console.print_user_message
       (User_message.make
@@ -785,10 +766,8 @@ let poll ?config ~once ~finally () =
   let watcher = File_watcher.create () in
   let block_waiting_for_changes () =
     match Event.next () with
-    | Job_completed _ ->
-      assert false
-    | Files_changed ->
-      Continue
+    | Job_completed _ -> assert false
+    | Files_changed -> Continue
     | Signal signal ->
       got_signal signal;
       Exit
@@ -812,26 +791,19 @@ let poll ?config ~once ~finally () =
     | Ok () ->
       wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
       |> after_wait
-    | Error Got_signal ->
-      (Report_error.Already_reported, None)
+    | Error Got_signal -> (Report_error.Already_reported, None)
     | Error Never ->
       wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
-    | Error Files_changed ->
-      loop ()
-    | Error (Exn (exn, bt)) ->
-      (exn, Some bt)
+    | Error Files_changed -> loop ()
+    | Error (Exn (exn, bt)) -> (exn, Some bt)
   and after_wait = function
-    | Exit ->
-      (Report_error.Already_reported, None)
-    | Continue ->
-      loop ()
+    | Exit -> (Report_error.Already_reported, None)
+    | Continue -> loop ()
   in
   let exn, bt = loop () in
   ignore (wait_for_process (File_watcher.pid watcher) : _ Fiber.t);
   ignore (kill_and_wait_for_all_processes t () : saw_signal);
   match bt with
-  | None ->
-    Exn.raise exn
-  | Some bt ->
-    Exn.raise_with_backtrace exn bt
+  | None -> Exn.raise exn
+  | Some bt -> Exn.raise_with_backtrace exn bt

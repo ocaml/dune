@@ -6,7 +6,9 @@ module T2 = struct
   let hash f g (a, b) = Hashtbl.hash (f a, g b)
 
   let compare f g (a1, b1) (a2, b2) =
-    match f a1 a2 with (Ordering.Lt | Gt) as x -> x | Eq -> g b1 b2
+    match f a1 a2 with
+    | (Ordering.Lt | Gt) as x -> x
+    | Eq -> g b1 b2
 
   let swap (x, y) = (y, x)
 end

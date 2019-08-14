@@ -43,8 +43,7 @@ end = struct
     let to_string { pps; project_root } =
       let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
       match project_root with
-      | None ->
-        s
+      | None -> s
       | Some dir ->
         sprintf "%s (in project: %s)" s
           (Path.Source.to_string_maybe_quoted dir)
@@ -61,21 +60,18 @@ end = struct
             let info = Lib.info lib in
             let status = Lib_info.status info in
             match status with
-            | Private scope_name ->
-              Some scope_name
-            | Public _ | Installed ->
+            | Private scope_name -> Some scope_name
+            | Public _
+             |Installed ->
               None
           in
           match (acc, scope_for_key) with
           | Some a, Some b ->
             assert (Dune_project.equal a b);
             acc
-          | Some _, None ->
-            acc
-          | None, Some _ ->
-            scope_for_key
-          | None, None ->
-            None)
+          | Some _, None -> acc
+          | None, Some _ -> scope_for_key
+          | None, None -> None)
       in
       { pps; project_root = Option.map project ~f:Dune_project.root }
   end
@@ -101,8 +97,7 @@ end = struct
 
   let decode y =
     match Table.find reverse_table y with
-    | Some x ->
-      x
+    | Some x -> x
     | None ->
       User_error.raise
         [ Pp.textf "I don't know what ppx rewriters set %s correspond to."
@@ -205,8 +200,7 @@ module Driver = struct
                   [ Pp.textf "%S is not a %s" (Lib_name.to_string name)
                     (desc ~plural:false)
                   ]))
-          | Some t ->
-            Ok t))
+          | Some t -> Ok t))
       }
 
     let encode t =
@@ -247,29 +241,24 @@ module Driver = struct
 
   let select libs ~loc =
     match select_replaceable_backend libs ~replaces with
-    | Ok _ as x ->
-      x
+    | Ok _ as x -> x
     | Error No_backend_found ->
       let msg =
         match libs with
-        | [] ->
-          "You must specify at least one ppx rewriter."
+        | [] -> "You must specify at least one ppx rewriter."
         | _ -> (
           match
             List.filter_map libs ~f:(fun lib ->
               match Lib_name.to_string (Lib.name lib) with
               | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s ->
                 Some s
-              | _ ->
-                None)
+              | _ -> None)
           with
           | [] ->
             let pps =
               match loc with
-              | User_file (_, pps) ->
-                List.map pps ~f:snd
-              | Dot_ppx (_, pps) ->
-                pps
+              | User_file (_, pps) -> List.map pps ~f:snd
+              | Dot_ppx (_, pps) -> pps
             in
             sprintf
               "No ppx driver were found. It seems that %s %s not compatible \
@@ -277,7 +266,9 @@ module Driver = struct
                Dune are ones using ocaml-migrate-parsetree, ppxlib or \
                ppx_driver."
               (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-              (match pps with [ _ ] -> "is" | _ -> "are")
+              ( match pps with
+              | [ _ ] -> "is"
+              | _ -> "are" )
           | names ->
             sprintf
               "No ppx driver were found.\n\
@@ -290,8 +281,7 @@ module Driver = struct
         (sprintf "Too many incompatible ppx drivers were found: %s."
           (String.enumerate_and
             (List.map ts ~f:(fun t -> Lib_name.to_string (Lib.name (lib t))))))
-    | Error (Other exn) ->
-      Error exn
+    | Error (Other exn) -> Error exn
 end
 
 let ppx_exe sctx ~key =
@@ -314,8 +304,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
        | None ->
          let+ driver = Driver.select pps ~loc:(Dot_ppx (target, pp_names)) in
          (driver, pps)
-       | Some driver ->
-         Ok (driver, pps))
+       | Some driver -> Ok (driver, pps))
   in
   (* CR-someday diml: what we should do is build the .cmx/.cmo once and for all
     at the point where the driver is defined. *)
@@ -361,8 +350,7 @@ let get_rules sctx key =
         let { Key.Decoded.pps; project_root } = Key.decode key in
         let lib_db =
           match project_root with
-          | None ->
-            SC.public_libs sctx
+          | None -> SC.public_libs sctx
           | Some dir ->
             let dir =
               Path.Build.append_source (Super_context.build_dir sctx) dir
@@ -379,7 +367,9 @@ let get_rules sctx key =
   build_ppx_driver sctx ~pps ~pp_names ~dep_kind:Required ~target:exe
 
 let gen_rules sctx components =
-  match components with [ key ] -> get_rules sctx key | _ -> ()
+  match components with
+  | [ key ] -> get_rules sctx key
+  | _ -> ()
 
 let ppx_driver_exe sctx libs =
   let key = Digest.to_string (Key.Decoded.of_libs libs |> Key.encode) in
@@ -388,8 +378,7 @@ let ppx_driver_exe sctx libs =
 let get_cookies ~loc ~expander ~lib_name libs =
   let expander, library_name_cookie =
     match lib_name with
-    | None ->
-      (expander, None)
+    | None -> (expander, None)
     | Some lib_name ->
       let library_name = Lib_name.Local.to_string lib_name in
       let bindings =
@@ -404,15 +393,17 @@ let get_cookies ~loc ~expander ~lib_name libs =
       let info = Lib.info t in
       let kind = Lib_info.kind info in
       match kind with
-      | Normal ->
-        []
-      | Ppx_rewriter { cookies } | Ppx_deriver { cookies } ->
+      | Normal -> []
+      | Ppx_rewriter { cookies }
+       |Ppx_deriver { cookies } ->
         List.map
           ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
             (name, (Expander.expand_str expander value, Lib.name t)))
           cookies)
     |> (fun l ->
-      match library_name_cookie with None -> l | Some cookie -> cookie :: l)
+      match library_name_cookie with
+      | None -> l
+      | Some cookie -> cookie :: l)
     |> String.Map.of_list_reducei
       ~f:(fun name ((val1, lib1) as res) (val2, lib2) ->
         if String.equal val1 val2 then
@@ -475,16 +466,12 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   >>> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
   |> (fun action ->
     match target with
-    | None ->
-      action
-    | Some dst ->
-      action >>> Build.action_dyn () ~targets:[ dst ])
+    | None -> action
+    | Some dst -> action >>> Build.action_dyn () ~targets:[ dst ])
   >>^ fun action ->
   match target with
-  | None ->
-    action
-  | Some dst ->
-    Action.with_stdout_to dst action
+  | None -> action
+  | Some dst -> Action.with_stdout_to dst action
 
 (* Generate rules for the dialect modules in [modules] and return a a new
   module with only OCaml sources *)
@@ -492,8 +479,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun ml_kind f ->
     match Dialect.preprocess f.dialect ml_kind with
-    | None ->
-      ()
+    | None -> ()
     | Some (loc, action) ->
       let src = Path.as_in_build_dir_exn f.path in
       let dst =
@@ -512,8 +498,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
      in
      let lint =
        Per_module.map lint ~f:(function
-         | Preprocess.No_preprocessing ->
-           fun ~source:_ ~ast:_ -> ()
+         | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> ()
          | Future_syntax loc ->
            User_error.raise ~loc
              [ Pp.text "'compat' cannot be used as a linter" ]

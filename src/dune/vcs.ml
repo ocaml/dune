@@ -13,7 +13,12 @@ module Kind = struct
     else
       None
 
-  let to_dyn t = Dyn.Variant ((match t with Git -> "Git" | Hg -> "Hg"), [])
+  let to_dyn t =
+    Dyn.Variant
+      ( ( match t with
+        | Git -> "Git"
+        | Hg -> "Hg" )
+      , [] )
 
   let equal = ( = )
 
@@ -50,16 +55,21 @@ let git, hg =
   let get prog =
     lazy
       ( match Bin.which ~path:(Env.path Env.initial) prog with
-      | Some x ->
-        x
-      | None ->
-        Utils.program_not_found prog ~loc:None )
+      | Some x -> x
+      | None -> Utils.program_not_found prog ~loc:None )
   in
   (get "git", get "hg")
 
-let select git hg t = match t.kind with Git -> git t | Hg -> hg t
+let select git hg t =
+  match t.kind with
+  | Git -> git t
+  | Hg -> hg t
 
-let prog t = Lazy.force (match t.kind with Git -> git | Hg -> hg)
+let prog t =
+  Lazy.force
+    ( match t.kind with
+    | Git -> git
+    | Hg -> hg )
 
 let run t args =
   let open Fiber.O in
@@ -79,24 +89,18 @@ let hg_describe t =
   let+ id = run t [ "id"; "-i" ] in
   let id, dirty_suffix =
     match String.drop_suffix id ~suffix:"+" with
-    | Some id ->
-      (id, "-dirty")
-    | None ->
-      (id, "")
+    | Some id -> (id, "-dirty")
+    | None -> (id, "")
   in
   let s =
     let s, dist = Option.value_exn (String.rsplit2 s ~on:' ') in
     match s with
-    | "null" ->
-      id
+    | "null" -> id
     | _ -> (
       match int_of_string dist with
-      | 1 ->
-        s
-      | n ->
-        sprintf "%s-%d-%s" s (n - 1) id
-      | exception _ ->
-        sprintf "%s-%s-%s" s dist id )
+      | 1 -> s
+      | n -> sprintf "%s-%d-%s" s (n - 1) id
+      | exception _ -> sprintf "%s-%s-%s" s dist id )
   in
   s ^ dirty_suffix
 

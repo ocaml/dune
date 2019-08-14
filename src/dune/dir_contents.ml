@@ -42,10 +42,8 @@ let dir t = t.dir
 
 let dirs t =
   match t.kind with
-  | Standalone ->
-    [ t ]
-  | Group_root subs ->
-    t :: subs
+  | Standalone -> [ t ]
+  | Group_root subs -> t :: subs
   | Group_part ->
     Code_error.raise "Dir_contents.dirs called on a group part"
       [ ("dir", Path.Build.to_dyn t.dir) ]
@@ -74,8 +72,7 @@ let mlds t (doc : Documentation.t) =
     List.find_map map ~f:(fun (doc', x) ->
       Option.some_if (Loc.equal doc.loc doc'.loc) x)
   with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     Code_error.raise "Dir_contents.mlds"
       [ ("doc", Loc.to_dyn doc.loc)
@@ -102,19 +99,14 @@ let modules_of_files ~dialects ~dir ~files =
       match String.lsplit2 fn ~on:'.' with
       | Some (s, ext) -> (
         match Dialect.DB.find_by_extension dialects ("." ^ ext) with
-        | Some (dialect, Ml_kind.Impl) ->
-          Left (make_module dialect s fn)
-        | Some (dialect, Ml_kind.Intf) ->
-          Right (make_module dialect s fn)
-        | None ->
-          Skip )
-      | None ->
-        Skip)
+        | Some (dialect, Ml_kind.Impl) -> Left (make_module dialect s fn)
+        | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
+        | None -> Skip )
+      | None -> Skip)
   in
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with
-    | Ok x ->
-      x
+    | Ok x -> x
     | Error (name, f1, f2) ->
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
@@ -136,10 +128,8 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
     Memo.lazy_ (fun () ->
       String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
         match String.lsplit2 fn ~on:'.' with
-        | Some (s, "mld") ->
-          String.Map.set acc s fn
-        | _ ->
-          acc))
+        | Some (s, "mld") -> String.Map.set acc s fn
+        | _ -> acc))
   in
   List.filter_map d.data ~f:(function
     | Documentation doc ->
@@ -149,8 +139,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
           ~key:(fun x -> x)
           ~parse:(fun ~loc s ->
             match String.Map.find mlds s with
-            | Some s ->
-              s
+            | Some s -> s
             | None ->
               User_error.raise ~loc
                 [ Pp.textf "%s.mld doesn't exist in %s" s
@@ -160,8 +149,7 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
           ~standard:mlds
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
-    | _ ->
-      None)
+    | _ -> None)
 
 let coq_modules_of_files ~subdirs =
   let filter_v_files (dir, local, files) =
@@ -189,8 +177,7 @@ let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
     | Coq.T coq ->
       let modules = Coq_module.eval coq.modules ~dir ~standard:modules in
       Lib_name.Map.set map (Dune_file.Coq.best_name coq) modules
-    | _ ->
-      map)
+    | _ -> map)
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t
@@ -201,8 +188,7 @@ end = struct
     let info = Lib.info vlib in
     let modules =
       match Option.value_exn (Lib_info.virtual_ info) with
-      | External modules ->
-        modules
+      | External modules -> modules
       | Local ->
         let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
         let t = Load.get sctx ~dir:src_dir in
@@ -233,20 +219,18 @@ end = struct
                  [assert false]. *)
               let main_module_name =
                 match Library.main_module_name lib with
-                | This x ->
-                  x
-                | From _ ->
-                  assert false
+                | This x -> x
+                | From _ -> assert false
               in
               let wrapped =
-                match lib.wrapped with This x -> x | From _ -> assert false
+                match lib.wrapped with
+                | This x -> x
+                | From _ -> assert false
               in
               let kind : Modules_field_evaluator.kind =
                 match lib.virtual_modules with
-                | None ->
-                  Exe_or_normal_lib
-                | Some virtual_modules ->
-                  Virtual { virtual_modules }
+                | None -> Exe_or_normal_lib
+                | Some virtual_modules -> Virtual { virtual_modules }
               in
               (kind, main_module_name, wrapped)
             | Some _ ->
@@ -290,7 +274,8 @@ end = struct
           in
           Left
             (lib, Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped)
-        | Executables exes | Tests { exes; _ } ->
+        | Executables exes
+         |Tests { exes; _ } ->
           let modules =
             Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
               ~kind:Modules_field_evaluator.Exe_or_normal_lib
@@ -304,16 +289,14 @@ end = struct
               Modules.exe_unwrapped modules
           in
           Right (exes, modules)
-        | _ ->
-          Skip)
+        | _ -> Skip)
     in
     let libraries =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
           (Library.best_name lib, m))
       with
-      | Ok x ->
-        x
+      | Ok x -> x
       | Error (name, _, (lib2, _)) ->
         User_error.raise ~loc:lib2.buildable.loc
           [ Pp.textf "Library %S appears for the second time in this directory"
@@ -325,8 +308,7 @@ end = struct
         String.Map.of_list_map exes ~f:(fun (exes, m) ->
           (snd (List.hd exes.names), m))
       with
-      | Ok x ->
-        x
+      | Ok x -> x
       | Error (name, _, (exes2, _)) ->
         User_error.raise ~loc:exes2.buildable.loc
           [ Pp.textf
@@ -344,8 +326,7 @@ end = struct
           (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
       in
       match Module_name.Map.of_list rev_modules with
-      | Ok x ->
-        x
+      | Ok x -> x
       | Error (name, _, _) ->
         let open Module_name.Infix in
         let locs =
@@ -383,10 +364,8 @@ end = struct
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Coqpp.T { modules; _ } ->
-          List.map modules ~f:(fun m -> m ^ ".ml")
-        | Menhir.T menhir ->
-          Menhir_rules.targets menhir
+        | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
+        | Menhir.T menhir -> Menhir_rules.targets menhir
         | Rule rule ->
           Simple_rules.user_rule sctx rule ~dir ~expander
           |> Path.Build.Set.to_list
@@ -394,31 +373,27 @@ end = struct
         | Copy_files def ->
           Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
           |> Path.Set.to_list |> List.map ~f:Path.basename
-        | Library { buildable; _ } | Executables { buildable; _ } ->
+        | Library { buildable; _ }
+         |Executables { buildable; _ } ->
           (* Manually add files generated by the (select ...) dependencies *)
           List.filter_map buildable.libraries ~f:(fun dep ->
             match (dep : Dune_file.Lib_dep.t) with
-            | Direct _ ->
-              None
-            | Select s ->
-              Some s.result_fn)
-        | _ ->
-          [])
+            | Direct _ -> None
+            | Select s -> Some s.result_fn)
+        | _ -> [])
       |> String.Set.of_list
     in
     let used_in_select =
       List.concat_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
-        | Library { buildable; _ } | Executables { buildable; _ } ->
+        | Library { buildable; _ }
+         |Executables { buildable; _ } ->
           (* add files used by the (select ...) dependencies *)
           List.concat_map buildable.libraries ~f:(fun dep ->
             match (dep : Dune_file.Lib_dep.t) with
-            | Direct _ ->
-              []
-            | Select s ->
-              List.map s.choices ~f:(fun s -> s.Lib_dep.file))
-        | _ ->
-          [])
+            | Direct _ -> []
+            | Select s -> List.map s.choices ~f:(fun s -> s.Lib_dep.file))
+        | _ -> [])
       |> String.Set.of_list
     in
     let files =
@@ -494,7 +469,8 @@ end = struct
           ; rules
           ; subdirs = Path.Build.Map.empty
           }
-      | Some (_, None) | None ->
+      | Some (_, None)
+       |None ->
         Here
           { t =
             { kind = Standalone
@@ -517,14 +493,11 @@ end = struct
           { stanzas = d; group_root = _ } ->
           let files =
             match d with
-            | None ->
-              File_tree.Dir.files ft_dir
-            | Some d ->
-              load_text_files sctx ft_dir d
+            | None -> File_tree.Dir.files ft_dir
+            | Some d -> load_text_files sctx ft_dir d
           in
           walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
-        | _ ->
-          acc
+        | _ -> acc
       and walk_children ft_dir ~dir ~local acc =
         String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
           ~f:(fun name ft_dir acc ->
@@ -562,8 +535,7 @@ end = struct
                             Path.Source.relative
                               (File_tree.Dir.path ft_dir)
                               "_unknown_"
-                          | Some d ->
-                            File_tree.Dune_file.path d )))
+                          | Some d -> File_tree.Dune_file.path d )))
                     [ Pp.textf "Module %S appears in several directories:"
                       (Module_name.to_string name)
                     ; Pp.textf "- %s"
@@ -597,8 +569,7 @@ end = struct
                               Path.Source.relative
                                 (File_tree.Dir.path ft_dir)
                                 "_unknown_"
-                            | Some d ->
-                              File_tree.Dune_file.path d )))
+                            | Some d -> File_tree.Dune_file.path d )))
                       [ Pp.textf "%s file %s appears in several directories:"
                         (C.Kind.to_string (C.Source.kind x))
                           name
@@ -666,19 +637,15 @@ end = struct
 
   let get sctx ~dir =
     match Memo.exec memo0 (sctx, dir) with
-    | Here { t; rules = _; subdirs = _ } ->
-      t
+    | Here { t; rules = _; subdirs = _ } -> t
     | See_above group_root -> (
       match Memo.exec memo0 (sctx, group_root) with
-      | See_above _ ->
-        assert false
-      | Here { t; rules = _; subdirs = _ } ->
-        t )
+      | See_above _ -> assert false
+      | Here { t; rules = _; subdirs = _ } -> t )
 
   let gen_rules sctx ~dir =
     match Memo.exec memo0 (sctx, dir) with
-    | See_above group_root ->
-      Group_part group_root
+    | See_above group_root -> Group_part group_root
     | Here { t; rules; subdirs } ->
       Rules.produce_opt rules;
       Standalone_or_root (t, Path.Build.Map.values subdirs)

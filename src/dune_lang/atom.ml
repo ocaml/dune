@@ -13,22 +13,29 @@ let is_valid_dune =
     i = len
     ||
     match String.unsafe_get s i with
-    | '%' ->
-      after_percent s (i + 1) len
-    | '"' | '(' | ')' | ';' | '\000' .. '\032' | '\127' .. '\255' ->
+    | '%' -> after_percent s (i + 1) len
+    | '"'
+     |'('
+     |')'
+     |';'
+     |'\000' .. '\032'
+     |'\127' .. '\255' ->
       false
-    | _ ->
-      loop s (i + 1) len
+    | _ -> loop s (i + 1) len
   and after_percent s i len =
     i = len
     ||
     match String.unsafe_get s i with
-    | '%' ->
-      after_percent s (i + 1) len
-    | '"' | '(' | ')' | ';' | '\000' .. '\032' | '\127' .. '\255' | '{' ->
+    | '%' -> after_percent s (i + 1) len
+    | '"'
+     |'('
+     |')'
+     |';'
+     |'\000' .. '\032'
+     |'\127' .. '\255'
+     |'{' ->
       false
-    | _ ->
-      loop s (i + 1) len
+    | _ -> loop s (i + 1) len
   in
   fun s ->
     let len = String.length s in
@@ -40,7 +47,10 @@ let is_valid_jbuild str =
   &&
   let rec loop ix =
     match str.[ix] with
-    | '"' | '(' | ')' | ';' ->
+    | '"'
+     |'('
+     |')'
+     |';' ->
       true
     | '|' ->
       ix > 0
@@ -52,10 +62,13 @@ let is_valid_jbuild str =
       &&
       let next = ix - 1 in
       str.[next] = '|' || loop next
-    | ' ' | '\t' | '\n' | '\012' | '\r' ->
+    | ' '
+     |'\t'
+     |'\n'
+     |'\012'
+     |'\r' ->
       true
-    | _ ->
-      ix > 0 && loop (ix - 1)
+    | _ -> ix > 0 && loop (ix - 1)
   in
   not (loop (len - 1))
 
@@ -64,10 +77,8 @@ let of_string s = A s
 let to_string (A s) = s
 
 let is_valid (A t) = function
-  | File_syntax.Jbuild ->
-    is_valid_jbuild t
-  | Dune ->
-    is_valid_dune t
+  | File_syntax.Jbuild -> is_valid_jbuild t
+  | Dune -> is_valid_dune t
 
 let print (A atom as t) =
   if is_valid t Dune then

@@ -51,10 +51,8 @@ let runtime_file ~dir ~sctx file =
     | Ok path ->
       let path = Path.relative (Path.parent_exn path) file in
       Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
-    | _ ->
-      fail )
-  | Ok f ->
-    Build.arr (fun _ -> f)
+    | _ -> fail )
+  | Ok f -> Build.arr (fun _ -> f)
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
@@ -99,8 +97,7 @@ let jsoo_archives ~ctx lib =
   let info = Lib.info lib in
   let jsoo_archive = Lib_info.jsoo_archive info in
   match jsoo_archive with
-  | Some a ->
-    [ a ]
+  | Some a -> [ a ]
   | None ->
     let archives = Lib_info.archives info in
     List.map archives.byte ~f:(fun archive ->
@@ -151,14 +148,14 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
 let setup_separate_compilation_rules sctx components =
   if separate_compilation_enabled sctx then
     match components with
-    | [] | _ :: _ :: _ ->
+    | []
+     |_ :: _ :: _ ->
       ()
     | [ pkg ] -> (
       let pkg = Lib_name.of_string_exn ~loc:None pkg in
       let ctx = SC.context sctx in
       match Lib.DB.find (SC.installed_libs sctx) pkg with
-      | None ->
-        ()
+      | None -> ()
       | Some pkg ->
         let info = Lib.info pkg in
         let archives = (Lib_info.archives info).byte in
@@ -166,10 +163,8 @@ let setup_separate_compilation_rules sctx components =
           (* Special case for the stdlib because it is not referenced in the
             META *)
           match Lib_name.to_string (Lib.name pkg) with
-          | "stdlib" ->
-            Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
-          | _ ->
-            archives
+          | "stdlib" -> Path.relative ctx.stdlib_dir "stdlib.cma" :: archives
+          | _ -> archives
         in
         List.iter archives ~f:(fun fn ->
           let name = Path.basename fn in
@@ -201,7 +196,9 @@ let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags ~promote
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in
   let mode : Dune_file.Rule.Mode.t =
-    match promote with None -> Standard | Some p -> Promote p
+    match promote with
+    | None -> Standard
+    | Some p -> Promote p
   in
   if separate_compilation_enabled sctx then (
     SC.add_rule sctx ~dir

@@ -20,10 +20,8 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 
 let opens modules m =
   match Modules.alias_for modules m with
-  | None ->
-    Command.Args.S []
-  | Some (m : Module.t) ->
-    As [ "-open"; Module_name.to_string (Module.name m) ]
+  | None -> Command.Args.S []
+  | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx = CC.super_context cctx in
@@ -65,7 +63,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           | Cmo, None, false ->
             copy_interface ();
             ([], [], [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ])
-          | Cmo, None, true | (Cmo | Cmx), _, _ ->
+          | Cmo, None, true
+           |(Cmo | Cmx), _, _ ->
             ( force_read_cmi src
             , [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]
             , [] )
@@ -79,7 +78,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           Obj_dir.Module.obj_file obj_dir m ~kind:Cmx
             ~ext:ctx.lib_config.ext_obj
           :: other_targets
-        | Cmi | Cmo ->
+        | Cmi
+         |Cmo ->
           other_targets
       in
       let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
@@ -100,9 +100,9 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
       in
       let other_targets, cmt_args =
         match cm_kind with
-        | Cmx ->
-          (other_targets, Command.Args.S [])
-        | Cmi | Cmo ->
+        | Cmx -> (other_targets, Command.Args.S [])
+        | Cmi
+         |Cmo ->
           let fn =
             Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
           in
@@ -126,17 +126,16 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
         with
         | true, Cmi, true ->
           (ctx.build_dir, Command.Args.As [ "-no-keep-locs" ])
-        | true, Cmi, false ->
-          (Obj_dir.byte_dir obj_dir, As [])
+        | true, Cmi, false -> (Obj_dir.byte_dir obj_dir, As [])
         (* emulated -no-keep-locs *)
-        | true, (Cmo | Cmx), _ | false, _, _ ->
+        | true, (Cmo | Cmx), _
+         |false, _, _ ->
           (ctx.build_dir, As [])
       in
       let flags =
         let flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind in
         match Module.pp_flags m with
-        | None ->
-          flags
+        | None -> flags
         | Some pp ->
           Build.fanout flags pp >>^ fun (flags, pp_flags) -> flags @ pp_flags
       in
@@ -163,8 +162,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
              ; opens modules m
              ; As
                ( match stdlib with
-               | None ->
-                 []
+               | None -> []
                | Some _ ->
                  (* XXX why aren't these just normal library flags? *)
                  [ "-nopervasives"; "-nostdlib" ] )

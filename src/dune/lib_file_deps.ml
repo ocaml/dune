@@ -9,21 +9,15 @@ module Group = struct
   let all = [ Cmi; Cmx; Header ]
 
   let ext = function
-    | Cmi ->
-      Cm_kind.ext Cmi
-    | Cmx ->
-      Cm_kind.ext Cmx
-    | Header ->
-      C.header_ext
+    | Cmi -> Cm_kind.ext Cmi
+    | Cmx -> Cm_kind.ext Cmx
+    | Header -> C.header_ext
 
   let obj_dir t obj_dir =
     match t with
-    | Cmi ->
-      Obj_dir.public_cmi_dir obj_dir
-    | Cmx ->
-      Obj_dir.native_dir obj_dir
-    | Header ->
-      Obj_dir.dir obj_dir
+    | Cmi -> Obj_dir.public_cmi_dir obj_dir
+    | Cmx -> Obj_dir.native_dir obj_dir
+    | Header -> Obj_dir.dir obj_dir
 
   let to_predicate =
     let preds =

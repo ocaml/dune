@@ -15,12 +15,14 @@ module Context = struct
       | Native
       | Named of string
 
-    let t = map string ~f:(function "native" -> Native | s -> Named s)
+    let t =
+      map string ~f:(function
+        | "native" -> Native
+        | s -> Named s)
 
     let add ts x =
       match x with
-      | None ->
-        ts
+      | None -> ts
       | Some t ->
         if List.mem t ~set:ts then
           ts
@@ -68,8 +70,7 @@ module Context = struct
           match
             Env.Map.of_list (List.map ~f:(fun ((loc, s), _) -> (s, loc)) l)
           with
-          | Ok _ ->
-            List.map ~f:(fun ((_, s), x) -> (s, x)) l
+          | Ok _ -> List.map ~f:(fun ((_, s), x) -> (s, x)) l
           | Error (var, _, loc) ->
             User_error.raise ~loc
               [ Pp.textf
@@ -83,8 +84,7 @@ module Context = struct
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
         match targets with
-        | [ Target.Native ] ->
-          ()
+        | [ Target.Native ] -> ()
         | _ ->
           User_error.raise ~loc
             [ Pp.text
@@ -136,10 +136,13 @@ module Context = struct
     | Default of Default.t
     | Opam of Opam.t
 
-  let loc = function Default x -> x.loc | Opam x -> x.base.loc
+  let loc = function
+    | Default x -> x.loc
+    | Opam x -> x.base.loc
 
   let host_context = function
-    | Default { host_context; _ } | Opam { base = { host_context; _ }; _ } ->
+    | Default { host_context; _ }
+     |Opam { base = { host_context; _ }; _ } ->
       host_context
 
   let t ~profile ~x =
@@ -148,20 +151,24 @@ module Context = struct
       ; ("opam", fields (Opam.t ~profile ~x) >>| fun x -> Opam x)
       ]
 
-  let env = function Default d -> d.env | Opam o -> o.base.env
+  let env = function
+    | Default d -> d.env
+    | Opam o -> o.base.env
 
-  let name = function Default d -> d.name | Opam o -> o.base.name
+  let name = function
+    | Default d -> d.name
+    | Opam o -> o.base.name
 
-  let targets = function Default x -> x.targets | Opam x -> x.base.targets
+  let targets = function
+    | Default x -> x.targets
+    | Opam x -> x.base.targets
 
   let all_names t =
     let n = name t in
     n
     :: List.filter_map (targets t) ~f:(function
-      | Native ->
-        None
-         | Named s ->
-           Some (n ^ "." ^ s))
+      | Native -> None
+        | Named s -> Some (n ^ "." ^ s))
 
   let default ?x ?profile () =
     Default
@@ -191,8 +198,7 @@ let () = Lang.register syntax ()
 let bad_configuration_check map =
   let find_exn loc name host =
     match String.Map.find map host with
-    | Some host_ctx ->
-      host_ctx
+    | Some host_ctx -> host_ctx
     | None ->
       User_error.raise ~loc
         [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
@@ -218,17 +224,13 @@ let top_sort contexts =
   let map = String.Map.of_list_map_exn contexts ~f:(fun x -> (key x, x)) in
   let deps def =
     match Context.host_context def with
-    | None ->
-      []
-    | Some ctx ->
-      [ String.Map.find_exn map ctx ]
+    | None -> []
+    | Some ctx -> [ String.Map.find_exn map ctx ]
   in
   bad_configuration_check map;
   match Top_closure.String.top_closure ~key ~deps contexts with
-  | Ok topo_contexts ->
-    topo_contexts
-  | Error _ ->
-    assert false
+  | Ok topo_contexts -> topo_contexts
+  | Error _ -> assert false
 
 let t ?x ?profile:cmdline_profile () =
   let* () = Versioned_file.no_more_lang in
@@ -250,29 +252,22 @@ let t ?x ?profile:cmdline_profile () =
       | Opam { merlin = true; _ }, Some _ ->
         User_error.raise ~loc:(Context.loc ctx)
           [ Pp.text "you can only have one context for merlin" ]
-      | Opam { merlin = true; _ }, None ->
-        Some name
-      | _ ->
-        acc)
+      | Opam { merlin = true; _ }, None -> Some name
+      | _ -> acc)
   in
   let contexts =
     match contexts with
-    | [] ->
-      [ Context.default ?x ~profile () ]
-    | _ ->
-      contexts
+    | [] -> [ Context.default ?x ~profile () ]
+    | _ -> contexts
   in
   let merlin_context =
     match merlin_context with
-    | Some _ ->
-      merlin_context
+    | Some _ -> merlin_context
     | None ->
       if
         List.exists contexts ~f:(function
-          | Context.Default _ ->
-            true
-          | _ ->
-            false)
+          | Context.Default _ -> true
+          | _ -> false)
       then
         Some "default"
       else

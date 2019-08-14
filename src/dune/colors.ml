@@ -6,7 +6,9 @@ open Import
    it via specific environment variables if stderr supports colors. *)
 let setup_env_for_colors env =
   let set env var value =
-    Env.update env ~var ~f:(function None -> Some value | Some s -> Some s)
+    Env.update env ~var ~f:(function
+      | None -> Some value
+      | Some s -> Some s)
   in
   let env = set env "OPAMCOLOR" "always" in
   let env = set env "OCAML_COLOR" "always" in
@@ -18,32 +20,21 @@ module Style = struct
   let to_styles = User_message.Print_config.default
 
   let of_string = function
-    | "loc" ->
-      Some Loc
-    | "error" ->
-      Some Error
-    | "warning" ->
-      Some Warning
-    | "kwd" ->
-      Some Kwd
-    | "id" ->
-      Some Id
-    | "prompt" ->
-      Some Prompt
-    | "details" ->
-      Some Details
-    | "ok" ->
-      Some Ok
-    | "debug" ->
-      Some Debug
-    | _ ->
-      None
+    | "loc" -> Some Loc
+    | "error" -> Some Error
+    | "warning" -> Some Warning
+    | "kwd" -> Some Kwd
+    | "id" -> Some Id
+    | "prompt" -> Some Prompt
+    | "details" -> Some Details
+    | "ok" -> Some Ok
+    | "debug" -> Some Debug
+    | _ -> None
 end
 
 let mark_open_tag s =
   match Style.of_string s with
-  | Some style ->
-    Ansi_color.Style.escape_sequence (Style.to_styles style)
+  | Some style -> Ansi_color.Style.escape_sequence (Style.to_styles style)
   | None ->
     if s <> "" && s.[0] = '\027' then
       s

@@ -7,10 +7,8 @@ module Version = struct
 
     let compare (major_a, minor_a) (major_b, minor_b) =
       match Int.compare major_a major_b with
-      | (Gt | Lt) as ne ->
-        ne
-      | Eq ->
-        Int.compare minor_a minor_b
+      | (Gt | Lt) as ne -> ne
+      | Eq -> Int.compare minor_a minor_b
 
     let to_dyn t =
       let open Dyn.Encoder in
@@ -58,10 +56,8 @@ module Supported_versions = struct
 
   let is_supported t (major, minor) =
     match Int.Map.find t major with
-    | Some minor' ->
-      minor' >= minor
-    | None ->
-      false
+    | Some minor' -> minor' >= minor
+    | None -> false
 
   let supported_ranges t =
     Int.Map.to_list t
@@ -142,8 +138,7 @@ let set t ver parser = set t.key ver parser
 let get_exn t =
   get t.key
   >>= function
-  | Some x ->
-    return x
+  | Some x -> return x
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"
@@ -155,14 +150,10 @@ let get_exn t =
 let desc () =
   let+ kind = kind in
   match kind with
-  | Values (loc, None) ->
-    (loc, "This syntax")
-  | Fields (loc, None) ->
-    (loc, "This field")
-  | Values (loc, Some s) ->
-    (loc, sprintf "'%s'" s)
-  | Fields (loc, Some s) ->
-    (loc, sprintf "Field '%s'" s)
+  | Values (loc, None) -> (loc, "This syntax")
+  | Fields (loc, None) -> (loc, "This field")
+  | Values (loc, Some s) -> (loc, sprintf "'%s'" s)
+  | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
 
 let deleted_in t ver =
   let open Version.Infix in
@@ -199,8 +190,7 @@ let since ?(fatal = true) t ver =
   else
     desc ()
     >>= function
-    | loc, what when fatal ->
-      Error.since loc t ver ~what
+    | loc, what when fatal -> Error.since loc t ver ~what
     | loc, what ->
       User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];
       return ()

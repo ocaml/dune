@@ -58,16 +58,16 @@ let package_fields
   let optional =
     [ ("synopsis", synopsis); ("description", description) ]
     |> List.filter_map ~f:(fun (k, v) ->
-      match v with None -> None | Some v -> Some (k, string v))
+      match v with
+      | None -> None
+      | Some v -> Some (k, string v))
   in
   let dep_fields =
     [ ("depends", depends); ("conflicts", conflicts); ("depopts", depopts) ]
     |> List.filter_map ~f:(fun (k, v) ->
       match v with
-      | [] ->
-        None
-      | _ :: _ ->
-        Some (k, list Package.Dependency.opam_depend v))
+      | [] -> None
+      | _ :: _ -> Some (k, list Package.Dependency.opam_depend v))
   in
   let fields = [ optional; dep_fields ] in
   let fields =
@@ -122,7 +122,9 @@ let opam_fields project (package : Package.t) =
     ; ("authors", Dune_project.authors project)
     ]
     |> List.filter_map ~f:(fun (k, v) ->
-      match v with [] -> None | _ :: _ -> Some (k, string_list v))
+      match v with
+      | [] -> None
+      | _ :: _ -> Some (k, string_list v))
   in
   let fields =
     [ ("opam-version", string "2.0"); ("build", default_build_command project) ]
@@ -152,10 +154,8 @@ let add_rule sctx ~project ~pkg =
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
     ( match opam_template sctx ~pkg with
-    | Some p ->
-      Build.contents (Path.build p)
-    | None ->
-      Build.return "" )
+    | Some p -> Build.contents (Path.build p)
+    | None -> Build.return "" )
     >>> Build.arr (fun template ->
       let opam_path = Path.build opam_path in
       let opamfile =
@@ -195,4 +195,6 @@ let add_rules sctx ~dir =
   if Dune_project.generate_opam_files project then
     Dune_project.packages project
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-      match pkg.kind with Dune _ -> add_rule sctx ~project ~pkg | Opam -> ())
+      match pkg.kind with
+      | Dune _ -> add_rule sctx ~project ~pkg
+      | Opam -> ())

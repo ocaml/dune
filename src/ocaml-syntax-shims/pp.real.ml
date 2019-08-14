@@ -16,7 +16,11 @@ module Wrap_lexer = struct
     lexbuf.lex_curr_p <- loc.loc_end
 
   let encode_op (tok : Parser.token) op =
-    (match tok with LET -> "let__" | AND -> "and__" | _ -> assert false) ^ op
+    ( match tok with
+    | LET -> "let__"
+    | AND -> "and__"
+    | _ -> assert false )
+    ^ op
 
   let pending = Queue.create ()
 
@@ -37,10 +41,8 @@ module Wrap_lexer = struct
       | (LET | AND) as tok ->
         let loc = save_loc lb in
         ( match Let_trail.op lb with
-        | None ->
-          ()
-        | Some op ->
-          register_custom_operator tok op loc (save_loc lb) );
+        | None -> ()
+        | Some op -> register_custom_operator tok op loc (save_loc lb) );
         restore_loc lb loc;
         tok
       | LPAREN ->
@@ -49,7 +51,8 @@ module Wrap_lexer = struct
         let loc2 = save_loc lb in
         let tok, loc =
           match tok2 with
-          | LET | AND -> (
+          | LET
+           |AND -> (
             match Let_trail.op lb with
             | None ->
               add (tok2, loc2);
@@ -72,8 +75,7 @@ module Wrap_lexer = struct
         in
         restore_loc lb loc;
         tok
-      | tok ->
-        tok
+      | tok -> tok
 
   let () = Lexer.set_preprocessor (fun () -> Queue.clear pending) wrap
 end
@@ -86,10 +88,8 @@ module Map_ast = struct
 
   let get_op vb =
     match Hashtbl.find custom_operators vb.pvb_loc.loc_start with
-    | exception Not_found ->
-      None
-    | loc, op ->
-      Some (Exp.ident ~loc { txt = Lident op; loc })
+    | exception Not_found -> None
+    | loc, op -> Some (Exp.ident ~loc { txt = Lident op; loc })
 
   let mapper =
     let super = default_mapper in
@@ -98,8 +98,7 @@ module Map_ast = struct
         match expr.pexp_desc with
         | Pexp_let (rf, (vb :: _ as vbs), body) -> (
           match get_op vb with
-          | None ->
-            expr
+          | None -> expr
           | Some op ->
             if rf = Recursive then
               Location.raise_errorf ~loc:expr.pexp_loc
@@ -114,8 +113,7 @@ module Map_ast = struct
                   vb
                 in
                 ( match attrs with
-                | [] ->
-                  ()
+                | [] -> ()
                 | ({ loc; _ }, _) :: _ ->
                   Location.raise_errorf ~loc "This attribute will be discarded"
                 );
@@ -167,8 +165,7 @@ module Map_ast = struct
             List.fold_right2 pvars exprs ~init:body
               ~f:(fun var (loc, _, expr) acc ->
                 Exp.let_ Nonrecursive ~loc [ Vb.mk ~loc var expr ] acc) )
-        | _ ->
-          expr
+        | _ -> expr
       in
       super.expr self expr
     in
@@ -203,8 +200,7 @@ let process_file fn ~magic ~parse ~print ~map ~mk_ext =
           Location.report_error Format.err_formatter error;
           exit 1
         )
-      | None ->
-        raise exn )
+      | None -> raise exn )
   in
   if !dump_ast then (
     set_binary_mode_out stdout true;
@@ -218,10 +214,8 @@ let process_file fn ~magic ~parse ~print ~map ~mk_ext =
 let process_file fn =
   let ext =
     match String.rindex fn '.' with
-    | exception Not_found ->
-      ""
-    | i ->
-      String.sub fn ~pos:i ~len:(String.length fn - i)
+    | exception Not_found -> ""
+    | i -> String.sub fn ~pos:i ~len:(String.length fn - i)
   in
   match ext with
   | ".ml" ->

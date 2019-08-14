@@ -6,7 +6,9 @@ type t =
 let capture exn = { exn; backtrace = Printexc.get_raw_backtrace () }
 
 let try_with f =
-  match f () with r -> Result.Ok r | exception exn -> Error (capture exn)
+  match f () with
+  | r -> Result.Ok r
+  | exception exn -> Error (capture exn)
 
 let reraise { exn; backtrace } = Exn.raise_with_backtrace exn backtrace
 

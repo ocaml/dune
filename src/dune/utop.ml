@@ -33,8 +33,7 @@ let libs_under_dir sctx ~db ~dir =
           (File_tree.Dir.path dir)
       in
       match Super_context.stanzas_in sctx ~dir with
-      | None ->
-        acc
+      | None -> acc
       | Some (d : _ Dir_with_dune.t) ->
         List.fold_left d.data ~init:acc ~f:(fun acc ->
           function
@@ -42,8 +41,7 @@ let libs_under_dir sctx ~db ~dir =
             match
               Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
             with
-            | None ->
-              acc (* library is defined but outside our scope *)
+            | None -> acc (* library is defined but outside our scope *)
             | Some lib ->
               (* still need to make sure that it's not coming from an external
                 source *)
@@ -59,8 +57,7 @@ let libs_under_dir sctx ~db ~dir =
               else
                 acc
               (* external lib with a name matching our private name *) )
-          | _ ->
-            acc)))
+          | _ -> acc)))
   |> Option.value ~default:[]
 
 let setup sctx ~dir =

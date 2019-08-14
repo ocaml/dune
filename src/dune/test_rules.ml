@@ -19,8 +19,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
     let test_var_name = "test" in
     let run_action =
       match t.action with
-      | Some a ->
-        a
+      | Some a -> a
       | None ->
         Action_unexpanded.Run (String_with_vars.make_var loc test_var_name, [])
     in
@@ -46,8 +45,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       Simple_rules.alias sctx ~extra_bindings ~dir ~expander alias
     in
     match test_kind (loc, s) with
-    | `Regular ->
-      add_alias ~loc ~action:run_action ~locks:[]
+    | `Regular -> add_alias ~loc ~action:run_action ~locks:[]
     | `Expect diff ->
       let rule =
         { Dune_file.Rule.targets = Infer

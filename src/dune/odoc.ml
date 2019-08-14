@@ -34,19 +34,14 @@ let lib_unique_name lib =
   let info = Lib.info lib in
   let status = Lib_info.status info in
   match status with
-  | Installed ->
-    assert false
-  | Public _ ->
-    Lib_name.to_string name
-  | Private project ->
-    Scope_key.to_string name project
+  | Installed -> assert false
+  | Public _ -> Lib_name.to_string name
+  | Private project -> Scope_key.to_string name project
 
 let pkg_or_lnu lib =
   match Lib.package lib with
-  | Some p ->
-    Package.Name.to_string p
-  | None ->
-    lib_unique_name lib
+  | Some p -> Package.Name.to_string p
+  | None -> lib_unique_name lib
 
 type target =
   | Lib of Lib.Local.t
@@ -83,10 +78,8 @@ module Paths = struct
     html_root ctx
     ++
     match m with
-    | Pkg pkg ->
-      Package.Name.to_string pkg
-    | Lib lib ->
-      pkg_or_lnu (Lib.Local.to_lib lib)
+    | Pkg pkg -> Package.Name.to_string pkg
+    | Lib lib -> pkg_or_lnu (Lib.Local.to_lib lib)
 
   let gen_mld_dir ctx pkg = root ctx ++ "_mlds" ++ Package.Name.to_string pkg
 
@@ -110,13 +103,11 @@ module Dep = struct
           | Some p ->
             Dep.Set.singleton
               (Dep.alias (alias ~dir:(Paths.odocs ctx (Pkg p))))
-          | None ->
-            Dep.Set.empty
+          | None -> Dep.Set.empty
          in
          List.fold_left libs ~init ~f:(fun acc (lib : Lib.t) ->
            match Lib.Local.of_lib lib with
-           | None ->
-             acc
+           | None -> acc
            | Some lib ->
              let dir = Paths.odocs ctx (Lib lib) in
              let alias = alias ~dir in
@@ -205,18 +196,15 @@ let odoc_include_flags ctx pkg requires =
       |> List.fold_left
         ~f:(fun paths lib ->
           match Lib.Local.of_lib lib with
-          | None ->
-            paths
+          | None -> paths
           | Some lib ->
             Path.Set.add paths (Path.build (Paths.odocs ctx (Lib lib))))
            ~init:Path.Set.empty
     in
     let paths =
       match pkg with
-      | Some p ->
-        Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
-      | None ->
-        paths
+      | Some p -> Path.Set.add paths (Path.build (Paths.odocs ctx (Pkg p)))
+      | None -> paths
     in
     S
       (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
@@ -227,8 +215,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   let deps = Dep.deps ctx pkg requires in
   let to_remove, dune_keep =
     match odoc_file.source with
-    | Mld ->
-      (odoc_file.html_file, [])
+    | Mld -> (odoc_file.html_file, [])
     | Module ->
       let dune_keep =
         Build.create_file (odoc_file.html_dir ++ Config.dune_keep_fname)
@@ -304,10 +291,8 @@ let setup_toplevel_index_rule sctx =
       let link = sp {|<a href="%s/index.html">%s</a>|} name name in
       let version_suffix =
         match pkg.Package.version with
-        | None ->
-          ""
-        | Some v ->
-          sp {| <span class="version">%s</span>|} v
+        | None -> ""
+        | Some v -> sp {| <span class="version">%s</span>|} v
       in
       Some (sp "<li>%s%s</li>" link version_suffix))
   in
@@ -390,8 +375,7 @@ let check_mlds_no_dupes ~pkg ~mlds =
       (Filename.chop_extension (Path.Build.basename mld), mld))
     |> String.Map.of_list
   with
-  | Ok m ->
-    m
+  | Ok m -> m
   | Error (_, p1, p2) ->
     User_error.raise
       [ Pp.textf "Package %s has two mld's with the same basename %s, %s"
@@ -633,15 +617,13 @@ let init sctx =
       List.filter_map w.data ~f:(function
         | Dune_file.Library (l : Dune_file.Library.t) -> (
           match l.public with
-          | Some _ ->
-            None
+          | Some _ -> None
           | None ->
             let scope = SC.find_scope_by_dir sctx w.ctx_dir in
             Library.best_name l
             |> Lib.DB.find_even_when_hidden (Scope.libs scope)
             |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some )
-        | _ ->
-          None))
+        | _ -> None))
     |> List.map ~f:(fun (lib : Lib.Local.t) ->
       Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build)
     |> Path.Set.of_list )
@@ -651,7 +633,8 @@ let gen_rules sctx ~dir:_ rest =
   | [ "_html" ] ->
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
-  | "_mlds" :: pkg :: _ | "_odoc" :: "pkg" :: pkg :: _ ->
+  | "_mlds" :: pkg :: _
+   |"_odoc" :: "pkg" :: pkg :: _ ->
     let pkg = Package.Name.of_string pkg in
     let packages = Super_context.packages sctx in
     Package.Name.Map.find packages pkg
@@ -684,11 +667,9 @@ let gen_rules sctx ~dir:_ rest =
       | None ->
         setup_lib_html_rules sctx lib
           ~requires:(Lib.closure ~linking:false [ Lib.Local.to_lib lib ])
-      | Some pkg ->
-        setup_pkg_html_rules pkg);
+      | Some pkg -> setup_pkg_html_rules pkg);
     Option.iter
       (Package.Name.Map.find (SC.packages sctx)
         (Package.Name.of_string lib_unique_name_or_pkg))
       ~f:(fun pkg -> setup_pkg_html_rules pkg.name)
-  | _ ->
-    ()
+  | _ -> ()

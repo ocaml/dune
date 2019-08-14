@@ -86,12 +86,9 @@ end
 let term_supports_color =
   lazy
     ( match Sys.getenv "TERM" with
-    | exception Not_found ->
-      false
-    | "dumb" ->
-      false
-    | _ ->
-      true )
+    | exception Not_found -> false
+    | "dumb" -> false
+    | _ -> true )
 
 let stdout_supports_color =
   lazy (Lazy.force term_supports_color && Unix.isatty Unix.stdout)
@@ -130,8 +127,7 @@ let strip str =
       Buffer.contents buf
     else
       match str.[i] with
-      | '\027' ->
-        skip (i + 1)
+      | '\027' -> skip (i + 1)
       | c ->
         Buffer.add_char buf c;
         loop (i + 1)
@@ -139,7 +135,9 @@ let strip str =
     if i = len then
       Buffer.contents buf
     else
-      match str.[i] with 'm' -> loop (i + 1) | _ -> skip (i + 1)
+      match str.[i] with
+      | 'm' -> loop (i + 1)
+      | _ -> skip (i + 1)
   in
   loop 0
 
@@ -150,13 +148,16 @@ let parse_line str styles =
       acc
     else
       let s = Pp.verbatim (String.sub str ~pos ~len) in
-      let s = match styles with [] -> s | _ -> Pp.tag s ~tag:styles in
+      let s =
+        match styles with
+        | [] -> s
+        | _ -> Pp.tag s ~tag:styles
+      in
       Pp.seq acc s
   in
   let rec loop styles i acc =
     match String.index_from str i '\027' with
-    | None ->
-      (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
+    | None -> (styles, add_chunk acc ~styles ~pos:i ~len:(len - i))
     | Some seq_start -> (
       let acc = add_chunk acc ~styles ~pos:i ~len:(seq_start - i) in
       (* Skip the "\027[" *)
@@ -165,8 +166,7 @@ let parse_line str styles =
         (styles, acc)
       else
         match String.index_from str seq_start 'm' with
-        | None ->
-          (styles, acc)
+        | None -> (styles, acc)
         | Some seq_end ->
           let styles =
             if seq_start = seq_end then
@@ -177,7 +177,9 @@ let parse_line str styles =
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                match s with "0" -> [] | _ -> s :: styles)
+                match s with
+                | "0" -> []
+                | _ -> s :: styles)
               |> List.rev
           in
           loop styles (seq_end + 1) acc )
@@ -187,8 +189,7 @@ let parse_line str styles =
 let parse =
   let rec loop styles lines acc =
     match lines with
-    | [] ->
-      Pp.vbox (Pp.concat ~sep:Pp.cut (List.rev acc))
+    | [] -> Pp.vbox (Pp.concat ~sep:Pp.cut (List.rev acc))
     | line :: lines ->
       let styles, pp = parse_line line styles in
       loop styles lines (pp :: acc)

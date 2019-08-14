@@ -46,8 +46,7 @@ let find (type input output) ((module T) : (input, output) t) x =
 let find_exn (type input output) (t : (input, output) t) key =
   let (module T) = t in
   match find t key with
-  | Some v ->
-    v
+  | Some v -> v
   | None ->
     Code_error.raise "Table.find_exn: key doesn't exist"
       [ ("key", T.Key.to_dyn key) ]
@@ -58,8 +57,7 @@ let set (type input output) ((module T) : (input, output) t) k v =
 let add_exn (type input output) (t : (input, output) t) k v =
   let (module T) = t in
   match find t k with
-  | None ->
-    set t k v
+  | None -> set t k v
   | Some _ ->
     Code_error.raise "Table.add_exn: key already exists"
       [ ("key", T.Key.to_dyn k) ]
@@ -69,8 +67,7 @@ let add t k v =
   | None ->
     set t k v;
     Result.Ok ()
-  | Some e ->
-    Error e
+  | Some e -> Error e
 
 let clear (type input output) ((module T) : (input, output) t) =
   T.H.clear T.value

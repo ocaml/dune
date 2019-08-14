@@ -44,24 +44,18 @@ end = struct
 
     let compare a b =
       match (a, b) with
-      | Named x, Named y ->
-        String.compare x y
-      | Anonymous x, Anonymous y ->
-        Path.Source.compare x y
-      | Named _, Anonymous _ ->
-        Lt
-      | Anonymous _, Named _ ->
-        Gt
+      | Named x, Named y -> String.compare x y
+      | Anonymous x, Anonymous y -> Path.Source.compare x y
+      | Named _, Anonymous _ -> Lt
+      | Anonymous _, Named _ -> Gt
 
     let equal a b = Ordering.is_eq (compare a b)
 
     let to_dyn =
       let open Dyn.Encoder in
       function
-      | Named n ->
-        constr "Named" [ string n ]
-      | Anonymous p ->
-        constr "Anonymous" [ Path.Source.to_dyn p ]
+      | Named n -> constr "Named" [ string n ]
+      | Anonymous p -> constr "Anonymous" [ Path.Source.to_dyn p ]
   end
 
   include T
@@ -71,15 +65,18 @@ end = struct
   let anonymous_root = Anonymous Path.Source.root
 
   let to_string_hum = function
-    | Named s ->
-      s
+    | Named s -> s
     | Anonymous p ->
       sprintf "<anonymous %s>" (Path.Source.to_string_maybe_quoted p)
 
   let validate name =
     let len = String.length name in
     len > 0
-    && String.for_all name ~f:(function '.' | '/' -> false | _ -> true)
+    && String.for_all name ~f:(function
+      | '.'
+       |'/' ->
+        false
+         | _ -> true)
 
   let named name =
     if validate name then
@@ -97,18 +94,15 @@ end = struct
         User_error.raise ~loc [ Pp.text "Invalid project name" ])
 
   let to_encoded_string = function
-    | Named s ->
-      s
+    | Named s -> s
     | Anonymous p ->
       if Path.Source.is_root p then
         "."
       else
         "."
         ^ String.map (Path.Source.to_string p) ~f:(function
-          | '/' ->
-            '.'
-            | c ->
-              c)
+          | '/' -> '.'
+            | c -> c)
 
   let of_encoded_string =
     let invalid s =
@@ -118,23 +112,17 @@ end = struct
     in
     fun s ->
       match s with
-      | "" ->
-        invalid s
-      | "." ->
-        anonymous_root
+      | "" -> invalid s
+      | "." -> anonymous_root
       | _ when s.[0] = '.' -> (
         match
           String.split s ~on:'.' |> List.tl |> String.concat ~sep:"/"
           |> Path.of_string |> Path.as_in_source_tree
         with
-        | Some p ->
-          Anonymous p
-        | None ->
-          invalid s )
-      | _ when validate s ->
-        Named s
-      | _ ->
-        invalid s
+        | Some p -> Anonymous p
+        | None -> invalid s )
+      | _ when validate s -> Named s
+      | _ -> invalid s
 end
 
 module Project_file = struct
@@ -161,16 +149,13 @@ module Source_kind = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Github (user, repo) ->
-      constr "Github" [ string user; string repo ]
-    | Url url ->
-      constr "Url" [ string url ]
+    | Github (user, repo) -> constr "Github" [ string user; string repo ]
+    | Url url -> constr "Url" [ string url ]
 
   let pp fmt = function
     | Github (user, repo) ->
       Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
-    | Url u ->
-      Format.pp_print_string fmt u
+    | Url u -> Format.pp_print_string fmt u
 
   let decode =
     let open Dune_lang.Decoder in
@@ -178,8 +163,7 @@ module Source_kind = struct
       [ ( "github"
         , plain_string (fun ~loc s ->
           match String.split ~on:'/' s with
-          | [ user; repo ] ->
-            Github (user, repo)
+          | [ user; repo ] -> Github (user, repo)
           | _ ->
             User_error.raise ~loc
               [ Pp.textf "GitHub repository must be of form user/repo" ]) )
@@ -364,8 +348,7 @@ module Project_file_edit = struct
       in
       let lines =
         match t.project_name with
-        | Anonymous _ ->
-          lines
+        | Anonymous _ -> lines
         | Named s ->
           lines
           @ [ Dune_lang.to_string
@@ -570,7 +553,8 @@ let get_exn () =
   let open Dune_lang.Decoder in
   get key
   >>| function
-  | Some t -> t | None -> Code_error.raise "Current project is unset" []
+  | Some t -> t
+  | None -> Code_error.raise "Current project is unset" []
 
 let filename = "dune-project"
 
@@ -638,8 +622,7 @@ let anonymous =
 
 let default_name ~dir ~packages =
   match Package.Name.Map.choose packages with
-  | None ->
-    Name.anonymous dir
+  | None -> Name.anonymous dir
   | Some (_, pkg) -> (
     let pkg =
       let open Package.Name.Infix in
@@ -651,8 +634,7 @@ let default_name ~dir ~packages =
     in
     let name = Package.Name.to_string pkg.name in
     match Name.named name with
-    | Some x ->
-      x
+    | Some x -> x
     | None ->
       User_error.raise ~loc:pkg.loc
         [ Pp.textf "%S is not a valid opam package name." name ] )
@@ -711,15 +693,13 @@ let parse ~dir ~lang ~opam_packages ~file =
        match (homepage, source) with
        | None, Some (Github (user, repo)) ->
          Some (sprintf "https://github.com/%s/%s" user repo)
-       | s, _ ->
-         s
+       | s, _ -> s
      in
      let bug_reports =
        match (bug_reports, source) with
        | None, Some (Github (user, repo)) ->
          Some (sprintf "https://github.com/%s/%s/issues" user repo)
-       | s, _ ->
-         s
+       | s, _ -> s
      in
      let packages =
        if List.is_empty packages then
@@ -734,8 +714,7 @@ let parse ~dir ~lang ~opam_packages ~file =
                   name as the project name: %s"
                  name
                ]
-         | _, _ ->
-           () );
+         | _, _ -> () );
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> (p.name, p))
          with
@@ -748,10 +727,8 @@ let parse ~dir ~lang ~opam_packages ~file =
            Package.Name.Map.merge packages opam_packages
              ~f:(fun _name dune opam ->
                match (dune, opam) with
-               | _, None ->
-                 dune
-               | Some p, _ ->
-                 Some { p with kind = Dune (Option.is_some opam) }
+               | _, None -> dune
+               | Some p, _ -> Some { p with kind = Dune (Option.is_some opam) }
                | None, Some (loc, _) ->
                  User_error.raise ~loc
                    [ Pp.text
@@ -765,14 +742,17 @@ let parse ~dir ~lang ~opam_packages ~file =
      in
      let packages =
        match version with
-       | None ->
-         packages
+       | None -> packages
        | Some _ ->
          Package.Name.Map.map packages ~f:(fun p ->
-           match p.version with Some _ -> p | None -> { p with version })
+           match p.version with
+           | Some _ -> p
+           | None -> { p with version })
      in
      let name =
-       match name with Some n -> n | None -> default_name ~dir ~packages
+       match name with
+       | Some n -> n
+       | None -> default_name ~dir ~packages
      in
      let project_file : Project_file.t =
        { file; exists = true; project_name = name }
@@ -895,8 +875,7 @@ let load ~dir ~files =
               let open Option.O in
               let* opam =
                 match Opam_file.load (Path.source opam_file) with
-                | s ->
-                  Some s
+                | s -> Some s
                 | exception exn ->
                   User_warning.emit
                     ~loc:(Loc.in_file (Path.source opam_file))
@@ -908,7 +887,9 @@ let load ~dir ~files =
                   None
               in
               let* version = Opam_file.get_field opam "version" in
-              match version with String (_, s) -> Some s | _ -> None
+              match version with
+              | String (_, s) -> Some s
+              | _ -> None
              in
              { Package.name
              ; loc
@@ -924,8 +905,7 @@ let load ~dir ~files =
              })
         in
         (name, (loc, pkg)) :: acc
-      | _ ->
-        acc)
+      | _ -> acc)
     |> Package.Name.Map.of_list_exn
   in
   if String.Set.mem files filename then

@@ -26,7 +26,9 @@ module Linkage = struct
   let custom = { mode = Byte; ext = ".exe"; flags = [ "-custom" ] }
 
   let native_or_custom (context : Context.t) =
-    match context.ocamlopt with None -> custom | Some _ -> native
+    match context.ocamlopt with
+    | None -> custom
+    | Some _ -> native
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
 
@@ -43,14 +45,15 @@ module Linkage = struct
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t)
     =
     let wanted_mode : Mode.t =
-      match m.mode with Byte -> Byte | Native -> Native | Best -> Native
+      match m.mode with
+      | Byte -> Byte
+      | Native -> Native
+      | Best -> Native
     in
     let real_mode : Mode.t =
       match m.mode with
-      | Byte ->
-        Byte
-      | Native ->
-        Native
+      | Byte -> Byte
+      | Native -> Native
       | Best ->
         if Option.is_some ctx.ocamlopt then
           Native
@@ -59,43 +62,30 @@ module Linkage = struct
     in
     let ext =
       match (wanted_mode, m.kind) with
-      | Byte, C ->
-        ".bc.c"
+      | Byte, C -> ".bc.c"
       | Native, C ->
         User_error.raise ~loc:m.loc
           [ Pp.text "C file generation only supports bytecode!" ]
-      | Byte, Exe ->
-        ".bc"
-      | Native, Exe ->
-        ".exe"
-      | Byte, Object ->
-        ".bc" ^ ctx.lib_config.ext_obj
-      | Native, Object ->
-        ".exe" ^ ctx.lib_config.ext_obj
-      | Byte, Shared_object ->
-        ".bc" ^ ctx.lib_config.ext_dll
-      | Native, Shared_object ->
-        ctx.lib_config.ext_dll
-      | Byte, Js ->
-        ".bc.js"
+      | Byte, Exe -> ".bc"
+      | Native, Exe -> ".exe"
+      | Byte, Object -> ".bc" ^ ctx.lib_config.ext_obj
+      | Native, Object -> ".exe" ^ ctx.lib_config.ext_obj
+      | Byte, Shared_object -> ".bc" ^ ctx.lib_config.ext_dll
+      | Native, Shared_object -> ctx.lib_config.ext_dll
+      | Byte, Js -> ".bc.js"
       | Native, Js ->
         User_error.raise ~loc:m.loc
           [ Pp.text "Javascript generation only supports bytecode!" ]
     in
     let flags =
       match m.kind with
-      | C ->
-        c_flags
-      | Js ->
-        []
+      | C -> c_flags
+      | Js -> []
       | Exe -> (
         match (wanted_mode, real_mode) with
-        | Native, Byte ->
-          [ "-custom" ]
-        | _ ->
-          [] )
-      | Object ->
-        o_flags
+        | Native, Byte -> [ "-custom" ]
+        | _ -> [] )
+      | Object -> o_flags
       | Shared_object -> (
         let so_flags =
           if String.equal ctx.os_type "Win32" then
@@ -110,8 +100,7 @@ module Linkage = struct
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
             [ "-cclib"; flag ])
           @ so_flags
-        | Byte ->
-          so_flags )
+        | Byte -> so_flags )
     in
     { ext; mode = real_mode; flags }
 end
@@ -129,7 +118,10 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:linkage.mode in
   SC.add_rule sctx ~loc ~dir
-    ~mode:(match promote with None -> Standard | Some p -> Promote p)
+    ~mode:
+      ( match promote with
+      | None -> Standard
+      | Some p -> Promote p )
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let prefix =
        let dune_version =

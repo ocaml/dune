@@ -24,10 +24,8 @@ module Directory_rules = struct
 
   let rec force l =
     List.concat_map (Appendable_list.to_list l) ~f:(function
-      | File t ->
-        [ t ]
-      | Thunk f ->
-        force (f ()))
+      | File t -> [ t ]
+      | Thunk f -> force (f ()))
 end
 
 module Scheme = struct
@@ -44,15 +42,13 @@ module Scheme = struct
     in
     let rec go ~path t =
       match t with
-      | Empty ->
-        Empty
+      | Empty -> Empty
       | Union (t1, t2) ->
         Union (go ~path:("l" :: path) t1, go ~path:("r" :: path) t2)
       | Approximation (dirs, rules) ->
         let path = "t" :: path in
         Approximation (dirs, go ~path rules)
-      | Finite m ->
-        Finite m
+      | Finite m -> Finite m
       | Thunk t ->
         Thunk
           (fun () ->
@@ -71,24 +67,17 @@ module Scheme = struct
   let collect_rules_simple =
     let rec go (t : _ t) ~dir =
       match t with
-      | Empty ->
-        Directory_rules.empty
-      | Union (a, b) ->
-        Directory_rules.union (go a ~dir) (go b ~dir)
+      | Empty -> Directory_rules.empty
+      | Union (a, b) -> Directory_rules.union (go a ~dir) (go b ~dir)
       | Approximation (dirs, t) -> (
         match Dune.Dir_set.mem dirs dir with
-        | true ->
-          go t ~dir
-        | false ->
-          Directory_rules.empty )
+        | true -> go t ~dir
+        | false -> Directory_rules.empty )
       | Finite rules -> (
         match Path.Build.Map.find rules dir with
-        | None ->
-          Directory_rules.empty
-        | Some rule ->
-          rule )
-      | Thunk f ->
-        go (f ()) ~dir
+        | None -> Directory_rules.empty
+        | Some rule -> rule )
+      | Thunk f -> go (f ()) ~dir
     in
     go
 
@@ -108,12 +97,9 @@ module Path = struct
   let of_string str =
     L.relative root
       ( match String.split str ~on:'/' with
-      | [ "" ] ->
-        []
-      | [ "." ] ->
-        []
-      | other ->
-        other )
+      | [ "" ] -> []
+      | [ "." ] -> []
+      | other -> other )
 end
 
 let record_calls scheme ~f =
@@ -141,7 +127,11 @@ let print_rules scheme ~dir =
       ]
   else
     let print_log log =
-      let log = match log with [] -> [ "<none>" ] | x -> x in
+      let log =
+        match log with
+        | [] -> [ "<none>" ]
+        | x -> x
+      in
       List.iter log ~f:(fun s -> print ("    " ^ s))
     in
     if not ((calls1 : string list) = calls2) then (

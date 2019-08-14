@@ -19,7 +19,8 @@ module Preprocess = struct
     match (a, b) with
     | No_preprocessing, No_preprocessing ->
       Dune_file.Preprocess.No_preprocessing
-    | No_preprocessing, pp | pp, No_preprocessing ->
+    | No_preprocessing, pp
+     |pp, No_preprocessing ->
       let loc =
         Dune_file.Preprocess.loc pp |> Option.value_exn
         (* only No_preprocessing has no loc*)
@@ -28,7 +29,7 @@ module Preprocess = struct
         ~reason:"Cannot mix preprocessed and non preprocessed specificiations";
       Dune_file.Preprocess.No_preprocessing
     | (Future_syntax _ as future_syntax), _
-    | _, (Future_syntax _ as future_syntax) ->
+     |_, (Future_syntax _ as future_syntax) ->
       future_syntax
     | Action (loc, a1), Action (_, a2) ->
       if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
@@ -37,7 +38,8 @@ module Preprocess = struct
             "this action preprocessor is not equivalent to other preprocessor \
              specifications.";
       Action (loc, a1)
-    | Pps _, Action (loc, _) | Action (loc, _), Pps _ ->
+    | Pps _, Action (loc, _)
+     |Action (loc, _), Pps _ ->
       warn_dropped_pp loc ~allow_approx_merlin
         ~reason:"cannot mix action and pps preprocessors";
       No_preprocessing
@@ -80,8 +82,7 @@ module Dot_file = struct
     Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
     Option.iter pp ~f:(printf "%s\n");
     ( match flags with
-    | [] ->
-      ()
+    | [] -> ()
     | flags ->
       print "FLG";
       List.iter flags ~f:(fun f -> printf " %s" (quote_for_merlin f));
@@ -103,15 +104,16 @@ let make ?(requires = Ok []) ~flags
     ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
-    match requires with Ok l -> Lib.Set.of_list l | Error _ -> Lib.Set.empty
+    match requires with
+    | Ok l -> Lib.Set.of_list l
+    | Error _ -> Lib.Set.empty
   in
   let objs_dirs =
     Obj_dir.byte_dir obj_dir |> Path.build |> Path.Set.singleton
   in
   let flags =
     match Modules.alias_module modules with
-    | None ->
-      Ocaml_flags.common flags
+    | None -> Ocaml_flags.common flags
     | Some m ->
       Ocaml_flags.prepend_common
         [ "-open"; Module_name.to_string (Module.name m) ]
@@ -142,8 +144,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
         None
     in
     match args with
-    | None ->
-      Build.return None
+    | None -> Build.return None
     | Some args -> (
       let action : (Path.t Bindings.t, Action.t) Build.t =
         let targets_dir = Expander.dir expander in
@@ -154,8 +155,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
       in
       let pp_of_action exe args =
         match exe with
-        | Error _ ->
-          None
+        | Error _ -> None
         | Ok exe ->
           Path.to_absolute_filename exe :: args
           |> List.map ~f:quote_for_merlin
@@ -165,16 +165,11 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
       Build.return Bindings.empty
       >>> action
       >>^ function
-      | Run (exe, args) ->
-        pp_of_action exe args
-      | Chdir (_, Run (exe, args)) ->
-        pp_of_action exe args
-      | Chdir (_, Chdir (_, Run (exe, args))) ->
-        pp_of_action exe args
-      | _ ->
-        None ) )
-  | _ ->
-    Build.return None
+      | Run (exe, args) -> pp_of_action exe args
+      | Chdir (_, Run (exe, args)) -> pp_of_action exe args
+      | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+      | _ -> None ) )
+  | _ -> Build.return None
 
 let pp_flags sctx ~expander { preprocess; libname; _ } :
   (unit, string option) Build.t =
@@ -188,8 +183,7 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags
         ~scope pps
     with
-    | Error _exn ->
-      Build.return None
+    | Error _exn -> Build.return None
     | Ok (exe, flags) ->
       Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
       |> List.map ~f:quote_for_merlin
@@ -197,8 +191,7 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
       |> Option.some |> Build.return )
   | Action (loc, (action : Action_dune_lang.t)) ->
     pp_flag_of_action sctx ~expander ~loc ~action
-  | No_preprocessing ->
-    Build.return None
+  | No_preprocessing -> Build.return None
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
   =
@@ -247,14 +240,16 @@ let merge_two ~allow_approx_merlin a b =
   ; flags = (a.flags &&& b.flags >>^ fun (a, b) -> a @ b)
   ; preprocess =
     Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
-  ; libname = (match a.libname with Some _ as x -> x | None -> b.libname)
+  ; libname =
+    ( match a.libname with
+    | Some _ as x -> x
+    | None -> b.libname )
   ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
   ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
   }
 
 let merge_all ~allow_approx_merlin = function
-  | [] ->
-    None
+  | [] -> None
   | init :: ts ->
     Some (List.fold_left ~init ~f:(merge_two ~allow_approx_merlin) ts)
 

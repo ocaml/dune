@@ -33,8 +33,7 @@ let add_versions t ~get_version =
         []
       else
         match get_version (List.rev rev_path) with
-        | None ->
-          []
+        | None -> []
         | Some v ->
           [ Rule { var = "version"; predicates = []; action = Set; value = v } ]
       )
@@ -52,7 +51,9 @@ let add_versions t ~get_version =
         :: map_entries entries ~rev_path ~has_version ~has_rules )
   and map_package t ~rev_path =
     let rev_path =
-      match t.name with None -> rev_path | Some n -> n :: rev_path
+      match t.name with
+      | None -> rev_path
+      | Some n -> n :: rev_path
     in
     { t with
       entries =
@@ -73,46 +74,42 @@ module Parse = struct
       if String.contains s '.' then
         error lb "'.' not allowed in sub-package names";
       Lib_name.of_string_exn ~loc:None s
-    | _ ->
-      error lb "package name expected"
+    | _ -> error lb "package name expected"
 
   let string lb =
-    match next lb with String s -> s | _ -> error lb "string expected"
+    match next lb with
+    | String s -> s
+    | _ -> error lb "string expected"
 
   let lparen lb =
-    match next lb with Lparen -> () | _ -> error lb "'(' expected"
+    match next lb with
+    | Lparen -> ()
+    | _ -> error lb "'(' expected"
 
   let action lb =
     match next lb with
-    | Equal ->
-      Set
-    | Plus_equal ->
-      Add
-    | _ ->
-      error lb "'=' or '+=' expected"
+    | Equal -> Set
+    | Plus_equal -> Add
+    | _ -> error lb "'=' or '+=' expected"
 
   let rec predicates_and_action lb acc =
     match next lb with
-    | Rparen ->
-      (List.rev acc, action lb)
-    | Name n ->
-      after_predicate lb (Pos n :: acc)
+    | Rparen -> (List.rev acc, action lb)
+    | Name n -> after_predicate lb (Pos n :: acc)
     | Minus ->
       let n =
-        match next lb with Name p -> p | _ -> error lb "name expected"
+        match next lb with
+        | Name p -> p
+        | _ -> error lb "name expected"
       in
       after_predicate lb (Neg n :: acc)
-    | _ ->
-      error lb "name, '-' or ')' expected"
+    | _ -> error lb "name, '-' or ')' expected"
 
   and after_predicate lb acc =
     match next lb with
-    | Rparen ->
-      (List.rev acc, action lb)
-    | Comma ->
-      predicates_and_action lb acc
-    | _ ->
-      error lb "')' or ',' expected"
+    | Rparen -> (List.rev acc, action lb)
+    | Comma -> predicates_and_action lb acc
+    | _ -> error lb "')' or ',' expected"
 
   let rec entries lb depth acc =
     match next lb with
@@ -135,29 +132,27 @@ module Parse = struct
     | Name var ->
       let predicates, action =
         match next lb with
-        | Equal ->
-          ([], Set)
-        | Plus_equal ->
-          ([], Add)
-        | Lparen ->
-          predicates_and_action lb []
-        | _ ->
-          error lb "'=', '+=' or '(' expected"
+        | Equal -> ([], Set)
+        | Plus_equal -> ([], Add)
+        | Lparen -> predicates_and_action lb []
+        | _ -> error lb "'=', '+=' or '(' expected"
       in
       let value = string lb in
       entries lb depth (Rule { var; predicates; action; value } :: acc)
-    | _ ->
-      error lb "'package' or variable name expected"
+    | _ -> error lb "'package' or variable name expected"
 end
 
 let dyn_of_action =
   let open Dyn.Encoder in
-  function Set -> constr "Set" [] | Add -> constr "Add" []
+  function
+  | Set -> constr "Set" []
+  | Add -> constr "Add" []
 
 let dyn_of_predicate =
   let open Dyn.Encoder in
   function
-  | Pos s -> constr "Pos" [ String s ] | Neg s -> constr "Neg" [ String s ]
+  | Pos s -> constr "Pos" [ String s ]
+  | Neg s -> constr "Neg" [ String s ]
 
 let dyn_of_rule { var; predicates; action; value } =
   let open Dyn.Encoder in
@@ -203,10 +198,8 @@ let rec simplify t =
     ~init:{ name = t.name; vars = String.Map.empty; subs = [] }
     ~f:(fun entry (pkg : Simplified.t) ->
       match entry with
-      | Comment _ ->
-        pkg
-      | Package sub ->
-        { pkg with subs = simplify sub :: pkg.subs }
+      | Comment _ -> pkg
+      | Package sub -> { pkg with subs = simplify sub :: pkg.subs }
       | Rule rule ->
         let rules =
           Option.value
@@ -215,10 +208,8 @@ let rec simplify t =
         in
         let rules =
           match rule.action with
-          | Set ->
-            { rules with set_rules = rule :: rules.set_rules }
-          | Add ->
-            { rules with add_rules = rule :: rules.add_rules }
+          | Set -> { rules with set_rules = rule :: rules.set_rules }
+          | Add -> { rules with add_rules = rule :: rules.add_rules }
         in
         { pkg with vars = String.Map.set pkg.vars rule.var rules })
 
@@ -250,13 +241,20 @@ let archives name =
 let builtins ~stdlib_dir ~version:ocaml_version =
   let version = version "[distributed with Ocaml]" in
   let simple name ?dir ?archive_name deps =
-    let archive_name = match archive_name with None -> name | Some a -> a in
+    let archive_name =
+      match archive_name with
+      | None -> name
+      | Some a -> a
+    in
     let name = Lib_name.of_string_exn ~loc:None name in
     let archives = archives archive_name in
     { name = Some name
     ; entries =
       requires deps :: version
-      :: (match dir with None -> archives | Some d -> directory d :: archives)
+      ::
+      ( match dir with
+      | None -> archives
+      | Some d -> directory d :: archives )
     }
   in
   let dummy name =
@@ -358,14 +356,17 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     Option.map t.name ~f:(fun name -> (name, simplify t)))
   |> Lib_name.Map.of_list_exn
 
-let string_of_action = function Set -> "=" | Add -> "+="
+let string_of_action = function
+  | Set -> "="
+  | Add -> "+="
 
-let string_of_predicate = function Pos p -> p | Neg p -> "-" ^ p
+let string_of_predicate = function
+  | Pos p -> p
+  | Neg p -> "-" ^ p
 
 let pp_list f ppf l =
   match l with
-  | [] ->
-    ()
+  | [] -> ()
   | x :: l ->
     f ppf x;
     List.iter l ~f:(fun x ->
@@ -385,14 +386,13 @@ let pp_print_string ppf s =
 let pp_quoted_value var =
   match var with
   | "archive"
-  | "plugin"
-  | "requires"
-  | "ppx_runtime_deps"
-  | "linkopts"
-  | "jsoo_runtime" ->
+   |"plugin"
+   |"requires"
+   |"ppx_runtime_deps"
+   |"linkopts"
+   |"jsoo_runtime" ->
     pp_print_text
-  | _ ->
-    pp_print_string
+  | _ -> pp_print_string
 
 let rec pp ppf entries =
   Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries
@@ -400,8 +400,7 @@ let rec pp ppf entries =
 and pp_entry ppf entry =
   let open Format in
   match entry with
-  | Comment s ->
-    fprintf ppf "# %s" s
+  | Comment s -> fprintf ppf "# %s" s
   | Rule { var; predicates = []; action; value } ->
     fprintf ppf "@[%s %s %a@]" var (string_of_action action)
       (pp_quoted_value var) value
@@ -410,5 +409,9 @@ and pp_entry ppf entry =
       (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
       (string_of_action action) (pp_quoted_value var) value
   | Package { name; entries } ->
-    let name = match name with None -> "" | Some l -> Lib_name.to_string l in
+    let name =
+      match name with
+      | None -> ""
+      | Some l -> Lib_name.to_string l
+    in
     fprintf ppf "@[<v 2>package %S (@,%a@]@,)" name pp entries

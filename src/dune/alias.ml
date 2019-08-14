@@ -38,10 +38,8 @@ include T
 
 let compare x y =
   match String.compare x.name y.name with
-  | (Lt | Gt) as x ->
-    x
-  | Eq ->
-    Path.Build.compare x.dir y.dir
+  | (Lt | Gt) as x -> x
+  | Eq -> Path.Build.compare x.dir y.dir
 
 let equal x y = compare x y = Eq
 
@@ -77,8 +75,7 @@ let find_dir_specified_on_command_line ~dir ~file_tree =
       [ Pp.textf "Don't know about directory %s specified on the command line!"
         (Path.Source.to_string_maybe_quoted dir)
       ]
-  | Some dir ->
-    dir
+  | Some dir -> dir
 
 let standard_aliases = Table.create (module String) 7
 

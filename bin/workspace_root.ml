@@ -9,14 +9,10 @@ module Kind = struct
     | Cwd
 
   let priority = function
-    | Explicit ->
-      0
-    | Dune_workspace ->
-      1
-    | Dune_project ->
-      2
-    | Cwd ->
-      3
+    | Explicit -> 0
+    | Dune_workspace -> 1
+    | Dune_project -> 2
+    | Cwd -> 3
 
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then
@@ -57,23 +53,19 @@ let find () =
         match Kind.of_dir_contents files with
         | Some kind when Kind.priority kind <= Kind.priority candidate.kind ->
           Some { kind; dir; to_cwd; ancestor_vcs = None }
-        | _ ->
-          None
+        | _ -> None
       in
       let candidate =
         match (new_candidate, candidate.ancestor_vcs) with
-        | Some c, _ ->
-          c
-        | None, Some _ ->
-          candidate
+        | Some c, _ -> c
+        | None, Some _ -> candidate
         | None, None -> (
           match Vcs.Kind.of_dir_contents files with
           | Some kind ->
             { candidate with
               ancestor_vcs = Some { kind; root = Path.of_string dir }
             }
-          | None ->
-            candidate )
+          | None -> candidate )
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =
@@ -92,8 +84,7 @@ let find () =
 
 let create ~specified_by_user =
   match specified_by_user with
-  | Some dn ->
-    make Explicit dn
+  | Some dn -> make Explicit dn
   | None ->
     if Config.inside_dune then
       make Cwd "."

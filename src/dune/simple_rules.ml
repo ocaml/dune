@@ -10,17 +10,14 @@ let interpret_locks ~expander = List.map ~f:(Expander.expand_path expander)
 let dep_bindings ~extra_bindings deps =
   let base = Pform.Map.of_bindings deps in
   match extra_bindings with
-  | Some bindings ->
-    Pform.Map.superpose base bindings
-  | None ->
-    base
+  | Some bindings -> Pform.Map.superpose base bindings
+  | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   if Expander.eval_blang expander rule.enabled_if then
     let targets : Expander.Targets.t =
       match rule.targets with
-      | Infer ->
-        Infer
+      | Infer -> Infer
       | Static { targets; multiplicity } ->
         let not_in_dir ~error_loc s =
           User_error.raise ~loc:error_loc
@@ -43,8 +40,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
             then
               not_in_dir ~error_loc (Path.to_string p);
             Path.as_in_build_dir_exn p
-          | Dir p ->
-            not_in_dir ~error_loc (Path.to_string p)
+          | Dir p -> not_in_dir ~error_loc (Path.to_string p)
         in
         let targets =
           List.concat_map targets ~f:(fun target ->
@@ -142,8 +138,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       ( SC.Deps.interpret_named sctx ~expander alias_conf.deps
       >>>
       match alias_conf.action with
-      | None ->
-        Build.progn []
+      | None -> Build.progn []
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in

@@ -10,18 +10,16 @@ module Outputs = struct
   include Action_intf.Outputs
 
   let to_string = function
-    | Stdout ->
-      "stdout"
-    | Stderr ->
-      "stderr"
-    | Outputs ->
-      "outputs"
+    | Stdout -> "stdout"
+    | Stderr -> "stderr"
+    | Outputs -> "outputs"
 end
 
 module Inputs = struct
   include Action_intf.Inputs
 
-  let to_string = function Stdin -> "stdin"
+  let to_string = function
+    | Stdin -> "stdin"
 end
 
 module type Target_intf = sig
@@ -130,12 +128,9 @@ struct
     let path = Path.encode in
     let target = Target.encode in
     function
-    | Run (a, xs) ->
-      List (atom "run" :: program a :: List.map xs ~f:string)
-    | Chdir (a, r) ->
-      List [ atom "chdir"; path a; encode r ]
-    | Setenv (k, v, r) ->
-      List [ atom "setenv"; string k; string v; encode r ]
+    | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
+    | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]
+    | Setenv (k, v, r) -> List [ atom "setenv"; string k; string v; encode r ]
     | Redirect_out (outputs, fn, r) ->
       List
         [ atom (sprintf "with-%s-to" (Outputs.to_string outputs))
@@ -150,30 +145,19 @@ struct
         ]
     | Ignore (outputs, r) ->
       List [ atom (sprintf "ignore-%s" (Outputs.to_string outputs)); encode r ]
-    | Progn l ->
-      List (atom "progn" :: List.map l ~f:encode)
-    | Echo xs ->
-      List (atom "echo" :: List.map xs ~f:string)
-    | Cat x ->
-      List [ atom "cat"; path x ]
-    | Copy (x, y) ->
-      List [ atom "copy"; path x; target y ]
-    | Symlink (x, y) ->
-      List [ atom "symlink"; path x; target y ]
+    | Progn l -> List (atom "progn" :: List.map l ~f:encode)
+    | Echo xs -> List (atom "echo" :: List.map xs ~f:string)
+    | Cat x -> List [ atom "cat"; path x ]
+    | Copy (x, y) -> List [ atom "copy"; path x; target y ]
+    | Symlink (x, y) -> List [ atom "symlink"; path x; target y ]
     | Copy_and_add_line_directive (x, y) ->
       List [ atom "copy#"; path x; target y ]
-    | System x ->
-      List [ atom "system"; string x ]
-    | Bash x ->
-      List [ atom "bash"; string x ]
-    | Write_file (x, y) ->
-      List [ atom "write-file"; target x; string y ]
-    | Rename (x, y) ->
-      List [ atom "rename"; target x; target y ]
-    | Remove_tree x ->
-      List [ atom "remove-tree"; target x ]
-    | Mkdir x ->
-      List [ atom "mkdir"; path x ]
+    | System x -> List [ atom "system"; string x ]
+    | Bash x -> List [ atom "bash"; string x ]
+    | Write_file (x, y) -> List [ atom "write-file"; target x; string y ]
+    | Rename (x, y) -> List [ atom "rename"; target x; target y ]
+    | Remove_tree x -> List [ atom "remove-tree"; target x ]
+    | Mkdir x -> List [ atom "mkdir"; path x ]
     | Digest_files paths ->
       List [ atom "digest-files"; List (List.map paths ~f:path) ]
     | Diff { optional; file1; file2; mode = Binary } ->

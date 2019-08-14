@@ -43,26 +43,23 @@ module Make (Keys : Keys) (Monad : Monad.S) = struct
         | Ok () ->
           res := elt :: !res;
           return (Ok ())
-        | Error l ->
-          return (Error (elt :: l))
+        | Error l -> return (Error (elt :: l))
       ) else
         return (Ok ())
     and iter_elts elts ~temporarily_marked =
       return elts
       >>= function
-      | [] ->
-        return (Ok ())
+      | [] -> return (Ok ())
       | elt :: elts -> (
         loop elt ~temporarily_marked
         >>= function
-        | Error _ as result ->
-          return result
-        | Ok () ->
-          iter_elts elts ~temporarily_marked )
+        | Error _ as result -> return result
+        | Ok () -> iter_elts elts ~temporarily_marked )
     in
     iter_elts elements ~temporarily_marked:Keys.empty
     >>= function
-    | Ok () -> return (Ok (List.rev !res)) | Error elts -> return (Error elts)
+    | Ok () -> return (Ok (List.rev !res))
+    | Error elts -> return (Error elts)
 end
 [@@inlined always]
 

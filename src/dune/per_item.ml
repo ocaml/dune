@@ -37,13 +37,15 @@ module Make (Key : Map.Key) : S with type key = Key.t = struct
       List.map keys ~f:(fun key -> (key, i + 1)))
     |> List.concat |> Map.of_list
     |> function
-    | Ok map ->
-      Ok { map; values }
-    | Error (key, x, y) ->
-      Error (key, values.(x), values.(y))
+    | Ok map -> Ok { map; values }
+    | Error (key, x, y) -> Error (key, values.(x), values.(y))
 
   let get t key =
-    let index = match Map.find t.map key with None -> 0 | Some i -> i in
+    let index =
+      match Map.find t.map key with
+      | None -> 0
+      | Some i -> i
+    in
     t.values.(index)
 
   let map t ~f = { t with values = Array.map t.values ~f }

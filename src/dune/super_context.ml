@@ -73,10 +73,8 @@ let host t = Option.value t.host ~default:t
 
 let libs_of_package t pkg_name =
   match Package.Name.Map.find t.libs_by_package pkg_name with
-  | None ->
-    Lib.Local.Set.empty
-  | Some (_, libs) ->
-    libs
+  | None -> Lib.Local.Set.empty
+  | Some (_, libs) -> libs
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
@@ -86,13 +84,10 @@ let internal_lib_names t =
         | Dune_file.Library lib ->
           Lib_name.Set.add
             ( match lib.public with
-            | None ->
-              acc
-            | Some { name = _, name; _ } ->
-              Lib_name.Set.add acc name )
+            | None -> acc
+            | Some { name = _, name; _ } -> Lib_name.Set.add acc name )
             (Lib_name.of_local lib.name)
-        | _ ->
-          acc))
+        | _ -> acc))
 
 let public_libs t = t.public_libs
 
@@ -131,15 +126,12 @@ end = struct
     let open Option.O in
     let* stanza = Path.Build.Map.find t.stanzas_per_dir dir in
     List.find_map stanza.data ~f:(function
-      | Dune_env.T config ->
-        Some config
-      | _ ->
-        None)
+      | Dune_env.T config -> Some config
+      | _ -> None)
 
   let rec get t ~dir ~scope =
     match Table.find t.env dir with
-    | Some node ->
-      node
+    | Some node -> node
     | None ->
       let node =
         let inherit_from =
@@ -147,10 +139,8 @@ end = struct
             t.default_env
           else
             match Path.Build.parent dir with
-            | None ->
-              raise_notrace Exit
-            | Some parent ->
-              lazy (get t ~dir:parent ~scope)
+            | None -> raise_notrace Exit
+            | Some parent -> lazy (get t ~dir:parent ~scope)
         in
         let config = get_env_stanza t ~dir in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
@@ -160,8 +150,7 @@ end = struct
 
   let get t ~dir =
     match Table.find t.env dir with
-    | Some node ->
-      node
+    | Some node -> node
     | None -> (
       let scope = Scope.DB.find_by_dir t.scopes dir in
       try get t ~dir ~scope
@@ -199,8 +188,7 @@ end = struct
 
   let bin_artifacts_host t ~dir =
     match t.host with
-    | None ->
-      bin_artifacts t ~dir
+    | None -> bin_artifacts t ~dir
     | Some host ->
       let dir =
         Path.Build.drop_build_context_exn dir
@@ -271,10 +259,8 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
 
 let source_files t ~src_path =
   match File_tree.find_dir t.file_tree src_path with
-  | None ->
-    String.Set.empty
-  | Some dir ->
-    File_tree.Dir.files dir
+  | None -> String.Set.empty
+  | Some dir -> File_tree.Dir.files dir
 
 let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
   =
@@ -353,10 +339,8 @@ let get_installed_binaries stanzas ~(context : Context.t) =
     String_with_vars.expand ~dir ~mode:Single
       ~f:(fun var ver ->
         match expander var ver with
-        | Unknown ->
-          None
-        | Expanded x ->
-          Some x
+        | Unknown -> None
+        | Expanded x -> Some x
         | Restricted ->
           User_error.raise
             ~loc:(String_with_vars.Var.loc var)
@@ -370,10 +354,10 @@ let get_installed_binaries stanzas ~(context : Context.t) =
     String_with_vars.partial_expand ~dir ~mode:Single
       ~f:(fun var ver ->
         match expander var ver with
-        | Expander.Unknown | Restricted ->
+        | Expander.Unknown
+         |Restricted ->
           None
-        | Expanded x ->
-          Some x)
+        | Expanded x -> Some x)
       sw
     |> String_with_vars.Partial.map ~f:(Value.to_string ~dir)
   in
@@ -412,8 +396,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           binaries_from_install files
         else
           acc
-      | _ ->
-        acc)
+      | _ -> acc)
 
 let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ~external_lib_deps_mode =
@@ -432,10 +415,8 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
               Path.Build.append_source context.build_dir dune_file.dir
             in
             ((ctx_dir, lib) :: libs, external_variants)
-          | Dune_file.External_variant ev ->
-            (libs, ev :: external_variants)
-          | _ ->
-            acc)
+          | Dune_file.External_variant ev -> (libs, ev :: external_variants)
+          | _ -> acc)
     in
     let lib_config = Context.lib_config context in
     Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
@@ -483,7 +464,9 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   in
   let expander =
     let artifacts_host =
-      match host with None -> artifacts | Some host -> host.artifacts
+      match host with
+      | None -> artifacts
+      | Some host -> host.artifacts
     in
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
@@ -523,10 +506,8 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; chdir =
     Build.arr (fun (action : Action.t) ->
       match action with
-      | Chdir _ ->
-        action
-      | _ ->
-        Chdir (Path.build context.build_dir, action))
+      | Chdir _ -> action
+      | _ -> Chdir (Path.build context.build_dir, action))
   ; libs_by_package =
     Lib.DB.all public_libs |> Lib.Set.to_list
     |> List.filter_map ~f:(fun lib ->
@@ -557,8 +538,8 @@ module Libs = struct
         | Ok src_fn ->
           let src = Path.build (Path.Build.relative dir src_fn) in
           Build.copy_and_add_line_directive ~src ~dst
-        | Error e ->
-          Build.fail ~targets:[ dst ] { fail = (fun () -> raise e) } ))
+        | Error e -> Build.fail ~targets:[ dst ] { fail = (fun () -> raise e) }
+        ))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
@@ -586,8 +567,7 @@ module Deps = struct
     | File s ->
       let path = Expander.expand_path expander s in
       Build.path path >>^ fun () -> [ path ]
-    | Alias s ->
-      Build.alias (make_alias expander s) >>^ fun () -> []
+    | Alias s -> Build.alias (make_alias expander s) >>^ fun () -> []
     | Alias_rec s ->
       Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
         ~file_tree:t.file_tree (make_alias expander s)
@@ -606,8 +586,7 @@ module Deps = struct
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
       Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
       >>^ fun () -> []
-    | Universe ->
-      Build.dep Dep.universe >>^ fun () -> []
+    | Universe -> Build.dep Dep.universe >>^ fun () -> []
     | Env_var var_sw ->
       let var = Expander.expand_str expander var_sw in
       Build.env_var var >>^ fun () -> []
@@ -649,28 +628,26 @@ module Action = struct
 
   let map_exe sctx =
     match sctx.host with
-    | None ->
-      fun exe -> exe
+    | None -> fun exe -> exe
     | Some host -> (
       fun exe ->
         match Path.extract_build_context_dir exe with
         | Some (dir, exe)
           when Path.equal dir (Path.build sctx.context.build_dir) ->
           Path.append_source (Path.build host.context.build_dir) exe
-        | _ ->
-          exe )
+        | _ -> exe )
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
     ~targets_dir t : (Path.t Bindings.t, Action.t) Build.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     ( match (targets_written_by_user : Expander.Targets.t) with
-    | Static _ | Infer ->
+    | Static _
+     |Infer ->
       ()
     | Forbidden context -> (
       match U.Infer.unexpanded_targets t with
-      | [] ->
-        ()
+      | [] -> ()
       | x :: _ ->
         let loc = String_with_vars.loc x in
         User_error.raise ~loc
@@ -682,8 +659,7 @@ module Action = struct
     in
     let { U.Infer.Outcome.deps; targets } =
       match targets_written_by_user with
-      | Infer ->
-        U.Infer.partial t ~all_targets:true
+      | Infer -> U.Infer.partial t ~all_targets:true
       | Static { targets = targets_written_by_user; multiplicity = _ } ->
         let targets_written_by_user =
           Path.Build.Set.of_list targets_written_by_user
@@ -732,10 +708,8 @@ module Action = struct
         in
         Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
           match Expander.resolve_binary ~loc expander ~prog with
-          | Ok path ->
-            path
-          | Error { fail } ->
-            fail ()))
+          | Ok path -> path
+          | Error { fail } -> fail ()))
       >>> Build.dyn_path_set
         (Build.arr (fun action ->
           let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
@@ -743,10 +717,8 @@ module Action = struct
       >>> Build.action_dyn () ~dir:(Path.build dir) ~targets
     in
     match Expander.Resolved_forms.failures forms with
-    | [] ->
-      build
-    | fail :: _ ->
-      Build.fail fail >>> build
+    | [] -> build
+    | fail :: _ -> Build.fail fail >>> build
 end
 
 let opaque t =

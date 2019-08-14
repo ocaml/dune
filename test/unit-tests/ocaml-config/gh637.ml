@@ -48,12 +48,8 @@ let () =
     match
       valid_ocaml_config |> String.split_lines |> Ocaml_config.Vars.of_lines
     with
-    | Ok x ->
-      Ocaml_config.make x
-    | Error msg ->
-      Error (Ocamlc_config, msg)
+    | Ok x -> Ocaml_config.make x
+    | Error msg -> Error (Ocamlc_config, msg)
   with
-  | Error (_, e) ->
-    failwith e
-  | Ok (_ : Ocaml_config.t) ->
-    ()
+  | Error (_, e) -> failwith e
+  | Ok (_ : Ocaml_config.t) -> ()

@@ -7,12 +7,14 @@ module Info = struct
     | Internal
     | Source_file_copy
 
-  let of_loc_opt = function None -> Internal | Some loc -> From_dune_file loc
+  let of_loc_opt = function
+    | None -> Internal
+    | Some loc -> From_dune_file loc
 
   let loc = function
-    | From_dune_file loc ->
-      Some loc
-    | Internal | Source_file_copy ->
+    | From_dune_file loc -> Some loc
+    | Internal
+     |Source_file_copy ->
       None
 end
 
@@ -38,8 +40,7 @@ let make ?(sandbox = Sandbox_config.default)
       match info with
       | From_dune_file loc ->
         User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
-      | _ ->
-        Code_error.raise "Build_interpret.Rule.make: no targets" [] )
+      | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [] )
     | Some x ->
       let dir = Path.Build.parent_exn x in
       ( if
@@ -47,7 +48,8 @@ let make ?(sandbox = Sandbox_config.default)
           Path.Build.( <> ) (Path.Build.parent_exn path) dir)
       then
         match info with
-        | Internal | Source_file_copy ->
+        | Internal
+         |Source_file_copy ->
           Code_error.raise "rule has targets in different directories"
             [ ("targets", Path.Build.Set.to_dyn targets) ]
         | From_dune_file loc ->

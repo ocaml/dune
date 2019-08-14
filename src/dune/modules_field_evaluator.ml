@@ -18,13 +18,15 @@ type kind =
   | Exe_or_normal_lib
 
 let eval =
-  let key = function Error s -> s | Ok m -> Module.Source.name m in
+  let key = function
+    | Error s -> s
+    | Ok m -> Module.Source.name m
+  in
   let module Unordered = Ordered_set_lang.Unordered (Module_name) in
   let parse ~all_modules ~fake_modules ~loc s =
     let name = Module_name.of_string s in
     match Module_name.Map.find all_modules name with
-    | Some m ->
-      Ok m
+    | Some m -> Ok m
     | None ->
       fake_modules := Module_name.Map.set !fake_modules name loc;
       Error name
@@ -35,8 +37,7 @@ let eval =
     let modules = Unordered.eval_loc ~parse ~standard ~key osl in
     Module_name.Map.filter_map modules ~f:(fun (loc, m) ->
       match m with
-      | Ok m ->
-        Some (loc, m)
+      | Ok m -> Some (loc, m)
       | Error s ->
         (* We are going to fail only if the module appear in the final set, foo
           \ bar doesn't fail if bar doesn't exists (for jbuild file
@@ -83,7 +84,9 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
       let virtual_ = Module_name.Map.find virtual_modules module_name in
       let intf_only = Module_name.Map.find intf_only module_name in
       let with_property prop f acc =
-        match prop with None -> acc | Some (loc, _) -> f loc acc
+        match prop with
+        | None -> acc
+        | Some (loc, _) -> f loc acc
       in
       let add_if b kind loc acc =
         if b then
@@ -117,10 +120,8 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
   let unimplemented_virt_modules =
     Module_name.Set.filter existing_virtual_modules ~f:(fun module_name ->
       match Module_name.Map.find all module_name with
-      | None ->
-        true
-      | Some m ->
-        not (Module.Source.has m ~ml_kind:Impl))
+      | None -> true
+      | Some m -> not (Module.Source.has m ~ml_kind:Impl))
   in
   { errors; unimplemented_virt_modules }
 
@@ -161,8 +162,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
     in
     let print before l after =
       match l with
-      | [] ->
-        ()
+      | [] -> ()
       | (loc, _) :: _ ->
         User_error.raise ~loc (List.concat [ before; [ line_list l ]; after ])
     in
@@ -264,21 +264,24 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   in
   let allow_new_public_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ ->
+    | Exe_or_normal_lib
+     |Virtual _ ->
       true
     | Implementation { allow_new_public_modules; _ } ->
       allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
-    | Exe_or_normal_lib | Virtual _ ->
+    | Exe_or_normal_lib
+     |Virtual _ ->
       Module_name.Set.empty
     | Implementation { existing_virtual_modules; _ } ->
       existing_virtual_modules
   in
   let virtual_modules =
     match kind with
-    | Exe_or_normal_lib | Implementation _ ->
+    | Exe_or_normal_lib
+     |Implementation _ ->
       Module_name.Map.empty
     | Virtual { virtual_modules } ->
       eval ~standard:Module_name.Map.empty virtual_modules

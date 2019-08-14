@@ -32,10 +32,8 @@ type enclosing_group =
   | Group_root of Path.Build.t
 
 let current_group dir = function
-  | Standalone _ ->
-    No_group
-  | Group_root _ ->
-    Group_root dir
+  | Standalone _ -> No_group
+  | Group_root _ -> Group_root dir
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
     Group_root group_root
 
@@ -48,23 +46,21 @@ let get_include_subdirs stanzas =
           [ Pp.text "The 'include_subdirs' stanza cannot appear more than once"
           ];
       Some x
-    | _ ->
-      acc)
+    | _ -> acc)
 
 let check_no_module_consumer stanzas =
   List.iter stanzas ~f:(fun stanza ->
     match stanza with
     | Library { buildable; _ }
-    | Executables { buildable; _ }
-    | Tests { exes = { buildable; _ }; _ } ->
+     |Executables { buildable; _ }
+     |Tests { exes = { buildable; _ }; _ } ->
       User_error.raise ~loc:buildable.loc
         [ Pp.text
           "This stanza is not allowed in a sub-directory of directory with \
            (include_subdirs unqualified)."
         ]
         ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
-    | _ ->
-      ())
+    | _ -> ())
 
 module DB = struct
   type nonrec t =
@@ -79,10 +75,8 @@ module DB = struct
     let get ~dir = Memo.exec db.fn dir in
     let enclosing_group ~dir =
       match Path.Build.parent dir with
-      | None ->
-        No_group
-      | Some parent_dir ->
-        current_group parent_dir (get ~dir:parent_dir)
+      | None -> No_group
+      | Some parent_dir -> current_group parent_dir (get ~dir:parent_dir)
     in
     match
       Option.bind
@@ -91,8 +85,7 @@ module DB = struct
     with
     | None -> (
       match enclosing_group ~dir with
-      | No_group ->
-        Standalone None
+      | No_group -> Standalone None
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root }
       )
@@ -107,17 +100,14 @@ module DB = struct
           Standalone (Some (ft_dir, None))
         else
           match enclosing_group ~dir with
-          | No_group ->
-            Standalone (Some (ft_dir, None))
+          | No_group -> Standalone (Some (ft_dir, None))
           | Group_root group_root ->
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root } )
       | Some d -> (
         match get_include_subdirs d.data with
-        | Some (Include mode) ->
-          Group_root (ft_dir, mode, d)
-        | Some No ->
-          Standalone (Some (ft_dir, Some d))
+        | Some (Include mode) -> Group_root (ft_dir, mode, d)
+        | Some No -> Standalone (Some (ft_dir, Some d))
         | None -> (
           if build_dir_is_project_root then
             Standalone (Some (ft_dir, Some d))
@@ -127,8 +117,7 @@ module DB = struct
               check_no_module_consumer d.data;
               Is_component_of_a_group_but_not_the_root
                 { stanzas = Some d; group_root }
-            | No_group ->
-              Standalone (Some (ft_dir, Some d)) ) ) )
+            | No_group -> Standalone (Some (ft_dir, Some d)) ) ) )
 
   let make file_tree ~stanzas_per_dir =
     (* CR-someday aalekseyev: This local recursive module is a bit awkward. In

@@ -10,10 +10,8 @@ module Entry = struct
     | Loc of Loc.t
 
   let pp = function
-    | Path p ->
-      Pp.text (Dpath.describe_path p)
-    | Alias p ->
-      Pp.textf "alias %s" (Dpath.describe_path p)
+    | Path p -> Pp.text (Dpath.describe_path p)
+    | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
     | Library (path, lib_name) ->
       Pp.textf "library %S in %s"
         (Lib_name.to_string lib_name)
@@ -29,8 +27,7 @@ module Entry = struct
       Pp.textf "%s"
         (Dyn.to_string
           (List [ String "pps"; Dyn.Encoder.(list Lib_name.to_dyn) l ]))
-    | Loc loc ->
-      Pp.text (Loc.to_file_colon_line loc)
+    | Loc loc -> Pp.text (Loc.to_file_colon_line loc)
 end
 
 module Entries = struct
@@ -49,33 +46,24 @@ exception E of exn * Entry.t list
 
 let prepend_exn exn entry =
   match exn with
-  | E (exn, entries) ->
-    E (exn, entry :: entries)
-  | exn ->
-    E (exn, [ entry ])
+  | E (exn, entries) -> E (exn, entry :: entries)
+  | exn -> E (exn, [ entry ])
 
 let reraise exn entry =
   Exn_with_backtrace.map_and_reraise exn ~f:(fun exn -> prepend_exn exn entry)
 
 let unwrap_exn = function
-  | E (exn, entries) ->
-    (exn, Some entries)
-  | exn ->
-    (exn, None)
+  | E (exn, entries) -> (exn, Some entries)
+  | exn -> (exn, None)
 
 let map ~f = function
   | E (exn, entries) -> (
     match f exn with
-    | E (exn, entries') ->
-      E (exn, entries' @ entries)
-    | exn ->
-      E (exn, entries) )
-  | exn ->
-    f exn
+    | E (exn, entries') -> E (exn, entries' @ entries)
+    | exn -> E (exn, entries) )
+  | exn -> f exn
 
 let () =
   Printexc.register_printer (function
-    | E (exn, _) ->
-      Some (Printexc.to_string exn)
-    | _ ->
-      None)
+    | E (exn, _) -> Some (Printexc.to_string exn)
+    | _ -> None)

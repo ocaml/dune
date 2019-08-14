@@ -10,22 +10,23 @@ module Pub_name = struct
   let parse s =
     let s = Lib_name.to_string s in
     match String.split s ~on:'.' with
-    | [] ->
-      assert false
+    | [] -> assert false
     | x :: l ->
       let rec loop acc l =
-        match l with [] -> acc | x :: l -> loop (Dot (acc, x)) l
+        match l with
+        | [] -> acc
+        | x :: l -> loop (Dot (acc, x)) l
       in
       loop (Id x) l
 
-  let rec root = function Dot (t, _) -> root t | Id n -> n
+  let rec root = function
+    | Dot (t, _) -> root t
+    | Id n -> n
 
   let to_list =
     let rec loop acc = function
-      | Dot (t, n) ->
-        loop (n :: acc) t
-      | Id n ->
-        n :: acc
+      | Dot (t, n) -> loop (n :: acc) t
+      | Id n -> n :: acc
     in
     fun t -> loop [] t
 
@@ -68,23 +69,20 @@ let gen_lib pub_name lib ~version =
   let kind = Lib_info.kind info in
   let desc =
     match synopsis with
-    | Some s ->
-      s
+    | Some s -> s
     | None -> (
       (* CR-someday jdimino: wut? this looks old *)
       match (pub_name : Pub_name.t) with
       | Dot (p, "runtime-lib") ->
         sprintf "Runtime library for %s" (Pub_name.to_string p)
-      | Dot (p, "expander") ->
-        sprintf "Expander for %s" (Pub_name.to_string p)
-      | _ ->
-        "" )
+      | Dot (p, "expander") -> sprintf "Expander for %s" (Pub_name.to_string p)
+      | _ -> "" )
   in
   let preds =
     match kind with
-    | Normal ->
-      []
-    | Ppx_rewriter _ | Ppx_deriver _ ->
+    | Normal -> []
+    | Ppx_rewriter _
+     |Ppx_deriver _ ->
       [ Pos "ppx_driver" ]
   in
   let lib_deps = Lib.Meta.requires lib in
@@ -102,9 +100,9 @@ let gen_lib pub_name lib ~version =
         ; ppx_runtime_deps ppx_rt_deps
         ] )
     ; ( match kind with
-      | Normal ->
-        []
-      | Ppx_rewriter _ | Ppx_deriver _ ->
+      | Normal -> []
+      | Ppx_rewriter _
+       |Ppx_deriver _ ->
         (* Deprecated ppx method support *)
         let no_ppx_driver = Neg "ppx_driver"
         and no_custom_ppx = Neg "custom_ppx" in
@@ -116,8 +114,7 @@ let gen_lib pub_name lib ~version =
               (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
             ]
           ; ( match kind with
-            | Normal ->
-              assert false
+            | Normal -> assert false
             | Ppx_rewriter _ ->
               [ rule "ppx"
                 [ no_ppx_driver; no_custom_ppx ]
@@ -134,8 +131,7 @@ let gen_lib pub_name lib ~version =
               ] )
           ] )
     ; ( match Lib_info.jsoo_runtime info with
-      | [] ->
-        []
+      | [] -> []
       | l ->
         let root = Pub_name.root pub_name in
         let l = List.map l ~f:Path.basename in
@@ -147,7 +143,9 @@ let gen_lib pub_name lib ~version =
 
 let gen ~package ~version libs =
   let version =
-    match version with None -> [] | Some s -> [ rule "version" [] Set s ]
+    match version with
+    | None -> []
+    | Some s -> [ rule "version" [] Set s ]
   in
   let pkgs =
     List.map libs ~f:(fun lib ->
@@ -157,19 +155,15 @@ let gen ~package ~version libs =
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
       match Pub_name.to_list pn with
-      | [] ->
-        assert false
-      | _package :: path ->
-        (path, meta))
+      | [] -> assert false
+      | _package :: path -> (path, meta))
   in
   let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec loop name pkgs =
     let entries, sub_pkgs =
       List.partition_map pkgs ~f:(function
-        | [], entries ->
-          Left entries
-        | x :: p, entries ->
-          Right (x, (p, entries)))
+        | [], entries -> Left entries
+        | x :: p, entries -> Right (x, (p, entries)))
     in
     let entries = List.concat entries in
     let subs =

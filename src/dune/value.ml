@@ -9,34 +9,31 @@ type t =
 let to_dyn =
   let open Dyn.Encoder in
   function
-  | String s ->
-    constr "string" [ string s ]
-  | Path p ->
-    constr "path" [ Path.to_dyn p ]
-  | Dir p ->
-    constr "dir" [ Path.to_dyn p ]
+  | String s -> constr "string" [ string s ]
+  | Path p -> constr "path" [ Path.to_dyn p ]
+  | Dir p -> constr "dir" [ Path.to_dyn p ]
 
 let string_of_path ~dir p = Path.reach ~from:dir p
 
 let to_string t ~dir =
-  match t with String s -> s | Dir p | Path p -> string_of_path ~dir p
+  match t with
+  | String s -> s
+  | Dir p
+   |Path p ->
+    string_of_path ~dir p
 
 let compare_vals ~dir x y =
   match (x, y) with
-  | String x, String y ->
-    String.compare x y
-  | (Path x | Dir x), (Path y | Dir y) ->
-    Path.compare x y
-  | String x, (Path _ | Dir _) ->
-    String.compare x (to_string ~dir y)
-  | (Path _ | Dir _), String y ->
-    String.compare (to_string ~dir x) y
+  | String x, String y -> String.compare x y
+  | (Path x | Dir x), (Path y | Dir y) -> Path.compare x y
+  | String x, (Path _ | Dir _) -> String.compare x (to_string ~dir y)
+  | (Path _ | Dir _), String y -> String.compare (to_string ~dir x) y
 
 let to_path ?error_loc t ~dir =
   match t with
-  | String s ->
-    Path.relative ?error_loc dir s
-  | Dir p | Path p ->
+  | String s -> Path.relative ?error_loc dir s
+  | Dir p
+   |Path p ->
     p
 
 module L = struct
@@ -48,7 +45,11 @@ module L = struct
     List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "
 
   let deps_only =
-    List.filter_map ~f:(function Dir _ | String _ -> None | Path p -> Some p)
+    List.filter_map ~f:(function
+      | Dir _
+       |String _ ->
+        None
+      | Path p -> Some p)
 
   let strings = List.map ~f:(fun x -> String x)
 

@@ -7,7 +7,9 @@ let list f l = sprintf "[%s]" (String.concat ~sep:"; " (List.map l ~f))
 
 let string s = sprintf "%S" s
 
-let option f = function None -> "None" | Some x -> sprintf "Some %s" (f x)
+let option f = function
+  | None -> "None"
+  | Some x -> sprintf "Some %s" (f x)
 
 let () =
   let bad fmt = ksprintf (fun s -> raise (Arg.Bad s)) fmt in

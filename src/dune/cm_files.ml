@@ -15,8 +15,7 @@ let objects_and_cms t ~mode modules =
   let kind = Mode.cm_kind mode in
   let cm_files = Obj_dir.Module.L.cm_files t.obj_dir modules ~kind in
   match mode with
-  | Byte ->
-    cm_files
+  | Byte -> cm_files
   | Native ->
     Obj_dir.Module.L.o_files t.obj_dir modules ~ext_obj:t.ext_obj
     |> List.rev_append cm_files

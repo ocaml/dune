@@ -173,10 +173,8 @@ module Lib = struct
        let* obj_dir = field_o "obj_dir" (Obj_dir.decode ~dir) in
        let obj_dir =
          match obj_dir with
-         | None ->
-           Obj_dir.make_external_no_private ~dir
-         | Some obj_dir ->
-           obj_dir
+         | None -> Obj_dir.make_external_no_private ~dir
+         | Some obj_dir -> obj_dir
        in
        let+ synopsis = field_o "synopsis" string
        and+ loc = loc
@@ -318,8 +316,7 @@ let encode ~dune_version { libs; name; version; dir } =
   let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
   let sexp =
     match version with
-    | None ->
-      sexp
+    | None -> sexp
     | Some version ->
       sexp
       @ [ List
@@ -340,8 +337,7 @@ module Or_meta = struct
   let encode ~dune_version = function
     | Use_meta ->
       prepend_version ~dune_version [ Dune_lang.(List [ atom "use_meta" ]) ]
-    | Dune_package p ->
-      encode ~dune_version p
+    | Dune_package p -> encode ~dune_version p
 
   let decode ~lang ~dir =
     let open Dune_lang.Decoder in

@@ -9,23 +9,22 @@ module Status = struct
   let pp ppf t =
     Format.pp_print_string ppf
       ( match t with
-      | Installed ->
-        "installed"
-      | Public _ ->
-        "public"
+      | Installed -> "installed"
+      | Public _ -> "public"
       | Private project ->
         let name = Dune_project.name project in
         sprintf "private (%s)" (Dune_project.Name.to_string_hum name) )
 
-  let is_private = function Private _ -> true | Installed | Public _ -> false
+  let is_private = function
+    | Private _ -> true
+    | Installed
+     |Public _ ->
+      false
 
   let project_name = function
-    | Installed ->
-      None
-    | Private project ->
-      Some (Dune_project.name project)
-    | Public (name, _) ->
-      Some name
+    | Installed -> None
+    | Private project -> Some (Dune_project.name project)
+    | Public (name, _) -> Some name
 end
 
 module Deps = struct
@@ -36,20 +35,17 @@ module Deps = struct
   let of_lib_deps deps =
     let rec loop acc (deps : Dune_file.Lib_dep.t list) =
       match deps with
-      | [] ->
-        Some (List.rev acc)
-      | Direct x :: deps ->
-        loop (x :: acc) deps
-      | Select _ :: _ ->
-        None
+      | [] -> Some (List.rev acc)
+      | Direct x :: deps -> loop (x :: acc) deps
+      | Select _ :: _ -> None
     in
-    match loop [] deps with Some l -> Simple l | None -> Complex deps
+    match loop [] deps with
+    | Some l -> Simple l
+    | None -> Complex deps
 
   let to_lib_deps = function
-    | Simple l ->
-      List.map l ~f:Dune_file.Lib_dep.direct
-    | Complex l ->
-      l
+    | Simple l -> List.map l ~f:Dune_file.Lib_dep.direct
+    | Complex l -> l
 end
 
 module Source = struct
@@ -57,7 +53,10 @@ module Source = struct
     | Local
     | External of 'a
 
-  let map t ~f = match t with Local -> Local | External a -> External (f a)
+  let map t ~f =
+    match t with
+    | Local -> Local
+    | External a -> External (f a)
 end
 
 module Enabled_status = struct
@@ -185,10 +184,8 @@ let of_library_stanza ~dir
   in
   let status =
     match conf.public with
-    | None ->
-      Status.Private conf.project
-    | Some p ->
-      Public (Dune_project.name conf.project, p.package)
+    | None -> Status.Private conf.project
+    | Some p -> Public (Dune_project.name conf.project, p.package)
   in
   let virtual_library = Dune_file.Library.is_virtual conf in
   let foreign_archives =
@@ -216,8 +213,7 @@ let of_library_stanza ~dir
         :: Path.Build.extend_basename obj_name ~suffix:ext_obj
         :: foreign_archives.native
       }
-    | _ ->
-      foreign_archives
+    | _ -> foreign_archives
   in
   let jsoo_archive =
     Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
@@ -243,8 +239,7 @@ let of_library_stanza ~dir
         | var, None ->
           let value = Lib_config.get_for_enabled_if lib_config ~var in
           Some [ String value ]
-        | _ ->
-          None)
+        | _ -> None)
     in
     if not enabled_if_result then
       Enabled_status.Disabled_because_of_enabled_if
@@ -255,9 +250,9 @@ let of_library_stanza ~dir
   in
   let version =
     match status with
-    | Public (_, pkg) ->
-      pkg.version
-    | Installed | Private _ ->
+    | Public (_, pkg) -> pkg.version
+    | Installed
+     |Private _ ->
       None
   in
   { loc = conf.buildable.loc

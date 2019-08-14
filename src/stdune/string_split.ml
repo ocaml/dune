@@ -25,8 +25,7 @@ let split_lines s =
       List.rev acc
     else
       match s.[j] with
-      | '\r' ->
-        loop ~last_is_cr:true ~acc i (j + 1)
+      | '\r' -> loop ~last_is_cr:true ~acc i (j + 1)
       | '\n' ->
         let line =
           let len =
@@ -38,7 +37,6 @@ let split_lines s =
           sub s ~pos:i ~len
         in
         loop ~acc:(line :: acc) (j + 1) (j + 1) ~last_is_cr:false
-      | _ ->
-        loop ~acc i (j + 1) ~last_is_cr:false
+      | _ -> loop ~acc i (j + 1) ~last_is_cr:false
   in
   loop ~acc:[] 0 0 ~last_is_cr:false

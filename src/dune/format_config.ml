@@ -14,12 +14,12 @@ module Language = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Dialect name ->
-      constr "dialect" [ string name ]
-    | Dune ->
-      constr "dune" []
+    | Dialect name -> constr "dialect" [ string name ]
+    | Dune -> constr "dune" []
 
-  let of_string = function "dune" -> Dune | s -> Dialect s
+  let of_string = function
+    | "dune" -> Dune
+    | s -> Dialect s
 
   let in_ext_1_0 = [ Dialect "ocaml"; Dialect "reason" ]
 
@@ -27,7 +27,9 @@ module Language = struct
 
   let encode =
     let open Dune_lang.Encoder in
-    function Dune -> string "dune" | Dialect d -> string d
+    function
+    | Dune -> string "dune"
+    | Dialect d -> string d
 end
 
 module Enabled_for = struct
@@ -38,13 +40,13 @@ module Enabled_for = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Only l ->
-      constr "only" (List.map ~f:Language.to_dyn l)
-    | All ->
-      string "all"
+    | Only l -> constr "only" (List.map ~f:Language.to_dyn l)
+    | All -> string "all"
 
   let includes t =
-    match t with Only l -> List.mem ~set:l | All -> fun _ -> true
+    match t with
+    | Only l -> List.mem ~set:l
+    | All -> fun _ -> true
 
   let field = field_o "enabled_for" (repeat (map ~f:Language.of_string string))
 
@@ -52,14 +54,10 @@ module Enabled_for = struct
     let+ list_opt = field
     and+ ext_version = Syntax.get_exn syntax in
     match (list_opt, ext_version) with
-    | Some l, _ ->
-      Only l
-    | None, (1, 0) ->
-      Only Language.in_ext_1_0
-    | None, (1, 1) ->
-      Only Language.in_ext_1_1
-    | None, (1, 2) ->
-      All
+    | Some l, _ -> Only l
+    | None, (1, 0) -> Only Language.in_ext_1_0
+    | None, (1, 1) -> Only Language.in_ext_1_1
+    | None, (1, 2) -> All
     | None, _ ->
       Code_error.raise "This fmt version does not exist"
         [ ("version", Syntax.Version.to_dyn ext_version) ]
@@ -87,7 +85,9 @@ let dune2_record_syntax =
   let+ loc = loc
   and+ ef = Enabled_for.field in
   let enabled_for =
-    match ef with Some l -> Enabled_for.Only l | None -> All
+    match ef with
+    | Some l -> Enabled_for.Only l
+    | None -> All
   in
   Some { loc; enabled_for }
 
@@ -105,9 +105,9 @@ let field_dune2 = field "formatting" dune2_dec ~default:dune2_default
 let field =
   let* dune_lang_version = Syntax.get_exn Stanza.syntax in
   match Syntax.Version.compare dune_lang_version (2, 0) with
-  | Lt ->
-    return None
-  | Gt | Eq ->
+  | Lt -> return None
+  | Gt
+   |Eq ->
     field_dune2
 
 let loc t = t.loc
@@ -123,19 +123,14 @@ let encode_explicit conf =
 
 let to_explicit { loc; enabled_for } =
   match enabled_for with
-  | Enabled_for.All ->
-    None
-  | Only l ->
-    Some { loc; enabled_for = l }
+  | Enabled_for.All -> None
+  | Only l -> Some { loc; enabled_for = l }
 
 let of_config ~ext ~dune_lang =
   match (ext, dune_lang) with
-  | None, None ->
-    None
-  | Some x, None ->
-    Some x
-  | None, Some x ->
-    Some x
+  | None, None -> None
+  | Some x, None -> Some x
+  | None, Some x -> Some x
   | Some ext, Some _ ->
     let suggestion =
       match to_explicit ext with

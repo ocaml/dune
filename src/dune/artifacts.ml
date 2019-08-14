@@ -14,12 +14,10 @@ module Bin = struct
       Ok (Path.of_filename_relative_to_initial_cwd name)
     else
       match String.Map.find t.local_bins name with
-      | Some path ->
-        Ok (Path.build path)
+      | Some path -> Ok (Path.build path)
       | None -> (
         match Context.which t.context name with
-        | Some p ->
-          Ok p
+        | Some p -> Ok p
         | None ->
           Error
             (let context = t.context.name in
@@ -69,8 +67,7 @@ module Public_libs = struct
       in
       let lib_install_dir =
         match rest with
-        | [] ->
-          lib_install_dir
+        | [] -> lib_install_dir
         | _ ->
           Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
       in

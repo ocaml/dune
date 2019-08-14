@@ -18,16 +18,11 @@ let decode =
     ]
 
 let to_string = function
-  | C ->
-    "c"
-  | Exe ->
-    "exe"
-  | Object ->
-    "object"
-  | Shared_object ->
-    "shared_object"
-  | Js ->
-    "js"
+  | C -> "c"
+  | Exe -> "exe"
+  | Object -> "object"
+  | Shared_object -> "shared_object"
+  | Js -> "js"
 
 let to_dyn t =
   let open Dyn.Encoder in

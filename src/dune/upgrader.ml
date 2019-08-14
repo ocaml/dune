@@ -32,8 +32,7 @@ let scan_included_files path =
                 (Path.Source.to_string_maybe_quoted included_file)
               ];
           iter included_file
-        | _ ->
-          ())
+        | _ -> ())
     )
   in
   iter path;
@@ -54,55 +53,50 @@ type todo =
 
 let rename_basename base =
   match String.drop_prefix base ~prefix:"jbuild" with
-  | None ->
-    base
-  | Some suffix ->
-    "dune" ^ suffix
+  | None -> base
+  | Some suffix -> "dune" ^ suffix
 
 let upgrade_stanza stanza =
   let open Dune_lang.Ast in
   let simplify_field = function
     | "action"
-    | "generate_runner"
-    | "lint"
-    | "preprocess"
-    | "self_build_stubs_archive" ->
+     |"generate_runner"
+     |"lint"
+     |"preprocess"
+     |"self_build_stubs_archive" ->
       false
-    | _ ->
-      true
+    | _ -> true
   in
   let is_rule_field = function
-    | "targets" | "deps" | "action" | "locks" | "fallback" | "mode" ->
+    | "targets"
+     |"deps"
+     |"action"
+     |"locks"
+     |"fallback"
+     |"mode" ->
       true
-    | _ ->
-      false
+    | _ -> false
   in
   let rec uses_first_dep_var = function
-    | Atom _ | Quoted_string _ ->
+    | Atom _
+     |Quoted_string _ ->
       false
-    | List (_, l) ->
-      List.exists l ~f:uses_first_dep_var
+    | List (_, l) -> List.exists l ~f:uses_first_dep_var
     | Template x ->
       List.exists x.parts ~f:(function
-        | Dune_lang.Template.Var { name = "<"; _ } ->
-          true
-        | _ ->
-          false)
+        | Dune_lang.Template.Var { name = "<"; _ } -> true
+        | _ -> false)
   in
   let rec map_var ~f = function
-    | (Atom _ | Quoted_string _) as x ->
-      x
-    | List (loc, l) ->
-      List (loc, List.map l ~f:(map_var ~f))
+    | (Atom _ | Quoted_string _) as x -> x
+    | List (loc, l) -> List (loc, List.map l ~f:(map_var ~f))
     | Template x ->
       Template
         { x with
           parts =
             List.map x.parts ~f:(function
-              | Dune_lang.Template.Var v ->
-                f v
-              | x ->
-                x)
+              | Dune_lang.Template.Var v -> f v
+              | x -> x)
         }
   in
   let upgrade_string sexp =
@@ -118,12 +112,9 @@ let upgrade_stanza stanza =
       match s with
       | "files_recursively_in" ->
         Atom (loc, Dune_lang.Atom.of_string "source_tree")
-      | _ ->
-        upgrade_string x )
-    | Template _ as x ->
-      x
-    | Quoted_string _ as x ->
-      upgrade_string x
+      | _ -> upgrade_string x )
+    | Template _ as x -> x
+    | Quoted_string _ as x -> upgrade_string x
     | List (loc, l) ->
       let l =
         match l with
@@ -158,36 +149,28 @@ let upgrade_stanza stanza =
           :: List.map specs ~f:(function
             | List (loc, [ spec; List (_, modules) ]) ->
               List (loc, upgrade spec :: List.map modules ~f:upgrade)
-               | sexp ->
-                 upgrade sexp)
+               | sexp -> upgrade sexp)
         | [ (Atom (_, A "pps") as field); List (_, pps) ] -> (
           let pps, args =
             List.partition_map pps ~f:(function
               | (Atom (_, A s) | Quoted_string (_, s)) as sexp
                 when String.is_prefix s ~prefix:"-" ->
                 Right [ sexp ]
-              | List (_, l) ->
-                Right l
-              | sexp ->
-                Left sexp)
+              | List (_, l) -> Right l
+              | sexp -> Left sexp)
           in
           let args = List.concat args in
           (upgrade field :: pps)
           @
           match args with
-          | [] ->
-            []
-          | _ ->
-            Atom (loc, Dune_lang.Atom.of_string "--") :: args )
+          | [] -> []
+          | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args )
         | [ (Atom (_, A field_name) as field); List (_, args) ]
           when match (field_name, args) with
-            | "rule", Atom (_, A field_name) :: _ ->
-              is_rule_field field_name
-               | _ ->
-                 simplify_field field_name ->
+            | "rule", Atom (_, A field_name) :: _ -> is_rule_field field_name
+              | _ -> simplify_field field_name ->
           upgrade field :: List.map args ~f:upgrade
-        | _ ->
-          List.map l ~f:upgrade
+        | _ -> List.map l ~f:upgrade
       in
       let l =
         if List.exists l ~f:uses_first_dep_var then
@@ -201,8 +184,7 @@ let upgrade_stanza stanza =
                       ( loc
                       , [ Atom (loc, Dune_lang.Atom.of_string ":<"); first ] ))
                   :: rest )
-            | x ->
-              x)
+            | x -> x)
         else
           l
       in
@@ -223,10 +205,8 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
   in
   let sexps =
     List.filter sexps ~f:(function
-      | Dune_lang.Ast.List (_, [ Atom (_, A "jbuild_version"); _ ]) ->
-        false
-      | _ ->
-        true)
+      | Dune_lang.Ast.List (_, [ Atom (_, A "jbuild_version"); _ ]) -> false
+      | _ -> true)
   in
   let sexps = List.map sexps ~f:upgrade_stanza in
   let sexps, extra_files_to_delete =
@@ -261,24 +241,20 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
 (* This was obtained by trial and error. We should improve the opam parsing API
   to return better locations. *)
 let rec end_offset_of_opam_value : OpamParserTypes.value -> int = function
-  | Bool ((_, _, ofs), b) ->
-    ofs + String.length (string_of_bool b)
-  | Int ((_, _, ofs), x) ->
-    ofs + String.length (string_of_int x)
-  | String ((_, _, ofs), _) ->
-    ofs + 1
+  | Bool ((_, _, ofs), b) -> ofs + String.length (string_of_bool b)
+  | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
+  | String ((_, _, ofs), _) -> ofs + 1
   | Relop (_, _, _, v)
-  | Prefix_relop (_, _, v)
-  | Logop (_, _, _, v)
-  | Pfxop (_, _, v) ->
+   |Prefix_relop (_, _, v)
+   |Logop (_, _, _, v)
+   |Pfxop (_, _, v) ->
     end_offset_of_opam_value v
-  | Ident ((_, _, ofs), x) ->
-    ofs + String.length x
-  | List ((_, _, ofs), _) | Group ((_, _, ofs), _) | Option ((_, _, ofs), _, _)
-    ->
+  | Ident ((_, _, ofs), x) -> ofs + String.length x
+  | List ((_, _, ofs), _)
+   |Group ((_, _, ofs), _)
+   |Option ((_, _, ofs), _, _) ->
     ofs (* this is definitely wrong *)
-  | Env_binding ((_, _, ofs), _, _, _) ->
-    ofs
+  | Env_binding ((_, _, ofs), _, _, _) -> ofs
 
 (* probably wrong *)
 
@@ -297,8 +273,7 @@ let upgrade_opam_file todo fn =
   in
   let replace_jbuilder pos = replace_string pos "jbuilder" "dune" in
   let rec scan = function
-    | String (jpos, "jbuilder") ->
-      replace_jbuilder jpos
+    | String (jpos, "jbuilder") -> replace_jbuilder jpos
     | Option (pos, String (jpos, "jbuilder"), l) ->
       replace_jbuilder jpos;
       let _, _, start = pos in
@@ -330,15 +305,16 @@ let upgrade_opam_file todo fn =
       in
       add_subst start stop {| "-p" name "-j" jobs|}
     | Bool _
-    | Int _
-    | String _
-    | Relop _
-    | Logop _
-    | Pfxop _
-    | Ident _
-    | Prefix_relop _ ->
+     |Int _
+     |String _
+     |Relop _
+     |Logop _
+     |Pfxop _
+     |Ident _
+     |Prefix_relop _ ->
       ()
-    | List (_, l) | Group (_, l) ->
+    | List (_, l)
+     |Group (_, l) ->
       List.iter l ~f:scan
     | Option (_, v, l) ->
       scan v;
@@ -348,10 +324,8 @@ let upgrade_opam_file todo fn =
       scan v2
   in
   let rec scan_item = function
-    | Section (_, s) ->
-      List.iter s.section_items ~f:scan_item
-    | Variable (_, _, v) ->
-      scan v
+    | Section (_, s) -> List.iter s.section_items ~f:scan_item
+    | Variable (_, _, v) -> scan v
   in
   List.iter t.file_contents ~f:scan_item;
   let substs = List.sort !substs ~compare in
@@ -380,18 +354,15 @@ let upgrade_dir todo dir =
   let project_root = Dune_project.root project in
   if project_root = File_tree.Dir.path dir then (
     ( match Dune_project.ensure_project_file_exists project with
-    | Already_exist ->
-      ()
-    | Created ->
-      todo.to_add <- Dune_project.file project :: todo.to_add );
+    | Already_exist -> ()
+    | Created -> todo.to_add <- Dune_project.file project :: todo.to_add );
     Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
       let fn = Package.opam_file pkg in
       if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   );
   Option.iter (File_tree.Dir.dune_file dir) ~f:(fun dune_file ->
     match (dune_file.kind, dune_file.contents) with
-    | Dune, _ ->
-      ()
+    | Dune, _ -> ()
     | Jbuild, Ocaml_script fn ->
       User_warning.emit
         ~loc:(Loc.in_file (Path.source fn))
@@ -407,10 +378,8 @@ let upgrade_dir todo dir =
 
 let lookup_git_repo ft fn =
   match File_tree.Dir.vcs (File_tree.nearest_dir ft fn) with
-  | Some { kind = Git; root } ->
-    Some root
-  | _ ->
-    None
+  | Some { kind = Git; root } -> Some root
+  | _ -> None
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
@@ -420,10 +389,8 @@ let upgrade ft =
   let git =
     lazy
       ( match Bin.which ~path:(Env.path Env.initial) "git" with
-      | Some x ->
-        x
-      | None ->
-        Utils.program_not_found "git" ~loc:None )
+      | Some x -> x
+      | None -> Utils.program_not_found "git" ~loc:None )
   in
   let log fmt = Printf.ksprintf Console.print fmt in
   let* () =
@@ -432,8 +399,7 @@ let upgrade ft =
       | Some dir ->
         Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
           [ "add"; Path.reach (Path.source fn) ~from:dir ]
-      | None ->
-        Fiber.return ())
+      | None -> Fiber.return ())
   in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
     log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);

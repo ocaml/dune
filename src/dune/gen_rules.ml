@@ -18,14 +18,19 @@ module For_stanza = struct
 
   let empty_list = { merlin = []; cctx = []; js = []; source_dirs = [] }
 
-  let cons_maybe hd_o tl = match hd_o with Some hd -> hd :: tl | None -> tl
+  let cons_maybe hd_o tl =
+    match hd_o with
+    | Some hd -> hd :: tl
+    | None -> tl
 
   let cons acc x =
     { merlin = cons_maybe x.merlin acc.merlin
     ; cctx = cons_maybe x.cctx acc.cctx
     ; source_dirs = cons_maybe x.source_dirs acc.source_dirs
     ; js =
-      (match x.js with None -> acc.js | Some js -> List.rev_append acc.js js)
+      ( match x.js with
+      | None -> acc.js
+      | Some js -> List.rev_append acc.js js )
     }
 
   let rev t =
@@ -134,8 +139,7 @@ struct
       | Cinaps.T cinaps ->
         Cinaps.gen_rules sctx cinaps ~dir ~scope;
         For_stanza.empty_none
-      | _ ->
-        For_stanza.empty_none
+      | _ -> For_stanza.empty_none
     in
     let { For_stanza.merlin = merlins
       ; cctx = cctxs
@@ -187,16 +191,14 @@ struct
                        produced by this stanza are part of."
                     ])
               })
-        | Some cctx ->
-          Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir )
+        | Some cctx -> Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir )
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
         |> SC.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
         |> SC.add_rules ~dir:ctx_dir sctx
-      | _ ->
-        ());
+      | _ -> ());
     let dyn_deps =
       let pred =
         let id =
@@ -230,10 +232,8 @@ struct
     =
     with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
     match SC.stanzas_in sctx ~dir with
-    | None ->
-      []
-    | Some d ->
-      gen_rules dir_contents cctxs d
+    | None -> []
+    | Some d -> gen_rules dir_contents cctxs d
 
   let gen_rules ~dir components : Build_system.extra_sub_directories_to_keep =
     Install_rules.init_meta sctx ~dir;
@@ -243,13 +243,19 @@ struct
       match components with
       | ".js" :: rest -> (
         Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
-        match rest with [] -> All | _ -> These String.Set.empty )
+        match rest with
+        | [] -> All
+        | _ -> These String.Set.empty )
       | "_doc" :: rest -> (
         Odoc.gen_rules sctx rest ~dir;
-        match rest with [] -> All | _ -> These String.Set.empty )
+        match rest with
+        | [] -> All
+        | _ -> These String.Set.empty )
       | ".ppx" :: rest -> (
         Preprocessing.gen_rules sctx rest;
-        match rest with [] -> All | _ -> These String.Set.empty )
+        match rest with
+        | [] -> All
+        | _ -> These String.Set.empty )
       | comps ->
         let subdirs = [ ".formatted"; ".bin"; ".utop" ] in
         ( match List.last comps with
@@ -279,8 +285,7 @@ struct
           | Some _ -> (
             (* This interprets "rule" and "copy_files" stanzas. *)
             match Dir_contents.gen_rules sctx ~dir with
-            | Group_part root ->
-              Build_system.load_dir ~dir:(Path.build root)
+            | Group_part root -> Build_system.load_dir ~dir:(Path.build root)
             | Standalone_or_root (dir_contents, subs) ->
               let cctxs = gen_rules dir_contents [] ~dir in
               List.iter subs ~f:(fun dc ->
@@ -294,8 +299,7 @@ struct
       | [] ->
         Build_system.Subdir_set.These
           (String.Set.of_list [ ".js"; "_doc"; ".ppx" ])
-      | _ ->
-        These String.Set.empty
+      | _ -> These String.Set.empty
     in
     Build_system.Subdir_set.union_all
       [ subdirs_to_keep1; subdirs_to_keep2; subdirs_to_keep3 ]
@@ -313,8 +317,7 @@ end
 let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
   List.filter_map ~f:(fun stanza ->
     match Dune_file.stanza_package stanza with
-    | None ->
-      Some stanza
+    | None -> Some stanza
     | Some package -> (
       if Package.Name.Set.mem visible_pkgs package.name then
         Some stanza
@@ -337,16 +340,14 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
           Some
             (External_variant
               { implementation = name; virtual_lib; variant; project; loc })
-        | _ ->
-          None ))
+        | _ -> None ))
 
 let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.file_tree; dune_files; packages; projects } = conf in
   let packages =
     match only_packages with
-    | None ->
-      packages
+    | None -> packages
     | Some pkgs ->
       Package.Name.Map.filter packages ~f:(fun { Package.name; _ } ->
         Package.Name.Set.mem pkgs name)
@@ -357,16 +358,13 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
   let make_sctx (context : Context.t) : _ Fiber.t =
     let host () =
       match context.for_host with
-      | None ->
-        Fiber.return None
-      | Some h ->
-        Fiber.Ivar.read (Table.find_exn sctxs h.name) >>| Option.some
+      | None -> Fiber.return None
+      | Some h -> Fiber.Ivar.read (Table.find_exn sctxs h.name) >>| Option.some
     in
     let stanzas () =
       let+ stanzas = Dune_load.Dune_files.eval ~context dune_files in
       match only_packages with
-      | None ->
-        stanzas
+      | None -> stanzas
       | Some visible_pkgs ->
         List.map stanzas ~f:(fun (dir_conf : Dune_load.Dune_file.t) ->
           { dir_conf with
@@ -408,6 +406,5 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
       | Install ctx ->
         Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
           Install_rules.gen_rules sctx ~dir)
-      | Context ctx ->
-        String.Map.find generators ctx);
+      | Context ctx -> String.Map.find generators ctx);
   sctxs

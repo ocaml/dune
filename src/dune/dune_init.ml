@@ -14,14 +14,10 @@ module Kind = struct
     | Test
 
   let to_string = function
-    | Executable ->
-      "executable"
-    | Library ->
-      "library"
-    | Project ->
-      "project"
-    | Test ->
-      "test"
+    | Executable -> "executable"
+    | Library -> "library"
+    | Project -> "project"
+    | Test -> "test"
 
   let commands =
     [ ("executable", Executable)
@@ -52,13 +48,16 @@ module File = struct
   let make_text path name content = Text { path; name; content }
 
   let full_path = function
-    | Dune { path; name; _ } | Text { path; name; _ } ->
+    | Dune { path; name; _ }
+     |Text { path; name; _ } ->
       Path.relative path name
 
   (** Inspection and manipulation of stanzas in a file *)
   module Stanza = struct
     let pp s =
-      match Cst.to_sexp s with None -> Pp.nop | Some s -> Dune_lang.pp s
+      match Cst.to_sexp s with
+      | None -> Pp.nop
+      | Some s -> Dune_lang.pp s
 
     let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t)
       =
@@ -76,15 +75,11 @@ module File = struct
     let stanzas_conflict (a : Stanza.t) (b : Stanza.t) =
       let open Dune_file in
       match (a, b) with
-      | Executables a, Executables b ->
-        executables_conflict a b
-      | Library a, Library b ->
-        libraries_conflict a b
-      | Tests a, Tests b ->
-        tests_conflict a b
+      | Executables a, Executables b -> executables_conflict a b
+      | Library a, Library b -> libraries_conflict a b
+      | Tests a, Tests b -> tests_conflict a b
       (* NOTE No other stanza types currently supported *)
-      | _ ->
-        false
+      | _ -> false
 
     let csts_conflict project (a : Cst.t) (b : Cst.t) =
       let of_ast = Dune_file.Stanzas.of_ast project in
@@ -102,20 +97,16 @@ module File = struct
     let find_conflicting project new_stanzas existing_stanzas =
       let conflicting_stanza stanza =
         match List.find ~f:(csts_conflict project stanza) existing_stanzas with
-        | Some conflict ->
-          Some (stanza, conflict)
-        | None ->
-          None
+        | Some conflict -> Some (stanza, conflict)
+        | None -> None
       in
       List.find_map ~f:conflicting_stanza new_stanzas
 
     let add (project : Dune_project.t) stanzas = function
-      | Text f ->
-        Text f (* Adding a stanza to a text file isn't meaningful *)
+      | Text f -> Text f (* Adding a stanza to a text file isn't meaningful *)
       | Dune f -> (
         match find_conflicting project stanzas f.content with
-        | None ->
-          Dune { f with content = f.content @ stanzas }
+        | None -> Dune { f with content = f.content @ stanzas }
         | Some (a, b) ->
           User_error.raise
             [ Pp.text "Updating existing stanzas is not yet supported."
@@ -150,8 +141,7 @@ module File = struct
         []
       else
         match Format_dune_lang.parse_file (Some full_path) with
-        | Format_dune_lang.Sexps content ->
-          content
+        | Format_dune_lang.Sexps content -> content
         | Format_dune_lang.OCaml_syntax _ ->
           User_error.raise
             [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
@@ -167,8 +157,7 @@ module File = struct
   let write f =
     let path = full_path f in
     match f with
-    | Dune f ->
-      Ok (write_dune_file f)
+    | Dune f -> Ok (write_dune_file f)
     | Text f ->
       if Path.exists path then
         Error path
@@ -188,13 +177,13 @@ module Init_context = struct
       match
         Dune_project.load ~dir:Path.Source.root ~files:String.Set.empty
       with
-      | Some p ->
-        p
-      | None ->
-        Lazy.force Dune_project.anonymous
+      | Some p -> p
+      | None -> Lazy.force Dune_project.anonymous
     in
     let dir =
-      match path with None -> Path.root | Some p -> Path.of_string p
+      match path with
+      | None -> Path.root
+      | Some p -> Path.of_string p
     in
     File.create_dir dir;
     { dir; project }
@@ -230,12 +219,9 @@ module Component = struct
         (* TODO(shonfeder) Add custom templates *)
 
         let of_string = function
-          | "executable" ->
-            Some Exec
-          | "library" ->
-            Some Lib
-          | _ ->
-            None
+          | "executable" -> Some Exec
+          | "library" -> Some Lib
+          | _ -> None
 
         let commands = [ ("executable", Exec); ("library", Lib) ]
       end
@@ -297,7 +283,9 @@ module Component = struct
 
       let pps pps = List [ atom "preprocess"; List (atom "pps" :: atoms pps) ]
 
-      let optional_field ~f = function [] -> [] | args -> [ f args ]
+      let optional_field ~f = function
+        | [] -> []
+        | args -> [ f args ]
 
       let common (options : Options.Common.t) =
         let optional_fields =
@@ -321,12 +309,9 @@ module Component = struct
         elem :: set
 
     let public_name_field ~default = function
-      | None ->
-        []
-      | Some "" ->
-        [ Field.public_name default ]
-      | Some n ->
-        [ Field.public_name n ]
+      | None -> []
+      | Some "" -> [ Field.public_name default ]
+      | Some n -> [ Field.public_name n ]
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
       =
@@ -450,26 +435,21 @@ module Component = struct
       let proj_target =
         let files =
           match (pkg : Options.Project.Pkg.t) with
-          | Opam ->
-            [ File.make_text dir (name ^ ".opam") "" ]
-          | Esy ->
-            [ File.make_text dir "package.json" "" ]
+          | Opam -> [ File.make_text dir (name ^ ".opam") "" ]
+          | Esy -> [ File.make_text dir "package.json" "" ]
         in
         { dir; files }
       in
       let component_targets =
         match (template : Options.Project.Template.t) with
-        | Exec ->
-          proj_exec dir opts
-        | Lib ->
-          proj_lib dir opts
+        | Exec -> proj_exec dir opts
+        | Lib -> proj_lib dir opts
       in
       proj_target :: component_targets
   end
 
   let report_uncreated_file = function
-    | Ok _ ->
-      ()
+    | Ok _ -> ()
     | Error path ->
       let open Pp.O in
       User_warning.emit
@@ -487,22 +467,17 @@ module Component = struct
   let init (type options) (t : options t) =
     let target =
       match t with
-      | Executable params ->
-        Make.bin params
-      | Library params ->
-        Make.src params
-      | Project params ->
-        Make.proj params
-      | Test params ->
-        Make.test params
+      | Executable params -> Make.bin params
+      | Library params -> Make.src params
+      | Project params -> Make.proj params
+      | Test params -> Make.test params
     in
     List.concat_map ~f:create target |> List.iter ~f:report_uncreated_file
 end
 
 let validate_component_name name =
   match Lib_name.Local.of_string name with
-  | Ok _ ->
-    ()
+  | Ok _ -> ()
   | _ ->
     User_error.raise
       [ Pp.textf

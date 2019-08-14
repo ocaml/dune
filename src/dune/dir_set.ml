@@ -14,32 +14,28 @@ and nontrivial =
 type _ t = t0
 
 let here = function
-  | Empty ->
-    false
-  | Universal ->
-    true
-  | Nontrivial t ->
-    t.here
+  | Empty -> false
+  | Universal -> true
+  | Nontrivial t -> t.here
 
 let default = function
-  | Empty ->
-    false
-  | Universal ->
-    true
-  | Nontrivial t ->
-    t.default
+  | Empty -> false
+  | Universal -> true
+  | Nontrivial t -> t.default
 
 let exceptions = function
-  | Empty | Universal ->
+  | Empty
+   |Universal ->
     String.Map.empty
-  | Nontrivial t ->
-    t.exceptions
+  | Nontrivial t -> t.exceptions
 
 let empty = Empty
 
 let universal = Universal
 
-let trivial = function false -> Empty | true -> Universal
+let trivial = function
+  | false -> Empty
+  | true -> Universal
 
 let create ~default ~here ~exceptions =
   if String.Map.is_empty exceptions && here = default then
@@ -47,19 +43,23 @@ let create ~default ~here ~exceptions =
   else
     Nontrivial { here; default; exceptions }
 
-let is_empty = function Empty -> true | _ -> false
+let is_empty = function
+  | Empty -> true
+  | _ -> false
 
-let is_universal = function Universal -> true | _ -> false
+let is_universal = function
+  | Universal -> true
+  | _ -> false
 
 let merge_exceptions a b ~default ~f =
   String.Map.merge a.exceptions b.exceptions ~f:(fun _ x y ->
     let x = Option.value x ~default:(trivial a.default) in
     let y = Option.value y ~default:(trivial b.default) in
     match (default, f x y) with
-    | false, Empty | true, Universal ->
+    | false, Empty
+     |true, Universal ->
       None
-    | _, res ->
-      Some res)
+    | _, res -> Some res)
 
 let merge_nontrivial a b ~f_one ~f_set =
   let default = f_one a.default b.default in
@@ -69,28 +69,30 @@ let merge_nontrivial a b ~f_one ~f_set =
 
 let rec union x y =
   match (x, y) with
-  | Empty, v | v, Empty ->
+  | Empty, v
+   |v, Empty ->
     v
-  | Universal, _ | _, Universal ->
+  | Universal, _
+   |_, Universal ->
     Universal
   | Nontrivial x, Nontrivial y ->
     merge_nontrivial x y ~f_one:( || ) ~f_set:union
 
 let rec inter x y =
   match (x, y) with
-  | Universal, v | v, Universal ->
+  | Universal, v
+   |v, Universal ->
     v
-  | Empty, _ | _, Empty ->
+  | Empty, _
+   |_, Empty ->
     Empty
   | Nontrivial x, Nontrivial y ->
     merge_nontrivial x y ~f_one:( && ) ~f_set:inter
 
 let rec negate x =
   match x with
-  | Universal ->
-    Empty
-  | Empty ->
-    Universal
+  | Universal -> Empty
+  | Empty -> Universal
   | Nontrivial { here; default; exceptions } ->
     Nontrivial
       { here = not here
@@ -100,50 +102,37 @@ let rec negate x =
 
 let rec diff x y =
   match x with
-  | Empty ->
-    Empty
-  | Universal ->
-    negate y
+  | Empty -> Empty
+  | Universal -> negate y
   | Nontrivial nx -> (
     match y with
-    | Empty ->
-      x
-    | Universal ->
-      Empty
+    | Empty -> x
+    | Universal -> Empty
     | Nontrivial ny ->
       merge_nontrivial nx ny ~f_one:(fun a b -> a && not b) ~f_set:diff )
 
 let rec mem t dir =
   match t with
-  | Empty ->
-    false
-  | Universal ->
-    true
+  | Empty -> false
+  | Universal -> true
   | Nontrivial { here; default; exceptions } -> (
     match dir with
-    | [] ->
-      here
+    | [] -> here
     | child :: rest -> (
       match String.Map.find exceptions child with
-      | None ->
-        default
-      | Some t ->
-        mem t rest ) )
+      | None -> default
+      | Some t -> mem t rest ) )
 
 let mem t dir = mem t (Path.Local_gen.explode dir)
 
 let descend t child =
   match t with
-  | Empty ->
-    Empty
-  | Universal ->
-    Universal
+  | Empty -> Empty
+  | Universal -> Universal
   | Nontrivial { here = _; default; exceptions } -> (
     match String.Map.find exceptions child with
-    | None ->
-      trivial default
-    | Some t ->
-      t )
+    | None -> trivial default
+    | Some t -> t )
 
 let union_all = List.fold_left ~init:empty ~f:union
 
@@ -151,8 +140,7 @@ let inter_all = List.fold_left ~init:empty ~f:inter
 
 let of_subtree_gen =
   let rec loop subtree = function
-    | [] ->
-      subtree
+    | [] -> subtree
     | component :: rest ->
       create ~here:false ~default:false
         ~exceptions:(String.Map.singleton component (loop subtree rest))
@@ -172,9 +160,11 @@ let singleton p = singleton' (Path.Local_gen.explode p)
 
 let rec is_subset t ~of_ =
   match (t, of_) with
-  | _, Universal | Empty, _ ->
+  | _, Universal
+   |Empty, _ ->
     true
-  | Universal, _ | _, Empty ->
+  | Universal, _
+   |_, Empty ->
     false
   | Nontrivial x, Nontrivial y ->
     ((not x.here) || y.here)
@@ -184,19 +174,20 @@ let rec is_subset t ~of_ =
 let rec to_dyn =
   let open Dyn.Encoder in
   function
-  | Empty ->
-    constr "Empty" []
-  | Universal ->
-    constr "Universal" []
+  | Empty -> constr "Empty" []
+  | Universal -> constr "Universal" []
   | Nontrivial { here; default; exceptions } ->
     let open Dyn in
     List
-      ( ( (match here with true -> [ (".", String "true") ] | false -> [])
+      ( ( ( match here with
+        | true -> [ (".", String "true") ]
+          | false -> [] )
         @ ( String.Map.to_list exceptions
           |> List.map ~f:(fun (s, t) -> (s, to_dyn t)) )
         @
-        match default with false -> [] | true -> [ ("*", String "Universal") ]
-        )
+        match default with
+        | false -> []
+        | true -> [ ("*", String "Universal") ] )
       |> List.map ~f:(fun (k, v) -> List [ String k; v ]) )
 
 let forget_root t = t
@@ -207,10 +198,8 @@ type toplevel_subdirs =
 
 let toplevel_subdirs t =
   match t with
-  | Universal ->
-    Infinite
-  | Empty ->
-    Finite String.Set.empty
+  | Universal -> Infinite
+  | Empty -> Finite String.Set.empty
   | Nontrivial t ->
     if t.default then
       Infinite

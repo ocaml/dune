@@ -24,8 +24,7 @@ let allowed_in_enabled_if = List.map ~f:fst var_map
 
 let get_for_enabled_if t ~var =
   match List.assoc var_map var with
-  | Some f ->
-    f t
+  | Some f -> f t
   | None ->
     Code_error.raise "Lib_config.get_for_enabled_if: var not allowed"
       [ ("var", Dyn.Encoder.string var) ]

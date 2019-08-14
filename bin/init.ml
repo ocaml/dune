@@ -5,8 +5,7 @@ open Dune.Dune_init
 (* TODO(shonfeder): Remove when nested subcommands are available *)
 let validate_component_options kind unsupported_options =
   let report_invalid_option = function
-    | _, false ->
-      () (* The option wasn't supplied *)
+    | _, false -> () (* The option wasn't supplied *)
     | option_name, true ->
       User_error.raise
         [ Pp.textf "The %s component does not support the %s option"

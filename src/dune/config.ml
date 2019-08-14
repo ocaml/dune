@@ -48,28 +48,22 @@ module Terminal_persistence = struct
   let all = [ ("preserve", Preserve); ("clear-on-rebuild", Clear_on_rebuild) ]
 
   let of_string = function
-    | "preserve" ->
-      Ok Preserve
-    | "clear-on-rebuild" ->
-      Ok Clear_on_rebuild
+    | "preserve" -> Ok Preserve
+    | "clear-on-rebuild" -> Ok Clear_on_rebuild
     | _ ->
       Error
         "invalid terminal-persistence value, must be 'preserve' or \
          'clear-on-rebuild'"
 
   let to_string = function
-    | Preserve ->
-      "preserve"
-    | Clear_on_rebuild ->
-      "clear-on-rebuild"
+    | Preserve -> "preserve"
+    | Clear_on_rebuild -> "clear-on-rebuild"
 
   let decode =
     plain_string (fun ~loc s ->
       match of_string s with
-      | Error m ->
-        User_error.raise ~loc [ Pp.text m ]
-      | Ok s ->
-        s)
+      | Error m -> User_error.raise ~loc [ Pp.text m ]
+      | Ok s -> s)
 end
 
 module Display = struct
@@ -87,12 +81,10 @@ module Concurrency = struct
     Error "invalid concurrency value, must be 'auto' or a positive number"
 
   let of_string = function
-    | "auto" ->
-      Ok Auto
+    | "auto" -> Ok Auto
     | s -> (
       match int_of_string s with
-      | exception _ ->
-        error
+      | exception _ -> error
       | n ->
         if n >= 1 then
           Ok (Fixed n)
@@ -102,12 +94,12 @@ module Concurrency = struct
   let decode =
     plain_string (fun ~loc s ->
       match of_string s with
-      | Error m ->
-        User_error.raise ~loc [ Pp.text m ]
-      | Ok s ->
-        s)
+      | Error m -> User_error.raise ~loc [ Pp.text m ]
+      | Ok s -> s)
 
-  let to_string = function Auto -> "auto" | Fixed n -> string_of_int n
+  let to_string = function
+    | Auto -> "auto"
+    | Fixed n -> string_of_int n
 end
 
 module Sandboxing_preference = struct
@@ -117,10 +109,8 @@ module Sandboxing_preference = struct
     repeat
       (plain_string (fun ~loc s ->
         match Sandbox_mode.of_string s with
-        | Error m ->
-          User_error.raise ~loc [ Pp.text m ]
-        | Ok s ->
-          s))
+        | Error m -> User_error.raise ~loc [ Pp.text m ]
+        | Ok s -> s))
 end
 
 module type S = sig

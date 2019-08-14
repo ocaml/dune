@@ -14,10 +14,8 @@ end = struct
   let make preprocess v =
     Dune_file.Per_module.map preprocess ~f:(fun pp ->
       match Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v with
-      | No_preprocessing ->
-        Module.ml_source
-      | Action (_, _) ->
-        fun m -> Module.ml_source (Module.pped m)
+      | No_preprocessing -> Module.ml_source
+      | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
       | Pps { loc = _; pps = _; flags = _; staged } ->
         if staged then
           Module.ml_source
@@ -91,16 +89,15 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
             [ Pp.textf "Library %s isn't virtual and cannot be implemented"
               (Lib_name.to_string implements)
             ]
-        | Some v ->
-          v
+        | Some v -> v
       in
       let vlib_modules, vlib_foreign_objects =
         let foreign_objects = Lib_info.foreign_objects info in
         match (virtual_, foreign_objects) with
-        | External _, Local | Local, External _ ->
+        | External _, Local
+         |Local, External _ ->
           assert false
-        | External modules, External fa ->
-          (modules, fa)
+        | External modules, External fa -> (modules, fa)
         | Local, Local ->
           let name = Lib.name vlib in
           let vlib = Lib.Local.of_lib_exn vlib in

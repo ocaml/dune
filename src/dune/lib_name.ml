@@ -8,15 +8,16 @@ module Local = struct
   type t = string
 
   let valid_char = function
-    | 'A' .. 'Z' | 'a' .. 'z' | '_' | '0' .. '9' ->
+    | 'A' .. 'Z'
+     |'a' .. 'z'
+     |'_'
+     |'0' .. '9' ->
       true
-    | _ ->
-      false
+    | _ -> false
 
   let of_string (name : string) =
     match name with
-    | "" ->
-      Error ()
+    | "" -> Error ()
     | (s : string) ->
       if s.[0] = '.' then
         Error ()
@@ -41,8 +42,7 @@ module Local = struct
 
   let of_string_exn s =
     match of_string s with
-    | Ok s ->
-      s
+    | Ok s -> s
     | Error () ->
       Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
         [ ("name", String s) ]
@@ -63,8 +63,7 @@ module Local = struct
 
   let validate (loc, res) =
     match res with
-    | Ok s ->
-      s
+    | Ok s -> s
     | Error () ->
       User_error.raise ~loc ~hints:[ valid_format_doc ]
         [ Pp.text "Invalid library name." ]
@@ -74,10 +73,8 @@ end
 
 let split t =
   match String.split t ~on:'.' with
-  | [] ->
-    assert false
-  | pkg :: rest ->
-    (Package.Name.of_string pkg, rest)
+  | [] -> assert false
+  | pkg :: rest -> (Package.Name.of_string pkg, rest)
 
 let pp = Format.pp_print_string
 
@@ -117,7 +114,9 @@ module Set = struct
 end
 
 let root_lib t =
-  match String.lsplit2 t ~on:'.' with None -> t | Some (p, _) -> p
+  match String.lsplit2 t ~on:'.' with
+  | None -> t
+  | Some (p, _) -> p
 
 let package_name t = Package.Name.of_string (root_lib t)
 

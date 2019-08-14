@@ -7,7 +7,9 @@ module Kind = struct
     | C
     | Cxx
 
-  let to_string = function C -> "c" | Cxx -> "cpp"
+  let to_string = function
+    | C -> "c"
+    | Cxx -> "cpp"
 
   let pp fmt t : unit = Format.pp_print_string fmt (to_string t)
 
@@ -24,20 +26,16 @@ module Kind = struct
 
   let split_extension fn ~dune_version =
     match String.rsplit2 fn ~on:'.' with
-    | Some (obj, "c") ->
-      Recognized (obj, C)
-    | Some (obj, "cpp") ->
-      Recognized (obj, Cxx)
+    | Some (obj, "c") -> Recognized (obj, C)
+    | Some (obj, "cpp") -> Recognized (obj, Cxx)
     | Some (obj, "cxx") ->
       cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
     | Some (obj, "cc") ->
       cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
-    | _ ->
-      Unrecognized
+    | _ -> Unrecognized
 
   let possible_exts ~dune_version = function
-    | C ->
-      [ ".c" ]
+    | C -> [ ".c" ]
     | Cxx ->
       let exts = [ ".cpp" ] in
       let exts =
@@ -72,10 +70,14 @@ module Kind = struct
 
     let make ~c ~cxx = { c; cxx }
 
-    let get { c; cxx } = function C -> c | Cxx -> cxx
+    let get { c; cxx } = function
+      | C -> c
+      | Cxx -> cxx
 
     let add t k v =
-      match k with C -> { t with c = v } | Cxx -> { t with cxx = v }
+      match k with
+      | C -> { t with c = v }
+      | Cxx -> { t with cxx = v }
 
     let update t k ~f =
       let v = get t k in
@@ -110,7 +112,9 @@ module Sources = struct
   let split_by_kind t =
     let c, cxx =
       String.Map.partition t ~f:(fun (_, s) ->
-        match (Source.kind s : Kind.t) with C -> true | Cxx -> false)
+        match (Source.kind s : Kind.t) with
+        | C -> true
+        | Cxx -> false)
     in
     { Kind.Dict.c; cxx }
 end

@@ -16,8 +16,7 @@ module Expanded = struct
 
   let dst_basename { src = _, src; dst } =
     match dst with
-    | Some (_, dst) ->
-      dst
+    | Some (_, dst) -> dst
     | None ->
       let basename = Path.Build.basename src in
       String.drop_suffix basename ~suffix:".exe"
@@ -59,7 +58,11 @@ module Unexpanded = struct
     let decode_file =
       let open Dune_lang.Decoder in
       let decode =
-        let+ is_atom = peek_exn >>| function Atom _ -> true | _ -> false
+        let+ is_atom =
+          peek_exn
+          >>| function
+          | Atom _ -> true
+          | _ -> false
         and+ s = String_with_vars.decode
         and+ version = Syntax.get_exn Stanza.syntax in
         if (not is_atom) && version < (1, 6) then
@@ -77,7 +80,9 @@ module Unexpanded = struct
       in
       peek_exn
       >>= function
-      | Atom _ | Quoted_string _ | Template _ ->
+      | Atom _
+       |Quoted_string _
+       |Template _ ->
         decode >>| fun src -> { src; dst = None }
       | List (_, [ _; Atom (_, A "as"); _ ]) ->
         enter

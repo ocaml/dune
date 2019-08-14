@@ -33,7 +33,5 @@ let name =
   in
   fun n ->
     match List.assoc table n with
-    | None ->
-      Printf.sprintf "%d\n" n
-    | Some s ->
-      s
+    | None -> Printf.sprintf "%d\n" n
+    | Some s -> s

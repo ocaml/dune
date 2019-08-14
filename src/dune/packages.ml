@@ -22,8 +22,7 @@ let mlds_by_package_def =
             let dc = Dir_contents.get sctx ~dir:w.ctx_dir in
             let mlds = Dir_contents.mlds dc d in
             Some (d.package.name, mlds)
-          | _ ->
-            None))
+          | _ -> None))
       |> Package.Name.Map.of_list_reduce ~f:List.rev_append)
 
 let mlds_by_package = Memo.With_implicit_output.exec mlds_by_package_def

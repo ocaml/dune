@@ -62,10 +62,8 @@ type 'res parse_result =
 let dyn_of_parse_result f =
   let open Dyn.Encoder in
   function
-  | Same r ->
-    constr "Same" [ Result.to_dyn f string r ]
-  | Different r ->
-    constr "Different" [ dyn_of_parse_result_diff f r ]
+  | Same r -> constr "Same" [ Result.to_dyn f string r ]
+  | Different r -> constr "Different" [ dyn_of_parse_result_diff f r ]
 
 let string_of_user_error (msg : User_message.t) =
   Format.asprintf "%a" Pp.render_ignore_tags
@@ -80,10 +78,8 @@ let parse s =
         ( Dune_lang.parse_string ~fname:"" ~mode:Many ~lexer s
         |> List.map ~f:Dune_lang.Ast.remove_locs )
     with
-    | User_error.E msg ->
-      Error (string_of_user_error msg)
-    | e ->
-      Error (Printexc.to_string e)
+    | User_error.E msg -> Error (string_of_user_error msg)
+    | e -> Error (Printexc.to_string e)
   in
   let jbuild = f ~lexer:Dune_lang.Lexer.jbuild_token in
   let dune = f ~lexer:Dune_lang.Lexer.token in
@@ -291,12 +287,9 @@ type round_trip_result =
 let dyn_of_round_trip_result =
   let open Dyn.Encoder in
   function
-  | Round_trip_success ->
-    constr "Round_trip_success" []
-  | Did_not_round_trip s ->
-    constr "Did_not_round_trip" [ Dune_lang.to_dyn s ]
-  | Did_not_parse_back s ->
-    constr "Did_not_parse_back" [ string s ]
+  | Round_trip_success -> constr "Round_trip_success" []
+  | Did_not_round_trip s -> constr "Did_not_round_trip" [ Dune_lang.to_dyn s ]
+  | Did_not_parse_back s -> constr "Did_not_parse_back" [ string s ]
 
 let test syntax sexp =
   let res =
@@ -310,10 +303,8 @@ let test syntax sexp =
         Dune_lang.parse_string s ~mode:Single ~fname:""
           ~lexer:
             ( match syntax with
-            | Jbuild ->
-              Dune_lang.Lexer.jbuild_token
-            | Dune ->
-              Dune_lang.Lexer.token )
+            | Jbuild -> Dune_lang.Lexer.jbuild_token
+            | Dune -> Dune_lang.Lexer.token )
       with
       | sexp' ->
         let sexp' = Dune_lang.Ast.remove_locs sexp' in

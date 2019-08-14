@@ -32,15 +32,12 @@ let find_config t ~profile = Dune_env.Stanza.find t.config ~profile
 
 let rec local_binaries t ~profile ~expander =
   match t.local_binaries with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None ->
-        []
-      | Some (lazy t) ->
-        local_binaries t ~profile ~expander
+      | None -> []
+      | Some (lazy t) -> local_binaries t ~profile ~expander
     in
     let local_binaries =
       default
@@ -55,15 +52,12 @@ let rec local_binaries t ~profile ~expander =
 
 let rec external_ t ~profile ~default =
   match t.external_ with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None ->
-        default
-      | Some (lazy t) ->
-        external_ t ~default ~profile
+      | None -> default
+      | Some (lazy t) -> external_ t ~default ~profile
     in
     let env, have_binaries =
       let cfg = find_config t ~profile in
@@ -81,15 +75,12 @@ let rec external_ t ~profile ~default =
 
 let rec bin_artifacts t ~profile ~default ~expander =
   match t.bin_artifacts with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None ->
-        default
-      | Some (lazy t) ->
-        bin_artifacts t ~default ~profile ~expander
+      | None -> default
+      | Some (lazy t) -> bin_artifacts t ~default ~profile ~expander
     in
     let bin_artifacts =
       local_binaries t ~profile ~expander
@@ -100,8 +91,7 @@ let rec bin_artifacts t ~profile ~default ~expander =
 
 let rec ocaml_flags t ~profile ~expander =
   match t.ocaml_flags with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
@@ -109,8 +99,7 @@ let rec ocaml_flags t ~profile ~expander =
         let project = Scope.project t.scope in
         let dune_version = Dune_project.dune_version project in
         Ocaml_flags.default ~profile ~dune_version
-      | Some (lazy t) ->
-        ocaml_flags t ~profile ~expander
+      | Some (lazy t) -> ocaml_flags t ~profile ~expander
     in
     let flags =
       let cfg = find_config t ~profile in
@@ -123,8 +112,7 @@ let rec ocaml_flags t ~profile ~expander =
 
 let rec inline_tests t ~profile =
   match t.inline_tests with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let state : Dune_env.Stanza.Inline_tests.t =
       match find_config t ~profile with
@@ -135,25 +123,20 @@ let rec inline_tests t ~profile =
             Enabled
           else
             Disabled
-        | Some (lazy t) ->
-          inline_tests t ~profile )
-      | { inline_tests = Some s; _ } ->
-        s
+        | Some (lazy t) -> inline_tests t ~profile )
+      | { inline_tests = Some s; _ } -> s
     in
     t.inline_tests <- Some state;
     state
 
 let rec c_flags t ~profile ~expander ~default_context_flags =
   match t.c_flags with
-  | Some x ->
-    x
+  | Some x -> x
   | None ->
     let default =
       match t.inherit_from with
-      | None ->
-        C.Kind.Dict.map ~f:Build.return default_context_flags
-      | Some (lazy t) ->
-        c_flags t ~profile ~expander ~default_context_flags
+      | None -> C.Kind.Dict.map ~f:Build.return default_context_flags
+      | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
     in
     let flags =
       let cfg = find_config t ~profile in

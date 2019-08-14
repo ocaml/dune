@@ -16,24 +16,15 @@ module Var = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Values values ->
-      constr "Values" [ list Value.to_dyn values ]
-    | Project_root ->
-      string "Project_root"
-    | First_dep ->
-      string "First_dep"
-    | Deps ->
-      string "Deps"
-    | Targets ->
-      string "Targets"
-    | Target ->
-      string "Target"
-    | Named_local ->
-      string "Named_local"
-    | Cc ->
-      string "cc"
-    | Cxx ->
-      string "cxx"
+    | Values values -> constr "Values" [ list Value.to_dyn values ]
+    | Project_root -> string "Project_root"
+    | First_dep -> string "First_dep"
+    | Deps -> string "Deps"
+    | Targets -> string "Targets"
+    | Target -> string "Target"
+    | Named_local -> string "Named_local"
+    | Cc -> string "cc"
+    | Cxx -> string "cxx"
 end
 
 module Macro = struct
@@ -55,32 +46,19 @@ module Macro = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Exe ->
-      string "Exe"
-    | Dep ->
-      string "Dep"
-    | Bin ->
-      string "Bin"
-    | Lib ->
-      string "Lib"
-    | Libexec ->
-      string "Libexec"
-    | Lib_available ->
-      string "Lib_available"
-    | Version ->
-      string "Version"
-    | Read ->
-      string "Read"
-    | Read_strings ->
-      string "Read_strings"
-    | Read_lines ->
-      string "Read_lines"
-    | Path_no_dep ->
-      string "Path_no_dep"
-    | Ocaml_config ->
-      string "Ocaml_config"
-    | Env ->
-      string "Env"
+    | Exe -> string "Exe"
+    | Dep -> string "Dep"
+    | Bin -> string "Bin"
+    | Lib -> string "Lib"
+    | Libexec -> string "Libexec"
+    | Lib_available -> string "Lib_available"
+    | Version -> string "Version"
+    | Read -> string "Read"
+    | Read_strings -> string "Read_strings"
+    | Read_lines -> string "Read_lines"
+    | Path_no_dep -> string "Path_no_dep"
+    | Ocaml_config -> string "Ocaml_config"
+    | Env -> string "Env"
 end
 
 module Expansion = struct
@@ -91,10 +69,8 @@ module Expansion = struct
   let to_dyn e =
     let open Dyn.Encoder in
     match e with
-    | Var v ->
-      pair string Var.to_dyn ("Var", v)
-    | Macro (m, s) ->
-      triple string Macro.to_dyn string ("Macro", m, s)
+    | Var v -> pair string Var.to_dyn ("Var", v)
+    | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
 end
 
 type 'a t =
@@ -116,10 +92,8 @@ type 'a pform = 'a t
 let to_dyn f =
   let open Dyn.Encoder in
   function
-  | No_info x ->
-    constr "No_info" [ f x ]
-  | Since (x, v) ->
-    constr "Since" [ f x; Syntax.Version.to_dyn v ]
+  | No_info x -> constr "No_info" [ f x ]
+  | Since (x, v) -> constr "Since" [ f x; Syntax.Version.to_dyn v ]
   | Deleted_in (x, v, repl) ->
     constr "Deleted_in"
       [ f x
@@ -181,19 +155,15 @@ module Map = struct
   let create ~(context : Context.t) =
     let ocamlopt =
       match context.ocamlopt with
-      | None ->
-        Path.relative context.ocaml_bin "ocamlopt"
-      | Some p ->
-        p
+      | None -> Path.relative context.ocaml_bin "ocamlopt"
+      | Some p -> p
     in
     let string s = values [ Value.String s ] in
     let path p = values [ Value.Path p ] in
     let make =
       match Bin.make ~path:(Env.path context.env) with
-      | None ->
-        string "make"
-      | Some p ->
-        path p
+      | None -> string "make"
+      | Some p -> path p
     in
     let cflags = context.ocamlc_cflags in
     let cxx_flags =
@@ -267,8 +237,7 @@ module Map = struct
     let* v = String.Map.find map name in
     let describe = String_with_vars.Var.describe in
     match v with
-    | No_info v ->
-      Some v
+    | No_info v -> Some v
     | Since (v, min_version) ->
       if syntax_version >= min_version then
         Some v
@@ -318,10 +287,8 @@ module Map = struct
     { vars =
       Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
         match x with
-        | Unnamed _ ->
-          acc
-        | Named (s, _) ->
-          String.Map.set acc s (No_info Var.Named_local))
+        | Unnamed _ -> acc
+        | Named (s, _) -> String.Map.set acc s (No_info Var.Named_local))
     ; macros = String.Map.empty
     }
 

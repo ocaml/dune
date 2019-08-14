@@ -91,8 +91,7 @@ module Backend = struct
                   [ Pp.textf "%S is not an %s" (Lib_name.to_string name)
                     (desc ~plural:false)
                   ]))
-          | Some t ->
-            Ok t))
+          | Some t -> Ok t))
       }
 
     let encode t =
@@ -287,14 +286,10 @@ include Sub_system.Register_end_point (struct
       in
       List.map (Mode_conf.Set.to_list modes) ~f:(fun (mode : Mode_conf.t) ->
         match mode with
-        | Native ->
-          Exe.Linkage.native
-        | Best ->
-          Exe.Linkage.native_or_custom (Super_context.context sctx)
-        | Byte ->
-          Exe.Linkage.byte
-        | Javascript ->
-          Exe.Linkage.js)
+        | Native -> Exe.Linkage.native
+        | Best -> Exe.Linkage.native_or_custom (Super_context.context sctx)
+        | Byte -> Exe.Linkage.byte
+        | Javascript -> Exe.Linkage.js)
     in
     Exe.build_and_link cctx
       ~program:{ name; main_module_name = Module.name main_module; loc }
@@ -320,19 +315,19 @@ include Sub_system.Register_end_point (struct
     Mode_conf.Set.iter info.modes ~f:(fun (mode : Mode_conf.t) ->
       let ext =
         match mode with
-        | Native | Best ->
+        | Native
+         |Best ->
           ".exe"
-        | Javascript ->
-          ".bc.js"
-        | Byte ->
-          ".bc"
+        | Javascript -> ".bc.js"
+        | Byte -> ".bc"
       in
       let custom_runner =
         match mode with
-        | Native | Best | Byte ->
+        | Native
+         |Best
+         |Byte ->
           None
-        | Javascript ->
-          Some "node"
+        | Javascript -> Some "node"
       in
       SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
         ~stamp:("ppx-runner", name)
@@ -341,8 +336,7 @@ include Sub_system.Register_end_point (struct
          in
          let exe, runner_args =
            match custom_runner with
-           | None ->
-             (Ok exe, Command.Args.As [])
+           | None -> (Ok exe, Command.Args.As [])
            | Some runner ->
              ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
              , Dep exe )

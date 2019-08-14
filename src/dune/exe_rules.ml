@@ -52,7 +52,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
       let modes =
-        let f = function { L.kind = Js; _ } -> true | _ -> false in
+        let f = function
+          | { L.kind = Js; _ } -> true
+          | _ -> false
+        in
         if L.Set.exists exes.modes ~f then
           L.Set.add exes.modes L.byte_exe
         else if (not explicit_js_mode) && L.Set.mem exes.modes L.byte_exe then
@@ -62,10 +65,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
         match (has_native, mode.mode) with
-        | false, Native ->
-          None
-        | _ ->
-          Some (Exe.Linkage.of_user_config ctx mode))
+        | false, Native -> None
+        | _ -> Some (Exe.Linkage.of_user_config ctx mode))
     in
     (* If bytecode was requested but not native or best version, add custom
       linking *)
@@ -97,7 +98,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     in
     let dynlink =
       Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
-        match mode.kind with Shared_object -> true | _ -> false)
+        match mode.kind with
+        | Shared_object -> true
+        | _ -> false)
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp

@@ -10,7 +10,14 @@ let empty = { libraries = Lib_name.Map.empty }
 
 let c_name, cxx_name =
   let make what ~loc s =
-    if match s with "" | "." | ".." -> true | _ -> false then
+    if
+      match s with
+      | ""
+       |"."
+       |".." ->
+        true
+      | _ -> false
+    then
       User_error.raise ~loc [ Pp.textf "%S is not a valid %s name." s what ]
     else
       s
@@ -21,8 +28,7 @@ let load_sources ~dune_version ~dir ~files =
   let init = C.Kind.Dict.make_both String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
     match C.Kind.split_extension fn ~dune_version with
-    | Unrecognized ->
-      acc
+    | Unrecognized -> acc
     | Not_allowed_until version ->
       let loc = Loc.in_dir (Path.build dir) in
       User_error.raise ~loc
@@ -60,8 +66,7 @@ let make (d : _ Dir_with_dune.t)
             ~standard:String.Map.empty
           |> String.Map.map ~f:(fun (loc, s) ->
             match String.Map.find c_sources s with
-            | Some source ->
-              (loc, source)
+            | Some source -> (loc, source)
             | None ->
               let dune_version = d.dune_version in
               User_error.raise ~loc
@@ -90,16 +95,14 @@ let make (d : _ Dir_with_dune.t)
               ])
         in
         Some (lib, all)
-      | _ ->
-        None)
+      | _ -> None)
   in
   let libraries =
     match
       Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
         (Library.best_name lib, m))
     with
-    | Ok x ->
-      x
+    | Ok x -> x
     | Error (name, _, (lib2, _)) ->
       User_error.raise ~loc:lib2.buildable.loc
         [ Pp.textf "Library %S appears for the second time in this directory"
@@ -114,8 +117,7 @@ let make (d : _ Dir_with_dune.t)
       |> Path.Build.Map.of_list
     in
     match rev_map with
-    | Ok _ ->
-      ()
+    | Ok _ -> ()
     | Error (_, loc1, loc2) ->
       User_error.raise ~loc:loc2
         [ Pp.text "This c stub is already used in another stanza:"

@@ -16,24 +16,23 @@ module Dune_file = struct
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
-          | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
+           |Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
             false
-          | _ ->
-            true)
+          | _ -> true)
       else
         stanzas
     in
     { dir; project; stanzas; kind }
 
   let rec fold_stanzas l ~init ~f =
-    match l with [] -> init | t :: l -> inner_fold t t.stanzas l ~init ~f
+    match l with
+    | [] -> init
+    | t :: l -> inner_fold t t.stanzas l ~init ~f
 
   and inner_fold t inner_list l ~init ~f =
     match inner_list with
-    | [] ->
-      fold_stanzas l ~init ~f
-    | x :: inner_list ->
-      inner_fold t inner_list l ~init:(f t x init) ~f
+    | [] -> fold_stanzas l ~init ~f
+    | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
 end
 
 module Dune_files = struct
@@ -62,13 +61,11 @@ module Dune_files = struct
   let extract_requires path str ~kind =
     let rec loop n lines acc =
       match lines with
-      | [] ->
-        acc
+      | [] -> acc
       | line :: lines ->
         let acc =
           match Scanf.sscanf line "#require %S" (fun x -> x) with
-          | exception _ ->
-            acc
+          | exception _ -> acc
           | s -> (
             let loc : Loc.t =
               let start : Lexing.position =
@@ -81,8 +78,7 @@ module Dune_files = struct
               { start; stop = { start with pos_cnum = String.length line } }
             in
             ( match (kind : Dune_lang.File_syntax.t) with
-            | Jbuild ->
-              ()
+            | Jbuild -> ()
             | Dune ->
               User_error.raise ~loc
                 [ Pp.text "#require is no longer supported in dune files."
@@ -93,10 +89,8 @@ module Dune_files = struct
                   \  val run_and_read_lines : string -> string list"
                 ] );
             match String.split s ~on:',' with
-            | [] ->
-              acc
-            | [ "unix" ] ->
-              Unix
+            | [] -> acc
+            | [ "unix" ] -> Unix
             | _ ->
               User_error.raise ~loc
                 [ Pp.text
@@ -179,10 +173,8 @@ end
     let open Fiber.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
-        | Literal x ->
-          Left x
-        | Script x ->
-          Right x)
+        | Literal x -> Left x
+        | Script x -> Right x)
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
       let generated_dune_file =
@@ -200,7 +192,9 @@ end
       in
       let context = Option.value context.for_host ~default:context in
       let cmas =
-        match requires with No_requires -> [] | Unix -> [ "unix.cma" ]
+        match requires with
+        | No_requires -> []
+        | Unix -> [ "unix.cma" ]
       in
       let args =
         List.concat
@@ -248,8 +242,7 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     in
     p.sexps <- [];
     dune_file
-  | Ocaml_script file ->
-    Script { dir; project; file; kind = dune_file.kind }
+  | Ocaml_script file -> Script { dir; project; file; kind = dune_file.kind }
 
 let load ~ancestor_vcs () =
   let ftree = File_tree.load Path.Source.root ~ancestor_vcs in
@@ -270,12 +263,9 @@ let load ~ancestor_vcs () =
         Package.Name.Map.merge acc (Dune_project.packages p)
           ~f:(fun name a b ->
             match (a, b) with
-            | None, None ->
-              None
-            | None, Some _ ->
-              b
-            | Some _, None ->
-              a
+            | None, None -> None
+            | None, Some _ -> b
+            | Some _, None -> a
             | Some a, Some b ->
               User_error.raise
                 [ Pp.textf "Too many opam files for package %S:"
@@ -295,8 +285,7 @@ let load ~ancestor_vcs () =
       let project = File_tree.Dir.project dir in
       let dune_files =
         match File_tree.Dir.dune_file dir with
-        | None ->
-          dune_files
+        | None -> dune_files
         | Some dune_file ->
           let dune_file = interpret ~dir:path ~project ~dune_file in
           dune_file :: dune_files

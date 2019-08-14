@@ -15,7 +15,10 @@ struct
     let map ~f t = T.elements t |> List.map ~f |> T.of_list
 
     (* Since 4.05 *)
-    let to_opt f t = match f t with x -> Some x | exception Not_found -> None
+    let to_opt f t =
+      match f t with
+      | x -> Some x
+      | exception Not_found -> None
 
     let choose_opt = to_opt T.choose
 
@@ -79,19 +82,15 @@ struct
         else
           ())
     with
-    | () ->
-      None
-    | exception Found e ->
-      Some e
+    | () -> None
+    | exception Found e -> Some e
 
   let to_dyn t = Dyn.Set (to_list t |> List.map ~f:Key.to_dyn)
 
   let choose_exn t =
     match choose t with
-    | Some e ->
-      e
-    | None ->
-      Code_error.raise "Set.choose_exn" [ ("t", to_dyn t) ]
+    | Some e -> e
+    | None -> Code_error.raise "Set.choose_exn" [ ("t", to_dyn t) ]
 
   let of_keys = M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
 

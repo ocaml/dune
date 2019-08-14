@@ -23,17 +23,17 @@ module Platform = struct
 
   open Dune_lang
 
-  let to_string = function Win -> "win" | Mac -> "macosx"
+  let to_string = function
+    | Win -> "win"
+    | Mac -> "macosx"
 
   let t t = atom (to_string t)
 
   let system_var = Sexp.parse "%{ocaml-config:system}"
 
   let enabled_if = function
-    | [] ->
-      None
-    | [ x ] ->
-      Some (List [ atom "<>"; system_var; t x ])
+    | [] -> None
+    | [ x ] -> Some (List [ atom "<>"; system_var; t x ])
     | ps ->
       Some
         (List
@@ -45,9 +45,13 @@ let alias ?enabled_if ?action name ~deps =
   Sexp.constr "alias"
     (Sexp.fields
       ( [ ("name", [ Dune_lang.atom name ]); ("deps", deps) ]
-      @ (match action with None -> [] | Some a -> [ ("action", [ a ]) ])
-      @ match enabled_if with None -> [] | Some e -> [ ("enabled_if", [ e ]) ]
-      ))
+      @ ( match action with
+        | None -> []
+        | Some a -> [ ("action", [ a ]) ] )
+      @
+      match enabled_if with
+      | None -> []
+      | Some e -> [ ("enabled_if", [ e ]) ] ))
 
 module Test = struct
   type t =
@@ -80,7 +84,9 @@ module Test = struct
   let pp_sexp fmt t =
     let open Dune_lang in
     let skip_version =
-      match t.skip_ocaml with None -> [] | Some s -> [ "-skip-versions"; s ]
+      match t.skip_ocaml with
+      | None -> []
+      | Some s -> [ "-skip-versions"; s ]
     in
     let enabled_if = Platform.enabled_if t.skip_platforms in
     let action =
@@ -99,8 +105,7 @@ module Test = struct
     in
     let action =
       match t.env with
-      | None ->
-        action
+      | None -> action
       | Some (k, v) ->
         List [ atom "setenv"; atom_or_quoted_string k; v; action ]
     in
@@ -177,10 +182,8 @@ let all_tests =
     |> List.sort ~compare:String.compare
     |> List.map ~f:(fun name ->
       match List.find exclusions ~f:(fun (t : Test.t) -> t.name = name) with
-      | None ->
-        Test.make name
-      | Some t ->
-        t) )
+      | None -> Test.make name
+      | Some t -> t) )
 
 let pp_group fmt (name, tests) =
   alias name

@@ -126,10 +126,8 @@ let one_of term1 term2 =
   @@ let+ x, args1 = Term.with_used_args term1
     and+ y, args2 = Term.with_used_args term2 in
      match (args1, args2) with
-     | _, [] ->
-       `Ok x
-     | [], _ ->
-       `Ok y
+     | _, [] -> `Ok x
+     | [], _ -> `Ok y
      | arg1 :: _, arg2 :: _ ->
        `Error (true, sprintf "Cannot use %s and %s simultaneously" arg1 arg2)
 
@@ -143,7 +141,9 @@ let build_info =
     let module B = Build_info.V1 in
     let pr fmt = Printf.printf (fmt ^^ "\n") in
     let ver_string v =
-      match v with None -> "n/a" | Some v -> B.Version.to_string v
+      match v with
+      | None -> "n/a"
+      | Some v -> B.Version.to_string v
     in
     pr "version: %s" (ver_string (B.version ()));
     let libs =
@@ -154,8 +154,7 @@ let build_info =
       |> List.sort ~compare
     in
     ( match libs with
-    | [] ->
-      ()
+    | [] -> ()
     | _ ->
       pr "statically linked libraries:";
       let longest = String.longest_map libs ~f:fst in
@@ -485,10 +484,8 @@ let term =
   let root = Workspace_root.create ~specified_by_user:root in
   let config =
     match config_file with
-    | No_config ->
-      Config.default
-    | This fname ->
-      Config.load_config_file fname
+    | No_config -> Config.default
+    | This fname -> Config.load_config_file fname
     | Default ->
       if Config.inside_dune then
         Config.default

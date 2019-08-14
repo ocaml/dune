@@ -24,12 +24,9 @@ module Stanza = struct
         [ ("enabled", Enabled); ("disabled", Disabled); ("ignored", Ignored) ]
 
     let to_string = function
-      | Enabled ->
-        "enabled"
-      | Disabled ->
-        "disabled"
-      | Ignored ->
-        "ignored"
+      | Enabled -> "enabled"
+      | Disabled -> "disabled"
+      | Ignored -> "ignored"
   end
 
   type config =
@@ -67,8 +64,7 @@ module Stanza = struct
       >>> located (repeat (pair string string))
       >>| fun (loc, pairs) ->
       match Env.Map.of_list pairs with
-      | Ok vars ->
-        Env.extend Env.empty ~vars
+      | Ok vars -> Env.extend Env.empty ~vars
       | Error (k, _, _) ->
         User_error.raise ~loc
           [ Pp.textf "Variable %s is specified several times" k ] )
@@ -106,10 +102,8 @@ module Stanza = struct
     Option.value ~default:empty_config
     @@ List.find_map t.rules ~f:(fun (pat, cfg) ->
       match pat with
-      | Any ->
-        Some cfg
-      | Profile a ->
-        Option.some_if (a = profile) cfg)
+      | Any -> Some cfg
+      | Profile a -> Option.some_if (a = profile) cfg)
 end
 
 type stanza += T of Stanza.t

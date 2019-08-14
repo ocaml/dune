@@ -37,17 +37,16 @@ let parse_coqdep ~coq_module (lines : string list) =
   in
   let line =
     match lines with
-    | [] | _ :: _ :: _ :: _ ->
+    | []
+     |_ :: _ :: _ :: _ ->
       invalid "line"
-    | [ line ] ->
-      line
+    | [ line ] -> line
     | [ l1; _l2 ] ->
       (* .vo is produced before .vio, this is fragile tho *)
       l1
   in
   match String.lsplit2 line ~on:':' with
-  | None ->
-    invalid "split"
+  | None -> invalid "split"
   | Some (basename, deps) ->
     let ff = List.hd @@ String.extract_blank_separated_words basename in
     let depname, _ = Filename.split_extension ff in
@@ -203,8 +202,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
 
 let install_rules ~sctx ~dir s =
   match s with
-  | { Dune_file.Coq.public = None; _ } ->
-    []
+  | { Dune_file.Coq.public = None; _ } -> []
   | { Dune_file.Coq.public = Some { package; _ }; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in

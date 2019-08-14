@@ -9,10 +9,8 @@ module File = struct
 
   let compare a b =
     match Int.compare a.ino b.ino with
-    | Eq ->
-      Int.compare a.dev b.dev
-    | ne ->
-      ne
+    | Eq -> Int.compare a.dev b.dev
+    | ne -> ne
 
   let dummy = { ino = 0; dev = 0 }
 
@@ -48,7 +46,10 @@ module Dune_file = struct
     ; kind : Dune_lang.File_syntax.t
     }
 
-  let path t = match t.contents with Plain x -> x.path | Ocaml_script p -> p
+  let path t =
+    match t.contents with
+    | Plain x -> x.path
+    | Ocaml_script p -> p
 
   let load file ~project ~kind =
     Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
@@ -187,12 +188,9 @@ let readdir path =
         else
           let is_directory, file =
             match Path.stat (Path.source path) with
-            | exception _ ->
-              (false, File.dummy)
-            | { st_kind = S_DIR; _ } as st ->
-              (true, File.of_stats st)
-            | _ ->
-              (false, File.dummy)
+            | exception _ -> (false, File.dummy)
+            | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+            | _ -> (false, File.dummy)
           in
           if is_directory then
             Right (fn, path, file)
@@ -229,22 +227,15 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
       match
         match
           List.find_map dirs ~f:(function
-            | ".git", _, _ ->
-              Some Vcs.Kind.Git
-            | ".hg", _, _ ->
-              Some Vcs.Kind.Hg
-            | _ ->
-              None)
+            | ".git", _, _ -> Some Vcs.Kind.Git
+            | ".hg", _, _ -> Some Vcs.Kind.Hg
+            | _ -> None)
         with
-        | Some kind ->
-          Some kind
-        | None ->
-          Vcs.Kind.of_dir_contents files
+        | Some kind -> Some kind
+        | None -> Vcs.Kind.of_dir_contents files
       with
-      | Some kind ->
-        Some { Vcs.kind; root = Path.(append_source root) path }
-      | None ->
-        vcs
+      | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
+      | None -> vcs
     in
     let contents =
       lazy
@@ -256,8 +247,7 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
               match
                 List.filter [ "dune"; "jbuild" ] ~f:(String.Set.mem files)
               with
-              | [] ->
-                (None, Sub_dirs.default)
+              | [] -> (None, Sub_dirs.default)
               | [ fn ] ->
                 let file = Path.Source.relative path fn in
                 let warn_about_jbuild =
@@ -317,25 +307,20 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
                    Sub_dirs.status sub_dirs ~dir:fn
                in
                match status with
-               | Ignored ->
-                 acc
+               | Ignored -> acc
                | Status status -> (
                  let dir_status : Sub_dirs.Status.t =
                    match (dir_status, status) with
-                   | Data_only, _ ->
-                     Data_only
-                   | Vendored, Normal ->
-                     Vendored
-                   | _, _ ->
-                     status
+                   | Data_only, _ -> Data_only
+                   | Vendored, Normal -> Vendored
+                   | _, _ -> status
                  in
                  let dirs_visited =
                    if Sys.win32 then
                      dirs_visited
                    else
                      match File.Map.find dirs_visited file with
-                     | None ->
-                       File.Map.set dirs_visited file path
+                     | None -> File.Map.set dirs_visited file path
                      | Some first_path ->
                        User_error.raise
                          [ Pp.textf
@@ -346,10 +331,8 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
                          ]
                  in
                  match walk path ~dirs_visited ~project ~dir_status ~vcs with
-                 | Ok dir ->
-                   String.Map.set acc fn dir
-                 | Error _ ->
-                   acc ))
+                 | Ok dir -> String.Map.set acc fn dir
+                 | Error _ -> acc ))
          in
          { Dir.files; sub_dirs; dune_file })
     in
@@ -364,8 +347,7 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
   in
   Console.clear_status_line ();
   match walk with
-  | Ok dir ->
-    dir
+  | Ok dir -> dir
   | Error m ->
     User_error.raise
       [ Pp.textf "Unable to load source %s.@.Reason:%s@."
@@ -376,8 +358,7 @@ let load ?(warn_when_seeing_jbuild_file = true) path ~ancestor_vcs =
 let fold = Dir.fold
 
 let rec find_dir t = function
-  | [] ->
-    Some t
+  | [] -> Some t
   | comp :: components ->
     let open Option.O in
     let* t = String.Map.find (Dir.sub_dirs t) comp in
@@ -388,14 +369,11 @@ let find_dir t path =
   find_dir t components
 
 let rec nearest_dir t = function
-  | [] ->
-    t
+  | [] -> t
   | comp :: components -> (
     match String.Map.find (Dir.sub_dirs t) comp with
-    | None ->
-      t
-    | Some t ->
-      nearest_dir t components )
+    | None -> t
+    | Some t -> nearest_dir t components )
 
 let nearest_dir t path =
   let components = Path.Source.explode path in
@@ -405,8 +383,7 @@ let nearest_vcs t path = Dir.vcs (nearest_dir t path)
 
 let files_of t path =
   match find_dir t path with
-  | None ->
-    Path.Source.Set.empty
+  | None -> Path.Source.Set.empty
   | Some dir ->
     Path.Source.Set.of_list
       (List.map
@@ -415,10 +392,8 @@ let files_of t path =
 
 let file_exists t path =
   match find_dir t (Path.Source.parent_exn path) with
-  | None ->
-    false
-  | Some dir ->
-    String.Set.mem (Dir.files dir) (Path.Source.basename path)
+  | None -> false
+  | Some dir -> String.Set.mem (Dir.files dir) (Path.Source.basename path)
 
 let dir_exists t path = Option.is_some (find_dir t path)
 

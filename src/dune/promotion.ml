@@ -52,8 +52,7 @@ module File = struct
           (Path.to_string_maybe_quoted (Path.build src))
           (Path.Source.to_string_maybe_quoted dst)
           ( match staging with
-          | None ->
-            "file"
+          | None -> "file"
           | Some staging ->
             Format.sprintf "staging file (%s)"
               (Path.to_string_maybe_quoted (Path.build staging)) ) );
@@ -78,10 +77,8 @@ let db_file = Path.relative Path.build_dir ".to-promote"
 let dump_db db =
   if Path.build_dir_exists () then
     match db with
-    | [] ->
-      if Path.exists db_file then Path.unlink_no_err db_file
-    | l ->
-      P.dump db_file l
+    | [] -> if Path.exists db_file then Path.unlink_no_err db_file
+    | l -> P.dump db_file l
 
 let load_db () = Option.value ~default:[] (P.load db_file)
 
@@ -100,10 +97,8 @@ let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
   let potential_build_contexts =
     match Path.readdir_unsorted Path.build_dir with
-    | exception _ ->
-      []
-    | Error _ ->
-      []
+    | exception _ -> []
+    | Error _ -> []
     | Ok files ->
       List.filter_map files ~f:(fun fn ->
         if fn = "" || fn.[0] = '.' || fn = "install" then
@@ -115,8 +110,7 @@ let do_promote db files_to_promote =
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
   let promote_one dst srcs =
     match srcs with
-    | [] ->
-      assert false
+    | [] -> assert false
     | (src, staging) :: others ->
       (* We remove the files from the digest cache to force a rehash on the
         next run. We do this because on OSX [mtime] is not precise enough and

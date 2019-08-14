@@ -31,10 +31,8 @@ let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
   let argv = Array.of_list argv in
   if Sys.win32 then
     match env with
-    | None ->
-      Unix.create_process prog argv stdin stdout stderr
-    | Some env ->
-      Unix.create_process_env prog argv env stdin stdout stderr
+    | None -> Unix.create_process prog argv stdin stdout stderr
+    | Some env -> Unix.create_process_env prog argv env stdin stdout stderr
   else
     match Unix.fork () with
     | 0 -> (
@@ -42,10 +40,7 @@ let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
         ignore (Unix.sigprocmask SIG_SETMASK [] : int list);
         perform_redirections stdin stdout stderr;
         match env with
-        | None ->
-          Unix.execv prog argv
-        | Some env ->
-          Unix.execve prog argv env
+        | None -> Unix.execv prog argv
+        | Some env -> Unix.execve prog argv env
       with _ -> sys_exit 127 )
-    | pid ->
-      pid
+    | pid -> pid

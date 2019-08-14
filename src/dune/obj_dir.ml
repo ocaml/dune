@@ -372,17 +372,4 @@ module Module = struct
       List.filter_map modules ~f:(fun m ->
         cm_file t m ~kind |> Option.map ~f:(path_of_build t))
   end
-
-  module Single = struct
-    type 'path obj_dir = 'path t
-
-    type 'path t =
-      { t : 'path obj_dir
-      ; m : Module.t
-      }
-
-    let create t m = { t; m }
-
-    let cm_file t ~kind = cm_file t.t t.m ~kind
-  end
 end

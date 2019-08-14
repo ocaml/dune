@@ -27,6 +27,26 @@ module Var = struct
     | Cxx -> string "cxx"
 end
 
+module Artifact = struct
+  type t =
+    | Mod of Cm_kind.t
+    | Lib of Mode.t
+
+  let ext = function
+    | Mod cm_kind -> Cm_kind.ext cm_kind
+    | Lib mode -> Mode.compiled_lib_ext mode
+
+  let all =
+    List.map ~f:(fun kind -> Mod kind) Cm_kind.all
+    @ List.map ~f:(fun mode -> Lib mode) Mode.all
+
+  let to_dyn a =
+    let open Dyn.Encoder in
+    match a with
+    | Mod cm_kind -> constr "Mod" [ Cm_kind.to_dyn cm_kind ]
+    | Lib mode -> constr "Lib" [ Mode.to_dyn mode ]
+end
+
 module Macro = struct
   type t =
     | Exe
@@ -42,6 +62,7 @@ module Macro = struct
     | Path_no_dep
     | Ocaml_config
     | Env
+    | Artifact of Artifact.t
 
   let to_dyn =
     let open Dyn.Encoder in
@@ -59,6 +80,7 @@ module Macro = struct
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
+    | Artifact ext -> constr "Artifact" [ Artifact.to_dyn ext ]
 end
 
 module Expansion = struct
@@ -134,23 +156,28 @@ module Map = struct
 
   let macros =
     let macro (x : Macro.t) = No_info x in
+    let artifact x =
+      ( String.drop (Artifact.ext x) 1
+      , since ~version:(1, 11) (Macro.Artifact x) )
+    in
     String.Map.of_list_exn
-      [ ("exe", macro Exe)
-      ; ("bin", macro Bin)
-      ; ("lib", macro Lib)
-      ; ("libexec", macro Libexec)
-      ; ("lib-available", macro Lib_available)
-      ; ("version", macro Version)
-      ; ("read", macro Read)
-      ; ("read-lines", macro Read_lines)
-      ; ("read-strings", macro Read_strings)
-      ; ("dep", since ~version:(1, 0) Macro.Dep)
-      ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
-      ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
-      ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
-      ; ("ocaml-config", macro Ocaml_config)
-      ; ("env", since ~version:(1, 4) Macro.Env)
-      ]
+      ( [ ("exe", macro Exe)
+        ; ("bin", macro Bin)
+        ; ("lib", macro Lib)
+        ; ("libexec", macro Libexec)
+        ; ("lib-available", macro Lib_available)
+        ; ("version", macro Version)
+        ; ("read", macro Read)
+        ; ("read-lines", macro Read_lines)
+        ; ("read-strings", macro Read_strings)
+        ; ("dep", since ~version:(1, 0) Macro.Dep)
+        ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
+        ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
+        ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
+        ; ("ocaml-config", macro Ocaml_config)
+        ; ("env", since ~version:(1, 4) Macro.Env)
+        ]
+      @ List.map ~f:artifact Artifact.all )
 
   let create ~(context : Context.t) =
     let ocamlopt =

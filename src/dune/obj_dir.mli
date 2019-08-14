@@ -125,15 +125,4 @@ module Module : sig
   end
 
   val dep : Path.Build.t t -> Dep.t -> Path.Build.t
-
-  module Single : sig
-    type 'path obj_dir
-
-    type 'path t
-
-    val create : 'path obj_dir -> Module.t -> 'path t
-
-    val cm_file : 'path t -> kind:Cm_kind.t -> 'path option
-  end
-  with type 'path obj_dir := 'path t
 end

@@ -22,7 +22,7 @@ end
 module Dir_artifacts = struct
   type t =
     { libraries : Library.t Lib_name.Map.t
-    ; modules : Path.Build.t Obj_dir.Module.Single.t Module_name.Map.t
+    ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
     }
 
   let empty =
@@ -380,8 +380,7 @@ end = struct
     let modules =
       let by_name modules obj_dir =
         Modules.fold_user_written ~init:modules ~f:(fun m modules ->
-          Module_name.Map.add_exn modules (Module.name m)
-            (Obj_dir.Module.Single.create obj_dir m))
+          Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
       in
       let init =
         List.fold_left ~init:Module_name.Map.empty

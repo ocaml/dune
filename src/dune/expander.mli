@@ -34,6 +34,20 @@ val set_scope : t -> scope:Scope.t -> t
 
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
+val set_lookup_module :
+     t
+  -> lookup_module:
+    (   dir:Path.Build.t
+     -> Module_name.t
+     -> (Path.Build.t Obj_dir.t * Module.t) option)
+  -> t
+
+val set_lookup_library :
+     t
+  -> lookup_library:
+    (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
+  -> t
+
 val add_bindings : t -> bindings:Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t

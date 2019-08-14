@@ -11,7 +11,7 @@ module Dir_artifacts : sig
   type t
 
   val lookup_module :
-    t -> Module_name.t -> Path.Build.t Obj_dir.Module.Single.t option
+    t -> Module_name.t -> (Path.Build.t Obj_dir.t * Module.t) option
 
   val lookup_library : t -> Lib_name.t -> Dune_file.Library.t option
 end

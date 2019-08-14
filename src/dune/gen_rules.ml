@@ -71,6 +71,21 @@ struct
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
       =
     let expander = Super_context.expander sctx ~dir:ctx_dir in
+    let expander =
+      let lookup_module ~dir name =
+        Dir_contents.Dir_artifacts.lookup_module
+          (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
+          name
+      in
+      let lookup_library ~dir name =
+        Dir_contents.Dir_artifacts.lookup_library
+          (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
+          name
+      in
+      Expander.set_lookup_library
+        (Expander.set_lookup_module expander ~lookup_module)
+        ~lookup_library
+    in
     let files_to_install { Install_conf.section = _; files; package = _ } =
       List.map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb

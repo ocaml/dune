@@ -122,11 +122,6 @@ module Internal_rule = struct
       ; dir : Path.Build.t
       ; env : Env.t option
       ; locks : Path.t list
-      ; (* Reverse dependencies discovered so far, labelled by the requested
-        target *)
-        mutable rev_deps : (Path.t * t) list
-      ; (* Transitive reverse dependencies discovered so far. *)
-        mutable transitive_rev_deps : Id.Set.t
       }
 
     let compare a b = Id.compare a.id b.id
@@ -166,8 +161,6 @@ module Internal_rule = struct
     ; dir = Path.Build.root
     ; env = None
     ; locks = []
-    ; rev_deps = []
-    ; transitive_rev_deps = Id.Set.empty
     }
 
   (* Create a shim for the main build goal *)
@@ -670,8 +663,6 @@ end = struct
       ; mode
       ; info
       ; dir
-      ; transitive_rev_deps = Internal_rule.Id.Set.singleton id
-      ; rev_deps = []
       }
     in
     (targets, rule)
@@ -1354,8 +1345,6 @@ end = struct
         ; static_deps = _
         ; build = _
         ; info
-        ; transitive_rev_deps = _
-        ; rev_deps = _
         } =
       rule
     in

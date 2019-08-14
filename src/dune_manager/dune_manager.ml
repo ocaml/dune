@@ -457,21 +457,27 @@ module Client = struct
   let make () =
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
-    let* port = check_port_file (default_port_file ()) in
+    let* port =
+      let root = Dune_memory.default_root () in
+      Daemonize.daemonize ~workdir:root (default_port_file ())
+        (daemon ~root ~config:{ exit_no_client = true })
+      >>| (function
+            | Started (ep, _) | Already_running (ep, _) ->
+                ep
+            | Finished ->
+                Code_error.raise "dune-cache was run in the foreground" [])
+      |> Result.map_error ~f:err
+    in
     let* addr, port =
-      match port with
-      | Some (port, _, _) -> (
-        match String.split_on_char ~sep:':' port with
-        | [ addr; port ] -> (
-          match int_of_string_opt port with
-          | Some i ->
-              Result.Ok (Unix.inet_addr_of_string addr, i)
-          | None ->
-              Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
-        | _ ->
-            Result.Error (err (Printf.sprintf "invalid endpoint: %s" port)) )
-      | None ->
-          Result.Error (err "dune-cache-manager is not started")
+      match String.split_on_char ~sep:':' port with
+      | [ addr; port ] -> (
+        match int_of_string_opt port with
+        | Some i ->
+            Result.Ok (Unix.inet_addr_of_string addr, i)
+        | None ->
+            Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
+      | _ ->
+          Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))
     in
     let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     let* _ =

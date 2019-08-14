@@ -13,6 +13,8 @@ let set t x =
   | Set _ ->
     Code_error.raise "Fdecl.set: already set" []
 
+let reset t x = t.state <- Set x
+
 let get t =
   match t.state with
   | Unset ->

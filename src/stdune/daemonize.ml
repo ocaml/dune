@@ -88,7 +88,11 @@ let daemonize ?workdir ?(foreground = false) beacon
         Sys.set_signal Sys.sighup Sys.Signal_ignore;
         Sys.set_signal Sys.sigpipe Sys.Signal_ignore;
         if Unix.fork () = 0 then (
-          Option.iter ~f:(fun p -> Unix.chdir (Path.to_string p)) workdir;
+          Option.iter
+            ~f:(fun p ->
+              Path.mkdir_p p;
+              Unix.chdir (Path.to_string p))
+            workdir;
           let null = open_in "/dev/null"
           and out = open_out "stdout"
           and err = open_out "stderr" in

@@ -27,39 +27,12 @@ let make_port_file path contents =
   else
     None
 
-let daemonize dir f =
-  if Unix.fork () = 0 then (
-    ignore (Unix.setsid ());
-    Sys.set_signal Sys.sighup Sys.Signal_ignore;
-    Sys.set_signal Sys.sigpipe Sys.Signal_ignore;
-    if Unix.fork () = 0 then (
-      Unix.chdir dir;
-      let null = open_in "/dev/null"
-      and out = open_out "stdout"
-      and err = open_out "stderr" in
-      Unix.dup2
-        (Unix.descr_of_in_channel null)
-        (Unix.descr_of_in_channel stdin);
-      Unix.dup2
-        (Unix.descr_of_out_channel out)
-        (Unix.descr_of_out_channel stdout);
-      Unix.dup2
-        (Unix.descr_of_out_channel err)
-        (Unix.descr_of_out_channel stderr);
-      close_in null;
-      close_out out;
-      close_out err;
-      ignore (Unix.umask 0);
-      f ()
-    );
-    exit 0
-  )
-
 module Modes = Map.Make (String)
 
 let modes = Modes.empty
 
 let start () =
+  let show_endpoint ep = Printf.printf "listening on %s\n%!" ep in
   let config =
     let get item =
       try Some (Sys.getenv ("DUNE_CACHE_" ^ String.uppercase item))
@@ -72,10 +45,6 @@ let start () =
   and root = ref (Dune_memory.default_root ())
   and foreground = ref false
   and usage = Printf.sprintf "start [OPTIONS]" in
-  let report_endpoint () =
-    let port_file = open_in (Path.to_string !port_path) in
-    Printf.printf "listening on %s\n%!" (input_line port_file)
-  in
   Arg.parse_argv ~current:Arg.current Sys.argv
     [ path_option "port" port_path "file to write listening port to"
     ; path_option "root" root "dune memory root"
@@ -83,75 +52,44 @@ let start () =
     ]
     (fun o -> raise (Arg.Bad (Printf.sprintf "unexpected option: %s" o)))
     usage;
-  match Result.ok_exn (Dune_manager.check_port_file !port_path) with
-  | None ->
-      let f () =
-        Option.iter ~f:Path.mkdir_p
-          (Path.parent (Dune_manager.default_port_file ()));
-        let f () =
-          Console.init
-            ( if !foreground then
-              Verbose
-            else
-              Quiet );
-          let log_file = Path.relative !root "log" in
-          Log.init ~file:(This log_file) ();
-          let manager = Dune_manager.make ~root:!root ~config () in
-          let port_f port =
-            if make_port_file !port_path port = None then
-              Dune_manager.stop manager
-            else if !foreground then
-              report_endpoint ()
-          in
-          Sys.set_signal Sys.sigint
-            (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
-          Sys.set_signal Sys.sigterm
-            (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
-          try
-            let f () = Dune_manager.run ~port_f manager
-            and finally () = Unix.truncate (Path.to_string !port_path) 0 in
-            Exn.protect ~f ~finally
-          with
-          | Dune_manager.Error s ->
-              Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
-              exit 1
-          | Dune_manager.Stop ->
-              ()
-        and finally () = () in
-        Exn.protect ~f ~finally
-      in
-      if !foreground then
-        f ()
-      else (
-        daemonize (Path.to_string !root) f;
-        let path = Path.to_string !port_path in
-        let open Result.O in
-        Result.ok_exn
-          ( retry
-              ~message:
-                (Printf.sprintf "waiting for port file \"%s\" to be created"
-                   path) (fun () ->
-                try Some (Unix.openfile path [ Unix.O_RDONLY ] 0o600)
-                with Unix.Unix_error (Unix.ENOENT, _, _) -> None)
-          >>= fun fd ->
-          retry
-            ~message:
-              (Printf.sprintf "waiting for port file \"%s\" to be locked" path)
-            (fun () ->
-              Option.some_if
-                ( match Fcntl.lock_get fd Fcntl.Write with
-                | Some (Fcntl.Read, _) ->
-                    true
-                | _ ->
-                    false )
-                ()) );
-        report_endpoint ()
-      )
-  | Some (e, pid, _) ->
-      if !foreground then
-        User_error.raise [ Pp.textf "already running on %s (PID %i)" e pid ]
+  let f started =
+    let port_f content =
+      if !foreground then show_endpoint content;
+      started content
+    in
+    Console.init
+      ( if !foreground then
+        Verbose
       else
-        report_endpoint ()
+        Quiet );
+    let log_file = Path.relative !root "log" in
+    Log.init ~file:(This log_file) ();
+    let manager = Dune_manager.make ~root:!root ~config () in
+    Sys.set_signal Sys.sigint
+      (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
+    Sys.set_signal Sys.sigterm
+      (Sys.Signal_handle (fun _ -> Dune_manager.stop manager));
+    try Dune_manager.run ~port_f manager with
+    | Dune_manager.Error s ->
+        Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
+        exit 1
+    | Dune_manager.Stop ->
+        ()
+  in
+  match
+    Daemonize.daemonize ~workdir:!root ~foreground:!foreground !port_path f
+  with
+  | Result.Ok Finished ->
+      ()
+  | Result.Ok (Daemonize.Started (endpoint, _)) ->
+      show_endpoint endpoint
+  | Result.Ok (Daemonize.Already_running (endpoint, _)) when not !foreground ->
+      show_endpoint endpoint
+  | Result.Ok (Daemonize.Already_running (endpoint, pid)) ->
+      User_error.raise
+        [ Pp.textf "already running on %s (PID %i)" endpoint pid ]
+  | Result.Error reason ->
+      User_error.raise [ Pp.text reason ]
 
 let modes = Modes.add_exn modes "start" start
 

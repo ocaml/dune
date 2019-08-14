@@ -17,11 +17,11 @@ type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
   ; output : out_channel
-  ; mutable build_root : Path.t option (* client owned *)
-  ; mutable common_metadata : Sexp.t list (* client owned *)
-  ; mutable memory : Dune_memory.Memory.t (* client owned*)
-  ; mutable repositories : (string * string * string) list (* client owned *)
-  ; mutable version : version option (* client owned*)
+  ; build_root : Path.t option
+  ; common_metadata : Sexp.t list
+  ; memory : Dune_memory.Memory.t
+  ; repositories : (string * string * string) list
+  ; version : version option
   }
 
 let default_port_file () =
@@ -162,7 +162,7 @@ let int_of_string ?where s =
         (match where with Some l -> " in " ^ l | None -> "")
          s)
 
-let run ?(port_f = ignore) ?(port = 0) manager =
+let client_thread (events, client) =
   let open Result.O in
   let invalid_args args =
     Result.Error
@@ -193,8 +193,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       | Some (major, minor) as v ->
         Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer) major
           minor;
-        client.version <- v;
-        Result.ok () )
+        Result.ok { client with version = v } )
     | args ->
       invalid_args args
   and handle_promote client = function
@@ -246,9 +245,10 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       >>| fun promotions ->
       match List.filter_map ~f promotions with
       | [] ->
-        ()
+        client
       | dedup ->
-        send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup)) )
+        send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
+        client )
     | args ->
       invalid_args args
   and handle_set_root client = function
@@ -263,18 +263,16 @@ let run ?(port_f = ignore) ?(port = 0) manager =
                 ]);
             "unable to read Dune memory")
         ( Dune_memory.make ~root:(Path.of_string dir) ()
-        >>| fun memory -> client.memory <- memory )
+        >>| fun memory -> { client with memory } )
     | args ->
       invalid_args args
   and handle_set_build_root client = function
     | [ Sexp.Atom dir ] ->
-      client.build_root <- Some (Path.of_string dir);
-      Result.ok ()
+      Result.ok { client with build_root = Some (Path.of_string dir) }
     | args ->
       invalid_args args
   and handle_set_metadata client arg =
-    client.common_metadata <- arg;
-    Result.ok ()
+    Result.ok { client with common_metadata = arg }
   and handle_set_repos client arg =
     let convert = function
       | Sexp.List
@@ -288,7 +286,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
     in
     Result.List.map ~f:convert arg
-    >>| fun repos -> client.repositories <- repos
+    >>| fun repositories -> { client with repositories }
   in
   let handle_cmd client = function
     | Sexp.List (Sexp.Atom cmd :: args) ->
@@ -317,6 +315,49 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       Result.Error
         (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
   in
+  let input = Stream.of_channel (Unix.in_channel_of_descr client.fd) in
+  let f () =
+    send client.output my_versions_command;
+    Log.infof "accept client: %s" (peer_name client.peer);
+    let rec handle client =
+      match Stream.peek input with
+      | None ->
+        Log.infof "%s: ended" (peer_name client.peer)
+      | Some '\n' ->
+        (* Skip toplevel newlines, for easy netcat interaction *)
+        Stream.junk input;
+        (handle [@tailcall]) client
+      | _ -> (
+        let open Result.O in
+        match
+          Result.map_error
+            ~f:(fun r -> "parse error: " ^ r)
+            (Csexp.parse input)
+          >>= fun cmd ->
+          Log.infof "%s: received command: %s" (peer_name client.peer)
+            (Sexp.to_string cmd);
+          handle_cmd client cmd
+        with
+        | Result.Error e ->
+          Log.infof "%s: command error: %s" (peer_name client.peer) e
+        | Result.Ok client ->
+          (handle [@tailcall]) client )
+    in
+    handle client
+  and finally () =
+    ( try
+      Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
+      Unix.close client.fd
+      with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+    Evt.sync (Evt.send events (Client_left client.fd))
+  in
+  try Exn.protect ~f ~finally with
+  | Unix.Unix_error (Unix.EBADF, _, _) ->
+    Log.infof "%s: ended" (peer_name client.peer)
+  | Sys_error msg ->
+    Log.infof "%s: ended: %s" (peer_name client.peer) msg
+
+let run ?(port_f = ignore) ?(port = 0) manager =
   let rec accept_thread sock =
     let rec accept () =
       try Unix.accept sock with
@@ -350,53 +391,6 @@ let run ?(port_f = ignore) ?(port = 0) manager =
     port_f endpoint;
     Unix.listen sock 1024;
     manager.accept_thread <- Some (Thread.create accept_thread sock);
-    let client_thread client =
-      let f () =
-        send client.output my_versions_command;
-        Log.infof "accept client: %s" (peer_name client.peer);
-        let rec input = Stream.of_channel (Unix.in_channel_of_descr client.fd)
-        and handle input =
-          if Option.is_none manager.socket then
-            ()
-          else
-            match Stream.peek input with
-            | None ->
-              Log.infof "%s: ended" (peer_name client.peer)
-            | Some '\n' ->
-              Stream.junk input;
-              (handle [@tailcall]) input
-            (* Skip toplevel newlines, for easy netcat interaction *)
-            | _ ->
-              (let open Result.O in
-              match
-                Result.map_error
-                  ~f:(fun r -> "parse error: " ^ r)
-                  (Csexp.parse input)
-                >>= fun cmd ->
-                Log.infof "%s: received command: %s" (peer_name client.peer)
-                  (Sexp.to_string cmd);
-                handle_cmd client cmd
-              with
-              | Result.Error e ->
-                Log.infof "%s: command error: %s" (peer_name client.peer) e
-              | _ ->
-                ());
-              (handle [@tailcall]) input
-        in
-        handle input
-      and finally () =
-        ( try
-          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-          Unix.close client.fd
-          with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
-        Evt.sync (Evt.send manager.events (Client_left client.fd))
-      in
-      try Exn.protect ~f ~finally with
-      | Unix.Unix_error (Unix.EBADF, _, _) ->
-        Log.infof "%s: ended" (peer_name client.peer)
-      | Sys_error msg ->
-        Log.infof "%s: ended: %s" (peer_name client.peer) msg
-    in
     let rec handle () =
       let stop () =
         match manager.socket with
@@ -430,7 +424,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
               User_error.raise [ Pp.textf "%s" e ] )
           }
         in
-        let tid = Thread.create client_thread client in
+        let tid = Thread.create client_thread (manager.events, client) in
         manager.clients <-
           ( match Clients.add manager.clients client.fd (client, tid) with
           | Result.Ok v ->

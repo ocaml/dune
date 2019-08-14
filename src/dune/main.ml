@@ -17,8 +17,7 @@ type build_system =
 
 let package_install_file w pkg =
   match Package.Name.Map.find w.conf.packages pkg with
-  | None ->
-    Error ()
+  | None -> Error ()
   | Some p ->
     Ok
       (Path.Source.relative p.path
@@ -42,8 +41,7 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
   let conf = Dune_load.load ~ancestor_vcs () in
   let workspace =
     match workspace with
-    | Some w ->
-      w
+    | Some w -> w
     | None -> (
       match workspace_file with
       | Some p ->
@@ -58,10 +56,8 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
           let p = Path.of_string Workspace.filename in
           Option.some_if (Path.exists p) p
         with
-        | Some p ->
-          Workspace.load ?x ?profile p
-        | None ->
-          Workspace.default ?x ?profile () ) )
+        | Some p -> Workspace.load ?x ?profile p
+        | None -> Workspace.default ?x ?profile () ) )
   in
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
@@ -96,10 +92,8 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   in
   let hook (hook : Build_system.hook) =
     match hook with
-    | Rule_started ->
-      incr rule_total
-    | Rule_completed ->
-      incr rule_done
+    | Rule_started -> incr rule_total
+    | Rule_completed -> incr rule_done
   in
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
@@ -115,20 +109,16 @@ let auto_concurrency =
   let v = ref None in
   fun () ->
     match !v with
-    | Some n ->
-      Fiber.return n
+    | Some n -> Fiber.return n
     | None ->
       let+ n =
         if Sys.win32 then
           match Env.get Env.initial "NUMBER_OF_PROCESSORS" with
-          | None ->
-            Fiber.return 1
+          | None -> Fiber.return 1
           | Some s -> (
             match int_of_string s with
-            | exception _ ->
-              Fiber.return 1
-            | n ->
-              Fiber.return n )
+            | exception _ -> Fiber.return 1
+            | n -> Fiber.return n )
         else
           let commands =
             [ ("nproc", [])
@@ -137,26 +127,21 @@ let auto_concurrency =
             ]
           in
           let rec loop = function
-            | [] ->
-              Fiber.return 1
+            | [] -> Fiber.return 1
             | (prog, args) :: rest -> (
               match Bin.which ~path:(Env.path Env.initial) prog with
-              | None ->
-                loop rest
+              | None -> loop rest
               | Some prog -> (
                 let* result =
                   Process.run_capture (Accept All) prog args ~env:Env.initial
                     ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
                 in
                 match result with
-                | Error _ ->
-                  loop rest
+                | Error _ -> loop rest
                 | Ok s -> (
                   match int_of_string (String.trim s) with
-                  | n ->
-                    Fiber.return n
-                  | exception _ ->
-                    loop rest ) ) )
+                  | n -> Fiber.return n
+                  | exception _ -> loop rest ) ) )
           in
           loop commands
       in
@@ -167,10 +152,8 @@ let auto_concurrency =
 let set_concurrency (config : Config.t) =
   let+ n =
     match config.concurrency with
-    | Fixed n ->
-      Fiber.return n
-    | Auto ->
-      auto_concurrency ()
+    | Fixed n -> Fiber.return n
+    | Auto -> auto_concurrency ()
   in
   if n >= 1 then Scheduler.set_concurrency n
 
@@ -209,10 +192,8 @@ let bootstrap () =
     let concurrency = ref None in
     let concurrency_arg x =
       match Config.Concurrency.of_string x with
-      | Error msg ->
-        raise (Arg.Bad msg)
-      | Ok c ->
-        concurrency := Some c
+      | Error msg -> raise (Arg.Bad msg)
+      | Ok c -> concurrency := Some c
     in
     let terminal_persistence = Some Config.Terminal_persistence.Preserve in
     let profile = ref None in
@@ -265,8 +246,7 @@ let bootstrap () =
           (Build.path (Path.relative Path.build_dir "default/dune.install")))
   in
   try main () with
-  | Fiber.Never ->
-    exit 1
+  | Fiber.Never -> exit 1
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Report_error.report exn;
@@ -274,7 +254,5 @@ let bootstrap () =
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> c.name = name) with
-  | Some ctx ->
-    ctx
-  | None ->
-    User_error.raise [ Pp.textf "Context %S not found!" name ]
+  | Some ctx -> ctx
+  | None -> User_error.raise [ Pp.textf "Context %S not found!" name ]

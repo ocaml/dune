@@ -13,17 +13,20 @@ let parse_lexbuf lb =
 
 let parse_file path_opt =
   match path_opt with
-  | Some path ->
-    Io.with_lexbuf_from_file path ~f:parse_lexbuf
-  | None ->
-    parse_lexbuf @@ Lexing.from_channel stdin
+  | Some path -> Io.with_lexbuf_from_file path ~f:parse_lexbuf
+  | None -> parse_lexbuf @@ Lexing.from_channel stdin
 
 let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
     match c with
-    | Atom _ | Quoted_string _ | Template _ | List (_, []) | List (_, [ _ ]) ->
+    | Atom _
+     |Quoted_string _
+     |Template _
+     |List (_, [])
+     |List (_, [ _ ]) ->
       true
-    | List _ | Comment _ ->
+    | List _
+     |Comment _ ->
       false)
 
 let pp_simple fmt t =
@@ -61,18 +64,14 @@ let pp_list_with_comments pp_sexp fmt sexps =
         (pp_comment loc) c go xs
     | Comment (loc, c) :: xs ->
       Format.fprintf fmt "%a@,%a" (pp_comment loc) c go xs
-    | [ x ] ->
-      Format.fprintf fmt "%a" pp_sexp x
-    | x :: xs ->
-      Format.fprintf fmt "%a@,%a" pp_sexp x go xs
-    | [] ->
-      ()
+    | [ x ] -> Format.fprintf fmt "%a" pp_sexp x
+    | x :: xs -> Format.fprintf fmt "%a@,%a" pp_sexp x go xs
+    | [] -> ()
   in
   go fmt sexps
 
 let rec pp_sexp fmt : Dune_lang.Cst.t -> _ = function
-  | (Atom _ | Quoted_string _ | Template _) as sexp ->
-    pp_simple fmt sexp
+  | (Atom _ | Quoted_string _ | Template _) as sexp -> pp_simple fmt sexp
   | List (_, sexps) ->
     Format.fprintf fmt "@[<v 1>%a@]"
       ( if can_be_displayed_wrapped sexps then
@@ -80,8 +79,7 @@ let rec pp_sexp fmt : Dune_lang.Cst.t -> _ = function
       else
         pp_sexp_list )
       sexps
-  | Comment (loc, c) ->
-    pp_comment loc fmt c
+  | Comment (loc, c) -> pp_comment loc fmt c
 
 and pp_sexp_list fmt =
   Format.fprintf fmt "(%a)" (pp_list_with_comments pp_sexp)
@@ -103,7 +101,6 @@ let format_file ~input =
     match input with
     | Some path ->
       Io.with_file_in path ~f:(fun ic -> Io.copy_channels ic stdout)
-    | None ->
-      User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ] )
-  | Sexps sexps ->
-    Format.printf "%a%!" pp_top_sexps sexps
+    | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
+    )
+  | Sexps sexps -> Format.printf "%a%!" pp_top_sexps sexps

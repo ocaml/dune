@@ -19,28 +19,17 @@ module Print_config = struct
   open Ansi_color.Style
 
   let default : Style.t -> _ = function
-    | Loc ->
-      [ bold ]
-    | Error ->
-      [ bold; fg_red ]
-    | Warning ->
-      [ bold; fg_magenta ]
-    | Kwd ->
-      [ bold; fg_blue ]
-    | Id ->
-      [ bold; fg_yellow ]
-    | Prompt ->
-      [ bold; fg_green ]
-    | Details ->
-      [ dim; fg_white ]
-    | Ok ->
-      [ dim; fg_green ]
-    | Debug ->
-      [ underlined; fg_bright_cyan ]
-    | Success ->
-      [ bold; fg_green ]
-    | Ansi_styles l ->
-      l
+    | Loc -> [ bold ]
+    | Error -> [ bold; fg_red ]
+    | Warning -> [ bold; fg_magenta ]
+    | Kwd -> [ bold; fg_blue ]
+    | Id -> [ bold; fg_yellow ]
+    | Prompt -> [ bold; fg_green ]
+    | Details -> [ dim; fg_white ]
+    | Ok -> [ dim; fg_green ]
+    | Debug -> [ underlined; fg_bright_cyan ]
+    | Success -> [ bold; fg_green ]
+    | Ansi_styles l -> l
 end
 
 type t =
@@ -52,20 +41,16 @@ type t =
 let make ?loc ?prefix ?(hints = []) paragraphs =
   let paragraphs =
     match (prefix, paragraphs) with
-    | None, l ->
-      l
-    | Some p, [] ->
-      [ p ]
-    | Some p, x :: l ->
-      Pp.concat ~sep:Pp.space [ p; x ] :: l
+    | None, l -> l
+    | Some p, [] -> [ p ]
+    | Some p, x :: l -> Pp.concat ~sep:Pp.space [ p; x ] :: l
   in
   { loc; hints; paragraphs }
 
 let pp { loc; paragraphs; hints } =
   let paragraphs =
     match hints with
-    | [] ->
-      paragraphs
+    | [] -> paragraphs
     | _ ->
       List.append paragraphs
         (List.map hints ~f:(fun hint ->
@@ -74,8 +59,7 @@ let pp { loc; paragraphs; hints } =
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =
     match loc with
-    | None ->
-      paragraphs
+    | None -> paragraphs
     | Some { Loc0.start; stop } ->
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
@@ -130,10 +114,8 @@ let did_you_mean s ~candidates =
       levenshtein_distance s candidate < 3)
   in
   match candidates with
-  | [] ->
-    []
-  | l ->
-    [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
+  | [] -> []
+  | l -> [ Pp.textf "did you mean %s?" (String.enumerate_or l) ]
 
 let to_string t =
   Format.asprintf "%a" Pp.render_ignore_tags (pp { t with loc = None })

@@ -5,14 +5,19 @@ include Dune_caml.Filename
 let extension_start =
   (* This is from the win32 implementation, but it is acceptable for the usage
     we make of it in this function and covers all platforms. *)
-  let is_dir_sep = function '/' | '\\' | ':' -> true | _ -> false in
+  let is_dir_sep = function
+    | '/'
+     |'\\'
+     |':' ->
+      true
+    | _ -> false
+  in
   let rec check_at_least_one_non_dot s len candidate i =
     if i < 0 then
       len
     else
       match s.[i] with
-      | '.' ->
-        check_at_least_one_non_dot s len candidate (i - 1)
+      | '.' -> check_at_least_one_non_dot s len candidate (i - 1)
       | c ->
         if is_dir_sep c then
           len
@@ -24,8 +29,7 @@ let extension_start =
       len
     else
       match s.[i] with
-      | '.' ->
-        check_at_least_one_non_dot s len i (i - 1)
+      | '.' -> check_at_least_one_non_dot s len i (i - 1)
       | c ->
         if is_dir_sep c then
           len

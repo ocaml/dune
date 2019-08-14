@@ -5,21 +5,20 @@ open Fiber.O
 let is_a_source_file path =
   ( match Path.extension path with
   | ".flv"
-  | ".gif"
-  | ".ico"
-  | ".jpeg"
-  | ".jpg"
-  | ".mov"
-  | ".mp3"
-  | ".mp4"
-  | ".otf"
-  | ".pdf"
-  | ".png"
-  | ".ttf"
-  | ".woff" ->
+   |".gif"
+   |".ico"
+   |".jpeg"
+   |".jpg"
+   |".mov"
+   |".mp3"
+   |".mp4"
+   |".otf"
+   |".pdf"
+   |".png"
+   |".ttf"
+   |".woff" ->
     false
-  | _ ->
-    true )
+  | _ -> true )
   && Path.is_file path
 
 let make_watermark_map ~name ~version ~commit =
@@ -29,34 +28,26 @@ let make_watermark_map ~name ~version ~commit =
   in
   let opam_var name sep =
     match Opam_file.get_field opam_file name with
-    | None ->
-      Error (sprintf "variable %S not found in opam file" name)
+    | None -> Error (sprintf "variable %S not found in opam file" name)
     | Some value -> (
       let err () =
         Error (sprintf "invalid value for variable %S in opam file" name)
       in
       match value with
-      | String (_, s) ->
-        Ok s
+      | String (_, s) -> Ok s
       | List (_, l) -> (
         match
           List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
             match acc with
-            | Error _ ->
-              acc
+            | Error _ -> acc
             | Ok l -> (
               match v with
-              | OpamParserTypes.String (_, s) ->
-                Ok (s :: l)
-              | _ ->
-                err () ))
+              | OpamParserTypes.String (_, s) -> Ok (s :: l)
+              | _ -> err () ))
         with
-        | Error _ as e ->
-          e
-        | Ok l ->
-          Ok (String.concat ~sep (List.rev l)) )
-      | _ ->
-        err () )
+        | Error _ as e -> e
+        | Ok l -> Ok (String.concat ~sep (List.rev l)) )
+      | _ -> err () )
   in
   String.Map.of_list_exn
     [ ("NAME", Ok name)
@@ -89,10 +80,8 @@ let subst_string s path ~map =
         { Loc.start = pos; stop = { pos with pos_cnum = pos.pos_cnum + len } }
       else
         match s.[i] with
-        | '\n' ->
-          loop (lnum + 1) (i + 1) (i + 1)
-        | _ ->
-          loop lnum bol (i + 1)
+        | '\n' -> loop (lnum + 1) (i + 1) (i + 1)
+        | _ -> loop lnum bol (i + 1)
     in
     loop 1 0 0
   in
@@ -101,30 +90,25 @@ let subst_string s path ~map =
       acc
     else
       match s.[i] with
-      | '%' ->
-        after_percent (i + 1) acc
-      | _ ->
-        loop (i + 1) acc
+      | '%' -> after_percent (i + 1) acc
+      | _ -> loop (i + 1) acc
   and after_percent i acc =
     if i = len then
       acc
     else
       match s.[i] with
-      | '%' ->
-        after_double_percent ~start:(i - 1) (i + 1) acc
-      | _ ->
-        loop (i + 1) acc
+      | '%' -> after_double_percent ~start:(i - 1) (i + 1) acc
+      | _ -> loop (i + 1) acc
   and after_double_percent ~start i acc =
     if i = len then
       acc
     else
       match s.[i] with
-      | '%' ->
-        after_double_percent ~start:(i - 1) (i + 1) acc
-      | 'A' .. 'Z' | '_' ->
+      | '%' -> after_double_percent ~start:(i - 1) (i + 1) acc
+      | 'A' .. 'Z'
+       |'_' ->
         in_var ~start (i + 1) acc
-      | _ ->
-        loop (i + 1) acc
+      | _ -> loop (i + 1) acc
   and in_var ~start i acc =
     if i - start > longest_var + double_percent_len then
       loop i acc
@@ -132,12 +116,11 @@ let subst_string s path ~map =
       acc
     else
       match s.[i] with
-      | '%' ->
-        end_of_var ~start (i + 1) acc
-      | 'A' .. 'Z' | '_' ->
+      | '%' -> end_of_var ~start (i + 1) acc
+      | 'A' .. 'Z'
+       |'_' ->
         in_var ~start (i + 1) acc
-      | _ ->
-        loop (i + 1) acc
+      | _ -> loop (i + 1) acc
   and end_of_var ~start i acc =
     if i = len then
       acc
@@ -146,20 +129,17 @@ let subst_string s path ~map =
       | '%' -> (
         let var = String.sub s ~pos:(start + 2) ~len:(i - start - 3) in
         match String.Map.find map var with
-        | None ->
-          in_var ~start:(i - 1) (i + 1) acc
+        | None -> in_var ~start:(i - 1) (i + 1) acc
         | Some (Ok repl) ->
           let acc = (start, i + 1, repl) :: acc in
           loop (i + 1) acc
         | Some (Error msg) ->
           let loc = loc_of_offset ~ofs:start ~len:(i + 1 - start) in
           User_error.raise ~loc [ Pp.text msg ] )
-      | _ ->
-        loop (i + 1) acc
+      | _ -> loop (i + 1) acc
   in
   match List.rev (loop 0 []) with
-  | [] ->
-    None
+  | [] -> None
   | repls ->
     let result_len =
       List.fold_left repls ~init:(String.length s) ~f:(fun acc (a, b, repl) ->
@@ -187,10 +167,8 @@ let subst_file path ~map =
       s
   in
   match subst_string s ~map path with
-  | None ->
-    ()
-  | Some s ->
-    Io.write_file path s
+  | None -> ()
+  | Some s -> Io.write_file path s
 
 (* Minimal API for dune-project files that makes as little assumption about the
   contents as possible and keeps enough info for editing the file. *)
@@ -218,10 +196,8 @@ module Dune_project = struct
       let simple_field name arg =
         let+ loc, x = located (field_o name (located arg)) in
         match x with
-        | Some (loc_of_arg, arg) ->
-          Some { loc; loc_of_arg; arg }
-        | None ->
-          None
+        | Some (loc_of_arg, arg) -> Some { loc; loc_of_arg; arg }
+        | None -> None
       in
       enter
         (fields
@@ -288,12 +264,9 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
       | Some p when Path.is_root p -> (
         let fn = Path.basename fn in
         match Filename.split_extension fn with
-        | s, ".opam" ->
-          Some s
-        | _ ->
-          None )
-      | _ ->
-        None)
+        | s, ".opam" -> Some s
+        | _ -> None )
+      | _ -> None)
   in
   if package_names = [] then
     User_error.raise [ Pp.textf "No <package>.opam files found." ];
@@ -314,8 +287,7 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
           "The project name is not defined, please add a (name <name>) field \
            to your dune-project file."
         ]
-    | Some { name = Some n; _ } ->
-      (n.loc_of_arg, n.arg)
+    | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
   in
   if not (List.mem name ~set:package_names) then
     if Loc.is_none loc then
@@ -356,7 +328,5 @@ let subst () =
     Sys.readdir "." |> Array.to_list |> String.Set.of_list
     |> Vcs.Kind.of_dir_contents
   with
-  | None ->
-    Fiber.return ()
-  | Some kind ->
-    subst { kind; root = Path.root }
+  | None -> Fiber.return ()
+  | Some kind -> subst { kind; root = Path.root }

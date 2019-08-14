@@ -20,8 +20,7 @@ module Prog = struct
         match program with
         | "refmt" ->
           Some (Option.value ~default:"try: opam install reason" hint)
-        | _ ->
-          hint
+        | _ -> hint
       in
       Utils.program_not_found ?hint ~loc ~context program
   end
@@ -32,10 +31,8 @@ module Prog = struct
     Dune_lang.Decoder.map Dpath.decode ~f:Result.ok
 
   let encode = function
-    | Ok s ->
-      Dpath.encode s
-    | Error (e : Not_found.t) ->
-      Dune_lang.Encoder.string e.program
+    | Ok s -> Dpath.encode s
+    | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
 end
 
 module type Ast =
@@ -91,10 +88,8 @@ let for_shell t =
     | Symlink (src, dst) ->
       let src =
         match Path.Build.parent dst with
-        | None ->
-          Path.to_string src
-        | Some from ->
-          Path.reach ~from:(Path.build from) src
+        | None -> Path.to_string src
+        | Some from -> Path.reach ~from:(Path.build from) src
       in
       let dst = Path.reach ~from:dir (Path.build dst) in
       For_shell.Symlink (src, dst)
@@ -107,7 +102,9 @@ let for_shell t =
     ~f_path:(fun ~dir x -> Path.reach x ~from:dir)
     ~f_target:(fun ~dir x -> Path.reach (Path.build x) ~from:dir)
     ~f_program:(fun ~dir x ->
-      match x with Ok p -> Path.reach p ~from:dir | Error e -> e.program)
+      match x with
+      | Ok p -> Path.reach p ~from:dir
+      | Error e -> e.program)
 
 module Unresolved = struct
   module Program = struct
@@ -139,35 +136,35 @@ module Unresolved = struct
       ~f_path:(fun ~dir:_ x -> x)
       ~f_target:(fun ~dir:_ x -> x)
       ~f_string:(fun ~dir:_ x -> x)
-      ~f_program:(fun ~dir:_ -> function This p -> Ok p | Search (loc, s) ->
-        Ok (f loc s))
+      ~f_program:(fun ~dir:_ -> function
+        | This p -> Ok p
+        | Search (loc, s) -> Ok (f loc s))
 end
 
 let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)
-  | Setenv (_, _, t)
-  | Redirect_out (_, _, t)
-  | Redirect_in (_, _, t)
-  | Ignore (_, t) ->
+   |Setenv (_, _, t)
+   |Redirect_out (_, _, t)
+   |Redirect_in (_, _, t)
+   |Ignore (_, t) ->
     f acc t
-  | Progn l ->
-    List.fold_left l ~init:acc ~f
+  | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
-  | Echo _
-  | Cat _
-  | Copy _
-  | Symlink _
-  | Copy_and_add_line_directive _
-  | System _
-  | Bash _
-  | Write_file _
-  | Rename _
-  | Remove_tree _
-  | Mkdir _
-  | Digest_files _
-  | Diff _
-  | Merge_files_into _ ->
+   |Echo _
+   |Cat _
+   |Copy _
+   |Symlink _
+   |Copy_and_add_line_directive _
+   |System _
+   |Bash _
+   |Write_file _
+   |Rename _
+   |Remove_tree _
+   |Mkdir _
+   |Digest_files _
+   |Diff _
+   |Merge_files_into _ ->
     acc
 
 include Action_mapper.Make (Ast) (Ast)
@@ -175,7 +172,9 @@ include Action_mapper.Make (Ast) (Ast)
 let chdirs =
   let rec loop acc t =
     let acc =
-      match t with Chdir (dir, _) -> Path.Set.add acc dir | _ -> acc
+      match t with
+      | Chdir (dir, _) -> Path.Set.add acc dir
+      | _ -> acc
     in
     fold_one_step t ~init:acc ~f:loop
   in
@@ -194,8 +193,7 @@ let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
              copies in build directory instead"
             [ ("path", Path.to_dyn path) ];
         acc
-      | Some p ->
-        link path (sandboxed p) :: acc)
+      | Some p -> link path (sandboxed p) :: acc)
   in
   Progn steps
 
@@ -211,11 +209,12 @@ let link_function ~(mode : Sandbox_mode.some) : path -> target -> t =
     else
       fun a b ->
     Symlink (a, b)
-  | Copy ->
-    fun a b -> Copy (a, b)
+  | Copy -> fun a b -> Copy (a, b)
 
 let maybe_sandbox_path f p =
-  match Path.as_in_build_dir p with None -> p | Some p -> Path.build (f p)
+  match Path.as_in_build_dir p with
+  | None -> p
+  | Some p -> Path.build (f p)
 
 let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
   let link = link_function ~mode in
@@ -235,47 +234,29 @@ type is_useful_to_sandbox =
 let is_useful_to_sandbox =
   let rec loop t =
     match t with
-    | Chdir (_, t) ->
-      loop t
-    | Setenv (_, _, t) ->
-      loop t
-    | Redirect_out (_, _, t) ->
-      loop t
-    | Redirect_in (_, _, t) ->
-      loop t
-    | Ignore (_, t) ->
-      loop t
-    | Progn l ->
-      List.exists l ~f:loop
-    | Echo _ ->
-      false
-    | Cat _ ->
-      false
-    | Copy _ ->
-      false
-    | Symlink _ ->
-      false
-    | Copy_and_add_line_directive _ ->
-      false
-    | Write_file _ ->
-      false
-    | Rename _ ->
-      false
-    | Remove_tree _ ->
-      false
-    | Diff _ ->
-      false
-    | Mkdir _ ->
-      false
-    | Digest_files _ ->
-      false
-    | Merge_files_into _ ->
-      false
-    | Run _ ->
-      true
-    | System _ ->
-      true
-    | Bash _ ->
-      true
+    | Chdir (_, t) -> loop t
+    | Setenv (_, _, t) -> loop t
+    | Redirect_out (_, _, t) -> loop t
+    | Redirect_in (_, _, t) -> loop t
+    | Ignore (_, t) -> loop t
+    | Progn l -> List.exists l ~f:loop
+    | Echo _ -> false
+    | Cat _ -> false
+    | Copy _ -> false
+    | Symlink _ -> false
+    | Copy_and_add_line_directive _ -> false
+    | Write_file _ -> false
+    | Rename _ -> false
+    | Remove_tree _ -> false
+    | Diff _ -> false
+    | Mkdir _ -> false
+    | Digest_files _ -> false
+    | Merge_files_into _ -> false
+    | Run _ -> true
+    | System _ -> true
+    | Bash _ -> true
   in
-  fun t -> match loop t with true -> Maybe | false -> Clearly_not
+  fun t ->
+    match loop t with
+    | true -> Maybe
+    | false -> Clearly_not

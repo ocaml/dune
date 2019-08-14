@@ -34,10 +34,8 @@ let () =
           (Dyn.to_string (Artifact_substitution.to_dyn subst))
           (Artifact_substitution.encode subst ?min_len)
           ( match subst' with
-          | None ->
-            "-"
-          | Some x ->
-            Dyn.to_string (Artifact_substitution.to_dyn x) )
+          | None -> "-"
+          | Some x -> Dyn.to_string (Artifact_substitution.to_dyn x) )
     in
     let test s =
       let value = Artifact_substitution.Repeat (n, s) in
@@ -86,7 +84,9 @@ let simple_subst =
         let* groups = Re.exec_opt re s ~pos in
         let* len =
           let len = Re.Group.get groups 1 in
-          match int_of_string len with n -> Some n | exception _ -> None
+          match int_of_string len with
+          | n -> Some n
+          | exception _ -> None
         in
         if pos + len > slen then
           None
@@ -110,8 +110,7 @@ let simple_subst =
                 ( match subst with
                 | Repeat (n, s) ->
                   Array.make n s |> Array.to_list |> String.concat ~sep:""
-                | _ ->
-                  failwith "substitution value not supported" ));
+                | _ -> failwith "substitution value not supported" ));
           loop (pos + len)
     in
     loop 0

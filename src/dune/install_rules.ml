@@ -28,7 +28,8 @@ module Stanzas_to_entries : sig
 end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
-    | Normal | Ppx_deriver _ ->
+    | Normal
+     |Ppx_deriver _ ->
       []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
@@ -43,16 +44,18 @@ end = struct
       , Install.Entry.make section fn
         ~dst:
           (let dst =
-            match dst with Some s -> s | None -> Path.Build.basename fn
+            match dst with
+            | Some s -> s
+            | None -> Path.Build.basename fn
            in
            let sub_dir =
-             match sub_dir with Some _ -> sub_dir | None -> lib_subdir
+             match sub_dir with
+             | Some _ -> sub_dir
+             | None -> lib_subdir
            in
            match sub_dir with
-           | None ->
-             dst
-           | Some dir ->
-             sprintf "%s/%s" dir dst) )
+           | None -> dst
+           | Some dir -> sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
       Dir_contents.modules_of_library dir_contents
@@ -110,12 +113,9 @@ end = struct
       ; List.map module_files ~f:(fun (visibility, file) ->
         let sub_dir =
           match ((visibility : Visibility.t), lib_subdir) with
-          | Public, _ ->
-            lib_subdir
-          | Private, None ->
-            Some ".private"
-          | Private, Some dir ->
-            Some (Filename.concat dir ".private")
+          | Public, _ -> lib_subdir
+          | Private, None -> Some ".private"
+          | Private, Some dir -> Some (Filename.concat dir ".private")
         in
         make_entry ?sub_dir Lib file)
       ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
@@ -134,7 +134,8 @@ end = struct
       ( match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
-      | Dune_file.Documentation _ | Dune_file.Install _ ->
+      | Dune_file.Documentation _
+       |Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
         let compile_info =
@@ -145,10 +146,8 @@ end = struct
             ~variants:exes.variants ~optional:exes.optional
         in
         Result.is_ok (Lib.Compile.direct_requires compile_info)
-      | Dune_file.Coq.T d ->
-        Option.is_some d.public
-      | _ ->
-        false )
+      | Dune_file.Coq.T d -> Option.is_some d.public
+      | _ -> false )
       stanza
 
   let is_odig_doc_file fn =
@@ -173,9 +172,9 @@ end = struct
             , Install.Entry.make Lib dune_package_file ~dst:"dune-package" )
           ::
           ( match pkg.kind with
-          | Dune false ->
-            []
-          | Dune true | Opam ->
+          | Dune false -> []
+          | Dune true
+           |Opam ->
             let opam_file = Package_paths.opam_file ctx pkg in
             [ (None, Install.Entry.make Lib opam_file ~dst:"opam") ] )
         in
@@ -196,13 +195,12 @@ end = struct
         (stanza, package)
       in
       match res with
-      | None ->
-        acc
+      | None -> acc
       | Some (stanza, package) ->
         let new_entries =
           match (stanza : Stanza.t) with
           | Dune_file.Install i
-          | Dune_file.Executables { install_conf = Some i; _ } ->
+           |Dune_file.Executables { install_conf = Some i; _ } ->
             let expander = Super_context.expander sctx ~dir in
             let path_expander =
               File_binding.Unexpanded.expand ~dir
@@ -219,8 +217,7 @@ end = struct
             let sub_dir = (Option.value_exn lib.public).sub_dir in
             let dir_contents = Dir_contents.get sctx ~dir in
             lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-          | Dune_file.Coq.T coqlib ->
-            Coq_rules.install_rules ~sctx ~dir coqlib
+          | Dune_file.Coq.T coqlib -> Coq_rules.install_rules ~sctx ~dir coqlib
           | Dune_file.Documentation d ->
             let dc = Dir_contents.get sctx ~dir in
             let mlds = Dir_contents.mlds dc d in
@@ -229,8 +226,7 @@ end = struct
               , Install.Entry.make
                 ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
                   Install.Section.Doc mld ))
-          | _ ->
-            []
+          | _ -> []
         in
         Package.Name.Map.Multi.add_all acc package.name new_entries)
 
@@ -328,8 +324,7 @@ let init_meta sctx ~dir =
       Build.if_file_exists meta_template
         ~then_:
           ( match vlib with
-          | None ->
-            Build.lines_of meta_template
+          | None -> Build.lines_of meta_template
           | Some vlib ->
             Build.fail
               { fail =
@@ -364,8 +359,7 @@ let init_meta sctx ~dir =
            match String.extract_blank_separated_words (String.drop s 1) with
            | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
              Format.fprintf ppf "%a@," Meta.pp meta.entries
-           | _ ->
-             Format.fprintf ppf "%s@," s
+           | _ -> Format.fprintf ppf "%s@," s
          else
            Format.fprintf ppf "%s@," s);
        Format.pp_close_box ppf ();
@@ -387,7 +381,9 @@ let symlink_installed_artifacts_to_build_install sctx
       |> Path.as_in_build_dir_exn
     in
     let loc =
-      match loc with Some l -> l | None -> Loc.in_file (Path.build entry.src)
+      match loc with
+      | Some l -> l
+      | None -> Loc.in_file (Path.build entry.src)
     in
     Super_context.add_rule sctx ~loc ~dir:ctx.build_dir
       (Build.symlink ~src:(Path.build entry.src) ~dst);
@@ -396,7 +392,10 @@ let symlink_installed_artifacts_to_build_install sctx
 let promote_install_file (ctx : Context.t) =
   !Clflags.promote_install_files
   && (not ctx.implicit)
-  && match ctx.kind with Default -> true | Opam _ -> false
+  &&
+  match ctx.kind with
+  | Default -> true
+  | Opam _ -> false
 
 module Sctx_and_package = struct
   module Super_context = Super_context.As_memo_key
@@ -461,8 +460,7 @@ let install_rules sctx (package : Package.t) =
     >>^ (fun () ->
       let entries =
         match ctx.findlib_toolchain with
-        | None ->
-          entries
+        | None -> entries
         | Some toolchain ->
           let prefix = Path.of_string (toolchain ^ "-sysroot") in
           List.map entries

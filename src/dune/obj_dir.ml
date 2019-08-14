@@ -44,11 +44,11 @@ module External = struct
 
   let cm_dir t (cm_kind : Cm_kind.t) (visibility : Visibility.t) =
     match (cm_kind, visibility, t.private_dir) with
-    | Cmi, Private, Some p ->
-      p
+    | Cmi, Private, Some p -> p
     | Cmi, Private, None ->
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
-    | Cmi, Public, _ | (Cmo | Cmx), _, _ ->
+    | Cmi, Public, _
+     |(Cmo | Cmx), _, _ ->
       t.public_dir
 
   let encode { public_dir; private_dir } =
@@ -84,12 +84,9 @@ module External = struct
 
   let cm_public_dir t (cm_kind : Cm_kind.t) =
     match cm_kind with
-    | Cmx ->
-      native_dir t
-    | Cmo ->
-      byte_dir t
-    | Cmi ->
-      public_cmi_dir t
+    | Cmx -> native_dir t
+    | Cmo -> byte_dir t
+    | Cmi -> public_cmi_dir t
 end
 
 module Local = struct
@@ -131,7 +128,9 @@ module Local = struct
   let all_obj_dirs t ~(mode : Mode.t) =
     let dirs = [ t.byte_dir; public_cmi_dir t ] in
     let dirs =
-      match mode with Byte -> dirs | Native -> t.native_dir :: dirs
+      match mode with
+      | Byte -> dirs
+      | Native -> t.native_dir :: dirs
     in
     Path.Build.Set.of_list dirs |> Path.Build.Set.to_list
 
@@ -154,16 +153,17 @@ module Local = struct
       ~public_cmi_dir:None
 
   let cm_dir t cm_kind _ =
-    match cm_kind with Cm_kind.Cmx -> native_dir t | Cmo | Cmi -> byte_dir t
+    match cm_kind with
+    | Cm_kind.Cmx -> native_dir t
+    | Cmo
+     |Cmi ->
+      byte_dir t
 
   let cm_public_dir t (cm_kind : Cm_kind.t) =
     match cm_kind with
-    | Cmx ->
-      native_dir t
-    | Cmo ->
-      byte_dir t
-    | Cmi ->
-      public_cmi_dir t
+    | Cmx -> native_dir t
+    | Cmo -> byte_dir t
+    | Cmi -> public_cmi_dir t
 end
 
 type _ t =
@@ -172,7 +172,10 @@ type _ t =
   | Local_as_path : Local.t -> Path.t t
 
 let of_local : Path.Build.t t -> Path.t t =
- fun t -> match t with Local t -> Local_as_path t | _ -> assert false
+ fun t ->
+  match t with
+  | Local t -> Local_as_path t
+  | _ -> assert false
 
 let encode = function
   | Local_as_path obj_dir ->
@@ -181,8 +184,7 @@ let encode = function
   | Local obj_dir ->
     Code_error.raise "Obj_dir.encode: local obj_dir cannot be encoded"
       [ ("obj_dir", Local.to_dyn obj_dir) ]
-  | External e ->
-    External.encode e
+  | External e -> External.encode e
 
 let decode ~dir =
   let open Dune_lang.Decoder in
@@ -199,12 +201,9 @@ let get_path :
   type a. a t -> l:(Local.t -> Path.Build.t) -> e:(External.t -> Path.t) -> a =
  fun t ~l ~e ->
   match t with
-  | External e' ->
-    e e'
-  | Local l' ->
-    l l'
-  | Local_as_path l' ->
-    Path.build (l l')
+  | External e' -> e e'
+  | Local l' -> l l'
+  | Local_as_path l' -> Path.build (l l')
 
 let public_cmi_dir =
   get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
@@ -220,38 +219,28 @@ let obj_dir = get_path ~l:Local.obj_dir ~e:External.obj_dir
 let to_dyn (type path) (t : path t) =
   let open Dyn.Encoder in
   match t with
-  | Local e ->
-    constr "Local" [ Local.to_dyn e ]
-  | Local_as_path e ->
-    constr "Local_as_path" [ Local.to_dyn e ]
-  | External e ->
-    constr "External" [ External.to_dyn e ]
+  | Local e -> constr "Local" [ Local.to_dyn e ]
+  | Local_as_path e -> constr "Local_as_path" [ Local.to_dyn e ]
+  | External e -> constr "External" [ External.to_dyn e ]
 
 let convert_to_external (t : Path.Build.t t) ~dir =
   match t with
   | Local e ->
     let has_private_modules = Local.need_dedicated_public_dir e in
     External (External.make ~dir ~has_private_modules)
-  | _ ->
-    assert false
+  | _ -> assert false
 
 let all_cmis (type path) (t : path t) : path list =
   match t with
-  | Local e ->
-    [ Local.byte_dir e ]
-  | Local_as_path e ->
-    [ Path.build (Local.byte_dir e) ]
-  | External e ->
-    External.all_cmis e
+  | Local e -> [ Local.byte_dir e ]
+  | Local_as_path e -> [ Path.build (Local.byte_dir e) ]
+  | External e -> External.all_cmis e
 
 let all_obj_dirs (type path) (t : path t) ~mode : path list =
   match t with
-  | External e ->
-    External.all_obj_dirs e ~mode
-  | Local e ->
-    Local.all_obj_dirs e ~mode
-  | Local_as_path e ->
-    Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
+  | External e -> External.all_obj_dirs e ~mode
+  | Local e -> Local.all_obj_dirs e ~mode
+  | Local_as_path e -> Local.all_obj_dirs e ~mode |> List.map ~f:Path.build
 
 let cm_dir t cm_kind visibility =
   get_path t
@@ -267,49 +256,35 @@ let odoc_dir t = get_path t ~l:Local.odoc_dir ~e:External.odoc_dir
 
 let need_dedicated_public_dir (t : Path.Build.t t) =
   match t with
-  | Local t ->
-    Local.need_dedicated_public_dir t
-  | _ ->
-    assert false
+  | Local t -> Local.need_dedicated_public_dir t
+  | _ -> assert false
 
 let as_local_exn (t : Path.t t) =
   match t with
-  | Local _ ->
-    assert false
-  | Local_as_path e ->
-    Local e
-  | External _ ->
-    Code_error.raise "Obj_dir.as_local_exn: external dir" []
+  | Local _ -> assert false
+  | Local_as_path e -> Local e
+  | External _ -> Code_error.raise "Obj_dir.as_local_exn: external dir" []
 
 let make_exe ~dir ~name = Local (Local.make_exe ~dir ~name)
 
 let to_local (t : Path.t t) =
   match t with
-  | Local _ ->
-    assert false
-  | Local_as_path t ->
-    Some (Local t)
-  | External _ ->
-    None
+  | Local _ -> assert false
+  | Local_as_path t -> Some (Local t)
+  | External _ -> None
 
 module Module = struct
   let relative (type path) (t : path t) (dir : path) name : path =
     match t with
-    | Local _ ->
-      Path.Build.relative dir name
-    | Local_as_path _ ->
-      Path.relative dir name
-    | External _ ->
-      Path.relative dir name
+    | Local _ -> Path.Build.relative dir name
+    | Local_as_path _ -> Path.relative dir name
+    | External _ -> Path.relative dir name
 
   let path_of_build (type path) (t : path t) (dir : path) =
     match t with
-    | Local _ ->
-      Path.build dir
-    | Local_as_path _ ->
-      dir
-    | External _ ->
-      dir
+    | Local _ -> Path.build dir
+    | Local_as_path _ -> dir
+    | External _ -> dir
 
   let obj_file (type path) (t : path t) m ~kind ~ext : path =
     let visibility = Module.visibility m in
@@ -326,10 +301,11 @@ module Module = struct
   let cm_file t m ~(kind : Cm_kind.t) =
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
-    | (Cmx | Cmo) when not has_impl ->
+    | Cmx
+     |Cmo
+      when not has_impl ->
       None
-    | _ ->
-      Some (cm_file_unsafe t m ~kind)
+    | _ -> Some (cm_file_unsafe t m ~kind)
 
   let cm_public_file_unsafe t m ~kind =
     let ext = Cm_kind.ext kind in
@@ -342,12 +318,12 @@ module Module = struct
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
-    | (Cmx | Cmo) when not has_impl ->
+    | Cmx
+     |Cmo
+      when not has_impl ->
       None
-    | Cmi when is_private ->
-      None
-    | _ ->
-      Some (cm_public_file_unsafe t m ~kind)
+    | Cmi when is_private -> None
+    | _ -> Some (cm_public_file_unsafe t m ~kind)
 
   let cmt_file t m ~(ml_kind : Ml_kind.t) =
     let file = Module.file m ~ml_kind in
@@ -357,7 +333,9 @@ module Module = struct
   let cmti_file t m =
     let ext =
       Ml_kind.cmt_ext
-        (match Module.file m ~ml_kind:Intf with None -> Impl | Some _ -> Intf)
+        ( match Module.file m ~ml_kind:Intf with
+        | None -> Impl
+        | Some _ -> Intf )
     in
     obj_file t m ~kind:Cmi ~ext
 
@@ -371,8 +349,7 @@ module Module = struct
       | Transitive of Module.t * Ml_kind.t
 
     let basename = function
-      | Immediate f ->
-        Path.basename (Module.File.path f) ^ ".d"
+      | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
       | Transitive (m, ml_kind) ->
         sprintf "%s.%s.all-deps" (Module.obj_name m)
           (Ml_kind.choose ml_kind ~intf:"intf" ~impl:"impl")

@@ -8,8 +8,7 @@ let transitive_deps_contents modules =
 let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let cm_kind =
     match ml_kind with
-    | Intf ->
-      Cm_kind.Cmi
+    | Intf -> Cm_kind.Cmi
     | Impl ->
       Compilation_context.vimpl cctx |> Option.value_exn |> Vimpl.impl_cm_kind
   in
@@ -46,13 +45,10 @@ let deps_of_module cctx ~ml_kind m =
   | Wrapped_compat ->
     let modules = Compilation_context.modules cctx in
     ( match Modules.lib_interface modules with
-    | Some m ->
-      m
-    | None ->
-      Modules.compat_for_exn modules m )
+    | Some m -> m
+    | None -> Modules.compat_for_exn modules m )
     |> List.singleton |> Build.return
-  | _ ->
-    Ocamldep.deps_of ~cctx ~ml_kind m
+  | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
   let vimpl = Option.value_exn (Compilation_context.vimpl cctx) in
@@ -80,10 +76,10 @@ let deps_of_vlib_module cctx ~ml_kind m =
 let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
-    | Imported_from_vlib m | Normal m ->
+    | Imported_from_vlib m
+     |Normal m ->
       Module.kind m = Alias
-    | Impl_of_virtual_module _ ->
-      false
+    | Impl_of_virtual_module _ -> false
   in
   if is_alias then
     Build.return []
@@ -97,15 +93,12 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     match m with
     | Imported_from_vlib m ->
       skip_if_source_absent (deps_of_vlib_module cctx ~ml_kind) m
-    | Normal m ->
-      skip_if_source_absent (deps_of_module cctx ~ml_kind) m
+    | Normal m -> skip_if_source_absent (deps_of_module cctx ~ml_kind) m
     | Impl_of_virtual_module impl_or_vlib -> (
       let m = Ml_kind.Dict.get impl_or_vlib ml_kind in
       match ml_kind with
-      | Intf ->
-        deps_of cctx ~ml_kind (Imported_from_vlib m)
-      | Impl ->
-        deps_of cctx ~ml_kind (Normal m) )
+      | Intf -> deps_of cctx ~ml_kind (Imported_from_vlib m)
+      | Impl -> deps_of cctx ~ml_kind (Normal m) )
 
 let rules cctx ~modules =
   let dir = Compilation_context.dir cctx in

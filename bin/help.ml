@@ -91,10 +91,8 @@ let man =
   ; `Blocks
     (List.concat_map commands ~f:(fun (s, what) ->
       match what with
-      | List_topics ->
-        []
-      | Man ((title, _, _, _, _), _) ->
-        [ `I (sprintf "$(b,%s)" s, title) ]))
+      | List_topics -> []
+      | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
   ; Common.footer
   ]
 
@@ -107,14 +105,15 @@ let term =
       Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
      and+ () = Common.build_info in
      match what with
-     | None ->
-       `Help (man_format, Some "help")
+     | None -> `Help (man_format, Some "help")
      | Some (Man man_page) ->
        Format.printf "%a@?" (Manpage.print man_format) man_page;
        `Ok ()
      | Some List_topics ->
        List.filter_map commands ~f:(fun (s, what) ->
-         match what with List_topics -> None | _ -> Some s)
+         match what with
+         | List_topics -> None
+         | _ -> Some s)
        |> List.sort ~compare:String.compare
        |> String.concat ~sep:"\n" |> print_endline;
        `Ok ()

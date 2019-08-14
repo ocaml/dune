@@ -14,5 +14,4 @@ let () =
   Printexc.register_printer (function
     | E t ->
       Some (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp t))
-    | _ ->
-      None)
+    | _ -> None)

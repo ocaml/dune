@@ -43,10 +43,8 @@ let term =
         | Error _ ->
           User_error.raise
             [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir) ]
-        | Ok [ File target ] ->
-          target
-        | Ok _ ->
-          assert false
+        | Ok [ File target ] -> target
+        | Ok _ -> assert false
       in
       let+ () = do_build setup [ File target ] in
       (context, Path.to_string target))

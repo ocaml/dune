@@ -10,10 +10,8 @@ let add_diff sctx loc alias ~dir ~input ~output =
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
-  | None ->
-    [ dir ]
-  | Some d ->
-    dir :: subdirs_until_root d
+  | None -> [ dir ]
+  | Some d -> dir :: subdirs_until_root d
 
 let depend_on_files ~named dir =
   subdirs_until_root dir
@@ -56,22 +54,17 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         in
         let+ loc, action, extra_deps =
           match Dialect.format dialect kind with
-          | Some _ as action ->
-            action
+          | Some _ as action -> action
           | None -> (
             match Dialect.preprocess dialect kind with
-            | None ->
-              Dialect.format Dialect.ocaml kind
-            | Some _ ->
-              None )
+            | None -> Dialect.format Dialect.ocaml kind
+            | Some _ -> None )
         in
         let src = Path.as_in_build_dir_exn input in
         let extra_deps =
           match extra_deps with
-          | [] ->
-            Build.return ()
-          | extra_deps ->
-            Build.S.ignore (depend_on_files extra_deps)
+          | [] -> Build.return ()
+          | extra_deps -> Build.S.ignore (depend_on_files extra_deps)
         in
         Build.S.seq extra_deps
           (Preprocessing.action_for_pp sctx

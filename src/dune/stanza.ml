@@ -17,7 +17,9 @@ module File_kind = struct
     | Jbuild
     | Dune
 
-  let of_syntax = function 0, _ -> Jbuild | _, _ -> Dune
+  let of_syntax = function
+    | 0, _ -> Jbuild
+    | _, _ -> Dune
 end
 
 let file_kind () =

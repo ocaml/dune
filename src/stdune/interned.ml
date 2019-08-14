@@ -59,8 +59,7 @@ let new_size ~next ~size = function
   | Conservative ->
     let increment_size = 512 in
     (next land lnot (increment_size - 1)) + (increment_size * 2)
-  | Greedy ->
-    size * 2
+  | Greedy -> size * 2
 
 module type Settings = sig
   val initial_size : int
@@ -127,10 +126,8 @@ module Make (R : Settings) () = struct
 
     let compare =
       match R.order with
-      | Fast ->
-        Int.compare
-      | Natural ->
-        fun x y -> String.compare (to_string x) (to_string y)
+      | Fast -> Int.compare
+      | Natural -> fun x y -> String.compare (to_string x) (to_string y)
 
     let equal x y = compare x y = Ordering.Eq
 
@@ -199,10 +196,8 @@ module No_interning (R : Settings) () = struct
 
     let get t k =
       match Stdune_table.find t.data k with
-      | None ->
-        t.default_value
-      | Some s ->
-        s
+      | None -> t.default_value
+      | Some s -> s
 
     let set t ~key ~data = Stdune_table.set t.data key data
   end

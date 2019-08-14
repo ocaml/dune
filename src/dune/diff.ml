@@ -6,10 +6,8 @@ module Mode = struct
     | Text
 
   let compare_files = function
-    | Binary ->
-      Io.compare_files
-    | Text ->
-      Io.compare_text_files
+    | Binary -> Io.compare_files
+    | Text -> Io.compare_text_files
 end
 
 type 'path t =

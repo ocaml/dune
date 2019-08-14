@@ -49,32 +49,20 @@ module Dependency = struct
     let to_dyn =
       let open Dyn.Encoder in
       function
-      | Eq ->
-        string "Eq"
-      | Gt ->
-        string "Gt"
-      | Gte ->
-        string "Gte"
-      | Lte ->
-        string "Lte"
-      | Lt ->
-        string "Lt"
-      | Neq ->
-        string "Neq"
+      | Eq -> string "Eq"
+      | Gt -> string "Gt"
+      | Gte -> string "Gte"
+      | Lte -> string "Lte"
+      | Lt -> string "Lt"
+      | Neq -> string "Neq"
 
     let to_relop : t -> OpamParserTypes.relop = function
-      | Eq ->
-        `Eq
-      | Gte ->
-        `Geq
-      | Lte ->
-        `Leq
-      | Gt ->
-        `Gt
-      | Lt ->
-        `Lt
-      | Neq ->
-        `Neq
+      | Eq -> `Eq
+      | Gte -> `Geq
+      | Lte -> `Leq
+      | Gt -> `Gt
+      | Lt -> `Lt
+      | Neq -> `Neq
   end
 
   module Constraint = struct
@@ -93,7 +81,9 @@ module Dependency = struct
 
       let to_opam : t -> OpamParserTypes.value =
         let nopos = Opam_file.nopos in
-        function QVar x -> String (nopos, x) | Var x -> Ident (nopos, x)
+        function
+        | QVar x -> String (nopos, x)
+        | Var x -> Ident (nopos, x)
     end
 
     type t =
@@ -131,24 +121,17 @@ module Dependency = struct
         | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
           let+ () = junk in
           Bvar (Var (String.drop s 1))
-        | _ ->
-          sum (ops @ logops))
+        | _ -> sum (ops @ logops))
 
     let rec to_dyn =
       let open Dyn.Encoder in
       function
-      | Bvar (QVar v) ->
-        constr "Bvar" [ Dyn.String v ]
-      | Bvar (Var v) ->
-        constr "Bvar" [ Dyn.String (":" ^ v) ]
-      | Uop (b, QVar v) ->
-        constr "Uop" [ Op.to_dyn b; Dyn.String v ]
-      | Uop (b, Var v) ->
-        constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
-      | And t ->
-        constr "And" (List.map ~f:to_dyn t)
-      | Or t ->
-        constr "Or" (List.map ~f:to_dyn t)
+      | Bvar (QVar v) -> constr "Bvar" [ Dyn.String v ]
+      | Bvar (Var v) -> constr "Bvar" [ Dyn.String (":" ^ v) ]
+      | Uop (b, QVar v) -> constr "Uop" [ Op.to_dyn b; Dyn.String v ]
+      | Uop (b, Var v) -> constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
+      | And t -> constr "And" (List.map ~f:to_dyn t)
+      | Or t -> constr "Or" (List.map ~f:to_dyn t)
   end
 
   type t =
@@ -171,19 +154,17 @@ module Dependency = struct
   let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
     function
-    | Bvar v ->
-      Constraint.Var.to_opam v
+    | Bvar v -> Constraint.Var.to_opam v
     | Uop (op, v) ->
       Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
-    | And [ c ] ->
-      opam_constraint c
+    | And [ c ] -> opam_constraint c
     | And (c :: cs) ->
       Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))
-    | Or [ c ] ->
-      opam_constraint c
+    | Or [ c ] -> opam_constraint c
     | Or (c :: cs) ->
       Logop (nopos, `Or, opam_constraint c, opam_constraint (And cs))
-    | And [] | Or [] ->
+    | And []
+     |Or [] ->
       Code_error.raise "opam_constraint" []
 
   let opam_depend : t -> OpamParserTypes.value =
@@ -192,10 +173,8 @@ module Dependency = struct
       let constraint_ = Option.map ~f:opam_constraint constraint_ in
       let pkg : OpamParserTypes.value = String (nopos, Name.to_string name) in
       match constraint_ with
-      | None ->
-        pkg
-      | Some c ->
-        Option (nopos, pkg, [ c ])
+      | None -> pkg
+      | Some c -> Option (nopos, pkg, [ c ])
 
   let to_dyn { name; constraint_ } =
     let open Dyn.Encoder in
@@ -214,7 +193,9 @@ module Kind = struct
 
   let to_dyn =
     let open Dyn.Encoder in
-    function Dune b -> constr "Dune" [ bool b ] | Opam -> constr "Opam" []
+    function
+    | Dune b -> constr "Dune" [ bool b ]
+    | Opam -> constr "Opam" []
 end
 
 type t =

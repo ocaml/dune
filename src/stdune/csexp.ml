@@ -6,16 +6,13 @@ type t = Sexp.t
 
 let peek s =
   match Stream.peek s with
-  | Some v ->
-    ok v
-  | None ->
-    Error "unexpected end of file"
+  | Some v -> ok v
+  | None -> Error "unexpected end of file"
 
 let read_string s l =
   let res = Bytes.make l ' ' in
   let rec read = function
-    | v when v = l ->
-      ()
+    | v when v = l -> ()
     | v ->
       BytesLabels.set res v (Stream.next s);
       read (v + 1)
@@ -44,16 +41,14 @@ let parse stream =
     | '(' ->
       Stream.junk stream;
       parse_list () >>| fun l -> Sexp.List l
-    | _ ->
-      read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
+    | _ -> read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
   and parse_list () =
     peek stream
     >>= function
     | ')' ->
       Stream.junk stream;
       ok []
-    | ':' ->
-      Error "missing size"
+    | ':' -> Error "missing size"
     | _ ->
       let head = parse () in
       head >>= fun head -> parse_list () >>| fun tail -> head :: tail

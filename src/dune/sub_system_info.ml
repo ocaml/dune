@@ -40,8 +40,7 @@ module Register (M : S) : sig end = struct
         fun acc ->
           field_o name_s parse
           >>= function
-          | None ->
-            p acc
+          | None -> p acc
           | Some x ->
             let acc = Sub_system_name.Map.set acc name (T x) in
             p acc )

@@ -26,12 +26,10 @@ module DB = struct
   let find_by_dir t (dir : Path.Source.t) =
     let rec loop d =
       match Path.Source.Map.find t.by_dir d with
-      | Some s ->
-        s
+      | Some s -> s
       | None -> (
         match Path.Source.parent d with
-        | Some d ->
-          loop d
+        | Some d -> loop d
         | None ->
           Code_error.raise "find_by_dir: invalid directory"
             [ ("d", Path.Source.to_dyn d); ("dir", Path.Source.to_dyn dir) ] )
@@ -43,8 +41,7 @@ module DB = struct
 
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
-    | None ->
-      Not_found
+    | None -> Not_found
     | Some project ->
       let scope = find_by_project (Fdecl.get t) project in
       Redirect (Some scope.db, name)
@@ -57,8 +54,7 @@ module DB = struct
             (Dune_file.Public_lib.name p, lib.project)))
       |> Lib_name.Map.of_list
       |> function
-      | Ok x ->
-        x
+      | Ok x -> x
       | Error (name, _, _) -> (
         match
           List.filter_map internal_libs ~f:(fun (_dir, lib) ->
@@ -67,7 +63,8 @@ module DB = struct
                 (name = Dune_file.Public_lib.name p)
                 lib.buildable.loc))
         with
-        | [] | [ _ ] ->
+        | []
+         |[ _ ] ->
           assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise

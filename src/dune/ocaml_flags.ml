@@ -34,10 +34,8 @@ let dev_mode_warnings =
     in
     let acc =
       match last_range with
-      | None ->
-        acc
-      | Some (x, y) ->
-        wrange_to_flag (x, y) :: acc
+      | None -> acc
+      | Some (x, y) -> wrange_to_flag (x, y) :: acc
     in
     List.rev acc |> String.concat ~sep:""
   in

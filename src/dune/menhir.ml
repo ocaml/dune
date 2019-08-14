@@ -138,8 +138,7 @@ module Run (P : PARAMS) : sig end = struct
       List.map
         ~f:(fun m -> { stanza with modules = [ m ]; merge_into = Some m })
         stanza.modules
-    | Some _ ->
-      [ stanza ]
+    | Some _ -> [ stanza ]
 
   (* ------------------------------------------------------------------------ *)
 
@@ -151,8 +150,7 @@ module Run (P : PARAMS) : sig end = struct
       Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:()
         ~f:(fun _pos sw () ->
           match String_with_vars.text_only sw with
-          | None ->
-            ()
+          | None -> ()
           | Some text ->
             if
               List.mem text
@@ -254,15 +252,13 @@ module Run (P : PARAMS) : sig end = struct
       Ordered_set_lang.Unexpanded.fold_strings stanza.flags ~init:(false, false)
         ~f:(fun pos sw ((only_tokens, cmly) as acc) ->
           match pos with
-          | Neg ->
-            acc
+          | Neg -> acc
           | Pos -> (
             match String_with_vars.text_only sw with
-            | Some "--only-tokens" ->
-              (true, cmly)
-            | Some "--cmly" ->
-              (only_tokens, true)
-            | Some _ | None ->
+            | Some "--only-tokens" -> (true, cmly)
+            | Some "--cmly" -> (only_tokens, true)
+            | Some _
+             |None ->
               acc ))
     in
     if ocaml_type_inference_disabled || not stanza.infer then
@@ -282,7 +278,9 @@ end
 (* The final glue. *)
 
 let modules (stanza : Dune_file.Menhir.t) : string list =
-  match stanza.merge_into with Some m -> [ m ] | None -> stanza.modules
+  match stanza.merge_into with
+  | Some m -> [ m ]
+  | None -> stanza.modules
 
 let targets (stanza : Dune_file.Menhir.t) : string list =
   let f m = [ m ^ ".ml"; m ^ ".mli" ] in

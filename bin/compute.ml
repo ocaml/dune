@@ -35,12 +35,10 @@ let term =
          let open Fiber.O in
          let* _setup = Import.Main.setup common ~external_lib_deps_mode:true in
          match (fn, inp) with
-         | "list", None ->
-           Fiber.return `List
+         | "list", None -> Fiber.return `List
          | "list", Some _ ->
            Fiber.return (`Error "'list' doesn't take an argument")
-         | "help", Some fn ->
-           Fiber.return (`Show_doc fn)
+         | "help", Some fn -> Fiber.return (`Show_doc fn)
          | fn, Some inp ->
            let sexp =
              Dune_lang.parse_string ~fname:"<command-line>"
@@ -52,8 +50,7 @@ let term =
            Fiber.return (`Error (sprintf "argument missing for '%s'" fn)))
      in
      match action with
-     | `Error msg ->
-       `Error (true, msg)
+     | `Error msg -> `Error (true, msg)
      | `Result res ->
        Ansi_color.print (Dyn.pp res);
        print_newline ();

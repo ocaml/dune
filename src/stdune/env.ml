@@ -33,8 +33,7 @@ let get t k = Map.find t.vars k
 
 let to_unix t =
   match t.unix with
-  | Some v ->
-    v
+  | Some v -> v
   | None ->
     let res =
       Map.foldi ~init:[]
@@ -52,10 +51,11 @@ let of_unix arr =
     | None ->
       Code_error.raise "Env.of_unix: entry without '=' found in the environ"
         [ ("var", String s) ]
-    | Some (k, v) ->
-      (k, v))
+    | Some (k, v) -> (k, v))
   |> Map.of_list_multi
-  |> Map.map ~f:(function [] -> assert false | x :: _ -> x)
+  |> Map.map ~f:(function
+    | [] -> assert false
+      | x :: _ -> x)
 
 let initial = make (of_unix (Unix.environment ()))
 
@@ -73,7 +73,9 @@ let to_dyn t =
 
 let diff x y =
   Map.merge x.vars y.vars ~f:(fun _k vx vy ->
-    match vy with Some _ -> None | None -> vx)
+    match vy with
+    | Some _ -> None
+    | None -> vx)
   |> make
 
 let update t ~var ~f = make (Map.update t.vars var ~f)
@@ -88,4 +90,6 @@ let cons_path t ~dir =
     (Map.update t.vars "PATH" ~f:(fun _PATH -> Some (Bin.cons_path dir ~_PATH)))
 
 let path env =
-  match get env "PATH" with None -> [] | Some s -> Bin.parse_path s
+  match get env "PATH" with
+  | None -> []
+  | Some s -> Bin.parse_path s

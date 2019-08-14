@@ -21,30 +21,23 @@ let unsafe_atom_of_string s = atom s
 
 let rec to_string t =
   match t with
-  | Atom a ->
-    Atom.print a
-  | Quoted_string s ->
-    Escape.quoted s
+  | Atom a -> Atom.print a
+  | Quoted_string s -> Escape.quoted s
   | List l ->
     Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
-  | Template t ->
-    Template.to_string t
+  | Template t -> Template.to_string t
 
 let rec pp = function
-  | Atom s ->
-    Pp.verbatim (Atom.print s)
-  | Quoted_string s ->
-    Pp.verbatim (Escape.quoted s)
-  | List [] ->
-    Pp.verbatim "()"
+  | Atom s -> Pp.verbatim (Atom.print s)
+  | Quoted_string s -> Pp.verbatim (Escape.quoted s)
+  | List [] -> Pp.verbatim "()"
   | List l ->
     let open Pp.O in
     Pp.box ~indent:1
       ( Pp.char '('
       ++ Pp.hvbox (Pp.concat_map l ~sep:Pp.space ~f:pp)
       ++ Pp.char ')' )
-  | Template t ->
-    Template.pp t
+  | Template t -> Template.pp t
 
 module Deprecated = struct
   let pp ppf t = Pp.render_ignore_tags ppf (pp t)
@@ -52,8 +45,7 @@ module Deprecated = struct
   let pp_print_quoted_string ppf s =
     if String.contains s '\n' then (
       match String.split s ~on:'\n' with
-      | [] ->
-        Format.pp_print_string ppf (Escape.quoted s)
+      | [] -> Format.pp_print_string ppf (Escape.quoted s)
       | first :: rest ->
         Format.fprintf ppf "@[<hv 1>\"@{<atom>%s" (Escape.escaped first);
         List.iter rest ~f:(fun s ->
@@ -63,12 +55,9 @@ module Deprecated = struct
       Format.pp_print_string ppf (Escape.quoted s)
 
   let rec pp_split_strings ppf = function
-    | Atom s ->
-      Format.pp_print_string ppf (Atom.print s)
-    | Quoted_string s ->
-      pp_print_quoted_string ppf s
-    | List [] ->
-      Format.pp_print_string ppf "()"
+    | Atom s -> Format.pp_print_string ppf (Atom.print s)
+    | Quoted_string s -> pp_print_quoted_string ppf s
+    | List [] -> Format.pp_print_string ppf "()"
     | List (first :: rest) ->
       Format.pp_open_box ppf 1;
       Format.pp_print_string ppf "(";
@@ -80,8 +69,7 @@ module Deprecated = struct
       Format.pp_close_box ppf ();
       Format.pp_print_string ppf ")";
       Format.pp_close_box ppf ()
-    | Template t ->
-      Template.pp_split_strings ppf t
+    | Template t -> Template.pp_split_strings ppf t
 
   type formatter_state =
     | In_atom
@@ -108,37 +96,33 @@ module Deprecated = struct
           | "makefile-stuff" ->
             state := In_makefile_stuff :: !state;
             ""
-          | s ->
-            tfuncs.mark_open_tag s)
+          | s -> tfuncs.mark_open_tag s)
       ; mark_close_tag =
         (function
-        | "atom" | "makefile-action" | "makefile-stuff" ->
+        | "atom"
+         |"makefile-action"
+         |"makefile-stuff" ->
           state := List.tl !state;
           ""
-        | s ->
-          tfuncs.mark_close_tag s)
+        | s -> tfuncs.mark_close_tag s)
       } [@warning "-3"]);
     Format.pp_set_formatter_out_functions ppf
       { ofuncs with
         out_newline =
           (fun () ->
             match !state with
-            | [ In_atom; In_makefile_action ] ->
-              ofuncs.out_string "\\\n\t" 0 3
-            | [ In_atom ] ->
-              ofuncs.out_string "\\\n" 0 2
-            | [ In_makefile_action ] ->
-              ofuncs.out_string " \\\n\t" 0 4
-            | [ In_makefile_stuff ] ->
-              ofuncs.out_string " \\\n" 0 3
-            | [] ->
-              ofuncs.out_string "\n" 0 1
-            | _ ->
-              assert false)
+            | [ In_atom; In_makefile_action ] -> ofuncs.out_string "\\\n\t" 0 3
+            | [ In_atom ] -> ofuncs.out_string "\\\n" 0 2
+            | [ In_makefile_action ] -> ofuncs.out_string " \\\n\t" 0 4
+            | [ In_makefile_stuff ] -> ofuncs.out_string " \\\n" 0 3
+            | [] -> ofuncs.out_string "\n" 0 1
+            | _ -> assert false)
       ; out_spaces =
         (fun n ->
           ofuncs.out_spaces
-            (match !state with In_atom :: _ -> max 0 (n - 2) | _ -> n))
+            ( match !state with
+            | In_atom :: _ -> max 0 (n - 2)
+            | _ -> n ))
       }
 end
 
@@ -153,11 +137,10 @@ module Ast = struct
 
   let atom_or_quoted_string loc s =
     match atom_or_quoted_string s with
-    | Atom a ->
-      Atom (loc, a)
-    | Quoted_string s ->
-      Quoted_string (loc, s)
-    | Template _ | List _ ->
+    | Atom a -> Atom (loc, a)
+    | Quoted_string s -> Quoted_string (loc, s)
+    | Template _
+     |List _ ->
       assert false
 
   let loc
@@ -169,26 +152,18 @@ module Ast = struct
 
   let rec remove_locs t : dune_lang =
     match t with
-    | Template t ->
-      Template (Template.remove_locs t)
-    | Atom (_, s) ->
-      Atom s
-    | Quoted_string (_, s) ->
-      Quoted_string s
-    | List (_, l) ->
-      List (List.map l ~f:remove_locs)
+    | Template t -> Template (Template.remove_locs t)
+    | Atom (_, s) -> Atom s
+    | Quoted_string (_, s) -> Quoted_string s
+    | List (_, l) -> List (List.map l ~f:remove_locs)
 end
 
 let rec add_loc t ~loc : Ast.t =
   match t with
-  | Atom s ->
-    Atom (loc, s)
-  | Quoted_string s ->
-    Quoted_string (loc, s)
-  | List l ->
-    List (loc, List.map l ~f:(add_loc ~loc))
-  | Template t ->
-    Template { t with loc }
+  | Atom s -> Atom (loc, s)
+  | Quoted_string s -> Quoted_string (loc, s)
+  | List l -> List (loc, List.map l ~f:(add_loc ~loc))
+  | Template t -> Template { t with loc }
 
 module Cst = struct
   module Comment = Lexer_shared.Token.Comment
@@ -203,16 +178,11 @@ module Cst = struct
   let rec to_dyn =
     let open Dyn.Encoder in
     function
-    | Atom (_, a) ->
-      constr "Atom" [ Atom.to_dyn a ]
-    | Quoted_string (_, s) ->
-      constr "Quoted_string" [ string s ]
-    | Template t ->
-      constr "Template" [ Template.to_dyn t ]
-    | List (_, l) ->
-      constr "List" [ list to_dyn l ]
-    | Comment (_, c) ->
-      constr "Comment" [ Comment.to_dyn c ]
+    | Atom (_, a) -> constr "Atom" [ Atom.to_dyn a ]
+    | Quoted_string (_, s) -> constr "Quoted_string" [ string s ]
+    | Template t -> constr "Template" [ Template.to_dyn t ]
+    | List (_, l) -> constr "List" [ list to_dyn l ]
+    | Comment (_, c) -> constr "Comment" [ Comment.to_dyn c ]
 
   let loc
     ( Atom (loc, _)
@@ -225,10 +195,12 @@ module Cst = struct
   let fetch_legacy_comments t ~file_contents =
     let rec loop t =
       match t with
-      | Template _ | Quoted_string _ | Atom _ | Comment (_, Lines _) ->
+      | Template _
+       |Quoted_string _
+       |Atom _
+       |Comment (_, Lines _) ->
         t
-      | List (loc, l) ->
-        List (loc, List.map l ~f:loop)
+      | List (loc, l) -> List (loc, List.map l ~f:loop)
       | Comment (loc, Legacy) ->
         let start = loc.start.pos_cnum in
         let stop = loc.stop.pos_cnum in
@@ -244,37 +216,28 @@ module Cst = struct
     loop t
 
   let rec abstract : t -> Ast.t option = function
-    | Atom (loc, atom) ->
-      Some (Atom (loc, atom))
-    | Quoted_string (loc, s) ->
-      Some (Quoted_string (loc, s))
-    | Template t ->
-      Some (Template t)
-    | List (loc, l) ->
-      Some (List (loc, List.filter_map ~f:abstract l))
-    | Comment _ ->
-      None
+    | Atom (loc, atom) -> Some (Atom (loc, atom))
+    | Quoted_string (loc, s) -> Some (Quoted_string (loc, s))
+    | Template t -> Some (Template t)
+    | List (loc, l) -> Some (List (loc, List.filter_map ~f:abstract l))
+    | Comment _ -> None
 
   let rec concrete : Ast.t -> t = function
-    | Atom (loc, atom) ->
-      Atom (loc, atom)
-    | Quoted_string (loc, s) ->
-      Quoted_string (loc, s)
-    | Template t ->
-      Template t
-    | List (loc, l) ->
-      List (loc, List.map ~f:concrete l)
+    | Atom (loc, atom) -> Atom (loc, atom)
+    | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | Template t -> Template t
+    | List (loc, l) -> List (loc, List.map ~f:concrete l)
 
   let to_sexp c = abstract c |> Option.map ~f:Ast.remove_locs
 
   let extract_comments =
     let rec loop acc = function
-      | Atom _ | Quoted_string _ | Template _ ->
+      | Atom _
+       |Quoted_string _
+       |Template _ ->
         acc
-      | List (_, l) ->
-        List.fold_left l ~init:acc ~f:loop
-      | Comment (loc, comment) ->
-        (loc, comment) :: acc
+      | List (_, l) -> List.fold_left l ~init:acc ~f:loop
+      | Comment (loc, comment) -> (loc, comment) :: acc
     in
     List.fold_left ~init:[] ~f:loop
 
@@ -282,14 +245,10 @@ module Cst = struct
     let tokens = ref [] in
     let emit loc (token : Lexer.Token.t) = tokens := (loc, token) :: !tokens in
     let rec iter = function
-      | Atom (loc, s) ->
-        emit loc (Atom s)
-      | Quoted_string (loc, s) ->
-        emit loc (Quoted_string s)
-      | Template ({ loc; _ } as template) ->
-        emit loc (Template template)
-      | Comment (loc, comment) ->
-        emit loc (Comment comment)
+      | Atom (loc, s) -> emit loc (Atom s)
+      | Quoted_string (loc, s) -> emit loc (Quoted_string s)
+      | Template ({ loc; _ } as template) -> emit loc (Template template)
+      | Comment (loc, comment) -> emit loc (Comment comment)
       | List (loc, l) ->
         emit
           { loc with
@@ -323,14 +282,11 @@ module Parser = struct
       match t with
       | Single -> (
         match sexps with
-        | [ sexp ] ->
-          sexp
-        | [] ->
-          error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
+        | [ sexp ] -> sexp
+        | [] -> error (Loc.of_lexbuf lexbuf) "no s-expression found in input"
         | _ :: sexp :: _ ->
           error (Ast.loc sexp) "too many s-expressions found in input" )
-      | Many ->
-        sexps
+      | Many -> sexps
       | Many_as_one -> (
         match sexps with
         | [] ->
@@ -354,20 +310,15 @@ module Parser = struct
      everywhere which is annoying. *)
   let rec cst_of_encoded_ast (x : Ast.t) : Cst.t =
     match x with
-    | Template t ->
-      Template t
-    | Quoted_string (loc, s) ->
-      Quoted_string (loc, s)
-    | List (loc, l) ->
-      List (loc, List.map l ~f:cst_of_encoded_ast)
+    | Template t -> Template t
+    | Quoted_string (loc, s) -> Quoted_string (loc, s)
+    | List (loc, l) -> List (loc, List.map l ~f:cst_of_encoded_ast)
     | Atom (loc, (A s as atom)) -> (
       match s.[0] with
       | '\000' ->
         Comment (loc, Lines (String.drop s 1 |> String.split ~on:'\n'))
-      | '\001' ->
-        Comment (loc, Legacy)
-      | _ ->
-        Atom (loc, atom) )
+      | '\001' -> Comment (loc, Legacy)
+      | _ -> Atom (loc, atom) )
 
   let rec loop with_comments depth lexer lexbuf acc =
     match (lexer ~with_comments lexbuf : Lexer.Token.t) with
@@ -400,8 +351,7 @@ module Parser = struct
             sexps
           else
             Atom (Ast.loc commented, Atom.of_string "\001") :: sexps
-        | [] ->
-          error loc "s-expression missing after #;"
+        | [] -> error loc "s-expression missing after #;"
       in
       List.rev_append acc sexps
     | Eof ->
@@ -415,10 +365,8 @@ module Parser = struct
         let loc = Loc.of_lexbuf lexbuf in
         let encoded =
           match comment with
-          | Lines lines ->
-            "\000" ^ String.concat lines ~sep:"\n"
-          | Legacy ->
-            "\001"
+          | Lines lines -> "\000" ^ String.concat lines ~sep:"\n"
+          | Legacy -> "\001"
         in
         loop with_comments depth lexer lexbuf
           (Atom (loc, Atom.of_string encoded) :: acc)
@@ -439,14 +387,15 @@ let insert_comments csts comments =
   in
   let rec reconciliate acc tokens1 tokens2 =
     match (tokens1, tokens2) with
-    | [], l | l, [] ->
+    | [], l
+     |l, [] ->
       List.rev_append acc l
     | tok1 :: rest1, tok2 :: rest2 -> (
       match compare tok1 tok2 with
-      | Eq | Lt ->
+      | Eq
+       |Lt ->
         reconciliate (tok1 :: acc) rest1 tokens2
-      | Gt ->
-        reconciliate (tok2 :: acc) tokens1 rest2 )
+      | Gt -> reconciliate (tok2 :: acc) tokens1 rest2 )
   in
   let tokens =
     reconciliate [] (Cst.tokenize csts)
@@ -503,7 +452,9 @@ module Encoder = struct
 
   let sexp x = x
 
-  let option f = function None -> List [] | Some x -> List [ f x ]
+  let option f = function
+    | None -> List []
+    | Some x -> List [ f x ]
 
   let record l =
     List (List.map l ~f:(fun (n, v) -> List [ Atom (Atom.of_string n); v ]))
@@ -515,8 +466,7 @@ module Encoder = struct
 
   let field name f ?(equal = ( = )) ?default v =
     match default with
-    | None ->
-      Normal (name, f v)
+    | None -> Normal (name, f v)
     | Some d ->
       if equal d v then
         Absent
@@ -524,7 +474,9 @@ module Encoder = struct
         Normal (name, f v)
 
   let field_o name f v =
-    match v with None -> Absent | Some v -> Normal (name, f v)
+    match v with
+    | None -> Absent
+    | Some v -> Normal (name, f v)
 
   let field_b name v =
     if v then
@@ -533,19 +485,20 @@ module Encoder = struct
       Absent
 
   let field_l name f l =
-    match l with [] -> Absent | _ -> Inlined_list (name, List.map l ~f)
+    match l with
+    | [] -> Absent
+    | _ -> Inlined_list (name, List.map l ~f)
 
   let field_i name f x =
-    match f x with [] -> Absent | l -> Inlined_list (name, l)
+    match f x with
+    | [] -> Absent
+    | l -> Inlined_list (name, l)
 
   let record_fields (l : field list) =
     List.filter_map l ~f:(function
-      | Absent ->
-        None
-      | Normal (name, v) ->
-        Some (List [ Atom (Atom.of_string name); v ])
-      | Inlined_list (name, l) ->
-        Some (List (Atom (Atom.of_string name) :: l)))
+      | Absent -> None
+      | Normal (name, v) -> Some (List [ Atom (Atom.of_string name); v ])
+      | Inlined_list (name, l) -> Some (List (Atom (Atom.of_string name) :: l)))
 
   let unknown _ = unsafe_atom_of_string "<unknown>"
 end
@@ -569,7 +522,9 @@ module Decoder = struct
       let compare a b =
         let alen = String.length a
         and blen = String.length b in
-        match Int.compare alen blen with Eq -> String.compare a b | ne -> ne
+        match Int.compare alen blen with
+        | Eq -> String.compare a b
+        | ne -> ne
 
       let to_dyn = Dyn.Encoder.string
     end
@@ -601,14 +556,11 @@ module Decoder = struct
 
     let unparsed_ast { unparsed; _ } =
       let rec loop acc = function
-        | [] ->
-          acc
+        | [] -> acc
         | x :: xs -> (
           match x.Unparsed.prev with
-          | None ->
-            loop (x.entry :: acc) xs
-          | Some p ->
-            loop (x.entry :: acc) (p :: xs) )
+          | None -> loop (x.entry :: acc) xs
+          | Some p -> loop (x.entry :: acc) (p :: xs) )
       in
       loop [] (Name.Map.values unparsed)
       |> List.sort ~compare:(fun a b ->
@@ -652,10 +604,8 @@ module Decoder = struct
   let try_ t f ctx state = try t ctx state with exn -> f exn ctx state
 
   let get_user_context : type k. k context -> Univ_map.t = function
-    | Values (_, _, uc) ->
-      uc
-    | Fields (_, _, uc) ->
-      uc
+    | Values (_, _, uc) -> uc
+    | Fields (_, _, uc) -> uc
 
   let get key ctx state = (Univ_map.find (get_user_context ctx) key, state)
 
@@ -681,18 +631,14 @@ module Decoder = struct
   let loc : type k. k context -> k -> Loc.t * k =
    fun ctx state ->
     match ctx with
-    | Values (loc, _, _) ->
-      (loc, state)
-    | Fields (loc, _, _) ->
-      (loc, state)
+    | Values (loc, _, _) -> (loc, state)
+    | Fields (loc, _, _) -> (loc, state)
 
   let at_eos : type k. k context -> k -> bool =
    fun ctx state ->
     match ctx with
-    | Values _ ->
-      state = []
-    | Fields _ ->
-      Name.Map.is_empty state.unparsed
+    | Values _ -> state = []
+    | Fields _ -> Name.Map.is_empty state.unparsed
 
   let eos ctx state = (at_eos ctx state, state)
 
@@ -705,8 +651,7 @@ module Decoder = struct
   let repeat : 'a t -> 'a list t =
     let rec loop t acc ctx l =
       match l with
-      | [] ->
-        (List.rev acc, [])
+      | [] -> (List.rev acc, [])
       | _ ->
         let x, l = t ctx l in
         loop t (x :: acc) ctx l
@@ -718,8 +663,7 @@ module Decoder = struct
     match ctx with
     | Values (_, cstr, _) -> (
       match state with
-      | [] ->
-        v
+      | [] -> v
       | sexp :: _ -> (
         match cstr with
         | None ->
@@ -730,11 +674,12 @@ module Decoder = struct
             [ Pp.textf "Too many argument for %s" s ] ) )
     | Fields _ -> (
       match Name.Map.choose state.unparsed with
-      | None ->
-        v
+      | None -> v
       | Some (name, { entry; _ }) ->
         let name_loc =
-          match entry with List (_, s :: _) -> Ast.loc s | _ -> assert false
+          match entry with
+          | List (_, s :: _) -> Ast.loc s
+          | _ -> assert false
         in
         User_error.raise ~loc:name_loc
           ~hints:(User_message.did_you_mean name ~candidates:state.known)
@@ -758,23 +703,27 @@ module Decoder = struct
     [@@inline never]
 
   let next f ctx sexps =
-    match sexps with [] -> end_of_list ctx | sexp :: sexps -> (f sexp, sexps)
+    match sexps with
+    | [] -> end_of_list ctx
+    | sexp :: sexps -> (f sexp, sexps)
     [@@inline always]
 
   let next_with_user_context f ctx sexps =
     match sexps with
-    | [] ->
-      end_of_list ctx
-    | sexp :: sexps ->
-      (f (get_user_context ctx) sexp, sexps)
+    | [] -> end_of_list ctx
+    | sexp :: sexps -> (f (get_user_context ctx) sexp, sexps)
     [@@inline always]
 
   let peek _ctx sexps =
-    match sexps with [] -> (None, sexps) | sexp :: _ -> (Some sexp, sexps)
+    match sexps with
+    | [] -> (None, sexps)
+    | sexp :: _ -> (Some sexp, sexps)
     [@@inline always]
 
   let peek_exn ctx sexps =
-    match sexps with [] -> end_of_list ctx | sexp :: _ -> (sexp, sexps)
+    match sexps with
+    | [] -> end_of_list ctx
+    | sexp :: _ -> (sexp, sexps)
     [@@inline always]
 
   let junk = next ignore
@@ -782,15 +731,12 @@ module Decoder = struct
   let junk_everything : type k. (unit, k) parser =
    fun ctx state ->
     match ctx with
-    | Values _ ->
-      ((), [])
-    | Fields _ ->
-      ((), { state with unparsed = Name.Map.empty })
+    | Values _ -> ((), [])
+    | Fields _ -> ((), { state with unparsed = Name.Map.empty })
 
   let keyword kwd =
     next (function
-      | Atom (_, s) when Atom.to_string s = kwd ->
-        ()
+      | Atom (_, s) when Atom.to_string s = kwd -> ()
       | sexp ->
         User_error.raise ~loc:(Ast.loc sexp) [ Pp.textf "'%s' expected" kwd ])
 
@@ -798,28 +744,29 @@ module Decoder = struct
     peek
     >>= function
     | Some (Atom (_, A s)) -> (
-      match List.assoc l s with Some t -> junk >>> t | None -> fallback )
-    | _ ->
-      fallback
+      match List.assoc l s with
+      | Some t -> junk >>> t
+      | None -> fallback )
+    | _ -> fallback
 
   let until_keyword kwd ~before ~after =
     let rec loop acc =
       peek
       >>= function
-      | None ->
-        return (List.rev acc, None)
+      | None -> return (List.rev acc, None)
       | Some (Atom (_, A s)) when s = kwd ->
         junk >>> after >>= fun x -> return (List.rev acc, Some x)
-      | _ ->
-        before >>= fun x -> loop (x :: acc)
+      | _ -> before >>= fun x -> loop (x :: acc)
     in
     loop []
 
   let plain_string f =
     next (function
-      | Atom (loc, A s) | Quoted_string (loc, s) ->
+      | Atom (loc, A s)
+       |Quoted_string (loc, s) ->
         f ~loc s
-      | Template { loc; _ } | List (loc, _) ->
+      | Template { loc; _ }
+       |List (loc, _) ->
         User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 
   let enter t =
@@ -828,11 +775,13 @@ module Decoder = struct
       | List (loc, l) ->
         let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
-      | sexp ->
-        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
+      | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
   let if_list ~then_ ~else_ =
-    peek_exn >>= function List _ -> then_ | _ -> else_
+    peek_exn
+    >>= function
+    | List _ -> then_
+    | _ -> else_
 
   let if_paren_colon_form ~then_ ~else_ =
     peek_exn
@@ -840,8 +789,7 @@ module Decoder = struct
     | List (_, Atom (loc, A s) :: _) when String.is_prefix s ~prefix:":" ->
       let name = String.drop s 1 in
       enter (junk >>= fun () -> then_ >>| fun f -> f (loc, name))
-    | _ ->
-      else_
+    | _ -> else_
 
   let fix f =
     let rec p = lazy (f r)
@@ -869,15 +817,16 @@ module Decoder = struct
             | [] ->
               let (Values (loc, _, _)) = ctx in
               { (Ast.loc sexp) with stop = loc.stop }
-            | sexp :: rest ->
-              search sexp rest
+            | sexp :: rest -> search sexp rest
         in
         search sexp rest )
     | Fields _ -> (
       let parsed =
         Name.Map.merge state1.unparsed state2.unparsed
           ~f:(fun _key before after ->
-            match (before, after) with Some _, None -> before | _ -> None)
+            match (before, after) with
+            | Some _, None -> before
+            | _ -> None)
       in
       match
         Name.Map.values parsed
@@ -900,20 +849,23 @@ module Decoder = struct
 
   let basic desc f =
     next (function
-      | Template { loc; _ } | List (loc, _) | Quoted_string (loc, _) ->
+      | Template { loc; _ }
+       |List (loc, _)
+       |Quoted_string (loc, _) ->
         User_error.raise ~loc [ Pp.textf "%s expected" desc ]
       | Atom (loc, s) -> (
         match f (Atom.to_string s) with
         | Result.Error () ->
           User_error.raise ~loc [ Pp.textf "%s expected" desc ]
-        | Ok x ->
-          x ))
+        | Ok x -> x ))
 
   let string = plain_string (fun ~loc:_ x -> x)
 
   let int =
     basic "Integer" (fun s ->
-      match int_of_string s with x -> Ok x | exception _ -> Result.Error ())
+      match int_of_string s with
+      | x -> Ok x
+      | exception _ -> Result.Error ())
 
   let pair a b = enter (a >>= fun a -> b >>= fun b -> return (a, b))
 
@@ -921,12 +873,15 @@ module Decoder = struct
     enter (a >>= fun a -> b >>= fun b -> c >>= fun c -> return (a, b, c))
 
   let option t =
-    enter (eos >>= function true -> return None | false -> t >>| Option.some)
+    enter
+      ( eos
+      >>= function
+      | true -> return None
+      | false -> t >>| Option.some )
 
   let find_cstr cstrs loc name ctx values =
     match List.assoc cstrs name with
-    | Some t ->
-      result ctx (t ctx values)
+    | Some t -> result ctx (t ctx values)
     | None ->
       User_error.raise ~loc
         ~hints:
@@ -936,27 +891,30 @@ module Decoder = struct
   let sum cstrs =
     next_with_user_context (fun uc sexp ->
       match sexp with
-      | Atom (loc, A s) ->
-        find_cstr cstrs loc s (Values (loc, Some s, uc)) []
-      | Template { loc; _ } | Quoted_string (loc, _) ->
+      | Atom (loc, A s) -> find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Template { loc; _ }
+       |Quoted_string (loc, _) ->
         User_error.raise ~loc [ Pp.text "Atom expected" ]
       | List (loc, []) ->
         User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
       | List (loc, name :: args) -> (
         match name with
-        | Quoted_string (loc, _) | List (loc, _) | Template { loc; _ } ->
+        | Quoted_string (loc, _)
+         |List (loc, _)
+         |Template { loc; _ } ->
           User_error.raise ~loc [ Pp.text "Atom expected" ]
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args ))
 
   let enum cstrs =
     next (function
-      | Quoted_string (loc, _) | Template { loc; _ } | List (loc, _) ->
+      | Quoted_string (loc, _)
+       |Template { loc; _ }
+       |List (loc, _) ->
         User_error.raise ~loc [ Pp.text "Atom expected" ]
       | Atom (loc, A s) -> (
         match List.assoc cstrs s with
-        | Some value ->
-          value
+        | Some value -> value
         | None ->
           User_error.raise ~loc
             [ Pp.textf "Unknown value %s" s ]
@@ -969,13 +927,11 @@ module Decoder = struct
   let map_validate t ~f ctx state1 =
     let x, state2 = t ctx state1 in
     match f x with
-    | Result.Ok x ->
-      (x, state2)
+    | Result.Ok x -> (x, state2)
     | Error (msg : User_message.t) ->
       let msg =
         match msg.loc with
-        | Some _ ->
-          msg
+        | Some _ -> msg
         | None ->
           { msg with loc = Some (loc_between_states ctx state1 state2) }
       in
@@ -990,14 +946,15 @@ module Decoder = struct
     | _ :: second :: _ ->
       User_error.raise ~loc:(Ast.loc second)
         [ Pp.textf "Field %S is present too many times" name ]
-    | _ ->
-      assert false
+    | _ -> assert false
 
   let multiple_occurrences ?(on_dup = field_present_too_many_times) uc name
     last =
     let rec collect acc (x : Fields.Unparsed.t) =
       let acc = x.entry :: acc in
-      match x.prev with None -> acc | Some prev -> collect acc prev
+      match x.prev with
+      | None -> acc
+      | Some prev -> collect acc prev
     in
     on_dup uc name (collect [] last)
     [@@inline never]
@@ -1007,8 +964,7 @@ module Decoder = struct
     ( match res with
     | Some ({ prev = Some _; _ } as last) ->
       multiple_occurrences uc name last ?on_dup
-    | _ ->
-      () );
+    | _ -> () );
     res
 
   let field name ?default ?on_dup t (Fields (loc, _, uc)) state =
@@ -1019,10 +975,8 @@ module Decoder = struct
       (x, Fields.consume name state)
     | None -> (
       match default with
-      | Some v ->
-        (v, Fields.add_known name state)
-      | None ->
-        field_missing loc name )
+      | Some v -> (v, Fields.add_known name state)
+      | None -> field_missing loc name )
 
   let field_o name ?on_dup t (Fields (_, _, uc)) state =
     match find_single uc state name ?on_dup with
@@ -1030,13 +984,16 @@ module Decoder = struct
       let ctx = Values (Ast.loc entry, Some name, uc) in
       let x = result ctx (t ctx values) in
       (Some x, Fields.consume name state)
-    | None ->
-      (None, Fields.add_known name state)
+    | None -> (None, Fields.add_known name state)
 
   let field_b_gen field_gen ?check ?on_dup name =
     field_gen name ?on_dup
       ( Option.value check ~default:(return ())
-      >>= fun () -> eos >>= function true -> return true | _ -> bool )
+      >>= fun () ->
+      eos
+      >>= function
+      | true -> return true
+      | _ -> bool )
 
   let field_b = field_b_gen (field ~default:false)
 
@@ -1045,8 +1002,7 @@ module Decoder = struct
   let multi_field name t (Fields (_, _, uc)) (state : Fields.t) =
     let rec loop acc (field : Fields.Unparsed.t option) =
       match field with
-      | None ->
-        acc
+      | None -> acc
       | Some { values; prev; entry } ->
         let ctx = Values (Ast.loc entry, Some name, uc) in
         let x = result ctx (t ctx values) in
@@ -1067,7 +1023,9 @@ module Decoder = struct
               ; entry = sexp
               ; prev = Name.Map.find acc name
               }
-          | List (loc, _) | Quoted_string (loc, _) | Template { loc; _ } ->
+          | List (loc, _)
+           |Quoted_string (loc, _)
+           |Template { loc; _ } ->
             User_error.raise ~loc [ Pp.text "Atom expected" ] )
         | _ ->
           User_error.raise ~loc:(Ast.loc sexp)
@@ -1090,10 +1048,8 @@ module Decoder = struct
   let kind : type k. k context -> k -> kind * k =
    fun ctx state ->
     match ctx with
-    | Values (loc, cstr, _) ->
-      (Values (loc, cstr), state)
-    | Fields (loc, cstr, _) ->
-      (Fields (loc, cstr), state)
+    | Values (loc, cstr, _) -> (Values (loc, cstr), state)
+    | Fields (loc, cstr, _) -> (Fields (loc, cstr), state)
 
   let traverse l ~f ctx state =
     Tuple.T2.swap
@@ -1126,20 +1082,15 @@ module Decoder = struct
     in
     match
       List.filter_map res ~f:(function
-        | name, Some x ->
-          Some (name, x)
-        | _, None ->
-          None)
+        | name, Some x -> Some (name, x)
+        | _, None -> None)
     with
     | [] -> (
       let names = List.map fields ~f:fst in
       match default with
-      | None ->
-        fields_missing_need_exactly_one loc names
-      | Some default ->
-        (default, state) )
-    | [ (_name, res) ] ->
-      (res, state)
+      | None -> fields_missing_need_exactly_one loc names
+      | Some default -> (default, state) )
+    | [ (_name, res) ] -> (res, state)
     | _ :: _ :: _ as results ->
       let names = List.map ~f:fst results in
       fields_mutual_exclusion_violation loc names
@@ -1165,14 +1116,10 @@ end
 let rec to_dyn =
   let open Dyn.Encoder in
   function
-  | Atom (A a) ->
-    string a
-  | List s ->
-    List (List.map s ~f:to_dyn)
-  | Quoted_string s ->
-    string s
-  | Template t ->
-    constr "template" [ string (Template.to_string t) ]
+  | Atom (A a) -> string a
+  | List s -> List (List.map s ~f:to_dyn)
+  | Quoted_string s -> string s
+  | Template t -> constr "template" [ string (Template.to_string t) ]
 
 module Io = struct
   let load ?lexer path ~mode =

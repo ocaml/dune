@@ -44,14 +44,14 @@ let delete_very_recent_entries () =
   let cache = Lazy.force cache in
   let now = get_current_filesystem_time () in
   match Float.compare cache.max_timestamp now with
-  | Lt ->
-    ()
-  | Eq | Gt ->
+  | Lt -> ()
+  | Eq
+   |Gt ->
     Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
       match Float.compare data.timestamp now with
-      | Lt ->
-        true
-      | Gt | Eq ->
+      | Lt -> true
+      | Gt
+       |Eq ->
         false)
 
 let dump () =
@@ -92,8 +92,7 @@ let refresh fn =
 let file fn =
   let cache = Lazy.force cache in
   match Path.Table.find cache.table fn with
-  | None ->
-    refresh fn
+  | None -> refresh fn
   | Some x ->
     if x.stats_checked = cache.checked_key then
       x.digest

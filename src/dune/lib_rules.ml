@@ -10,10 +10,8 @@ let msvc_hack_cclibs =
   List.map ~f:(fun lib ->
     let lib =
       match String.drop_prefix lib ~prefix:"-l" with
-      | None ->
-        lib
-      | Some l ->
-        l ^ ".lib"
+      | None -> lib
+      | Some l -> l ^ ".lib"
     in
     Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
@@ -28,10 +26,8 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
       else
         let stubs_name = Library.stubs_name lib in
         match mode with
-        | Byte ->
-          [ "-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name ]
-        | Native ->
-          [ "-cclib"; "-l" ^ stubs_name ]
+        | Byte -> [ "-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name ]
+        | Native -> [ "-cclib"; "-l" ^ stubs_name ]
     in
     let map_cclibs =
       (* https://github.com/ocaml/dune/issues/119 *)
@@ -66,19 +62,17 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
           ; Command.Args.dyn library_flags
           ; As
             ( match lib.kind with
-            | Normal ->
-              []
-            | Ppx_deriver _ | Ppx_rewriter _ ->
+            | Normal -> []
+            | Ppx_deriver _
+             |Ppx_rewriter _ ->
               [ "-linkall" ] )
           ; Dyn
             ( Cm_files.top_sorted_cms cm_files ~mode
             |> Build.S.map ~f:(fun x -> Command.Args.Deps x) )
           ; Hidden_targets
             ( match mode with
-            | Byte ->
-              []
-            | Native ->
-              [ Library.archive lib ~dir ~ext:ext_lib ] )
+            | Byte -> []
+            | Native -> [ Library.archive lib ~dir ~ext:ext_lib ] )
           ])))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -87,18 +81,14 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let transition_message =
     lazy
       ( match Modules.wrapped modules with
-      | Simple _ ->
-        assert false
-      | Yes_with_transition r ->
-        r )
+      | Simple _ -> assert false
+      | Yes_with_transition r -> r )
   in
   Module_name.Map.iteri wrapped_compat ~f:(fun name m ->
     let main_module_name =
       match Library.main_module_name lib with
-      | This (Some mmn) ->
-        Module_name.to_string mmn
-      | _ ->
-        assert false
+      | This (Some mmn) -> Module_name.to_string mmn
+      | _ -> assert false
     in
     let contents =
       let name = Module_name.to_string name in
@@ -268,10 +258,8 @@ let build_stubs lib ~sctx ~dir ~expander ~requires ~dir_contents
   in
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
-  | [] ->
-    ()
-  | o_files ->
-    build_self_stubs lib ~sctx ~dir ~expander ~o_files
+  | [] -> ()
+  | o_files -> build_self_stubs lib ~sctx ~dir ~expander ~o_files
 
 let build_shared lib ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in

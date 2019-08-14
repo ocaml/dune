@@ -55,7 +55,9 @@ end = struct
     I.union
 
   let same (type a b) ((module M1) : a t) ((module M2) : b t) =
-    match M1.W with M2.W -> Some (Type_eq.T : (a, b) Type_eq.t) | _ -> None
+    match M1.W with
+    | M2.W -> Some (Type_eq.T : (a, b) Type_eq.t)
+    | _ -> None
 end
 
 type 'o t = 'o Witness.t
@@ -73,7 +75,9 @@ type handler = (module Handler)
 let current_handler : handler Fiber.Var.t = Fiber.Var.create ()
 
 let produce' ~union opt v =
-  match !opt with None -> opt := Some v | Some v0 -> opt := Some (union v0 v)
+  match !opt with
+  | None -> opt := Some v
+  | Some v0 -> opt := Some (union v0 v)
 
 let produce (type o) (type_ : o t) (value : o) =
   match Fiber.Var.get current_handler with
@@ -92,7 +96,10 @@ let produce (type o) (type_ : o t) (value : o) =
         ; ("type_produced", String (Witness.get_name type_))
         ] )
 
-let produce_opt t v = match v with None -> () | Some v -> produce t v
+let produce_opt t v =
+  match v with
+  | None -> ()
+  | Some v -> produce t v
 
 let collect_async (type o) (type_ : o t) f =
   let output = ref None in

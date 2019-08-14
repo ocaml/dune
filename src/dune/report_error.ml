@@ -28,10 +28,9 @@ let get_printer = function
     ; backtrace = false
     ; hint =
       ( match msg.hints with
-      | [] ->
-        None
-      | hint :: _ ->
-        Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint) )
+      | [] -> None
+      | hint :: _ -> Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint)
+      )
     ; pp =
       (fun ppf ->
         render ppf (User_message.pp { msg with loc = None; hints = [] }))
@@ -95,8 +94,7 @@ let ppf = Format.formatter_of_buffer buf
 let report { Exn_with_backtrace.exn; backtrace } =
   let exn, dependency_path = Dep_path.unwrap_exn exn in
   match exn with
-  | Already_reported ->
-    ()
+  | Already_reported -> ()
   | _ ->
     let p = get_printer exn in
     let loc =
@@ -125,14 +123,11 @@ let report { Exn_with_backtrace.exn; backtrace } =
         else
           (* Only keep the part that doesn't come from the build system *)
           let rec drop : Dep_path.Entries.t -> _ = function
-            | (Path _ | Alias _) :: l ->
-              drop l
-            | l ->
-              l
+            | (Path _ | Alias _) :: l -> drop l
+            | l -> l
           in
           match loc with
-          | None ->
-            drop dependency_path
+          | None -> drop dependency_path
           | Some loc ->
             if Filename.is_relative loc.start.pos_fname then
               (* If the error points to a local file, no need to print the

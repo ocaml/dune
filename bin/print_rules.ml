@@ -60,10 +60,9 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
               |> Path.set_of_build_paths_list ) )
           ]
         ; ( match rule.context with
-          | None ->
-            []
-          | Some c ->
-            [ ("context", Dune_lang.atom_or_quoted_string c.name) ] )
+          | None -> []
+          | Some c -> [ ("context", Dune_lang.atom_or_quoted_string c.name) ]
+          )
         ; [ ("action", sexp_of_action rule.action) ]
         ])
   in
@@ -83,10 +82,8 @@ module Syntax = struct
       Sexp
 
   let print_rule = function
-    | Makefile ->
-      print_rule_makefile
-    | Sexp ->
-      print_rule_sexp
+    | Makefile -> print_rule_makefile
+    | Sexp -> print_rule_sexp
 
   let print_rules syntax ppf rules =
     Dune_lang.Deprecated.prepare_formatter ppf;
@@ -135,9 +132,7 @@ let term =
       Fiber.return ()
     in
     match out with
-    | None ->
-      print stdout
-    | Some fn ->
-      Io.with_file_out fn ~f:print)
+    | None -> print stdout
+    | Some fn -> Io.with_file_out fn ~f:print)
 
 let command = (term, info)

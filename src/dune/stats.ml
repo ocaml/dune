@@ -21,15 +21,15 @@ module Fd_count = struct
       let num_lines = List.length (Io.input_lines (open_in temp)) in
       This (num_lines - 1)
     (* the output contains a header line *)
-    | _ ->
-      Unknown
+    | _ -> Unknown
 
   let get () =
     match Sys.readdir "/proc/self/fd" with
     | exception _ -> (
-      match try_to_use_lsof () with exception _ -> Unknown | value -> value )
-    | files ->
-      This (Array.length files - 1 (* -1 for the dirfd *))
+      match try_to_use_lsof () with
+      | exception _ -> Unknown
+      | value -> value )
+    | files -> This (Array.length files - 1 (* -1 for the dirfd *))
 end
 
 let catapult = ref None
@@ -38,10 +38,8 @@ let record () =
   Option.iter !catapult ~f:(fun reporter ->
     Catapult.emit_gc_counters reporter;
     match Fd_count.get () with
-    | This fds ->
-      Catapult.emit_counter reporter "fds" fds
-    | Unknown ->
-      ())
+    | This fds -> Catapult.emit_counter reporter "fds" fds
+    | Unknown -> ())
 
 let enable path =
   let reporter = Catapult.make path in
@@ -50,8 +48,7 @@ let enable path =
 
 let with_process ~program ~args fiber =
   match !catapult with
-  | None ->
-    fiber
+  | None -> fiber
   | Some reporter ->
     let open Fiber.O in
     let event = Catapult.on_process_start reporter ~program ~args in

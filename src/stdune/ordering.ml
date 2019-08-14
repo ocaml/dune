@@ -11,10 +11,24 @@ let of_int n =
   else
     Gt
 
-let to_int = function Lt -> -1 | Eq -> 0 | Gt -> 1
+let to_int = function
+  | Lt -> -1
+  | Eq -> 0
+  | Gt -> 1
 
-let to_string = function Lt -> "<" | Eq -> "=" | Gt -> ">"
+let to_string = function
+  | Lt -> "<"
+  | Eq -> "="
+  | Gt -> ">"
 
-let neq = function Eq -> false | Lt | Gt -> true
+let neq = function
+  | Eq -> false
+  | Lt
+   |Gt ->
+    true
 
-let is_eq = function Eq -> true | Lt | Gt -> false
+let is_eq = function
+  | Eq -> true
+  | Lt
+   |Gt ->
+    false

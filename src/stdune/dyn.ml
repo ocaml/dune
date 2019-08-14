@@ -23,18 +23,15 @@ type t =
 
 let unsnoc l =
   match List.rev l with
-  | last :: before_last ->
-    Some (List.rev before_last, last)
-  | [] ->
-    None
+  | last :: before_last -> Some (List.rev before_last, last)
+  | [] -> None
 
 let string_in_ocaml_syntax str =
   let is_space = function
     | ' ' ->
       (* don't need to handle tabs because those are already escaped *)
       true
-    | _ ->
-      false
+    | _ -> false
   in
   let escape_protect_first_space s =
     let first_char =
@@ -49,12 +46,10 @@ let string_in_ocaml_syntax str =
     [Dune_lang.prepare_formatter] so that the formatter can fit multiple lines
      on one line. *)
   match String_split.split ~on:'\n' str with
-  | [] ->
-    assert false
+  | [] -> assert false
   | first :: rest -> (
     match unsnoc rest with
-    | None ->
-      Pp.verbatim (Printf.sprintf "%S" first)
+    | None -> Pp.verbatim (Printf.sprintf "%S" first)
     | Some (middle, last) ->
       Pp.vbox
         (Pp.concat ~sep:Pp.newline
@@ -65,26 +60,16 @@ let string_in_ocaml_syntax str =
             @ [ escape_protect_first_space last ^ "\"" ] ))) )
 
 let rec pp = function
-  | Opaque ->
-    Pp.verbatim "<opaque>"
-  | Unit ->
-    Pp.verbatim "()"
-  | Int i ->
-    Pp.verbatim (string_of_int i)
-  | Bool b ->
-    Pp.verbatim (string_of_bool b)
-  | String s ->
-    string_in_ocaml_syntax s
-  | Bytes b ->
-    string_in_ocaml_syntax (Bytes.to_string b)
-  | Char c ->
-    Pp.char c
-  | Float f ->
-    Pp.verbatim (string_of_float f)
-  | Option None ->
-    pp (Variant ("None", []))
-  | Option (Some x) ->
-    pp (Variant ("Some", [ x ]))
+  | Opaque -> Pp.verbatim "<opaque>"
+  | Unit -> Pp.verbatim "()"
+  | Int i -> Pp.verbatim (string_of_int i)
+  | Bool b -> Pp.verbatim (string_of_bool b)
+  | String s -> string_in_ocaml_syntax s
+  | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
+  | Char c -> Pp.char c
+  | Float f -> Pp.verbatim (string_of_float f)
+  | Option None -> pp (Variant ("None", []))
+  | Option (Some x) -> pp (Variant ("Some", [ x ]))
   | List x ->
     Pp.box
       (Pp.concat
@@ -139,8 +124,7 @@ let rec pp = function
                   [ Pp.verbatim f; Pp.space; Pp.char '='; Pp.space; pp v ]))
         ; Pp.char '}'
         ])
-  | Variant (v, []) ->
-    Pp.verbatim v
+  | Variant (v, []) -> Pp.verbatim v
   | Variant (v, xs) ->
     Pp.hvbox ~indent:2
       (Pp.concat
@@ -173,7 +157,11 @@ module Encoder = struct
 
   let array f a = Array (Array.map ~f a)
 
-  let option f x = Option (match x with None -> None | Some x -> Some (f x))
+  let option f x =
+    Option
+      ( match x with
+      | None -> None
+      | Some x -> Some (f x) )
 
   let record r = Record r
 

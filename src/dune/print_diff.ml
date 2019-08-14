@@ -10,8 +10,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     with
     | Some (dir1, f1), Some (dir2, f2) when Path.equal dir1 dir2 ->
       (dir1, Path.source f1, Path.source f2)
-    | _ ->
-      (Path.root, path1, path2)
+    | _ -> (Path.root, path1, path2)
   in
   let loc = Loc.in_file file1 in
   let file1, file2 = Path.(to_string file1, to_string file2) in
@@ -32,10 +31,8 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         , "--ignore-cr-at-eol" )
       | None -> (
         match which "diff" with
-        | Some path ->
-          (path, [ "-u" ], "--strip-trailing-cr")
-        | None ->
-          fallback () )
+        | Some path -> (path, [ "-u" ], "--strip-trailing-cr")
+        | None -> fallback () )
     in
     let args =
       if skip_trailing_cr then
@@ -49,8 +46,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     fallback ()
   in
   match !Clflags.diff_command with
-  | Some "-" ->
-    fallback ()
+  | Some "-" -> fallback ()
   | Some cmd ->
     let sh, arg = Utils.system_shell_exn ~needed_to:"print diffs" in
     let cmd =
@@ -73,8 +69,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
       fallback ()
     else
       match Bin.which ~path:(Env.path Env.initial) "patdiff" with
-      | None ->
-        normal_diff ()
+      | None -> normal_diff ()
       | Some prog ->
         let* () =
           Process.run ~dir ~env:Env.initial Strict prog

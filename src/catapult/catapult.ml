@@ -49,8 +49,7 @@ let make path =
 
 let next_leading_char t =
   match t.after_first_event with
-  | true ->
-    ','
+  | true -> ','
   | false ->
     t.after_first_event <- true;
     '['

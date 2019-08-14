@@ -16,42 +16,28 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
-    | Chdir (fn, t) ->
-      Chdir (f_path ~dir fn, f t ~dir:fn)
+    | Chdir (fn, t) -> Chdir (f_path ~dir fn, f t ~dir:fn)
     | Setenv (var, value, t) ->
       Setenv (f_string ~dir var, f_string ~dir value, f t ~dir)
     | Redirect_out (outputs, fn, t) ->
       Redirect_out (outputs, f_target ~dir fn, f t ~dir)
     | Redirect_in (inputs, fn, t) ->
       Redirect_in (inputs, f_path ~dir fn, f t ~dir)
-    | Ignore (outputs, t) ->
-      Ignore (outputs, f t ~dir)
-    | Progn l ->
-      Progn (List.map l ~f:(fun t -> f t ~dir))
-    | Echo xs ->
-      Echo (List.map xs ~f:(f_string ~dir))
-    | Cat x ->
-      Cat (f_path ~dir x)
-    | Copy (x, y) ->
-      Copy (f_path ~dir x, f_target ~dir y)
-    | Symlink (x, y) ->
-      Symlink (f_path ~dir x, f_target ~dir y)
+    | Ignore (outputs, t) -> Ignore (outputs, f t ~dir)
+    | Progn l -> Progn (List.map l ~f:(fun t -> f t ~dir))
+    | Echo xs -> Echo (List.map xs ~f:(f_string ~dir))
+    | Cat x -> Cat (f_path ~dir x)
+    | Copy (x, y) -> Copy (f_path ~dir x, f_target ~dir y)
+    | Symlink (x, y) -> Symlink (f_path ~dir x, f_target ~dir y)
     | Copy_and_add_line_directive (x, y) ->
       Copy_and_add_line_directive (f_path ~dir x, f_target ~dir y)
-    | System x ->
-      System (f_string ~dir x)
-    | Bash x ->
-      Bash (f_string ~dir x)
-    | Write_file (x, y) ->
-      Write_file (f_target ~dir x, f_string ~dir y)
-    | Rename (x, y) ->
-      Rename (f_target ~dir x, f_target ~dir y)
-    | Remove_tree x ->
-      Remove_tree (f_target ~dir x)
-    | Mkdir x ->
-      Mkdir (f_path ~dir x)
-    | Digest_files x ->
-      Digest_files (List.map x ~f:(f_path ~dir))
+    | System x -> System (f_string ~dir x)
+    | Bash x -> Bash (f_string ~dir x)
+    | Write_file (x, y) -> Write_file (f_target ~dir x, f_string ~dir y)
+    | Rename (x, y) -> Rename (f_target ~dir x, f_target ~dir y)
+    | Remove_tree x -> Remove_tree (f_target ~dir x)
+    | Mkdir x -> Mkdir (f_path ~dir x)
+    | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff ({ file1; file2; _ } as diff) ->
       Diff { diff with file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
     | Merge_files_into (sources, extras, target) ->

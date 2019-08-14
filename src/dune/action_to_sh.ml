@@ -22,8 +22,7 @@ let echo s =
   let lines = String.split_lines s in
   if not (String.is_suffix s ~suffix:"\n") then
     match List.rev lines with
-    | [] ->
-      [ Run ("echo", [ "-n" ]) ]
+    | [] -> [ Run ("echo", [ "-n" ]) ]
     | last :: rest ->
       List.fold_left rest
         ~init:[ Run ("echo", [ "-n"; last ]) ]
@@ -38,26 +37,19 @@ let mkdir p = Run ("mkdir", [ "-p"; p ])
 let simplify act =
   let rec loop (act : Action.For_shell.t) acc =
     match act with
-    | Run (prog, args) ->
-      Run (prog, args) :: acc
-    | Chdir (p, act) ->
-      loop act (Chdir p :: mkdir p :: acc)
-    | Setenv (k, v, act) ->
-      loop act (Setenv (k, v) :: acc)
+    | Run (prog, args) -> Run (prog, args) :: acc
+    | Chdir (p, act) -> loop act (Chdir p :: mkdir p :: acc)
+    | Setenv (k, v, act) -> loop act (Setenv (k, v) :: acc)
     | Redirect_out (outputs, fn, act) ->
       Redirect_out (block act, outputs, File fn) :: acc
     | Redirect_in (inputs, fn, act) ->
       Redirect_in (block act, inputs, fn) :: acc
     | Ignore (outputs, act) ->
       Redirect_out (block act, outputs, Dev_null) :: acc
-    | Progn l ->
-      List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
-    | Echo xs ->
-      echo (String.concat xs ~sep:"")
-    | Cat x ->
-      cat x :: acc
-    | Copy (x, y) ->
-      Run ("cp", [ x; y ]) :: acc
+    | Progn l -> List.fold_left l ~init:acc ~f:(fun acc act -> loop act acc)
+    | Echo xs -> echo (String.concat xs ~sep:"")
+    | Cat x -> cat x :: acc
+    | Copy (x, y) -> Run ("cp", [ x; y ]) :: acc
     | Symlink (x, y) ->
       Run ("ln", [ "-s"; x; y ]) :: Run ("rm", [ "-f"; y ]) :: acc
     | Copy_and_add_line_directive (x, y) ->
@@ -66,20 +58,13 @@ let simplify act =
         , Stdout
         , File y )
       :: acc
-    | System x ->
-      Sh x :: acc
-    | Bash x ->
-      Run ("bash", [ "-e"; "-u"; "-o"; "pipefail"; "-c"; x ]) :: acc
-    | Write_file (x, y) ->
-      Redirect_out (echo y, Stdout, File x) :: acc
-    | Rename (x, y) ->
-      Run ("mv", [ x; y ]) :: acc
-    | Remove_tree x ->
-      Run ("rm", [ "-rf"; x ]) :: acc
-    | Mkdir x ->
-      mkdir x :: acc
-    | Digest_files _ ->
-      Run ("echo", []) :: acc
+    | System x -> Sh x :: acc
+    | Bash x -> Run ("bash", [ "-e"; "-u"; "-o"; "pipefail"; "-c"; x ]) :: acc
+    | Write_file (x, y) -> Redirect_out (echo y, Stdout, File x) :: acc
+    | Rename (x, y) -> Run ("mv", [ x; y ]) :: acc
+    | Remove_tree x -> Run ("rm", [ "-rf"; x ]) :: acc
+    | Mkdir x -> mkdir x :: acc
+    | Digest_files _ -> Run ("echo", []) :: acc
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
       Run ("cmp", [ file1; file2 ]) :: acc
@@ -100,7 +85,9 @@ let simplify act =
            (String.quote_for_shell target))
       :: acc
   and block act =
-    match List.rev (loop act []) with [] -> [ Run ("true", []) ] | l -> l
+    match List.rev (loop act []) with
+    | [] -> [ Run ("true", []) ]
+    | l -> l
   in
   block act
 
@@ -108,8 +95,7 @@ let quote s = Pp.verbatim (String.quote_for_shell s)
 
 let rec block l =
   match l with
-  | [ x ] ->
-    pp x
+  | [ x ] -> pp x
   | l ->
     Pp.box
       (Pp.concat
@@ -133,17 +119,17 @@ and pp = function
         :: List.concat_map args ~f:(fun arg -> [ Pp.space; quote arg ]) ))
   | Chdir dir ->
     Pp.hovbox ~indent:2 (Pp.concat [ Pp.verbatim "cd"; Pp.space; quote dir ])
-  | Setenv (k, v) ->
-    Pp.concat [ Pp.verbatim k; Pp.verbatim "="; quote v ]
-  | Sh s ->
-    Pp.verbatim s
+  | Setenv (k, v) -> Pp.concat [ Pp.verbatim k; Pp.verbatim "="; quote v ]
+  | Sh s -> Pp.verbatim s
   | Redirect_in (l, inputs, src) ->
     let body = block l in
     Pp.hovbox ~indent:2
       (Pp.concat
         [ body
         ; Pp.space
-        ; Pp.verbatim (match inputs with Stdin -> "<")
+        ; Pp.verbatim
+          ( match inputs with
+          | Stdin -> "<" )
         ; Pp.space
         ; quote src
         ])
@@ -155,22 +141,19 @@ and pp = function
         ; Pp.space
         ; Pp.verbatim
           ( match outputs with
-          | Stdout ->
-            ">"
-          | Stderr ->
-            "2>"
-          | Outputs ->
-            "&>" )
+          | Stdout -> ">"
+          | Stderr -> "2>"
+          | Outputs -> "&>" )
         ; Pp.space
-        ; quote (match dest with Dev_null -> "/dev/null" | File fn -> fn)
+        ; quote
+          ( match dest with
+          | Dev_null -> "/dev/null"
+          | File fn -> fn )
         ])
 
 let rec pp_seq = function
-  | [] ->
-    Pp.verbatim "true"
-  | [ x ] ->
-    pp x
-  | x :: l ->
-    Pp.concat [ pp x; Pp.char ';'; Pp.cut; pp_seq l ]
+  | [] -> Pp.verbatim "true"
+  | [ x ] -> pp x
+  | x :: l -> Pp.concat [ pp x; Pp.char ';'; Pp.cut; pp_seq l ]
 
 let pp act = pp_seq (simplify act)

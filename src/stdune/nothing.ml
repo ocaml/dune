@@ -14,4 +14,6 @@ let _f x = No x
 let to_dummy : type a b. (a, b) Type_eq.t -> (a, b, 'c) dummy =
  fun Type_eq.T -> Eq
 
-let unreachable_code (t : t) = match to_dummy t with No c -> c
+let unreachable_code (t : t) =
+  match to_dummy t with
+  | No c -> c

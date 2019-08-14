@@ -7,7 +7,10 @@ type t =
 
 let all = [ Cmi; Cmo; Cmx ]
 
-let choose cmi cmo cmx = function Cmi -> cmi | Cmo -> cmo | Cmx -> cmx
+let choose cmi cmo cmx = function
+  | Cmi -> cmi
+  | Cmo -> cmo
+  | Cmx -> cmx
 
 let ext = choose ".cmi" ".cmo" ".cmx"
 
@@ -22,7 +25,10 @@ module Dict = struct
     ; cmx : 'a
     }
 
-  let get t = function Cmi -> t.cmi | Cmo -> t.cmo | Cmx -> t.cmx
+  let get t = function
+    | Cmi -> t.cmi
+    | Cmo -> t.cmo
+    | Cmx -> t.cmx
 
   let of_func f =
     { cmi = f ~cm_kind:Cmi; cmo = f ~cm_kind:Cmo; cmx = f ~cm_kind:Cmx }
@@ -33,4 +39,6 @@ end
 let to_dyn =
   let open Dyn.Encoder in
   function
-  | Cmi -> constr "cmi" [] | Cmo -> constr "cmo" [] | Cmx -> constr "cmx" []
+  | Cmi -> constr "cmi" []
+  | Cmo -> constr "cmo" []
+  | Cmx -> constr "cmx" []

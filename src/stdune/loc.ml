@@ -115,8 +115,7 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
         "Raised when trying to print location contents of %s@.%a@." file
         (Exn.pp_uncaught ~backtrace)
         exn
-    | Ok () ->
-      Format.pp_print_flush pp ()
+    | Ok () -> Format.pp_print_flush pp ()
 
 let print ppf ({ start; stop } as loc) =
   let start_c = start.pos_cnum - start.pos_bol in

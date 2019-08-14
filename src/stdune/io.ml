@@ -6,8 +6,7 @@ let close_out = close_out
 
 let close_both (ic, oc) =
   match close_out oc with
-  | () ->
-    close_in ic
+  | () -> close_in ic
   | exception exn ->
     close_in ic;
     Exn.reraise exn
@@ -15,10 +14,8 @@ let close_both (ic, oc) =
 let input_lines =
   let rec loop ic acc =
     match input_line ic with
-    | exception End_of_file ->
-      List.rev acc
-    | line ->
-      loop ic (line :: acc)
+    | exception End_of_file -> List.rev acc
+    | line -> loop ic (line :: acc)
   in
   fun ic -> loop ic []
 
@@ -27,8 +24,7 @@ let copy_channels =
   let buf = Bytes.create buf_len in
   let rec loop ic oc =
     match input ic buf 0 buf_len with
-    | 0 ->
-      ()
+    | 0 -> ()
     | n ->
       output oc buf 0 n;
       loop ic oc
@@ -143,8 +139,7 @@ struct
       let dst = Bytes.create len in
       let rec find_next_crnl i =
         match String.index_from src i '\r' with
-        | None ->
-          None
+        | None -> None
         | Some j ->
           if j + 1 < len && src.[j + 1] = '\n' then
             Some j

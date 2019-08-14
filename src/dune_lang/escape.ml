@@ -8,17 +8,20 @@ let quote_length s =
       !n
       +
       match String.unsafe_get s i with
-      | '\"' | '\\' | '\n' | '\t' | '\r' | '\b' ->
+      | '\"'
+       |'\\'
+       |'\n'
+       |'\t'
+       |'\r'
+       |'\b' ->
         2
       | '%' ->
         if i + 1 < len && s.[i + 1] = '{' then
           2
         else
           1
-      | ' ' .. '~' ->
-        1
-      | _ ->
-        4
+      | ' ' .. '~' -> 1
+      | _ -> 4
   done;
   !n
 
@@ -51,8 +54,7 @@ let escape_to s ~dst:s' ~ofs =
       Bytes.unsafe_set s' !n '\\';
       incr n;
       Bytes.unsafe_set s' !n '%'
-    | ' ' .. '~' as c ->
-      Bytes.unsafe_set s' !n c
+    | ' ' .. '~' as c -> Bytes.unsafe_set s' !n c
     | c ->
       let a = Char.code c in
       Bytes.unsafe_set s' !n '\\';

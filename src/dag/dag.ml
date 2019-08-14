@@ -53,7 +53,9 @@ module Make (Value : Value) : S with type value := Value.t = struct
     let get_outgoing _ v = v.info.deps
 
     let get_parent _ v =
-      match v.info.parent with None -> assert false | Some v -> v
+      match v.info.parent with
+      | None -> assert false
+      | Some v -> v
 
     let set_parent _ v p = v.info.parent <- Some p
 
@@ -79,8 +81,7 @@ module Make (Value : Value) : S with type value := Value.t = struct
 
   let add g v w =
     match IC.add_edge_or_detect_cycle g v w with
-    | IC.EdgeAdded ->
-      ()
+    | IC.EdgeAdded -> ()
     | IC.EdgeCreatesCycle compute_cycle ->
       raise
         (Cycle

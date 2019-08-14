@@ -43,10 +43,8 @@ let term =
   let context = Import.Main.find_context_exn setup.workspace ~name:context in
   let prog_where =
     match Filename.analyze_program_name prog with
-    | Absolute ->
-      `This_abs (Path.of_string prog)
-    | In_path ->
-      `Search prog
+    | Absolute -> `This_abs (Path.of_string prog)
+    | In_path -> `Search prog
     | Relative_to_current_dir ->
       let prog = Common.prefix_target common prog in
       `This_rel (Path.build (Path.Build.relative context.build_dir prog))
@@ -62,21 +60,19 @@ let term =
           ]
         | `This_rel p when Sys.win32 ->
           [ p; Path.extend_basename p ~suffix:Bin.exe ]
-        | `This_rel p ->
-          [ p ]
-        | `This_abs p when Path.is_in_build_dir p ->
-          [ p ]
-        | `This_abs _ ->
-          [] )
+        | `This_rel p -> [ p ]
+        | `This_abs p when Path.is_in_build_dir p -> [ p ]
+        | `This_abs _ -> [] )
       |> List.map ~f:(fun p -> Target.Path p)
       |> Target.resolve_targets_mixed common setup
-      |> List.concat_map ~f:(function Ok targets -> targets | Error _ -> []) )
+      |> List.concat_map ~f:(function
+        | Ok targets -> targets
+          | Error _ -> []) )
   in
   let real_prog =
     ( if not no_rebuild then
       match Lazy.force targets with
-      | [] ->
-        ()
+      | [] -> ()
       | targets ->
         Scheduler.go ~common (fun () -> do_build setup targets);
         Hooks.End_of_build.run () );
@@ -87,7 +83,8 @@ let term =
         :: context.path
       in
       Bin.which prog ~path
-    | `This_rel prog | `This_abs prog ->
+    | `This_rel prog
+     |`This_abs prog ->
       if Path.exists prog then
         Some prog
       else if not Sys.win32 then
@@ -99,8 +96,7 @@ let term =
   match (real_prog, no_rebuild) with
   | None, true -> (
     match Lazy.force targets with
-    | [] ->
-      User_error.raise [ Pp.textf "Program %S not found!" prog ]
+    | [] -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
     | _ :: _ ->
       User_error.raise
         [ Pp.textf
@@ -108,8 +104,7 @@ let term =
            the --no-build option."
           prog
         ] )
-  | None, false ->
-    User_error.raise [ Pp.textf "Program %S not found!" prog ]
+  | None, false -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog in
     let argv = prog :: args in

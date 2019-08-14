@@ -34,13 +34,15 @@ end = struct
 
   let descend t dir =
     match String.Map.find t.by_child dir with
-    | None ->
-      empty
-    | Some res ->
-      Memo.Lazy.force res
+    | None -> empty
+    | Some res -> Memo.Lazy.force res
 
   let union_option ~f a b =
-    match (a, b) with None, x | x, None -> x | Some x, Some y -> Some (f x y)
+    match (a, b) with
+    | None, x
+     |x, None ->
+      x
+    | Some x, Some y -> Some (f x y)
 
   let rec union ~union_rules x y =
     { by_child =
@@ -101,10 +103,8 @@ end
 
 let evaluate ~union_rules =
   let rec loop ~env = function
-    | Empty ->
-      Evaluated.empty
-    | Union (x, y) ->
-      Evaluated.union ~union_rules (loop ~env x) (loop ~env y)
+    | Empty -> Evaluated.empty
+    | Union (x, y) -> Evaluated.union ~union_rules (loop ~env x) (loop ~env y)
     | Approximation (paths, rules) ->
       if
         (not (Dir_set.is_subset paths ~of_:env))
@@ -124,8 +124,7 @@ let evaluate ~union_rules =
           not (Dir_set.mem env p))
       in
       ( match violations with
-      | [] ->
-        ()
+      | [] -> ()
       | _ :: _ ->
         Code_error.raise
           "Scheme attempted to generate rules in a directory it promised not \
@@ -133,8 +132,7 @@ let evaluate ~union_rules =
           [ ("directories", (Dyn.Encoder.list Path.Build.to_dyn) violations) ]
       );
       Evaluated.finite ~union_rules rules
-    | Thunk f ->
-      loop ~env (f ())
+    | Thunk f -> loop ~env (f ())
   in
   fun t -> loop ~env:Dir_set.universal t
 

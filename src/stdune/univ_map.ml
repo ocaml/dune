@@ -39,7 +39,9 @@ module Key = struct
 
   let eq (type a b) (module A : T with type t = a)
     (module B : T with type t = b) : (a, b) Type_eq.t =
-    match A.T with B.T -> Type_eq.T | _ -> assert false
+    match A.T with
+    | B.T -> Type_eq.T
+    | _ -> assert false
 end
 
 module Binding = struct
@@ -63,16 +65,14 @@ let remove t key = Int.Map.remove t (Key.id key)
 
 let find t key =
   match Int.Map.find t (Key.id key) with
-  | None ->
-    None
+  | None -> None
   | Some (Binding.T (key', v)) ->
     let eq = Key.eq key' key in
     Some (Type_eq.cast eq v)
 
 let find_exn t key =
   match Int.Map.find t (Key.id key) with
-  | None ->
-    failwith "Univ_map.find_exn"
+  | None -> failwith "Univ_map.find_exn"
   | Some (Binding.T (key', v)) ->
     let eq = Key.eq key' key in
     Type_eq.cast eq v

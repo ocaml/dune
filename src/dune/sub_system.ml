@@ -16,15 +16,15 @@ module Register_backend (M : Backend) = struct
   let top_closure l ~deps =
     match
       Lib.L.top_closure l ~key:M.lib ~deps:(fun t ->
-        match deps t with Ok l -> l | Error e -> raise_notrace e)
+        match deps t with
+        | Ok l -> l
+        | Error e -> raise_notrace e)
     with
-    | Ok _ as res ->
-      res
+    | Ok _ as res -> res
     | Error _ ->
       (* Lib.t values can't be cyclic, so we can't have cycles here *)
       assert false
-    | exception exn ->
-      Error exn
+    | exception exn -> Error exn
 
   include Comparable.Make (struct
     type t = M.t
@@ -46,8 +46,7 @@ module Register_backend (M : Backend) = struct
             [ Pp.textf "%s is not %s %s" (Lib_name.to_string name)
               M.desc_article (M.desc ~plural:false)
             ]))
-    | Some t ->
-      Ok t
+    | Some t -> Ok t
 
   module Selection_error = struct
     type t =
@@ -73,13 +72,16 @@ module Register_backend (M : Backend) = struct
         User_error.E
           (User_error.make ~loc
             [ Pp.textf "No %s found." (M.desc ~plural:false) ])
-      | Other exn ->
-        exn
+      | Other exn -> exn
 
     let or_exn res ~loc =
-      match res with Ok _ as x -> x | Error t -> Error (to_exn t ~loc)
+      match res with
+      | Ok _ as x -> x
+      | Error t -> Error (to_exn t ~loc)
 
-    let wrap = function Ok _ as x -> x | Error exn -> Error (Other exn)
+    let wrap = function
+      | Ok _ as x -> x
+      | Error exn -> Error (Other exn)
   end
 
   open Selection_error
@@ -87,15 +89,11 @@ module Register_backend (M : Backend) = struct
   let written_by_user_or_scan ~written_by_user ~to_scan =
     match
       match written_by_user with
-      | Some l ->
-        l
-      | None ->
-        List.filter_map to_scan ~f:get
+      | Some l -> l
+      | None -> List.filter_map to_scan ~f:get
     with
-    | [] ->
-      Error No_backend_found
-    | l ->
-      Ok l
+    | [] -> Error No_backend_found
+    | l -> Ok l
 
   let select_extensible_backends ?written_by_user ~extends to_scan =
     let open Result.O in
@@ -122,10 +120,8 @@ module Register_backend (M : Backend) = struct
       Set.diff (Set.of_list backends) (Set.of_list replaced_backends)
       |> Set.to_list
     with
-    | [ b ] ->
-      Ok b
-    | l ->
-      Error (Too_many_backends l)
+    | [ b ] -> Ok b
+    | l -> Error (Too_many_backends l)
 end
 
 type Lib.Sub_system.t += Gen of (Library_compilation_context.t -> unit)
@@ -140,8 +136,7 @@ module Register_end_point (M : End_point) = struct
       let* pps = Lib.Compile.pps c.compile_info in
       let* written_by_user =
         match M.Info.backends info with
-        | None ->
-          Ok None
+        | None -> Ok None
         | Some l ->
           Result.List.map l ~f:(M.Backend.resolve (Scope.libs c.scope))
           >>| Option.some
@@ -152,14 +147,11 @@ module Register_end_point (M : End_point) = struct
     in
     let fail, backends =
       match backends with
-      | Ok backends ->
-        (None, backends)
-      | Error e ->
-        (Some { fail = (fun () -> raise e) }, [])
+      | Ok backends -> (None, backends)
+      | Error e -> (Some { fail = (fun () -> raise e) }, [])
     in
     match fail with
-    | None ->
-      M.gen_rules c ~info ~backends
+    | None -> M.gen_rules c ~info ~backends
     | Some fail ->
       Build_system.prefix_rules (Build.fail fail) ~f:(fun () ->
         M.gen_rules c ~info ~backends)
@@ -179,7 +171,5 @@ end
 
 let gen_rules (c : Library_compilation_context.t) =
   List.iter (Lib.Compile.sub_systems c.compile_info) ~f:(function
-    | Gen gen ->
-      gen c
-    | _ ->
-      ())
+    | Gen gen -> gen c
+    | _ -> ())

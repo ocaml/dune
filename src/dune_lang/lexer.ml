@@ -6,4 +6,6 @@ let token = Dune_lexer.token
 
 let jbuild_token = Jbuild_lexer.token
 
-let of_syntax = function File_syntax.Dune -> token | Jbuild -> jbuild_token
+let of_syntax = function
+  | File_syntax.Dune -> token
+  | Jbuild -> jbuild_token

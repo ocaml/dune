@@ -9,13 +9,13 @@ type exec_context =
 
 let exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from prog args =
   ( match ectx.context with
-  | None | Some { Context.for_host = None; _ } ->
+  | None
+   |Some { Context.for_host = None; _ } ->
     ()
   | Some ({ Context.for_host = Some host; _ } as target) ->
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with
-      | None ->
-        ()
+      | None -> ()
       | Some _ ->
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target.name host.name
@@ -35,12 +35,10 @@ let exec_echo stdout_to str =
 
 let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   match (t : Action.t) with
-  | Run (Error e, _) ->
-    Action.Prog.Not_found.raise e
+  | Run (Error e, _) -> Action.Prog.Not_found.raise e
   | Run (Ok prog, args) ->
     exec_run ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from prog args
-  | Chdir (dir, t) ->
-    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
+  | Chdir (dir, t) -> exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   | Setenv (var, value, t) ->
     exec t ~ectx ~dir ~stdout_to ~stderr_to ~stdin_from
       ~env:(Env.add env ~var ~value)
@@ -55,10 +53,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   | Ignore (outputs, t) ->
     redirect_out ~ectx ~dir outputs Config.dev_null t ~env ~stdout_to
       ~stderr_to ~stdin_from
-  | Progn l ->
-    exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
-  | Echo strs ->
-    exec_echo stdout_to (String.concat strs ~sep:" ")
+  | Progn l -> exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
+  | Echo strs -> exec_echo stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
       Io.copy_channels ic (Process.Io.out_channel stdout_to));
@@ -74,8 +70,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     else
       let src =
         match Path.Build.parent dst with
-        | None ->
-          Path.to_string src
+        | None -> Path.to_string src
         | Some from ->
           let from = Path.build from in
           Path.reach ~from src
@@ -89,8 +84,7 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
           Unix.unlink dst;
           Unix.symlink src dst
         )
-      | exception _ ->
-        Unix.symlink src dst );
+      | exception _ -> Unix.symlink src dst );
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
@@ -146,10 +140,8 @@ let rec exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
     ) else
       let is_copied_from_source_tree file =
         match Path.extract_build_context_dir_maybe_sandboxed file with
-        | None ->
-          false
-        | Some (_, file) ->
-          Path.exists (Path.source file)
+        | None -> false
+        | Some (_, file) -> Path.exists (Path.source file)
       in
       Fiber.finalize
         (fun () ->
@@ -204,12 +196,9 @@ and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   let out = Process.Io.file fn Process.Io.Out in
   let stdout_to, stderr_to =
     match outputs with
-    | Stdout ->
-      (out, stderr_to)
-    | Stderr ->
-      (stdout_to, out)
-    | Outputs ->
-      (out, out)
+    | Stdout -> (out, stderr_to)
+    | Stderr -> (stdout_to, out)
+    | Outputs -> (out, out)
   in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   >>| fun () -> Process.Io.release out
@@ -217,16 +206,17 @@ and redirect_out outputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
 and redirect_in inputs fn t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from:_
   =
   let in_ = Process.Io.file fn Process.Io.In in
-  let stdin_from = match inputs with Stdin -> in_ in
+  let stdin_from =
+    match inputs with
+    | Stdin -> in_
+  in
   exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   >>| fun () -> Process.Io.release in_
 
 and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
   match l with
-  | [] ->
-    Fiber.return ()
-  | [ t ] ->
-    exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
+  | [] -> Fiber.return ()
+  | [ t ] -> exec t ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from
   | t :: rest ->
     let* () =
       let stdout_to = Process.Io.multi_use stdout_to in
@@ -239,12 +229,9 @@ and exec_list l ~ectx ~dir ~env ~stdout_to ~stderr_to ~stdin_from =
 let exec ~targets ~context ~env t =
   let env =
     match ((context : Context.t option), env) with
-    | _, Some e ->
-      e
-    | None, None ->
-      Env.initial
-    | Some c, None ->
-      c.env
+    | _, Some e -> e
+    | None, None -> Env.initial
+    | Some c, None -> c.env
   in
   let purpose = Process.Build_job targets in
   let ectx = { purpose; context } in

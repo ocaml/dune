@@ -15,24 +15,24 @@ include struct
   let equal (a : string) b = Pervasives.( = ) a b
 
   let index_opt s ch =
-    match String.index s ch with i -> Some i | exception Not_found -> None
+    match String.index s ch with
+    | i -> Some i
+    | exception Not_found -> None
 
   let index_from_opt s i ch =
     match String.index_from s i ch with
-    | i ->
-      Some i
-    | exception Not_found ->
-      None
+    | i -> Some i
+    | exception Not_found -> None
 
   let rindex_opt s ch =
-    match String.rindex s ch with i -> Some i | exception Not_found -> None
+    match String.rindex s ch with
+    | i -> Some i
+    | exception Not_found -> None
 
   let rindex_from_opt s i ch =
     match String.rindex_from s i ch with
-    | i ->
-      Some i
-    | exception Not_found ->
-      None
+    | i -> Some i
+    | exception Not_found -> None
 end
 
 include StringLabels
@@ -133,32 +133,34 @@ let extract_words s ~is_word_char =
 
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
-    | ',' | ' ' | '\t' | '\n' ->
+    | ','
+     |' '
+     |'\t'
+     |'\n' ->
       false
-    | _ ->
-      true)
+    | _ -> true)
 
 let extract_blank_separated_words s =
-  extract_words s ~is_word_char:(function ' ' | '\t' -> false | _ -> true)
+  extract_words s ~is_word_char:(function
+    | ' '
+     |'\t' ->
+      false
+    | _ -> true)
 
 let lsplit2 s ~on =
   match index s on with
-  | None ->
-    None
+  | None -> None
   | Some i ->
     Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
 let lsplit2_exn s ~on =
   match lsplit2 s ~on with
-  | Some s ->
-    s
-  | None ->
-    Code_error.raise "lsplit2_exn" [ ("s", String s); ("on", Char on) ]
+  | Some s -> s
+  | None -> Code_error.raise "lsplit2_exn" [ ("s", String s); ("on", Char on) ]
 
 let rsplit2 s ~on =
   match rindex s on with
-  | None ->
-    None
+  | None -> None
   | Some i ->
     Some (sub s ~pos:0 ~len:i, sub s ~pos:(i + 1) ~len:(length s - i - 1))
 
@@ -191,10 +193,8 @@ let longest_map l ~f =
 let longest l = longest_map l ~f:Fn.id
 
 let longest_prefix = function
-  | [] ->
-    ""
-  | [ x ] ->
-    x
+  | [] -> ""
+  | [ x ] -> x
   | x :: xs ->
     let rec loop len i =
       if i < len && List.for_all xs ~f:(fun s -> s.[i] = x.[i]) then
@@ -255,14 +255,10 @@ module Table = Hashtbl.Make (T)
 let enumerate_gen s =
   let s = " " ^ s ^ " " in
   let rec loop = function
-    | [] ->
-      []
-    | [ x ] ->
-      [ x ]
-    | [ x; y ] ->
-      [ x; s; y ]
-    | x :: l ->
-      x :: ", " :: loop l
+    | [] -> []
+    | [ x ] -> [ x ]
+    | [ x; y ] -> [ x; s; y ]
+    | x :: l -> x :: ", " :: loop l
   in
   fun l -> concat (loop l) ~sep:""
 
@@ -270,9 +266,14 @@ let enumerate_and = enumerate_gen "and"
 
 let enumerate_or = enumerate_gen "or"
 
-let enumerate_one_of = function [ x ] -> x | s -> "One of " ^ enumerate_or s
+let enumerate_one_of = function
+  | [ x ] -> x
+  | s -> "One of " ^ enumerate_or s
 
-let concat ~sep = function [] -> "" | [ x ] -> x | xs -> concat ~sep xs
+let concat ~sep = function
+  | [] -> ""
+  | [ x ] -> x
+  | xs -> concat ~sep xs
 
 let take s len = sub s ~pos:0 ~len:(min (length s) len)
 
@@ -305,10 +306,16 @@ let need_quoting s =
       false
     else
       match s.[i] with
-      | ' ' | '\"' | '(' | ')' | '{' | '}' | ';' | '#' ->
+      | ' '
+       |'\"'
+       |'('
+       |')'
+       |'{'
+       |'}'
+       |';'
+       |'#' ->
         true
-      | _ ->
-        loop (i + 1)
+      | _ -> loop (i + 1)
   in
   loop 0
 

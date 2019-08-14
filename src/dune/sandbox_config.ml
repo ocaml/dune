@@ -16,8 +16,7 @@ module Partial = struct
 
   let get_unique eq l =
     match l with
-    | [] ->
-      Ok None
+    | [] -> Ok None
     | x :: xs ->
       if List.for_all xs ~f:(eq x) then
         Ok (Some x)
@@ -44,8 +43,7 @@ module Partial = struct
       | Ok None ->
         (* allowed if not forbidden *)
         true
-      | Ok (Some v) ->
-        v
+      | Ok (Some v) -> v
     in
     Sandbox_mode.Set.of_func (fun mode -> merge_field mode)
 
@@ -53,13 +51,13 @@ module Partial = struct
 
   let no_sandboxing =
     Sandbox_mode.Dict.of_func (function
-      | None ->
-        Some true
-      | Some _ ->
-        Some false)
+      | None -> Some true
+      | Some _ -> Some false)
 
   let needs_sandboxing =
-    Sandbox_mode.Dict.of_func (function None -> Some false | _ -> None)
+    Sandbox_mode.Dict.of_func (function
+      | None -> Some false
+      | _ -> None)
 
   let disallow (mode : Sandbox_mode.t) =
     Sandbox_mode.Dict.of_func (fun mode' ->

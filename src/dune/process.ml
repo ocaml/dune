@@ -7,28 +7,29 @@ type accepted_codes =
   | All
 
 let code_is_ok accepted_codes n =
-  match accepted_codes with These set -> List.mem n ~set | All -> true
+  match accepted_codes with
+  | These set -> List.mem n ~set
+  | All -> true
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
   | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> accepted_codes = function
-  | Strict ->
-    These [ 0 ]
-  | Accept (These codes) ->
-    These (0 :: codes)
-  | Accept All ->
-    All
+  | Strict -> These [ 0 ]
+  | Accept (These codes) -> These (0 :: codes)
+  | Accept All -> All
 
 let map_result :
   type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t =
  fun mode t ~f ->
   match mode with
-  | Strict ->
-    t >>| fun _ -> f ()
+  | Strict -> t >>| fun _ -> f ()
   | Accept _ -> (
-    t >>| function 0 -> Ok (f ()) | n -> Error n )
+    t
+    >>| function
+    | 0 -> Ok (f ())
+    | n -> Error n )
 
 module Io = struct
   type input = Input
@@ -53,30 +54,22 @@ module Io = struct
     | Out_chan : out_channel -> output channel
 
   let descr_of_channel : type a. a channel -> _ = function
-    | In_chan ic ->
-      Unix.descr_of_in_channel ic
-    | Out_chan oc ->
-      Unix.descr_of_out_channel oc
+    | In_chan ic -> Unix.descr_of_in_channel ic
+    | Out_chan oc -> Unix.descr_of_out_channel oc
 
   let mode_of_channel : type a. a channel -> a mode = function
-    | In_chan _ ->
-      In
-    | Out_chan _ ->
-      Out
+    | In_chan _ -> In
+    | Out_chan _ -> Out
 
   let channel_of_descr : type a. _ -> a mode -> a channel =
    fun fd mode ->
     match mode with
-    | In ->
-      In_chan (Unix.in_channel_of_descr fd)
-    | Out ->
-      Out_chan (Unix.out_channel_of_descr fd)
+    | In -> In_chan (Unix.in_channel_of_descr fd)
+    | Out -> Out_chan (Unix.out_channel_of_descr fd)
 
   let close_channel : type a. a channel -> unit = function
-    | Out_chan ch ->
-      close_out ch
-    | In_chan ch ->
-      close_in ch
+    | Out_chan ch -> close_out ch
+    | In_chan ch -> close_in ch
 
   type 'a t =
     { kind : kind
@@ -105,10 +98,8 @@ module Io = struct
    fun fn mode ->
     let flags =
       match mode with
-      | Out ->
-        [ Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
-      | In ->
-        [ O_RDONLY; O_SHARE_DELETE ]
+      | Out -> [ Unix.O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ]
+      | In -> [ O_RDONLY; O_SHARE_DELETE ]
     in
     let fd = lazy (Unix.openfile (Path.to_string fn) flags 0o666) in
     let channel = lazy (channel_of_descr (Lazy.force fd) mode) in
@@ -118,23 +109,20 @@ module Io = struct
    fun t ->
     if Lazy.is_val t.channel then
       match Lazy.force t.channel with
-      | Out_chan oc ->
-        flush oc
-      | In_chan _ ->
-        ()
+      | Out_chan oc -> flush oc
+      | In_chan _ -> ()
 
   let fd t =
     flush t;
     Lazy.force t.fd
 
-  let out_channel = function { channel = (lazy (Out_chan oc)); _ } -> oc
+  let out_channel = function
+    | { channel = (lazy (Out_chan oc)); _ } -> oc
 
   let release t =
     match t.status with
-    | Closed ->
-      ()
-    | Keep_open ->
-      flush t
+    | Closed -> ()
+    | Keep_open -> flush t
     | Close_after_exec ->
       t.status <- Closed;
       if Lazy.is_val t.channel then
@@ -173,35 +161,26 @@ let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
   let quote fn = String.quote_for_shell (Path.to_string fn) in
   let prefix, suffix =
     match dir with
-    | None ->
-      ("", "")
-    | Some dir ->
-      (sprintf "(cd %s && " (quote dir), ")")
+    | None -> ("", "")
+    | Some dir -> (sprintf "(cd %s && " (quote dir), ")")
   in
   let suffix =
     match stdin_from.kind with
-    | Terminal ->
-      suffix
-    | File fn ->
-      suffix ^ " < " ^ quote fn
+    | Terminal -> suffix
+    | File fn -> suffix ^ " < " ^ quote fn
   in
   let suffix =
     match (stdout_to.kind, stderr_to.kind) with
-    | File fn1, File fn2 when Path.equal fn1 fn2 ->
-      " &> " ^ quote fn1
+    | File fn1, File fn2 when Path.equal fn1 fn2 -> " &> " ^ quote fn1
     | _ -> (
       let suffix =
         match stdout_to.kind with
-        | Terminal ->
-          suffix
-        | File fn ->
-          suffix ^ " > " ^ quote fn
+        | Terminal -> suffix
+        | File fn -> suffix ^ " > " ^ quote fn
       in
       match stderr_to.kind with
-      | Terminal ->
-        suffix
-      | File fn ->
-        suffix ^ " 2> " ^ quote fn )
+      | Terminal -> suffix
+      | File fn -> suffix ^ " 2> " ^ quote fn )
   in
   (prefix, suffix)
 
@@ -224,16 +203,22 @@ module Fancy = struct
         if i < 0 then
           0
         else
-          match s.[i] with '\\' | '/' -> i + 1 | _ -> find_prog_start (i - 1)
+          match s.[i] with
+          | '\\'
+           |'/' ->
+            i + 1
+          | _ -> find_prog_start (i - 1)
       in
-      let prog_end = match s.[len - 1] with '"' -> len - 1 | _ -> len in
+      let prog_end =
+        match s.[len - 1] with
+        | '"' -> len - 1
+        | _ -> len
+      in
       let prog_start = find_prog_start (prog_end - 1) in
       let prog_end =
         match String.index_from s prog_start '.' with
-        | None ->
-          prog_end
-        | Some i ->
-          i
+        | None -> prog_end
+        | Some i -> i
       in
       let before = String.take s prog_start in
       let after = String.drop s prog_end in
@@ -267,8 +252,7 @@ module Fancy = struct
         (Pp.seq (Pp.tag (Pp.verbatim prog) ~tag:styles) (Pp.verbatim after))
 
   let rec colorize_args = function
-    | [] ->
-      []
+    | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag
@@ -276,8 +260,7 @@ module Fancy = struct
           ~tag:
             (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
       :: colorize_args rest
-    | x :: rest ->
-      Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
+    | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
   let command_line ~prog ~args ~dir ~stdout_to ~stderr_to ~stdin_from =
     let open Pp.O in
@@ -289,15 +272,15 @@ module Fancy = struct
     Pp.verbatim prefix ++ pp ++ Pp.verbatim suffix
 
   let pp_purpose = function
-    | Internal_job ->
-      Pp.verbatim "(internal)"
+    | Internal_job -> Pp.verbatim "(internal)"
     | Build_job targets -> (
       let rec split_paths targets_acc ctxs_acc = function
-        | [] ->
-          (List.rev targets_acc, String.Set.to_list ctxs_acc)
+        | [] -> (List.rev targets_acc, String.Set.to_list ctxs_acc)
         | path :: rest -> (
           let add_ctx ctx acc =
-            match ctx with "default" -> acc | _ -> String.Set.add acc ctx
+            match ctx with
+            | "default" -> acc
+            | _ -> String.Set.add acc ctx
           in
           match Dpath.analyse_target path with
           | Other path ->
@@ -324,18 +307,14 @@ module Fancy = struct
         |> String.Map.of_list_multi |> String.Map.to_list
         |> List.map ~f:(fun (prefix, suffixes) ->
           match suffixes with
-          | [] ->
-            assert false
-          | [ suffix ] ->
-            prefix ^ suffix
-          | _ ->
-            sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
+          | [] -> assert false
+          | [ suffix ] -> prefix ^ suffix
+          | _ -> sprintf "%s{%s}" prefix (String.concat ~sep:"," suffixes))
         |> String.concat ~sep:","
       in
       let pp = Pp.verbatim targets in
       match contexts with
-      | [] ->
-        pp
+      | [] -> pp
       | l ->
         let open Pp.O in
         pp ++ Pp.char ' '
@@ -369,8 +348,7 @@ module Exit_status = struct
   type t = (int, error) result
 
   let parse_output = function
-    | "" ->
-      None
+    | "" -> None
     | s ->
       Some
         (Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
@@ -403,10 +381,8 @@ module Exit_status = struct
     | Error err ->
       let msg =
         match err with
-        | Failed n ->
-          sprintf "exited with code %d" n
-        | Signaled signame ->
-          sprintf "got signal %s" signame
+        | Failed n -> sprintf "exited with code %d" n
+        | Signaled signame -> sprintf "got signal %s" signame
       in
       fail
         ( Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
@@ -420,20 +396,16 @@ module Exit_status = struct
   let outputs_starts_with_location =
     let rec loop s pos len prefix =
       match prefix with
-      | [] ->
-        true
+      | [] -> true
       | c :: rest -> (
         pos < len
         &&
         match s.[pos] with
         | '\027' -> (
           match String.index_from s pos 'm' with
-          | None ->
-            false
-          | Some pos ->
-            loop s (pos + 1) len prefix )
-        | c' ->
-          c = c' && loop s (pos + 1) len rest )
+          | None -> false
+          | Some pos -> loop s (pos + 1) len prefix )
+        | c' -> c = c' && loop s (pos + 1) len rest )
     in
     fun output ->
       loop output 0 (String.length output) [ 'F'; 'i'; 'l'; 'e'; ' ' ]
@@ -472,8 +444,7 @@ module Exit_status = struct
             sprintf "(exit %d)" n
           else
             fail (Option.to_list output)
-        | Signaled signame ->
-          sprintf "(got signal %s)" signame
+        | Signaled signame -> sprintf "(got signal %s)" signame
       in
       fail
         ( progname_and_purpose Error ++ Pp.char ' '
@@ -493,8 +464,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
         None
       else
         Some p
-    | None ->
-      dir
+    | None -> dir
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
@@ -516,14 +486,12 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
             ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
           ]);
       cmdline
-    | _ ->
-      Pp.nop
+    | _ -> Pp.nop
   in
   let args, response_file =
     if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
       match Response_file.get ~prog with
-      | Not_supported ->
-        (args, None)
+      | Not_supported -> (args, None)
       | Zero_terminated_strings arg ->
         let fn = Temp.create "responsefile" ".data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
@@ -537,7 +505,9 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   let argv = prog_str :: args in
   let output_filename, stdout_to, stderr_to =
     match (stdout_to.kind, stderr_to.kind) with
-    | (Terminal, _ | _, Terminal) when !Clflags.capture_outputs ->
+    | Terminal, _
+     |_, Terminal
+      when !Clflags.capture_outputs ->
       let fn = Temp.create "dune" ".output" in
       let terminal = Io.file fn Io.Out in
       let get (out : Io.output Io.t) =
@@ -548,8 +518,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
           out
       in
       (Some fn, get stdout_to, get stderr_to)
-    | _ ->
-      (None, stdout_to, stderr_to)
+    | _ -> (None, stdout_to, stderr_to)
   in
   let run =
     (* Output.fd might create the file with Unix.openfile. We need to make sure
@@ -564,10 +533,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   in
   let pid =
     match dir with
-    | None ->
-      run ()
-    | Some dir ->
-      Scheduler.with_chdir scheduler ~dir ~f:run
+    | None -> run ()
+    | Some dir -> Scheduler.with_chdir scheduler ~dir ~f:run
   in
   Io.release stdout_to;
   Io.release stderr_to;
@@ -577,8 +544,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   Option.iter response_file ~f:Path.unlink;
   let output =
     match output_filename with
-    | None ->
-      ""
+    | None -> ""
     | Some fn ->
       let s = Stdune.Io.read_file fn in
       Temp.destroy fn;
@@ -587,18 +553,13 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   Log.command ~command_line ~output ~exit_status;
   let exit_status : Exit_status.t =
     match exit_status with
-    | WEXITED n when code_is_ok ok_codes n ->
-      Ok n
-    | WEXITED n ->
-      Error (Failed n)
-    | WSIGNALED n ->
-      Error (Signaled (Signal.name n))
-    | WSTOPPED _ ->
-      assert false
+    | WEXITED n when code_is_ok ok_codes n -> Ok n
+    | WEXITED n -> Error (Failed n)
+    | WSIGNALED n -> Error (Signaled (Signal.name n))
+    | WSTOPPED _ -> assert false
   in
   match (display, exit_status, output) with
-  | (Quiet | Progress), Ok n, "" ->
-    n (* Optimisation for the common case *)
+  | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
   | Verbose, _, _ ->
     Exit_status.handle_verbose exit_status ~id ~command_line:fancy_command_line
       ~output
@@ -633,17 +594,14 @@ let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
   run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
-      | [ x ] ->
-        x
+      | [ x ] -> x
       | l -> (
         let cmdline =
           let prog = Path.reach_for_running ?from:dir prog in
           let prog_display = String.concat (prog :: args) ~sep:" " in
           match dir with
-          | None ->
-            prog_display
-          | Some dir ->
-            sprintf "cd %s && %s" (Path.to_string dir) prog_display
+          | None -> prog_display
+          | Some dir -> sprintf "cd %s && %s" (Path.to_string dir) prog_display
         in
         match l with
         | [] ->

@@ -19,12 +19,9 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
     let gen_module = Module.generated ~src_dir name in
     match wrapped with
-    | None ->
-      gen_module
-    | Some (Yes_with_transition _) ->
-      assert false
-    | Some (Simple false) ->
-      gen_module
+    | None -> gen_module
+    | Some (Yes_with_transition _) -> assert false
+    | Some (Simple false) -> gen_module
     | Some (Simple true) ->
       let main_module_name =
         Lib.main_module_name lib |> Result.ok_exn |> Option.value_exn
@@ -61,8 +58,7 @@ let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
 
 let prlist buf name l ~f =
   match l with
-  | [] ->
-    pr buf "let %s = []" name
+  | [] -> pr buf "let %s = []" name
   | x :: l ->
     pr buf "let %s =" name;
     Printf.bprintf buf "  [ ";
@@ -96,8 +92,7 @@ let findlib_init_code ~preds ~libs =
 
 let build_info_code cctx ~libs ~api_version =
   ( match api_version with
-  | Dune_file.Library.Special_builtin_support.Build_info.V1 ->
-    () );
+  | Dune_file.Library.Special_builtin_support.Build_info.V1 -> () );
   let sctx = CC.super_context cctx in
   let file_tree = Super_context.file_tree sctx in
   (* [placeholders] is a mapping from source path to variable names. For each
@@ -114,8 +109,7 @@ let build_info_code cctx ~libs ~api_version =
   in
   let placeholder p =
     match File_tree.nearest_vcs file_tree p with
-    | None ->
-      "None"
+    | None -> "None"
     | Some vcs -> (
       let p =
         Option.value
@@ -127,8 +121,7 @@ let build_info_code cctx ~libs ~api_version =
           ~default:Path.Source.root
       in
       match Path.Source.Map.find !placeholders p with
-      | Some var ->
-        var
+      | Some var -> var
       | None ->
         let var = gen_placeholder_var () in
         placeholders := Path.Source.Map.set !placeholders p var;
@@ -136,15 +129,12 @@ let build_info_code cctx ~libs ~api_version =
   in
   let version_of_package (p : Package.t) =
     match p.version with
-    | Some v ->
-      sprintf "Some %S" v
-    | None ->
-      placeholder p.path
+    | Some v -> sprintf "Some %S" v
+    | None -> placeholder p.path
   in
   let version =
     match Compilation_context.package cctx with
-    | Some p ->
-      version_of_package p
+    | Some p -> version_of_package p
     | None ->
       let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
       placeholder p
@@ -153,14 +143,11 @@ let build_info_code cctx ~libs ~api_version =
     List.map libs ~f:(fun lib ->
       ( Lib.name lib
       , match Lib_info.version (Lib.info lib) with
-        | Some v ->
-          sprintf "Some %S" v
+        | Some v -> sprintf "Some %S" v
         | None -> (
           match Lib_info.status (Lib.info lib) with
-          | Installed ->
-            "None"
-          | Public (_, p) ->
-            version_of_package p
+          | Installed -> "None"
+          | Public (_, p) -> version_of_package p
           | Private _ ->
             let p =
               Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
@@ -200,8 +187,7 @@ let handle_special_libs cctx =
   let module LM = Lib.Lib_and_module in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
-    | [] ->
-      { to_link = List.rev to_link_rev; force_linkall }
+    | [] -> { to_link = List.rev to_link_rev; force_linkall }
     | lib :: libs -> (
       match Lib_info.special_builtin_support (Lib.info lib) with
       | None ->

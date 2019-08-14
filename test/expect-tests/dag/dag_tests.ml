@@ -66,10 +66,10 @@ child 4 1 child 3 1 child 2 1 child 1 2 root child 4
 
 let rec adjacent_pairs l =
   match l with
-  | [] | [ _ ] ->
+  | []
+   |[ _ ] ->
     []
-  | x :: y :: rest ->
-    (x, y) :: adjacent_pairs (y :: rest)
+  | x :: y :: rest -> (x, y) :: adjacent_pairs (y :: rest)
 
 let cycle_test variant =
   let module Dag = DagF.Make (struct
@@ -90,10 +90,8 @@ let cycle_test variant =
     path when producing the cycle for some reason (or at least they did in
       2019-03) *)
   match variant with
-  | `a ->
-    add d n2 n3
-  | `b ->
-    () );
+  | `a -> add d n2 n3
+  | `b -> () );
   let n4 = node d 4 in
   add d n3 n4;
   let n5 = node d 5 in
@@ -150,16 +148,13 @@ let cycle_test variant =
   let _n31 = node d 31 in
   add d n14 n20;
   match add d n23 n11 with
-  | _ ->
-    assert false
+  | _ -> assert false
   | exception Cycle c ->
     let c = List.map c ~f:(fun x -> x.data) in
     List.iter (adjacent_pairs c) ~f:(fun (b, a) ->
       match List.exists !edges ~f:(fun edge -> edge = (a, b)) with
-      | true ->
-        ()
-      | false ->
-        Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
+      | true -> ()
+      | false -> Printf.ksprintf failwith "bad edge in cycle: (%d, %d)\n" a b);
     List.map c ~f:(Pp.textf "%d") |> Pp.concat ~sep:Pp.space |> print
 
 let%expect_test _ =

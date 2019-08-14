@@ -53,8 +53,7 @@ let term =
     in
     Build_system.do_build ~request
     >>| function
-    | [ (_, env) ] ->
-      Format.printf "%a" pp env
+    | [ (_, env) ] -> Format.printf "%a" pp env
     | l ->
       List.iter l ~f:(fun (name, env) ->
         Format.printf "@[<v2>Environment for context %s:@,%a@]@." name pp env))

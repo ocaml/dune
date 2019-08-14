@@ -3,8 +3,7 @@ open Import
 
 let interpret_destdir ~destdir path =
   match destdir with
-  | None ->
-    path
+  | None -> path
   | Some prefix ->
     Path.append_local (Path.of_string prefix) (Path.local_part path)
 
@@ -19,18 +18,15 @@ let get_dirs context ~prefix_from_command_line ~libdir_from_command_line =
     let* prefix = Context.install_prefix context in
     let libdir =
       match libdir_from_command_line with
-      | None ->
-        Context.install_ocaml_libdir context
-      | Some l ->
-        Fiber.return (Some (Path.relative prefix l))
+      | None -> Context.install_ocaml_libdir context
+      | Some l -> Fiber.return (Some (Path.relative prefix l))
     in
     let+ libdir = libdir in
     (prefix, libdir)
 
 let resolve_package_install setup pkg =
   match Import.Main.package_install_file setup pkg with
-  | Ok path ->
-    path
+  | Ok path -> path
   | Error () ->
     let pkg = Package.Name.to_string pkg in
     User_error.raise
@@ -102,8 +98,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         ~loc:(Loc.in_file (Path.build src))
         [ Pp.text "Failed to parse file, not adding version information." ];
       plain_copy ()
-    | No_version_needed ->
-      plain_copy ()
+    | No_version_needed -> plain_copy ()
     | Need_version print -> (
       match
         let open Option.O in
@@ -113,8 +108,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         in
         get_vcs package.path
       with
-      | None ->
-        plain_copy ()
+      | None -> plain_copy ()
       | Some vcs ->
         let open Fiber.O in
         let+ version = Dune.Vcs.describe vcs in
@@ -154,10 +148,8 @@ module File_ops_real (W : Workspace) : File_operations = struct
     in
     if
       List.exists dp ~f:(function
-        | Dune_lang.List (Atom (A "version") :: _) ->
-          true
-        | _ ->
-          false)
+        | Dune_lang.List (Atom (A "version") :: _) -> true
+        | _ -> false)
     then
       No_version_needed
     else
@@ -171,12 +163,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
           in
           let dp =
             match dp with
-            | lang :: name :: rest ->
-              lang :: name :: version :: rest
-            | [ lang ] ->
-              [ lang; version ]
-            | [] ->
-              [ version ]
+            | lang :: name :: rest -> lang :: name :: version :: rest
+            | [ lang ] -> [ lang; version ]
+            | [] -> [ version ]
           in
           Format.pp_open_vbox ppf 0;
           List.iter dp ~f:(fun x ->
@@ -221,8 +210,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         print_unix_error (fun () -> Path.rmdir dir)
       | Error e ->
         User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
-      | _ ->
-        ()
+      | _ -> ()
 
   let mkdir_p = Path.mkdir_p
 end
@@ -289,17 +277,13 @@ let install_uninstall ~what =
       let* workspace = Import.Main.scan_workspace common in
       let contexts =
         match context with
-        | None ->
-          workspace.contexts
-        | Some name ->
-          [ Import.Main.find_context_exn workspace ~name ]
+        | None -> workspace.contexts
+        | Some name -> [ Import.Main.find_context_exn workspace ~name ]
       in
       let pkgs =
         match pkgs with
-        | [] ->
-          Package.Name.Map.keys workspace.conf.packages
-        | l ->
-          l
+        | [] -> Package.Name.Map.keys workspace.conf.packages
+        | l -> l
       in
       let install_files, missing_install_files =
         List.concat_map pkgs ~f:(fun pkg ->
@@ -324,14 +308,14 @@ let install_uninstall ~what =
       ( match
         (contexts, prefix_from_command_line, libdir_from_command_line)
         with
-      | _ :: _ :: _, Some _, _ | _ :: _ :: _, _, Some _ ->
+      | _ :: _ :: _, Some _, _
+       |_ :: _ :: _, _, Some _ ->
         User_error.raise
           [ Pp.text
             "Cannot specify --prefix or --libdir when installing into \
              multiple contexts!"
           ]
-      | _ ->
-        () );
+      | _ -> () );
       let module CMap = Map.Make (Context) in
       let install_files_by_context =
         CMap.of_list_multi install_files
@@ -346,8 +330,7 @@ let install_uninstall ~what =
                     (not (Path.exists (Path.build entry.src)))
                     entry.src)
               with
-              | [] ->
-                (package, entries)
+              | [] -> (package, entries)
               | missing_files ->
                 User_error.raise
                   [ Pp.textf

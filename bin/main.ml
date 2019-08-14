@@ -32,10 +32,8 @@ let build_targets =
     and+ targets = Arg.(value & pos_all dep [] name_) in
     let targets =
       match targets with
-      | [] ->
-        [ Common.default_target common ]
-      | _ :: _ ->
-        targets
+      | [] -> [ Common.default_target common ]
+      | _ :: _ -> targets
     in
     Common.set_common common ~targets;
     let targets setup = Target.resolve_targets_exn common setup targets in
@@ -61,12 +59,11 @@ let runtest =
         (List.map dirs ~f:(fun s ->
           let prefix =
             match s with
-            | "" | "." ->
+            | ""
+             |"." ->
               ""
-            | dir when dir.[String.length dir - 1] = '/' ->
-              dir
-            | dir ->
-              dir ^ "/"
+            | dir when dir.[String.length dir - 1] = '/' -> dir
+            | dir -> dir ^ "/"
           in
           Arg.Dep.alias_rec (prefix ^ "runtest")));
     let targets (setup : Main.build_system) =
@@ -122,8 +119,7 @@ let promote =
     Common.set_common common ~targets:[];
     Promotion.promote_files_registered_in_last_run
       ( match files with
-      | [] ->
-        All
+      | [] -> All
       | _ ->
         let files =
           List.map files ~f:(fun fn ->
@@ -169,10 +165,8 @@ let default =
   , Term.info "dune" ~doc
     ~version:
       ( match Build_info.V1.version () with
-      | None ->
-        "n/a"
-      | Some v ->
-        Build_info.V1.Version.to_string v )
+      | None -> "n/a"
+      | Some v -> Build_info.V1.Version.to_string v )
       ~man:
         [ `S "DESCRIPTION"
         ; `P
@@ -195,13 +189,10 @@ let () =
   Colors.setup_err_formatter_colors ();
   try
     match Term.eval_choice default all ~catch:false with
-    | `Error _ ->
-      exit 1
-    | _ ->
-      exit 0
+    | `Error _ -> exit 1
+    | _ -> exit 0
   with
-  | Fiber.Never ->
-    exit 1
+  | Fiber.Never -> exit 1
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
     Report_error.report exn;

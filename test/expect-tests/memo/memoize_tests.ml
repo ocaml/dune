@@ -26,10 +26,8 @@ let run f v =
          ~on_error:(fun e -> exn := Some e))
   with Fiber.Never -> (
     match !exn with
-    | Some exn ->
-      Exn_with_backtrace.reraise exn
-    | None ->
-      raise Fiber.Never )
+    | Some exn -> Exn_with_backtrace.reraise exn
+    | None -> raise Fiber.Never )
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Fiber.return (x ^ x)

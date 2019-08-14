@@ -56,8 +56,7 @@ module Temp = struct
     let rec try_name counter =
       let name = gen_name ~temp_dir ~prefix ~suffix in
       match mk name with
-      | () ->
-        name
+      | () -> name
       | exception Unix.Unix_error _ when counter < 1000 ->
         try_name (counter + 1)
     in
@@ -95,10 +94,8 @@ module Find_in_path = struct
 
   let get_path () =
     match Sys.getenv "PATH" with
-    | exception Not_found ->
-      []
-    | s ->
-      String.split s ~on:path_sep
+    | exception Not_found -> []
+    | s -> String.split s ~on:path_sep
 
   let exe =
     if Sys.win32 then
@@ -121,10 +118,8 @@ module Find_in_path = struct
 
   let find_ocaml_prog prog =
     match List.find_map (get_path ()) ~f:(fun dir -> best_prog dir prog) with
-    | None ->
-      prog_not_found prog
-    | Some fn ->
-      fn
+    | None -> prog_not_found prog
+    | Some fn -> fn
 
   let which prog =
     List.find_map (get_path ()) ~f:(fun dir ->
@@ -140,7 +135,12 @@ let gen_id t =
   n
 
 let quote_if_needed =
-  let need_quote = function ' ' | '\"' -> true | _ -> false in
+  let need_quote = function
+    | ' '
+     |'\"' ->
+      true
+    | _ -> false
+  in
   fun s ->
     if String.is_empty s || String.exists ~f:need_quote s then
       Filename.quote s
@@ -164,8 +164,7 @@ module Process = struct
     let create_process =
       let args = Array.of_list (prog :: args) in
       match env with
-      | None ->
-        Unix.create_process prog args
+      | None -> Unix.create_process prog args
       | Some env ->
         let env = Array.of_list env in
         Unix.create_process_env prog args env
@@ -189,8 +188,7 @@ module Process = struct
         status
       in
       match dir with
-      | None ->
-        run ()
+      | None -> run ()
       | Some d ->
         let old_dir = Sys.getcwd () in
         Exn.protect
@@ -226,13 +224,13 @@ module Process = struct
     let stderr_fn = t.dest_dir ^/ sprintf "stderr-%d" n in
     let in_dir =
       match dir with
-      | None ->
-        ""
-      | Some dir ->
-        sprintf "cd %s && " (Filename.quote dir)
+      | None -> ""
+      | Some dir -> sprintf "cd %s && " (Filename.quote dir)
     in
     let with_env =
-      match env with [] -> "" | _ -> "env " ^ String.concat ~sep:" " env
+      match env with
+      | [] -> ""
+      | _ -> "env " ^ String.concat ~sep:" " env
     in
     let exit_code =
       Printf.ksprintf Sys.command "%s%s %s > %s 2> %s" in_dir with_env cmd
@@ -273,8 +271,7 @@ let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
   match String.Map.find map var with
   | None ->
     die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
-  | Some s ->
-    s
+  | Some s -> s
 
 let ocaml_config_var t var = String.Map.find t.ocamlc_config var
 
@@ -285,17 +282,13 @@ let ocaml_config_var_exn t var =
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
   let dest_dir =
     match dest_dir with
-    | Some dir ->
-      dir
-    | None ->
-      Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
+    | Some dir -> dir
+    | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
   in
   let ocamlc =
     match ocamlc with
-    | Some fn ->
-      fn
-    | None ->
-      Find_in_path.find_ocaml_prog "ocamlc"
+    | Some fn -> fn
+    | None -> Find_in_path.find_ocaml_prog "ocamlc"
   in
   let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
   let t =
@@ -318,18 +311,15 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
       |> String.split_lines
     in
     match Ocaml_config.Vars.of_lines ocamlc_config_output with
-    | Ok x ->
-      x
+    | Ok x -> x
     | Error msg ->
       die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
   in
   let get = get_ocaml_config_var_exn ocamlc_config ~ocamlc_config_cmd in
   let c_compiler =
     match String.Map.find ocamlc_config "c_compiler" with
-    | Some c_comp ->
-      c_comp ^ " " ^ get "ocamlc_cflags"
-    | None ->
-      get "bytecomp_c_compiler"
+    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
+    | None -> get "bytecomp_c_compiler"
   in
   { t with
     ocamlc_config
@@ -341,7 +331,9 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
 
 let need_to_compile_and_link_separately t =
   (* Vague memory from writing the discover.ml script for Lwt... *)
-  match t.ccomp_type with "msvc" -> true | _ -> false
+  match t.ccomp_type with
+  | "msvc" -> true
+  | _ -> false
 
 let compile_and_link_c_prog t ?(c_flags = []) ?(link_flags = []) code =
   let dir = t.dest_dir ^/ sprintf "c-test-%d" (gen_id t) in
@@ -394,10 +386,8 @@ let compile_c_prog t ?(c_flags = []) code =
 
 let c_test t ?c_flags ?link_flags code =
   match compile_and_link_c_prog t ?c_flags ?link_flags code with
-  | Ok _ ->
-    true
-  | Error _ ->
-    false
+  | Ok _ -> true
+  | Error _ -> false
 
 module C_define = struct
   module Type = struct
@@ -406,7 +396,10 @@ module C_define = struct
       | Int
       | String
 
-    let name = function Switch -> "bool" | Int -> "int" | String -> "string"
+    let name = function
+      | Switch -> "bool"
+      | Int -> "int"
+      | String -> "string"
   end
 
   module Value = struct
@@ -464,8 +457,7 @@ const char s%i[] = {
 };
 |}
           i c_arr_i name name
-      | String ->
-        pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
+      | String -> pr {|const char *s%i = "BEGIN-%i-" %s "-END";|} i i name
       | Switch ->
         pr
           {|
@@ -486,24 +478,18 @@ const char *s%i = "BEGIN-%i-false-END";
     List.mapi vars ~f:(fun i (name, t) ->
       let raw_val =
         match Int.Map.find values i with
-        | None ->
-          die "Unable to get value for %s" name
-        | Some v ->
-          v
+        | None -> die "Unable to get value for %s" name
+        | Some v -> v
       in
       let value =
         match t with
-        | Type.Switch ->
-          Bool.of_string raw_val |> Option.map ~f:Value.switch
-        | Int ->
-          Int.of_string raw_val |> Option.map ~f:Value.int
-        | String ->
-          Some (String raw_val)
+        | Type.Switch -> Bool.of_string raw_val |> Option.map ~f:Value.switch
+        | Int -> Int.of_string raw_val |> Option.map ~f:Value.int
+        | String -> Some (String raw_val)
       in
       let value =
         match value with
-        | Some v ->
-          v
+        | Some v -> v
         | None ->
           let msg =
             sprintf
@@ -518,26 +504,20 @@ const char *s%i = "BEGIN-%i-false-END";
   let import t ?prelude ?c_flags ~includes vars =
     let program = extract_program ?prelude ("stdio.h" :: includes) vars in
     match compile_c_prog t ?c_flags program with
-    | Error _ ->
-      die "failed to compile program"
-    | Ok obj ->
-      extract_values obj vars
+    | Error _ -> die "failed to compile program"
+    | Ok obj -> extract_values obj vars
 
   let gen_header_file t ~fname ?protection_var vars =
     let protection_var =
       match protection_var with
-      | Some v ->
-        v
+      | Some v -> v
       | None ->
         String.map
           (t.name ^ "_" ^ Filename.basename fname)
           ~f:(function
-            | 'a' .. 'z' as c ->
-              Char.uppercase_ascii c
-            | ('A' .. 'Z' | '0' .. '9') as c ->
-              c
-            | _ ->
-              '_')
+            | 'a' .. 'z' as c -> Char.uppercase_ascii c
+            | ('A' .. 'Z' | '0' .. '9') as c -> c
+            | _ -> '_')
     in
     let vars =
       List.sort vars ~compare:(fun (a, _) (b, _) -> String.compare a b)
@@ -545,14 +525,10 @@ const char *s%i = "BEGIN-%i-false-END";
     let lines =
       List.map vars ~f:(fun (name, value) ->
         match (value : Value.t) with
-        | Switch false ->
-          sprintf "#undef  %s" name
-        | Switch true ->
-          sprintf "#define %s" name
-        | Int n ->
-          sprintf "#define %s (%d)" name n
-        | String s ->
-          sprintf "#define %s %S" name s)
+        | Switch false -> sprintf "#undef  %s" name
+        | Switch true -> sprintf "#define %s" name
+        | Int n -> sprintf "#define %s (%d)" name n
+        | String s -> sprintf "#define %s %S" name s)
     in
     let lines =
       List.concat
@@ -575,10 +551,8 @@ let which t prog =
   let x = Find_in_path.which prog in
   logf t "-> %s"
     ( match x with
-    | None ->
-      "not found"
-    | Some fn ->
-      "found: " ^ quote_if_needed fn );
+    | None -> "not found"
+    | Some fn -> "found: " ^ quote_if_needed fn );
   x
 
 module Pkg_config = struct
@@ -601,15 +575,15 @@ module Pkg_config = struct
     let dir = c.dest_dir in
     let expr =
       match expr with
-      | Some e ->
-        e
+      | Some e -> e
       | None ->
         if
           String.exists package ~f:(function
-            | '=' | '>' | '<' ->
+            | '='
+             |'>'
+             |'<' ->
               true
-            | _ ->
-              false)
+            | _ -> false)
         then
           warn
             "Package name %S contains invalid characters. Use \
@@ -631,25 +605,20 @@ module Pkg_config = struct
           in
           Option.some_if
             ( match Sys.is_directory p with
-            | s ->
-              s
-            | exception Sys_error _ ->
-              false )
+            | s -> s
+            | exception Sys_error _ -> false )
             p
         in
         let _PKG_CONFIG_PATH = "PKG_CONFIG_PATH" in
         let pkg_config_path =
           match Sys.getenv _PKG_CONFIG_PATH with
-          | s ->
-            s ^ ":"
-          | exception Not_found ->
-            ""
+          | s -> s ^ ":"
+          | exception Not_found -> ""
         in
         [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path
           new_pkg_config_path
         ]
-      | _ ->
-        None
+      | _ -> None
     in
     let pc_flags = "--print-errors" in
     let { Process.exit_code; stderr; _ } =
@@ -661,10 +630,8 @@ module Pkg_config = struct
           String.trim
             (Process.run_capture_exn c ~dir ?env t.pkg_config [ what; package ])
         with
-        | "" ->
-          []
-        | s ->
-          String.split s ~on:' '
+        | "" -> []
+        | s -> String.split s ~on:' '
       in
       Ok { libs = run "--libs"; cflags = run "--cflags" }
     else
@@ -682,8 +649,7 @@ let main ?(args = []) ~name f =
   let ocamlc =
     ref
       ( match Sys.getenv "DUNE_CONFIGURATOR" with
-      | s ->
-        Some s
+      | s -> Some s
       | exception Not_found ->
         die
           "Configurator scripts must be run with Dune. To manually run a \
@@ -722,5 +688,4 @@ let main ?(args = []) ~name f =
     | Fatal_error msg ->
       eprintf "Error: %s\n%!" msg;
       exit 1
-    | _ ->
-      Exn.raise_with_backtrace exn bt )
+    | _ -> Exn.raise_with_backtrace exn bt )

@@ -18,28 +18,26 @@ let key_to_string = Digest.to_string
 
 let key_of_string s =
   match Digest.from_hex s with
-  | Some d ->
-      Result.Ok d
-  | None ->
-      Result.Error (Printf.sprintf "invalid key: %s" s)
+  | Some d -> Result.Ok d
+  | None -> Result.Error (Printf.sprintf "invalid key: %s" s)
 
 let promotion_to_string = function
   | Already_promoted (original, promoted) ->
-      Printf.sprintf "%s already promoted as %s" (Path.to_string original)
-        (Path.to_string promoted)
+    Printf.sprintf "%s already promoted as %s" (Path.to_string original)
+      (Path.to_string promoted)
   | Promoted (original, promoted) ->
-      Printf.sprintf "%s promoted as %s" (Path.to_string original)
-        (Path.to_string promoted)
+    Printf.sprintf "%s promoted as %s" (Path.to_string original)
+      (Path.to_string promoted)
 
 (* How to handle collisions. E.g. another version could assume collisions are
-   not possible *)
+  not possible *)
 module Collision = struct
   type res =
     | Found of Path.t
     | Not_found of Path.t
 
   (* We need to ensure we do not create holes in the suffix numbering for this
-     to work *)
+    to work *)
   let search path file =
     let rec loop n =
       let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
@@ -73,11 +71,10 @@ module FirstTwoCharsSubdir : FSScheme = struct
     match
       Digest.from_hex (Path.basename (fst (Path.split_extension path)))
     with
-    | Some digest ->
-        digest
+    | Some digest -> digest
     | None ->
-        Code_error.raise "strange cached file path (not a valid hash)"
-          [ (Path.to_string path, Path.to_dyn path) ]
+      Code_error.raise "strange cached file path (not a valid hash)"
+        [ (Path.to_string path, Path.to_dyn path) ]
 
   let list root =
     let f dir =
@@ -94,12 +91,15 @@ module FirstTwoCharsSubdir : FSScheme = struct
     in
     Array.to_list
       (Array.concat
-         (Array.to_list (Array.map ~f (Sys.readdir (Path.to_string root)))))
+        (Array.to_list (Array.map ~f (Sys.readdir (Path.to_string root)))))
 end
 
 module FSSchemeImpl = FirstTwoCharsSubdir
 
-let apply ~f o v = match o with Some o -> f v o | None -> v
+let apply ~f o v =
+  match o with
+  | Some o -> f v o
+  | None -> v
 
 module type memory = sig
   type t
@@ -160,7 +160,7 @@ module Memory = struct
       let hardlink path =
         let tmp = path_tmp memory in
         (* dune-memory uses a single writer model, the promoted file name can
-           be constant *)
+          be constant *)
         let dest = Path.L.relative tmp [ "promoting" ] in
         (let dest = Path.to_string dest in
          if Sys.file_exists dest then
@@ -183,16 +183,16 @@ module Memory = struct
       ) else
         match search memory effective_hash tmp with
         | Collision.Found p ->
-            Unix.unlink (Path.to_string tmp);
-            Path.touch p;
-            Result.Ok (Already_promoted (path, p))
+          Unix.unlink (Path.to_string tmp);
+          Path.touch p;
+          Result.Ok (Already_promoted (path, p))
         | Collision.Not_found p ->
-            mkpath (Path.parent_exn p);
-            let dest = Path.to_string p in
-            Unix.rename (Path.to_string tmp) dest;
-            (* Remove write permissions *)
-            Unix.chmod dest (stat.st_perm land 0o555);
-            Result.Ok (Promoted (path, p))
+          mkpath (Path.parent_exn p);
+          let dest = Path.to_string p in
+          Unix.rename (Path.to_string tmp) dest;
+          (* Remove write permissions *)
+          Unix.chmod dest (stat.st_perm land 0o555);
+          Result.Ok (Promoted (path, p))
     in
     let f () =
       Result.List.map ~f:promote paths
@@ -201,21 +201,22 @@ module Memory = struct
       mkpath (Path.parent_exn metadata_path);
       Io.write_file metadata_path
         (Csexp.to_string
-           (Sexp.List
-              [ Sexp.List (Sexp.Atom "metadata" :: metadata)
+          (Sexp.List
+            [ Sexp.List (Sexp.Atom "metadata" :: metadata)
+            ; Sexp.List
+              [ Sexp.Atom "produced-files"
               ; Sexp.List
-                  [ Sexp.Atom "produced-files"
-                  ; Sexp.List
-                      (List.map
-                         ~f:(function
-                           | Promoted (o, p) | Already_promoted (o, p) ->
-                               Sexp.List
-                                 [ Sexp.Atom (Path.to_string o)
-                                 ; Sexp.Atom (Path.to_string p)
-                                 ])
-                         promoted)
-                  ]
-              ]));
+                (List.map
+                  ~f:(function
+                    | Promoted (o, p)
+                     |Already_promoted (o, p) ->
+                      Sexp.List
+                        [ Sexp.Atom (Path.to_string o)
+                        ; Sexp.Atom (Path.to_string p)
+                        ])
+                   promoted)
+              ]
+            ]));
       promoted
     in
     with_lock memory f
@@ -225,37 +226,38 @@ module Memory = struct
     let f () =
       let open Result.O in
       ( try
-          Io.with_file_in path ~f:(fun input ->
-              Csexp.parse (Stream.of_channel input))
+        Io.with_file_in path ~f:(fun input ->
+          Csexp.parse (Stream.of_channel input))
         with Sys_error _ -> Result.Error "no cached file" )
       >>= (function
-            | Sexp.List l -> Result.ok l | _ -> Result.Error "invalid metadata")
+        | Sexp.List l -> Result.ok l
+        | _ -> Result.Error "invalid metadata")
       >>= function
       | [ Sexp.List (Sexp.Atom s_metadata :: metadata)
         ; Sexp.List [ Sexp.Atom s_produced; Sexp.List produced ]
         ] -> (
-          if
-            (not (String.equal s_metadata "metadata"))
-            && String.equal s_produced "produced-files"
-          then
-            Result.Error "invalid metadata scheme: wrong key"
-          else
-            Result.List.map produced ~f:(function
-              | Sexp.List [ Sexp.Atom f; Sexp.Atom t ] ->
-                  let f = Path.of_string f
-                  and t = Path.of_string t in
-                  Result.Ok (f, t, FSSchemeImpl.digest t)
-              | _ ->
-                  Result.Error "invalid metadata scheme in produced files list")
-            >>| function
-            | produced ->
-                if touch then
-                  List.iter
-                    ~f:(function _, source, _ -> Path.touch source)
-                    produced;
-                (metadata, produced) )
-      | _ ->
-          Result.Error "invalid metadata scheme"
+        if
+          (not (String.equal s_metadata "metadata"))
+          && String.equal s_produced "produced-files"
+        then
+          Result.Error "invalid metadata scheme: wrong key"
+        else
+          Result.List.map produced ~f:(function
+            | Sexp.List [ Sexp.Atom f; Sexp.Atom t ] ->
+              let f = Path.of_string f
+              and t = Path.of_string t in
+              Result.Ok (f, t, FSSchemeImpl.digest t)
+            | _ ->
+              Result.Error "invalid metadata scheme in produced files list")
+          >>| function
+          | produced ->
+            if touch then
+              List.iter
+                ~f:(function
+                  | _, source, _ -> Path.touch source)
+                produced;
+            (metadata, produced) )
+      | _ -> Result.Error "invalid metadata scheme"
     in
     with_lock memory f
 end
@@ -288,4 +290,4 @@ let trim memory free =
     )
   in
   Memory.with_lock memory (fun () ->
-      List.fold_left ~init:(0, []) ~f:delete files)
+    List.fold_left ~init:(0, []) ~f:delete files)

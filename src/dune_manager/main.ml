@@ -68,17 +68,13 @@ let start () =
   match
     Daemonize.daemonize ~workdir:root ~foreground:!foreground !port_path f
   with
-  | Result.Ok Finished ->
-      ()
-  | Result.Ok (Daemonize.Started (endpoint, _)) ->
-      show_endpoint endpoint
+  | Result.Ok Finished -> ()
+  | Result.Ok (Daemonize.Started (endpoint, _)) -> show_endpoint endpoint
   | Result.Ok (Daemonize.Already_running (endpoint, _)) when not !foreground ->
-      show_endpoint endpoint
+    show_endpoint endpoint
   | Result.Ok (Daemonize.Already_running (endpoint, pid)) ->
-      User_error.raise
-        [ Pp.textf "already running on %s (PID %i)" endpoint pid ]
-  | Result.Error reason ->
-      User_error.raise [ Pp.text reason ]
+    User_error.raise [ Pp.textf "already running on %s (PID %i)" endpoint pid ]
+  | Result.Error reason -> User_error.raise [ Pp.text reason ]
 
 let modes = Modes.add_exn modes "start" start
 
@@ -91,14 +87,13 @@ let stop () =
   match
     Result.ok_exn (Dune_manager.check_port_file ~close:false !port_path)
   with
-  | None ->
-      User_error.raise [ Pp.textf "not running" ]
+  | None -> User_error.raise [ Pp.textf "not running" ]
   | Some (_, pid, fd) ->
-      Unix.kill pid Sys.sigterm;
-      Result.ok_exn
-        (retry
-           ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
-           (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ()))
+    Unix.kill pid Sys.sigterm;
+    Result.ok_exn
+      (retry
+        ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
+         (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ()))
 
 let modes = Modes.add_exn modes "stop" stop
 
@@ -113,27 +108,25 @@ let main () =
     raise (Arg.Help help)
   else
     match Modes.find modes Sys.argv.(1) with
-    | Some f ->
-        f ()
+    | Some f -> f ()
     | None ->
-        raise
-          (Arg.Bad
-             (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
-                Sys.argv.(0) help))
+      raise
+        (Arg.Bad
+          (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
+            Sys.argv.(0) help))
 
 let () =
   try main () with
   | Arg.Bad reason ->
-      Printf.fprintf stderr "%s: command line error: %s\n%!" Sys.argv.(0)
-        reason;
-      exit 1
+    Printf.fprintf stderr "%s: command line error: %s\n%!" Sys.argv.(0) reason;
+    exit 1
   | User_error.E msg ->
-      Printf.fprintf stderr "%s: user error: %s\n" Sys.argv.(0)
-        (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg));
-      exit 2
+    Printf.fprintf stderr "%s: user error: %s\n" Sys.argv.(0)
+      (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg));
+    exit 2
   | Failure reason ->
-      Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) reason;
-      exit 3
+    Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) reason;
+    exit 3
   | Arg.Help help ->
-      Printf.fprintf stdout "Usage: %s %s\n%!" Sys.argv.(0) help;
-      exit 0
+    Printf.fprintf stdout "Usage: %s %s\n%!" Sys.argv.(0) help;
+    exit 0

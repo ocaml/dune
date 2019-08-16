@@ -47,30 +47,24 @@ let check_port_file ?(close = true) p =
       let open Result.O in
       retry (fun () ->
         match Fcntl.lock_get fd Fcntl.Write with
-        | None ->
-          Some None
-        | Some (Fcntl.Read, pid) ->
-          Some (Some pid)
-        | Some (Fcntl.Write, _) ->
-          None)
+        | None -> Some None
+        | Some (Fcntl.Read, pid) -> Some (Some pid)
+        | Some (Fcntl.Write, _) -> None)
       >>| Option.map ~f:(fun pid ->
         let buf = Bytes.make max_port_size ' ' in
         let read = Unix.read fd buf 0 max_port_size in
         (Bytes.sub_string buf ~pos:0 ~len:read, pid, fd))
     and finally () = if close then Unix.close fd in
     Exn.protect ~f ~finally
-  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) ->
-    Result.Ok None
-  | Result.Error e ->
-    Result.Error e
+  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) -> Result.Ok None
+  | Result.Error e -> Result.Error e
 
 let make_path client path =
   if Filename.is_relative path then
     match client.build_root with
     | Some p ->
       Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
-    | None ->
-      Result.Error "relative path while no build root was set"
+    | None -> Result.Error "relative path while no build root was set"
   else
     Result.ok (Path.of_string path)
 
@@ -116,8 +110,7 @@ let getsockname = function
   | Unix.ADDR_UNIX _ ->
     User_error.raise
       [ Pp.textf "got a Unix socket connection on our TCP socket ?" ]
-  | Unix.ADDR_INET (addr, port) ->
-    (addr, port)
+  | Unix.ADDR_INET (addr, port) -> (addr, port)
 
 let peer_name s =
   let addr, port = getsockname s in
@@ -144,10 +137,8 @@ let find_highest_common_version (a : version list) (b : version list) :
     Int_map.merge
       ~f:(fun _ minor_in_a minor_in_b ->
         match (minor_in_a, minor_in_b) with
-        | Some a, Some b ->
-          Some (min a b)
-        | _ ->
-          None)
+        | Some a, Some b -> Some (min a b)
+        | _ -> None)
       a b
   in
   Int_map.max_binding common
@@ -157,7 +148,9 @@ let int_of_string ?where s =
   with Failure _ ->
     Result.Error
       (Printf.sprintf "invalid integer%s: %s"
-        (match where with Some l -> " in " ^ l | None -> "")
+        ( match where with
+        | Some l -> " in " ^ l
+        | None -> "" )
          s)
 
 let client_thread (events, client) =
@@ -192,8 +185,7 @@ let client_thread (events, client) =
         Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer) major
           minor;
         Result.ok { client with version = v } )
-    | args ->
-      invalid_args args
+    | args -> invalid_args args
   and handle_promote client = function
     | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
       :: Sexp.List (Sexp.Atom "files" :: files)
@@ -201,8 +193,7 @@ let client_thread (events, client) =
       cmd -> (
       let repo =
         match rest with
-        | [] ->
-          Result.ok None
+        | [] -> Result.ok None
         | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] -> (
           int_of_string ~where:"repository index" repo
           >>= fun repo ->
@@ -228,8 +219,7 @@ let client_thread (events, client) =
           Some
             (Sexp.List
               [ Sexp.Atom (Path.to_string f); Sexp.Atom (Path.to_string t) ])
-        | _ ->
-          None
+        | _ -> None
       in
       repo
       >>= fun repo ->
@@ -242,13 +232,11 @@ let client_thread (events, client) =
         (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
       >>| fun promotions ->
       match List.filter_map ~f promotions with
-      | [] ->
-        client
+      | [] -> client
       | dedup ->
         send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
         client )
-    | args ->
-      invalid_args args
+    | args -> invalid_args args
   and handle_set_root client = function
     | [ Sexp.Atom dir ] ->
       Result.map_error
@@ -262,13 +250,11 @@ let client_thread (events, client) =
             "unable to read Dune memory")
         ( Dune_memory.make ~root:(Path.of_string dir) ()
         >>| fun memory -> { client with memory } )
-    | args ->
-      invalid_args args
+    | args -> invalid_args args
   and handle_set_build_root client = function
     | [ Sexp.Atom dir ] ->
       Result.ok { client with build_root = Some (Path.of_string dir) }
-    | args ->
-      invalid_args args
+    | args -> invalid_args args
   and handle_set_metadata client arg =
     Result.ok { client with common_metadata = arg }
   and handle_set_repos client arg =
@@ -295,20 +281,13 @@ let client_thread (events, client) =
         Result.map_error
           ~f:(fun s -> cmd ^ ": " ^ s)
           ( match cmd with
-          | "lang" ->
-            handle_lang client args
-          | "promote" ->
-            handle_promote client args
-          | "set-build-root" ->
-            handle_set_build_root client args
-          | "set-common-metadata" ->
-            handle_set_metadata client args
-          | "set-dune-memory-root" ->
-            handle_set_root client args
-          | "set-repos" ->
-            handle_set_repos client args
-          | _ ->
-            Result.Error (Printf.sprintf "unknown command: %s" cmd) )
+          | "lang" -> handle_lang client args
+          | "promote" -> handle_promote client args
+          | "set-build-root" -> handle_set_build_root client args
+          | "set-common-metadata" -> handle_set_metadata client args
+          | "set-dune-memory-root" -> handle_set_root client args
+          | "set-repos" -> handle_set_repos client args
+          | _ -> Result.Error (Printf.sprintf "unknown command: %s" cmd) )
     | cmd ->
       Result.Error
         (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
@@ -319,8 +298,7 @@ let client_thread (events, client) =
     Log.infof "accept client: %s" (peer_name client.peer);
     let rec handle client =
       match Stream.peek input with
-      | None ->
-        Log.infof "%s: ended" (peer_name client.peer)
+      | None -> Log.infof "%s: ended" (peer_name client.peer)
       | Some '\n' ->
         (* Skip toplevel newlines, for easy netcat interaction *)
         Stream.junk input;
@@ -338,8 +316,7 @@ let client_thread (events, client) =
         with
         | Result.Error e ->
           Log.infof "%s: command error: %s" (peer_name client.peer) e
-        | Result.Ok client ->
-          (handle [@tailcall]) client )
+        | Result.Ok client -> (handle [@tailcall]) client )
     in
     handle client
   and finally () =
@@ -352,8 +329,7 @@ let client_thread (events, client) =
   try Exn.protect ~f ~finally with
   | Unix.Unix_error (Unix.EBADF, _, _) ->
     Log.infof "%s: ended" (peer_name client.peer)
-  | Sys_error msg ->
-    Log.infof "%s: ended: %s" (peer_name client.peer) msg
+  | Sys_error msg -> Log.infof "%s: ended: %s" (peer_name client.peer) msg
 
 let run ?(port_f = ignore) ?(port = 0) manager =
   let rec accept_thread sock =
@@ -389,12 +365,10 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           clean (fun (_, tid) -> Thread.join tid);
           clean (fun (client, _) -> Unix.close client.fd);
           Unix.close fd
-        | _ ->
-          Log.infof "stop"
+        | _ -> Log.infof "stop"
       in
       ( match Evt.sync (Evt.receive manager.events) with
-      | Stop ->
-        stop ()
+      | Stop -> stop ()
       | New_client (fd, peer) ->
         let client =
           { fd
@@ -406,19 +380,16 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           ; repositories = []
           ; memory =
             ( match Dune_memory.make ?root:manager.root () with
-            | Result.Ok m ->
-              m
-            | Result.Error e ->
-              User_error.raise [ Pp.textf "%s" e ] )
+            | Result.Ok m -> m
+            | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
           }
         in
         let tid = Thread.create client_thread (manager.events, client) in
         manager.clients <-
           ( match Clients.add manager.clients client.fd (client, tid) with
-          | Result.Ok v ->
-            v
-          | Result.Error _ ->
-            User_error.raise [ Pp.textf "duplicate socket" ] )
+          | Result.Ok v -> v
+          | Result.Error _ -> User_error.raise [ Pp.textf "duplicate socket" ]
+          )
       | Client_left fd ->
         manager.clients <- Clients.remove manager.clients fd;
         if manager.config.exit_no_client && Clients.is_empty manager.clients
@@ -469,7 +440,8 @@ module Client = struct
       Daemonize.daemonize ~workdir:root (default_port_file ())
         (daemon ~root ~config:{ exit_no_client = true })
       >>| (function
-        | Started (ep, _) | Already_running (ep, _) ->
+        | Started (ep, _)
+         |Already_running (ep, _) ->
           ep
         | Finished ->
           Code_error.raise "dune-cache was run in the foreground" [])
@@ -479,12 +451,9 @@ module Client = struct
       match String.split_on_char ~sep:':' port with
       | [ addr; port ] -> (
         match int_of_string_opt port with
-        | Some i ->
-          Result.Ok (Unix.inet_addr_of_string addr, i)
-        | None ->
-          Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
-      | _ ->
-        Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))
+        | Some i -> Result.Ok (Unix.inet_addr_of_string addr, i)
+        | None -> Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
+      | _ -> Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))
     in
     let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     let* _ =
@@ -505,8 +474,7 @@ module Client = struct
       match repo with
       | Some idx ->
         [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
-      | None ->
-        []
+      | None -> []
     in
     send client.socket
       (Sexp.List

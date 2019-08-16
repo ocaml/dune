@@ -503,7 +503,8 @@ let add_spec_exn t fn rule =
 let add_rules_exn t rules =
   Path.Build.Map.iteri rules ~f:(fun key data -> add_spec_exn t key data)
 
-let rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
+let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
+  =
   let describe (rule : Internal_rule.t) =
     match rule.info with
     | From_dune_file { start; _ } ->
@@ -694,7 +695,7 @@ end = struct
       assert (Path.Build.( = ) dir rule.Internal_rule.dir);
       List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
         (target, rule)))
-    |> Path.Build.Map.of_list_reducei ~f:rule_conflict
+    |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
   let targets_of ~dir =
     match load_dir ~dir with

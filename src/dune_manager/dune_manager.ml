@@ -434,6 +434,7 @@ let run ?(port_f = ignore) ?(port = 0) manager =
       [ Pp.textf "unable to %s: %s\n" f (Unix.error_message errno) ]
 
 let daemon ~root ~config started =
+  Path.mkdir_p root;
   let log_file = Path.relative root "log" in
   Log.init ~file:(This log_file) ();
   let manager = make ~root ~config () in

@@ -8,6 +8,8 @@ let () = Hooks.End_of_build.always Memo.reset
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit
 
+  (** Creates directory if inside build path, otherwise asserts that directory
+    exists. *)
   val mkdir_p_or_check_exists : loc:Loc.t option -> Path.t -> unit
 
   val assert_exists : loc:Loc.t option -> Path.t -> unit

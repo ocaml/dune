@@ -24,7 +24,7 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_def
 
   let assert_exists_def =
-    Memo.create "mkdir_p" ~doc:"mkdir_p"
+    Memo.create "assert_path_exists" ~doc:"Path.exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
       ~visibility:Hidden Sync Path.exists

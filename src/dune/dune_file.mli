@@ -367,6 +367,8 @@ module Executables : sig
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     }
+
+  val has_stubs : t -> bool
 end
 
 module Rule : sig

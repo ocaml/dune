@@ -86,4 +86,3 @@ let build_o_files buildable ~sctx ~(c_sources : C.Sources.t) ~dir ~expander
   in
   let { C.Kind.Dict.c; cxx } = C.Sources.split_by_kind c_sources in
   build_x_files build_c_file c @ build_x_files build_cxx_file cxx
-  |> List.map ~f:Path.build

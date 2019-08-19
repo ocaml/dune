@@ -167,6 +167,7 @@ let build_stubs lib ~sctx ~dir ~expander ~requires ~dir_contents
       in
       C_rules.build_o_files lib.buildable ~sctx ~dir ~expander ~requires
         ~dir_contents ~c_sources
+      |> List.map ~f:Path.build
     else
       []
   in

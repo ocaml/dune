@@ -2,11 +2,16 @@ open Stdune
 open Dune_file
 module Library = Dune_file.Library
 
-type t = { libraries : C.Sources.t Lib_name.Map.t }
+type t =
+  { libraries : C.Sources.t Lib_name.Map.t
+  ; executables : C.Sources.t String.Map.t
+  }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
 
-let empty = { libraries = Lib_name.Map.empty }
+let for_exes t ~first_exe = String.Map.find_exn t.executables first_exe
+
+let empty = { libraries = Lib_name.Map.empty; executables = String.Map.empty }
 
 let c_name, cxx_name =
   let make what ~loc s =
@@ -42,63 +47,63 @@ let load_sources ~dune_version ~dir ~files =
       C.Kind.Dict.update acc kind ~f:(fun v ->
         String.Map.set v obj (C.Source.make ~kind ~path)))
 
+let eval_c_sources (d : _ Dir_with_dune.t) buildable ~c_sources =
+  let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t) validate osl
+    =
+    Ordered_set_lang.Unordered_string.eval_loc osl
+      ~key:(fun x -> x)
+      ~parse:(fun ~loc s ->
+        let s = validate ~loc s in
+        let s' = Filename.basename s in
+        if s' <> s then
+          User_error.raise ~loc
+            [ Pp.text
+              "relative part of stub is not necessary and should be removed. \
+               To include sources in subdirectories, use the include_subdirs \
+               stanza"
+            ];
+        s')
+      ~standard:String.Map.empty
+    |> String.Map.map ~f:(fun (loc, s) ->
+      match String.Map.find c_sources s with
+      | Some source -> (loc, source)
+      | None ->
+        let dune_version = d.dune_version in
+        User_error.raise ~loc
+          [ Pp.textf "%s does not exist as a C source. %s must be present" s
+            (String.enumerate_one_of (C.Kind.possible_fns kind s ~dune_version))
+          ])
+  in
+  let names = Option.value ~default:Ordered_set_lang.standard in
+  let c =
+    eval C.Kind.C c_sources.C.Kind.Dict.c c_name
+      (names buildable.Buildable.c_names)
+  in
+  let cxx =
+    eval C.Kind.Cxx c_sources.cxx cxx_name (names buildable.cxx_names)
+  in
+  String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
+    User_error.raise ~loc:loc2
+      [ Pp.textf
+        "%s and %s have conflicting names. You must rename one of them."
+          (Path.to_string_maybe_quoted
+            (Path.drop_optional_build_context (Path.build (C.Source.path cxx))))
+          (Path.to_string_maybe_quoted
+            (Path.drop_optional_build_context (Path.build (C.Source.path c))))
+      ])
+
 let make (d : _ Dir_with_dune.t)
   ~(c_sources : C.Source.t String.Map.t C.Kind.Dict.t) =
-  let libs =
-    List.filter_map d.data ~f:(fun stanza ->
+  let libs, exes =
+    List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t)
-          validate osl =
-          Ordered_set_lang.Unordered_string.eval_loc osl
-            ~key:(fun x -> x)
-            ~parse:(fun ~loc s ->
-              let s = validate ~loc s in
-              let s' = Filename.basename s in
-              if s' <> s then
-                User_error.raise ~loc
-                  [ Pp.text
-                    "relative part of stub is not necessary and should be \
-                     removed. To include sources in subdirectories, use the \
-                     include_subdirs stanza"
-                  ];
-              s')
-            ~standard:String.Map.empty
-          |> String.Map.map ~f:(fun (loc, s) ->
-            match String.Map.find c_sources s with
-            | Some source -> (loc, source)
-            | None ->
-              let dune_version = d.dune_version in
-              User_error.raise ~loc
-                [ Pp.textf
-                  "%s does not exist as a C source. %s must be present" s
-                    (String.enumerate_one_of
-                      (C.Kind.possible_fns kind s ~dune_version))
-                ])
-        in
-        let names = Option.value ~default:Ordered_set_lang.standard in
-        let c =
-          eval C.Kind.C c_sources.c c_name (names lib.buildable.c_names)
-        in
-        let cxx =
-          eval C.Kind.Cxx c_sources.cxx cxx_name
-            (names lib.buildable.cxx_names)
-        in
-        let all =
-          String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
-            User_error.raise ~loc:loc2
-              [ Pp.textf
-                "%s and %s have conflicting names. You must rename one of them."
-                  (Path.to_string_maybe_quoted
-                    (Path.drop_optional_build_context
-                      (Path.build (C.Source.path cxx))))
-                  (Path.to_string_maybe_quoted
-                    (Path.drop_optional_build_context
-                      (Path.build (C.Source.path c))))
-              ])
-        in
-        Some (lib, all)
-      | _ -> None)
+        let all = eval_c_sources d lib.buildable ~c_sources in
+        Left (lib, all)
+      | Executables exes ->
+        let all = eval_c_sources d exes.buildable ~c_sources in
+        Right (exes, all)
+      | _ -> Skip)
   in
   let libraries =
     match
@@ -111,6 +116,10 @@ let make (d : _ Dir_with_dune.t)
         [ Pp.textf "Library %S appears for the second time in this directory"
           (Lib_name.to_string name)
         ]
+  in
+  let executables =
+    String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
+      (snd (List.hd exes.names), m))
   in
   let () =
     let rev_map =
@@ -127,4 +136,4 @@ let make (d : _ Dir_with_dune.t)
         ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
         ]
   in
-  { libraries }
+  { libraries; executables }

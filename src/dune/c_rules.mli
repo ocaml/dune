@@ -10,4 +10,4 @@ val build_o_files :
   -> expander:Expander.t
   -> requires:Lib.L.t Or_exn.t
   -> dir_contents:Dir_contents.t
-  -> Path.t list
+  -> Path.Build.t list

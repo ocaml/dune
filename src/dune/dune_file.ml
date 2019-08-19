@@ -649,7 +649,8 @@ module Buildable = struct
     let check_c t =
       match since_c with
       | None -> t
-      | Some v -> Syntax.since Stanza.syntax v >>> t in
+      | Some v -> Syntax.since Stanza.syntax v >>> t
+    in
     let+ loc = loc
     and+ preprocess =
       field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
@@ -1605,6 +1606,11 @@ module Executables = struct
          f names ~multi)
     in
     (make false, make true)
+
+  let has_stubs t =
+    match (t.buildable.c_names, t.buildable.cxx_names) with
+    | None, None -> false
+    | _ -> true
 end
 
 module Rule = struct

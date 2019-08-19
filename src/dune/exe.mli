@@ -41,6 +41,7 @@ val build_and_link :
   -> linkages:Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
+  -> ?o_files:Path.t list
   -> Compilation_context.t
   -> unit
 
@@ -49,6 +50,7 @@ val build_and_link_many :
   -> linkages:Linkage.t list
   -> promote:Dune_file.Promote.t option
   -> ?link_flags:(unit, string list) Build.t
+  -> ?o_files:Path.t list
   -> Compilation_context.t
   -> unit
 

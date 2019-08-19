@@ -106,6 +106,9 @@
 
 - Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
 
+- Remove the optimisation of passing `-nodynlink` for executalbes when
+  not necessary. It seems to be breaking things (see #2527, @diml)
+
 1.11.0 (23/07/2019)
 -------------------
 

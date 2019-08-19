@@ -97,7 +97,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Some js_of_ocaml
     in
     let dynlink =
-      Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
+      (* See https://github.com/ocaml/dune/issues/2527 *)
+      true
+      || Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
         match mode.kind with
         | Shared_object -> true
         | _ -> false)

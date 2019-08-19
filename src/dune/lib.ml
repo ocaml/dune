@@ -148,9 +148,9 @@ module Error = struct
     let name = Lib_info.name private_dep in
     make ~loc
       [ Pp.textf
-        "Library %S is private, it cannot be a dependency of a public library."
-          (Lib_name.to_string name)
-      ; Pp.textf "You need to give %S a public name." (Lib_name.to_string name)
+        "Library %S is private, it cannot be a dependency of a public \
+         library. You need to give %S a public name."
+        (Lib_name.to_string name) (Lib_name.to_string name)
       ]
 
   let not_virtual_lib ~loc ~impl ~not_vlib =

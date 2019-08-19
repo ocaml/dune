@@ -6,8 +6,7 @@ public libraries may not have private dependencies
   8 |  (libraries privatelib)
                   ^^^^^^^^^^
   Error: Library "privatelib" is private, it cannot be a dependency of a public
-  library.
-  You need to give "privatelib" a public name.
+  library. You need to give "privatelib" a public name.
       ocamldep .publiclib.objs/publiclib.ml.d
   [1]
 
@@ -33,8 +32,7 @@ Unless they introduce private runtime dependencies:
   16 |   (pps private_ppx))
               ^^^^^^^^^^^
   Error: Library "private_runtime_dep" is private, it cannot be a dependency of
-  a public library.
-  You need to give "private_runtime_dep" a public name.
+  a public library. You need to give "private_runtime_dep" a public name.
         ocamlc .private_ppx.objs/byte/private_ppx.{cmi,cmo,cmt}
       ocamlopt .private_ppx.objs/native/private_ppx.{cmx,o}
       ocamlopt private_ppx.{a,cmxa}

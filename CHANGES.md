@@ -1,3 +1,9 @@
+1.11.2 (----------)
+-------------------
+
+- Remove the optimisation of passing `-nodynlink` for executalbes when
+  not necessary. It seems to be breaking things (see #2527, @diml)
+
 1.11.1 (09/08/2019)
 -------------------
 

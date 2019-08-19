@@ -1761,9 +1761,23 @@ let to_dune_lib ({ name; info; _ } as lib) ~modules ~foreign_objects ~dir =
   let version = Lib_info.version info in
   let jsoo_runtime = Lib_info.jsoo_runtime info in
   let special_builtin_support = Lib_info.special_builtin_support info in
-  let default_implementation = Lib_info.default_implementation info in
   let known_implementations = Lib_info.known_implementations info in
   let foreign_archives = Lib_info.foreign_archives info in
+  let open Result.O in
+  let+ default_implementation =
+    match
+      let open Option.O in
+      let* (loc, _) = Lib_info.default_implementation info in
+      let+ default_implementation = lib.default_implementation in
+      let (lazy default_implementation) = default_implementation in
+      (loc, default_implementation)
+    with
+    | None -> Ok None
+    | Some (loc, default_implementation) ->
+      let open Result.O in
+      let+ default_implementation = default_implementation in
+      Some (loc, default_implementation.name)
+  in
   Dune_package.Lib.make ~obj_dir ~orig_src_dir ~name ~loc ~kind ~synopsis
     ~version ~archives ~plugins ~foreign_archives ~foreign_objects
     ~jsoo_runtime

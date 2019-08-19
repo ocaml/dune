@@ -109,7 +109,7 @@ let build_c_file (lib : Library.t) ~sctx ~dir ~expander ~includes
   (loc, src, dst) =
   let ctx = Super_context.context sctx in
   let c_flags =
-    (Super_context.c_flags sctx ~dir ~expander ~flags:lib.c_flags).c
+    (Super_context.c_flags sctx ~dir ~expander ~flags:lib.buildable.c_flags).c
   in
   Super_context.add_rule sctx ~loc
     ~dir
@@ -140,7 +140,8 @@ let build_cxx_file (lib : Library.t) ~sctx ~dir ~expander ~includes
       [ A "-o"; Target dst ]
   in
   let cxx_flags =
-    (Super_context.c_flags sctx ~dir ~expander ~flags:lib.c_flags).cxx
+    (Super_context.c_flags sctx ~dir ~expander ~flags:lib.buildable.c_flags)
+      .cxx
   in
   Super_context.add_rule sctx ~loc
     ~dir

@@ -77,9 +77,12 @@ let make (d : _ Dir_with_dune.t)
                 ])
         in
         let names = Option.value ~default:Ordered_set_lang.standard in
-        let c = eval C.Kind.C c_sources.c c_name (names lib.c_names) in
+        let c =
+          eval C.Kind.C c_sources.c c_name (names lib.buildable.c_names)
+        in
         let cxx =
-          eval C.Kind.Cxx c_sources.cxx cxx_name (names lib.cxx_names)
+          eval C.Kind.Cxx c_sources.cxx cxx_name
+            (names lib.buildable.cxx_names)
         in
         let all =
           String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->

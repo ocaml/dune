@@ -112,6 +112,9 @@
 - Fix invalid library names in `dune-package` files. Only public names should
   exist in such files. (#2558, fix #2425, @rgrinberg)
 
+- `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
+  and `executables` stanzas. (#2562, @nojb)
+
 1.11.0 (23/07/2019)
 -------------------
 

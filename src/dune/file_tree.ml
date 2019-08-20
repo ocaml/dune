@@ -196,12 +196,13 @@ let readdir path =
 let load path ~ancestor_vcs ~recognize_jbuilder_projects =
   let open Result.O in
   let nb_path_visited = ref 0 in
+  Console.Status_line.set (fun () ->
+      Some
+        (Pp.verbatim (Printf.sprintf "Scanned %i directories" !nb_path_visited)));
   let rec walk path ~dirs_visited ~project:parent_project ~vcs
       ~(dir_status : Sub_dirs.Status.t) { dirs; files } =
     incr nb_path_visited;
-    if !nb_path_visited mod 100 = 0 then
-      Console.update_status_line
-        (Pp.verbatim (Printf.sprintf "Scanned %i directories" !nb_path_visited));
+    if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
     let project =
       if dir_status = Data_only then
         parent_project
@@ -319,7 +320,7 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
       ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
       ~dir_status:Normal ~project ~vcs:ancestor_vcs x
   in
-  Console.clear_status_line ();
+  Console.Status_line.set (Fn.const None);
   match walk with
   | Ok dir -> dir
   | Error m ->

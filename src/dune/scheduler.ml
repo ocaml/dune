@@ -179,6 +179,8 @@ end = struct
   let pending_jobs () = !pending_jobs
 end
 
+let running_jobs_count = Event.pending_jobs
+
 let ignore_for_watch = Event.ignore_next_file_change_event
 
 module File_watcher : sig
@@ -528,32 +530,6 @@ let with_chdir t ~dir ~f =
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
-type status_line_config =
-  { message : User_message.Style.t Pp.t option
-  ; show_jobs : bool
-  }
-
-let status_line_generator =
-  ref (fun () -> { message = None; show_jobs = false })
-
-let update_status_line () =
-  let gen_status_line = !status_line_generator () in
-  match gen_status_line with
-  | { message = None; _ } -> Console.clear_status_line ()
-  | { message = Some status_line; show_jobs } ->
-    let status_line =
-      if show_jobs then
-        Pp.seq status_line
-          (Pp.verbatim (Printf.sprintf " (jobs: %u)" (Event.pending_jobs ())))
-      else
-        status_line
-    in
-    Console.update_status_line status_line
-
-let set_status_line_generator gen =
-  status_line_generator := gen;
-  update_status_line ()
-
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
   t.concurrency <- n
@@ -667,10 +643,10 @@ end = struct
     let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then (
-      Console.clear_status_line ();
+      Console.Status_line.set (Fn.const None);
       Fiber.return Done
     ) else (
-      update_status_line ();
+      Console.Status_line.refresh ();
       match Event.next () with
       | Job_completed (job, status) ->
         let* () = Fiber.Ivar.fill job.ivar status in
@@ -714,15 +690,11 @@ end = struct
     let res = run t f in
     ( match res with
     | Error Files_changed ->
-      set_status_line_generator (fun () ->
-          { message =
-              Some
-                (Pp.seq
-                   (Pp.tag ~tag:User_message.Style.Error
-                      (Pp.verbatim "Had errors"))
-                   (Pp.verbatim ", killing current build..."))
-          ; show_jobs = false
-          })
+      Console.Status_line.set (fun () ->
+          Some
+            (Pp.seq
+               (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+               (Pp.verbatim ", killing current build...")))
     | _ -> () );
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
@@ -774,17 +746,13 @@ let poll ?config ~once ~finally () =
       Exit
   in
   let wait msg =
-    let old_generator = !status_line_generator in
-    set_status_line_generator (fun () ->
-        { message =
-            Some
-              (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes..."))
-        ; show_jobs = false
-        });
-    let res = block_waiting_for_changes () in
-    maybe_clear_screen ~config;
-    set_status_line_generator old_generator;
-    res
+    Console.Status_line.set_temporarily
+      (fun () ->
+        Some (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes...")))
+      (fun () ->
+        let res = block_waiting_for_changes () in
+        maybe_clear_screen ~config;
+        res)
   in
   let rec loop () =
     let res = Run_once.run_and_cleanup t once in

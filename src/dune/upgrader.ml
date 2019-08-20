@@ -381,38 +381,6 @@ let lookup_git_repo ft fn =
   | Some { kind = Git; root } -> Some root
   | _ -> None
 
-type git_file =
-  | Tracked of Path.t
-  | Untracked
-
-let git_file_tracked =
-  let ls_files_per_dir = Table.create (module Path.Source) 16 in
-  fun ft fn ~git ->
-    match lookup_git_repo ft fn with
-    | None -> Fiber.return Untracked
-    | Some dir ->
-      let dir = Path.as_in_source_tree_exn dir in
-      let+ files =
-        match Table.find ls_files_per_dir dir with
-        | Some files -> Fiber.return files
-        | None ->
-          let+ files =
-            let dir = Path.source dir in
-            Process.run_capture_lines Strict ~dir ~env:Env.initial
-              (Lazy.force git) [ "ls-files" ]
-          in
-          let files =
-            List.map files ~f:(fun file -> Path.Source.relative dir file)
-            |> Path.Source.Set.of_list
-          in
-          Table.add_exn ls_files_per_dir dir files;
-          files
-      in
-      if Path.Source.Set.mem files fn then
-        Tracked (Path.source dir)
-      else
-        Untracked
-
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
@@ -427,12 +395,11 @@ let upgrade ft =
   let log fmt = Printf.ksprintf Console.print fmt in
   let* () =
     Fiber.sequential_iter todo.to_add ~f:(fun fn ->
-      let* status = git_file_tracked ft fn ~git in
-      match status with
-      | Untracked -> Fiber.return ()
-      | Tracked dir ->
+      match lookup_git_repo ft fn with
+      | Some dir ->
         Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-          [ "add"; Path.reach (Path.source fn) ~from:dir ])
+          [ "add"; Path.reach (Path.source fn) ~from:dir ]
+      | None -> Fiber.return ())
   in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
     log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
@@ -445,23 +412,22 @@ let upgrade ft =
           ~f:Path.Source.to_string_maybe_quoted
       |> String.enumerate_and )
       (Path.Source.to_string_maybe_quoted new_file);
-    (let* status = git_file_tracked ft original_file ~git in
-     match status with
-     | Untracked ->
-       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-         Path.unlink (Path.source p));
-       Fiber.return ()
-     | Tracked dir ->
-       Fiber.sequential_iter extra_files_to_delete ~f:(fun fn ->
-         let fn = Path.source fn in
-         Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-           [ "rm"; Path.reach fn ~from:dir ])
-       >>>
-       let original_file = Path.source original_file in
-       let new_file = Path.source new_file in
-       Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-         [ "mv"
-         ; Path.reach original_file ~from:dir
-         ; Path.reach new_file ~from:dir
-         ])
+    ( match lookup_git_repo ft original_file with
+    | Some dir ->
+      Fiber.sequential_iter extra_files_to_delete ~f:(fun fn ->
+        let fn = Path.source fn in
+        Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
+          [ "rm"; Path.reach fn ~from:dir ])
+      >>>
+      let original_file = Path.source original_file in
+      let new_file = Path.source new_file in
+      Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
+        [ "mv"
+        ; Path.reach original_file ~from:dir
+        ; Path.reach new_file ~from:dir
+        ]
+    | None ->
+      List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
+        Path.unlink (Path.source p));
+      Fiber.return () )
     >>| fun () -> Io.write_file (Path.source new_file) contents ~binary:true)

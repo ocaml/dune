@@ -12,6 +12,8 @@ module type S = sig
   val run : unit -> unit
 end
 
+module Make () : S
+
 (** Every time a build ends, which includes every iteration in watch mode,
     including cancellation of build because of file changes. *)
 module End_of_build : S

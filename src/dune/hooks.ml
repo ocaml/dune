@@ -8,7 +8,7 @@ module type S = sig
   val run : unit -> unit
 end
 
-module Hooks_manager = struct
+module Make () = struct
   let persistent_hooks = ref []
 
   let one_off_hooks = ref []
@@ -18,13 +18,14 @@ module Hooks_manager = struct
   let once hook = one_off_hooks := hook :: !one_off_hooks
 
   let run () =
-    List.iter !one_off_hooks ~f:(fun f -> f ());
-    List.iter !persistent_hooks ~f:(fun f -> f ());
-    one_off_hooks := []
+    let l = !one_off_hooks in
+    one_off_hooks := [];
+    List.iter l ~f:(fun f -> f ());
+    List.iter !persistent_hooks ~f:(fun f -> f ())
 end
 
 module End_of_build = struct
-  include Hooks_manager
+  include Make ()
 end
 
 let () = at_exit End_of_build.run

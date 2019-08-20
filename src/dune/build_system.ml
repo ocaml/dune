@@ -1365,6 +1365,7 @@ end = struct
     in
     start_rule t rule;
     let* action, deps = evaluate_rule_and_wait_for_dependencies rule in
+    Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in

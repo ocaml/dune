@@ -19,14 +19,6 @@ val poll :
 (** Wait for the following process to terminate *)
 val wait_for_process : int -> Unix.process_status Fiber.t
 
-type status_line_config =
-  { message : User_message.Style.t Pp.t option
-  ; show_jobs : bool
-  }
-
-(** Set the status line generator for the current scheduler *)
-val set_status_line_generator : (unit -> status_line_config) -> unit
-
 val set_concurrency : int -> unit
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
@@ -34,6 +26,9 @@ val set_concurrency : int -> unit
     This is used with promoted files that are copied back to the source tree
     after generation *)
 val ignore_for_watch : Path.t -> unit
+
+(** Number of jobs currently running in the background *)
+val running_jobs_count : unit -> int
 
 (** Scheduler information *)
 type t

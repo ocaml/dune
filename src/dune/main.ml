@@ -82,25 +82,11 @@ let init_build_system ?only_packages ?external_lib_deps_mode
                    ~candidates:
                      ( Package.Name.Map.keys w.conf.packages
                      |> List.map ~f:Package.Name.to_string ))));
-  let rule_done = ref 0 in
-  let rule_total = ref 0 in
-  let gen_status_line () =
-    { Scheduler.message =
-        Some (Pp.verbatim (sprintf "Done: %u/%u" !rule_done !rule_total))
-    ; show_jobs = true
-    }
-  in
-  let hook (hook : Build_system.hook) =
-    match hook with
-    | Rule_started -> incr rule_total
-    | Rule_completed -> incr rule_done
-  in
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
-    ~file_tree:w.conf.file_tree ~hook ?memory;
+    ~file_tree:w.conf.file_tree ?memory;
   Option.iter memory ~f:(fun memory ->
       Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory));
-  Scheduler.set_status_line_generator gen_status_line;
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages
       ?external_lib_deps_mode

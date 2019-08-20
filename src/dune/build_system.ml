@@ -374,10 +374,6 @@ end
 
 type extra_sub_directories_to_keep = Subdir_set.t
 
-type hook =
-  | Rule_started
-  | Rule_completed
-
 module Action_and_deps = struct
   type t = Action.t * Dep.Set.t
 
@@ -418,11 +414,12 @@ type t =
        -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
           option)
       Fdecl.t
-  ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
   ; memory : Dune_manager.Client.t option
   ; sandboxing_preference : Sandbox_mode.t list
+  ; mutable rule_done : int
+  ; mutable rule_total : int
   }
 
 let t = ref None
@@ -1337,7 +1334,7 @@ end = struct
     let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
     Fiber.return (action, action_deps)
 
-  let start_rule t _rule = t.hook Rule_started
+  let start_rule t _rule = t.rule_total <- t.rule_total + 1
 
   (* Same as [rename] except that if the source doesn't exist we delete the
      destination *)
@@ -1541,7 +1538,7 @@ end = struct
                   ~dst:in_source_tree
                   ~get_vcs:(File_tree.nearest_vcs t.file_tree) ))
     in
-    t.hook Rule_completed
+    t.rule_done <- t.rule_done + 1
 
   (* a rule can have multiple files, but rule.run_rule may only be called once *)
   let build_file_impl path =
@@ -1922,7 +1919,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?memory ~file_tree ~hook ~sandboxing_preference =
+let init ~contexts ?memory ~file_tree ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1934,12 +1931,18 @@ let init ~contexts ?memory ~file_tree ~hook ~sandboxing_preference =
     ; file_tree
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
-    ; hook
     ; memory
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
+    ; rule_done = 0
+    ; rule_total = 0
     }
   in
   Option.iter
     ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
     t.memory;
+  Console.Status_line.set (fun () ->
+      Some
+        (Pp.verbatim
+           (sprintf "Done: %u/%u (jobs: %u)" t.rule_done t.rule_total
+              (Scheduler.running_jobs_count ()))));
   set t

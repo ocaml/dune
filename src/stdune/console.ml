@@ -74,9 +74,25 @@ let t () = Option.value_exn !t_var
 
 let display () = (t ()).display
 
-let update_status_line status_line = T.update_status_line (t ()) status_line
+module Status_line = struct
+  type t = unit -> User_message.Style.t Pp.t option
 
-let clear_status_line () = T.clear_status_line (t ())
+  let status_line = ref (Fn.const None)
+
+  let refresh () =
+    match !status_line () with
+    | None -> T.clear_status_line (t ())
+    | Some pp -> T.update_status_line (t ()) pp
+
+  let set x =
+    status_line := x;
+    refresh ()
+
+  let set_temporarily x f =
+    let old = !status_line in
+    set x;
+    Exn.protect ~finally:(fun () -> set old) ~f
+end
 
 let print msg =
   match !t_var with

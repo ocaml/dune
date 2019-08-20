@@ -18,16 +18,22 @@ val print_user_message :
 
 val init : Display.t -> unit
 
+val reset_terminal : unit -> unit
+
 (** / *)
 
 (** Everything below this line requires [init] to have been called earlier. *)
 
-(** Update the status line if the display is in progress mode. *)
-val update_status_line : User_message.Style.t Pp.t -> unit
+module Status_line : sig
+  (** Function that produces the current status line *)
+  type t = unit -> User_message.Style.t Pp.t option
 
-(** Clear the status line *)
-val clear_status_line : unit -> unit
+  (** Change the status line if the display is in progress mode. *)
+  val set : t -> unit
 
-val reset_terminal : unit -> unit
+  val set_temporarily : t -> (unit -> 'a) -> 'a
+
+  val refresh : unit -> unit
+end
 
 val display : unit -> Display.t

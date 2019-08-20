@@ -74,3 +74,12 @@ let to_string sexp =
   let buf = buffer () in
   to_buffer sexp ~buf;
   Buffer.contents buf
+
+let parse_string string =
+  let stream = Stream.of_string string in
+  let result = parse stream in
+  match (result, Stream.peek stream) with
+  | Error _, _
+   |Ok _, None ->
+    result
+  | Ok _, Some _ -> Error "not whole string consumed"

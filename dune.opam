@@ -41,6 +41,5 @@ build: [
   # opam 2 sets OPAM_SWITCH_PREFIX, so we don't need a hardcoded path
   ["ocaml" "configure.ml" "--libdir" lib] {opam-version < "2"}
   ["ocaml" "bootstrap.ml"]
-  ["./boot.exe" "--release" "--subst"] {pinned}
   ["./boot.exe" "--release" "-j" jobs]
 ]

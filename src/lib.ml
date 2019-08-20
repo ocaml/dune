@@ -1777,35 +1777,40 @@ let to_dune_lib ({ name ; info ; _ } as lib) ~modules ~foreign_objects
   let synopsis = Lib_info.synopsis info in
   let archives = Lib_info.archives info in
   let plugins = Lib_info.plugins info in
-  let implements = Lib_info.implements info in
   let modes = Lib_info.modes info in
   let kind = Lib_info.kind info in
   let version = Lib_info.version info in
   let jsoo_runtime = Lib_info.jsoo_runtime info in
   let special_builtin_support = Lib_info.special_builtin_support info in
-  let default_implementation = Lib_info.default_implementation info in
   let known_implementations = Lib_info.known_implementations info in
   let foreign_archives = Lib_info.foreign_archives info in
-  Dune_package.Lib.make
-    ~obj_dir
-    ~orig_src_dir
-    ~name
-    ~loc
-    ~kind
-    ~synopsis
-    ~version
-    ~archives
-    ~plugins
-    ~foreign_archives
-    ~foreign_objects
+  let use_public_name ~lib_field ~info_field =
+    match (info_field, lib_field) with
+    | Some _, None
+     |None, Some _ ->
+      assert false
+    | None, None -> Ok None
+    | Some (loc, _), Some field ->
+      let open Result.O in
+      let+ field = field in
+      Some (loc, field.name)
+  in
+  let open Result.O in
+  let* implements =
+    use_public_name ~info_field:(Lib_info.implements info)
+      ~lib_field:(implements lib)
+  in
+  let+ default_implementation =
+    use_public_name
+      ~info_field:(Lib_info.default_implementation info)
+      ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
+  in
+  Dune_package.Lib.make ~obj_dir ~orig_src_dir ~name ~loc ~kind ~synopsis
+    ~version ~archives ~plugins ~foreign_archives ~foreign_objects
     ~jsoo_runtime
     ~requires:(add_loc (requires_exn lib))
     ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
-    ~modes
-    ~implements
-    ~known_implementations
-    ~default_implementation
-    ~virtual_
+    ~modes ~implements ~known_implementations ~default_implementation ~virtual_
     ~modules:(Some modules)
     ~main_module_name:(Result.ok_exn (main_module_name lib))
     ~sub_systems:(Sub_system.dump_config lib)

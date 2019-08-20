@@ -4,6 +4,9 @@
 - Remove the optimisation of passing `-nodynlink` for executalbes when
   not necessary. It seems to be breaking things (see #2527, @diml)
 
+- Fix invalid library names in `dune-package` files. Only public names should
+  exist in such files. (#2558, fix #2425, @rgrinberg)
+
 1.11.1 (09/08/2019)
 -------------------
 

@@ -26,7 +26,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
           let libs =
             Local_package.libs pkg
             |> Lib.Local.Set.to_list
-            |> List.map ~f:(fun lib ->
+            |> Result.List.map ~f:(fun lib ->
               let dir_contents =
                 let info = Lib.Local.info lib in
                 let dir = Lib_info.src_dir info in
@@ -45,6 +45,7 @@ let gen_dune_package sctx ~version ~(pkg : Local_package.t) =
                 Dir_contents.modules_of_library dir_contents ~name in
               Lib.to_dune_lib lib ~dir:(Path.build (lib_root lib)) ~modules
                 ~foreign_objects)
+            |> Result.ok_exn
           in
           Dune_package.Or_meta.Dune_package
             { Dune_package.

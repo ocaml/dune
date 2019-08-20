@@ -91,23 +91,26 @@
 - Get rid of ad-hoc rules for guessing the version. Dune now only
   relies on the version written in the `dune-project` file and no
   longer read `VERSION` or similar files (#2541, @diml)
-  
-- In `(diff? x y)` action, require `x` to exist and register a 
+
+- In `(diff? x y)` action, require `x` to exist and register a
   dependency on that file. (#2486, @aalekseyev)
 
 - On Windows, an .exe suffix is no longer added implicitly to binary names that
   already end in .exe. Second, when resolving binary names, .opt variants are no
   longer chosen automatically. (#2543, @nojb)
 
-- Make `(diff? x y)` move the correction file (`y`) away from the build 
-  directory to promotion staging area.
-  This makes corrections work with sandboxing and in general reduces build 
-  directory pollution. (#2486, @aalekseyev, fixes #2482)
+- Make `(diff? x y)` move the correction file (`y`) away from the build
+  directory to promotion staging area. This makes corrections work with
+  sandboxing and in general reduces build directory pollution. (#2486,
+  @aalekseyev, fixes #2482)
 
 - Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
 
 - Remove the optimisation of passing `-nodynlink` for executalbes when
   not necessary. It seems to be breaking things (see #2527, @diml)
+
+- Fix invalid library names in `dune-package` files. Only public names should
+  exist in such files. (#2558, fix #2425, @rgrinberg)
 
 1.11.0 (23/07/2019)
 -------------------

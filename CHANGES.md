@@ -1,4 +1,4 @@
-1.11.2 (----------)
+1.11.2 (20/08/2019)
 -------------------
 
 - Remove the optimisation of passing `-nodynlink` for executalbes when

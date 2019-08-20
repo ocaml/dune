@@ -136,6 +136,9 @@ module Buildable : sig
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
+    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
+    ; c_names : Ordered_set_lang.t option
+    ; cxx_names : Ordered_set_lang.t option
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
@@ -243,9 +246,6 @@ module Library : sig
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
     ; kind : Lib_kind.t
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-    ; c_names : Ordered_set_lang.t option
-    ; cxx_names : Ordered_set_lang.t option
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -367,6 +367,8 @@ module Executables : sig
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     }
+
+  val has_stubs : t -> bool
 end
 
 module Rule : sig

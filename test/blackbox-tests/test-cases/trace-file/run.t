@@ -18,6 +18,7 @@ As well as data about the garbage collector:
 
   $ <trace.json grep '"C"' | cut -c 2- | sed -E 's/ [0-9]+/ .../g' | sort -u
   {"name": "compactions", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
+  {"name": "evaluated-rules", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "fds", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "free_words", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}
   {"name": "heap_words", "pid": ..., "tid": ..., "ph": "C", "ts": ..., "args": {"value": ...}}

@@ -32,11 +32,18 @@ module Fd_count = struct
     | files -> This (Array.length files - 1 (* -1 for the dirfd *))
 end
 
+let evaluated_rules = ref 0
+
+let new_evaluated_rule () = incr evaluated_rules
+
+let () = Hooks.End_of_build.always (fun () -> evaluated_rules := 0)
+
 let catapult = ref None
 
 let record () =
   Option.iter !catapult ~f:(fun reporter ->
       Catapult.emit_gc_counters reporter;
+      Catapult.emit_counter reporter "evaluated-rules" !evaluated_rules;
       match Fd_count.get () with
       | This fds -> Catapult.emit_counter reporter "fds" fds
       | Unknown -> ())

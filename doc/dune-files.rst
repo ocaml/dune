@@ -795,7 +795,7 @@ There are two use cases for promote rules. The first one is when the
 generated code is easier to review than the generator, so it's easier
 to commit the generated code and review it. The second is to cut down
 dependencies during releases: by passing ``--ignore-promoted-rules``
-to dune, rules will ``(mode promote)`` will be ignored and the source
+to dune, rules with ``(mode promote)`` will be ignored and the source
 files will be used instead. The ``-p/--for-release-of-packages`` flag
 implies ``--ignore-promote-rules``. However, rules that promotes only
 a subset of their targets via ``(only ...)`` are never ignored.

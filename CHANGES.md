@@ -115,6 +115,8 @@
 - `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
   and `executables` stanzas. (#2562, @nojb)
 
+- Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
+
 1.11.0 (23/07/2019)
 -------------------
 

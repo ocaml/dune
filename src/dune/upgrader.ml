@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Fiber.O
 
 (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
   the files in includes, recursiverly *)
@@ -376,58 +375,23 @@ let upgrade_dir todo dir =
         upgrade_file todo fn sexps comments
           ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
 
-let lookup_git_repo ft fn =
-  match File_tree.Dir.vcs (File_tree.nearest_dir ft fn) with
-  | Some { kind = Git; root } -> Some root
-  | _ -> None
-
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
   File_tree.fold ft ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
     ~f:(fun dir () -> upgrade_dir todo dir);
-  let git =
-    lazy
-      ( match Bin.which ~path:(Env.path Env.initial) "git" with
-      | Some x -> x
-      | None -> Utils.program_not_found "git" ~loc:None )
-  in
   let log fmt = Printf.ksprintf Console.print fmt in
-  let* () =
-    Fiber.sequential_iter todo.to_add ~f:(fun fn ->
-      match lookup_git_repo ft fn with
-      | Some dir ->
-        Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-          [ "add"; Path.reach (Path.source fn) ~from:dir ]
-      | None -> Fiber.return ())
-  in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
     log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
     Io.write_file (Path.source fn) s ~binary:true);
-  Fiber.sequential_iter todo.to_rename_and_edit ~f:(fun x ->
+  List.iter todo.to_rename_and_edit ~f:(fun x ->
     let { original_file; new_file; extra_files_to_delete; contents } = x in
     log "Upgrading %s to %s...\n"
       ( List.map
-        (extra_files_to_delete @ [ original_file ])
+          (extra_files_to_delete @ [ original_file ])
           ~f:Path.Source.to_string_maybe_quoted
-      |> String.enumerate_and )
+        |> String.enumerate_and )
       (Path.Source.to_string_maybe_quoted new_file);
-    ( match lookup_git_repo ft original_file with
-    | Some dir ->
-      Fiber.sequential_iter extra_files_to_delete ~f:(fun fn ->
-        let fn = Path.source fn in
-        Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-          [ "rm"; Path.reach fn ~from:dir ])
-      >>>
-      let original_file = Path.source original_file in
-      let new_file = Path.source new_file in
-      Process.run Strict ~dir ~env:Env.initial (Lazy.force git)
-        [ "mv"
-        ; Path.reach original_file ~from:dir
-        ; Path.reach new_file ~from:dir
-        ]
-    | None ->
-      List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-        Path.unlink (Path.source p));
-      Fiber.return () )
-    >>| fun () -> Io.write_file (Path.source new_file) contents ~binary:true)
+    List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
+      Path.unlink (Path.source p));
+    Io.write_file (Path.source new_file) contents ~binary:true)

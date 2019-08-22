@@ -145,6 +145,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
       ~variants:exes.variants ~optional:exes.optional
+      ~forbidden_libraries:exes.forbidden_libraries
   in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander

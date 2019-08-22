@@ -1539,6 +1539,7 @@ module Executables = struct
     ; package : Package.t option
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; forbidden_libraries : (Loc.t * Lib_name.t) list
     }
 
   let common =
@@ -1568,6 +1569,10 @@ module Executables = struct
                      "See https://github.com/ocaml/dune/issues/745 for more \
                       details."
                  ]))
+    and+ forbidden_libraries =
+      field "forbidden_libraries"
+        (Syntax.since Stanza.syntax (2, 0) >>> repeat (located Lib_name.decode))
+        ~default:[]
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1606,6 +1611,7 @@ module Executables = struct
       ; package = Names.package names
       ; promote
       ; install_conf
+      ; forbidden_libraries
       }
 
   let single, multi =
@@ -2058,6 +2064,11 @@ module Tests = struct
          field_o "action"
            ( Syntax.since ~fatal:false Stanza.syntax (1, 2)
            >>> Action_dune_lang.decode )
+       and+ forbidden_libraries =
+         field "forbidden_libraries"
+           ( Syntax.since Stanza.syntax (2, 0)
+           >>> repeat (located Lib_name.decode) )
+           ~default:[]
        in
        { exes =
            { Executables.link_flags
@@ -2070,6 +2081,7 @@ module Tests = struct
            ; package = None
            ; promote = None
            ; install_conf = None
+           ; forbidden_libraries
            }
        ; locks
        ; package

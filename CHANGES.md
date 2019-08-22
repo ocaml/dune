@@ -109,6 +109,10 @@
   directory. There's also a corresponding `DUNE_DISABLE_PROMOTION` environment
   variable. (#2588, fix #2568, @rgrinberg)
 
+- Add a `forbidden_libraries` field to prevent some library from being
+  linked in an executable. This help detecting who accidently pulls in
+  `unix` for instance (#2570, @diml)
+
 1.11.3 (23/08/2019)
 -------------------
 

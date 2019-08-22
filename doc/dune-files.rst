@@ -605,6 +605,13 @@ Executables can also be linked as object or shared object files. See
 
 - ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
 
+- ``(forbidden_libraries <libraries>)`` ensures that the given
+  libraries are not linked in the resulting executable. If they end up
+  being pulled in, either through a direct or transitive dependency,
+  Dune fails with an error message explaining how the library was
+  pulled in. This field is available since the 2.0 version of the dune
+  languge.
+
 Linking modes
 ~~~~~~~~~~~~~
 

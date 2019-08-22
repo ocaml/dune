@@ -1,1 +1,1 @@
-let upgrade _ = Fiber.return ()
+let upgrade _ = ()

@@ -1,3 +1,8 @@
+1.11.3 (unreleased)
+-------------------
+
+- Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
+
 1.11.2 (20/08/2019)
 -------------------
 

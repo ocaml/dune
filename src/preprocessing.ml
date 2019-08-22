@@ -13,7 +13,7 @@ module Key : sig
   module Decoded : sig
     type t = private
       { pps   : Lib_name.t list
-      ; project : Dune_project.t option
+      ; project_root : Path.Source.t option
       }
 
     val of_libs : dir_kind:Dune_lang.File_syntax.t -> Lib.t list -> t
@@ -26,23 +26,25 @@ module Key : sig
 end = struct
   type encoded = Digest.t
   module Decoded = struct
+    (* Values of type type are preserved in a global table between
+       builds, so they must not embed values that are not safe to keep
+       between builds, such as [Dune_project.t] values *)
     type t =
       { pps   : Lib_name.t list
-      ; project : Dune_project.t option
+      ; project_root : Path.Source.t option
       }
 
     let equal x y =
       List.equal Lib_name.equal x.pps y.pps
-      && Option.equal Dune_project.equal x.project y.project
+      &&  Option.equal Path.Source.equal x.project_root y.project_root
 
-    let to_string { pps; project } =
+    let to_string { pps; project_root } =
       let s = String.enumerate_and (List.map pps ~f:Lib_name.to_string) in
-      match project with
+      match project_root with
       | None -> s
-      | Some project ->
-        let name = Dune_project.name project in
+      | Some dir ->
         sprintf "%s (in project: %s)" s
-          (Dune_project.Name.to_string_hum name)
+          (Path.Source.to_string_maybe_quoted dir)
 
     let of_libs ~dir_kind libs =
       let pps =
@@ -70,14 +72,14 @@ end = struct
           | None  , Some _ -> scope_for_key
           | None  , None   -> None)
       in
-      { pps; project }
+      { pps; project_root = Option.map project ~f:Dune_project.root }
   end
 
   let reverse_table : (encoded, Decoded.t) Hashtbl.t =
     Hashtbl.create 128
 
-  let encode ({ Decoded. pps; project } as x) =
-    let y = Digest.generic (pps, Option.map ~f:Dune_project.file_key project) in
+  let encode ({ Decoded. pps; project_root } as x) =
+    let y = Digest.generic (pps, project_root) in
     match Hashtbl.find reverse_table y with
     | None ->
       Hashtbl.set reverse_table y x;
@@ -441,11 +443,15 @@ let get_rules sctx key ~dir_kind =
     let names, lib_db =
       match Digest.from_hex key with
       | key ->
-        let { Key.Decoded.pps; project } = Key.decode key in
+        let { Key.Decoded.pps; project_root } = Key.decode key in
         let lib_db =
-          match project with
+          match project_root with
           | None -> SC.public_libs sctx
-          | Some project -> Scope.libs (SC.find_scope_by_project sctx project)
+          | Some dir ->
+            let dir =
+              Path.Build.append_source (Super_context.build_dir sctx) dir
+            in
+            Scope.libs (SC.find_scope_by_dir sctx dir)
         in
         (pps, lib_db)
       | exception _ ->

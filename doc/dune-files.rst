@@ -240,7 +240,7 @@ language: The syntax is as a list of the following elements:
 
    op := '=' | '<' | '>' | '<>' | '>=' | '<='
 
-   stage := :with_test | :build | :dev
+   stage := :with-test | :build | :dev
 
    constr := (<op> <version>)
 

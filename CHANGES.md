@@ -82,10 +82,6 @@
 - Change default target from `@install` to `@all`. (#2449, fixes #1220,
   @rgrinberg)
 
-- Cleanup stale directories when using `(source_tree ...)` in the
-  presence of directories with only sub-directories and no files
-  (#2514, fixes #2499, @diml)
-
 - Include building stubs in `@check` rules. (@rgrinberg, #2530)
 
 - Get rid of ad-hoc rules for guessing the version. Dune now only
@@ -104,7 +100,18 @@
   sandboxing and in general reduces build directory pollution. (#2486,
   @aalekseyev, fixes #2482)
 
+- `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
+  and `executables` stanzas. (#2562, @nojb)
+
+- Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
+
+1.11.3 (23/08/2019)
+-------------------
+
 - Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
+
+1.11.2 (20/08/2019)
+-------------------
 
 - Remove the optimisation of passing `-nodynlink` for executalbes when
   not necessary. It seems to be breaking things (see #2527, @diml)
@@ -112,10 +119,15 @@
 - Fix invalid library names in `dune-package` files. Only public names should
   exist in such files. (#2558, fix #2425, @rgrinberg)
 
-- `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
-  and `executables` stanzas. (#2562, @nojb)
+1.11.1 (09/08/2019)
+-------------------
 
-- Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
+- Fix config file dependencies of ocamlformat (#2471, fixes #2646,
+  @nojb)
+
+- Cleanup stale directories when using `(source_tree ...)` in the
+  presence of directories with only sub-directories and no files
+  (#2514, fixes #2499, @diml)
 
 1.11.0 (23/07/2019)
 -------------------

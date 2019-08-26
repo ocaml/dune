@@ -1480,7 +1480,9 @@ end = struct
                 (Path.reach (Path.build path) ~from:(Path.build dir))
                 ~standard:Predicate_lang.true_
           in
-          if consider_for_promotion then
+          match consider_for_promotion with
+          | false -> Fiber.return ()
+          | true -> (
             let in_source_tree = Path.Build.drop_build_context_exn path in
             let in_source_tree =
               match into with
@@ -1494,19 +1496,17 @@ end = struct
             in
             let path = Path.build path in
             let in_source_tree = Path.source in_source_tree in
-            if
+            match
               (not (Path.exists in_source_tree))
               || Cached_digest.file path <> Cached_digest.file in_source_tree
-            then (
+            with
+            | false -> Fiber.return ()
+            | true ->
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;
               Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
-            ) else
-              Fiber.return ()
-          else
-            Fiber.return ())
+                ~get_vcs:(File_tree.nearest_vcs t.file_tree) ))
     in
     t.hook Rule_completed
 

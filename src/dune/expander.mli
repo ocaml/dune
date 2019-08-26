@@ -34,6 +34,8 @@ val set_scope : t -> scope:Scope.t -> t
 
 val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
+val set_artifacts_dynamic : t -> bool -> t
+
 val set_lookup_module :
      t
   -> lookup_module:

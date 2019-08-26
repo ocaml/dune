@@ -18,6 +18,7 @@ type t =
   ; c_compiler : string
   ; expand_var :
     t -> (expanded, User_message.t) Result.t option String_with_vars.expander
+  ; artifacts_dynamic : bool
   ; lookup_module :
     (   dir:Path.Build.t
      -> Module_name.t
@@ -59,6 +60,8 @@ let set_dir t ~dir = { t with dir }
 let set_scope t ~scope = { t with scope }
 
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
+
+let set_artifacts_dynamic t artifacts_dynamic = { t with artifacts_dynamic }
 
 let set_lookup_module t ~lookup_module =
   { t with lookup_module = Some lookup_module }
@@ -175,6 +178,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
       ; c_compiler = _
       ; lookup_module = _
       ; lookup_library = _
+      ; artifacts_dynamic
       } as t ) var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
@@ -185,7 +189,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
          | Macro (Version, s) -> Some (static (expand_version scope var s))
          | Var Project_root ->
            Some (static [ Value.Dir (Path.build (Scope.root scope)) ])
-         | Macro (Artifact a, s) ->
+         | Macro (Artifact a, s) when not artifacts_dynamic ->
            let loc = String_with_vars.Var.loc var in
            let open Option.O in
            let+ v = expand_artifact ~dir ~loc t a s in
@@ -207,6 +211,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   ; bin_artifacts_host
   ; expand_var
   ; c_compiler
+  ; artifacts_dynamic = false
   ; lookup_module = None
   ; lookup_library = None
   }
@@ -337,17 +342,20 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     assert false
   | Var Cc -> add_ddep (cc ~dir).c
   | Var Cxx -> add_ddep (cc ~dir).cxx
-  | Macro (Artifact a, s) -> (
-    match expand_artifact ~dir ~loc t a s with
-    | Some (Ok v) -> Some v
-    | Some (Error msg) ->
-      Resolved_forms.add_fail acc
-        { fail = (fun () -> raise (User_error.E msg)) }
-    | None ->
-      Resolved_forms.add_fail acc
-        { fail =
-          (fun () -> User_error.raise ~loc [ cannot_be_used_here pform ])
-        } )
+  | Macro (Artifact a, s) ->
+    let data =
+      Build.delayed (fun () ->
+        match expand_artifact ~dir ~loc t a s with
+        | Some (Ok v) -> v
+        | Some (Error msg) -> raise (User_error.E msg)
+        | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
+      >>> Build.dyn_paths
+        (Build.arr
+          (List.filter_map ~f:(function
+            | Value.Path p -> Some p
+            | _ -> None)))
+    in
+    add_ddep data
   | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))

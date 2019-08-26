@@ -244,7 +244,7 @@ let no_targets_allowed () =
     []
   [@@inline never]
 
-let static_deps t ~all_targets =
+let static_deps t ~load_targets_from_dir =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> bool -> Static_deps.t =
    fun t acc targets_allowed ->
     match t with
@@ -265,7 +265,7 @@ let static_deps t ~all_targets =
       | Decided (_, t) -> loop t acc false
       | Undecided (then_, else_) ->
         let dir = Path.parent_exn p in
-        let targets = all_targets ~dir in
+        let targets = load_targets_from_dir ~dir in
         if Path.Set.mem targets p then (
           state := Decided (true, then_);
           loop then_ acc false

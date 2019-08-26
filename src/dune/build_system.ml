@@ -679,7 +679,7 @@ end = struct
 
   let static_deps build =
     Fiber.Once.create (fun () ->
-      Fiber.return (Build.static_deps build ~all_targets:targets_of))
+      Fiber.return (Build.static_deps build ~load_targets_from_dir:targets_of))
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -1812,7 +1812,8 @@ module All_lib_deps : sig
     -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 end = struct
   let static_deps_of_request request =
-    Static_deps.paths @@ Build.static_deps request ~all_targets:targets_of
+    Static_deps.paths
+    @@ Build.static_deps request ~load_targets_from_dir:targets_of
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->

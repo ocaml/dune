@@ -1480,7 +1480,9 @@ end = struct
                 (Path.reach (Path.build path) ~from:(Path.build dir))
                 ~standard:Predicate_lang.true_
           in
-          if consider_for_promotion then
+          match consider_for_promotion with
+          | false -> Fiber.return ()
+          | true -> (
             let in_source_tree = Path.Build.drop_build_context_exn path in
             let in_source_tree =
               match into with
@@ -1494,19 +1496,17 @@ end = struct
             in
             let path = Path.build path in
             let in_source_tree = Path.source in_source_tree in
-            if
-              (not (Path.exists in_source_tree))
-              || Cached_digest.file path <> Cached_digest.file in_source_tree
-            then (
+            match
+              Path.exists in_source_tree
+              && Cached_digest.file path = Cached_digest.file in_source_tree
+            with
+            | true -> Fiber.return ()
+            | false ->
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;
               Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
-            ) else
-              Fiber.return ()
-          else
-            Fiber.return ())
+                ~get_vcs:(File_tree.nearest_vcs t.file_tree) ))
     in
     t.hook Rule_completed
 
@@ -1661,13 +1661,12 @@ let package_deps pkg files =
       acc
     | Some fn -> (
       let pkgs = Fdecl.get t.packages fn in
-      match Package.Name.Set.is_empty pkgs with
-      | true -> loop_deps fn acc
-      | false ->
-        if Package.Name.Set.mem pkgs pkg then
-          loop_deps fn acc
-        else
-          Package.Name.Set.union acc pkgs )
+      if Package.Name.Set.is_empty pkgs then
+        loop_deps fn acc
+      else if Package.Name.Set.mem pkgs pkg then
+        loop_deps fn acc
+      else
+        Package.Name.Set.union acc pkgs)
   and loop_deps fn acc =
     match Path.Build.Table.find t.files fn with
     | None -> acc

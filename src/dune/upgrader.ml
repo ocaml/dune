@@ -388,9 +388,9 @@ let upgrade ft =
     let { original_file; new_file; extra_files_to_delete; contents } = x in
     log "Upgrading %s to %s...\n"
       ( List.map
-          (extra_files_to_delete @ [ original_file ])
+        (extra_files_to_delete @ [ original_file ])
           ~f:Path.Source.to_string_maybe_quoted
-        |> String.enumerate_and )
+      |> String.enumerate_and )
       (Path.Source.to_string_maybe_quoted new_file);
     List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
       Path.unlink (Path.source p));

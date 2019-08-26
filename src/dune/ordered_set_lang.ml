@@ -217,13 +217,13 @@ let dune_kind t =
    |Some (_, _) ->
     Dune
 
-let field ?(default = standard) ?check name =
+let field ?check name =
   let decode =
     match check with
     | None -> decode
     | Some x -> Dune_lang.Decoder.( >>> ) x decode
   in
-  Dune_lang.Decoder.field name decode ~default
+  Dune_lang.Decoder.field name decode ~default:standard
 
 module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
@@ -290,13 +290,13 @@ module Unexpanded = struct
     ; context = Univ_map.empty
     }
 
-  let field ?(default = standard) ?check name =
+  let field ?check name =
     let decode =
       match check with
       | None -> decode
       | Some x -> Dune_lang.Decoder.( >>> ) x decode
     in
-    Dune_lang.Decoder.field name decode ~default
+    Dune_lang.Decoder.field name decode ~default:standard
 
   let files t ~f =
     let rec loop acc (ast : ast) =

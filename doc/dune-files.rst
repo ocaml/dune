@@ -240,7 +240,7 @@ language: The syntax is as a list of the following elements:
 
    op := '=' | '<' | '>' | '<>' | '>=' | '<='
 
-   stage := :with_test | :build | :dev
+   stage := :with-test | :build | :dev
 
    constr := (<op> <version>)
 
@@ -595,6 +595,16 @@ Executables can also be linked as object or shared object files. See
   ``executable`` stanza will cause Dune to copy the ``.exe`` files to
   the source tree and ``dune clean`` to delete them
 
+- ``(c_names (<names>))``, if your executable needs C stubs, you must list the C
+  files in this field, without the ``.c`` extension
+
+- ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
+
+- ``(c_flags <flags>)`` specifies the compilation flags for C stubs, using the
+  :ref:`ordered-set-language`. This field supports ``(:include ...)`` forms
+
+- ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
+
 Linking modes
 ~~~~~~~~~~~~~
 
@@ -675,6 +685,9 @@ an executable with the extension ``.exe``. In such case, the ``.exe``
 version is the same as the ``.bc`` one except that it is linked with
 the ``-custom`` option of the compiler. You should always use the
 ``.exe`` rather that the ``.bc`` inside build rules.
+
+Lastly, note that ``.bc`` executables cannot contain C stubs. If your executable
+contains C stubs you may want to use ``(modes exe)``.
 
 executables
 -----------

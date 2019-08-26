@@ -129,7 +129,7 @@ build-info
 ==========
 
 Dune allows to embed build information such as versions in executbles
-via the special ``dune.build-info`` library. This library exposes a
+via the special ``dune-build-info`` library. This library exposes a
 few informations about how the executable was built such as the
 version of the project containing the executable or the list of
 statically linked libraries with their versions. Printing the version
@@ -138,7 +138,7 @@ at which the current executable was built is as simple as:
 .. code:: ocaml
 
           Printf.printf "version: %s\n"
-            (match Build_info.V1.version with
+            (match Build_info.V1.version () with
              | None -> "n/a"
              | Some v -> Build_info.V1.Version.to_string v)
 

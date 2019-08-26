@@ -1,0 +1,4 @@
+(executables
+ (names aa bb)
+ (c_names foo)
+ (modes exe))

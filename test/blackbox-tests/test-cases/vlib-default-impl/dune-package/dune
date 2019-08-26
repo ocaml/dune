@@ -1,7 +1,7 @@
 (library
  (public_name a)
  (virtual_modules x)
- (default_implementation a-default))
+ (default_implementation a_default))
 
 (rule
  (with-stdout-to

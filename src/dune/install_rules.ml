@@ -268,7 +268,7 @@ let gen_dune_package sctx pkg =
           let libs =
             Super_context.libs_of_package sctx pkg.name
             |> Lib.Local.Set.to_list
-            |> List.map ~f:(fun lib ->
+            |> Result.List.map ~f:(fun lib ->
               let dir_contents =
                 let info = Lib.Local.info lib in
                 let dir = Lib_info.src_dir info in
@@ -289,6 +289,7 @@ let gen_dune_package sctx pkg =
               Lib.to_dune_lib lib
                 ~dir:(Path.build (lib_root lib))
                 ~modules ~foreign_objects)
+            |> Result.ok_exn
           in
           Dune_package.Or_meta.Dune_package
             { Dune_package.version = pkg.version

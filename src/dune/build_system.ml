@@ -8,6 +8,8 @@ let () = Hooks.End_of_build.always Memo.reset
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit
 
+  (** Creates directory if inside build path, otherwise asserts that directory
+    exists. *)
   val mkdir_p_or_check_exists : loc:Loc.t option -> Path.t -> unit
 
   val assert_exists : loc:Loc.t option -> Path.t -> unit
@@ -22,7 +24,7 @@ end = struct
   let mkdir_p = Memo.exec mkdir_p_def
 
   let assert_exists_def =
-    Memo.create "mkdir_p" ~doc:"mkdir_p"
+    Memo.create "assert_path_exists" ~doc:"Path.exists"
       ~input:(module Path)
       ~output:(Simple (module Bool))
       ~visibility:Hidden Sync Path.exists
@@ -79,7 +81,8 @@ let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 let rule_loc ~file_tree ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
-  | _ ->
+  | Internal
+   |Source_file_copy ->
     let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
       match
@@ -122,11 +125,6 @@ module Internal_rule = struct
       ; dir : Path.Build.t
       ; env : Env.t option
       ; locks : Path.t list
-      ; (* Reverse dependencies discovered so far, labelled by the requested
-        target *)
-        mutable rev_deps : (Path.t * t) list
-      ; (* Transitive reverse dependencies discovered so far. *)
-        mutable transitive_rev_deps : Id.Set.t
       }
 
     let compare a b = Id.compare a.id b.id
@@ -166,8 +164,6 @@ module Internal_rule = struct
     ; dir = Path.Build.root
     ; env = None
     ; locks = []
-    ; rev_deps = []
-    ; transitive_rev_deps = Id.Set.empty
     }
 
   (* Create a shim for the main build goal *)
@@ -284,7 +280,8 @@ module Dir_triage = struct
     | Need_step2
 end
 
-module Trace : sig
+(* Stores information needed to determine if rule need to be reexecuted. *)
+module Trace_db : sig
   module Entry : sig
     type t =
       { rule_digest : Digest.t
@@ -509,7 +506,8 @@ let add_spec_exn t fn rule =
 let add_rules_exn t rules =
   Path.Build.Map.iteri rules ~f:(fun key data -> add_spec_exn t key data)
 
-let rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
+let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
+  =
   let describe (rule : Internal_rule.t) =
     match rule.info with
     | From_dune_file { start; _ } ->
@@ -543,10 +541,17 @@ let () =
     pending_targets := Path.Build.Set.empty;
     Path.Build.Set.iter fns ~f:(fun p -> Path.unlink_no_err (Path.build p)))
 
-let compute_targets_digest_after_rule_execution ~info targets =
+let compute_targets_digest targets =
+  match
+    List.map targets ~f:(fun target -> Cached_digest.file (Path.build target))
+  with
+  | l -> Some (Digest.generic l)
+  | exception (Unix.Unix_error _ | Sys_error _) -> None
+
+let compute_targets_digest_or_raise_error ~info targets =
   let good, bad =
-    List.partition_map targets ~f:(fun fn ->
-      let fn = Path.build fn in
+    List.partition_map targets ~f:(fun target ->
+      let fn = Path.build target in
       match Cached_digest.refresh fn with
       | digest -> Left (fn, digest)
       | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
@@ -641,9 +646,7 @@ let no_rule_found t ~loc fn =
           (User_message.did_you_mean ctx
             ~candidates:(String.Map.keys t.contexts))
 
-(* +-----------------------------------------------------------------+ | Adding
-  rules to the system |
-   +-----------------------------------------------------------------+ *)
+(* +-------------------- Adding rules to the system --------------------+ *)
 
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t
@@ -671,8 +674,6 @@ end = struct
       ; mode
       ; info
       ; dir
-      ; transitive_rev_deps = Internal_rule.Id.Set.singleton id
-      ; rev_deps = []
       }
     in
     (targets, rule)
@@ -697,7 +698,7 @@ end = struct
       assert (Path.Build.( = ) dir rule.Internal_rule.dir);
       List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
         (target, rule)))
-    |> Path.Build.Map.of_list_reducei ~f:rule_conflict
+    |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
   let targets_of ~dir =
     match load_dir ~dir with
@@ -1234,9 +1235,9 @@ end = struct
       | File f -> build_file f
       | Glob g -> Pred.build g
       | Universe
-       |Env _ ->
-        Fiber.return ()
-      | Sandbox_config _ -> Fiber.return ())
+       |Env _
+       |Sandbox_config _ ->
+        Fiber.return ())
 
   let eval_pred = Pred.eval
 
@@ -1369,8 +1370,6 @@ end = struct
         ; static_deps = _
         ; build = _
         ; info
-        ; transitive_rev_deps = _
-        ; rev_deps = _
         } =
       rule
     in
@@ -1379,7 +1378,7 @@ end = struct
     Fs.mkdir_p dir;
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
-    let prev_trace = Trace.get (Path.build head_target) in
+    let prev_trace = Trace_db.get (Path.build head_target) in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
       | Clearly_not ->
@@ -1415,14 +1414,7 @@ end = struct
       in
       Digest.generic trace
     in
-    let targets_digest =
-      match
-        List.map targets_as_list ~f:(fun p ->
-          Cached_digest.file (Path.build p))
-      with
-      | l -> Some (Digest.generic l)
-      | exception (Unix.Unix_error _ | Sys_error _) -> None
-    in
+    let targets_digest = compute_targets_digest targets_as_list in
     let sandbox =
       match sandbox_mode with
       | Some mode ->
@@ -1443,8 +1435,8 @@ end = struct
     in
     let* () =
       if force || something_changed then (
-        List.iter targets_as_list ~f:(fun p ->
-          Path.unlink_no_err (Path.build p));
+        List.iter targets_as_list ~f:(fun target ->
+          Path.unlink_no_err (Path.build target));
         match lookup_cache t.memory force rule_digest with
         | Result.Ok files ->
           let retrieve (dest, source, _) =
@@ -1452,7 +1444,7 @@ end = struct
             Unix.link (Path.to_string source) (Path.to_string dest)
           and digest (_, _, digest) = digest in
           List.iter ~f:retrieve files;
-          Trace.set (Path.build head_target)
+          Trace_db.set (Path.build head_target)
             { rule_digest
             ; targets_digest = Digest.generic (List.map ~f:digest files)
             };
@@ -1470,10 +1462,10 @@ end = struct
                 Path.Build.append_local sandbox_dir (Path.Build.local path)
               in
               Dep.Set.dirs deps
-              |> Path.Set.iter ~f:(fun p ->
-                match Path.as_in_build_dir p with
-                | None -> Fs.assert_exists ~loc p
-                | Some p -> Fs.mkdir_p (sandboxed p));
+              |> Path.Set.iter ~f:(fun path ->
+                match Path.as_in_build_dir path with
+                | None -> Fs.assert_exists ~loc path
+                | Some path -> Fs.mkdir_p (sandboxed path));
               Fs.mkdir_p (sandboxed dir);
               ( Some sandboxed
               , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
@@ -1495,12 +1487,12 @@ end = struct
           (* All went well, these targets are no longer pending *)
           pending_targets := Path.Build.Set.diff !pending_targets targets;
           let targets, targets_digest =
-            compute_targets_digest_after_rule_execution ~info targets_as_list
+            compute_targets_digest_or_raise_error ~info targets_as_list
           in
           Option.iter t.memory ~f:(fun memory ->
             ignore
               (Dune_manager.Client.promote memory targets rule_digest [] None));
-          Trace.set (Path.build head_target) { rule_digest; targets_digest }
+          Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
       ) else
         Fiber.return ()
     in
@@ -1511,7 +1503,7 @@ end = struct
        |Ignore_source_files ->
         Fiber.return ()
       | Promote { lifetime; into; only } ->
-        Fiber.sequential_iter (Path.Build.Set.to_list targets) ~f:(fun path ->
+        Fiber.sequential_iter targets_as_list ~f:(fun path ->
           let consider_for_promotion =
             match only with
             | None -> true

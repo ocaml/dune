@@ -484,6 +484,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name exes-with-c)
+ (deps (package dune) (source_tree test-cases/exes-with-c))
+ (action
+  (chdir
+   test-cases/exes-with-c
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name explicit_js_mode)
  (deps (package dune) (source_tree test-cases/explicit_js_mode))
  (action
@@ -1772,6 +1780,7 @@
   (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias exes-with-c)
   (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)
@@ -1975,6 +1984,7 @@
   (alias exe-name-mangle)
   (alias exec-cmd)
   (alias exec-missing)
+  (alias exes-with-c)
   (alias external-lib-deps)
   (alias extra-lang-line)
   (alias fallback-dune)

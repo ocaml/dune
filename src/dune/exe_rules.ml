@@ -2,6 +2,7 @@ open Import
 open! No_io
 open Build.O
 module SC = Super_context
+module Executables = Dune_file.Executables
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   (exes : Dune_file.Executables.t) =
@@ -9,10 +10,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     library of the same name *)
   let obj_dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd exes.names)) in
   Check_rules.add_obj_dir sctx ~obj_dir;
+  let first_exe = snd (List.hd exes.names) in
   let modules =
-    Dir_contents.modules_of_executables dir_contents
-      ~first_exe:(snd (List.hd exes.names))
-      ~obj_dir
+    Dir_contents.modules_of_executables dir_contents ~first_exe ~obj_dir
   in
   let preprocessor_deps =
     SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
@@ -86,8 +86,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     >>> Expander.expand_and_eval_set expander exes.link_flags
       ~standard:(Build.return [])
   in
+  let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let js_of_ocaml =
       let js_of_ocaml = exes.buildable.js_of_ocaml in
@@ -97,7 +97,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         Some js_of_ocaml
     in
     let dynlink =
-      Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
+      (* See https://github.com/ocaml/dune/issues/2527 *)
+      true
+      || Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
         match mode.kind with
         | Shared_object -> true
         | _ -> false)
@@ -106,8 +108,29 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
       ~js_of_ocaml ~opaque:(SC.opaque sctx) ~dynlink ~package:exes.package
   in
+  let o_files =
+    if not (Executables.has_stubs exes) then
+      []
+    else (
+      if List.mem Exe.Linkage.byte ~set:linkages then
+        User_error.raise ~loc:exes.buildable.loc
+          [ Pp.textf "Pure bytecode executables cannot contain C stubs."
+          ; Pp.textf "Did you forget to add `(modes exe)'?"
+          ];
+      let c_sources =
+        Dir_contents.c_sources_of_executables dir_contents ~first_exe
+      in
+      let o_files =
+        C_rules.build_o_files exes.buildable ~sctx ~dir ~expander
+          ~requires:requires_compile ~dir_contents ~c_sources
+        |> List.map ~f:Path.build
+      in
+      Check_rules.add_files sctx ~dir o_files;
+      o_files
+    )
+  in
   let requires_compile = Compilation_context.requires_compile cctx in
-  Exe.build_and_link_many cctx ~programs ~linkages ~link_flags
+  Exe.build_and_link_many cctx ~programs ~linkages ~link_flags ~o_files
     ~promote:exes.promote;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules

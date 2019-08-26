@@ -634,6 +634,9 @@ module Buildable = struct
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
+    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
+    ; c_names : Ordered_set_lang.t option
+    ; cxx_names : Ordered_set_lang.t option
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Preprocess_map.t
@@ -642,13 +645,21 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode =
+  let decode ~since_c =
+    let check_c t =
+      match since_c with
+      | None -> t
+      | Some v -> Syntax.since Stanza.syntax v >>> t
+    in
     let+ loc = loc
     and+ preprocess =
       field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
     and+ preprocessor_deps =
       field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[]
     and+ lint = field "lint" Lint.decode ~default:Lint.default
+    and+ c_flags = Dune_env.Stanza.c_flags ~since:since_c
+    and+ c_names = field_o "c_names" (check_c Ordered_set_lang.decode)
+    and+ cxx_names = field_o "cxx_names" (check_c Ordered_set_lang.decode)
     and+ modules = modules_field "modules"
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
@@ -665,6 +676,9 @@ module Buildable = struct
     ; lint
     ; modules
     ; modules_without_implementation
+    ; c_flags
+    ; c_names
+    ; cxx_names
     ; libraries
     ; flags
     ; js_of_ocaml
@@ -913,9 +927,6 @@ module Library = struct
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
     ; kind : Lib_kind.t
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-    ; c_names : Ordered_set_lang.t option
-    ; cxx_names : Ordered_set_lang.t option
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
@@ -940,7 +951,7 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode
+      (let+ buildable = Buildable.decode ~since_c:None
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
@@ -951,9 +962,6 @@ module Library = struct
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
            ~default:[]
-       and+ c_flags = Dune_env.Stanza.c_flags ~since:None
-       and+ c_names = field_o "c_names" Ordered_set_lang.decode
-       and+ cxx_names = field_o "cxx_names" Ordered_set_lang.decode
        and+ library_flags = field_oslu "library_flags"
        and+ c_library_flags = field_oslu "c_library_flags"
        and+ virtual_deps =
@@ -1058,7 +1066,11 @@ module Library = struct
            let self_build_stubs_archive =
              let loc, self_build_stubs_archive = self_build_stubs_archive in
              let err =
-               match (c_names, cxx_names, self_build_stubs_archive) with
+               match
+                 ( buildable.c_names
+                 , buildable.cxx_names
+                 , self_build_stubs_archive )
+               with
                | _, _, None -> None
                | Some _, _, Some _ -> Some "c_names"
                | _, Some _, Some _ -> Some "cxx_names"
@@ -1095,9 +1107,6 @@ module Library = struct
            ; ppx_runtime_libraries
            ; modes
            ; kind
-           ; c_names
-           ; c_flags
-           ; cxx_names
            ; library_flags
            ; c_library_flags
            ; self_build_stubs_archive
@@ -1121,7 +1130,9 @@ module Library = struct
            } ))
 
   let has_stubs t =
-    match (t.c_names, t.cxx_names, t.self_build_stubs_archive) with
+    match
+      (t.buildable.c_names, t.buildable.cxx_names, t.self_build_stubs_archive)
+    with
     | None, None, None -> false
     | _ -> true
 
@@ -1520,7 +1531,7 @@ module Executables = struct
     }
 
   let common =
-    let+ buildable = Buildable.decode
+    let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1595,6 +1606,11 @@ module Executables = struct
          f names ~multi)
     in
     (make false, make true)
+
+  let has_stubs t =
+    match (t.buildable.c_names, t.buildable.cxx_names) with
+    | None, None -> false
+    | _ -> true
 end
 
 module Rule = struct
@@ -2009,7 +2025,7 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable = Buildable.decode
+      (let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
        and+ link_flags = field_oslu "link_flags"
        and+ variants = variants_field
        and+ names = names

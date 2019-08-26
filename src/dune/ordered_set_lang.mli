@@ -62,8 +62,7 @@ val standard : t
 val is_standard : t -> bool
 
 val field :
-     ?default:t
-  -> ?check:unit Dune_lang.Decoder.t
+     ?check:unit Dune_lang.Decoder.t
   -> string
   -> t Dune_lang.Decoder.fields_parser
 
@@ -83,8 +82,7 @@ module Unexpanded : sig
   val of_strings : pos:string * int * int * int -> string list -> t
 
   val field :
-       ?default:t
-    -> ?check:unit Dune_lang.Decoder.t
+       ?check:unit Dune_lang.Decoder.t
     -> string
     -> t Dune_lang.Decoder.fields_parser
 

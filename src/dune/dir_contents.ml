@@ -60,6 +60,9 @@ let modules_of_executables t ~obj_dir ~first_exe =
   let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe |> Modules.relocate_alias_module ~src_dir
 
+let c_sources_of_executables t ~first_exe =
+  C_sources.for_exes (Memo.Lazy.force t.c_sources) ~first_exe
+
 let c_sources_of_library t ~name =
   C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name
 

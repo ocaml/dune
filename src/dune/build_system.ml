@@ -1497,11 +1497,11 @@ end = struct
             let path = Path.build path in
             let in_source_tree = Path.source in_source_tree in
             match
-              (not (Path.exists in_source_tree))
-              || Cached_digest.file path <> Cached_digest.file in_source_tree
+              Path.exists in_source_tree
+              && Cached_digest.file path = Cached_digest.file in_source_tree
             with
-            | false -> Fiber.return ()
-            | true ->
+            | true -> Fiber.return ()
+            | false ->
               if lifetime = Until_clean then
                 Promoted_to_delete.add in_source_tree;
               Scheduler.ignore_for_watch in_source_tree;

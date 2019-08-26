@@ -1661,13 +1661,12 @@ let package_deps pkg files =
       acc
     | Some fn -> (
       let pkgs = Fdecl.get t.packages fn in
-      match Package.Name.Set.is_empty pkgs with
-      | true -> loop_deps fn acc
-      | false ->
-        if Package.Name.Set.mem pkgs pkg then
-          loop_deps fn acc
-        else
-          Package.Name.Set.union acc pkgs )
+      if Package.Name.Set.is_empty pkgs then
+        loop_deps fn acc
+      else if Package.Name.Set.mem pkgs pkg then
+        loop_deps fn acc
+      else
+        Package.Name.Set.union acc pkgs)
   and loop_deps fn acc =
     match Path.Build.Table.find t.files fn with
     | None -> acc

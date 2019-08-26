@@ -1464,49 +1464,64 @@ end = struct
       ) else
         Fiber.return ()
     in
-    let+ () =
-      match mode with
-      | Standard
-       |Fallback
-       |Ignore_source_files ->
-        Fiber.return ()
-      | Promote { lifetime; into; only } ->
-        Fiber.sequential_iter targets_as_list ~f:(fun path ->
-          let consider_for_promotion =
-            match only with
-            | None -> true
-            | Some pred ->
-              Predicate_lang.exec pred
-                (Path.reach (Path.build path) ~from:(Path.build dir))
-                ~standard:Predicate_lang.true_
-          in
-          if consider_for_promotion then
-            let in_source_tree = Path.Build.drop_build_context_exn path in
-            let in_source_tree =
-              match into with
-              | None -> in_source_tree
-              | Some { loc; dir } ->
-                Path.Source.relative
-                  (Path.Source.relative
-                    (Path.Source.parent_exn in_source_tree)
-                     dir ~error_loc:loc)
-                  (Path.Source.basename in_source_tree)
-            in
-            let path = Path.build path in
-            let in_source_tree = Path.source in_source_tree in
-            if
-              (not (Path.exists in_source_tree))
-              || Cached_digest.file path <> Cached_digest.file in_source_tree
-            then (
-              if lifetime = Until_clean then
-                Promoted_to_delete.add in_source_tree;
-              Scheduler.ignore_for_watch in_source_tree;
-              Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                ~get_vcs:(File_tree.nearest_vcs t.file_tree)
-            ) else
-              Fiber.return ()
-          else
-            Fiber.return ())
+    let+ (_ : unit Option.t) =
+      let module Fiber_option = struct
+        let ( let* ) a f =
+          Fiber.bind a ~f:(function
+            | None -> Fiber.return None
+            | Some p -> f p)
+
+        let check x = Fiber.return (Option.some_if x ())
+
+        let sequential_iter x ~f =
+          Fiber.sequential_iter x ~f:(fun x ->
+            Fiber.map (f x) ~f:(fun (_ : unit option) -> ()))
+          |> Fiber.map ~f:Option.some
+
+        let of_fiber = Fiber.map ~f:(fun () -> Some ())
+      end
+      in
+      let open Fiber_option in
+      let* { lifetime; into; only } = Fiber.return (
+        match mode with
+        | Standard
+        | Fallback
+        | Ignore_source_files -> None
+        | Promote p -> Some p
+      ) in
+      sequential_iter targets_as_list ~f:(fun path ->
+        let* () = Fiber.return (
+          match only with
+          | None -> Some ()
+          | Some pred ->
+            Option.some_if (
+            Predicate_lang.exec pred
+              (Path.reach (Path.build path) ~from:(Path.build dir))
+              ~standard:Predicate_lang.true_) ()
+        ) in
+        let in_source_tree = Path.Build.drop_build_context_exn path in
+        let in_source_tree =
+          match into with
+          | None -> in_source_tree
+          | Some { loc; dir } ->
+            Path.Source.relative
+              (Path.Source.relative
+                 (Path.Source.parent_exn in_source_tree)
+                 dir ~error_loc:loc)
+              (Path.Source.basename in_source_tree)
+        in
+        let path = Path.build path in
+        let in_source_tree = Path.source in_source_tree in
+        let* () = check (
+          (not (Path.exists in_source_tree))
+          || Cached_digest.file path <> Cached_digest.file in_source_tree
+        ) in
+        if lifetime = Until_clean then
+          Promoted_to_delete.add in_source_tree;
+        Scheduler.ignore_for_watch in_source_tree;
+        Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
+          ~get_vcs:(File_tree.nearest_vcs t.file_tree)
+        |> of_fiber)
     in
     t.hook Rule_completed
 

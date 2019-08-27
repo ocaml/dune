@@ -266,7 +266,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
     build_shared ~sctx lib ~dir ~flags
 
-let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
+let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
   let dep_kind =
     if lib.optional then
@@ -275,13 +275,8 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
       Required
   in
   let flags = Super_context.ocaml_flags sctx ~dir lib.buildable in
-  let modules =
-    Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
-  in
   let obj_dir = Library.obj_dir ~dir lib in
-  Check_rules.add_obj_dir sctx ~obj_dir;
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
-  Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind ~scope
@@ -292,39 +287,53 @@ let library_rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in
-  let source_modules =
-    Modules.fold_user_written modules ~init:[] ~f:(fun m acc -> m :: acc)
-  in
   let modules =
-    Modules.map_user_written modules ~f:(Preprocessing.pp_module pp)
+    Modules.map_user_written source_modules ~f:(Preprocessing.pp_module pp)
   in
   let modules = Vimpl.impl_modules vimpl modules in
-  let cctx =
-    let requires_compile = Lib.Compile.direct_requires compile_info in
-    let requires_link = Lib.Compile.requires_link compile_info in
-    let ctx = Super_context.context sctx in
-    let opaque = Super_context.opaque sctx in
-    let dynlink =
-      Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-    in
-    Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
-      ~no_keep_locs:lib.no_keep_locs ~opaque
-      ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
-      ~package:(Option.map lib.public ~f:(fun p -> p.package))
-      ?vimpl
+  let requires_compile = Lib.Compile.direct_requires compile_info in
+  let requires_link = Lib.Compile.requires_link compile_info in
+  let ctx = Super_context.context sctx in
+  let opaque = Super_context.opaque sctx in
+  let dynlink =
+    Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in
+  Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
+    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
+    ~no_keep_locs:lib.no_keep_locs ~opaque
+    ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
+    ~package:(Option.map lib.public ~f:(fun p -> p.package))
+    ?vimpl
+
+let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
+    ~compile_info =
+  (* Preprocess before adding the alias module as it doesn't need preprocessing *)
+  let source_modules =
+    Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc ->
+        m :: acc)
+  in
+  let modules = Compilation_context.modules cctx in
+  let obj_dir = Compilation_context.obj_dir cctx in
+  let vimpl = Compilation_context.vimpl cctx in
+  let flags = Compilation_context.flags cctx in
+  let sctx = Compilation_context.super_context cctx in
+  let dir = Compilation_context.dir cctx in
+  let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
+  let expander = Compilation_context.expander cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
+  Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
+  Check_rules.add_obj_dir sctx ~obj_dir;
   gen_wrapped_compat_modules lib cctx;
   Module_compilation.build_all cctx ~dep_graphs;
-  let expander = Super_context.expander sctx ~dir in
-  let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-  if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
-    build_stubs lib ~sctx ~dir ~expander ~requires:requires_compile
-      ~dir_contents ~vlib_stubs_o_files;
   if not (Library.is_virtual lib) then
     setup_build_archives lib ~cctx ~dep_graphs ~expander;
+  let () =
+    let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
+    if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
+      build_stubs lib ~sctx ~dir ~expander ~requires:requires_compile
+        ~dir_contents ~vlib_stubs_o_files
+  in
   Odoc.setup_library_odoc_rules cctx lib ~dep_graphs;
   Sub_system.gen_rules
     { super_context = sctx
@@ -346,7 +355,14 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
       ~allow_overlaps:lib.buildable.allow_overlapping_dependencies
   in
   let f () =
-    library_rules lib ~sctx ~dir_contents ~dir ~scope ~expander ~compile_info
+    let source_modules =
+      Dir_contents.modules_of_library dir_contents
+        ~name:(Library.best_name lib)
+    in
+    let cctx =
+      cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info
+    in
+    library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
   Super_context.Libs.gen_select_rules sctx compile_info ~dir;
   Super_context.Libs.with_lib_deps sctx compile_info ~dir ~f

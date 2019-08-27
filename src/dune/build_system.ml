@@ -1379,8 +1379,9 @@ end = struct
           (Dep.Set.sandbox_config deps)
           ~sandboxing_preference:t.sandboxing_preference
     in
+    let action_ctx = Action_exec.Context.make ~targets ~context ~env in
     let rule_digest =
-      let env = Action_exec.exec_env ~context ~env in
+      let env = Action_exec.Context.env action_ctx in
       let trace =
         ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
         , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
@@ -1436,11 +1437,10 @@ end = struct
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
-            Fiber.map (Action_exec.exec ~context ~env ~targets action)
-              ~f:(fun () ->
-                Option.iter sandboxed ~f:(fun sandboxed ->
-                  List.iter targets_as_list ~f:(fun target ->
-                    rename_optional_file ~src:(sandboxed target) ~dst:target))))
+            Fiber.map (Action_exec.exec action action_ctx) ~f:(fun () ->
+              Option.iter sandboxed ~f:(fun sandboxed ->
+                List.iter targets_as_list ~f:(fun target ->
+                  rename_optional_file ~src:(sandboxed target) ~dst:target))))
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)

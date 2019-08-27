@@ -105,6 +105,10 @@
 
 - Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
 
+- Add a `--disable-promotion` to disable all modification to the source
+  directory. There's also a corresponding `DUNE_DISABLE_PROMOTION` environment
+  variable. (#2588, fix #2568, @rgrinberg)
+
 1.11.3 (23/08/2019)
 -------------------
 

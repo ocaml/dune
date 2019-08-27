@@ -1659,14 +1659,12 @@ let package_deps pkg files =
       (* if this file isn't in the build dir, it doesnt belong to any packages
         and it doesn't have dependencies that do *)
       acc
-    | Some fn -> (
+    | Some fn ->
       let pkgs = Fdecl.get t.packages fn in
-      if Package.Name.Set.is_empty pkgs then
-        loop_deps fn acc
-      else if Package.Name.Set.mem pkgs pkg then
+      if Package.Name.Set.is_empty pkgs || Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        Package.Name.Set.union acc pkgs)
+        Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
     match Path.Build.Table.find t.files fn with
     | None -> acc

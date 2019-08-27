@@ -1465,12 +1465,11 @@ end = struct
         Fiber.return ()
     in
     let+ () =
-      match mode with
-      | Standard
-       |Fallback
-       |Ignore_source_files ->
+      match (mode, !Clflags.promote) with
+      | (Standard | Fallback | Ignore_source_files), _
+       |Promote _, Some Never ->
         Fiber.return ()
-      | Promote { lifetime; into; only } ->
+      | Promote { lifetime; into; only }, (Some Automatically | None) ->
         Fiber.sequential_iter targets_as_list ~f:(fun path ->
           let consider_for_promotion =
             match only with
@@ -1659,14 +1658,12 @@ let package_deps pkg files =
       (* if this file isn't in the build dir, it doesnt belong to any packages
         and it doesn't have dependencies that do *)
       acc
-    | Some fn -> (
+    | Some fn ->
       let pkgs = Fdecl.get t.packages fn in
-      if Package.Name.Set.is_empty pkgs then
-        loop_deps fn acc
-      else if Package.Name.Set.mem pkgs pkg then
+      if Package.Name.Set.is_empty pkgs || Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        Package.Name.Set.union acc pkgs)
+        Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
     match Path.Build.Table.find t.files fn with
     | None -> acc

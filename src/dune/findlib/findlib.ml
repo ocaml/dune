@@ -229,7 +229,15 @@ module Package = struct
     let archives = archives t in
     let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Mode.Dict.Set.t =
-      Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives
+      (* libraries without archives are compatible with all modes. mainly a
+        hack for compiler-libs which doesn't have any archives *)
+      let discovered =
+        Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives
+      in
+      if Mode.Dict.Set.is_empty discovered then
+        Mode.Dict.Set.all
+      else
+        discovered
     in
     Dune_package.Lib.make ~orig_src_dir:None ~loc ~kind:Normal ~name:(name t)
       ~synopsis:(description t) ~archives ~plugins:(plugins t)

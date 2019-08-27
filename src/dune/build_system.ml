@@ -1382,7 +1382,7 @@ end = struct
     let rule_digest =
       let env =
         match (env, context) with
-        | None, None -> Env.initial
+        | None, None -> Env.empty
         | Some e, _ -> e
         | None, Some c -> c.env
       in

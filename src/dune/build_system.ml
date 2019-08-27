@@ -1465,12 +1465,11 @@ end = struct
         Fiber.return ()
     in
     let+ () =
-      match mode with
-      | Standard
-       |Fallback
-       |Ignore_source_files ->
+      match (mode, !Clflags.promote) with
+      | (Standard | Fallback | Ignore_source_files), _
+       |Promote _, Some Never ->
         Fiber.return ()
-      | Promote { lifetime; into; only } ->
+      | Promote { lifetime; into; only }, (Some Automatically | None) ->
         Fiber.sequential_iter targets_as_list ~f:(fun path ->
           let consider_for_promotion =
             match only with

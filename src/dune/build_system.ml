@@ -1380,12 +1380,7 @@ end = struct
           ~sandboxing_preference:t.sandboxing_preference
     in
     let rule_digest =
-      let env =
-        match (env, context) with
-        | None, None -> Env.initial
-        | Some e, _ -> e
-        | None, Some c -> c.env
-      in
+      let env = Action_exec.exec_env ~context ~env in
       let trace =
         ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
         , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))

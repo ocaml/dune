@@ -228,16 +228,17 @@ and exec_list ts ~ectx ~eenv =
     in
     exec_list rest ~ectx ~eenv
 
+let exec_env ~(context : Context.t option) ~env =
+  match (env, context) with
+  | None, None -> Env.initial
+  | Some e, _ -> e
+  | None, Some c -> c.env
+
 let exec ~targets ~context ~env t =
-  let env =
-    match ((context : Context.t option), env) with
-    | _, Some e -> e
-    | None, None -> Env.initial
-    | Some c, None -> c.env
-  in
+  let env = exec_env ~context ~env in
   let purpose = Process.Build_job targets in
-  let ectx = { purpose; context }
-  and eenv =
+  let ectx = { purpose; context } in
+  let eenv =
     { working_dir = Path.root
     ; env
     ; stdout_to = Process.Io.stdout

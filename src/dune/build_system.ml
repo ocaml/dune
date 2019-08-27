@@ -1079,10 +1079,7 @@ end = struct
             Generated_directory_restrictions.is_allowed_to_generate_rules_in
               ~dir ~subdir:key
           in
-          if not allowed then
-            Some data
-          else
-            None)
+          Option.some_if (not allowed) data)
     in
     if not (Path.Build.Map.is_empty violations) then
       Code_error.raise
@@ -1096,18 +1093,16 @@ end = struct
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts t ~dir ~subdirs_to_keep;
     let alias_targets =
-      match alias_rules with
-      | None -> None
-      | Some f -> Some (f ~subdirs_to_keep)
+      Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules
+    in
+    let targets_of_alias_dir =
+      Option.value ~default:Path.Build.Map.empty alias_targets
     in
     Loaded.Build
       { allowed_subdirs = descendants_to_keep
       ; rules_produced
       ; targets_here
-      ; targets_of_alias_dir =
-        ( match alias_targets with
-        | None -> Path.Build.Map.empty
-        | Some v -> v )
+      ; targets_of_alias_dir
       }
 
   let load_dir_impl t ~dir : Loaded.t =
@@ -1282,6 +1277,7 @@ end = struct
                 ]
           | _ -> Some preference ))
     with
+    | Some choice -> choice
     | None ->
       (* This is not trivial to reach because the user rules are checked at
         parse time and [sandboxing_preference] always includes all possible
@@ -1292,7 +1288,6 @@ end = struct
           "This rule forbids all sandboxing modes (but it also requires \
            sandboxing)"
         ]
-    | Some choice -> choice
 
   let evaluate_rule (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
@@ -1401,19 +1396,19 @@ end = struct
     in
     let targets_digest = compute_targets_digest targets_as_list in
     let sandbox =
-      match sandbox_mode with
-      | Some mode ->
+      Option.map sandbox_mode ~f:(fun mode ->
         let digest = Digest.to_string rule_digest in
-        Some (Path.Build.relative sandbox_dir digest, mode)
-      | None -> None
+        (Path.Build.relative sandbox_dir digest, mode))
     in
     let force =
       !Clflags.force
       && List.exists targets_as_list ~f:Path.Build.is_alias_stamp_file
     in
     let something_changed =
-      match (prev_trace, targets_digest, Dep.Set.has_universe deps) with
-      | Some prev_trace, Some targets_digest, false ->
+      Dep.Set.has_universe deps
+      ||
+      match (prev_trace, targets_digest) with
+      | Some prev_trace, Some targets_digest ->
         prev_trace.rule_digest <> rule_digest
         || prev_trace.targets_digest <> targets_digest
       | _ -> true
@@ -1448,11 +1443,9 @@ end = struct
           with_locks locks ~f:(fun () ->
             Fiber.map (Action_exec.exec ~context ~env ~targets action)
               ~f:(fun () ->
-                match sandboxed with
-                | None -> ()
-                | Some sandboxed ->
+                Option.iter sandboxed ~f:(fun sandboxed ->
                   List.iter targets_as_list ~f:(fun target ->
-                    rename_optional_file ~src:(sandboxed target) ~dst:target)))
+                    rename_optional_file ~src:(sandboxed target) ~dst:target))))
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)

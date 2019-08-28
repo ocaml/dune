@@ -1227,7 +1227,7 @@ end = struct
     Dep.Set.parallel_iter ~f:(function
       | Alias a -> build_file (Path.build (Alias.stamp_file a))
       | File f -> build_file f
-      | Glob g -> Pred.build g
+      | File_selector g -> Pred.build g
       | Universe
        |Env _
        |Sandbox_config _ ->

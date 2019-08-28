@@ -575,9 +575,9 @@ module Deps = struct
     | Glob_files s ->
       let loc = String_with_vars.loc s in
       let path = Expander.expand_path expander s in
-      let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
+      let glob = Glob.of_string_exn loc (Path.basename path) in
       let dir = Path.parent_exn path in
-      File_selector.create ~dir pred
+      File_selector.from_glob ~dir glob
       |> Build.paths_matching ~loc >>^ Path.Set.to_list
     | Source_tree s ->
       let path = Expander.expand_path expander s in

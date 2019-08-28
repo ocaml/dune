@@ -167,7 +167,7 @@ let depend_on_dir_without_files =
   let pred =
     Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false)
   in
-  fun dir -> Paths_glob (File_selector.create ~dir pred) |> ignore
+  fun dir -> Paths_glob (File_selector.from_predicate ~dir pred) |> ignore
 
 let source_tree ~dir ~file_tree =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in

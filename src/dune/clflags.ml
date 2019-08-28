@@ -1,3 +1,9 @@
+module Promote = struct
+  type t =
+    | Automatically
+    | Never
+end
+
 let debug_findlib = ref false
 
 let debug_dep_path = ref false
@@ -10,7 +16,7 @@ let debug_backtraces = ref false
 
 let diff_command = ref None
 
-let auto_promote = ref false
+let promote = ref None
 
 let force = ref false
 

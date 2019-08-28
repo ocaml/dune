@@ -27,7 +27,7 @@ type t =
   ; capture_outputs : bool
   ; x : string option
   ; diff_command : string option
-  ; auto_promote : bool
+  ; promote : Clflags.Promote.t option
   ; force : bool
   ; ignore_promoted_rules : bool
   ; build_dir : string
@@ -76,7 +76,7 @@ let set_common_other c ~targets =
   Clflags.debug_backtraces := c.debug_backtraces;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
-  Clflags.auto_promote := c.auto_promote;
+  Clflags.promote := c.promote;
   Clflags.force := c.force;
   Clflags.watch := c.watch;
   Clflags.no_print_directory := c.no_print_directory;
@@ -405,13 +405,23 @@ let term =
       & opt (some path) None
       & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
         ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
-  and+ auto_promote =
-    Arg.(
-      value & flag
-      & info [ "auto-promote" ] ~docs
-        ~doc:
-          "Automatically promote files. This is similar to running\n\
-          \                   $(b,dune promote) after the build.")
+  and+ promote =
+    one_of
+      (let+ auto =
+        Arg.(
+          value & flag
+          & info [ "auto-promote" ] ~docs
+            ~doc:
+              "Automatically promote files. This is similar to running\n\
+              \                   $(b,dune promote) after the build.")
+       in
+       Option.some_if auto Clflags.Promote.Automatically)
+      (let+ disable =
+        let doc = "Disable all promotion rules" in
+        let env = Arg.env_var ~doc "DUNE_DISABLE_PROMOTION" in
+        Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
+       in
+       Option.some_if disable Clflags.Promote.Never)
   and+ force =
     Arg.(
       value & flag
@@ -516,7 +526,7 @@ let term =
   ; target_prefix =
     String.concat ~sep:"" (List.map root.to_cwd ~f:(sprintf "%s/"))
   ; diff_command
-  ; auto_promote
+  ; promote
   ; force
   ; ignore_promoted_rules
   ; only_packages =

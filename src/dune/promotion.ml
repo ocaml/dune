@@ -148,9 +148,10 @@ let do_promote db files_to_promote =
 
 let finalize () =
   let db =
-    if !Clflags.auto_promote then
-      do_promote !File.db All
-    else
+    match !Clflags.promote with
+    | Some Automatically -> do_promote !File.db All
+    | Some Never
+     |None ->
       !File.db
   in
   dump_db db

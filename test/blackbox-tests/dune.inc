@@ -232,6 +232,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name disable-promotion)
+ (deps (package dune) (source_tree test-cases/disable-promotion))
+ (action
+  (chdir
+   test-cases/disable-promotion
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name double-echo)
  (deps (package dune) (source_tree test-cases/double-echo))
  (action
@@ -1750,6 +1758,7 @@
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-init)
@@ -1955,6 +1964,7 @@
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-init)

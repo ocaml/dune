@@ -2,25 +2,50 @@ open! Stdune
 open Import
 open Fiber.O
 
-type exec_context =
-  { context : Context.t option
-  ; purpose : Process.purpose
-  }
+module Context = struct
+  module For_exec = struct
+    type t =
+      { working_dir : Path.t
+      ; env : Env.t
+      ; stdout_to : Process.Io.output Process.Io.t
+      ; stderr_to : Process.Io.output Process.Io.t
+      ; stdin_from : Process.Io.input Process.Io.t
+      }
+  end
 
-type exec_environment =
-  { working_dir : Path.t
-  ; env : Env.t
-  ; stdout_to : Process.Io.output Process.Io.t
-  ; stderr_to : Process.Io.output Process.Io.t
-  ; stdin_from : Process.Io.input Process.Io.t
-  }
+  type t =
+    { context : Context.t option
+    ; purpose : Process.purpose
+    ; env : Env.t
+    }
 
-let exec_run ~ectx ~eenv prog args =
+  let env t = t.env
+
+  let for_exec t =
+    { For_exec.working_dir = Path.root
+    ; env = t.env
+    ; stdout_to = Process.Io.stdout
+    ; stderr_to = Process.Io.stderr
+    ; stdin_from = Process.Io.stdin
+    }
+
+  let make ~targets ~(context : Context.t option) ~env =
+    let env =
+      match (env, context) with
+      | None, None -> Env.initial
+      | Some e, _ -> e
+      | None, Some c -> c.env
+    in
+    let purpose = Process.Build_job targets in
+    { purpose; context; env }
+end
+
+let exec_run ~(ectx : Context.t) ~(eenv : Context.For_exec.t) prog args =
   ( match ectx.context with
   | None
-   |Some { Context.for_host = None; _ } ->
+   |Some { for_host = None; _ } ->
     ()
-  | Some ({ Context.for_host = Some host; _ } as target) ->
+  | Some ({ for_host = Some host; _ } as target) ->
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with
       | None -> ()
@@ -228,21 +253,6 @@ and exec_list ts ~ectx ~eenv =
     in
     exec_list rest ~ectx ~eenv
 
-let exec ~targets ~context ~env t =
-  let env =
-    match ((context : Context.t option), env) with
-    | _, Some e -> e
-    | None, None -> Env.initial
-    | Some c, None -> c.env
-  in
-  let purpose = Process.Build_job targets in
-  let ectx = { purpose; context }
-  and eenv =
-    { working_dir = Path.root
-    ; env
-    ; stdout_to = Process.Io.stdout
-    ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
-    }
-  in
-  exec t ~ectx ~eenv
+let exec action (ectx : Context.t) =
+  let eenv = Context.for_exec ectx in
+  exec action ~ectx ~eenv

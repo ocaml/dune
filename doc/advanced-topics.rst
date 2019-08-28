@@ -169,3 +169,62 @@ builds. It is possible that it will be replaced by just an ``include``
 stanza where one can include a generated file.
 
 Consequently **you must not** build complex systems based on it.
+
+.. _variables-for-artifacts:
+
+Variables for artifacts
+-----------------------
+
+For specific situations where one needs to refer to individual compilation
+artifacts, special variables (see :ref:`variables`) are provided so that the
+user does not need to be aware of the particular naming conventions or directory
+layout implemented by ``dune``.
+
+These variables can appear wherever a :ref:`deps-field` is expected and also
+inside :ref:`user-actions`. When used inside :ref:`user-actions`, they
+implicitly declare a dependency on the corresponding artifact.
+
+The variables have the form ``%{<ext>:<path>}``, where ``<path>`` is
+interpreted relative to the current directory:
+
+- ``cmo:<path>``, ``cmx:<path>``, ``cmi:<path>`` expand to the path of the
+  corresponding artifact for the module specified by ``<path>``. The basename of
+  ``<path>`` should be the name of a module as specified in a ``(modules)``
+  field.
+
+- ``cma:<path>``, ``cmxa:<path>`` expands to the path of the corresponding
+  artifact for the library specified by ``<path>``. The basename of ``<path>``
+  should be the name of the library as specified in the ``(name)`` field of a
+  ``library`` stanza (*not* its public name).
+
+In each case, the expansion of the variable is a path pointing inside the build
+context (ie ``_build/<context>``).
+
+Building an ad-hoc ``.cmxs``
+----------------------------
+
+In the model exposed by ``dune``, a ``.cmxs`` target is created for each
+library.  However, the ``.cmxs`` format itself is more flexible than that and is
+capable to containing arbitrary ``.cmxa`` and ``.cmx`` files.
+
+For the specific cases where this extra flexibility is needed, one can use
+:ref:`variables-for-artifacts` to write explicit rules to build ``.cmxs`` files
+not associated to any library.
+
+Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
+``d.cmx``. Note how we use a :ref:`library` stanza to set up the compilation of
+``d.cmx``.
+
+.. code:: scheme
+
+    (library
+     (name foo)
+     (modules a b c))
+
+    (library
+     (name dummy)
+     (modules d))
+
+    (rule
+     (targets my.cmxs)
+     (action (run %{ocamlopt} -shared -o %{targets} %{cmxa:foo} %{cmx:d})))

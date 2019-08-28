@@ -19,6 +19,20 @@ module Dir_modules = struct
     }
 end
 
+module Dir_artifacts = struct
+  type t =
+    { libraries : Library.t Lib_name.Map.t
+    ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
+    }
+
+  let empty =
+    { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
+
+  let lookup_module { modules; _ } = Module_name.Map.find modules
+
+  let lookup_library { libraries; _ } = Lib_name.Map.find libraries
+end
+
 type t =
   { kind : kind
   ; dir : Path.Build.t
@@ -27,6 +41,7 @@ type t =
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
+  ; artifacts : Dir_artifacts.t Memo.Lazy.t
   }
 
 and kind =
@@ -39,6 +54,8 @@ type gen_rules_result =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
+
+let artifacts t = Memo.Lazy.force t.artifacts
 
 let dirs t =
   match t.kind with
@@ -205,95 +222,94 @@ end = struct
     ; allow_new_public_modules
     }
 
-  let make_modules sctx (d : _ Dir_with_dune.t) ~modules =
+  let libs_and_exes sctx (d : _ Dir_with_dune.t) ~modules =
     let scope = d.scope in
-    let libs, exes =
-      List.filter_partition_map d.data ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library lib ->
-          let src_dir = d.ctx_dir in
-          let kind, main_module_name, wrapped =
-            match lib.implements with
-            | None ->
-              (* In the two following pattern matching, we can only get [From
-                _] if [lib] is an implementation. Since we know that it is not
-                 one because of the above [match lib.implements with ...], we
-                 know that we can't get [From _]. That's why we have these
-                 [assert false]. *)
-              let main_module_name =
-                match Library.main_module_name lib with
-                | This x -> x
-                | From _ -> assert false
-              in
-              let wrapped =
-                match lib.wrapped with
-                | This x -> x
-                | From _ -> assert false
-              in
-              let kind : Modules_field_evaluator.kind =
-                match lib.virtual_modules with
-                | None -> Exe_or_normal_lib
-                | Some virtual_modules -> Virtual { virtual_modules }
-              in
-              (kind, main_module_name, wrapped)
-            | Some _ ->
-              assert (Option.is_none lib.virtual_modules);
-              let resolved =
-                let name = Library.best_name lib in
-                Lib.DB.find_even_when_hidden (Scope.libs scope) name
-                (* can't happen because this library is defined using the
-                  current stanza *)
-                |> Option.value_exn
-              in
-              (* diml: this [Result.ok_exn] means that if the user writes an
-                invalid [implements] field, we will get an error immediately
-                 even if the library is not built. We should change this to
-                 carry the [Or_exn.t] a bit longer. *)
-              let vlib =
-                Result.ok_exn
-                  ((* This [Option.value_exn] is correct because the above
-                    [lib.implements] is [Some _] and this [lib] variable
-                      correspond to the same library. *)
-                   Option.value_exn (Lib.implements resolved))
-              in
-              let kind : Modules_field_evaluator.kind =
-                Implementation (virtual_modules sctx vlib)
-              in
-              let main_module_name, wrapped =
-                Result.ok_exn
-                  (let open Result.O in
-                  let* main_module_name = Lib.main_module_name resolved in
-                  let+ wrapped = Lib.wrapped resolved in
-                  (main_module_name, Option.value_exn wrapped))
-              in
-              (kind, main_module_name, wrapped)
-          in
-          let modules =
-            Modules_field_evaluator.eval ~modules ~buildable:lib.buildable
-              ~kind
-              ~private_modules:
-                (Option.value ~default:Ordered_set_lang.standard
-                  lib.private_modules)
-          in
-          Left
-            (lib, Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped)
-        | Executables exes
-         |Tests { exes; _ } ->
-          let modules =
-            Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
-              ~kind:Modules_field_evaluator.Exe_or_normal_lib
-              ~private_modules:Ordered_set_lang.standard
-          in
-          let modules =
-            let project = Scope.project scope in
-            if Dune_project.wrapped_executables project then
-              Modules.exe_wrapped ~src_dir:d.ctx_dir ~modules
-            else
-              Modules.exe_unwrapped modules
-          in
-          Right (exes, modules)
-        | _ -> Skip)
-    in
+    List.filter_partition_map d.data ~f:(fun stanza ->
+      match (stanza : Stanza.t) with
+      | Library lib ->
+        let src_dir = d.ctx_dir in
+        let kind, main_module_name, wrapped =
+          match lib.implements with
+          | None ->
+            (* In the two following pattern matching, we can only get [From _]
+              if [lib] is an implementation. Since we know that it is not one
+               because of the above [match lib.implements with ...], we know
+               that we can't get [From _]. That's why we have these [assert
+               false]. *)
+            let main_module_name =
+              match Library.main_module_name lib with
+              | This x -> x
+              | From _ -> assert false
+            in
+            let wrapped =
+              match lib.wrapped with
+              | This x -> x
+              | From _ -> assert false
+            in
+            let kind : Modules_field_evaluator.kind =
+              match lib.virtual_modules with
+              | None -> Exe_or_normal_lib
+              | Some virtual_modules -> Virtual { virtual_modules }
+            in
+            (kind, main_module_name, wrapped)
+          | Some _ ->
+            assert (Option.is_none lib.virtual_modules);
+            let resolved =
+              let name = Library.best_name lib in
+              Lib.DB.find_even_when_hidden (Scope.libs scope) name
+              (* can't happen because this library is defined using the current
+                stanza *)
+              |> Option.value_exn
+            in
+            (* diml: this [Result.ok_exn] means that if the user writes an
+              invalid [implements] field, we will get an error immediately even
+               if the library is not built. We should change this to carry the
+               [Or_exn.t] a bit longer. *)
+            let vlib =
+              Result.ok_exn
+                ((* This [Option.value_exn] is correct because the above
+                  [lib.implements] is [Some _] and this [lib] variable
+                    correspond to the same library. *)
+                 Option.value_exn (Lib.implements resolved))
+            in
+            let kind : Modules_field_evaluator.kind =
+              Implementation (virtual_modules sctx vlib)
+            in
+            let main_module_name, wrapped =
+              Result.ok_exn
+                (let open Result.O in
+                let* main_module_name = Lib.main_module_name resolved in
+                let+ wrapped = Lib.wrapped resolved in
+                (main_module_name, Option.value_exn wrapped))
+            in
+            (kind, main_module_name, wrapped)
+        in
+        let modules =
+          Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
+            ~private_modules:
+              (Option.value ~default:Ordered_set_lang.standard
+                lib.private_modules)
+        in
+        Left
+          (lib, Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped)
+      | Executables exes
+       |Tests { exes; _ } ->
+        let modules =
+          Modules_field_evaluator.eval ~modules ~buildable:exes.buildable
+            ~kind:Modules_field_evaluator.Exe_or_normal_lib
+            ~private_modules:Ordered_set_lang.standard
+        in
+        let modules =
+          let project = Scope.project scope in
+          if Dune_project.wrapped_executables project then
+            Modules.exe_wrapped ~src_dir:d.ctx_dir ~modules
+          else
+            Modules.exe_unwrapped modules
+        in
+        Right (exes, modules)
+      | _ -> Skip)
+
+  let make_modules (libs, exes) =
     let libraries =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
@@ -309,7 +325,7 @@ end = struct
     let executables =
       match
         String.Map.of_list_map exes ~f:(fun (exes, m) ->
-          (snd (List.hd exes.names), m))
+          (snd (List.hd exes.Executables.names), m))
       with
       | Ok x -> x
       | Error (name, _, (exes2, _)) ->
@@ -353,6 +369,32 @@ end = struct
     in
     { Dir_modules.libraries; executables; rev_map }
 
+  let make_artifacts (d : _ Dir_with_dune.t) (libs, exes) =
+    let libraries =
+      List.fold_left
+        ~f:(fun libraries (lib, _) ->
+          let name = Lib_name.of_local lib.Library.name in
+          Lib_name.Map.add_exn libraries name lib)
+        ~init:Lib_name.Map.empty libs
+    in
+    let modules =
+      let by_name modules obj_dir =
+        Modules.fold_user_written ~init:modules ~f:(fun m modules ->
+          Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
+      in
+      let init =
+        List.fold_left ~init:Module_name.Map.empty
+          ~f:(fun modules (e, m) ->
+            by_name modules (Executables.obj_dir ~dir:d.ctx_dir e) m)
+          exes
+      in
+      List.fold_left ~init
+        ~f:(fun modules (l, m) ->
+          by_name modules (Library.obj_dir ~dir:d.ctx_dir l) m)
+        libs
+    in
+    { Dir_artifacts.libraries; modules }
+
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
     { Dir_with_dune.ctx_dir = dir
@@ -363,7 +405,13 @@ end = struct
     } =
     (* Interpret a few stanzas in order to determine the list of files
       generated by the user. *)
+    let lookup ~f ~dir name = f (artifacts (Load.get sctx ~dir)) name in
+    let lookup_module = lookup ~f:Dir_artifacts.lookup_module in
+    let lookup_library = lookup ~f:Dir_artifacts.lookup_library in
     let expander = Super_context.expander sctx ~dir in
+    let expander = Expander.set_lookup_module expander ~lookup_module in
+    let expander = Expander.set_lookup_library expander ~lookup_library in
+    let expander = Expander.set_artifacts_dynamic expander true in
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
         match (stanza : Stanza.t) with
@@ -447,16 +495,18 @@ end = struct
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
         in
-        let dialects = Dune_project.dialects (Scope.project d.scope) in
+        let libs_and_exes =
+          let dialects = Dune_project.dialects (Scope.project d.scope) in
+          Memo.lazy_ (fun () ->
+            libs_and_exes sctx d
+              ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
+        in
         Here
           { t =
             { kind = Standalone
             ; dir
             ; text_files = files
-            ; modules =
-              Memo.lazy_ (fun () ->
-                make_modules sctx d
-                  ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
+            ; modules = Memo.Lazy.map ~f:make_modules libs_and_exes
             ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
             ; c_sources =
               Memo.lazy_ (fun () ->
@@ -468,6 +518,7 @@ end = struct
               Memo.lazy_ (fun () ->
                 build_coq_modules_map d ~dir:d.ctx_dir
                   ~modules:(coq_modules_of_files ~subdirs:[ (dir, [], files) ]))
+            ; artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes
             }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -483,6 +534,7 @@ end = struct
             ; mlds = Memo.Lazy.of_val []
             ; c_sources = Memo.Lazy.of_val C_sources.empty
             ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
+            ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
             }
           ; rules = None
           ; subdirs = Path.Build.Map.empty
@@ -519,7 +571,7 @@ end = struct
           let subdirs = walk_children ft_dir ~dir ~local:[] [] in
           (files, subdirs))
       in
-      let modules =
+      let libs_and_exes =
         Memo.lazy_ (fun () ->
           check_no_qualified Loc.none qualif_mode;
           let modules =
@@ -548,8 +600,10 @@ end = struct
                     ; Pp.text "This is not allowed, please rename one of them."
                     ]))
           in
-          make_modules sctx d ~modules)
+          libs_and_exes sctx d ~modules)
       in
+      let modules = Memo.Lazy.map ~f:make_modules libs_and_exes in
+      let artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes in
       let c_sources =
         Memo.lazy_ (fun () ->
           check_no_qualified Loc.none qualif_mode;
@@ -608,6 +662,7 @@ end = struct
           ; c_sources
           ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
           ; coq_modules
+          ; artifacts
           })
       in
       let t =
@@ -618,6 +673,7 @@ end = struct
         ; c_sources
         ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
         ; coq_modules
+        ; artifacts
         }
       in
       Here

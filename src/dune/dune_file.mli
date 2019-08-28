@@ -369,6 +369,8 @@ module Executables : sig
     }
 
   val has_stubs : t -> bool
+
+  val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 end
 
 module Rule : sig

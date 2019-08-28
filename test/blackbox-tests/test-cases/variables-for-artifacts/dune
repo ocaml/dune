@@ -1,0 +1,78 @@
+(dirs sub sub2 sub3)
+
+(rule (with-stdout-to a.ml (progn)))
+(rule (with-stdout-to b.ml (progn)))
+(rule (with-stdout-to c.ml (progn)))
+(rule (with-stdout-to d.ml (progn)))
+
+(library
+ (name a1)
+ (modules a))
+
+(executable
+ (name b)
+ (modules b))
+
+(library
+ (name c1)
+ (wrapped false)
+ (modules c))
+
+(library
+ (name c2)
+ (wrapped (transition now))
+ (modules d))
+
+(rule (with-stdout-to foo.ml (progn)))
+
+(library
+ (name foo)
+ (modules foo))
+
+(alias
+ (name t1)
+ (deps %{cmo:a} %{cmo:b} %{cmo:c} %{cmo:d}))
+
+(alias
+ (name t2)
+ (deps %{cmi:a}))
+
+(alias
+ (name t4)
+ (deps %{cmxa:a1}))
+
+(alias
+ (name t6)
+ (deps %{cma:sub2/bar2}))
+
+(alias
+ (name t7)
+ (deps %{cmo:sub/x}))
+
+(alias
+ (name t8)
+ (deps %{cmo:sub3/x}))
+
+(alias
+ (name t9)
+ (deps %{cma:sub3/c1}))
+
+(alias
+ (name t10)
+ (deps %{cma:c1}))
+
+(rule (with-stdout-to x1.ml (progn)))
+(rule (with-stdout-to x2.ml (progn)))
+(rule (with-stdout-to x3.ml (progn)))
+
+(library
+ (name plugin)
+ (modules x1 x2))
+
+(library
+ (name dummy)
+ (modules x3))
+
+(rule
+ (targets my.cmxs)
+ (action (run %{ocamlopt} -shared -o %{targets} %{cmxa:plugin} %{cmx:x3})))

@@ -1,5 +1,11 @@
 open Stdune
 
+type expanded =
+  | Static of Value.t list
+  | Dynamic of Pform.Expansion.t
+
+let static s = Ok (Static s)
+
 type t =
   { dir : Path.Build.t
   ; hidden_env : Env.Var.Set.t
@@ -11,9 +17,15 @@ type t =
   ; scope : Scope.t
   ; c_compiler : string
   ; expand_var :
-       t
-    -> (Value.t list, Pform.Expansion.t) result option
-      String_with_vars.expander
+    t -> (expanded, User_message.t) Result.t option String_with_vars.expander
+  ; artifacts_dynamic : bool
+  ; lookup_module :
+    (   dir:Path.Build.t
+     -> Module_name.t
+     -> (Path.Build.t Obj_dir.t * Module.t) option)
+    option
+  ; lookup_library :
+    (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option) option
   }
 
 let scope t = t.scope
@@ -48,6 +60,14 @@ let set_dir t ~dir = { t with dir }
 let set_scope t ~scope = { t with scope }
 
 let set_bin_artifacts t ~bin_artifacts_host = { t with bin_artifacts_host }
+
+let set_artifacts_dynamic t artifacts_dynamic = { t with artifacts_dynamic }
+
+let set_lookup_module t ~lookup_module =
+  { t with lookup_module = Some lookup_module }
+
+let set_lookup_library t ~lookup_library =
+  { t with lookup_library = Some lookup_library }
 
 let extend_env t ~env =
   { t with
@@ -99,13 +119,50 @@ let expand_version scope pform s =
 let expand_var_exn t var syn =
   t.expand_var t var syn
   |> Option.map ~f:(function
-    | Ok s -> s
-      | Error _ ->
-        User_error.raise
-          ~loc:(String_with_vars.Var.loc var)
-          [ Pp.textf "%s isn't allowed in this position"
-            (String_with_vars.Var.describe var)
-          ])
+    | Ok (Static s) -> s
+      | Error msg -> raise (User_error.E msg)
+       | Ok (Dynamic _) ->
+         User_error.raise
+           ~loc:(String_with_vars.Var.loc var)
+           [ Pp.textf "%s isn't allowed in this position"
+             (String_with_vars.Var.describe var)
+           ])
+
+let expand_artifact ~dir ~loc t a s =
+  let path = Path.Build.relative dir s in
+  let name = Path.Build.basename path in
+  let dir = Path.Build.parent_exn path in
+  let open Option.O in
+  match a with
+  | Pform.Artifact.Mod kind -> (
+    let+ lookup_module = t.lookup_module in
+    let name = Module_name.of_string name in
+    match lookup_module ~dir name with
+    | None ->
+      let msg =
+        User_error.make ~loc
+          [ Pp.textf "Module %s does not exist." (Module_name.to_string name) ]
+      in
+      Result.Error msg
+    | Some (t, m) -> (
+      match Obj_dir.Module.cm_file t m ~kind with
+      | None -> Ok [ Value.String "" ]
+      | Some path -> Ok [ Value.Path (Path.build path) ] ) )
+  | Lib mode -> (
+    let+ lookup_library = t.lookup_library in
+    let name = Lib_name.of_string_exn ~loc:(Some loc) name in
+    match lookup_library ~dir name with
+    | None ->
+      let msg =
+        User_error.make ~loc
+          [ Pp.textf "Library %s does not exist." (Lib_name.to_string name) ]
+      in
+      Result.Error msg
+    | Some lib ->
+      let archive =
+        Dune_file.Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode)
+      in
+      Ok [ Value.Path (Path.build archive) ] )
 
 let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   let expand_var
@@ -114,22 +171,30 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
       ; env = _
       ; scope
       ; hidden_env = _
-      ; dir = _
+      ; dir
       ; bin_artifacts_host = _
       ; expand_var = _
       ; lib_artifacts = _
       ; c_compiler = _
+      ; lookup_module = _
+      ; lookup_library = _
+      ; artifacts_dynamic
       } as t ) var syntax_version =
     Pform.Map.expand bindings var syntax_version
     |> Option.bind ~f:(function
-      | Pform.Expansion.Var (Values l) -> Some (Ok l)
+      | Pform.Expansion.Var (Values l) -> Some (static l)
         | Macro (Ocaml_config, s) ->
-          Some (Ok (expand_ocaml_config (Lazy.force ocaml_config) var s))
-         | Macro (Env, s) -> Option.map ~f:Result.ok (expand_env t var s)
-         | Macro (Version, s) -> Some (Ok (expand_version scope var s))
+          Some (static (expand_ocaml_config (Lazy.force ocaml_config) var s))
+         | Macro (Env, s) -> Option.map ~f:static (expand_env t var s)
+         | Macro (Version, s) -> Some (static (expand_version scope var s))
          | Var Project_root ->
-           Some (Ok [ Value.Dir (Path.build (Scope.root scope)) ])
-         | expansion -> Some (Error expansion))
+           Some (static [ Value.Dir (Path.build (Scope.root scope)) ])
+         | Macro (Artifact a, s) when not artifacts_dynamic ->
+           let loc = String_with_vars.Var.loc var in
+           let open Option.O in
+           let+ v = expand_artifact ~dir ~loc t a s in
+           Result.bind v ~f:static
+         | expansion -> Some (Ok (Dynamic expansion)))
   in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
@@ -146,6 +211,9 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   ; bin_artifacts_host
   ; expand_var
   ; c_compiler
+  ; artifacts_dynamic = false
+  ; lookup_module = None
+  ; lookup_library = None
   }
 
 let expand t ~mode ~template =
@@ -250,6 +318,10 @@ let resolve_binary t ~loc ~prog =
   | Error e ->
     Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
 
+let cannot_be_used_here pform =
+  Pp.textf "%s cannot be used in this position"
+    (String_with_vars.Var.describe pform)
+
 let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   ~(dir : Path.Build.t) ~pform t expansion
     ~(cc : dir:Path.Build.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
@@ -258,12 +330,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
   let add_ddep =
     match expansion_kind with
-    | Static ->
-      fun _ ->
-        User_error.raise ~loc
-          [ Pp.textf "%s cannot be used in this position"
-            (String_with_vars.Var.describe pform)
-          ]
+    | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
     | Dynamic -> Resolved_forms.add_ddep acc ~key
   in
   let open Build.O in
@@ -275,6 +342,20 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     assert false
   | Var Cc -> add_ddep (cc ~dir).c
   | Var Cxx -> add_ddep (cc ~dir).cxx
+  | Macro (Artifact a, s) ->
+    let data =
+      Build.delayed (fun () ->
+        match expand_artifact ~dir ~loc t a s with
+        | Some (Ok v) -> v
+        | Some (Error msg) -> raise (User_error.E msg)
+        | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
+      >>> Build.dyn_paths
+        (Build.arr
+          (List.filter_map ~f:(function
+            | Value.Path p -> Some p
+            | _ -> None)))
+    in
+    add_ddep data
   | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
   | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
@@ -372,38 +453,40 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
     in
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
-      | Ok s -> Some s
-        | Error (expansion : Pform.Expansion.t) -> (
-          match expansion with
-          | Var (Project_root | Values _)
-           |Macro ((Ocaml_config | Env | Version), _) ->
-            assert false (* these have been expanded statically *)
-          | Var (First_dep | Deps | Named_local) -> None
-          | Var Targets -> targets ~multiplicity:Multiple
-          | Var Target -> targets ~multiplicity:One
-          | _ ->
-            expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
-              ~dir ~pform ~cc t expansion ))
+      | Ok (Static s : expanded) -> Some s
+        | Error msg -> raise (User_error.E msg)
+         | Ok (Dynamic (expansion : Pform.Expansion.t)) -> (
+           match expansion with
+           | Var (Project_root | Values _)
+            |Macro ((Ocaml_config | Env | Version), _) ->
+             assert false (* these have been expanded statically *)
+           | Var (First_dep | Deps | Named_local) -> None
+           | Var Targets -> targets ~multiplicity:Multiple
+           | Var Target -> targets ~multiplicity:One
+           | _ ->
+             expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
+               ~dir ~pform ~cc t expansion ))
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <-
       Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
-  Option.map res ~f:Result.ok
+  Option.map res ~f:static
 
 let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
   syntax_version =
   let res =
     expand_var t pform syntax_version
     |> Option.bind ~f:(function
-      | Ok s -> Some s
-        | Error (expansion : Pform.Expansion.t) ->
-          expand_and_record acc ~map_exe ~dep_kind ~cc ~expansion_kind:Static
-            ~dir ~pform t expansion)
+      | Ok (Static s : expanded) -> Some s
+        | Error msg -> raise (User_error.E msg)
+         | Ok (Dynamic (expansion : Pform.Expansion.t)) ->
+           expand_and_record acc ~map_exe ~dep_kind ~cc ~expansion_kind:Static
+             ~dir ~pform t expansion)
   in
   Option.iter res ~f:(fun v ->
     acc.sdeps <-
       Path.Set.union (Path.Set.of_list (Value.L.deps_only v)) acc.sdeps);
-  Option.map res ~f:Result.ok
+  Option.map res ~f:static
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
   ~(c_flags : dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t) =
@@ -464,9 +547,11 @@ let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
   | None ->
     expand_var t var syntax_version
     |> Option.map ~f:(function
-      | Error v -> expand_special_vars ~deps_written_by_user ~var v
-        | Ok v -> v) )
-  |> Option.map ~f:Result.ok
+      | Ok (Static v : expanded) -> v
+        | Error msg -> raise (User_error.E msg)
+         | Ok (Dynamic v) -> expand_special_vars ~deps_written_by_user ~var v)
+  )
+  |> Option.map ~f:static
 
 let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
   let expand_var =

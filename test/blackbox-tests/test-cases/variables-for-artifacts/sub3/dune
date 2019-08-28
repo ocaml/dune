@@ -1,0 +1,4 @@
+(rule (with-stdout-to x.ml (progn)))
+
+(library
+ (name c1))

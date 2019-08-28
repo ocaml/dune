@@ -1611,6 +1611,8 @@ module Executables = struct
     match (t.buildable.c_names, t.buildable.cxx_names) with
     | None, None -> false
     | _ -> true
+
+  let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end
 
 module Rule = struct

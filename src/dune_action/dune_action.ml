@@ -2,8 +2,6 @@ module Protocol = Protocol
 module Path = Path
 open Protocol
 
-let ( >>> ) f g x = g (f x)
-
 module Fs : sig
   val read_directory : string -> (string list, Unix.error) Stdune.Result.t
 
@@ -46,7 +44,7 @@ module Stage = struct
     ; dependencies : Dependency.Set.t
     }
 
-  let map (t : 'a t) ~f = { t with action = t.action >>> f }
+  let map (t : 'a t) ~f = { t with action = (fun () -> f (t.action ())) }
 
   let both (t1 : 'a t) (t2 : 'b t) =
     { action = (fun () -> (t1.action (), t2.action ()))

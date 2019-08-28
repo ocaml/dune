@@ -109,9 +109,9 @@ module Partial = struct
     | Run (prog, args) ->
       let prog, args = expand_run prog args in
       Run (prog, args)
-    | Run_dynamic (prog, args) ->
+    | Dynamic_run (prog, args) ->
       let prog, args = expand_run prog args in
-      Run_dynamic (prog, args)
+      Dynamic_run (prog, args)
     | Chdir (fn, t) ->
       let fn = E.path ~expander fn in
       let expander =
@@ -218,9 +218,9 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Run (prog, args)
-  | Run_dynamic (prog, args) ->
+  | Dynamic_run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
-    Run_dynamic (prog, args)
+    Dynamic_run (prog, args)
   | Chdir (fn, t) -> (
     let res = E.path ~expander fn in
     match res with
@@ -365,7 +365,7 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
-      | Run_dynamic (prog, _) -> acc +<! prog
+      | Dynamic_run (prog, _) -> acc +<! prog
       | Redirect_out (_, fn, t) -> infer (acc +@+ fn) t
       | Redirect_in (_, fn, t) -> infer (acc +< fn) t
       | Cat fn -> acc +< fn

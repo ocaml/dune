@@ -4,4 +4,4 @@
 
 (alias
  (name runtest)
- (action (run-dynamic ./foo.exe)))
+ (action (dynamic-run ./foo.exe)))

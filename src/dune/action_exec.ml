@@ -96,11 +96,11 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.text
         "Executable that was declared to support dynamic dependency discovery \
-         (declared by using 'run-dynamic' tag) failed to respond to dune."
+         (declared by using 'dynamic-run' tag) failed to respond to dune."
       ; Pp.nop
       ; Pp.text
         "If you don't use dynamic dependency discovery in your executable you \
-         may consider changing 'run-dynamic' to 'run' in your rule definition."
+         may consider changing 'dynamic-run' to 'run' in your rule definition."
       ]
   | Error _
    |Ok None ->
@@ -126,8 +126,8 @@ let rec exec t ~ectx ~eenv =
   | Run (Ok prog, args) ->
     let+ () = exec_run ~ectx ~eenv prog args in
     Done
-  | Run_dynamic (Error e, _) -> Action.Prog.Not_found.raise e
-  | Run_dynamic (Ok prog, args) ->
+  | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
+  | Dynamic_run (Ok prog, args) ->
     exec_run_dynamic_client ~ectx ~eenv prog args
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->

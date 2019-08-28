@@ -22,7 +22,7 @@ module type Ast = sig
 
   type t =
     | Run of program * string list
-    | Run_dynamic of program * string list
+    | Dynamic_run of program * string list
     | Chdir of path * t
     | Setenv of string * string * t
     (* It's not possible to use a build path here since jbuild supports

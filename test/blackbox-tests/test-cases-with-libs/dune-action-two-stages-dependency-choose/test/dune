@@ -18,4 +18,4 @@
 
 (alias
  (name runtest)
- (action (run-dynamic ./client.exe)))
+ (action (dynamic-run ./client.exe)))

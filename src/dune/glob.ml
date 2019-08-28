@@ -6,6 +6,8 @@ type t =
   ; repr : string
   }
 
+let compare x y = String.compare x.repr y.repr
+
 let equal x y = String.equal x.repr y.repr
 
 let hash t = String.hash t.repr
@@ -20,6 +22,10 @@ let of_string_exn loc repr =
   match of_string repr with
   | Error (_, msg) -> User_error.raise ~loc [ Pp.textf "invalid glob: :%s" msg ]
   | Ok t -> t
+
+let encode t =
+  let open Dune_lang.Encoder in
+  string t.repr
 
 let decode =
   let open Dune_lang.Decoder in

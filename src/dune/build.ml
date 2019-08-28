@@ -259,7 +259,7 @@ let static_deps t ~all_targets =
     | Fanout (a, b) -> loop a (loop b acc targets_allowed) targets_allowed
     | Deps deps -> Static_deps.add_action_deps acc deps
     | Paths_for_rule fns -> Static_deps.add_rule_paths acc fns
-    | Paths_glob g -> Static_deps.add_action_dep acc (Dep.glob g)
+    | Paths_glob g -> Static_deps.add_action_dep acc (Dep.file_selector g)
     | If_file_exists (p, state) -> (
       match !state with
       | Decided (_, t) -> loop t acc false

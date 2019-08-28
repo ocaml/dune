@@ -42,7 +42,9 @@ let deps_of_lib (lib : Lib.t) ~groups =
   let obj_dir = Lib.obj_dir lib in
   List.map groups ~f:(fun g ->
     let dir = Group.obj_dir g obj_dir in
-    Group.to_predicate g |> File_selector.from_predicate ~dir |> Dep.glob)
+    Group.to_predicate g
+    |> File_selector.from_predicate ~dir
+    |> Dep.file_selector)
   |> Dep.Set.of_list
 
 let deps_with_exts =

@@ -14,6 +14,6 @@ val exec :
   -> context:Context.t option
   -> env:Env.t
   -> rule_loc:Loc.t
-  -> provided_dependencies:Dune_action.Protocol.Dependency.Set.t
+  -> prepared_dependencies:Dune_action.Protocol.Dependency.Set.t
   -> Action.t
   -> done_or_more_deps Fiber.t

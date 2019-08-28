@@ -10,7 +10,7 @@ type exec_context =
   { context : Context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
-  ; provided_dependencies : Dune_action.Protocol.Dependency.Set.t
+  ; prepared_dependencies : Dune_action.Protocol.Dependency.Set.t
   }
 
 type exec_environment =
@@ -62,11 +62,11 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   in
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
-  let serialized_provided_dependencies =
-    Protocol.Dependency.Set.sexp_of_t ectx.provided_dependencies
+  let serialized_prepared_dependencies =
+    Protocol.Dependency.Set.sexp_of_t ectx.prepared_dependencies
     |> Csexp.to_string
   in
-  Io.String_path.write_file run_arguments_fn serialized_provided_dependencies;
+  Io.String_path.write_file run_arguments_fn serialized_prepared_dependencies;
   let env =
     let value =
       Protocol.Greeting.(sexp_of_t { run_arguments_fn; response_fn })
@@ -327,9 +327,9 @@ and exec_list ts ~ectx ~eenv =
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> exec_list rest ~ectx ~eenv )
 
-let exec ~targets ~context ~env ~rule_loc ~provided_dependencies t =
+let exec ~targets ~context ~env ~rule_loc ~prepared_dependencies t =
   let purpose = Process.Build_job targets in
-  let ectx = { purpose; context; rule_loc; provided_dependencies }
+  let ectx = { purpose; context; rule_loc; prepared_dependencies }
   and eenv =
     { working_dir = Path.root
     ; env

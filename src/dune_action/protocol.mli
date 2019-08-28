@@ -47,7 +47,7 @@ module Context : sig
 
   val create : env_var_name:string -> create_result
 
-  val provided_dependencies : t -> Dependency.Set.t
+  val prepared_dependencies : t -> Dependency.Set.t
 
   val respond : t -> Response.t -> unit
 end

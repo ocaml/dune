@@ -1354,12 +1354,12 @@ end = struct
   let execute_action_until_all_deps_ready ~context ~env ~targets ~rule_loc
     action =
     let open Dune_action.Protocol in
-    let provided_dependencies_set = ref Dependency.Set.empty
+    let prepared_dependencies_set = ref Dependency.Set.empty
     and stages = ref Appendable_list.empty in
     let rec loop () =
       let* result =
         Action_exec.exec ~context ~env ~targets ~rule_loc
-          ~provided_dependencies:!provided_dependencies_set action
+          ~prepared_dependencies:!prepared_dependencies_set action
       in
       match result with
       | Done -> Fiber.return (Appendable_list.to_list !stages)
@@ -1367,8 +1367,8 @@ end = struct
         let deps_to_build = Dependency.Map.values deps |> Dep.Set.of_list in
         (stages := Appendable_list.(!stages @ singleton deps_to_build));
         let* () = build_deps deps_to_build in
-        provided_dependencies_set :=
-          Dependency.Set.union !provided_dependencies_set
+        prepared_dependencies_set :=
+          Dependency.Set.union !prepared_dependencies_set
             (Dependency.Set.of_keys deps);
         loop ()
     in

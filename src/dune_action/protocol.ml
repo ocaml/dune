@@ -81,7 +81,7 @@ end
 module Context = struct
   type t =
     { response_fn : string
-    ; provided_dependencies : Dependency.Set.t
+    ; prepared_dependencies : Dependency.Set.t
     }
 
   type create_result =
@@ -117,11 +117,11 @@ module Context = struct
               >>= Dependency.Set.t_of_sexp)
           with
           | None -> Error
-          | Some provided_dependencies ->
-            Ok { response_fn = greeting.response_fn; provided_dependencies } )
+          | Some prepared_dependencies ->
+            Ok { response_fn = greeting.response_fn; prepared_dependencies } )
         ) )
 
-  let provided_dependencies (t : t) = t.provided_dependencies
+  let prepared_dependencies (t : t) = t.prepared_dependencies
 
   let respond (t : t) response =
     let data = response |> Response.sexp_of_t |> Csexp.to_string in

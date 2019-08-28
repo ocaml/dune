@@ -100,9 +100,9 @@ let rec run_by_dune t context =
   match t with
   | Pure () -> Context.respond context Done
   | Stage at ->
-    let provided_dependencies = Context.provided_dependencies context in
+    let prepared_dependencies = Context.prepared_dependencies context in
     let required_dependencies =
-      Dependency.Set.diff at.dependencies provided_dependencies
+      Dependency.Set.diff at.dependencies prepared_dependencies
     in
     if Dependency.Set.is_empty required_dependencies then
       run_by_dune (at.action ()) context

@@ -1465,7 +1465,7 @@ end = struct
                 compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred
               in
               if old_digest <> new_digest then
-                Fiber.return false
+                Fiber.return true
               else
                 loop rest
           in

@@ -52,6 +52,11 @@ module Stage = struct
     }
 end
 
+(* TODO jstaron: Use ideas from
+  https://elvishjerricco.github.io/2016/04/08/applicative-effects-in-free-monads.html
+   to implement a "Free monad" that is relative to applicative instead of
+   functor. *)
+
 (* Construction inspired by free monad. *)
 type 'a t =
   | Pure of 'a
@@ -107,7 +112,8 @@ let rec run_by_dune t context =
     else
       Context.respond context (Need_more_deps required_dependencies)
 
-(* If executable is not run by dune, assume that all dependencies are provided. *)
+(* If executable is not run by dune, assume that all dependencies are already
+  prepared. *)
 let rec run_outside_of_dune t =
   match t with
   | Pure () -> ()

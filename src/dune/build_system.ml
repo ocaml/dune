@@ -1429,6 +1429,7 @@ end = struct
           (Dep.Set.sandbox_config deps)
           ~sandboxing_preference:t.sandboxing_preference
     in
+    let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
     let* rule_need_rerun =
       let force =
         !Clflags.force
@@ -1442,9 +1443,6 @@ end = struct
         let prev_trace = Trace_db.get (Path.build head_target) in
         (* [targets_digest] will be [None] if not all targets were build. *)
         let targets_digest = compute_targets_digest targets_as_list in
-        let rule_digest =
-          compute_rule_digest rule ~deps ~action ~sandbox_mode
-        in
         let rule_or_targets_changed =
           match (prev_trace, targets_digest) with
           | Some prev_trace, Some targets_digest ->
@@ -1473,10 +1471,7 @@ end = struct
     in
     let sandbox =
       Option.map sandbox_mode ~f:(fun mode ->
-        let sandbox_suffix =
-          compute_rule_digest rule ~deps ~action ~sandbox_mode
-          |> Digest.to_string
-        in
+        let sandbox_suffix = rule_digest |> Digest.to_string in
         (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let* () =
@@ -1525,9 +1520,6 @@ end = struct
           List.map dynamic_deps_stages ~f:(fun deps ->
             ( deps
             , compute_dependencies_digest ~sandbox_mode ~env ~eval_pred deps ))
-        in
-        let rule_digest =
-          compute_rule_digest rule ~deps ~action ~sandbox_mode
         in
         Trace_db.set (Path.build head_target)
           { rule_digest; dynamic_deps_stages; targets_digest }

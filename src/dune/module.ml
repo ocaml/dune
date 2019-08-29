@@ -212,12 +212,14 @@ let wrapped_compat t =
       Some
         { File.dialect = Dialect.ocaml
         ; path =
-          (* Option.value_exn cannot fail because we disallow wrapped
-            compatibility mode for virtual libraries. That means none of the
-             modules are implementing a virtual module, and therefore all have
-             a source dir *)
-          Path.L.relative (src_dir t)
-            [ ".wrapped_compat"; Module_name.to_string t.source.name ^ ml_gen ]
+            (* Option.value_exn cannot fail because we disallow wrapped
+               compatibility mode for virtual libraries. That means none of the
+               modules are implementing a virtual module, and therefore all
+               have a source dir *)
+            Path.L.relative (src_dir t)
+              [ ".wrapped_compat"
+              ; Module_name.to_string t.source.name ^ ml_gen
+              ]
         }
     in
     { t.source with files = { intf = None; impl } }
@@ -245,7 +247,8 @@ module Obj_map = struct
 end
 
 let encode
-  ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t) =
+    ({ source = { name; files = _ }; obj_name; pp = _; visibility; kind } as t)
+    =
   let open Dune_lang.Encoder in
   let has_impl = has t ~ml_kind:Impl in
   let kind =
@@ -303,21 +306,21 @@ let decode ~src_dir =
 let pped =
   let pped_path path ~suffix =
     (* We need to insert the suffix before the extension as some tools inspect
-      the extension *)
+       the extension *)
     let base, ext = Path.split_extension path in
     Path.extend_basename base ~suffix:(suffix ^ ext)
   in
   map_files ~f:(fun _kind (file : File.t) ->
-    let pp_path = pped_path file.path ~suffix:".pp" in
-    { file with path = pp_path })
+      let pp_path = pped_path file.path ~suffix:".pp" in
+      { file with path = pp_path })
 
 let ml_source =
   map_files ~f:(fun ml_kind f ->
-    match Dialect.ml_suffix f.dialect ml_kind with
-    | None -> f
-    | Some suffix ->
-      let path = Path.extend_basename f.path ~suffix in
-      File.make Dialect.ocaml path)
+      match Dialect.ml_suffix f.dialect ml_kind with
+      | None -> f
+      | Some suffix ->
+        let path = Path.extend_basename f.path ~suffix in
+        File.make Dialect.ocaml path)
 
 let set_src_dir t ~src_dir =
   map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
@@ -355,10 +358,10 @@ module Name_map = struct
 
   let impl_only =
     Module_name.Map.fold ~init:[] ~f:(fun m acc ->
-      if has m ~ml_kind:Impl then
-        m :: acc
-      else
-        acc)
+        if has m ~ml_kind:Impl then
+          m :: acc
+        else
+          acc)
 
   let of_list_exn modules =
     List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn
@@ -367,6 +370,6 @@ module Name_map = struct
 
   let by_obj =
     Module_name.Map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
-      let obj = real_unit_name m in
-      Module_name.Map.add_exn acc obj m)
+        let obj = real_unit_name m in
+        Module_name.Map.add_exn acc obj m)
 end

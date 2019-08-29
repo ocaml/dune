@@ -19,10 +19,11 @@ let check_mkdir loc path =
   if not (Path.is_managed path) then
     User_error.raise ~loc
       [ Pp.text
-        "(mkdir ...) is not supported for paths outside of the workspace:"
+          "(mkdir ...) is not supported for paths outside of the workspace:"
       ; Pp.seq (Pp.verbatim "  ")
-        (Dune_lang.pp
-          (List [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
+          (Dune_lang.pp
+             (List
+                [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
       ]
 
 let as_in_build_dir ~loc p =
@@ -31,7 +32,7 @@ let as_in_build_dir ~loc p =
   | None ->
     User_error.raise ?loc
       [ Pp.textf
-        "target %s is outside the build directory. This is not allowed."
+          "target %s is outside the build directory. This is not allowed."
           (Path.to_string_maybe_quoted p)
       ]
 
@@ -52,11 +53,11 @@ module Partial = struct
   module E = struct
     let expand ~expander ~mode ~l ~r =
       Either.map ~l ~r:(fun s ->
-        let dir = Path.build (Expander.dir expander) in
-        r
-          ~loc:(Some (String_with_vars.loc s))
-          (Expander.expand expander ~template:s ~mode)
-          ~dir)
+          let dir = Path.build (Expander.dir expander) in
+          r
+            ~loc:(Some (String_with_vars.loc s))
+            (Expander.expand expander ~template:s ~mode)
+            ~dir)
 
     let string = expand ~mode:Single ~l:Fn.id ~r:(ignore_loc Value.to_string)
 
@@ -76,7 +77,8 @@ module Partial = struct
       expand e ~mode:Single ~l:Fn.id
         ~r:
           (ignore_loc (fun v ~dir ->
-            Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))
+               Value.to_path ?error_loc v ~dir
+               |> as_in_build_dir ~loc:error_loc))
 
     let prog_and_args_of_values ~loc p ~dir =
       match p with
@@ -84,7 +86,7 @@ module Partial = struct
       | Value.Dir p :: _ ->
         User_error.raise ?loc
           [ Pp.textf "%s is a directory and cannot be used as an executable"
-            (Path.to_string_maybe_quoted p)
+              (Path.to_string_maybe_quoted p)
           ]
       | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
       | String s :: xs ->
@@ -109,7 +111,7 @@ module Partial = struct
       let fn = E.path ~expander fn in
       let expander =
         (* TODO this conversion doesn't look safe. It's possible to chdir
-          outside the build dir *)
+           outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn)
       in
       Chdir (fn, expand t ~expander ~map_exe)
@@ -193,9 +195,9 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Run (prog, args) -> (
     let args =
       List.concat_map args ~f:(fun arg ->
-        match E.strings ~expander arg with
-        | Left args -> List.map args ~f:Either.left
-        | Right _ as x -> [ x ])
+          match E.strings ~expander arg with
+          | Left args -> List.map args ~f:Either.left
+          | Right _ as x -> [ x ])
     in
     match E.prog_and_args ~expander prog with
     | Left (prog, more_args) ->
@@ -213,7 +215,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     | Left dir ->
       let expander =
         (* TODO this conversion doesn't look safe. It's possible to chdir
-          outside the build dir *)
+           outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir)
       in
       Chdir (res, partial_expand t ~expander ~map_exe)
@@ -333,16 +335,16 @@ module Infer = struct
   end
 
   module Make
-    (Ast : Action_intf.Ast)
+      (Ast : Action_intf.Ast)
       (Sets : Sets)
       (Out : Outcome
-        with type path_set := Sets.Deps.t
-          and type target_set := Sets.Targets.t)
+               with type path_set := Sets.Deps.t
+                and type target_set := Sets.Targets.t)
       (Prim : Primitives
-        with type path := Ast.path
-          with type target := Ast.target
-            with type program := Ast.program
-              with type outcome := Out.t) =
+                with type path := Ast.path
+                with type target := Ast.target
+                with type program := Ast.program
+                with type outcome := Out.t) =
   struct
     open Ast
     open Out
@@ -385,7 +387,7 @@ module Infer = struct
         infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
       in
       (* A file can be inferred as both a dependency and a target, for
-        instance:
+         instance:
 
          {[ (progn (copy a b) (copy b c)) ]} *)
       { deps = Sets.Deps.diff deps targets; targets }
@@ -400,25 +402,25 @@ module Infer = struct
 
       let diff deps targets =
         Path.Build.Set.fold targets ~init:deps ~f:(fun target acc ->
-          Path.Set.remove acc (Path.build target))
+            Path.Set.remove acc (Path.build target))
     end
   end
 
   include Make (Action) (Sets) (Outcome)
-    (struct
-      let ( +@+ ) acc fn =
-        { acc with targets = Path.Build.Set.add acc.targets fn }
+            (struct
+              let ( +@+ ) acc fn =
+                { acc with targets = Path.Build.Set.add acc.targets fn }
 
-      let ( +< ) acc fn = { acc with deps = Path.Set.add acc.deps fn }
+              let ( +< ) acc fn = { acc with deps = Path.Set.add acc.deps fn }
 
-      let ( +<+ ) acc fn =
-        { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+              let ( +<+ ) acc fn =
+                { acc with deps = Path.Set.add acc.deps (Path.build fn) }
 
-      let ( +<! ) acc prog =
-        match prog with
-        | Ok p -> acc +< p
-        | Error _ -> acc
-          end)
+              let ( +<! ) acc prog =
+                match prog with
+                | Ok p -> acc +< p
+                | Error _ -> acc
+            end)
 
   module Partial_with_all_targets =
     Make (Partial.Past) (Sets) (Outcome)

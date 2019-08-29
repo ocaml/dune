@@ -35,7 +35,7 @@ module type S = sig
   val union : 'a t -> 'a t -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
 
   (** [superpose a b] is [b] augmented with bindings of [a] that are not in
-    [b]. *)
+      [b]. *)
   val superpose : 'a t -> 'a t -> 'a t
 
   val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t
@@ -87,7 +87,7 @@ module type S = sig
 
   (** Return a map of [(k, v)] bindings such that:
 
-    {[ v = f init @@ f v1 @@ fv2 @@ ... @@ f vn ]}
+      {[ v = f init @@ f v1 @@ fv2 @@ ... @@ f vn ]}
 
       where [v1], [v2], ... [vn] are the values associated to [k] in the input
       list, in the order in which they appear. This is essentially a more
@@ -123,7 +123,7 @@ module type S = sig
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
 
   (** [is_subset t ~of_ ~f] is [true] iff all keys in [t] are in [of_] and [f]
-    is [true] for all keys that are in both. *)
+      is [true] for all keys that are in both. *)
   val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t

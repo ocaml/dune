@@ -2,7 +2,7 @@ open! Stdune
 open Import
 
 (* We redirect the output of all commands, so by default the various tools will
-  disable colors. Since we support colors in the output of commands, we force
+   disable colors. Since we support colors in the output of commands, we force
    it via specific environment variables if stderr supports colors. *)
 let setup_env_for_colors env =
   let set env var value =
@@ -45,10 +45,10 @@ let setup_err_formatter_colors () =
   let open Format in
   if Lazy.force Ansi_color.stderr_supports_color then
     List.iter [ err_formatter; Report_error.ppf ] ~f:(fun ppf ->
-      let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
-      pp_set_mark_tags ppf true;
-      (pp_set_formatter_tag_functions ppf
-        { funcs with
-          mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
-        ; mark_open_tag
-        } [@warning "-3"]))
+        let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
+        pp_set_mark_tags ppf true;
+        (pp_set_formatter_tag_functions ppf
+           { funcs with
+             mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
+           ; mark_open_tag
+           } [@warning "-3"]))

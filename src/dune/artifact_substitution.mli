@@ -6,13 +6,13 @@ open Stdune
 type t =
   | Vcs_describe of Path.Source.t
   | Repeat of int * string
-    (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
-      is used for unit tests. *)
+      (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This
+          substitution is used for unit tests. *)
 
 val to_dyn : t -> Dyn.t
 
 (** A string encoding of a substitution. The resulting string is what should be
-  written inside generated source files. {!copy_file} recognise such strings
+    written inside generated source files. {!copy_file} recognise such strings
     and expand them.
 
     The resulting string is guaranteed to be of length at least [min_len],
@@ -32,7 +32,7 @@ val copy_file :
   -> unit Fiber.t
 
 (** Generic version of [copy_file]. Rather than filenames, it takes an input
-  and output functions. Their semantic must match the ones of the [input] and
+    and output functions. Their semantic must match the ones of the [input] and
     [output] functions from the OCaml standard library. *)
 val copy :
      get_vcs:(Path.Source.t -> Vcs.t option)
@@ -41,5 +41,5 @@ val copy :
   -> unit Fiber.t
 
 (** Produce the string that would replace the placeholder with the given value
-  .*)
+    .*)
 val encode_replacement : len:int -> repl:string -> string

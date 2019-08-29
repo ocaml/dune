@@ -2,7 +2,7 @@ open! Stdune
 open Import
 
 (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
-  the files in includes, recursiverly *)
+   the files in includes, recursiverly *)
 let scan_included_files path =
   let files = ref Path.Source.Map.empty in
   let rec iter path =
@@ -19,16 +19,16 @@ let scan_included_files path =
       files := Path.Source.Map.set !files path (sexps, comments);
       List.iter sexps ~f:(function
         | Dune_lang.Ast.List
-          ( _
-          , [ Atom (_, A "include")
-            ; (Atom (loc, A fn) | Quoted_string (loc, fn))
-            ] ) ->
+            ( _
+            , [ Atom (_, A "include")
+              ; (Atom (loc, A fn) | Quoted_string (loc, fn))
+              ] ) ->
           let dir = Path.Source.parent_exn path in
           let included_file = Path.Source.relative dir fn in
           if not (Path.exists (Path.source included_file)) then
             User_error.raise ~loc
               [ Pp.textf "File %s doesn't exist."
-                (Path.Source.to_string_maybe_quoted included_file)
+                  (Path.Source.to_string_maybe_quoted included_file)
               ];
           iter included_file
         | _ -> ())
@@ -137,17 +137,17 @@ let upgrade_stanza stanza =
         | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
           upgrade field
           :: List.map rest ~f:(fun x ->
-            map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
-              Dune_lang.Template.Var
-                ( if v.name = "<" then
-                  { v with name = "input-file" }
-                else
-                  v )))
+                 map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
+                     Dune_lang.Template.Var
+                       ( if v.name = "<" then
+                         { v with name = "input-file" }
+                       else
+                         v )))
         | (Atom (_, A "per_module") as field) :: specs ->
           upgrade field
           :: List.map specs ~f:(function
-            | List (loc, [ spec; List (_, modules) ]) ->
-              List (loc, upgrade spec :: List.map modules ~f:upgrade)
+               | List (loc, [ spec; List (_, modules) ]) ->
+                 List (loc, upgrade spec :: List.map modules ~f:upgrade)
                | sexp -> upgrade sexp)
         | [ (Atom (_, A "pps") as field); List (_, pps) ] -> (
           let pps, args =
@@ -166,8 +166,9 @@ let upgrade_stanza stanza =
           | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args )
         | [ (Atom (_, A field_name) as field); List (_, args) ]
           when match (field_name, args) with
-            | "rule", Atom (_, A field_name) :: _ -> is_rule_field field_name
-              | _ -> simplify_field field_name ->
+               | "rule", Atom (_, A field_name) :: _ ->
+                 is_rule_field field_name
+               | _ -> simplify_field field_name ->
           upgrade field :: List.map args ~f:upgrade
         | _ -> List.map l ~f:upgrade
       in
@@ -179,9 +180,10 @@ let upgrade_stanza stanza =
                 ( loc
                 , field
                   :: (let loc = Dune_lang.Ast.loc first in
-                    List
-                      ( loc
-                      , [ Atom (loc, Dune_lang.Atom.of_string ":<"); first ] ))
+                      List
+                        ( loc
+                        , [ Atom (loc, Dune_lang.Atom.of_string ":<"); first ]
+                        ))
                   :: rest )
             | x -> x)
         else
@@ -219,10 +221,10 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
       let stanza =
         Dune_lang.add_loc ~loc:Loc.none
           (List
-            ( Dune_lang.atom "data_only_dirs"
-            :: List.map
-              (String.Set.to_list data_only_dirs)
-                ~f:Dune_lang.atom_or_quoted_string ))
+             ( Dune_lang.atom "data_only_dirs"
+             :: List.map
+                  (String.Set.to_list data_only_dirs)
+                  ~f:Dune_lang.atom_or_quoted_string ))
       in
       let sexps = stanza :: sexps in
       (sexps, [ jbuild_ignore ])
@@ -238,7 +240,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
     :: todo.to_rename_and_edit
 
 (* This was obtained by trial and error. We should improve the opam parsing API
-  to return better locations. *)
+   to return better locations. *)
 let rec end_offset_of_opam_value : OpamParserTypes.value -> int = function
   | Bool ((_, _, ofs), b) -> ofs + String.length (string_of_bool b)
   | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
@@ -279,9 +281,10 @@ let upgrade_opam_file todo fn =
       let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
       add_subst (start + 1) stop
         (sprintf "build & >= %S"
-          (Syntax.Version.to_string !Dune_project.default_dune_language_version))
+           (Syntax.Version.to_string
+              !Dune_project.default_dune_language_version))
     | List
-      (_, (String (jpos, "jbuilder") :: String (arg_pos, "subst") :: _ as l))
+        (_, (String (jpos, "jbuilder") :: String (arg_pos, "subst") :: _ as l))
       ->
       replace_jbuilder jpos;
       let _, _, start = arg_pos in
@@ -289,9 +292,9 @@ let upgrade_opam_file todo fn =
       let start = start + 1 in
       if start < stop then add_subst start stop ""
     | List
-      ( _
-      , ( String (jpos, "jbuilder")
-        :: String (arg_pos, ("build" | "runtest")) :: _ as l ) ) ->
+        ( _
+        , ( String (jpos, "jbuilder")
+            :: String (arg_pos, ("build" | "runtest")) :: _ as l ) ) ->
       replace_jbuilder jpos;
       let _, _, start = arg_pos in
       let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
@@ -332,16 +335,16 @@ let upgrade_opam_file todo fn =
     let buf = Buffer.create (String.length s + 128) in
     let ofs =
       List.fold_left substs ~init:0 ~f:(fun ofs (start, stop, repl) ->
-        if not (ofs <= start && start <= stop) then
-          Code_error.raise "Invalid text subsitution"
-            [ ("ofs", Dyn.Encoder.int ofs)
-            ; ("start", Dyn.Encoder.int start)
-            ; ("stop", Dyn.Encoder.int stop)
-            ; ("repl", Dyn.Encoder.string repl)
-            ];
-        Buffer.add_substring buf s ofs (start - ofs);
-        Buffer.add_string buf repl;
-        stop)
+          if not (ofs <= start && start <= stop) then
+            Code_error.raise "Invalid text subsitution"
+              [ ("ofs", Dyn.Encoder.int ofs)
+              ; ("start", Dyn.Encoder.int start)
+              ; ("stop", Dyn.Encoder.int stop)
+              ; ("repl", Dyn.Encoder.string repl)
+              ];
+          Buffer.add_substring buf s ofs (start - ofs);
+          Buffer.add_string buf repl;
+          stop)
     in
     Buffer.add_substring buf s ofs (String.length s - ofs);
     let s' = Buffer.contents buf in
@@ -356,24 +359,24 @@ let upgrade_dir todo dir =
     | Already_exist -> ()
     | Created -> todo.to_add <- Dune_project.file project :: todo.to_add );
     Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
-      let fn = Package.opam_file pkg in
-      if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
+        let fn = Package.opam_file pkg in
+        if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   );
   Option.iter (File_tree.Dir.dune_file dir) ~f:(fun dune_file ->
-    match (dune_file.kind, dune_file.contents) with
-    | Dune, _ -> ()
-    | Jbuild, Ocaml_script fn ->
-      User_warning.emit
-        ~loc:(Loc.in_file (Path.source fn))
-        [ Pp.text
-          "Cannot upgrade this jbuild file as it is using the OCaml syntax."
-        ; Pp.text "You need to upgrade it manually."
-        ]
-    | Jbuild, Plain { path; sexps = _ } ->
-      let files = scan_included_files path in
-      Path.Source.Map.iteri files ~f:(fun fn (sexps, comments) ->
-        upgrade_file todo fn sexps comments
-          ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
+      match (dune_file.kind, dune_file.contents) with
+      | Dune, _ -> ()
+      | Jbuild, Ocaml_script fn ->
+        User_warning.emit
+          ~loc:(Loc.in_file (Path.source fn))
+          [ Pp.text
+              "Cannot upgrade this jbuild file as it is using the OCaml syntax."
+          ; Pp.text "You need to upgrade it manually."
+          ]
+      | Jbuild, Plain { path; sexps = _ } ->
+        let files = scan_included_files path in
+        Path.Source.Map.iteri files ~f:(fun fn (sexps, comments) ->
+            upgrade_file todo fn sexps comments
+              ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);
@@ -382,16 +385,16 @@ let upgrade ft =
     ~f:(fun dir () -> upgrade_dir todo dir);
   let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
-    log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
-    Io.write_file (Path.source fn) s ~binary:true);
+      log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
+      Io.write_file (Path.source fn) s ~binary:true);
   List.iter todo.to_rename_and_edit ~f:(fun x ->
-    let { original_file; new_file; extra_files_to_delete; contents } = x in
-    log "Upgrading %s to %s...\n"
-      ( List.map
-        (extra_files_to_delete @ [ original_file ])
-          ~f:Path.Source.to_string_maybe_quoted
-      |> String.enumerate_and )
-      (Path.Source.to_string_maybe_quoted new_file);
-    List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-      Path.unlink (Path.source p));
-    Io.write_file (Path.source new_file) contents ~binary:true)
+      let { original_file; new_file; extra_files_to_delete; contents } = x in
+      log "Upgrading %s to %s...\n"
+        ( List.map
+            (extra_files_to_delete @ [ original_file ])
+            ~f:Path.Source.to_string_maybe_quoted
+        |> String.enumerate_and )
+        (Path.Source.to_string_maybe_quoted new_file);
+      List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
+          Path.unlink (Path.source p));
+      Io.write_file (Path.source new_file) contents ~binary:true)

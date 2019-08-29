@@ -7,7 +7,7 @@ module type S = sig
   module Info : Info
 
   (** Instantiated representation of the sub-system. I.e. with names resolved
-    using a library database. *)
+      using a library database. *)
   type t
 
   (** Create an instance of the sub-system *)
@@ -24,7 +24,7 @@ module type Backend = sig
   include S
 
   (** Description of a backend, such as "inline tests framework" or "ppx
-    driver". *)
+      driver". *)
   val desc : plural:bool -> string
 
   (** "a" or "an" *)
@@ -57,7 +57,7 @@ module type Registered_backend = sig
   end
 
   (** Choose a backend by either using the ones written by the user or by
-    scanning the dependencies.
+      scanning the dependencies.
 
       The returned list is sorted by order of dependencies. It is not allowed
       to have two different backend that are completely independent, i.e. none
@@ -69,7 +69,7 @@ module type Registered_backend = sig
     -> (t list, Selection_error.t) result
 
   (** Choose a backend by either using the ones written by the user or by
-    scanning the dependencies.
+      scanning the dependencies.
 
       A backend can replace other backends *)
   val select_replaceable_backend :

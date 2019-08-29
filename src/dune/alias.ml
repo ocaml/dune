@@ -30,7 +30,7 @@ end = struct
       User_error.raise ~loc
         [ Pp.text "Invalid alias!"
         ; Pp.textf "Tried to reference path outside build dir: %S"
-          (Path.to_string_maybe_quoted path)
+            (Path.to_string_maybe_quoted path)
         ]
 end
 
@@ -73,7 +73,7 @@ let find_dir_specified_on_command_line ~dir ~file_tree =
   | None ->
     User_error.raise
       [ Pp.textf "Don't know about directory %s specified on the command line!"
-        (Path.Source.to_string_maybe_quoted dir)
+          (Path.Source.to_string_maybe_quoted dir)
       ]
   | Some dir -> dir
 

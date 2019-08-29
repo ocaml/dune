@@ -29,15 +29,15 @@ module type Target_intf = sig
 end
 
 module Make
-  (Program : Dune_lang.Conv)
+    (Program : Dune_lang.Conv)
     (Path : Dune_lang.Conv)
     (Target : Target_intf)
     (String : Dune_lang.Conv)
     (Ast : Action_intf.Ast
-      with type program := Program.t
-        with type path := Path.t
-          with type target := Target.t
-            with type string := String.t) =
+             with type program := Program.t
+             with type path := Path.t
+             with type target := Target.t
+             with type string := String.t) =
 struct
   include Ast
 
@@ -52,74 +52,74 @@ struct
     let string = String.decode in
     let target = Target.decode in
     Dune_lang.Decoder.fix (fun t ->
-      sum
-        [ ( "run"
-          , let+ prog = Program.decode
-            and+ args = repeat String.decode in
-            Run (prog, args) )
-        ; ( "chdir"
-          , let+ dn = path
-            and+ t = t in
-            Chdir (dn, t) )
-        ; ( "setenv"
-          , let+ k = string
-            and+ v = string
-            and+ t = t in
-            Setenv (k, v, t) )
-        ; ( "with-stdout-to"
-          , let+ fn = target
-            and+ t = t in
-            translate_to_ignore fn Stdout t )
-        ; ( "with-stderr-to"
-          , let+ fn = target
-            and+ t = t in
-            translate_to_ignore fn Stderr t )
-        ; ( "with-outputs-to"
-          , let+ fn = target
-            and+ t = t in
-            translate_to_ignore fn Outputs t )
-        ; ( "with-stdin-from"
-          , Syntax.since Stanza.syntax (2, 0)
-            >>> let+ fn = path
+        sum
+          [ ( "run"
+            , let+ prog = Program.decode
+              and+ args = repeat String.decode in
+              Run (prog, args) )
+          ; ( "chdir"
+            , let+ dn = path
               and+ t = t in
-                Redirect_in (Stdin, fn, t) )
-        ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
-        ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
-        ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
-        ; ("progn", repeat t >>| fun l -> Progn l)
-        ; ( "echo"
-          , let+ x = string
-            and+ xs = repeat string in
-            Echo (x :: xs) )
-        ; ("cat", path >>| fun x -> Cat x)
-        ; ( "copy"
-          , let+ src = path
-            and+ dst = target in
-            Copy (src, dst) )
-        ; ( "copy#"
-          , let+ src = path
-            and+ dst = target in
-            Copy_and_add_line_directive (src, dst) )
-        ; ( "copy-and-add-line-directive"
-          , let+ src = path
-            and+ dst = target in
-            Copy_and_add_line_directive (src, dst) )
-        ; ("system", string >>| fun cmd -> System cmd)
-        ; ("bash", string >>| fun cmd -> Bash cmd)
-        ; ( "write-file"
-          , let+ fn = target
-            and+ s = string in
-            Write_file (fn, s) )
-        ; ( "diff"
-          , let+ diff = Diff.decode path ~optional:false in
-            Diff diff )
-        ; ( "diff?"
-          , let+ diff = Diff.decode path ~optional:true in
-            Diff diff )
-        ; ( "cmp"
-          , let+ diff = Diff.decode_binary path in
-            Diff diff )
-        ])
+              Chdir (dn, t) )
+          ; ( "setenv"
+            , let+ k = string
+              and+ v = string
+              and+ t = t in
+              Setenv (k, v, t) )
+          ; ( "with-stdout-to"
+            , let+ fn = target
+              and+ t = t in
+              translate_to_ignore fn Stdout t )
+          ; ( "with-stderr-to"
+            , let+ fn = target
+              and+ t = t in
+              translate_to_ignore fn Stderr t )
+          ; ( "with-outputs-to"
+            , let+ fn = target
+              and+ t = t in
+              translate_to_ignore fn Outputs t )
+          ; ( "with-stdin-from"
+            , Syntax.since Stanza.syntax (2, 0)
+              >>> let+ fn = path
+                  and+ t = t in
+                  Redirect_in (Stdin, fn, t) )
+          ; ("ignore-stdout", t >>| fun t -> Ignore (Stdout, t))
+          ; ("ignore-stderr", t >>| fun t -> Ignore (Stderr, t))
+          ; ("ignore-outputs", t >>| fun t -> Ignore (Outputs, t))
+          ; ("progn", repeat t >>| fun l -> Progn l)
+          ; ( "echo"
+            , let+ x = string
+              and+ xs = repeat string in
+              Echo (x :: xs) )
+          ; ("cat", path >>| fun x -> Cat x)
+          ; ( "copy"
+            , let+ src = path
+              and+ dst = target in
+              Copy (src, dst) )
+          ; ( "copy#"
+            , let+ src = path
+              and+ dst = target in
+              Copy_and_add_line_directive (src, dst) )
+          ; ( "copy-and-add-line-directive"
+            , let+ src = path
+              and+ dst = target in
+              Copy_and_add_line_directive (src, dst) )
+          ; ("system", string >>| fun cmd -> System cmd)
+          ; ("bash", string >>| fun cmd -> Bash cmd)
+          ; ( "write-file"
+            , let+ fn = target
+              and+ s = string in
+              Write_file (fn, s) )
+          ; ( "diff"
+            , let+ diff = Diff.decode path ~optional:false in
+              Diff diff )
+          ; ( "diff?"
+            , let+ diff = Diff.decode path ~optional:true in
+              Diff diff )
+          ; ( "cmp"
+            , let+ diff = Diff.decode_binary path in
+              Diff diff )
+          ])
 
   let rec encode =
     let open Dune_lang in

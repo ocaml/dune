@@ -105,29 +105,29 @@ module Map_ast = struct
                 "Custom 'let' operators cannot be recursive";
             let patts, exprs =
               List.map vbs ~f:(fun vb ->
-                let { pvb_pat = patt
-                  ; pvb_expr = expr
-                    ; pvb_attributes = attrs
-                    ; pvb_loc = loc
-                    } =
-                  vb
-                in
-                ( match attrs with
-                | [] -> ()
-                | ({ loc; _ }, _) :: _ ->
-                  Location.raise_errorf ~loc "This attribute will be discarded"
-                );
-                let op =
-                  match get_op vb with
-                  | Some op ->
-                    Hashtbl.remove custom_operators vb.pvb_loc.loc_start;
-                    op
-                  | None ->
+                  let { pvb_pat = patt
+                      ; pvb_expr = expr
+                      ; pvb_attributes = attrs
+                      ; pvb_loc = loc
+                      } =
+                    vb
+                  in
+                  ( match attrs with
+                  | [] -> ()
+                  | ({ loc; _ }, _) :: _ ->
                     Location.raise_errorf ~loc
-                      "Custom 'and' operator expected, got stantard 'and' \
-                       keyword"
-                in
-                (patt, (loc, op, expr)))
+                      "This attribute will be discarded" );
+                  let op =
+                    match get_op vb with
+                    | Some op ->
+                      Hashtbl.remove custom_operators vb.pvb_loc.loc_start;
+                      op
+                    | None ->
+                      Location.raise_errorf ~loc
+                        "Custom 'and' operator expected, got stantard 'and' \
+                         keyword"
+                  in
+                  (patt, (loc, op, expr)))
               |> List.split
             in
             let patt =
@@ -138,17 +138,17 @@ module Map_ast = struct
             in
             let vars =
               List.mapi exprs ~f:(fun i _ ->
-                Printf.sprintf "__future_syntax__%d__" i)
+                  Printf.sprintf "__future_syntax__%d__" i)
             in
             let pvars =
               List.map2 vars patts ~f:(fun v p ->
-                let loc = { p.ppat_loc with loc_ghost = true } in
-                Pat.var ~loc { txt = v; loc })
+                  let loc = { p.ppat_loc with loc_ghost = true } in
+                  Pat.var ~loc { txt = v; loc })
             in
             let evars =
               List.map2 vars exprs ~f:(fun v (_, _, e) ->
-                let loc = { e.pexp_loc with loc_ghost = true } in
-                Exp.ident ~loc { txt = Lident v; loc })
+                  let loc = { e.pexp_loc with loc_ghost = true } in
+                  Exp.ident ~loc { txt = Lident v; loc })
             in
             let expr =
               List.fold_left2 (List.tl evars) (List.tl exprs)

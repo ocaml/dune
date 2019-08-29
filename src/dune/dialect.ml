@@ -17,7 +17,7 @@ module File_kind = struct
         , option (pair Loc.to_dyn Action_dune_lang.to_dyn) preprocess )
       ; ( "format"
         , option
-          (triple Loc.to_dyn Action_dune_lang.to_dyn (list string))
+            (triple Loc.to_dyn Action_dune_lang.to_dyn (list string))
             format )
       ]
 end
@@ -44,7 +44,7 @@ let decode =
     and+ format =
       field_o "format"
         (map
-          ~f:(fun (loc, x) -> (loc, x, []))
+           ~f:(fun (loc, x) -> (loc, x, []))
            (located Action_dune_lang.decode))
     in
     let extension =
@@ -82,7 +82,7 @@ let ocaml =
     Action_dune_lang.chdir
       (S.make_var Loc.none "workspace_root")
       (Action_dune_lang.run
-        (S.make_text Loc.none "ocamlformat")
+         (S.make_text Loc.none "ocamlformat")
          [ S.make_text Loc.none (flag_of_kind kind)
          ; S.make_var Loc.none "input-file"
          ])
@@ -92,10 +92,10 @@ let ocaml =
     ; extension
     ; preprocess = None
     ; format =
-      Some
-        ( Loc.none
-        , format kind
-        , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
+        Some
+          ( Loc.none
+          , format kind
+          , [ ".ocamlformat"; ".ocamlformat-ignore"; ".ocamlformat-enable" ] )
     }
   in
   let intf = file_kind Ml_kind.Intf ".mli" in
@@ -159,7 +159,7 @@ module DB = struct
       | Error dialect ->
         User_error.raise ~loc
           [ Pp.textf "extension %S is already registered by dialect %S"
-            (String.drop ext 1) dialect.name
+              (String.drop ext 1) dialect.name
           ]
     in
     let by_extension =

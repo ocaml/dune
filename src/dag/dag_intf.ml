@@ -31,17 +31,17 @@ module type S = sig
   val create_node_info : t -> node_info
 
   (** [add dag v w] creates an arc going from [v] to [w]. @raise Cycle if
-    creating the arc would create a cycle. *)
+      creating the arc would create a cycle. *)
   val add : t -> node -> node -> unit
 
   (** [children v] returns all nodes [w] for which an arc going from [v] to [w]
-    exists. *)
+      exists. *)
   val children : node -> node list
 
   (** Pretty print a node. *)
   val pp_node : value Fmt.t -> node Fmt.t
 
   (** [is_child v w] returns a boolean indicating if an arc going from [v] to
-    [w] exists. *)
+      [w] exists. *)
   val is_child : node -> node -> bool
 end

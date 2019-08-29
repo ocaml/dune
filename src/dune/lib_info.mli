@@ -1,8 +1,8 @@
 (** Raw library descriptions *)
 
 (** This module regroup all information about a library. We call such
-  descriptions "raw" as the names, such as the names of dependencies are plain
-    unresolved library names.
+    descriptions "raw" as the names, such as the names of dependencies are
+    plain unresolved library names.
 
     The [Lib] module takes care of resolving library names to actual libraries. *)
 
@@ -106,7 +106,7 @@ val orig_src_dir : 'path t -> 'path option
 val version : _ t -> string option
 
 (** Directory where the source files for the library are located. Returns the
-  original src dir when it exists *)
+    original src dir when it exists *)
 val best_src_dir : 'path t -> 'path
 
 type external_ = Path.t t

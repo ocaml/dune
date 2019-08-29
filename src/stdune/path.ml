@@ -88,7 +88,7 @@ end = struct
   let to_dyn t = Dyn.String (to_string t)
 
   (* let rec cd_dot_dot t = match Unix.readlink t with | exception _ ->
-    Filename.dirname t | t -> cd_dot_dot t
+     Filename.dirname t | t -> cd_dot_dot t
 
      let relative initial_t path = let rec loop t components = match components
      with | [] | ["." | ".."] -> die "invalid filename concatenation: %s / %s"
@@ -195,7 +195,7 @@ module Local_gen : sig
   with type 'w local := 'w t
 end = struct
   (* either "." for root, or a '/' separated list of components other that ".",
-    ".." and not containing '/'. *)
+     ".." and not containing '/'. *)
   module T =
     Interned.No_interning
       (struct
@@ -291,7 +291,7 @@ end = struct
       | Error () ->
         User_error.raise ?loc:error_loc
           [ Pp.textf "path outside the workspace: %s from %s"
-            (String.concat ~sep:"/" components)
+              (String.concat ~sep:"/" components)
               (to_string t)
           ]
   end
@@ -667,12 +667,12 @@ module Build = struct
   let extract_build_context_dir_maybe_sandboxed t =
     let sandbox_root, t = split_sandbox_root t in
     Option.map (extract_build_context_dir t) ~f:(fun (ctx_dir, src_dir) ->
-      let ctx_dir =
-        match sandbox_root with
-        | None -> ctx_dir
-        | Some root -> append root ctx_dir
-      in
-      (ctx_dir, src_dir))
+        let ctx_dir =
+          match sandbox_root with
+          | None -> ctx_dir
+          | Some root -> append root ctx_dir
+        in
+        (ctx_dir, src_dir))
 
   let extract_build_context_dir_exn t =
     match extract_build_context_dir t with
@@ -697,7 +697,7 @@ module Build = struct
       Code_error.raise "Path.Build.drop_build_context_exn" [ ("t", to_dyn t) ]
 
   (* CR-someday rgrinberg: I think we should just move this function to the
-    alias module. *)
+     alias module. *)
   let is_alias_stamp_file s =
     String.is_prefix (Local.to_string s) ~prefix:".aliases/"
 
@@ -713,10 +713,10 @@ module Build = struct
           if Local.is_root p || Local.parent_exn p <> Local.root then
             User_error.raise
               [ Pp.textf "Invalid build directory: %s"
-                (Local.to_string p |> String.maybe_quoted)
+                  (Local.to_string p |> String.maybe_quoted)
               ; Pp.text
-                "The build directory must be an absolute path or a \
-                 sub-directory of the root of the workspace."
+                  "The build directory must be an absolute path or a \
+                   sub-directory of the root of the workspace."
               ] );
         build_dir := Some new_build_dir;
         build_dir_prefix :=
@@ -1033,7 +1033,7 @@ let extract_build_context_dir = function
     None
   | In_build_dir t ->
     Option.map (Build.extract_build_context_dir t) ~f:(fun (base, rest) ->
-      (in_build_dir base, rest))
+        (in_build_dir base, rest))
 
 let extract_build_context_dir_maybe_sandboxed = function
   | In_source_tree _
@@ -1167,9 +1167,9 @@ let ensure_build_dir_exists () =
     | Unix.Unix_error (ENOENT, _, _) ->
       User_error.raise
         [ Pp.textf
-          "Cannot create external build directory %s. Make sure that the \
-           parent dir %s exists."
-          p (Filename.dirname p)
+            "Cannot create external build directory %s. Make sure that the \
+             parent dir %s exists."
+            p (Filename.dirname p)
         ] )
 
 let extend_basename t ~suffix =
@@ -1193,10 +1193,10 @@ let insert_after_build_dir_exn =
 let rm_rf =
   let rec loop dir =
     Array.iter (Sys.readdir dir) ~f:(fun fn ->
-      let fn = Filename.concat dir fn in
-      match Unix.lstat fn with
-      | { st_kind = S_DIR; _ } -> loop fn
-      | _ -> unlink_operation fn);
+        let fn = Filename.concat dir fn in
+        match Unix.lstat fn with
+        | { st_kind = S_DIR; _ } -> loop fn
+        | _ -> unlink_operation fn);
     Unix.rmdir dir
   in
   fun t ->

@@ -2,7 +2,7 @@ open! Stdune
 open! Import
 
 (** Because the dune_init utility deals with the addition of stanzas and fields
-  to dune projects and files, we need to inspect and manipulate the concrete
+    to dune projects and files, we need to inspect and manipulate the concrete
     syntax tree (CST) a good deal. *)
 module Cst = Dune_lang.Cst
 
@@ -60,11 +60,11 @@ module File = struct
       | Some s -> Dune_lang.pp s
 
     let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t)
-      =
+        =
       a.name = b.name
 
     let executables_conflict (a : Dune_file.Executables.t)
-      (b : Dune_file.Executables.t) =
+        (b : Dune_file.Executables.t) =
       let a_names = List.map ~f:snd a.names |> String.Set.of_list in
       let b_names = List.map ~f:snd b.names |> String.Set.of_list in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
@@ -111,7 +111,7 @@ module File = struct
           User_error.raise
             [ Pp.text "Updating existing stanzas is not yet supported."
             ; Pp.text
-              "A preexisting dune stanza conflicts with a generated stanza:"
+                "A preexisting dune stanza conflicts with a generated stanza:"
             ; Pp.nop
             ; Pp.text "Generated stanza:"
             ; pp a
@@ -128,8 +128,8 @@ module File = struct
     with Unix.Unix_error (EACCES, _, _) ->
       User_error.raise
         [ Pp.textf
-          "A project directory cannot be created or accessed: Lacking \
-           permissions needed to create directory %s"
+            "A project directory cannot be created or accessed: Lacking \
+             permissions needed to create directory %s"
             (Path.to_string_maybe_quoted path)
         ]
 
@@ -145,7 +145,7 @@ module File = struct
         | Format_dune_lang.OCaml_syntax _ ->
           User_error.raise
             [ Pp.textf "Cannot load dune file %s because it uses OCaml syntax"
-              (Path.to_string_maybe_quoted full_path)
+                (Path.to_string_maybe_quoted full_path)
             ]
     in
     Dune { path; name; content }
@@ -314,7 +314,7 @@ module Component = struct
       | Some n -> [ Field.public_name n ]
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
-      =
+        =
       let public_name =
         public_name_field ~default:common.name options.public
       in
@@ -380,7 +380,7 @@ module Component = struct
       [ { dir; files } ]
 
     let proj_exec dir
-      ({ context; common; options } : Options.Project.t Options.t) =
+        ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
@@ -409,12 +409,14 @@ module Component = struct
       bin_target @ lib_target @ test_target
 
     let proj_lib dir
-      ({ context; common; options } : Options.Project.t Options.t) =
+        ({ context; common; options } : Options.Project.t Options.t) =
       let lib_target =
         src
           { context = { context with dir = Path.relative dir "lib" }
           ; options =
-            { public = Some common.name; inline_tests = options.inline_tests }
+              { public = Some common.name
+              ; inline_tests = options.inline_tests
+              }
           ; common
           }
       in
@@ -428,7 +430,7 @@ module Component = struct
       lib_target @ test_target
 
     let proj
-      ({ context; common; options } as opts : Options.Project.t Options.t) =
+        ({ context; common; options } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
       let dir = Path.relative context.dir common.name in
       let name = common.name in
@@ -455,7 +457,7 @@ module Component = struct
       User_warning.emit
         [ Pp.textf "File "
           ++ Pp.tag ~tag:User_message.Style.Kwd
-            (Pp.verbatim (Path.to_string_maybe_quoted path))
+               (Pp.verbatim (Path.to_string_maybe_quoted path))
           ++ Pp.text " was not created because it already exists"
         ]
 
@@ -481,9 +483,9 @@ let validate_component_name name =
   | _ ->
     User_error.raise
       [ Pp.textf
-        "A component named '%s' cannot be created because it is an invalid \
-         library name."
-        name
+          "A component named '%s' cannot be created because it is an invalid \
+           library name."
+          name
       ]
       ~hints:[ Lib_name.Local.valid_format_doc ]
 
@@ -491,7 +493,7 @@ let print_completion kind name =
   let open Pp.O in
   Console.print_user_message
     (User_message.make
-      [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
-        ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
-        ++ Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
-      ])
+       [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
+         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
+         ++ Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
+       ])

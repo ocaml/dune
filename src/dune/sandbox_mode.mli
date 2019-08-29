@@ -2,8 +2,8 @@
 
 (** This module describes the method used to sandbox actions. Choices include:
 
-  - not sandboxing - sandboxing by symlinking dependencies - sandboxing by
-  copying dependencies *)
+    - not sandboxing - sandboxing by symlinking dependencies - sandboxing by
+    copying dependencies *)
 
 open! Stdune
 

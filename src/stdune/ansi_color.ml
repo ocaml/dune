@@ -110,8 +110,8 @@ let make_printer supports_color ppf =
         Pp.render_ignore_tags ppf )
   in
   Staged.stage (fun pp ->
-    Lazy.force f pp;
-    Format.pp_print_flush ppf ())
+      Lazy.force f pp;
+      Format.pp_print_flush ppf ())
 
 let print =
   Staged.unstage (make_printer stdout_supports_color Format.std_formatter)
@@ -171,15 +171,15 @@ let parse_line str styles =
           let styles =
             if seq_start = seq_end then
               (* Some commands output "\027[m", which seems to be interpreted
-                the same as "\027[0m" by terminals *)
+                 the same as "\027[0m" by terminals *)
               []
             else
               String.sub str ~pos:seq_start ~len:(seq_end - seq_start)
               |> String.split ~on:';'
               |> List.fold_left ~init:(List.rev styles) ~f:(fun styles s ->
-                match s with
-                | "0" -> []
-                | _ -> s :: styles)
+                     match s with
+                     | "0" -> []
+                     | _ -> s :: styles)
               |> List.rev
           in
           loop styles (seq_end + 1) acc )

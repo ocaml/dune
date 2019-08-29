@@ -1,0 +1,5 @@
+(alias
+ (name runtest)
+ (action (
+  chdir foo_dir
+  (dynamic-run ./foo.exe))))

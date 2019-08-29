@@ -52,13 +52,12 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
   let open Dune_action in
   let to_dune_dep : Protocol.Dependency.t -> Dep.t =
-    let to_absolute_path = Stdune.Path.relative eenv.working_dir in
+    let to_dune_path = Stdune.Path.relative eenv.working_dir in
     function
-    | File path -> Dep.file (to_absolute_path path)
+    | File path -> Dep.file (to_dune_path path)
     | Directory path ->
       let glob = Glob.of_string_exn Loc.none "*" in
-      Dep.file_selector
-        (File_selector.from_glob ~dir:(to_absolute_path path) glob)
+      Dep.file_selector (File_selector.from_glob ~dir:(to_dune_path path) glob)
   in
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in

@@ -1,0 +1,5 @@
+(data_only_dirs foodir)
+
+(alias
+ (name runtest)
+ (action (dynamic-run ./foo.exe)))

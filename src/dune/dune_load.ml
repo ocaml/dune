@@ -83,10 +83,10 @@ module Dune_files = struct
               User_error.raise ~loc
                 [ Pp.text "#require is no longer supported in dune files."
                 ; Pp.text
-                  "You can use the following function instead of \
-                   Unix.open_process_in:\n\n\
-                  \  (** Execute a command and read it's output *)\n\
-                  \  val run_and_read_lines : string -> string list"
+                    "You can use the following function instead of \
+                     Unix.open_process_in:\n\n\
+                    \  (** Execute a command and read it's output *)\n\
+                    \  val run_and_read_lines : string -> string list"
                 ] );
             match String.split s ~on:',' with
             | [] -> acc
@@ -94,7 +94,7 @@ module Dune_files = struct
             | _ ->
               User_error.raise ~loc
                 [ Pp.text
-                  "Using libraries other that \"unix\" is not supported."
+                    "Using libraries other that \"unix\" is not supported."
                 ; Pp.text "See the manual for details."
                 ] )
         in
@@ -103,20 +103,21 @@ module Dune_files = struct
     loop 1 (String.split str ~on:'\n') No_requires
 
   let create_plugin_wrapper (context : Context.t) ~exec_dir ~plugin ~wrapper
-    ~target ~kind =
+      ~target ~kind =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-      let ocamlc_config =
-        let vars =
-          Ocaml_config.to_list context.ocaml_config
-          |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
+        let ocamlc_config =
+          let vars =
+            Ocaml_config.to_list context.ocaml_config
+            |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
+          in
+          let longest = String.longest_map vars ~f:fst in
+          List.map vars ~f:(fun (k, v) ->
+              sprintf "%-*S , %S" (longest + 2) k v)
+          |> String.concat ~sep:"\n      ; "
         in
-        let longest = String.longest_map vars ~f:fst in
-        List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
-        |> String.concat ~sep:"\n      ; "
-      in
-      Printf.fprintf oc
-        {|
+        Printf.fprintf oc
+          {|
 let () =
   Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
   Hashtbl.add Toploop.directive_table "use" (Toploop.Directive_string (fun _ ->
@@ -164,9 +165,9 @@ module Jbuild_plugin = struct
 end
 # 1 %S
 %s|}
-        context.name context.version_string ocamlc_config
-        (Path.reach ~from:exec_dir (Path.build target))
-        (Path.to_string plugin) plugin_contents);
+          context.name context.version_string ocamlc_config
+          (Path.reach ~from:exec_dir (Path.build target))
+          (Path.to_string plugin) plugin_contents);
     extract_requires plugin plugin_contents ~kind
 
   let eval dune_files ~(context : Context.t) =
@@ -177,51 +178,52 @@ end
         | Script x -> Right x)
     in
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project; kind } ->
-      let generated_dune_file =
-        Path.Build.append_source
-          (Path.Build.relative generated_dune_files_dir context.name)
-          file
-      in
-      let wrapper =
-        Path.Build.extend_basename generated_dune_file ~suffix:".ml"
-      in
-      ensure_parent_dir_exists generated_dune_file;
-      let requires =
-        create_plugin_wrapper context ~exec_dir:(Path.source dir)
-          ~plugin:(Path.source file) ~wrapper ~target:generated_dune_file ~kind
-      in
-      let context = Option.value context.for_host ~default:context in
-      let cmas =
-        match requires with
-        | No_requires -> []
-        | Unix -> [ "unix.cma" ]
-      in
-      let args =
-        List.concat
-          [ [ "-I"; "+compiler-libs" ]
-          ; cmas
-          ; [ Path.to_absolute_filename (Path.build wrapper) ]
-          ]
-      in
-      (* CR-someday jdimino: if we want to allow plugins to use findlib: {[ let
-        args = match context.toplevel_path with | None -> args | Some path ->
-         "-I" :: Path.reach ~from:dir path :: args in ]} *)
-      let* () =
-        Process.run Strict ~dir:(Path.source dir) ~env:context.env
-          context.ocaml args
-      in
-      if not (Path.exists (Path.build generated_dune_file)) then
-        User_error.raise
-          [ Pp.textf "%s failed to produce a valid dune_file file."
-            (Path.Source.to_string_maybe_quoted file)
-          ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
-          ];
-      Fiber.return
-        ( Dune_lang.Io.load
-          (Path.build generated_dune_file)
-            ~mode:Many
-            ~lexer:(Dune_lang.Lexer.of_syntax kind)
-        |> Dune_file.parse ~dir ~file ~project ~kind ))
+        let generated_dune_file =
+          Path.Build.append_source
+            (Path.Build.relative generated_dune_files_dir context.name)
+            file
+        in
+        let wrapper =
+          Path.Build.extend_basename generated_dune_file ~suffix:".ml"
+        in
+        ensure_parent_dir_exists generated_dune_file;
+        let requires =
+          create_plugin_wrapper context ~exec_dir:(Path.source dir)
+            ~plugin:(Path.source file) ~wrapper ~target:generated_dune_file
+            ~kind
+        in
+        let context = Option.value context.for_host ~default:context in
+        let cmas =
+          match requires with
+          | No_requires -> []
+          | Unix -> [ "unix.cma" ]
+        in
+        let args =
+          List.concat
+            [ [ "-I"; "+compiler-libs" ]
+            ; cmas
+            ; [ Path.to_absolute_filename (Path.build wrapper) ]
+            ]
+        in
+        (* CR-someday jdimino: if we want to allow plugins to use findlib: {[
+           let args = match context.toplevel_path with | None -> args | Some
+           path -> "-I" :: Path.reach ~from:dir path :: args in ]} *)
+        let* () =
+          Process.run Strict ~dir:(Path.source dir) ~env:context.env
+            context.ocaml args
+        in
+        if not (Path.exists (Path.build generated_dune_file)) then
+          User_error.raise
+            [ Pp.textf "%s failed to produce a valid dune_file file."
+                (Path.Source.to_string_maybe_quoted file)
+            ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
+            ];
+        Fiber.return
+          ( Dune_lang.Io.load
+              (Path.build generated_dune_file)
+              ~mode:Many
+              ~lexer:(Dune_lang.Lexer.of_syntax kind)
+          |> Dune_file.parse ~dir ~file ~project ~kind ))
     >>| fun dynamic -> static @ dynamic
 end
 
@@ -238,7 +240,7 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     let dune_file =
       Dune_files.Literal
         (Dune_file.parse p.sexps ~dir ~file:p.path ~project
-          ~kind:dune_file.kind)
+           ~kind:dune_file.kind)
     in
     p.sexps <- [];
     dune_file
@@ -269,11 +271,11 @@ let load ~ancestor_vcs () =
             | Some a, Some b ->
               User_error.raise
                 [ Pp.textf "Too many opam files for package %S:"
-                  (Package.Name.to_string name)
+                    (Package.Name.to_string name)
                 ; Pp.textf "- %s"
-                  (Path.Source.to_string_maybe_quoted (Package.opam_file a))
+                    (Path.Source.to_string_maybe_quoted (Package.opam_file a))
                 ; Pp.textf "- %s"
-                  (Path.Source.to_string_maybe_quoted (Package.opam_file b))
+                    (Path.Source.to_string_maybe_quoted (Package.opam_file b))
                 ]))
   in
   let rec walk dir dune_files =

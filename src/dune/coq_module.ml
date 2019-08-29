@@ -15,7 +15,7 @@ module Name = struct
 end
 
 (* We keep prefix and name separated as the handling of `From Foo Require Bar.`
-  may benefit from it. *)
+   may benefit from it. *)
 type t =
   { source : Path.Build.t
   ; prefix : string list

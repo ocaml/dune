@@ -1,5 +1,5 @@
 (** Defines build profile for dune. Only one profile is active per context.
-  Some profiles are treat specially by dune. *)
+    Some profiles are treat specially by dune. *)
 open Stdune
 
 type t =

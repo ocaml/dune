@@ -53,7 +53,7 @@ let exec_run ~(ectx : Context.t) ~(eenv : Context.For_exec.t) prog args =
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target.name host.name
           ; Pp.textf "It's not possible to execute binary %s in it."
-            (Path.to_string_maybe_quoted prog)
+              (Path.to_string_maybe_quoted prog)
           ; Pp.nop
           ; Pp.text "This is a bug and should be reported upstream."
           ]
@@ -86,7 +86,7 @@ let rec exec t ~ectx ~eenv =
   | Echo strs -> exec_echo eenv.stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-      Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
+        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -109,7 +109,7 @@ let rec exec t ~ectx ~eenv =
       | target ->
         if target <> src then (
           (* @@DRA Win32 remove read-only attribute needed when symlinking
-            enabled *)
+             enabled *)
           Unix.unlink dst;
           Unix.symlink src dst
         )
@@ -117,12 +117,13 @@ let rec exec t ~ectx ~eenv =
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
-      Path.build dst
-      |> Io.with_file_out ~f:(fun oc ->
-        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
-        output_string oc
-          (Utils.line_directive ~filename:(Path.to_string fn) ~line_number:1);
-        Io.copy_channels ic oc));
+        Path.build dst
+        |> Io.with_file_out ~f:(fun oc ->
+               let fn = Path.drop_optional_build_context_maybe_sandboxed src in
+               output_string oc
+                 (Utils.line_directive ~filename:(Path.to_string fn)
+                    ~line_number:1);
+               Io.copy_channels ic oc));
     Fiber.return ()
   | System cmd ->
     let path, arg =
@@ -153,7 +154,7 @@ let rec exec t ~ectx ~eenv =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (Path.to_string fn, Cached_digest.file fn))
+            (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.generic data
     in
@@ -177,7 +178,7 @@ let rec exec t ~ectx ~eenv =
           if mode = Binary then
             User_error.raise
               [ Pp.textf "Files %s and %s differ."
-                (Path.to_string_maybe_quoted file1)
+                  (Path.to_string_maybe_quoted file1)
                   (Path.to_string_maybe_quoted file2)
               ]
           else
@@ -193,16 +194,16 @@ let rec exec t ~ectx ~eenv =
               Promotion.File.register_dep
                 ~source_file:
                   (snd
-                    (Option.value_exn
-                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                     (Option.value_exn
+                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
           | true ->
             if is_copied_from_source_tree file1 then
               Promotion.File.register_intermediate
                 ~source_file:
                   (snd
-                    (Option.value_exn
-                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                     (Option.value_exn
+                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
             else
               remove_intermediate_file () );

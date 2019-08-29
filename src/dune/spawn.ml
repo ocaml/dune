@@ -27,7 +27,7 @@ let perform_redirections stdin stdout stderr =
   safe_close stderr
 
 let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
-  ?(stderr = Unix.stderr) () =
+    ?(stderr = Unix.stderr) () =
   let argv = Array.of_list argv in
   if Sys.win32 then
     match env with

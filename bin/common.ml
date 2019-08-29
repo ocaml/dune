@@ -120,11 +120,11 @@ type config_file =
 let default_build_dir = "_build"
 
 (* Allow options from term1 or exclusively options from term2. If the user
-  passes options from both terms, an error is reported. *)
+   passes options from both terms, an error is reported. *)
 let one_of term1 term2 =
   Term.ret
   @@ let+ x, args1 = Term.with_used_args term1
-    and+ y, args2 = Term.with_used_args term2 in
+     and+ y, args2 = Term.with_used_args term2 in
      match (args1, args2) with
      | _, [] -> `Ok x
      | [], _ -> `Ok y
@@ -149,8 +149,8 @@ let build_info =
     let libs =
       B.Statically_linked_libraries.to_list ()
       |> List.map ~f:(fun lib ->
-        ( B.Statically_linked_library.name lib
-        , ver_string (B.Statically_linked_library.version lib) ))
+             ( B.Statically_linked_library.name lib
+             , ver_string (B.Statically_linked_library.version lib) ))
       |> List.sort ~compare
     in
     ( match libs with
@@ -182,8 +182,8 @@ module Options_implied_by_dash_p = struct
         value
         & opt (some dir) None
         & info [ "root" ] ~docs ~docv:"DIR"
-          ~doc:
-            {|Use this directory as workspace root instead of
+            ~doc:
+              {|Use this directory as workspace root instead of
                       guessing it. Note that this option doesn't change
                       the interpretation of targets given on the command
                       line. It is only intended for scripts.|})
@@ -192,8 +192,8 @@ module Options_implied_by_dash_p = struct
         value
         & opt (some string) None
         & info [ "only-packages" ] ~docs ~docv:"PACKAGES"
-          ~doc:
-            {|Ignore stanzas referring to a package that is not in
+            ~doc:
+              {|Ignore stanzas referring to a package that is not in
                       $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
                       of package names. Note that this has the same effect
                       as deleting the relevant stanzas from jbuild files.
@@ -204,7 +204,7 @@ module Options_implied_by_dash_p = struct
       Arg.(
         value & flag
         & info
-          [ "ignore-promoted-rules" ]
+            [ "ignore-promoted-rules" ]
             ~docs
             ~doc:
               "Ignore rules with (mode promote),\n\
@@ -216,18 +216,19 @@ module Options_implied_by_dash_p = struct
       let+ x =
         one_of
           (let+ fn =
-            Arg.(
-              value
-              & opt (some path) None
-              & info [ "config-file" ] ~docs ~docv:"FILE"
-                ~doc:"Load this configuration file instead of the default one.")
+             Arg.(
+               value
+               & opt (some path) None
+               & info [ "config-file" ] ~docs ~docv:"FILE"
+                   ~doc:
+                     "Load this configuration file instead of the default one.")
            in
            Option.map fn ~f:(fun fn -> This (Arg.Path.path fn)))
           (let+ x =
-            Arg.(
-              value & flag
-              & info [ "no-config" ] ~docs
-                ~doc:"Do not load the configuration file")
+             Arg.(
+               value & flag
+               & info [ "no-config" ] ~docs
+                   ~doc:"Do not load the configuration file")
            in
            Option.some_if x No_config)
       in
@@ -238,10 +239,10 @@ module Options_implied_by_dash_p = struct
         value
         & opt (some profile) None
         & info [ "profile" ] ~docs
-          ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+            ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:
               (sprintf
-                {|Select the build profile, for instance $(b,dev) or
+                 {|Select the build profile, for instance $(b,dev) or
                         $(b,release). The default is $(b,%s).|}
                  (Profile.to_string Dune.Profile.default)))
     and+ default_target =
@@ -249,8 +250,8 @@ module Options_implied_by_dash_p = struct
         value
         & opt dep (Dep.alias "default")
         & info [ "default-target" ] ~docs ~docv:"TARGET"
-          ~doc:
-            {|Set the default target that when none is specified to
+            ~doc:
+              {|Set the default target that when none is specified to
                       $(b,dune build).|})
     and+ always_show_command_line =
       let doc =
@@ -281,8 +282,8 @@ module Options_implied_by_dash_p = struct
         value
         & opt (some string) None
         & info [ "p"; for_release ] ~docs ~docv:"PACKAGES"
-          ~doc:
-            {|Shorthand for $(b,--root . --only-packages PACKAGE
+            ~doc:
+              {|Shorthand for $(b,--root . --only-packages PACKAGE
                       --ignore-promoted-rules --no-config --profile release).
                       You must use this option in your $(i,<package>.opam)
                       files, in order to build only what's necessary when
@@ -308,21 +309,22 @@ let term =
     let arg =
       Arg.conv
         ( (fun s ->
-          Result.map_error (Dune.Config.Concurrency.of_string s) ~f:(fun s ->
-            `Msg s))
+            Result.map_error (Dune.Config.Concurrency.of_string s) ~f:(fun s ->
+                `Msg s))
         , fun pp x ->
-          Format.pp_print_string pp (Dune.Config.Concurrency.to_string x) )
+            Format.pp_print_string pp (Dune.Config.Concurrency.to_string x) )
     in
     Arg.(
       value
       & opt (some arg) None
       & info [ "j" ] ~docs ~docv:"JOBS"
-        ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
+          ~doc:{|Run no more than $(i,JOBS) commands simultaneously.|})
   and+ sandboxing_preference =
     let arg =
       Arg.conv
         ( (fun s ->
-          Result.map_error (Dune.Sandbox_mode.of_string s) ~f:(fun s -> `Msg s))
+            Result.map_error (Dune.Sandbox_mode.of_string s) ~f:(fun s ->
+                `Msg s))
         , fun pp x -> Format.pp_print_string pp (Dune.Sandbox_mode.to_string x)
         )
     in
@@ -330,22 +332,23 @@ let term =
       value
       & opt (some arg) None
       & info [ "sandbox" ]
-        ~env:
-          (Arg.env_var
-            ~doc:"Sandboxing mode to use by default. (see --sandbox)"
-             "DUNE_SANDBOX")
+          ~env:
+            (Arg.env_var
+               ~doc:"Sandboxing mode to use by default. (see --sandbox)"
+               "DUNE_SANDBOX")
           ~doc:
             (Printf.sprintf
-              "Sandboxing mode to use by default. Some actions require a \
-               certain sandboxing mode, so they will ignore this setting. The \
-               allowed values are: %s."
+               "Sandboxing mode to use by default. Some actions require a \
+                certain sandboxing mode, so they will ignore this setting. \
+                The allowed values are: %s."
                (String.concat ~sep:", "
-                 (List.map Dune.Sandbox_mode.all ~f:Dune.Sandbox_mode.to_string))))
+                  (List.map Dune.Sandbox_mode.all
+                     ~f:Dune.Sandbox_mode.to_string))))
   and+ debug_dep_path =
     Arg.(
       value & flag
       & info
-        [ "debug-dependency-path" ]
+          [ "debug-dependency-path" ]
           ~docs
           ~doc:
             {|In case of error, print the dependency path from
@@ -359,30 +362,30 @@ let term =
     Arg.(
       value & flag
       & info [ "debug-backtraces" ] ~docs
-        ~doc:{|Always print exception backtraces.|})
+          ~doc:{|Always print exception backtraces.|})
   and+ terminal_persistence =
     Arg.(
       value
       & opt (some (enum Config.Terminal_persistence.all)) None
       & info [ "terminal-persistence" ] ~docs ~docv:"MODE"
-        ~doc:
-          {|
+          ~doc:
+            {|
          Changes how the log of build results are displayed to the
          console between rebuilds while in --watch mode. |})
   and+ display =
     one_of
       (let+ verbose =
-        Arg.(
-          value & flag
-          & info [ "verbose" ] ~docs ~doc:"Same as $(b,--display verbose)")
+         Arg.(
+           value & flag
+           & info [ "verbose" ] ~docs ~doc:"Same as $(b,--display verbose)")
        in
        Option.some_if verbose Config.Display.Verbose)
       Arg.(
         value
         & opt (some (enum Config.Display.all)) None
         & info [ "display" ] ~docs ~docv:"MODE"
-          ~doc:
-            {|Control the display mode of Dune.
+            ~doc:
+              {|Control the display mode of Dune.
                       See $(b,dune-config\(5\)) for more details.|})
   and+ no_buffer =
     let doc =
@@ -404,41 +407,41 @@ let term =
       value
       & opt (some path) None
       & info [ "workspace" ] ~docs ~docv:"FILE" ~doc
-        ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
+          ~env:(Arg.env_var ~doc "DUNE_WORKSPACE"))
   and+ promote =
     one_of
       (let+ auto =
-        Arg.(
-          value & flag
-          & info [ "auto-promote" ] ~docs
-            ~doc:
-              "Automatically promote files. This is similar to running\n\
-              \                   $(b,dune promote) after the build.")
+         Arg.(
+           value & flag
+           & info [ "auto-promote" ] ~docs
+               ~doc:
+                 "Automatically promote files. This is similar to running\n\
+                 \                   $(b,dune promote) after the build.")
        in
        Option.some_if auto Clflags.Promote.Automatically)
       (let+ disable =
-        let doc = "Disable all promotion rules" in
-        let env = Arg.env_var ~doc "DUNE_DISABLE_PROMOTION" in
-        Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
+         let doc = "Disable all promotion rules" in
+         let env = Arg.env_var ~doc "DUNE_DISABLE_PROMOTION" in
+         Arg.(value & flag & info [ "disable-promotion" ] ~docs ~env ~doc)
        in
        Option.some_if disable Clflags.Promote.Never)
   and+ force =
     Arg.(
       value & flag
       & info [ "force"; "f" ]
-        ~doc:
-          "Force actions associated to aliases to be re-executed even\n\
-          \                   if their dependencies haven't changed.")
+          ~doc:
+            "Force actions associated to aliases to be re-executed even\n\
+            \                   if their dependencies haven't changed.")
   and+ watch =
     Arg.(
       value & flag
       & info [ "watch"; "w" ]
-        ~doc:
-          "Instead of terminating build after completion, wait continuously \
-           for file changes.")
+          ~doc:
+            "Instead of terminating build after completion, wait continuously \
+             for file changes.")
   and+ { Options_implied_by_dash_p.root
-    ; only_packages
-      ; ignore_promoted_rules
+       ; only_packages
+       ; ignore_promoted_rules
        ; config_file
        ; profile
        ; default_target
@@ -457,35 +460,35 @@ let term =
       value
       & opt (some string) None
       & info [ "build-dir" ] ~docs ~docv:"FILE"
-        ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
+          ~env:(Arg.env_var ~doc "DUNE_BUILD_DIR")
           ~doc)
   and+ diff_command =
     Arg.(
       value
       & opt (some string) None
       & info [ "diff-command" ] ~docs
-        ~doc:
-          "Shell command to use to diff files.\n\
-          \                   Use - to disable printing the diff.")
+          ~doc:
+            "Shell command to use to diff files.\n\
+            \                   Use - to disable printing the diff.")
   and+ stats_trace_file =
     Arg.(
       value
       & opt (some string) None
       & info [ "trace-file" ] ~docs ~docv:"FILE"
-        ~doc:
-          "Output trace data in catapult format\n\
-          \                   (compatible with chrome://tracing)")
+          ~doc:
+            "Output trace data in catapult format\n\
+            \                   (compatible with chrome://tracing)")
   and+ no_print_directory =
     Arg.(
       value & flag
       & info [ "no-print-directory" ] ~docs
-        ~doc:"Suppress \"Entering directory\" messages")
+          ~doc:"Suppress \"Entering directory\" messages")
   and+ store_orig_src_dir =
     let doc = "Store original source location in dune-package metadata" in
     Arg.(
       value & flag
       & info
-        [ "store-orig-source-dir" ]
+          [ "store-orig-source-dir" ]
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
@@ -507,7 +510,7 @@ let term =
       { display
       ; concurrency
       ; sandboxing_preference =
-        Option.map sandboxing_preference ~f:(fun x -> [ x ])
+          Option.map sandboxing_preference ~f:(fun x -> [ x ])
       ; terminal_persistence
       }
   in
@@ -524,15 +527,15 @@ let term =
   ; root
   ; orig_args = []
   ; target_prefix =
-    String.concat ~sep:"" (List.map root.to_cwd ~f:(sprintf "%s/"))
+      String.concat ~sep:"" (List.map root.to_cwd ~f:(sprintf "%s/"))
   ; diff_command
   ; promote
   ; force
   ; ignore_promoted_rules
   ; only_packages =
-    Option.map only_packages ~f:(fun s ->
-      Package.Name.Set.of_list
-        (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
+      Option.map only_packages ~f:(fun s ->
+          Package.Name.Set.of_list
+            (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
   ; x
   ; config
   ; build_dir

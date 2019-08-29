@@ -54,8 +54,8 @@ module Ast = struct
         | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
           User_error.raise ~loc
             [ Pp.text
-              "This atom must be quoted because it is the first element of a \
-               list and doesn't start with - or:"
+                "This atom must be quoted because it is the first element of \
+                 a list and doesn't start with - or:"
             ]
         | _ -> enter (many union [] kind) )
       | List _ -> enter (many union [] kind)

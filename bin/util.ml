@@ -19,7 +19,7 @@ let check_path contexts =
     let internal_path () =
       User_error.raise
         [ Pp.textf "This path is internal to dune: %s"
-          (Path.to_string_maybe_quoted path)
+            (Path.to_string_maybe_quoted path)
         ]
     in
     let context_exn ctx =
@@ -28,12 +28,12 @@ let check_path contexts =
       | None ->
         User_error.raise
           [ Pp.textf "%s refers to unknown build context: %s"
-            (Path.to_string_maybe_quoted path)
+              (Path.to_string_maybe_quoted path)
               ctx
           ]
           ~hints:
             (User_message.did_you_mean ctx
-              ~candidates:(String.Map.keys contexts))
+               ~candidates:(String.Map.keys contexts))
     in
     match path with
     | External e -> External e

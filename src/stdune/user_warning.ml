@@ -8,7 +8,7 @@ let emit ?loc ?hints ?(is_error = false) paragraphs =
   else
     !reporter
       (User_message.make paragraphs ?loc ?hints
-        ~prefix:
-          (Pp.seq
-            (Pp.tag (Pp.verbatim "Warning") ~tag:User_message.Style.Warning)
-             (Pp.char ':')))
+         ~prefix:
+           (Pp.seq
+              (Pp.tag (Pp.verbatim "Warning") ~tag:User_message.Style.Warning)
+              (Pp.char ':')))

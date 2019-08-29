@@ -4,7 +4,7 @@
 val init : ?path:Path.t -> unit -> unit
 
 (** Initialise this module with a disabled logger, i.e. swallowing error
-  messages. *)
+    messages. *)
 val init_disabled : unit -> unit
 
 (** Print an informative message in the log *)

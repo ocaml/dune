@@ -10,7 +10,7 @@ module Inputs : module type of struct
 end
 
 (** result of the lookup of a program, the path to it or information about the
-  failure and possibly a hint how to fix it *)
+    failure and possibly a hint how to fix it *)
 module Prog : sig
   module Not_found : sig
     type t = private
@@ -92,7 +92,7 @@ end
 with type action := t
 
 (** Return a sandboxed version of an action. It takes care of preparing deps in
-  the sandbox, but it does not copy the targets back out. It's the
+    the sandbox, but it does not copy the targets back out. It's the
     responsibility of the caller to do that. *)
 val sandbox :
      t

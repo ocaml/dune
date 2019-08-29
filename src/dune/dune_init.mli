@@ -26,7 +26,7 @@ module Init_context : sig
 end
 
 (** A [Component.t] is a set of files that can be built or included as part of
-  a build. *)
+    a build. *)
 module Component : sig
   (** Options determining the details of a generated component *)
   module Options : sig
@@ -96,7 +96,7 @@ module Component : sig
     | Test : Options.Test.t Options.t -> Options.Test.t t
 
   (** Create or update the component specified by the ['options t], where
-    ['options] is *)
+      ['options] is *)
   val init : 'options t -> unit
 end
 

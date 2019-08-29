@@ -82,7 +82,7 @@ module Lib : sig
     -> orig_src_dir:Path.t option
     -> obj_dir:Path.t Obj_dir.t
     -> special_builtin_support:
-      Dune_file.Library.Special_builtin_support.t option
+         Dune_file.Library.Special_builtin_support.t option
     -> 'a t
 
   val set_subsystems : 'a t -> 'b Sub_system_name.Map.t -> 'b t

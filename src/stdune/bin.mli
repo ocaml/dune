@@ -1,7 +1,7 @@
 (** Binaries from the PATH *)
 
 (** Character used to separate entries in [PATH] and similar environment
-  variables *)
+    variables *)
 val path_sep : char
 
 (** Parse a [PATH] like variable *)

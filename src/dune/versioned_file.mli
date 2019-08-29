@@ -7,7 +7,7 @@ module type S = sig
 
   module Lang : sig
     (** [register id data] registers a new language. Users will select this
-      language by writing:
+        language by writing:
 
         {[ (lang <name> <version>) ]}
 
@@ -27,12 +27,12 @@ module type S = sig
   end
 
   (** [load fn ~f] loads a versioned file. It parses the first line, looks up
-    the language, checks that the version is supported and parses the rest of
+      the language, checks that the version is supported and parses the rest of
       the file with [f]. *)
   val load : Path.t -> f:(Lang.Instance.t -> 'a Dune_lang.Decoder.t) -> 'a
 
   (** Parse the contents of a versioned file after the first line has been
-    read. *)
+      read. *)
   val parse_contents :
        Lexing.lexbuf
     -> Dune_lexer.first_line

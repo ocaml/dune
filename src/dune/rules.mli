@@ -51,7 +51,7 @@ module Produce : sig
   (* CR-someday aalekseyev: the below comments are not quite right *)
 
   (** Add a rule to the system. This function must be called from the
-    [gen_rules] callback. All the target of the rule must be in the same
+      [gen_rules] callback. All the target of the rule must be in the same
       directory.
 
       Assuming that [gen_rules ~dir:a] calls [add_rule r] where [r.dir] is [b],
@@ -68,12 +68,12 @@ module Produce : sig
     type t = Alias.t
 
     (** [add_deps store alias ?dyn_deps deps] arrange things so that all
-      [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
+        [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
     val add_deps :
       t -> ?dyn_deps:(unit, Path.Set.t) Build.t -> Path.Set.t -> unit
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
-      is executed as part of the build of alias [alias]. [stamp] is any
+        is executed as part of the build of alias [alias]. [stamp] is any
         S-expression that is unique and persistent S-expression. *)
     val add_action :
          t

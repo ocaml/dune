@@ -5,9 +5,9 @@ open Import
 
 (** Represent a compilation context.
 
-  A compilation context contains all the necessary information to preprocess
-  and compile OCaml source files. Exactly one compilation context is associated
-  to each library, executable and executables stanza. *)
+    A compilation context contains all the necessary information to preprocess
+    and compile OCaml source files. Exactly one compilation context is
+    associated to each library, executable and executables stanza. *)
 type t
 
 (** Create a compilation context. *)

@@ -28,24 +28,24 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
     let virtual_library = Library.is_virtual lib in
     List.concat
       [ if_
-        (byte && not virtual_library)
+          (byte && not virtual_library)
           [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Byte) ]
       ; ( if virtual_library then
-        let files =
-          Dir_contents.c_sources_of_library dir_contents
-            ~name:(Library.best_name lib)
-        in
-        C.Sources.objects files ~dir ~ext_obj
+          let files =
+            Dir_contents.c_sources_of_library dir_contents
+              ~name:(Library.best_name lib)
+          in
+          C.Sources.objects files ~dir ~ext_obj
         else if Library.has_stubs lib then
           [ Library.stubs_archive ~dir lib ~ext_lib ]
         else
           [] )
       ; if_
-        (native && not virtual_library)
+          (native && not virtual_library)
           (let files =
-            [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
-            ; Library.archive ~dir lib ~ext:ext_lib
-            ]
+             [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
+             ; Library.archive ~dir lib ~ext:ext_lib
+             ]
            in
            if
              Dynlink_supported.get lib.dynlink
@@ -55,9 +55,9 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
            else
              files)
       ; List.map lib.buildable.js_of_ocaml.javascript_files
-        ~f:(Path.Build.relative dir)
+          ~f:(Path.Build.relative dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-        Path.Build.relative dir (fn ^ C.header_ext))
+            Path.Build.relative dir (fn ^ C.header_ext))
       ]
   in
   let dlls =

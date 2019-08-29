@@ -56,13 +56,13 @@ module type S = sig
 end
 
 (** [Unspecified.w] is a type-level placeholder of an unspecified path. (see
-  [Local_gen] for how it's used) *)
+    [Local_gen] for how it's used) *)
 module Unspecified = struct
   type w
 end
 
 (** ['w Local_gen.t] is the type of local paths that live under ['w]. If [x : w
-  Local_gen.t] and [w] is a type-level witness corresponding to a (real or
+    Local_gen.t] and [w] is a type-level witness corresponding to a (real or
     hypothetical) filesystem location [base], then we think of [x] as referring
     to the location [to_string base ^/ to_string x]. *)
 module type Local_gen = sig
@@ -71,7 +71,7 @@ module type Local_gen = sig
   val hash : 'w t -> int
 
   (* it's not clear that these should be polymorphic over 'w, maybe they should
-    additionally ask for an object that fixes 'w *)
+     additionally ask for an object that fixes 'w *)
   val to_string : 'w t -> string
 
   val of_string : string -> 'w t

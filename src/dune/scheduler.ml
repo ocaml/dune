@@ -51,7 +51,7 @@ module Thread = struct
       Thread.create
     else
       (* On unix, we make sure to block signals globally before starting a
-        thread so that only the signal watcher thread can receive signals. *)
+         thread so that only the signal watcher thread can receive signals. *)
       fun f x ->
     Lazy.force block_signals;
     Thread.create f x
@@ -65,7 +65,7 @@ module Event : sig
     | Signal of Signal.t
 
   (** Return the next event. File changes event are always flattened and
-    returned first. *)
+      returned first. *)
   val next : unit -> t
 
   (** Ignore the ne next file change event about this file. *)
@@ -138,13 +138,13 @@ end = struct
           files_changed := [];
           let only_ignored_files =
             List.fold_left fns ~init:true ~f:(fun acc fn ->
-              let fn = Path.to_absolute_filename fn in
-              if String.Table.mem ignored_files fn then (
-                (* only use ignored record once *)
-                String.Table.remove ignored_files fn;
-                acc
-              ) else
-                false)
+                let fn = Path.to_absolute_filename fn in
+                if String.Table.mem ignored_files fn then (
+                  (* only use ignored record once *)
+                  String.Table.remove ignored_files fn;
+                  acc
+                ) else
+                  false)
           in
           if only_ignored_files then
             loop ()
@@ -197,14 +197,14 @@ end = struct
   let command =
     lazy
       (let excludes =
-        [ {|/_build|}
-        ; {|/_opam|}
-        ; {|/_esy|}
-        ; {|/\..+|}
-        ; {|~$|}
-        ; {|/#[^#]*#$|}
-        ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
-        ]
+         [ {|/_build|}
+         ; {|/_opam|}
+         ; {|/_esy|}
+         ; {|/\..+|}
+         ; {|~$|}
+         ; {|/#[^#]*#$|}
+         ; {|4913|} (* https://github.com/neovim/neovim/issues/3460 *)
+         ]
        in
        let path = Path.to_string_maybe_quoted Path.root in
        match Bin.which ~path:(Env.path Env.initial) "inotifywait" with
@@ -227,7 +227,7 @@ end = struct
            ] )
        | None -> (
          (* On all other platforms, try to use fswatch. fswatch's event
-           filtering is not reliable (at least on Linux), so don't try to use
+            filtering is not reliable (at least on Linux), so don't try to use
             it, instead act on all events. *)
          match Bin.which ~path:(Env.path Env.initial) "fswatch" with
          | Some fswatch ->
@@ -248,8 +248,8 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-               "fswatch (or inotifywait) was not found. One of them needs to \
-                be installed for watch mode to work."
+                 "fswatch (or inotifywait) was not found. One of them needs \
+                  to be installed for watch mode to work."
              ] ))
 
   let buffering_time = 0.5 (* seconds *)
@@ -308,7 +308,7 @@ end = struct
       done
     in
     (* The buffer thread is used to avoid flooding the main thread with file
-      changes events when a lot of file changes are reported at once. In
+       changes events when a lot of file changes are reported at once. In
        particular, this avoids restarting the build over and over in a short
        period of time when many events are reported at once.
 
@@ -365,7 +365,7 @@ end = struct
       | Zombie of Unix.process_status
 
     (* Invariant: [!running_count] is equal to the number of [Running _] values
-      in [table]. *)
+       in [table]. *)
     let table = Table.create (module Int) 128
 
     let running_count = ref 0
@@ -392,9 +392,9 @@ end = struct
 
     let iter ~f =
       Table.iter table ~f:(fun data ->
-        match data with
-        | Running job -> f job
-        | Zombie _ -> ())
+          match data with
+          | Running job -> f job
+          | Zombie _ -> ())
 
     let running_count () = !running_count
   end
@@ -408,7 +408,7 @@ end = struct
   let killall signal =
     Mutex.lock mutex;
     Process_table.iter ~f:(fun job ->
-      try Unix.kill job.pid signal with Unix.Unix_error _ -> ());
+        try Unix.kill job.pid signal with Unix.Unix_error _ -> ());
     Mutex.unlock mutex
 
   exception Finished of job * Unix.process_status
@@ -416,12 +416,12 @@ end = struct
   let wait_nonblocking_win32 () =
     try
       Process_table.iter ~f:(fun job ->
-        let pid, status = Unix.waitpid [ WNOHANG ] job.pid in
-        if pid <> 0 then raise_notrace (Finished (job, status)));
+          let pid, status = Unix.waitpid [ WNOHANG ] job.pid in
+          if pid <> 0 then raise_notrace (Finished (job, status)));
       false
     with Finished (job, status) ->
       (* We need to do the [Unix.waitpid] and remove the process while holding
-        the lock, otherwise the pid might be reused in between. *)
+         the lock, otherwise the pid might be reused in between. *)
       Process_table.remove ~pid:job.pid status;
       true
 
@@ -481,11 +481,11 @@ end = struct
       Sys.set_signal Sys.sigint
         (Signal_handle (fun _ -> assert (Unix.write w buf 0 1 = 1)));
       Staged.stage (fun () ->
-        assert (Unix.read r buf 0 1 = 1);
-        Signal.Int)
+          assert (Unix.read r buf 0 1 = 1);
+          Signal.Int)
     ) else
       Staged.stage (fun () ->
-        Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
+          Thread.wait_signal signos |> Signal.of_int |> Option.value_exn)
 
   let run () =
     let last_exit_signals = Queue.create () in
@@ -608,7 +608,7 @@ let prepare ?(config = Config.default) () =
   Log.infof "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
   (* The signal watcher must be initialized first so that signals are blocked
-    in all threads. *)
+     in all threads. *)
   Signal_watcher.init ();
   Process_watcher.init ();
   let cwd = Sys.getcwd () in
@@ -640,9 +640,9 @@ let prepare ?(config = Config.default) () =
   let t =
     { original_cwd = cwd
     ; concurrency =
-      ( match config.concurrency with
-      | Auto -> 1
-      | Fixed n -> n )
+        ( match config.concurrency with
+        | Auto -> 1
+        | Fixed n -> n )
     ; waiting_for_available_job = Queue.create ()
     }
   in
@@ -691,7 +691,7 @@ end = struct
   let run t f =
     let fiber =
       Fiber.Var.set t_var t (fun () ->
-        Fiber.with_error_handler f ~on_error:Report_error.report)
+          Fiber.with_error_handler f ~on_error:Report_error.report)
     in
     match
       Fiber.run
@@ -715,13 +715,14 @@ end = struct
     ( match res with
     | Error Files_changed ->
       set_status_line_generator (fun () ->
-        { message =
-          Some
-            (Pp.seq
-              (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
-               (Pp.verbatim ", killing current build..."))
-        ; show_jobs = false
-        })
+          { message =
+              Some
+                (Pp.seq
+                   (Pp.tag ~tag:User_message.Style.Error
+                      (Pp.verbatim "Had errors"))
+                   (Pp.verbatim ", killing current build..."))
+          ; show_jobs = false
+          })
     | _ -> () );
     match kill_and_wait_for_all_processes t () with
     | Got_signal -> Error Got_signal
@@ -755,11 +756,11 @@ let maybe_clear_screen ~config =
   | Preserve ->
     Console.print_user_message
       (User_message.make
-        [ Pp.nop
-        ; Pp.tag ~tag:User_message.Style.Success
-          (Pp.verbatim "********** NEW BUILD **********")
-        ; Pp.nop
-        ])
+         [ Pp.nop
+         ; Pp.tag ~tag:User_message.Style.Success
+             (Pp.verbatim "********** NEW BUILD **********")
+         ; Pp.nop
+         ])
 
 let poll ?config ~once ~finally () =
   let t = prepare ?config () in
@@ -775,10 +776,11 @@ let poll ?config ~once ~finally () =
   let wait msg =
     let old_generator = !status_line_generator in
     set_status_line_generator (fun () ->
-      { message =
-        Some (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes..."))
-      ; show_jobs = false
-      });
+        { message =
+            Some
+              (Pp.seq msg (Pp.verbatim ", waiting for filesystem changes..."))
+        ; show_jobs = false
+        });
     let res = block_waiting_for_changes () in
     maybe_clear_screen ~config;
     set_status_line_generator old_generator;

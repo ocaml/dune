@@ -1,0 +1,11 @@
+(rule
+ (target bar)
+ (deps (universe))
+ (action
+ (progn
+  (echo "Building bar!\n")
+  (with-stdout-to %{target} (echo "Hello from bar!")))))
+
+(alias
+ (name runtest)
+ (action (dynamic-run ./foo.exe)))

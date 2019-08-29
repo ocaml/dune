@@ -1256,22 +1256,24 @@ end = struct
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
     ~sandboxing_preference =
     let evaluate_sandboxing_preference preference =
-      Option.some_if
-        (Sandbox_mode.Set.mem config preference)
-        ( match preference with
+      match Sandbox_mode.Set.mem config preference with
+      | false -> None
+      | true -> (
+        match preference with
         | Some Symlink ->
           if Sandbox_mode.Set.mem config Sandbox_mode.copy then
-            if Sys.win32 then
-              Sandbox_mode.copy
-            else
-              Sandbox_mode.symlink
+            Some
+              ( if Sys.win32 then
+                Sandbox_mode.copy
+              else
+                Sandbox_mode.symlink )
           else
             User_error.raise ~loc
               [ Pp.text
                 "This rule requires sandboxing with symlinks, but that won't \
                  work on Windows."
               ]
-        | _ -> preference )
+        | _ -> Some preference )
     in
     match
       List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference

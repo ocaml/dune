@@ -1,3 +1,6 @@
+This test checks that dune can gracefully handle situation when user provides
+ordinary executable instead of one supporting dynamic dependencies.
+
   $ cp ../bin/foo.exe ./
   $ dune runtest --display short
            foo alias runtest

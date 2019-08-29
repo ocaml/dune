@@ -1,4 +1,4 @@
-This test checks that executable that uses  "dune action"
+This test checks that executable that uses 'dynamic-run'
 but requires no dependencies can be successfully run.
 
   $ cp ../bin/foo.exe ./

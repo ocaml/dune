@@ -56,8 +56,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     function
     | File path -> Dep.file (to_dune_path path)
     | Directory path ->
-      let glob = Glob.of_string_exn Loc.none "*" in
-      Dep.file_selector (File_selector.from_glob ~dir:(to_dune_path path) glob)
+      Dep.file_selector
+        (File_selector.from_glob ~dir:(to_dune_path path) Glob.universal)
   in
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in

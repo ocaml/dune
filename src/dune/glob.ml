@@ -37,6 +37,8 @@ let filter t = List.filter ~f:(test t)
 
 let empty = { re = Re.compile Re.empty; repr = "\000" }
 
+let universal = { re = Re.compile (Re.rep Re.any); repr = "**" }
+
 let to_pred t =
   let id =
     lazy

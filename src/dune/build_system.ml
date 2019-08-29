@@ -1387,7 +1387,8 @@ end = struct
     Digest.generic trace
 
   let compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred =
-    Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred |> Digest.generic
+    Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
+    |> (Digest.generic : Dep.Trace.t -> _)
 
   let execute_rule_impl rule =
     let t = t () in

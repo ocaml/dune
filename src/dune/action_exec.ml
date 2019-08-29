@@ -16,28 +16,28 @@ module Context = struct
   type t =
     { context : Context.t option
     ; purpose : Process.purpose
-    ; env : Env.t
+    ; initial_env : Env.t
     }
 
-  let env t = t.env
+  let env t = t.initial_env
 
   let for_exec t =
     { For_exec.working_dir = Path.root
-    ; env = t.env
+    ; env = t.initial_env
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.stdin
     }
 
   let make ~targets ~(context : Context.t option) ~env =
-    let env =
+    let initial_env =
       match (env, context) with
       | None, None -> Env.initial
       | Some e, _ -> e
       | None, Some c -> c.env
     in
     let purpose = Process.Build_job targets in
-    { purpose; context; env }
+    { purpose; context; initial_env }
 end
 
 let exec_run ~(ectx : Context.t) ~(eenv : Context.For_exec.t) prog args =

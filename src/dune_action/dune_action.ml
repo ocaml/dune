@@ -25,7 +25,7 @@ end = struct
       catch_unix_error_exceptions (fun () ->
         let dh = Unix.opendir path in
         Stdune.Exn.protect
-          ~f:(fun () -> loop dh [])
+          ~f:(fun () -> loop dh [] |> List.sort String.compare)
           ~finally:(fun () -> Unix.closedir dh))
 
   let read_file path =

@@ -1,0 +1,16 @@
+(data_only_dirs foo_dir)
+(copy_files foo_dir/foo)
+
+(library
+ (name dune_action_unit_tests)
+ (inline_tests
+   (deps foo_dir/foo))
+ (libraries
+  stdune
+  dune_action
+  ppx_expect.config
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

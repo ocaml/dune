@@ -3,14 +3,17 @@ module Path = Path
 open Protocol
 
 module Fs : sig
-  val read_directory : string -> (string list, Unix.error) Stdune.Result.t
+  val read_directory : string -> (string list, string) Stdune.Result.t
 
-  val read_file : string -> (string, Unix.error) Stdune.Result.t
+  val read_file : string -> (string, string) Stdune.Result.t
 
-  val write_file : string -> string -> (unit, Unix.error) Stdune.Result.t
+  val write_file : string -> string -> (unit, string) Stdune.Result.t
 end = struct
-  let catch_unix_error_exceptions f =
-    try Stdune.Ok (f ()) with Unix.Unix_error (e, _, _) -> Stdune.Error e
+  let catch_system_exceptions f ~name =
+    try Stdune.Ok (f ()) with
+    | Unix.Unix_error (e, _, _) ->
+      Stdune.Error (name ^ ": " ^ Unix.error_message e)
+    | Sys_error error -> Stdune.Error (name ^ ": " ^ error)
 
   let read_directory =
     let rec loop dh acc =
@@ -22,18 +25,18 @@ end = struct
       | exception End_of_file -> acc
     in
     fun path ->
-      catch_unix_error_exceptions (fun () ->
+      catch_system_exceptions ~name:"read_directory" (fun () ->
         let dh = Unix.opendir path in
         Stdune.Exn.protect
           ~f:(fun () -> loop dh [] |> List.sort String.compare)
           ~finally:(fun () -> Unix.closedir dh))
 
   let read_file path =
-    catch_unix_error_exceptions (fun () ->
+    catch_system_exceptions ~name:"read_file" (fun () ->
       Stdune.Io.String_path.read_file path)
 
   let write_file path data =
-    catch_unix_error_exceptions (fun () ->
+    catch_system_exceptions ~name:"write_file" (fun () ->
       Stdune.Io.String_path.write_file path data)
 end
 

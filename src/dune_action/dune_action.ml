@@ -124,7 +124,7 @@ let rec run_outside_of_dune t =
 
 let run t =
   let open Protocol in
-  match Context.create ~env_var_name:run_by_dune_env_variable with
+  match Context.create () with
   | Run_outside_of_dune -> run_outside_of_dune t
   | Error message ->
     failwith

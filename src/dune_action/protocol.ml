@@ -95,8 +95,8 @@ module Context = struct
 
   let file_not_found_error = Error "Cannot find file containing dune message."
 
-  let create ~env_var_name =
-    match Sys.getenv_opt env_var_name with
+  let create () =
+    match Sys.getenv_opt run_by_dune_env_variable with
     | None -> Run_outside_of_dune
     | Some value -> (
       match

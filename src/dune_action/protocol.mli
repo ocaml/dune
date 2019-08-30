@@ -45,7 +45,7 @@ module Context : sig
     | Run_outside_of_dune
     | Error of string
 
-  val create : env_var_name:string -> create_result
+  val create : unit -> create_result
 
   val prepared_dependencies : t -> Dependency.Set.t
 

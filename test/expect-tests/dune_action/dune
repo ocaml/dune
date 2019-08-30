@@ -1,5 +1,4 @@
 (data_only_dirs foo_dir)
-(copy_files foo_dir/foo)
 
 (library
  (name dune_action_unit_tests)

@@ -177,32 +177,30 @@ module Alias0 = struct
   let dep t = Build.path (Path.build (stamp_file t))
 
   let dep_multi_contexts ~dir ~name ~file_tree ~contexts =
-    ignore
-      (find_dir_specified_on_command_line ~dir ~file_tree : File_tree.Dir.t);
-    Build.paths
-      (List.map contexts ~f:(fun ctx ->
-           let dir =
-             Path.Build.append_source (Path.Build.(relative root) ctx) dir
-           in
-           Path.build (stamp_file (make ~dir name))))
+    ignore (find_dir_specified_on_command_line ~dir ~file_tree);
+    let context_to_stamp_file ctx =
+      let dir = Path.Build.(append_source (relative root ctx) dir) in
+      Path.build (stamp_file (make ~dir name))
+    in
+    Build.paths (List.map contexts ~f:context_to_stamp_file)
 
   open Build.O
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
+    let f dir acc =
+      let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
+      let fn = stamp_file (make ~dir:path name) in
+      acc
+      >>>
+      let fn = Path.build fn in
+      Build.if_file_exists fn
+        ~then_:(Build.path fn >>^ Fn.const false)
+        ~else_:(Build.arr Fn.id)
+    in
     Build.lazy_no_targets
       ( lazy
         (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-           ~init:(Build.return true) ~f:(fun dir acc ->
-             let path =
-               Path.Build.append_source ctx_dir (File_tree.Dir.path dir)
-             in
-             let fn = stamp_file (make ~dir:path name) in
-             acc
-             >>>
-             let fn = Path.build fn in
-             Build.if_file_exists fn
-               ~then_:(Build.path fn >>^ Fn.const false)
-               ~else_:(Build.arr Fn.id))) )
+           ~init:(Build.return true) ~f) )
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =
@@ -347,7 +345,9 @@ module Subdir_set = struct
   let to_dir_set = function
     | All -> Dir_set.universal
     | These s ->
-      Dir_set.of_list (List.map (String.Set.to_list s) ~f:Path.Local.of_string)
+      String.Set.to_list s
+      |> List.map ~f:Path.Local.of_string
+      |> Dir_set.of_list
 
   let of_dir_set d =
     match Dir_set.toplevel_subdirs d with
@@ -385,7 +385,7 @@ module Action_and_deps = struct
   let to_dyn (action, deps) =
     let open Dyn.Encoder in
     let action =
-      Dune_lang.to_dyn (Action.For_shell.encode (Action.for_shell action))
+      Action.for_shell action |> Action.For_shell.encode |> Dune_lang.to_dyn
     in
     record [ ("action", action); ("deps", Dep.Set.to_dyn deps) ]
 end
@@ -459,19 +459,18 @@ let get_dir_triage t ~dir =
       (Non_build
          (Path.set_of_source_paths (File_tree.files_of t.file_tree dir)))
   | None ->
-    let allowed_subdirs =
-      Subdir_set.to_dir_set
-        (Subdir_set.of_list
-           ([ ".aliases"; "install" ] @ String.Map.keys t.contexts))
-    in
     if Path.equal dir Path.build_dir then
+      let allowed_subdirs =
+        Subdir_set.to_dir_set
+          (Subdir_set.of_list
+             ([ ".aliases"; "install" ] @ String.Map.keys t.contexts))
+      in
       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
     else if Path.equal dir (Path.relative Path.build_dir "install") then
-      Dir_triage.Known
-        (Loaded.no_rules
-           ~allowed_subdirs:
-             (Subdir_set.to_dir_set
-                (Subdir_set.of_list (String.Map.keys t.contexts))))
+      let allowed_subdirs =
+        Subdir_set.to_dir_set (Subdir_set.of_list (String.Map.keys t.contexts))
+      in
+      Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
     else if not (Path.is_managed dir) then
       Dir_triage.Known
         (Non_build
@@ -679,7 +678,7 @@ end = struct
 
   let static_deps build =
     Fiber.Once.create (fun () ->
-        Fiber.return (Build.static_deps build ~all_targets:targets_of))
+        Fiber.return (Build.static_deps build ~list_targets:targets_of))
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -1264,26 +1263,28 @@ end = struct
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
-    match
-      List.find_map sandboxing_preference ~f:(fun preference ->
-          match Sandbox_mode.Set.mem config preference with
-          | false -> None
-          | true -> (
-            match preference with
-            | Some Symlink ->
-              if Sandbox_mode.Set.mem config Sandbox_mode.copy then
-                Some
-                  ( if Sys.win32 then
-                    Sandbox_mode.copy
-                  else
-                    Sandbox_mode.symlink )
+    let evaluate_sandboxing_preference preference =
+      match Sandbox_mode.Set.mem config preference with
+      | false -> None
+      | true -> (
+        match preference with
+        | Some Symlink ->
+          if Sandbox_mode.Set.mem config Sandbox_mode.copy then
+            Some
+              ( if Sys.win32 then
+                Sandbox_mode.copy
               else
-                User_error.raise ~loc
-                  [ Pp.text
-                      "This rule requires sandboxing with symlinks, but that \
-                       won't work on Windows."
-                  ]
-            | _ -> Some preference ))
+                Sandbox_mode.symlink )
+          else
+            User_error.raise ~loc
+              [ Pp.text
+                  "This rule requires sandboxing with symlinks, but that \
+                   won't work on Windows."
+              ]
+        | _ -> Some preference )
+    in
+    match
+      List.find_map sandboxing_preference ~f:evaluate_sandboxing_preference
     with
     | Some choice -> choice
     | None ->
@@ -1445,11 +1446,12 @@ end = struct
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
         let+ () =
           with_locks locks ~f:(fun () ->
-              Fiber.map (Action_exec.exec action action_ctx) ~f:(fun () ->
-                  Option.iter sandboxed ~f:(fun sandboxed ->
-                      List.iter targets_as_list ~f:(fun target ->
-                          rename_optional_file ~src:(sandboxed target)
-                            ~dst:target))))
+              let copy_files_from_sandbox sandboxed =
+                List.iter targets_as_list ~f:(fun target ->
+                    rename_optional_file ~src:(sandboxed target) ~dst:target)
+              in
+              let+ () = Action_exec.exec action action_ctx in
+              Option.iter sandboxed ~f:copy_files_from_sandbox)
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
@@ -1824,7 +1826,7 @@ module All_lib_deps : sig
     -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 end = struct
   let static_deps_of_request request =
-    Static_deps.paths @@ Build.static_deps request ~all_targets:targets_of
+    Static_deps.paths @@ Build.static_deps request ~list_targets:targets_of
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->

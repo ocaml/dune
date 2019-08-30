@@ -188,7 +188,7 @@ val record_lib_deps : Lib_deps_info.t -> ('a, 'a) t
 (** Must be called first before [lib_deps] and [targets] as it updates some of
     the internal references in the build arrow. *)
 val static_deps :
-  (_, _) t -> all_targets:(dir:Path.t -> Path.Set.t) -> Static_deps.t
+  (_, _) t -> list_targets:(dir:Path.t -> Path.Set.t) -> Static_deps.t
 
 val lib_deps : (_, _) t -> Lib_deps_info.t
 

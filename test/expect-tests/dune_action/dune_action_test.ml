@@ -1,12 +1,6 @@
 open Stdune
 open Dune_action
 
-let ident x = x
-
-let map2 ~ok ~err = function
-  | Ok a -> ok a
-  | Error a -> err a
-
 let%expect_test _ =
   let action =
     read_file ~path:(Path.of_string "foo_dir/foo")
@@ -15,8 +9,7 @@ let%expect_test _ =
         | Error _ -> print_endline "SHOULD NOT BE PRINTED")
   in
   run action;
-  [%expect
-    {|
+  [%expect {|
     Hello from foo!
   |}]
 
@@ -77,6 +70,7 @@ let%expect_test _ =
         | Error error -> print_endline error)
   in
   run action;
-  [%expect {|
+  [%expect
+    {|
     write_file: directory_that_does_not_exist/foo: No such file or directory
   |}]

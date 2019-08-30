@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 type expanded =
   | Static of Value.t list
@@ -333,6 +333,11 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
     | Dynamic -> Resolved_forms.add_ddep acc ~key
   in
+  let add_fail =
+    match expansion_kind with
+    | Static -> fun _ (f : fail) -> f.fail ()
+    | Dynamic -> Resolved_forms.add_fail
+  in
   let open Build.O in
   match (expansion : Pform.Expansion.t) with
   | Var
@@ -361,7 +366,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   | Macro (Dep, s) -> Some (path_exp (relative dir s))
   | Macro (Bin, s) -> (
     match resolve_binary ~loc:(Some loc) t ~prog:s with
-    | Error fail -> Resolved_forms.add_fail acc fail
+    | Error fail -> add_fail acc fail
     | Ok path -> Some (path_exp path) )
   | Macro (Lib, s) -> (
     let lib_dep, file = parse_lib_file ~loc s in
@@ -370,14 +375,14 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
       Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
     with
     | Ok path -> Some (path_exp path)
-    | Error e -> Resolved_forms.add_fail acc { fail = (fun () -> raise e) } )
+    | Error e -> add_fail acc { fail = (fun () -> raise e) } )
   | Macro (Libexec, s) -> (
     let lib_dep, file = parse_lib_file ~loc s in
     Resolved_forms.add_lib_dep acc lib_dep dep_kind;
     match
       Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
     with
-    | Error e -> Resolved_forms.add_fail acc { fail = (fun () -> raise e) }
+    | Error e -> add_fail acc { fail = (fun () -> raise e) }
     | Ok path ->
       if (not Sys.win32) || Filename.extension s = ".exe" then
         Some (path_exp path)

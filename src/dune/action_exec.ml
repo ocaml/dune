@@ -42,6 +42,47 @@ let validate_context_and_prog context prog =
     invalid_prefix (Path.relative Path.build_dir target.name);
     invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name))
 
+let ensure_at_most_one_dynamic_run ~ectx action =
+  let rec loop : Action.t -> bool = function
+    | Dynamic_run _ -> true
+    | Chdir (_, t)
+     |Setenv (_, _, t)
+     |Redirect_out (_, _, t)
+     |Redirect_in (_, _, t)
+     |Ignore (_, t) ->
+      loop t
+    | Run _
+     |Echo _
+     |Cat _
+     |Copy _
+     |Symlink _
+     |Copy_and_add_line_directive _
+     |System _
+     |Bash _
+     |Write_file _
+     |Rename _
+     |Remove_tree _
+     |Mkdir _
+     |Digest_files _
+     |Diff _
+     |Merge_files_into _ ->
+      false
+    | Progn ts ->
+      List.fold_left ts ~init:false ~f:(fun acc t ->
+        match (acc, loop t) with
+        | false, true
+         |true, false ->
+          true
+        | false, false -> false
+        | true, true ->
+          User_error.raise ~loc:ectx.rule_loc
+            [ Pp.text
+              "Multiple 'dynamic-run' commands within single action are not \
+               supported."
+            ])
+  in
+  ignore (loop action)
+
 let exec_run ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
   Process.run Strict ~dir:eenv.working_dir ~env:eenv.env
@@ -337,4 +378,7 @@ let exec ~targets ~context ~env ~rule_loc ~prepared_dependencies t =
     ; stdin_from = Process.Io.stdin
     }
   in
+  (* TODO jstaron: Maybe it would be better if this check would be somewhere
+    earlier in the processing of action? (Like parsing instead of execution) *)
+  ensure_at_most_one_dynamic_run ~ectx t;
   exec t ~ectx ~eenv

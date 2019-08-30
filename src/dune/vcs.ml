@@ -115,16 +115,16 @@ let make_fun name ~output ~doc ~git ~hg =
 let describe =
   Staged.unstage
   @@ make_fun "vcs-describe"
-    ~doc:"Obtain a nice description of the tip from the vcs"
-      ~output:(Simple (module String))
+       ~doc:"Obtain a nice description of the tip from the vcs"
+       ~output:(Simple (module String))
        ~git:(fun t -> run t [ "describe"; "--always"; "--dirty" ])
        ~hg:hg_describe
 
 let commit_id =
   Staged.unstage
   @@ make_fun "vcs-commit-id" ~doc:"The hash of the head commit"
-    ~output:(Simple (module String))
-      ~git:(fun t -> run t [ "rev-parse"; "HEAD" ])
+       ~output:(Simple (module String))
+       ~git:(fun t -> run t [ "rev-parse"; "HEAD" ])
        ~hg:(fun t -> run t [ "id"; "-i" ])
 
 let files =
@@ -135,12 +135,12 @@ let files =
   in
   Staged.unstage
   @@ make_fun "vcs-files" ~doc:"Return the files committed in the repo"
-    ~output:
-      (Simple
-        ( module struct
-          type t = Path.t list
+       ~output:
+         (Simple
+            ( module struct
+              type t = Path.t list
 
-          let to_dyn = Dyn.Encoder.list Path.to_dyn
-        end ))
+              let to_dyn = Dyn.Encoder.list Path.to_dyn
+            end ))
        ~git:(f [ "ls-tree"; "-r"; "--name-only"; "HEAD" ])
        ~hg:(f [ "files" ])

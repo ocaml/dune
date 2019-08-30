@@ -32,24 +32,25 @@ let c_name, cxx_name =
 let load_sources ~dune_version ~dir ~files =
   let init = C.Kind.Dict.make_both String.Map.empty in
   String.Set.fold files ~init ~f:(fun fn acc ->
-    match C.Kind.split_extension fn ~dune_version with
-    | Unrecognized -> acc
-    | Not_allowed_until version ->
-      let loc = Loc.in_dir (Path.build dir) in
-      User_error.raise ~loc
-        [ Pp.textf
-          "Source file %s with extension %s is not allowed before version %s"
-            fn (Filename.extension fn)
-            (Syntax.Version.to_string version)
-        ]
-    | Recognized (obj, kind) ->
-      let path = Path.Build.relative dir fn in
-      C.Kind.Dict.update acc kind ~f:(fun v ->
-        String.Map.set v obj (C.Source.make ~kind ~path)))
+      match C.Kind.split_extension fn ~dune_version with
+      | Unrecognized -> acc
+      | Not_allowed_until version ->
+        let loc = Loc.in_dir (Path.build dir) in
+        User_error.raise ~loc
+          [ Pp.textf
+              "Source file %s with extension %s is not allowed before version \
+               %s"
+              fn (Filename.extension fn)
+              (Syntax.Version.to_string version)
+          ]
+      | Recognized (obj, kind) ->
+        let path = Path.Build.relative dir fn in
+        C.Kind.Dict.update acc kind ~f:(fun v ->
+            String.Map.set v obj (C.Source.make ~kind ~path)))
 
 let eval_c_sources (d : _ Dir_with_dune.t) buildable ~c_sources =
   let eval (kind : C.Kind.t) (c_sources : C.Source.t String.Map.t) validate osl
-    =
+      =
     Ordered_set_lang.Unordered_string.eval_loc osl
       ~key:(fun x -> x)
       ~parse:(fun ~loc s ->
@@ -58,21 +59,23 @@ let eval_c_sources (d : _ Dir_with_dune.t) buildable ~c_sources =
         if s' <> s then
           User_error.raise ~loc
             [ Pp.text
-              "relative part of stub is not necessary and should be removed. \
-               To include sources in subdirectories, use the include_subdirs \
-               stanza"
+                "relative part of stub is not necessary and should be \
+                 removed. To include sources in subdirectories, use the \
+                 include_subdirs stanza"
             ];
         s')
       ~standard:String.Map.empty
     |> String.Map.map ~f:(fun (loc, s) ->
-      match String.Map.find c_sources s with
-      | Some source -> (loc, source)
-      | None ->
-        let dune_version = d.dune_version in
-        User_error.raise ~loc
-          [ Pp.textf "%s does not exist as a C source. %s must be present" s
-            (String.enumerate_one_of (C.Kind.possible_fns kind s ~dune_version))
-          ])
+           match String.Map.find c_sources s with
+           | Some source -> (loc, source)
+           | None ->
+             let dune_version = d.dune_version in
+             User_error.raise ~loc
+               [ Pp.textf "%s does not exist as a C source. %s must be present"
+                   s
+                   (String.enumerate_one_of
+                      (C.Kind.possible_fns kind s ~dune_version))
+               ])
   in
   let names = Option.value ~default:Ordered_set_lang.standard in
   let c =
@@ -83,49 +86,50 @@ let eval_c_sources (d : _ Dir_with_dune.t) buildable ~c_sources =
     eval C.Kind.Cxx c_sources.cxx cxx_name (names buildable.cxx_names)
   in
   String.Map.union c cxx ~f:(fun _ (_loc1, c) (loc2, cxx) ->
-    User_error.raise ~loc:loc2
-      [ Pp.textf
-        "%s and %s have conflicting names. You must rename one of them."
-          (Path.to_string_maybe_quoted
-            (Path.drop_optional_build_context (Path.build (C.Source.path cxx))))
-          (Path.to_string_maybe_quoted
-            (Path.drop_optional_build_context (Path.build (C.Source.path c))))
-      ])
+      User_error.raise ~loc:loc2
+        [ Pp.textf
+            "%s and %s have conflicting names. You must rename one of them."
+            (Path.to_string_maybe_quoted
+               (Path.drop_optional_build_context
+                  (Path.build (C.Source.path cxx))))
+            (Path.to_string_maybe_quoted
+               (Path.drop_optional_build_context (Path.build (C.Source.path c))))
+        ])
 
 let make (d : _ Dir_with_dune.t)
-  ~(c_sources : C.Source.t String.Map.t C.Kind.Dict.t) =
+    ~(c_sources : C.Source.t String.Map.t C.Kind.Dict.t) =
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
-      match (stanza : Stanza.t) with
-      | Library lib ->
-        let all = eval_c_sources d lib.buildable ~c_sources in
-        Left (lib, all)
-      | Executables exes ->
-        let all = eval_c_sources d exes.buildable ~c_sources in
-        Right (exes, all)
-      | _ -> Skip)
+        match (stanza : Stanza.t) with
+        | Library lib ->
+          let all = eval_c_sources d lib.buildable ~c_sources in
+          Left (lib, all)
+        | Executables exes ->
+          let all = eval_c_sources d exes.buildable ~c_sources in
+          Right (exes, all)
+        | _ -> Skip)
   in
   let libraries =
     match
       Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
-        (Library.best_name lib, m))
+          (Library.best_name lib, m))
     with
     | Ok x -> x
     | Error (name, _, (lib2, _)) ->
       User_error.raise ~loc:lib2.buildable.loc
         [ Pp.textf "Library %S appears for the second time in this directory"
-          (Lib_name.to_string name)
+            (Lib_name.to_string name)
         ]
   in
   let executables =
     String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
-      (snd (List.hd exes.names), m))
+        (snd (List.hd exes.names), m))
   in
   let () =
     let rev_map =
       List.concat_map libs ~f:(fun (_, c_sources) ->
-        String.Map.values c_sources
-        |> List.map ~f:(fun (loc, source) -> (C.Source.path source, loc)))
+          String.Map.values c_sources
+          |> List.map ~f:(fun (loc, source) -> (C.Source.path source, loc)))
       |> Path.Build.Map.of_list
     in
     match rev_map with

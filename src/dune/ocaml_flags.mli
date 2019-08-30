@@ -16,9 +16,9 @@ val make :
      spec:Spec.t
   -> default:t
   -> eval:
-    (   Ordered_set_lang.Unexpanded.t
-     -> standard:(unit, string list) Build.t
-     -> (unit, string list) Build.t)
+       (   Ordered_set_lang.Unexpanded.t
+        -> standard:(unit, string list) Build.t
+        -> (unit, string list) Build.t)
   -> t
 
 val default : dune_version:Syntax.Version.t -> profile:Profile.t -> t

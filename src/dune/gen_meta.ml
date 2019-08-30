@@ -92,10 +92,10 @@ let gen_lib pub_name lib ~version =
     ; [ description desc; requires ~preds lib_deps ]
     ; archives ~preds lib
     ; ( if Lib_name.Set.is_empty ppx_rt_deps then
-      []
+        []
       else
         [ Comment
-          "This is what dune uses to find out the runtime dependencies of"
+            "This is what dune uses to find out the runtime dependencies of"
         ; Comment "a preprocessor"
         ; ppx_runtime_deps ppx_rt_deps
         ] )
@@ -108,24 +108,25 @@ let gen_lib pub_name lib ~version =
         and no_custom_ppx = Neg "custom_ppx" in
         List.concat
           [ [ Comment
-            "This line makes things transparent for people mixing preprocessors"
+                "This line makes things transparent for people mixing \
+                 preprocessors"
             ; Comment "and normal dependencies"
             ; requires ~preds:[ no_ppx_driver ]
-              (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
+                (Lib.Meta.ppx_runtime_deps_for_deprecated_method lib)
             ]
           ; ( match kind with
             | Normal -> assert false
             | Ppx_rewriter _ ->
               [ rule "ppx"
-                [ no_ppx_driver; no_custom_ppx ]
+                  [ no_ppx_driver; no_custom_ppx ]
                   Set "./ppx.exe --as-ppx"
               ]
             | Ppx_deriver _ ->
               [ rule "requires"
-                [ no_ppx_driver; no_custom_ppx ]
+                  [ no_ppx_driver; no_custom_ppx ]
                   Add "ppx_deriving"
               ; rule "ppxopt"
-                [ no_ppx_driver; no_custom_ppx ]
+                  [ no_ppx_driver; no_custom_ppx ]
                   Set
                   ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
               ] )
@@ -136,7 +137,7 @@ let gen_lib pub_name lib ~version =
         let root = Pub_name.root pub_name in
         let l = List.map l ~f:Path.basename in
         [ rule "linkopts" [ Pos "javascript" ] Set
-          (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
+            (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
         ; rule "jsoo_runtime" [] Set (String.concat l ~sep:" ")
         ] )
     ]
@@ -149,14 +150,14 @@ let gen ~package ~version libs =
   in
   let pkgs =
     List.map libs ~f:(fun lib ->
-      let pub_name = Pub_name.parse (Lib.name lib) in
-      (pub_name, gen_lib pub_name lib ~version))
+        let pub_name = Pub_name.parse (Lib.name lib) in
+        (pub_name, gen_lib pub_name lib ~version))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
-      match Pub_name.to_list pn with
-      | [] -> assert false
-      | _package :: path -> (path, meta))
+        match Pub_name.to_list pn with
+        | [] -> assert false
+        | _package :: path -> (path, meta))
   in
   let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
   let rec loop name pkgs =
@@ -170,8 +171,8 @@ let gen ~package ~version libs =
       String.Map.of_list_multi sub_pkgs
       |> String.Map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
-        let pkg = loop name pkgs in
-        Package { pkg with entries = directory name :: pkg.entries })
+             let pkg = loop name pkgs in
+             Package { pkg with entries = directory name :: pkg.entries })
     in
     { name = Some (Lib_name.of_string_exn ~loc:None name)
     ; entries = entries @ subs

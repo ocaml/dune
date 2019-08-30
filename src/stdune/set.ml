@@ -67,8 +67,8 @@ struct
 
   let union_map l ~f =
     List.fold_left ~init:empty l ~f:(fun acc x ->
-      let s = f x in
-      union acc s)
+        let s = f x in
+        union acc s)
 
   let union_all l = union_map l ~f:(fun x -> x)
 
@@ -77,10 +77,10 @@ struct
   let find t ~f =
     match
       iter t ~f:(fun e ->
-        if f e then
-          raise_notrace (Found e)
-        else
-          ())
+          if f e then
+            raise_notrace (Found e)
+          else
+            ())
     with
     | () -> None
     | exception Found e -> Some e

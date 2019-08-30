@@ -1,7 +1,7 @@
 (** Cinaps integration *)
 
 (** Cinaps is a small tool that allows to auto-generate part of ml or other
-  source files and keep them in sync:
+    source files and keep them in sync:
 
     https://github.com/janestreet/cinaps
 

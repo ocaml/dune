@@ -1,7 +1,7 @@
 (** Representation of the object directory for libraries *)
 
 (** Dune store the artifacts of a library or a set of executables in a
-  dedicated dot directory (name starting with a '.').
+    dedicated dot directory (name starting with a '.').
 
     This is mainly for hygiene reasons. Since the compiler might look at any
     artifact in an include directory, it is important that we control precisely
@@ -60,7 +60,7 @@ val make_lib :
   -> Path.Build.t t
 
 (** Create the object directory for an external library that has no private
-  directory for private modules *)
+    directory for private modules *)
 val make_external_no_private : dir:Path.t -> Path.t t
 
 val encode : Path.t t -> Dune_lang.t list
@@ -80,7 +80,7 @@ val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
 val as_local_exn : Path.t t -> Path.Build.t t
 
 (** For local libraries with private modules, all public cmi's are symlinked to
-  their own directory. Such a public cmi dir is only necessary if a library
+    their own directory. Such a public cmi dir is only necessary if a library
     contains private modules *)
 val need_dedicated_public_dir : Path.Build.t t -> bool
 
@@ -88,8 +88,8 @@ val to_local : Path.t t -> Path.Build.t t option
 
 module Module : sig
   (** The functions in this this module gives the paths to the various object
-    files produced from the compilation of a module (.cmi files, .cmx files, .o
-      files, ...) *)
+      files produced from the compilation of a module (.cmi files, .cmx files,
+      .o files, ...) *)
 
   val cm_file : 'path t -> Module.t -> kind:Cm_kind.t -> 'path option
 
@@ -100,7 +100,7 @@ module Module : sig
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
   (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and
-    the module has no implementation.*)
+      the module has no implementation.*)
   val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path

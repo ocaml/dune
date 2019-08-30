@@ -96,9 +96,9 @@ module Dependency = struct
       let open Dune_lang.Decoder in
       let ops =
         List.map Op.map ~f:(fun (name, op) ->
-          ( name
-          , let+ x = Var.decode in
-            Uop (op, x) ))
+            ( name
+            , let+ x = Var.decode in
+              Uop (op, x) ))
       in
       let ops =
         ( "!="
@@ -107,21 +107,21 @@ module Dependency = struct
         :: ops
       in
       fix (fun t ->
-        let logops =
-          [ ( "and"
-            , let+ x = repeat t in
-              And x )
-          ; ( "or"
-            , let+ x = repeat t in
-              Or x )
-          ]
-        in
-        peek_exn
-        >>= function
-        | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
-          let+ () = junk in
-          Bvar (Var (String.drop s 1))
-        | _ -> sum (ops @ logops))
+          let logops =
+            [ ( "and"
+              , let+ x = repeat t in
+                And x )
+            ; ( "or"
+              , let+ x = repeat t in
+                Or x )
+            ]
+          in
+          peek_exn
+          >>= function
+          | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
+            let+ () = junk in
+            Bvar (Var (String.drop s 1))
+          | _ -> sum (ops @ logops))
 
     let rec to_dyn =
       let open Dyn.Encoder in
@@ -213,7 +213,7 @@ type t =
   }
 
 (* Package name are globally unique, so we can reasonably expect that there
-  will always be only a single value of type [t] with a given name in memory.
+   will always be only a single value of type [t] with a given name in memory.
    That's why we only hash the name. *)
 let hash t = Name.hash t.name
 
@@ -221,7 +221,7 @@ let decode ~dir =
   let open Dune_lang.Decoder in
   fields
   @@ let+ loc = loc
-    and+ name = field "name" Name.decode
+     and+ name = field "name" Name.decode
      and+ synopsis = field_o "synopsis" string
      and+ description = field_o "description" string
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
@@ -242,18 +242,18 @@ let decode ~dir =
      }
 
 let to_dyn
-  { name
-  ; path
-  ; version
-  ; synopsis
-  ; description
-  ; depends
-  ; conflicts
-  ; depopts
-  ; kind
-  ; tags
-  ; loc = _
-  } =
+    { name
+    ; path
+    ; version
+    ; synopsis
+    ; description
+    ; depends
+    ; conflicts
+    ; depopts
+    ; kind
+    ; tags
+    ; loc = _
+    } =
   let open Dyn.Encoder in
   record
     [ ("name", Name.to_dyn name)

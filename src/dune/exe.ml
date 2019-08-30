@@ -43,7 +43,7 @@ module Linkage = struct
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
 
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t)
-    =
+      =
     let wanted_mode : Mode.t =
       match m.mode with
       | Byte -> Byte
@@ -96,9 +96,9 @@ module Linkage = struct
         match real_mode with
         | Native ->
           (* The compiler doesn't pass these flags in native mode. This looks
-            like a bug in the compiler. *)
+             like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
-            [ "-cclib"; flag ])
+              [ "-cclib"; flag ])
           @ so_flags
         | Byte -> so_flags )
     in
@@ -109,7 +109,7 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-  ~promote ?(link_flags = Build.arr (fun _ -> [])) ?(o_files = []) cctx =
+    ~promote ?(link_flags = Build.arr (fun _ -> [])) ?(o_files = []) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -138,25 +138,25 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
      in
      prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
-       [ Command.Args.dyn ocaml_flags
-       ; A "-o"
-       ; Target exe
-       ; As linkage.flags
-       ; Command.Args.dyn link_flags
-       ; Command.of_result_map link_time_code_gen
-         ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
-           S
-             [ As
-               ( if force_linkall then
-                 [ "-linkall" ]
-               else
-                 [] )
-             ; Lib.Lib_and_module.L.link_flags to_link
-               ~lib_config:ctx.lib_config ~mode
-             ])
-       ; Deps o_files
-       ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
-       ])
+           [ Command.Args.dyn ocaml_flags
+           ; A "-o"
+           ; Target exe
+           ; As linkage.flags
+           ; Command.Args.dyn link_flags
+           ; Command.of_result_map link_time_code_gen
+               ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
+                 S
+                   [ As
+                       ( if force_linkall then
+                         [ "-linkall" ]
+                       else
+                         [] )
+                   ; Lib.Lib_and_module.L.link_flags to_link
+                       ~lib_config:ctx.lib_config ~mode
+                   ])
+           ; Deps o_files
+           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+           ])
 
 let link_js ~name ~cm_files ~promote cctx =
   let sctx = CC.super_context cctx in
@@ -174,29 +174,31 @@ let link_js ~name ~cm_files ~promote cctx =
     ~flags:(Command.Args.dyn flags) ~promote
 
 let build_and_link_many ~programs ~linkages ~promote ?link_flags ?o_files cctx
-  =
+    =
   let modules = Compilation_context.modules cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;
   let link_time_code_gen = Link_time_code_gen.handle_special_libs cctx in
   List.iter programs ~f:(fun { Program.name; main_module_name; loc } ->
-    let cm_files =
-      let sctx = CC.super_context cctx in
-      let ctx = SC.context sctx in
-      let obj_dir = CC.obj_dir cctx in
-      let top_sorted_modules =
-        let main = Option.value_exn (Modules.find modules main_module_name) in
-        Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
+      let cm_files =
+        let sctx = CC.super_context cctx in
+        let ctx = SC.context sctx in
+        let obj_dir = CC.obj_dir cctx in
+        let top_sorted_modules =
+          let main =
+            Option.value_exn (Modules.find modules main_module_name)
+          in
+          Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
+        in
+        Cm_files.make ~obj_dir ~modules ~top_sorted_modules
+          ~ext_obj:ctx.lib_config.ext_obj
       in
-      Cm_files.make ~obj_dir ~modules ~top_sorted_modules
-        ~ext_obj:ctx.lib_config.ext_obj
-    in
-    List.iter linkages ~f:(fun linkage ->
-      if linkage = Linkage.js then
-        link_js ~name ~cm_files ~promote cctx
-      else
-        link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-          ~promote ?link_flags ?o_files))
+      List.iter linkages ~f:(fun linkage ->
+          if linkage = Linkage.js then
+            link_js ~name ~cm_files ~promote cctx
+          else
+            link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
+              ~promote ?link_flags ?o_files))
 
 let build_and_link ~program = build_and_link_many ~programs:[ program ]
 

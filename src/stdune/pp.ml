@@ -61,8 +61,8 @@ module Render = struct
     | Concat (sep, x :: l) ->
       render ppf ~tag_handler x;
       List.iter l ~f:(fun x ->
-        render ppf ~tag_handler sep;
-        render ppf ~tag_handler x)
+          render ppf ~tag_handler sep;
+          render ppf ~tag_handler x)
     | Box (indent, t) ->
       pp_open_box ppf indent;
       render ppf ~tag_handler t;
@@ -142,20 +142,20 @@ let tag t ~tag = Tag (tag, t)
 let enumerate l ~f =
   vbox
     (concat ~sep:cut
-      (List.map l ~f:(fun x -> box ~indent:2 (seq (verbatim "- ") (f x)))))
+       (List.map l ~f:(fun x -> box ~indent:2 (seq (verbatim "- ") (f x)))))
 
 let chain l ~f =
   vbox
     (concat ~sep:cut
-      (List.mapi l ~f:(fun i x ->
-        box ~indent:3
-          (seq
-            (verbatim
-              ( if i = 0 then
-                "   "
-              else
-                "-> " ))
-             (f x)))))
+       (List.mapi l ~f:(fun i x ->
+            box ~indent:3
+              (seq
+                 (verbatim
+                    ( if i = 0 then
+                      "   "
+                    else
+                      "-> " ))
+                 (f x)))))
 
 module O = struct
   let ( ++ ) = seq

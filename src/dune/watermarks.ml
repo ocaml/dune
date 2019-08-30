@@ -38,12 +38,12 @@ let make_watermark_map ~name ~version ~commit =
       | List (_, l) -> (
         match
           List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
-            match acc with
-            | Error _ -> acc
-            | Ok l -> (
-              match v with
-              | OpamParserTypes.String (_, s) -> Ok (s :: l)
-              | _ -> err () ))
+              match acc with
+              | Error _ -> acc
+              | Ok l -> (
+                match v with
+                | OpamParserTypes.String (_, s) -> Ok (s :: l)
+                | _ -> err () ))
         with
         | Error _ as e -> e
         | Ok l -> Ok (String.concat ~sep (List.rev l)) )
@@ -143,14 +143,14 @@ let subst_string s path ~map =
   | repls ->
     let result_len =
       List.fold_left repls ~init:(String.length s) ~f:(fun acc (a, b, repl) ->
-        acc - (b - a) + String.length repl)
+          acc - (b - a) + String.length repl)
     in
     let buf = Buffer.create result_len in
     let pos =
       List.fold_left repls ~init:0 ~f:(fun pos (a, b, repl) ->
-        Buffer.add_substring buf s pos (a - pos);
-        Buffer.add_string buf repl;
-        b)
+          Buffer.add_substring buf s pos (a - pos);
+          Buffer.add_string buf repl;
+          b)
     in
     Buffer.add_substring buf s pos (len - pos);
     Some (Buffer.contents buf)
@@ -171,7 +171,7 @@ let subst_file path ~map =
   | Some s -> Io.write_file path s
 
 (* Minimal API for dune-project files that makes as little assumption about the
-  contents as possible and keeps enough info for editing the file. *)
+   contents as possible and keeps enough info for editing the file. *)
 module Dune_project = struct
   type 'a simple_field =
     { loc : Loc.t
@@ -201,10 +201,10 @@ module Dune_project = struct
       in
       enter
         (fields
-          (let+ name = simple_field "name" string
-           and+ version = simple_field "version" string
-           and+ () = junk_everything in
-           { contents = s; name; version }))
+           (let+ name = simple_field "name" string
+            and+ version = simple_field "version" string
+            and+ () = junk_everything in
+            { contents = s; name; version }))
     in
     Dune_lang.Decoder.parse parser Univ_map.empty sexp
 
@@ -215,7 +215,7 @@ module Dune_project = struct
           (String.sub t.contents ~pos:0 ~len:start_ofs)
           repl
           (String.sub t.contents ~pos:stop_ofs
-            ~len:(String.length t.contents - stop_ofs))
+             ~len:(String.length t.contents - stop_ofs))
       in
       match t.version with
       | Some v ->
@@ -226,9 +226,9 @@ module Dune_project = struct
         let version_field =
           Dune_lang.to_string
             (List
-              [ Dune_lang.atom "version"
-              ; Dune_lang.atom_or_quoted_string version
-              ])
+               [ Dune_lang.atom "version"
+               ; Dune_lang.atom_or_quoted_string version
+               ])
           ^ "\n"
         in
         let ofs =
@@ -236,11 +236,11 @@ module Dune_project = struct
             ( match t.name with
             | Some { loc; _ } ->
               (* There is no [version] field but there is a [name] one, add the
-                version after it *)
+                 version after it *)
               loc.stop.pos_cnum
             | None ->
               (* If all else fails, add the [version] field after the first
-                line of the file *)
+                 line of the file *)
               0 )
         in
         let len = String.length t.contents in
@@ -260,13 +260,13 @@ end
 let get_name ~files ~(dune_project : Dune_project.t option) () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
-      match Path.parent fn with
-      | Some p when Path.is_root p -> (
-        let fn = Path.basename fn in
-        match Filename.split_extension fn with
-        | s, ".opam" -> Some s
-        | _ -> None )
-      | _ -> None)
+        match Path.parent fn with
+        | Some p when Path.is_root p -> (
+          let fn = Path.basename fn in
+          match Filename.split_extension fn with
+          | s, ".opam" -> Some s
+          | _ -> None )
+        | _ -> None)
   in
   if package_names = [] then
     User_error.raise [ Pp.textf "No <package>.opam files found." ];
@@ -275,8 +275,8 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
     | None ->
       User_error.raise
         [ Pp.text
-          "There is no dune-project file in the current directory, please add \
-           one with a (name <name>) field in it."
+            "There is no dune-project file in the current directory, please \
+             add one with a (name <name>) field in it."
         ]
         ~hints:
           [ Pp.text "dune subst must be executed from the root of the project."
@@ -284,8 +284,8 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
     | Some { name = None; _ } ->
       User_error.raise
         [ Pp.textf
-          "The project name is not defined, please add a (name <name>) field \
-           to your dune-project file."
+            "The project name is not defined, please add a (name <name>) \
+             field to your dune-project file."
         ]
     | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
   in
@@ -295,9 +295,9 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
     else
       User_error.raise ~loc
         [ Pp.textf
-          "File %s.opam doesn't exist. It is inferred from the name in the \
-           dune-project file"
-          name
+            "File %s.opam doesn't exist. It is inferred from the name in the \
+             dune-project file"
+            name
         ];
   name
 
@@ -320,8 +320,8 @@ let subst vcs =
   let watermarks = make_watermark_map ~name ~version ~commit in
   Option.iter dune_project ~f:(Dune_project.subst ~map:watermarks ~version);
   List.iter files ~f:(fun path ->
-    if is_a_source_file path && not (Path.equal path Dune_project.file) then
-      subst_file path ~map:watermarks)
+      if is_a_source_file path && not (Path.equal path Dune_project.file) then
+        subst_file path ~map:watermarks)
 
 let subst () =
   match

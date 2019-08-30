@@ -5,7 +5,7 @@ open Import
 
 module Language : sig
   (** Dune can format either source files through external programs (ocaml and
-    reason are builtin dialects) or dune files *)
+      reason are builtin dialects) or dune files *)
   type t =
     | Dialect of string
     | Dune
@@ -19,7 +19,7 @@ val of_config : ext:t option -> dune_lang:t option -> t option
 val syntax : Syntax.t
 
 (** Where the configuration was defined. Can be [Loc.none] if formatting is
-  done by default. *)
+    done by default. *)
 val loc : t -> Loc.t
 
 (** Should we emit formatting rules for a particular [language]? *)

@@ -17,7 +17,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
   let fallback () =
     User_error.raise ~loc
       [ Pp.textf "Files %s and %s differ."
-        (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
+          (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path1))
           (Path.to_string_maybe_quoted (Path.drop_optional_sandbox_root path2))
       ]
   in
@@ -57,12 +57,12 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
     let* () = Process.run ~dir ~env:Env.initial Strict sh [ arg; cmd ] in
     User_error.raise
       [ Pp.textf "command reported no differences: %s"
-        ( if Path.is_root dir then
-          cmd
-        else
-          sprintf "cd %s && %s"
-            (String.quote_for_shell (Path.to_string dir))
-            cmd )
+          ( if Path.is_root dir then
+            cmd
+          else
+            sprintf "cd %s && %s"
+              (String.quote_for_shell (Path.to_string dir))
+              cmd )
       ]
   | None -> (
     if Config.inside_dune then
@@ -77,7 +77,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
             ; "-location-style"
             ; "omake"
             ; ( if Lazy.force Ansi_color.stderr_supports_color then
-              "-unrefined"
+                "-unrefined"
               else
                 "-ascii" )
             ; file1

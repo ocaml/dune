@@ -40,9 +40,9 @@ let decode elem =
   let+ l =
     repeat
       (if_paren_colon_form
-        ~then_:
-          (let+ values = repeat elem in
-           fun (loc, name) -> Left (loc, name, values))
+         ~then_:
+           (let+ values = repeat elem in
+            fun (loc, name) -> Left (loc, name, values))
          ~else_:(elem >>| Either.right))
   in
   let rec loop vars acc = function

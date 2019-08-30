@@ -34,11 +34,11 @@ module Lib = struct
     ; version : string option
     ; modes : Mode.Dict.Set.t
     ; special_builtin_support :
-      Dune_file.Library.Special_builtin_support.t option
+        Dune_file.Library.Special_builtin_support.t option
     }
 
   let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
-    ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems ~requires
+      ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems ~requires
       ~ppx_runtime_deps ~implements ~default_implementation ~virtual_
       ~known_implementations ~modules ~modes ~version ~orig_src_dir ~obj_dir
       ~special_builtin_support =
@@ -89,30 +89,30 @@ module Lib = struct
     Path.Local.L.relative Path.Local.root components
 
   let encode ~package_root
-    { loc = _
-    ; kind
-    ; synopsis
-    ; name
-    ; archives
-    ; plugins
-    ; foreign_objects
-    ; foreign_archives
-    ; jsoo_runtime
-    ; requires
-    ; ppx_runtime_deps
-    ; sub_systems
-    ; virtual_
-    ; known_implementations
-    ; implements
-    ; default_implementation
-    ; main_module_name
-    ; version = _
-    ; obj_dir
-    ; orig_src_dir
-    ; modules
-    ; modes
-    ; special_builtin_support
-    } =
+      { loc = _
+      ; kind
+      ; synopsis
+      ; name
+      ; archives
+      ; plugins
+      ; foreign_objects
+      ; foreign_archives
+      ; jsoo_runtime
+      ; requires
+      ; ppx_runtime_deps
+      ; sub_systems
+      ; virtual_
+      ; known_implementations
+      ; implements
+      ; default_implementation
+      ; main_module_name
+      ; version = _
+      ; obj_dir
+      ; orig_src_dir
+      ; modules
+      ; modes
+      ; special_builtin_support
+      } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -124,7 +124,7 @@ module Lib = struct
     let libs name = field_l name (no_loc Lib_name.encode) in
     record_fields
     @@ [ field "name" Lib_name.encode name
-      ; field "kind" Lib_kind.encode kind
+       ; field "kind" Lib_kind.encode kind
        ; field_b "virtual" virtual_
        ; field_o "synopsis" string synopsis
        ; field_o "orig_src_dir" path orig_src_dir
@@ -137,21 +137,21 @@ module Lib = struct
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_l "known_implementations"
-         (pair Variant.encode (no_loc Lib_name.encode))
+           (pair Variant.encode (no_loc Lib_name.encode))
            known_implementations
        ; field_o "default_implementation" (no_loc Lib_name.encode)
-         default_implementation
+           default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
        ; field_l "modes" sexp (Mode.Dict.Set.encode modes)
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
-         Dune_file.Library.Special_builtin_support.encode
+           Dune_file.Library.Special_builtin_support.encode
            special_builtin_support
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, (_ver, sexps)) ->
-        field_l (Sub_system_name.to_string name) sexp sexps) )
+             field_l (Sub_system_name.to_string name) sexp sexps) )
 
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
@@ -197,7 +197,7 @@ module Lib = struct
          let src_dir = Obj_dir.dir obj_dir in
          field_o "modules"
            (Modules.decode
-             ~implements:(Option.is_some implements)
+              ~implements:(Option.is_some implements)
               ~src_dir ~version:lang.version)
        and+ special_builtin_support =
          field_o "special_builtin_support"
@@ -304,10 +304,10 @@ let prepend_version ~dune_version sexps =
   let open Dune_lang.Encoder in
   let list s = Dune_lang.List s in
   [ list
-    [ Dune_lang.atom "lang"
-    ; string (Syntax.name Stanza.syntax)
-    ; Syntax.Version.encode dune_version
-    ]
+      [ Dune_lang.atom "lang"
+      ; string (Syntax.name Stanza.syntax)
+      ; Syntax.Version.encode dune_version
+      ]
   ]
   @ sexps
 
@@ -320,12 +320,14 @@ let encode ~dune_version { libs; name; version; dir } =
     | Some version ->
       sexp
       @ [ List
-        [ Dune_lang.atom "version"; Dune_lang.atom_or_quoted_string version ]
+            [ Dune_lang.atom "version"
+            ; Dune_lang.atom_or_quoted_string version
+            ]
         ]
   in
   let libs =
     List.map libs ~f:(fun lib ->
-      list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
+        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
   in
   prepend_version ~dune_version (sexp @ libs)
 

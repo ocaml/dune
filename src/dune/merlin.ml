@@ -9,13 +9,13 @@ let warn_dropped_pp loc ~allow_approx_merlin ~reason =
     User_warning.emit ~loc
       [ Pp.textf ".merlin generated is inaccurate. %s." reason
       ; Pp.text
-        "Split the stanzas into different directories or silence this warning \
-         by adding (allow_approximate_merlin) to your dune-project."
+          "Split the stanzas into different directories or silence this \
+           warning by adding (allow_approximate_merlin) to your dune-project."
       ]
 
 module Preprocess = struct
   let merge ~allow_approx_merlin (a : Dune_file.Preprocess.t)
-    (b : Dune_file.Preprocess.t) =
+      (b : Dune_file.Preprocess.t) =
     match (a, b) with
     | No_preprocessing, No_preprocessing ->
       Dune_file.Preprocess.No_preprocessing
@@ -56,7 +56,7 @@ let quote_for_merlin s =
   let s =
     if Sys.win32 then
       (* We need this hack because merlin unescapes backslashes (except when
-        protected by single quotes). It is only a problem on windows because
+         protected by single quotes). It is only a problem on windows because
          Filename.quote is using double quotes. *)
       String.escape_only '\\' s
     else
@@ -100,7 +100,7 @@ type t =
   }
 
 let make ?(requires = Ok []) ~flags
-  ?(preprocess = Dune_file.Preprocess.No_preprocessing) ?libname
+    ?(preprocess = Dune_file.Preprocess.No_preprocessing) ?libname
     ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
@@ -132,7 +132,7 @@ let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
 let pp_flag_of_action sctx ~expander ~loc ~action :
-  (unit, string option) Build.t =
+    (unit, string option) Build.t =
   match (action : Action_dune_lang.t) with
   | Run (exe, args) -> (
     let args =
@@ -172,7 +172,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
   | _ -> Build.return None
 
 let pp_flags sctx ~expander { preprocess; libname; _ } :
-  (unit, string option) Build.t =
+    (unit, string option) Build.t =
   let scope = Expander.scope expander in
   match
     Dune_file.Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -194,56 +194,56 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
   | No_preprocessing -> Build.return None
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
-  =
+    =
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
-    let merlin_file = Path.Build.relative dir ".merlin" in
-    (* We make the compilation of .ml/.mli files depend on the existence of
-      .merlin so that they are always generated, however the command themselves
-       don't read the merlin file, so we don't want to declare a dependency on
-       the contents of the .merlin file.
+         let merlin_file = Path.Build.relative dir ".merlin" in
+         (* We make the compilation of .ml/.mli files depend on the existence
+            of .merlin so that they are always generated, however the command
+            themselves don't read the merlin file, so we don't want to declare
+            a dependency on the contents of the .merlin file.
 
-       Currently dune doesn't support declaring a dependency only on the
-       existence of a file, so we have to use this trick. *)
-    SC.add_rule sctx ~dir
-      ( Build.path (Path.build merlin_file)
-      >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
-    Path.Set.singleton (Path.build merlin_file)
-    |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
-    let pp_flags = pp_flags sctx ~expander t in
-    SC.add_rule sctx ~dir
-      ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
-      ( flags &&& pp_flags
-      >>^ (fun (flags, pp) ->
-        let src_dirs, obj_dirs =
-          Lib.Set.fold requires
-            ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-            ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-              let info = Lib.info lib in
-              let best_src_dir = Lib_info.best_src_dir info in
-              ( Path.Set.add src_dirs
-                (Path.drop_optional_build_context best_src_dir)
-              , let public_cmi_dir =
-                Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                in
-                Path.Set.add obj_dirs public_cmi_dir ))
-        in
-        let src_dirs =
-          Path.Set.union src_dirs
-            (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
-        in
-        Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
-      >>> Build.write_file_dyn merlin_file ))
+            Currently dune doesn't support declaring a dependency only on the
+            existence of a file, so we have to use this trick. *)
+         SC.add_rule sctx ~dir
+           ( Build.path (Path.build merlin_file)
+           >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
+         Path.Set.singleton (Path.build merlin_file)
+         |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+         let pp_flags = pp_flags sctx ~expander t in
+         SC.add_rule sctx ~dir
+           ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
+           ( flags &&& pp_flags
+           >>^ (fun (flags, pp) ->
+                 let src_dirs, obj_dirs =
+                   Lib.Set.fold requires
+                     ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
+                     ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+                       let info = Lib.info lib in
+                       let best_src_dir = Lib_info.best_src_dir info in
+                       ( Path.Set.add src_dirs
+                           (Path.drop_optional_build_context best_src_dir)
+                       , let public_cmi_dir =
+                           Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                         in
+                         Path.Set.add obj_dirs public_cmi_dir ))
+                 in
+                 let src_dirs =
+                   Path.Set.union src_dirs
+                     (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+                 in
+                 Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
+           >>> Build.write_file_dyn merlin_file ))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires
   ; flags = (a.flags &&& b.flags >>^ fun (a, b) -> a @ b)
   ; preprocess =
-    Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
+      Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
   ; libname =
-    ( match a.libname with
-    | Some _ as x -> x
-    | None -> b.libname )
+      ( match a.libname with
+      | Some _ as x -> x
+      | None -> b.libname )
   ; source_dirs = Path.Source.Set.union a.source_dirs b.source_dirs
   ; objs_dirs = Path.Set.union a.objs_dirs b.objs_dirs
   }

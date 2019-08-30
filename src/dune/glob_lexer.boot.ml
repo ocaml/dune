@@ -1,5 +1,5 @@
 (* We don't use globs in the bootstrap path to avoid avoid to include ocaml-re.
-  This speeds up the bootstrap. *)
+   This speeds up the bootstrap. *)
 
 let parse_string _ = failwith "globs are not available during bootstrap"
 

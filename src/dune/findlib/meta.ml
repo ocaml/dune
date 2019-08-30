@@ -44,8 +44,8 @@ let add_versions t ~get_version =
       | Rule rule ->
         entry
         :: map_entries entries ~rev_path
-          ~has_version:(has_version || String.equal rule.var "version")
-            ~has_rules:true
+             ~has_version:(has_version || String.equal rule.var "version")
+             ~has_rules:true
       | Package t ->
         Package (map_package t ~rev_path)
         :: map_entries entries ~rev_path ~has_version ~has_rules )
@@ -250,11 +250,11 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let archives = archives archive_name in
     { name = Some name
     ; entries =
-      requires deps :: version
-      ::
-      ( match dir with
-      | None -> archives
-      | Some d -> directory d :: archives )
+        requires deps :: version
+        ::
+        ( match dir with
+        | None -> archives
+        | Some d -> directory d :: archives )
     }
   in
   let dummy name =
@@ -268,14 +268,14 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     in
     { name = Some (Lib_name.of_string_exn ~loc:None "compiler-libs")
     ; entries =
-      [ requires []
-      ; version
-      ; directory "+compiler-libs"
-      ; sub "common" []
-      ; sub "bytecomp" [ "compiler-libs.common" ]
-      ; sub "optcomp" [ "compiler-libs.common" ]
-      ; sub "toplevel" [ "compiler-libs.bytecomp" ]
-      ]
+        [ requires []
+        ; version
+        ; directory "+compiler-libs"
+        ; sub "common" []
+        ; sub "bytecomp" [ "compiler-libs.common" ]
+        ; sub "optcomp" [ "compiler-libs.common" ]
+        ; sub "toplevel" [ "compiler-libs.bytecomp" ]
+        ]
     }
   in
   let str = simple "str" [] ~dir:"+" in
@@ -297,29 +297,29 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let threads =
     { name = Some (Lib_name.of_string_exn ~loc:None "threads")
     ; entries =
-      [ version
-      ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
-      ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
-      ; directory "+"
-      ; rule "type_of_threads" [] Set "posix"
-      ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
-      ; rule "error"
-        [ Neg "mt_vm"; Neg "mt_posix" ]
-          Set "Missing -thread or -vmthread switch"
-      ; Package
-        (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
-      ; Package
-        (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
-      ]
+        [ version
+        ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
+        ; requires ~preds:[ Pos "mt"; Pos "mt_posix" ] [ "threads.posix" ]
+        ; directory "+"
+        ; rule "type_of_threads" [] Set "posix"
+        ; rule "error" [ Neg "mt" ] Set "Missing -thread or -vmthread switch"
+        ; rule "error"
+            [ Neg "mt_vm"; Neg "mt_posix" ]
+            Set "Missing -thread or -vmthread switch"
+        ; Package
+            (simple "vm" [ "unix" ] ~dir:"+vmthreads" ~archive_name:"threads")
+        ; Package
+            (simple "posix" [ "unix" ] ~dir:"+threads" ~archive_name:"threads")
+        ]
     }
   in
   let num =
     { name = Some (Lib_name.of_string_exn ~loc:None "num")
     ; entries =
-      [ requires [ "num.core" ]
-      ; version
-      ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
-      ]
+        [ requires [ "num.core" ]
+        ; version
+        ; Package (simple "core" [] ~dir:"+" ~archive_name:"nums")
+        ]
     }
   in
   let libs =
@@ -345,7 +345,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         base
     in
     (* We do not rely on an "exists_if" ocamlfind variable, because it would
-      produce an error message mentioning a "hidden" package (which could be
+       produce an error message mentioning a "hidden" package (which could be
        confusing). *)
     if Path.exists (Path.relative stdlib_dir "nums.cma") then
       num :: base
@@ -353,7 +353,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       base
   in
   List.filter_map libs ~f:(fun t ->
-    Option.map t.name ~f:(fun name -> (name, simplify t)))
+      Option.map t.name ~f:(fun name -> (name, simplify t)))
   |> Lib_name.Map.of_list_exn
 
 let string_of_action = function
@@ -370,8 +370,8 @@ let pp_list f ppf l =
   | x :: l ->
     f ppf x;
     List.iter l ~f:(fun x ->
-      Format.pp_print_cut ppf ();
-      f ppf x)
+        Format.pp_print_cut ppf ();
+        f ppf x)
 
 let pp_print_text ppf s =
   Format.fprintf ppf "\"@[<hv>";

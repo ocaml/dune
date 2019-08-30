@@ -35,11 +35,11 @@ end = struct
 
   let create (type a) (module I : Implicit_output with type t = a) =
     ( ( module struct
-      type nonrec a = a
+        type nonrec a = a
 
-      type _ w += W : a w
+        type _ w += W : a w
 
-      include I
+        include I
       end )
       : a t )
 
@@ -105,13 +105,13 @@ let collect_async (type o) (type_ : o t) f =
   let output = ref None in
   Fiber.map
     (Fiber.Var.set current_handler
-      ( module struct
-        type nonrec o = o
+       ( module struct
+         type nonrec o = o
 
-        let type_ = type_
+         let type_ = type_
 
-        let so_far = output
-      end )
+         let so_far = output
+       end )
        f)
     ~f:(fun res -> (res, !output))
 

@@ -5,9 +5,9 @@ module SC = Super_context
 module Executables = Dune_file.Executables
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
-  (exes : Dune_file.Executables.t) =
+    (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-    library of the same name *)
+     library of the same name *)
   let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let first_exe = snd (List.hd exes.names) in
@@ -24,26 +24,26 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let modules =
     Modules.map_user_written modules ~f:(fun m ->
-      let name = Module.name m in
-      Preprocessing.pp_module_as pp name m)
+        let name = Module.name m in
+        Preprocessing.pp_module_as pp name m)
   in
   let programs =
     List.map exes.names ~f:(fun (loc, name) ->
-      let mod_name = Module_name.of_string name in
-      match Modules.find modules mod_name with
-      | Some m ->
-        if not (Module.has m ~ml_kind:Impl) then
+        let mod_name = Module_name.of_string name in
+        match Modules.find modules mod_name with
+        | Some m ->
+          if not (Module.has m ~ml_kind:Impl) then
+            User_error.raise ~loc
+              [ Pp.textf "Module %S has no implementation."
+                  (Module_name.to_string mod_name)
+              ]
+          else
+            { Exe.Program.name; main_module_name = mod_name; loc }
+        | None ->
           User_error.raise ~loc
-            [ Pp.textf "Module %S has no implementation."
-              (Module_name.to_string mod_name)
-            ]
-        else
-          { Exe.Program.name; main_module_name = mod_name; loc }
-      | None ->
-        User_error.raise ~loc
-          [ Pp.textf "Module %S doesn't exist."
-            (Module_name.to_string mod_name)
-          ])
+            [ Pp.textf "Module %S doesn't exist."
+                (Module_name.to_string mod_name)
+            ])
   in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
   let linkages =
@@ -64,12 +64,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           exes.modes
       in
       List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
-        match (has_native, mode.mode) with
-        | false, Native -> None
-        | _ -> Some (Exe.Linkage.of_user_config ctx mode))
+          match (has_native, mode.mode) with
+          | false, Native -> None
+          | _ -> Some (Exe.Linkage.of_user_config ctx mode))
     in
     (* If bytecode was requested but not native or best version, add custom
-      linking *)
+       linking *)
     if
       L.Set.mem exes.modes L.byte
       && (not (L.Set.mem exes.modes L.native))
@@ -84,7 +84,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let link_flags =
     link_deps |> Build.ignore
     >>> Expander.expand_and_eval_set expander exes.link_flags
-      ~standard:(Build.return [])
+          ~standard:(Build.return [])
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =
@@ -100,9 +100,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       (* See https://github.com/ocaml/dune/issues/2527 *)
       true
       || Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
-        match mode.kind with
-        | Shared_object -> true
-        | _ -> false)
+             match mode.kind with
+             | Shared_object -> true
+             | _ -> false)
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
@@ -134,11 +134,11 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     ~promote:exes.promote;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
-    ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
+      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
       ~obj_dir )
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
-  (exes : Dune_file.Executables.t) =
+    (exes : Dune_file.Executables.t) =
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
       exes.buildable.libraries

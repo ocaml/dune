@@ -38,7 +38,7 @@ type t =
   ; dir_status_db : Dir_status.DB.t
   ; external_lib_deps_mode : bool
   ; (* Env node that represent the environment configured for the workspace. It
-    is used as default at the root of every project in the workspace. *)
+       is used as default at the root of every project in the workspace. *)
     default_env : Env_node.t Lazy.t
   ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
@@ -219,7 +219,7 @@ end = struct
     let c = ctx.ocamlc_cflags in
     let cxx =
       List.filter ctx.ocamlc_cflags ~f:(fun s ->
-        not (String.is_prefix s ~prefix:"-std="))
+          not (String.is_prefix s ~prefix:"-std="))
     in
     C.Kind.Dict.make ~c ~cxx
 
@@ -236,7 +236,7 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let env = Env.external_ t.env_context ~dir in
   Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-      ~context:(Some t.context) ~env:(Some env) build)
+       ~context:(Some t.context) ~env:(Some env) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = Build.O.( >>> ) build t.chdir in
@@ -263,7 +263,7 @@ let source_files t ~src_path =
   | Some dir -> File_tree.Dir.files dir
 
 let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
-  =
+    =
   let acc = Expander.Resolved_forms.empty () in
   let c_flags ~dir = Env.c_flags sctx.env_context ~dir in
   let expander =
@@ -302,12 +302,14 @@ let c_flags t ~dir ~expander ~flags =
   let ccg = Context.cc_g t.context in
   let default = Env.c_flags t ~dir in
   C.Kind.Dict.mapi flags ~f:(fun ~kind flags ->
-    let name = C.Kind.to_string kind in
-    Build.memoize (sprintf "%s flags" name)
-      (let default = C.Kind.Dict.get default kind in
-       let c = Expander.expand_and_eval_set expander flags ~standard:default in
-       let open Build.O in
-       c >>^ fun l -> l @ ccg))
+      let name = C.Kind.to_string kind in
+      Build.memoize (sprintf "%s flags" name)
+        (let default = C.Kind.Dict.get default kind in
+         let c =
+           Expander.expand_and_eval_set expander flags ~standard:default
+         in
+         let open Build.O in
+         c >>^ fun l -> l @ ccg))
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 
@@ -345,7 +347,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           User_error.raise
             ~loc:(String_with_vars.Var.loc var)
             [ Pp.textf "%s isn't allowed in this position."
-              (String_with_vars.Var.describe var)
+                (String_with_vars.Var.describe var)
             ])
       sw
     |> Value.to_string ~dir
@@ -365,23 +367,24 @@ let get_installed_binaries stanzas ~(context : Context.t) =
     ~f:(fun d stanza acc ->
       let binaries_from_install files =
         List.fold_left files ~init:acc ~f:(fun acc fb ->
-          let p =
-            File_binding.Unexpanded.destination_relative_to_install_path fb
-              ~section:Bin
-              ~expand:(expand_str ~dir:d.ctx_dir)
-              ~expand_partial:(expand_str_partial ~dir:(Path.build d.ctx_dir))
-          in
-          let p = Path.Local.of_string (Install.Dst.to_string p) in
-          if Path.Local.is_root (Path.Local.parent_exn p) then
-            Path.Build.Set.add acc (Path.Build.append_local install_dir p)
-          else
-            acc)
+            let p =
+              File_binding.Unexpanded.destination_relative_to_install_path fb
+                ~section:Bin
+                ~expand:(expand_str ~dir:d.ctx_dir)
+                ~expand_partial:
+                  (expand_str_partial ~dir:(Path.build d.ctx_dir))
+            in
+            let p = Path.Local.of_string (Install.Dst.to_string p) in
+            if Path.Local.is_root (Path.Local.parent_exn p) then
+              Path.Build.Set.add acc (Path.Build.append_local install_dir p)
+            else
+              acc)
       in
       match (stanza : Stanza.t) with
       | Dune_file.Install { section = Bin; files; _ } ->
         binaries_from_install files
       | Dune_file.Executables
-        ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
+          ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
         let compile_info =
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries
@@ -399,7 +402,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | _ -> acc)
 
 let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
-  ~external_lib_deps_mode =
+    ~external_lib_deps_mode =
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
     Lib.DB.create_from_findlib context.findlib ~stdlib_dir
@@ -436,30 +439,31 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   in
   let stanzas_per_dir =
     List.map stanzas ~f:(fun stanzas ->
-      (stanzas.Dir_with_dune.ctx_dir, stanzas))
+        (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
   let env = Table.create (module Path.Build) 128 in
   let default_env =
     lazy
       (let make ~inherit_from ~config =
-        let dir = context.build_dir in
-        Env_node.make ~dir
-          ~scope:(Scope.DB.find_by_dir scopes dir)
-          ~inherit_from ~config
+         let dir = context.build_dir in
+         Env_node.make ~dir
+           ~scope:(Scope.DB.find_by_dir scopes dir)
+           ~inherit_from ~config
        in
        make ~config:context.env_nodes.context
          ~inherit_from:
            (Some
-             ( lazy
-               (make ~inherit_from:None ~config:context.env_nodes.workspace) )))
+              ( lazy
+                (make ~inherit_from:None ~config:context.env_nodes.workspace)
+                )))
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
     { Artifacts.public_libs
     ; bin =
-      Artifacts.Bin.create ~context
-        ~local_bins:(get_installed_binaries ~context stanzas)
+        Artifacts.Bin.create ~context
+          ~local_bins:(get_installed_binaries ~context stanzas)
     }
   in
   let expander =
@@ -490,7 +494,7 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
   let projects_by_key =
     Dune_project.File_key.Map.of_list_map_exn projects ~f:(fun project ->
-      (Dune_project.file_key project, project))
+        (Dune_project.file_key project, project))
   in
   { context
   ; expander
@@ -504,21 +508,21 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; file_tree
   ; artifacts
   ; chdir =
-    Build.arr (fun (action : Action.t) ->
-      match action with
-      | Chdir _ -> action
-      | _ -> Chdir (Path.build context.build_dir, action))
+      Build.arr (fun (action : Action.t) ->
+          match action with
+          | Chdir _ -> action
+          | _ -> Chdir (Path.build context.build_dir, action))
   ; libs_by_package =
-    Lib.DB.all public_libs |> Lib.Set.to_list
-    |> List.filter_map ~f:(fun lib ->
-      Lib.Local.of_lib lib
-      |> Option.map ~f:(fun local ->
-        (Option.value_exn (Lib.package lib), local)))
-    |> Package.Name.Map.of_list_multi
-    |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-      let pkg = Option.value_exn pkg in
-      let libs = Option.value libs ~default:[] in
-      Some (pkg, Lib.Local.Set.of_list libs))
+      Lib.DB.all public_libs |> Lib.Set.to_list
+      |> List.filter_map ~f:(fun lib ->
+             Lib.Local.of_lib lib
+             |> Option.map ~f:(fun local ->
+                    (Option.value_exn (Lib.package lib), local)))
+      |> Package.Name.Map.of_list_multi
+      |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
+             let pkg = Option.value_exn pkg in
+             let libs = Option.value libs ~default:[] in
+             Some (pkg, Lib.Local.Set.of_list libs))
   ; env_context
   ; default_env
   ; external_lib_deps_mode
@@ -531,15 +535,15 @@ module Libs = struct
 
   let gen_select_rules t ~dir compile_info =
     List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-      let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-      let dst = Path.Build.relative dir dst_fn in
-      add_rule t ~dir
-        ( match src_fn with
-        | Ok src_fn ->
-          let src = Path.build (Path.Build.relative dir src_fn) in
-          Build.copy_and_add_line_directive ~src ~dst
-        | Error e -> Build.fail ~targets:[ dst ] { fail = (fun () -> raise e) }
-        ))
+        let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
+        let dst = Path.Build.relative dir dst_fn in
+        add_rule t ~dir
+          ( match src_fn with
+          | Ok src_fn ->
+            let src = Path.build (Path.Build.relative dir src_fn) in
+            Build.copy_and_add_line_directive ~src ~dst
+          | Error e ->
+            Build.fail ~targets:[ dst ] { fail = (fun () -> raise e) } ))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
@@ -638,7 +642,7 @@ module Action = struct
         | _ -> exe )
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
-    ~targets_dir t : (Path.t Bindings.t, Action.t) Build.t =
+      ~targets_dir t : (Path.t Bindings.t, Action.t) Build.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     ( match (targets_written_by_user : Expander.Targets.t) with
@@ -678,42 +682,44 @@ module Action = struct
     in
     let targets = Path.Build.Set.to_list targets in
     List.iter targets ~f:(fun target ->
-      if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
-        User_error.raise ~loc
-          [ Pp.text
-            "This action has targets in a different directory than the \
-             current one, this is not allowed by dune at the moment:"
-          ; Pp.enumerate targets ~f:(fun target ->
-            Pp.text (Dpath.describe_path (Path.build target)))
-          ]);
+        if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
+          User_error.raise ~loc
+            [ Pp.text
+                "This action has targets in a different directory than the \
+                 current one, this is not allowed by dune at the moment:"
+            ; Pp.enumerate targets ~f:(fun target ->
+                  Pp.text (Dpath.describe_path (Path.build target)))
+            ]);
     let build =
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
       >>> Build.path_set
-        (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
+            (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>> Build.arr (fun paths -> ((), paths))
       >>>
       let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
       Build.first (Build.all (List.map ddeps ~f:snd))
       >>^ (fun (vals, deps_written_by_user) ->
-        let dynamic_expansions =
-          List.fold_left2 ddeps vals ~init:String.Map.empty
-            ~f:(fun acc (var, _) value -> String.Map.set acc var value)
-        in
-        let unresolved =
-          let expander =
-            Expander.add_ddeps_and_bindings expander ~dynamic_expansions
-              ~deps_written_by_user
-          in
-          U.Partial.expand t ~expander ~map_exe
-        in
-        Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-          match Expander.resolve_binary ~loc expander ~prog with
-          | Ok path -> path
-          | Error { fail } -> fail ()))
+            let dynamic_expansions =
+              List.fold_left2 ddeps vals ~init:String.Map.empty
+                ~f:(fun acc (var, _) value -> String.Map.set acc var value)
+            in
+            let unresolved =
+              let expander =
+                Expander.add_ddeps_and_bindings expander ~dynamic_expansions
+                  ~deps_written_by_user
+              in
+              U.Partial.expand t ~expander ~map_exe
+            in
+            Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+                match Expander.resolve_binary ~loc expander ~prog with
+                | Ok path -> path
+                | Error { fail } -> fail ()))
       >>> Build.dyn_path_set
-        (Build.arr (fun action ->
-          let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-          deps))
+            (Build.arr (fun action ->
+                 let { U.Infer.Outcome.deps; targets = _ } =
+                   U.Infer.infer action
+                 in
+                 deps))
       >>> Build.action_dyn () ~dir:(Path.build dir) ~targets
     in
     match Expander.Resolved_forms.failures forms with

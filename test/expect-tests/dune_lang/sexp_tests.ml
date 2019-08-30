@@ -274,7 +274,7 @@ let dyn_of_sexp (S (syntax, dlang)) =
   let open Dyn.Encoder in
   constr "S"
     [ Dyn.Encoder.pair Dune_lang.File_syntax.to_dyn Dune_lang.to_dyn
-      (syntax, dlang)
+        (syntax, dlang)
     ]
 
 let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
@@ -295,9 +295,9 @@ let test syntax sexp =
   let res =
     ( S (syntax, sexp)
     , let s =
-      Format.asprintf "%a"
-        (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp x))
-        sexp
+        Format.asprintf "%a"
+          (fun ppf x -> Pp.render_ignore_tags ppf (Dune_lang.pp x))
+          sexp
       in
       match
         Dune_lang.parse_string s ~mode:Single ~fname:""
@@ -369,7 +369,7 @@ let%expect_test _ =
   (* Check parsing of comments *)
   Dune_lang.Parser.parse_cst
     (Lexing.from_string
-      {|
+       {|
 hello
 ; comment
 world
@@ -413,7 +413,7 @@ let%expect_test _ =
   Dune_lang.Parser.parse_cst ~lexer:Dune_lang.Lexer.jbuild_token
     (Lexing.from_string jbuild_file)
   |> List.map
-    ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)
+       ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)
   |> Dyn.Encoder.list Dune_lang.Cst.to_dyn
   |> print_dyn;
   [%expect

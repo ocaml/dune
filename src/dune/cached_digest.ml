@@ -48,11 +48,11 @@ let delete_very_recent_entries () =
   | Eq
    |Gt ->
     Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
-      match Float.compare data.timestamp now with
-      | Lt -> true
-      | Gt
-       |Eq ->
-        false)
+        match Float.compare data.timestamp now with
+        | Lt -> true
+        | Gt
+         |Eq ->
+          false)
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (

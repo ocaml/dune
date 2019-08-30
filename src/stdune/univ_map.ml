@@ -38,7 +38,7 @@ module Key = struct
   let id (type a) (module M : T with type t = a) = M.id
 
   let eq (type a b) (module A : T with type t = a)
-    (module B : T with type t = b) : (a, b) Type_eq.t =
+      (module B : T with type t = b) : (a, b) Type_eq.t =
     match A.T with
     | B.T -> Type_eq.T
     | _ -> assert false
@@ -86,5 +86,5 @@ let to_dyn (t : t) =
   Dyn.Map
     ( Int.Map.values t
     |> List.map ~f:(fun (Binding.T (key, v)) ->
-      let (module K) = key in
-      (string K.name, K.to_dyn v)) )
+           let (module K) = key in
+           (string K.name, K.to_dyn v)) )

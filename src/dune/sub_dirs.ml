@@ -44,7 +44,7 @@ module Status = struct
 end
 
 let status { Status.Map.normal; data_only; vendored } ~dir :
-  Status.Or_ignored.t =
+    Status.Or_ignored.t =
   match
     ( String.Set.mem normal dir
     , String.Set.mem data_only dir
@@ -97,9 +97,9 @@ let eval (t : _ Status.Map.t) ~dirs =
   | Some dir ->
     User_error.raise
       [ Pp.textf
-        "Directory %s was marked as vendored and data_only, it can't be \
-         marked as both."
-        dir
+          "Directory %s was marked as vendored and data_only, it can't be \
+           marked as both."
+          dir
       ]
 
 let decode =
@@ -110,21 +110,21 @@ let decode =
       let+ l =
         enter
           (repeat
-            (plain_string (fun ~loc dn ->
-              if
-                Filename.dirname dn <> Filename.current_dir_name
-                ||
-                match dn with
-                | ""
-                 |"."
-                 |".." ->
-                  true
-                | _ -> false
-              then
-                User_error.raise ~loc
-                  [ Pp.textf "Invalid sub-directory name %S" dn ]
-              else
-                dn)))
+             (plain_string (fun ~loc dn ->
+                  if
+                    Filename.dirname dn <> Filename.current_dir_name
+                    ||
+                    match dn with
+                    | ""
+                     |"."
+                     |".." ->
+                      true
+                    | _ -> false
+                  then
+                    User_error.raise ~loc
+                      [ Pp.textf "Invalid sub-directory name %S" dn ]
+                  else
+                    dn)))
       in
       Predicate_lang.of_string_set (String.Set.of_list l)
     in
@@ -133,8 +133,9 @@ let decode =
     if version >= (1, 6) then
       User_warning.emit ~loc
         [ Pp.text
-          "ignored_subdirs is deprecated in 1.6. Use dirs to specify visible \
-           directories or data_only_dirs for ignoring only dune files."
+            "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
+             visible directories or data_only_dirs for ignoring only dune \
+             files."
         ];
     ignored
   in
@@ -159,13 +160,13 @@ let decode =
     | None, Some (loc, _), _ :: _ ->
       User_error.raise ~loc
         [ Pp.text
-          "Cannot have both dirs and ignored_subdirs stanza in a dune file. "
+            "Cannot have both dirs and ignored_subdirs stanza in a dune file. "
         ]
     | Some (loc, _), None, _ :: _ ->
       User_error.raise ~loc
         [ Pp.text
-          "Cannot have both data_only_dirs and ignored_subdirs stanza in a \
-           dune file. "
+            "Cannot have both data_only_dirs and ignored_subdirs stanza in a \
+             dune file. "
         ]
     | _ ->
       let dirs = Option.map ~f:snd dirs in

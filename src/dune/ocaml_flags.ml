@@ -22,15 +22,15 @@ let dev_mode_warnings =
     in
     let acc, last_range =
       Int.Set.fold ws ~init:([], None) ~f:(fun x (acc, last_range) ->
-        match last_range with
-        | None ->
-          assert (acc = []);
-          ([], Some (x, x))
-        | Some (l, u) ->
-          if succ u = x then
-            (acc, Some (l, succ u))
-          else
-            (wrange_to_flag (l, u) :: acc, Some (x, x)))
+          match last_range with
+          | None ->
+            assert (acc = []);
+            ([], Some (x, x))
+          | Some (l, u) ->
+            if succ u = x then
+              (acc, Some (l, succ u))
+            else
+              (wrange_to_flag (l, u) :: acc, Some (x, x)))
     in
     let acc =
       match last_range with
@@ -91,18 +91,19 @@ let of_list l = { empty with common = Build.arr (fun () -> l) }
 let default ~dune_version ~profile =
   { common = Build.return (default_flags ~dune_version ~profile)
   ; specific =
-    { byte = Build.return default_ocamlc_flags
-    ; native = Build.return default_ocamlopt_flags
-    }
+      { byte = Build.return default_ocamlc_flags
+      ; native = Build.return default_ocamlopt_flags
+      }
   }
 
 let make ~spec ~default ~eval =
   let f name x standard = Build.memoize name (eval x ~standard) in
   { common = f "common flags" spec.common default.common
   ; specific =
-    { byte = f "ocamlc flags" spec.specific.byte default.specific.byte
-    ; native = f "ocamlopt flags" spec.specific.native default.specific.native
-    }
+      { byte = f "ocamlc flags" spec.specific.byte default.specific.byte
+      ; native =
+          f "ocamlopt flags" spec.specific.native default.specific.native
+      }
   }
 
 let get t mode =

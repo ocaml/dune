@@ -7,8 +7,8 @@ let path_sep =
 let parse_path ?(sep = path_sep) s =
   String.split s ~on:sep
   |> List.filter_map ~f:(function
-    | "" -> None
-      | p -> Some (Path.of_filename_relative_to_initial_cwd p))
+       | "" -> None
+       | p -> Some (Path.of_filename_relative_to_initial_cwd p))
 
 let cons_path p ~_PATH =
   let p = Path.to_absolute_filename p in
@@ -37,8 +37,8 @@ let add_exe prog =
 let which ~path prog =
   let prog = add_exe prog in
   List.find_map path ~f:(fun dir ->
-    let fn = Path.relative dir prog in
-    Option.some_if (exists fn) fn)
+      let fn = Path.relative dir prog in
+      Option.some_if (exists fn) fn)
 
 let make ~path =
   match which ~path "gmake" with

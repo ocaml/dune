@@ -126,8 +126,10 @@ let run t =
   let open Protocol in
   match Context.create ~env_var_name:run_by_dune_env_variable with
   | Run_outside_of_dune -> run_outside_of_dune t
-  | Error ->
+  | Error message ->
     failwith
-      "Error during communication with dune. Did you use different dune \
-       version to compile the executable?"
+      (Printf.sprintf
+        "Error during communication with dune. %s Did you use different dune \
+         version to compile the executable?"
+        message)
   | Ok context -> run_by_dune t context

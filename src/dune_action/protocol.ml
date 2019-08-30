@@ -87,10 +87,14 @@ module Context = struct
   type create_result =
     | Ok of t
     | Run_outside_of_dune
-    | Error
+    | Error of string
 
-  (* TODO jstaron: Think if we want to expose type of error. It's easy, we can
-    just add string to Error variant. *)
+  let cannot_parse_error = Error "Can not parse dune message."
+
+  let cannot_read_file = Error "Cannot read file containing dune message."
+
+  let file_not_found_error = Error "Cannot find file containing dune message."
+
   let create ~env_var_name =
     match Sys.getenv_opt env_var_name with
     | None -> Run_outside_of_dune
@@ -100,23 +104,22 @@ module Context = struct
           value |> Csexp.parse_string |> Result.to_option
           >>= Greeting.t_of_sexp)
       with
-      | None -> Error
+      | None -> cannot_parse_error
       | Some greeting -> (
         match
           ( Result.try_with (fun () ->
             Io.String_path.read_file greeting.run_arguments_fn)
           , Sys.file_exists greeting.response_fn )
         with
-        | Error _, _
-         |_, false ->
-          Error
+        | _, false -> file_not_found_error
+        | Error _, _ -> cannot_read_file
         | Ok data, true -> (
           match
             Option.O.(
               data |> Csexp.parse_string |> Result.to_option
               >>= Dependency.Set.t_of_sexp)
           with
-          | None -> Error
+          | None -> cannot_parse_error
           | Some prepared_dependencies ->
             Ok { response_fn = greeting.response_fn; prepared_dependencies } )
         ) )

@@ -43,7 +43,7 @@ module Context : sig
   type create_result =
     | Ok of t
     | Run_outside_of_dune
-    | Error
+    | Error of string
 
   val create : env_var_name:string -> create_result
 

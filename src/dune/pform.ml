@@ -27,6 +27,26 @@ module Var = struct
     | Cxx -> string "cxx"
 end
 
+module Artifact = struct
+  type t =
+    | Mod of Cm_kind.t
+    | Lib of Mode.t
+
+  let ext = function
+    | Mod cm_kind -> Cm_kind.ext cm_kind
+    | Lib mode -> Mode.compiled_lib_ext mode
+
+  let all =
+    List.map ~f:(fun kind -> Mod kind) Cm_kind.all
+    @ List.map ~f:(fun mode -> Lib mode) Mode.all
+
+  let to_dyn a =
+    let open Dyn.Encoder in
+    match a with
+    | Mod cm_kind -> constr "Mod" [ Cm_kind.to_dyn cm_kind ]
+    | Lib mode -> constr "Lib" [ Mode.to_dyn mode ]
+end
+
 module Macro = struct
   type t =
     | Exe
@@ -42,6 +62,7 @@ module Macro = struct
     | Path_no_dep
     | Ocaml_config
     | Env
+    | Artifact of Artifact.t
 
   let to_dyn =
     let open Dyn.Encoder in
@@ -59,6 +80,7 @@ module Macro = struct
     | Path_no_dep -> string "Path_no_dep"
     | Ocaml_config -> string "Ocaml_config"
     | Env -> string "Env"
+    | Artifact ext -> constr "Artifact" [ Artifact.to_dyn ext ]
 end
 
 module Expansion = struct
@@ -99,8 +121,8 @@ let to_dyn f =
       [ f x
       ; Syntax.Version.to_dyn v
       ; List
-        (List.map repl ~f:(fun pp ->
-          Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
+          (List.map repl ~f:(fun pp ->
+               Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
       ]
   | Renamed_in (v, s) ->
     constr "Renamed_in" [ Syntax.Version.to_dyn v; string s ]
@@ -121,12 +143,12 @@ module Map = struct
       ; ("project_root", since ~version:(1, 0) Var.Project_root)
       ; ( "<"
         , deleted_in Var.First_dep ~version:(1, 0)
-          ~repl:
-            [ Pp.text
-              "Use a named dependency instead:\n\n\
-              \  (deps (:x <dep>) ...)\n\
-              \   ... %{x} ..."
-            ] )
+            ~repl:
+              [ Pp.text
+                  "Use a named dependency instead:\n\n\
+                  \  (deps (:x <dep>) ...)\n\
+                  \   ... %{x} ..."
+              ] )
       ; ("@", renamed_in ~version:(1, 0) ~new_name:"targets")
       ; ("^", renamed_in ~version:(1, 0) ~new_name:"deps")
       ; ("SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root")
@@ -134,23 +156,28 @@ module Map = struct
 
   let macros =
     let macro (x : Macro.t) = No_info x in
+    let artifact x =
+      ( String.drop (Artifact.ext x) 1
+      , since ~version:(1, 11) (Macro.Artifact x) )
+    in
     String.Map.of_list_exn
-      [ ("exe", macro Exe)
-      ; ("bin", macro Bin)
-      ; ("lib", macro Lib)
-      ; ("libexec", macro Libexec)
-      ; ("lib-available", macro Lib_available)
-      ; ("version", macro Version)
-      ; ("read", macro Read)
-      ; ("read-lines", macro Read_lines)
-      ; ("read-strings", macro Read_strings)
-      ; ("dep", since ~version:(1, 0) Macro.Dep)
-      ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
-      ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
-      ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
-      ; ("ocaml-config", macro Ocaml_config)
-      ; ("env", since ~version:(1, 4) Macro.Env)
-      ]
+      ( [ ("exe", macro Exe)
+        ; ("bin", macro Bin)
+        ; ("lib", macro Lib)
+        ; ("libexec", macro Libexec)
+        ; ("lib-available", macro Lib_available)
+        ; ("version", macro Version)
+        ; ("read", macro Read)
+        ; ("read-lines", macro Read_lines)
+        ; ("read-strings", macro Read_strings)
+        ; ("dep", since ~version:(1, 0) Macro.Dep)
+        ; ("path", renamed_in ~version:(1, 0) ~new_name:"dep")
+        ; ("findlib", renamed_in ~version:(1, 0) ~new_name:"lib")
+        ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
+        ; ("ocaml-config", macro Ocaml_config)
+        ; ("env", since ~version:(1, 4) Macro.Env)
+        ]
+      @ List.map ~f:artifact Artifact.all )
 
   let create ~(context : Context.t) =
     let ocamlopt =
@@ -168,15 +195,15 @@ module Map = struct
     let cflags = context.ocamlc_cflags in
     let cxx_flags =
       List.filter context.ocamlc_cflags ~f:(fun s ->
-        not (String.is_prefix s ~prefix:"-std="))
+          not (String.is_prefix s ~prefix:"-std="))
     in
     let strings s = values (Value.L.strings s) in
     let lowercased =
       [ ("cpp", strings ((context.c_compiler :: cflags) @ [ "-E" ]))
       ; ( "pa_cpp"
         , strings
-          ( (context.c_compiler :: cflags)
-          @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
+            ( (context.c_compiler :: cflags)
+            @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
       ; ("cc", strings (context.c_compiler :: cflags))
       ; ("cxx", strings (context.c_compiler :: cxx_flags))
       ; ("ocaml", path context.ocaml)
@@ -188,7 +215,7 @@ module Map = struct
     in
     let uppercased =
       List.map lowercased ~f:(fun (k, _) ->
-        (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
+          (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
     in
     let other =
       [ ("-verbose", values [])
@@ -215,13 +242,14 @@ module Map = struct
       ; ("model", since ~version:(1, 10) (Var.Values [ String context.model ]))
       ; ( "ignoring_promoted_rules"
         , since ~version:(1, 10)
-          (Var.Values [ String (string_of_bool !Clflags.ignore_promoted_rules) ])
-        )
+            (Var.Values
+               [ String (string_of_bool !Clflags.ignore_promoted_rules) ]) )
       ]
     in
     { vars =
-      String.Map.superpose static_vars
-        (String.Map.of_list_exn (List.concat [ lowercased; uppercased; other ]))
+        String.Map.superpose static_vars
+          (String.Map.of_list_exn
+             (List.concat [ lowercased; uppercased; other ]))
     ; macros
     }
 
@@ -266,10 +294,10 @@ module Map = struct
     match String_with_vars.Var.payload pform with
     | None ->
       Option.map (expand t.vars ~syntax_version ~pform) ~f:(fun x ->
-        Expansion.Var x)
+          Expansion.Var x)
     | Some payload ->
       Option.map (expand t.macros ~syntax_version ~pform) ~f:(fun x ->
-        Expansion.Macro (x, payload))
+          Expansion.Macro (x, payload))
 
   let empty = { vars = String.Map.empty; macros = String.Map.empty }
 
@@ -278,27 +306,27 @@ module Map = struct
 
   let of_list_exn pforms =
     { vars =
-      List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
-      |> String.Map.of_list_exn
+        List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
+        |> String.Map.of_list_exn
     ; macros = String.Map.empty
     }
 
   let of_bindings bindings =
     { vars =
-      Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
-        match x with
-        | Unnamed _ -> acc
-        | Named (s, _) -> String.Map.set acc s (No_info Var.Named_local))
+        Bindings.fold bindings ~init:String.Map.empty ~f:(fun x acc ->
+            match x with
+            | Unnamed _ -> acc
+            | Named (s, _) -> String.Map.set acc s (No_info Var.Named_local))
     ; macros = String.Map.empty
     }
 
   let input_file path =
     let value = Var.Values (Value.L.paths [ path ]) in
     { vars =
-      String.Map.of_list_exn
-        [ ("input-file", since ~version:(1, 0) value)
-        ; ("<", renamed_in ~new_name:"input-file" ~version:(1, 0))
-        ]
+        String.Map.of_list_exn
+          [ ("input-file", since ~version:(1, 0) value)
+          ; ("<", renamed_in ~new_name:"input-file" ~version:(1, 0))
+          ]
     ; macros = String.Map.empty
     }
 

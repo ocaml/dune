@@ -9,10 +9,10 @@ type accepted_codes =
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-    (** Fail if the process exits with anything else than [0] *)
+      (** Fail if the process exits with anything else than [0] *)
   | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
-    (** Accept the following non-zero exit codes, and return [Error code] if
-      the process exists with one of these codes. *)
+      (** Accept the following non-zero exit codes, and return [Error code] if
+          the process exists with one of these codes. *)
 
 module Io : sig
   (** Where to redirect stdout/stderr/stdin *)
@@ -36,8 +36,9 @@ module Io : sig
   val out_channel : output t -> out_channel
 
   (** Create a [t] representing redirecting the input or to a file or reading
-    input from the file. The returned channel can only be used by a single call
-      to {!run}. If you want to use it multiple times, you need to use [clone]. *)
+      input from the file. The returned channel can only be used by a single
+      call to {!run}. If you want to use it multiple times, you need to use
+      [clone]. *)
   val file : Path.t -> 'a mode -> 'a t
 
   (** Call this when you no longer need this redirection *)
@@ -53,7 +54,7 @@ type purpose =
   | Build_job of Path.Build.Set.t
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
-  termination *)
+    termination *)
 val run :
      ?dir:Path.t
   -> ?stdout_to:Io.output Io.t

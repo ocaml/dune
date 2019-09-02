@@ -14,17 +14,17 @@ type resolve_input =
 let request (setup : Dune.Main.build_system) targets =
   let open Build.O in
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-    acc
-    >>>
-    match target with
-    | File path -> Build.path path
-    | Alias { Alias.name; recursive; dir; contexts } ->
-      let contexts = List.map ~f:Dune.Context.name contexts in
-      ( if recursive then
-        Build_system.Alias.dep_rec_multi_contexts
-      else
-        Build_system.Alias.dep_multi_contexts )
-        ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts)
+      acc
+      >>>
+      match target with
+      | File path -> Build.path path
+      | Alias { Alias.name; recursive; dir; contexts } ->
+        let contexts = List.map ~f:Dune.Context.name contexts in
+        ( if recursive then
+          Build_system.Alias.dep_rec_multi_contexts
+        else
+          Build_system.Alias.dep_multi_contexts )
+          ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts)
 
 let log_targets targets =
   List.iter targets ~f:(function
@@ -41,18 +41,18 @@ let target_hint (_setup : Dune.Main.build_system) path =
       List.map ~f:Path.build candidates
     else
       List.map candidates ~f:(fun path ->
-        match Path.Build.extract_build_context path with
-        | None -> Path.build path
-        | Some (_, path) -> Path.source path)
+          match Path.Build.extract_build_context path with
+          | None -> Path.build path
+          | Some (_, path) -> Path.source path)
   in
   let candidates =
     (* Only suggest hints for the basename, otherwise it's slow when there are
-      lots of files *)
+       lots of files *)
     List.filter_map candidates ~f:(fun path ->
-      if Path.equal (Path.parent_exn path) sub_dir then
-        Some (Path.to_string path)
-      else
-        None)
+        if Path.equal (Path.parent_exn path) sub_dir then
+          Some (Path.to_string path)
+        else
+          None)
   in
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
@@ -64,8 +64,8 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     if Dune.File_tree.dir_exists setup.workspace.conf.file_tree src then
       Some
         [ Alias
-          (Alias.in_dir ~name:"default" ~recursive:true
-            ~contexts:setup.workspace.contexts path)
+            (Alias.in_dir ~name:"default" ~recursive:true
+               ~contexts:setup.workspace.contexts path)
         ]
     else
       None
@@ -84,13 +84,13 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     | None -> (
       match
         List.filter_map setup.workspace.contexts ~f:(fun ctx ->
-          let path =
-            Path.append_source (Path.build ctx.Context.build_dir) src
-          in
-          if Build_system.is_target path then
-            Some (File path)
-          else
-            None)
+            let path =
+              Path.append_source (Path.build ctx.Context.build_dir) src
+            in
+            if Build_system.is_target path then
+              Some (File path)
+            else
+              None)
       with
       | [] -> can't_build path
       | l -> Ok l ) )
@@ -107,6 +107,17 @@ let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
       (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)
   in
   let expander = Dune.Super_context.expander sctx ~dir in
+  let lookup ~f ~dir name =
+    f (Dune.Dir_contents.artifacts (Dune.Dir_contents.get sctx ~dir)) name
+  in
+  let lookup_module =
+    lookup ~f:Dune.Dir_contents.Dir_artifacts.lookup_module
+  in
+  let lookup_library =
+    lookup ~f:Dune.Dir_contents.Dir_artifacts.lookup_library
+  in
+  let expander = Dune.Expander.set_lookup_module expander ~lookup_module in
+  let expander = Dune.Expander.set_lookup_library expander ~lookup_library in
   Path.relative Path.root
     (Common.prefix_target common (Dune.Expander.expand_str expander sv))
 
@@ -115,7 +126,8 @@ let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
   | Some s ->
     Ok
       [ Alias
-        (Alias.of_string common ~recursive s ~contexts:setup.workspace.contexts)
+          (Alias.of_string common ~recursive s
+             ~contexts:setup.workspace.contexts)
       ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
@@ -167,10 +179,10 @@ let resolve_targets common (setup : Dune.Main.build_system) user_targets =
 let resolve_targets_exn common setup user_targets =
   resolve_targets common setup user_targets
   |> List.concat_map ~f:(function
-    | Error (dep, hints) ->
-      User_error.raise
-        [ Pp.textf "Don't know how to build %s"
-          (Arg.Dep.to_string_maybe_quoted dep)
-        ]
-        ~hints
+       | Error (dep, hints) ->
+         User_error.raise
+           [ Pp.textf "Don't know how to build %s"
+               (Arg.Dep.to_string_maybe_quoted dep)
+           ]
+           ~hints
        | Ok targets -> targets)

@@ -82,10 +82,10 @@ module T = struct
       list
         (fun x -> x)
         (List.filter_map Sandbox_mode.all ~f:(fun mode ->
-          if not (Sandbox_config.mem config mode) then
-            Some (pair string string ("disallow", sandbox_mode mode))
-          else
-            None))
+             if not (Sandbox_config.mem config mode) then
+               Some (pair string string ("disallow", sandbox_mode mode))
+             else
+               None))
     in
     match t with
     | Glob g -> pair string File_selector.encode ("glob", g)
@@ -138,14 +138,14 @@ module Set = struct
 
   let paths t ~eval_pred =
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
-      match d with
-      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
-      | File f -> Path.Set.add acc f
-      | Glob g -> Path.Set.union acc (eval_pred g)
-      | Universe
-       |Env _ ->
-        acc
-      | Sandbox_config _ -> acc)
+        match d with
+        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
+        | File f -> Path.Set.add acc f
+        | Glob g -> Path.Set.union acc (eval_pred g)
+        | Universe
+         |Env _ ->
+          acc
+        | Sandbox_config _ -> acc)
 
   let parallel_iter t ~f = Fiber.parallel_iter ~f (to_list t)
 
@@ -154,14 +154,14 @@ module Set = struct
 
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
-      match f with
-      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
-      | Glob g -> Path.Set.add acc (File_selector.dir g)
-      | File f -> Path.Set.add acc (Path.parent_exn f)
-      | Universe
-       |Env _ ->
-        acc
-      | Sandbox_config _ -> acc)
+        match f with
+        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
+        | Glob g -> Path.Set.add acc (File_selector.dir g)
+        | File f -> Path.Set.add acc (Path.parent_exn f)
+        | Universe
+         |Env _ ->
+          acc
+        | Sandbox_config _ -> acc)
 end
 
 type eval_pred = File_selector.t -> Path.Set.t

@@ -1,0 +1,11 @@
+(rule (with-stdout-to y.ml (progn)))
+(rule (with-stdout-to y2.ml (progn)))
+
+(library
+ (name bar)
+ (modules y))
+
+(library
+ (name bar2)
+ (public_name bar2)
+ (modules y2))

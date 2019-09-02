@@ -33,7 +33,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   (* CR-someday jdimino: ideally "b" should be treated as a non-buildable
-    targets. As long as [rename] is not available in the DSL given to user, we
+     targets. As long as [rename] is not available in the DSL given to user, we
      don't need to care about this too much. *)
   infer (Progn [ Copy (p "a", b "b"); Rename (b "b", b "c") ]);
   [%expect {|

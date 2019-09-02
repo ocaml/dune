@@ -23,13 +23,13 @@ let init ?(file = File.Default) () =
       Some (Io.open_out (Path.relative Path.build_dir "log"))
   in
   Option.iter oc ~f:(fun oc ->
-    Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
-      (String.concat
-        (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
-         ~sep:" ")
-      ( match Env.get Env.initial "OCAMLPARAM" with
-      | Some s -> Printf.sprintf "%S" s
-      | None -> "unset" ));
+      Printf.fprintf oc "# %s\n# OCAMLPARAM: %s\n%!"
+        (String.concat
+           (List.map (Array.to_list Sys.argv) ~f:String.quote_for_shell)
+           ~sep:" ")
+        ( match Env.get Env.initial "OCAMLPARAM" with
+        | Some s -> Printf.sprintf "%S" s
+        | None -> "unset" ));
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
   Fdecl.reset t (Some { oc; buf; ppf })
@@ -75,9 +75,9 @@ let command ~command_line ~output ~exit_status =
   | Some { oc = Some oc; _ } ->
     Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);
     List.iter (String.split_lines output) ~f:(fun s ->
-      match Ansi_color.strip s with
-      | "" -> output_string oc ">\n"
-      | s -> Printf.fprintf oc "> %s\n" s);
+        match Ansi_color.strip s with
+        | "" -> output_string oc ">\n"
+        | s -> Printf.fprintf oc "> %s\n" s);
     ( match (exit_status : Unix.process_status) with
     | WEXITED 0 -> ()
     | WEXITED n -> Printf.fprintf oc "[%d]\n" n

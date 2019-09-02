@@ -30,16 +30,16 @@ let in_dir ~name ~recursive ~contexts dir =
   | In_install_dir _ ->
     User_error.raise
       [ Pp.textf "Invalid alias: %s."
-        (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
+          (Path.to_string_maybe_quoted Path.(relative build_dir "install"))
       ; Pp.textf "There are no aliases in %s."
-        (Path.to_string_maybe_quoted dir)
+          (Path.to_string_maybe_quoted dir)
       ]
   | In_build_dir (ctx, dir) ->
     { dir
     ; recursive
     ; name
     ; contexts =
-      [ List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx.name) ]
+        [ List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx.name) ]
     }
 
 let of_string common ~recursive s ~contexts =

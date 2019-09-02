@@ -12,7 +12,7 @@ let decode =
     ; ( "transition"
       , Syntax.since Stanza.syntax (1, 2)
         >>> let+ x = string in
-          Yes_with_transition x )
+            Yes_with_transition x )
     ]
 
 let encode =

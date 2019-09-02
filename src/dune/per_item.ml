@@ -34,7 +34,7 @@ module Make (Key : Map.Key) : S with type key = Key.t = struct
   let of_mapping l ~default =
     let values = Array.of_list (default :: List.map l ~f:snd) in
     List.mapi l ~f:(fun i (keys, _) ->
-      List.map keys ~f:(fun key -> (key, i + 1)))
+        List.map keys ~f:(fun key -> (key, i + 1)))
     |> List.concat |> Map.of_list
     |> function
     | Ok map -> Ok { map; values }

@@ -102,14 +102,14 @@ struct
 
   let with_lexbuf_from_file fn ~f =
     with_file_in fn ~f:(fun ic ->
-      let lb = Lexing.from_channel ic in
-      lb.lex_curr_p <-
-        { pos_fname = Path.to_string fn
-        ; pos_lnum = 1
-        ; pos_bol = 0
-        ; pos_cnum = 0
-        };
-      f lb)
+        let lb = Lexing.from_channel ic in
+        lb.lex_curr_p <-
+          { pos_fname = Path.to_string fn
+          ; pos_lnum = 1
+          ; pos_bol = 0
+          ; pos_cnum = 0
+          };
+        f lb)
 
   let read_all ic =
     let len = in_channel_length ic in
@@ -124,11 +124,11 @@ struct
 
   let write_lines ?binary fn lines =
     with_file_out ?binary fn ~f:(fun oc ->
-      List.iter
-        ~f:(fun line ->
-          output_string oc line;
-          output_string oc "\n")
-        lines)
+        List.iter
+          ~f:(fun line ->
+            output_string oc line;
+            output_string oc "\n")
+          lines)
 
   let read_file_and_normalize_eols fn =
     if not Sys.win32 then
@@ -198,24 +198,24 @@ struct
 
   let file_line path n =
     with_file_in ~binary:false path ~f:(fun ic ->
-      for _ = 1 to n - 1 do
-        ignore (input_line ic)
-      done;
-      input_line ic)
+        for _ = 1 to n - 1 do
+          ignore (input_line ic)
+        done;
+        input_line ic)
 
   let file_lines path ~start ~stop =
     with_file_in ~binary:true path ~f:(fun ic ->
-      let rec aux acc lnum =
-        if lnum > stop then
-          List.rev acc
-        else if lnum < start then (
-          ignore (input_line ic);
-          aux acc (lnum + 1)
-        ) else
-          let line = input_line ic in
-          aux ((string_of_int lnum, line) :: acc) (lnum + 1)
-      in
-      aux [] 1)
+        let rec aux acc lnum =
+          if lnum > stop then
+            List.rev acc
+          else if lnum < start then (
+            ignore (input_line ic);
+            aux acc (lnum + 1)
+          ) else
+            let line = input_line ic in
+            aux ((string_of_int lnum, line) :: acc) (lnum + 1)
+        in
+        aux [] 1)
 end
 
 include Make (Path)

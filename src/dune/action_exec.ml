@@ -2,25 +2,50 @@ open! Stdune
 open Import
 open Fiber.O
 
-type exec_context =
-  { context : Context.t option
-  ; purpose : Process.purpose
-  }
+module Context = struct
+  module For_exec = struct
+    type t =
+      { working_dir : Path.t
+      ; env : Env.t
+      ; stdout_to : Process.Io.output Process.Io.t
+      ; stderr_to : Process.Io.output Process.Io.t
+      ; stdin_from : Process.Io.input Process.Io.t
+      }
+  end
 
-type exec_environment =
-  { working_dir : Path.t
-  ; env : Env.t
-  ; stdout_to : Process.Io.output Process.Io.t
-  ; stderr_to : Process.Io.output Process.Io.t
-  ; stdin_from : Process.Io.input Process.Io.t
-  }
+  type t =
+    { context : Context.t option
+    ; purpose : Process.purpose
+    ; initial_env : Env.t
+    }
 
-let exec_run ~ectx ~eenv prog args =
+  let env t = t.initial_env
+
+  let for_exec t =
+    { For_exec.working_dir = Path.root
+    ; env = t.initial_env
+    ; stdout_to = Process.Io.stdout
+    ; stderr_to = Process.Io.stderr
+    ; stdin_from = Process.Io.stdin
+    }
+
+  let make ~targets ~(context : Context.t option) ~env =
+    let initial_env =
+      match (env, context) with
+      | None, None -> Env.initial
+      | Some e, _ -> e
+      | None, Some c -> c.env
+    in
+    let purpose = Process.Build_job targets in
+    { purpose; context; initial_env }
+end
+
+let exec_run ~(ectx : Context.t) ~(eenv : Context.For_exec.t) prog args =
   ( match ectx.context with
   | None
-   |Some { Context.for_host = None; _ } ->
+   |Some { for_host = None; _ } ->
     ()
-  | Some ({ Context.for_host = Some host; _ } as target) ->
+  | Some ({ for_host = Some host; _ } as target) ->
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with
       | None -> ()
@@ -28,7 +53,7 @@ let exec_run ~ectx ~eenv prog args =
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target.name host.name
           ; Pp.textf "It's not possible to execute binary %s in it."
-            (Path.to_string_maybe_quoted prog)
+              (Path.to_string_maybe_quoted prog)
           ; Pp.nop
           ; Pp.text "This is a bug and should be reported upstream."
           ]
@@ -61,7 +86,7 @@ let rec exec t ~ectx ~eenv =
   | Echo strs -> exec_echo eenv.stdout_to (String.concat strs ~sep:" ")
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-      Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
+        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
     Fiber.return ()
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -84,7 +109,7 @@ let rec exec t ~ectx ~eenv =
       | target ->
         if target <> src then (
           (* @@DRA Win32 remove read-only attribute needed when symlinking
-            enabled *)
+             enabled *)
           Unix.unlink dst;
           Unix.symlink src dst
         )
@@ -92,12 +117,13 @@ let rec exec t ~ectx ~eenv =
     Fiber.return ()
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
-      Path.build dst
-      |> Io.with_file_out ~f:(fun oc ->
-        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
-        output_string oc
-          (Utils.line_directive ~filename:(Path.to_string fn) ~line_number:1);
-        Io.copy_channels ic oc));
+        Path.build dst
+        |> Io.with_file_out ~f:(fun oc ->
+               let fn = Path.drop_optional_build_context_maybe_sandboxed src in
+               output_string oc
+                 (Utils.line_directive ~filename:(Path.to_string fn)
+                    ~line_number:1);
+               Io.copy_channels ic oc));
     Fiber.return ()
   | System cmd ->
     let path, arg =
@@ -128,7 +154,7 @@ let rec exec t ~ectx ~eenv =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (Path.to_string fn, Cached_digest.file fn))
+            (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.generic data
     in
@@ -152,7 +178,7 @@ let rec exec t ~ectx ~eenv =
           if mode = Binary then
             User_error.raise
               [ Pp.textf "Files %s and %s differ."
-                (Path.to_string_maybe_quoted file1)
+                  (Path.to_string_maybe_quoted file1)
                   (Path.to_string_maybe_quoted file2)
               ]
           else
@@ -168,16 +194,16 @@ let rec exec t ~ectx ~eenv =
               Promotion.File.register_dep
                 ~source_file:
                   (snd
-                    (Option.value_exn
-                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                     (Option.value_exn
+                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
           | true ->
             if is_copied_from_source_tree file1 then
               Promotion.File.register_intermediate
                 ~source_file:
                   (snd
-                    (Option.value_exn
-                      (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                     (Option.value_exn
+                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
                 ~correction_file:(Path.as_in_build_dir_exn file2)
             else
               remove_intermediate_file () );
@@ -228,21 +254,6 @@ and exec_list ts ~ectx ~eenv =
     in
     exec_list rest ~ectx ~eenv
 
-let exec ~targets ~context ~env t =
-  let env =
-    match ((context : Context.t option), env) with
-    | _, Some e -> e
-    | None, None -> Env.initial
-    | Some c, None -> c.env
-  in
-  let purpose = Process.Build_job targets in
-  let ectx = { purpose; context }
-  and eenv =
-    { working_dir = Path.root
-    ; env
-    ; stdout_to = Process.Io.stdout
-    ; stderr_to = Process.Io.stderr
-    ; stdin_from = Process.Io.stdin
-    }
-  in
-  exec t ~ectx ~eenv
+let exec action (ectx : Context.t) =
+  let eenv = Context.for_exec ectx in
+  exec action ~ectx ~eenv

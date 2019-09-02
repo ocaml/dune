@@ -73,21 +73,21 @@ let decode =
   let open Dune_lang.Decoder in
   let ops =
     List.map ops ~f:(fun (name, op) ->
-      ( name
-      , let+ x = String_with_vars.decode
-        and+ y = String_with_vars.decode in
-        Compare (op, x, y) ))
+        ( name
+        , let+ x = String_with_vars.decode
+          and+ y = String_with_vars.decode in
+          Compare (op, x, y) ))
   in
   let decode =
     fix (fun t ->
-      if_list
-        ~then_:
-          ( [ ("or", repeat t >>| fun x -> Or x)
-            ; ("and", repeat t >>| fun x -> And x)
-            ]
-            @ ops
-          |> sum )
-        ~else_:(String_with_vars.decode >>| fun v -> Expr v))
+        if_list
+          ~then_:
+            ( [ ("or", repeat t >>| fun x -> Or x)
+              ; ("and", repeat t >>| fun x -> And x)
+              ]
+              @ ops
+            |> sum )
+          ~else_:(String_with_vars.decode >>| fun v -> Expr v))
   in
   let+ () = Syntax.since Stanza.syntax (1, 1)
   and+ decode = decode in

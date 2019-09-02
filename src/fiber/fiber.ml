@@ -1,7 +1,7 @@
 open! Stdune
 
 (* Invariant: the execution contxt passed to the continuation is the same as
-  the current one *)
+   the current one *)
 type 'a t = ('a -> unit) -> unit
 
 let of_thunk f k = f () k
@@ -21,7 +21,7 @@ module Execution_context : sig
   end
 
   (* Execute a function returning a fiber, passing any raised excetion to the
-    current execution context. [apply] is guaranteed to not raise. *)
+     current execution context. [apply] is guaranteed to not raise. *)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 
   (* Add [n] references to the current execution context *)
@@ -31,12 +31,12 @@ module Execution_context : sig
   val deref : unit -> unit
 
   (* [fork_and_wait_errors f x] executes [f x] inside a new execution contexts.
-    Returns a fiber that terminates when all the fiber in the sub-context have
+     Returns a fiber that terminates when all the fiber in the sub-context have
      terminated. *)
   val fork_and_wait_errors : ('a -> 'b t) -> 'a -> ('b, unit) result t
 
   (* Set the current error handler. [on_error] is called in the current
-    execution context. *)
+     execution context. *)
   val set_error_handler :
     on_error:(Exn_with_backtrace.t -> unit) -> ('a -> 'b t) -> 'a -> 'b t
 
@@ -48,7 +48,7 @@ module Execution_context : sig
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
-      (* This handler must never raise *)
+          (* This handler must never raise *)
     ; fibers : int ref (* Number of fibers running in this execution context *)
     ; vars : Univ_map.t
     ; on_release : unit k option
@@ -77,7 +77,7 @@ end = struct
     match t.on_error with
     | None ->
       (* We can't let the exception leak at this point, so we just dump the
-        error on stderr and exit *)
+         error on stderr and exit *)
       Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
       sys_exit 42
     | Some { ctx; run } -> (
@@ -124,8 +124,8 @@ end = struct
     let on_release = Some { ctx = t; run = (fun () -> k !result) } in
     let child = { t with on_release; fibers = ref 1 } in
     exec_in ~parent:t ~child f x (fun x ->
-      result := Ok x;
-      deref child)
+        result := Ok x;
+        deref child)
 
   let set_error_handler ~on_error f x k =
     let t = !current in
@@ -240,37 +240,37 @@ let fork_and_join fa fb k =
   let state = ref Nothing_yet in
   EC.add_refs 1;
   EC.apply fa () (fun a ->
-    match !state with
-    | Nothing_yet ->
-      EC.deref ();
-      state := Got_a a
-    | Got_a _ -> assert false
-    | Got_b b -> k (a, b));
+      match !state with
+      | Nothing_yet ->
+        EC.deref ();
+        state := Got_a a
+      | Got_a _ -> assert false
+      | Got_b b -> k (a, b));
   fb () (fun b ->
-    match !state with
-    | Nothing_yet ->
-      EC.deref ();
-      state := Got_b b
-    | Got_a a -> k (a, b)
-    | Got_b _ -> assert false)
+      match !state with
+      | Nothing_yet ->
+        EC.deref ();
+        state := Got_b b
+      | Got_a a -> k (a, b)
+      | Got_b _ -> assert false)
 
 let fork_and_join_unit fa fb k =
   let state = ref Nothing_yet in
   EC.add_refs 1;
   EC.apply fa () (fun () ->
-    match !state with
-    | Nothing_yet ->
-      EC.deref ();
-      state := Got_a ()
-    | Got_a _ -> assert false
-    | Got_b b -> k b);
+      match !state with
+      | Nothing_yet ->
+        EC.deref ();
+        state := Got_a ()
+      | Got_a _ -> assert false
+      | Got_b b -> k b);
   fb () (fun b ->
-    match !state with
-    | Nothing_yet ->
-      EC.deref ();
-      state := Got_b b
-    | Got_a () -> k b
-    | Got_b _ -> assert false)
+      match !state with
+      | Nothing_yet ->
+        EC.deref ();
+        state := Got_b b
+      | Got_a () -> k b
+      | Got_b _ -> assert false)
 
 let list_of_option_array =
   let rec loop arr i acc =
@@ -294,13 +294,13 @@ let parallel_map l ~f k =
     let left_over = ref n in
     let results = Array.make n None in
     List.iteri l ~f:(fun i x ->
-      EC.apply f x (fun y ->
-        results.(i) <- Some y;
-        decr left_over;
-        if !left_over = 0 then
-          k (list_of_option_array results)
-        else
-          EC.deref ()))
+        EC.apply f x (fun y ->
+            results.(i) <- Some y;
+            decr left_over;
+            if !left_over = 0 then
+              k (list_of_option_array results)
+            else
+              EC.deref ()))
 
 let parallel_iter l ~f k =
   match l with
@@ -411,9 +411,9 @@ let nfork_map l ~f k =
     EC.add_refs (n - 1);
     let ivars =
       List.map l ~f:(fun x ->
-        let ivar = Ivar.create () in
-        EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-        ivar)
+          let ivar = Ivar.create () in
+          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
+          ivar)
     in
     k ivars
 

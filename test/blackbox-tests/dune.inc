@@ -232,6 +232,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name disable-promotion)
+ (deps (package dune) (source_tree test-cases/disable-promotion))
+ (action
+  (chdir
+   test-cases/disable-promotion
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name double-echo)
  (deps (package dune) (source_tree test-cases/double-echo))
  (action
@@ -545,6 +553,14 @@
  (action
   (chdir
    test-cases/findlib-error
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name forbidden_libraries)
+ (deps (package dune) (source_tree test-cases/forbidden_libraries))
+ (action
+  (chdir
+   test-cases/forbidden_libraries
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1579,6 +1595,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variables-for-artifacts)
+ (deps (package dune) (source_tree test-cases/variables-for-artifacts))
+ (action
+  (chdir
+   test-cases/variables-for-artifacts
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants)
  (deps (package dune) (source_tree test-cases/variants))
  (action
@@ -1750,6 +1774,7 @@
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache)
@@ -1787,6 +1812,7 @@
   (alias findlib)
   (alias findlib-dynload)
   (alias findlib-error)
+  (alias forbidden_libraries)
   (alias force-test)
   (alias format-dune-file)
   (alias formatting)
@@ -1908,6 +1934,7 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias use-meta)
+  (alias variables-for-artifacts)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)
@@ -1955,6 +1982,7 @@
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache)
@@ -1990,6 +2018,7 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
+  (alias forbidden_libraries)
   (alias force-test)
   (alias format-dune-file)
   (alias formatting)
@@ -2092,6 +2121,7 @@
   (alias transitive-deps-mode)
   (alias unreadable-src)
   (alias upgrader)
+  (alias variables-for-artifacts)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)

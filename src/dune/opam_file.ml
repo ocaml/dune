@@ -13,7 +13,7 @@ let parse_gen entry (lb : Lexing.lexbuf) =
 
 let parse =
   parse_gen (fun lexer lexbuf ->
-    OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
+      OpamBaseParser.main lexer lexbuf lexbuf.Lexing.lex_curr_p.pos_fname)
 
 let parse_value = parse_gen OpamBaseParser.value
 
@@ -28,7 +28,7 @@ let absolutify_positions ~file_contents t =
   let open OpamParserTypes in
   let bols = ref [ 0 ] in
   String.iteri file_contents ~f:(fun i ch ->
-    if ch = '\n' then bols := (i + 1) :: !bols);
+      if ch = '\n' then bols := (i + 1) :: !bols);
   let bols = Array.of_list (List.rev !bols) in
   let map_pos (fname, line, col) = (fname, line, bols.(line - 1) + col) in
   let rec map_value = function
@@ -61,9 +61,9 @@ let nopos : OpamParserTypes.pos = ("", 0, 0) (* Null position *)
 
 let existing_variables t =
   List.fold_left ~init:String.Set.empty t.file_contents ~f:(fun acc l ->
-    match l with
-    | Section (_, _) -> acc
-    | Variable (_, var, _) -> String.Set.add acc var)
+      match l with
+      | Section (_, _) -> acc
+      | Variable (_, var, _) -> String.Set.add acc var)
 
 module Create = struct
   let string s = String (nopos, s)
@@ -76,7 +76,7 @@ module Create = struct
     let normal_field_order =
       let fields =
         [| (* Extracted from opam/src/format/opamFile.ml *)
-          "opam-version"
+           "opam-version"
          ; "name"
          ; "version"
          ; "synopsis"
@@ -124,11 +124,11 @@ module Create = struct
     in
     fun vars ->
       List.stable_sort vars ~compare:(fun (x, _) (y, _) ->
-        match (normal_field_order x, normal_field_order y) with
-        | Some x, Some y -> Int.compare x y
-        | Some _, None -> Lt
-        | None, Some _ -> Gt
-        | None, None -> Eq)
+          match (normal_field_order x, normal_field_order y) with
+          | Some x, Some y -> Int.compare x y
+          | Some _, None -> Lt
+          | None, Some _ -> Gt
+          | None, None -> Eq)
 
   let of_bindings vars ~file =
     let file_contents =

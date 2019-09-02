@@ -13,15 +13,17 @@ end = struct
 
   let make preprocess v =
     Dune_file.Per_module.map preprocess ~f:(fun pp ->
-      match Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v with
-      | No_preprocessing -> Module.ml_source
-      | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
-      | Pps { loc = _; pps = _; flags = _; staged } ->
-        if staged then
-          Module.ml_source
-        else
-          fun m ->
-        Module.pped (Module.ml_source m))
+        match
+          Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v
+        with
+        | No_preprocessing -> Module.ml_source
+        | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
+        | Pps { loc = _; pps = _; flags = _; staged } ->
+          if staged then
+            Module.ml_source
+          else
+            fun m ->
+          Module.pped (Module.ml_source m))
 
   let pped_module (t : t) m = Dune_file.Per_module.get t (Module.name m) m
 end
@@ -73,54 +75,54 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
   Option.map lib.implements ~f:(fun (loc, implements) ->
-    match Lib.DB.find (Scope.libs scope) implements with
-    | None ->
-      User_error.raise ~loc
-        [ Pp.textf "Cannot implement %s as that library isn't available"
-          (Lib_name.to_string implements)
-        ]
-    | Some vlib ->
-      let info = Lib.info vlib in
-      let virtual_ =
-        let virtual_ = Lib_info.virtual_ info in
-        match virtual_ with
-        | None ->
-          User_error.raise ~loc:lib.buildable.loc
-            [ Pp.textf "Library %s isn't virtual and cannot be implemented"
+      match Lib.DB.find (Scope.libs scope) implements with
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "Cannot implement %s as that library isn't available"
               (Lib_name.to_string implements)
-            ]
-        | Some v -> v
-      in
-      let vlib_modules, vlib_foreign_objects =
-        let foreign_objects = Lib_info.foreign_objects info in
-        match (virtual_, foreign_objects) with
-        | External _, Local
-         |Local, External _ ->
-          assert false
-        | External modules, External fa -> (modules, fa)
-        | Local, Local ->
-          let name = Lib.name vlib in
-          let vlib = Lib.Local.of_lib_exn vlib in
-          let dir_contents =
-            let info = Lib.Local.info vlib in
-            let dir = Lib_info.src_dir info in
-            Dir_contents.get sctx ~dir
-          in
-          let modules =
-            let pp_spec =
-              Pp_spec.make lib.buildable.preprocess
-                (Super_context.context sctx).version
+          ]
+      | Some vlib ->
+        let info = Lib.info vlib in
+        let virtual_ =
+          let virtual_ = Lib_info.virtual_ info in
+          match virtual_ with
+          | None ->
+            User_error.raise ~loc:lib.buildable.loc
+              [ Pp.textf "Library %s isn't virtual and cannot be implemented"
+                  (Lib_name.to_string implements)
+              ]
+          | Some v -> v
+        in
+        let vlib_modules, vlib_foreign_objects =
+          let foreign_objects = Lib_info.foreign_objects info in
+          match (virtual_, foreign_objects) with
+          | External _, Local
+           |Local, External _ ->
+            assert false
+          | External modules, External fa -> (modules, fa)
+          | Local, Local ->
+            let name = Lib.name vlib in
+            let vlib = Lib.Local.of_lib_exn vlib in
+            let dir_contents =
+              let info = Lib.Local.info vlib in
+              let dir = Lib_info.src_dir info in
+              Dir_contents.get sctx ~dir
             in
-            Dir_contents.modules_of_library dir_contents ~name
-            |> Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
-          in
-          let foreign_objects =
-            let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
-            let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
-            Dir_contents.c_sources_of_library dir_contents ~name
-            |> C.Sources.objects ~ext_obj ~dir
-            |> List.map ~f:Path.build
-          in
-          (modules, foreign_objects)
-      in
-      Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects)
+            let modules =
+              let pp_spec =
+                Pp_spec.make lib.buildable.preprocess
+                  (Super_context.context sctx).version
+              in
+              Dir_contents.modules_of_library dir_contents ~name
+              |> Modules.map_user_written ~f:(Pp_spec.pped_module pp_spec)
+            in
+            let foreign_objects =
+              let ext_obj = (Super_context.context sctx).lib_config.ext_obj in
+              let dir = Obj_dir.obj_dir (Lib.Local.obj_dir vlib) in
+              Dir_contents.c_sources_of_library dir_contents ~name
+              |> C.Sources.objects ~ext_obj ~dir
+              |> List.map ~f:Path.build
+            in
+            (modules, foreign_objects)
+        in
+        Vimpl.make ~impl:lib ~vlib ~vlib_modules ~vlib_foreign_objects)

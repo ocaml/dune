@@ -19,6 +19,20 @@ module Dir_modules = struct
     }
 end
 
+module Dir_artifacts = struct
+  type t =
+    { libraries : Library.t Lib_name.Map.t
+    ; modules : (Path.Build.t Obj_dir.t * Module.t) Module_name.Map.t
+    }
+
+  let empty =
+    { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
+
+  let lookup_module { modules; _ } = Module_name.Map.find modules
+
+  let lookup_library { libraries; _ } = Lib_name.Map.find libraries
+end
+
 type t =
   { kind : kind
   ; dir : Path.Build.t
@@ -27,6 +41,7 @@ type t =
   ; c_sources : C_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
+  ; artifacts : Dir_artifacts.t Memo.Lazy.t
   }
 
 and kind =
@@ -39,6 +54,8 @@ type gen_rules_result =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
+
+let artifacts t = Memo.Lazy.force t.artifacts
 
 let dirs t =
   match t.kind with
@@ -73,7 +90,7 @@ let mlds t (doc : Documentation.t) =
   let map = Memo.Lazy.force t.mlds in
   match
     List.find_map map ~f:(fun (doc', x) ->
-      Option.some_if (Loc.equal doc.loc doc'.loc) x)
+        Option.some_if (Loc.equal doc.loc doc'.loc) x)
   with
   | Some x -> x
   | None ->
@@ -81,7 +98,7 @@ let mlds t (doc : Documentation.t) =
       [ ("doc", Loc.to_dyn doc.loc)
       ; ( "available"
         , Dyn.Encoder.(list Loc.to_dyn)
-          (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
+            (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
       ]
 
 let coq_modules_of_library t ~name =
@@ -97,15 +114,15 @@ let modules_of_files ~dialects ~dir ~files =
   let impl_files, intf_files =
     String.Set.to_list files
     |> List.filter_partition_map ~f:(fun fn ->
-      (* we aren't using Filename.extension because we want to handle filenames
-        such as foo.cppo.ml *)
-      match String.lsplit2 fn ~on:'.' with
-      | Some (s, ext) -> (
-        match Dialect.DB.find_by_extension dialects ("." ^ ext) with
-        | Some (dialect, Ml_kind.Impl) -> Left (make_module dialect s fn)
-        | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
-        | None -> Skip )
-      | None -> Skip)
+           (* we aren't using Filename.extension because we want to handle
+              filenames such as foo.cppo.ml *)
+           match String.lsplit2 fn ~on:'.' with
+           | Some (s, ext) -> (
+             match Dialect.DB.find_by_extension dialects ("." ^ ext) with
+             | Some (dialect, Ml_kind.Impl) -> Left (make_module dialect s fn)
+             | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
+             | None -> Skip )
+           | None -> Skip)
   in
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with
@@ -114,7 +131,7 @@ let modules_of_files ~dialects ~dir ~files =
       let src_dir = Path.drop_build_context_exn dir in
       User_error.raise
         [ Pp.textf "Too many files for module %s in %s:"
-          (Module_name.to_string name)
+            (Module_name.to_string name)
             (Path.Source.to_string_maybe_quoted src_dir)
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted f1.path)
         ; Pp.textf "- %s" (Path.to_string_maybe_quoted f2.path)
@@ -123,16 +140,16 @@ let modules_of_files ~dialects ~dir ~files =
   let impls = parse_one_set impl_files in
   let intfs = parse_one_set intf_files in
   Module_name.Map.merge impls intfs ~f:(fun name impl intf ->
-    Some (Module.Source.make name ?impl ?intf))
+      Some (Module.Source.make name ?impl ?intf))
 
 let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
   let mlds =
     Memo.lazy_ (fun () ->
-      String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
-        match String.lsplit2 fn ~on:'.' with
-        | Some (s, "mld") -> String.Map.set acc s fn
-        | _ -> acc))
+        String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
+            match String.lsplit2 fn ~on:'.' with
+            | Some (s, "mld") -> String.Map.set acc s fn
+            | _ -> acc))
   in
   List.filter_map d.data ~f:(function
     | Documentation doc ->
@@ -146,8 +163,8 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
             | None ->
               User_error.raise ~loc
                 [ Pp.textf "%s.mld doesn't exist in %s" s
-                  (Path.to_string_maybe_quoted
-                    (Path.drop_optional_build_context (Path.build dir)))
+                    (Path.to_string_maybe_quoted
+                       (Path.drop_optional_build_context (Path.build dir)))
                 ])
           ~standard:mlds
       in
@@ -164,9 +181,9 @@ let coq_modules_of_files ~subdirs =
   let build_mod_dir (dir, prefix, files) =
     String.Set.to_list files
     |> List.map ~f:(fun file ->
-      let name, _ = Filename.split_extension file in
-      let name = Coq_module.Name.make name in
-      Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
+           let name, _ = Filename.split_extension file in
+           let name = Coq_module.Name.make name in
+           Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
   in
   let modules = List.concat_map ~f:build_mod_dir subdirs in
   modules
@@ -205,10 +222,9 @@ end = struct
     ; allow_new_public_modules
     }
 
-  let make_modules sctx (d : _ Dir_with_dune.t) ~modules =
+  let libs_and_exes sctx (d : _ Dir_with_dune.t) ~modules =
     let scope = d.scope in
-    let libs, exes =
-      List.filter_partition_map d.data ~f:(fun stanza ->
+    List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
           let src_dir = d.ctx_dir in
@@ -216,7 +232,7 @@ end = struct
             match lib.implements with
             | None ->
               (* In the two following pattern matching, we can only get [From
-                _] if [lib] is an implementation. Since we know that it is not
+                 _] if [lib] is an implementation. Since we know that it is not
                  one because of the above [match lib.implements with ...], we
                  know that we can't get [From _]. That's why we have these
                  [assert false]. *)
@@ -242,17 +258,17 @@ end = struct
                 let name = Library.best_name lib in
                 Lib.DB.find_even_when_hidden (Scope.libs scope) name
                 (* can't happen because this library is defined using the
-                  current stanza *)
+                   current stanza *)
                 |> Option.value_exn
               in
               (* diml: this [Result.ok_exn] means that if the user writes an
-                invalid [implements] field, we will get an error immediately
+                 invalid [implements] field, we will get an error immediately
                  even if the library is not built. We should change this to
                  carry the [Or_exn.t] a bit longer. *)
               let vlib =
                 Result.ok_exn
                   ((* This [Option.value_exn] is correct because the above
-                    [lib.implements] is [Some _] and this [lib] variable
+                      [lib.implements] is [Some _] and this [lib] variable
                       correspond to the same library. *)
                    Option.value_exn (Lib.implements resolved))
               in
@@ -273,7 +289,7 @@ end = struct
               ~kind
               ~private_modules:
                 (Option.value ~default:Ordered_set_lang.standard
-                  lib.private_modules)
+                   lib.private_modules)
           in
           Left
             (lib, Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped)
@@ -293,36 +309,38 @@ end = struct
           in
           Right (exes, modules)
         | _ -> Skip)
-    in
+
+  let make_modules (libs, exes) =
     let libraries =
       match
         Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
-          (Library.best_name lib, m))
+            (Library.best_name lib, m))
       with
       | Ok x -> x
       | Error (name, _, (lib2, _)) ->
         User_error.raise ~loc:lib2.buildable.loc
           [ Pp.textf "Library %S appears for the second time in this directory"
-            (Lib_name.to_string name)
+              (Lib_name.to_string name)
           ]
     in
     let executables =
       match
         String.Map.of_list_map exes ~f:(fun (exes, m) ->
-          (snd (List.hd exes.names), m))
+            (snd (List.hd exes.Executables.names), m))
       with
       | Ok x -> x
       | Error (name, _, (exes2, _)) ->
         User_error.raise ~loc:exes2.buildable.loc
           [ Pp.textf
-            "Executable %S appears for the second time in this directory" name
+              "Executable %S appears for the second time in this directory"
+              name
           ]
     in
     let rev_map =
       let rev_modules =
         let by_name buildable =
           Modules.fold_user_written ~init:[] ~f:(fun m acc ->
-            (Module.name m, buildable) :: acc)
+              (Module.name m, buildable) :: acc)
         in
         List.rev_append
           (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
@@ -334,69 +352,101 @@ end = struct
         let open Module_name.Infix in
         let locs =
           List.filter_map rev_modules ~f:(fun (n, b) ->
-            Option.some_if (n = name) b.loc)
+              Option.some_if (n = name) b.loc)
           |> List.sort ~compare
         in
         User_error.raise
           ~loc:(Loc.drop_position (List.hd locs))
           [ Pp.textf "Module %S is used in several stanzas:"
-            (Module_name.to_string name)
+              (Module_name.to_string name)
           ; Pp.enumerate locs ~f:(fun loc ->
-            Pp.verbatim (Loc.to_file_colon_line loc))
+                Pp.verbatim (Loc.to_file_colon_line loc))
           ; Pp.text
-            "To fix this error, you must specify an explicit \"modules\" \
-             field in every library, executable, and executables stanzas in \
-             this dune file. Note that each module cannot appear in more than \
-             one \"modules\" field - it must belong to a single library or \
-             executable."
+              "To fix this error, you must specify an explicit \"modules\" \
+               field in every library, executable, and executables stanzas in \
+               this dune file. Note that each module cannot appear in more \
+               than one \"modules\" field - it must belong to a single \
+               library or executable."
           ]
     in
     { Dir_modules.libraries; executables; rev_map }
 
+  let make_artifacts (d : _ Dir_with_dune.t) (libs, exes) =
+    let libraries =
+      List.fold_left
+        ~f:(fun libraries (lib, _) ->
+          let name = Lib_name.of_local lib.Library.name in
+          Lib_name.Map.add_exn libraries name lib)
+        ~init:Lib_name.Map.empty libs
+    in
+    let modules =
+      let by_name modules obj_dir =
+        Modules.fold_user_written ~init:modules ~f:(fun m modules ->
+            Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
+      in
+      let init =
+        List.fold_left ~init:Module_name.Map.empty
+          ~f:(fun modules (e, m) ->
+            by_name modules (Executables.obj_dir ~dir:d.ctx_dir e) m)
+          exes
+      in
+      List.fold_left ~init
+        ~f:(fun modules (l, m) ->
+          by_name modules (Library.obj_dir ~dir:d.ctx_dir l) m)
+        libs
+    in
+    { Dir_artifacts.libraries; modules }
+
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
-    { Dir_with_dune.ctx_dir = dir
-    ; src_dir
-    ; scope = _
-    ; data = stanzas
-    ; dune_version = _
-    } =
+      { Dir_with_dune.ctx_dir = dir
+      ; src_dir
+      ; scope = _
+      ; data = stanzas
+      ; dune_version = _
+      } =
     (* Interpret a few stanzas in order to determine the list of files
-      generated by the user. *)
+       generated by the user. *)
+    let lookup ~f ~dir name = f (artifacts (Load.get sctx ~dir)) name in
+    let lookup_module = lookup ~f:Dir_artifacts.lookup_module in
+    let lookup_library = lookup ~f:Dir_artifacts.lookup_library in
     let expander = Super_context.expander sctx ~dir in
+    let expander = Expander.set_lookup_module expander ~lookup_module in
+    let expander = Expander.set_lookup_library expander ~lookup_library in
+    let expander = Expander.set_artifacts_dynamic expander true in
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
-        | Menhir.T menhir -> Menhir_rules.targets menhir
-        | Rule rule ->
-          Simple_rules.user_rule sctx rule ~dir ~expander
-          |> Path.Build.Set.to_list
-          |> List.map ~f:Path.Build.basename
-        | Copy_files def ->
-          Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
-          |> Path.Set.to_list |> List.map ~f:Path.basename
-        | Library { buildable; _ }
-         |Executables { buildable; _ } ->
-          (* Manually add files generated by the (select ...) dependencies *)
-          List.filter_map buildable.libraries ~f:(fun dep ->
-            match (dep : Dune_file.Lib_dep.t) with
-            | Direct _ -> None
-            | Select s -> Some s.result_fn)
-        | _ -> [])
+          match (stanza : Stanza.t) with
+          | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
+          | Menhir.T menhir -> Menhir_rules.targets menhir
+          | Rule rule ->
+            Simple_rules.user_rule sctx rule ~dir ~expander
+            |> Path.Build.Set.to_list
+            |> List.map ~f:Path.Build.basename
+          | Copy_files def ->
+            Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
+            |> Path.Set.to_list |> List.map ~f:Path.basename
+          | Library { buildable; _ }
+           |Executables { buildable; _ } ->
+            (* Manually add files generated by the (select ...) dependencies *)
+            List.filter_map buildable.libraries ~f:(fun dep ->
+                match (dep : Dune_file.Lib_dep.t) with
+                | Direct _ -> None
+                | Select s -> Some s.result_fn)
+          | _ -> [])
       |> String.Set.of_list
     in
     let used_in_select =
       List.concat_map stanzas ~f:(fun stanza ->
-        match (stanza : Stanza.t) with
-        | Library { buildable; _ }
-         |Executables { buildable; _ } ->
-          (* add files used by the (select ...) dependencies *)
-          List.concat_map buildable.libraries ~f:(fun dep ->
-            match (dep : Dune_file.Lib_dep.t) with
-            | Direct _ -> []
-            | Select s -> List.map s.choices ~f:(fun s -> s.Lib_dep.file))
-        | _ -> [])
+          match (stanza : Stanza.t) with
+          | Library { buildable; _ }
+           |Executables { buildable; _ } ->
+            (* add files used by the (select ...) dependencies *)
+            List.concat_map buildable.libraries ~f:(fun dep ->
+                match (dep : Dune_file.Lib_dep.t) with
+                | Direct _ -> []
+                | Select s -> List.map s.choices ~f:(fun s -> s.Lib_dep.file))
+          | _ -> [])
       |> String.Set.of_list
     in
     let files =
@@ -447,28 +497,33 @@ end = struct
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
         in
-        let dialects = Dune_project.dialects (Scope.project d.scope) in
+        let libs_and_exes =
+          let dialects = Dune_project.dialects (Scope.project d.scope) in
+          Memo.lazy_ (fun () ->
+              libs_and_exes sctx d
+                ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
+        in
         Here
           { t =
-            { kind = Standalone
-            ; dir
-            ; text_files = files
-            ; modules =
-              Memo.lazy_ (fun () ->
-                make_modules sctx d
-                  ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-            ; c_sources =
-              Memo.lazy_ (fun () ->
-                let dune_version = d.dune_version in
-                C_sources.make d
-                  ~c_sources:
-                    (C_sources.load_sources ~dune_version ~dir:d.ctx_dir ~files))
-            ; coq_modules =
-              Memo.lazy_ (fun () ->
-                build_coq_modules_map d ~dir:d.ctx_dir
-                  ~modules:(coq_modules_of_files ~subdirs:[ (dir, [], files) ]))
-            }
+              { kind = Standalone
+              ; dir
+              ; text_files = files
+              ; modules = Memo.Lazy.map ~f:make_modules libs_and_exes
+              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+              ; c_sources =
+                  Memo.lazy_ (fun () ->
+                      let dune_version = d.dune_version in
+                      C_sources.make d
+                        ~c_sources:
+                          (C_sources.load_sources ~dune_version ~dir:d.ctx_dir
+                             ~files))
+              ; coq_modules =
+                  Memo.lazy_ (fun () ->
+                      build_coq_modules_map d ~dir:d.ctx_dir
+                        ~modules:
+                          (coq_modules_of_files ~subdirs:[ (dir, [], files) ]))
+              ; artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes
+              }
           ; rules
           ; subdirs = Path.Build.Map.empty
           }
@@ -476,14 +531,15 @@ end = struct
        |None ->
         Here
           { t =
-            { kind = Standalone
-            ; dir
-            ; text_files = String.Set.empty
-            ; modules = Memo.Lazy.of_val Dir_modules.empty
-            ; mlds = Memo.Lazy.of_val []
-            ; c_sources = Memo.Lazy.of_val C_sources.empty
-            ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
-            }
+              { kind = Standalone
+              ; dir
+              ; text_files = String.Set.empty
+              ; modules = Memo.Lazy.of_val Dir_modules.empty
+              ; mlds = Memo.Lazy.of_val []
+              ; c_sources = Memo.Lazy.of_val C_sources.empty
+              ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
+              ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
+              }
           ; rules = None
           ; subdirs = Path.Build.Map.empty
           } )
@@ -493,7 +549,7 @@ end = struct
       let rec walk ft_dir ~dir ~local acc =
         match Dir_status.DB.get dir_status_db ~dir with
         | Is_component_of_a_group_but_not_the_root
-          { stanzas = d; group_root = _ } ->
+            { stanzas = d; group_root = _ } ->
           let files =
             match d with
             | None -> File_tree.Dir.files ft_dir
@@ -515,100 +571,107 @@ end = struct
       in
       let (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
         Rules.collect_opt (fun () ->
-          let files = load_text_files sctx ft_dir d in
-          let subdirs = walk_children ft_dir ~dir ~local:[] [] in
-          (files, subdirs))
+            let files = load_text_files sctx ft_dir d in
+            let subdirs = walk_children ft_dir ~dir ~local:[] [] in
+            (files, subdirs))
       in
-      let modules =
+      let libs_and_exes =
         Memo.lazy_ (fun () ->
-          check_no_qualified Loc.none qualif_mode;
-          let modules =
-            let dialects = Dune_project.dialects (Scope.project d.scope) in
-            List.fold_left ((dir, [], files) :: subdirs)
-              ~init:Module_name.Map.empty
-              ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-                let modules = modules_of_files ~dialects ~dir ~files in
-                Module_name.Map.union acc modules ~f:(fun name x y ->
-                  User_error.raise
-                    ~loc:
-                      (Loc.in_file
-                        (Path.source
-                          ( match File_tree.Dir.dune_file ft_dir with
-                          | None ->
-                            Path.Source.relative
-                              (File_tree.Dir.path ft_dir)
-                              "_unknown_"
-                          | Some d -> File_tree.Dune_file.path d )))
-                    [ Pp.textf "Module %S appears in several directories:"
-                      (Module_name.to_string name)
-                    ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                    ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                    ; Pp.text "This is not allowed, please rename one of them."
-                    ]))
-          in
-          make_modules sctx d ~modules)
+            check_no_qualified Loc.none qualif_mode;
+            let modules =
+              let dialects = Dune_project.dialects (Scope.project d.scope) in
+              List.fold_left ((dir, [], files) :: subdirs)
+                ~init:Module_name.Map.empty
+                ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+                  let modules = modules_of_files ~dialects ~dir ~files in
+                  Module_name.Map.union acc modules ~f:(fun name x y ->
+                      User_error.raise
+                        ~loc:
+                          (Loc.in_file
+                             (Path.source
+                                ( match File_tree.Dir.dune_file ft_dir with
+                                | None ->
+                                  Path.Source.relative
+                                    (File_tree.Dir.path ft_dir)
+                                    "_unknown_"
+                                | Some d -> File_tree.Dune_file.path d )))
+                        [ Pp.textf "Module %S appears in several directories:"
+                            (Module_name.to_string name)
+                        ; Pp.textf "- %s"
+                            (Path.to_string_maybe_quoted
+                               (Module.Source.src_dir x))
+                        ; Pp.textf "- %s"
+                            (Path.to_string_maybe_quoted
+                               (Module.Source.src_dir y))
+                        ; Pp.text
+                            "This is not allowed, please rename one of them."
+                        ]))
+            in
+            libs_and_exes sctx d ~modules)
       in
+      let modules = Memo.Lazy.map ~f:make_modules libs_and_exes in
+      let artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes in
       let c_sources =
         Memo.lazy_ (fun () ->
-          check_no_qualified Loc.none qualif_mode;
-          let dune_version = d.dune_version in
-          let init = C.Kind.Dict.make_both String.Map.empty in
-          let c_sources =
-            List.fold_left ((dir, [], files) :: subdirs) ~init
-              ~f:(fun acc (dir, _local, files) ->
-                let sources =
-                  C_sources.load_sources ~dir ~dune_version ~files
-                in
-                let f acc sources =
-                  String.Map.union acc sources ~f:(fun name x y ->
-                    User_error.raise
-                      ~loc:
-                        (Loc.in_file
-                          (Path.source
-                            ( match File_tree.Dir.dune_file ft_dir with
-                            | None ->
-                              Path.Source.relative
-                                (File_tree.Dir.path ft_dir)
-                                "_unknown_"
-                            | Some d -> File_tree.Dune_file.path d )))
-                      [ Pp.textf "%s file %s appears in several directories:"
-                        (C.Kind.to_string (C.Source.kind x))
-                          name
-                      ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context
-                            (Path.build (C.Source.src_dir x))))
-                      ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context
-                            (Path.build (C.Source.src_dir y))))
-                      ; Pp.text
-                        "This is not allowed, please rename one of them."
-                      ])
-                in
-                C.Kind.Dict.merge acc sources ~f)
-          in
-          C_sources.make d ~c_sources)
+            check_no_qualified Loc.none qualif_mode;
+            let dune_version = d.dune_version in
+            let init = C.Kind.Dict.make_both String.Map.empty in
+            let c_sources =
+              List.fold_left ((dir, [], files) :: subdirs) ~init
+                ~f:(fun acc (dir, _local, files) ->
+                  let sources =
+                    C_sources.load_sources ~dir ~dune_version ~files
+                  in
+                  let f acc sources =
+                    String.Map.union acc sources ~f:(fun name x y ->
+                        User_error.raise
+                          ~loc:
+                            (Loc.in_file
+                               (Path.source
+                                  ( match File_tree.Dir.dune_file ft_dir with
+                                  | None ->
+                                    Path.Source.relative
+                                      (File_tree.Dir.path ft_dir)
+                                      "_unknown_"
+                                  | Some d -> File_tree.Dune_file.path d )))
+                          [ Pp.textf
+                              "%s file %s appears in several directories:"
+                              (C.Kind.to_string (C.Source.kind x))
+                              name
+                          ; Pp.textf "- %s"
+                              (Path.to_string_maybe_quoted
+                                 (Path.drop_optional_build_context
+                                    (Path.build (C.Source.src_dir x))))
+                          ; Pp.textf "- %s"
+                              (Path.to_string_maybe_quoted
+                                 (Path.drop_optional_build_context
+                                    (Path.build (C.Source.src_dir y))))
+                          ; Pp.text
+                              "This is not allowed, please rename one of them."
+                          ])
+                  in
+                  C.Kind.Dict.merge acc sources ~f)
+            in
+            C_sources.make d ~c_sources)
       in
       let coq_modules =
         Memo.lazy_ (fun () ->
-          check_no_unqualified Loc.none qualif_mode;
-          build_coq_modules_map d ~dir:d.ctx_dir
-            ~modules:
-              (coq_modules_of_files ~subdirs:((dir, [], files) :: subdirs)))
+            check_no_unqualified Loc.none qualif_mode;
+            build_coq_modules_map d ~dir:d.ctx_dir
+              ~modules:
+                (coq_modules_of_files ~subdirs:((dir, [], files) :: subdirs)))
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->
-          { kind = Group_part
-          ; dir
-          ; text_files = files
-          ; modules
-          ; c_sources
-          ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-          ; coq_modules
-          })
+            { kind = Group_part
+            ; dir
+            ; text_files = files
+            ; modules
+            ; c_sources
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; coq_modules
+            ; artifacts
+            })
       in
       let t =
         { kind = Group_root subdirs
@@ -618,13 +681,14 @@ end = struct
         ; c_sources
         ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
         ; coq_modules
+        ; artifacts
         }
       in
       Here
         { t
         ; rules
         ; subdirs =
-          Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> (x.dir, x))
+            Path.Build.Map.of_list_map_exn subdirs ~f:(fun x -> (x.dir, x))
         }
 
   let memo0 =

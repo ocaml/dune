@@ -154,6 +154,8 @@ Dune supports the following variables:
 - ``ignoring_promoted_rule`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
   ``false`` otherwise
+- ``<ext>:<path>`` where ``<ext>`` is one of ``cmo``, ``cmi``, ``cma``,
+  ``cmx``, or ``cmxa``. See :ref:`variables-for-artifacts`.
 
 In addition, ``(action ...)`` fields support the following special variables:
 

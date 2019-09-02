@@ -8,8 +8,8 @@ let dev_files =
       constr "dev_files" (List.map ~f:string exts))
   in
   Predicate.create ~id ~f:(fun p ->
-    let ext = Filename.extension p in
-    List.mem ext ~set:exts)
+      let ext = Filename.extension p in
+      List.mem ext ~set:exts)
 
 let add_obj_dir sctx ~obj_dir =
   if (Super_context.context sctx).merlin then

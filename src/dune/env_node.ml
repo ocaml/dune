@@ -42,10 +42,10 @@ let rec local_binaries t ~profile ~expander =
     let local_binaries =
       default
       @ List.map (find_config t ~profile).binaries
-        ~f:
-          (File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
-            Expander.expand expander ~mode:Single ~template
-            |> Value.to_string ~dir:(Path.build t.dir)))
+          ~f:
+            (File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
+                 Expander.expand expander ~mode:Single ~template
+                 |> Value.to_string ~dir:(Path.build t.dir)))
     in
     t.local_binaries <- Some local_binaries;
     local_binaries
@@ -142,8 +142,8 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
       let cfg = find_config t ~profile in
       let expander = Expander.set_dir expander ~dir:t.dir in
       C.Kind.Dict.mapi cfg.c_flags ~f:(fun ~kind f ->
-        let default = C.Kind.Dict.get default kind in
-        Expander.expand_and_eval_set expander f ~standard:default)
+          let default = C.Kind.Dict.get default kind in
+          Expander.expand_and_eval_set expander f ~standard:default)
     in
     t.c_flags <- Some flags;
     flags

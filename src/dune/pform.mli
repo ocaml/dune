@@ -13,6 +13,14 @@ module Var : sig
     | Cxx
 end
 
+module Artifact : sig
+  type t =
+    | Mod of Cm_kind.t
+    | Lib of Mode.t
+
+  val ext : t -> string
+end
+
 module Macro : sig
   type t =
     | Exe
@@ -28,6 +36,7 @@ module Macro : sig
     | Path_no_dep
     | Ocaml_config
     | Env
+    | Artifact of Artifact.t
 end
 
 module Expansion : sig

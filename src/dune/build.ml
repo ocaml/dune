@@ -142,7 +142,7 @@ let file_exists_opt p t =
 
 let paths_existing paths =
   List.fold_left paths ~init:(return true) ~f:(fun acc file ->
-    if_file_exists file ~then_:(path file) ~else_:(arr Fn.id) >>> acc)
+      if_file_exists file ~then_:(path file) ~else_:(arr Fn.id) >>> acc)
 
 let fail ?targets x =
   match targets with
@@ -161,7 +161,7 @@ let of_result_map ?targets res ~f =
 let memoize name t = Memo { name; t; state = Unevaluated }
 
 (* This is to force the rules to be loaded for directories without files when
-  depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
+   depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
    directories in directories that contain no file. *)
 let depend_on_dir_without_files =
   let pred =
@@ -186,7 +186,7 @@ let source_tree ~dir ~file_tree =
             , depend_on_dir_without_files path >>> acc_dirs_without_files )
           | false ->
             ( String.Set.fold files ~init:acc_files ~f:(fun fn acc ->
-              Path.Set.add acc (Path.relative path fn))
+                  Path.Set.add acc (Path.relative path fn))
             , acc_dirs_without_files ))
   in
   dirs_without_files >>> path_set paths >>^ fun _ -> paths
@@ -232,7 +232,7 @@ let progn ts = all ts >>^ fun actions -> Action.Progn actions
 let merge_files_dyn ~target =
   dyn_paths (arr fst)
   >>^ (fun (sources, extras) ->
-    Action.Merge_files_into (sources, extras, target))
+        Action.Merge_files_into (sources, extras, target))
   >>> action_dyn ~targets:[ target ] ()
 
 (* Analysis *)
@@ -244,7 +244,7 @@ let no_targets_allowed () =
     []
   [@@inline never]
 
-let static_deps t ~all_targets =
+let static_deps t ~list_targets =
   let rec loop : type a b. (a, b) t -> Static_deps.t -> bool -> Static_deps.t =
    fun t acc targets_allowed ->
     match t with
@@ -265,7 +265,7 @@ let static_deps t ~all_targets =
       | Decided (_, t) -> loop t acc false
       | Undecided (then_, else_) ->
         let dir = Path.parent_exn p in
-        let targets = all_targets ~dir in
+        let targets = list_targets ~dir in
         if Path.Set.mem targets p then (
           state := Decided (true, then_);
           loop then_ acc false
@@ -358,7 +358,7 @@ let targets =
 (* Execution *)
 
 let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a) :
-  'b * Dep.Set.t =
+    'b * Dep.Set.t =
   let rec exec : type a b. Dep.Set.t ref -> (a, b) t -> a -> b =
    fun dyn_deps t x ->
     match t with
@@ -408,7 +408,7 @@ let exec ~(eval_pred : Dep.eval_pred) (t : ('a, 'b) t) (x : 'a) :
       | Evaluating ->
         User_error.raise
           [ Pp.textf "Dependency cycle evaluating memoized build arrow %s"
-            m.name
+              m.name
           ]
       | Unevaluated -> (
         m.state <- Evaluating;

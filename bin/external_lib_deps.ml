@@ -3,9 +3,9 @@ open Import
 
 let pp_external_libs libs =
   Pp.enumerate (Lib_name.Map.to_list libs) ~f:(fun (name, kind) ->
-    match (kind : Lib_deps_info.Kind.t) with
-    | Optional -> Pp.textf "%s (optional)" (Lib_name.to_string name)
-    | Required -> Pp.textf "%s" (Lib_name.to_string name))
+      match (kind : Lib_deps_info.Kind.t) with
+      | Optional -> Pp.textf "%s (optional)" (Lib_name.to_string name)
+      | Required -> Pp.textf "%s" (Lib_name.to_string name))
 
 let doc = "Print out external libraries needed to build the given targets."
 
@@ -13,7 +13,7 @@ let man =
   [ `S "DESCRIPTION"
   ; `P {|Print out the external libraries needed to build the given targets.|}
   ; `P
-    {|The output of $(b,jbuild external-lib-deps @install) should be included
+      {|The output of $(b,jbuild external-lib-deps @install) should be included
           in what is written in your $(i,<package>.opam) file.|}
   ; `Blocks Common.help_secs
   ]
@@ -37,49 +37,49 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         if by_dir || sexp then
           User_error.raise
             [ Pp.textf
-              "--only-missing cannot be used with --unstable-by-dir or --sexp"
+                "--only-missing cannot be used with --unstable-by-dir or --sexp"
             ];
         let context =
           List.find_exn setup.workspace.contexts ~f:(fun c ->
-            c.name = context_name)
+              c.name = context_name)
         in
         let missing =
           Lib_name.Map.filteri externals ~f:(fun name _ ->
-            not (Findlib.available context.findlib name))
+              not (Findlib.available context.findlib name))
         in
         if Lib_name.Map.is_empty missing then
           acc
         else if
           Lib_name.Map.for_alli missing ~f:(fun _ kind ->
-            kind = Lib_deps_info.Kind.Optional)
+              kind = Lib_deps_info.Kind.Optional)
         then (
           User_message.prerr
             (User_error.make
-              [ Pp.textf
-                "The following libraries are missing in the %s context:"
-                  context_name
-              ; pp_external_libs missing
-              ]);
+               [ Pp.textf
+                   "The following libraries are missing in the %s context:"
+                   context_name
+               ; pp_external_libs missing
+               ]);
           false
         ) else (
           User_message.prerr
             (User_error.make
-              [ Pp.textf
-                "The following libraries are missing in the %s context:"
-                  context_name
-              ; pp_external_libs missing
-              ]
+               [ Pp.textf
+                   "The following libraries are missing in the %s context:"
+                   context_name
+               ; pp_external_libs missing
+               ]
                ~hints:
                  [ Pp.concat ~sep:Pp.space
-                   ( Pp.textf "try: opam install"
-                   :: ( Lib_name.Map.to_list missing
-                     |> List.filter_map ~f:(fun (name, kind) ->
-                       match (kind : Lib_deps_info.Kind.t) with
-                       | Optional -> None
-                       | Required -> Some (Lib_name.package_name name))
-                      |> Package.Name.Set.of_list |> Package.Name.Set.to_list
-                      |> List.map ~f:(fun p ->
-                        Pp.verbatim (Package.Name.to_string p)) ) )
+                     ( Pp.textf "try: opam install"
+                     :: ( Lib_name.Map.to_list missing
+                        |> List.filter_map ~f:(fun (name, kind) ->
+                               match (kind : Lib_deps_info.Kind.t) with
+                               | Optional -> None
+                               | Required -> Some (Lib_name.package_name name))
+                        |> Package.Name.Set.of_list |> Package.Name.Set.to_list
+                        |> List.map ~f:(fun p ->
+                               Pp.verbatim (Package.Name.to_string p)) ) )
                  ]);
           true
         )
@@ -103,11 +103,12 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
             [ Pp.textf "--unstable-by-dir cannot be used without --sexp" ];
         User_message.print
           (User_message.make
-            [ Pp.textf
-              "These are the external library dependencies in the %s context:"
-                context_name
-            ; pp_external_libs externals
-            ]);
+             [ Pp.textf
+                 "These are the external library dependencies in the %s \
+                  context:"
+                 context_name
+             ; pp_external_libs externals
+             ]);
         acc
       ))
 
@@ -122,8 +123,8 @@ let term =
     Arg.(
       value & flag
       & info [ "unstable-by-dir" ]
-        ~doc:
-          {|Print dependencies per directory
+          ~doc:
+            {|Print dependencies per directory
                     (this feature is currently unstable)|})
   and+ sexp =
     Arg.(value & flag & info [ "sexp" ] ~doc:{|Produce a s-expression output|})
@@ -131,12 +132,12 @@ let term =
   Common.set_common common ~targets:[];
   let setup, lib_deps =
     Scheduler.go ~common (fun () ->
-      let open Fiber.O in
-      let* setup = Import.Main.setup common ~external_lib_deps_mode:true in
-      let targets = Target.resolve_targets_exn common setup targets in
-      let request = Target.request setup targets in
-      let+ deps = Build_system.all_lib_deps ~request in
-      (setup, deps))
+        let open Fiber.O in
+        let* setup = Import.Main.setup common ~external_lib_deps_mode:true in
+        let targets = Target.resolve_targets_exn common setup targets in
+        let request = Target.request setup targets in
+        let+ deps = Build_system.all_lib_deps ~request in
+        (setup, deps))
   in
   let failure = run ~by_dir ~setup ~lib_deps ~sexp ~only_missing in
   if failure then raise Dune.Report_error.Already_reported

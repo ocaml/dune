@@ -2,9 +2,9 @@
 
 (** jbuild supports two different kind of contexts:
 
-  - the default context, which correspond to the environment jbuild is run,
-  i.e. it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
-  configuration where it can find it
+    - the default context, which correspond to the environment jbuild is run,
+    i.e. it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
+    configuration where it can find it
 
     - opam switch contexts, where one opam switch correspond to one context
 
@@ -46,21 +46,22 @@ type t =
   { name : string
   ; kind : Kind.t
   ; profile : Profile.t
-    (** [true] if this context is used for the .merlin files *)
+        (** [true] if this context is used for the .merlin files *)
   ; merlin : bool
-    (** If this context is a cross-compilation context, you need another
-      context for building tools used for the compilation that run on the host. *)
+        (** If this context is a cross-compilation context, you need another
+            context for building tools used for the compilation that run on the
+            host. *)
   ; for_host : t option
-    (** [false] if a user explicitly listed this context in the workspace.
-      Controls whether we add artifacts from this context @install *)
+        (** [false] if a user explicitly listed this context in the workspace.
+            Controls whether we add artifacts from this context @install *)
   ; implicit : bool
-    (** Directory where artifact are stored, for instance "_build/default" *)
+        (** Directory where artifact are stored, for instance "_build/default" *)
   ; build_dir : Path.Build.t
-    (** env node that this context was initialized with *)
+        (** env node that this context was initialized with *)
   ; env_nodes : Env_nodes.t  (** [PATH] *)
   ; path : Path.t list  (** [OCAML_TOPLEVEL_PATH] *)
   ; toplevel_path : Path.t option
-    (** Ocaml bin directory with all ocaml tools *)
+        (** Ocaml bin directory with all ocaml tools *)
   ; ocaml_bin : Path.t
   ; ocaml : Path.t
   ; ocamlc : Path.t

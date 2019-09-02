@@ -18,8 +18,14 @@ val debug_backtraces : bool ref
 (** Command to use to diff things *)
 val diff_command : string option ref
 
-(** Automatically promote files *)
-val auto_promote : bool ref
+module Promote : sig
+  type t =
+    | Automatically
+    | Never
+end
+
+(** explicit promotion mode is set *)
+val promote : Promote.t option ref
 
 (** Force re-running actions associated to aliases *)
 val force : bool ref

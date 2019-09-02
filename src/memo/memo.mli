@@ -29,7 +29,7 @@ module Stack_frame : sig
   val input : t -> Dyn.t
 
   (** Checks if the stack frame is a frame of the given memoized function and
-    if so, returns [Some i] where [i] is the argument of the function. *)
+      if so, returns [Some i] where [i] is the argument of the function. *)
   val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
 end
 
@@ -46,7 +46,7 @@ module Cycle_error : sig
 end
 
 (** Restart the system. Cached values with a [Current_run] lifetime are
-  forgotten, pending computations are cancelled. *)
+    forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
 module Function_type : sig
@@ -70,8 +70,8 @@ module type Output_allow_cutoff = sig
 end
 
 (** When we recompute the function and find that its output is the same as what
-  we computed before, we can sometimes skip recomputing the values that depend
-    on it.
+    we computed before, we can sometimes skip recomputing the values that
+    depend on it.
 
     [Allow_cutoff] specifies how to compare the output values for that purpose.
 
@@ -96,7 +96,7 @@ module Visibility : sig
 end
 
 (** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
-  version of [f]. The result of [f] for a given input is cached, so that the
+    version of [f]. The result of [f] for a given input is cached, so that the
     second time [exec t x] is called, the previous result is re-used if
     possible.
 
@@ -140,14 +140,14 @@ val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 val exec : (_, _, 'f) t -> 'f
 
 (** After running a memoization function with a given name and input, it is
-  possible to query which dependencies that function used during execution by
+    possible to query which dependencies that function used during execution by
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
 val get_deps : ('i, _, _) t -> 'i -> (string * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for
-  debugging purposes. *)
+    debugging purposes. *)
 val dump_stack : unit -> unit
 
 val pp_stack : unit -> _ Pp.t
@@ -173,6 +173,8 @@ val function_info : string -> Function_info.t
 
 module Lazy : sig
   type +'a t
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
 
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 

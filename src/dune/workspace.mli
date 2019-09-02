@@ -50,7 +50,7 @@ module Context : sig
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,
-  i.e. a context always comes before the contexts where it is used as host
+    i.e. a context always comes before the contexts where it is used as host
     context. *)
 type t = private
   { merlin_context : string option

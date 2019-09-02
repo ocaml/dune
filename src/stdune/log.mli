@@ -11,7 +11,7 @@ end
 val init : ?file:File.t -> unit -> unit
 
 (** Initialise this module with a disabled logger, i.e. swallowing error
-  messages. *)
+    messages. *)
 val init_disabled : unit -> unit
 
 (** Print an informative message in the log *)

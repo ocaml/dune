@@ -14,12 +14,12 @@ let of_lexbuf lexbuf : t =
   { start = Lexing.lexeme_start_p lexbuf; stop = Lexing.lexeme_end_p lexbuf }
 
 let equal_position
-  { Lexing.pos_fname = f_a; pos_lnum = l_a; pos_bol = b_a; pos_cnum = c_a }
+    { Lexing.pos_fname = f_a; pos_lnum = l_a; pos_bol = b_a; pos_cnum = c_a }
     { Lexing.pos_fname = f_b; pos_lnum = l_b; pos_bol = b_b; pos_cnum = c_b } =
   f_a = f_b && l_a = l_b && b_a = b_b && c_a = c_b
 
 let equal { start = start_a; stop = stop_a } { start = start_b; stop = stop_b }
-  =
+    =
   equal_position start_a start_b && equal_position stop_a stop_b
 
 let of_pos (fname, lnum, cnum, enum) =
@@ -40,7 +40,7 @@ let pp_line padding_width pp (lnum, l) =
   Format.fprintf pp "%*s | %s\n" padding_width lnum l
 
 let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
-  { start; stop } =
+    { start; stop } =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let file = start.pos_fname in
@@ -65,7 +65,7 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
       in
       let print_ellipsis padding_width =
         (* We add 2 to the width of max line to account for the extra space and
-          the `|` character at the end of a line number *)
+           the `|` character at the end of a line number *)
         let line = String.make (padding_width + 2) '.' in
         Format.fprintf pp "%s\n" line
       in
@@ -83,7 +83,7 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
         print_lines lines (get_padding lines)
       else
         (* We need to send the padding width from the last four lines so the
-          two blocks of lines align if they have different number of digits in
+           two blocks of lines align if they have different number of digits in
            their line numbers *)
         let* first_shown_lines =
           file_lines ~start:start.pos_lnum

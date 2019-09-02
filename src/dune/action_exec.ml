@@ -109,12 +109,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       let to_relative path =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
-      let some_if_inside_dir (path : string) =
-        Option.some_if (not @@ String.is_prefix path ~prefix:"..") path
-      in
       Stdune.Path.Build.Set.to_list ectx.targets
-      |> List.filter_map ~f:(fun p -> p |> to_relative |> some_if_inside_dir)
-      |> String.Set.of_list
+      |> List.map ~f:to_relative |> String.Set.of_list
     in
     Protocol.Run_arguments.{ prepared_dependencies; targets }
   in

@@ -308,7 +308,7 @@ end = struct
 
     let name = "INCREMENTAL-DB"
 
-    let version = 2
+    let version = 3
   end)
 
   let needs_dumping = ref false

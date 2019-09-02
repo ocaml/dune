@@ -58,4 +58,3 @@
 
   $ dune build @some_alias
   foo.1
-  foo.2

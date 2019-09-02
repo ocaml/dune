@@ -113,6 +113,10 @@
   linked in an executable. This help detecting who accidently pulls in
   `unix` for instance (#2570, @diml)
 
+- Fix incorrect error message when a variable is expanded in static context:
+  `%{lib:lib:..}` when the library does not exist. (#2597, fix #1541,
+  @rgrinberg)
+
 1.11.3 (23/08/2019)
 -------------------
 

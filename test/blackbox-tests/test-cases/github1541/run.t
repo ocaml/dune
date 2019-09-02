@@ -31,7 +31,8 @@ for libraries in the deps field:
   File "dune", line 1, characters 14-33:
   1 | (rule (deps %{lib:fakelib:bar.ml}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
                     ^^^^^^^^^^^^^^^^^^^
-  Error: Unknown macro %{lib:..}
+  Error: Library "fakelib" not found.
+  Hint: try: dune external-lib-deps --missing ./dummy
   [1]
 
 for binaries in the deps field:
@@ -41,5 +42,6 @@ for binaries in the deps field:
   File "dune", line 1, characters 14-25:
   1 | (rule (deps %{bin:foobar}) (target dummy) (action (with-stdout-to %{target} (echo foo))))
                     ^^^^^^^^^^^
-  Error: Unknown macro %{bin:..}
+  Error: Program foobar not found in the tree or in PATH
+   (context: default)
   [1]

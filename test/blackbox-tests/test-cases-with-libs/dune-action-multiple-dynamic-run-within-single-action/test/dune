@@ -1,0 +1,6 @@
+(alias
+ (name runtest)
+ (action
+  (progn
+   (dynamic-run ./foo.exe bar1)
+   (dynamic-run ./foo.exe bar2))))

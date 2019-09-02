@@ -1,0 +1,3 @@
+(executables
+ (names foo)
+ (libraries dune._stdune dune._dune_action))

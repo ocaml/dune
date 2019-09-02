@@ -26,6 +26,15 @@ module Greeting : sig
   include Sexpable with type t := t
 end
 
+module Run_arguments : sig
+  type t =
+    { prepared_dependencies : Dependency.Set.t
+    ; targets : String.Set.t
+    }
+
+  include Sexpable with type t := t
+end
+
 module Response : sig
   type t =
     | Done
@@ -48,6 +57,8 @@ module Context : sig
   val create : unit -> create_result
 
   val prepared_dependencies : t -> Dependency.Set.t
+
+  val targets : t -> Stdune.String.Set.t
 
   val respond : t -> Response.t -> unit
 end

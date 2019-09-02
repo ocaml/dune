@@ -7,7 +7,8 @@ type done_or_more_deps =
   | Need_more_deps of Dep.t Dune_action.Protocol.Dependency.Map.t
 
 type exec_context =
-  { context : Context.t option
+  { targets : Path.Build.Set.t
+  ; context : Context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
   ; prepared_dependencies : Dune_action.Protocol.Dependency.Set.t
@@ -102,11 +103,23 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   in
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
-  let serialized_prepared_dependencies =
-    Protocol.Dependency.Set.sexp_of_t ectx.prepared_dependencies
-    |> Csexp.to_string
+  let run_arguments =
+    let prepared_dependencies = ectx.prepared_dependencies in
+    let targets =
+      let to_relative path =
+        path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
+      in
+      let some_if_inside_dir (path : string) =
+        Option.some_if (not @@ String.is_prefix path ~prefix:"..") path
+      in
+      Stdune.Path.Build.Set.to_list ectx.targets
+      |> List.filter_map ~f:(fun p -> p |> to_relative |> some_if_inside_dir)
+      |> String.Set.of_list
+    in
+    Protocol.Run_arguments.{ prepared_dependencies; targets }
   in
-  Io.String_path.write_file run_arguments_fn serialized_prepared_dependencies;
+  Io.String_path.write_file run_arguments_fn
+    (run_arguments |> Protocol.Run_arguments.sexp_of_t |> Csexp.to_string);
   let env =
     let value =
       Protocol.Greeting.(sexp_of_t { run_arguments_fn; response_fn })
@@ -369,7 +382,7 @@ and exec_list ts ~ectx ~eenv =
 
 let exec ~targets ~context ~env ~rule_loc ~prepared_dependencies t =
   let purpose = Process.Build_job targets in
-  let ectx = { purpose; context; rule_loc; prepared_dependencies }
+  let ectx = { targets; purpose; context; rule_loc; prepared_dependencies }
   and eenv =
     { working_dir = Path.root
     ; env

@@ -45,6 +45,7 @@ module Stage = struct
   type 'a t =
     { action : unit -> 'a
     ; dependencies : Dependency.Set.t
+    ; targets : Stdune.String.Set.t
     }
 
   let map (t : 'a t) ~f = { t with action = (fun () -> f (t.action ())) }
@@ -52,6 +53,7 @@ module Stage = struct
   let both (t1 : 'a t) (t2 : 'b t) =
     { action = (fun () -> (t1.action (), t2.action ()))
     ; dependencies = Dependency.Set.union t1.dependencies t2.dependencies
+    ; targets = Stdune.String.Set.union t1.targets t2.targets
     }
 end
 
@@ -84,23 +86,53 @@ let rec both (t1 : 'a t) (t2 : 'b t) =
 let read_file ~path =
   let path = Path.to_string path in
   let action () = Fs.read_file path in
-  lift_stage { action; dependencies = Dependency.Set.singleton (File path) }
+  lift_stage
+    { action
+    ; dependencies = Dependency.Set.singleton (File path)
+    ; targets = Stdune.String.Set.empty
+    }
 
 let write_file ~path ~data =
   let path = Path.to_string path in
   let action () = Fs.write_file path data in
-  lift_stage { action; dependencies = Dependency.Set.empty }
+  lift_stage
+    { action
+    ; dependencies = Dependency.Set.empty
+    ; targets = Stdune.String.Set.singleton path
+    }
 
 let read_directory ~path =
   let path = Path.to_string path in
   let action () = Fs.read_directory path in
   lift_stage
-    { action; dependencies = Dependency.Set.singleton (Directory path) }
+    { action
+    ; dependencies = Dependency.Set.singleton (Directory path)
+    ; targets = Stdune.String.Set.empty
+    }
 
 let rec run_by_dune t context =
   match t with
   | Pure () -> Context.respond context Done
   | Stage at ->
+    let allowed_targets = Context.targets context in
+    let disallowed_targets =
+      Stdune.String.Set.diff at.targets allowed_targets
+    in
+    ( match Stdune.String.Set.to_list disallowed_targets with
+    | [] -> ()
+    | [ t ] ->
+      failwith
+        (Printf.sprintf
+          "%s was not declared as a target despite being written. To fix, add \
+           it to target list in dune file."
+          t)
+    | ts ->
+      failwith
+        (Printf.sprintf
+          "Following files were not declared as a targets despite being \
+           written:\n\
+           %sTo fix, add them to target list in dune file."
+           (ts |> String.concat "\n")) );
     let prepared_dependencies = Context.prepared_dependencies context in
     let required_dependencies =
       Dependency.Set.diff at.dependencies prepared_dependencies
@@ -111,7 +143,7 @@ let rec run_by_dune t context =
       Context.respond context (Need_more_deps required_dependencies)
 
 (* If executable is not run by dune, assume that all dependencies are already
-  prepared. *)
+  prepared and no target checking is done. *)
 let rec run_outside_of_dune t =
   match t with
   | Pure () -> ()

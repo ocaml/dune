@@ -8,6 +8,12 @@ let list_of_sexp (t_of_sexp : Sexp.t -> 'a Option.t) : Sexp.t -> _ = function
   | List sexps -> List.map sexps ~f:t_of_sexp |> Option.List.all
   | _ -> None
 
+let sexp_of_string string : Sexp.t = Atom string
+
+let string_of_sexp : Sexp.t -> _ = function
+  | Atom string -> Some string
+  | _ -> None
+
 module Dependency = struct
   module T = struct
     type t =
@@ -61,6 +67,30 @@ module Greeting = struct
     | _ -> None
 end
 
+module Run_arguments = struct
+  type t =
+    { prepared_dependencies : Dependency.Set.t
+    ; targets : String.Set.t
+    }
+
+  let sexp_of_t { prepared_dependencies; targets } : Sexp.t =
+    List
+      [ Dependency.Set.sexp_of_t prepared_dependencies
+      ; targets |> String.Set.to_list |> sexp_of_list sexp_of_string
+      ]
+
+  let t_of_sexp : Sexp.t -> _ = function
+    | List [ prepared_dependencies; targets ] ->
+      let open Option.O in
+      let* prepared_dependencies =
+        Dependency.Set.t_of_sexp prepared_dependencies
+      in
+      let+ targets = list_of_sexp string_of_sexp targets in
+      let targets = String.Set.of_list targets in
+      { prepared_dependencies; targets }
+    | _ -> None
+end
+
 module Response = struct
   type t =
     | Done
@@ -82,6 +112,7 @@ module Context = struct
   type t =
     { response_fn : string
     ; prepared_dependencies : Dependency.Set.t
+    ; targets : String.Set.t
     }
 
   type create_result =
@@ -117,14 +148,19 @@ module Context = struct
           match
             Option.O.(
               data |> Csexp.parse_string |> Result.to_option
-              >>= Dependency.Set.t_of_sexp)
+              >>= Run_arguments.t_of_sexp)
           with
           | None -> cannot_parse_error
-          | Some prepared_dependencies ->
-            Ok { response_fn = greeting.response_fn; prepared_dependencies } )
-        ) )
+          | Some { prepared_dependencies; targets } ->
+            Ok
+              { response_fn = greeting.response_fn
+              ; prepared_dependencies
+              ; targets
+              } ) ) )
 
   let prepared_dependencies (t : t) = t.prepared_dependencies
+
+  let targets (t : t) = t.targets
 
   let respond (t : t) response =
     let data = response |> Response.sexp_of_t |> Csexp.to_string in

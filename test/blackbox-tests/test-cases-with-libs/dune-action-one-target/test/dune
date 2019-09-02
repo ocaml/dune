@@ -1,0 +1,8 @@
+(rule
+ (target bar)
+ (action
+  (dynamic-run ./foo.exe)))
+
+(alias
+ (name runtest)
+ (action (cat bar)))

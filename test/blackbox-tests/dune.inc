@@ -548,6 +548,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name forbidden_libraries)
+ (deps (package dune) (source_tree test-cases/forbidden_libraries))
+ (action
+  (chdir
+   test-cases/forbidden_libraries
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name force-test)
  (deps (package dune) (source_tree test-cases/force-test))
  (action
@@ -1795,6 +1803,7 @@
   (alias findlib)
   (alias findlib-dynload)
   (alias findlib-error)
+  (alias forbidden_libraries)
   (alias force-test)
   (alias format-dune-file)
   (alias formatting)
@@ -1999,6 +2008,7 @@
   (alias fallback-dune)
   (alias findlib)
   (alias findlib-error)
+  (alias forbidden_libraries)
   (alias force-test)
   (alias format-dune-file)
   (alias formatting)

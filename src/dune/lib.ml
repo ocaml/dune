@@ -901,6 +901,7 @@ module rec Resolve : sig
     -> stack:Dep_stack.t
     -> linking:bool
     -> variants:(Loc.t * Variant.Set.t) option
+    -> forbidden_libraries:Loc.t Map.t
     -> lib list Or_exn.t
 end = struct
   open Resolve
@@ -1182,7 +1183,7 @@ end = struct
             resolve_simple_deps db pps ~allow_private_deps:true ~stack
           in
           closure_with_overlap_checks None pps ~stack ~linking:true
-            ~variants:None
+            ~variants:None ~forbidden_libraries:Map.empty
         in
         let deps =
           let* init = deps in
@@ -1290,7 +1291,8 @@ end = struct
     let+ () = Result.List.iter ~f:(visit ~stack:[] None) libraries in
     List.filter_map ~f:library_is_default libraries
 
-  let closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants =
+  let closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants
+      ~forbidden_libraries =
     let visited = ref Map.empty in
     let unimplemented = ref Vlib.Unimplemented.empty in
     let res = ref [] in
@@ -1302,29 +1304,38 @@ end = struct
         else
           let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
           Error.conflict (t'.info, req_by stack') (t.info, req_by stack)
-      | None ->
-        visited := Map.set !visited t (t, stack);
-        let* () =
-          match db with
-          | None -> Ok ()
-          | Some db -> (
-            match find_internal db t.name ~stack with
-            | St_found t' ->
-              if t = t' then
-                Ok ()
-              else
-                let req_by =
-                  Dep_stack.to_required_by stack ~stop_at:orig_stack
-                in
-                Error.overlap ~in_workspace:t'.info ~installed:(t.info, req_by)
-            | _ -> assert false )
-        in
-        let* new_stack = Dep_stack.push stack (to_id t) in
-        let* deps = t.requires in
-        let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
-        unimplemented := unimplemented';
-        let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
-        res := (t, stack) :: !res
+      | None -> (
+        match Map.find forbidden_libraries t with
+        | Some loc ->
+          let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
+          Error.make ~loc
+            [ Pp.textf "Library %S was pulled in." (Lib_name.to_string t.name)
+            ; Dep_path.Entries.pp req_by
+            ]
+        | None ->
+          visited := Map.set !visited t (t, stack);
+          let* () =
+            match db with
+            | None -> Ok ()
+            | Some db -> (
+              match find_internal db t.name ~stack with
+              | St_found t' ->
+                if t = t' then
+                  Ok ()
+                else
+                  let req_by =
+                    Dep_stack.to_required_by stack ~stop_at:orig_stack
+                  in
+                  Error.overlap ~in_workspace:t'.info
+                    ~installed:(t.info, req_by)
+              | _ -> assert false )
+          in
+          let* new_stack = Dep_stack.push stack (to_id t) in
+          let* deps = t.requires in
+          let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
+          unimplemented := unimplemented';
+          let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
+          res := (t, stack) :: !res )
     in
     (* Closure loop with virtual libraries/variants selection*)
     let rec handle ts ~stack =
@@ -1352,10 +1363,13 @@ end = struct
     Vlib.associate (List.rev !res) ~linking ~orig_stack
 end
 
-let closure_with_overlap_checks db l ~variants =
+let closure_with_overlap_checks db l ~variants ~forbidden_libraries =
   Resolve.closure_with_overlap_checks db l ~stack:Dep_stack.empty ~variants
+    ~forbidden_libraries
 
-let closure l = closure_with_overlap_checks None l ~variants:None
+let closure l =
+  closure_with_overlap_checks None l ~variants:None
+    ~forbidden_libraries:Map.empty
 
 let requires_exn t = Result.ok_exn t.requires
 
@@ -1396,7 +1410,8 @@ module Compile = struct
     let requires_link =
       lazy
         ( t.requires
-        >>= closure_with_overlap_checks db ~linking:false ~variants:None )
+        >>= closure_with_overlap_checks db ~linking:false ~variants:None
+              ~forbidden_libraries:Map.empty )
     in
     { direct_requires = t.requires
     ; requires_link
@@ -1647,8 +1662,8 @@ module DB = struct
       let t = Option.some_if (not allow_overlaps) t in
       Compile.for_lib t lib
 
-  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false) deps
-      ~pps ~variants ~optional =
+  let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
+      ?(forbidden_libraries = []) deps ~pps ~variants ~optional =
     let lib_deps_info =
       Compile.make_lib_deps_info ~user_written_deps:deps ~pps
         ~kind:
@@ -1664,12 +1679,25 @@ module DB = struct
     in
     let requires_link =
       lazy
-        ( res
-        >>= closure_with_overlap_checks
-              (Option.some_if (not allow_overlaps) t)
-              ~linking:true ~variants
-        |> Result.map_error ~f:(fun e ->
-               Dep_path.prepend_exn e (Executables exes)) )
+        (let* forbidden_libraries =
+           let* l =
+             Result.List.map forbidden_libraries ~f:(fun (loc, name) ->
+                 let+ lib = resolve t (loc, name) in
+                 (lib, loc))
+           in
+           match Map.of_list l with
+           | Ok _ as res -> res
+           | Error (lib, _, loc) ->
+             Error.make ~loc
+               [ Pp.textf "Library %S appears for the second time"
+                   (Lib_name.to_string lib.name)
+               ]
+         and+ res = res in
+         closure_with_overlap_checks
+           (Option.some_if (not allow_overlaps) t)
+           ~linking:true ~variants ~forbidden_libraries res
+         |> Result.map_error ~f:(fun e ->
+                Dep_path.prepend_exn e (Executables exes)))
     in
     { Compile.direct_requires = res
     ; requires_link

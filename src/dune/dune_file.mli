@@ -366,6 +366,7 @@ module Executables : sig
     ; package : Package.t option
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; forbidden_libraries : (Loc.t * Lib_name.t) list
     }
 
   val has_stubs : t -> bool

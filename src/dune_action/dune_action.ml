@@ -123,14 +123,14 @@ let rec run_by_dune t context =
     | [ t ] ->
       failwith
         (Printf.sprintf
-          "%s was not declared as a target despite being written. To fix, add \
-           it to target list in dune file."
+          "%s is written despite not being declared as a target in dune file. \
+           To fix, add it to target list in dune file."
           t)
     | ts ->
       failwith
         (Printf.sprintf
-          "Following files were not declared as a targets despite being \
-           written:\n\
+          "Following files were written despite not being declared as targets \
+           in dune file:\n\
            %sTo fix, add them to target list in dune file."
            (ts |> String.concat "\n")) );
     let prepared_dependencies = Context.prepared_dependencies context in

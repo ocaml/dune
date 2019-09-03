@@ -1432,6 +1432,10 @@ end = struct
           Fiber.return true
         else
           let prev_trace = Option.value_exn prev_trace in
+          (* CR-someday aalekseyev: If there's a change at one of the last
+             stages, we still re-run all the previous stages, which is a bit of
+             a waste. We could remember what stage needs re-running and only
+             re-run that (and later stages). *)
           let rec loop stages =
             match stages with
             | [] -> Fiber.return false

@@ -9,8 +9,8 @@ ordinary executable instead of one supporting dynamic dependencies.
   1 | (alias
   2 |  (name runtest)
   3 |  (action (dynamic-run ./foo.exe)))
-  Error: Executable that was declared to support dynamic dependency discovery
-  (declared by using 'dynamic-run' tag) failed to respond to dune.
+  Error: Executable 'foo.exe' that was declared to support dynamic dependency
+  discovery (declared by using 'dynamic-run' tag) failed to respond to dune.
   
   If you don't use dynamic dependency discovery in your executable you may
   consider changing 'dynamic-run' to 'run' in your rule definition.

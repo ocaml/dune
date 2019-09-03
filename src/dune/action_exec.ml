@@ -132,10 +132,7 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   Stdune.Path.(
     unlink_no_err (of_string run_arguments_fn);
     unlink_no_err (of_string response_fn));
-  (* TODO jstaron: It would be nice to provide the name of the executable as it
-    appears in rule definition. This will require preserving original
-     executable name, because to my knowledge here we have access only to the
-     expanded form (with full path). *)
+  let prog_name = Stdune.Path.reach ~from:eenv.working_dir prog in
   match
     Result.O.(Csexp.parse_string response >>| Protocol.Response.t_of_sexp)
   with
@@ -143,9 +140,11 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
    |Ok None
     when String.is_empty response ->
     User_error.raise ~loc:ectx.rule_loc
-      [ Pp.text
-        "Executable that was declared to support dynamic dependency discovery \
-         (declared by using 'dynamic-run' tag) failed to respond to dune."
+      [ Pp.textf
+        "Executable '%s' that was declared to support dynamic dependency \
+         discovery (declared by using 'dynamic-run' tag) failed to respond to \
+         dune."
+        prog_name
       ; Pp.nop
       ; Pp.text
         "If you don't use dynamic dependency discovery in your executable you \
@@ -154,9 +153,10 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Error _
    |Ok None ->
     User_error.raise ~loc:ectx.rule_loc
-      [ Pp.text
-        "Executable declared as a dynamic dune action responded with invalid \
-         message."
+      [ Pp.textf
+        "Executable '%s' declared as a dynamic dune action responded with \
+         invalid message."
+        prog_name
       ; Pp.text
         "Are you using different dune version to compile the executable?"
       ]

@@ -1398,17 +1398,17 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
 The stanza will build all `.v` files on the given directory. The semantics of fields is:
 
 - ``<module_prefix>`` will be used as the default Coq library prefix ``-R``,
-- the ``modules`` field does allow to constraint the set of modules
+- the ``modules`` field allows to constrain the set of modules
   included in the library, similarly to its OCaml counterpart,
 - ``public_name`` will make Dune generate install rules for the `.vo`
   files; files will be installed in
   ``lib/coq/user-contrib/<module_prefix>``, as customary in the
-  make-based Coq package eco-system. For compatibility, we also installs the `.cmxs`
-  files appearing in `<ocaml-librarie>` under the `user-contrib` prefix.
+  make-based Coq package eco-system. For compatibility, we also install the `.cmxs`
+  files appearing in `<ocaml-libraries>` under the `user-contrib` prefix.
 - ``<coq_flags>`` will be passed to ``coqc``,
-- the path to installed locations of ``<ocaml_libraries>`` will be passed to
-  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
-  library to depend on a ML plugin.
+- the path to install locations of ``<ocaml_libraries>`` will be passed to
+  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows a Coq
+  library to depend on an ML plugin.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1419,8 +1419,8 @@ If you add:
 
     (include_subdirs qualified)
 
-to a ``dune`` file, Dune will to consider that all the modules in their
-directory and sub-directories, adding a prefix to the module name in the usual
+to a ``dune`` file, Dune will consider all the modules in the
+directory and its sub-directories, adding a prefix to the module name in the usual
 Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
 ``A.b.C``.
 
@@ -1429,7 +1429,7 @@ Limitations
 
 - composition and scoping of Coq libraries is still not possible. For now,
   libraries are located using Coq's built-in library management,
-- .v always depend on the native version of a plugin,
+- ``.v`` files always depend on the native version of a plugin,
 - a ``foo.mlpack`` file must the present for locally defined plugins to work,
   this is a limitation of coqdep.
 

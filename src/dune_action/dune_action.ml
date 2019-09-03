@@ -2,6 +2,12 @@ module Protocol = Protocol
 module Path = Path
 open Protocol
 
+module Execution_error = struct
+  exception E of string
+
+  let raise string = raise (E string)
+end
+
 module Fs : sig
   val read_directory : string -> (string list, string) Stdune.Result.t
 
@@ -120,13 +126,13 @@ let rec run_by_dune t context =
     ( match Stdune.String.Set.to_list disallowed_targets with
     | [] -> ()
     | [ t ] ->
-      failwith
+      Execution_error.raise
         (Printf.sprintf
           "%s is written despite not being declared as a target in dune file. \
            To fix, add it to target list in dune file."
           t)
     | ts ->
-      failwith
+      Execution_error.raise
         (Printf.sprintf
           "Following files were written despite not being declared as targets \
            in dune file:\n\
@@ -148,14 +154,20 @@ let rec run_outside_of_dune t =
   | Pure () -> ()
   | Stage at -> run_outside_of_dune (at.action ())
 
-let run t =
+let do_run t =
   let open Protocol in
   match Context.create () with
   | Run_outside_of_dune -> run_outside_of_dune t
   | Error message ->
-    failwith
+    Execution_error.raise
       (Printf.sprintf
         "Error during communication with dune. %s Did you use different dune \
          version to compile the executable?"
         message)
   | Ok context -> run_by_dune t context
+
+let run t =
+  try do_run t
+  with Execution_error.E message ->
+    prerr_endline message;
+    exit 1

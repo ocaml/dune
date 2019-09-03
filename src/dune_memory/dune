@@ -1,7 +1,7 @@
 (library
   (name dune_memory)
   (modules Dune_memory Utils)
-  (libraries stdune xdg))
+  (libraries stdune xdg dune_lang))
 
 (executable
   (name main)

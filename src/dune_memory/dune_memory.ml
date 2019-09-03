@@ -206,21 +206,19 @@ module Memory = struct
       mkpath (Path.parent_exn metadata_path);
       Io.write_file metadata_path
         (Csexp.to_string
-           (Sexp.List
-              [ Sexp.List (Sexp.Atom "metadata" :: metadata)
-              ; Sexp.List
-                  [ Sexp.Atom "produced-files"
-                  ; Sexp.List
-                      (List.map
-                         ~f:(function
-                           | Promoted (o, p)
-                            |Already_promoted (o, p) ->
-                             Sexp.List
-                               [ Sexp.Atom (Path.to_string o)
-                               ; Sexp.Atom (Path.to_string p)
-                               ])
-                         promoted)
-                  ]
+           (List
+              [ List (Atom "metadata" :: metadata)
+              ; List
+                  ( Atom "files"
+                  :: List.map
+                       ~f:(function
+                         | Promoted (o, p)
+                          |Already_promoted (o, p) ->
+                           Sexp.List
+                             [ Sexp.Atom (Path.to_string o)
+                             ; Sexp.Atom (Path.to_string p)
+                             ])
+                       promoted )
               ]));
       promoted
     in
@@ -237,7 +235,7 @@ module Memory = struct
       >>= function
       | Sexp.List
           [ List (Atom "metadata" :: metadata)
-          ; List [ Atom "produced-files"; List produced ]
+          ; List (Atom "files" :: produced)
           ] ->
         let+ produced =
           Result.List.map produced ~f:(function

@@ -5,10 +5,10 @@ Overview
 Introduction
 ============
 
-Dune is a build system for OCaml and Reason. It is not intended as a
-completely generic build system that is able to build any given project
-in any language. On the contrary, it makes lots of choices in order to
-encourage a consistent development style.
+Dune is a build system for OCaml (with support for Reason and Coq).
+It is not intended as a completely generic build system that is able
+to build any given project in any language.  On the contrary, it makes
+lots of choices in order to encourage a consistent development style.
 
 This scheme is inspired from the one used inside Jane Street and adapted
 to the opam world. It has matured over a long time and is used daily by

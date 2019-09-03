@@ -8,7 +8,7 @@ REM execute this script.  Execute bash with the option "-l".
 REM set OCAMLROOT=%PROGRAMFILES%/OCaml
 set OCAMLROOT=C:/PROGRA~1/OCaml
 
-set OCAMLURL=https://github.com/Chris00/ocaml-appveyor/releases/download/0.2/ocaml-4.06.zip
+set OCAMLURL=https://github.com/Chris00/ocaml-appveyor/releases/download/0.2/ocaml-4.08.zip
 
 REM Cygwin is always installed on AppVeyor.  Its path must come
 REM before the one of Git but after those of MSCV and OCaml.

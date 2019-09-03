@@ -18,6 +18,14 @@ type promotion =
 
 val promotion_to_string : promotion -> string
 
+module File : sig
+  type t =
+    { in_the_memory : Path.t
+    ; in_the_build_directory : Path.t
+    ; digest : Digest.t
+    }
+end
+
 module type memory = sig
   type t
 
@@ -30,10 +38,7 @@ module type memory = sig
     -> (promotion list, string) Result.t
 
   val search :
-       t
-    -> ?touch:bool
-    -> key
-    -> (metadata * (Path.t * Path.t * Digest.t) list, string) Result.t
+    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
 end
 
 module Memory : memory

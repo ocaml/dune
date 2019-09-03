@@ -1436,15 +1436,17 @@ end = struct
         in
         match from_dune_memory with
         | Some files ->
-          let retrieve (dest, source, _) =
-            Log.infof "retrieve %s from cache" (Path.to_string dest);
-            Unix.link (Path.to_string source) (Path.to_string dest)
-          and digest (_, _, digest) = digest in
-          List.iter ~f:retrieve files;
+          let retrieve (file : Dune_memory.File.t) =
+            Log.infof "retrieve %s from cache"
+              (Path.to_string file.in_the_build_directory);
+            Unix.link
+              (Path.to_string file.in_the_memory)
+              (Path.to_string file.in_the_build_directory);
+            file.digest
+          in
+          let digests = List.map files ~f:retrieve in
           Trace_db.set (Path.build head_target)
-            { rule_digest
-            ; targets_digest = Digest.generic (List.map ~f:digest files)
-            };
+            { rule_digest; targets_digest = Digest.generic digests };
           Fiber.return ()
         | None ->
           pending_targets := Path.Build.Set.union targets !pending_targets;

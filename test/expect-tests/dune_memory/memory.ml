@@ -21,12 +21,10 @@ let dir =
           Unix.mkdir (root ^ "/" ^ dir) 0o700;
           Path.of_string dir
         with
-        | Unix.Unix_error (Unix.EEXIST, _, _) ->
-            loop (count - 1)
-        | Unix.Unix_error (Unix.EINTR, _, _) ->
-            loop count
+        | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
+        | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
         | Unix.Unix_error (e, _, _) ->
-            raise_err ("mk_temp_dir: " ^ Unix.error_message e)
+          raise_err ("mk_temp_dir: " ^ Unix.error_message e)
     in
     loop 1000
   in
@@ -45,10 +43,8 @@ let memory =
       ~root:(Path.of_string (Path.to_string dir ^ "/root/v2"))
       ()
   with
-  | Result.Ok memory ->
-      memory
-  | Result.Error msg ->
-      User_error.raise [ Pp.textf "%s" msg ]
+  | Result.Ok memory -> memory
+  | Result.Error msg -> User_error.raise [ Pp.textf "%s" msg ]
 
 let clean_path p =
   let prefix = Path.to_string dir in
@@ -57,9 +53,9 @@ let clean_path p =
 
 let clean_promotion = function
   | Dune_memory.Already_promoted (p1, p2) ->
-      Dune_memory.Already_promoted (clean_path p1, clean_path p2)
+    Dune_memory.Already_promoted (clean_path p1, clean_path p2)
   | Dune_memory.Promoted (p1, p2) ->
-      Dune_memory.Promoted (clean_path p1, clean_path p2)
+    Dune_memory.Promoted (clean_path p1, clean_path p2)
 
 (* Promote a file twice and check we can search it *)
 let file1 = make_file "file1"
@@ -87,27 +83,25 @@ let%expect_test _ =
     Dune_memory.Memory.search memory key
     >>| fun searched ->
     ( match searched with
-    | stored_metadata, [ (original, promoted, _) ] ->
-        if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
-          failwith "Metadata mismatch"
-        else if Path.equal original file1 then
-          if Io.compare_files promoted file1 = Ordering.Eq then
-            ()
-          else
-            failwith "promoted file content does not match"
+    | stored_metadata, [ file ] ->
+      if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
+        failwith "Metadata mismatch"
+      else if Path.equal file.in_the_build_directory file1 then
+        if Io.compare_files file.in_the_memory file1 = Ordering.Eq then
+          ()
         else
-          failwith "original file path does not match"
-    | _ ->
-        failwith "wrong number of file found" );
+          failwith "promoted file content does not match"
+      else
+        failwith "original file path does not match"
+    | _ -> failwith "wrong number of file found" );
     (* Check write permissions where removed *)
     assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);
     Path.rm_rf dir
   with
   | Result.Ok () ->
-      [%expect
-        {|
+    [%expect
+      {|
 /file1 promoted as /root/v2/files/0d/0d6600c511071ec1cc21942910665669.1
 /file1 already promoted as /root/v2/files/0d/0d6600c511071ec1cc21942910665669.1
 |}]
-  | Result.Error s ->
-      failwith s
+  | Result.Error s -> failwith s

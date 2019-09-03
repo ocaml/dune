@@ -9,4 +9,5 @@
   (package dune)
   (modules main)
   (public_name dune-manager)
+  (preprocess future_syntax)
   (libraries dune_manager dune_memory stdune threads.posix))

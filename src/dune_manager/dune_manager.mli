@@ -38,9 +38,7 @@ module Client : sig
   val search :
        t
     -> Dune_memory.key
-    -> ( Dune_memory.metadata * (Path.t * Path.t * Digest.t) list
-      , string )
-       Result.t
+    -> (Dune_memory.metadata * Dune_memory.File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> unit
 

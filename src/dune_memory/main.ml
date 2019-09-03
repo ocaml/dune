@@ -2,7 +2,7 @@ open Dune_memory
 open Stdune
 
 (* Idealy these should be parsed as human readable (i.e. non-canonical)
-  S-Expressions, but we don't have such capabilities in stdune yet. *)
+   S-Expressions, but we don't have such capabilities in stdune yet. *)
 let parse_metadata s =
   let open Result.O in
   let s = Stream.of_string s in
@@ -65,9 +65,9 @@ let main () =
     let produced =
       Array.to_list
         (Array.map
-          ~f:(fun p ->
-            let p = Path.of_string p in
-            (p, Digest.file p))
+           ~f:(fun p ->
+             let p = Path.of_string p in
+             (p, Digest.file p))
            !files)
     and key = unwrap_option "key" !key in
     lift_result
@@ -88,9 +88,15 @@ let main () =
       Memory.search memory key
       >>| fun (_, paths) ->
       List.iter
-        ~f:(fun (sym, act, d) ->
-          Printf.printf "%s: %s (%s)\n" (Path.to_string sym)
-            (Path.to_string act) (Digest.to_string d))
+        ~f:
+          (fun { Dune_memory.File.in_the_build_directory
+               ; in_the_memory
+               ; digest
+               } ->
+          Printf.printf "%s: %s (%s)\n"
+            (Path.to_string in_the_build_directory)
+            (Path.to_string in_the_memory)
+            (Digest.to_string digest))
         paths)
   | "trim" ->
     let freed, files = trim memory 1 in

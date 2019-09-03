@@ -1216,12 +1216,10 @@ let mkdir_p = function
 let touch p =
   let p =
     match p with
-    | External s ->
-        External.to_string s
-    | In_source_tree s ->
-        Local_gen.to_string s
+    | External s -> External.to_string s
+    | In_source_tree s -> Local_gen.to_string s
     | In_build_dir k ->
-        Kind.to_string (Kind.append_local (Lazy.force Build.build_dir_kind) k)
+      Kind.to_string (Kind.append_local (Lazy.force Build.build_dir_kind) k)
   in
   Unix.utimes p 0.0 0.0
 

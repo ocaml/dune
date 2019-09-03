@@ -33,5 +33,4 @@ let file_with_stats p (stats : Unix.stats) =
   | S_DIR ->
     generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
   | _ ->
-    generic (file p,
-             stats.st_perm land 0o100 (* Only take USR_X in account *))
+    generic (file p, stats.st_perm land 0o100 (* Only take USR_X in account *))

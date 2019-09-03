@@ -1,3 +1,11 @@
+module File = struct
+  type t =
+    { in_the_memory : Stdune.Path.t
+    ; in_the_build_directory : Stdune.Path.t
+    ; digest : Digest.t
+    }
+end
+
 module Memory = struct
   type t = unit
 

@@ -14,5 +14,5 @@ val set : 'a t -> 'a -> unit
 val get : 'a t -> 'a
 
 (** [set t x] set's the value that is returned by [get t] to [x], overwritting
-  it in needed *)
+    it in needed *)
 val reset : 'a t -> 'a -> unit

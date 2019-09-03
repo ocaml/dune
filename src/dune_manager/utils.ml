@@ -5,11 +5,11 @@ let retry ?message ?(count = 100) f =
     | x when x >= count ->
       Result.Error
         (Failure
-          ( Printf.sprintf "too many retries (%i)" x
-          ^
-          match message with
-          | None -> ""
-          | Some msg -> ": " ^ msg ))
+           ( Printf.sprintf "too many retries (%i)" x
+           ^
+           match message with
+           | None -> ""
+           | Some msg -> ": " ^ msg ))
     | x -> (
       match f () with
       | Some v -> Result.Ok v

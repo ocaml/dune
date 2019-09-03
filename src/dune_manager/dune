@@ -1,13 +1,13 @@
 (library
-  (name dune_manager)
-  (modules utils dune_manager)
-  (preprocess future_syntax)
-  (libraries threads.posix dune_memory stdune))
+ (name dune_manager)
+ (modules utils dune_manager)
+ (preprocess future_syntax)
+ (libraries threads.posix dune_memory stdune))
 
 (executable
-  (name main)
-  (package dune)
-  (modules main)
-  (public_name dune-manager)
-  (preprocess future_syntax)
-  (libraries dune_manager dune_memory stdune threads.posix))
+ (name main)
+ (package dune)
+ (modules main)
+ (public_name dune-manager)
+ (preprocess future_syntax)
+ (libraries dune_manager dune_memory stdune threads.posix))

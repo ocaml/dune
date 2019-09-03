@@ -1,6 +1,11 @@
-type lock_type = Read | Write
+type lock_type =
+  | Read
+  | Write
 
-type whence = Set | Cur | End
+type whence =
+  | Set
+  | Cur
+  | End
 
 let lock ?(whence = Set) ?(start = 0) ?(len = 0) _ _ = assert false
 

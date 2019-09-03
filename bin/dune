@@ -2,5 +2,6 @@
  (name main)
  (public_name dune)
  (package dune)
- (libraries memo dune_lang fiber stdune unix dune_manager dune cmdliner build_info)
+ (libraries memo dune_lang fiber stdune unix dune_manager dune cmdliner
+   build_info)
  (preprocess future_syntax))

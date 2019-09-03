@@ -92,7 +92,7 @@ let stop () =
     Unix.kill pid Sys.sigterm;
     Result.ok_exn
       (retry
-        ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
+         ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
          (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ()))
 
 let modes = Modes.add_exn modes "stop" stop
@@ -112,8 +112,8 @@ let main () =
     | None ->
       raise
         (Arg.Bad
-          (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
-            Sys.argv.(0) help))
+           (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
+              Sys.argv.(0) help))
 
 let () =
   try main () with

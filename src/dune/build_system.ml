@@ -1351,29 +1351,6 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
-  let execute_action_until_all_deps_ready ~context ~env ~targets ~rule_loc
-    action =
-    let open Dune_action.Protocol in
-    let prepared_dependencies_set = ref Dependency.Set.empty
-    and stages = ref Appendable_list.empty in
-    let rec loop () =
-      let* result =
-        Action_exec.exec ~context ~env ~targets ~rule_loc
-          ~prepared_dependencies:!prepared_dependencies_set action
-      in
-      match result with
-      | Done -> Fiber.return (Appendable_list.to_list !stages)
-      | Need_more_deps deps ->
-        let deps_to_build = Dependency.Map.values deps |> Dep.Set.of_list in
-        (stages := Appendable_list.(!stages @ singleton deps_to_build));
-        let* () = build_deps deps_to_build in
-        prepared_dependencies_set :=
-          Dependency.Set.union !prepared_dependencies_set
-            (Dependency.Set.of_keys deps);
-        loop ()
-    in
-    loop ()
-
   let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode
     =
     let targets_as_list = Path.Build.Set.to_list rule.targets in
@@ -1501,15 +1478,15 @@ end = struct
         in
         let chdirs = Action.chdirs action in
         Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
-        let+ dynamic_deps_stages =
+        let+ exec_result =
           with_locks locks ~f:(fun () ->
             Fiber.map
-              (execute_action_until_all_deps_ready ~context ~env ~targets
-                ~rule_loc action) ~f:(fun used_deps ->
+              (Action_exec.exec ~context ~env ~targets ~rule_loc ~build_deps
+                action) ~f:(fun exec_result ->
                 Option.iter sandboxed ~f:(fun sandboxed ->
                   List.iter targets_as_list ~f:(fun target ->
                     rename_optional_file ~src:(sandboxed target) ~dst:target));
-                used_deps))
+                exec_result))
         in
         Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
         (* All went well, these targets are no longer pending *)
@@ -1518,7 +1495,7 @@ end = struct
           compute_targets_digest_or_raise_error ~info targets_as_list
         in
         let dynamic_deps_stages =
-          List.map dynamic_deps_stages ~f:(fun deps ->
+          List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
             ( deps
             , compute_dependencies_digest ~sandbox_mode ~env ~eval_pred deps ))
         in

@@ -2,16 +2,24 @@ open! Stdune
 open Import
 open Fiber.O
 
+module Exec_result = struct
+  type t = { dynamic_deps_stages : Dep.Set.t List.t }
+end
+
 type done_or_more_deps =
   | Done
-  | Need_more_deps of Dep.t Dune_action.Protocol.Dependency.Map.t
+  (* This code assumes that there can be at most one 'dynamic-run' within
+    single action. [Dune_action.Protocol.Dependency.t] stores relative paths so
+     name clash would possible if multiple 'dynamic-run' would be executed in
+     different subdirectories that contains targets having the same name. *)
+  | Need_more_deps of (Dune_action.Protocol.Dependency.Set.t * Dep.Set.t)
 
 type exec_context =
   { targets : Path.Build.Set.t
   ; context : Context.t option
   ; purpose : Process.purpose
   ; rule_loc : Loc.t
-  ; prepared_dependencies : Dune_action.Protocol.Dependency.Set.t
+  ; build_deps : Dep.Set.t -> unit Fiber.t
   }
 
 type exec_environment =
@@ -20,6 +28,7 @@ type exec_environment =
   ; stdout_to : Process.Io.output Process.Io.t
   ; stderr_to : Process.Io.output Process.Io.t
   ; stdin_from : Process.Io.input Process.Io.t
+  ; prepared_dependencies : Dune_action.Protocol.Dependency.Set.t
   }
 
 let validate_context_and_prog context prog =
@@ -104,7 +113,6 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
   let run_arguments =
-    let prepared_dependencies = ectx.prepared_dependencies in
     let targets =
       let to_relative path =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
@@ -112,7 +120,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       Stdune.Path.Build.Set.to_list ectx.targets
       |> List.map ~f:to_relative |> String.Set.of_list
     in
-    Protocol.Run_arguments.{ prepared_dependencies; targets }
+    Protocol.Run_arguments.
+      { prepared_dependencies = eenv.prepared_dependencies; targets }
   in
   Io.String_path.write_file run_arguments_fn
     (run_arguments |> Protocol.Run_arguments.sexp_of_t |> Csexp.to_string);
@@ -163,8 +172,9 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Ok (Some Done) -> Done
   | Ok (Some (Need_more_deps deps)) ->
     Need_more_deps
-      Protocol.Dependency.(
-        deps |> Set.to_map |> Map.mapi ~f:(fun e () -> to_dune_dep e))
+      ( deps
+      , deps |> Protocol.Dependency.Set.to_list |> List.map ~f:to_dune_dep
+        |> Dep.Set.of_list )
 
 let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
@@ -376,18 +386,40 @@ and exec_list ts ~ectx ~eenv =
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> exec_list rest ~ectx ~eenv )
 
-let exec ~targets ~context ~env ~rule_loc ~prepared_dependencies t =
+let exec_until_all_deps_ready ~ectx ~eenv t =
+  let open Dune_action.Protocol in
+  let stages = ref [] in
+  let rec loop ~eenv =
+    let* result = exec ~ectx ~eenv t in
+    match result with
+    | Done -> Fiber.return ()
+    | Need_more_deps (relative_deps, deps_to_build) ->
+      stages := deps_to_build :: !stages;
+      let* () = ectx.build_deps deps_to_build in
+      let eenv =
+        { eenv with
+          prepared_dependencies =
+            Dependency.Set.union eenv.prepared_dependencies relative_deps
+        }
+      in
+      loop ~eenv
+  in
+  let+ () = loop ~eenv in
+  Exec_result.{ dynamic_deps_stages = List.rev !stages }
+
+let exec ~targets ~context ~env ~rule_loc ~build_deps t =
   let purpose = Process.Build_job targets in
-  let ectx = { targets; purpose; context; rule_loc; prepared_dependencies }
+  let ectx = { targets; purpose; context; rule_loc; build_deps }
   and eenv =
     { working_dir = Path.root
     ; env
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.stdin
+    ; prepared_dependencies = Dune_action.Protocol.Dependency.Set.empty
     }
   in
   (* TODO jstaron: Maybe it would be better if this check would be somewhere
     earlier in the processing of action? (Like parsing instead of execution) *)
   ensure_at_most_one_dynamic_run ~ectx t;
-  exec t ~ectx ~eenv
+  exec_until_all_deps_ready t ~ectx ~eenv

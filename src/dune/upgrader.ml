@@ -11,7 +11,7 @@ let scan_included_files path =
       let csts =
         Dune_lang.parse_cst_string s
           ~fname:(Path.Source.to_string path)
-          ~lexer:Dune_lang.Lexer.jbuild_token
+          ~lexer:Jbuild_support.Lexer.token
         |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:s)
       in
       let comments = Dune_lang.Cst.extract_comments csts in
@@ -98,22 +98,20 @@ let upgrade_stanza stanza =
               | x -> x)
         }
   in
-  let upgrade_string sexp =
-    let loc = Dune_lang.Ast.loc sexp in
-    Dune_lang.Decoder.parse String_with_vars.decode
-      (Univ_map.singleton (Syntax.key Stanza.syntax) (0, 0))
-      sexp
-    |> String_with_vars.upgrade_to_dune ~allow_first_dep_var:true
-    |> String_with_vars.encode |> Dune_lang.add_loc ~loc
+  let upgrade_string s ~loc ~quoted =
+    Jbuild_support.String_with_vars.upgrade_to_dune s ~loc ~quoted
+      ~allow_first_dep_var:true
+    |> String_with_vars.make |> String_with_vars.encode
+    |> Dune_lang.add_loc ~loc
   in
   let rec upgrade = function
-    | Atom (loc, A s) as x -> (
+    | Atom (loc, A s) -> (
       match s with
       | "files_recursively_in" ->
         Atom (loc, Dune_lang.Atom.of_string "source_tree")
-      | _ -> upgrade_string x )
+      | _ -> upgrade_string s ~loc ~quoted:false )
     | Template _ as x -> x
-    | Quoted_string _ as x -> upgrade_string x
+    | Quoted_string (loc, s) -> upgrade_string s ~loc ~quoted:true
     | List (loc, l) ->
       let l =
         match l with
@@ -362,21 +360,20 @@ let upgrade_dir todo dir =
         let fn = Package.opam_file pkg in
         if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   );
-  Option.iter (File_tree.Dir.dune_file dir) ~f:(fun dune_file ->
-      match (dune_file.kind, dune_file.contents) with
-      | Dune, _ -> ()
-      | Jbuild, Ocaml_script fn ->
-        User_warning.emit
-          ~loc:(Loc.in_file (Path.source fn))
-          [ Pp.text
-              "Cannot upgrade this jbuild file as it is using the OCaml syntax."
-          ; Pp.text "You need to upgrade it manually."
-          ]
-      | Jbuild, Plain { path; sexps = _ } ->
-        let files = scan_included_files path in
-        Path.Source.Map.iteri files ~f:(fun fn (sexps, comments) ->
-            upgrade_file todo fn sexps comments
-              ~look_for_jbuild_ignore:(Path.Source.equal fn path)))
+  if String.Set.mem (File_tree.Dir.files dir) "jbuild" then
+    let fn = Path.Source.relative (File_tree.Dir.path dir) "jbuild" in
+    if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
+      User_warning.emit
+        ~loc:(Loc.in_file (Path.source fn))
+        [ Pp.text
+            "Cannot upgrade this jbuild file as it is using the OCaml syntax."
+        ; Pp.text "You need to upgrade it manually."
+        ]
+    else
+      let files = scan_included_files fn in
+      Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
+          upgrade_file todo fn' sexps comments
+            ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
 let upgrade ft =
   Dune_project.default_dune_language_version := (1, 0);

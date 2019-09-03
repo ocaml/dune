@@ -8,7 +8,7 @@ let to_dyn (A s) =
 
 let equal (A a) (A b) = String.equal a b
 
-let is_valid_dune =
+let is_valid =
   let rec loop s i len =
     i = len
     ||
@@ -41,51 +41,16 @@ let is_valid_dune =
     let len = String.length s in
     len > 0 && loop s 0 len
 
-let is_valid_jbuild str =
-  let len = String.length str in
-  len > 0
-  &&
-  let rec loop ix =
-    match str.[ix] with
-    | '"'
-     |'('
-     |')'
-     |';' ->
-      true
-    | '|' ->
-      ix > 0
-      &&
-      let next = ix - 1 in
-      str.[next] = '#' || loop next
-    | '#' ->
-      ix > 0
-      &&
-      let next = ix - 1 in
-      str.[next] = '|' || loop next
-    | ' '
-     |'\t'
-     |'\n'
-     |'\012'
-     |'\r' ->
-      true
-    | _ -> ix > 0 && loop (ix - 1)
-  in
-  not (loop (len - 1))
-
 let of_string s = A s
 
 let to_string (A s) = s
 
-let is_valid (A t) = function
-  | File_syntax.Jbuild -> is_valid_jbuild t
-  | Dune -> is_valid_dune t
-
-let print (A atom as t) =
-  if is_valid t Dune then
-    atom
+let print (A s) =
+  if is_valid s then
+    s
   else
     Code_error.raise "atom cannot be printed in dune syntax"
-      [ ("atom", String atom) ]
+      [ ("atom", String s) ]
 
 let of_int i = of_string (string_of_int i)
 

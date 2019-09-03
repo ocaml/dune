@@ -121,6 +121,8 @@
   files. This is useful for installing only the binaries in a workspace for
   example. (#2609, fixes #2554, @rgrinberg)
 
+- Drop support for `jbuild` and `jbuild-ignore` files (#2607, @diml)
+
 1.11.3 (23/08/2019)
 -------------------
 

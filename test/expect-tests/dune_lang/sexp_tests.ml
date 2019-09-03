@@ -81,7 +81,7 @@ let parse s =
     | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  let jbuild = f ~lexer:Dune_lang.Lexer.jbuild_token in
+  let jbuild = f ~lexer:Jbuild_support.Lexer.token in
   let dune = f ~lexer:Dune_lang.Lexer.token in
   let res =
     if jbuild <> dune then
@@ -268,13 +268,20 @@ let l x = Dune_lang.List x
 let var ?(syntax = Dune_lang.Template.Percent) ?payload name =
   { Dune_lang.Template.loc; name; payload; syntax }
 
-type sexp = S of Dune_lang.File_syntax.t * Dune_lang.t
+type syntax =
+  | Dune
+  | Jbuild
+
+type sexp = S of syntax * Dune_lang.t
 
 let dyn_of_sexp (S (syntax, dlang)) =
   let open Dyn.Encoder in
   constr "S"
-    [ Dyn.Encoder.pair Dune_lang.File_syntax.to_dyn Dune_lang.to_dyn
-        (syntax, dlang)
+    [ Dyn.Encoder.pair
+        (function
+          | Dune -> Variant ("Dune", [])
+          | Jbuild -> Variant ("Jbuild", []))
+        Dune_lang.to_dyn (syntax, dlang)
     ]
 
 let print_sexp ppf (S (_, sexp)) = Dune_lang.Deprecated.pp ppf sexp
@@ -303,7 +310,7 @@ let test syntax sexp =
         Dune_lang.parse_string s ~mode:Single ~fname:""
           ~lexer:
             ( match syntax with
-            | Jbuild -> Dune_lang.Lexer.jbuild_token
+            | Jbuild -> Jbuild_support.Lexer.token
             | Dune -> Dune_lang.Lexer.token )
       with
       | sexp' ->
@@ -410,7 +417,7 @@ comment|#
 |}
 
 let%expect_test _ =
-  Dune_lang.Parser.parse_cst ~lexer:Dune_lang.Lexer.jbuild_token
+  Dune_lang.Parser.parse_cst ~lexer:Jbuild_support.Lexer.token
     (Lexing.from_string jbuild_file)
   |> List.map
        ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)

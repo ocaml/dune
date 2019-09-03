@@ -256,6 +256,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-cache)
+ (deps (package dune) (source_tree test-cases/dune-cache))
+ (action
+  (chdir
+   test-cases/dune-cache
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-init)
  (deps (package dune) (source_tree test-cases/dune-init))
  (action
@@ -1769,6 +1777,7 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
+  (alias dune-cache)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1976,6 +1985,7 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
+  (alias dune-cache)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)

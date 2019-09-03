@@ -3,4 +3,5 @@
  (public_name dune._stdune)
  (synopsis "[Internal] Standard library of Dune")
  (preprocess future_syntax)
- (libraries dune_caml dune_result unix))
+ (libraries dune_caml dune_result unix)
+ (c_names fcntl))

@@ -302,6 +302,8 @@ val rm_rf : t -> unit
 
 val mkdir_p : t -> unit
 
+val touch : t -> unit
+
 val pp_debug : Format.formatter -> t -> unit
 
 val build_dir_exists : unit -> bool

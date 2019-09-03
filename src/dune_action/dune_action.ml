@@ -40,7 +40,6 @@ end = struct
       Stdune.Io.String_path.write_file path data)
 end
 
-(* TODO jstaron: Store targets to support dynamic target discovery! *)
 module Stage = struct
   type 'a t =
     { action : unit -> 'a

@@ -6,7 +6,6 @@ module Trace = struct
       | Env of (string * string option)
       | File of (string * Digest.t)
       | File_selector of (Dyn.t * (string * Digest.t) list)
-      | Universe
   end
 
   type t =
@@ -68,7 +67,7 @@ module T = struct
         eval_pred dir_glob |> Path.Set.to_list |> List.map ~f:trace_file
       in
       Some (File_selector (id, files))
-    | Universe -> Some Universe
+    | Universe -> None
     | Sandbox_config config ->
       assert (Sandbox_config.mem config sandbox_mode);
       (* recorded globally for the whole dep set *)

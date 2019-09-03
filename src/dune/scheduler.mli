@@ -38,9 +38,6 @@ val ignore_for_watch : Path.t -> unit
 (** Scheduler information *)
 type t
 
-(** Current scheduler information *)
-val info : unit -> t
-
 (** Wait until fewer than [!Clflags.concurrency] external processes are running
     and return the scheduler information. *)
 val wait_for_available_job : unit -> t Fiber.t

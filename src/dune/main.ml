@@ -98,10 +98,8 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
     ~file_tree:w.conf.file_tree ~hook ?memory;
-  ( match memory with
-  | None -> ()
-  | Some memory ->
-    Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory) );
+  Option.iter memory ~f:(fun memory ->
+      Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory));
   Scheduler.set_status_line_generator gen_status_line;
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages

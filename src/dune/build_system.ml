@@ -1336,20 +1336,6 @@ end = struct
 
   let start_rule t _rule = t.hook Rule_started
 
-  let lookup_cache = function
-    | None -> fun _ _ -> Result.Error "memory is not enabled"
-    | Some memory ->
-      fun force key ->
-        let open Result.O in
-        let* () =
-          if force then
-            Result.Error "build is forced"
-          else
-            Result.Ok ()
-        in
-        let+ _, targets = Dune_manager.Client.search memory key in
-        targets
-
   (* Same as [rename] except that if the source doesn't exist we delete the
      destination *)
   let rename_optional_file ~src ~dst =
@@ -1437,8 +1423,19 @@ end = struct
       if force || something_changed then (
         List.iter targets_as_list ~f:(fun target ->
             Path.unlink_no_err (Path.build target));
-        match lookup_cache t.memory force rule_digest with
-        | Result.Ok files ->
+        let from_dune_memory =
+          if force then
+            None
+          else
+            Option.bind t.memory ~f:(fun memory ->
+                match Dune_manager.Client.search memory rule_digest with
+                | Ok (_, files) -> Some files
+                | Error msg ->
+                  Log.infof "cache miss: %s" msg;
+                  None)
+        in
+        match from_dune_memory with
+        | Some files ->
           let retrieve (dest, source, _) =
             Log.infof "retrieve %s from cache" (Path.to_string dest);
             Unix.link (Path.to_string source) (Path.to_string dest)
@@ -1449,8 +1446,7 @@ end = struct
             ; targets_digest = Digest.generic (List.map ~f:digest files)
             };
           Fiber.return ()
-        | Result.Error e ->
-          Log.infof "cache miss: %s" e;
+        | None ->
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let loc = Rule.Info.loc info in
           let sandboxed, action =

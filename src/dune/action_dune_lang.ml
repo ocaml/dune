@@ -38,6 +38,47 @@ let upgrade_to_dune =
 
 let encode_and_upgrade a = encode (upgrade_to_dune a)
 
+let ensure_at_most_one_dynamic_run ~loc action =
+  let rec loop : t -> bool = function
+    | Dynamic_run _ -> true
+    | Chdir (_, t)
+     |Setenv (_, _, t)
+     |Redirect_out (_, _, t)
+     |Redirect_in (_, _, t)
+     |Ignore (_, t) ->
+      loop t
+    | Run _
+     |Echo _
+     |Cat _
+     |Copy _
+     |Symlink _
+     |Copy_and_add_line_directive _
+     |System _
+     |Bash _
+     |Write_file _
+     |Rename _
+     |Remove_tree _
+     |Mkdir _
+     |Digest_files _
+     |Diff _
+     |Merge_files_into _ ->
+      false
+    | Progn ts ->
+      List.fold_left ts ~init:false ~f:(fun acc t ->
+        let have_dyn = loop t in
+        if acc && have_dyn then
+          User_error.raise ~loc
+            [ Pp.text
+              "Multiple 'dynamic-run' commands within single action are not \
+               supported."
+            ]
+        else
+          acc || have_dyn)
+  in
+  ignore (loop action)
+
+let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
+
 let remove_locs =
   let dir = String_with_vars.make_text Loc.none "" in
   let f_program ~dir:_ = String_with_vars.remove_locs in
@@ -51,7 +92,12 @@ let compare_no_locs t1 t2 = compare (remove_locs t1) (remove_locs t2)
 open Dune_lang.Decoder
 
 let decode =
-  if_list ~then_:decode
+  if_list
+    ~then_:
+      ( located decode
+      >>| fun (loc, action) ->
+      validate ~loc action;
+      action )
     ~else_:
       ( loc
       >>| fun loc ->

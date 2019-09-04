@@ -1,6 +1,11 @@
-(alias
- (name runtest)
+(rule
+ (target bar)
  (action
   (progn
    (dynamic-run ./foo.exe bar1)
    (dynamic-run ./foo.exe bar2))))
+
+(alias
+ (name runtest)
+ (action
+  (echo "SHOULD NOT BE PRINTED")))

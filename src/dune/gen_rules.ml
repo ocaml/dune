@@ -39,6 +39,65 @@ module For_stanza = struct
     ; cctx = List.rev t.cctx
     ; source_dirs = List.rev t.source_dirs
     }
+
+  let of_stanza stanza ~sctx ~src_dir ~scope ~dir_contents ~expander
+      ~files_to_install =
+    let dir = (Super_context.context sctx).build_dir in
+    match stanza with
+    | Toplevel toplevel ->
+      Toplevel_rules.setup ~sctx ~dir ~toplevel;
+      empty_none
+    | Library lib ->
+      let cctx, merlin =
+        Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
+      in
+      { merlin = Some merlin
+      ; cctx = Some (lib.buildable.loc, cctx)
+      ; js = None
+      ; source_dirs = None
+      }
+    | Executables exes ->
+      Option.iter exes.install_conf ~f:files_to_install;
+      let cctx, merlin =
+        Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
+      in
+      { merlin = Some merlin
+      ; cctx = Some (exes.buildable.loc, cctx)
+      ; js =
+          Some
+            (List.concat_map exes.names ~f:(fun (_, exe) ->
+                 List.map
+                   [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
+                   ~f:(Path.Build.relative dir)))
+      ; source_dirs = None
+      }
+    | Alias alias ->
+      Simple_rules.alias sctx alias ~dir ~expander;
+      empty_none
+    | Tests tests ->
+      let cctx, merlin =
+        Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
+      in
+      { merlin = Some merlin
+      ; cctx = Some (tests.exes.buildable.loc, cctx)
+      ; js = None
+      ; source_dirs = None
+      }
+    | Copy_files { glob; _ } ->
+      let source_dir =
+        let loc = String_with_vars.loc glob in
+        let src_glob = Expander.expand_str expander glob in
+        Path.Source.relative src_dir src_glob ~error_loc:loc
+        |> Path.Source.parent_exn
+      in
+      { merlin = None; cctx = None; js = None; source_dirs = Some source_dir }
+    | Install i ->
+      files_to_install i;
+      empty_none
+    | Cinaps.T cinaps ->
+      Cinaps.gen_rules sctx cinaps ~dir ~scope;
+      empty_none
+    | _ -> empty_none
 end
 
 (* We need to instantiate Install_rules earlier to avoid issues whenever
@@ -85,75 +144,17 @@ let gen_rules sctx dir_contents cctxs
     |> Path.Set.of_list
     |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
   in
-  let for_stanza stanza =
-    let dir = ctx_dir in
-    match stanza with
-    | Toplevel toplevel ->
-      Toplevel_rules.setup ~sctx ~dir ~toplevel;
-      For_stanza.empty_none
-    | Library lib ->
-      let cctx, merlin =
-        Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
-      in
-      { For_stanza.merlin = Some merlin
-      ; cctx = Some (lib.buildable.loc, cctx)
-      ; js = None
-      ; source_dirs = None
-      }
-    | Executables exes ->
-      Option.iter exes.install_conf ~f:files_to_install;
-      let cctx, merlin =
-        Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents
-      in
-      { For_stanza.merlin = Some merlin
-      ; cctx = Some (exes.buildable.loc, cctx)
-      ; js =
-          Some
-            (List.concat_map exes.names ~f:(fun (_, exe) ->
-                 List.map
-                   [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
-                   ~f:(Path.Build.relative ctx_dir)))
-      ; source_dirs = None
-      }
-    | Alias alias ->
-      Simple_rules.alias sctx alias ~dir ~expander;
-      For_stanza.empty_none
-    | Tests tests ->
-      let cctx, merlin =
-        Test_rules.rules tests ~sctx ~dir ~scope ~expander ~dir_contents
-      in
-      { For_stanza.merlin = Some merlin
-      ; cctx = Some (tests.exes.buildable.loc, cctx)
-      ; js = None
-      ; source_dirs = None
-      }
-    | Copy_files { glob; _ } ->
-      let source_dir =
-        let loc = String_with_vars.loc glob in
-        let src_glob = Expander.expand_str expander glob in
-        Path.Source.relative src_dir src_glob ~error_loc:loc
-        |> Path.Source.parent_exn
-      in
-      { For_stanza.merlin = None
-      ; cctx = None
-      ; js = None
-      ; source_dirs = Some source_dir
-      }
-    | Install i ->
-      files_to_install i;
-      For_stanza.empty_none
-    | Cinaps.T cinaps ->
-      Cinaps.gen_rules sctx cinaps ~dir ~scope;
-      For_stanza.empty_none
-    | _ -> For_stanza.empty_none
-  in
   let { For_stanza.merlin = merlins
       ; cctx = cctxs
       ; js = js_targets
       ; source_dirs
       } =
+    let of_stanza =
+      For_stanza.of_stanza ~sctx ~src_dir ~scope ~dir_contents ~expander
+        ~files_to_install
+    in
     List.fold_left stanzas ~init:{ For_stanza.empty_list with cctx = cctxs }
-      ~f:(fun acc a -> For_stanza.cons acc (for_stanza a))
+      ~f:(fun acc a -> For_stanza.cons acc (of_stanza a))
     |> For_stanza.rev
   in
   let allow_approx_merlin =

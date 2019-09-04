@@ -21,8 +21,8 @@ val read_file : path:Path.t -> (string, string) Result.t t
 
 val write_file : path:Path.t -> data:string -> (unit, string) Result.t t
 
-(* TODO jstaron: Right now, if program tries to read directory that contain no
-  files, directory is not copied by dune so we get an error. *)
+(* TODO jstaron: If program tries to read empty directory, dune does not copy
+  it to `_build` so we get a "No such file or directory" error. *)
 val read_directory : path:Path.t -> (string list, string) Result.t t
 
 val run : unit t -> unit

@@ -3,9 +3,9 @@ open Stdune
 module Trace = struct
   module Fact = struct
     type t =
-      | Env of (string * string option)
+      | Env of string * string option
       | File of (string * Digest.t)
-      | File_selector of (Dyn.t * (string * Digest.t) list)
+      | File_selector of Dyn.t * (string * Digest.t) list
   end
 
   type t =

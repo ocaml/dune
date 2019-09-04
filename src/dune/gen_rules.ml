@@ -122,10 +122,11 @@ end = struct
       empty_none
     | _ -> empty_none
 
-  let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
-      ~files_to_install =
+  let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
+      ~expander ~files_to_install =
     let of_stanza =
-      of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander ~files_to_install
+      of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
+        ~files_to_install
     in
     List.fold_left stanzas ~init:{ empty_list with cctx = cctxs }
       ~f:(fun acc a -> cons acc (of_stanza a))
@@ -181,8 +182,8 @@ let gen_rules sctx dir_contents cctxs
       ; js = js_targets
       ; source_dirs
       } =
-    For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
-      ~expander ~files_to_install
+    For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope
+      ~dir_contents ~expander ~files_to_install
   in
   let allow_approx_merlin =
     let dune_project = Scope.project scope in
@@ -405,11 +406,10 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
         ~external_lib_deps_mode ~stanzas
     in
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
-    (context.name, (sctx, gen_rules))
+    (context.name, sctx)
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
-  let map = String.Map.of_list_exn contexts in
-  let sctxs = String.Map.map map ~f:(fun (sctx, _gen_rules) -> sctx) in
+  let sctxs = String.Map.of_list_exn contexts in
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in
@@ -419,7 +419,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
            Path.Build.Map.find (Install_rules.packages sctx) path))
   in
   Build_system.set_rule_generators
-    ~init:(fun () -> String.Map.iter map ~f:(fun (sctx, _) -> Odoc.init sctx))
+    ~init:(fun () -> String.Map.iter sctxs ~f:Odoc.init)
     ~gen_rules:(function
       | Install ctx ->
         Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->

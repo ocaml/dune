@@ -132,7 +132,7 @@ module Set = struct
     let facts =
       List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
     in
-    Trace.{ facts; sandbox_mode }
+    { Trace.facts; sandbox_mode }
 
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))

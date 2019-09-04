@@ -1,6 +1,12 @@
 open Dune_action
 
 let%expect_test _ =
+  try ignore @@ Path.of_string "/some/absolute/path"
+  with Invalid_argument message ->
+    print_endline message;
+    [%expect{| Path "/some/absolute/path" is absolute. All paths used with Dune_action must be relative. |}]
+
+let%expect_test _ =
   let action =
     read_file ~path:(Path.of_string "foo_dir/foo")
     |> map ~f:(function

@@ -7,9 +7,11 @@ let to_string t = t
 let of_string path =
   match Filename.is_relative path with
   | false ->
-    failwith
-      "Path.of_string - absolute path provided. All paths used with \
-       Dune_action must be relative."
+    invalid_arg
+      (Printf.sprintf
+        "Path \"%s\" is absolute. All paths used with Dune_action must be \
+         relative."
+        path)
   | true -> path
 
 module O = struct

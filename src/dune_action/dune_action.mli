@@ -1,9 +1,13 @@
 module Protocol = Protocol
 module Path = Path
 
-type 'a t
-
 (* TODO jstaron: Add documentation. *)
+
+module Execution_error : sig
+  exception E of string
+end
+
+type 'a t
 
 val return : 'a -> 'a t
 

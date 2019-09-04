@@ -215,6 +215,33 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let mkdir_p = Path.mkdir_p
 end
 
+module Sections = struct
+  type t =
+    | All
+    | Only of Install.Section.Set.t
+
+  let sections_conv : Install.Section.t list Cmdliner.Arg.converter =
+    let all =
+      Install.Section.all |> Install.Section.Set.to_list
+      |> List.map ~f:(fun section ->
+             (Install.Section.to_string section, section))
+    in
+    Arg.list ~sep:',' (Arg.enum all)
+
+  let term =
+    let doc = "sections that should be installed" in
+    let open Cmdliner.Arg in
+    let+ sections = value & opt sections_conv [] & info [ "sections" ] ~doc in
+    match sections with
+    | [] -> All
+    | sections -> Only (Install.Section.Set.of_list sections)
+
+  let should_install t section =
+    match t with
+    | All -> true
+    | Only set -> Install.Section.Set.mem set section
+end
+
 let file_operations ~dry_run ~workspace : (module File_operations) =
   if dry_run then
     (module File_ops_dry_run)
@@ -270,7 +297,7 @@ let install_uninstall ~what =
             ~doc:
               "Select context to install from. By default, install files from \
                all defined contexts.")
-    in
+    and+ sections = Sections.term in
     Common.set_common common ~targets:[];
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
@@ -324,11 +351,15 @@ let install_uninstall ~what =
                  let entries_per_package =
                    List.map install_files ~f:(fun (package, install_file) ->
                        let entries = Install.load_install_file install_file in
+                       let entries =
+                         List.filter entries ~f:(fun (entry : Install.Entry.t) ->
+                           Sections.should_install sections entry.section)
+                       in
                        match
                          List.filter_map entries ~f:(fun entry ->
-                             Option.some_if
-                               (not (Path.exists (Path.build entry.src)))
-                               entry.src)
+                               Option.some_if
+                                 (not (Path.exists (Path.build entry.src)))
+                                 entry.src)
                        with
                        | [] -> (package, entries)
                        | missing_files ->

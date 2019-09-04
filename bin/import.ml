@@ -51,12 +51,12 @@ module Main = struct
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in
     let only_packages = Common.only_packages common in
-    make_memory ()
-    >>= fun memory ->
-    scan_workspace common
-    >>= init_build_system
-          ~sandboxing_preference:(Common.config common).sandboxing_preference
-          ?memory ?external_lib_deps_mode ?only_packages
+    let* memory = make_memory () in
+    let* workspace = scan_workspace common
+    in
+    init_build_system workspace
+      ~sandboxing_preference:(Common.config common).sandboxing_preference
+      ?memory ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

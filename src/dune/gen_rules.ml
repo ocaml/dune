@@ -5,7 +5,30 @@ module Toplevel_rules = Toplevel.Stanza
 open Dune_file
 open! No_io
 
-module For_stanza = struct
+module For_stanza : sig
+  type ('merlin, 'cctx, 'js, 'source_dirs) t =
+    { merlin : 'merlin
+    ; cctx : 'cctx
+    ; js : 'js
+    ; source_dirs : 'source_dirs
+    }
+
+  val of_stanzas :
+       Stanza.t list
+    -> cctxs:(Loc.t * Compilation_context.t) list
+    -> sctx:Super_context.t
+    -> src_dir:Path.Source.t
+    -> ctx_dir:Path.Build.t
+    -> scope:Scope.t
+    -> dir_contents:Dir_contents.t
+    -> expander:Expander.t
+    -> files_to_install:(File_binding.Unexpanded.t Install_conf.t -> unit)
+    -> ( Merlin.t list
+       , (Loc.t * Compilation_context.t) list
+       , Path.Build.t list
+       , Path.Source.t list )
+       t
+end = struct
   type ('merlin, 'cctx, 'js, 'source_dirs) t =
     { merlin : 'merlin
     ; cctx : 'cctx
@@ -40,9 +63,9 @@ module For_stanza = struct
     ; source_dirs = List.rev t.source_dirs
     }
 
-  let of_stanza stanza ~sctx ~src_dir ~scope ~dir_contents ~expander
+  let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
       ~files_to_install =
-    let dir = (Super_context.context sctx).build_dir in
+    let dir = ctx_dir in
     match stanza with
     | Toplevel toplevel ->
       Toplevel_rules.setup ~sctx ~dir ~toplevel;
@@ -98,6 +121,15 @@ module For_stanza = struct
       Cinaps.gen_rules sctx cinaps ~dir ~scope;
       empty_none
     | _ -> empty_none
+
+  let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
+      ~files_to_install =
+    let of_stanza =
+      of_stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander ~files_to_install
+    in
+    List.fold_left stanzas ~init:{ empty_list with cctx = cctxs }
+      ~f:(fun acc a -> cons acc (of_stanza a))
+    |> rev
 end
 
 (* We need to instantiate Install_rules earlier to avoid issues whenever
@@ -149,13 +181,8 @@ let gen_rules sctx dir_contents cctxs
       ; js = js_targets
       ; source_dirs
       } =
-    let of_stanza =
-      For_stanza.of_stanza ~sctx ~src_dir ~scope ~dir_contents ~expander
-        ~files_to_install
-    in
-    List.fold_left stanzas ~init:{ For_stanza.empty_list with cctx = cctxs }
-      ~f:(fun acc a -> For_stanza.cons acc (of_stanza a))
-    |> For_stanza.rev
+    For_stanza.of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents
+      ~expander ~files_to_install
   in
   let allow_approx_merlin =
     let dune_project = Scope.project scope in

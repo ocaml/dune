@@ -5,7 +5,6 @@
  (inline_tests
    (deps foo_dir/foo))
  (libraries
-  stdune
   dune_action
   ppx_expect.config
   ppx_expect.common

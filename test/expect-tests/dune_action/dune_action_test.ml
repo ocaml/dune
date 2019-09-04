@@ -1,4 +1,3 @@
-open Stdune
 open Dune_action
 
 let%expect_test _ =
@@ -17,7 +16,7 @@ let%expect_test _ =
   let action =
     read_directory ~path:(Path.of_string "foo_dir")
     |> map ~f:(function
-      | Ok data -> print_endline (String.concat ~sep:"," data)
+      | Ok data -> print_endline (String.concat "," data)
         | Error _ -> print_endline "SHOULD NOT BE PRINTED")
   in
   run action;

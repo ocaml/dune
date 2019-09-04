@@ -1,3 +1,3 @@
 (executables
  (names client)
- (libraries dune._stdune dune._dune_action))
+ (libraries dune._dune_action))

@@ -9,17 +9,16 @@ module Execution_error = struct
 end
 
 module Fs : sig
-  val read_directory : string -> (string list, string) Stdune.Result.t
+  val read_directory : string -> (string list, string) Result.t
 
-  val read_file : string -> (string, string) Stdune.Result.t
+  val read_file : string -> (string, string) Result.t
 
-  val write_file : string -> string -> (unit, string) Stdune.Result.t
+  val write_file : string -> string -> (unit, string) Result.t
 end = struct
   let catch_system_exceptions f ~name =
-    try Stdune.Ok (f ()) with
-    | Unix.Unix_error (e, _, _) ->
-      Stdune.Error (name ^ ": " ^ Unix.error_message e)
-    | Sys_error error -> Stdune.Error (name ^ ": " ^ error)
+    try Ok (f ()) with
+    | Unix.Unix_error (e, _, _) -> Error (name ^ ": " ^ Unix.error_message e)
+    | Sys_error error -> Error (name ^ ": " ^ error)
 
   let read_directory =
     let rec loop dh acc =

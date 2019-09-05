@@ -89,7 +89,25 @@ end
 
 module Section = struct
   include Section0
-  module Map = Map.Make (Section0)
+  include Comparable.Make (Section0)
+
+  let all =
+    Set.of_list
+      [ Lib
+      ; Lib_root
+      ; Libexec
+      ; Libexec_root
+      ; Bin
+      ; Sbin
+      ; Toplevel
+      ; Share
+      ; Share_root
+      ; Etc
+      ; Doc
+      ; Stublibs
+      ; Man
+      ; Misc
+      ]
 
   let to_string = function
     | Lib -> "lib"
@@ -123,6 +141,11 @@ module Section = struct
     | "man" -> Some Man
     | "misc" -> Some Misc
     | _ -> None
+
+  let parse_string s =
+    match of_string s with
+    | Some s -> Ok s
+    | None -> Error (sprintf "invalid section: %s" s)
 
   let decode =
     let open Dune_lang.Decoder in

@@ -994,6 +994,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name install-single-section)
+ (deps (package dune) (source_tree test-cases/install-single-section))
+ (action
+  (chdir
+   test-cases/install-single-section
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name install-with-var)
  (deps (package dune) (source_tree test-cases/install-with-var))
  (action
@@ -1866,6 +1874,7 @@
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
+  (alias install-single-section)
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
@@ -2066,6 +2075,7 @@
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
+  (alias install-single-section)
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)

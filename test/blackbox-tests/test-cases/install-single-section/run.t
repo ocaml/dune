@@ -17,3 +17,18 @@ Now let's install with the above command with one less section:
   Copying _build/install/default/bin/foo to bin/foo (executable: true)
 
 The above command shouldn't include the man page anymore
+
+We can specify an empty list to install nothing
+  $ dune install --dry-run --prefix ./ --sections ""
+  Installing lib/foo/META
+  Installing lib/foo/dune-package
+  Installing bin/foo
+  Installing man/mp
+  Creating directory lib/foo
+  Copying _build/install/default/lib/foo/META to lib/foo/META (executable: false)
+  Creating directory lib/foo
+  Copying _build/install/default/lib/foo/dune-package to lib/foo/dune-package (executable: false)
+  Creating directory bin
+  Copying _build/install/default/bin/foo to bin/foo (executable: true)
+  Creating directory man
+  Copying _build/install/default/man/mp to man/mp (executable: false)

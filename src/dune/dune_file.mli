@@ -174,12 +174,26 @@ module Mode_conf : sig
 
   val to_dyn : t -> Dyn.t
 
+  module Kind : sig
+    type t =
+      | Inherited
+      | Requested of Loc.t
+  end
+
+  module Map : sig
+    type nonrec 'a t =
+      { byte : 'a
+      ; native : 'a
+      ; best : 'a
+      }
+  end
+
   module Set : sig
-    include Set.S with type elt = t
+    type nonrec t = Kind.t option Map.t
 
     val decode : t Dune_lang.Decoder.t
 
-    (** Both Byte and Native *)
+    (** Byte inherited, Best is requested *)
     val default : t
 
     val eval : t -> has_native:bool -> Mode.Dict.Set.t

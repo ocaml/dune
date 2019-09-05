@@ -742,8 +742,6 @@ module Mode_conf = struct
       | Best
 
     let compare (a : t) b = compare a b
-
-    let to_dyn _ = Dyn.opaque
   end
 
   include T
@@ -761,19 +759,81 @@ module Mode_conf = struct
 
   let encode t = Dune_lang.unsafe_atom_of_string (to_string t)
 
-  module O = Comparable.Make (T)
+  module Kind = struct
+    type t =
+      | Inherited
+      | Requested of Loc.t
+  end
+
+  module Map = struct
+    type nonrec 'a t =
+      { byte : 'a
+      ; native : 'a
+      ; best : 'a
+      }
+
+    let find t = function
+      | Byte -> t.byte
+      | Native -> t.native
+      | Best -> t.best
+
+    let update t key ~f =
+      match key with
+      | Byte -> { t with byte = f t.byte }
+      | Native -> { t with native = f t.native }
+      | Best -> { t with best = f t.best }
+
+    let make_one x = { byte = x; native = x; best = x }
+  end
 
   module Set = struct
-    include O.Set
+    type nonrec t = Kind.t option Map.t
 
-    let decode = repeat decode >>| of_list
+    let empty : t = Map.make_one None
 
-    let default = of_list [ Byte; Best ]
+    let of_list (input : (T.t * Kind.t) list) : t =
+      List.fold_left ~init:empty input ~f:(fun acc (key, kind) ->
+          Map.update acc key ~f:(function
+            | None -> Some kind
+            | Some (Kind.Requested loc) ->
+              User_error.raise ~loc [ Pp.textf "already configured" ]
+            | Some Inherited ->
+              (* this doesn't happen as inherited can't be manually specified *)
+              assert false))
+
+    let decode =
+      let decode =
+        let+ loc, t = located decode in
+        (t, Kind.Requested loc)
+      in
+      repeat decode >>| of_list
+
+    let default = of_list [ (Byte, Inherited); (Best, Requested Loc.none) ]
 
     let eval t ~has_native =
-      let has_best = mem t Best in
-      let byte = mem t Byte || (has_best && not has_native) in
-      let native = has_native && (mem t Native || has_best) in
+      let exists = function
+        | Best
+         |Byte ->
+          true
+        | Native -> has_native
+      in
+      let get key =
+        match Map.find t key with
+        | None -> false
+        | Some Kind.Inherited -> exists key
+        | Some (Kind.Requested loc) ->
+          exists key
+          || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
+      in
+      let best_mode =
+        if has_native then
+          Native
+        else
+          Byte
+      in
+      let best = get Best in
+      let byte = get Byte || (best && best_mode = Byte) in
+      let native = get Native || (best && best_mode = Native) in
       { Mode.Dict.byte; native }
   end
 end

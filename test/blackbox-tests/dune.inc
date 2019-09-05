@@ -1387,6 +1387,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name re-exported-deps)
+ (deps (package dune) (source_tree test-cases/re-exported-deps))
+ (action
+  (chdir
+   test-cases/re-exported-deps
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name reason)
  (deps (package dune) (source_tree test-cases/reason))
  (action
@@ -1952,6 +1960,7 @@
   (alias project-root)
   (alias promote)
   (alias quoting)
+  (alias re-exported-deps)
   (alias reason)
   (alias redirections)
   (alias reporting-of-cycles)
@@ -2147,6 +2156,7 @@
   (alias project-root)
   (alias promote)
   (alias quoting)
+  (alias re-exported-deps)
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)

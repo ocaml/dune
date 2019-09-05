@@ -1,0 +1,23 @@
+(library
+ (public_name pkg.aaa)
+ (name aaa)
+ (libraries bbb)
+ (modules aaa)
+ (re_exports bbb))
+
+(library
+ (public_name pkg.bbb)
+ (name bbb)
+ (libraries ccc)
+ (modules bbb)
+ (re_exports ccc))
+
+(library
+ (modules ccc)
+ (name ccc)
+ (public_name pkg.ccc))
+
+(executable
+ (name foo)
+ (modules foo)
+ (libraries aaa))

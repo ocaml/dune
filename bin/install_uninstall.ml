@@ -231,10 +231,11 @@ module Sections = struct
   let term =
     let doc = "sections that should be installed" in
     let open Cmdliner.Arg in
-    let+ sections = value & opt sections_conv [] & info [ "sections" ] ~doc in
+    let+ sections =
+      value & opt (some sections_conv) None & info [ "sections" ] ~doc in
     match sections with
-    | [] -> All
-    | sections -> Only (Install.Section.Set.of_list sections)
+    | None -> All
+    | Some sections -> Only (Install.Section.Set.of_list sections)
 
   let should_install t section =
     match t with

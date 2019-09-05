@@ -238,7 +238,9 @@ let static_deps t ~list_targets =
     match t with
     | Pure _ -> acc
     | Map (_, a) -> loop a acc targets_allowed
-    | Map2 (_, a, b) -> loop a (loop b acc targets_allowed) targets_allowed
+    | Map2 (_, a, b) ->
+      let acc = loop a acc targets_allowed in
+      loop b acc targets_allowed
     | Targets _ ->
       if not targets_allowed then no_targets_allowed ();
       acc
@@ -276,7 +278,9 @@ let lib_deps =
     match t with
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
-    | Map2 (_, a, b) -> loop a (loop b acc)
+    | Map2 (_, a, b) ->
+      let acc = loop a acc in
+      loop b acc
     | Targets _ -> acc
     | Paths_for_rule _ -> acc
     | Paths_glob _ -> acc
@@ -300,7 +304,9 @@ let targets =
     match t with
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
-    | Map2 (_, a, b) -> loop a (loop b acc)
+    | Map2 (_, a, b) ->
+      let acc = loop a acc in
+      loop b acc
     | Targets targets -> Path.Build.Set.union targets acc
     | Paths_for_rule _ -> acc
     | Paths_glob _ -> acc
@@ -341,8 +347,13 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
    fun dyn_deps t ->
     match t with
     | Pure x -> x
-    | Map (f, a) -> f (exec dyn_deps a)
-    | Map2 (f, a, b) -> f (exec dyn_deps a) (exec dyn_deps b)
+    | Map (f, a) ->
+      let a = exec dyn_deps a in
+      f a
+    | Map2 (f, a, b) ->
+      let a = exec dyn_deps a in
+      let b = exec dyn_deps b in
+      f a b
     | Targets _ -> ()
     | Deps _ -> ()
     | Paths_for_rule _ -> ()

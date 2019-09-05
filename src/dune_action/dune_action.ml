@@ -6,6 +6,10 @@ module Execution_error = struct
   exception E of string
 
   let raise string = raise (E string)
+
+  let raise_on_fs_error = function
+    | Error message -> raise message
+    | Ok result -> result
 end
 
 module Fs : sig
@@ -89,7 +93,7 @@ let rec both (t1 : 'a t) (t2 : 'b t) =
 
 let read_file ~path =
   let path = Path.to_string path in
-  let action () = Fs.read_file path in
+  let action () = Fs.read_file path |> Execution_error.raise_on_fs_error in
   lift_stage
     { action
     ; dependencies = Dependency.Set.singleton (File path)
@@ -98,7 +102,9 @@ let read_file ~path =
 
 let write_file ~path ~data =
   let path = Path.to_string path in
-  let action () = Fs.write_file path data in
+  let action () =
+    Fs.write_file path data |> Execution_error.raise_on_fs_error
+  in
   lift_stage
     { action
     ; dependencies = Dependency.Set.empty
@@ -107,7 +113,9 @@ let write_file ~path ~data =
 
 let read_directory ~path =
   let path = Path.to_string path in
-  let action () = Fs.read_directory path in
+  let action () =
+    Fs.read_directory path |> Execution_error.raise_on_fs_error
+  in
   lift_stage
     { action
     ; dependencies = Dependency.Set.singleton (Directory path)
@@ -175,4 +183,6 @@ let run t =
 
 module Private = struct
   let do_run = do_run
+
+  module Execution_error = Execution_error
 end

@@ -9,10 +9,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let action =
-    read_file ~path:(Path.of_string "foo_dir/foo")
-    |> map ~f:(function
-      | Ok data -> print_endline data
-        | Error _ -> print_endline "SHOULD NOT BE PRINTED")
+    read_file ~path:(Path.of_string "foo_dir/foo") |> map ~f:print_endline
   in
   Private.do_run action;
   [%expect {|
@@ -22,9 +19,7 @@ let%expect_test _ =
 let%expect_test _ =
   let action =
     read_directory ~path:(Path.of_string "foo_dir")
-    |> map ~f:(function
-      | Ok data -> print_endline (String.concat "," data)
-        | Error _ -> print_endline "SHOULD NOT BE PRINTED")
+    |> map ~f:(fun data -> String.concat "," data |> print_endline)
   in
   Private.do_run action;
   [%expect {|
@@ -32,23 +27,22 @@ let%expect_test _ =
   |}]
 
 let%expect_test _ =
-  let action =
-    write_file ~path:(Path.of_string "bar") ~data:"foo"
-    |> map ~f:(function
-      | Ok () -> ()
-        | Error _ -> print_endline "SHOULD NOT BE PRINTED")
-  in
+  let action = write_file ~path:(Path.of_string "bar") ~data:"foo" in
   Private.do_run action;
   [%expect {| |}]
+
+let run_action_expect_throws action =
+  try
+    Private.do_run action;
+    print_endline "SHOULD BE UNREACHABLE"
+  with Private.Execution_error.E message -> print_endline message
 
 let%expect_test _ =
   let action =
     read_file ~path:(Path.of_string "file_that_does_not_exist")
-    |> map ~f:(function
-      | Ok _ -> print_endline "SHOULD NOT BE PRINTED"
-        | Error error -> print_endline error)
+    |> map ~f:ignore
   in
-  Private.do_run action;
+  run_action_expect_throws action;
   [%expect
     {|
     read_file: file_that_does_not_exist: No such file or directory
@@ -57,11 +51,9 @@ let%expect_test _ =
 let%expect_test _ =
   let action =
     read_directory ~path:(Path.of_string "directory_that_does_not_exist")
-    |> map ~f:(function
-      | Ok _ -> print_endline "SHOULD NOT BE PRINTED"
-        | Error error -> print_endline error)
+    |> map ~f:ignore
   in
-  Private.do_run action;
+  run_action_expect_throws action;
   [%expect {|
     read_directory: No such file or directory
   |}]
@@ -71,11 +63,8 @@ let%expect_test _ =
     write_file
       ~path:(Path.of_string "directory_that_does_not_exist/foo")
       ~data:"foo"
-    |> map ~f:(function
-      | Ok _ -> print_endline "SHOULD NOT BE PRINTED"
-        | Error error -> print_endline error)
   in
-  Private.do_run action;
+  run_action_expect_throws action;
   [%expect
     {|
     write_file: directory_that_does_not_exist/foo: No such file or directory

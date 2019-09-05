@@ -1,0 +1,4 @@
+(rule
+ (target bar)
+ (action
+  (dynamic-run ./foo.exe)))

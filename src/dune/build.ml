@@ -44,7 +44,7 @@ let get_if_file_exists_exn state =
 
 let return x = Pure x
 
-let delayed f = Map (f, Pure ())
+let delayed f = Map (f, return ())
 
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
 
@@ -157,7 +157,7 @@ let depend_on_dir_without_files =
 let source_tree ~dir ~file_tree =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
   let paths, dirs_without_files =
-    let init = (Path.Set.empty, Pure ()) in
+    let init = (Path.Set.empty, return ()) in
     match File_tree.find_dir file_tree dir with
     | None -> init
     | Some dir ->

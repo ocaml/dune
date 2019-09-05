@@ -42,7 +42,7 @@ let get_if_file_exists_exn state =
   | Undecided _ ->
     Code_error.raise "Build.get_if_file_exists_exn: got undecided" []
 
-let pure x = Pure x
+let return x = Pure x
 
 let delayed f = Map (f, Pure ())
 
@@ -68,11 +68,9 @@ let fanout3 a b c = (a *** b) *** c >>^ fun ((a, b), c) -> (a, b, c)
 let fanout4 a b c d =
   ((a *** b) *** c) *** d >>^ fun (((a, b), c), d) -> (a, b, c, d)
 
-let memoize name t = Memo { name; t; state = Unevaluated }
-
 let rec all xs =
   match xs with
-  | [] -> pure []
+  | [] -> return []
   | x :: xs -> Map2 ((fun x xs -> x :: xs), x, all xs)
 
 let ignore x = Map (Fn.const (), x)
@@ -122,14 +120,14 @@ let read_sexp p =
 let if_file_exists p ~then_ ~else_ =
   If_file_exists (p, ref (Undecided (then_, else_)))
 
-let file_exists p = if_file_exists p ~then_:(pure true) ~else_:(pure false)
+let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
 
 let file_exists_opt p t =
-  if_file_exists p ~then_:(t >>^ Option.some) ~else_:(pure None)
+  if_file_exists p ~then_:(t >>^ Option.some) ~else_:(return None)
 
 let paths_existing paths =
-  List.fold_left paths ~init:(pure true) ~f:(fun acc file ->
-      if_file_exists file ~then_:(path file) ~else_:(Pure ()) >>> acc)
+  List.fold_left paths ~init:(return true) ~f:(fun acc file ->
+      if_file_exists file ~then_:(path file) ~else_:(return ()) >>> acc)
 
 let fail ?targets x =
   match targets with
@@ -144,6 +142,8 @@ let of_result_map ?targets res ~f =
   match res with
   | Ok x -> f x
   | Error e -> fail ?targets { fail = (fun () -> raise e) }
+
+let memoize name t = Memo { name; t; state = Unevaluated }
 
 (* This is to force the rules to be loaded for directories without files when
    depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
@@ -209,11 +209,11 @@ let symlink ~src ~dst =
 let create_file fn =
   action ~targets:[ fn ] (Redirect_out (Stdout, fn, Progn []))
 
-let remove_tree dir = pure (Action.Remove_tree dir)
+let remove_tree dir = return (Action.Remove_tree dir)
 
 let mkdir dir =
   let dir = Path.build dir in
-  pure (Action.Mkdir dir)
+  return (Action.Mkdir dir)
 
 let progn ts = all ts >>^ fun actions -> Action.Progn actions
 
@@ -399,7 +399,7 @@ module S = struct
 
   let apply x f = x &&& f >>^ fun (x, f) -> f x
 
-  let map x ~f = apply x (pure f)
+  let map x ~f = apply x (return f)
 
   let ignore x = x >>^ fun _ -> ()
 

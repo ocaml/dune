@@ -68,7 +68,7 @@ let setup_module_rules t =
   let requires_compile = Compilation_context.requires_compile t.cctx in
   let main_ml =
     Build.of_result_map requires_compile ~f:(fun libs ->
-        Build.pure
+        Build.return
           (let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
            let b = Buffer.create 64 in
            let fmt = Format.formatter_of_buffer b in
@@ -84,7 +84,7 @@ let setup_rules t =
   let program = Source.program t.source in
   let sctx = Compilation_context.super_context t.cctx in
   Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]
-    ~link_flags:(Build.pure [ "-linkall"; "-warn-error"; "-31" ])
+    ~link_flags:(Build.return [ "-linkall"; "-warn-error"; "-31" ])
     ~promote:None;
   let src = Exe.exe_path t.cctx ~program ~linkage in
   let dir = Source.stanza_dir t.source in

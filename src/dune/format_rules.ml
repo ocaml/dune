@@ -63,7 +63,7 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         let src = Path.as_in_build_dir_exn input in
         let extra_deps =
           match extra_deps with
-          | [] -> Build.pure ()
+          | [] -> Build.return ()
           | extra_deps -> Build.S.ignore (depend_on_files extra_deps)
         in
         Build.S.seq extra_deps

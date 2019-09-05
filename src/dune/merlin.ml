@@ -143,7 +143,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
         None
     in
     match args with
-    | None -> Build.pure None
+    | None -> Build.return None
     | Some args -> (
       let action : Path.t Bindings.t Build.t -> Action.t Build.t =
         let targets_dir = Expander.dir expander in
@@ -161,13 +161,14 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
           |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -pp %s"
           |> Option.some
       in
-      Build.pure Bindings.empty |> action
+      Build.return Bindings.empty
+      |> action
       >>^ function
       | Run (exe, args) -> pp_of_action exe args
       | Chdir (_, Run (exe, args)) -> pp_of_action exe args
       | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
       | _ -> None ) )
-  | _ -> Build.pure None
+  | _ -> Build.return None
 
 let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t
     =
@@ -181,15 +182,15 @@ let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags
         ~scope pps
     with
-    | Error _exn -> Build.pure None
+    | Error _exn -> Build.return None
     | Ok (exe, flags) ->
       Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -ppx %s"
-      |> Option.some |> Build.pure )
+      |> Option.some |> Build.return )
   | Action (loc, (action : Action_dune_lang.t)) ->
     pp_flag_of_action sctx ~expander ~loc ~action
-  | No_preprocessing -> Build.pure None
+  | No_preprocessing -> Build.return None
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
     =

@@ -603,7 +603,7 @@ let setup_package_odoc_rules_def =
         List.map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-              ~includes:(Build.pure []))
+              ~includes:(Build.return []))
       in
       Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 

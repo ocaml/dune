@@ -98,7 +98,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   ; Build.S.seq deps_of
       (let coq_flags =
          Expander.expand_and_eval_set expander coq_flags
-           ~standard:(Build.pure [])
+           ~standard:(Build.return [])
        in
        Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg))
   ]

@@ -84,7 +84,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let link_flags =
     link_deps |> Build.ignore
     >>> Expander.expand_and_eval_set expander exes.link_flags
-          ~standard:(Build.pure [])
+          ~standard:(Build.return [])
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =

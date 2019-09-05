@@ -199,8 +199,8 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~name:data_module ~lib
               ~code:
-                (Build.pure (
-                     build_info_code cctx ~libs:all_libs ~api_version))
+                (Build.return
+                   (build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Ok [ lib ])
               ~precompiled_cmi:true
           in
@@ -227,9 +227,9 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~lib ~name:"findlib_initl"
               ~code:
-                (Build.pure (
-                     findlib_init_code ~preds:Findlib.Package.preds
-                       ~libs:all_libs))
+                (Build.return
+                   (findlib_init_code ~preds:Findlib.Package.preds
+                      ~libs:all_libs))
               ~requires ~precompiled_cmi:false
           in
           process_libs libs

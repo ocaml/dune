@@ -5,7 +5,7 @@ open! Import
 
 type 'a t
 
-val pure : 'a -> 'a t
+val return : 'a -> 'a t
 
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t

@@ -158,7 +158,7 @@ module Internal_rule = struct
         Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
     ; targets = Path.Build.Set.empty
     ; context = None
-    ; build = Build.pure (Action.Progn [])
+    ; build = Build.return (Action.Progn [])
     ; mode = Standard
     ; info = Internal
     ; dir = Path.Build.root
@@ -193,13 +193,13 @@ module Alias0 = struct
       let fn = Path.build fn in
       Build.S.apply acc
         (Build.if_file_exists fn
-           ~then_:(Build.path fn >>> Build.pure (Fn.const false))
-           ~else_:(Build.pure Fn.id))
+           ~then_:(Build.path fn >>> Build.return (Fn.const false))
+           ~else_:(Build.return Fn.id))
     in
     Build.lazy_no_targets
       ( lazy
         (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-           ~init:(Build.pure true) ~f) )
+           ~init:(Build.return true) ~f) )
 
   let dep_rec t ~loc ~file_tree =
     let ctx_dir, src_dir =

@@ -146,4 +146,4 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
           ~targets:(Forbidden "aliases") ~targets_dir:dir )
   else
     add_alias sctx ~loc ~dir ~name:alias_conf.name ~stamp
-      (Build.pure (Action.Progn []))
+      (Build.return (Action.Progn []))

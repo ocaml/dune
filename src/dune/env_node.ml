@@ -135,7 +135,7 @@ let rec c_flags t ~profile ~expander ~default_context_flags =
   | None ->
     let default =
       match t.inherit_from with
-      | None -> C.Kind.Dict.map ~f:Build.pure default_context_flags
+      | None -> C.Kind.Dict.map ~f:Build.return default_context_flags
       | Some (lazy t) -> c_flags t ~profile ~expander ~default_context_flags
     in
     let flags =

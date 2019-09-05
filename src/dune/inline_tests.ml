@@ -264,13 +264,12 @@ include Sub_system.Register_end_point (struct
        in
        let expander = Expander.add_bindings expander ~bindings in
        Build.all
-            (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                 Option.map backend.info.generate_runner
-                   ~f:(fun (loc, action) ->
-                     SC.Action.run sctx action ~loc ~expander
-                       ~dep_kind:Required
-                       ~targets:(Forbidden "inline test generators")
-                       ~targets_dir:dir (Build.pure Bindings.empty))))
+         (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
+                  SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+                    ~targets:(Forbidden "inline test generators")
+                    ~targets_dir:dir
+                    (Build.return Bindings.empty))))
        >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
        |> Build.action_dyn ~targets:[ target ]);
     let cctx =
@@ -298,7 +297,7 @@ include Sub_system.Register_end_point (struct
     Exe.build_and_link cctx
       ~program:{ name; main_module_name = Module.name main_module; loc }
       ~linkages
-      ~link_flags:(Build.pure [ "-linkall" ])
+      ~link_flags:(Build.return [ "-linkall" ])
       ~promote:None;
     let flags =
       let flags =
@@ -309,7 +308,8 @@ include Sub_system.Register_end_point (struct
       let open Build.S.O in
       let+ l =
         List.map flags
-          ~f:(Expander.expand_and_eval_set expander ~standard:(Build.pure []))
+          ~f:
+            (Expander.expand_and_eval_set expander ~standard:(Build.return []))
         |> Build.all
       in
       Command.Args.As (List.concat l)
@@ -352,7 +352,7 @@ include Sub_system.Register_end_point (struct
                  ( Command.run exe ~dir:(Path.build dir)
                      [ runner_args; Dyn flags ]
                  :: List.map source_files ~f:(fun fn ->
-                        Build.pure
+                        Build.return
                           (Action.diff ~optional:true fn
                              (Path.extend_basename fn ~suffix:".corrected")))
                  )))

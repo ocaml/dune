@@ -573,7 +573,7 @@ let expand_and_eval_set t set ~standard =
     if Ordered_set_lang.Unexpanded.has_special_forms set then
       standard
     else
-      Build.pure []
+      Build.return []
   in
   let files =
     let f template =

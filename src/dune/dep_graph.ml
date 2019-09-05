@@ -45,7 +45,7 @@ let top_closed_implementations t modules =
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module = Module.Obj_map.singleton m (Build.pure [])
+  ; per_module = Module.Obj_map.singleton m (Build.return [])
   }
 
 module Ml_kind = struct

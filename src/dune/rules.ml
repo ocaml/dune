@@ -21,7 +21,7 @@ module Dir_rules = struct
 
     let empty =
       { deps = Path.Set.empty
-      ; dyn_deps = Build.pure Path.Set.empty
+      ; dyn_deps = Build.return Path.Set.empty
       ; actions = Appendable_list.empty
       }
 
@@ -159,13 +159,13 @@ module Produce = struct
          Path.Build.Map.singleton dir
            (Dir_rules.Nonempty.singleton (Alias { name; spec })))
 
-    let add_deps t ?(dyn_deps = Build.pure Path.Set.empty) deps =
+    let add_deps t ?(dyn_deps = Build.return Path.Set.empty) deps =
       alias t { deps; dyn_deps; actions = Appendable_list.empty }
 
     let add_action t ~context ~env ~loc ?(locks = []) ~stamp action =
       alias t
         { deps = Path.Set.empty
-        ; dyn_deps = Build.pure Path.Set.empty
+        ; dyn_deps = Build.return Path.Set.empty
         ; actions =
             Appendable_list.singleton
               ( { stamp = Digest.generic stamp

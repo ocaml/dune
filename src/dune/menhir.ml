@@ -118,7 +118,7 @@ module Run (P : PARAMS) : sig end = struct
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags =
-    Expander.expand_and_eval_set expander ~standard:(Build.pure []) flags
+    Expander.expand_and_eval_set expander ~standard:(Build.return []) flags
 
   (* ------------------------------------------------------------------------ *)
 

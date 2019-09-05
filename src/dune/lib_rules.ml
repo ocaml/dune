@@ -44,11 +44,11 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
       let ocaml_flags = Ocaml_flags.get flags mode in
       let cclibs =
         Expander.expand_and_eval_set expander lib.c_library_flags
-          ~standard:(Build.pure [])
+          ~standard:(Build.return [])
       in
       let library_flags =
         Expander.expand_and_eval_set expander lib.library_flags
-          ~standard:(Build.pure [])
+          ~standard:(Build.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (Build.S.seq obj_deps
@@ -103,7 +103,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
       let loc = lib.buildable.loc in
       let sctx = Compilation_context.super_context cctx in
-      Build.pure contents
+      Build.return contents
       |> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
@@ -112,7 +112,7 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
   Super_context.add_rule sctx ~sandbox ~dir ~loc:lib.buildable.loc
     (let cclibs_args =
        Expander.expand_and_eval_set expander lib.c_library_flags
-         ~standard:(Build.pure [])
+         ~standard:(Build.return [])
      in
      let ctx = Super_context.context sctx in
      Command.run ~dir:(Path.build ctx.build_dir) (Ok ctx.ocamlmklib)
@@ -193,7 +193,8 @@ let build_shared lib ~sctx ~dir ~flags =
       let build =
         Build.S.seq
           (Build.dyn_paths_unit
-             (Build.pure [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]))
+             (Build.return
+                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]))
           (Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
              [ Command.Args.dyn (Ocaml_flags.get flags Native)
              ; A "-shared"

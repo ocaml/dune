@@ -259,7 +259,7 @@ let gen_dune_package sctx pkg =
   let name = pkg.name in
   let dune_version = Syntax.greatest_supported_version Stanza.syntax in
   Build.if_file_exists (Path.build meta_template)
-    ~then_:(Build.pure Dune_package.Or_meta.Use_meta)
+    ~then_:(Build.return Dune_package.Or_meta.Use_meta)
     ~else_:
       (Build.delayed (fun () ->
            let dune_package =
@@ -350,7 +350,7 @@ let init_meta sctx ~dir =
                                (Lib_name.to_string name)
                            ])
                    } )
-             ~else_:(Build.pure [ "# DUNE_GEN" ])
+             ~else_:(Build.return [ "# DUNE_GEN" ])
          in
          let ctx = Super_context.context sctx in
          Super_context.add_rule sctx ~dir:ctx.build_dir

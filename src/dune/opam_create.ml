@@ -155,7 +155,7 @@ let add_rule sctx ~project ~pkg =
   let opam_rule =
     ( match opam_template sctx ~pkg with
     | Some p -> Build.contents (Path.build p)
-    | None -> Build.pure "" )
+    | None -> Build.return "" )
     >>^ (fun template ->
           let opam_path = Path.build opam_path in
           let opamfile =

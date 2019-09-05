@@ -47,7 +47,7 @@ let deps_of_module cctx ~ml_kind m =
     ( match Modules.lib_interface modules with
     | Some m -> m
     | None -> Modules.compat_for_exn modules m )
-    |> List.singleton |> Build.pure
+    |> List.singleton |> Build.return
   | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
@@ -82,13 +82,13 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     | Impl_of_virtual_module _ -> false
   in
   if is_alias then
-    Build.pure []
+    Build.return []
   else
     let skip_if_source_absent f m =
       if Module.has m ~ml_kind then
         f m
       else
-        Build.pure []
+        Build.return []
     in
     match m with
     | Imported_from_vlib m ->

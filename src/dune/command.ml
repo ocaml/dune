@@ -66,29 +66,29 @@ let expand ~dir ts =
     (res, !static_deps)
   in
   let rec loop = function
-    | A s -> Build.pure [ s ]
-    | As l -> Build.pure l
+    | A s -> Build.return [ s ]
+    | As l -> Build.return l
     | Dep fn ->
       Build.S.map (Build.path fn) ~f:(fun () -> [ Path.reach fn ~from:dir ])
-    | Path fn -> Build.pure [ Path.reach fn ~from:dir ]
+    | Path fn -> Build.return [ Path.reach fn ~from:dir ]
     | Deps fns ->
       Build.S.map (Build.paths fns) ~f:(fun () ->
           List.map fns ~f:(Path.reach ~from:dir))
-    | Paths fns -> Build.pure (List.map fns ~f:(Path.reach ~from:dir))
+    | Paths fns -> Build.return (List.map fns ~f:(Path.reach ~from:dir))
     | S ts -> Build.S.map (Build.all (List.map ts ~f:loop)) ~f:List.concat
     | Concat (sep, ts) ->
       Build.S.map (loop (S ts)) ~f:(fun x -> [ String.concat ~sep x ])
-    | Target fn -> Build.pure [ Path.reach (Path.build fn) ~from:dir ]
+    | Target fn -> Build.return [ Path.reach (Path.build fn) ~from:dir ]
     | Dyn dyn -> Build.S.dyn_deps (Build.S.map dyn ~f:run_loop)
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.S.map (Build.deps deps) ~f:(fun () -> [])
-    | Hidden_targets _ -> Build.pure []
+    | Hidden_targets _ -> Build.return []
   in
   loop (S ts)
 
 let dep_prog = function
   | Ok p -> Build.path p
-  | Error _ -> Build.pure ()
+  | Error _ -> Build.return ()
 
 let prog_and_args ?(dir = Path.root) prog args =
   Build.S.seq (dep_prog prog)

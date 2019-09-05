@@ -166,7 +166,13 @@ let do_run t =
   | Ok context -> run_by_dune t context
 
 let run t =
-  try do_run t
+  try
+    do_run t;
+    exit 0
   with Execution_error.E message ->
     prerr_endline message;
     exit 1
+
+module Private = struct
+  let do_run = do_run
+end

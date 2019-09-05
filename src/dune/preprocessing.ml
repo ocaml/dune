@@ -128,7 +128,6 @@ module Driver = struct
         ; lint_flags : Ordered_set_lang.Unexpanded.t
         ; main : string
         ; replaces : (Loc.t * Lib_name.t) list
-        ; file_kind : Stanza.File_kind.t
         }
 
       type Sub_system_info.t += T of t
@@ -155,8 +154,8 @@ module Driver = struct
            and+ main = field "main" string
            and+ replaces =
              field "replaces" (repeat (located Lib_name.decode)) ~default:[]
-           and+ file_kind = Stanza.file_kind () in
-           { loc; flags; as_ppx_flags; lint_flags; main; replaces; file_kind })
+           in
+           { loc; flags; as_ppx_flags; lint_flags; main; replaces })
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for hardcoded
@@ -206,10 +205,9 @@ module Driver = struct
       let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
       ( (1, 0)
       , record_fields
-        @@ [ field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-               t.info.flags
-           ; field_i "lint_flags"
-               Ordered_set_lang.Unexpanded.encode_and_upgrade t.info.lint_flags
+        @@ [ field_i "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
+           ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode
+               t.info.lint_flags
            ; field "main" string t.info.main
            ; field_l "replaces" f (Result.ok_exn t.replaces)
            ] )

@@ -49,7 +49,7 @@ end = struct
     Buffer.add_string buf after
 
   let check_valid_unquoted s ~loc =
-    if not (Atom.is_valid (Atom.of_string s) Dune) then
+    if not (Atom.is_valid s) then
       Code_error.raise ~loc "Invalid text in unquoted template"
         [ ("s", String s) ]
 

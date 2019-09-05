@@ -1,7 +1,6 @@
 open! Stdune
 module Atom = Atom
 module Template = Template
-module File_syntax = File_syntax
 
 type t =
   | Atom of Atom.t
@@ -10,7 +9,7 @@ type t =
   | Template of Template.t
 
 let atom_or_quoted_string s =
-  if Atom.is_valid_dune s then
+  if Atom.is_valid s then
     Atom (Atom.of_string s)
   else
     Quoted_string s
@@ -166,7 +165,7 @@ let rec add_loc t ~loc : Ast.t =
   | Template t -> Template { t with loc }
 
 module Cst = struct
-  module Comment = Lexer_shared.Token.Comment
+  module Comment = Lexer.Token.Comment
 
   type t =
     | Atom of Loc.t * Atom.t

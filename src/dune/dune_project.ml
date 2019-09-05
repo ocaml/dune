@@ -31,8 +31,6 @@ module Name : sig
 
   val named : string -> t option
 
-  val anonymous_root : t
-
   module Infix : Comparator.OPS with type t = t
 
   module Map : Map.S with type key = t
@@ -578,51 +576,6 @@ let format_config t =
   let dune_lang = t.format_config in
   Format_config.of_config ~ext ~dune_lang
 
-let anonymous =
-  lazy
-    (let lang = get_dune_lang () in
-     let name = Name.anonymous_root in
-     let project_file =
-       { Project_file.file = Path.Source.relative Path.Source.root filename
-       ; exists = false
-       ; project_name = name
-       }
-     in
-     let parsing_context, stanza_parser, extension_args =
-       interpret_lang_and_extensions ~lang ~explicit_extensions:[]
-         ~project_file
-     in
-     let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
-     let wrapped_executables = wrapped_executables_default ~lang in
-     let explicit_js_mode = explicit_js_mode_default ~lang in
-     let root = Path.Source.root in
-     let file_key = File_key.make ~root ~name in
-     { name
-     ; packages = Package.Name.Map.empty
-     ; root
-     ; source = None
-     ; license = None
-     ; homepage = None
-     ; bug_reports = None
-     ; documentation = None
-     ; maintainers = []
-     ; authors = []
-     ; version = None
-     ; implicit_transitive_deps
-     ; wrapped_executables
-     ; stanza_parser
-     ; project_file
-     ; extension_args
-     ; parsing_context
-     ; dune_version = lang.version
-     ; allow_approx_merlin = true
-     ; generate_opam_files = false
-     ; file_key
-     ; dialects = Dialect.DB.builtin
-     ; explicit_js_mode
-     ; format_config = None
-     })
-
 let default_name ~dir ~packages =
   match Package.Name.Map.choose packages with
   | None -> Name.anonymous dir
@@ -641,6 +594,51 @@ let default_name ~dir ~packages =
     | None ->
       User_error.raise ~loc:pkg.loc
         [ Pp.textf "%S is not a valid opam package name." name ] )
+
+let infer ~dir packages =
+  let lang = get_dune_lang () in
+  let name = default_name ~dir ~packages in
+  let project_file =
+    { Project_file.file = Path.Source.relative dir filename
+    ; exists = false
+    ; project_name = name
+    }
+  in
+  let parsing_context, stanza_parser, extension_args =
+    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
+  in
+  let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
+  let wrapped_executables = wrapped_executables_default ~lang in
+  let explicit_js_mode = explicit_js_mode_default ~lang in
+  let root = dir in
+  let file_key = File_key.make ~root ~name in
+  { name
+  ; packages
+  ; root
+  ; source = None
+  ; license = None
+  ; homepage = None
+  ; bug_reports = None
+  ; documentation = None
+  ; maintainers = []
+  ; authors = []
+  ; version = None
+  ; implicit_transitive_deps
+  ; wrapped_executables
+  ; stanza_parser
+  ; project_file
+  ; extension_args
+  ; parsing_context
+  ; dune_version = lang.version
+  ; allow_approx_merlin = true
+  ; generate_opam_files = false
+  ; file_key
+  ; dialects = Dialect.DB.builtin
+  ; explicit_js_mode
+  ; format_config = None
+  }
+
+let anonymous ~dir = infer ~dir Package.Name.Map.empty
 
 let parse ~dir ~lang ~opam_packages ~file =
   fields
@@ -820,51 +818,7 @@ let load_dune_project ~dir opam_packages =
   load (Path.source file) ~f:(fun lang ->
       parse ~dir ~lang ~opam_packages ~file)
 
-let make_jbuilder_project ~dir opam_packages =
-  let lang = get_dune_lang () in
-  let packages =
-    Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)
-  in
-  let name = default_name ~dir ~packages in
-  let project_file =
-    { Project_file.file = Path.Source.relative dir filename
-    ; exists = false
-    ; project_name = name
-    }
-  in
-  let parsing_context, stanza_parser, extension_args =
-    interpret_lang_and_extensions ~lang ~explicit_extensions:[] ~project_file
-  in
-  let root = dir in
-  let file_key = File_key.make ~root ~name in
-  let dialects = Dialect.DB.builtin in
-  { name
-  ; root
-  ; file_key
-  ; version = None
-  ; source = None
-  ; license = None
-  ; homepage = None
-  ; bug_reports = None
-  ; documentation = None
-  ; maintainers = []
-  ; authors = []
-  ; packages
-  ; stanza_parser
-  ; project_file
-  ; extension_args
-  ; parsing_context
-  ; implicit_transitive_deps = true
-  ; dune_version = lang.version
-  ; allow_approx_merlin = true
-  ; generate_opam_files = false
-  ; wrapped_executables = false
-  ; dialects
-  ; explicit_js_mode = explicit_js_mode_default ~lang
-  ; format_config = None
-  }
-
-let load ~dir ~files =
+let load ~dir ~files ~infer_from_opam_files =
   let opam_packages =
     String.Set.fold files ~init:[] ~f:(fun fn acc ->
         match Filename.split_extension fn with
@@ -913,8 +867,13 @@ let load ~dir ~files =
   in
   if String.Set.mem files filename then
     Some (load_dune_project ~dir opam_packages)
-  else if not (Package.Name.Map.is_empty opam_packages) then
-    Some (make_jbuilder_project ~dir opam_packages)
+  else if
+    Path.Source.is_root dir
+    || (infer_from_opam_files && not (Package.Name.Map.is_empty opam_packages))
+  then
+    Some
+      (infer ~dir
+         (Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)))
   else
     None
 

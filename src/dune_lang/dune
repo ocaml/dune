@@ -5,4 +5,4 @@
  (public_name dune._dune_lang)
  (preprocess future_syntax))
 
-(ocamllex dune_lexer jbuild_lexer)
+(ocamllex lexer)

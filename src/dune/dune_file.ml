@@ -1347,7 +1347,6 @@ module Executables = struct
       ; project : Dune_project.t
       ; loc : Loc.t
       ; multi : bool
-      ; file_kind : Dune_lang.File_syntax.t
       }
 
     let names t = t.names
@@ -1403,7 +1402,6 @@ module Executables = struct
           single_fields
       and+ loc = loc
       and+ dune_syntax = Syntax.get_exn Stanza.syntax
-      and+ file_kind = Stanza.file_kind ()
       and+ package =
         field_o "package"
           (let+ loc = loc
@@ -1456,13 +1454,12 @@ module Executables = struct
                   Pkg.default_exn ~loc project (pluralize "executable" ~multi)
               }
         | Some (loc, _), None ->
-          User_warning.emit ~is_error:(file_kind = Dune) ~loc
+          User_error.raise ~loc
             [ Pp.textf "This field is useless without a (%s ...) field."
                 (pluralize "public_name" ~multi)
-            ];
-          None
+            ]
       in
-      { names; public; project; stanza; loc; multi; file_kind }
+      { names; public; project; stanza; loc; multi }
 
     let install_conf t ~ext =
       Option.map t.public ~f:(fun { package; public_names } ->

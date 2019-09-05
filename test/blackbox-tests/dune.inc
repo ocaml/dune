@@ -914,6 +914,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name glob-deps-change)
+ (deps (package dune) (source_tree test-cases/glob-deps-change))
+ (action
+  (chdir
+   test-cases/glob-deps-change
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name ignored_subdirs)
  (deps (package dune) (source_tree test-cases/ignored_subdirs))
  (action
@@ -1864,6 +1872,7 @@
   (alias github784)
   (alias github992)
   (alias glob-deps)
+  (alias glob-deps-change)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
@@ -2067,6 +2076,7 @@
   (alias github784)
   (alias github992)
   (alias glob-deps)
+  (alias glob-deps-change)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)

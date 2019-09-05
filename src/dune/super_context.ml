@@ -31,9 +31,6 @@ type t =
   ; file_tree : File_tree.t
   ; artifacts : Artifacts.t
   ; expander : Expander.t
-  ; chdir : Action.t -> Action.t
-        (* TODO: Note that [chdir] was [(Action.t, Action.t) Build.t] for some
-           reason. In fact it seems to be just a pure function. *)
   ; host : t option
   ; libs_by_package : (Package.t * Lib.Local.Set.t) Package.Name.Map.t
   ; env_context : Env_context.t
@@ -232,15 +229,21 @@ end
 
 let expander t ~dir = Env.expander t.env_context ~dir
 
+let chdir_to_build_context_root t build =
+  Build.S.map build ~f:(fun (action : Action.t) ->
+      match action with
+      | Chdir _ -> action
+      | _ -> Chdir (Path.build t.context.build_dir, action))
+
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = Build.O.( >>^ ) build t.chdir in
+  let build = chdir_to_build_context_root t build in
   let env = Env.external_ t.env_context ~dir in
   Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
        ~context:(Some t.context) ~env:(Some env) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = Build.O.( >>^ ) build t.chdir in
+  let build = chdir_to_build_context_root t build in
   let env = Env.external_ t.env_context ~dir in
   let rule =
     Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
@@ -508,11 +511,6 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; packages
   ; file_tree
   ; artifacts
-  ; chdir =
-      (fun (action : Action.t) ->
-        match action with
-        | Chdir _ -> action
-        | _ -> Chdir (Path.build context.build_dir, action))
   ; libs_by_package =
       Lib.DB.all public_libs |> Lib.Set.to_list
       |> List.filter_map ~f:(fun lib ->

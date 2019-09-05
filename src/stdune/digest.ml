@@ -27,3 +27,10 @@ let string = D.string
 let to_string_raw s = s
 
 let generic a = string (Marshal.to_string a [])
+
+let file_with_stats p (stats : Unix.stats) =
+  match stats.st_kind with
+  | S_DIR ->
+    generic (stats.st_size, stats.st_perm, stats.st_mtime, stats.st_ctime)
+  | _ ->
+    generic (file p, stats.st_perm land 0o100 (* Only take USR_X in account *))

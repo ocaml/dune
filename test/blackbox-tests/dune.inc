@@ -256,6 +256,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-cache)
+ (deps (package dune) (source_tree test-cases/dune-cache))
+ (action
+  (chdir
+   test-cases/dune-cache
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-init)
  (deps (package dune) (source_tree test-cases/dune-init))
  (action
@@ -991,6 +999,14 @@
  (action
   (chdir
    test-cases/install-rule-order
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name install-single-section)
+ (deps (package dune) (source_tree test-cases/install-single-section))
+ (action
+  (chdir
+   test-cases/install-single-section
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1777,6 +1793,7 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
+  (alias dune-cache)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1866,6 +1883,7 @@
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
+  (alias install-single-section)
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
@@ -1985,6 +2003,7 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
+  (alias dune-cache)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2066,6 +2085,7 @@
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
+  (alias install-single-section)
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)

@@ -57,6 +57,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
+  ; modes : Mode.Dict.Set.t
   }
 
 let super_context t = t.super_context
@@ -97,12 +98,14 @@ let package t = t.package
 
 let vimpl t = t.vimpl
 
+let modes t = t.modes
+
 let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
     ?(no_keep_locs = false) ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package
-    ?vimpl () =
+    ?vimpl ?modes () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -117,6 +120,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
        ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
     Sandbox_config.no_sandboxing
   in
+  let modes = Option.value ~default:Mode.Dict.Set.all modes in
   { super_context
   ; scope
   ; expander
@@ -135,6 +139,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; sandbox
   ; package
   ; vimpl
+  ; modes
   }
 
 let for_alias_module t =

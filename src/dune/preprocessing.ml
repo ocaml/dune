@@ -311,8 +311,8 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
   add_rule ~sandbox:Sandbox_config.default
     ( Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
-          Build.return (sprintf "let () = %s ()\n" driver.info.main))
-    >>> Build.write_file_dyn ml );
+          Build.pure (sprintf "let () = %s ()\n" driver.info.main))
+    |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
     (Build.S.seqs
        [ Build.record_lib_deps
@@ -447,7 +447,7 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 let promote_correction fn build ~suffix =
   Build.progn
     [ build
-    ; Build.return
+    ; Build.pure
         (Action.diff ~optional:true fn (Path.extend_basename fn ~suffix))
     ]
 
@@ -463,11 +463,11 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   in
   Build.path (Path.build src)
   >>^ (fun _ -> Bindings.empty)
-  >>> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
+  |> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
   |> (fun action ->
        match target with
        | None -> action
-       | Some dst -> action >>> Build.action_dyn () ~targets:[ dst ])
+       | Some dst -> action |> Build.action_dyn ~targets:[ dst ])
   >>^ fun action ->
   match target with
   | None -> action
@@ -529,7 +529,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
                let expander = Expander.add_bindings expander ~bindings in
                Build.memoize "ppx flags"
                  (Expander.expand_and_eval_set expander driver.info.lint_flags
-                    ~standard:(Build.return []))
+                    ~standard:(Build.pure []))
              in
              let args : _ Command.Args.t = S [ As driver_flags ] in
              (exe, flags, args)
@@ -607,7 +607,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                let expander = Expander.add_bindings expander ~bindings in
                Build.memoize "ppx flags"
                  (Expander.expand_and_eval_set expander driver.info.flags
-                    ~standard:(Build.return [ "--as-ppx" ])))
+                    ~standard:(Build.pure [ "--as-ppx" ])))
             , args )
           in
           fun m ~lint ->
@@ -644,7 +644,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                 >>> preprocessor_deps >>^ ignore
                 >>> Expander.expand_and_eval_set expander
                       driver.info.as_ppx_flags
-                      ~standard:(Build.return [ "--as-ppx" ])
+                      ~standard:(Build.pure [ "--as-ppx" ])
                 >>^ fun driver_flags ->
                 let command =
                   List.map

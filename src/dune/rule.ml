@@ -21,7 +21,7 @@ end
 type t =
   { context : Context.t option
   ; env : Env.t option
-  ; build : (unit, Action.t) Build.t
+  ; build : Action.t Build.t
   ; targets : Path.Build.Set.t
   ; mode : Dune_file.Rule.Mode.t
   ; locks : Path.t list

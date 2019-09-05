@@ -153,7 +153,10 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   else
     (* When a module has no .mli, use the dependencies for the .ml *)
     Dep_graph.deps_of dep_graphs.impl m )
-  >>^ List.map ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m))
+  >>^ (fun xs ->
+        ( ()
+        , List.map xs ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m))
+        ))
   |> Build.dyn_paths
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
@@ -600,7 +603,7 @@ let setup_package_odoc_rules_def =
         List.map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
-              ~includes:(Build.return []))
+              ~includes:(Build.pure []))
       in
       Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 

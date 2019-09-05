@@ -259,7 +259,7 @@ let gen_dune_package sctx pkg =
   let name = pkg.name in
   let dune_version = Syntax.greatest_supported_version Stanza.syntax in
   Build.if_file_exists (Path.build meta_template)
-    ~then_:(Build.return Dune_package.Or_meta.Use_meta)
+    ~then_:(Build.pure Dune_package.Or_meta.Use_meta)
     ~else_:
       (Build.delayed (fun () ->
            let dune_package =
@@ -309,7 +309,7 @@ let gen_dune_package sctx pkg =
         Dune_package.Or_meta.encode ~dune_version pkg
         |> Format.asprintf "%a@."
              (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp))
-  >>> Build.write_file_dyn dune_package_file
+  |> Build.write_file_dyn dune_package_file
   |> Super_context.add_rule sctx ~dir:ctx.build_dir
 
 let init_meta sctx ~dir =
@@ -350,7 +350,7 @@ let init_meta sctx ~dir =
                                (Lib_name.to_string name)
                            ])
                    } )
-             ~else_:(Build.return [ "# DUNE_GEN" ])
+             ~else_:(Build.pure [ "# DUNE_GEN" ])
          in
          let ctx = Super_context.context sctx in
          Super_context.add_rule sctx ~dir:ctx.build_dir
@@ -378,7 +378,7 @@ let init_meta sctx ~dir =
             Format.pp_close_box ppf ();
             Format.pp_print_flush ppf ();
             Buffer.contents buf)
-           >>> Build.write_file_dyn meta))
+           |> Build.write_file_dyn meta))
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Install.Entry.t) list) ~install_paths =
@@ -482,7 +482,7 @@ let install_rules sctx (package : Package.t) =
                      ~prefix)
           in
           Install.gen_install_file entries)
-    >>> Build.write_file_dyn install_file )
+    |> Build.write_file_dyn install_file )
 
 let install_alias (ctx : Context.t) (package : Package.t) =
   if not ctx.implicit then

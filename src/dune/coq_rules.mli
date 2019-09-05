@@ -11,7 +11,7 @@ val setup_rules :
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
   -> Dune_file.Coq.t
-  -> (unit, Action.t) Build.t list
+  -> Action.t Build.t list
 
 val install_rules :
      sctx:Super_context.t
@@ -24,4 +24,4 @@ val coqpp_rules :
   -> build_dir:Path.Build.t
   -> dir:Path.Build.t
   -> Dune_file.Coqpp.t
-  -> (unit, Action.t) Build.t list
+  -> Action.t Build.t list

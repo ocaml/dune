@@ -80,19 +80,19 @@ module Spec = struct
     { common; specific }
 end
 
-type t = (unit, string list) Build.t t'
+type t = string list Build.t t'
 
 let empty =
-  let build = Build.arr (fun () -> []) in
+  let build = Build.pure [] in
   { common = build; specific = Mode.Dict.make_both build }
 
-let of_list l = { empty with common = Build.arr (fun () -> l) }
+let of_list l = { empty with common = Build.pure l }
 
 let default ~dune_version ~profile =
-  { common = Build.return (default_flags ~dune_version ~profile)
+  { common = Build.pure (default_flags ~dune_version ~profile)
   ; specific =
-      { byte = Build.return default_ocamlc_flags
-      ; native = Build.return default_ocamlopt_flags
+      { byte = Build.pure default_ocamlc_flags
+      ; native = Build.pure default_ocamlopt_flags
       }
   }
 

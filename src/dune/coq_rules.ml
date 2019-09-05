@@ -85,12 +85,12 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
       (Command.run ~dir ~stdout_to cc.coqdep cd_arg)
   in
   (* Process coqdep and generate rules *)
-  let deps_of : unit Build.s =
+  let deps_of : unit Build.t =
     Build.dyn_paths
       (Build.S.map
          (Build.lines_of (Path.build stdout_to))
          ~f:(fun x ->
-           List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x)))
+           ((), List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x))))
   in
   let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
@@ -98,7 +98,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   ; Build.S.seq deps_of
       (let coq_flags =
          Expander.expand_and_eval_set expander coq_flags
-           ~standard:(Build.return [])
+           ~standard:(Build.pure [])
        in
        Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg))
   ]

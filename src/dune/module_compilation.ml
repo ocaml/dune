@@ -100,7 +100,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                 let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
                 let opaque = CC.opaque cctx in
                 let other_cm_files =
-                  Build.dyn_paths
+                  Build.dyn_paths_unit
                     ( Dep_graph.deps_of dep_graph m
                     >>^ fun deps ->
                     List.concat_map deps ~f:(fun m ->
@@ -231,7 +231,7 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let dep_graph = Ml_kind.Dict.get dep_graphs Impl in
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
-    Build.dyn_paths
+    Build.dyn_paths_unit
       ( Dep_graph.deps_of dep_graph m
       >>^ fun deps ->
       List.concat_map deps ~f:(fun m ->
@@ -256,7 +256,7 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
               ; Command.Ml_kind.flag Impl
               ; Dep src
               ]))
-    >>> Build.action_dyn () ~targets:[ output ] )
+    |> Build.action_dyn ~targets:[ output ] )
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper
@@ -290,8 +290,8 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
     |> String.concat ~sep:"\n"
   in
   Super_context.add_rule ~loc sctx ~dir
-    ( Build.arr alias_file
-    >>> Build.write_file_dyn (Path.as_in_build_dir_exn file) );
+    ( Build.delayed alias_file
+    |> Build.write_file_dyn (Path.as_in_build_dir_exn file) );
   let cctx = Compilation_context.for_alias_module cctx in
   build_module cctx alias_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy alias_module)

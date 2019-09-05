@@ -37,7 +37,7 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-     read >>^ transitive_deps_contents >>> Build.write_file_dyn target);
+     read >>^ transitive_deps_contents |> Build.write_file_dyn target);
   read
 
 let deps_of_module cctx ~ml_kind m =
@@ -47,7 +47,7 @@ let deps_of_module cctx ~ml_kind m =
     ( match Modules.lib_interface modules with
     | Some m -> m
     | None -> Modules.compat_for_exn modules m )
-    |> List.singleton |> Build.return
+    |> List.singleton |> Build.pure
   | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =
@@ -82,13 +82,13 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
     | Impl_of_virtual_module _ -> false
   in
   if is_alias then
-    Build.return []
+    Build.pure []
   else
     let skip_if_source_absent f m =
       if Module.has m ~ml_kind then
         f m
       else
-        Build.return []
+        Build.pure []
     in
     match m with
     | Imported_from_vlib m ->

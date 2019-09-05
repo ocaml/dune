@@ -4,7 +4,7 @@ open Build.O
 
 type t =
   { dir : Path.Build.t
-  ; per_module : (unit, Module.t list) Build.t Module.Obj_map.t
+  ; per_module : Module.t list Build.t Module.Obj_map.t
   }
 
 let make ~dir ~per_module = { dir; per_module }
@@ -45,7 +45,7 @@ let top_closed_implementations t modules =
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root
-  ; per_module = Module.Obj_map.singleton m (Build.return [])
+  ; per_module = Module.Obj_map.singleton m (Build.pure [])
   }
 
 module Ml_kind = struct

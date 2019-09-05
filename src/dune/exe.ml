@@ -109,7 +109,7 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-    ~promote ?(link_flags = Build.arr (fun _ -> [])) ?(o_files = []) cctx =
+    ~promote ?(link_flags = Build.pure []) ?(o_files = []) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -134,7 +134,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            Cm_files.unsorted_objects_and_cms cm_files ~mode |> Build.paths
          else
            Cm_files.top_sorted_objects_and_cms cm_files ~mode
-           |> Build.dyn_paths )
+           |> Build.dyn_paths_unit )
      in
      prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
@@ -167,7 +167,7 @@ let link_js ~name ~cm_files ~promote cctx =
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
   let flags =
     Expander.expand_and_eval_set expander js_of_ocaml.flags
-      ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))
+      ~standard:(Build.pure (Js_of_ocaml_rules.standard sctx))
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
   Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms

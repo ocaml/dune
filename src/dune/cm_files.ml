@@ -3,7 +3,7 @@ open Stdune
 type t =
   { obj_dir : Path.Build.t Obj_dir.t
   ; modules : Module.t list
-  ; top_sorted_modules : (unit, Module.t list) Build.t
+  ; top_sorted_modules : Module.t list Build.t
   ; ext_obj : string
   }
 

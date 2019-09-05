@@ -50,9 +50,9 @@ let runtime_file ~dir ~sctx file =
     match jsoo ~dir sctx with
     | Ok path ->
       let path = Path.relative (Path.parent_exn path) file in
-      Build.if_file_exists path ~then_:(Build.arr (fun _ -> path)) ~else_:fail
+      Build.if_file_exists path ~then_:(Build.pure path) ~else_:fail
     | _ -> fail )
-  | Ok f -> Build.arr (fun _ -> f)
+  | Ok f -> Build.pure f
 
 let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
@@ -140,7 +140,7 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
     let spec = Command.Args.Dep (Path.build src) in
     let flags =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
-        ~standard:(Build.return (standard sctx))
+        ~standard:(Build.pure (standard sctx))
     in
     [ js_of_ocaml_rule sctx ~dir ~flags:(Command.Args.dyn flags) ~spec ~target ]
   else
@@ -185,7 +185,7 @@ let setup_separate_compilation_rules sctx components =
                  ~flags:(As (standard sctx))
                  ~spec ~target)) )
 
-let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.s) ~flags ~promote
+let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.t) ~flags ~promote
     =
   let { Dune_file.Js_of_ocaml.javascript_files; _ } = js_of_ocaml in
   let dir = Compilation_context.dir cc in

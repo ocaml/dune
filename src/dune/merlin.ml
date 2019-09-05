@@ -92,7 +92,7 @@ end
 
 type t =
   { requires : Lib.Set.t
-  ; flags : (unit, string list) Build.t
+  ; flags : string list Build.t
   ; preprocess : Dune_file.Preprocess.t
   ; libname : Lib_name.Local.t option
   ; source_dirs : Path.Source.Set.t
@@ -131,8 +131,7 @@ let make ?(requires = Ok []) ~flags
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
-let pp_flag_of_action sctx ~expander ~loc ~action :
-    (unit, string option) Build.t =
+let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
   match (action : Action_dune_lang.t) with
   | Run (exe, args) -> (
     let args =
@@ -144,9 +143,9 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
         None
     in
     match args with
-    | None -> Build.return None
+    | None -> Build.pure None
     | Some args -> (
-      let action : (Path.t Bindings.t, Action.t) Build.t =
+      let action : Path.t Bindings.t Build.t -> Action.t Build.t =
         let targets_dir = Expander.dir expander in
         let targets = Expander.Targets.Forbidden "preprocessing actions" in
         let action = Preprocessing.chdir (Run (exe, args)) in
@@ -162,17 +161,16 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
           |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -pp %s"
           |> Option.some
       in
-      Build.return Bindings.empty
-      >>> action
+      Build.pure Bindings.empty |> action
       >>^ function
       | Run (exe, args) -> pp_of_action exe args
       | Chdir (_, Run (exe, args)) -> pp_of_action exe args
       | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
       | _ -> None ) )
-  | _ -> Build.return None
+  | _ -> Build.pure None
 
-let pp_flags sctx ~expander { preprocess; libname; _ } :
-    (unit, string option) Build.t =
+let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t
+    =
   let scope = Expander.scope expander in
   match
     Dune_file.Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -183,15 +181,15 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags
         ~scope pps
     with
-    | Error _exn -> Build.return None
+    | Error _exn -> Build.pure None
     | Ok (exe, flags) ->
       Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -ppx %s"
-      |> Option.some |> Build.return )
+      |> Option.some |> Build.pure )
   | Action (loc, (action : Action_dune_lang.t)) ->
     pp_flag_of_action sctx ~expander ~loc ~action
-  | No_preprocessing -> Build.return None
+  | No_preprocessing -> Build.pure None
 
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
     =
@@ -233,7 +231,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
                      (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
                  in
                  Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
-           >>> Build.write_file_dyn merlin_file ))
+           |> Build.write_file_dyn merlin_file ))
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

@@ -62,14 +62,14 @@ val c_flags :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-  -> (unit, string list) Build.t C.Kind.Dict.t
+  -> string list Build.t C.Kind.Dict.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 
 (** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
+val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
@@ -87,7 +87,7 @@ val add_rule :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> unit
 
 val add_rule_get_targets :
@@ -97,14 +97,14 @@ val add_rule_get_targets :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> Path.Build.Set.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t list
+  -> Action.t Build.t list
   -> unit
 
 val add_alias_action :
@@ -114,7 +114,7 @@ val add_alias_action :
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> unit
 
 val source_files : t -> src_path:Path.Source.t -> String.Set.t
@@ -154,7 +154,7 @@ module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies. *)
   val interpret :
-    t -> expander:Expander.t -> Dep_conf.t list -> (unit, unit) Build.t
+    t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
 
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies.
@@ -164,7 +164,7 @@ module Deps : sig
        t
     -> expander:Expander.t
     -> Dep_conf.t Bindings.t
-    -> (unit, Path.t Bindings.t) Build.t
+    -> Path.t Bindings.t Build.t
 end
 
 (** Interpret action written in jbuild files *)
@@ -180,7 +180,8 @@ module Action : sig
     -> targets:Expander.Targets.t
     -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
-    -> (Path.t Bindings.t, Action.t) Build.t
+    -> Path.t Bindings.t Build.t
+    -> Action.t Build.t
 
   val map_exe : t -> Path.t -> Path.t
 end

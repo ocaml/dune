@@ -93,8 +93,7 @@ val set_packages : (Path.Build.t -> Package.Name.Set.t) -> unit
 (** Assuming [files] is the list of files in [_build/install] that belong to
     package [pkg], [package_deps t pkg files] is the set of direct package
     dependencies of [package]. *)
-val package_deps :
-  Package.Name.t -> Path.Set.t -> Package.Name.Set.t Build.t
+val package_deps : Package.Name.t -> Path.Set.t -> Package.Name.Set.t Build.t
 
 (** {2 Aliases} *)
 

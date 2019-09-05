@@ -61,12 +61,12 @@ end
 open O
 
 (* TODO: We can get rid of all [fanoutN] functions. *)
-let fanout a b = a *** b
+let fanout a b = a &&& b
 
-let fanout3 a b c = (a *** b) *** c >>^ fun ((a, b), c) -> (a, b, c)
+let fanout3 a b c = a &&& (b &&& c) >>^ fun (a, (b, c)) -> (a, b, c)
 
 let fanout4 a b c d =
-  ((a *** b) *** c) *** d >>^ fun (((a, b), c), d) -> (a, b, c, d)
+  a &&& (b &&& (c &&& d)) >>^ fun (a, (b, (c, d))) -> (a, b, c, d)
 
 let rec all xs =
   match xs with

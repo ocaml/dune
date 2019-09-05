@@ -425,10 +425,12 @@ The common defaults are that your projects include the following files:
 And that if your project contains several packages, then all the package names
 must be prefixed by the shortest one.
 
-Watermarking
-============
+.. _dune-subst:
 
-One of the features dune-release provides is watermarking; it replaces
+dune subst
+==========
+
+One of the features ``dune-release`` provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all files of your project
 before creating a release tarball or when the package is pinned by the
 user using opam.
@@ -446,11 +448,6 @@ Projects using dune usually only need dune-release for creating and
 publishing releases. However they might still want to substitute the
 watermarks when the package is pinned by the user. To help with this,
 dune provides the ``subst`` sub-command.
-
-.. _dune-subst:
-
-dune subst
-==========
 
 ``dune subst`` performs the same substitution ``dune-release`` does
 with the default configuration. i.e. calling ``dune subst`` at the

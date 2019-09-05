@@ -181,6 +181,12 @@ let run t =
     prerr_endline message;
     exit 1
 
+module O = struct
+  let ( let+ ) at f = map at ~f
+
+  let ( and+ ) = both
+end
+
 module Private = struct
   let do_run = do_run
 

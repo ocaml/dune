@@ -1,24 +1,45 @@
-(** Monadic interface for *)
+(** Monadic interface for declaring dependencies.
+
+  TODO jstaron: Add more explanation, examples... *)
 
 module Protocol = Protocol
 module Path = Path
 
-(* TODO jstaron: Add module documentation. *)
-
 type 'a t
+
+(* TODO jstaron: What is the recipient of this comments? Should we assume that
+  he/she understand monad/applicative concept? (Then the comments for [return],
+   [map], [both], [bind] should be rewritten and just point to
+   monad/applicative concept). *)
 
 (** [return a] creates a pure computation resulting in [a]. *)
 val return : 'a -> 'a t
 
-(** If [at] is computation resulting in [a] then [map at ~f] is a computation
+(** If [at] is a computation resulting in [a] then [map at ~f] is a computation
   resulting in [f a]. *)
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
-(** If [at] is computation resulting in [a] and [ab] is computation resulting
+(** If [at] is a computation resulting in [a] and [ab] is computation resulting
   in [b] then [both at bt] is a computation resulting in [(a, b)]. *)
 val both : 'a t -> 'b t -> ('a * 'b) t
 
+(** If [at] is a computation resulting in value of type ['a] and [f] is a
+  function taking value of type ['a] and returning a computation [bt] then
+    [stage a ~f] is a computation that is equivalent to staging computation
+    [bt] after computation [at].
+
+    Note: This is a monadic "bind" function. This function is costly so
+    different name was chooden to discourage excessive use. *)
 val stage : 'a t -> f:('a -> 'b t) -> 'b t
+
+module O : sig
+  (* [{ let+ a = g in h }] is equivalent to [map g ~f:(fun a -> g)]. *)
+  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+  (* [{ let+ a1 = g1 and+ a2 = g2 in h }] is equivalent to [both g1 g2 |> map
+    ~f:(fun (a1, a2) -> g)]. *)
+  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
+end
 
 (** [read_file ~path:file] returns a computation depending on a [file] to be
   run and resulting in a file content. *)

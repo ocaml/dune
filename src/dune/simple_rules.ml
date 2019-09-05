@@ -138,7 +138,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       ( SC.Deps.interpret_named sctx ~expander alias_conf.deps
       |>
       match alias_conf.action with
-      | None -> fun _ -> Build.progn []
+      | None -> fun x -> Build.O.( >>> ) (Build.ignore x) (Build.progn [])
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in

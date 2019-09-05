@@ -697,7 +697,7 @@ module Action = struct
             (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>
       let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-      (Build.all (List.map ddeps ~f:snd) *** bindings)
+      Build.all (List.map ddeps ~f:snd) *** bindings
       >>^ (fun (vals, deps_written_by_user) ->
             let dynamic_expansions =
               List.fold_left2 ddeps vals ~init:String.Map.empty
@@ -714,10 +714,9 @@ module Action = struct
                 match Expander.resolve_binary ~loc expander ~prog with
                 | Ok path -> path
                 | Error { fail } -> fail ()))
-      >>^ (fun action -> let { U.Infer.Outcome.deps; targets = _ } =
-                   U.Infer.infer action
-                 in
-                 (action, deps))
+      >>^ (fun action ->
+            let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
+            (action, deps))
       |> Build.dyn_path_set
       |> Build.action_dyn ~dir:(Path.build dir) ~targets
     in

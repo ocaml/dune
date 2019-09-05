@@ -365,50 +365,6 @@ This option acts as if you went through all the dune files and
 commented out the stanzas referring to a package that is not in the list
 given to ``dune``.
 
-Invocation from opam
-====================
-
-You should set the ``build:`` field of your ``<package>.opam`` file as
-follows:
-
-::
-
-    build: [
-      ["dune" "subst"] {pinned}
-      ["dune" "build" "-p" name "-j" jobs]
-    ]
-
-``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
-release --default-target @install``. ``-p`` is the short version of
-``--for-release-of-packages``.
-
-This has the following effects:
-
--  it tells dune to build everything that is installable and to
-   ignore packages other than ``name`` defined in your project
--  it sets the root to prevent dune from looking it up
--  it silently ignores all rules with ``(mode promote)``
--  it sets the build profile to ``release``
--  it uses whatever concurrency option opam provides
--  it sets the default target to ``@install`` rather than ``@@default``
-
-Note that ``name`` and ``jobs`` are variables expanded by opam. ``name`` expands
-to the package name and ``jobs`` to the number of jobs available to build the
-package.
-
-Tests
------
-
-To setup the building and running of tests in opam, add this line to your
-``<package>.opam`` file:
-
-::
-
-    build: [
-      (* Previous lines here... *)
-      ["dune" "runtest" "-p" name "-j" jobs] {with-test}
-    ]
-
 Distributing Projects
 =====================
 

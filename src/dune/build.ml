@@ -65,9 +65,6 @@ let fanout a b = a &&& b
 
 let fanout3 a b c = a &&& (b &&& c) >>^ fun (a, (b, c)) -> (a, b, c)
 
-let fanout4 a b c d =
-  a &&& (b &&& (c &&& d)) >>^ fun (a, (b, (c, d))) -> (a, b, c, d)
-
 let rec all xs =
   match xs with
   | [] -> return []

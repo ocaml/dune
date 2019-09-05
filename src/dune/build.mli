@@ -21,8 +21,6 @@ val fanout : 'a t -> 'b t -> ('a * 'b) t
 
 val fanout3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-val fanout4 : 'a t -> 'b t -> 'c t -> 'd t -> ('a * 'b * 'c * 'd) t
-
 val all : 'a t list -> 'a list t
 
 (** Optimization to avoiding eagerly computing a [Build.t] value, assume it

@@ -606,12 +606,13 @@ module Deps = struct
         ~map_exe:Fn.id ~c_flags
     in
     let deps = List.map l ~f:(f t expander) |> Build.all >>^ List.concat in
-    Build.fanout4 deps
-      (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
-      (let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-       Build.all (List.map ddeps ~f:snd))
+    Build.fanout3 deps
+      ( Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
+      >>>
+      let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
+      Build.all (List.map ddeps ~f:snd) )
       (Build.path_set (Expander.Resolved_forms.sdeps forms))
-    >>^ fun (deps, _, _, _) -> deps
+    >>^ fun (deps, _, _) -> deps
 
   let interpret t ~expander l =
     make_interpreter ~f:dep t ~expander l >>^ fun _paths -> ()

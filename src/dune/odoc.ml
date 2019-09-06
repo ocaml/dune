@@ -154,7 +154,7 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
     (* When a module has no .mli, use the dependencies for the .ml *)
     Dep_graph.deps_of dep_graphs.impl m )
   >>^ List.map ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m))
-  |> Build.dyn_paths
+  |> Build.dyn_paths_unit
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =

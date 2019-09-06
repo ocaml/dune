@@ -252,7 +252,7 @@ module Resolved_forms = struct
     ; (* Static deps from %{...} variables. For instance %{exe:...} *)
       mutable sdeps : Path.Set.t
     ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-      mutable ddeps : (unit, Value.t list) Build.t String.Map.t
+      mutable ddeps : Value.t list Build.t String.Map.t
     }
 
   let failures t = t.failures
@@ -307,7 +307,7 @@ type expansion_kind =
   | Dynamic
   | Static
 
-let cc_of_c_flags t (cc : (unit, string list) Build.t C.Kind.Dict.t) =
+let cc_of_c_flags t (cc : string list Build.t C.Kind.Dict.t) =
   let open Build.O in
   C.Kind.Dict.map cc ~f:(fun cc ->
       cc >>^ fun flags -> Value.L.strings (t.c_compiler :: flags))
@@ -324,7 +324,7 @@ let cannot_be_used_here pform =
 
 let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     ~(dir : Path.Build.t) ~pform t expansion
-    ~(cc : dir:Path.Build.t -> (unit, Value.t list) Build.t C.Kind.Dict.t) =
+    ~(cc : dir:Path.Build.t -> Value.t list Build.t C.Kind.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
@@ -354,11 +354,12 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
           | Some (Ok v) -> v
           | Some (Error msg) -> raise (User_error.E msg)
           | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
-      >>> Build.dyn_paths
-            (Build.arr
-               (List.filter_map ~f:(function
-                 | Value.Path p -> Some p
-                 | _ -> None)))
+      >>^ (fun x ->
+            ( x
+            , List.filter_map x ~f:(function
+                | Value.Path p -> Some p
+                | _ -> None) ))
+      |> Build.dyn_paths
     in
     add_ddep data
   | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
@@ -494,8 +495,7 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
   Option.map res ~f:static
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-    ~(c_flags : dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
-    =
+    ~(c_flags : dir:Path.Build.t -> string list Build.t C.Kind.Dict.t) =
   let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
   let expand_var =
     expand

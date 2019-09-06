@@ -104,7 +104,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       let loc = lib.buildable.loc in
       let sctx = Compilation_context.super_context cctx in
       Build.return contents
-      >>> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
+      |> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
@@ -194,9 +194,9 @@ let build_shared lib ~sctx ~dir ~flags =
       in
       let build =
         Build.S.seq
-          (Build.dyn_paths
-             (Build.arr (fun () ->
-                  [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ])))
+          (Build.dyn_paths_unit
+             (Build.return
+                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]))
           (Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
              [ Command.Args.dyn (Ocaml_flags.get flags Native)
              ; A "-shared"

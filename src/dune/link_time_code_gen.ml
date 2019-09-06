@@ -9,7 +9,6 @@ type t =
 
 let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
     ~requires =
-  let open Build.O in
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
@@ -33,7 +32,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
        Module.file module_ ~ml_kind:Impl
        |> Option.value_exn |> Path.as_in_build_dir_exn
      in
-     code >>> Build.write_file_dyn ml);
+     code |> Build.write_file_dyn ml);
   let opaque =
     Ocaml_version.supports_opaque_for_mli (Super_context.context sctx).version
   in
@@ -200,8 +199,8 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~name:data_module ~lib
               ~code:
-                (Build.arr (fun () ->
-                     build_info_code cctx ~libs:all_libs ~api_version))
+                (Build.return
+                   (build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Ok [ lib ])
               ~precompiled_cmi:true
           in
@@ -228,9 +227,9 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~lib ~name:"findlib_initl"
               ~code:
-                (Build.arr (fun () ->
-                     findlib_init_code ~preds:Findlib.Package.preds
-                       ~libs:all_libs))
+                (Build.return
+                   (findlib_init_code ~preds:Findlib.Package.preds
+                      ~libs:all_libs))
               ~requires ~precompiled_cmi:false
           in
           process_libs libs

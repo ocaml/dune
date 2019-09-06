@@ -80,13 +80,13 @@ module Spec = struct
     { common; specific }
 end
 
-type t = (unit, string list) Build.t t'
+type t = string list Build.t t'
 
 let empty =
-  let build = Build.arr (fun () -> []) in
+  let build = Build.return [] in
   { common = build; specific = Mode.Dict.make_both build }
 
-let of_list l = { empty with common = Build.arr (fun () -> l) }
+let of_list l = { empty with common = Build.return l }
 
 let default ~dune_version ~profile =
   { common = Build.return (default_flags ~dune_version ~profile)

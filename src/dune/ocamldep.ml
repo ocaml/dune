@@ -109,7 +109,7 @@ let deps_of ~cctx ~ml_kind unit =
           ( build_paths modules
           , List.map modules ~f:(fun m ->
                 Module_name.to_string (Module.name m)) ))
-    >>> Build.merge_files_dyn ~target:all_deps_file );
+    |> Build.merge_files_dyn ~target:all_deps_file );
   let all_deps_file = Path.build all_deps_file in
   Build.memoize
     (Path.to_string all_deps_file)

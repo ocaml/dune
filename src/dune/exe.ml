@@ -109,7 +109,7 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-    ~promote ?(link_flags = Build.arr (fun _ -> [])) ?(o_files = []) cctx =
+    ~promote ?(link_flags = Build.return []) ?(o_files = []) cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -134,7 +134,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            Cm_files.unsorted_objects_and_cms cm_files ~mode |> Build.paths
          else
            Cm_files.top_sorted_objects_and_cms cm_files ~mode
-           |> Build.dyn_paths )
+           |> Build.dyn_paths_unit )
      in
      prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)

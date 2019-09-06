@@ -110,7 +110,7 @@ end
 type t =
   { source : Source.t
   ; obj_name : string
-  ; pp : (unit, string list) Build.t option
+  ; pp : string list Build.t option
   ; visibility : Visibility.t
   ; kind : Kind.t
   }

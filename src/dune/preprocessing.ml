@@ -310,7 +310,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   add_rule ~sandbox:Sandbox_config.default
     ( Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
           Build.return (sprintf "let () = %s ()\n" driver.info.main))
-    >>> Build.write_file_dyn ml );
+    |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
     (Build.S.seqs
        [ Build.record_lib_deps
@@ -461,11 +461,11 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   in
   Build.path (Path.build src)
   >>^ (fun _ -> Bindings.empty)
-  >>> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
+  |> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
   |> (fun action ->
        match target with
        | None -> action
-       | Some dst -> action >>> Build.action_dyn () ~targets:[ dst ])
+       | Some dst -> action |> Build.action_dyn ~targets:[ dst ])
   >>^ fun action ->
   match target with
   | None -> action

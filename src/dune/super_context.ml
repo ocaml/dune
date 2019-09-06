@@ -31,7 +31,6 @@ type t =
   ; file_tree : File_tree.t
   ; artifacts : Artifacts.t
   ; expander : Expander.t
-  ; chdir : (Action.t, Action.t) Build.t
   ; host : t option
   ; libs_by_package : (Package.t * Lib.Local.Set.t) Package.Name.Map.t
   ; env_context : Env_context.t
@@ -107,8 +106,7 @@ module Env : sig
 
   val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.t
 
-  val c_flags :
-    t -> dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t
+  val c_flags : t -> dir:Path.Build.t -> string list Build.t C.Kind.Dict.t
 
   val external_ : t -> dir:Path.Build.t -> External_env.t
 
@@ -231,15 +229,21 @@ end
 
 let expander t ~dir = Env.expander t.env_context ~dir
 
+let chdir_to_build_context_root t build =
+  Build.S.map build ~f:(fun (action : Action.t) ->
+      match action with
+      | Chdir _ -> action
+      | _ -> Chdir (Path.build t.context.build_dir, action))
+
 let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = Build.O.( >>> ) build t.chdir in
+  let build = chdir_to_build_context_root t build in
   let env = Env.external_ t.env_context ~dir in
   Rules.Produce.rule
     (Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
        ~context:(Some t.context) ~env:(Some env) build)
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = Build.O.( >>> ) build t.chdir in
+  let build = chdir_to_build_context_root t build in
   let env = Env.external_ t.env_context ~dir in
   let rule =
     Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
@@ -506,11 +510,6 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; packages
   ; file_tree
   ; artifacts
-  ; chdir =
-      Build.arr (fun (action : Action.t) ->
-          match action with
-          | Chdir _ -> action
-          | _ -> Chdir (Path.build context.build_dir, action))
   ; libs_by_package =
       Lib.DB.all public_libs |> Lib.Set.to_list
       |> List.filter_map ~f:(fun lib ->
@@ -604,12 +603,13 @@ module Deps = struct
         ~map_exe:Fn.id ~c_flags
     in
     let deps = List.map l ~f:(f t expander) |> Build.all >>^ List.concat in
-    Build.fanout4 deps
-      (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
-      (let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-       Build.all (List.map ddeps ~f:snd))
+    Build.fanout3 deps
+      ( Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
+      >>>
+      let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
+      Build.all (List.map ddeps ~f:snd) )
       (Build.path_set (Expander.Resolved_forms.sdeps forms))
-    >>^ fun (deps, _, _, _) -> deps
+    >>^ fun (deps, _, _) -> deps
 
   let interpret t ~expander l =
     make_interpreter ~f:dep t ~expander l >>^ fun _paths -> ()
@@ -641,7 +641,7 @@ module Action = struct
         | _ -> exe )
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
-      ~targets_dir t : (Path.t Bindings.t, Action.t) Build.t =
+      ~targets_dir t bindings : Action.t Build.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     ( match (targets_written_by_user : Expander.Targets.t) with
@@ -693,10 +693,9 @@ module Action = struct
       Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
       >>> Build.path_set
             (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
-      >>> Build.arr (fun paths -> ((), paths))
       >>>
       let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-      Build.first (Build.all (List.map ddeps ~f:snd))
+      Build.all (List.map ddeps ~f:snd) *** bindings
       >>^ (fun (vals, deps_written_by_user) ->
             let dynamic_expansions =
               List.fold_left2 ddeps vals ~init:String.Map.empty
@@ -713,13 +712,11 @@ module Action = struct
                 match Expander.resolve_binary ~loc expander ~prog with
                 | Ok path -> path
                 | Error { fail } -> fail ()))
-      >>> Build.dyn_path_set
-            (Build.arr (fun action ->
-                 let { U.Infer.Outcome.deps; targets = _ } =
-                   U.Infer.infer action
-                 in
-                 deps))
-      >>> Build.action_dyn () ~dir:(Path.build dir) ~targets
+      >>^ (fun action ->
+            let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
+            (action, deps))
+      |> Build.dyn_path_set
+      |> Build.action_dyn ~dir:(Path.build dir) ~targets
     in
     match Expander.Resolved_forms.failures forms with
     | [] -> build

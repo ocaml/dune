@@ -255,17 +255,15 @@ include Sub_system.Register_end_point (struct
            [ ("impl-files", files Impl); ("intf-files", files Intf) ]
        in
        let expander = Expander.add_bindings expander ~bindings in
-       Build.return Bindings.empty
-       >>> Build.all
-             (List.filter_map backends ~f:(fun (backend : Backend.t) ->
-                  Option.map backend.info.generate_runner
-                    ~f:(fun (loc, action) ->
-                      SC.Action.run sctx action ~loc ~expander
-                        ~dep_kind:Required
-                        ~targets:(Forbidden "inline test generators")
-                        ~targets_dir:dir)))
+       Build.all
+         (List.filter_map backends ~f:(fun (backend : Backend.t) ->
+              Option.map backend.info.generate_runner ~f:(fun (loc, action) ->
+                  SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+                    ~targets:(Forbidden "inline test generators")
+                    ~targets_dir:dir
+                    (Build.return Bindings.empty))))
        >>^ (fun actions -> Action.with_stdout_to target (Action.progn actions))
-       >>> Build.action_dyn ~targets:[ target ] ());
+       |> Build.action_dyn ~targets:[ target ]);
     let cctx =
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:false ~requires_compile:runner_libs

@@ -1,7 +1,6 @@
 open! Stdune
 open Import
 open Dune_file
-open Build.O
 open! No_io
 module SC = Super_context
 
@@ -68,8 +67,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
       ( SC.Deps.interpret_named sctx ~expander rule.deps
-      >>> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
-            ~dep_kind:Required ~targets ~targets_dir:dir )
+      |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
+           ~dep_kind:Required ~targets ~targets_dir:dir )
   else
     Path.Build.Set.empty
 
@@ -137,9 +136,9 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     add_alias sctx ~dir ~loc ~name:alias_conf.name ~stamp
       ~locks:(interpret_locks ~expander alias_conf.locks)
       ( SC.Deps.interpret_named sctx ~expander alias_conf.deps
-      >>>
+      |>
       match alias_conf.action with
-      | None -> Build.progn []
+      | None -> fun x -> Build.O.( >>> ) (Build.ignore x) (Build.progn [])
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in

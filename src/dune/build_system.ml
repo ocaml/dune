@@ -119,7 +119,7 @@ module Internal_rule = struct
       ; static_deps : Static_deps.t Fiber.Once.t
       ; targets : Path.Build.Set.t
       ; context : Context.t option
-      ; build : (unit, Action.t) Build.t
+      ; build : Action.t Build.t
       ; mode : Dune_file.Rule.Mode.t
       ; info : Rule.Info.t
       ; dir : Path.Build.t
@@ -190,12 +190,11 @@ module Alias0 = struct
     let f dir acc =
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
-      acc
-      >>>
       let fn = Path.build fn in
-      Build.if_file_exists fn
-        ~then_:(Build.path fn >>^ Fn.const false)
-        ~else_:(Build.arr Fn.id)
+      Build.S.map2 ~f:( && ) acc
+        (Build.if_file_exists fn
+           ~then_:(Build.path fn >>> Build.return false)
+           ~else_:(Build.return true))
     in
     Build.lazy_no_targets
       ( lazy
@@ -650,7 +649,7 @@ let no_rule_found t ~loc fn =
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t
 
-  val static_deps : (unit, Action.t) Build.t -> Static_deps.t Fiber.Once.t
+  val static_deps : Action.t Build.t -> Static_deps.t Fiber.Once.t
 
   val targets_of : dir:Path.t -> Path.Set.t
 end = struct
@@ -779,13 +778,13 @@ end = struct
             Path.Build.extend_basename base_path ~suffix:Alias0.suffix
           in
           Pre_rule.make ~context:None ~env:None
-            ( Build.path_set deps >>> dyn_deps
-            >>> Build.dyn_path_set (Build.arr Fn.id)
+            ( Build.path_set deps
+            >>> Build.dyn_path_set (dyn_deps >>^ fun x -> (x, x))
             >>^ (fun dyn_deps ->
                   let deps = Path.Set.union deps dyn_deps in
                   Action.with_stdout_to path
                     (Action.digest_files (Path.Set.to_list deps)))
-            >>> Build.action_dyn () ~targets:[ path ] )
+            |> Build.action_dyn ~targets:[ path ] )
           :: rules)
     in
     fun ~subdirs_to_keep ->
@@ -1249,7 +1248,7 @@ end = struct
       let* static_deps = Fiber.Once.get rule.static_deps in
       let rule_deps = Static_deps.rule_deps static_deps in
       let+ () = build_deps rule_deps in
-      Build.exec ~eval_pred rule.build ()
+      Build.exec ~eval_pred rule.build
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
@@ -1781,7 +1780,7 @@ let is_target file = Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
 
 module Print_rules : sig
   val evaluate_rules :
-    recursive:bool -> request:(unit, unit) Build.t -> Rule.t list Fiber.t
+    recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
 end = struct
   let rules_for_files rules deps =
     Dep.Set.paths deps ~eval_pred
@@ -1852,7 +1851,7 @@ include Print_rules
 
 module All_lib_deps : sig
   val all_lib_deps :
-       request:(unit, unit) Build.t
+       request:unit Build.t
     -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
 end = struct
   let static_deps_of_request request =

@@ -4,7 +4,7 @@ open Build.O
 
 type t =
   { dir : Path.Build.t
-  ; per_module : (unit, Module.t list) Build.t Module.Obj_map.t
+  ; per_module : Module.t list Build.t Module.Obj_map.t
   }
 
 let make ~dir ~per_module = { dir; per_module }

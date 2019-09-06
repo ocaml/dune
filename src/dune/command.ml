@@ -18,7 +18,7 @@ module Args = struct
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Build.s -> dynamic t
+    | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
 
   (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)

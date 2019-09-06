@@ -5,7 +5,7 @@ module Id = Id.Make ()
 module Dir_rules = struct
   type alias_action =
     { stamp : Digest.t
-    ; action : (unit, Action.t) Build.t
+    ; action : Action.t Build.t
     ; locks : Path.t list
     ; context : Context.t
     ; env : Env.t option
@@ -15,7 +15,7 @@ module Dir_rules = struct
   module Alias_spec = struct
     type t =
       { deps : Path.Set.t
-      ; dyn_deps : (unit, Path.Set.t) Build.t
+      ; dyn_deps : Path.Set.t Build.t
       ; actions : alias_action Appendable_list.t
       }
 

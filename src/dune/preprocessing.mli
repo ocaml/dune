@@ -15,7 +15,7 @@ val make :
   -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Dune_file.Preprocess_map.t
   -> preprocess:Dune_file.Preprocess_map.t
-  -> preprocessor_deps:(unit, unit) Build.t
+  -> preprocessor_deps:unit Build.t
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
   -> t
@@ -51,7 +51,7 @@ val action_for_pp :
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
   -> target:Path.Build.t option
-  -> ('a, Action.t) Build.t
+  -> Action.t Build.t
 
 val ppx_exe :
   Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Or_exn.t

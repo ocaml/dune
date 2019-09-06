@@ -111,10 +111,10 @@ module Run (P : PARAMS) : sig end = struct
 
   (* [menhir args] generates a Menhir command line (a build action). *)
 
-  let menhir (args : 'a args) : Action.t Build.s =
+  let menhir (args : 'a args) : Action.t Build.t =
     Command.run ~dir:(Path.build build_dir) menhir_binary args
 
-  let rule ?(mode = stanza.mode) : Action.t Build.s -> unit =
+  let rule ?(mode = stanza.mode) : Action.t Build.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
   let expand_flags flags =

@@ -85,7 +85,7 @@ module Resolved_forms : sig
   val sdeps : t -> Path.Set.t
 
   (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-  val ddeps : t -> (unit, Value.t list) Build.t String.Map.t
+  val ddeps : t -> Value.t list Build.t String.Map.t
 
   val empty : unit -> t
 end
@@ -108,7 +108,7 @@ val with_record_deps :
   -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> string list Build.t C.Kind.Dict.t)
   -> t
 
 val with_record_no_ddeps :
@@ -116,7 +116,7 @@ val with_record_no_ddeps :
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> string list Build.t C.Kind.Dict.t)
   -> t
 
 val add_ddeps_and_bindings :
@@ -130,7 +130,7 @@ val expand_var_exn : t -> Value.t list option String_with_vars.expander
 val expand_and_eval_set :
      t
   -> Ordered_set_lang.Unexpanded.t
-  -> standard:(unit, string list) Build.t
-  -> (unit, string list) Build.t
+  -> standard:string list Build.t
+  -> string list Build.t
 
 val eval_blang : t -> Blang.t -> bool

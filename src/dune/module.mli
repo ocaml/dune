@@ -56,7 +56,7 @@ val real_unit_name : t -> Module_name.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
-val pp_flags : t -> (unit, string list) Build.t option
+val pp_flags : t -> string list Build.t option
 
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
@@ -72,7 +72,7 @@ val with_wrapper : t -> main_module_name:Module_name.t -> t
 val map_files : t -> f:(Ml_kind.t -> File.t -> File.t) -> t
 
 (** Set preprocessing flags *)
-val set_pp : t -> (unit, string list) Build.t option -> t
+val set_pp : t -> string list Build.t option -> t
 
 val wrapped_compat : t -> t
 

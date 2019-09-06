@@ -42,11 +42,11 @@ module Args : sig
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Build.s -> dynamic t
+    | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
 
   (* Create dynamic command line arguments. *)
-  val dyn : string list Build.s -> dynamic t
+  val dyn : string list Build.t -> dynamic t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
@@ -56,7 +56,7 @@ val run :
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.dynamic Args.t list
-  -> Action.t Build.s
+  -> Action.t Build.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t

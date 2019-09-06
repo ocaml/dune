@@ -365,50 +365,6 @@ This option acts as if you went through all the dune files and
 commented out the stanzas referring to a package that is not in the list
 given to ``dune``.
 
-Invocation from opam
-====================
-
-You should set the ``build:`` field of your ``<package>.opam`` file as
-follows:
-
-::
-
-    build: [
-      ["dune" "subst"] {pinned}
-      ["dune" "build" "-p" name "-j" jobs]
-    ]
-
-``-p pkg`` is a shorthand for ``--root . --only-packages pkg --profile
-release --default-target @install``. ``-p`` is the short version of
-``--for-release-of-packages``.
-
-This has the following effects:
-
--  it tells dune to build everything that is installable and to
-   ignore packages other than ``name`` defined in your project
--  it sets the root to prevent dune from looking it up
--  it silently ignores all rules with ``(mode promote)``
--  it sets the build profile to ``release``
--  it uses whatever concurrency option opam provides
--  it sets the default target to ``@install`` rather than ``@@default``
-
-Note that ``name`` and ``jobs`` are variables expanded by opam. ``name`` expands
-to the package name and ``jobs`` to the number of jobs available to build the
-package.
-
-Tests
------
-
-To setup the building and running of tests in opam, add this line to your
-``<package>.opam`` file:
-
-::
-
-    build: [
-      (* Previous lines here... *)
-      ["dune" "runtest" "-p" name "-j" jobs] {with-test}
-    ]
-
 Distributing Projects
 =====================
 
@@ -425,10 +381,12 @@ The common defaults are that your projects include the following files:
 And that if your project contains several packages, then all the package names
 must be prefixed by the shortest one.
 
-Watermarking
-============
+.. _dune-subst:
 
-One of the features dune-release provides is watermarking; it replaces
+dune subst
+==========
+
+One of the features ``dune-release`` provides is watermarking; it replaces
 various strings of the form ``%%ID%%`` in all files of your project
 before creating a release tarball or when the package is pinned by the
 user using opam.
@@ -446,11 +404,6 @@ Projects using dune usually only need dune-release for creating and
 publishing releases. However they might still want to substitute the
 watermarks when the package is pinned by the user. To help with this,
 dune provides the ``subst`` sub-command.
-
-.. _dune-subst:
-
-dune subst
-==========
 
 ``dune subst`` performs the same substitution ``dune-release`` does
 with the default configuration. i.e. calling ``dune subst`` at the

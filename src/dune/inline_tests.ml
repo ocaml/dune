@@ -297,7 +297,7 @@ include Sub_system.Register_end_point (struct
         @ [ info.flags ]
       in
       let expander = Expander.add_bindings expander ~bindings in
-      let open Build.S.O in
+      let open Build.O in
       let+ l =
         List.map flags
           ~f:

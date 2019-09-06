@@ -87,7 +87,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   (* Process coqdep and generate rules *)
   let deps_of : unit Build.t =
     Build.dyn_paths_unit
-      (Build.S.map
+      (Build.map
          (Build.lines_of (Path.build stdout_to))
          ~f:(fun x ->
            List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x)))

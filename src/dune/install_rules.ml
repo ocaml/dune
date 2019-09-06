@@ -354,7 +354,7 @@ let init_meta sctx ~dir =
          in
          let ctx = Super_context.context sctx in
          Super_context.add_rule sctx ~dir:ctx.build_dir
-           (let open Build.S.O in
+           (let open Build.O in
            (let+ template = template in
             let meta =
               Gen_meta.gen

@@ -230,7 +230,7 @@ end
 let expander t ~dir = Env.expander t.env_context ~dir
 
 let chdir_to_build_context_root t build =
-  Build.S.map build ~f:(fun (action : Action.t) ->
+  Build.map build ~f:(fun (action : Action.t) ->
       match action with
       | Chdir _ -> action
       | _ -> Chdir (Path.build t.context.build_dir, action))

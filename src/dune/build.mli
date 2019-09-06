@@ -7,6 +7,8 @@ type 'a t
 
 val return : 'a -> 'a t
 
+val map : 'a t -> f:('a -> 'b) -> 'b t
+
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
 
@@ -15,6 +17,10 @@ module O : sig
   val ( *** ) : 'a t -> 'b t -> ('a * 'b) t
 
   val ( &&& ) : 'a t -> 'b t -> ('a * 'b) t
+
+  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
 
 val fanout : 'a t -> 'b t -> ('a * 'b) t
@@ -80,6 +86,8 @@ val dyn_paths : ('a * Path.t list) t -> 'a t
 val dyn_paths_unit : Path.t list t -> unit t
 
 val dyn_path_set : ('a * Path.Set.t) t -> 'a t
+
+val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
 (** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is
     raised during the evaluation of [t]. *)
@@ -184,8 +192,6 @@ val ignore : 'a t -> unit t
 (* A module with standard combinators for applicative and selective functors,
    as well as equivalents of the functions from the arrow-based API. *)
 module S : sig
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
   val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val seq : unit t -> 'a t -> 'a t
@@ -195,10 +201,4 @@ module S : sig
   val ignore : 'a t -> unit t
 
   val dyn_deps : ('a * Dep.Set.t) t -> 'a t
-
-  module O : sig
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-  end
 end

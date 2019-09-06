@@ -44,6 +44,8 @@ let get_if_file_exists_exn state =
 
 let return x = Pure x
 
+let map x ~f = Map (f, x)
+
 let delayed f = Map (f, return ())
 
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
@@ -56,6 +58,10 @@ module O = struct
   let ( *** ) a b = Map2 ((fun x y -> (x, y)), a, b)
 
   let ( &&& ) a b = a *** b
+
+  let ( and+ ) = ( &&& )
+
+  let ( let+ ) t f = Map (f, t)
 end
 
 open O
@@ -86,11 +92,22 @@ let path_set ps = Deps (Dep.Set.of_files_set ps)
 
 let paths_matching ~loc:_ dir_glob = Paths_glob dir_glob
 
-let dyn_paths t = Dyn_paths (t >>^ fun (x, y) -> (x, Path.Set.of_list y))
+let dyn_paths paths =
+  Dyn_paths
+    (let+ x, paths = paths in
+     (x, Path.Set.of_list paths))
 
-let dyn_paths_unit t = dyn_paths (t >>^ fun x -> ((), x))
+let dyn_paths_unit paths =
+  Dyn_paths
+    (let+ paths = paths in
+     ((), Path.Set.of_list paths))
 
-let dyn_path_set t = Dyn_paths t
+let dyn_path_set paths = Dyn_paths paths
+
+let dyn_path_set_reuse paths =
+  Dyn_paths
+    (let+ paths = paths in
+     (paths, paths))
 
 let paths_for_rule ps = Paths_for_rule ps
 
@@ -109,8 +126,7 @@ let lines_of p = Lines_of p
 let strings p = Map ((fun l -> List.map l ~f:Scanf.unescaped), lines_of p)
 
 let read_sexp p =
-  contents p
-  >>^ fun s ->
+  let+ s = contents p in
   Dune_lang.parse_string s ~lexer:Dune_lang.Lexer.token
     ~fname:(Path.to_string p) ~mode:Single
 
@@ -120,7 +136,7 @@ let if_file_exists p ~then_ ~else_ =
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
 
 let file_exists_opt p t =
-  if_file_exists p ~then_:(t >>^ Option.some) ~else_:(return None)
+  if_file_exists p ~then_:(map ~f:Option.some t) ~else_:(return None)
 
 let paths_existing paths =
   List.fold_left paths ~init:(return true) ~f:(fun acc file ->
@@ -171,11 +187,12 @@ let source_tree ~dir ~file_tree =
                   Path.Set.add acc (Path.relative path fn))
             , acc_dirs_without_files ))
   in
-  dirs_without_files >>> path_set paths >>^ fun _ -> paths
+  let+ () = dirs_without_files
+  and+ () = path_set paths in
+  paths
 
 let action ?dir ~targets action =
-  Targets (Path.Build.Set.of_list targets)
-  >>^ fun _ ->
+  let+ () = Targets (Path.Build.Set.of_list targets) in
   match dir with
   | None -> action
   | Some dir -> Action.Chdir (dir, action)
@@ -184,14 +201,16 @@ let action_dyn ?dir ~targets action =
   let action = Targets (Path.Build.Set.of_list targets) >>> action in
   match dir with
   | None -> action
-  | Some dir -> action >>^ fun action -> Action.Chdir (dir, action)
+  | Some dir ->
+    let+ action = action in
+    Action.Chdir (dir, action)
 
 let write_file fn s = action ~targets:[ fn ] (Write_file (fn, s))
 
 let write_file_dyn fn s =
-  Targets (Path.Build.Set.singleton fn)
-  >>> s
-  >>^ fun s -> Action.Write_file (fn, s)
+  let+ () = Targets (Path.Build.Set.singleton fn)
+  and+ s = s in
+  Action.Write_file (fn, s)
 
 let copy ~src ~dst = path src >>> action ~targets:[ dst ] (Copy (src, dst))
 
@@ -210,13 +229,20 @@ let mkdir dir =
   let dir = Path.build dir in
   return (Action.Mkdir dir)
 
-let progn ts = all ts >>^ fun actions -> Action.Progn actions
+let progn ts =
+  let+ actions = all ts in
+  Action.Progn actions
 
 let merge_files_dyn ~target paths =
-  dyn_paths (paths >>^ fun (sources, extras) -> ((sources, extras), sources))
-  >>^ (fun (sources, extras) ->
-        Action.Merge_files_into (sources, extras, target))
-  |> action_dyn ~targets:[ target ]
+  let action =
+    let+ sources, extras =
+      dyn_paths
+        (let+ sources, extras = paths in
+         ((sources, extras), sources))
+    in
+    Action.Merge_files_into (sources, extras, target)
+  in
+  action_dyn ~targets:[ target ] action
 
 (* Analysis *)
 
@@ -397,19 +423,16 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
 module S = struct
   open O
 
-  module O = struct
-    let ( and+ ) = ( &&& )
-
-    let ( let+ ) = ( >>^ )
-  end
-
-  let map x ~f = Map (f, x)
-
   let map2 x y ~f = Map2 (f, x, y)
 
-  let ignore x = x >>^ fun _ -> ()
+  let ignore x =
+    let+ _ = x in
+    ()
 
-  let seq x y = x &&& y >>^ fun ((), y) -> y
+  let seq x y =
+    let+ () = x
+    and+ y = y in
+    y
 
   let seqs xs y = seq (ignore (all xs)) y
 

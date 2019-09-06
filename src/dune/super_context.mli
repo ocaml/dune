@@ -1,4 +1,4 @@
-(** A augmanted context *)
+(** An augmented context *)
 
 (** A context augmented with: a lib-db, ...
 

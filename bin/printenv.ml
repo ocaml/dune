@@ -13,8 +13,8 @@ let info = Term.info "printenv" ~doc ~man
 
 let dump sctx ~dir =
   let open Build.O in
-  Super_context.dump_env sctx ~dir
-  >>^ fun env -> ((Super_context.context sctx).name, env)
+  let+ env = Super_context.dump_env sctx ~dir in
+  ((Super_context.context sctx).name, env)
 
 let pp ppf sexps =
   Dune_lang.List sexps

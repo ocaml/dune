@@ -155,7 +155,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                        ~lib_config:ctx.lib_config ~mode
                    ])
            ; Deps o_files
-           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+           ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
            ])
 
 let link_js ~name ~cm_files ~promote cctx =

@@ -59,7 +59,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
               ; Target target
               ; As stubs_flags
               ; Dyn
-                  (Build.S.map cclibs ~f:(fun x ->
+                  (Build.map cclibs ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))
               ; Command.Args.dyn library_flags
               ; As
@@ -70,7 +70,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                     [ "-linkall" ] )
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode
-                  |> Build.S.map ~f:(fun x -> Command.Args.Deps x) )
+                  |> Build.map ~f:(fun x -> Command.Args.Deps x) )
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
@@ -125,7 +125,7 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
        ; Path (Path.build (Library.stubs lib ~dir))
        ; Deps o_files
        ; Dyn
-           (Build.S.map cclibs_args ~f:(fun cclibs ->
+           (Build.map cclibs_args ~f:(fun cclibs ->
                 (* https://github.com/ocaml/dune/issues/119 *)
                 if ctx.ccomp_type = "msvc" then
                   let cclibs = msvc_hack_cclibs cclibs in

@@ -18,8 +18,8 @@ let term =
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
       Dune.Upgrader.upgrade
-        (Dune.File_tree.load Path.Source.root
-           ~warn_when_seeing_jbuild_file:false ~ancestor_vcs:None)
+        (Dune.File_tree.load Path.Source.root ~recognize_jbuilder_projects:true
+           ~ancestor_vcs:None)
       |> Fiber.return)
 
 let command = (term, info)

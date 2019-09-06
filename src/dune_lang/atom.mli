@@ -4,9 +4,7 @@ type t = private A of string [@@unboxed]
 
 val equal : t -> t -> bool
 
-val is_valid_dune : string -> bool
-
-val is_valid : t -> File_syntax.t -> bool
+val is_valid : string -> bool
 
 val of_string : string -> t
 

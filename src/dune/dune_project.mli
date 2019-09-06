@@ -148,15 +148,22 @@ module Extension : sig
 end
 
 (** Load a project description from the following directory. [files] is the set
-    of files in this directory. *)
-val load : dir:Path.Source.t -> files:String.Set.t -> t option
+    of files in this directory.
+
+    If [infer_from_opam_files] is true and the directory contains no
+    [dune-project] file but contains at least one [>package>.opam] files, then
+    a project description is inferred from the opam files. *)
+val load :
+     dir:Path.Source.t
+  -> files:String.Set.t
+  -> infer_from_opam_files:bool
+  -> t option
+
+(** Create an anonymous project with no package rooted at the given directory *)
+val anonymous : dir:Path.Source.t -> t
 
 (** "dune-project" *)
 val filename : string
-
-(** Represent the scope at the root of the workspace when the root of the
-    workspace contains no [dune-project] or [<package>.opam] files. *)
-val anonymous : t Lazy.t
 
 type created_or_already_exist =
   | Created

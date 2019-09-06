@@ -66,7 +66,7 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
   { contexts; conf; env }
 
 let init_build_system ?only_packages ?external_lib_deps_mode
-    ~sandboxing_preference w =
+    ~sandboxing_preference ?memory w =
   Option.iter only_packages ~f:(fun set ->
       Package.Name.Set.iter set ~f:(fun pkg ->
           if not (Package.Name.Map.mem w.conf.packages pkg) then
@@ -97,7 +97,9 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   in
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
-    ~file_tree:w.conf.file_tree ~hook;
+    ~file_tree:w.conf.file_tree ~hook ?memory;
+  Option.iter memory ~f:(fun memory ->
+      Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory));
   Scheduler.set_status_line_generator gen_status_line;
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages

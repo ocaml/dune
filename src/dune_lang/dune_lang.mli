@@ -3,12 +3,10 @@
     This library is internal to dune and guarantees no API stability.*)
 open! Stdune
 
-module File_syntax = File_syntax
-
 module Atom : sig
   type t = private A of string [@@unboxed]
 
-  val is_valid : t -> File_syntax.t -> bool
+  val is_valid : string -> bool
 
   val equal : t -> t -> bool
 
@@ -180,10 +178,6 @@ module Lexer : sig
   type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
   val token : t
-
-  val jbuild_token : t
-
-  val of_syntax : File_syntax.t -> t
 end
 
 module Parser : sig

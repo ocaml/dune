@@ -430,8 +430,7 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
       libs external_variants
   in
   let stanzas =
-    List.map stanzas
-      ~f:(fun { Dune_load.Dune_file.dir; project; stanzas; kind = _ } ->
+    List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->
         let ctx_dir = Path.Build.append_source context.build_dir dir in
         let dune_version = Dune_project.dune_version project in
         { Dir_with_dune.src_dir = dir

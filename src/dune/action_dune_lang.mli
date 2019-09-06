@@ -11,8 +11,6 @@ include
 
 include Dune_lang.Conv with type t := t
 
-val encode_and_upgrade : t Dune_lang.Encoder.t
-
 include
   Action_intf.Helpers
     with type t := t

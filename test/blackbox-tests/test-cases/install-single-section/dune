@@ -1,0 +1,7 @@
+(executable
+ (public_name foo))
+
+(install
+ (section man)
+ (package foo)
+ (files mp))

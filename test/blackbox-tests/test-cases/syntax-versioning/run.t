@@ -12,13 +12,9 @@
   $ echo '(jbuild_version 1)' > jbuild
   $ dune build
   File "jbuild", line 1, characters 0-0:
-  Warning: jbuild files are deprecated, please convert this file to a dune file
-  instead.
+  Error: jbuild files are no longer supported, please convert this file to a
+  dune file instead.
   Note: You can use "dune upgrade" to convert your project to dune.
-  File "jbuild", line 1, characters 0-18:
-  1 | (jbuild_version 1)
-      ^^^^^^^^^^^^^^^^^^
-  Error: 'jbuild_version' was deleted in version 1.0 of the dune language
   [1]
   $ rm -f jbuild
 

@@ -307,7 +307,7 @@ end = struct
 
     let name = "INCREMENTAL-DB"
 
-    let version = 2
+    let version = 3
   end)
 
   let needs_dumping = ref false
@@ -421,6 +421,7 @@ type t =
   ; hook : hook -> unit
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
+  ; memory : Dune_manager.Client.t option
   ; sandboxing_preference : Sandbox_mode.t list
   }
 
@@ -550,11 +551,11 @@ let compute_targets_digest_or_raise_error ~info targets =
     List.partition_map targets ~f:(fun target ->
         let fn = Path.build target in
         match Cached_digest.refresh fn with
-        | digest -> Left digest
+        | digest -> Left (fn, digest)
         | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with
-  | [] -> Digest.generic good
+  | [] -> (good, Digest.generic (List.map ~f:snd good))
   | missing ->
     User_error.raise ?loc:(Rule.Info.loc info)
       [ Pp.textf "Rule failed to generate the following targets:"
@@ -1421,44 +1422,73 @@ end = struct
       if force || something_changed then (
         List.iter targets_as_list ~f:(fun target ->
             Path.unlink_no_err (Path.build target));
-        pending_targets := Path.Build.Set.union targets !pending_targets;
-        let loc = Rule.Info.loc info in
-        let sandboxed, action =
-          match sandbox with
-          | None -> (None, action)
-          | Some (sandbox_dir, sandbox_mode) ->
-            Path.rm_rf (Path.build sandbox_dir);
-            let sandboxed path : Path.Build.t =
-              Path.Build.append_local sandbox_dir (Path.Build.local path)
-            in
-            Dep.Set.dirs deps
-            |> Path.Set.iter ~f:(fun path ->
-                   match Path.as_in_build_dir path with
-                   | None -> Fs.assert_exists ~loc path
-                   | Some path -> Fs.mkdir_p (sandboxed path));
-            Fs.mkdir_p (sandboxed dir);
-            ( Some sandboxed
-            , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
-                ~eval_pred )
+        let from_dune_memory =
+          if force then
+            None
+          else
+            Option.bind t.memory ~f:(fun memory ->
+                match Dune_manager.Client.search memory rule_digest with
+                | Ok (_, files) -> Some files
+                | Error msg ->
+                  Log.infof "cache miss: %s" msg;
+                  None)
         in
-        let chdirs = Action.chdirs action in
-        Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
-        let+ () =
-          with_locks locks ~f:(fun () ->
-              let copy_files_from_sandbox sandboxed =
-                List.iter targets_as_list ~f:(fun target ->
-                    rename_optional_file ~src:(sandboxed target) ~dst:target)
+        match from_dune_memory with
+        | Some files ->
+          let retrieve (file : Dune_memory.File.t) =
+            Log.infof "retrieve %s from cache"
+              (Path.to_string file.in_the_build_directory);
+            Unix.link
+              (Path.to_string file.in_the_memory)
+              (Path.to_string file.in_the_build_directory);
+            file.digest
+          in
+          let digests = List.map files ~f:retrieve in
+          Trace_db.set (Path.build head_target)
+            { rule_digest; targets_digest = Digest.generic digests };
+          Fiber.return ()
+        | None ->
+          pending_targets := Path.Build.Set.union targets !pending_targets;
+          let loc = Rule.Info.loc info in
+          let sandboxed, action =
+            match sandbox with
+            | None -> (None, action)
+            | Some (sandbox_dir, sandbox_mode) ->
+              Path.rm_rf (Path.build sandbox_dir);
+              let sandboxed path : Path.Build.t =
+                Path.Build.append_local sandbox_dir (Path.Build.local path)
               in
-              let+ () = Action_exec.exec action action_ctx in
-              Option.iter sandboxed ~f:copy_files_from_sandbox)
-        in
-        Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
-        (* All went well, these targets are no longer pending *)
-        pending_targets := Path.Build.Set.diff !pending_targets targets;
-        let targets_digest =
-          compute_targets_digest_or_raise_error ~info targets_as_list
-        in
-        Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
+              Dep.Set.dirs deps
+              |> Path.Set.iter ~f:(fun path ->
+                     match Path.as_in_build_dir path with
+                     | None -> Fs.assert_exists ~loc path
+                     | Some path -> Fs.mkdir_p (sandboxed path));
+              Fs.mkdir_p (sandboxed dir);
+              ( Some sandboxed
+              , Action.sandbox action ~sandboxed ~mode:sandbox_mode ~deps
+                  ~eval_pred )
+          in
+          let chdirs = Action.chdirs action in
+          Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
+          let+ () =
+            with_locks locks ~f:(fun () ->
+                let copy_files_from_sandbox sandboxed =
+                  List.iter targets_as_list ~f:(fun target ->
+                      rename_optional_file ~src:(sandboxed target) ~dst:target)
+                in
+                let+ () = Action_exec.exec action action_ctx in
+                Option.iter sandboxed ~f:copy_files_from_sandbox)
+          in
+          Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
+          (* All went well, these targets are no longer pending *)
+          pending_targets := Path.Build.Set.diff !pending_targets targets;
+          let targets, targets_digest =
+            compute_targets_digest_or_raise_error ~info targets_as_list
+          in
+          Option.iter t.memory ~f:(fun memory ->
+              ignore
+                (Dune_manager.Client.promote memory targets rule_digest [] None));
+          Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
       ) else
         Fiber.return ()
     in
@@ -1885,7 +1915,7 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ~file_tree ~hook ~sandboxing_preference =
+let init ~contexts ?memory ~file_tree ~hook ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
@@ -1898,7 +1928,11 @@ let init ~contexts ~file_tree ~hook ~sandboxing_preference =
     ; gen_rules = Fdecl.create ()
     ; init_rules = Fdecl.create ()
     ; hook
+    ; memory
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     }
   in
+  Option.iter
+    ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
+    t.memory;
   set t

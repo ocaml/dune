@@ -5,7 +5,6 @@ module Dune_file : sig
     { dir : Path.Source.t
     ; project : Dune_project.t
     ; stanzas : Dune_file.Stanzas.t
-    ; kind : Dune_lang.File_syntax.t
     }
 
   val fold_stanzas :

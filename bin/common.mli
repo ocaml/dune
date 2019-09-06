@@ -35,13 +35,9 @@ val set_common_other : t -> targets:Arg.Dep.t list -> unit
     the root the current working directory *)
 val set_dirs : t -> unit
 
-val help_secs :
-  [> `Blocks of [> `P of string | `S of string] list
-  | `P of string
-  | `S of string ]
-  list
+val help_secs : Cmdliner.Manpage.block list
 
-val footer : [> `Blocks of [> `P of string | `S of string] list]
+val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 

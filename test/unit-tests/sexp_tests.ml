@@ -5,18 +5,19 @@ let () = Printexc.record_backtrace true
 (* Test that all strings of length <= 3 such that [Dune_lang.Atom.is_valid s]
    are recignized as atoms by the parser *)
 
-let string_of_syntax (x : Dune_lang.File_syntax.t) =
-  match x with
+type syntax =
+  | Dune
+  | Jbuild
+
+let string_of_syntax = function
   | Dune -> "dune"
   | Jbuild -> "jbuild"
 
 let () =
-  [ ( Dune_lang.File_syntax.Dune
-    , Dune_lang.Lexer.token
-    , fun s -> Dune_lang.Atom.is_valid s Dune )
+  [ (Dune, Dune_lang.Lexer.token, fun s -> Dune_lang.Atom.is_valid s)
   ; ( Jbuild
-    , Dune_lang.Lexer.jbuild_token
-    , fun s -> Dune_lang.Atom.is_valid s Jbuild )
+    , Jbuild_support.Lexer.token
+    , fun s -> Jbuild_support.Atom.is_valid s )
   ]
   |> List.iter ~f:(fun (syntax, lexer, validator) ->
          for len = 0 to 3 do
@@ -39,7 +40,7 @@ let () =
                | Atom _ -> true
                | _ -> false
              in
-             let valid_dune_atom = validator (Dune_lang.Atom.of_string s) in
+             let valid_dune_atom = validator s in
              if valid_dune_atom <> parser_recognizes_as_atom then (
                Printf.eprintf
                  "Dune_lang.Atom.is_valid error:\n\

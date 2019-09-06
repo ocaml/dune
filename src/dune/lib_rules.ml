@@ -135,12 +135,13 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
        ; Hidden_targets targets
        ])
 
-let build_self_stubs lib ~sctx ~expander ~dir ~o_files =
+let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
+  let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; ext_dll; has_native; _ } = ctx.lib_config in
+  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
   let static = Library.stubs_archive lib ~dir ~ext_lib in
   let dynamic = Library.dll lib ~dir ~ext_dll in
-  let modes = Mode_conf.Set.eval lib.modes ~has_native in
+  let modes = Compilation_context.modes cctx in
   let ocamlmklib = ocamlmklib lib ~sctx ~expander ~dir ~o_files in
   if
     modes.native && modes.byte
@@ -159,8 +160,9 @@ let build_self_stubs lib ~sctx ~expander ~dir ~o_files =
       ~targets:[ dynamic ]
   )
 
-let build_stubs lib ~sctx ~dir ~expander ~requires ~dir_contents
+let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
+  let sctx = Compilation_context.super_context cctx in
   let lib_o_files =
     if Library.has_stubs lib then
       let c_sources =
@@ -176,7 +178,7 @@ let build_stubs lib ~sctx ~dir ~expander ~requires ~dir_contents
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> ()
-  | o_files -> build_self_stubs lib ~sctx ~dir ~expander ~o_files
+  | o_files -> build_self_stubs lib ~cctx ~dir ~expander ~o_files
 
 let build_shared lib ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
@@ -224,9 +226,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   let js_of_ocaml = lib.buildable.js_of_ocaml in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Compilation_context.context cctx in
-  let { Lib_config.ext_obj; has_native; natdynlink_supported; _ } =
-    ctx.lib_config
-  in
+  let { Lib_config.ext_obj; natdynlink_supported; _ } = ctx.lib_config in
   let impl_only = Modules.impl_only modules in
   Modules.exit_module modules
   |> Option.iter ~f:(fun m ->
@@ -245,7 +245,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
-  let modes = Mode_conf.Set.eval lib.modes ~has_native in
+  let modes = Compilation_context.modes cctx in
   (let cm_files =
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in
@@ -298,12 +298,16 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let dynlink =
     Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in
+  let modes =
+    let { Lib_config.has_native; _ } = ctx.lib_config in
+    Dune_file.Mode_conf.Set.eval lib.modes ~has_native
+  in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~no_keep_locs:lib.no_keep_locs ~opaque
     ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
-    ?vimpl
+    ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info =
@@ -320,18 +324,18 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   let dir = Compilation_context.dir cctx in
   let scope = Compilation_context.scope cctx in
   let requires_compile = Compilation_context.requires_compile cctx in
-  let expander = Compilation_context.expander cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
   gen_wrapped_compat_modules lib cctx;
   Module_compilation.build_all cctx ~dep_graphs;
+  let expander = Super_context.expander sctx ~dir in
   if not (Library.is_virtual lib) then
     setup_build_archives lib ~cctx ~dep_graphs ~expander;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
-      build_stubs lib ~sctx ~dir ~expander ~requires:requires_compile
+      build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files
   in
   Odoc.setup_library_odoc_rules cctx lib ~dep_graphs;

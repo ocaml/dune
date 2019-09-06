@@ -16,7 +16,6 @@ module Backend = struct
         ; flags : Ordered_set_lang.Unexpanded.t
         ; generate_runner : (Loc.t * Action_unexpanded.t) option
         ; extends : (Loc.t * Lib_name.t) list
-        ; file_kind : Stanza.File_kind.t
         }
 
       type Sub_system_info.t += T of t
@@ -44,14 +43,8 @@ module Backend = struct
              field_o "generate_runner" (located Action_dune_lang.decode)
            and+ extends =
              field "extends" (repeat (located Lib_name.decode)) ~default:[]
-           and+ file_kind = Stanza.file_kind () in
-           { loc
-           ; runner_libraries
-           ; flags
-           ; generate_runner
-           ; extends
-           ; file_kind
-           })
+           in
+           { loc; runner_libraries; flags; generate_runner; extends })
     end
 
     type t =
@@ -101,9 +94,8 @@ module Backend = struct
       ( (1, 0)
       , record_fields
         @@ [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-           ; field_i "flags" Ordered_set_lang.Unexpanded.encode_and_upgrade
-               t.info.flags
-           ; field_o "generate_runner" Action_dune_lang.encode_and_upgrade
+           ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
+           ; field_o "generate_runner" Action_dune_lang.encode
                (Option.map t.info.generate_runner ~f:snd)
            ; field_l "extends" f (Result.ok_exn t.extends)
            ] )

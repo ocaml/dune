@@ -181,12 +181,10 @@ let action ?dir ~targets action =
   | Some dir -> Action.Chdir (dir, action)
 
 let action_dyn ?dir ~targets action =
+  let action = Targets (Path.Build.Set.of_list targets) >>> action in
   match dir with
-  | None -> Targets (Path.Build.Set.of_list targets) >>> action
-  | Some dir ->
-    Targets (Path.Build.Set.of_list targets)
-    >>> action
-    >>^ fun action -> Action.Chdir (dir, action)
+  | None -> action
+  | Some dir -> action >>^ fun action -> Action.Chdir (dir, action)
 
 let write_file fn s = action ~targets:[ fn ] (Write_file (fn, s))
 
@@ -405,9 +403,9 @@ module S = struct
     let ( let+ ) = ( >>^ )
   end
 
-  let apply x f = x &&& f >>^ fun (x, f) -> f x
+  let map x ~f = Map (f, x)
 
-  let map x ~f = apply x (return f)
+  let map2 x y ~f = Map2 (f, x, y)
 
   let ignore x = x >>^ fun _ -> ()
 

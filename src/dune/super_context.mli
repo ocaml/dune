@@ -153,8 +153,7 @@ end
 module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies. *)
-  val interpret :
-    t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
+  val interpret : t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
 
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies.

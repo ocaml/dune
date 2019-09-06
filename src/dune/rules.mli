@@ -69,8 +69,7 @@ module Produce : sig
 
     (** [add_deps store alias ?dyn_deps deps] arrange things so that all
         [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
-    val add_deps :
-      t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
+    val add_deps : t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
 
     (** [add_action store alias ~stamp action] arrange things so that [action]
         is executed as part of the build of alias [alias]. [stamp] is any

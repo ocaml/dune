@@ -184,15 +184,9 @@ val ignore : 'a t -> unit t
 (* A module with standard combinators for applicative and selective functors,
    as well as equivalents of the functions from the arrow-based API. *)
 module S : sig
-  module O : sig
-    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-  end
-
-  val apply : 'a t -> ('a -> 'b) t -> 'b t
-
   val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
   val seq : unit t -> 'a t -> 'a t
 
@@ -200,6 +194,11 @@ module S : sig
 
   val ignore : 'a t -> unit t
 
-  (* TODO: this is now just the [Dyn_deps] constructor, so can be removed. *)
   val dyn_deps : ('a * Dep.Set.t) t -> 'a t
+
+  module O : sig
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
+  end
 end

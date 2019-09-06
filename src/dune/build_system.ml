@@ -191,10 +191,10 @@ module Alias0 = struct
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
       let fn = Path.build fn in
-      Build.S.apply acc
+      Build.S.map2 ~f:( && ) acc
         (Build.if_file_exists fn
-           ~then_:(Build.path fn >>> Build.return (Fn.const false))
-           ~else_:(Build.return Fn.id))
+           ~then_:(Build.path fn >>> Build.return false)
+           ~else_:(Build.return true))
     in
     Build.lazy_no_targets
       ( lazy

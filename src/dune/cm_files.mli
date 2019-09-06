@@ -17,5 +17,4 @@ val unsorted_objects_and_cms : t -> mode:Mode.t -> Path.t list
 
 val top_sorted_cms : t -> mode:Mode.t -> Path.t list Build.t
 
-val top_sorted_objects_and_cms :
-  t -> mode:Mode.t -> Path.t list Build.t
+val top_sorted_objects_and_cms : t -> mode:Mode.t -> Path.t list Build.t

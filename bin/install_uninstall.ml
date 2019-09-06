@@ -232,7 +232,8 @@ module Sections = struct
     let doc = "sections that should be installed" in
     let open Cmdliner.Arg in
     let+ sections =
-      value & opt (some sections_conv) None & info [ "sections" ] ~doc in
+      value & opt (some sections_conv) None & info [ "sections" ] ~doc
+    in
     match sections with
     | None -> All
     | Some sections -> Only (Install.Section.Set.of_list sections)
@@ -353,14 +354,15 @@ let install_uninstall ~what =
                    List.map install_files ~f:(fun (package, install_file) ->
                        let entries = Install.load_install_file install_file in
                        let entries =
-                         List.filter entries ~f:(fun (entry : Install.Entry.t) ->
-                           Sections.should_install sections entry.section)
+                         List.filter entries
+                           ~f:(fun (entry : Install.Entry.t) ->
+                             Sections.should_install sections entry.section)
                        in
                        match
                          List.filter_map entries ~f:(fun entry ->
-                               Option.some_if
-                                 (not (Path.exists (Path.build entry.src)))
-                                 entry.src)
+                             Option.some_if
+                               (not (Path.exists (Path.build entry.src)))
+                               entry.src)
                        with
                        | [] -> (package, entries)
                        | missing_files ->

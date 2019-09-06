@@ -29,4 +29,3 @@ let hash { dir; predicate } =
   Tuple.T2.hash Path.hash Predicate.hash (dir, predicate)
 
 let test t path = Predicate.test t.predicate (Path.basename path)
-

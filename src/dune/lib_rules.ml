@@ -299,7 +299,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in
   let modes =
-    let { Lib_config.has_native ; _ } = ctx.lib_config in
+    let { Lib_config.has_native; _ } = ctx.lib_config in
     Dune_file.Mode_conf.Set.eval lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir

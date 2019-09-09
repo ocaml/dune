@@ -12,10 +12,6 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
 
-  val ( *** ) : 'a t -> 'b t -> ('a * 'b) t
-
-  val ( &&& ) : 'a t -> 'b t -> ('a * 'b) t
-
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
   val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t

@@ -53,11 +53,7 @@ let record_lib_deps lib_deps = Record_lib_deps lib_deps
 module O = struct
   let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
 
-  let ( *** ) a b = Map2 ((fun x y -> (x, y)), a, b)
-
-  let ( &&& ) a b = a *** b
-
-  let ( and+ ) = ( &&& )
+  let ( and+ ) a b = Map2 ((fun x y -> (x, y)), a, b)
 
   let ( let+ ) t f = Map (f, t)
 end

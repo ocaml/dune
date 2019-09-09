@@ -270,7 +270,7 @@ let gen_rules sctx dir_contents cctxs ~dir :
   | None -> []
   | Some d -> gen_rules sctx dir_contents cctxs d
 
-let gen_rules ~sctx ~dir components :
+let gen_rules ~sctx ~dir ~cookies:_ components :
     Build_system.extra_sub_directories_to_keep =
   Install_rules.init_meta sctx ~dir;
   let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
@@ -422,7 +422,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
     ~init:(fun () -> String.Map.iter sctxs ~f:Odoc.init)
     ~gen_rules:(function
       | Install ctx ->
-        Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
+        Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ~dir ~cookies:_ _ ->
             Install_rules.gen_rules sctx ~dir)
       | Context ctx ->
         String.Map.find sctxs ctx

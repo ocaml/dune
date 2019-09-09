@@ -396,15 +396,75 @@ module Rule_fn = struct
 end
 
 module Context_or_install = struct
-  type t =
-    | Install of string
-    | Context of string
+  module T = struct
+    type t =
+      | Install of string
+      | Context of string
 
-  let to_dyn = function
-    | Install ctx -> Dyn.List [ Dyn.String "install"; Dyn.String ctx ]
-    | Context s ->
-      assert (not (s = "install"));
-      Dyn.String s
+    let to_dyn = function
+      | Install ctx -> Dyn.List [ Dyn.String "install"; Dyn.String ctx ]
+      | Context s ->
+        assert (not (s = "install"));
+        Dyn.String s
+
+    let compare x y =
+      match x, y with
+      | Install x, Install y -> String.compare x y
+      | Install _, Context _ -> Lt
+      | Context _, Install _ -> Gt
+      | Context x, Context y -> String.compare x y
+  end
+
+  include T
+  include Comparable.Make(T)
+end
+
+module Cookies = struct
+  module Key = struct
+    type 'a t = 'a Univ_map.Key.t
+    let create = Univ_map.Key.create
+  end
+
+  module Node = struct
+    type t =
+      { mutable store : Univ_map.t
+      }
+  end
+
+  type t =
+    { dir : Path.Build.t
+    ; load : Path.Build.t -> Node.t
+    ; node : Node.t
+    }
+
+  let get t key = Univ_map.find t.node.store key
+  let set t key val_ =
+    let store = Univ_map.add t.node.store key val_ in
+    t.node.store <- store
+
+  let get_dir t ~dir key =
+    (* TODO make sure dir is in the same context as t *)
+    Univ_map.find (t.load dir).store key
+
+  module DB = struct
+    let db : Node.t Path.Build.Map.t ref = ref Path.Build.Map.empty
+
+    let find_node_exn dir =
+      Path.Build.Map.find_exn !db dir
+
+    let new_node ~load ~dir =
+      let node = { Node.store = Univ_map.empty } in
+      let () =
+        Option.iter (Path.Build.Map.find !db dir) ~f:(fun _ ->
+          Code_error.raise "Cookies.DB.new_node: node already exists" []
+        )
+      in
+      { dir
+      ; load
+      ; node
+      }
+  end
+
 end
 
 type t =
@@ -415,7 +475,7 @@ type t =
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (   Context_or_install.t
-       -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
+       -> (dir:Path.Build.t -> cookies:Cookies.t -> string list -> extra_sub_directories_to_keep)
           option)
       Fdecl.t
   ; hook : hook -> unit
@@ -952,7 +1012,13 @@ end = struct
             [ ("context_name", Context_or_install.to_dyn context_name) ]
         | Some rules -> rules
       in
-      Rules.collect (fun () -> gen_rules ~dir (Path.Source.explode sub_dir))
+      let load dir =
+        let (_ : Loaded.t) = load_dir ~dir:(Path.build dir) in
+        Cookies.DB.find_node_exn dir
+      in
+      let cookies = Cookies.DB.new_node ~load ~dir in
+      Rules.collect (fun () ->
+        gen_rules ~dir ~cookies (Path.Source.explode sub_dir))
     in
     let rules =
       let dir = Path.build dir in

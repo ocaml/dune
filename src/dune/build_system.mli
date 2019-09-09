@@ -46,6 +46,20 @@ module Context_or_install : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Cookies : sig
+  type t
+
+  module Key : sig
+    type 'a t
+    val create : name:string -> ('a -> Dyn.t) -> 'a t
+  end
+
+  val set : t -> 'a Key.t -> 'a -> unit
+  val get : t -> 'a Key.t -> 'a option
+
+  val get_dir : t -> dir:Path.Build.t -> 'a Key.t -> 'a option
+end
+
 (** Set the rule generators callback. There must be one callback per build
     context name.
 
@@ -64,7 +78,7 @@ val set_rule_generators :
      init:(unit -> unit)
   -> gen_rules:
        (   Context_or_install.t
-        -> (dir:Path.Build.t -> string list -> extra_sub_directories_to_keep)
+        -> (dir:Path.Build.t -> cookies:Cookies.t -> string list -> extra_sub_directories_to_keep)
            option)
   -> unit
 

@@ -320,6 +320,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune_memory-and-the-universe)
+ (deps (package dune) (source_tree test-cases/dune_memory-and-the-universe))
+ (action
+  (chdir
+   test-cases/dune_memory-and-the-universe
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dup-fields)
  (deps (package dune) (source_tree test-cases/dup-fields))
  (action
@@ -1801,6 +1809,7 @@
   (alias dune-project-edition)
   (alias dune-project-meta)
   (alias dune-project-no-opam)
+  (alias dune_memory-and-the-universe)
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)
@@ -2010,6 +2019,7 @@
   (alias dune-project-edition)
   (alias dune-project-meta)
   (alias dune-project-no-opam)
+  (alias dune_memory-and-the-universe)
   (alias dup-fields)
   (alias duplicate-c-cxx)
   (alias duplicate-c-cxx-obj)

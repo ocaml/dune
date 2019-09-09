@@ -11,7 +11,7 @@ module Dynamic_dep = struct
     let to_dep = function
       | File fn -> Dep.file fn
       | Glob (dir, glob) ->
-        File_selector.from_glob ~dir glob |> Dep.file_selector
+        Glob.to_pred glob |> File_selector.create ~dir |> Dep.file_selector
 
     let of_protocol_dep ~working_dir : Dune_action.Protocol.Dependency.t -> t =
       let to_dune_path = Stdune.Path.relative working_dir in

@@ -9,8 +9,6 @@ val dir : t -> Path.t
 
 val create : dir:Path.t -> string Predicate.t -> t
 
-val from_glob : dir:Path.t -> Glob.t -> t
-
 val equal : t -> t -> bool
 
 val hash : t -> int

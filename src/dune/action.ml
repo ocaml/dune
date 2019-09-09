@@ -181,6 +181,32 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
+let rec is_dynamic = function
+  | Dynamic_run _ -> true
+  | Chdir (_, t)
+   |Setenv (_, _, t)
+   |Redirect_out (_, _, t)
+   |Redirect_in (_, _, t)
+   |Ignore (_, t) ->
+    is_dynamic t
+  | Progn l -> List.exists l ~f:is_dynamic
+  | Run _
+   |System _
+   |Bash _
+   |Echo _
+   |Cat _
+   |Copy _
+   |Symlink _
+   |Copy_and_add_line_directive _
+   |Write_file _
+   |Rename _
+   |Remove_tree _
+   |Diff _
+   |Mkdir _
+   |Digest_files _
+   |Merge_files_into _ ->
+    false
+
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
     Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[] ~f:(fun path acc ->

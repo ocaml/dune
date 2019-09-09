@@ -394,7 +394,7 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
         x
       | Evaluating ->
         User_error.raise
-          [ Pp.textf "Dependency cycle evaluating memoized build arrow %s"
+          [ Pp.textf "Dependency cycle evaluating memoized build functor %s"
               m.name
           ]
       | Unevaluated -> (

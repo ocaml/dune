@@ -1257,7 +1257,7 @@ end = struct
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
       ~doc:
-        "Evaluate the build arrow part of a rule and return the action and \
+        "Evaluate the build functor part of a rule and return the action and \
          dynamic dependency of the rule."
       ~input:(module Internal_rule)
       ~visibility:Hidden Async f

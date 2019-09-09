@@ -101,25 +101,24 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                 let opaque = CC.opaque cctx in
                 let other_cm_files =
                   Build.dyn_paths_unit
-                    ( Dep_graph.deps_of dep_graph m
-                    >>^ fun deps ->
-                    List.concat_map deps ~f:(fun m ->
-                        let deps =
-                          [ Path.build
-                              (Obj_dir.Module.cm_file_unsafe obj_dir m
-                                 ~kind:Cmi)
-                          ]
-                        in
-                        if
-                          Module.has m ~ml_kind:Impl && cm_kind = Cmx
-                          && not opaque
-                        then
-                          let cmx =
-                            Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx
-                          in
-                          Path.build cmx :: deps
-                        else
-                          deps) )
+                    (let+ deps = Dep_graph.deps_of dep_graph m in
+                     List.concat_map deps ~f:(fun m ->
+                         let deps =
+                           [ Path.build
+                               (Obj_dir.Module.cm_file_unsafe obj_dir m
+                                  ~kind:Cmi)
+                           ]
+                         in
+                         if
+                           Module.has m ~ml_kind:Impl && cm_kind = Cmx
+                           && not opaque
+                         then
+                           let cmx =
+                             Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx
+                           in
+                           Path.build cmx :: deps
+                         else
+                           deps))
                 in
                 let other_targets, cmt_args =
                   match cm_kind with
@@ -166,8 +165,9 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                   match Module.pp_flags m with
                   | None -> flags
                   | Some pp ->
-                    Build.fanout flags pp
-                    >>^ fun (flags, pp_flags) -> flags @ pp_flags
+                    let+ flags = flags
+                    and+ pp_flags = pp in
+                    flags @ pp_flags
                 in
                 let modules = Compilation_context.modules cctx in
                 SC.add_rule sctx ~sandbox ~dir
@@ -232,11 +232,9 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths_unit
-      ( Dep_graph.deps_of dep_graph m
-      >>^ fun deps ->
-      List.concat_map deps ~f:(fun m ->
-          [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ])
-      )
+      (let+ deps = Dep_graph.deps_of dep_graph m in
+       List.concat_map deps ~f:(fun m ->
+           [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
   in
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
   let modules = Compilation_context.modules cctx in

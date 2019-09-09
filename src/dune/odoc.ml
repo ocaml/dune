@@ -148,13 +148,15 @@ let odoc sctx =
     "odoc" ~loc:None ~hint:"try: opam install odoc"
 
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
-  ( if Module.has m ~ml_kind:Intf then
-    Dep_graph.deps_of dep_graphs.intf m
-  else
-    (* When a module has no .mli, use the dependencies for the .ml *)
-    Dep_graph.deps_of dep_graphs.impl m )
-  >>^ List.map ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m))
-  |> Build.dyn_paths_unit
+  Build.dyn_paths_unit
+    (let+ deps =
+       if Module.has m ~ml_kind:Intf then
+         Dep_graph.deps_of dep_graphs.intf m
+       else
+         (* When a module has no .mli, use the dependencies for the .ml *)
+         Dep_graph.deps_of dep_graphs.impl m
+     in
+     List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
 
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =

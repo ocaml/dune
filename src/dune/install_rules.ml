@@ -258,59 +258,65 @@ let gen_dune_package sctx pkg =
   let meta_template = Package_paths.meta_template ctx pkg in
   let name = pkg.name in
   let dune_version = Syntax.greatest_supported_version Stanza.syntax in
-  Build.if_file_exists (Path.build meta_template)
-    ~then_:(Build.return Dune_package.Or_meta.Use_meta)
-    ~else_:
-      (Build.delayed (fun () ->
-           let dune_package =
-             let pkg_root =
-               Config.local_install_lib_dir ~context:ctx.name ~package:name
-             in
-             let lib_root lib =
-               let _, subdir = Lib_name.split (Lib.name lib) in
-               Path.Build.L.relative pkg_root subdir
-             in
-             let libs =
-               Super_context.libs_of_package sctx pkg.name
-               |> Lib.Local.Set.to_list
-               |> Result.List.map ~f:(fun lib ->
-                      let dir_contents =
-                        let info = Lib.Local.info lib in
-                        let dir = Lib_info.src_dir info in
-                        Dir_contents.get sctx ~dir
-                      in
-                      let obj_dir = Lib.Local.obj_dir lib in
-                      let lib = Lib.Local.to_lib lib in
-                      let name = Lib.name lib in
-                      let foreign_objects =
-                        let dir = Obj_dir.obj_dir obj_dir in
-                        Dir_contents.c_sources_of_library dir_contents ~name
-                        |> C.Sources.objects ~dir
-                             ~ext_obj:ctx.lib_config.ext_obj
-                        |> List.map ~f:Path.build
-                      in
-                      let modules =
-                        Dir_contents.modules_of_library dir_contents ~name
-                      in
-                      Lib.to_dune_lib lib
-                        ~dir:(Path.build (lib_root lib))
-                        ~modules ~foreign_objects)
-               |> Result.ok_exn
-             in
-             Dune_package.Or_meta.Dune_package
-               { Dune_package.version = pkg.version
-               ; name
-               ; libs
-               ; dir = Path.build pkg_root
-               }
-           in
-           dune_package))
-  >>^ (fun pkg ->
-        Dune_package.Or_meta.encode ~dune_version pkg
-        |> Format.asprintf "%a@."
-             (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp))
-  |> Build.write_file_dyn dune_package_file
-  |> Super_context.add_rule sctx ~dir:ctx.build_dir
+  let action =
+    Build.write_file_dyn dune_package_file
+      (let+ pkg =
+         Build.if_file_exists (Path.build meta_template)
+           ~then_:(Build.return Dune_package.Or_meta.Use_meta)
+           ~else_:
+             (Build.delayed (fun () ->
+                  let dune_package =
+                    let pkg_root =
+                      Config.local_install_lib_dir ~context:ctx.name
+                        ~package:name
+                    in
+                    let lib_root lib =
+                      let _, subdir = Lib_name.split (Lib.name lib) in
+                      Path.Build.L.relative pkg_root subdir
+                    in
+                    let libs =
+                      Super_context.libs_of_package sctx pkg.name
+                      |> Lib.Local.Set.to_list
+                      |> Result.List.map ~f:(fun lib ->
+                             let dir_contents =
+                               let info = Lib.Local.info lib in
+                               let dir = Lib_info.src_dir info in
+                               Dir_contents.get sctx ~dir
+                             in
+                             let obj_dir = Lib.Local.obj_dir lib in
+                             let lib = Lib.Local.to_lib lib in
+                             let name = Lib.name lib in
+                             let foreign_objects =
+                               let dir = Obj_dir.obj_dir obj_dir in
+                               Dir_contents.c_sources_of_library dir_contents
+                                 ~name
+                               |> C.Sources.objects ~dir
+                                    ~ext_obj:ctx.lib_config.ext_obj
+                               |> List.map ~f:Path.build
+                             in
+                             let modules =
+                               Dir_contents.modules_of_library dir_contents
+                                 ~name
+                             in
+                             Lib.to_dune_lib lib
+                               ~dir:(Path.build (lib_root lib))
+                               ~modules ~foreign_objects)
+                      |> Result.ok_exn
+                    in
+                    Dune_package.Or_meta.Dune_package
+                      { Dune_package.version = pkg.version
+                      ; name
+                      ; libs
+                      ; dir = Path.build pkg_root
+                      }
+                  in
+                  dune_package))
+       in
+       Dune_package.Or_meta.encode ~dune_version pkg
+       |> Format.asprintf "%a@."
+            (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp))
+  in
+  Super_context.add_rule sctx ~dir:ctx.build_dir action
 
 let init_meta sctx ~dir =
   let ctx = Super_context.context sctx in
@@ -453,13 +459,25 @@ let install_rules sctx (package : Package.t) =
   let () =
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
-        ( Build_system.package_deps package.name files
-        >>^ fun packages ->
-        Package.Name.Set.to_list packages
-        |> List.map ~f:(fun pkg ->
-               Build_system.Alias.package_install ~context:ctx ~pkg
-               |> Alias.stamp_file |> Path.build)
-        |> Path.Set.of_list )
+        (let+ packages = Build_system.package_deps package.name files in
+         Package.Name.Set.to_list packages
+         |> List.map ~f:(fun pkg ->
+                Build_system.Alias.package_install ~context:ctx ~pkg
+                |> Alias.stamp_file |> Path.build)
+         |> Path.Set.of_list)
+  in
+  let action =
+    Build.write_file_dyn install_file
+      (let+ () = Build.path_set files in
+       let entries =
+         match ctx.findlib_toolchain with
+         | None -> entries
+         | Some toolchain ->
+           let prefix = Path.of_string (toolchain ^ "-sysroot") in
+           List.map entries
+             ~f:(Install.Entry.add_install_prefix ~paths:install_paths ~prefix)
+       in
+       Install.gen_install_file entries)
   in
   Super_context.add_rule sctx ~dir:pkg_build_dir
     ~mode:
@@ -469,20 +487,7 @@ let install_rules sctx (package : Package.t) =
         (* We must ignore the source file since it might be copied to the
            source tree by another context. *)
         Ignore_source_files )
-    ( Build.path_set files
-    >>^ (fun () ->
-          let entries =
-            match ctx.findlib_toolchain with
-            | None -> entries
-            | Some toolchain ->
-              let prefix = Path.of_string (toolchain ^ "-sysroot") in
-              List.map entries
-                ~f:
-                  (Install.Entry.add_install_prefix ~paths:install_paths
-                     ~prefix)
-          in
-          Install.gen_install_file entries)
-    |> Build.write_file_dyn install_file )
+    action
 
 let install_alias (ctx : Context.t) (package : Package.t) =
   if not ctx.implicit then

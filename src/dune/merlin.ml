@@ -144,13 +144,14 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
     in
     match args with
     | None -> Build.return None
-    | Some args -> (
-      let action : Path.t Bindings.t Build.t -> Action.t Build.t =
+    | Some args ->
+      let action =
         let targets_dir = Expander.dir expander in
         let targets = Expander.Targets.Forbidden "preprocessing actions" in
         let action = Preprocessing.chdir (Run (exe, args)) in
         Super_context.Action.run sctx ~loc ~expander ~dep_kind:Optional
           ~targets ~targets_dir action
+          (Build.return Bindings.empty)
       in
       let pp_of_action exe args =
         match exe with
@@ -161,13 +162,11 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
           |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -pp %s"
           |> Option.some
       in
-      Build.return Bindings.empty
-      |> action
-      >>^ function
-      | Run (exe, args) -> pp_of_action exe args
-      | Chdir (_, Run (exe, args)) -> pp_of_action exe args
-      | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
-      | _ -> None ) )
+      Build.map action ~f:(function
+        | Run (exe, args) -> pp_of_action exe args
+        | Chdir (_, Run (exe, args)) -> pp_of_action exe args
+        | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+        | _ -> None) )
   | _ -> Build.return None
 
 let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t
@@ -210,33 +209,39 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
          Path.Set.singleton (Path.build merlin_file)
          |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
          let pp_flags = pp_flags sctx ~expander t in
+         let action =
+           Build.write_file_dyn merlin_file
+             (let+ flags = flags
+              and+ pp = pp_flags in
+              let src_dirs, obj_dirs =
+                Lib.Set.fold requires
+                  ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
+                  ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+                    let info = Lib.info lib in
+                    let best_src_dir = Lib_info.best_src_dir info in
+                    ( Path.Set.add src_dirs
+                        (Path.drop_optional_build_context best_src_dir)
+                    , let public_cmi_dir =
+                        Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                      in
+                      Path.Set.add obj_dirs public_cmi_dir ))
+              in
+              let src_dirs =
+                Path.Set.union src_dirs
+                  (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+              in
+              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
+         in
          SC.add_rule sctx ~dir
            ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
-           ( flags &&& pp_flags
-           >>^ (fun (flags, pp) ->
-                 let src_dirs, obj_dirs =
-                   Lib.Set.fold requires
-                     ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-                     ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-                       let info = Lib.info lib in
-                       let best_src_dir = Lib_info.best_src_dir info in
-                       ( Path.Set.add src_dirs
-                           (Path.drop_optional_build_context best_src_dir)
-                       , let public_cmi_dir =
-                           Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                         in
-                         Path.Set.add obj_dirs public_cmi_dir ))
-                 in
-                 let src_dirs =
-                   Path.Set.union src_dirs
-                     (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
-                 in
-                 Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
-           |> Build.write_file_dyn merlin_file ))
+           action)
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires
-  ; flags = (a.flags &&& b.flags >>^ fun (a, b) -> a @ b)
+  ; flags =
+      (let+ a = a.flags
+       and+ b = b.flags in
+       a @ b)
   ; preprocess =
       Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
   ; libname =

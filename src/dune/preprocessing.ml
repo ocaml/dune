@@ -459,14 +459,16 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   let targets_dir =
     Option.value ~default:src target |> Path.Build.parent_exn
   in
-  Build.path (Path.build src)
-  >>^ (fun _ -> Bindings.empty)
-  |> SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
-  |> (fun action ->
-       match target with
-       | None -> action
-       | Some dst -> action |> Build.action_dyn ~targets:[ dst ])
-  >>^ fun action ->
+  let action =
+    SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
+      (let+ () = Build.path (Path.build src) in
+       Bindings.empty)
+  in
+  let+ action =
+    match target with
+    | None -> action
+    | Some dst -> Build.action_dyn ~targets:[ dst ] action
+  in
   match target with
   | None -> action
   | Some dst -> Action.with_stdout_to dst action
@@ -616,7 +618,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   sctx ~loc ~dir
                   (promote_correction ~suffix:corrected_suffix
                      (Option.value_exn (Module.file m ~ml_kind))
-                     ( preprocessor_deps >>^ ignore
+                     ( preprocessor_deps
                      >>> Build.of_result_map driver_and_flags ~targets:[ dst ]
                            ~f:(fun (exe, flags, args) ->
                              Command.run
@@ -638,12 +640,14 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   ~lib_name pps
               in
               Build.memoize "ppx command"
-                ( Build.path (Path.build exe)
-                >>> preprocessor_deps >>^ ignore
-                >>> Expander.expand_and_eval_set expander
-                      driver.info.as_ppx_flags
-                      ~standard:(Build.return [ "--as-ppx" ])
-                >>^ fun driver_flags ->
+                (let open Build.O in
+                let+ () = Build.path (Path.build exe)
+                and+ () = preprocessor_deps
+                and+ driver_flags =
+                  Expander.expand_and_eval_set expander
+                    driver.info.as_ppx_flags
+                    ~standard:(Build.return [ "--as-ppx" ])
+                in
                 let command =
                   List.map
                     (List.concat
@@ -656,7 +660,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                     ~f:String.quote_for_shell
                   |> String.concat ~sep:" "
                 in
-                [ "-ppx"; command ] ))
+                [ "-ppx"; command ]))
           in
           let pp = Some pp_flags in
           fun m ~lint ->

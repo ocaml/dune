@@ -313,24 +313,24 @@ let c_flags t ~dir ~expander ~flags =
            Expander.expand_and_eval_set expander flags ~standard:default
          in
          let open Build.O in
-         c >>^ fun l -> l @ ccg))
+         let+ l = c in
+         l @ ccg))
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 
 let dump_env t ~dir =
   let t = t.env_context in
   let open Build.O in
-  let o_dump = Ocaml_flags.dump (Env.ocaml_flags t ~dir) in
-  let c_dump =
+  let+ o_dump = Ocaml_flags.dump (Env.ocaml_flags t ~dir)
+  and+ c_dump =
     let c_flags = Env.c_flags t ~dir in
-    Build.fanout c_flags.c c_flags.cxx
-    >>^ fun (c_flags, cxx_flags) ->
+    let+ c_flags = c_flags.c
+    and+ cxx_flags = c_flags.cxx in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
   in
-  (* combine o_dump and c_dump *)
-  o_dump &&& c_dump >>^ fun (x, y) -> x @ y
+  o_dump @ c_dump
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_context in
@@ -568,32 +568,45 @@ module Deps = struct
   let dep t expander = function
     | File s ->
       let path = Expander.expand_path expander s in
-      Build.path path >>^ fun () -> [ path ]
-    | Alias s -> Build.alias (make_alias expander s) >>^ fun () -> []
+      let+ () = Build.path path in
+      [ path ]
+    | Alias s ->
+      let+ () = Build.alias (make_alias expander s) in
+      []
     | Alias_rec s ->
-      Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
-        ~file_tree:t.file_tree (make_alias expander s)
-      >>^ fun () -> []
+      let+ () =
+        Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
+          ~file_tree:t.file_tree (make_alias expander s)
+      in
+      []
     | Glob_files s ->
       let loc = String_with_vars.loc s in
       let path = Expander.expand_path expander s in
       let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
       let dir = Path.parent_exn path in
-      File_selector.create ~dir pred
-      |> Build.paths_matching ~loc >>^ Path.Set.to_list
+      Build.map ~f:Path.Set.to_list
+        (File_selector.create ~dir pred |> Build.paths_matching ~loc)
     | Source_tree s ->
       let path = Expander.expand_path expander s in
-      Build.source_tree ~dir:path ~file_tree:t.file_tree >>^ Path.Set.to_list
+      Build.map ~f:Path.Set.to_list
+        (Build.source_tree ~dir:path ~file_tree:t.file_tree)
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
-      >>^ fun () -> []
-    | Universe -> Build.dep Dep.universe >>^ fun () -> []
+      let+ () =
+        Build.alias
+          (Build_system.Alias.package_install ~context:t.context ~pkg)
+      in
+      []
+    | Universe ->
+      let+ () = Build.dep Dep.universe in
+      []
     | Env_var var_sw ->
       let var = Expander.expand_str expander var_sw in
-      Build.env_var var >>^ fun () -> []
+      let+ () = Build.env_var var in
+      []
     | Sandbox_config sandbox_config ->
-      Build.dep (Dep.sandbox_config sandbox_config) >>^ fun () -> []
+      let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
+      []
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
@@ -602,27 +615,29 @@ module Deps = struct
       Expander.with_record_no_ddeps expander forms ~dep_kind:Optional
         ~map_exe:Fn.id ~c_flags
     in
-    let deps = List.map l ~f:(f t expander) |> Build.all >>^ List.concat in
-    Build.fanout3 deps
-      ( Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-      >>>
-      let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-      Build.all (List.map ddeps ~f:snd) )
-      (Build.path_set (Expander.Resolved_forms.sdeps forms))
-    >>^ fun (deps, _, _) -> deps
+    let+ deps =
+      Build.map ~f:List.concat (List.map l ~f:(f t expander) |> Build.all)
+    and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
+    and+ (_ : Value.t list list) =
+      (* TODO: Why do we ignore the resulting [ddeps] values? *)
+      let ddeps = String.Map.values (Expander.Resolved_forms.ddeps forms) in
+      Build.all ddeps
+    and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
+    deps
 
   let interpret t ~expander l =
-    make_interpreter ~f:dep t ~expander l >>^ fun _paths -> ()
+    let+ _paths = make_interpreter ~f:dep t ~expander l in
+    ()
 
   let interpret_named =
     make_interpreter ~f:(fun t expander ->
       function
       | Bindings.Unnamed p ->
-        dep t expander p
-        >>^ fun l -> List.map l ~f:(fun x -> Bindings.Unnamed x)
+        let+ l = dep t expander p in
+        List.map l ~f:(fun x -> Bindings.Unnamed x)
       | Named (s, ps) ->
-        Build.all (List.map ps ~f:(dep t expander))
-        >>^ fun l -> [ Bindings.Named (s, List.concat l) ])
+        let+ l = Build.all (List.map ps ~f:(dep t expander)) in
+        [ Bindings.Named (s, List.concat l) ])
 end
 
 module Action = struct
@@ -695,28 +710,31 @@ module Action = struct
             (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>
       let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-      Build.all (List.map ddeps ~f:snd) *** bindings
-      >>^ (fun (vals, deps_written_by_user) ->
-            let dynamic_expansions =
-              List.fold_left2 ddeps vals ~init:String.Map.empty
-                ~f:(fun acc (var, _) value -> String.Map.set acc var value)
-            in
-            let unresolved =
-              let expander =
-                Expander.add_ddeps_and_bindings expander ~dynamic_expansions
-                  ~deps_written_by_user
-              in
-              U.Partial.expand t ~expander ~map_exe
-            in
-            Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-                match Expander.resolve_binary ~loc expander ~prog with
-                | Ok path -> path
-                | Error { fail } -> fail ()))
-      >>^ (fun action ->
-            let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-            (action, deps))
-      |> Build.dyn_path_set
-      |> Build.action_dyn ~dir:(Path.build dir) ~targets
+      let action =
+        Build.dyn_path_set
+          (let+ action =
+             let+ vals = Build.all (List.map ddeps ~f:snd)
+             and+ deps_written_by_user = bindings in
+             let dynamic_expansions =
+               List.fold_left2 ddeps vals ~init:String.Map.empty
+                 ~f:(fun acc (var, _) value -> String.Map.set acc var value)
+             in
+             let unresolved =
+               let expander =
+                 Expander.add_ddeps_and_bindings expander ~dynamic_expansions
+                   ~deps_written_by_user
+               in
+               U.Partial.expand t ~expander ~map_exe
+             in
+             Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+                 match Expander.resolve_binary ~loc expander ~prog with
+                 | Ok path -> path
+                 | Error { fail } -> fail ())
+           in
+           let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
+           (action, deps))
+      in
+      Build.action_dyn ~dir:(Path.build dir) ~targets action
     in
     match Expander.Resolved_forms.failures forms with
     | [] -> build

@@ -23,10 +23,13 @@ let deps_of t (m : Module.t) =
       ]
 
 let top_closed t modules =
-  Module.Obj_map.to_list t.per_module
-  |> List.map ~f:(fun (unit, deps) -> deps >>^ fun deps -> (unit, deps))
-  |> Build.all
-  >>^ fun per_module ->
+  let+ per_module =
+    Module.Obj_map.to_list t.per_module
+    |> List.map ~f:(fun (unit, deps) ->
+           let+ deps = deps in
+           (unit, deps))
+    |> Build.all
+  in
   let per_module = Module.Obj_map.of_list_exn per_module in
   match Module.Obj_map.top_closure per_module modules with
   | Ok modules -> modules
@@ -41,7 +44,9 @@ let top_closed t modules =
 let top_closed_implementations t modules =
   Build.memoize "top sorted implementations"
     (let filter_out_intf_only = List.filter ~f:(Module.has ~ml_kind:Impl) in
-     top_closed t (filter_out_intf_only modules) >>^ filter_out_intf_only)
+     Build.map
+       (top_closed t (filter_out_intf_only modules))
+       ~f:filter_out_intf_only)
 
 let dummy (m : Module.t) =
   { dir = Path.Build.root

@@ -53,8 +53,6 @@ let record_lib_deps lib_deps = Record_lib_deps lib_deps
 module O = struct
   let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
 
-  let ( >>^ ) t f = Map (f, t)
-
   let ( *** ) a b = Map2 ((fun x y -> (x, y)), a, b)
 
   let ( &&& ) a b = a *** b
@@ -65,11 +63,6 @@ module O = struct
 end
 
 open O
-
-(* TODO: We can get rid of all [fanoutN] functions. *)
-let fanout a b = a &&& b
-
-let fanout3 a b c = a &&& (b &&& c) >>^ fun (a, (b, c)) -> (a, b, c)
 
 let rec all xs =
   match xs with

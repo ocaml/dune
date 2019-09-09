@@ -12,8 +12,6 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
 
-  val ( >>^ ) : 'a t -> ('a -> 'b) -> 'b t
-
   val ( *** ) : 'a t -> 'b t -> ('a * 'b) t
 
   val ( &&& ) : 'a t -> 'b t -> ('a * 'b) t
@@ -22,10 +20,6 @@ module O : sig
 
   val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
-
-val fanout : 'a t -> 'b t -> ('a * 'b) t
-
-val fanout3 : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
 val all : 'a t list -> 'a list t
 
@@ -118,8 +112,8 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** [file_exists_opt p t] is:
 
-    {[ if_file_exists p ~then_:(t >>^ fun x -> Some x) ~else_:(arr (fun _ ->
-    None)) ]} *)
+    {[ if_file_exists p ~then_:(Build.map t ~f:Some) ~else_:(Build.return None)
+    ]} *)
 val file_exists_opt : Path.t -> 'a t -> 'a option t
 
 (** Always fail when executed. We pass a function rather than an exception to

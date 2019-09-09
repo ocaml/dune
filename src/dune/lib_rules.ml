@@ -51,8 +51,8 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
           ~standard:(Build.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-        (obj_deps >>>
-           (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+        ( obj_deps
+        >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
               ; A "-o"
@@ -75,7 +75,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                   ( match mode with
                   | Byte -> []
                   | Native -> [ Library.archive lib ~dir ~ext:ext_lib ] )
-              ])))
+              ] ))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
@@ -103,8 +103,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
       let loc = lib.buildable.loc in
       let sctx = Compilation_context.super_context cctx in
-      Build.return contents
-      |> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
+      Build.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
@@ -194,18 +193,17 @@ let build_shared lib ~sctx ~dir ~flags =
       in
       let build =
         Build.dyn_paths_unit
-             (Build.return
-                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]) >>>
-          (Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-             [ Command.Args.dyn (Ocaml_flags.get flags Native)
-             ; A "-shared"
-             ; A "-linkall"
-             ; A "-I"
-             ; Path (Path.build dir)
-             ; A "-o"
-             ; Target dst
-             ; Dep src
-             ])
+          (Build.return [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ])
+        >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
+              [ Command.Args.dyn (Ocaml_flags.get flags Native)
+              ; A "-shared"
+              ; A "-linkall"
+              ; A "-I"
+              ; Path (Path.build dir)
+              ; A "-o"
+              ; Target dst
+              ; Dep src
+              ]
       in
       let build =
         if Library.has_stubs lib then

@@ -55,8 +55,6 @@ val path_set : Path.Set.t -> unit t
     as dependencies of the action produced by the build functor. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
-(* TODO: We always ignore the resulting [bool] -- shall we return [unit]? *)
-
 (** [paths_existing paths] will require as dependencies the files that actually
     exist. *)
 val paths_existing : Path.t list -> unit t

@@ -44,11 +44,13 @@ let get_if_file_exists_exn state =
 
 let return x = Pure x
 
+let ignore x = Map (Fn.const (), x)
+
 let map x ~f = Map (f, x)
 
-let delayed f = Map (f, return ())
-
 let map2 x y ~f = Map2 (f, x, y)
+
+let delayed f = Map (f, return ())
 
 module O = struct
   let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
@@ -59,8 +61,6 @@ module O = struct
 end
 
 open O
-
-let ignore x = Map (Fn.const (), x)
 
 let rec all xs =
   match xs with
@@ -180,18 +180,18 @@ let source_tree ~dir ~file_tree =
                   Path.Set.add acc (Path.relative path fn))
             , acc_dirs_without_files ))
   in
-  let+ () = dirs_without_files
-  and+ () = path_set paths in
-  paths
+  dirs_without_files >>> path_set paths >>> return paths
 
 let action ?dir ~targets action =
-  let+ () = Targets (Path.Build.Set.of_list targets) in
-  match dir with
-  | None -> action
-  | Some dir -> Action.Chdir (dir, action)
+  Targets (Path.Build.Set.of_list targets)
+  >>> return
+        ( match dir with
+        | None -> action
+        | Some dir -> Action.Chdir (dir, action) )
 
 let action_dyn ?dir ~targets action =
-  let action = Targets (Path.Build.Set.of_list targets) >>> action in
+  Targets (Path.Build.Set.of_list targets)
+  >>>
   match dir with
   | None -> action
   | Some dir ->
@@ -201,9 +201,9 @@ let action_dyn ?dir ~targets action =
 let write_file fn s = action ~targets:[ fn ] (Write_file (fn, s))
 
 let write_file_dyn fn s =
-  let+ () = Targets (Path.Build.Set.singleton fn)
-  and+ s = s in
-  Action.Write_file (fn, s)
+  Targets (Path.Build.Set.singleton fn)
+  >>> let+ s = s in
+      Action.Write_file (fn, s)
 
 let copy ~src ~dst = path src >>> action ~targets:[ dst ] (Copy (src, dst))
 

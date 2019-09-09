@@ -34,7 +34,7 @@ end
 
 type t =
   { dir : Path.t
-  ; test : Predicate.t
+  ; predicate : Predicate.t
   }
 
 let dir t = t.dir
@@ -42,22 +42,24 @@ let dir t = t.dir
 let compare x y =
   match Path.compare x.dir y.dir with
   | (Ordering.Lt | Gt) as a -> a
-  | Eq -> Predicate.compare x.test y.test
+  | Eq -> Predicate.compare x.predicate y.predicate
 
-let from_predicate ~dir predicate = { dir; test = Predicate predicate }
+let create ~dir predicate = { dir; predicate = Predicate predicate }
 
-let from_glob ~dir glob = { dir; test = Glob glob }
+let from_glob ~dir glob = { dir; predicate = Glob glob }
 
-let to_dyn { dir; test } =
+let to_dyn { dir; predicate } =
   let open Dyn in
-  Record [ ("dir", Path.to_dyn dir); ("test", Predicate.to_dyn test) ]
+  Record [ ("dir", Path.to_dyn dir); ("predicate", Predicate.to_dyn predicate) ]
 
-let encode { dir; test } =
+let encode { dir; predicate } =
   let open Dune_lang.Encoder in
-  record [ ("dir", Dpath.encode dir); ("test", Predicate.encode test) ]
+  record
+    [ ("dir", Dpath.encode dir); ("predicate", Predicate.encode predicate) ]
 
 let equal x y = compare x y = Eq
 
-let hash { dir; test } = Tuple.T2.hash Path.hash Predicate.hash (dir, test)
+let hash { dir; predicate } =
+  Tuple.T2.hash Path.hash Predicate.hash (dir, predicate)
 
-let test t path = Predicate.test t.test (Path.basename path)
+let test t path = Predicate.test t.predicate (Path.basename path)

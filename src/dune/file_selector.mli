@@ -7,7 +7,7 @@ type t
 
 val dir : t -> Path.t
 
-val from_predicate : dir:Path.t -> string Predicate.t -> t
+val create : dir:Path.t -> string Predicate.t -> t
 
 val from_glob : dir:Path.t -> Glob.t -> t
 

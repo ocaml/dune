@@ -256,7 +256,7 @@ let gen_rules sctx dir_contents cctxs
       in
       Predicate.create ~id ~f
     in
-    File_selector.from_predicate ~dir:(Path.build ctx_dir) pred
+    File_selector.create ~dir:(Path.build ctx_dir) pred
     |> Build.paths_matching ~loc:Loc.none
   in
   Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir:ctx_dir)

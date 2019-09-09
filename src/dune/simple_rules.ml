@@ -89,9 +89,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.Source.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.Source.parent_exn glob_in_src in
-  let glob =
+  let pred =
     Path.Source.basename glob_in_src
     |> Glob.of_string_exn (String_with_vars.loc def.glob)
+    |> Glob.to_pred
   in
   let file_tree = Super_context.file_tree sctx in
   if not (File_tree.dir_exists file_tree src_in_src) then
@@ -104,7 +105,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   in
   let files =
     Build_system.eval_pred
-      (File_selector.from_glob ~dir:(Path.build src_in_build) glob)
+      (File_selector.create ~dir:(Path.build src_in_build) pred)
   in
   Path.Set.map files ~f:(fun file_src ->
       let basename = Path.basename file_src in

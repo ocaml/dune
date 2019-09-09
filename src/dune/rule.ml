@@ -32,7 +32,8 @@ type t =
 let make ?(sandbox = Sandbox_config.default)
     ?(mode = Dune_file.Rule.Mode.Standard) ~context ~env ?(locks = [])
     ?(info = Info.Internal) build =
-  let build = Build.S.seq (Build.dep (Dep.sandbox_config sandbox)) build in
+  let open Build.O in
+  let build = Build.dep (Dep.sandbox_config sandbox) >>> build in
   let targets = Build.targets build in
   let dir =
     match Path.Build.Set.choose targets with

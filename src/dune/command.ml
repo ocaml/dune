@@ -79,7 +79,7 @@ let expand ~dir ts =
     | Concat (sep, ts) ->
       Build.map (loop (S ts)) ~f:(fun x -> [ String.concat ~sep x ])
     | Target fn -> Build.return [ Path.reach (Path.build fn) ~from:dir ]
-    | Dyn dyn -> Build.S.dyn_deps (Build.map dyn ~f:run_loop)
+    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:run_loop)
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.map (Build.deps deps) ~f:(fun () -> [])
     | Hidden_targets _ -> Build.return []
@@ -91,21 +91,21 @@ let dep_prog = function
   | Error _ -> Build.return ()
 
 let prog_and_args ?(dir = Path.root) prog args =
-  Build.S.seq (dep_prog prog)
-    (Build.map (expand ~dir args) ~f:(fun args -> (prog, args)))
+  let open Build.O in
+  dep_prog prog >>> Build.map (expand ~dir args) ~f:(fun args -> (prog, args))
 
 let run ~dir ?stdout_to prog args =
+  let open Build.O in
   let targets = add_targets args (Option.to_list stdout_to) in
-  Build.S.seq
-    (Build.declare_targets (Path.Build.Set.of_list targets))
-    (Build.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
-         let action : Action.t = Run (prog, args) in
-         let action =
-           match stdout_to with
-           | None -> action
-           | Some path -> Redirect_out (Stdout, path, action)
-         in
-         Action.Chdir (dir, action)))
+  Build.declare_targets (Path.Build.Set.of_list targets)
+  >>> Build.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
+          let action : Action.t = Run (prog, args) in
+          let action =
+            match stdout_to with
+            | None -> action
+            | Some path -> Redirect_out (Stdout, path, action)
+          in
+          Action.Chdir (dir, action))
 
 let quote_args =
   let rec loop quote = function

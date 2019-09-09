@@ -171,9 +171,8 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                 in
                 let modules = Compilation_context.modules cctx in
                 SC.add_rule sctx ~sandbox ~dir
-                  (Build.S.seqs
-                     [ Build.paths extra_deps; other_cm_files ]
-                     (Command.run ~dir:(Path.build dir) (Ok compiler)
+                  ( Build.paths extra_deps >>> other_cm_files
+                  >>> Command.run ~dir:(Path.build dir) (Ok compiler)
                         [ Command.Args.dyn flags
                         ; no_keep_locs
                         ; cmt_args
@@ -204,7 +203,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                         ; Command.Ml_kind.flag ml_kind
                         ; Dep src
                         ; Hidden_targets other_targets
-                        ]))))
+                        ] )))
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo;
@@ -239,22 +238,22 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    ( Build.S.seq cm_deps
-        (Build.map
-           ~f:(Action.with_stdout_to output)
-           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-              [ Command.Args.dyn ocaml_flags
-              ; A "-I"
-              ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
-              ; opens modules m
-              ; As flags
-              ; A "-short-paths"
-              ; A "-i"
-              ; Command.Ml_kind.flag Impl
-              ; Dep src
-              ]))
-    |> Build.action_dyn ~targets:[ output ] )
+    (Build.action_dyn ~targets:[ output ]
+       ( cm_deps
+       >>> Build.map
+             ~f:(Action.with_stdout_to output)
+             (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+                [ Command.Args.dyn ocaml_flags
+                ; A "-I"
+                ; Path (Path.build (Obj_dir.byte_dir obj_dir))
+                ; Cm_kind.Dict.get (CC.includes cctx) Cmo
+                ; opens modules m
+                ; As flags
+                ; A "-short-paths"
+                ; A "-i"
+                ; Command.Ml_kind.flag Impl
+                ; Dep src
+                ]) ))
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper

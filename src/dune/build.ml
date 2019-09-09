@@ -48,7 +48,7 @@ let map x ~f = Map (f, x)
 
 let delayed f = Map (f, return ())
 
-let record_lib_deps lib_deps = Record_lib_deps lib_deps
+let map2 x y ~f = Map2 (f, x, y)
 
 module O = struct
   let ( >>> ) a b = Map2 ((fun () y -> y), a, b)
@@ -60,12 +60,14 @@ end
 
 open O
 
+let ignore x = Map (Fn.const (), x)
+
 let rec all xs =
   match xs with
   | [] -> return []
   | x :: xs -> Map2 ((fun x xs -> x :: xs), x, all xs)
 
-let ignore x = Map (Fn.const (), x)
+let record_lib_deps lib_deps = Record_lib_deps lib_deps
 
 let lazy_no_targets t = Lazy_no_targets t
 
@@ -128,8 +130,10 @@ let file_exists_opt p t =
   if_file_exists p ~then_:(map ~f:Option.some t) ~else_:(return None)
 
 let paths_existing paths =
-  List.fold_left paths ~init:(return true) ~f:(fun acc file ->
-      if_file_exists file ~then_:(path file) ~else_:(return ()) >>> acc)
+  ignore
+    (all
+       (List.map paths ~f:(fun file ->
+            if_file_exists file ~then_:(path file) ~else_:(return ()))))
 
 let fail ?targets x =
   match targets with
@@ -409,21 +413,4 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
   let result = exec dyn_deps t in
   (result, !dyn_deps)
 
-module S = struct
-  open O
-
-  let map2 x y ~f = Map2 (f, x, y)
-
-  let ignore x =
-    let+ _ = x in
-    ()
-
-  let seq x y =
-    let+ () = x
-    and+ y = y in
-    y
-
-  let seqs xs y = seq (ignore (all xs)) y
-
-  let dyn_deps x = Dyn_deps x
-end
+let dyn_deps x = Dyn_deps x

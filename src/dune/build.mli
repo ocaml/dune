@@ -1,4 +1,4 @@
-(** The build arrow *)
+(** The build functor *)
 
 open! Stdune
 open! Import
@@ -8,6 +8,10 @@ type 'a t
 val return : 'a -> 'a t
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
+
+val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+val ignore : 'a t -> unit t
 
 module O : sig
   val ( >>> ) : unit t -> 'a t -> 'a t
@@ -23,7 +27,7 @@ val all : 'a t list -> 'a list t
     contains no targets. *)
 val lazy_no_targets : 'a t Lazy.t -> 'a t
 
-(** Delay a static computation until the arrow is evaluated *)
+(** Delay a static computation until the functor is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
 (* CR-someday diml: this API is not great, what about:
@@ -36,7 +40,7 @@ val delayed : (unit -> 'a) -> 'a t
    ('a, Action_with_deps.t) t -> ('a, Action_with_deps.t) t ]} *)
 
 (** [path p] records [p] as a file that is read by the action produced by the
-    build arrow. *)
+    build functor. *)
 val path : Path.t -> unit t
 
 val dep : Dep.t -> unit t
@@ -48,22 +52,22 @@ val paths : Path.t list -> unit t
 val path_set : Path.Set.t -> unit t
 
 (** Evaluate a predicate against all targets and record all the matched files
-    as dependencies of the action produced by the build arrow. *)
+    as dependencies of the action produced by the build functor. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
 (* TODO: We always ignore the resulting [bool] -- shall we return [unit]? *)
 
 (** [paths_existing paths] will require as dependencies the files that actually
-    exist, and return true if the all the paths do actually exist. *)
-val paths_existing : Path.t list -> bool t
+    exist. *)
+val paths_existing : Path.t list -> unit t
 
 (** [env_var v] records [v] as an environment variable that is read by the
-    action produced by the build arrow. *)
+    action produced by the build functor. *)
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
 
-(** Record a set of targets of the action produced by the build arrow. *)
+(** Record a set of targets of the action produced by the build functor. *)
 val declare_targets : Path.Build.Set.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
@@ -83,11 +87,11 @@ val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
     raised during the evaluation of [t]. *)
 val catch : 'a t -> on_error:(exn -> 'a) -> 'a t
 
-(** [contents path] returns an arrow that when run will return the contents of
+(** [contents path] returns a functor that when run will return the contents of
     the file at [path]. *)
 val contents : Path.t -> string t
 
-(** [lines_of path] returns an arrow that when run will return the contents of
+(** [lines_of path] returns a functor that when run will return the contents of
     the file at [path] as a list of lines. *)
 val lines_of : Path.t -> string list t
 
@@ -102,7 +106,7 @@ val read_sexp : Path.t -> Dune_lang.Ast.t t
     target of a rule. *)
 val file_exists : Path.t -> bool t
 
-(** [if_file_exists p ~then ~else] is an arrow that behaves like [then_] if
+(** [if_file_exists p ~then ~else] is a functor that behaves like [then_] if
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
@@ -121,7 +125,7 @@ val of_result : ?targets:Path.Build.t list -> 'a t Or_exn.t -> 'a t
 val of_result_map :
   ?targets:Path.Build.t list -> 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
-(** [memoize name t] is an arrow that behaves like [t] except that its result
+(** [memoize name t] is a functor that behaves like [t] except that its result
     is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
@@ -155,7 +159,7 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 (** {1 Analysis} *)
 
 (** Must be called first before [lib_deps] and [targets] as it updates some of
-    the internal references in the build arrow. *)
+    the internal references in the build functor. *)
 val static_deps :
   _ t -> list_targets:(dir:Path.t -> Path.Set.t) -> Static_deps.t
 
@@ -165,7 +169,7 @@ val targets : _ t -> Path.Build.Set.t
 
 (** {1 Execution} *)
 
-(** Executes a build arrow. Returns the result and the set of dynamic
+(** Executes a build functor. Returns the result and the set of dynamic
     dependencies discovered during execution. *)
 val exec : eval_pred:Dep.eval_pred -> 'a t -> 'a * Dep.Set.t
 
@@ -177,18 +181,4 @@ val paths_for_rule : Path.Set.t -> unit t
 val merge_files_dyn :
   target:Path.Build.t -> (Path.t list * string list) t -> Action.t t
 
-val ignore : 'a t -> unit t
-
-(* A module with standard combinators for applicative and selective functors,
-   as well as equivalents of the functions from the arrow-based API. *)
-module S : sig
-  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
-
-  val seq : unit t -> 'a t -> 'a t
-
-  val seqs : unit t list -> 'a t -> 'a t
-
-  val ignore : 'a t -> unit t
-
-  val dyn_deps : ('a * Dep.Set.t) t -> 'a t
-end
+val dyn_deps : ('a * Dep.Set.t) t -> 'a t

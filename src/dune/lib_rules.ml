@@ -51,7 +51,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
           ~standard:(Build.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-        (Build.S.seq obj_deps
+        (obj_deps >>>
            (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
@@ -193,10 +193,9 @@ let build_shared lib ~sctx ~dir ~flags =
         Library.archive lib ~dir ~ext
       in
       let build =
-        Build.S.seq
-          (Build.dyn_paths_unit
+        Build.dyn_paths_unit
              (Build.return
-                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]))
+                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]) >>>
           (Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
              [ Command.Args.dyn (Ocaml_flags.get flags Native)
              ; A "-shared"

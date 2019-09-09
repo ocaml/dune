@@ -66,6 +66,7 @@ let parse_coqdep ~coq_module (lines : string list) =
 
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     ~mlpack_rule coq_module =
+  let open Build.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
@@ -80,9 +81,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
        :( I wish we had more flexible typing. *)
-    Build.S.seqs
-      [ mlpack_rule; source_rule ]
-      (Command.run ~dir ~stdout_to cc.coqdep cd_arg)
+    mlpack_rule >>> source_rule
+    >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
   in
   (* Process coqdep and generate rules *)
   let deps_of : unit Build.t =
@@ -95,12 +95,13 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
   [ coqdep_rule
-  ; Build.S.seq deps_of
-      (let coq_flags =
-         Expander.expand_and_eval_set expander coq_flags
-           ~standard:(Build.return [])
-       in
-       Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg))
+  ; ( deps_of
+    >>>
+    let coq_flags =
+      Expander.expand_and_eval_set expander coq_flags
+        ~standard:(Build.return [])
+    in
+    Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg) )
   ]
 
 (* TODO: remove; rgrinberg points out: - resolve program is actually cached, -
@@ -141,7 +142,7 @@ let setup_ml_deps ~lib_db libs =
     (Util.include_flags libs, List.concat_map ~f:ml_pack_files libs)
   in
   (* If the mlpack files don't exist, don't fail *)
-  (ml_iflags, Build.S.ignore (Build.paths_existing mlpack))
+  (ml_iflags, Build.paths_existing mlpack)
 
 let coqlib_wrapper_name (s : Dune_file.Coq.t) =
   Lib_name.Local.to_string (snd s.name)

@@ -312,13 +312,11 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
           Build.return (sprintf "let () = %s ()\n" driver.info.main))
     |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
-    (Build.S.seqs
-       [ Build.record_lib_deps
-           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
-       ; Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
-             Build.paths (Lib.L.archive_files libs ~mode))
-       ]
-       (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+    ( Build.record_lib_deps
+        (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
+    >>> Build.of_result_map driver_and_libs ~f:(fun (_, libs) ->
+            Build.paths (Lib.L.archive_files libs ~mode))
+    >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
           [ A "-o"
           ; Target target
           ; A "-w"
@@ -332,7 +330,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
                          (Lib_file_deps.deps libs ~groups:[ Cmi; Cmx ])
                      ]))
           ; Dep (Path.build ml)
-          ]))
+          ] )
 
 let get_rules sctx key =
   let exe = ppx_exe sctx ~key in

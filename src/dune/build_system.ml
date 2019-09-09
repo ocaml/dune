@@ -191,7 +191,7 @@ module Alias0 = struct
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
       let fn = Path.build fn in
-      Build.S.map2 ~f:( && ) acc
+      Build.map2 ~f:( && ) acc
         (Build.if_file_exists fn
            ~then_:(Build.path fn >>> Build.return false)
            ~else_:(Build.return true))
@@ -1739,9 +1739,10 @@ let prefix_rules prefix ~f =
     Code_error.raise "Build_system.prefix_rules' prefix contains targets"
       [ ("targets", Path.Build.Set.to_dyn targets) ];
   let res, rules = Rules.collect f in
+  let open Build.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with build = Build.O.( >>> ) prefix rule.build }));
+         { rule with build = prefix >>> rule.build }));
   res
 
 module Alias = Alias0

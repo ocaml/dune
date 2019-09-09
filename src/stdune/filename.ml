@@ -1,10 +1,10 @@
 include Dune_caml.Filename
 
 (* Return the index of the start of the extension, using the same semantic as
-  [Filename.extension] in 4.04 *)
+   [Filename.extension] in 4.04 *)
 let extension_start =
   (* This is from the win32 implementation, but it is acceptable for the usage
-    we make of it in this function and covers all platforms. *)
+     we make of it in this function and covers all platforms. *)
   let is_dir_sep = function
     | '/'
      |'\\'

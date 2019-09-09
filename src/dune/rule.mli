@@ -17,7 +17,7 @@ end
 type t =
   { context : Context.t option
   ; env : Env.t option
-  ; build : (unit, Action.t) Build.t
+  ; build : Action.t Build.t
   ; targets : Path.Build.Set.t
   ; mode : Dune_file.Rule.Mode.t
   ; locks : Path.t list
@@ -32,5 +32,5 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> t

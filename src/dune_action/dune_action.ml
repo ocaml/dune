@@ -35,18 +35,18 @@ end = struct
     in
     fun path ->
       catch_system_exceptions ~name:"read_directory" (fun () ->
-        let dh = Unix.opendir path in
-        Stdune.Exn.protect
-          ~f:(fun () -> loop dh [] |> List.sort String.compare)
-          ~finally:(fun () -> Unix.closedir dh))
+          let dh = Unix.opendir path in
+          Stdune.Exn.protect
+            ~f:(fun () -> loop dh [] |> List.sort String.compare)
+            ~finally:(fun () -> Unix.closedir dh))
 
   let read_file path =
     catch_system_exceptions ~name:"read_file" (fun () ->
-      Stdune.Io.String_path.read_file path)
+        Stdune.Io.String_path.read_file path)
 
   let write_file path data =
     catch_system_exceptions ~name:"write_file" (fun () ->
-      Stdune.Io.String_path.write_file path data)
+        Stdune.Io.String_path.write_file path data)
 end
 
 module Stage = struct
@@ -135,15 +135,15 @@ let rec run_by_dune t context =
     | [ t ] ->
       Execution_error.raise
         (Printf.sprintf
-          "%s is written despite not being declared as a target in dune file. \
-           To fix, add it to target list in dune file."
-          t)
+           "%s is written despite not being declared as a target in dune \
+            file. To fix, add it to target list in dune file."
+           t)
     | ts ->
       Execution_error.raise
         (Printf.sprintf
-          "Following files were written despite not being declared as targets \
-           in dune file:\n\
-           %sTo fix, add them to target list in dune file."
+           "Following files were written despite not being declared as \
+            targets in dune file:\n\
+            %sTo fix, add them to target list in dune file."
            (ts |> String.concat "\n")) );
     let prepared_dependencies = Context.prepared_dependencies context in
     let required_dependencies =
@@ -155,7 +155,7 @@ let rec run_by_dune t context =
       Context.respond context (Need_more_deps required_dependencies)
 
 (* If executable is not run by dune, assume that all dependencies are already
-  prepared and no target checking is done. *)
+   prepared and no target checking is done. *)
 let rec run_outside_of_dune t =
   match t with
   | Pure () -> ()
@@ -168,9 +168,9 @@ let do_run t =
   | Error message ->
     Execution_error.raise
       (Printf.sprintf
-        "Error during communication with dune. %s Did you use different dune \
-         version to compile the executable?"
-        message)
+         "Error during communication with dune. %s Did you use different dune \
+          version to compile the executable?"
+         message)
   | Ok context -> run_by_dune t context
 
 let run t =

@@ -72,6 +72,10 @@ module Dict = struct
   module Set = struct
     type nonrec t = bool t
 
+    let to_dyn { byte; native } =
+      let open Dyn.Encoder in
+      record [ ("byte", bool byte); ("native", bool native) ]
+
     let all = { byte = true; native = true }
 
     let to_list t =

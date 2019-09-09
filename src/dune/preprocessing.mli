@@ -15,17 +15,17 @@ val make :
   -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Dune_file.Preprocess_map.t
   -> preprocess:Dune_file.Preprocess_map.t
-  -> preprocessor_deps:(unit, unit) Build.t
+  -> preprocessor_deps:unit Build.t
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
   -> t
 
 (** Setup the preprocessing rules for the following modules and returns the
-  translated modules *)
+    translated modules *)
 val pp_module : t -> ?lint:bool -> Module.t -> Module.t
 
 (** Preprocess a single module, using the configuration for the given module
-  name. *)
+    name. *)
 val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
 
 (** Get a path to a cached ppx driver with some extra flags for cookies. *)
@@ -51,7 +51,7 @@ val action_for_pp :
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
   -> target:Path.Build.t option
-  -> ('a, Action.t) Build.t
+  -> Action.t Build.t
 
 val ppx_exe :
   Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Or_exn.t

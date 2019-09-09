@@ -1,5 +1,5 @@
 (** A File_selector.t is a predicate that is to be evaluated in a particular
-  directory *)
+    directory *)
 
 open Stdune
 
@@ -19,6 +19,8 @@ val compare : t -> t -> Ordering.t
 
 val encode : t Dune_lang.Encoder.t
 
+(** [to_dyn] is used as a marshallable representation of [t] (to compute
+    digests), so it must be injective *)
 val to_dyn : t -> Dyn.t
 
 val test : t -> Path.t -> bool

@@ -48,11 +48,11 @@ let delete_very_recent_entries () =
   | Eq
    |Gt ->
     Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
-      match Float.compare data.timestamp now with
-      | Lt -> true
-      | Gt
-       |Eq ->
-        false)
+        match Float.compare data.timestamp now with
+        | Lt -> true
+        | Gt
+         |Eq ->
+          false)
 
 let dump () =
   if !needs_dumping && Path.build_dir_exists () then (
@@ -69,23 +69,14 @@ let invalidate_cached_timestamps () =
     cache.checked_key <- cache.checked_key + 1 );
   delete_very_recent_entries ()
 
-let dir_digest (stat : Unix.stats) =
-  Digest.generic (stat.st_size, stat.st_perm, stat.st_mtime, stat.st_ctime)
-
-let path_stat_digest fn stat =
-  if stat.Unix.st_kind = Unix.S_DIR then
-    dir_digest stat
-  else
-    Digest.generic (Digest.file fn, stat.st_perm)
-
 let set_max_timestamp cache (stat : Unix.stats) =
   cache.max_timestamp <- Float.max cache.max_timestamp stat.st_mtime
 
 let refresh fn =
   let cache = Lazy.force cache in
   let stat = Path.stat fn in
+  let digest = Digest.file_with_stats fn stat in
   let permissions = stat.st_perm in
-  let digest = path_stat_digest fn stat in
   needs_dumping := true;
   set_max_timestamp cache stat;
   Path.Table.replace cache.table ~key:fn
@@ -122,7 +113,7 @@ let file fn =
         dirty := true;
         x.size <- stat.st_size
       );
-      if !dirty then x.digest <- path_stat_digest fn stat;
+      if !dirty then x.digest <- Digest.file_with_stats fn stat;
       x.stats_checked <- cache.checked_key;
       x.digest
     )

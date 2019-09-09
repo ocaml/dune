@@ -49,7 +49,7 @@ end = struct
     Buffer.add_string buf after
 
   let check_valid_unquoted s ~loc =
-    if not (Atom.is_valid (Atom.of_string s) Dune) then
+    if not (Atom.is_valid s) then
       Code_error.raise ~loc "Invalid text in unquoted template"
         [ ("s", String s) ]
 
@@ -98,8 +98,8 @@ let pp_split_strings ppf (t : t) =
   if
     t.quoted
     || List.exists t.parts ~f:(function
-      | Text s -> String.contains s '\n'
-        | Var _ -> false)
+         | Text s -> String.contains s '\n'
+         | Var _ -> false)
   then (
     List.iter t.parts ~f:(function
       | Var s -> Format.pp_print_string ppf (string_of_var s)
@@ -119,9 +119,9 @@ let remove_locs t =
   { t with
     loc = Loc.none
   ; parts =
-    List.map t.parts ~f:(function
-      | Var v -> Var { v with loc = Loc.none }
-      | Text _ as s -> s)
+      List.map t.parts ~f:(function
+        | Var v -> Var { v with loc = Loc.none }
+        | Text _ as s -> s)
   }
 
 let dyn_of_var_syntax =

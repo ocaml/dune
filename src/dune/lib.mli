@@ -9,7 +9,7 @@ type t
 val to_dyn : t -> Dyn.t
 
 (** For libraries defined in the workspace, this is the [public_name] if
-  present or the [name] if not. *)
+    present or the [name] if not. *)
 val name : t -> Lib_name.t
 
 val implements : t -> t Or_exn.t option
@@ -27,11 +27,11 @@ val main_module_name : t -> Module_name.t option Or_exn.t
 val wrapped : t -> Wrapped.t option Or_exn.t
 
 (** [is_impl lib] returns [true] if the library is an implementation of a
-  virtual library *)
+    virtual library *)
 val is_impl : t -> bool
 
 (** A unique integer identifier. It is only unique for the duration of the
-  process *)
+    process *)
 module Id : sig
   type t
 
@@ -70,7 +70,7 @@ module L : sig
     compile:t -> link:t -> mode:Mode.t -> _ Command.Args.t
 
   (** All the library archive files (.a, .cmxa, _stubs.a, ...) that should be
-    linked in when linking an executable. *)
+      linked in when linking an executable. *)
   val archive_files : t -> mode:Mode.t -> Path.t list
 
   val jsoo_runtime_files : t -> Path.t list
@@ -156,7 +156,7 @@ module DB : sig
   end
 
   (** Create a new library database. [resolve] is used to resolve library names
-    in this database.
+      in this database.
 
       When a library is not found, it is looked up in the parent database if
       any.
@@ -188,13 +188,13 @@ module DB : sig
   val available : t -> Lib_name.t -> bool
 
   (** Retrieve the compile information for the given library. Works for
-    libraries that are optional and not available as well. *)
+      libraries that are optional and not available as well. *)
   val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
   (** Resolve libraries written by the user in a jbuild file. The resulting
-    list of libraries is transitively closed and sorted by order of
+      list of libraries is transitively closed and sorted by order of
       dependencies.
 
       This function is for executables stanzas. *)
@@ -202,6 +202,7 @@ module DB : sig
        t
     -> (Loc.t * string) list
     -> ?allow_overlaps:bool
+    -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Dune_file.Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> variants:(Loc.t * Variant.Set.t) option
@@ -211,7 +212,7 @@ module DB : sig
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Or_exn.t
 
   (** Return the list of all libraries in this database. If [recursive] is
-    true, also include libraries in parent databases recursively. *)
+      true, also include libraries in parent databases recursively. *)
   val all : ?recursive:bool -> t -> Set.t
 end
 with type lib := t

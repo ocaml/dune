@@ -42,7 +42,7 @@ let open_out_bin = `Use_Io
 let open_out_gen = `Use_Io
 
 (* We open this module at the top of module generating rules, to make sure they
-  don't do Io manually *)
+   don't do Io manually *)
 module No_io = struct
   module Io = struct end
 end

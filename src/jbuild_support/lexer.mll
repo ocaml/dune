@@ -1,5 +1,42 @@
 {
-  open Lexer_shared
+open Stdune
+open Dune_lang
+
+let error ?(delta = 0) lexbuf message =
+  let start = Lexing.lexeme_start_p lexbuf in
+  let loc : Loc.t =
+    { start = { start with pos_cnum = start.pos_cnum + delta }
+    ; stop = Lexing.lexeme_end_p lexbuf
+    }
+  in
+  User_error.raise ~loc [ Pp.text message ]
+
+let invalid_dune_or_jbuild lexbuf =
+  let start = Lexing.lexeme_start_p lexbuf in
+  let fname = Filename.basename start.pos_fname in
+  error lexbuf (sprintf "Invalid %s file" fname)
+
+let escaped_buf = Buffer.create 256
+
+type escape_sequence =
+  | Newline
+  | Other
+
+let eval_decimal_char c = Char.code c - Char.code '0'
+
+let eval_decimal_escape c1 c2 c3 =
+  (eval_decimal_char c1 * 100)
+  + (eval_decimal_char c2 * 10)
+  + eval_decimal_char c3
+
+let eval_hex_char c =
+  match c with
+  | '0' .. '9' -> Char.code c - Char.code '0'
+  | 'a' .. 'f' -> Char.code c - Char.code 'a' + 10
+  | 'A' .. 'F' -> Char.code c - Char.code 'A' + 10
+  | _ -> -1
+
+let eval_hex_escape c1 c2 = (eval_hex_char c1 * 16) + eval_hex_char c2
 
 (* The difference between the old and new syntax is that the old
    syntax allows backslash following by any characters other than 'n',
@@ -34,7 +71,7 @@ rule token with_comments = parse
         token with_comments lexbuf
     }
   | '('
-    { Token.Lparen }
+    { Lexer.Token.Lparen }
   | ')'
     { Rparen }
   | '"'
@@ -64,7 +101,7 @@ and comment_trail acc = parse
   | newline blank* ';' (comment_body as s)
     { comment_trail (s :: acc) lexbuf }
   | ""
-    { Token.Comment (Lines (List.rev acc)) }
+    { Lexer.Token.Comment (Lines (List.rev acc)) }
 
 and atom acc start = parse
   | '#'+ '|'
@@ -81,7 +118,7 @@ and atom acc start = parse
   | ""
     { if acc = "" then invalid_dune_or_jbuild lexbuf;
       lexbuf.lex_start_p <- start;
-      Token.Atom (Atom.of_string acc)
+      Lexer.Token.Atom (Atom.of_string acc)
     }
 
 and quoted_string mode = parse

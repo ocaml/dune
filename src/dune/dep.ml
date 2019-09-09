@@ -1,9 +1,16 @@
 open Stdune
 
 module Trace = struct
+  module Fact = struct
+    type t =
+      | Env of string * string option
+      | File of (string * Digest.t)
+      | File_selector of Dyn.t * (string * Digest.t) list
+  end
+
   type t =
     { sandbox_mode : Sandbox_mode.t
-    ; files : (string * Digest.t) list
+    ; facts : Fact.t list
     }
 end
 
@@ -47,28 +54,24 @@ module T = struct
     | _, Universe -> Gt
     | Sandbox_config x, Sandbox_config y -> Sandbox_config.compare x y
 
-  let unset = lazy (Digest.string "unset")
-
   let trace_file fn = (Path.to_string fn, Cached_digest.file fn)
 
-  let trace t ~sandbox_mode ~env ~eval_pred =
+  let trace t ~sandbox_mode ~env ~eval_pred : Trace.Fact.t Option.t =
     match t with
-    | Universe -> [ ("universe", Digest.string "universe") ]
-    | File fn -> [ trace_file fn ]
-    | Alias a -> [ trace_file (Path.build (Alias.stamp_file a)) ]
+    | Env var -> Some (Env (var, Env.get env var))
+    | File fn -> Some (File (trace_file fn))
+    | Alias a -> Some (File (trace_file (Path.build (Alias.stamp_file a))))
     | File_selector dir_glob ->
-      eval_pred dir_glob |> Path.Set.to_list |> List.map ~f:trace_file
-    | Env var ->
-      let value =
-        match Env.get env var with
-        | None -> Lazy.force unset
-        | Some v -> Digest.string v
+      let id = File_selector.to_dyn dir_glob
+      and files =
+        eval_pred dir_glob |> Path.Set.to_list |> List.map ~f:trace_file
       in
-      [ (var, value) ]
+      Some (File_selector (id, files))
+    | Universe -> None
     | Sandbox_config config ->
       assert (Sandbox_config.mem config sandbox_mode);
       (* recorded globally for the whole dep set *)
-      []
+      None
 
   let encode t =
     let open Dune_lang.Encoder in
@@ -82,10 +85,10 @@ module T = struct
       list
         (fun x -> x)
         (List.filter_map Sandbox_mode.all ~f:(fun mode ->
-          if not (Sandbox_config.mem config mode) then
-            Some (pair string string ("disallow", sandbox_mode mode))
-          else
-            None))
+             if not (Sandbox_config.mem config mode) then
+               Some (pair string string ("disallow", sandbox_mode mode))
+             else
+               None))
     in
     match t with
     | File_selector g -> pair string File_selector.encode ("glob", g)
@@ -126,10 +129,10 @@ module Set = struct
     Path.Set.fold ~init:empty ~f:(fun f acc -> add acc (file f))
 
   let trace t ~sandbox_mode ~env ~eval_pred =
-    let files =
-      List.concat_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
+    let facts =
+      List.filter_map (to_list t) ~f:(trace ~sandbox_mode ~env ~eval_pred)
     in
-    { Trace.files; sandbox_mode }
+    { Trace.facts; sandbox_mode }
 
   let add_paths t paths =
     Path.Set.fold paths ~init:t ~f:(fun p set -> add set (File p))
@@ -138,14 +141,14 @@ module Set = struct
 
   let paths t ~eval_pred =
     fold t ~init:Path.Set.empty ~f:(fun d acc ->
-      match d with
-      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
-      | File f -> Path.Set.add acc f
-      | File_selector g -> Path.Set.union acc (eval_pred g)
-      | Universe
-       |Env _ ->
-        acc
-      | Sandbox_config _ -> acc)
+        match d with
+        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
+        | File f -> Path.Set.add acc f
+        | File_selector g -> Path.Set.union acc (eval_pred g)
+        | Universe
+         |Env _ ->
+          acc
+        | Sandbox_config _ -> acc)
 
   let parallel_iter t ~f = Fiber.parallel_iter ~f (to_list t)
 
@@ -154,14 +157,14 @@ module Set = struct
 
   let dirs t =
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
-      match f with
-      | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
-      | File_selector g -> Path.Set.add acc (File_selector.dir g)
-      | File f -> Path.Set.add acc (Path.parent_exn f)
-      | Universe
-       |Env _ ->
-        acc
-      | Sandbox_config _ -> acc)
+        match f with
+        | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
+        | File_selector g -> Path.Set.add acc (File_selector.dir g)
+        | File f -> Path.Set.add acc (Path.parent_exn f)
+        | Universe
+         |Env _ ->
+          acc
+        | Sandbox_config _ -> acc)
 end
 
 type eval_pred = File_selector.t -> Path.Set.t

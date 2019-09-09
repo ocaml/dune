@@ -6,8 +6,8 @@
  (libraries stdune dune_re test_common dune configurator))
 
 (env
- (_ (binaries cram.exe))
-)
+ (_
+  (binaries cram.exe)))
 
 (ocamllex cram)
 

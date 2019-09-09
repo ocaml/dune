@@ -82,11 +82,11 @@ module Stanza = struct
   let rule =
     enter
       (let+ pat =
-        match_keyword
-          [ ("_", return Any) ]
-          ~fallback:
-            (let+ p = Profile.decode in
-             Profile p)
+         match_keyword
+           [ ("_", return Any) ]
+           ~fallback:
+             (let+ p = Profile.decode in
+              Profile p)
        and+ configs = fields config in
        (pat, configs))
 
@@ -101,9 +101,9 @@ module Stanza = struct
   let find t ~profile =
     Option.value ~default:empty_config
     @@ List.find_map t.rules ~f:(fun (pat, cfg) ->
-      match pat with
-      | Any -> Some cfg
-      | Profile a -> Option.some_if (a = profile) cfg)
+           match pat with
+           | Any -> Some cfg
+           | Profile a -> Option.some_if (a = profile) cfg)
 end
 
 type stanza += T of Stanza.t

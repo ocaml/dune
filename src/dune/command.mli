@@ -2,8 +2,8 @@
 open! Stdune
 
 (** This module implements a small DSL to specify the command line argument of
-  a program as well as the dependencies and targets of the program at the same
-    time.
+    a program as well as the dependencies and targets of the program at the
+    same time.
 
     For instance to represent the argument of [ocamlc -o src/foo.exe
     src/foo.ml], one might write:
@@ -16,7 +16,7 @@ open! Stdune
 open! Import
 
 (** [A] stands for "atom", it is for command line arguments that are neither
-  dependencies nor targets.
+    dependencies nor targets.
 
     [Path] is similar to [A] in the sense that it defines a command line
     argument that is neither a dependency or target. However, the difference
@@ -42,21 +42,21 @@ module Args : sig
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Build.s -> dynamic t
+    | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
 
   (* Create dynamic command line arguments. *)
-  val dyn : string list Build.s -> dynamic t
+  val dyn : string list Build.t -> dynamic t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
-  can use the constructor [S] to concatenate lists instead. *)
+   can use the constructor [S] to concatenate lists instead. *)
 val run :
      dir:Path.t
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.dynamic Args.t list
-  -> Action.t Build.s
+  -> Action.t Build.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t

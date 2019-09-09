@@ -18,7 +18,7 @@ module Args = struct
     | Paths : Path.t list -> _ t
     | Hidden_deps : Dep.Set.t -> _ t
     | Hidden_targets : Path.Build.t list -> dynamic t
-    | Dyn : static t Build.s -> dynamic t
+    | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
 
   (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)
@@ -29,13 +29,13 @@ open Args
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
-    match t with
-    | Target fn -> fn :: acc
-    | Hidden_targets fns -> List.rev_append fns acc
-    | S ts
-     |Concat (_, ts) ->
-      add_targets ts acc
-    | _ -> acc)
+      match t with
+      | Target fn -> fn :: acc
+      | Hidden_targets fns -> List.rev_append fns acc
+      | S ts
+       |Concat (_, ts) ->
+        add_targets ts acc
+      | _ -> acc)
 
 let expand ~dir ts =
   let run_loop t =
@@ -52,8 +52,8 @@ let expand ~dir ts =
       | Path fn -> [ Path.reach fn ~from:dir ]
       | Deps fns ->
         List.map fns ~f:(fun fn ->
-          add_dep fn;
-          Path.reach ~from:dir fn)
+            add_dep fn;
+            Path.reach ~from:dir fn)
       | Paths fns -> List.map fns ~f:(Path.reach ~from:dir)
       | S ts -> List.concat_map ts ~f:loop_static
       | Concat (sep, ts) -> [ String.concat ~sep (loop_static (S ts)) ]
@@ -73,7 +73,7 @@ let expand ~dir ts =
     | Path fn -> Build.return [ Path.reach fn ~from:dir ]
     | Deps fns ->
       Build.S.map (Build.paths fns) ~f:(fun () ->
-        List.map fns ~f:(Path.reach ~from:dir))
+          List.map fns ~f:(Path.reach ~from:dir))
     | Paths fns -> Build.return (List.map fns ~f:(Path.reach ~from:dir))
     | S ts -> Build.S.map (Build.all (List.map ts ~f:loop)) ~f:List.concat
     | Concat (sep, ts) ->
@@ -99,13 +99,13 @@ let run ~dir ?stdout_to prog args =
   Build.S.seq
     (Build.declare_targets (Path.Build.Set.of_list targets))
     (Build.S.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
-      let action : Action.t = Run (prog, args) in
-      let action =
-        match stdout_to with
-        | None -> action
-        | Some path -> Redirect_out (Stdout, path, action)
-      in
-      Action.Chdir (dir, action)))
+         let action : Action.t = Run (prog, args) in
+         let action =
+           match stdout_to with
+           | None -> action
+           | Some path -> Redirect_out (Stdout, path, action)
+         in
+         Action.Chdir (dir, action)))
 
 let quote_args =
   let rec loop quote = function

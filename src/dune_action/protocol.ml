@@ -139,7 +139,7 @@ module Context = struct
       | Some greeting -> (
         match
           ( Result.try_with (fun () ->
-            Io.String_path.read_file greeting.run_arguments_fn)
+                Io.String_path.read_file greeting.run_arguments_fn)
           , Sys.file_exists greeting.response_fn )
         with
         | _, false -> file_not_found_error

@@ -9,9 +9,9 @@ end
 type done_or_more_deps =
   | Done
   (* This code assumes that there can be at most one 'dynamic-run' within
-    single action. [Dune_action.Protocol.Dependency.t] stores relative paths so
-     name clash would possible if multiple 'dynamic-run' would be executed in
-     different subdirectories that contains targets having the same name. *)
+     single action. [Dune_action.Protocol.Dependency.t] stores relative paths
+     so name clash would possible if multiple 'dynamic-run' would be executed
+     in different subdirectories that contains targets having the same name. *)
   | Need_more_deps of (Dune_action.Protocol.Dependency.Set.t * Dep.Set.t)
 
 type exec_context =
@@ -44,7 +44,7 @@ let validate_context_and_prog context prog =
         User_error.raise
           [ Pp.textf "Context %s has a host %s." target.name host.name
           ; Pp.textf "It's not possible to execute binary %s in it."
-            (Path.to_string_maybe_quoted prog)
+              (Path.to_string_maybe_quoted prog)
           ; Pp.nop
           ; Pp.text "This is a bug and should be reported upstream."
           ]
@@ -109,24 +109,25 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     when String.is_empty response ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-        "Executable '%s' that was declared to support dynamic dependency \
-         discovery (declared by using 'dynamic-run' tag) failed to respond to \
-         dune."
-        prog_name
+          "Executable '%s' that was declared to support dynamic dependency \
+           discovery (declared by using 'dynamic-run' tag) failed to respond \
+           to dune."
+          prog_name
       ; Pp.nop
       ; Pp.text
-        "If you don't use dynamic dependency discovery in your executable you \
-         may consider changing 'dynamic-run' to 'run' in your rule definition."
+          "If you don't use dynamic dependency discovery in your executable \
+           you may consider changing 'dynamic-run' to 'run' in your rule \
+           definition."
       ]
   | Error _
    |Ok None ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-        "Executable '%s' declared as a dynamic dune action responded with \
-         invalid message."
-        prog_name
+          "Executable '%s' declared as a dynamic dune action responded with \
+           invalid message."
+          prog_name
       ; Pp.text
-        "Are you using different dune version to compile the executable?"
+          "Are you using different dune version to compile the executable?"
       ]
   | Ok (Some Done) -> Done
   | Ok (Some (Need_more_deps deps)) ->
@@ -164,7 +165,7 @@ let rec exec t ~ectx ~eenv =
     Done
   | Cat fn ->
     Io.with_file_in fn ~f:(fun ic ->
-      Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
+        Io.copy_channels ic (Process.Io.out_channel eenv.stdout_to));
     Fiber.return Done
   | Copy (src, dst) ->
     let dst = Path.build dst in
@@ -187,7 +188,7 @@ let rec exec t ~ectx ~eenv =
       | target ->
         if target <> src then (
           (* @@DRA Win32 remove read-only attribute needed when symlinking
-            enabled *)
+             enabled *)
           Unix.unlink dst;
           Unix.symlink src dst
         )
@@ -195,12 +196,13 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | Copy_and_add_line_directive (src, dst) ->
     Io.with_file_in src ~f:(fun ic ->
-      Path.build dst
-      |> Io.with_file_out ~f:(fun oc ->
-        let fn = Path.drop_optional_build_context_maybe_sandboxed src in
-        output_string oc
-          (Utils.line_directive ~filename:(Path.to_string fn) ~line_number:1);
-        Io.copy_channels ic oc));
+        Path.build dst
+        |> Io.with_file_out ~f:(fun oc ->
+               let fn = Path.drop_optional_build_context_maybe_sandboxed src in
+               output_string oc
+                 (Utils.line_directive ~filename:(Path.to_string fn)
+                    ~line_number:1);
+               Io.copy_channels ic oc));
     Fiber.return Done
   | System cmd ->
     let path, arg =
@@ -235,7 +237,7 @@ let rec exec t ~ectx ~eenv =
     let s =
       let data =
         List.map paths ~f:(fun fn ->
-          (Path.to_string fn, Cached_digest.file fn))
+            (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.generic data
     in
@@ -261,7 +263,7 @@ let rec exec t ~ectx ~eenv =
             if mode = Binary then
               User_error.raise
                 [ Pp.textf "Files %s and %s differ."
-                  (Path.to_string_maybe_quoted file1)
+                    (Path.to_string_maybe_quoted file1)
                     (Path.to_string_maybe_quoted file2)
                 ]
             else
@@ -277,16 +279,16 @@ let rec exec t ~ectx ~eenv =
                 Promotion.File.register_dep
                   ~source_file:
                     (snd
-                      (Option.value_exn
-                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                       (Option.value_exn
+                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:(Path.as_in_build_dir_exn file2)
             | true ->
               if is_copied_from_source_tree file1 then
                 Promotion.File.register_intermediate
                   ~source_file:
                     (snd
-                      (Option.value_exn
-                        (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                       (Option.value_exn
+                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
                   ~correction_file:(Path.as_in_build_dir_exn file2)
               else
                 remove_intermediate_file () );

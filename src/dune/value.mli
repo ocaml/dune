@@ -16,8 +16,8 @@ module L : sig
 
   (** [compare_vals ~dir a b] is a more efficient version of:
 
-    {[ List.compare ~compare:String.compare (to_string ~dir a) (to_string ~dir
-    b) ]} *)
+      {[ List.compare ~compare:String.compare (to_string ~dir a) (to_string
+      ~dir b) ]} *)
   val compare_vals : dir:Path.t -> t list -> t list -> Ordering.t
 
   val paths : Path.t list -> t list

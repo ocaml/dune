@@ -5,13 +5,15 @@
  (deps
   (package dune)
   (source_tree test/)
-  bin/foo.exe
- )
+  bin/foo.exe)
  (action
   (chdir
    test
-   (progn (run %{bin:cram} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{bin:cram} -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name runtest)
- (deps (alias run_dynamic)))
+ (deps
+  (alias run_dynamic)))

@@ -11,6 +11,8 @@ let set t x =
   | Unset -> t.state <- Set x
   | Set _ -> Code_error.raise "Fdecl.set: already set" []
 
+let reset t x = t.state <- Set x
+
 let get t =
   match t.state with
   | Unset -> Code_error.raise "Fdecl.get: not set" []

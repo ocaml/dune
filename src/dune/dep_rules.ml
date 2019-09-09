@@ -30,14 +30,14 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
       >>^ fun (ooi : Ocamlobjinfo.t) ->
       Module_name.Set.to_list ooi.intf
       |> List.filter_map ~f:(fun dep ->
-        if Module.real_unit_name m = dep then
-          None
-        else
-          Module_name.Map.find vlib_obj_map dep) )
+             if Module.real_unit_name m = dep then
+               None
+             else
+               Module_name.Map.find vlib_obj_map dep) )
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-     read >>^ transitive_deps_contents >>> Build.write_file_dyn target);
+     read >>^ transitive_deps_contents |> Build.write_file_dyn target);
   read
 
 let deps_of_module cctx ~ml_kind m =
@@ -103,5 +103,5 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
 let rules cctx ~modules =
   let dir = Compilation_context.dir cctx in
   Ml_kind.Dict.of_func (fun ~ml_kind ->
-    let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
-    Dep_graph.make ~dir ~per_module)
+      let per_module = Modules.obj_map modules ~f:(deps_of cctx ~ml_kind) in
+      Dep_graph.make ~dir ~per_module)

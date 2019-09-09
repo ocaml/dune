@@ -20,17 +20,17 @@ module Includes = struct
         Command.Args.S
           [ iflags
           ; Hidden_deps
-            ( if opaque then
-              List.map libs ~f:(fun lib ->
-                ( lib
-                , if Lib.is_local lib then
-                  [ Lib_file_deps.Group.Cmi ]
-                  else
-                    [ Cmi; Cmx ] ))
-              |> Lib_file_deps.deps_with_exts
-            else
-              Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Cmi; Cmx ]
-            )
+              ( if opaque then
+                List.map libs ~f:(fun lib ->
+                    ( lib
+                    , if Lib.is_local lib then
+                        [ Lib_file_deps.Group.Cmi ]
+                      else
+                        [ Cmi; Cmx ] ))
+                |> Lib_file_deps.deps_with_exts
+              else
+                Lib_file_deps.deps libs ~groups:[ Lib_file_deps.Group.Cmi; Cmx ]
+              )
           ]
       in
       { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
@@ -57,6 +57,7 @@ type t =
   ; sandbox : Sandbox_config.t
   ; package : Package.t option
   ; vimpl : Vimpl.t option
+  ; modes : Mode.Dict.Set.t
   }
 
 let super_context t = t.super_context
@@ -97,12 +98,14 @@ let package t = t.package
 
 let vimpl t = t.vimpl
 
+let modes t = t.modes
+
 let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
-  ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
+    ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
     ?(no_keep_locs = false) ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package
-    ?vimpl () =
+    ?vimpl ?modes () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link
@@ -111,12 +114,13 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   in
   let sandbox =
     (* With sandboxing, there are a few build errors in ocaml platform
-      1162238ae like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1:
+       1162238ae like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1:
        Error: The implementation ocaml_modules/ocamlgraph/src/pack.ml does not
        match the interface
        ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
     Sandbox_config.no_sandboxing
   in
+  let modes = Option.value ~default:Mode.Dict.Set.all modes in
   { super_context
   ; scope
   ; expander
@@ -135,6 +139,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; sandbox
   ; package
   ; vimpl
+  ; modes
   }
 
 let for_alias_module t =
@@ -146,7 +151,7 @@ let for_alias_module t =
   let sandbox =
     let ctx = Super_context.context t.super_context in
     (* If the compiler reads the cmi for module alias even with [-w -49
-      -no-alias-deps], we must sandbox the build of the alias module since the
+       -no-alias-deps], we must sandbox the build of the alias module since the
        modules it references are built after. *)
     if Ocaml_version.always_reads_alias_cmi ctx.version then
       Sandbox_config.needs_sandboxing

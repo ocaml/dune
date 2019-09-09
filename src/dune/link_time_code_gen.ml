@@ -8,8 +8,7 @@ type t =
   }
 
 let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
-  ~requires =
-  let open Build.O in
+    ~requires =
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
@@ -30,10 +29,10 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
   in
   SC.add_rule ~dir sctx
     (let ml =
-      Module.file module_ ~ml_kind:Impl
-      |> Option.value_exn |> Path.as_in_build_dir_exn
+       Module.file module_ ~ml_kind:Impl
+       |> Option.value_exn |> Path.as_in_build_dir_exn
      in
-     code >>> Build.write_file_dyn ml);
+     code |> Build.write_file_dyn ml);
   let opaque =
     Ocaml_version.supports_opaque_for_mli (Super_context.context sctx).version
   in
@@ -64,8 +63,8 @@ let prlist buf name l ~f =
     Printf.bprintf buf "  [ ";
     f x;
     List.iter l ~f:(fun x ->
-      Printf.bprintf buf "  ; ";
-      f x);
+        Printf.bprintf buf "  ; ";
+        f x);
     pr buf "  ]"
 
 let findlib_init_code ~preds ~libs =
@@ -79,10 +78,10 @@ let findlib_init_code ~preds ~libs =
   in
   let buf = Buffer.create 1024 in
   List.iter public_libs ~f:(fun lib ->
-    pr buf "Findlib.record_package Findlib.Record_core %S;;"
-      (Lib_name.to_string (Lib.name lib)));
+      pr buf "Findlib.record_package Findlib.Record_core %S;;"
+        (Lib_name.to_string (Lib.name lib)));
   prlist buf "preds" (Variant.Set.to_list preds) ~f:(fun v ->
-    pr buf "%S" (Variant.to_string v));
+      pr buf "%S" (Variant.to_string v));
   pr buf "in";
   pr buf "let preds =";
   pr buf "  (if Dynlink.is_native then \"native\" else \"byte\") :: preds";
@@ -96,7 +95,7 @@ let build_info_code cctx ~libs ~api_version =
   let sctx = CC.super_context cctx in
   let file_tree = Super_context.file_tree sctx in
   (* [placeholders] is a mapping from source path to variable names. For each
-    binding [(p, v)], we will generate the following code:
+     binding [(p, v)], we will generate the following code:
 
      {[ let v = Placeholder "%%DUNE_PLACEHOLDER:...:vcs-describe:...:p%%" ]} *)
   let placeholders = ref Path.Source.Map.empty in
@@ -115,7 +114,7 @@ let build_info_code cctx ~libs ~api_version =
         Option.value
           (Path.as_in_source_tree vcs.root)
           (* The only VCS root that is potentially not in the source tree is
-            the VCS at the root of the repo. For this VCS, it is enough to use
+             the VCS at the root of the repo. For this VCS, it is enough to use
              the source tree root in the placeholder given that we take the
              nearest VCS when performing the actual substitution. *)
           ~default:Path.Source.root
@@ -141,18 +140,18 @@ let build_info_code cctx ~libs ~api_version =
   in
   let libs =
     List.map libs ~f:(fun lib ->
-      ( Lib.name lib
-      , match Lib_info.version (Lib.info lib) with
-        | Some v -> sprintf "Some %S" v
-        | None -> (
-          match Lib_info.status (Lib.info lib) with
-          | Installed -> "None"
-          | Public (_, p) -> version_of_package p
-          | Private _ ->
-            let p =
-              Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
-            in
-            placeholder p ) ))
+        ( Lib.name lib
+        , match Lib_info.version (Lib.info lib) with
+          | Some v -> sprintf "Some %S" v
+          | None -> (
+            match Lib_info.status (Lib.info lib) with
+            | Installed -> "None"
+            | Public (_, p) -> version_of_package p
+            | Private _ ->
+              let p =
+                Path.drop_build_context_exn (Obj_dir.dir (Lib.obj_dir lib))
+              in
+              placeholder p ) ))
   in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
@@ -170,13 +169,13 @@ let build_info_code cctx ~libs ~api_version =
   pr buf "[@@inline never]";
   pr buf "";
   Path.Source.Map.iteri !placeholders ~f:(fun path var ->
-    pr buf "let %s = eval %S" var
-      (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
+      pr buf "let %s = eval %S" var
+        (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
   if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
   pr buf "let version = %s" version;
   pr buf "";
   prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
-    pr buf "%S, %s" (Lib_name.to_string name) v);
+      pr buf "%S, %s" (Lib_name.to_string name) v);
   Buffer.contents buf
 
 let handle_special_libs cctx =
@@ -200,8 +199,8 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~name:data_module ~lib
               ~code:
-                (Build.arr (fun () ->
-                  build_info_code cctx ~libs:all_libs ~api_version))
+                (Build.return
+                   (build_info_code cctx ~libs:all_libs ~api_version))
               ~requires:(Ok [ lib ])
               ~precompiled_cmi:true
           in
@@ -211,11 +210,11 @@ let handle_special_libs cctx =
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
-            linked by linking just after findlib.dynload a module containing
+             linked by linking just after findlib.dynload a module containing
              the info *)
           let requires =
             (* This shouldn't fail since findlib.dynload depends on dynlink and
-              findlib. That's why it's ok to use a dummy location. *)
+               findlib. That's why it's ok to use a dummy location. *)
             let+ dynlink =
               Lib.DB.resolve (SC.public_libs sctx)
                 (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
@@ -228,8 +227,9 @@ let handle_special_libs cctx =
           let module_ =
             generate_and_compile_module cctx ~lib ~name:"findlib_initl"
               ~code:
-                (Build.arr (fun () ->
-                  findlib_init_code ~preds:Findlib.Package.preds ~libs:all_libs))
+                (Build.return
+                   (findlib_init_code ~preds:Findlib.Package.preds
+                      ~libs:all_libs))
               ~requires ~precompiled_cmi:false
           in
           process_libs libs

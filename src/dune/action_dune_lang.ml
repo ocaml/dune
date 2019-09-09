@@ -24,19 +24,10 @@ module type Uast =
 module rec Uast : Uast = Uast
 
 include Action_ast.Make (String_with_vars) (String_with_vars)
-  (String_with_vars)
-    (String_with_vars)
-      (Uast)
+          (String_with_vars)
+          (String_with_vars)
+          (Uast)
 module Mapper = Action_mapper.Make (Uast) (Uast)
-
-let upgrade_to_dune =
-  let id ~dir:_ p = p in
-  let dir = String_with_vars.make_text Loc.none "" in
-  Mapper.map ~dir ~f_program:id ~f_path:id ~f_target:id
-    ~f_string:(fun ~dir:_ sw ->
-      String_with_vars.upgrade_to_dune sw ~allow_first_dep_var:false)
-
-let encode_and_upgrade a = encode (upgrade_to_dune a)
 
 let ensure_at_most_one_dynamic_run ~loc action =
   let rec loop : t -> bool = function
@@ -65,15 +56,15 @@ let ensure_at_most_one_dynamic_run ~loc action =
       false
     | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
-        let have_dyn = loop t in
-        if acc && have_dyn then
-          User_error.raise ~loc
-            [ Pp.text
-              "Multiple 'dynamic-run' commands within single action are not \
-               supported."
-            ]
-        else
-          acc || have_dyn)
+          let have_dyn = loop t in
+          if acc && have_dyn then
+            User_error.raise ~loc
+              [ Pp.text
+                  "Multiple 'dynamic-run' commands within single action are \
+                   not supported."
+              ]
+          else
+            acc || have_dyn)
   in
   ignore (loop action)
 
@@ -103,8 +94,8 @@ let decode =
       >>| fun loc ->
       User_error.raise ~loc
         [ Pp.textf
-          "if you meant for this to be executed with bash, write (bash \
-           \"...\") instead"
+            "if you meant for this to be executed with bash, write (bash \
+             \"...\") instead"
         ] )
 
 let to_dyn a = Dune_lang.to_dyn (encode a)

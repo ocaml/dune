@@ -9,7 +9,7 @@ let validate_component_options kind unsupported_options =
     | option_name, true ->
       User_error.raise
         [ Pp.textf "The %s component does not support the %s option"
-          (Kind.to_string kind) option_name
+            (Kind.to_string kind) option_name
         ]
   in
   List.iter ~f:report_invalid_option unsupported_options
@@ -19,21 +19,21 @@ let doc = "Initialize dune components"
 let man =
   [ `S "DESCRIPTION"
   ; `P
-    {|$(b,dune init {library,executable,test,project} NAME [PATH]) initialize
+      {|$(b,dune init {library,executable,test,project} NAME [PATH]) initialize
          a new dune component of the specified kind, named $(b,NAME), with
          fields determined by the supplied options.|}
   ; `P
-    {|Any prefix of the component kinds can be supplied, e.g., $(b,dune init
+      {|Any prefix of the component kinds can be supplied, e.g., $(b,dune init
          proj myproject).|}
   ; `P
-    {|If the optional $(b,PATH) is provided, the component will be created
+      {|If the optional $(b,PATH) is provided, the component will be created
          there. Otherwise, it is created in the current working directory.|}
   ; `P
-    {|The command can be used to add stanzas to existing dune files as
+      {|The command can be used to add stanzas to existing dune files as
          well as for creating new dune files and basic component templates.|}
   ; `S "EXAMPLES"
   ; `Pre
-    {|
+      {|
 Define an executable component named 'myexe' in a dune file in the
 current directory:
 
@@ -57,7 +57,7 @@ let term =
   let+ common_term = Common.term
   and+ kind =
     (* TODO(shonfeder): Replace with nested subcommand once we have support for
-      that *)
+       that *)
     Arg.(
       required
       & pos 0 (some (enum Kind.commands)) None
@@ -69,48 +69,48 @@ let term =
       value
       & opt (list string) []
       & info [ "libs" ] ~docv:"LIBRARIES"
-        ~doc:"Libraries on which the component depends")
+          ~doc:"Libraries on which the component depends")
   and+ pps =
     Arg.(
       value
       & opt (list string) []
       & info [ "ppx" ] ~docv:"PREPROCESSORS"
-        ~doc:"ppx preprocessors used by the component")
+          ~doc:"ppx preprocessors used by the component")
   and+ public =
     (* TODO(shonfeder): Move to subcommands {lib, exe} once implemented *)
     Arg.(
       value
       & opt ~vopt:(Some "") (some string) None
       & info [ "public" ] ~docv:"PUBLIC_NAME"
-        ~doc:
-          "If called with an argument, make the component public under the \
-           given PUBLIC_NAME. If supplied without an argument, use NAME.")
+          ~doc:
+            "If called with an argument, make the component public under the \
+             given PUBLIC_NAME. If supplied without an argument, use NAME.")
   and+ inline_tests =
     (* TODO Move to subcommand lib once implemented *)
     Arg.(
       value & flag
       & info [ "inline-tests" ] ~docv:"USE_INLINE_TESTS"
-        ~doc:
-          "Whether to use inline tests. Only applicable for $(b,library) and \
-           $(b,project) components.")
+          ~doc:
+            "Whether to use inline tests. Only applicable for $(b,library) \
+             and $(b,project) components.")
   and+ template =
     Arg.(
       value
       & opt (some (enum Component.Options.Project.Template.commands)) None
       & info [ "kind" ] ~docv:"PROJECT_KIND"
-        ~doc:
-          "The kind of project to initialize. Valid options are \
-           $(b,e[xecutable]) or $(b,l[ibrary]). Defaults to $(b,executable). \
-           Only applicable for $(b,project) components.")
+          ~doc:
+            "The kind of project to initialize. Valid options are \
+             $(b,e[xecutable]) or $(b,l[ibrary]). Defaults to \
+             $(b,executable). Only applicable for $(b,project) components.")
   and+ pkg =
     Arg.(
       value
       & opt (some (enum Component.Options.Project.Pkg.commands)) None
       & info [ "pkg" ] ~docv:"PACKAGE_MANAGER"
-        ~doc:
-          "Which package manager to use. Valid options are $(b,o[pam]) or \
-           $(b,e[sy]). Defaults to $(b,opam). Only applicable for \
-           $(b,project) components.")
+          ~doc:
+            "Which package manager to use. Valid options are $(b,o[pam]) or \
+             $(b,e[sy]). Defaults to $(b,opam). Only applicable for \
+             $(b,project) components.")
   in
   validate_component_name name;
   Common.set_common common_term ~targets:[];

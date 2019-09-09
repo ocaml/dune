@@ -14,96 +14,16 @@ let compare_no_loc t1 t2 =
 
 let make_syntax = (1, 0)
 
-let make ?(quoted = false) loc part =
-  { template = { parts = [ part ]; quoted; loc }
-  ; syntax_version = make_syntax
-  }
+let make template = { template; syntax_version = make_syntax }
 
-let make_text ?quoted loc s = make ?quoted loc (Text s)
+let make_text ?(quoted = false) loc s =
+  make { parts = [ Text s ]; quoted; loc }
 
-let make_var ?quoted loc ?payload name =
+let make_var ?(quoted = false) loc ?payload name =
   let var = { loc; name; payload; syntax = Percent } in
-  make ?quoted loc (Var var)
+  make { parts = [ Var var ]; quoted; loc }
 
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
-
-(* This module implements the "old" template parsing that is only used in
-  jbuild files *)
-module Jbuild : sig
-  val parse : string -> loc:Loc.t -> quoted:bool -> Dune_lang.Template.t
-end = struct
-  type var_syntax =
-    | Parens
-    | Braces
-
-  module Token = struct
-    type t =
-      | String of string
-      | Open of var_syntax
-      | Close of var_syntax
-
-    let tokenise s =
-      let len = String.length s in
-      let sub i j = String.sub s ~pos:i ~len:(j - i) in
-      let cons_str i j acc =
-        if i = j then
-          acc
-        else
-          String (sub i j) :: acc
-      in
-      let rec loop i j =
-        if j = len then
-          cons_str i j []
-        else
-          match s.[j] with
-          | '}' -> cons_str i j (Close Braces :: loop (j + 1) (j + 1))
-          | ')' -> cons_str i j (Close Parens :: loop (j + 1) (j + 1))
-          | '$' when j + 1 < len -> (
-            match s.[j + 1] with
-            | '{' -> cons_str i j (Open Braces :: loop (j + 2) (j + 2))
-            | '(' -> cons_str i j (Open Parens :: loop (j + 2) (j + 2))
-            | _ -> loop i (j + 1) )
-          | _ -> loop i (j + 1)
-      in
-      loop 0 0
-
-    let to_string = function
-      | String s -> s
-      | Open Braces -> "${"
-      | Open Parens -> "$("
-      | Close Braces -> "}"
-      | Close Parens -> ")"
-  end
-
-  (* Remark: Consecutive [Text] items are concatenated. *)
-  let rec of_tokens : Loc.t -> Token.t list -> part list =
-   fun loc -> function
-    | [] -> []
-    | Open a :: String s :: Close b :: rest when a = b ->
-      let name, payload =
-        match String.lsplit2 s ~on:':' with
-        | None -> (s, None)
-        | Some (n, p) -> (n, Some p)
-      in
-      Var
-        { loc
-        ; name
-        ; payload
-        ; syntax =
-          ( match a with
-          | Parens -> Dollar_paren
-          | Braces -> Dollar_brace )
-        }
-      :: of_tokens loc rest
-    | token :: rest -> (
-      let s = Token.to_string token in
-      match of_tokens loc rest with
-      | Text s' :: l -> Text (s ^ s') :: l
-      | l -> Text s :: l )
-
-  let parse s ~loc ~quoted =
-    { parts = of_tokens loc (Token.tokenise s); loc; quoted }
-end
 
 let decode =
   let open Dune_lang.Decoder in
@@ -122,10 +42,6 @@ let decode =
 let loc t = t.template.loc
 
 let syntax_version t = t.syntax_version
-
-let virt ?(quoted = false) pos s =
-  let template = Jbuild.parse ~quoted ~loc:(Loc.of_pos pos) s in
-  { template; syntax_version = make_syntax }
 
 let virt_var ?(quoted = false) pos s =
   assert (
@@ -172,9 +88,9 @@ end
 let invalid_multivalue (v : var) x =
   User_error.raise ~loc:v.loc
     [ Pp.textf
-      "Variable %s expands to %d values, however a single value is expected \
-       here. Please quote this atom."
-      (string_of_var v) (List.length x)
+        "Variable %s expands to %d values, however a single value is expected \
+         here. Please quote this atom."
+        (string_of_var v) (List.length x)
     ]
 
 module Var = struct
@@ -312,8 +228,8 @@ end
 open Private
 
 let partial_expand :
-  'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list option expander
-  -> 'a Partial.t =
+      'a.    t -> mode:'a Mode.t -> dir:Path.t
+      -> f:Value.t list option expander -> 'a Partial.t =
  fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
   let commit_text acc_text acc =
     let s = concat_rev acc_text in
@@ -356,20 +272,20 @@ let partial_expand :
 let expand t ~mode ~dir ~f =
   match
     partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
-      match f var syntax_version with
-      | None -> (
-        match var.syntax with
-        | Percent ->
-          if Var.is_macro var then
-            User_error.raise ~loc:var.loc
-              [ Pp.textf "Unknown macro %s" (Var.describe var) ]
-          else
-            User_error.raise ~loc:var.loc
-              [ Pp.textf "Unknown variable %S" (Var.name var) ]
-        | Dollar_brace
-         |Dollar_paren ->
-          Some [ Value.String (string_of_var var) ] )
-      | s -> s)
+        match f var syntax_version with
+        | None -> (
+          match var.syntax with
+          | Percent ->
+            if Var.is_macro var then
+              User_error.raise ~loc:var.loc
+                [ Pp.textf "Unknown macro %s" (Var.describe var) ]
+            else
+              User_error.raise ~loc:var.loc
+                [ Pp.textf "Unknown variable %S" (Var.name var) ]
+          | Dollar_brace
+           |Dollar_paren ->
+            Some [ Value.String (string_of_var var) ] )
+        | s -> s)
   with
   | Partial.Expanded s -> s
   | Unexpanded _ -> assert false
@@ -399,112 +315,6 @@ let to_dyn t = Dune_lang.to_dyn (encode t)
 
 let remove_locs t =
   { t with template = Dune_lang.Template.remove_locs t.template }
-
-module Upgrade_var = struct
-  type info =
-    | Keep
-    | Deleted of string
-    | Renamed_to of string
-
-  let map =
-    let macros =
-      [ ("exe", Keep)
-      ; ("bin", Keep)
-      ; ("lib", Keep)
-      ; ("libexec", Keep)
-      ; ("lib-available", Keep)
-      ; ("version", Keep)
-      ; ("read", Keep)
-      ; ("read-lines", Keep)
-      ; ("read-strings", Keep)
-      ; ("path", Renamed_to "dep")
-      ; ("findlib", Renamed_to "lib")
-      ; ("path-no-dep", Deleted "")
-      ; ("ocaml-config", Keep)
-      ]
-    in
-    let static_vars =
-      [ ( "<"
-        , Deleted
-          "Use a named dependency instead:\n\n\
-          \  (deps (:x <dep>) ...)\n\
-          \   ... %{x} ..." )
-      ; ("@", Renamed_to "targets")
-      ; ("^", Renamed_to "deps")
-      ; ("SCOPE_ROOT", Renamed_to "project_root")
-      ]
-    in
-    let lowercased =
-      [ ("cpp", Keep)
-      ; ("pa_cpp", Keep)
-      ; ("cc", Keep)
-      ; ("cxx", Keep)
-      ; ("ocaml", Keep)
-      ; ("ocamlc", Keep)
-      ; ("ocamlopt", Keep)
-      ; ("arch_sixtyfour", Keep)
-      ; ("make", Keep)
-      ]
-    in
-    let uppercased =
-      List.map lowercased ~f:(fun (k, _) -> (String.uppercase k, Renamed_to k))
-    in
-    let other =
-      [ ("-verbose", Keep)
-      ; ("ocaml_bin", Keep)
-      ; ("ocaml_version", Keep)
-      ; ("ocaml_where", Keep)
-      ; ("null", Keep)
-      ; ("ext_obj", Keep)
-      ; ("ext_asm", Keep)
-      ; ("ext_lib", Keep)
-      ; ("ext_dll", Keep)
-      ; ("ext_exe", Keep)
-      ; ("profile", Keep)
-      ; ("workspace_root", Keep)
-      ; ("context_name", Keep)
-      ; ("ROOT", Renamed_to "workspace_root")
-      ; ("corrected-suffix", Keep)
-      ; ("library-name", Keep)
-      ; ("impl-files", Keep)
-      ; ("intf-files", Keep)
-      ]
-    in
-    String.Map.of_list_exn
-      (List.concat [ macros; static_vars; lowercased; uppercased; other ])
-end
-
-let upgrade_to_dune t ~allow_first_dep_var =
-  if t.syntax_version >= make_syntax then
-    t
-  else
-    let map_var (v : Var.t) =
-      match String.Map.find Upgrade_var.map v.name with
-      | None -> None
-      | Some info -> (
-        match info with
-        | Deleted repl ->
-          if v.name = "<" && allow_first_dep_var then
-            Some v.name
-          else
-            User_error.raise ~loc:v.loc
-              [ Pp.textf "%s is not supported in dune files.%s"
-                (Var.describe v) repl
-              ]
-        | Keep -> Some v.name
-        | Renamed_to new_name -> Some new_name )
-    in
-    let map_part = function
-      | Text _ as part -> part
-      | Var v -> (
-        match map_var v with
-        | None -> Text (string_of_var v)
-        | Some name -> Var { v with name; syntax = Percent } )
-    in
-    { syntax_version = make_syntax
-    ; template =
-      { t.template with parts = List.map t.template.parts ~f:map_part }
-    }
 
 module Partial = struct
   include Private.Partial

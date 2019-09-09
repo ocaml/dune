@@ -13,7 +13,7 @@ module Paths = struct
     Path.Build.relative obj_dir "public_cmi"
 
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-    library of the same name *)
+     library of the same name *)
   let executable_object_directory ~dir name =
     Path.Build.relative dir ("." ^ name ^ ".eobjs")
 end
@@ -198,7 +198,8 @@ let make_external_no_private ~dir =
   External (External.make ~dir ~has_private_modules:false)
 
 let get_path :
-  type a. a t -> l:(Local.t -> Path.Build.t) -> e:(External.t -> Path.t) -> a =
+    type a. a t -> l:(Local.t -> Path.Build.t) -> e:(External.t -> Path.t) -> a
+    =
  fun t ~l ~e ->
   match t with
   | External e' -> e e'
@@ -314,7 +315,7 @@ module Module = struct
     relative t base (obj_name ^ ext)
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
-    path option =
+      path option =
     let is_private = Module.visibility m = Private in
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
@@ -363,13 +364,13 @@ module Module = struct
   module L = struct
     let o_files t modules ~ext_obj =
       List.filter_map modules ~f:(fun m ->
-        if Module.has m ~ml_kind:Impl then
-          Some (path_of_build t (obj_file t m ~kind:Cmx ~ext:ext_obj))
-        else
-          None)
+          if Module.has m ~ml_kind:Impl then
+            Some (path_of_build t (obj_file t m ~kind:Cmx ~ext:ext_obj))
+          else
+            None)
 
     let cm_files t modules ~kind =
       List.filter_map modules ~f:(fun m ->
-        cm_file t m ~kind |> Option.map ~f:(path_of_build t))
+          cm_file t m ~kind |> Option.map ~f:(path_of_build t))
   end
 end

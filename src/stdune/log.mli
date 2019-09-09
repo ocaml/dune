@@ -1,10 +1,17 @@
 (** Log file *)
 
+module File : sig
+  type t =
+    | Default
+    | No_log_file
+    | This of Path.t
+end
+
 (** Initialise the log file *)
-val init : ?path:Path.t -> unit -> unit
+val init : ?file:File.t -> unit -> unit
 
 (** Initialise this module with a disabled logger, i.e. swallowing error
-  messages. *)
+    messages. *)
 val init_disabled : unit -> unit
 
 (** Print an informative message in the log *)

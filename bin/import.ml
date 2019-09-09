@@ -28,6 +28,12 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
+(* FIXME: leverage fibers to actually connect in the background *)
+let make_memory () =
+  match Sys.getenv_opt "DUNE_CACHE" with
+  | Some _ -> Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
+  | _ -> Fiber.return None
+
 module Main = struct
   include Dune.Main
 
@@ -45,10 +51,11 @@ module Main = struct
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in
     let only_packages = Common.only_packages common in
-    scan_workspace common
-    >>= init_build_system
+    let* memory = make_memory () in
+    let* workspace = scan_workspace common in
+    init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
-        ?external_lib_deps_mode ?only_packages
+      ?memory ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

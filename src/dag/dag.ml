@@ -85,10 +85,10 @@ module Make (Value : Value) : S with type value := Value.t = struct
     | IC.EdgeCreatesCycle compute_cycle ->
       raise
         (Cycle
-          (let path = compute_cycle () in
-           assert (List.hd path == w);
-           assert (Option.value_exn (List.last path) == v);
-           List.rev path @ [ v ]))
+           (let path = compute_cycle () in
+            assert (List.hd path == w);
+            assert (Option.value_exn (List.last path) == v);
+            List.rev path @ [ v ]))
 
   let children node = node.info.deps
 

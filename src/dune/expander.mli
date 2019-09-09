@@ -1,5 +1,5 @@
 (** An expander is able to expand any dune template. It has two modes of
-  expansion:
+    expansion:
 
     1. Static. In this mode it will only expand variables that do not introduce
     dependncies
@@ -39,15 +39,15 @@ val set_artifacts_dynamic : t -> bool -> t
 val set_lookup_module :
      t
   -> lookup_module:
-    (   dir:Path.Build.t
-     -> Module_name.t
-     -> (Path.Build.t Obj_dir.t * Module.t) option)
+       (   dir:Path.Build.t
+        -> Module_name.t
+        -> (Path.Build.t Obj_dir.t * Module.t) option)
   -> t
 
 val set_lookup_library :
      t
   -> lookup_library:
-    (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
+       (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
   -> t
 
 val add_bindings : t -> bindings:Pform.Map.t -> t
@@ -85,7 +85,7 @@ module Resolved_forms : sig
   val sdeps : t -> Path.Set.t
 
   (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-  val ddeps : t -> (unit, Value.t list) Build.t String.Map.t
+  val ddeps : t -> Value.t list Build.t String.Map.t
 
   val empty : unit -> t
 end
@@ -108,7 +108,7 @@ val with_record_deps :
   -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> string list Build.t C.Kind.Dict.t)
   -> t
 
 val with_record_no_ddeps :
@@ -116,7 +116,7 @@ val with_record_no_ddeps :
   -> Resolved_forms.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
-  -> c_flags:(dir:Path.Build.t -> (unit, string list) Build.t C.Kind.Dict.t)
+  -> c_flags:(dir:Path.Build.t -> string list Build.t C.Kind.Dict.t)
   -> t
 
 val add_ddeps_and_bindings :
@@ -130,7 +130,7 @@ val expand_var_exn : t -> Value.t list option String_with_vars.expander
 val expand_and_eval_set :
      t
   -> Ordered_set_lang.Unexpanded.t
-  -> standard:(unit, string list) Build.t
-  -> (unit, string list) Build.t
+  -> standard:string list Build.t
+  -> string list Build.t
 
 val eval_blang : t -> Blang.t -> bool

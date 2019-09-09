@@ -17,24 +17,24 @@ let man =
   in
   [ `S "DESCRIPTION"
   ; `P
-    {|Substitute $(b,%%ID%%) strings in source files, in a similar fashion to
+      {|Substitute $(b,%%ID%%) strings in source files, in a similar fashion to
           what topkg does in the default configuration.|}
   ; `P
-    ( {|This command is only meant to be called when a user pins a package to
+      ( {|This command is only meant to be called when a user pins a package to
           its development version. Especially it replaces $(b,|}
-    ^ literal_version
-    ^ {|) strings by the version obtained from the vcs. Currently only git is
+      ^ literal_version
+      ^ {|) strings by the version obtained from the vcs. Currently only git is
             supported and the version is obtained from the output of:|}
-    )
+      )
   ; `Pre {|  \$ git describe --always --dirty|}
   ; `P
-    {|$(b,dune subst) substitutes the variables that topkg substitutes with
+      {|$(b,dune subst) substitutes the variables that topkg substitutes with
           the defatult configuration:|}
   ; var "NAME" "the name of the project (from the dune-project file)"
   ; var "VERSION" "output of $(b,git describe --always --dirty)"
   ; var "VERSION_NUM"
-    ( "same as $(b," ^ literal_version
-    ^ ") but with a potential leading 'v' or 'V' dropped" )
+      ( "same as $(b," ^ literal_version
+      ^ ") but with a potential leading 'v' or 'V' dropped" )
   ; var "VCS_COMMIT_ID" "commit hash from the vcs"
   ; opam "maintainer"
   ; opam "authors"
@@ -44,11 +44,11 @@ let man =
   ; opam "license"
   ; opam "repo"
   ; `P
-    {|In order to call $(b,dune subst) when your package is pinned, add this line
+      {|In order to call $(b,dune subst) when your package is pinned, add this line
           to the $(b,build:) field of your opam file:|}
   ; `Pre {|  [dune "subst"] {pinned}|}
   ; `P
-    {|Note that this command is meant to be called only from opam files and
+      {|Note that this command is meant to be called only from opam files and
           behaves a bit differently from other dune commands. In particular it
           doesn't try to detect the root and must be called from the root of
           the project.|}

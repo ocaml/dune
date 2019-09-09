@@ -2,7 +2,7 @@
 
 (** A context augmented with: a lib-db, ...
 
-  Super context are used for generating rules. *)
+    Super context are used for generating rules. *)
 
 open! Stdune
 open Import
@@ -54,7 +54,7 @@ val installed_libs : t -> Lib.DB.t
 val internal_lib_names : t -> Lib_name.Set.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
-  stanza *)
+    stanza *)
 val ocaml_flags : t -> dir:Path.Build.t -> Buildable.t -> Ocaml_flags.t
 
 val c_flags :
@@ -62,14 +62,14 @@ val c_flags :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> flags:Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-  -> (unit, string list) Build.t C.Kind.Dict.t
+  -> string list Build.t C.Kind.Dict.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
-  associated directory is [Path.relative dir ".bin"] *)
+    associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 
 (** Dump a directory environment in a readable form *)
-val dump_env : t -> dir:Path.Build.t -> (unit, Dune_lang.t list) Build.t
+val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
@@ -87,7 +87,7 @@ val add_rule :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> unit
 
 val add_rule_get_targets :
@@ -97,14 +97,14 @@ val add_rule_get_targets :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> Path.Build.Set.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
-  -> (unit, Action.t) Build.t list
+  -> Action.t Build.t list
   -> unit
 
 val add_alias_action :
@@ -114,14 +114,14 @@ val add_alias_action :
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
-  -> (unit, Action.t) Build.t
+  -> Action.t Build.t
   -> unit
 
 val source_files : t -> src_path:Path.Source.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
-  workspace, if it is not found in the tree is is looked up in the PATH. If it
-    is not found at all, the resulting [Prog_spec.t] will either return the
+    workspace, if it is not found in the tree is is looked up in the PATH. If
+    it is not found at all, the resulting [Prog_spec.t] will either return the
     resolved path or a record with details about the error and possibly a hint.
 
     [hint] should tell the user what to install when the program is not found. *)
@@ -135,7 +135,8 @@ val resolve_program :
 
 module Libs : sig
   (** Make sure all rules produces by [f] record the library dependencies for
-    [dune external-lib-deps] and depend on the generation of the .merlin file.
+      [dune external-lib-deps] and depend on the generation of the .merlin
+      file.
 
       /!\ WARNING /!\: make sure the last function call inside [f] is fully
       applied, otherwise the function might end up being executed after this
@@ -151,26 +152,25 @@ end
 (** Interpret dependencies written in jbuild files *)
 module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
-    registers them as the action dependencies. *)
-  val interpret :
-    t -> expander:Expander.t -> Dep_conf.t list -> (unit, unit) Build.t
+      registers them as the action dependencies. *)
+  val interpret : t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
 
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
-    registers them as the action dependencies.
+      registers them as the action dependencies.
 
       It returns bindings that are later used for action expansion. *)
   val interpret_named :
        t
     -> expander:Expander.t
     -> Dep_conf.t Bindings.t
-    -> (unit, Path.t Bindings.t) Build.t
+    -> Path.t Bindings.t Build.t
 end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
   (** The arrow takes as input the list of dependencies written by user, which
-    is used for action expansion. These must be registered with the build arrow
-      before calling [run]. *)
+      is used for action expansion. These must be registered with the build
+      arrow before calling [run]. *)
   val run :
        t
     -> loc:Loc.t
@@ -179,7 +179,8 @@ module Action : sig
     -> targets:Expander.Targets.t
     -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
-    -> (Path.t Bindings.t, Action.t) Build.t
+    -> Path.t Bindings.t Build.t
+    -> Action.t Build.t
 
   val map_exe : t -> Path.t -> Path.t
 end

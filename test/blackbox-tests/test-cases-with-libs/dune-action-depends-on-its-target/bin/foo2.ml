@@ -6,7 +6,7 @@ let action =
   let open Dune_action.O in
   write_file ~path ~data:"Hello from bar2!"
   |> stage ~f:(fun () ->
-    let+ data = read_file ~path in
-    print_endline data)
+         let+ data = read_file ~path in
+         print_endline data)
 
 let () = run action

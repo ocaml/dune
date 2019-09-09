@@ -21,7 +21,7 @@ let package_install_file w pkg =
   | Some p ->
     Ok
       (Path.Source.relative p.path
-        (Utils.install_file ~package:p.name ~findlib_toolchain:None))
+         (Utils.install_file ~package:p.name ~findlib_toolchain:None))
 
 let setup_env ~capture_outputs =
   let env =
@@ -36,7 +36,7 @@ let setup_env ~capture_outputs =
   Env.add env ~var:"INSIDE_DUNE" ~value:"1"
 
 let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
-  ?profile ~ancestor_vcs () =
+    ?profile ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs () in
   let workspace =
@@ -48,7 +48,7 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
         if not (Path.exists p) then
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"
-              (Path.to_string_maybe_quoted p)
+                (Path.to_string_maybe_quoted p)
             ];
         Workspace.load ?x ?profile p
       | None -> (
@@ -61,32 +61,32 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
   in
   let+ contexts = Context.create ~env workspace in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-    Log.infof "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
-      (Dyn.pp (Context.to_dyn ctx)));
+      Log.infof "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
+        (Dyn.pp (Context.to_dyn ctx)));
   { contexts; conf; env }
 
 let init_build_system ?only_packages ?external_lib_deps_mode
-  ~sandboxing_preference w =
+    ~sandboxing_preference ?memory w =
   Option.iter only_packages ~f:(fun set ->
-    Package.Name.Set.iter set ~f:(fun pkg ->
-      if not (Package.Name.Map.mem w.conf.packages pkg) then
-        let pkg_name = Package.Name.to_string pkg in
-        User_error.raise
-          [ Pp.textf
-            "I don't know about package %s (passed through \
-             --only-packages/--release)"
-            pkg_name
-          ]
-          ~hints:
-            (User_message.did_you_mean pkg_name
-              ~candidates:
-                ( Package.Name.Map.keys w.conf.packages
-                |> List.map ~f:Package.Name.to_string ))));
+      Package.Name.Set.iter set ~f:(fun pkg ->
+          if not (Package.Name.Map.mem w.conf.packages pkg) then
+            let pkg_name = Package.Name.to_string pkg in
+            User_error.raise
+              [ Pp.textf
+                  "I don't know about package %s (passed through \
+                   --only-packages/--release)"
+                  pkg_name
+              ]
+              ~hints:
+                (User_message.did_you_mean pkg_name
+                   ~candidates:
+                     ( Package.Name.Map.keys w.conf.packages
+                     |> List.map ~f:Package.Name.to_string ))));
   let rule_done = ref 0 in
   let rule_total = ref 0 in
   let gen_status_line () =
     { Scheduler.message =
-      Some (Pp.verbatim (sprintf "Done: %u/%u" !rule_done !rule_total))
+        Some (Pp.verbatim (sprintf "Done: %u/%u" !rule_done !rule_total))
     ; show_jobs = true
     }
   in
@@ -97,7 +97,9 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   in
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
-    ~file_tree:w.conf.file_tree ~hook;
+    ~file_tree:w.conf.file_tree ~hook ?memory;
+  Option.iter memory ~f:(fun memory ->
+      Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory));
   Scheduler.set_status_line_generator gen_status_line;
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages
@@ -231,19 +233,19 @@ let bootstrap () =
     in
     init config;
     Scheduler.go ~config (fun () ->
-      let* () = set_concurrency config in
-      let* workspace =
-        scan_workspace
-          ~workspace:(Workspace.default ?profile:!profile ())
-          ?profile:!profile ~ancestor_vcs:None ()
-      in
-      let* _ =
-        init_build_system ~sandboxing_preference:config.sandboxing_preference
-          workspace
-      in
-      Build_system.do_build
-        ~request:
-          (Build.path (Path.relative Path.build_dir "default/dune.install")))
+        let* () = set_concurrency config in
+        let* workspace =
+          scan_workspace
+            ~workspace:(Workspace.default ?profile:!profile ())
+            ?profile:!profile ~ancestor_vcs:None ()
+        in
+        let* _ =
+          init_build_system ~sandboxing_preference:config.sandboxing_preference
+            workspace
+        in
+        Build_system.do_build
+          ~request:
+            (Build.path (Path.relative Path.build_dir "default/dune.install")))
   in
   try main () with
   | Fiber.Never -> exit 1

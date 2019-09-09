@@ -28,7 +28,7 @@ module Ast = struct
       let+ e = elt in
       Element e
     in
-    let rec one (kind : Dune_lang.File_syntax.t) =
+    let rec one () =
       peek_exn
       >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
@@ -46,40 +46,40 @@ module Ast = struct
           User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
         | _ -> elt )
       | List (_, Atom (loc, A s) :: _) -> (
-        match (s, kind) with
-        | ":include", _ ->
+        match s with
+        | ":include" ->
           User_error.raise ~loc
             [ Pp.text ":include isn't supported in the predicate language" ]
-        | ("or" | "and" | "not"), _ -> bool_ops kind
-        | s, Dune when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+        | "or"
+         |"and"
+         |"not" ->
+          bool_ops ()
+        | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
           User_error.raise ~loc
             [ Pp.text
-              "This atom must be quoted because it is the first element of a \
-               list and doesn't start with - or:"
+                "This atom must be quoted because it is the first element of \
+                 a list and doesn't start with - or:"
             ]
-        | _ -> enter (many union [] kind) )
-      | List _ -> enter (many union [] kind)
-    and bool_ops kind =
+        | _ -> enter (many union []) )
+      | List _ -> enter (many union [])
+    and bool_ops () =
       sum
-        [ ("or", many union [] kind)
-        ; ("and", many inter [] kind)
-        ; ("not", many not_union [] kind)
+        [ ("or", many union [])
+        ; ("and", many inter [])
+        ; ("not", many not_union [])
         ]
-    and many k acc kind =
+    and many k acc =
       peek
       >>= function
       | None -> return (k (List.rev acc))
       | Some (Atom (_, A "\\")) ->
-        junk >>> many union [] kind
+        junk >>> many union []
         >>| fun to_remove -> diff (k (List.rev acc)) to_remove
       | Some _ ->
-        let* x = one kind in
-        many k (x :: acc) kind
+        let* x = one () in
+        many k (x :: acc)
     in
-    let* kind = Stanza.file_kind () in
-    match kind with
-    | Dune -> many union [] kind
-    | Jbuild -> one kind
+    many union []
 
   let rec to_dyn f =
     let open Dyn.Encoder in

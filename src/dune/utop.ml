@@ -8,7 +8,7 @@ let utop_dir_basename = ".utop"
 
 let utop_exe =
   (* Use the [.exe] version. As the utop executable is declared with [(modes
-    (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
+     (byte))], the [.exe] correspond the bytecode linked in custom mode. We do
      that so that it works without hassle when generating a utop for a library
      with C stubs. *)
   Filename.concat utop_dir_basename (exe_name ^ Mode.exe_ext Mode.Native)
@@ -44,11 +44,11 @@ let libs_under_dir sctx ~db ~dir =
             | None -> acc (* library is defined but outside our scope *)
             | Some lib ->
               (* still need to make sure that it's not coming from an external
-                source *)
+                 source *)
               let info = Lib.info lib in
               let src_dir = Lib_info.src_dir info in
               (* Only select libraries that are not implementations.
-                Implementations are selected using the default implementation
+                 Implementations are selected using the default implementation
                  feature. *)
               let not_impl = Option.is_none (Lib_info.implements info) in
               if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir

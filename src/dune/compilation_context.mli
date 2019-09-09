@@ -5,9 +5,9 @@ open Import
 
 (** Represent a compilation context.
 
-  A compilation context contains all the necessary information to preprocess
-  and compile OCaml source files. Exactly one compilation context is associated
-  to each library, executable and executables stanza. *)
+    A compilation context contains all the necessary information to preprocess
+    and compile OCaml source files. Exactly one compilation context is
+    associated to each library, executable and executables stanza. *)
 type t
 
 (** Create a compilation context. *)
@@ -28,6 +28,7 @@ val create :
   -> dynlink:bool
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
+  -> ?modes:Mode.Dict.Set.t
   -> unit
   -> t
 
@@ -73,5 +74,7 @@ val sandbox : t -> Sandbox_config.t
 val package : t -> Package.t option
 
 val vimpl : t -> Vimpl.t option
+
+val modes : t -> Mode.Dict.Set.t
 
 val for_wrapped_compat : t -> t

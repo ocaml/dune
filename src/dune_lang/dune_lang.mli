@@ -1,14 +1,12 @@
 (** Parsing of s-expressions.
 
-  This library is internal to dune and guarantees no API stability.*)
+    This library is internal to dune and guarantees no API stability.*)
 open! Stdune
-
-module File_syntax = File_syntax
 
 module Atom : sig
   type t = private A of string [@@unboxed]
 
-  val is_valid : t -> File_syntax.t -> bool
+  val is_valid : string -> bool
 
   val equal : t -> t -> bool
 
@@ -67,7 +65,7 @@ type t =
   | Template of Template.t
 
 (** [atom s] convert the string [s] to an Atom. @raise Exn.Code_error if [s]
-  does not satisfy [Atom.is_valid s]. *)
+    does not satisfy [Atom.is_valid s]. *)
 val atom : string -> t
 
 val atom_or_quoted_string : string -> t
@@ -85,11 +83,11 @@ module Deprecated : sig
   val pp : Format.formatter -> t -> unit
 
   (** Same as [pp ~syntax:Dune], but split long strings. The formatter must
-    have been prepared with [prepare_formatter]. *)
+      have been prepared with [prepare_formatter]. *)
   val pp_split_strings : Format.formatter -> t -> unit
 
   (** Prepare a formatter for [pp_split_strings]. Additionaly the formatter
-    escape newlines when the tags "makefile-action" or "makefile-stuff" are
+      escape newlines when the tags "makefile-action" or "makefile-stuff" are
       active. *)
   val prepare_formatter : Format.formatter -> unit
 end
@@ -121,17 +119,17 @@ module Cst : sig
   module Comment : sig
     type t =
       | Lines of string list
-        (** The following comment:
+          (** The following comment:
 
-          {v ; abc ; def v}
+              {v ; abc ; def v}
 
-            is represented as:
+              is represented as:
 
-            {[ Lines [" abc"; " def"] ]} *)
+              {[ Lines [" abc"; " def"] ]} *)
       | Legacy
-        (** Legacy for jbuild files: either block comments or sexp comments.
-          The programmer is responsible for fetching the comment contents using
-            the location. *)
+          (** Legacy for jbuild files: either block comments or sexp comments.
+              The programmer is responsible for fetching the comment contents
+              using the location. *)
   end
 
   type t =
@@ -144,7 +142,7 @@ module Cst : sig
   val loc : t -> Loc.t
 
   (** Replace all the [Comment Legacy] by [Comment (Lines _)] by extracting the
-    contents of comments from the original file. *)
+      contents of comments from the original file. *)
   val fetch_legacy_comments : t -> file_contents:string -> t
 
   val abstract : t -> Ast.t option
@@ -161,7 +159,7 @@ end
 with type sexp := t
 
 (** Insert comments in a concrete syntax tree. Comments are inserted based on
-  their location. *)
+    their location. *)
 val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list
 
 module Lexer : sig
@@ -180,10 +178,6 @@ module Lexer : sig
   type t = with_comments:bool -> Lexing.lexbuf -> Token.t
 
   val token : t
-
-  val jbuild_token : t
-
-  val of_syntax : File_syntax.t -> t
 end
 
 module Parser : sig
@@ -247,7 +241,7 @@ module Decoder : sig
     }
 
   (** Monad producing a value of type ['a] by parsing an input composed of a
-    sequence of S-expressions.
+      sequence of S-expressions.
 
       The input can be seen either as a plain sequence of S-expressions or a
       list of fields. The ['kind] parameter indicates how the input is seen:
@@ -276,7 +270,7 @@ module Decoder : sig
   type 'a fields_parser = ('a, fields) parser
 
   (** [parse parser context sexp] parse a S-expression using the following
-    parser. The input consist of a single S-expression. [context] allows to
+      parser. The input consist of a single S-expression. [context] allows to
       pass extra information such as versions to individual parsers. *)
   val parse : 'a t -> Univ_map.t -> ast -> 'a
 
@@ -309,16 +303,16 @@ module Decoder : sig
   val loc : (Loc.t, _) parser
 
   (** End of sequence condition. Uses [then_] if there are no more
-    S-expressions to parse, [else_] otherwise. *)
+      S-expressions to parse, [else_] otherwise. *)
   val if_eos :
     then_:('a, 'b) parser -> else_:('a, 'b) parser -> ('a, 'b) parser
 
   (** If the next element of the sequence is a list, parse it with [then_],
-    otherwise parse it with [else_]. *)
+      otherwise parse it with [else_]. *)
   val if_list : then_:'a t -> else_:'a t -> 'a t
 
   (** If the next element of the sequence is of the form [(:<name> ...)], use
-    [then_] to parse [...]. Otherwise use [else_]. *)
+      [then_] to parse [...]. Otherwise use [else_]. *)
   val if_paren_colon_form :
     then_:(Loc.t * string -> 'a) t -> else_:'a t -> 'a t
 
@@ -326,18 +320,18 @@ module Decoder : sig
   val keyword : string -> unit t
 
   (** {[match_keyword [(k1, t1); (k2, t2); ...] ~fallback]} inspects the next
-    element of the input sequence. If it is an atom equal to one of [k1], [k2],
-      ... then the corresponding parser is used to parse the rest of the
+      element of the input sequence. If it is an atom equal to one of [k1],
+      [k2], ... then the corresponding parser is used to parse the rest of the
       sequence. Other [fallback] is used. *)
   val match_keyword : (string * 'a t) list -> fallback:'a t -> 'a t
 
   (** Use [before] to parse elements until the keyword is reached. Then use
-    [after] to parse the rest. *)
+      [after] to parse the rest. *)
   val until_keyword :
     string -> before:'a t -> after:'b t -> ('a list * 'b option) t
 
   (** What is currently being parsed. The second argument is the atom at the
-    beginnig of the list when inside a [sum ...] or [field ...]. *)
+      beginnig of the list when inside a [sum ...] or [field ...]. *)
   type kind =
     | Values of Loc.t * string option
     | Fields of Loc.t * string option
@@ -345,18 +339,18 @@ module Decoder : sig
   val kind : (kind, _) parser
 
   (** [repeat t] use [t] to consume all remaning elements of the input until
-    the end of sequence is reached. *)
+      the end of sequence is reached. *)
   val repeat : 'a t -> 'a list t
 
   (** Capture the rest of the input for later parsing *)
   val capture : ('a t -> 'a) t
 
   (** [enter t] expect the next element of the input to be a list and parse its
-    contents with [t]. *)
+      contents with [t]. *)
   val enter : 'a t -> 'a t
 
   (** [fields fp] converts the rest of the current input to a list of fields
-    and parse them with [fp]. This operation fails if one the S-expression in
+      and parse them with [fp]. This operation fails if one the S-expression in
       the input is not of the form [(<atom> <values>...)] *)
   val fields : 'a fields_parser -> 'a t
 
@@ -389,7 +383,7 @@ module Decoder : sig
   val junk_everything : (unit, _) parser
 
   (** [plain_string f] expects the next element of the input to be a plain
-    string, i.e. either an atom or a quoted string, but not a template nor a
+      string, i.e. either an atom or a quoted string, but not a template nor a
       list. *)
   val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
@@ -400,12 +394,12 @@ module Decoder : sig
   val enum : (string * 'a) list -> 'a t
 
   (** Parser that parse a S-expression of the form [(<atom> <s-exp1> <s-exp2>
-    ...)] or [<atom>]. [<atom>] is looked up in the list and the remaining
+      ...)] or [<atom>]. [<atom>] is looked up in the list and the remaining
       s-expressions are parsed using the corresponding list parser. *)
   val sum : (string * 'a t) list -> 'a t
 
   (** Check the result of a list parser, and raise a properly located error in
-    case of failure. *)
+      case of failure. *)
   val map_validate :
        'a fields_parser
     -> f:('a -> ('b, User_message.t) Result.t)
@@ -427,7 +421,7 @@ module Decoder : sig
     -> 'a option fields_parser
 
   (** Parser for mutually exclusive fields. If [default] is provided, allow
-    fields absence. *)
+      fields absence. *)
   val fields_mutually_exclusive :
        ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
     -> ?default:'a

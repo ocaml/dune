@@ -34,7 +34,7 @@ module Stanza : sig
   val c_flags :
        since:Syntax.Version.t option
     -> Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-      Dune_lang.Decoder.fields_parser
+       Dune_lang.Decoder.fields_parser
 
   val decode : t Dune_lang.Decoder.t
 

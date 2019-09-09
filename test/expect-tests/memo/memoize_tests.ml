@@ -22,7 +22,7 @@ let run f v =
   try
     Fiber.run
       (Fiber.with_error_handler
-        (fun () -> Memo.exec f v)
+         (fun () -> Memo.exec f v)
          ~on_error:(fun e -> exn := Some e))
   with Fiber.Never -> (
     match !exn with
@@ -52,7 +52,7 @@ let () =
 let counter = ref 0
 
 (* our computation increases the counter, adds the two dependencies, "some" and
-  "another" and works by multiplying the input by two *)
+   "another" and works by multiplying the input by two *)
 let comp x =
   Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2
   >>= fun a ->
@@ -63,7 +63,7 @@ let mcomp =
   string_fn_create "test" ~output:(Allow_cutoff (module String)) comp ~doc:""
 
 (* running it the first time should increase the counter, running it again
-  should not, but should still return the same result *)
+   should not, but should still return the same result *)
 let%expect_test _ =
   Format.printf "%d@." !counter;
   print_endline (run mcomp "a");
@@ -89,7 +89,7 @@ Some [("another", "aa"); ("some", "a")]
 
 let%expect_test _ =
   (* running it on a new input should cause it to recompute the first time it
-    is run *)
+     is run *)
   print_endline (run mcomp "hello");
   Format.printf "%d@." !counter;
   print_endline (run mcomp "hello");
@@ -154,8 +154,8 @@ let%expect_test _ =
     print (Pp.textf "%d" !counter);
     !stack
     |> List.map ~f:(fun st ->
-      let open Dyn.Encoder in
-      pair string (fun x -> x) (Stack_frame.name st, Stack_frame.input st))
+           let open Dyn.Encoder in
+           pair string (fun x -> x) (Stack_frame.name st, Stack_frame.input st))
     |> Dyn.Encoder.list (fun x -> x)
     |> print_dyn;
     [%expect
@@ -313,7 +313,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   (* Bug: dependency on [lazy] is only registered by one of the dependants.
-    This means we should never use [lazy] together with [Memo]. We can use
+     This means we should never use [lazy] together with [Memo]. We can use
      [Memo.lazy_] though (see below) *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect

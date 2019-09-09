@@ -57,7 +57,7 @@ module Dep = struct
       match
         Dune_lang.Decoder.parse dep_parser Univ_map.empty
           (Dune_lang.parse_string ~fname:"command line"
-            ~mode:Dune_lang.Parser.Mode.Single s)
+             ~mode:Dune_lang.Parser.Mode.Single s)
       with
       | x -> `Ok x
       | exception User_error.E msg -> `Error (User_message.to_string msg) )

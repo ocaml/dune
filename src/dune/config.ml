@@ -37,7 +37,7 @@ let show_full_command_on_error () =
 open Dune_lang.Decoder
 
 (* the configuration file use the same version numbers as dune-project files
-  for simplicity *)
+   for simplicity *)
 let syntax = Stanza.syntax
 
 module Terminal_persistence = struct
@@ -61,9 +61,9 @@ module Terminal_persistence = struct
 
   let decode =
     plain_string (fun ~loc s ->
-      match of_string s with
-      | Error m -> User_error.raise ~loc [ Pp.text m ]
-      | Ok s -> s)
+        match of_string s with
+        | Error m -> User_error.raise ~loc [ Pp.text m ]
+        | Ok s -> s)
 end
 
 module Display = struct
@@ -93,9 +93,9 @@ module Concurrency = struct
 
   let decode =
     plain_string (fun ~loc s ->
-      match of_string s with
-      | Error m -> User_error.raise ~loc [ Pp.text m ]
-      | Ok s -> s)
+        match of_string s with
+        | Error m -> User_error.raise ~loc [ Pp.text m ]
+        | Ok s -> s)
 
   let to_string = function
     | Auto -> "auto"
@@ -108,9 +108,9 @@ module Sandboxing_preference = struct
   let decode =
     repeat
       (plain_string (fun ~loc s ->
-        match Sandbox_mode.of_string s with
-        | Error m -> User_error.raise ~loc [ Pp.text m ]
-        | Ok s -> s))
+           match Sandbox_mode.of_string s with
+           | Error m -> User_error.raise ~loc [ Pp.text m ]
+           | Ok s -> s))
 end
 
 module type S = sig
@@ -135,22 +135,22 @@ let merge t (partial : Partial.t) =
   { display = field t.display partial.display
   ; concurrency = field t.concurrency partial.concurrency
   ; terminal_persistence =
-    field t.terminal_persistence partial.terminal_persistence
+      field t.terminal_persistence partial.terminal_persistence
   ; sandboxing_preference =
-    field t.sandboxing_preference partial.sandboxing_preference
+      field t.sandboxing_preference partial.sandboxing_preference
   }
 
 let default =
   { display =
-    ( if inside_dune then
-      Quiet
-    else
-      Progress )
+      ( if inside_dune then
+        Quiet
+      else
+        Progress )
   ; concurrency =
-    ( if inside_dune then
-      Fixed 1
-    else
-      Auto )
+      ( if inside_dune then
+        Fixed 1
+      else
+        Auto )
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   }
@@ -191,7 +191,7 @@ let load_user_config_file () =
 
 let adapt_display config ~output_is_a_tty =
   (* Progress isn't meaningful if inside a terminal (or emacs), so reset the
-    display to Quiet if the output is getting piped to a file or something. *)
+     display to Quiet if the output is getting piped to a file or something. *)
   let config =
     if config.display = Progress && (not output_is_a_tty) && not inside_emacs
     then
@@ -200,7 +200,7 @@ let adapt_display config ~output_is_a_tty =
       config
   in
   (* Similarly, terminal clearing is meaningless if stderr doesn't support ANSI
-    codes, so revert-back to Preserve in that case *)
+     codes, so revert-back to Preserve in that case *)
   if config.terminal_persistence = Clear_on_rebuild && not output_is_a_tty then
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else

@@ -109,6 +109,20 @@
   directory. There's also a corresponding `DUNE_DISABLE_PROMOTION` environment
   variable. (#2588, fix #2568, @rgrinberg)
 
+- Add a `forbidden_libraries` field to prevent some library from being
+  linked in an executable. This help detecting who accidently pulls in
+  `unix` for instance (#2570, @diml)
+
+- Fix incorrect error message when a variable is expanded in static context:
+  `%{lib:lib:..}` when the library does not exist. (#2597, fix #1541,
+  @rgrinberg)
+
+- Add `--sections` option to `$ dune install` to install subsections of .install
+  files. This is useful for installing only the binaries in a workspace for
+  example. (#2609, fixes #2554, @rgrinberg)
+
+- Drop support for `jbuild` and `jbuild-ignore` files (#2607, @diml)
+
 1.11.3 (23/08/2019)
 -------------------
 

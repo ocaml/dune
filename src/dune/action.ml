@@ -75,9 +75,9 @@ module For_shell = struct
   module rec Ast : Ast = Ast
 
   include Action_ast.Make (String_with_sexp) (String_with_sexp)
-    (String_with_sexp)
-      (String_with_sexp)
-        (Ast)
+            (String_with_sexp)
+            (String_with_sexp)
+            (Ast)
 end
 
 module Relativise = Action_mapper.Make (Ast) (For_shell.Ast)
@@ -210,17 +210,17 @@ let rec is_dynamic = function
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
   let steps =
     Path.Set.fold (Dep.Set.paths deps ~eval_pred) ~init:[] ~f:(fun path acc ->
-      match Path.as_in_build_dir path with
-      | None ->
-        (* This can actually raise if we try to sandbox the "copy from source
-          dir" rules. There is no reason to do that though. *)
-        if Path.is_in_source_tree path then
-          Code_error.raise
-            "Action depends on source tree. All actions should depend on the \
-             copies in build directory instead"
-            [ ("path", Path.to_dyn path) ];
-        acc
-      | Some p -> link path (sandboxed p) :: acc)
+        match Path.as_in_build_dir path with
+        | None ->
+          (* This can actually raise if we try to sandbox the "copy from source
+             dir" rules. There is no reason to do that though. *)
+          if Path.is_in_source_tree path then
+            Code_error.raise
+              "Action depends on source tree. All actions should depend on \
+               the copies in build directory instead"
+              [ ("path", Path.to_dyn path) ];
+          acc
+        | Some p -> link path (sandboxed p) :: acc)
   in
   Progn steps
 
@@ -248,7 +248,7 @@ let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
   Progn
     [ prepare_managed_paths ~sandboxed ~link deps ~eval_pred
     ; map t ~dir:Path.root
-      ~f_string:(fun ~dir:_ x -> x)
+        ~f_string:(fun ~dir:_ x -> x)
         ~f_path:(fun ~dir:_ p -> maybe_sandbox_path sandboxed p)
         ~f_target:(fun ~dir:_ -> sandboxed)
         ~f_program:(fun ~dir:_ -> Result.map ~f:(maybe_sandbox_path sandboxed))

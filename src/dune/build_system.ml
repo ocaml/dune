@@ -288,7 +288,7 @@ module Trace_db : sig
   module Entry : sig
     type t =
       { rule_digest : Digest.t
-      ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+      ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
   end
@@ -300,10 +300,7 @@ end = struct
   module Entry = struct
     type t =
       { rule_digest : Digest.t
-            (* We use Glob.t instead of Predicate.t for converting from
-               'dune_action' Dependency.t to Dep.t so we can safely marshall
-               the `dynamic_deps_stages`. *)
-      ; dynamic_deps_stages : (Dep.Set.t * Digest.t) list
+      ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
   end
@@ -1453,6 +1450,7 @@ end = struct
             match stages with
             | [] -> Fiber.return false
             | (deps, old_digest) :: rest ->
+              let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
               let* () = build_deps deps in
               let new_digest =
                 compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred
@@ -1550,8 +1548,9 @@ end = struct
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps
-                , compute_dependencies_digest ~sandbox_mode ~env ~eval_pred
-                    deps ))
+                , Action_exec.Dynamic_dep.Set.to_dep_set deps
+                  |> compute_dependencies_digest ~sandbox_mode ~env ~eval_pred
+                ))
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }

@@ -2,8 +2,55 @@ open! Stdune
 open Import
 open Fiber.O
 
+module Dynamic_dep = struct
+  module T = struct
+    type t =
+      | File of Path.t
+      | Glob of Path.t * Glob.t
+
+    let to_dep = function
+      | File fn -> Dep.file fn
+      | Glob (dir, glob) ->
+        File_selector.from_glob ~dir glob |> Dep.file_selector
+
+    let of_protocol_dep ~working_dir : Dune_action.Protocol.Dependency.t -> t =
+      let to_dune_path = Stdune.Path.relative working_dir in
+      function
+      | File fn -> File (to_dune_path fn)
+      | Directory dir -> Glob (to_dune_path dir, Glob.universal)
+
+    let compare x y =
+      match (x, y) with
+      | File x, File y -> Path.compare x y
+      | File _, _ -> Lt
+      | _, File _ -> Gt
+      | Glob (dir1, glob1), Glob (dir2, glob2) ->
+        Tuple.T2.compare Path.compare Glob.compare (dir1, glob1) (dir2, glob2)
+
+    let to_dyn =
+      let open Dyn.Encoder in
+      function
+      | File fn -> constr "File" [ Path.to_dyn fn ]
+      | Glob (dir, glob) -> constr "Glob" [ Path.to_dyn dir; Glob.to_dyn glob ]
+  end
+
+  include T
+  module O = Comparable.Make (T)
+
+  module Set = struct
+    include O.Set
+
+    let to_dep_set t = t |> to_list |> List.map ~f:to_dep |> Dep.Set.of_list
+
+    let of_protocol_dep_set ~working_dir t =
+      t |> Dune_action.Protocol.Dependency.Set.to_list
+      |> List.map ~f:(of_protocol_dep ~working_dir)
+      |> of_list
+  end
+end
+
 module Exec_result = struct
-  type t = { dynamic_deps_stages : Dep.Set.t List.t }
+  type t = { dynamic_deps_stages : Dynamic_dep.Set.t List.t }
 end
 
 type done_or_more_deps =
@@ -12,7 +59,8 @@ type done_or_more_deps =
      single action. [Dune_action.Protocol.Dependency.t] stores relative paths
      so name clash would possible if multiple 'dynamic-run' would be executed
      in different subdirectories that contains targets having the same name. *)
-  | Need_more_deps of (Dune_action.Protocol.Dependency.Set.t * Dep.Set.t)
+  | Need_more_deps of
+      (Dune_action.Protocol.Dependency.Set.t * Dynamic_dep.Set.t)
 
 type exec_context =
   { targets : Path.Build.Set.t
@@ -61,14 +109,10 @@ let exec_run ~ectx ~eenv prog args =
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
   let open Dune_action in
-  let to_dune_dep : Protocol.Dependency.t -> Dep.t =
-    let to_dune_path = Stdune.Path.relative eenv.working_dir in
-    function
-    | File path -> Dep.file (to_dune_path path)
-    | Directory path ->
-      Dep.file_selector
-        (File_selector.from_glob ~dir:(to_dune_path path) Glob.universal)
-  in
+  (* let to_dune_dep : Protocol.Dependency.t -> Dep.t = let to_dune_path =
+     Stdune.Path.relative eenv.working_dir in function | File path -> Dep.file
+     (to_dune_path path) | Directory path -> Dep.file_selector
+     (File_selector.from_glob ~dir:(to_dune_path path) Glob.universal) in *)
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
   let run_arguments =
@@ -133,8 +177,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Ok (Some (Need_more_deps deps)) ->
     Need_more_deps
       ( deps
-      , deps |> Protocol.Dependency.Set.to_list |> List.map ~f:to_dune_dep
-        |> Dep.Set.of_list )
+      , Dynamic_dep.Set.of_protocol_dep_set ~working_dir:eenv.working_dir deps
+      )
 
 let exec_echo stdout_to str =
   Fiber.return (output_string (Process.Io.out_channel stdout_to) str)
@@ -356,7 +400,7 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
     | Done -> Fiber.return ()
     | Need_more_deps (relative_deps, deps_to_build) ->
       stages := deps_to_build :: !stages;
-      let* () = ectx.build_deps deps_to_build in
+      let* () = ectx.build_deps (Dynamic_dep.Set.to_dep_set deps_to_build) in
       let eenv =
         { eenv with
           prepared_dependencies =

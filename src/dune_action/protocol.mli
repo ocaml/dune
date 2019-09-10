@@ -1,5 +1,6 @@
 open Stdune
 open Sexpable_intf
+open Serializable_intf
 
 module Dependency : sig
   type t =
@@ -23,7 +24,7 @@ module Greeting : sig
     ; response_fn : string
     }
 
-  include Sexpable with type t := t
+  include Serializable with type t := t
 end
 
 module Run_arguments : sig
@@ -32,7 +33,7 @@ module Run_arguments : sig
     ; targets : String.Set.t
     }
 
-  include Sexpable with type t := t
+  include Serializable with type t := t
 end
 
 module Response : sig
@@ -40,7 +41,7 @@ module Response : sig
     | Done
     | Need_more_deps of Dependency.Set.t
 
-  include Sexpable with type t := t
+  include Serializable with type t := t
 end
 
 (** Dune sets this environment variable to pass [Greeting.t] to client. *)

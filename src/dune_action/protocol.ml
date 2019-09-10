@@ -53,59 +53,81 @@ module Dependency = struct
 end
 
 module Greeting = struct
-  type t =
-    { run_arguments_fn : string
-    ; response_fn : string
-    }
+  module T = struct
+    type t =
+      { run_arguments_fn : string
+      ; response_fn : string
+      }
 
-  let sexp_of_t { run_arguments_fn; response_fn } : Sexp.t =
-    List [ Atom run_arguments_fn; Atom response_fn ]
+    let sexp_of_t { run_arguments_fn; response_fn } : Sexp.t =
+      List [ Atom run_arguments_fn; Atom response_fn ]
 
-  let t_of_sexp : Sexp.t -> _ = function
-    | List [ Atom run_arguments_fn; Atom response_fn ] ->
-      Some { run_arguments_fn; response_fn }
-    | _ -> None
+    let t_of_sexp : Sexp.t -> _ = function
+      | List [ Atom run_arguments_fn; Atom response_fn ] ->
+        Some { run_arguments_fn; response_fn }
+      | _ -> None
+
+    let version = 0
+  end
+
+  include T
+  include Serializable_intf.Make (T)
 end
 
 module Run_arguments = struct
-  type t =
-    { prepared_dependencies : Dependency.Set.t
-    ; targets : String.Set.t
-    }
+  module T = struct
+    type t =
+      { prepared_dependencies : Dependency.Set.t
+      ; targets : String.Set.t
+      }
 
-  let sexp_of_t { prepared_dependencies; targets } : Sexp.t =
-    List
-      [ Dependency.Set.sexp_of_t prepared_dependencies
-      ; targets |> String.Set.to_list |> sexp_of_list sexp_of_string
-      ]
+    let sexp_of_t { prepared_dependencies; targets } : Sexp.t =
+      List
+        [ Dependency.Set.sexp_of_t prepared_dependencies
+        ; targets |> String.Set.to_list |> sexp_of_list sexp_of_string
+        ]
 
-  let t_of_sexp : Sexp.t -> _ = function
-    | List [ prepared_dependencies; targets ] ->
-      let open Option.O in
-      let* prepared_dependencies =
-        Dependency.Set.t_of_sexp prepared_dependencies
-      in
-      let+ targets = list_of_sexp string_of_sexp targets in
-      let targets = String.Set.of_list targets in
-      { prepared_dependencies; targets }
-    | _ -> None
+    let t_of_sexp : Sexp.t -> _ = function
+      | List [ prepared_dependencies; targets ] ->
+        let open Option.O in
+        let* prepared_dependencies =
+          Dependency.Set.t_of_sexp prepared_dependencies
+        in
+        let+ targets = list_of_sexp string_of_sexp targets in
+        let targets = String.Set.of_list targets in
+        { prepared_dependencies; targets }
+      | _ -> None
+
+    let version = 0
+  end
+
+  include T
+  include Serializable_intf.Make (T)
 end
 
 module Response = struct
-  type t =
-    | Done
-    | Need_more_deps of Dependency.Set.t
+  module T = struct
+    type t =
+      | Done
+      | Need_more_deps of Dependency.Set.t
 
-  let sexp_of_t : _ -> Sexp.t = function
-    | Done -> List [ Atom "done" ]
-    | Need_more_deps deps ->
-      List [ Atom "need_more_deps"; Dependency.Set.sexp_of_t deps ]
+    let sexp_of_t : _ -> Sexp.t = function
+      | Done -> List [ Atom "done" ]
+      | Need_more_deps deps ->
+        List [ Atom "need_more_deps"; Dependency.Set.sexp_of_t deps ]
 
-  let t_of_sexp : Sexp.t -> _ = function
-    | List [ Atom "done" ] -> Some Done
-    | List [ Atom "need_more_deps"; sexp ] ->
-      Option.O.(Dependency.Set.t_of_sexp sexp >>| fun xs -> Need_more_deps xs)
-    | _ -> None
+    let t_of_sexp : Sexp.t -> _ = function
+      | List [ Atom "done" ] -> Some Done
+      | List [ Atom "need_more_deps"; sexp ] ->
+        Option.O.(
+          Dependency.Set.t_of_sexp sexp >>| fun xs -> Need_more_deps xs)
+      | _ -> None
+
+    let version = 0
+  end
+
+  include T
+  include Serializable_intf.Make (T)
 end
 
 module Context = struct
@@ -122,6 +144,11 @@ module Context = struct
 
   let cannot_parse_error = Error "Can not parse dune message."
 
+  let version_mismatch_error =
+    Error
+      "Dune version is incompatible with dune action library version that was \
+       used to build this executable."
+
   let cannot_read_file = Error "Cannot read file containing dune message."
 
   let file_not_found_error = Error "Cannot find file containing dune message."
@@ -130,13 +157,10 @@ module Context = struct
     match Sys.getenv_opt run_by_dune_env_variable with
     | None -> Run_outside_of_dune
     | Some value -> (
-      match
-        Option.O.(
-          value |> Csexp.parse_string |> Result.to_option
-          >>= Greeting.t_of_sexp)
-      with
-      | None -> cannot_parse_error
-      | Some greeting -> (
+      match Greeting.deserialize value with
+      | Error (Version_mismatch _) -> version_mismatch_error
+      | Error Parse_error -> cannot_parse_error
+      | Ok greeting -> (
         match
           ( Result.try_with (fun () ->
                 Io.String_path.read_file greeting.run_arguments_fn)
@@ -145,13 +169,10 @@ module Context = struct
         | _, false -> file_not_found_error
         | Error _, _ -> cannot_read_file
         | Ok data, true -> (
-          match
-            Option.O.(
-              data |> Csexp.parse_string |> Result.to_option
-              >>= Run_arguments.t_of_sexp)
-          with
-          | None -> cannot_parse_error
-          | Some { prepared_dependencies; targets } ->
+          match Run_arguments.deserialize data with
+          | Error (Version_mismatch _) -> version_mismatch_error
+          | Error Parse_error -> cannot_parse_error
+          | Ok { prepared_dependencies; targets } ->
             Ok
               { response_fn = greeting.response_fn
               ; prepared_dependencies
@@ -163,6 +184,6 @@ module Context = struct
   let targets (t : t) = t.targets
 
   let respond (t : t) response =
-    let data = response |> Response.sexp_of_t |> Csexp.to_string in
+    let data = Response.serialize response in
     Io.String_path.write_file t.response_fn data
 end

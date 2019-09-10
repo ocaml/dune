@@ -109,10 +109,6 @@ let exec_run ~ectx ~eenv prog args =
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
   let open Dune_action in
-  (* let to_dune_dep : Protocol.Dependency.t -> Dep.t = let to_dune_path =
-     Stdune.Path.relative eenv.working_dir in function | File path -> Dep.file
-     (to_dune_path path) | Directory path -> Dep.file_selector
-     (File_selector.from_glob ~dir:(to_dune_path path) Glob.universal) in *)
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
   let run_arguments =
@@ -127,11 +123,10 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
       { prepared_dependencies = eenv.prepared_dependencies; targets }
   in
   Io.String_path.write_file run_arguments_fn
-    (run_arguments |> Protocol.Run_arguments.sexp_of_t |> Csexp.to_string);
+    (Protocol.Run_arguments.serialize run_arguments);
   let env =
     let value =
-      Protocol.Greeting.(sexp_of_t { run_arguments_fn; response_fn })
-      |> Csexp.to_string
+      Protocol.Greeting.(serialize { run_arguments_fn; response_fn })
     in
     Env.add eenv.env ~var:Protocol.run_by_dune_env_variable ~value
   in
@@ -145,12 +140,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
     unlink_no_err (of_string run_arguments_fn);
     unlink_no_err (of_string response_fn));
   let prog_name = Stdune.Path.reach ~from:eenv.working_dir prog in
-  match
-    Result.O.(Csexp.parse_string response >>| Protocol.Response.t_of_sexp)
-  with
-  | Error _
-   |Ok None
-    when String.is_empty response ->
+  match Protocol.Response.deserialize response with
+  | Error _ when String.is_empty response ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
           "Executable '%s' that was declared to support dynamic dependency \
@@ -163,18 +154,22 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
            you may consider changing 'dynamic-run' to 'run' in your rule \
            definition."
       ]
-  | Error _
-   |Ok None ->
+  | Error Parse_error ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
           "Executable '%s' declared as a dynamic dune action responded with \
            invalid message."
           prog_name
-      ; Pp.text
-          "Are you using different dune version to compile the executable?"
       ]
-  | Ok (Some Done) -> Done
-  | Ok (Some (Need_more_deps deps)) ->
+  | Error (Version_mismatch _) ->
+    User_error.raise ~loc:ectx.rule_loc
+      [ Pp.textf
+          "Executable '%s' is linked against a version of dune action library \
+           that is incompatible with this version of dune."
+          prog_name
+      ]
+  | Ok Done -> Done
+  | Ok (Need_more_deps deps) ->
     Need_more_deps
       ( deps
       , Dynamic_dep.Set.of_protocol_dep_set ~working_dir:eenv.working_dir deps

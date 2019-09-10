@@ -1,3 +1,9 @@
+1.11.4 (03/10/2019)
+-------------------
+
+- Allow to mark directories as `data_only_dirs` without including them as `dirs`
+  (#2619, fix #2584, @rgrinberg)
+
 1.11.3 (23/08/2019)
 -------------------
 

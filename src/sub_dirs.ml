@@ -55,7 +55,8 @@ let status ({ Status.Map.normal; data_only; vendored } as t) ~dir :
   | true, false, true -> Status Vendored
   | true, true, _   -> Status Data_only
   | false, false, _ -> Ignored
-  | false, true, _ ->
+  | false, true, false -> Status Data_only
+  | false, true, true ->
     Code_error.raise "Sub_dirs.status: invalid combination"
       [ ("t", Status.Map.to_dyn String.Set.to_dyn t)
       ; ("dir", String.to_dyn dir)

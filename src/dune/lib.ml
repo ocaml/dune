@@ -682,13 +682,12 @@ module Vlib : sig
   end
 end = struct
   module Unimplemented = struct
-    type status =
-      | Implemented
-      | Not_implemented
+    type t =
+      { implemented : Set.t
+      ; unimplemented : Set.t
+      }
 
-    type t = status Map.t
-
-    let empty = Map.empty
+    let empty = { implemented = Set.empty; unimplemented = Set.empty }
 
     let add t lib =
       let virtual_ = Lib_info.virtual_ lib.info in
@@ -697,22 +696,24 @@ end = struct
       | Some _, Some _ -> assert false (* can't be virtual and implement *)
       | None, Some _ ->
         Ok
-          (Map.update t lib ~f:(function
-            | None -> Some Not_implemented
-            | Some _ as x -> x))
+          ( if Set.mem t.implemented lib then
+            t
+          else
+            { t with unimplemented = Set.add t.unimplemented lib } )
       | Some vlib, None ->
         let+ vlib = vlib in
-        Map.set t vlib Implemented
+        { implemented = Set.add t.implemented vlib
+        ; unimplemented = Set.remove t.unimplemented vlib
+        }
 
     let fold =
       let rec loop ~f ~acc = function
         | [] -> Ok acc
-        | (_, Implemented) :: libs -> loop ~f ~acc libs
-        | (lib, Not_implemented) :: libs ->
+        | lib :: libs ->
           let* acc = f lib acc in
           loop ~f ~acc libs
       in
-      fun t ~init ~f -> loop (Map.to_list t) ~acc:init ~f
+      fun t ~init ~f -> loop (Set.to_list t.unimplemented) ~acc:init ~f
   end
 
   module Table = struct

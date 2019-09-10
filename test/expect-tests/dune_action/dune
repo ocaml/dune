@@ -4,7 +4,7 @@
  (name dune_action_unit_tests)
  (inline_tests
   (deps foo_dir/foo))
- (libraries dune_action ppx_expect.config ppx_expect.common base
+ (libraries dune_action_plugin ppx_expect.config ppx_expect.common base
    ppx_inline_test.config)
  (preprocess
   (pps ppx_expect)))

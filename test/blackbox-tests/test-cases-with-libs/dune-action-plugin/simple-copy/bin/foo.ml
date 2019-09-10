@@ -1,4 +1,4 @@
-open Dune_action
+open Dune_action_plugin
 
 let action =
   read_file ~path:(Path.of_string "bar_source")

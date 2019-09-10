@@ -1,6 +1,6 @@
 (library
- (name dune_action)
- (public_name dune._dune_action)
+ (name dune_action_plugin)
+ (public_name dune._dune_action_plugin)
  (libraries stdune)
  (synopsis
    "Monadic interface for defining scripts with dynamic or complex set of depencencies."))

@@ -1,4 +1,4 @@
-open Dune_action
+open Dune_action_plugin
 
 let%expect_test _ =
   try ignore @@ Path.of_string "/some/absolute/path"

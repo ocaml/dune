@@ -13,7 +13,8 @@ module Dynamic_dep = struct
       | Glob (dir, glob) ->
         Glob.to_pred glob |> File_selector.create ~dir |> Dep.file_selector
 
-    let of_protocol_dep ~working_dir : Dune_action.Protocol.Dependency.t -> t =
+    let of_protocol_dep ~working_dir :
+        Dune_action_plugin.Protocol.Dependency.t -> t =
       let to_dune_path = Stdune.Path.relative working_dir in
       function
       | File fn -> File (to_dune_path fn)
@@ -43,7 +44,7 @@ module Dynamic_dep = struct
     let to_dep_set t = t |> to_list |> List.map ~f:to_dep |> Dep.Set.of_list
 
     let of_protocol_dep_set ~working_dir t =
-      t |> Dune_action.Protocol.Dependency.Set.to_list
+      t |> Dune_action_plugin.Protocol.Dependency.Set.to_list
       |> List.map ~f:(of_protocol_dep ~working_dir)
       |> of_list
   end
@@ -56,11 +57,12 @@ end
 type done_or_more_deps =
   | Done
   (* This code assumes that there can be at most one 'dynamic-run' within
-     single action. [Dune_action.Protocol.Dependency.t] stores relative paths
-     so name clash would possible if multiple 'dynamic-run' would be executed
-     in different subdirectories that contains targets having the same name. *)
+     single action. [Dune_action_plugin.Protocol.Dependency.t] stores relative
+     paths so name clash would possible if multiple 'dynamic-run' would be
+     executed in different subdirectories that contains targets having the same
+     name. *)
   | Need_more_deps of
-      (Dune_action.Protocol.Dependency.Set.t * Dynamic_dep.Set.t)
+      (Dune_action_plugin.Protocol.Dependency.Set.t * Dynamic_dep.Set.t)
 
 type exec_context =
   { targets : Path.Build.Set.t
@@ -76,7 +78,7 @@ type exec_environment =
   ; stdout_to : Process.Io.output Process.Io.t
   ; stderr_to : Process.Io.output Process.Io.t
   ; stdin_from : Process.Io.input Process.Io.t
-  ; prepared_dependencies : Dune_action.Protocol.Dependency.Set.t
+  ; prepared_dependencies : Dune_action_plugin.Protocol.Dependency.Set.t
   }
 
 let validate_context_and_prog context prog =
@@ -108,7 +110,7 @@ let exec_run ~ectx ~eenv prog args =
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  let open Dune_action in
+  let open Dune_action_plugin in
   let run_arguments_fn = Filename.temp_file "" ".run_in_dune" in
   let response_fn = Filename.temp_file "" ".response" in
   let run_arguments =
@@ -386,7 +388,7 @@ and exec_list ts ~ectx ~eenv =
     | Done -> exec_list rest ~ectx ~eenv )
 
 let exec_until_all_deps_ready ~ectx ~eenv t =
-  let open Dune_action.Protocol in
+  let open Dune_action_plugin.Protocol in
   let stages = ref [] in
   let rec loop ~eenv =
     let* result = exec ~ectx ~eenv t in
@@ -415,7 +417,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; stdout_to = Process.Io.stdout
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.stdin
-    ; prepared_dependencies = Dune_action.Protocol.Dependency.Set.empty
+    ; prepared_dependencies = Dune_action_plugin.Protocol.Dependency.Set.empty
     }
   in
   exec_until_all_deps_ready t ~ectx ~eenv

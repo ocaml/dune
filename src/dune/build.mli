@@ -1,4 +1,4 @@
-(** The build functor *)
+(** The build description *)
 
 open! Stdune
 open! Import
@@ -23,11 +23,13 @@ end
 
 val all : 'a t list -> 'a list t
 
+val all_unit : unit t list -> unit t
+
 (** Optimization to avoiding eagerly computing a [Build.t] value, assume it
     contains no targets. *)
 val lazy_no_targets : 'a t Lazy.t -> 'a t
 
-(** Delay a static computation until the functor is evaluated *)
+(** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
 (* CR-someday diml: this API is not great, what about:
@@ -40,7 +42,7 @@ val delayed : (unit -> 'a) -> 'a t
    ('a, Action_with_deps.t) t -> ('a, Action_with_deps.t) t ]} *)
 
 (** [path p] records [p] as a file that is read by the action produced by the
-    build functor. *)
+    build description. *)
 val path : Path.t -> unit t
 
 val dep : Dep.t -> unit t
@@ -52,7 +54,7 @@ val paths : Path.t list -> unit t
 val path_set : Path.Set.t -> unit t
 
 (** Evaluate a predicate against all targets and record all the matched files
-    as dependencies of the action produced by the build functor. *)
+    as dependencies of the action produced by the build description. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
 (** [paths_existing paths] will require as dependencies the files that actually
@@ -60,12 +62,12 @@ val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 val paths_existing : Path.t list -> unit t
 
 (** [env_var v] records [v] as an environment variable that is read by the
-    action produced by the build functor. *)
+    action produced by the build description. *)
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
 
-(** Record a set of targets of the action produced by the build functor. *)
+(** Record a set of targets of the action produced by the build description. *)
 val declare_targets : Path.Build.Set.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
@@ -85,12 +87,12 @@ val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
     raised during the evaluation of [t]. *)
 val catch : 'a t -> on_error:(exn -> 'a) -> 'a t
 
-(** [contents path] returns a functor that when run will return the contents of
-    the file at [path]. *)
+(** [contents path] returns a description that when run will return the
+    contents of the file at [path]. *)
 val contents : Path.t -> string t
 
-(** [lines_of path] returns a functor that when run will return the contents of
-    the file at [path] as a list of lines. *)
+(** [lines_of path] returns a description that when run will return the
+    contents of the file at [path] as a list of lines. *)
 val lines_of : Path.t -> string list t
 
 (** [strings path] is like [lines_of path] except each line is unescaped using
@@ -104,8 +106,8 @@ val read_sexp : Path.t -> Dune_lang.Ast.t t
     target of a rule. *)
 val file_exists : Path.t -> bool t
 
-(** [if_file_exists p ~then ~else] is a functor that behaves like [then_] if
-    [file_exists p] evaluates to [true], and [else_] otherwise. *)
+(** [if_file_exists p ~then ~else] is a description that behaves like [then_]
+    if [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** [file_exists_opt p t] is:
@@ -123,8 +125,8 @@ val of_result : ?targets:Path.Build.t list -> 'a t Or_exn.t -> 'a t
 val of_result_map :
   ?targets:Path.Build.t list -> 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
-(** [memoize name t] is a functor that behaves like [t] except that its result
-    is computed only once. *)
+(** [memoize name t] is a build description that behaves like [t] except that
+    its result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
 val action : ?dir:Path.t -> targets:Path.Build.t list -> Action.t -> Action.t t
@@ -157,7 +159,7 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 (** {1 Analysis} *)
 
 (** Must be called first before [lib_deps] and [targets] as it updates some of
-    the internal references in the build functor. *)
+    the internal references in the build description. *)
 val static_deps :
   _ t -> list_targets:(dir:Path.t -> Path.Set.t) -> Static_deps.t
 
@@ -167,7 +169,7 @@ val targets : _ t -> Path.Build.Set.t
 
 (** {1 Execution} *)
 
-(** Executes a build functor. Returns the result and the set of dynamic
+(** Executes a build description. Returns the result and the set of dynamic
     dependencies discovered during execution. *)
 val exec : eval_pred:Dep.eval_pred -> 'a t -> 'a * Dep.Set.t
 

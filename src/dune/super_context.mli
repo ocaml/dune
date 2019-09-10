@@ -168,9 +168,9 @@ end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
-  (** The functor takes as input the list of dependencies written by user,
+  (** This function takes as input the list of dependencies written by user,
       which is used for action expansion. These must be registered with the
-      build functor before calling [run]. *)
+      build description before calling [run]. *)
   val run :
        t
     -> loc:Loc.t

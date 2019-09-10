@@ -331,8 +331,8 @@ let init_meta sctx ~dir =
          gen_dune_package sctx pkg;
          let template =
            (* XXX this should really be lazy as it's only necessary for the
-              then clause. There's no way to express this in the build functor
-              however. *)
+              then clause. There's no way to express this in the build
+              description however. *)
            let vlib =
              Lib.Local.Set.find libs ~f:(fun lib ->
                  let info = Lib.Local.info lib in

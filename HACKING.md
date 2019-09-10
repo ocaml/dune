@@ -54,7 +54,7 @@ targets without running any command, just by looking at the source
 tree. This is used to automatically generate the `<package>.opam`
 files for all Jane Street packages.
 
-To implement this, the build rules are described using a build functor,
+To implement this, the build rules are described using a build data type,
 which is defined in [src/dune/build.mli](src/dune/build.mli). In the end it
 makes the development of the internal rules of Dune very composable and
 quite pleasant.

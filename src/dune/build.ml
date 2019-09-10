@@ -67,6 +67,10 @@ let rec all xs =
   | [] -> return []
   | x :: xs -> Map2 ((fun x xs -> x :: xs), x, all xs)
 
+let all_unit xs =
+  let+ (_ : unit list) = all xs in
+  ()
+
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
 
 let lazy_no_targets t = Lazy_no_targets t
@@ -130,10 +134,9 @@ let file_exists_opt p t =
   if_file_exists p ~then_:(map ~f:Option.some t) ~else_:(return None)
 
 let paths_existing paths =
-  ignore
-    (all
-       (List.map paths ~f:(fun file ->
-            if_file_exists file ~then_:(path file) ~else_:(return ()))))
+  all_unit
+    (List.map paths ~f:(fun file ->
+         if_file_exists file ~then_:(path file) ~else_:(return ())))
 
 let fail ?targets x =
   match targets with
@@ -394,7 +397,8 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
         x
       | Evaluating ->
         User_error.raise
-          [ Pp.textf "Dependency cycle evaluating memoized build functor %s"
+          [ Pp.textf
+              "Dependency cycle evaluating memoized build description %s"
               m.name
           ]
       | Unevaluated -> (

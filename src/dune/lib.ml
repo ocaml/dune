@@ -116,13 +116,6 @@ module Error = struct
       | [] -> []
       | _ -> [ Dep_path.Entries.pp dp ] ) )
 
-  let conflict lib1 lib2 =
-    make
-      [ Pp.text " Conflict between the following libraries:"
-      ; Pp.enumerate [ lib1; lib2 ] ~f:pp_lib_and_dep_path
-      ; Pp.text "This cannot work."
-      ]
-
   let overlap ~in_workspace ~installed =
     make
       [ Pp.text "Conflict between the following libraries:"
@@ -1293,18 +1286,13 @@ end = struct
 
   let closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants
       ~forbidden_libraries =
-    let visited = ref Map.empty in
+    let visited = ref Set.empty in
     let unimplemented = ref Vlib.Unimplemented.empty in
     let res = ref [] in
     let rec loop t ~stack =
-      match Map.find !visited t with
-      | Some (t', stack') ->
-        if t = t' then
-          Ok ()
-        else
-          let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
-          Error.conflict (t'.info, req_by stack') (t.info, req_by stack)
-      | None -> (
+      if Set.mem !visited t then
+        Ok ()
+      else (
         match Map.find forbidden_libraries t with
         | Some loc ->
           let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
@@ -1313,7 +1301,7 @@ end = struct
             ; Dep_path.Entries.pp req_by
             ]
         | None ->
-          visited := Map.set !visited t (t, stack);
+          visited := Set.add !visited t;
           let* () =
             match db with
             | None -> Ok ()

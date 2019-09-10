@@ -1409,13 +1409,14 @@ end = struct
           let digest = Digest.to_string rule_digest in
           (Path.Build.relative sandbox_dir digest, mode))
     in
-    let force =
-      !Clflags.force
-      && List.exists targets_as_list ~f:Path.Build.is_alias_stamp_file
+    let always_rerun =
+      let force_rerun =
+        !Clflags.force
+        && List.exists targets_as_list ~f:Path.Build.is_alias_stamp_file
+      and depends_on_universe = Dep.Set.has_universe deps in
+      force_rerun || depends_on_universe
     in
     let something_changed =
-      Dep.Set.has_universe deps
-      ||
       match (prev_trace, targets_digest) with
       | Some prev_trace, Some targets_digest ->
         prev_trace.rule_digest <> rule_digest
@@ -1423,11 +1424,11 @@ end = struct
       | _ -> true
     in
     let* () =
-      if force || something_changed then (
+      if always_rerun || something_changed then (
         List.iter targets_as_list ~f:(fun target ->
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
-          if force then
+          if always_rerun then
             None
           else
             Option.bind t.memory ~f:(fun memory ->

@@ -5,7 +5,7 @@ let%expect_test _ =
   with Invalid_argument message ->
     print_endline message;
     [%expect
-      {| Path "/some/absolute/path" is absolute. All paths used with Dune_action must be relative. |}]
+      {| Path "/some/absolute/path" is absolute. All paths used with dune-action-plugin must be relative. |}]
 
 let%expect_test _ =
   let action =

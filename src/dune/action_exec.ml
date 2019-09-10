@@ -144,9 +144,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Error _ when String.is_empty response ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-          "Executable '%s' that was declared to support dynamic dependency \
-           discovery (declared by using 'dynamic-run' tag) failed to respond \
-           to dune."
+          "Executable '%s' declared as using dune-action-plugin (declared \
+           with 'dynamic-run' tag) failed to respond to dune."
           prog_name
       ; Pp.nop
       ; Pp.text
@@ -157,15 +156,15 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Error Parse_error ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-          "Executable '%s' declared as a dynamic dune action responded with \
-           invalid message."
+          "Executable '%s' declared as using dune-action-plugin (declared \
+           with 'dynamic-run' tag) responded with invalid message."
           prog_name
       ]
   | Error (Version_mismatch _) ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-          "Executable '%s' is linked against a version of dune action library \
-           that is incompatible with this version of dune."
+          "Executable '%s' is linked against a version of dune-action-plugin \
+           library that is incompatible with this version of dune."
           prog_name
       ]
   | Ok Done -> Done

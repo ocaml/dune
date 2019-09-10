@@ -1,5 +1,5 @@
 This test checks that dune can gracefully handle situation when user provides
-ordinary executable instead of one supporting dynamic dependencies.
+ordinary executable instead of one linked against dune-action-plugin.
 
   $ cp ../bin/foo.exe ./
   $ dune runtest --display short
@@ -9,8 +9,8 @@ ordinary executable instead of one supporting dynamic dependencies.
   1 | (alias
   2 |  (name runtest)
   3 |  (action (dynamic-run ./foo.exe)))
-  Error: Executable 'foo.exe' that was declared to support dynamic dependency
-  discovery (declared by using 'dynamic-run' tag) failed to respond to dune.
+  Error: Executable 'foo.exe' declared as using dune-action-plugin (declared
+  with 'dynamic-run' tag) failed to respond to dune.
   
   If you don't use dynamic dependency discovery in your executable you may
   consider changing 'dynamic-run' to 'run' in your rule definition.

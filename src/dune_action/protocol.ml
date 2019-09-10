@@ -146,8 +146,8 @@ module Context = struct
 
   let version_mismatch_error =
     Error
-      "Dune version is incompatible with dune action library version that was \
-       used to build this executable."
+      "Dune version is incompatible with dune-action-plugin library version \
+       that was used to build this executable."
 
   let cannot_read_file = Error "Cannot read file containing dune message."
 

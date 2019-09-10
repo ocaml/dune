@@ -9,8 +9,8 @@ let of_string path =
   | false ->
     invalid_arg
       (Printf.sprintf
-         "Path \"%s\" is absolute. All paths used with Dune_action must be \
-          relative."
+         "Path \"%s\" is absolute. All paths used with dune-action-plugin \
+          must be relative."
          path)
   | true -> path
 

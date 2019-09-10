@@ -32,7 +32,7 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
        Module.file module_ ~ml_kind:Impl
        |> Option.value_exn |> Path.as_in_build_dir_exn
      in
-     code |> Build.write_file_dyn ml);
+     Build.write_file_dyn ml code);
   let opaque =
     Ocaml_version.supports_opaque_for_mli (Super_context.context sctx).version
   in

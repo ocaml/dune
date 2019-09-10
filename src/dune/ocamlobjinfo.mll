@@ -39,7 +39,6 @@ and impls acc = parse
 let parse s = ocamlobjinfo empty (Lexing.from_string s)
 
 let rules ~dir ~(ctx : Context.t) ~unit =
-  let open Build.O in
   let output =
     Path.Build.relative dir (Path.basename unit)
     |> Path.Build.extend_basename ~suffix:".ooi-deps"
@@ -72,6 +71,6 @@ let rules ~dir ~(ctx : Context.t) ~unit =
          ; [ Dep unit ]
          ])
       ~stdout_to:output
-  , Build.contents (Path.build output) >>^ parse
+  , Build.map ~f:parse (Build.contents (Path.build output))
   )
 }

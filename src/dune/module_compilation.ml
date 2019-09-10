@@ -101,25 +101,24 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                 let opaque = CC.opaque cctx in
                 let other_cm_files =
                   Build.dyn_paths_unit
-                    ( Dep_graph.deps_of dep_graph m
-                    >>^ fun deps ->
-                    List.concat_map deps ~f:(fun m ->
-                        let deps =
-                          [ Path.build
-                              (Obj_dir.Module.cm_file_unsafe obj_dir m
-                                 ~kind:Cmi)
-                          ]
-                        in
-                        if
-                          Module.has m ~ml_kind:Impl && cm_kind = Cmx
-                          && not opaque
-                        then
-                          let cmx =
-                            Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx
-                          in
-                          Path.build cmx :: deps
-                        else
-                          deps) )
+                    (let+ deps = Dep_graph.deps_of dep_graph m in
+                     List.concat_map deps ~f:(fun m ->
+                         let deps =
+                           [ Path.build
+                               (Obj_dir.Module.cm_file_unsafe obj_dir m
+                                  ~kind:Cmi)
+                           ]
+                         in
+                         if
+                           Module.has m ~ml_kind:Impl && cm_kind = Cmx
+                           && not opaque
+                         then
+                           let cmx =
+                             Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx
+                           in
+                           Path.build cmx :: deps
+                         else
+                           deps))
                 in
                 let other_targets, cmt_args =
                   match cm_kind with
@@ -166,14 +165,14 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                   match Module.pp_flags m with
                   | None -> flags
                   | Some pp ->
-                    Build.fanout flags pp
-                    >>^ fun (flags, pp_flags) -> flags @ pp_flags
+                    let+ flags = flags
+                    and+ pp_flags = pp in
+                    flags @ pp_flags
                 in
                 let modules = Compilation_context.modules cctx in
                 SC.add_rule sctx ~sandbox ~dir
-                  (Build.S.seqs
-                     [ Build.paths extra_deps; other_cm_files ]
-                     (Command.run ~dir:(Path.build dir) (Ok compiler)
+                  ( Build.paths extra_deps >>> other_cm_files
+                  >>> Command.run ~dir:(Path.build dir) (Ok compiler)
                         [ Command.Args.dyn flags
                         ; no_keep_locs
                         ; cmt_args
@@ -204,7 +203,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                         ; Command.Ml_kind.flag ml_kind
                         ; Dep src
                         ; Hidden_targets other_targets
-                        ]))))
+                        ] )))
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo;
@@ -232,31 +231,29 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths_unit
-      ( Dep_graph.deps_of dep_graph m
-      >>^ fun deps ->
-      List.concat_map deps ~f:(fun m ->
-          [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ])
-      )
+      (let+ deps = Dep_graph.deps_of dep_graph m in
+       List.concat_map deps ~f:(fun m ->
+           [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
   in
   let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    ( Build.S.seq cm_deps
-        (Build.S.map
-           ~f:(Action.with_stdout_to output)
-           (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
-              [ Command.Args.dyn ocaml_flags
-              ; A "-I"
-              ; Path (Path.build (Obj_dir.byte_dir obj_dir))
-              ; Cm_kind.Dict.get (CC.includes cctx) Cmo
-              ; opens modules m
-              ; As flags
-              ; A "-short-paths"
-              ; A "-i"
-              ; Command.Ml_kind.flag Impl
-              ; Dep src
-              ]))
-    |> Build.action_dyn ~targets:[ output ] )
+    (Build.action_dyn ~targets:[ output ]
+       ( cm_deps
+       >>> Build.map
+             ~f:(Action.with_stdout_to output)
+             (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
+                [ Command.Args.dyn ocaml_flags
+                ; A "-I"
+                ; Path (Path.build (Obj_dir.byte_dir obj_dir))
+                ; Cm_kind.Dict.get (CC.includes cctx) Cmo
+                ; opens modules m
+                ; As flags
+                ; A "-short-paths"
+                ; A "-i"
+                ; Command.Ml_kind.flag Impl
+                ; Dep src
+                ]) ))
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper

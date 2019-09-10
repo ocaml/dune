@@ -51,15 +51,15 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
           ~standard:(Build.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-        (Build.S.seq obj_deps
-           (Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+        ( obj_deps
+        >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
               ; A "-o"
               ; Target target
               ; As stubs_flags
               ; Dyn
-                  (Build.S.map cclibs ~f:(fun x ->
+                  (Build.map cclibs ~f:(fun x ->
                        Command.quote_args "-cclib" (map_cclibs x)))
               ; Command.Args.dyn library_flags
               ; As
@@ -70,12 +70,12 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                     [ "-linkall" ] )
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode
-                  |> Build.S.map ~f:(fun x -> Command.Args.Deps x) )
+                  |> Build.map ~f:(fun x -> Command.Args.Deps x) )
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
                   | Native -> [ Library.archive lib ~dir ~ext:ext_lib ] )
-              ])))
+              ] ))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
@@ -103,8 +103,7 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       let source_path = Option.value_exn (Module.file m ~ml_kind:Impl) in
       let loc = lib.buildable.loc in
       let sctx = Compilation_context.super_context cctx in
-      Build.return contents
-      |> Build.write_file_dyn (Path.as_in_build_dir_exn source_path)
+      Build.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
@@ -125,7 +124,7 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
        ; Path (Path.build (Library.stubs lib ~dir))
        ; Deps o_files
        ; Dyn
-           (Build.S.map cclibs_args ~f:(fun cclibs ->
+           (Build.map cclibs_args ~f:(fun cclibs ->
                 (* https://github.com/ocaml/dune/issues/119 *)
                 if ctx.ccomp_type = "msvc" then
                   let cclibs = msvc_hack_cclibs cclibs in
@@ -193,20 +192,18 @@ let build_shared lib ~sctx ~dir ~flags =
         Library.archive lib ~dir ~ext
       in
       let build =
-        Build.S.seq
-          (Build.dyn_paths_unit
-             (Build.return
-                [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ]))
-          (Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-             [ Command.Args.dyn (Ocaml_flags.get flags Native)
-             ; A "-shared"
-             ; A "-linkall"
-             ; A "-I"
-             ; Path (Path.build dir)
-             ; A "-o"
-             ; Target dst
-             ; Dep src
-             ])
+        Build.dyn_paths_unit
+          (Build.return [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ])
+        >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
+              [ Command.Args.dyn (Ocaml_flags.get flags Native)
+              ; A "-shared"
+              ; A "-linkall"
+              ; A "-I"
+              ; Path (Path.build dir)
+              ; A "-o"
+              ; Target dst
+              ; Dep src
+              ]
       in
       let build =
         if Library.has_stubs lib then

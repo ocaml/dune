@@ -310,7 +310,8 @@ type expansion_kind =
 let cc_of_c_flags t (cc : string list Build.t C.Kind.Dict.t) =
   let open Build.O in
   C.Kind.Dict.map cc ~f:(fun cc ->
-      cc >>^ fun flags -> Value.L.strings (t.c_compiler :: flags))
+      let+ flags = cc in
+      Value.L.strings (t.c_compiler :: flags))
 
 let resolve_binary t ~loc ~prog =
   match Artifacts.Bin.binary ~loc t.bin_artifacts_host prog with
@@ -349,17 +350,18 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   | Var Cxx -> add_ddep (cc ~dir).cxx
   | Macro (Artifact a, s) ->
     let data =
-      Build.delayed (fun () ->
-          match expand_artifact ~dir ~loc t a s with
-          | Some (Ok v) -> v
-          | Some (Error msg) -> raise (User_error.E msg)
-          | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
-      >>^ (fun x ->
-            ( x
-            , List.filter_map x ~f:(function
-                | Value.Path p -> Some p
-                | _ -> None) ))
-      |> Build.dyn_paths
+      Build.dyn_paths
+        (let+ values =
+           Build.delayed (fun () ->
+               match expand_artifact ~dir ~loc t a s with
+               | Some (Ok v) -> v
+               | Some (Error msg) -> raise (User_error.E msg)
+               | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
+         in
+         ( values
+         , List.filter_map values ~f:(function
+             | Value.Path p -> Some p
+             | _ -> None) ))
     in
     add_ddep data
   | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
@@ -391,8 +393,12 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
         let path_exe = Path.extend_basename path ~suffix:".exe" in
         let dep =
           Build.if_file_exists path_exe
-            ~then_:(Build.path path_exe >>^ fun _ -> path_exp path_exe)
-            ~else_:(Build.path path >>^ fun _ -> path_exp path)
+            ~then_:
+              (let+ () = Build.path path_exe in
+               path_exp path_exe)
+            ~else_:
+              (let+ () = Build.path path in
+               path_exp path)
         in
         add_ddep dep )
   | Macro (Lib_available, s) ->
@@ -402,15 +408,18 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     |> string_of_bool |> str_exp |> Option.some
   | Macro (Read, s) ->
     let path = relative dir s in
-    let data = Build.contents path >>^ fun s -> [ Value.String s ] in
+    let data =
+      let+ s = Build.contents path in
+      [ Value.String s ]
+    in
     add_ddep data
   | Macro (Read_lines, s) ->
     let path = relative dir s in
-    let data = Build.lines_of path >>^ Value.L.strings in
+    let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
     add_ddep data
   | Macro (Read_strings, s) ->
     let path = relative dir s in
-    let data = Build.strings path >>^ Value.L.strings in
+    let data = Build.map (Build.strings path) ~f:Value.L.strings in
     add_ddep data
 
 let check_multiplicity ~pform ~declaration ~use =
@@ -593,11 +602,12 @@ let expand_and_eval_set t set ~standard =
   match Path.Set.to_list files with
   | [] ->
     let set = expand set ~files_contents:Path.Map.empty in
-    standard >>^ fun standard -> eval set ~standard
+    let+ standard = standard in
+    eval set ~standard
   | paths ->
-    List.map paths ~f:Build.read_sexp
-    |> Build.all |> Build.fanout standard
-    >>^ fun (standard, sexps) ->
+    let+ standard = standard
+    and+ sexps = Build.all (List.map paths ~f:Build.read_sexp)
+    in
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     expand set ~files_contents |> eval ~standard
 

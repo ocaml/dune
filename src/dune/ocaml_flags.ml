@@ -107,25 +107,34 @@ let make ~spec ~default ~eval =
   }
 
 let get t mode =
-  t.common
-  &&& Mode.Dict.get t.specific mode
-  >>^ fun (common, specific) -> common @ specific
+  let+ common = t.common
+  and+ specific = Mode.Dict.get t.specific mode in
+  common @ specific
 
 let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
 
 let append_common t flags =
-  { t with common = (t.common >>^ fun l -> l @ flags) }
+  { t with
+    common =
+      (let+ l = t.common in
+       l @ flags)
+  }
 
 let prepend_common flags t =
-  { t with common = (t.common >>^ fun l -> flags @ l) }
+  { t with
+    common =
+      (let+ l = t.common in
+       flags @ l)
+  }
 
 let with_vendored_warnings t = append_common t vendored_warnings
 
 let common t = t.common
 
 let dump t =
-  Build.fanout3 t.common t.specific.byte t.specific.native
-  >>^ fun (common, byte, native) ->
+  let+ common = t.common
+  and+ byte = t.specific.byte
+  and+ native = t.specific.native in
   List.map
     ~f:Dune_lang.Encoder.(pair string (list string))
     [ ("flags", common); ("ocamlc_flags", byte); ("ocamlopt_flags", native) ]

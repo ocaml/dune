@@ -1,4 +1,4 @@
-(** A augmanted context *)
+(** An augmented context *)
 
 (** A context augmented with: a lib-db, ...
 
@@ -168,9 +168,9 @@ end
 
 (** Interpret action written in jbuild files *)
 module Action : sig
-  (** The arrow takes as input the list of dependencies written by user, which
-      is used for action expansion. These must be registered with the build
-      arrow before calling [run]. *)
+  (** This function takes as input the list of dependencies written by user,
+      which is used for action expansion. These must be registered with the
+      build description before calling [run]. *)
   val run :
        t
     -> loc:Loc.t

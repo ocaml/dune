@@ -129,12 +129,11 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          let project = Scope.project scope in
          Dune_project.dune_version project
        in
-       Build.ignore
-         ( if dune_version >= (2, 0) then
-           Cm_files.unsorted_objects_and_cms cm_files ~mode |> Build.paths
-         else
-           Cm_files.top_sorted_objects_and_cms cm_files ~mode
-           |> Build.dyn_paths_unit )
+       if dune_version >= (2, 0) then
+         Cm_files.unsorted_objects_and_cms cm_files ~mode |> Build.paths
+       else
+         Cm_files.top_sorted_objects_and_cms cm_files ~mode
+         |> Build.dyn_paths_unit
      in
      prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
@@ -155,7 +154,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                        ~lib_config:ctx.lib_config ~mode
                    ])
            ; Deps o_files
-           ; Dyn (Build.S.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+           ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
            ])
 
 let link_js ~name ~cm_files ~promote cctx =

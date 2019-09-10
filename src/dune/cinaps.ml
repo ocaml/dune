@@ -109,8 +109,7 @@ let gen_rules sctx t ~dir ~scope =
     (Alias.runtest ~dir)
     (let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
-    Build.path cinaps_exe
-    >>^ fun () ->
+    let+ () = Build.path cinaps_exe in
     A.chdir (Path.build dir)
       (A.progn
          ( A.run (Ok cinaps_exe) [ "-diff-cmd"; "-" ]

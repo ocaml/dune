@@ -26,28 +26,29 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   add_rule write;
   let read =
     Build.memoize "ocamlobjinfo"
-      ( read
-      >>^ fun (ooi : Ocamlobjinfo.t) ->
-      Module_name.Set.to_list ooi.intf
-      |> List.filter_map ~f:(fun dep ->
-             if Module.real_unit_name m = dep then
-               None
-             else
-               Module_name.Map.find vlib_obj_map dep) )
+      (let+ (ooi : Ocamlobjinfo.t) = read in
+       Module_name.Set.to_list ooi.intf
+       |> List.filter_map ~f:(fun dep ->
+              if Module.real_unit_name m = dep then
+                None
+              else
+                Module_name.Map.find vlib_obj_map dep))
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in
-     read >>^ transitive_deps_contents |> Build.write_file_dyn target);
+     Build.map read ~f:transitive_deps_contents |> Build.write_file_dyn target);
   read
 
 let deps_of_module cctx ~ml_kind m =
   match Module.kind m with
   | Wrapped_compat ->
     let modules = Compilation_context.modules cctx in
-    ( match Modules.lib_interface modules with
-    | Some m -> m
-    | None -> Modules.compat_for_exn modules m )
-    |> List.singleton |> Build.return
+    let interface_module =
+      match Modules.lib_interface modules with
+      | Some m -> m
+      | None -> Modules.compat_for_exn modules m
+    in
+    Build.return (List.singleton interface_module)
   | _ -> Ocamldep.deps_of ~cctx ~ml_kind m
 
 let deps_of_vlib_module cctx ~ml_kind m =

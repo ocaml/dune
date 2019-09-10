@@ -19,7 +19,7 @@ let build_c_file (buildable : Buildable.t) ~sctx ~dir ~expander ~includes
        (Ok ctx.ocamlc)
        [ A "-g"
        ; includes
-       ; Dyn (Build.S.map c_flags ~f:(fun x -> Command.quote_args "-ccopt" x))
+       ; Dyn (Build.map c_flags ~f:(fun x -> Command.quote_args "-ccopt" x))
        ; A "-o"
        ; Target dst
        ; Dep src

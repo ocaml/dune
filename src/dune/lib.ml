@@ -1292,7 +1292,7 @@ end = struct
     let rec loop t ~stack =
       if Set.mem !visited t then
         Ok ()
-      else (
+      else
         match Map.find forbidden_libraries t with
         | Some loc ->
           let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
@@ -1323,7 +1323,7 @@ end = struct
           let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
           unimplemented := unimplemented';
           let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
-          res := (t, stack) :: !res )
+          res := (t, stack) :: !res
     in
     (* Closure loop with virtual libraries/variants selection*)
     let rec handle ts ~stack =
@@ -1333,13 +1333,17 @@ end = struct
       else
         (* Virtual libraries: find implementations according to variants. *)
         let* lst, with_default_impl =
-          !unimplemented
-          |> Vlib.Unimplemented.fold ~init:([], []) ~f:(fun lib (lst, def) ->
-                 let* impl = find_implementation_for lib ~variants in
-                 match (impl, lib.default_implementation) with
-                 | None, Some _ -> Ok (lst, lib :: def)
-                 | None, None -> Ok (lst, def)
-                 | Some (impl : lib), _ -> Ok (impl :: lst, def))
+          let res =
+            !unimplemented
+            |> Vlib.Unimplemented.fold ~init:([], []) ~f:(fun lib (lst, def) ->
+                   let* impl = find_implementation_for lib ~variants in
+                   match (impl, lib.default_implementation) with
+                   | None, Some _ -> Ok (lst, lib :: def)
+                   | None, None -> Ok (lst, def)
+                   | Some (impl : lib), _ -> Ok (impl :: lst, def))
+          in
+          unimplemented := Vlib.Unimplemented.empty;
+          res
         in
         (* Manage unimplemented libraries that have a default implementation. *)
         match (lst, with_default_impl) with

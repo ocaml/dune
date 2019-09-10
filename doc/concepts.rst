@@ -595,13 +595,18 @@ automatically handled by dune.
 The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
-scripts or :ref:`configurator` for configuration related tasks.
+scripts or :ref:`configurator` for configuration related tasks. You can also
+use ``dune-action-plugin`` to express program dependencies directly in the
+source code.
 
 The following constructions are available:
 
 - ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
   locally if it is available in the current workspace, otherwise it is
   resolved using the ``PATH``
+- ``(dynamic-run <prog> <args>)`` to execute a program that was linkied
+  against ``dune-action-plugin`` library. ``<prog>`` is resolved in
+  the same way as in ``run``
 - ``(chdir <dir> <DSL>)`` to change the current directory
 - ``(setenv <var> <value> <DSL>)`` to set an environment variable
 - ``(with-<outputs>-to <file> <DSL>)`` to redirect the output to a file, where

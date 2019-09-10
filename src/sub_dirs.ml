@@ -14,6 +14,14 @@ module Status = struct
       | Data_only -> data_only
       | Vendored -> vendored
       | Normal -> normal
+
+    let to_dyn f { data_only; vendored; normal } =
+      let open Dyn.Encoder in
+      record
+        [ ("data_only", f data_only)
+        ; ("vendored", f vendored)
+        ; ("normal", f normal)
+        ]
   end
 
   let to_dyn t =
@@ -36,16 +44,22 @@ module Status = struct
   end
 end
 
-let status { Status.Map.normal; data_only ; vendored }
-      ~dir : Status.Or_ignored.t =
-  match String.Set.mem normal dir
-      , String.Set.mem data_only dir
-      , String.Set.mem vendored dir with
-  | true, false, false  -> Status Normal
+let status ({ Status.Map.normal; data_only; vendored } as t) ~dir :
+    Status.Or_ignored.t =
+  match
+    ( String.Set.mem normal dir
+    , String.Set.mem data_only dir
+    , String.Set.mem vendored dir )
+  with
+  | true, false, false -> Status Normal
   | true, false, true -> Status Vendored
   | true, true, _   -> Status Data_only
   | false, false, _ -> Ignored
-  | false, true, _  -> assert false
+  | false, true, _ ->
+    Code_error.raise "Sub_dirs.status: invalid combination"
+      [ ("t", Status.Map.to_dyn String.Set.to_dyn t)
+      ; ("dir", String.to_dyn dir)
+      ]
 
 let default =
   let standard_dirs =

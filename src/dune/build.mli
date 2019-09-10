@@ -110,8 +110,8 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** [file_exists_opt p t] is:
 
-    {[ if_file_exists p ~then_:(Build.map t ~f:Some) ~else_:(Build.return None)
-    ]} *)
+    {[ if_file_exists p ~then_:(Build.map t ~f:Option.some)
+    ~else_:(Build.return None) ]} *)
 val file_exists_opt : Path.t -> 'a t -> 'a option t
 
 (** Always fail when executed. We pass a function rather than an exception to

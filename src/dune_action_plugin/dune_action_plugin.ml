@@ -111,6 +111,8 @@ let write_file ~path ~data =
     ; targets = Stdune.String.Set.singleton path
     }
 
+(* TODO jstaron: If program tries to read empty directory, dune does not copy
+   it to `_build` so we get a "No such file or directory" error. *)
 let read_directory ~path =
   let path = Path.to_string path in
   let action () =

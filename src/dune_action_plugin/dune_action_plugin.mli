@@ -1,16 +1,18 @@
-(** Monadic interface for declaring dependencies.
+(** Applicative and monadic interface for declaring dependencies.
 
-    TODO jstaron: Add more explanation, examples... *)
+    This module is intended to be used as a interface for declaring
+    dependencies of a computation. Dependencies can be declared dynamically -
+    the list of dependencies can be depend on previous dependencies.
+
+    Note: Monadic "bind" is provided, but it can be very costly. It's called
+    [stage] to discourage people from overusing it. *)
 
 module Protocol = Protocol
 module Path = Path
 
 type 'a t
 
-(* TODO jstaron: What is the recipient of this comments? Should we assume that
-   he/she understand monad/applicative concept? (Then the comments for
-   [return], [map], [both], [bind] should be rewritten and just point to
-   monad/applicative concept). *)
+(** {1:monadic_interface Applicative/monadic interface} *)
 
 (** [return a] creates a pure computation resulting in [a]. *)
 val return : 'a -> 'a t
@@ -32,14 +34,20 @@ val both : 'a t -> 'b t -> ('a * 'b) t
     different name was chooden to discourage excessive use. *)
 val stage : 'a t -> f:('a -> 'b t) -> 'b t
 
+(** {1 Syntax sugar for applicative subset} *)
+
+(** Syntax sugar for applicative subset of the interface. Syntax sugar for
+    [stage] is not provided to prevent accidential use.*)
 module O : sig
-  (* [{ let+ a = g in h }] is equivalent to [map g ~f:(fun a -> g)]. *)
+  (** {[ let+ a = g in h ]} is equivalent to {[ map g ~f:(fun a -> g) ]}. *)
   val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
-  (* [{ let+ a1 = g1 and+ a2 = g2 in h }] is equivalent to [both g1 g2 |> map
-     ~f:(fun (a1, a2) -> g)]. *)
+  (** {[ let+ a1 = g1 and+ a2 = g2 in h ]} is equivalent to {[ both g1 g2 |>
+      map ~f:(fun (a1, a2) -> g) ]}. *)
   val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
 end
+
+(** {1:interaction Declaring dependencies and interacting with filesystem} *)
 
 (** [read_file ~path:file] returns a computation depending on a [file] to be
     run and resulting in a file content. *)
@@ -51,13 +59,12 @@ val read_file : path:Path.t -> string t
     Note: [file] must be declared as a target in dune build file. *)
 val write_file : path:Path.t -> data:string -> unit t
 
-(* TODO jstaron: If program tries to read empty directory, dune does not copy
-   it to `_build` so we get a "No such file or directory" error. *)
-
 (** [read_directory ~path:directory] returns a computation depending on a
     listing of a [directory] and all source and target files contained in that
     directory. Computation will result in a directory listing. *)
 val read_directory : path:Path.t -> string list t
+
+(** {1:running Running the computation} *)
 
 (** Runs the computation. This function never returns. *)
 val run : unit t -> 'a

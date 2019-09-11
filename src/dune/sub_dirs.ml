@@ -76,6 +76,8 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
   let vendored = Option.value vendored_dirs ~default:default.vendored in
   { Status.Map.normal; data_only; vendored }
 
+type status_map = Status.t String.Map.t
+
 let eval (t : _ Status.Map.t) ~dirs =
   let normal = Predicate_lang.filter t.normal ~standard:default.normal dirs in
   let eval ~standard pred = Predicate_lang.filter pred ~standard dirs in

@@ -38,11 +38,6 @@ end
 
 val default : Predicate_lang.t Status.Map.t
 
-val add_data_only_dirs :
-     Predicate_lang.t Status.Map.t
-  -> dirs:String.Set.t
-  -> Predicate_lang.t Status.Map.t
-
 val eval :
      Predicate_lang.t Status.Map.t
   -> dirs:string list

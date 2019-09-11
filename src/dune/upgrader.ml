@@ -9,9 +9,9 @@ let scan_included_files path =
     if not (Path.Source.Map.mem !files path) then (
       let s = Io.read_file (Path.source path) in
       let csts =
-        Dune_lang.parse_cst_string s
+        Dune_lang.Parser.parse_string s
           ~fname:(Path.Source.to_string path)
-          ~lexer:Jbuild_support.Lexer.token
+          ~lexer:Jbuild_support.Lexer.token ~mode:Cst
         |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:s)
       in
       let comments = Dune_lang.Cst.extract_comments csts in
@@ -102,7 +102,7 @@ let upgrade_stanza stanza =
     Jbuild_support.String_with_vars.upgrade_to_dune s ~loc ~quoted
       ~allow_first_dep_var:true
     |> String_with_vars.make |> String_with_vars.encode
-    |> Dune_lang.add_loc ~loc
+    |> Dune_lang.Ast.add_loc ~loc
   in
   let rec upgrade = function
     | Atom (loc, A s) -> (
@@ -129,7 +129,7 @@ let upgrade_stanza stanza =
             else
               Filename.concat (Filename.dirname s) new_base
           in
-          [ x; Dune_lang.add_loc ~loc (Dune_lang.atom_or_quoted_string s) ]
+          [ x; Dune_lang.Ast.add_loc ~loc (Dune_lang.atom_or_quoted_string s) ]
         | [ Atom _; List (_, [ Atom (_, A ":include"); Atom _ ]) ] ->
           List.map l ~f:upgrade
         | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
@@ -217,7 +217,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
     else
       let data_only_dirs = load_jbuild_ignore jbuild_ignore in
       let stanza =
-        Dune_lang.add_loc ~loc:Loc.none
+        Dune_lang.Ast.add_loc ~loc:Loc.none
           (List
              ( Dune_lang.atom "data_only_dirs"
              :: List.map
@@ -228,7 +228,7 @@ let upgrade_file todo file sexps comments ~look_for_jbuild_ignore =
       (sexps, [ jbuild_ignore ])
   in
   let sexps =
-    Dune_lang.insert_comments
+    Dune_lang.Parser.insert_comments
       (List.map ~f:Dune_lang.Cst.concrete sexps)
       comments
   in

@@ -2353,7 +2353,7 @@ module Stanzas = struct
            then
              raise (Include_loop (current_file, include_stack));
            let sexps =
-             Dune_lang.Io.load ~lexer (Path.source current_file) ~mode:Many
+             Dune_lang.Parser.load ~lexer (Path.source current_file) ~mode:Many
            in
            parse_file_includes ~stanza_parser ~lexer ~current_file
              ~include_stack sexps

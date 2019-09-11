@@ -7,7 +7,8 @@ let () = init ()
 (* Dune_file.Executables.Link_mode.decode *)
 let test s =
   Dune_lang.Decoder.parse Dune_file.Executables.Link_mode.decode Univ_map.empty
-    (Dune_lang.parse_string ~fname:"" ~mode:Dune_lang.Parser.Mode.Single s)
+    (Dune_lang.Parser.parse_string ~fname:"" ~mode:Dune_lang.Parser.Mode.Single
+       s)
   |> Dune_file.Executables.Link_mode.to_dyn |> print_dyn
 
 let%expect_test _ =

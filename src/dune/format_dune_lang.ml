@@ -9,7 +9,7 @@ let parse_lexbuf lb =
   if Dune_lexer.is_script lb then
     OCaml_syntax (Loc.of_lexbuf lb)
   else
-    Sexps (Dune_lang.Parser.parse_cst lb)
+    Sexps (Dune_lang.Parser.parse lb ~mode:Cst)
 
 let parse_file path_opt =
   match path_opt with

@@ -290,6 +290,15 @@ First we create an external library
   $ dune build --root implements-external/vlib @install
   Entering directory 'implements-external/vlib'
 
+  $ dune build --root variant-with-forbidden @all
+  Entering directory 'variant-with-forbidden'
+  File "dune", line 16, characters 22-31:
+  16 |  (forbidden_libraries forbidden)
+                             ^^^^^^^^^
+  Error: Library "forbidden" was pulled in.
+  -> required by library "impl" in _build/default
+  [1]
+
 Then we make sure that we can implement it
   $ env OCAMLPATH=implements-external/vlib/_build/install/default/lib dune build --root implements-external/impl --debug-dependency-path
   Entering directory 'implements-external/impl'

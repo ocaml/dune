@@ -1,0 +1,3 @@
+(lang dune 2.0)
+
+(using library_variants 0.2)

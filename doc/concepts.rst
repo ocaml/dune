@@ -596,7 +596,7 @@ The DSL is currently quite limited, so if you want to do something complicated
 it is recommended to write a small OCaml program and use the DSL to invoke it.
 You can use `shexp <https://github.com/janestreet/shexp>`__ to write portable
 scripts or :ref:`configurator` for configuration related tasks. You can also
-use ``dune-action-plugin`` to express program dependencies directly in the
+use :ref:`dune-action-plugin` to express program dependencies directly in the
 source code.
 
 The following constructions are available:
@@ -700,6 +700,15 @@ of your project. What you should write instead is:
      (target blah.ml)
      (deps   blah.mll)
      (action (chdir %{workspace_root} (run ocamllex -o %{target} %{deps}))))
+
+.. _dune-action-plugin:
+
+Dune action plugin
+==================
+
+``Dune-action-plugin`` provides a monadic interface to express program
+dependencies directly inside the source code. Programs using this feature
+should be declared using ``dynamic-run`` construction instead of usual ``run``.
 
 Sandboxing
 ==========

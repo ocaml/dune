@@ -181,7 +181,7 @@ end
             ; Pp.textf "Did you forgot to call [Jbuild_plugin.V*.send]?"
             ];
         Fiber.return
-          ( Dune_lang.Io.load (Path.build generated_dune_file) ~mode:Many
+          ( Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
           |> Dune_file.parse ~dir ~file ~project ))
     >>| fun dynamic -> static @ dynamic
 end

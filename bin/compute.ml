@@ -43,7 +43,7 @@ let term =
            | "help", Some fn -> Fiber.return (`Show_doc fn)
            | fn, Some inp ->
              let sexp =
-               Dune_lang.parse_string ~fname:"<command-line>"
+               Dune_lang.Parser.parse_string ~fname:"<command-line>"
                  ~mode:Dune_lang.Parser.Mode.Single inp
              in
              let+ res = Memo.call fn sexp in

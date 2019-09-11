@@ -12,7 +12,7 @@ module Sexp = struct
   let constr name args = Dune_lang.List (Dune_lang.atom name :: args)
 
   let parse s =
-    Dune_lang.parse_string ~fname:"gen_tests.ml" ~mode:Single s
+    Dune_lang.Parser.parse_string ~fname:"gen_tests.ml" ~mode:Single s
     |> Dune_lang.Ast.remove_locs
 end
 

@@ -29,7 +29,7 @@ let () =
              let s = Bytes.unsafe_to_string s in
              let parser_recognizes_as_atom =
                match
-                 Dune_lang.parse_string ~lexer ~fname:"" ~mode:Single s
+                 Dune_lang.Parser.parse_string ~lexer ~fname:"" ~mode:Single s
                with
                | exception _ -> false
                | Atom (_, A s') -> s = s'

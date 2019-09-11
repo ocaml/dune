@@ -122,7 +122,7 @@ let strings p = Map ((fun l -> List.map l ~f:Scanf.unescaped), lines_of p)
 
 let read_sexp p =
   let+ s = contents p in
-  Dune_lang.parse_string s ~lexer:Dune_lang.Lexer.token
+  Dune_lang.Parser.parse_string s ~lexer:Dune_lang.Lexer.token
     ~fname:(Path.to_string p) ~mode:Single
 
 let if_file_exists p ~then_ ~else_ =

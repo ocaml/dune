@@ -300,7 +300,7 @@ module Component = struct
       (* Form the AST *)
       List ((atom kind :: fields) @ Field.common common_options)
       (* Convert to a CST *)
-      |> Dune_lang.add_loc ~loc:Loc.none
+      |> Dune_lang.Ast.add_loc ~loc:Loc.none
       |> Cst.concrete (* Package as a list CSTs *) |> List.singleton
 
     let add_to_list_set elem set =

@@ -2,20 +2,20 @@
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar)
+  >  (target some_file)
   >  (action
-  >   (chdir foodir
+  >   (chdir some_dir
   >    (dynamic-run ./foo.exe))))
   > \
   > (alias
   >  (name runtest)
-  >  (action (cat bar)))
+  >  (action (cat some_file)))
   > EOF
 
-  $ mkdir foodir
+  $ mkdir some_dir
 
-  $ cp ../bin/foo.exe ./foodir/
+  $ cp ../bin/foo.exe ./some_dir/
 
   $ dune runtest --display short
-           foo bar
-  Hello from bar!
+           foo some_file
+  Hello from some_file!

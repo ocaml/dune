@@ -10,19 +10,19 @@ directory to be build.
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 
-  $ mkdir foodir
+  $ mkdir some_dir
 
-  $ cat > foodir/dune << EOF
+  $ cat > some_dir/dune << EOF
   > (rule
-  >  (target bar1)
+  >  (target some_file1)
   >  (action (with-stdout-to %{target} (echo ""))))
   > \
   > (rule
-  >  (target bar2)
+  >  (target some_file2)
   >  (action (with-stdout-to %{target} (echo ""))))
   > \
   > (rule
-  >  (target bar3)
+  >  (target some_file3)
   >  (action (with-stdout-to %{target} (echo ""))))
   > EOF
 
@@ -31,7 +31,7 @@ directory to be build.
   $ dune runtest --display short
            foo alias runtest
            foo alias runtest
-  bar1
-  bar2
-  bar3
   dune
+  some_file1
+  some_file2
+  some_file3

@@ -2,11 +2,11 @@
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar_source)
-  >  (action (with-stdout-to %{target} (echo "Hello from bar!\n"))))
+  >  (target some_source)
+  >  (action (with-stdout-to %{target} (echo "Hello there!\n"))))
   > \
   > (rule
-  >  (target bar_copy)
+  >  (target some_copy)
   >  (action
   >   (dynamic-run ./foo.exe)))
   > \
@@ -14,12 +14,12 @@
   >  (name runtest)
   >  (action
   >   (progn
-  >    (cat bar_source)
-  >    (cat bar_copy))))
+  >    (cat some_source)
+  >    (cat some_copy))))
   > EOF
 
   $ cp ../bin/foo.exe ./
 
   $ dune runtest
-  Hello from bar!
-  Hello from bar!
+  Hello there!
+  Hello there!

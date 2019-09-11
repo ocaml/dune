@@ -5,8 +5,8 @@ and requires one dependency can be successfully run.
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar)
-  >  (action (with-stdout-to %{target} (echo "Hello from bar!"))))
+  >  (target some_dependency)
+  >  (action (with-stdout-to %{target} (echo "Hello from some_dependency!"))))
   > \
   > (alias
   >  (name runtest)
@@ -18,4 +18,4 @@ and requires one dependency can be successfully run.
   $ dune runtest --display short
            foo alias runtest
            foo alias runtest
-  Hello from bar!
+  Hello from some_dependency!

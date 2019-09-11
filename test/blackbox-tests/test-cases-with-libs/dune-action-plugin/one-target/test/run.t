@@ -2,17 +2,17 @@
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar)
+  >  (target some_target)
   >  (action
   >   (dynamic-run ./foo.exe)))
   > \
   > (alias
   >  (name runtest)
-  >  (action (cat bar)))
+  >  (action (cat some_target)))
   > EOF
 
   $ cp ../bin/foo.exe ./
 
   $ dune runtest --display short
-           foo bar
-  Hello from bar!
+           foo some_target
+  Hello from some_target!

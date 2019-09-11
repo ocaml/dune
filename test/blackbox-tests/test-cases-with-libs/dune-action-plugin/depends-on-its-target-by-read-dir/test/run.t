@@ -2,15 +2,15 @@
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar)
+  >  (target some_file)
   >  (action
   >   (dynamic-run ./foo.exe)))
   > EOF
 
   $ cp ../bin/foo.exe ./
 
-  $ dune build bar --display short
-           foo bar
+  $ dune build some_file --display short
+           foo some_file
   Error: Dependency cycle between the following files:
-     _build/default/bar
+     _build/default/some_file
   [1]

@@ -7,22 +7,21 @@ when we 'chdir' into different directory.
   > (alias
   >  (name runtest)
   >  (action
-  >   (chdir foodir
+  >   (chdir some_dir
   >   (dynamic-run ./foo.exe))))
   > EOF
 
-  $ mkdir foodir
+  $ mkdir some_dir
 
-  $ cat > foodir/dune << EOF
+  $ cat > some_dir/dune << EOF
   > (rule
-  >  (target bar)
+  >  (target some_dependency)
   >  (action
-  >   (with-stdout-to %{target} (echo "Hello from bar!"))))
+  >   (with-stdout-to %{target} (echo "Hello from some_dependency!"))))
   > EOF
 
-  $ cp ../bin/foo.exe ./foodir/
-
+  $ cp ../bin/foo.exe ./some_dir
   $ dune runtest --display short
            foo alias runtest
            foo alias runtest
-  Hello from bar!
+  Hello from some_dependency!

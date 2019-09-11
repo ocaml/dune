@@ -6,12 +6,12 @@ they were forced to rebuild.
 
   $ cat > dune << EOF
   > (rule
-  >  (target bar)
+  >  (target some_file)
   >  (deps (universe))
   >  (action
   >   (progn
-  >   (echo "Building bar!\n")
-  >   (with-stdout-to %{target} (echo "Hello from bar!")))))
+  >   (echo "Building some_file!\n")
+  >   (with-stdout-to %{target} (echo "Hello from some_file!")))))
   > \
   > (alias
   >  (name runtest)
@@ -22,9 +22,9 @@ they were forced to rebuild.
 
   $ dune runtest --display short
            foo alias runtest
-  Building bar!
+  Building some_file!
            foo alias runtest
-  Hello from bar!
+  Hello from some_file!
 
   $ dune runtest --display short
-  Building bar!
+  Building some_file!

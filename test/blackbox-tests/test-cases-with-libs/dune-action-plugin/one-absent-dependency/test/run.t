@@ -17,5 +17,5 @@ and requires dependency that can not be build fails.
   1 | (alias
   2 |  (name runtest)
   3 |  (action (dynamic-run ./foo.exe)))
-  Error: No rule found for bar
+  Error: No rule found for some_absent_dependency
   [1]

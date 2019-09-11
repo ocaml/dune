@@ -37,7 +37,7 @@ only the dependencies up to this stage are rebuild.
 
   $ printf "foo" > foo_or_bar_source
   $ printf "Hello from foo!" > foo_source
-  $ printf "Hello from bar!" > bar_source
+  $ printf "SHOULD NOT BE PRINTED!" > bar_source
 
   $ dune runtest --display short
         client alias runtest
@@ -48,8 +48,8 @@ only the dependencies up to this stage are rebuild.
   Hello from foo!
 
   $ printf "bar" > foo_or_bar_source
-  $ printf "Hello from foo second time!" > foo_source
-  $ printf "Hello from bar second time!" > bar_source
+  $ printf "SHOULD NOT BE PRINTED!" > foo_source
+  $ printf "Hello from bar!" > bar_source
 
   $ dune runtest --display short
   Building foo_or_bar!
@@ -57,4 +57,4 @@ only the dependencies up to this stage are rebuild.
         client alias runtest
   Building bar!
         client alias runtest
-  Hello from bar second time!
+  Hello from bar!

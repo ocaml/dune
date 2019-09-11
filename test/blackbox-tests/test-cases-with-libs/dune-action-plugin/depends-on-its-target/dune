@@ -5,8 +5,7 @@
  (deps
   (package dune)
   (source_tree test/)
-  bin/foo1.exe
-  bin/foo2.exe)
+  (glob_files bin/*.exe))
  (action
   (chdir
    test

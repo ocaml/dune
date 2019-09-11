@@ -123,8 +123,8 @@
 
 - Drop support for `jbuild` and `jbuild-ignore` files (#2607, @diml)
 
-- Allow to mark directories as `data_only_dirs` without including them as `dirs`
-  (#2619, fix #2584, @rgrinberg)
+- Allow to mark directories as `data_only_dirs` and `vendored` directories
+  without including them as `dirs` (#2619, fix #2584, @rgrinberg)
 
 1.11.3 (23/08/2019)
 -------------------

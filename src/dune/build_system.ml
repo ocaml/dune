@@ -197,7 +197,7 @@ module Alias0 = struct
       let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
       let fn = stamp_file (make ~dir:path name) in
       let fn = Path.build fn in
-      Build.S.map2 ~f:( && ) acc
+      Build.map2 ~f:( && ) acc
         (Build.if_file_exists fn
            ~then_:(Build.path fn >>> Build.return false)
            ~else_:(Build.return true))
@@ -223,8 +223,7 @@ module Alias0 = struct
         }
     | Some dir ->
       let name = Alias.name t in
-      dep_rec_internal ~name ~dir ~ctx_dir
-      >>^ fun is_empty ->
+      let+ is_empty = dep_rec_internal ~name ~dir ~ctx_dir in
       if is_empty && not (is_standard name) then
         User_error.raise ~loc
           [ Pp.text "This alias is empty."
@@ -236,11 +235,12 @@ module Alias0 = struct
   let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
     let open Build.O in
     let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
-    Build.all
-      (List.map contexts ~f:(fun ctx ->
-           let ctx_dir = Path.Build.(relative root) ctx in
-           dep_rec_internal ~name ~dir ~ctx_dir))
-    >>^ fun is_empty_list ->
+    let+ is_empty_list =
+      Build.all
+        (List.map contexts ~f:(fun ctx ->
+             let ctx_dir = Path.Build.(relative root) ctx in
+             dep_rec_internal ~name ~dir ~ctx_dir))
+    in
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
       User_error.raise
@@ -746,8 +746,11 @@ end = struct
               String.Map.set aliases "default"
                 { deps = Path.Set.empty
                 ; dyn_deps =
-                    ( Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
-                    >>^ fun (_ : bool) -> Path.Set.empty )
+                    (let+ _ =
+                       Alias0.dep_rec_internal ~name:default_alias ~dir
+                         ~ctx_dir
+                     in
+                     Path.Set.empty)
                 ; actions = Appendable_list.empty
                 } )
       in
@@ -786,13 +789,14 @@ end = struct
             Path.Build.extend_basename base_path ~suffix:Alias0.suffix
           in
           Pre_rule.make ~context:None ~env:None
-            ( Build.path_set deps
-            >>> Build.dyn_path_set (dyn_deps >>^ fun x -> (x, x))
-            >>^ (fun dyn_deps ->
-                  let deps = Path.Set.union deps dyn_deps in
-                  Action.with_stdout_to path
-                    (Action.digest_files (Path.Set.to_list deps)))
-            |> Build.action_dyn ~targets:[ path ] )
+            (let action =
+               let+ () = Build.path_set deps
+               and+ dyn_deps = Build.dyn_path_set_reuse dyn_deps in
+               let deps = Path.Set.union deps dyn_deps in
+               Action.with_stdout_to path
+                 (Action.digest_files (Path.Set.to_list deps))
+             in
+             Build.action_dyn ~targets:[ path ] action)
           :: rules)
     in
     fun ~subdirs_to_keep ->
@@ -1261,7 +1265,7 @@ end = struct
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
       ~doc:
-        "Evaluate the build arrow part of a rule and return the action and \
+        "Evaluate the build description of a rule and return the action and \
          dynamic dependency of the rule."
       ~input:(module Internal_rule)
       ~visibility:Hidden Async f
@@ -1678,7 +1682,8 @@ let eval_pred = Pred.eval
 let shim_of_build_goal request =
   let request =
     let open Build.O in
-    request >>^ fun () -> Action.Progn []
+    let+ () = request in
+    Action.Progn []
   in
   Internal_rule.shim_of_build_goal ~build:request
     ~static_deps:(static_deps request)
@@ -1687,7 +1692,8 @@ let build_request ~request =
   let result = Fdecl.create () in
   let request =
     let open Build.O in
-    request >>^ fun res -> Fdecl.set result res
+    let+ res = request in
+    Fdecl.set result res
   in
   let rule = shim_of_build_goal request in
   let+ _act, _deps = evaluate_rule_and_wait_for_dependencies rule in
@@ -1784,8 +1790,7 @@ let package_deps pkg files =
       )
   in
   let open Build.O in
-  Build.paths_for_rule files
-  >>^ fun () ->
+  let+ () = Build.paths_for_rule files in
   (* We know that at this point of execution, all the relevant ivars have been
      filled *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
@@ -1799,9 +1804,10 @@ let prefix_rules prefix ~f =
     Code_error.raise "Build_system.prefix_rules' prefix contains targets"
       [ ("targets", Path.Build.Set.to_dyn targets) ];
   let res, rules = Rules.collect f in
+  let open Build.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with build = Build.O.( >>> ) prefix rule.build }));
+         { rule with build = prefix >>> rule.build }));
   res
 
 module Alias = Alias0

@@ -62,7 +62,7 @@ let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
     ; A "-o"
     ; Target target
     ; A "--no-runtime"
-    ; Dyn (Build.S.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
+    ; Dyn (Build.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
     ; spec
     ]
 
@@ -110,7 +110,7 @@ let link_rule cc ~runtime ~target cm =
   let dir = Compilation_context.dir cc in
   let requires = Compilation_context.requires_link cc in
   let get_all =
-    Build.S.map cm ~f:(fun cm ->
+    Build.map cm ~f:(fun cm ->
         Command.of_result_map requires ~f:(fun libs ->
             let all_libs = List.concat_map libs ~f:(jsoo_archives ~ctx) in
             (* Special case for the stdlib because it is not referenced in the

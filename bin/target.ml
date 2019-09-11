@@ -12,19 +12,18 @@ type resolve_input =
   | Dep of Arg.Dep.t
 
 let request (setup : Dune.Main.build_system) targets =
-  let open Build.O in
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-      acc
-      >>>
-      match target with
-      | File path -> Build.path path
-      | Alias { Alias.name; recursive; dir; contexts } ->
-        let contexts = List.map ~f:Dune.Context.name contexts in
-        ( if recursive then
-          Build_system.Alias.dep_rec_multi_contexts
-        else
-          Build_system.Alias.dep_multi_contexts )
-          ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts)
+    let open Build.O in
+      acc >>>
+        ( match target with
+        | File path -> Build.path path
+        | Alias { Alias.name; recursive; dir; contexts } ->
+          let contexts = List.map ~f:Dune.Context.name contexts in
+          ( if recursive then
+            Build_system.Alias.dep_rec_multi_contexts
+          else
+            Build_system.Alias.dep_multi_contexts )
+            ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts ))
 
 let log_targets targets =
   List.iter targets ~f:(function

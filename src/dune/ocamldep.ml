@@ -101,19 +101,22 @@ let deps_of ~cctx ~ml_kind unit =
     in
     List.filter_map dependencies ~f:dependency_file_path
   in
-  SC.add_rule sctx ~dir
-    ( Build.lines_of (Path.build ocamldep_output)
-    >>^ parse_deps_exn ~file:(Module.File.path source)
-    >>^ interpret_deps cctx ~unit
-    >>^ (fun modules ->
-          ( build_paths modules
-          , List.map modules ~f:(fun m ->
-                Module_name.to_string (Module.name m)) ))
-    |> Build.merge_files_dyn ~target:all_deps_file );
+  let action =
+    Build.merge_files_dyn ~target:all_deps_file
+      (let+ lines = Build.lines_of (Path.build ocamldep_output) in
+       lines
+       |> parse_deps_exn ~file:(Module.File.path source)
+       |> interpret_deps cctx ~unit
+       |> fun modules ->
+       ( build_paths modules
+       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
+       ))
+  in
+  SC.add_rule sctx ~dir action;
   let all_deps_file = Path.build all_deps_file in
   Build.memoize
     (Path.to_string all_deps_file)
-    (Build.lines_of all_deps_file >>^ parse_module_names ~unit)
+    (Build.map ~f:(parse_module_names ~unit) (Build.lines_of all_deps_file))
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   let all_deps_file =
@@ -121,5 +124,6 @@ let read_deps_of ~obj_dir ~modules ~ml_kind unit =
   in
   Build.memoize
     (Path.Build.to_string all_deps_file)
-    ( Build.lines_of (Path.build all_deps_file)
-    >>^ parse_module_names ~unit ~modules )
+    (Build.map
+       ~f:(parse_module_names ~unit ~modules)
+       (Build.lines_of (Path.build all_deps_file)))

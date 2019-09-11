@@ -24,6 +24,8 @@ module Status : sig
       }
 
     val find : 'a t -> status -> 'a
+
+    val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
   end
   with type status := t
 
@@ -38,17 +40,14 @@ end
 
 val default : Predicate_lang.t Status.Map.t
 
-val add_data_only_dirs :
-     Predicate_lang.t Status.Map.t
-  -> dirs:String.Set.t
-  -> Predicate_lang.t Status.Map.t
+type status_map
 
 val eval :
      Predicate_lang.t Status.Map.t
   -> dirs:string list
-  -> String.Set.t Status.Map.t
+  -> status_map
 
-val status : String.Set.t Status.Map.t -> dir:string -> Status.Or_ignored.t
+val status : status_map -> dir:string -> Status.Or_ignored.t
 
 val decode :
   (Predicate_lang.t Status.Map.t * Dune_lang.Ast.t list) Dune_lang.Decoder.t

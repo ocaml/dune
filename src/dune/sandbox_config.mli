@@ -1,7 +1,7 @@
 (** Sandboxing configuration of build rules *)
 
 (** This module manages the sandboxing configuration written by the user in
-    dune files or inside the build arrow.
+    dune files or inside the build description.
 
     The sandboxing configuration of a build rule represent what the rule
     expects in terms of sandboxing. For instance, a rule might not work

@@ -82,7 +82,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
   let link_flags =
-    link_deps |> Build.ignore
+    link_deps
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
   in

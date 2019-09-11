@@ -62,7 +62,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       sctx
       (* user rules may have extra requirements, in which case they will be
          specified as a part of rule.deps, which will be correctly taken care
-         of by the build arrow *)
+         of by the build description *)
       ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
       ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
@@ -138,7 +138,10 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       ( SC.Deps.interpret_named sctx ~expander alias_conf.deps
       |>
       match alias_conf.action with
-      | None -> fun x -> Build.O.( >>> ) (Build.ignore x) (Build.progn [])
+      | None ->
+        fun x ->
+          let open Build.O in
+          Build.ignore x >>> Build.progn []
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in

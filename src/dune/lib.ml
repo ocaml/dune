@@ -116,13 +116,6 @@ module Error = struct
       | [] -> []
       | _ -> [ Dep_path.Entries.pp dp ] ) )
 
-  let conflict lib1 lib2 =
-    make
-      [ Pp.text " Conflict between the following libraries:"
-      ; Pp.enumerate [ lib1; lib2 ] ~f:pp_lib_and_dep_path
-      ; Pp.text "This cannot work."
-      ]
-
   let overlap ~in_workspace ~installed =
     make
       [ Pp.text "Conflict between the following libraries:"
@@ -689,13 +682,12 @@ module Vlib : sig
   end
 end = struct
   module Unimplemented = struct
-    type status =
-      | Implemented
-      | Not_implemented
+    type t =
+      { implemented : Set.t
+      ; unimplemented : Set.t
+      }
 
-    type t = status Map.t
-
-    let empty = Map.empty
+    let empty = { implemented = Set.empty; unimplemented = Set.empty }
 
     let add t lib =
       let virtual_ = Lib_info.virtual_ lib.info in
@@ -704,22 +696,24 @@ end = struct
       | Some _, Some _ -> assert false (* can't be virtual and implement *)
       | None, Some _ ->
         Ok
-          (Map.update t lib ~f:(function
-            | None -> Some Not_implemented
-            | Some _ as x -> x))
+          ( if Set.mem t.implemented lib then
+            t
+          else
+            { t with unimplemented = Set.add t.unimplemented lib } )
       | Some vlib, None ->
         let+ vlib = vlib in
-        Map.set t vlib Implemented
+        { implemented = Set.add t.implemented vlib
+        ; unimplemented = Set.remove t.unimplemented vlib
+        }
 
     let fold =
       let rec loop ~f ~acc = function
         | [] -> Ok acc
-        | (_, Implemented) :: libs -> loop ~f ~acc libs
-        | (lib, Not_implemented) :: libs ->
+        | lib :: libs ->
           let* acc = f lib acc in
           loop ~f ~acc libs
       in
-      fun t ~init ~f -> loop (Map.to_list t) ~acc:init ~f
+      fun t ~init ~f -> loop (Set.to_list t.unimplemented) ~acc:init ~f
   end
 
   module Table = struct
@@ -1293,18 +1287,13 @@ end = struct
 
   let closure_with_overlap_checks db ts ~stack:orig_stack ~linking ~variants
       ~forbidden_libraries =
-    let visited = ref Map.empty in
+    let visited = ref Set.empty in
     let unimplemented = ref Vlib.Unimplemented.empty in
     let res = ref [] in
     let rec loop t ~stack =
-      match Map.find !visited t with
-      | Some (t', stack') ->
-        if t = t' then
-          Ok ()
-        else
-          let req_by = Dep_stack.to_required_by ~stop_at:orig_stack in
-          Error.conflict (t'.info, req_by stack') (t.info, req_by stack)
-      | None -> (
+      if Set.mem !visited t then
+        Ok ()
+      else
         match Map.find forbidden_libraries t with
         | Some loc ->
           let req_by = Dep_stack.to_required_by stack ~stop_at:orig_stack in
@@ -1313,7 +1302,7 @@ end = struct
             ; Dep_path.Entries.pp req_by
             ]
         | None ->
-          visited := Map.set !visited t (t, stack);
+          visited := Set.add !visited t;
           let* () =
             match db with
             | None -> Ok ()
@@ -1335,7 +1324,27 @@ end = struct
           let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
           unimplemented := unimplemented';
           let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
-          res := (t, stack) :: !res )
+          res := (t, stack) :: !res
+    in
+    let implemented_via_variants () =
+      !unimplemented
+      |> Vlib.Unimplemented.fold ~init:[] ~f:(fun lib acc ->
+             let+ impl = find_implementation_for lib ~variants in
+             match impl with
+             | None -> acc
+             | Some impl -> impl :: acc)
+    in
+    let implemented_via_defaults () =
+      let* default_impls =
+        !unimplemented
+        |> Vlib.Unimplemented.fold ~init:[] ~f:(fun lib acc ->
+               Ok
+                 ( if Option.is_some lib.default_implementation then
+                   lib :: acc
+                 else
+                   acc ))
+      in
+      resolve_default_libraries default_impls ~variants
     in
     (* Closure loop with virtual libraries/variants selection*)
     let rec handle ts ~stack =
@@ -1343,21 +1352,14 @@ end = struct
       if not linking then
         Ok ()
       else
-        (* Virtual libraries: find implementations according to variants. *)
-        let* lst, with_default_impl =
-          !unimplemented
-          |> Vlib.Unimplemented.fold ~init:([], []) ~f:(fun lib (lst, def) ->
-                 let* impl = find_implementation_for lib ~variants in
-                 match (impl, lib.default_implementation) with
-                 | None, Some _ -> Ok (lst, lib :: def)
-                 | None, None -> Ok (lst, def)
-                 | Some (impl : lib), _ -> Ok (impl :: lst, def))
-        in
-        (* Manage unimplemented libraries that have a default implementation. *)
-        match (lst, with_default_impl) with
-        | [], [] -> Ok ()
-        | [], def -> resolve_default_libraries def ~variants >>= handle ~stack
-        | lst, _ -> handle lst ~stack
+        let* impls = implemented_via_variants () in
+        match impls with
+        | _ :: _ -> handle impls ~stack
+        | [] -> (
+          let* defaults = implemented_via_defaults () in
+          match defaults with
+          | [] -> Ok ()
+          | _ :: _ -> handle defaults ~stack )
     in
     let* () = handle ts ~stack:orig_stack in
     Vlib.associate (List.rev !res) ~linking ~orig_stack

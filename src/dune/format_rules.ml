@@ -64,9 +64,10 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         let extra_deps =
           match extra_deps with
           | [] -> Build.return ()
-          | extra_deps -> Build.S.ignore (depend_on_files extra_deps)
+          | extra_deps -> depend_on_files extra_deps
         in
-        Build.S.seq extra_deps
+        let open Build.O in
+        extra_deps >>>
           (Preprocessing.action_for_pp sctx
              ~dep_kind:Lib_deps_info.Kind.Required ~loc ~expander ~action ~src
              ~target:(Some output))

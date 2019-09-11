@@ -85,7 +85,8 @@
        "virtual_modules" "implements" "variant" "default_implementation"
        "allow_overlapping_dependencies"
        ;; + for "executable" and "executables":
-       "package" "link_flags" "link_deps" "names" "public_names"
+       "package" "link_flags" "link_deps" "names" "public_names" "variants"
+       "forbidden_libraries"
        ;; + for "rule":
        "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":

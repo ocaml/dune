@@ -1,4 +1,13 @@
+  $ echo "(lang dune 2.0)" > dune-project
+
+  $ cat > dune << EOF
+  > (alias
+  >  (name runtest)
+  >  (action (dynamic-run ./foo.exe)))
+  > EOF
+
   $ cp ../bin/foo.exe ./
+
   $ dune runtest --display short
            foo alias runtest (exit 1)
   (cd _build/default && ./foo.exe)

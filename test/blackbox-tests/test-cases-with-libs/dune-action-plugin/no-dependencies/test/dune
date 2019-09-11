@@ -1,3 +1,0 @@
-(alias
- (name runtest)
- (action (dynamic-run ./foo.exe)))

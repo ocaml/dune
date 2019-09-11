@@ -1,9 +1,0 @@
-(rule
- (target bar)
- (action
-  (chdir foo_dir
-   (dynamic-run ./foo.exe))))
-
-(alias
- (name runtest)
- (action (cat bar)))

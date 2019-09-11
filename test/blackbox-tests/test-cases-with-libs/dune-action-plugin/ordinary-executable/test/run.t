@@ -1,7 +1,16 @@
 This test checks that dune can gracefully handle situation when user provides
 ordinary executable instead of one linked against dune-action-plugin.
 
+  $ echo "(lang dune 2.0)" > dune-project
+
+  $ cat > dune << EOF
+  > (alias
+  >  (name runtest)
+  >  (action (dynamic-run ./foo.exe)))
+  > EOF
+
   $ cp ../bin/foo.exe ./
+
   $ dune runtest --display short
            foo alias runtest
   Hello from foo!

@@ -17,6 +17,14 @@ module Status = struct
       | Data_only -> data_only
       | Vendored -> vendored
       | Normal -> normal
+
+    let to_dyn f { data_only; vendored; normal } =
+      let open Dyn.Encoder in
+      record
+        [ ("data_only", f data_only)
+        ; ("vendored", f vendored)
+        ; ("normal", f normal)
+        ]
   end
 
   let to_dyn t =
@@ -43,18 +51,10 @@ module Status = struct
   end
 end
 
-let status { Status.Map.normal; data_only; vendored } ~dir :
-    Status.Or_ignored.t =
-  match
-    ( String.Set.mem normal dir
-    , String.Set.mem data_only dir
-    , String.Set.mem vendored dir )
-  with
-  | true, false, false -> Status Normal
-  | true, false, true -> Status Vendored
-  | true, true, _ -> Status Data_only
-  | false, false, _ -> Ignored
-  | false, true, _ -> assert false
+let status status_by_dir ~dir : Status.Or_ignored.t =
+  match String.Map.find status_by_dir dir with
+  | None -> Ignored
+  | Some d -> Status d
 
 let default =
   let standard_dirs =
@@ -76,31 +76,34 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
   let vendored = Option.value vendored_dirs ~default:default.vendored in
   { Status.Map.normal; data_only; vendored }
 
-let add_data_only_dirs (t : _ Status.Map.t) ~dirs =
-  { t with
-    Status.Map.data_only =
-      Predicate_lang.union [ t.data_only; Predicate_lang.of_string_set dirs ]
-  }
+type status_map = Status.t String.Map.t
 
 let eval (t : _ Status.Map.t) ~dirs =
   let normal = Predicate_lang.filter t.normal ~standard:default.normal dirs in
-  let to_set ~standard pred =
-    String.Set.of_list (Predicate_lang.filter pred ~standard dirs)
+  let eval ~standard pred = Predicate_lang.filter pred ~standard dirs in
+  let data_only = eval ~standard:default.data_only t.data_only in
+  let vendored = eval ~standard:default.vendored t.vendored in
+  let statuses =
+    List.fold_left normal ~init:String.Map.empty
+      ~f:(fun acc dir -> String.Map.set acc dir Status.Normal)
   in
-  let data_only = to_set ~standard:default.data_only t.data_only in
-  let vendored = to_set ~standard:default.vendored t.vendored in
-  let both_vendored_and_data = String.Set.inter data_only vendored in
-  match String.Set.choose both_vendored_and_data with
-  | None ->
-    let normal = String.Set.of_list normal in
-    { Status.Map.normal; data_only; vendored }
-  | Some dir ->
-    User_error.raise
-      [ Pp.textf
-          "Directory %s was marked as vendored and data_only, it can't be \
-           marked as both."
-          dir
-      ]
+  let statuses =
+    List.fold_left data_only ~init:statuses ~f:(fun acc dir ->
+      String.Map.set acc dir Status.Data_only)
+  in
+  List.fold_left vendored ~init:statuses ~f:(fun acc dir ->
+    String.Map.update acc dir ~f:(function
+      | None
+      | Some Status.Vendored
+      | Some Normal -> Some Vendored
+      | Some Data_only ->
+        User_error.raise
+          [ Pp.textf
+              "Directory %s was marked as vendored and data_only, it can't be \
+               marked as both."
+              dir
+          ]
+    ))
 
 let decode =
   let open Dune_lang.Decoder in

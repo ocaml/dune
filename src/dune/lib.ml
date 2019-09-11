@@ -225,6 +225,8 @@ module Id : sig
     ; name : Lib_name.t
     }
 
+  val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
+
   val hash : t -> int
 
   val compare : t -> t -> Ordering.t
@@ -234,6 +236,8 @@ module Id : sig
   val make : path:Path.t -> name:Lib_name.t -> t
 
   module Set : Set.S with type elt = t
+
+  module Map : Map.S with type key = t
 
   module Top_closure :
     Top_closure.S with type key := t and type 'a monad := 'a Monad.Id.t
@@ -252,6 +256,9 @@ end = struct
 
   include T
 
+  let to_dep_path_lib { path; name; unique_id = _ } =
+    { Dep_path.Entry.Lib.path; name }
+
   include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
 
   let gen_unique_id =
@@ -265,8 +272,7 @@ end = struct
 
   let make ~path ~name = { unique_id = gen_unique_id (); path; name }
 
-  module O = Comparable.Make (T)
-  module Set = O.Set
+  include Comparable.Make (T)
   module Top_closure = Top_closure.Make (Set) (Monad.Id)
 end
 
@@ -582,12 +588,25 @@ end
 (* Dependency stack used while resolving the dependencies of a library that was
    just returned by the [resolve] callback *)
 module Dep_stack = struct
+  module Implements_via = struct
+    type t =
+      | Default_for of Id.t
+      | Variant of Variant.t
+
+    let to_dep_path_implements_via = function
+      | Default_for id ->
+        Dep_path.Entry.Implements_via.Default_for (Id.to_dep_path_lib id)
+      | Variant v -> Dep_path.Entry.Implements_via.Variant v
+  end
+
   type t =
     { stack : Id.t list
+    ; implements_via : Implements_via.t Id.Map.t
     ; seen : Id.Set.t
     }
 
-  let empty = { stack = []; seen = Id.Set.empty }
+  let empty =
+    { stack = []; seen = Id.Set.empty; implements_via = Id.Map.empty }
 
   let to_required_by t ~stop_at =
     let stop_at = stop_at.stack in
@@ -597,8 +616,15 @@ module Dep_stack = struct
       else
         match l with
         | [] -> assert false
-        | { Id.path; name; _ } :: l ->
-          loop (Dep_path.Entry.Library (path, name) :: acc) l
+        | ({ Id.path; name; _ } as id) :: l ->
+          let implements_via =
+            let open Option.O in
+            let+ via = Id.Map.find t.implements_via id in
+            Implements_via.to_dep_path_implements_via via
+          in
+          loop
+            (Dep_path.Entry.Library ({ path; name }, implements_via) :: acc)
+            l
     in
     loop [] t.stack
 
@@ -619,13 +645,22 @@ module Dep_stack = struct
 
   let create_and_push t name path =
     let init = Id.make ~path ~name in
-    (init, { stack = init :: t.stack; seen = Id.Set.add t.seen init })
+    ( init
+    , { stack = init :: t.stack
+      ; seen = Id.Set.add t.seen init
+      ; implements_via = Id.Map.empty
+      } )
 
-  let push t (x : Id.t) : (_, _) result =
+  let push (t : t) ~implements_via (x : Id.t) : (_, _) result =
     if Id.Set.mem t.seen x then
       dependency_cycle t x
     else
-      Ok { stack = x :: t.stack; seen = Id.Set.add t.seen x }
+      let implements_via =
+        match implements_via with
+        | None -> t.implements_via
+        | Some via -> Id.Map.add_exn t.implements_via x via
+      in
+      Ok { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via }
 end
 
 let check_private_deps lib ~loc ~allow_private_deps =
@@ -846,18 +881,26 @@ let find_implementation_for lib ~variants =
     let* candidates =
       Variant.Set.fold variants_set ~init:[] ~f:(fun variant acc ->
           match Variant.Map.find available_implementations variant with
-          | Some res -> res :: acc
+          | Some res ->
+            (let+ res = res in
+             (variant, res))
+            :: acc
           | None -> acc)
       |> Result.List.all
     in
     (* TODO once we find one conflict, there's no need to search for more *)
     match candidates with
     | [] -> Ok None
-    | [ elem ] -> Ok (Some elem)
+    | [ (variant, elem) ] ->
+      Ok (Some (Dep_stack.Implements_via.Variant variant, elem))
     | conflict ->
-      let conflict = List.map conflict ~f:(fun lib -> lib.info) in
+      let variants, conflict =
+        List.map conflict ~f:(fun (variant, lib) -> (variant, lib.info))
+        |> List.split
+      in
+      let given_variants = Variant.Set.of_list variants in
       Error.multiple_implementations_for_virtual_lib ~loc ~lib:lib.info
-        ~given_variants:variants_set ~conflict )
+        ~given_variants ~conflict )
 
 module rec Resolve : sig
   val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> status
@@ -991,7 +1034,8 @@ end = struct
     let src_dir = Lib_info.src_dir info in
     let map_error x =
       Result.map_error x ~f:(fun e ->
-          Dep_path.prepend_exn e (Library (src_dir, name)))
+          let lib = { Dep_path.Entry.Lib.path = src_dir; name } in
+          Dep_path.prepend_exn e (Library (lib, None)))
     in
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
@@ -1217,7 +1261,7 @@ end = struct
     let impl_for vlib =
       find_implementation_for vlib ~variants
       >>= function
-      | Some impl -> Ok (Some impl)
+      | Some (_, impl) -> Ok (Some impl)
       | None -> (
         match vlib.default_implementation with
         | None -> Ok None
@@ -1234,8 +1278,14 @@ end = struct
       | Some (_ :: _) -> None
       | None
        |Some [] ->
-        Option.bind lib.default_implementation ~f:(fun lib ->
-            Result.to_option (Lazy.force lib))
+        Option.bind lib.default_implementation ~f:(fun (lazy default) ->
+            match default with
+            | Error _ -> None
+            | Ok default ->
+              let implements_via =
+                Dep_stack.Implements_via.Default_for lib.unique_id
+              in
+              Some (implements_via, default))
     in
     (* Gather vlibs that are transitively implemented by another vlib's default
        implementation. *)
@@ -1290,7 +1340,7 @@ end = struct
     let visited = ref Set.empty in
     let unimplemented = ref Vlib.Unimplemented.empty in
     let res = ref [] in
-    let rec loop t ~stack =
+    let rec loop (implements_via, t) ~stack =
       if Set.mem !visited t then
         Ok ()
       else
@@ -1319,11 +1369,13 @@ end = struct
                     ~installed:(t.info, req_by)
               | _ -> assert false )
           in
-          let* new_stack = Dep_stack.push stack (to_id t) in
+          let* new_stack = Dep_stack.push stack ~implements_via (to_id t) in
           let* deps = t.requires in
           let* unimplemented' = Vlib.Unimplemented.add !unimplemented t in
           unimplemented := unimplemented';
-          let+ () = Result.List.iter deps ~f:(loop ~stack:new_stack) in
+          let+ () =
+            Result.List.iter deps ~f:(fun l -> loop (None, l) ~stack:new_stack)
+          in
           res := (t, stack) :: !res
     in
     let implemented_via_variants () =
@@ -1352,15 +1404,23 @@ end = struct
       if not linking then
         Ok ()
       else
-        let* impls = implemented_via_variants () in
+        let* impls =
+          let+ impls = implemented_via_variants () in
+          List.map impls ~f:(fun (via, impl) -> (Some via, impl))
+        in
         match impls with
         | _ :: _ -> handle impls ~stack
         | [] -> (
           let* defaults = implemented_via_defaults () in
           match defaults with
           | [] -> Ok ()
-          | _ :: _ -> handle defaults ~stack )
+          | _ :: _ ->
+            let defaults =
+              List.map defaults ~f:(fun (via, lib) -> (Some via, lib))
+            in
+            handle defaults ~stack )
     in
+    let ts = List.map ts ~f:(fun lib -> (None, lib)) in
     let* () = handle ts ~stack:orig_stack in
     Vlib.associate (List.rev !res) ~linking ~orig_stack
 end

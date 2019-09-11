@@ -1,10 +1,32 @@
 open! Stdune
 
 module Entry = struct
+  module Lib = struct
+    type t =
+      { path : Path.t
+      ; name : Lib_name.t
+      }
+
+    let pp { path; name } =
+      Pp.textf "library %S in %s" (Lib_name.to_string name)
+        (Path.to_string_maybe_quoted path)
+  end
+
+  module Implements_via = struct
+    type t =
+      | Variant of Variant.t
+      | Default_for of Lib.t
+
+    let pp = function
+      | Variant v -> Pp.textf "via variant %S" (Variant.to_string v)
+      | Default_for l ->
+        Pp.seq (Pp.text "via default implementation for ") (Lib.pp l)
+  end
+
   type t =
     | Path of Path.t
     | Alias of Path.t
-    | Library of Path.t * Lib_name.t
+    | Library of Lib.t * Implements_via.t option
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
     | Loc of Loc.t
@@ -12,10 +34,14 @@ module Entry = struct
   let pp = function
     | Path p -> Pp.text (Dpath.describe_path p)
     | Alias p -> Pp.textf "alias %s" (Dpath.describe_path p)
-    | Library (path, lib_name) ->
-      Pp.textf "library %S in %s"
-        (Lib_name.to_string lib_name)
-        (Path.to_string_maybe_quoted path)
+    | Library (lib, via) -> (
+      match via with
+      | None -> Lib.pp lib
+      | Some via ->
+        Pp.concat ~sep:Pp.space
+          [ Lib.pp lib
+          ; Implements_via.pp via
+          ])
     | Executables [ (loc, name) ] ->
       Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
     | Executables names ->

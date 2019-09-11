@@ -1635,6 +1635,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name variant-dep-stack)
+ (deps (package dune) (source_tree test-cases/variant-dep-stack))
+ (action
+  (chdir
+   test-cases/variant-dep-stack
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name variants)
  (deps (package dune) (source_tree test-cases/variants))
  (action
@@ -1971,6 +1979,7 @@
   (alias upgrader)
   (alias use-meta)
   (alias variables-for-artifacts)
+  (alias variant-dep-stack)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)
@@ -2162,6 +2171,7 @@
   (alias unreadable-src)
   (alias upgrader)
   (alias variables-for-artifacts)
+  (alias variant-dep-stack)
   (alias variants)
   (alias variants-external-declaration)
   (alias variants-external-declaration-conflict)

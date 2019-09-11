@@ -1,0 +1,17 @@
+(library
+ (name forbidden)
+ (modules ()))
+
+(library
+ (name impl)
+ (libraries forbidden)
+ (modules vlib)
+ (implements vlib)
+ (variant foo))
+
+(executable
+ (name bla)
+ (libraries vlib)
+ (modules bla)
+ (forbidden_libraries forbidden)
+ (variants foo))

@@ -3,10 +3,23 @@
 open! Stdune
 
 module Entry : sig
+  module Lib : sig
+    type t =
+      { path : Path.t
+      ; name : Lib_name.t
+      }
+  end
+
+  module Implements_via : sig
+    type t =
+      | Variant of Variant.t
+      | Default_for of Lib.t
+  end
+
   type t =
     | Path of Path.t
     | Alias of Path.t
-    | Library of Path.t * Lib_name.t
+    | Library of Lib.t * Implements_via.t option
     | Executables of (Loc.t * string) list
     | Preprocess of Lib_name.t list
     | Loc of Loc.t

@@ -296,7 +296,7 @@ First we create an external library
   16 |  (forbidden_libraries forbidden)
                              ^^^^^^^^^
   Error: Library "forbidden" was pulled in.
-  -> required by library "impl" in _build/default
+  -> required by library "impl" in _build/default via variant "foo"
   [1]
 
 Then we make sure that we can implement it

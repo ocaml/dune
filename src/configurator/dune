@@ -4,7 +4,7 @@
  (name configurator)
  (public_name dune.configurator)
  (preprocess future_syntax)
- (libraries stdune ocaml_config dune_lang dune_caml dune._result)
+ (libraries stdune ocaml_config dune_lang dune_caml dune-private-libs.result)
  (flags
   (:standard
    -safe-string

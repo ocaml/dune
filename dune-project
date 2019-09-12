@@ -53,3 +53,17 @@ versions.  It supports reporting the version from the version control
 system during development to get an precise reference of when the
 executable was built.
 "))
+
+(package
+ (name dune-private-libs)
+ (depends
+  (ocaml (>= 4.02)))
+ (synopsis "Dune private libraries. Do not use!")
+ (description "Dune private libraries. Do not use!"))
+
+(package
+ (name dune-action-plugin)
+ (depends
+  (ocaml (>= 4.02)))
+ (synopsis "Dune action plugin. Do use!")
+ (description ""))

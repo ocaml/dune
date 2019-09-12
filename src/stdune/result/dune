@@ -1,4 +1,4 @@
 (library
  (name dune_result)
- (public_name dune._result)
+ (public_name dune-private-libs.result)
  (synopsis "[internal] Compatibility layer for the result type"))

@@ -393,6 +393,14 @@ let hash t = Id.hash (to_id t)
 
 include Comparable.Make (T)
 
+let link_flags t mode =
+  let archives = Lib_info.archives t.info in
+  let foreign_archives = Lib_info.foreign_archives t.info in
+  Command.Args.S
+    [ Deps (Mode.Dict.get archives mode)
+    ; Hidden_deps (Mode.Dict.get foreign_archives mode |> Dep.Set.of_files)
+    ]
+
 module L = struct
   type nonrec t = t list
 
@@ -429,29 +437,13 @@ module L = struct
 
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let link_flags ts ~mode =
-    Command.Args.S
-      ( c_include_flags ts
-      :: List.map ts ~f:(fun t ->
-             let archives = Lib_info.archives t.info in
-             Command.Args.Deps (Mode.Dict.get archives mode)) )
-
   let compile_and_link_flags ~compile ~link ~mode =
     let dirs = Path.Set.union (include_paths compile) (c_include_paths link) in
     Command.Args.S
-      ( to_iflags dirs
-      :: List.map link ~f:(fun t ->
-             let archives = Lib_info.archives t.info in
-             Command.Args.Deps (Mode.Dict.get archives mode)) )
+      (to_iflags dirs :: List.map link ~f:(fun t -> link_flags t mode))
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
-
-  let archive_files ts ~mode =
-    List.concat_map ts ~f:(fun t ->
-        let archives = Lib_info.archives t.info in
-        let foreign_archives = Lib_info.foreign_archives t.info in
-        Mode.Dict.get archives mode @ Mode.Dict.get foreign_archives mode)
 
   let remove_dups l =
     let rec loop acc l seen =
@@ -486,13 +478,7 @@ module Lib_and_module = struct
       Command.Args.S
         ( L.c_include_flags libs
         :: List.map ts ~f:(function
-             | Lib t ->
-               let archives = Lib_info.archives t.info in
-               let archive_files = L.archive_files [ t ] ~mode in
-               Command.Args.S
-                 [ Command.Args.Deps (Mode.Dict.get archives mode)
-                 ; Command.Args.Hidden_deps (Dep.Set.of_files archive_files)
-                 ]
+             | Lib t -> link_flags t mode
              | Module (obj_dir, m) ->
                Command.Args.S
                  [ Dep

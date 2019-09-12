@@ -4,11 +4,11 @@
  (name dune)
  (libraries unix stdune fiber incremental_cycles dag memo xdg dune_re
    threads.posix opam_file_format dune_lang dune_manager dune_memory
-   ocaml_config catapult jbuild_support dune_action_plugin)
+   dune_glob_lexer ocaml_config catapult jbuild_support dune_action_plugin)
  (synopsis "Internal Dune library, do not use!")
  (preprocess future_syntax))
 
-(ocamllex glob_lexer dune_lexer ocamlobjinfo)
+(ocamllex dune_lexer ocamlobjinfo)
 
 (rule
  (targets setup.ml)

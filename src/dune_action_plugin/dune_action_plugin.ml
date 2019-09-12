@@ -1,4 +1,5 @@
 module Path = Path
+module Glob = Glob
 open Protocol
 
 module Execution_error = struct
@@ -120,6 +121,19 @@ let read_directory ~path =
   lift_stage
     { action
     ; dependencies = Dependency.Set.singleton (Directory path)
+    ; targets = Stdune.String.Set.empty
+    }
+
+let read_directory_with_glob ~path ~glob =
+  let path = Path.to_string path in
+  let action () =
+    Fs.read_directory path |> Execution_error.raise_on_fs_error
+    |> List.filter (Glob.test glob)
+  in
+  lift_stage
+    { action
+    ; dependencies =
+        Dependency.Set.singleton (Glob { path; glob = Glob.to_string glob })
     ; targets = Stdune.String.Set.empty
     }
 

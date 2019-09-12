@@ -15,7 +15,7 @@ let hash t = String.hash t.repr
 let to_dyn t = Dyn.Encoder.string t.repr
 
 let of_string repr =
-  Glob_lexer.parse_string repr
+  Dune_glob_lexer.parse_string repr
   |> Result.map ~f:(fun re -> { re = Re.compile re; repr })
 
 let of_string_exn loc repr =

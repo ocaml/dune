@@ -8,6 +8,7 @@
     [stage] to discourage people from overusing it. *)
 
 module Path = Path
+module Glob = Glob
 
 type 'a t
 
@@ -62,6 +63,11 @@ val write_file : path:Path.t -> data:string -> unit t
     listing of a [directory] and all source and target files contained in that
     directory. Computation will result in a directory listing. *)
 val read_directory : path:Path.t -> string list t
+
+(** [read_directory_with_glob ~path:directory ~glob] returns a computation
+    depending on a listing of a [directory] filtered by glob and resulting in
+    that listing. *)
+val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
 
 (** {1:running Running the computation} *)
 

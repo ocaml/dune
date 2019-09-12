@@ -19,6 +19,8 @@ module Dynamic_dep = struct
       function
       | File fn -> File (to_dune_path fn)
       | Directory dir -> Glob (to_dune_path dir, Glob.universal)
+      | Glob { path; glob } ->
+        Glob (to_dune_path path, Glob.of_string_exn Loc.none glob)
 
     let compare x y =
       match (x, y) with

@@ -204,11 +204,13 @@ type sub_system = ..
 
 module Sub_system0 = struct
   module type S = sig
+    module Info : Sub_system_info.S
+
     type t
 
     type sub_system += T of t
 
-    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
+    val public_info : (t -> Info.t Or_exn.t) option
   end
 
   type 'a s = (module S with type t = 'a)
@@ -526,7 +528,7 @@ module Sub_system = struct
       -> Info.t
       -> t
 
-    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
+    val public_info : (t -> Info.t Or_exn.t) option
   end
 
   module type S' = sig
@@ -577,10 +579,10 @@ module Sub_system = struct
         (M.for_instance, M.instantiate ~resolve ~get lib info)
     | _ -> assert false
 
-  let dump_config lib =
+  let public_info lib =
     Sub_system_name.Map.filter_map lib.sub_systems ~f:(fun (lazy inst) ->
         let (Sub_system0.Instance.T ((module M), t)) = inst in
-        Option.map ~f:(fun f -> f t) M.encode)
+        Option.map M.public_info ~f:(fun f -> M.Info.T (Result.ok_exn (f t))))
 end
 
 (* Library name resolution and transitive closure *)
@@ -1888,7 +1890,7 @@ let to_dune_lib ({ name; info; _ } as lib) ~modules ~foreign_objects ~dir =
     ~modes ~implements ~known_implementations ~default_implementation ~virtual_
     ~modules:(Some modules)
     ~main_module_name:(Result.ok_exn (main_module_name lib))
-    ~sub_systems:(Sub_system.dump_config lib)
+    ~sub_systems:(Sub_system.public_info lib)
     ~special_builtin_support
 
 module Local : sig

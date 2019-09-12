@@ -33,8 +33,10 @@ module type Backend = sig
   (** Library the backend is attached to *)
   val lib : t -> Lib.t
 
-  (** Dump the sub-system configuration. This is used to generate META files. *)
-  val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
+  (** Return the processed information. This is what is serialised in
+      [dune-package] files. Typically, it should be the original info with the
+      private library names replaced by public ones. *)
+  val public_info : t -> Info.t Or_exn.t
 end
 
 module type Registered_backend = sig

@@ -122,7 +122,7 @@ val of_library_stanza :
 
 val user_written_deps : _ t -> Dune_file.Lib_deps.t
 
-val of_dune_lib : Sub_system_info.t Dune_package.Lib.t -> external_
+val of_dune_lib : Dune_package.Lib.t -> external_
 
 val of_local : local -> external_
 

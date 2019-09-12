@@ -10,7 +10,7 @@ module Vfile = Dune_lang.Versioned_file.Make (struct
 end)
 
 module Lib = struct
-  type 'sub_system t =
+  type t =
     { loc : Loc.t
     ; name : Lib_name.t
     ; obj_dir : Path.t Obj_dir.t
@@ -23,7 +23,7 @@ module Lib = struct
     ; foreign_archives : Path.t list Mode.Dict.t
     ; jsoo_runtime : Path.t list
     ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-    ; sub_systems : 'sub_system Sub_system_name.Map.t
+    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; virtual_ : bool
     ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
     ; default_implementation : (Loc.t * Lib_name.t) option
@@ -150,8 +150,13 @@ module Lib = struct
            special_builtin_support
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
-      |> List.map ~f:(fun (name, (_ver, sexps)) ->
-             field_l (Sub_system_name.to_string name) sexp sexps) )
+      |> List.map ~f:(fun (name, info) ->
+             let (module S) = Sub_system_info.get name in
+             match info with
+             | S.T info ->
+               let _ver, sexps = S.encode info in
+               field_l (Sub_system_name.to_string name) sexp sexps
+             | _ -> assert false) )
 
   let decode ~(lang : Vfile.Lang.Instance.t) ~base =
     let open Dune_lang.Decoder in
@@ -280,8 +285,8 @@ module Lib = struct
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
 end
 
-type 'sub_system t =
-  { libs : 'sub_system Lib.t list
+type t =
+  { libs : Lib.t list
   ; name : Package.Name.t
   ; version : string option
   ; dir : Path.t
@@ -294,7 +299,7 @@ let decode ~lang ~dir =
   and+ libs = multi_field "library" (Lib.decode ~lang ~base:dir) in
   { name
   ; version
-  ; libs = List.map libs ~f:(fun (lib : _ Lib.t) -> { lib with version })
+  ; libs = List.map libs ~f:(fun (lib : Lib.t) -> { lib with version })
   ; dir
   }
 
@@ -332,9 +337,9 @@ let encode ~dune_version { libs; name; version; dir } =
   prepend_version ~dune_version (sexp @ libs)
 
 module Or_meta = struct
-  type nonrec 'sub_system t =
+  type nonrec t =
     | Use_meta
-    | Dune_package of 'sub_system t
+    | Dune_package of t
 
   let encode ~dune_version = function
     | Use_meta ->

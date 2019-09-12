@@ -64,14 +64,8 @@ module L : sig
 
   val c_include_flags : t -> _ Command.Args.t
 
-  val link_flags : t -> mode:Mode.t -> _ Command.Args.t
-
   val compile_and_link_flags :
     compile:t -> link:t -> mode:Mode.t -> _ Command.Args.t
-
-  (** All the library archive files (.a, .cmxa, _stubs.a, ...) that should be
-      linked in when linking an executable. *)
-  val archive_files : t -> mode:Mode.t -> Path.t list
 
   val jsoo_runtime_files : t -> Path.t list
 

@@ -14,7 +14,7 @@ module type S = sig
 
   val loc : t -> Loc.t
 
-  val syntax : Syntax.t
+  val syntax : Dune_lang.Syntax.t
 
   val parse : t Dune_lang.Decoder.t
 end

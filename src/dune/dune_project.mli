@@ -118,7 +118,7 @@ module Lang : sig
 
       as the first line of their [dune-project] file. [stanza_parsers] defines
       what stanzas the user can write in [dune] files. *)
-  val register : Syntax.t -> Stanza.Parser.t list -> unit
+  val register : Dune_lang.Syntax.t -> Stanza.Parser.t list -> unit
 end
 
 module Extension : sig
@@ -133,7 +133,7 @@ module Extension : sig
       might be. *)
   val register :
        ?experimental:bool
-    -> Syntax.t
+    -> Dune_lang.Syntax.t
     -> ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
     -> ('a -> Dyn.t)
     -> 'a t
@@ -142,7 +142,7 @@ module Extension : sig
       [find_extension_args]. *)
   val register_simple :
        ?experimental:bool
-    -> Syntax.t
+    -> Dune_lang.Syntax.t
     -> Stanza.Parser.t list Dune_lang.Decoder.t
     -> unit
 end
@@ -181,7 +181,7 @@ val append_to_project_file : t -> string -> created_or_already_exist
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
     language. *)
-val default_dune_language_version : Syntax.Version.t ref
+val default_dune_language_version : Dune_lang.Syntax.Version.t ref
 
 (** Set the project we are currently parsing dune files for *)
 val set :
@@ -197,6 +197,6 @@ val set_parsing_context : t -> 'a Dune_lang.Decoder.t -> 'a Dune_lang.Decoder.t
 
 val implicit_transitive_deps : t -> bool
 
-val dune_version : t -> Syntax.Version.t
+val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool

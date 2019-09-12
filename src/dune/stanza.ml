@@ -9,5 +9,5 @@ end
 let latest_version = (2, 0)
 
 let syntax =
-  Syntax.create ~name:"dune" ~desc:"the dune language"
+  Dune_lang.Syntax.create ~name:"dune" ~desc:"the dune language"
     [ (1, 12); latest_version ]

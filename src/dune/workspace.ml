@@ -7,7 +7,7 @@ let syntax = Stanza.syntax
 
 let env_field =
   field "env" ~default:Dune_env.Stanza.empty
-    (Syntax.since syntax (1, 1) >>> Dune_env.Stanza.decode)
+    (Dune_lang.Syntax.since syntax (1, 1) >>> Dune_env.Stanza.decode)
 
 module Context = struct
   module Target = struct
@@ -62,9 +62,9 @@ module Context = struct
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
       and+ profile = field "profile" Profile.decode ~default:profile
       and+ host_context =
-        field_o "host" (Syntax.since syntax (1, 10) >>> string)
+        field_o "host" (Dune_lang.Syntax.since syntax (1, 10) >>> string)
       and+ toolchain =
-        field_o "toolchain" (Syntax.since syntax (1, 5) >>> string)
+        field_o "toolchain" (Dune_lang.Syntax.since syntax (1, 5) >>> string)
       and+ paths =
         let f l =
           match
@@ -78,7 +78,7 @@ module Context = struct
               ]
         in
         field "paths" ~default:[]
-          ( Syntax.since Stanza.syntax (1, 12)
+          ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode))
           )
       and+ loc = loc in
@@ -127,7 +127,8 @@ module Context = struct
     let t ~profile ~x =
       let+ common = Common.t ~profile
       and+ name =
-        field_o "name" (Syntax.since syntax (1, 10) >>= fun () -> Name.t)
+        field_o "name"
+          (Dune_lang.Syntax.since syntax (1, 10) >>= fun () -> Name.t)
       in
       let name = Option.value ~default:common.name name in
       { common with targets = Target.add common.targets x; name }
@@ -190,7 +191,7 @@ type t =
   ; env : Dune_env.Stanza.t
   }
 
-include Versioned_file.Make (struct
+include Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 
@@ -235,7 +236,7 @@ let top_sort contexts =
   | Error _ -> assert false
 
 let t ?x ?profile:cmdline_profile () =
-  let* () = Versioned_file.no_more_lang in
+  let* () = Dune_lang.Versioned_file.no_more_lang in
   let* env = env_field in
   let* profile = field "profile" Profile.decode ~default:Profile.default in
   let profile = Option.value cmdline_profile ~default:profile in
@@ -291,7 +292,7 @@ let load ?x ?profile p =
       if Dune_lexer.eof_reached lb then
         default ?x ?profile ()
       else
-        let first_line = Dune_lexer.first_line lb in
+        let first_line = Dune_lang.Versioned_file.First_line.lex lb in
         parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
 
 let default ?x ?profile () =

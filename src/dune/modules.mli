@@ -16,7 +16,7 @@ val lib :
 val encode : t -> Dune_lang.t
 
 val decode :
-     version:Syntax.Version.t
+     version:Dune_lang.Syntax.Version.t
   -> src_dir:Path.t
   -> implements:bool
   -> t Dune_lang.Decoder.t

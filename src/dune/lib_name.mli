@@ -8,7 +8,7 @@ val of_string_exn : loc:Loc.t option -> string -> t
 
 val to_string : t -> string
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t
 
 module Local : sig
   type t

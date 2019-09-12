@@ -25,7 +25,7 @@ let decode path ~optional =
 
 let decode_binary path =
   let open Dune_lang.Decoder in
-  let+ () = Syntax.since Stanza.syntax (1, 0)
+  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
   and+ file1 = path
   and+ file2 = path in
   { optional = false; file1; file2; mode = Binary }

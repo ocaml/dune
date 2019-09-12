@@ -242,7 +242,7 @@ module Sub_system : sig
       -> Info.t
       -> t
 
-    val encode : (t -> Syntax.Version.t * Dune_lang.t list) option
+    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
   end
 
   module Register (M : S) : sig
@@ -251,7 +251,8 @@ module Sub_system : sig
   end
 
   val dump_config :
-    lib -> (Syntax.Version.t * Dune_lang.t list) Sub_system_name.Map.t
+       lib
+    -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) Sub_system_name.Map.t
 end
 with type lib := t
 
@@ -270,7 +271,8 @@ val to_dune_lib :
   -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> dir:Path.t
-  -> (Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t Or_exn.t
+  -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t
+     Or_exn.t
 
 module Local : sig
   type lib

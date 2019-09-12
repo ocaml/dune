@@ -257,7 +257,9 @@ let gen_dune_package sctx pkg =
   let dune_package_file = Package_paths.dune_package_file ctx pkg in
   let meta_template = Package_paths.meta_template ctx pkg in
   let name = pkg.name in
-  let dune_version = Syntax.greatest_supported_version Stanza.syntax in
+  let dune_version =
+    Dune_lang.Syntax.greatest_supported_version Stanza.syntax
+  in
   let action =
     Build.write_file_dyn dune_package_file
       (let+ pkg =

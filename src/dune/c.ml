@@ -15,7 +15,7 @@ module Kind = struct
 
   type split =
     | Unrecognized
-    | Not_allowed_until of Syntax.Version.t
+    | Not_allowed_until of Dune_lang.Syntax.Version.t
     | Recognized of string * t
 
   let cxx_version_introduced ~obj ~dune_version ~version_introduced =

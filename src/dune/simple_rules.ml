@@ -83,7 +83,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     def.syntax_version < since
     && not (Path.Source.is_descendant glob_in_src ~of_:src_dir)
   then
-    Syntax.Error.since loc Stanza.syntax since
+    Dune_lang.Syntax.Error.since loc Stanza.syntax since
       ~what:
         (sprintf "%s is not a sub-directory of %s. This"
            (Path.Source.to_string_maybe_quoted glob_in_src)

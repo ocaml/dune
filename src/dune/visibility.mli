@@ -4,7 +4,7 @@ type t =
   | Public
   | Private
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t
 
 val is_public : t -> bool
 

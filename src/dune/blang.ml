@@ -89,7 +89,7 @@ let decode =
             |> sum )
           ~else_:(String_with_vars.decode >>| fun v -> Expr v))
   in
-  let+ () = Syntax.since Stanza.syntax (1, 1)
+  let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
   and+ decode = decode in
   decode
 

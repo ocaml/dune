@@ -97,9 +97,10 @@ end
 
 type 'a t =
   | No_info of 'a
-  | Since of 'a * Syntax.Version.t
-  | Deleted_in of 'a * Syntax.Version.t * User_message.Style.t Pp.t list
-  | Renamed_in of Syntax.Version.t * string
+  | Since of 'a * Dune_lang.Syntax.Version.t
+  | Deleted_in of
+      'a * Dune_lang.Syntax.Version.t * User_message.Style.t Pp.t list
+  | Renamed_in of Dune_lang.Syntax.Version.t * string
 
 let values v = No_info (Var.Values v)
 
@@ -115,17 +116,17 @@ let to_dyn f =
   let open Dyn.Encoder in
   function
   | No_info x -> constr "No_info" [ f x ]
-  | Since (x, v) -> constr "Since" [ f x; Syntax.Version.to_dyn v ]
+  | Since (x, v) -> constr "Since" [ f x; Dune_lang.Syntax.Version.to_dyn v ]
   | Deleted_in (x, v, repl) ->
     constr "Deleted_in"
       [ f x
-      ; Syntax.Version.to_dyn v
+      ; Dune_lang.Syntax.Version.to_dyn v
       ; List
           (List.map repl ~f:(fun pp ->
                Dyn.String (Format.asprintf "%a" Pp.render_ignore_tags pp)))
       ]
   | Renamed_in (v, s) ->
-    constr "Renamed_in" [ Syntax.Version.to_dyn v; string s ]
+    constr "Renamed_in" [ Dune_lang.Syntax.Version.to_dyn v; string s ]
 
 module Map = struct
   type 'a map = 'a t String.Map.t
@@ -260,7 +261,7 @@ module Map = struct
 
   let rec expand map ~syntax_version ~pform =
     let open Option.O in
-    let open Syntax.Version.Infix in
+    let open Dune_lang.Syntax.Version.Infix in
     let name = String_with_vars.Var.name pform in
     let* v = String.Map.find map name in
     let describe = String_with_vars.Var.describe in
@@ -270,12 +271,12 @@ module Map = struct
       if syntax_version >= min_version then
         Some v
       else
-        Syntax.Error.since
+        Dune_lang.Syntax.Error.since
           (String_with_vars.Var.loc pform)
           Stanza.syntax min_version ~what:(describe pform)
     | Renamed_in (in_version, new_name) ->
       if syntax_version >= in_version then
-        Syntax.Error.renamed_in
+        Dune_lang.Syntax.Error.renamed_in
           (String_with_vars.Var.loc pform)
           Stanza.syntax syntax_version ~what:(describe pform)
           ~to_:(describe (String_with_vars.Var.with_name pform ~name:new_name))
@@ -286,7 +287,7 @@ module Map = struct
       if syntax_version < in_version then
         Some v
       else
-        Syntax.Error.deleted_in
+        Dune_lang.Syntax.Error.deleted_in
           (String_with_vars.Var.loc pform)
           Stanza.syntax in_version ~what:(describe pform) ~repl
 

@@ -3,8 +3,8 @@ open Import
 open Dune_lang.Decoder
 
 let syntax =
-  Syntax.create ~name:"fmt" ~desc:"integration with automatic formatters"
-    [ (1, 2) ]
+  Dune_lang.Syntax.create ~name:"fmt"
+    ~desc:"integration with automatic formatters" [ (1, 2) ]
 
 module Language = struct
   type t =
@@ -52,7 +52,7 @@ module Enabled_for = struct
 
   let field_ext =
     let+ list_opt = field
-    and+ ext_version = Syntax.get_exn syntax in
+    and+ ext_version = Dune_lang.Syntax.get_exn syntax in
     match (list_opt, ext_version) with
     | Some l, _ -> Only l
     | None, (1, 0) -> Only Language.in_ext_1_0
@@ -60,7 +60,7 @@ module Enabled_for = struct
     | None, (1, 2) -> All
     | None, _ ->
       Code_error.raise "This fmt version does not exist"
-        [ ("version", Syntax.Version.to_dyn ext_version) ]
+        [ ("version", Dune_lang.Syntax.Version.to_dyn ext_version) ]
 end
 
 type 'enabled_for generic_t =
@@ -103,8 +103,8 @@ let dune2_default = Some { loc = Loc.none; enabled_for = Enabled_for.All }
 let field_dune2 = field "formatting" dune2_dec ~default:dune2_default
 
 let field =
-  let* dune_lang_version = Syntax.get_exn Stanza.syntax in
-  match Syntax.Version.compare dune_lang_version (2, 0) with
+  let* dune_lang_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+  match Dune_lang.Syntax.Version.compare dune_lang_version (2, 0) with
   | Lt -> return None
   | Gt
    |Eq ->

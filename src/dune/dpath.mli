@@ -21,7 +21,7 @@ val describe_target : Path.Build.t -> string
 
 val describe_path : Path.t -> string
 
-include Dune_lang.Conv with type t = Path.t
+include Dune_lang.Conv.S with type t = Path.t
 
 module Local : sig
   val encode : dir:Path.t -> Path.t Dune_lang.Encoder.t
@@ -30,7 +30,7 @@ module Local : sig
 end
 
 module Build : sig
-  include Dune_lang.Conv with type t = Path.Build.t
+  include Dune_lang.Conv.S with type t = Path.Build.t
 
   val is_dev_null : t -> bool
 end

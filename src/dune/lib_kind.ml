@@ -9,7 +9,7 @@ module Ppx_args = struct
 
     let decode =
       let open Dune_lang.Decoder in
-      let* () = Syntax.since Stanza.syntax (1, 10) in
+      let* () = Dune_lang.Syntax.since Stanza.syntax (1, 10) in
       enter
         (let+ name =
            plain_string (fun ~loc str ->

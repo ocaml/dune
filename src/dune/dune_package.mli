@@ -101,8 +101,8 @@ module Or_meta : sig
     | Dune_package of 'sub_system t
 
   val encode :
-       dune_version:Syntax.Version.t
-    -> (Syntax.Version.t * Dune_lang.t list) t
+       dune_version:Dune_lang.Syntax.Version.t
+    -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) t
     -> Dune_lang.t list
 
   val load : Dpath.t -> Sub_system_info.t t

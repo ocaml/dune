@@ -20,7 +20,7 @@ module type S = sig
   val loc : t -> Loc.t
 
   (** Syntax for jbuild/dune files *)
-  val syntax : Syntax.t
+  val syntax : Dune_lang.Syntax.t
 
   (** Parse parameters written by the user in jbuid/dune files *)
   val parse : t Dune_lang.Decoder.t

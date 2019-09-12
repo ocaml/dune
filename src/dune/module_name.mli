@@ -5,7 +5,7 @@ type t
 
 val to_dyn : t -> Dyn.t
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t
 
 val add_suffix : t -> string -> t
 

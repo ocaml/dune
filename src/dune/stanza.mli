@@ -4,7 +4,7 @@ open! Stdune
 
 type t = ..
 
-val latest_version : Syntax.Version.t
+val latest_version : Dune_lang.Syntax.Version.t
 
 module Parser : sig
   (** Type of stanza parser.
@@ -16,4 +16,4 @@ end
 
 (** Syntax identifier for the Dune language. [(0, X)] correspond to the Jbuild
     language while versions from [(1, 0)] correspond to the Dune one. *)
-val syntax : Syntax.t
+val syntax : Dune_lang.Syntax.t

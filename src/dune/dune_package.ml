@@ -5,7 +5,7 @@ let () =
   let module M = Sub_system_info in
   ()
 
-module Vfile = Versioned_file.Make (struct
+module Vfile = Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 
@@ -201,7 +201,7 @@ module Lib = struct
               ~src_dir ~version:lang.version)
        and+ special_builtin_support =
          field_o "special_builtin_support"
-           ( Syntax.since Stanza.syntax (1, 10)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Dune_file.Library.Special_builtin_support.decode )
        in
        let known_implementations =
@@ -305,8 +305,8 @@ let prepend_version ~dune_version sexps =
   let list s = Dune_lang.List s in
   [ list
       [ Dune_lang.atom "lang"
-      ; string (Syntax.name Stanza.syntax)
-      ; Syntax.Version.encode dune_version
+      ; string (Dune_lang.Syntax.name Stanza.syntax)
+      ; Dune_lang.Syntax.Version.encode dune_version
       ]
   ]
   @ sexps

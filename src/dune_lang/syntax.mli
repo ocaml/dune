@@ -9,7 +9,7 @@ module Version : sig
       output produced by a printer at version [(X, Z)] for any [Z <= Y]. *)
   type t = int * int
 
-  include Dune_lang.Conv with type t := t
+  include Conv.S with type t := t
 
   val pp : t Fmt.t
 
@@ -75,30 +75,25 @@ val greatest_supported_version : t -> Version.t
 
 (** Indicate the field/constructor being parsed was deleted in the given
     version *)
-val deleted_in : t -> Version.t -> (unit, _) Dune_lang.Decoder.parser
+val deleted_in : t -> Version.t -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was deprecated in the given
     version *)
-val deprecated_in : t -> Version.t -> (unit, _) Dune_lang.Decoder.parser
+val deprecated_in : t -> Version.t -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was renamed in the given
     version *)
-val renamed_in :
-  t -> Version.t -> to_:string -> (unit, _) Dune_lang.Decoder.parser
+val renamed_in : t -> Version.t -> to_:string -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was introduced in the given
     version. When [fatal] is false, simply emit a warning instead of error.
     [fatal] defaults to true. *)
-val since : ?fatal:bool -> t -> Version.t -> (unit, _) Dune_lang.Decoder.parser
+val since : ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
 
 (** {2 Low-level functions} *)
 
-val set :
-     t
-  -> Version.t
-  -> ('a, 'k) Dune_lang.Decoder.parser
-  -> ('a, 'k) Dune_lang.Decoder.parser
+val set : t -> Version.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
 
-val get_exn : t -> (Version.t, 'k) Dune_lang.Decoder.parser
+val get_exn : t -> (Version.t, 'k) Decoder.parser
 
 val key : t -> Version.t Univ_map.Key.t

@@ -68,6 +68,9 @@ val for_shell : t -> For_shell.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
+(** Checks, if action contains a [Dynamic_run]. *)
+val is_dynamic : t -> bool
+
 (** Ast where programs are not yet looked up in the PATH *)
 module Unresolved : sig
   type action = t

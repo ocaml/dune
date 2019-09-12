@@ -10,7 +10,7 @@ module Register_backend (M : Backend) = struct
 
     type Lib.Sub_system.t += T of t
 
-    let encode = Some encode
+    let public_info = Some public_info
   end)
 
   let top_closure l ~deps =
@@ -165,7 +165,7 @@ module Register_end_point (M : End_point) = struct
 
     let instantiate ~resolve:_ ~get:_ _id info = gen info
 
-    let encode = None
+    let public_info = None
   end)
 end
 

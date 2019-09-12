@@ -1,62 +1,62 @@
 open! Stdune
 
 module Lib : sig
-  type 'sub_system t
+  type t
 
-  val dir : _ t -> Path.t
+  val dir : t -> Path.t
 
-  val orig_src_dir : _ t -> Path.t option
+  val orig_src_dir : t -> Path.t option
 
-  val obj_dir : _ t -> Path.t Obj_dir.t
+  val obj_dir : t -> Path.t Obj_dir.t
 
-  val requires : _ t -> (Loc.t * Lib_name.t) list
+  val requires : t -> (Loc.t * Lib_name.t) list
 
-  val name : _ t -> Lib_name.t
+  val name : t -> Lib_name.t
 
-  val version : _ t -> string option
+  val version : t -> string option
 
-  val kind : _ t -> Lib_kind.t
+  val kind : t -> Lib_kind.t
 
-  val loc : _ t -> Loc.t
+  val loc : t -> Loc.t
 
-  val sub_systems : 'a t -> 'a Sub_system_name.Map.t
+  val sub_systems : t -> Sub_system_info.t Sub_system_name.Map.t
 
-  val synopsis : _ t -> string option
+  val synopsis : t -> string option
 
-  val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
+  val ppx_runtime_deps : t -> (Loc.t * Lib_name.t) list
 
-  val foreign_objects : _ t -> Path.t list
+  val foreign_objects : t -> Path.t list
 
-  val foreign_archives : _ t -> Path.t list Mode.Dict.t
+  val foreign_archives : t -> Path.t list Mode.Dict.t
 
-  val archives : _ t -> Path.t list Mode.Dict.t
+  val archives : t -> Path.t list Mode.Dict.t
 
-  val virtual_ : _ t -> bool
+  val virtual_ : t -> bool
 
-  val modules : _ t -> Modules.t option
+  val modules : t -> Modules.t option
 
-  val main_module_name : _ t -> Module_name.t option
+  val main_module_name : t -> Module_name.t option
 
-  val plugins : _ t -> Path.t list Mode.Dict.t
+  val plugins : t -> Path.t list Mode.Dict.t
 
-  val jsoo_runtime : _ t -> Path.t list
+  val jsoo_runtime : t -> Path.t list
 
-  val implements : _ t -> (Loc.t * Lib_name.t) option
+  val implements : t -> (Loc.t * Lib_name.t) option
 
-  val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
+  val known_implementations : t -> (Loc.t * Lib_name.t) Variant.Map.t
 
-  val default_implementation : _ t -> (Loc.t * Lib_name.t) option
+  val default_implementation : t -> (Loc.t * Lib_name.t) option
 
   val special_builtin_support :
-    _ t -> Dune_file.Library.Special_builtin_support.t option
+    t -> Dune_file.Library.Special_builtin_support.t option
 
   val dir_of_name : Lib_name.t -> Path.Local.t
 
-  val compare_name : _ t -> _ t -> Ordering.t
+  val compare_name : t -> t -> Ordering.t
 
-  val modes : _ t -> Mode.Dict.Set.t
+  val modes : t -> Mode.Dict.Set.t
 
-  val wrapped : _ t -> Wrapped.t option
+  val wrapped : t -> Wrapped.t option
 
   val make :
        loc:Loc.t
@@ -69,7 +69,7 @@ module Lib : sig
     -> foreign_archives:Path.t list Mode.Dict.t
     -> jsoo_runtime:Path.t list
     -> main_module_name:Module_name.t option
-    -> sub_systems:'a Sub_system_name.Map.t
+    -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
     -> requires:(Loc.t * Lib_name.t) list
     -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
     -> implements:(Loc.t * Lib_name.t) option
@@ -83,27 +83,24 @@ module Lib : sig
     -> obj_dir:Path.t Obj_dir.t
     -> special_builtin_support:
          Dune_file.Library.Special_builtin_support.t option
-    -> 'a t
+    -> t
 
-  val set_subsystems : 'a t -> 'b Sub_system_name.Map.t -> 'b t
+  val set_subsystems : t -> Sub_system_info.t Sub_system_name.Map.t -> t
 end
 
-type 'sub_system t =
-  { libs : 'sub_system Lib.t list
+type t =
+  { libs : Lib.t list
   ; name : Package.Name.t
   ; version : string option
   ; dir : Path.t
   }
 
 module Or_meta : sig
-  type nonrec 'sub_system t =
+  type nonrec t =
     | Use_meta
-    | Dune_package of 'sub_system t
+    | Dune_package of t
 
-  val encode :
-       dune_version:Dune_lang.Syntax.Version.t
-    -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) t
-    -> Dune_lang.t list
+  val encode : dune_version:Dune_lang.Syntax.Version.t -> t -> Dune_lang.t list
 
-  val load : Dpath.t -> Sub_system_info.t t
+  val load : Dpath.t -> t
 end

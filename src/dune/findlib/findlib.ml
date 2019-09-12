@@ -139,7 +139,7 @@ end
 module Unavailable_reason = struct
   type t =
     | Not_found
-    | Hidden of Sub_system_info.t Dune_package.Lib.t
+    | Hidden of Dune_package.Lib.t
 
   let to_string = function
     | Not_found -> "not found"
@@ -159,9 +159,7 @@ type t =
   ; paths : Path.t list
   ; builtins : Meta.Simplified.t Lib_name.Map.t
   ; packages :
-      ( Lib_name.t
-      , (Sub_system_info.t Dune_package.Lib.t, Unavailable_reason.t) result )
-      Table.t
+      (Lib_name.t, (Dune_package.Lib.t, Unavailable_reason.t) result) Table.t
   }
 
 module Package = struct
@@ -387,7 +385,7 @@ end
 
 module Discovered_package = struct
   type t =
-    | Dune of Sub_system_info.t Dune_package.t
+    | Dune of Dune_package.t
     | Findlib of Meta_source.t
 end
 

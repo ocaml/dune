@@ -71,7 +71,7 @@ module Unexpanded : sig
 
   type t
 
-  include Dune_lang.Conv with type t := t
+  include Dune_lang.Conv.S with type t := t
 
   val encode : t -> Dune_lang.t list
 

@@ -87,7 +87,7 @@ let opam_fields project (package : Package.t) =
       package
     else
       let dune_dep =
-        let dune_version = Syntax.Version.to_string dune_version in
+        let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
         let constraint_ : Package.Dependency.Constraint.t =
           Uop (Gte, QVar dune_version)
         in

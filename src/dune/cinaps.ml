@@ -14,7 +14,7 @@ type t =
 type Stanza.t += T of t
 
 let syntax =
-  Syntax.create ~name:"cinaps" ~desc:"the cinaps extension" [ (1, 0) ]
+  Dune_lang.Syntax.create ~name:"cinaps" ~desc:"the cinaps extension" [ (1, 0) ]
 
 let decode =
   let open Dune_lang.Decoder in

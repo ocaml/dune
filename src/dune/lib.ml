@@ -208,7 +208,7 @@ module Sub_system0 = struct
 
     type sub_system += T of t
 
-    val encode : (t -> Syntax.Version.t * Dune_lang.t list) option
+    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
   end
 
   type 'a s = (module S with type t = 'a)
@@ -526,7 +526,7 @@ module Sub_system = struct
       -> Info.t
       -> t
 
-    val encode : (t -> Syntax.Version.t * Dune_lang.t list) option
+    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
   end
 
   module type S' = sig

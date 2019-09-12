@@ -13,15 +13,16 @@ module Kind : sig
 
   type split =
     | Unrecognized
-    | Not_allowed_until of Syntax.Version.t
+    | Not_allowed_until of Dune_lang.Syntax.Version.t
     | Recognized of string * t
 
-  val split_extension : string -> dune_version:Syntax.Version.t -> split
+  val split_extension :
+    string -> dune_version:Dune_lang.Syntax.Version.t -> split
 
   (** [possible_fns t s] returns the possible filenames given the
       extension-less basenames [s] *)
   val possible_fns :
-    t -> string -> dune_version:Syntax.Version.t -> string list
+    t -> string -> dune_version:Dune_lang.Syntax.Version.t -> string list
 
   module Dict : sig
     type kind

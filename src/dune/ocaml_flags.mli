@@ -21,7 +21,7 @@ val make :
         -> string list Build.t)
   -> t
 
-val default : dune_version:Syntax.Version.t -> profile:Profile.t -> t
+val default : dune_version:Dune_lang.Syntax.Version.t -> profile:Profile.t -> t
 
 val empty : t
 

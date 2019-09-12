@@ -279,7 +279,7 @@ let upgrade_opam_file todo fn =
       let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
       add_subst (start + 1) stop
         (sprintf "build & >= %S"
-           (Syntax.Version.to_string
+           (Dune_lang.Syntax.Version.to_string
               !Dune_project.default_dune_language_version))
     | List
         (_, (String (jpos, "jbuilder") :: String (arg_pos, "subst") :: _ as l))

@@ -202,7 +202,7 @@ type t =
   ; parsing_context : Univ_map.t
   ; implicit_transitive_deps : bool
   ; wrapped_executables : bool
-  ; dune_version : Syntax.Version.t
+  ; dune_version : Dune_lang.Syntax.Version.t
   ; allow_approx_merlin : bool
   ; generate_opam_files : bool
   ; file_key : File_key.t
@@ -297,7 +297,7 @@ let to_dyn
           (Package.Name.Map.to_list packages) )
     ; ("implicit_transitive_deps", bool implicit_transitive_deps)
     ; ("wrapped_executables", bool wrapped_executables)
-    ; ("dune_version", Syntax.Version.to_dyn dune_version)
+    ; ("dune_version", Dune_lang.Syntax.Version.to_dyn dune_version)
     ; ("allow_approx_merlin", bool allow_approx_merlin)
     ; ("generate_opam_files", bool generate_opam_files)
     ; ("file_key", string file_key)
@@ -308,12 +308,12 @@ let to_dyn
 
 let find_extension_args t key = Univ_map.find t.extension_args key
 
-include Versioned_file.Make (struct
+include Dune_lang.Versioned_file.Make (struct
   type t = Stanza.Parser.t list
 end)
 
 let default_dune_language_version =
-  ref (Syntax.greatest_supported_version Stanza.syntax)
+  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
 
 let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
@@ -335,7 +335,7 @@ module Project_file_edit = struct
 
   let lang_stanza () =
     let ver = (Lang.get_exn "dune").version in
-    sprintf "(lang dune %s)" (Syntax.Version.to_string ver)
+    sprintf "(lang dune %s)" (Dune_lang.Syntax.Version.to_string ver)
 
   let ensure_exists t =
     if t.exists then
@@ -343,7 +343,7 @@ module Project_file_edit = struct
     else
       let ver = !default_dune_language_version in
       let lines =
-        [ sprintf "(lang dune %s)" (Syntax.Version.to_string ver) ]
+        [ sprintf "(lang dune %s)" (Dune_lang.Syntax.Version.to_string ver) ]
       in
       let lines =
         match t.project_name with
@@ -393,7 +393,7 @@ module Extension = struct
   type 'a t = 'a Univ_map.Key.t
 
   type 'a poly_info =
-    { syntax : Syntax.t
+    { syntax : Dune_lang.Syntax.t
     ; stanzas : ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
     ; experimental : bool
     ; key : 'a t
@@ -407,7 +407,7 @@ module Extension = struct
 
   type instance =
     { extension : info
-    ; version : Syntax.Version.t
+    ; version : Dune_lang.Syntax.Version.t
     ; loc : Loc.t
     ; parse_args :
            (Univ_map.t * Stanza.Parser.t list) Dune_lang.Decoder.t
@@ -417,7 +417,7 @@ module Extension = struct
   let extensions = Table.create (module String) 32
 
   let register ?(experimental = false) syntax stanzas arg_to_dyn =
-    let name = Syntax.name syntax in
+    let name = Dune_lang.Syntax.name syntax in
     if Table.mem extensions name then
       Code_error.raise "Dune_project.Extension.register: already registered"
         [ ("name", Dyn.Encoder.string name) ];
@@ -444,7 +444,7 @@ module Extension = struct
         ~hints:
           (User_message.did_you_mean name ~candidates:(Table.keys extensions))
     | Some t ->
-      Syntax.check_supported (syntax t) (ver_loc, ver);
+      Dune_lang.Syntax.check_supported (syntax t) (ver_loc, ver);
       { extension = t; version = ver; loc; parse_args }
 
   (* Extensions that are not selected in the dune-project file are
@@ -457,7 +457,7 @@ module Extension = struct
             if is_experimental extension then
               (0, 0)
             else
-              Syntax.greatest_supported_version (syntax extension)
+              Dune_lang.Syntax.greatest_supported_version (syntax extension)
           in
           let parse_args p =
             let open Dune_lang.Decoder in
@@ -478,7 +478,8 @@ module Extension = struct
                                   [ Dune_lang.atom "using"
                                   ; Dune_lang.atom name
                                   ; Dune_lang.atom
-                                      (Syntax.Version.to_string version)
+                                      (Dune_lang.Syntax.Version.to_string
+                                         version)
                                   ]))
                           : created_or_already_exist )
                     );
@@ -496,7 +497,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
   match
     String.Map.of_list
       (List.map explicit_extensions ~f:(fun (e : Extension.instance) ->
-           (Syntax.name (Extension.syntax e.extension), e.loc)))
+           (Dune_lang.Syntax.name (Extension.syntax e.extension), e.loc)))
   with
   | Error (name, _, loc) ->
     User_error.raise ~loc
@@ -510,12 +511,14 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t)
       List.map ~f:(fun e -> (e, true)) explicit_extensions
       @ List.map ~f:(fun e -> (e, false)) implicit_extensions
     in
-    let acc = Univ_map.singleton (Syntax.key lang.syntax) lang.version in
+    let acc =
+      Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) lang.version
+    in
     let parsing_context =
       List.fold_left extensions ~init:acc
         ~f:(fun acc ((ext : Extension.instance), _) ->
           Univ_map.add acc
-            (Syntax.key (Extension.syntax ext.extension))
+            (Dune_lang.Syntax.key (Extension.syntax ext.extension))
             ext.version)
     in
     let extension_args, extension_stanzas =
@@ -646,49 +649,55 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ version = field_o "version" string
      and+ source =
        field_o "source"
-         (Syntax.since Stanza.syntax (1, 7) >>> Source_kind.decode)
+         (Dune_lang.Syntax.since Stanza.syntax (1, 7) >>> Source_kind.decode)
      and+ packages = multi_field "package" (Package.decode ~dir)
      and+ authors =
        field ~default:[] "authors"
-         (Syntax.since Stanza.syntax (1, 9) >>> repeat string)
+         (Dune_lang.Syntax.since Stanza.syntax (1, 9) >>> repeat string)
      and+ license =
-       field_o "license" (Syntax.since Stanza.syntax (1, 9) >>> string)
+       field_o "license"
+         (Dune_lang.Syntax.since Stanza.syntax (1, 9) >>> string)
      and+ homepage =
-       field_o "homepage" (Syntax.since Stanza.syntax (1, 10) >>> string)
+       field_o "homepage"
+         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ documentation =
-       field_o "documentation" (Syntax.since Stanza.syntax (1, 10) >>> string)
+       field_o "documentation"
+         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ bug_reports =
-       field_o "bug_reports" (Syntax.since Stanza.syntax (1, 10) >>> string)
+       field_o "bug_reports"
+         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
      and+ maintainers =
        field "maintainers" ~default:[]
-         (Syntax.since Stanza.syntax (1, 10) >>> repeat string)
+         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> repeat string)
      and+ explicit_extensions =
        multi_field "using"
          (let+ loc = loc
           and+ name = located string
-          and+ ver = located Syntax.Version.decode
+          and+ ver = located Dune_lang.Syntax.Version.decode
           and+ parse_args = capture in
           (* We don't parse the arguments quite yet as we want to set the
              version of extensions before parsing them. *)
           Extension.instantiate ~loc ~parse_args name ver)
      and+ implicit_transitive_deps =
        field_o_b "implicit_transitive_deps"
-         ~check:(Syntax.since Stanza.syntax (1, 7))
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 7))
      and+ wrapped_executables =
        field_o_b "wrapped_executables"
-         ~check:(Syntax.since Stanza.syntax (1, 11))
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
      and+ allow_approx_merlin =
        field_o_b "allow_approximate_merlin"
-         ~check:(Syntax.since Stanza.syntax (1, 9))
-     and+ () = Versioned_file.no_more_lang
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 9))
+     and+ () = Dune_lang.Versioned_file.no_more_lang
      and+ generate_opam_files =
        field_o_b "generate_opam_files"
-         ~check:(Syntax.since Stanza.syntax (1, 10))
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
      and+ dialects =
        multi_field "dialect"
-         (Syntax.since Stanza.syntax (1, 11) >>> located Dialect.decode)
+         ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
+         >>> located Dialect.decode )
      and+ explicit_js_mode =
-       field_o_b "explicit_js_mode" ~check:(Syntax.since Stanza.syntax (1, 11))
+       field_o_b "explicit_js_mode"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
      and+ format_config = Format_config.field in
      let homepage =
        match (homepage, source) with

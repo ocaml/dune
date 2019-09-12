@@ -14,4 +14,4 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t

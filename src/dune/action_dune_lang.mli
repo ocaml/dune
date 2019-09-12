@@ -9,7 +9,7 @@ include
      and type path := String_with_vars.t
      and type target := String_with_vars.t
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t
 
 include
   Action_intf.Helpers

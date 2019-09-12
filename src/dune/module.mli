@@ -23,7 +23,7 @@ module Kind : sig
     | Impl_vmodule
     | Wrapped_compat
 
-  include Dune_lang.Conv with type t := t
+  include Dune_lang.Conv.S with type t := t
 end
 
 module Source : sig

@@ -23,16 +23,16 @@ module Inputs = struct
 end
 
 module type Target_intf = sig
-  include Dune_lang.Conv
+  include Dune_lang.Conv.S
 
   val is_dev_null : t -> bool
 end
 
 module Make
-    (Program : Dune_lang.Conv)
-    (Path : Dune_lang.Conv)
+    (Program : Dune_lang.Conv.S)
+    (Path : Dune_lang.Conv.S)
     (Target : Target_intf)
-    (String : Dune_lang.Conv)
+    (String : Dune_lang.Conv.S)
     (Ast : Action_intf.Ast
              with type program := Program.t
              with type path := Path.t
@@ -79,7 +79,7 @@ struct
               and+ t = t in
               translate_to_ignore fn Outputs t )
           ; ( "with-stdin-from"
-            , Syntax.since Stanza.syntax (2, 0)
+            , Dune_lang.Syntax.since Stanza.syntax (2, 0)
               >>> let+ fn = path
                   and+ t = t in
                   Redirect_in (Stdin, fn, t) )

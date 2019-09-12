@@ -165,7 +165,7 @@ let decode =
   and+ sandboxing_preference =
     field "sandboxing_preference" Sandboxing_preference.decode
       ~default:default.sandboxing_preference
-  and+ () = Versioned_file.no_more_lang in
+  and+ () = Dune_lang.Versioned_file.no_more_lang in
   { display; concurrency; terminal_persistence; sandboxing_preference }
 
 let decode = fields decode
@@ -175,7 +175,7 @@ let user_config_file =
     (Path.of_filename_relative_to_initial_cwd Xdg.config_dir)
     "dune/config"
 
-include Versioned_file.Make (struct
+include Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 

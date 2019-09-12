@@ -14,7 +14,7 @@ val for_exes : t -> first_exe:string -> C.Sources.t
     double map. The first level will is keyed by C vs. C++ sources. The second
     level is keyed by the object name of the source. *)
 val load_sources :
-     dune_version:Syntax.Version.t
+     dune_version:Dune_lang.Syntax.Version.t
   -> dir:Path.Build.t
   -> files:String.Set.t
   -> C.Source.t String.Map.t C.Kind.Dict.t

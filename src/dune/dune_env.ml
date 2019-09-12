@@ -7,7 +7,8 @@ module Stanza = struct
 
   let c_flags ~since =
     let check =
-      Option.map since ~f:(fun since -> Syntax.since Stanza.syntax since)
+      Option.map since ~f:(fun since ->
+          Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
@@ -56,11 +57,11 @@ module Stanza = struct
 
   let inline_tests_field =
     field_o "inline_tests"
-      (Syntax.since Stanza.syntax (1, 11) >>> Inline_tests.decode)
+      (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> Inline_tests.decode)
 
   let env_vars_field =
     field "env-vars" ~default:Env.empty
-      ( Syntax.since Stanza.syntax (1, 5)
+      ( Dune_lang.Syntax.since Stanza.syntax (1, 5)
       >>> located (repeat (pair string string))
       >>| fun (loc, pairs) ->
       match Env.Map.of_list pairs with
@@ -75,7 +76,8 @@ module Stanza = struct
     and+ env_vars = env_vars_field
     and+ binaries =
       field ~default:[] "binaries"
-        (Syntax.since Stanza.syntax (1, 6) >>> File_binding.Unexpanded.L.decode)
+        ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
+        >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field in
     { flags; c_flags; env_vars; binaries; inline_tests }
 
@@ -91,7 +93,7 @@ module Stanza = struct
        (pat, configs))
 
   let decode =
-    let+ () = Syntax.since Stanza.syntax (1, 0)
+    let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
     and+ loc = loc
     and+ rules = repeat rule in
     { loc; rules }

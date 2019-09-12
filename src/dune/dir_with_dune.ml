@@ -5,7 +5,7 @@ type 'data t =
   ; ctx_dir : Path.Build.t
   ; data : 'data
   ; scope : Scope.t
-  ; dune_version : Syntax.Version.t
+  ; dune_version : Dune_lang.Syntax.Version.t
   }
 
 let data t = t.data

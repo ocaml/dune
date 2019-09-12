@@ -188,7 +188,8 @@ include Sub_system.Register_end_point (struct
                   ~default:[]
               and+ modes =
                 field "modes"
-                  (Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
+                  ( Dune_lang.Syntax.since syntax (1, 11)
+                  >>> Mode_conf.Set.decode )
                   ~default:Mode_conf.Set.default
               in
               { loc; deps; flags; backend; libraries; modes }))

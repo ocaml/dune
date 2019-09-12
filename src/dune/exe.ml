@@ -17,26 +17,36 @@ module Linkage = struct
     { mode : Mode.t
     ; ext : string
     ; flags : string list
+    ; link_stubs_explicitly : bool
     }
 
-  let byte = { mode = Byte; ext = ".bc"; flags = [] }
+  let byte =
+    { mode = Byte; ext = ".bc"; flags = []; link_stubs_explicitly = false }
 
-  let native = { mode = Native; ext = ".exe"; flags = [] }
+  let native =
+    { mode = Native; ext = ".exe"; flags = []; link_stubs_explicitly = false }
 
-  let custom = { mode = Byte; ext = ".exe"; flags = [ "-custom" ] }
+  let custom =
+    { mode = Byte
+    ; ext = ".exe"
+    ; flags = [ "-custom" ]
+    ; link_stubs_explicitly = false
+    }
 
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with
     | None -> custom
     | Some _ -> native
 
-  let js = { mode = Byte; ext = ".bc.js"; flags = [] }
+  let js =
+    { mode = Byte; ext = ".bc.js"; flags = []; link_stubs_explicitly = false }
 
-  let make ~mode ~ext ?(flags = []) () = { mode; ext; flags }
+  let make ~mode ~ext ?(flags = []) ?(link_stubs_explicitly = false) () =
+    { mode; ext; flags; link_stubs_explicitly }
 
   let c_flags = [ "-output-obj" ]
 
-  let o_flags = [ "-output-complete-obj" ]
+  let o_flags = [ "-output-complete-obj"; "-noautolink" ]
 
   let so_flags_windows = o_flags
 
@@ -102,7 +112,7 @@ module Linkage = struct
           @ so_flags
         | Byte -> so_flags )
     in
-    { ext; mode = real_mode; flags }
+    { ext; mode = real_mode; flags; link_stubs_explicitly = m.kind = Object }
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
@@ -152,6 +162,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                          [] )
                    ; Lib.Lib_and_module.L.link_flags to_link
                        ~lib_config:ctx.lib_config ~mode
+                       ~link_stubs_explicitly:linkage.link_stubs_explicitly
                    ])
            ; Deps o_files
            ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))

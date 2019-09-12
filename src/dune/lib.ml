@@ -391,12 +391,17 @@ let hash t = Id.hash (to_id t)
 
 include Comparable.Make (T)
 
-let link_flags t mode =
-  let archives = Lib_info.archives t.info in
-  let foreign_archives = Lib_info.foreign_archives t.info in
+let link_flags t mode ~link_stubs_explicitly =
+  let archives = Mode.Dict.get (Lib_info.archives t.info) mode in
+  let foreign_archives =
+    Mode.Dict.get (Lib_info.foreign_archives t.info) mode
+  in
   Command.Args.S
-    [ Deps (Mode.Dict.get archives mode)
-    ; Hidden_deps (Mode.Dict.get foreign_archives mode |> Dep.Set.of_files)
+    [ Deps archives
+    ; ( if link_stubs_explicitly then
+        Deps foreign_archives
+      else
+        Hidden_deps (Dep.Set.of_files foreign_archives) )
     ]
 
 module L = struct
@@ -438,7 +443,9 @@ module L = struct
   let compile_and_link_flags ~compile ~link ~mode =
     let dirs = Path.Set.union (include_paths compile) (c_include_paths link) in
     Command.Args.S
-      (to_iflags dirs :: List.map link ~f:(fun t -> link_flags t mode))
+      ( to_iflags dirs
+      :: List.map link ~f:(fun t ->
+             link_flags t mode ~link_stubs_explicitly:false) )
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
@@ -467,7 +474,8 @@ module Lib_and_module = struct
   module L = struct
     type nonrec t = t list
 
-    let link_flags ts ~(lib_config : Lib_config.t) ~mode =
+    let link_flags ts ~(lib_config : Lib_config.t) ~mode ~link_stubs_explicitly
+        =
       let libs =
         List.filter_map ts ~f:(function
           | Lib lib -> Some lib
@@ -476,7 +484,7 @@ module Lib_and_module = struct
       Command.Args.S
         ( L.c_include_flags libs
         :: List.map ts ~f:(function
-             | Lib t -> link_flags t mode
+             | Lib t -> link_flags t mode ~link_stubs_explicitly
              | Module (obj_dir, m) ->
                Command.Args.S
                  [ Dep

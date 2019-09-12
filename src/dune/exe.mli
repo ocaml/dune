@@ -27,7 +27,13 @@ module Linkage : sig
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
 
-  val make : mode:Mode.t -> ext:string -> ?flags:string list -> unit -> t
+  val make :
+       mode:Mode.t
+    -> ext:string
+    -> ?flags:string list
+    -> ?link_stubs_explicitly:bool
+    -> unit
+    -> t
 
   val of_user_config : Context.t -> Dune_file.Executables.Link_mode.t -> t
 end

@@ -93,7 +93,11 @@ module Lib_and_module : sig
     val of_libs : lib list -> t
 
     val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Mode.t -> _ Command.Args.t
+         t
+      -> lib_config:Lib_config.t
+      -> mode:Mode.t
+      -> link_stubs_explicitly:bool
+      -> _ Command.Args.t
   end
 end
 with type lib := t

@@ -6,6 +6,13 @@ module File = struct
     }
 end
 
+module Search_result = struct
+  type t =
+    | Found of unit * File.t list
+    | Not_found
+    | Cannot_read of exn
+end
+
 module Memory = struct
   type t = unit
 

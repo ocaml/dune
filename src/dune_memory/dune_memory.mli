@@ -2,7 +2,7 @@ open Stdune
 
 type key = Digest.t
 
-type metadata = Sexp.t list
+type metadata = Dune_lang.t list
 
 type 'a result = ('a, string) Result.t
 
@@ -26,6 +26,13 @@ module File : sig
     }
 end
 
+module Search_result : sig
+  type t =
+    | Found of metadata * File.t list
+    | Not_found
+    | Cannot_read of exn
+end
+
 module type memory = sig
   type t
 
@@ -37,8 +44,7 @@ module type memory = sig
     -> (string * string) option
     -> (promotion list, string) Result.t
 
-  val search :
-    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> ?touch:bool -> key -> Search_result.t
 end
 
 module Memory : memory

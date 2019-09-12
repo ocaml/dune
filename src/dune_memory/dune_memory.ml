@@ -3,7 +3,7 @@ open Utils
 
 type key = Digest.t
 
-type metadata = Sexp.t list
+type metadata = Dune_lang.t list
 
 type 'a result = ('a, string) Result.t
 
@@ -109,6 +109,13 @@ module File = struct
     }
 end
 
+module Search_result = struct
+  type t =
+    | Found of metadata * File.t list
+    | Not_found
+    | Cannot_read of exn
+end
+
 module type memory = sig
   type t
 
@@ -120,8 +127,7 @@ module type memory = sig
     -> (string * string) option
     -> (promotion list, string) Result.t
 
-  val search :
-    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> ?touch:bool -> key -> Search_result.t
 end
 
 module Memory = struct
@@ -143,14 +149,22 @@ module Memory = struct
   let search memory hash file =
     Collision.search (FSSchemeImpl.path (path_files memory) hash) file
 
+  module M = Dune_lang.Versioned_file.Make (Unit)
+
+  let syntax =
+    Dune_lang.Syntax.create ~name:"dune-memory" ~desc:"Dune memory metadata"
+      [ (1, 0) ]
+
+  let () = M.Lang.register syntax ()
+
   let promote memory paths key metadata repo =
     let open Result.O in
     let metadata =
       apply
         ~f:(fun metadata (remote, commit) ->
           metadata
-          @ [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom remote ]
-            ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+          @ [ Dune_lang.List [ Dune_lang.atom "repo"; Dune_lang.atom remote ]
+            ; List [ Dune_lang.atom "commit_id"; Dune_lang.atom commit ]
             ])
         repo metadata
     in
@@ -204,58 +218,76 @@ module Memory = struct
       >>| fun promoted ->
       let metadata_path = FSSchemeImpl.path (path_meta memory) key in
       mkpath (Path.parent_exn metadata_path);
-      Io.write_file metadata_path
-        (Csexp.to_string
-           (List
-              [ List (Atom "metadata" :: metadata)
-              ; List
-                  ( Atom "files"
-                  :: List.map
-                       ~f:(function
-                         | Promoted (o, p)
-                          |Already_promoted (o, p) ->
-                           Sexp.List
-                             [ Sexp.Atom (Path.to_string o)
-                             ; Sexp.Atom (Path.to_string p)
-                             ])
-                       promoted )
-              ]));
+      Io.with_file_out metadata_path ~f:(fun oc ->
+          Dune_lang.output oc
+            (List
+               [ Dune_lang.atom "lang"
+               ; Dune_lang.atom "dune-memory"
+               ; Dune_lang.atom "1.0"
+               ]);
+          output_char oc '\n';
+          Dune_lang.output oc (List (Dune_lang.atom "metadata" :: metadata));
+          Dune_lang.output oc
+            (List
+               ( Dune_lang.atom "files"
+               :: List.map
+                    ~f:(function
+                      | Promoted (o, p)
+                       |Already_promoted (o, p) ->
+                        Dune_lang.List
+                          [ Dune_lang.atom_or_quoted_string (Path.to_string o)
+                          ; Dune_lang.atom_or_quoted_string (Path.to_string p)
+                          ])
+                    promoted )));
       promoted
     in
     with_lock memory f
 
+  let decode =
+    let open Dune_lang.Decoder in
+    fields
+      (let+ metadata = field "metadata" (repeat raw)
+       and+ files =
+         field "files"
+           (repeat
+              (let+ in_the_build_directory, in_the_memory =
+                 pair string string
+               in
+               let in_the_build_directory =
+                 Path.of_string in_the_build_directory
+               and in_the_memory = Path.of_string in_the_memory in
+               { File.in_the_memory
+               ; in_the_build_directory
+               ; digest = FSSchemeImpl.digest in_the_memory
+               }))
+       in
+       (List.map metadata ~f:Dune_lang.Ast.remove_locs, files))
+
   let search memory ?(touch = true) key =
     let path = FSSchemeImpl.path (path_meta memory) key in
-    let f () =
-      let open Result.O in
-      ( try
-          Io.with_file_in path ~f:(fun input ->
-              Csexp.parse (Stream.of_channel input))
-        with Sys_error _ -> Error "no cached file" )
-      >>= function
-      | Sexp.List
-          [ List (Atom "metadata" :: metadata)
-          ; List (Atom "files" :: produced)
-          ] ->
-        let+ produced =
-          Result.List.map produced ~f:(function
-            | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
-              let in_the_build_directory =
-                Path.of_string in_the_build_directory
-              and in_the_memory = Path.of_string in_the_memory in
-              Ok
-                { File.in_the_memory
-                ; in_the_build_directory
-                ; digest = FSSchemeImpl.digest in_the_memory
-                }
-            | _ -> Error "invalid metadata scheme in produced files list")
+    let f () : Search_result.t =
+      match Io.open_in path with
+      | exception Sys_error _ -> Not_found
+      | ic ->
+        let res : Search_result.t =
+          match
+            M.parse
+              (Lexbuf.from_channel ic ~fname:(Path.to_string path))
+              ~f:(fun _ -> decode)
+          with
+          | metadata, files -> Found (metadata, files)
+          | exception exn -> Cannot_read exn
         in
-        if touch then
-          List.iter produced ~f:(fun f -> Path.touch f.File.in_the_memory);
-        (metadata, produced)
-      | _ -> Error "invalid metadata"
+        Io.close_in ic;
+        res
     in
-    with_lock memory f
+    let res = with_lock memory f in
+    ( if touch then
+      match res with
+      | Found (_, files) ->
+        List.iter files ~f:(fun f -> Path.touch f.File.in_the_memory)
+      | _ -> () );
+    res
 end
 
 let make ?(root = default_root ()) () =

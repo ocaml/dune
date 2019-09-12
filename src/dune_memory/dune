@@ -9,5 +9,5 @@
  (package dune)
  (modules main)
  (public_name dune-memory)
- (libraries dune_memory stdune)
+ (libraries dune_memory stdune dune_lang)
  (preprocess future_syntax))

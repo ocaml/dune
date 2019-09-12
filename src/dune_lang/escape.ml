@@ -77,6 +77,17 @@ let escaped s =
   ) else
     s
 
+let output oc s =
+  let n = quote_length s in
+  if n = 0 || n > String.length s then (
+    let s' = Bytes.create n in
+    escape_to s ~dst:s' ~ofs:0;
+    output_char oc '"';
+    output_string oc (Bytes.unsafe_to_string s');
+    output_char oc '"'
+  ) else
+    output_string oc s
+
 (* Surround [s] with quotes, escaping it if necessary. *)
 let quoted s =
   let len = String.length s in

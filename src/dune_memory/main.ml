@@ -1,15 +1,9 @@
 open Dune_memory
 open Stdune
 
-(* Idealy these should be parsed as human readable (i.e. non-canonical)
-   S-Expressions, but we don't have such capabilities in stdune yet. *)
 let parse_metadata s =
-  let open Result.O in
-  let s = Stream.of_string s in
-  Csexp.parse s
-  >>= function
-  | Sexp.List l -> Result.Ok l
-  | _ -> Result.Error "metadata must be a list"
+  Dune_lang.Parser.parse_string s ~fname:"<command-line>" ~mode:Many
+  |> List.map ~f:Dune_lang.Ast.remove_locs
 
 let usage =
   Printf.sprintf "Usage: %s [OPTIONS] command [ARGUMENTS]" Sys.argv.(0)
@@ -71,33 +65,36 @@ let main () =
            !files)
     and key = unwrap_option "key" !key in
     lift_result
-      ( parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
-      >>= fun metadata ->
-      key_of_string key
-      >>= fun key ->
-      Memory.promote memory produced key metadata None
-      >>| fun promotions ->
-      List.iter
-        ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
-        promotions )
+      (let metadata =
+         parse_metadata (unwrap_option ~default:"()" "--metadata" !metadata)
+       in
+       key_of_string key
+       >>= fun key ->
+       Memory.promote memory produced key metadata None
+       >>| fun promotions ->
+       List.iter
+         ~f:(fun p -> Printf.printf "%s\n" (promotion_to_string p))
+         promotions)
   | "search" ->
     lift_result
       (let open Result.O in
-      key_of_string Sys.argv.(3)
-      >>= fun key ->
-      Memory.search memory key
-      >>| fun (_, paths) ->
-      List.iter
-        ~f:
-          (fun { Dune_memory.File.in_the_build_directory
-               ; in_the_memory
-               ; digest
-               } ->
-          Printf.printf "%s: %s (%s)\n"
-            (Path.to_string in_the_build_directory)
-            (Path.to_string in_the_memory)
-            (Digest.to_string digest))
-        paths)
+      let+ key = key_of_string Sys.argv.(3) in
+      match Memory.search memory key with
+      | Found (_, paths) ->
+        List.iter
+          ~f:
+            (fun { Dune_memory.File.in_the_build_directory
+                 ; in_the_memory
+                 ; digest
+                 } ->
+            Printf.printf "%s: %s (%s)\n"
+              (Path.to_string in_the_build_directory)
+              (Path.to_string in_the_memory)
+              (Digest.to_string digest))
+          paths
+      | Not_found ->
+        User_error.raise [ Pp.text "Entry not found in the dune memory" ]
+      | Cannot_read exn -> raise exn)
   | "trim" ->
     let freed, files = trim memory 1 in
     Printf.printf "freed %i bytes\n" freed;

@@ -32,6 +32,9 @@ module type S = sig
       the file with [f]. *)
   val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 
+  (** Load a pre-opened file *)
+  val parse : Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+
   (** Parse the contents of a versioned file after the first line has been
       read. *)
   val parse_contents :

@@ -20,6 +20,8 @@ module type S = sig
 
   val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 
+  val parse : Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+
   val parse_contents :
     Lexing.lexbuf -> First_line.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 end
@@ -85,9 +87,9 @@ struct
     in
     Decoder.parse (Decoder.enter (f lang)) parsing_context sexp
 
-  let load fn ~f =
-    Io.with_lexbuf_from_file fn ~f:(fun lb ->
-        parse_contents lb (First_line.lex lb) ~f)
+  let parse lb ~f = parse_contents lb (First_line.lex lb) ~f
+
+  let load fn ~f = Io.with_lexbuf_from_file fn ~f:(parse ~f)
 end
 
 let no_more_lang =

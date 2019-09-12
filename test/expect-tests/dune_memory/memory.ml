@@ -60,9 +60,12 @@ let clean_promotion = function
 (* Promote a file twice and check we can search it *)
 let file1 = make_file "file1"
 
-let metadata = [ Sexp.List [ Sexp.Atom "test"; Sexp.Atom "metadata" ] ]
+let metadata =
+  [ Dune_lang.List [ Dune_lang.atom "test"; Dune_lang.atom "metadata" ] ]
 
-(* The key is internal to dune and opaque to us, we can use anything *)
+(*  *)
+
+(* the key is internal to dune and opaque to us, we can use anything *)
 let key = Digest.generic "dummy-hash"
 
 let%expect_test _ =
@@ -80,11 +83,11 @@ let%expect_test _ =
       key metadata None
     >>= fun promotions ->
     List.iter ~f promotions;
-    Dune_memory.Memory.search memory key
-    >>| fun searched ->
-    ( match searched with
-    | stored_metadata, [ file ] ->
-      if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
+    ( match Dune_memory.Memory.search memory key with
+    | Not_found -> failwith "not found"
+    | Cannot_read exn -> raise exn
+    | Found (stored_metadata, [ file ]) ->
+      if not (List.for_all2 ~f:( = ) stored_metadata metadata) then
         failwith "Metadata mismatch"
       else if Path.equal file.in_the_build_directory file1 then
         if Io.compare_files file.in_the_memory file1 = Ordering.Eq then
@@ -93,10 +96,11 @@ let%expect_test _ =
           failwith "promoted file content does not match"
       else
         failwith "original file path does not match"
-    | _ -> failwith "wrong number of file found" );
+    | Found _ -> failwith "wrong number of file found" );
     (* Check write permissions where removed *)
     assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);
-    Path.rm_rf dir
+    Path.rm_rf dir;
+    Ok ()
   with
   | Result.Ok () ->
     [%expect

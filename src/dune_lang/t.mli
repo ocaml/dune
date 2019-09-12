@@ -21,6 +21,8 @@ val unsafe_atom_of_string : string -> t
 (** Serialize a S-expression *)
 val to_string : t -> string
 
+val output : out_channel -> t -> unit
+
 (** Serialize a S-expression using indentation to improve readability *)
 val pp : t -> _ Pp.t
 

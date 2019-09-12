@@ -35,10 +35,7 @@ module Client : sig
     -> int option
     -> (unit, string) Result.t
 
-  val search :
-       t
-    -> Dune_memory.key
-    -> (Dune_memory.metadata * Dune_memory.File.t list, string) Result.t
+  val search : t -> Dune_memory.key -> Dune_memory.Search_result.t
 
   val set_build_dir : t -> Path.t -> unit
 

@@ -24,6 +24,18 @@ let rec to_string t =
     Printf.sprintf "(%s)" (List.map l ~f:to_string |> String.concat ~sep:" ")
   | Template t -> Template.to_string t
 
+let rec output oc t =
+  match t with
+  | Atom a -> output_string oc (Atom.print a)
+  | Quoted_string s -> Escape.output oc s
+  | List l ->
+    output_char oc '(';
+    List.iteri l ~f:(fun i t ->
+        if i >= 1 then output_char oc ' ';
+        output oc t);
+    output_char oc ')'
+  | Template t -> output_string oc (Template.to_string t)
+
 let rec pp = function
   | Atom s -> Pp.verbatim (Atom.print s)
   | Quoted_string s -> Pp.verbatim (Escape.quoted s)

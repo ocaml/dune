@@ -169,14 +169,14 @@ let set_orig_src_dir t orig_src_dir =
 let set_default_implementation t default_implementation =
   { t with default_implementation }
 
-let set_implements t implements =
-  { t with implements }
+let set_implements t implements = { t with implements }
 
-let set_ppx_runtime_deps t ppx_runtime_deps =
-  { t with ppx_runtime_deps }
+let set_ppx_runtime_deps t ppx_runtime_deps = { t with ppx_runtime_deps }
 
-let set_sub_systems t sub_systems =
-  { t with sub_systems }
+let set_sub_systems t sub_systems = { t with sub_systems }
+
+let set_foreign_objects t foreign_objects =
+  { t with foreign_objects = External foreign_objects }
 
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
@@ -363,6 +363,8 @@ let map t ~f_path ~f_obj_dir =
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
+
+let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fn.id
 
 let set_obj_dir t obj_dir = { t with obj_dir }
 

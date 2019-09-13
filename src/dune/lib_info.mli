@@ -140,6 +140,10 @@ val set_ppx_runtime_deps : 'a t -> (Loc.t * Lib_name.t) list -> 'a t
 
 val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
 
+val set_foreign_objects : Path.t t -> Path.t list -> Path.t t
+
+val map_path : 'a t -> f:('a -> 'a) -> 'a t
+
 val create :
      loc:Loc.t
   -> name:Lib_name.t

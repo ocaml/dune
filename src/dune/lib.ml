@@ -1836,16 +1836,12 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       in
       Lib_info.set_orig_src_dir info orig_src_dir
   in
-  let foreign_objects =
+  let info =
     match Lib_info.foreign_objects info with
-    | External f -> f
-    | Local -> foreign_objects
+    | External _ -> info
+    | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
-  let archives = Lib_info.archives info in
-  let plugins = Lib_info.plugins info in
-  let jsoo_runtime = Lib_info.jsoo_runtime info in
   let known_implementations = Lib_info.known_implementations info in
-  let foreign_archives = Lib_info.foreign_archives info in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
@@ -1875,8 +1871,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let info =
     Lib_info.set_sub_systems info (Sub_system.public_info lib) in
   let+ main_module_name = main_module_name lib in
-  Dune_package.Lib.make ~info ~archives ~plugins ~foreign_archives
-    ~foreign_objects ~jsoo_runtime
+  Dune_package.Lib.make ~info
     ~requires:(add_loc (requires_exn lib))
     ~known_implementations
     ~modules:(Some modules)

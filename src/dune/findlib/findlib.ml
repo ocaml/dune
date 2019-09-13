@@ -287,12 +287,10 @@ module Package = struct
         ~virtual_ ~implements ~variant ~known_implementations
         ~default_implementation ~modes ~wrapped ~special_builtin_support
     in
-    Dune_package.Lib.make ~info ~archives ~plugins:(plugins t)
-      ~foreign_objects:[] ~foreign_archives:(Mode.Dict.make_both [])
-      ~jsoo_runtime:(jsoo_runtime t)
+    Dune_package.Lib.make ~info
       ~requires:(List.map ~f:add_loc (requires t))
-      ~known_implementations:Variant.Map.empty
-      ~modules:None ~main_module_name:None
+      ~known_implementations:Variant.Map.empty ~modules:None
+      ~main_module_name:None
 
   (* XXX remove *)
 

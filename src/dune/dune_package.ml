@@ -12,20 +12,13 @@ end)
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
-    ; archives : Path.t list Mode.Dict.t
-    ; plugins : Path.t list Mode.Dict.t
-    ; foreign_objects : Path.t list
-    ; foreign_archives : Path.t list Mode.Dict.t
-    ; jsoo_runtime : Path.t list
     ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
     ; requires : (Loc.t * Lib_name.t) list
     }
 
-  let make ~info ~archives ~plugins ~foreign_objects ~foreign_archives
-      ~jsoo_runtime ~main_module_name ~requires
-      ~known_implementations ~modules =
+  let make ~info ~main_module_name ~requires ~known_implementations ~modules =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
@@ -34,36 +27,15 @@ module Lib = struct
       else
         p
     in
-    let map_list = List.map ~f:map_path in
-    let map_mode = Mode.Dict.map ~f:map_list in
-    { info
-    ; archives = map_mode archives
-    ; plugins = map_mode plugins
-    ; foreign_objects = map_list foreign_objects
-    ; foreign_archives = map_mode foreign_archives
-    ; jsoo_runtime = map_list jsoo_runtime
-    ; main_module_name
-    ; requires
-    ; known_implementations
-    ; modules
-    }
+    let info = Lib_info.map_path info ~f:map_path in
+    { info; main_module_name; requires; known_implementations; modules }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
   let encode ~package_root
-      { info
-      ; archives
-      ; plugins
-      ; foreign_objects
-      ; foreign_archives
-      ; jsoo_runtime
-      ; requires
-      ; known_implementations
-      ; main_module_name
-      ; modules
-      } =
+      { info; requires; known_implementations; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -83,7 +55,16 @@ module Lib = struct
     let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
     let default_implementation = Lib_info.default_implementation info in
     let special_builtin_support = Lib_info.special_builtin_support info in
+    let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
+    let plugins = Lib_info.plugins info in
+    let foreign_archives = Lib_info.foreign_archives info in
+    let foreign_objects =
+      match Lib_info.foreign_objects info with
+      | External e -> e
+      | Local -> assert false
+    in
+    let jsoo_runtime = Lib_info.jsoo_runtime info in
     let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     record_fields
     @@ [ field "name" Lib_name.encode name
@@ -210,31 +191,11 @@ module Lib = struct
            ~known_implementations ~default_implementation ~modes ~wrapped
            ~special_builtin_support
        in
-       { info
-       ; archives
-       ; plugins
-       ; foreign_objects
-       ; foreign_archives
-       ; jsoo_runtime
-       ; requires
-       ; known_implementations
-       ; main_module_name
-       ; modules
-       })
+       { info; requires; known_implementations; main_module_name; modules })
 
   let modules t = t.modules
 
   let main_module_name t = t.main_module_name
-
-  let foreign_objects t = t.foreign_objects
-
-  let archives t = t.archives
-
-  let plugins t = t.plugins
-
-  let jsoo_runtime t = t.jsoo_runtime
-
-  let foreign_archives t = t.foreign_archives
 
   let requires t = t.requires
 

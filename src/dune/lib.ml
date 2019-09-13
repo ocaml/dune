@@ -1663,17 +1663,17 @@ module DB = struct
     create () ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
-        | Ok pkg -> Found (Lib_info.of_dune_lib pkg)
+        | Ok pkg -> Found (Dune_package.Lib.info pkg)
         | Error e -> (
           match e with
           | Not_found ->
             if external_lib_deps_mode then
               let pkg = Findlib.dummy_package findlib ~name in
-              Found (Lib_info.of_dune_lib pkg)
+              Found (Dune_package.Lib.info pkg)
             else
               Not_found
           | Hidden pkg ->
-            Hidden (Lib_info.of_dune_lib pkg, "unsatisfied 'exist_if'") ))
+            Hidden (Dune_package.Lib.info pkg, "unsatisfied 'exist_if'") ))
       ~all:(fun () ->
         Findlib.all_packages findlib |> List.map ~f:Dune_package.Lib.name)
 

@@ -58,6 +58,8 @@ module Lib : sig
 
   val wrapped : t -> Wrapped.t option
 
+  val info : t -> Path.t Lib_info.t
+
   val make :
        loc:Loc.t
     -> kind:Lib_kind.t

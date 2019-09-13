@@ -283,6 +283,55 @@ module Lib = struct
   let compare_name x y = Lib_name.compare x.name y.name
 
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
+
+  let info dp =
+    let src_dir = dir dp in
+    let virtual_ =
+      if virtual_ dp then
+        let modules = Option.value_exn (modules dp) in
+        Some (Lib_info.Source.External modules)
+      else
+        None
+    in
+    let wrapped =
+      wrapped dp |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
+    in
+    let loc = loc dp in
+    let name = name dp in
+    let kind = kind dp in
+    let status = Lib_info.Status.Installed in
+    let orig_src_dir = orig_src_dir dp in
+    let version = version dp in
+    let synopsis = synopsis dp in
+    let requires = Lib_info.Deps.Simple (requires dp) in
+    let main_module_name =
+      Dune_file.Library.Inherited.This (main_module_name dp)
+    in
+    let foreign_objects = Lib_info.Source.External (foreign_objects dp) in
+    let plugins = plugins dp in
+    let archives = archives dp in
+    let ppx_runtime_deps = ppx_runtime_deps dp in
+    let foreign_archives = foreign_archives dp in
+    let jsoo_runtime = jsoo_runtime dp in
+    let jsoo_archive = None in
+    let pps = [] in
+    let enabled = Lib_info.Enabled_status.Normal in
+    let virtual_deps = [] in
+    let dune_version = None in
+    let sub_systems = sub_systems dp in
+    let implements = implements dp in
+    let variant = None in
+    let known_implementations = known_implementations dp in
+    let default_implementation = default_implementation dp in
+    let modes = modes dp in
+    let special_builtin_support = special_builtin_support dp in
+    let obj_dir = obj_dir dp in
+    Lib_info.create ~wrapped ~loc ~name ~kind ~status ~orig_src_dir ~version
+      ~synopsis ~requires ~virtual_ ~main_module_name ~foreign_objects ~plugins
+      ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime ~jsoo_archive
+      ~pps ~enabled ~virtual_deps ~dune_version ~sub_systems ~implements
+      ~variant ~known_implementations ~default_implementation ~modes ~src_dir
+      ~obj_dir ~special_builtin_support
 end
 
 type t =

@@ -288,52 +288,43 @@ let of_library_stanza ~dir
   ; special_builtin_support = conf.special_builtin_support
   }
 
-let of_dune_lib dp =
-  let module Lib = Dune_package.Lib in
-  let src_dir = Lib.dir dp in
-  let virtual_ =
-    if Lib.virtual_ dp then
-      let modules = Option.value_exn (Lib.modules dp) in
-      Some (Source.External modules)
-    else
-      None
-  in
-  let wrapped =
-    Lib.wrapped dp
-    |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
-  in
-  let obj_dir = Lib.obj_dir dp in
-  { loc = Lib.loc dp
-  ; name = Lib.name dp
-  ; kind = Lib.kind dp
-  ; status = Installed
+let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
+    ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
+    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime
+    ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
+    ~implements ~variant ~known_implementations ~default_implementation ~modes
+    ~wrapped ~special_builtin_support =
+  { loc
+  ; name
+  ; kind
+  ; status
   ; src_dir
-  ; orig_src_dir = Lib.orig_src_dir dp
+  ; orig_src_dir
   ; obj_dir
-  ; version = Lib.version dp
-  ; synopsis = Lib.synopsis dp
-  ; requires = Simple (Lib.requires dp)
-  ; main_module_name = This (Lib.main_module_name dp)
-  ; foreign_objects = Source.External (Lib.foreign_objects dp)
-  ; plugins = Lib.plugins dp
-  ; archives = Lib.archives dp
-  ; ppx_runtime_deps = Lib.ppx_runtime_deps dp
-  ; foreign_archives = Lib.foreign_archives dp
-  ; jsoo_runtime = Lib.jsoo_runtime dp
-  ; jsoo_archive = None
-  ; pps = []
-  ; enabled = Normal
-  ; virtual_deps = []
-  ; dune_version = None
-  ; sub_systems = Lib.sub_systems dp
+  ; version
+  ; synopsis
+  ; requires
+  ; main_module_name
+  ; foreign_objects
+  ; plugins
+  ; archives
+  ; ppx_runtime_deps
+  ; foreign_archives
+  ; jsoo_runtime
+  ; jsoo_archive
+  ; pps
+  ; enabled
+  ; virtual_deps
+  ; dune_version
+  ; sub_systems
   ; virtual_
-  ; implements = Lib.implements dp
-  ; variant = None
-  ; known_implementations = Lib.known_implementations dp
-  ; default_implementation = Lib.default_implementation dp
-  ; modes = Lib.modes dp
+  ; implements
+  ; variant
+  ; known_implementations
+  ; default_implementation
+  ; modes
   ; wrapped
-  ; special_builtin_support = Lib.special_builtin_support dp
+  ; special_builtin_support
   }
 
 type external_ = Path.t t

@@ -1869,17 +1869,18 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   in
   let info = Lib_info.set_implements info implements in
   let info = Lib_info.set_default_implementation info default_implementation in
-  let+ ppx_runtime_deps = lib.ppx_runtime_deps in
+  let* ppx_runtime_deps = lib.ppx_runtime_deps in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
   let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
   let info =
     Lib_info.set_sub_systems info (Sub_system.public_info lib) in
+  let+ main_module_name = main_module_name lib in
   Dune_package.Lib.make ~info ~archives ~plugins ~foreign_archives
     ~foreign_objects ~jsoo_runtime
     ~requires:(add_loc (requires_exn lib))
     ~known_implementations
     ~modules:(Some modules)
-    ~main_module_name:(Result.ok_exn (main_module_name lib))
+    ~main_module_name
 
 module Local : sig
   type t = private lib

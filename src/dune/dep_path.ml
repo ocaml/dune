@@ -38,10 +38,7 @@ module Entry = struct
       match via with
       | None -> Lib.pp lib
       | Some via ->
-        Pp.concat ~sep:Pp.space
-          [ Lib.pp lib
-          ; Implements_via.pp via
-          ])
+        Pp.concat ~sep:Pp.space [ Lib.pp lib; Implements_via.pp via ] )
     | Executables [ (loc, name) ] ->
       Pp.textf "executable %s in %s" name (Loc.to_file_colon_line loc)
     | Executables names ->

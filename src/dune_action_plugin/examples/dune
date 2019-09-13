@@ -1,5 +1,5 @@
 (executables
- (names simple_concatenation)
+ (names simple_concatenation choosing_dependency)
  (libraries dune_action_plugin))
 
 (alias

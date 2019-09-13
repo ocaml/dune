@@ -11,37 +11,22 @@ end)
 
 module Lib = struct
   type t =
-    { loc : Loc.t
-    ; name : Lib_name.t
-    ; obj_dir : Path.t Obj_dir.t
-    ; orig_src_dir : Path.t option
-    ; kind : Lib_kind.t
-    ; synopsis : string option
+    { info : Path.t Lib_info.t
     ; archives : Path.t list Mode.Dict.t
     ; plugins : Path.t list Mode.Dict.t
     ; foreign_objects : Path.t list
     ; foreign_archives : Path.t list Mode.Dict.t
     ; jsoo_runtime : Path.t list
-    ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-    ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-    ; virtual_ : bool
     ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
-    ; default_implementation : (Loc.t * Lib_name.t) option
-    ; implements : (Loc.t * Lib_name.t) option
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
     ; requires : (Loc.t * Lib_name.t) list
-    ; version : string option
-    ; modes : Mode.Dict.Set.t
-    ; special_builtin_support :
-        Dune_file.Library.Special_builtin_support.t option
     }
 
-  let make ~loc ~kind ~name ~synopsis ~archives ~plugins ~foreign_objects
-      ~foreign_archives ~jsoo_runtime ~main_module_name ~sub_systems ~requires
-      ~ppx_runtime_deps ~implements ~default_implementation ~virtual_
-      ~known_implementations ~modules ~modes ~version ~orig_src_dir ~obj_dir
-      ~special_builtin_support =
+  let make ~info ~archives ~plugins ~foreign_objects ~foreign_archives
+      ~jsoo_runtime ~main_module_name ~requires
+      ~known_implementations ~modules =
+    let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
       if Path.is_managed p then
@@ -51,67 +36,33 @@ module Lib = struct
     in
     let map_list = List.map ~f:map_path in
     let map_mode = Mode.Dict.map ~f:map_list in
-    { loc
-    ; kind
-    ; name
-    ; synopsis
+    { info
     ; archives = map_mode archives
     ; plugins = map_mode plugins
     ; foreign_objects = map_list foreign_objects
     ; foreign_archives = map_mode foreign_archives
     ; jsoo_runtime = map_list jsoo_runtime
     ; main_module_name
-    ; sub_systems
     ; requires
-    ; ppx_runtime_deps
-    ; implements
-    ; version
-    ; orig_src_dir
-    ; virtual_
     ; known_implementations
-    ; default_implementation
     ; modules
-    ; modes
-    ; obj_dir
-    ; special_builtin_support
     }
-
-  let obj_dir t = t.obj_dir
-
-  let dir t = Obj_dir.dir t.obj_dir
-
-  let orig_src_dir t = t.orig_src_dir
-
-  let set_subsystems t sub_systems = { t with sub_systems }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
   let encode ~package_root
-      { loc = _
-      ; kind
-      ; synopsis
-      ; name
+      { info
       ; archives
       ; plugins
       ; foreign_objects
       ; foreign_archives
       ; jsoo_runtime
       ; requires
-      ; ppx_runtime_deps
-      ; sub_systems
-      ; virtual_
       ; known_implementations
-      ; implements
-      ; default_implementation
       ; main_module_name
-      ; version = _
-      ; obj_dir
-      ; orig_src_dir
       ; modules
-      ; modes
-      ; special_builtin_support
       } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
@@ -122,6 +73,18 @@ module Lib = struct
     in
     let known_implementations = Variant.Map.to_list known_implementations in
     let libs name = field_l name (no_loc Lib_name.encode) in
+    let name = Lib_info.name info in
+    let kind = Lib_info.kind info in
+    let modes = Lib_info.modes info in
+    let synopsis = Lib_info.synopsis info in
+    let obj_dir = Lib_info.obj_dir info in
+    let orig_src_dir = Lib_info.orig_src_dir info in
+    let implements = Lib_info.implements info in
+    let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
+    let default_implementation = Lib_info.default_implementation info in
+    let special_builtin_support = Lib_info.special_builtin_support info in
+    let sub_systems = Lib_info.sub_systems info in
+    let virtual_ = Option.is_some (Lib_info.virtual_ info) in
     record_fields
     @@ [ field "name" Lib_name.encode name
        ; field "kind" Lib_kind.encode kind
@@ -213,50 +176,55 @@ module Lib = struct
          Variant.Map.of_list_exn known_implementations
        in
        let modes = Mode.Dict.Set.of_list modes in
-       { kind
-       ; name
-       ; synopsis
-       ; loc
+       let info : Path.t Lib_info.t =
+         let src_dir = Obj_dir.dir obj_dir in
+         let enabled = Lib_info.Enabled_status.Normal in
+         let status = Lib_info.Status.Installed in
+         let version = None in
+         let main_module_name =
+           Dune_file.Library.Inherited.This main_module_name
+         in
+         let foreign_objects = Lib_info.Source.External foreign_objects in
+         let requires = Lib_info.Deps.Simple requires in
+         let jsoo_archive = None in
+         let pps = [] in
+         let virtual_deps = [] in
+         let dune_version = None in
+         let virtual_ =
+           if virtual_ then
+             let modules = Option.value_exn modules in
+             Some (Lib_info.Source.External modules)
+           else
+             None
+         in
+         let variant = None in
+         let wrapped =
+           Option.map modules ~f:Modules.wrapped
+           |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
+         in
+         Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
+           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
+           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
+           ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
+           ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
+           ~known_implementations ~default_implementation ~modes ~wrapped
+           ~special_builtin_support
+       in
+       { info
        ; archives
        ; plugins
        ; foreign_objects
        ; foreign_archives
        ; jsoo_runtime
        ; requires
-       ; ppx_runtime_deps
-       ; implements
-       ; default_implementation
        ; known_implementations
-       ; sub_systems
        ; main_module_name
-       ; virtual_
-       ; version = None
-       ; orig_src_dir
-       ; obj_dir
        ; modules
-       ; modes
-       ; special_builtin_support
        })
-
-  let name t = t.name
-
-  let version t = t.version
-
-  let kind t = t.kind
-
-  let loc t = t.loc
-
-  let virtual_ t = t.virtual_
 
   let modules t = t.modules
 
-  let sub_systems t = t.sub_systems
-
-  let synopsis t = t.synopsis
-
   let main_module_name t = t.main_module_name
-
-  let ppx_runtime_deps t = t.ppx_runtime_deps
 
   let foreign_objects t = t.foreign_objects
 
@@ -270,68 +238,16 @@ module Lib = struct
 
   let requires t = t.requires
 
-  let implements t = t.implements
-
   let known_implementations t = t.known_implementations
 
-  let default_implementation t = t.default_implementation
-
-  let modes t = t.modes
-
-  let special_builtin_support t = t.special_builtin_support
-
-  let compare_name x y = Lib_name.compare x.name y.name
+  let compare_name x y =
+    let x = Lib_info.name x.info in
+    let y = Lib_info.name y.info in
+    Lib_name.compare x y
 
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
 
-  let info dp =
-    let src_dir = dir dp in
-    let virtual_ =
-      if virtual_ dp then
-        let modules = Option.value_exn (modules dp) in
-        Some (Lib_info.Source.External modules)
-      else
-        None
-    in
-    let wrapped =
-      wrapped dp |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
-    in
-    let loc = loc dp in
-    let name = name dp in
-    let kind = kind dp in
-    let status = Lib_info.Status.Installed in
-    let orig_src_dir = orig_src_dir dp in
-    let version = version dp in
-    let synopsis = synopsis dp in
-    let requires = Lib_info.Deps.Simple (requires dp) in
-    let main_module_name =
-      Dune_file.Library.Inherited.This (main_module_name dp)
-    in
-    let foreign_objects = Lib_info.Source.External (foreign_objects dp) in
-    let plugins = plugins dp in
-    let archives = archives dp in
-    let ppx_runtime_deps = ppx_runtime_deps dp in
-    let foreign_archives = foreign_archives dp in
-    let jsoo_runtime = jsoo_runtime dp in
-    let jsoo_archive = None in
-    let pps = [] in
-    let enabled = Lib_info.Enabled_status.Normal in
-    let virtual_deps = [] in
-    let dune_version = None in
-    let sub_systems = sub_systems dp in
-    let implements = implements dp in
-    let variant = None in
-    let known_implementations = known_implementations dp in
-    let default_implementation = default_implementation dp in
-    let modes = modes dp in
-    let special_builtin_support = special_builtin_support dp in
-    let obj_dir = obj_dir dp in
-    Lib_info.create ~wrapped ~loc ~name ~kind ~status ~orig_src_dir ~version
-      ~synopsis ~requires ~virtual_ ~main_module_name ~foreign_objects ~plugins
-      ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime ~jsoo_archive
-      ~pps ~enabled ~virtual_deps ~dune_version ~sub_systems ~implements
-      ~variant ~known_implementations ~default_implementation ~modes ~src_dir
-      ~obj_dir ~special_builtin_support
+  let info dp = dp.info
 end
 
 type t =
@@ -348,7 +264,10 @@ let decode ~lang ~dir =
   and+ libs = multi_field "library" (Lib.decode ~lang ~base:dir) in
   { name
   ; version
-  ; libs = List.map libs ~f:(fun (lib : Lib.t) -> { lib with version })
+  ; libs =
+      List.map libs ~f:(fun (lib : Lib.t) ->
+          let info = Lib_info.set_version lib.info version in
+          { lib with info })
   ; dir
   }
 

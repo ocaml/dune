@@ -122,9 +122,23 @@ val of_library_stanza :
 
 val user_written_deps : _ t -> Dune_file.Lib_deps.t
 
+val set_obj_dir : 'a t -> 'a Obj_dir.t -> 'a t
+
 val of_local : local -> external_
 
 val as_local_exn : external_ -> local
+
+val set_version : 'a t -> string option -> 'a t
+
+val set_default_implementation : 'a t -> (Loc.t * Lib_name.t) option -> 'a t
+
+val set_implements : 'a t -> (Loc.t * Lib_name.t) option -> 'a t
+
+val set_orig_src_dir : 'a t -> 'a -> 'a t
+
+val set_ppx_runtime_deps : 'a t -> (Loc.t * Lib_name.t) list -> 'a t
+
+val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
 
 val create :
      loc:Loc.t

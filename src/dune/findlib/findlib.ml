@@ -144,14 +144,21 @@ module Unavailable_reason = struct
   let to_string = function
     | Not_found -> "not found"
     | Hidden pkg ->
+      let info = Dune_package.Lib.info pkg in
+      let obj_dir = Lib_info.obj_dir info in
+      let dir = Obj_dir.dir obj_dir in
       sprintf "in %s is hidden (unsatisfied 'exist_if')"
-        (Path.to_string_maybe_quoted (Dune_package.Lib.dir pkg))
+        (Path.to_string_maybe_quoted dir)
 
   let to_dyn =
     let open Dyn.Encoder in
     function
     | Not_found -> constr "Not_found" []
-    | Hidden lib -> constr "Hidden" [ Path.to_dyn (Dune_package.Lib.dir lib) ]
+    | Hidden lib ->
+      let info = Dune_package.Lib.info lib in
+      let obj_dir = Lib_info.obj_dir info in
+      let dir = Obj_dir.dir obj_dir in
+      constr "Hidden" [ Path.to_dyn dir ]
 end
 
 type t =
@@ -223,7 +230,6 @@ module Package = struct
                     support for the subsystem this library provides."
                ])
     in
-    let sub_systems = Sub_system_name.Map.empty in
     let archives = archives t in
     let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Mode.Dict.Set.t =
@@ -237,22 +243,58 @@ module Package = struct
       else
         discovered
     in
-    Dune_package.Lib.make ~orig_src_dir:None ~loc ~kind:Normal ~name:(name t)
-      ~synopsis:(description t) ~archives ~plugins:(plugins t)
-      ~foreign_objects:[] ~foreign_archives:(Mode.Dict.make_both [])
-      ~jsoo_runtime:(jsoo_runtime t) ~sub_systems
-      ~requires:(List.map ~f:add_loc (requires t))
-      ~ppx_runtime_deps:(List.map ~f:add_loc (ppx_runtime_deps t))
-      ~virtual_:false ~implements:None ~known_implementations:Variant.Map.empty
-      ~default_implementation:None ~modules:None
-      ~main_module_name:None (* XXX remove *) ~version:(version t) ~modes
-      ~obj_dir
-      ~special_builtin_support:
-        ( (* findlib has been around for much longer than dune, so it is
-             acceptable to have a special case in dune for findlib. *)
+    let info : Path.t Lib_info.t =
+      let name = name t in
+      let kind = Lib_kind.Normal in
+      let sub_systems = Sub_system_name.Map.empty in
+      let synopsis = description t in
+      let status = Lib_info.Status.Installed in
+      let src_dir = Obj_dir.dir obj_dir in
+      let version = version t in
+      let dune_version = None in
+      let virtual_deps = [] in
+      let implements = None in
+      let orig_src_dir = None in
+      let main_module_name : Dune_file.Library.Main_module_name.t =
+        This None
+      in
+      let enabled = Lib_info.Enabled_status.Normal in
+      let requires = Lib_info.Deps.Simple (List.map ~f:add_loc (requires t)) in
+      let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
+      let special_builtin_support :
+          Dune_file.Library.Special_builtin_support.t option =
+        (* findlib has been around for much longer than dune, so it is
+           acceptable to have a special case in dune for findlib. *)
         match Lib_name.to_string t.name with
         | "findlib.dynload" -> Some Findlib_dynload
-        | _ -> None )
+        | _ -> None
+      in
+      let foreign_objects = Lib_info.Source.External [] in
+      let plugins = plugins t in
+      let foreign_archives = Mode.Dict.make_both [] in
+      let jsoo_runtime = jsoo_runtime t in
+      let jsoo_archive = None in
+      let pps = [] in
+      let virtual_ = None in
+      let variant = None in
+      let known_implementations = P.Map.empty in
+      let default_implementation = None in
+      let wrapped = None in
+      Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
+        ~version ~synopsis ~main_module_name ~sub_systems ~requires
+        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
+        ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
+        ~virtual_ ~implements ~variant ~known_implementations
+        ~default_implementation ~modes ~wrapped ~special_builtin_support
+    in
+    Dune_package.Lib.make ~info ~archives ~plugins:(plugins t)
+      ~foreign_objects:[] ~foreign_archives:(Mode.Dict.make_both [])
+      ~jsoo_runtime:(jsoo_runtime t)
+      ~requires:(List.map ~f:add_loc (requires t))
+      ~known_implementations:Variant.Map.empty
+      ~modules:None ~main_module_name:None
+
+  (* XXX remove *)
 
   let parse db ~meta_file ~name ~parent_dir ~vars =
     let pkg_dir = Vars.get vars "directory" Ps.empty in
@@ -420,7 +462,9 @@ let find_and_acknowledge_package t ~fq_name =
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Dune pkg) ->
     List.iter pkg.libs ~f:(fun lib ->
-        Table.set t.packages (Dune_package.Lib.name lib) (Ok lib))
+        let info = Dune_package.Lib.info lib in
+        let name = Lib_info.name info in
+        Table.set t.packages name (Ok lib))
 
 let find t name =
   match Table.find t.packages name with

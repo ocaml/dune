@@ -161,6 +161,23 @@ let orig_src_dir t = t.orig_src_dir
 
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
+let set_version t version = { t with version }
+
+let set_orig_src_dir t orig_src_dir =
+  { t with orig_src_dir = Some orig_src_dir }
+
+let set_default_implementation t default_implementation =
+  { t with default_implementation }
+
+let set_implements t implements =
+  { t with implements }
+
+let set_ppx_runtime_deps t ppx_runtime_deps =
+  { t with ppx_runtime_deps }
+
+let set_sub_systems t sub_systems =
+  { t with sub_systems }
+
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
     ~init:(Deps.to_lib_deps t.requires) ~f:(fun acc s ->
@@ -346,6 +363,8 @@ let map t ~f_path ~f_obj_dir =
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
+
+let set_obj_dir t obj_dir = { t with obj_dir }
 
 let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 

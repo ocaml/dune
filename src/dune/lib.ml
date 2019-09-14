@@ -294,7 +294,8 @@ module T = struct
       default_implementation : t Or_exn.t Lazy.t option
     ; (* if this is a virtual library, this library contains all known
          implementations that are associated with a variant *)
-      resolved_implementations : t Or_exn.t Variant.Map.t Lazy.t option
+      resolved_implementations :
+        (Loc.t * t Or_exn.t) Variant.Map.t Lazy.t option
     ; (* This is mutable to avoid this error:
 
          {[ This kind of expression is not allowed as right-hand side of `let
@@ -869,9 +870,9 @@ let find_implementation_for lib ~variants =
     let* candidates =
       Variant.Set.fold variants_set ~init:[] ~f:(fun variant acc ->
           match Variant.Map.find available_implementations variant with
-          | Some res ->
-            (let+ res = res in
-             (variant, res))
+          | Some (loc, lib) ->
+            (let+ lib = lib in
+             (variant, (loc, lib)))
             :: acc
           | None -> acc)
       |> Result.List.all
@@ -883,7 +884,7 @@ let find_implementation_for lib ~variants =
       Ok (Some (Dep_stack.Implements_via.Variant variant, elem))
     | conflict ->
       let variants, conflict =
-        List.map conflict ~f:(fun (variant, lib) -> (variant, lib.info))
+        List.map conflict ~f:(fun (variant, (_, lib)) -> (variant, lib.info))
         |> List.split
       in
       let given_variants = Variant.Set.of_list variants in
@@ -1000,7 +1001,8 @@ end = struct
                ( (* TODO this can be made even lazier as we don't need to
                     resolve all variants at once *)
                  Lib_info.known_implementations info
-               |> Variant.Map.map ~f:resolve_impl ))
+               |> Variant.Map.map ~f:(fun (loc, lib) ->
+                      (loc, resolve_impl (loc, lib))) ))
     in
     let requires, pps, resolved_selects =
       let pps = Lib_info.pps info in
@@ -1249,7 +1251,7 @@ end = struct
     let impl_for vlib =
       find_implementation_for vlib ~variants
       >>= function
-      | Some (_, impl) -> Ok (Some impl)
+      | Some (_, (_loc, impl)) -> Ok (Some impl)
       | None -> (
         match vlib.default_implementation with
         | None -> Ok None
@@ -1394,7 +1396,7 @@ end = struct
       else
         let* impls =
           let+ impls = implemented_via_variants () in
-          List.map impls ~f:(fun (via, impl) -> (Some via, impl))
+          List.map impls ~f:(fun (via, (_, impl)) -> (Some via, impl))
         in
         match impls with
         | _ :: _ -> handle impls ~stack
@@ -1841,7 +1843,6 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     | External _ -> info
     | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
-  let known_implementations = Lib_info.known_implementations info in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
@@ -1870,6 +1871,16 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
   let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
   let* main_module_name = main_module_name lib in
+  let* known_implementations =
+    match lib.resolved_implementations with
+    | None -> Ok Variant.Map.empty
+    | Some (lazy implementations) ->
+      Variant.Map.to_list implementations
+      |> Result.List.fold_left ~init:Variant.Map.empty
+           ~f:(fun map (variant, (loc, lib)) ->
+             let+ lib = lib in
+             Variant.Map.add_exn map variant (loc, lib.name))
+  in
   let+ requires = lib.requires in
   let requires = add_loc requires in
   Dune_package.Lib.make ~info ~requires ~known_implementations

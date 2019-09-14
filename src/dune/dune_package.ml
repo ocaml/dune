@@ -12,13 +12,12 @@ end)
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
-    ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
     ; requires : (Loc.t * Lib_name.t) list
     }
 
-  let make ~info ~main_module_name ~requires ~known_implementations ~modules =
+  let make ~info ~main_module_name ~requires ~modules =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
@@ -28,14 +27,14 @@ module Lib = struct
         p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; requires; known_implementations; modules }
+    { info; main_module_name; requires; modules }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
   let encode ~package_root
-      { info; requires; known_implementations; main_module_name; modules } =
+      { info; requires; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -43,7 +42,10 @@ module Lib = struct
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name sexp (Mode.Dict.List.encode path xs)
     in
-    let known_implementations = Variant.Map.to_list known_implementations in
+    let known_implementations =
+      Lib_info.known_implementations info
+      |> Variant.Map.to_list
+    in
     let libs name = field_l name (no_loc Lib_name.encode) in
     let name = Lib_info.name info in
     let kind = Lib_info.kind info in
@@ -191,15 +193,13 @@ module Lib = struct
            ~known_implementations ~default_implementation ~modes ~wrapped
            ~special_builtin_support
        in
-       { info; requires; known_implementations; main_module_name; modules })
+       { info; requires; main_module_name; modules })
 
   let modules t = t.modules
 
   let main_module_name t = t.main_module_name
 
   let requires t = t.requires
-
-  let known_implementations t = t.known_implementations
 
   let compare_name x y =
     let x = Lib_info.name x.info in

@@ -9,8 +9,6 @@ module Lib : sig
 
   val main_module_name : t -> Module_name.t option
 
-  val known_implementations : t -> (Loc.t * Lib_name.t) Variant.Map.t
-
   val dir_of_name : Lib_name.t -> Path.Local.t
 
   val compare_name : t -> t -> Ordering.t
@@ -23,7 +21,6 @@ module Lib : sig
        info:Path.t Lib_info.t
     -> main_module_name:Module_name.t option
     -> requires:(Loc.t * Lib_name.t) list
-    -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
     -> modules:Modules.t option
     -> t
 end

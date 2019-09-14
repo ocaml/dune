@@ -1841,7 +1841,6 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     | External _ -> info
     | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
-  let known_implementations = Lib_info.known_implementations info in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
@@ -1872,7 +1871,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let* main_module_name = main_module_name lib in
   let+ requires = lib.requires in
   let requires = add_loc requires in
-  Dune_package.Lib.make ~info ~requires ~known_implementations
+  Dune_package.Lib.make ~info ~requires
     ~modules:(Some modules) ~main_module_name
 
 module Local : sig

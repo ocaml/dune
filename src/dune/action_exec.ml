@@ -3,6 +3,9 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
+(** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
+    relative paths are replaced by [Path.t]. (except the protocol doesn't
+    support Globs yet) *)
 module Dynamic_dep = struct
   module T = struct
     type t =

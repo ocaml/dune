@@ -14,3 +14,7 @@
   Error: Dependency cycle between the following files:
      _build/default/some_file
   [1]
+
+^ This is not great. There is no actual dependency cycle, dune is just
+interpreting glob dependency too coarsely (it builds all files instead
+of just bringing the directory listing up to date).

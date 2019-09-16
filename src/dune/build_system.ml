@@ -1475,13 +1475,13 @@ end = struct
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
           match (do_not_memoize, t.memory) with
+          | true, _ | _, None -> None
           | false, Some memory -> (
             match Dune_manager.Client.search memory rule_digest with
             | Ok (_, files) -> Some files
             | Error msg ->
               Log.infof "cache miss: %s" msg;
               None )
-          | _ -> None
         in
         match from_dune_memory with
         | Some files ->

@@ -1,5 +1,5 @@
 This test checks that in case the dependency of multi staged computation changes,
-only the dependencies up to this stage are rebuild.
+only the dependencies up to this stage are rebuilt.
 
   $ echo "(lang dune 2.0)" > dune-project
 

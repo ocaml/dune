@@ -226,6 +226,8 @@ let client_thread (events, client) =
       match List.filter_map ~f promotions with
       | [] -> client
       | dedup ->
+        Log.infof "send deduplication message for %s"
+          (Sexp.to_string (Sexp.List dedup));
         send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
         client )
     | args -> invalid_args args
@@ -424,10 +426,33 @@ module Client = struct
   type t =
     { socket : out_channel
     ; fd : Unix.file_descr
+    ; input : char Stream.t
     ; memory : Dune_memory.Memory.t
+    ; thread : Thread.t
     }
 
-  let make () =
+  type command = Dedup of (Path.t * Path.t)
+
+  let pp_command fmt = function
+    | Dedup (source, target) ->
+      Format.pp_print_string fmt "Dedup(";
+      Path.pp fmt source;
+      Format.pp_print_string fmt ",";
+      Path.pp fmt target;
+      Format.pp_print_string fmt ")"
+
+  let read input =
+    let open Result.O in
+    Csexp.parse input
+    >>= function
+    | Sexp.List
+        [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom source; Sexp.Atom target ] ]
+      ->
+      Result.Ok (Dedup (Path.of_string source, Path.of_string target))
+    | exp ->
+      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+
+  let make handle =
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -455,8 +480,21 @@ module Client = struct
       Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
     in
     let socket = Unix.out_channel_of_descr fd in
+    let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+    let rec thread input =
+      match
+        let+ command = read input in
+        Log.infof "dune-cache command: %a" pp_command command;
+        handle command
+      with
+      | Result.Error e -> Log.infof "dune-cache read error: %s" e
+      | Result.Ok () -> (thread [@tailcall]) input
+    in
     send socket my_versions_command;
-    Result.Ok { socket; fd; memory }
+    (* FIXME: find highest common version *)
+    ignore (read input);
+    let thread = Thread.create thread input in
+    Result.Ok { socket; fd; input; memory; thread }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key
@@ -490,7 +528,7 @@ module Client = struct
 
   let search client key = Dune_memory.Memory.search client.memory key
 
-  let teardown memory =
-    flush memory.socket;
-    Unix.shutdown memory.fd Unix.SHUTDOWN_ALL
+  let teardown client =
+    Unix.shutdown client.fd Unix.SHUTDOWN_SEND;
+    Thread.join client.thread
 end

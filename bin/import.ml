@@ -30,8 +30,17 @@ include Common.Let_syntax
 
 (* FIXME: leverage fibers to actually connect in the background *)
 let make_memory () =
+  let handle = function
+    | Dune_manager.Client.Dedup (target, source) ->
+      let target = Path.to_string target in
+      let tmpname = target ^ ".dedup" in
+      Log.infof "deduplicate %s as %s" target (Path.to_string source);
+      Unix.link (Path.to_string source) tmpname;
+      Unix.rename tmpname target
+  in
   match Sys.getenv_opt "DUNE_CACHE" with
-  | Some _ -> Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
+  | Some _ ->
+    Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make handle)))
   | _ -> Fiber.return None
 
 module Main = struct

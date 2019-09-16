@@ -181,6 +181,8 @@ let set_sub_systems t sub_systems = { t with sub_systems }
 let set_foreign_objects t foreign_objects =
   { t with foreign_objects = External foreign_objects }
 
+let set_re_exports t re_exports = { t with re_exports }
+
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
     ~init:(Deps.to_lib_deps t.requires) ~f:(fun acc s ->

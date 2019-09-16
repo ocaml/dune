@@ -283,6 +283,7 @@ module T = struct
     { info : Lib_info.external_
     ; name : Lib_name.t
     ; unique_id : Id.t
+    ; re_exports : t list Or_exn.t
     ; requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
@@ -1015,6 +1016,10 @@ end = struct
         let+ requires = requires in
         impl :: requires
     in
+    let re_exports : t list Or_exn.t =
+      Lib_info.re_exports info
+      |> resolve_simple_deps db ~allow_private_deps ~stack
+    in
     let ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info
       |> resolve_simple_deps db ~allow_private_deps ~stack
@@ -1041,6 +1046,7 @@ end = struct
       ; default_implementation
       ; resolved_implementations
       ; stdlib_dir = db.stdlib_dir
+      ; re_exports
       }
     in
     t.sub_systems <-
@@ -1117,6 +1123,23 @@ end = struct
   let resolve_simple_deps db names ~allow_private_deps ~stack =
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
+
+  let re_exports_closure ts =
+    let visited = ref Set.empty in
+    let res = ref [] in
+    let rec one (t : lib) =
+      if Set.mem !visited t then
+        Ok ()
+      else begin
+        visited := Set.add !visited t;
+        let* re_exports = t.re_exports in
+        let+ () = many re_exports in
+        res := t :: !res;
+      end
+    and many = Result.List.iter ~f:one
+    in
+    let+ () = many ts in
+    List.rev !res
 
   let resolve_complex_deps db deps ~allow_private_deps ~stack =
     let res, resolved_selects =
@@ -1224,6 +1247,7 @@ end = struct
         in
         (deps, pps)
     in
+    let deps = deps >>= re_exports_closure in
     (deps, pps, resolved_selects)
 
   (* Compute transitive closure of libraries to figure which ones will trigger
@@ -1871,10 +1895,13 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
   let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
   let* main_module_name = main_module_name lib in
-  let+ requires = lib.requires in
+  let* requires = lib.requires in
   let requires = add_loc requires in
-  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
-    ~main_module_name
+  let+ re_exports = lib.re_exports in
+  let re_exports = List.map ~f:(fun t -> Loc.none, t.name) re_exports in
+  let info = Lib_info.set_re_exports info re_exports in
+  Dune_package.Lib.make ~info ~requires
+    ~modules:(Some modules) ~main_module_name
 
 module Local : sig
   type t = private lib

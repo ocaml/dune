@@ -144,6 +144,8 @@ val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
 
 val set_foreign_objects : Path.t t -> Path.t list -> Path.t t
 
+val set_re_exports : 'a t -> (Loc.t * Lib_name.t) list -> 'a t
+
 val map_path : 'a t -> f:('a -> 'a) -> 'a t
 
 val create :

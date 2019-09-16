@@ -8,8 +8,9 @@ let db_path =
   Path.of_filename_relative_to_initial_cwd "../unit-tests/findlib-db"
 
 let print_pkg ppf pkg =
-  Format.fprintf ppf "<package:%s>"
-    (Lib_name.to_string (Dune_package.Lib.name pkg))
+  let info = Dune_package.Lib.info pkg in
+  let name = Lib_info.name info in
+  Format.fprintf ppf "<package:%s>" (Lib_name.to_string name)
 
 let findlib =
   let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in

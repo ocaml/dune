@@ -55,6 +55,7 @@ module Lib = struct
     let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
     let default_implementation = Lib_info.default_implementation info in
     let special_builtin_support = Lib_info.special_builtin_support info in
+    let re_exports = Lib_info.re_exports info in
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
@@ -92,6 +93,8 @@ module Lib = struct
        ; field_o "special_builtin_support"
            Dune_file.Library.Special_builtin_support.encode
            special_builtin_support
+       ; field_l "re_exports" (no_loc Lib_name.encode)
+           re_exports
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -152,6 +155,9 @@ module Lib = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Dune_file.Library.Special_builtin_support.decode )
+       and+ re_exports =
+         field_l "re_exports"
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> located Lib_name.decode)
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations
@@ -189,7 +195,7 @@ module Lib = struct
            ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
            ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
            ~known_implementations ~default_implementation ~modes ~wrapped
-           ~special_builtin_support
+           ~special_builtin_support ~re_exports
        in
        { info; requires; main_module_name; modules })
 

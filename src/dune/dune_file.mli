@@ -280,6 +280,7 @@ module Library : sig
     ; stdlib : Stdlib.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; re_exports : (Loc.t * Lib_name.t) list
     }
 
   val has_stubs : t -> bool

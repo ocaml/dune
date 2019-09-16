@@ -1018,6 +1018,7 @@ module Library = struct
     ; stdlib : Stdlib.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; re_exports : (Loc.t * Lib_name.t) list
     }
 
   let decode =
@@ -1081,7 +1082,12 @@ module Library = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Special_builtin_support.decode )
-       and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
+       and+ enabled_if = enabled_if ~since:(Some (1, 10))
+       and+ re_exports =
+         field "re_exports" ~default:[]
+           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>>
+            repeat (located Lib_name.decode))
+       in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in
@@ -1206,6 +1212,7 @@ module Library = struct
            ; stdlib
            ; special_builtin_support
            ; enabled_if
+           ; re_exports
            } ))
 
   let has_stubs t =

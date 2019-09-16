@@ -105,6 +105,8 @@ val orig_src_dir : 'path t -> 'path option
 
 val version : _ t -> string option
 
+val re_exports : _ t -> (Loc.t * Lib_name.t) list
+
 (** Directory where the source files for the library are located. Returns the
     original src dir when it exists *)
 val best_src_dir : 'path t -> 'path
@@ -176,4 +178,5 @@ val create :
   -> modes:Mode.Dict.Set.t
   -> wrapped:Wrapped.t Dune_file.Library.Inherited.t option
   -> special_builtin_support:Dune_file.Library.Special_builtin_support.t option
+  -> re_exports:(Loc.t * Lib_name.t) list
   -> 'a t

@@ -280,12 +280,13 @@ module Package = struct
       let known_implementations = P.Map.empty in
       let default_implementation = None in
       let wrapped = None in
+      let re_exports = [] in
       Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
         ~version ~synopsis ~main_module_name ~sub_systems ~requires
         ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
         ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
         ~virtual_ ~implements ~variant ~known_implementations
-        ~default_implementation ~modes ~wrapped ~special_builtin_support
+        ~default_implementation ~modes ~wrapped ~special_builtin_support ~re_exports
     in
     Dune_package.Lib.make ~info
       ~requires:(List.map ~f:add_loc (requires t))

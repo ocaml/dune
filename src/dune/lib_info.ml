@@ -99,6 +99,7 @@ type 'path t =
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support :
       Dune_file.Library.Special_builtin_support.t option
+  ; re_exports : (Loc.t * Lib_name.t) list
   }
 
 let name t = t.name
@@ -158,6 +159,8 @@ let jsoo_archive t = t.jsoo_archive
 let main_module_name t = t.main_module_name
 
 let orig_src_dir t = t.orig_src_dir
+
+let re_exports t = t.re_exports
 
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
@@ -303,6 +306,7 @@ let of_library_stanza ~dir
   ; modes
   ; wrapped = Some conf.wrapped
   ; special_builtin_support = conf.special_builtin_support
+  ; re_exports = conf.re_exports
   }
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
@@ -310,7 +314,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime
     ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
     ~implements ~variant ~known_implementations ~default_implementation ~modes
-    ~wrapped ~special_builtin_support =
+    ~wrapped ~special_builtin_support ~re_exports =
   { loc
   ; name
   ; kind
@@ -342,6 +346,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; modes
   ; wrapped
   ; special_builtin_support
+  ; re_exports
   }
 
 type external_ = Path.t t

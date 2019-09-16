@@ -7,7 +7,9 @@ let () = init ()
 let print_loc ppf (_ : Loc.t) = Format.pp_print_string ppf "<loc>"
 
 let sexp =
-  lazy (Dune_lang.parse_string ~fname:"" ~mode:Single {|
+  lazy
+    (Dune_lang.Parser.parse_string ~fname:"" ~mode:Single
+       {|
 ((foo 1)
  (foo 2))
 |})
@@ -75,7 +77,7 @@ let parse s =
   let f ~lexer =
     try
       Ok
-        ( Dune_lang.parse_string ~fname:"" ~mode:Many ~lexer s
+        ( Dune_lang.Parser.parse_string ~fname:"" ~mode:Many ~lexer s
         |> List.map ~f:Dune_lang.Ast.remove_locs )
     with
     | User_error.E msg -> Error (string_of_user_error msg)
@@ -307,7 +309,7 @@ let test syntax sexp =
           sexp
       in
       match
-        Dune_lang.parse_string s ~mode:Single ~fname:""
+        Dune_lang.Parser.parse_string s ~mode:Single ~fname:""
           ~lexer:
             ( match syntax with
             | Jbuild -> Jbuild_support.Lexer.token
@@ -374,7 +376,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   (* Check parsing of comments *)
-  Dune_lang.Parser.parse_cst
+  Dune_lang.Parser.parse ~mode:Cst
     (Lexing.from_string
        {|
 hello
@@ -417,7 +419,7 @@ comment|#
 |}
 
 let%expect_test _ =
-  Dune_lang.Parser.parse_cst ~lexer:Jbuild_support.Lexer.token
+  Dune_lang.Parser.parse ~lexer:Jbuild_support.Lexer.token ~mode:Cst
     (Lexing.from_string jbuild_file)
   |> List.map
        ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)

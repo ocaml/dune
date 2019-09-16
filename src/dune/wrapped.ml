@@ -10,7 +10,7 @@ let decode =
     [ ("true", return (Simple true))
     ; ("false", return (Simple false))
     ; ( "transition"
-      , Syntax.since Stanza.syntax (1, 2)
+      , Dune_lang.Syntax.since Stanza.syntax (1, 2)
         >>> let+ x = string in
             Yes_with_transition x )
     ]

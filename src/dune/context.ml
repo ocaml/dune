@@ -596,7 +596,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
   in
   let* s = Process.run_capture ~env Strict opam args in
   let vars =
-    Dune_lang.parse_string ~fname:"<opam output>" ~mode:Single s
+    Dune_lang.Parser.parse_string ~fname:"<opam output>" ~mode:Single s
     |> Dune_lang.Decoder.(
          parse (enter (repeat (pair string string))) Univ_map.empty)
     |> Env.Map.of_list_multi

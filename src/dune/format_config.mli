@@ -16,7 +16,7 @@ type t
 val of_config : ext:t option -> dune_lang:t option -> t option
 
 (** The syntax corresponding to the dune 1.x [(using fmt)] extension. *)
-val syntax : Syntax.t
+val syntax : Dune_lang.Syntax.t
 
 (** Where the configuration was defined. Can be [Loc.none] if formatting is
     done by default. *)

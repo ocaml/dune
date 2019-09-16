@@ -14,9 +14,11 @@ module type S = sig
 
   val loc : t -> Loc.t
 
-  val syntax : Syntax.t
+  val syntax : Dune_lang.Syntax.t
 
-  val parse : t Dune_lang.Decoder.t
+  val decode : t Dune_lang.Decoder.t
+
+  val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
 end
 
 let all = Sub_system_name.Table.create ~default_value:None
@@ -38,7 +40,7 @@ module Register (M : S) : sig end = struct
       let name_s = Sub_system_name.to_string name in
       record_parser :=
         fun acc ->
-          field_o name_s parse
+          field_o name_s decode
           >>= function
           | None -> p acc
           | Some x ->

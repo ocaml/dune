@@ -9,7 +9,7 @@ type t =
   | Shared_object
   | Js
 
-include Dune_lang.Conv with type t := t
+include Dune_lang.Conv.S with type t := t
 
 val all : t list
 

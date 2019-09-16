@@ -84,26 +84,26 @@ let eval (t : _ Status.Map.t) ~dirs =
   let data_only = eval ~standard:default.data_only t.data_only in
   let vendored = eval ~standard:default.vendored t.vendored in
   let statuses =
-    List.fold_left normal ~init:String.Map.empty
-      ~f:(fun acc dir -> String.Map.set acc dir Status.Normal)
+    List.fold_left normal ~init:String.Map.empty ~f:(fun acc dir ->
+        String.Map.set acc dir Status.Normal)
   in
   let statuses =
     List.fold_left data_only ~init:statuses ~f:(fun acc dir ->
-      String.Map.set acc dir Status.Data_only)
+        String.Map.set acc dir Status.Data_only)
   in
   List.fold_left vendored ~init:statuses ~f:(fun acc dir ->
-    String.Map.update acc dir ~f:(function
-      | None
-      | Some Status.Vendored
-      | Some Normal -> Some Vendored
-      | Some Data_only ->
-        User_error.raise
-          [ Pp.textf
-              "Directory %s was marked as vendored and data_only, it can't be \
-               marked as both."
-              dir
-          ]
-    ))
+      String.Map.update acc dir ~f:(function
+        | None
+         |Some Status.Vendored
+         |Some Normal ->
+          Some Vendored
+        | Some Data_only ->
+          User_error.raise
+            [ Pp.textf
+                "Directory %s was marked as vendored and data_only, it can't \
+                 be marked as both."
+                dir
+            ]))
 
 let decode =
   let open Dune_lang.Decoder in
@@ -131,7 +131,7 @@ let decode =
       in
       Predicate_lang.of_string_set (String.Set.of_list l)
     in
-    let+ version = Syntax.get_exn Stanza.syntax
+    let+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc, ignored = located ignored in
     if version >= (1, 6) then
       User_warning.emit ~loc
@@ -142,7 +142,9 @@ let decode =
         ];
     ignored
   in
-  let plang = Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.decode in
+  let plang =
+    Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.decode
+  in
   let vendored_dirs =
     let decode =
       if Bootstrap.bootstrapping then
@@ -151,7 +153,7 @@ let decode =
       else
         Predicate_lang.decode
     in
-    located (Syntax.since Stanza.syntax (1, 11) >>> decode)
+    located (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> decode)
   in
   let decode =
     let+ dirs = field_o "dirs" (located plang)

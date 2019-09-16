@@ -21,7 +21,7 @@ module Unavailable_reason : sig
     | Not_found
         (** The package is hidden because it contains an unsatisfied 'exist_if'
             clause *)
-    | Hidden of Sub_system_info.t Dune_package.Lib.t
+    | Hidden of Dune_package.Lib.t
 
   val to_string : t -> string
 
@@ -29,22 +29,18 @@ module Unavailable_reason : sig
 end
 
 (** Lookup a package in the given database *)
-val find :
-     t
-  -> Lib_name.t
-  -> (Sub_system_info.t Dune_package.Lib.t, Unavailable_reason.t) result
+val find : t -> Lib_name.t -> (Dune_package.Lib.t, Unavailable_reason.t) result
 
 val available : t -> Lib_name.t -> bool
 
 (** List all the packages available in this Database *)
-val all_packages : t -> Sub_system_info.t Dune_package.Lib.t list
+val all_packages : t -> Dune_package.Lib.t list
 
 (** List all the packages that are not available in this database *)
 val all_unavailable_packages : t -> (Lib_name.t * Unavailable_reason.t) list
 
 (** A dummy package. This is used to implement [external-lib-deps] *)
-val dummy_package :
-  t -> name:Lib_name.t -> Sub_system_info.t Dune_package.Lib.t
+val dummy_package : t -> name:Lib_name.t -> Dune_package.Lib.t
 
 module Config : sig
   type t

@@ -41,7 +41,7 @@ let load_sources ~dune_version ~dir ~files =
               "Source file %s with extension %s is not allowed before version \
                %s"
               fn (Filename.extension fn)
-              (Syntax.Version.to_string version)
+              (Dune_lang.Syntax.Version.to_string version)
           ]
       | Recognized (obj, kind) ->
         let path = Path.Build.relative dir fn in

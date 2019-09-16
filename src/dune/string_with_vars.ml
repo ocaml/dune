@@ -4,11 +4,13 @@ open Dune_lang.Template
 
 type t =
   { template : Dune_lang.Template.t
-  ; syntax_version : Syntax.Version.t
+  ; syntax_version : Dune_lang.Syntax.Version.t
   }
 
 let compare_no_loc t1 t2 =
-  match Syntax.Version.compare t1.syntax_version t2.syntax_version with
+  match
+    Dune_lang.Syntax.Version.compare t1.syntax_version t2.syntax_version
+  with
   | (Ordering.Lt | Gt) as a -> a
   | Eq -> Dune_lang.Template.compare_no_loc t1.template t2.template
 
@@ -35,7 +37,7 @@ let decode =
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s
     | List (loc, _) -> User_error.raise ~loc [ Pp.text "Unexpected list" ]
   in
-  let+ syntax_version = Syntax.get_exn Stanza.syntax
+  let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
   and+ template = template_parser in
   { template; syntax_version }
 
@@ -157,7 +159,7 @@ let fold_vars =
   in
   fun t ~init ~f -> loop t.template.parts init f
 
-type 'a expander = Var.t -> Syntax.Version.t -> 'a
+type 'a expander = Var.t -> Dune_lang.Syntax.Version.t -> 'a
 
 type yes_no_unknown =
   | Yes

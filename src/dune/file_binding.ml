@@ -64,7 +64,7 @@ module Unexpanded = struct
           | Atom _ -> true
           | _ -> false
         and+ s = String_with_vars.decode
-        and+ version = Syntax.get_exn Stanza.syntax in
+        and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
         if (not is_atom) && version < (1, 6) then
           let what =
             ( if String_with_vars.has_vars s then
@@ -73,8 +73,8 @@ module Unexpanded = struct
               "quoted strings" )
             |> sprintf "Using %s here"
           in
-          Syntax.Error.since (String_with_vars.loc s) Stanza.syntax (1, 6)
-            ~what
+          Dune_lang.Syntax.Error.since (String_with_vars.loc s) Stanza.syntax
+            (1, 6) ~what
         else
           s
       in

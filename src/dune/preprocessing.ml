@@ -143,19 +143,31 @@ module Driver = struct
 
       open Dune_lang.Decoder
 
-      let parse =
+      let decode =
         fields
           (let+ loc = loc
            and+ flags = Ordered_set_lang.Unexpanded.field "flags"
            and+ as_ppx_flags =
              Ordered_set_lang.Unexpanded.field "as_ppx_flags"
-               ~check:(Syntax.since syntax (1, 2))
+               ~check:(Dune_lang.Syntax.since syntax (1, 2))
            and+ lint_flags = Ordered_set_lang.Unexpanded.field "lint_flags"
            and+ main = field "main" string
            and+ replaces =
              field "replaces" (repeat (located Lib_name.decode)) ~default:[]
            in
            { loc; flags; as_ppx_flags; lint_flags; main; replaces })
+
+      let encode t =
+        let open Dune_lang.Encoder in
+        let lib (_loc, name) = Lib_name.encode name in
+        ( (1, 0)
+        , record_fields
+          @@ [ field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
+             ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode
+                 t.lint_flags
+             ; field "main" string t.main
+             ; field_l "replaces" lib t.replaces
+             ] )
     end
 
     (* The [lib] field is lazy so that we don't need to fill it for hardcoded
@@ -200,17 +212,18 @@ module Driver = struct
               | Some t -> Ok t))
       }
 
-    let encode t =
-      let open Dune_lang.Encoder in
-      let f x = Lib_name.encode (Lib.name (Lazy.force x.lib)) in
-      ( (1, 0)
-      , record_fields
-        @@ [ field_i "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
-           ; field_i "lint_flags" Ordered_set_lang.Unexpanded.encode
-               t.info.lint_flags
-           ; field "main" string t.info.main
-           ; field_l "replaces" f (Result.ok_exn t.replaces)
-           ] )
+    let public_info t =
+      let open Result.O in
+      let+ replaces = t.replaces in
+      { Info.loc = t.info.loc
+      ; flags = t.info.flags
+      ; as_ppx_flags = t.info.as_ppx_flags
+      ; lint_flags = t.info.lint_flags
+      ; main = t.info.main
+      ; replaces =
+          List.map2 t.info.replaces replaces ~f:(fun (loc, _) t ->
+              (loc, Lib.name (Lazy.force t.lib)))
+      }
   end
 
   include M

@@ -1,5 +1,5 @@
 open! Stdune
-open Import
+module First_line = Versioned_file_first_line
 
 module type S = sig
   type data
@@ -18,13 +18,10 @@ module type S = sig
     val get_exn : string -> Instance.t
   end
 
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Dune_lang.Decoder.t) -> 'a
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 
   val parse_contents :
-       Lexing.lexbuf
-    -> Dune_lexer.first_line
-    -> f:(Lang.Instance.t -> 'a Dune_lang.Decoder.t)
-    -> 'a
+    Lexing.lexbuf -> First_line.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 end
 
 module Make (Data : sig
@@ -55,12 +52,12 @@ struct
       Table.add_exn langs name { syntax; data }
 
     let parse first_line : Instance.t =
-      let { Dune_lexer.lang = name_loc, name; version = ver_loc, ver } =
+      let { First_line.lang = name_loc, name; version = ver_loc, ver } =
         first_line
       in
       let ver =
-        Dune_lang.Decoder.parse Syntax.Version.decode Univ_map.empty
-          (Atom (ver_loc, Dune_lang.Atom.of_string ver))
+        Decoder.parse Syntax.Version.decode Univ_map.empty
+          (Atom (ver_loc, Atom.of_string ver))
       in
       match Table.find langs name with
       | None ->
@@ -82,21 +79,19 @@ struct
 
   let parse_contents lb first_line ~f =
     let lang = Lang.parse first_line in
-    let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
+    let sexp = Parser.parse lb ~mode:Many_as_one in
     let parsing_context =
       Univ_map.singleton (Syntax.key lang.syntax) lang.version
     in
-    Dune_lang.Decoder.parse
-      (Dune_lang.Decoder.enter (f lang))
-      parsing_context sexp
+    Decoder.parse (Decoder.enter (f lang)) parsing_context sexp
 
   let load fn ~f =
     Io.with_lexbuf_from_file fn ~f:(fun lb ->
-        parse_contents lb (Dune_lexer.first_line lb) ~f)
+        parse_contents lb (First_line.lex lb) ~f)
 end
 
 let no_more_lang =
-  let open Dune_lang.Decoder in
+  let open Decoder in
   let+ (_ : _ list) =
     multi_field "lang"
       (let+ loc = loc

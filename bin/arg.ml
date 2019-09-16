@@ -47,7 +47,7 @@ module Dep = struct
       Some (recursive, s)
 
   let dep_parser =
-    Syntax.set Stanza.syntax Stanza.latest_version Dep_conf.decode
+    Dune_lang.Syntax.set Stanza.syntax Stanza.latest_version Dep_conf.decode
 
   let parser s =
     match parse_alias s with
@@ -56,7 +56,7 @@ module Dep = struct
     | None -> (
       match
         Dune_lang.Decoder.parse dep_parser Univ_map.empty
-          (Dune_lang.parse_string ~fname:"command line"
+          (Dune_lang.Parser.parse_string ~fname:"command line"
              ~mode:Dune_lang.Parser.Mode.Single s)
       with
       | x -> `Ok x

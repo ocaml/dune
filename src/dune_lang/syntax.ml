@@ -1,5 +1,4 @@
 open! Stdune
-open Import
 
 module Version = struct
   module T = struct
@@ -26,18 +25,17 @@ module Version = struct
 
   let hash = Hashtbl.hash
 
-  let encode t = Dune_lang.Encoder.string (to_string t)
+  let encode t = Encoder.string (to_string t)
 
-  let decode : t Dune_lang.Decoder.t =
-    let open Dune_lang.Decoder in
+  let decode : t Decoder.t =
+    let open Decoder in
     raw
     >>| function
     | Atom (loc, A s) -> (
       try Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
       with _ ->
         User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
-    | sexp ->
-      User_error.raise ~loc:(Dune_lang.Ast.loc sexp) [ Pp.text "Atom expected" ]
+    | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "Atom expected" ]
 
   let can_read ~parser_version:(parser_major, parser_minor)
       ~data_version:(data_major, data_minor) =
@@ -131,7 +129,7 @@ let greatest_supported_version t =
 
 let key t = t.key
 
-open Dune_lang.Decoder
+open Decoder
 
 let set t ver parser = set t.key ver parser
 

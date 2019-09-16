@@ -125,7 +125,7 @@ module Dep_conf : sig
 
   val remove_locs : t -> t
 
-  include Dune_lang.Conv with type t := t
+  include Dune_lang.Conv.S with type t := t
 
   val to_dyn : t Dyn.Encoder.t
 end
@@ -249,7 +249,7 @@ module Library : sig
       | Findlib_dynload
       | Build_info of Build_info.t
 
-    include Dune_lang.Conv with type t := t
+    include Dune_lang.Conv.S with type t := t
   end
 
   type t =
@@ -271,7 +271,7 @@ module Library : sig
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs : bool
-    ; dune_version : Syntax.Version.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
     ; variant : Variant.t option
@@ -346,7 +346,7 @@ module Executables : sig
       ; loc : Loc.t
       }
 
-    include Dune_lang.Conv with type t := t
+    include Dune_lang.Conv.S with type t := t
 
     val exe : t
 
@@ -486,7 +486,7 @@ module Copy_files : sig
   type t =
     { add_line_directive : bool
     ; glob : String_with_vars.t
-    ; syntax_version : Syntax.Version.t
+    ; syntax_version : Dune_lang.Syntax.Version.t
     }
 end
 

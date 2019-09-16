@@ -606,8 +606,7 @@ let expand_and_eval_set t set ~standard =
     eval set ~standard
   | paths ->
     let+ standard = standard
-    and+ sexps = Build.all (List.map paths ~f:Build.read_sexp)
-    in
+    and+ sexps = Build.all (List.map paths ~f:Build.read_sexp) in
     let files_contents = List.combine paths sexps |> Path.Map.of_list_exn in
     expand set ~files_contents |> eval ~standard
 

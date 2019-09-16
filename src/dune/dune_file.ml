@@ -55,7 +55,7 @@ let relative_file =
 
 let library_variants =
   let syntax =
-    Syntax.create ~name:"library_variants"
+    Dune_lang.Syntax.create ~name:"library_variants"
       ~desc:"the experimental library variants feature." [ (0, 2) ]
   in
   Dune_project.Extension.register_simple ~experimental:true syntax
@@ -64,7 +64,7 @@ let library_variants =
 
 let variants_field =
   field_o "variants"
-    (let* () = Syntax.since library_variants (0, 1) in
+    (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
      located (repeat Variant.decode >>| Variant.Set.of_list))
 
 (* Parse and resolve "package" fields *)
@@ -169,7 +169,7 @@ module Pps_and_flags = struct
     let+ l, flags =
       until_keyword "--" ~before:String_with_vars.decode
         ~after:(repeat String_with_vars.decode)
-    and+ syntax_version = Syntax.get_exn Stanza.syntax in
+    and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let pps, more_flags =
       List.partition_map l ~f:(fun s ->
           match String_with_vars.is_prefix ~prefix:"-" s with
@@ -189,7 +189,7 @@ module Pps_and_flags = struct
       List.iter
         ~f:(fun flag ->
           if String_with_vars.has_vars flag then
-            Syntax.Error.since
+            Dune_lang.Syntax.Error.since
               (String_with_vars.loc flag)
               Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
         all_flags;
@@ -220,7 +220,7 @@ module Dep_conf = struct
     | Sandbox_config s -> Sandbox_config s
 
   let decode_sandbox_config =
-    let+ () = Syntax.since Stanza.syntax (1, 12)
+    let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 12)
     and+ loc, x =
       located
         (repeat
@@ -245,11 +245,13 @@ module Dep_conf = struct
         ; ("package", sw >>| fun x -> Package x)
         ; ("universe", return Universe)
         ; ( "files_recursively_in"
-          , let+ () = Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"source_tree"
+          , let+ () =
+              Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
+                ~to_:"source_tree"
             and+ x = sw in
             Source_tree x )
         ; ( "source_tree"
-          , let+ () = Syntax.since Stanza.syntax (1, 0)
+          , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
             and+ x = sw in
             Source_tree x )
         ; ("env_var", sw >>| fun x -> Env_var x)
@@ -338,12 +340,12 @@ module Preprocess = struct
           and+ pps, flags = Pps_and_flags.decode in
           Pps { loc; pps; flags; staged = false } )
       ; ( "staged_pps"
-        , let+ () = Syntax.since Stanza.syntax (1, 1)
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
           and+ loc = loc
           and+ pps, flags = Pps_and_flags.decode in
           Pps { loc; pps; flags; staged = true } )
       ; ( "future_syntax"
-        , let+ () = Syntax.since Stanza.syntax (1, 8)
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
           and+ loc = loc in
           Future_syntax loc )
       ]
@@ -411,7 +413,7 @@ let enabled_if ~since =
   let decode =
     match since with
     | None -> Blang.decode
-    | Some since -> Syntax.since Stanza.syntax since >>> Blang.decode
+    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode
   in
   field "enabled_if" ~default:Blang.true_ decode
 
@@ -657,7 +659,7 @@ module Buildable = struct
     let check_c t =
       match since_c with
       | None -> t
-      | Some v -> Syntax.since Stanza.syntax v >>> t
+      | Some v -> Dune_lang.Syntax.since Stanza.syntax v >>> t
     in
     let+ loc = loc
     and+ preprocess =
@@ -915,7 +917,7 @@ module Library = struct
       sum
         [ ("findlib_dynload", return Findlib_dynload)
         ; ( "build_info"
-          , let+ () = Syntax.since Stanza.syntax (1, 11)
+          , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
             and+ info = Build_info.decode in
             Build_info info )
         ]
@@ -936,7 +938,8 @@ module Library = struct
 
     let syntax =
       let syntax =
-        Syntax.create ~name:"experimental_building_ocaml_compiler_with_dune"
+        Dune_lang.Syntax.create
+          ~name:"experimental_building_ocaml_compiler_with_dune"
           ~desc:"experimental feature for building the compiler with dune"
           [ (0, 1) ]
       in
@@ -1006,7 +1009,7 @@ module Library = struct
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
     ; no_keep_locs : bool
-    ; dune_version : Syntax.Version.t
+    ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
     ; variant : Variant.t option
@@ -1045,40 +1048,45 @@ module Library = struct
        and+ no_dynlink = field_b "no_dynlink"
        and+ no_keep_locs =
          field_b "no_keep_locs"
-           ~check:(Syntax.deprecated_in Stanza.syntax (1, 7))
+           ~check:(Dune_lang.Syntax.deprecated_in Stanza.syntax (1, 7))
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
        and+ project = Dune_project.get_exn ()
-       and+ dune_version = Syntax.get_exn Stanza.syntax
+       and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax
        and+ virtual_modules =
          field_o "virtual_modules"
-           (Syntax.since Stanza.syntax (1, 7) >>> Ordered_set_lang.decode)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
+           >>> Ordered_set_lang.decode )
        and+ implements =
          field_o "implements"
-           (Syntax.since Stanza.syntax (1, 7) >>> located Lib_name.decode)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
+           >>> located Lib_name.decode )
        and+ variant =
          field_o "variant"
-           (Syntax.since library_variants (0, 1) >>> located Variant.decode)
+           ( Dune_lang.Syntax.since library_variants (0, 1)
+           >>> located Variant.decode )
        and+ default_implementation =
          field_o "default_implementation"
-           (Syntax.since library_variants (0, 1) >>> located Lib_name.decode)
+           ( Dune_lang.Syntax.since library_variants (0, 1)
+           >>> located Lib_name.decode )
        and+ private_modules =
          field_o "private_modules"
-           (let* () = Syntax.since Stanza.syntax (1, 2) in
+           (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 2) in
             Ordered_set_lang.decode)
        and+ stdlib =
-         field_o "stdlib" (Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
+         field_o "stdlib"
+           (Dune_lang.Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
        and+ special_builtin_support =
          field_o "special_builtin_support"
-           ( Syntax.since Stanza.syntax (1, 10)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Special_builtin_support.decode )
        and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in
        let name =
-         let open Syntax.Version.Infix in
+         let open Dune_lang.Syntax.Version.Infix in
          match (name, public) with
          | Some (loc, res), _ -> (loc, Lib_name.Local.validate (loc, res))
          | None, Some { name = loc, name; _ } ->
@@ -1297,13 +1305,15 @@ module Promote = struct
   let decode =
     fields
       (let+ until_clean =
-         field_b "until-clean" ~check:(Syntax.since Stanza.syntax (1, 10))
+         field_b "until-clean"
+           ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
        and+ into =
          field_o "into"
-           (Syntax.since Stanza.syntax (1, 10) >>= fun () -> Into.decode)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
+           >>= fun () -> Into.decode )
        and+ only =
          field_o "only"
-           ( Syntax.since Stanza.syntax (1, 10)
+           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>= fun () -> Predicate_lang.decode )
        in
        { lifetime =
@@ -1329,7 +1339,7 @@ module Executables = struct
     val make :
          multi:bool
       -> stanza:string
-      -> allow_omit_names_version:Syntax.Version.t
+      -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
     val install_conf :
@@ -1401,7 +1411,7 @@ module Executables = struct
         else
           single_fields
       and+ loc = loc
-      and+ dune_syntax = Syntax.get_exn Stanza.syntax
+      and+ dune_syntax = Dune_lang.Syntax.get_exn Stanza.syntax
       and+ package =
         field_o "package"
           (let+ loc = loc
@@ -1411,7 +1421,7 @@ module Executables = struct
       let names, public_names = names in
       let stanza = pluralize stanza ~multi in
       let names =
-        let open Syntax.Version.Infix in
+        let open Dune_lang.Syntax.Version.Infix in
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -1426,7 +1436,7 @@ module Executables = struct
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"
                   (pluralize ~multi "name")
-                  (Syntax.Version.to_string allow_omit_names_version)
+                  (Dune_lang.Syntax.Version.to_string allow_omit_names_version)
               ]
         | None, None ->
           if dune_syntax >= allow_omit_names_version then
@@ -1603,16 +1613,17 @@ module Executables = struct
     let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
     and+ (_ : bool) =
       field "link_executables" ~default:true
-        (Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
+        (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = field_oslu "link_flags"
     and+ modes =
       field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ optional =
-      field_b "optional" ~check:(Syntax.since Stanza.syntax (2, 0))
+      field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
     and+ promote =
-      field_o "promote" (Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
+      field_o "promote"
+        (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
     and+ () =
       map_validate
         (field "inline_tests" (repeat junk >>| fun _ -> true) ~default:false)
@@ -1628,7 +1639,8 @@ module Executables = struct
                  ]))
     and+ forbidden_libraries =
       field "forbidden_libraries"
-        (Syntax.since Stanza.syntax (2, 0) >>> repeat (located Lib_name.decode))
+        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        >>> repeat (located Lib_name.decode) )
         ~default:[]
     in
     fun names ~multi ->
@@ -1708,19 +1720,19 @@ module Rule = struct
       | Infer
 
     let decode_static =
-      let+ syntax_version = Syntax.get_exn Stanza.syntax
+      let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
       and+ targets = repeat String_with_vars.decode in
       if syntax_version < (1, 3) then
         List.iter targets ~f:(fun target ->
             if String_with_vars.has_vars target then
-              Syntax.Error.since
+              Dune_lang.Syntax.Error.since
                 (String_with_vars.loc target)
                 Stanza.syntax (1, 3)
                 ~what:"Using variables in the targets field");
       Static { targets; multiplicity = Multiple }
 
     let decode_one_static =
-      let+ () = Syntax.since Stanza.syntax (1, 11)
+      let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
       and+ target = String_with_vars.decode in
       Static { targets = [ target ]; multiplicity = One }
 
@@ -1738,7 +1750,7 @@ module Rule = struct
 
     let decode =
       let promote_into lifetime =
-        let+ () = Syntax.since Stanza.syntax (1, 8)
+        let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
         and+ into = Promote.Into.decode in
         Promote { lifetime; into = Some into; only = None }
       in
@@ -1827,7 +1839,8 @@ module Rule = struct
         (let+ fallback =
            field_b
              ~check:
-               (Syntax.renamed_in Stanza.syntax (1, 0) ~to_:"(mode fallback)")
+               (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
+                  ~to_:"(mode fallback)")
              "fallback"
          and+ mode = field_o "mode" Mode.decode in
          (fallback, mode))
@@ -1958,7 +1971,8 @@ module Menhir = struct
     }
 
   let syntax =
-    Syntax.create ~name:"menhir" ~desc:"the menhir extension" [ (1, 1); (2, 0) ]
+    Dune_lang.Syntax.create ~name:"menhir" ~desc:"the menhir extension"
+      [ (1, 1); (2, 0) ]
 
   let decode =
     fields
@@ -1966,8 +1980,9 @@ module Menhir = struct
        and+ flags = field_oslu "flags"
        and+ modules = field "modules" (repeat string)
        and+ mode = Rule.Mode.field
-       and+ infer = field_o_b "infer" ~check:(Syntax.since syntax (2, 0))
-       and+ menhir_syntax = Syntax.get_exn syntax
+       and+ infer =
+         field_o_b "infer" ~check:(Dune_lang.Syntax.since syntax (2, 0))
+       and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
        and+ enabled_if = enabled_if ~since:(Some (1, 4))
        and+ loc = loc in
        let infer =
@@ -2012,8 +2027,8 @@ module Coq = struct
     }
 
   let syntax =
-    Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ (0, 1) ]
+    Dune_lang.Syntax.create ~name:"coq"
+      ~desc:"the coq extension (experimental)" [ (0, 1) ]
 
   let decode =
     fields
@@ -2119,11 +2134,11 @@ module Tests = struct
        and+ enabled_if = enabled_if ~since:(Some (1, 4))
        and+ action =
          field_o "action"
-           ( Syntax.since ~fatal:false Stanza.syntax (1, 2)
+           ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)
            >>> Action_dune_lang.decode )
        and+ forbidden_libraries =
          field "forbidden_libraries"
-           ( Syntax.since Stanza.syntax (2, 0)
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
            >>> repeat (located Lib_name.decode) )
            ~default:[]
        in
@@ -2176,7 +2191,7 @@ module Copy_files = struct
   type t =
     { add_line_directive : bool
     ; glob : String_with_vars.t
-    ; syntax_version : Syntax.Version.t
+    ; syntax_version : Dune_lang.Syntax.Version.t
     }
 
   let decode = String_with_vars.decode
@@ -2272,11 +2287,11 @@ module Stanzas = struct
         [ Alias x ] )
     ; ( "copy_files"
       , let+ glob = Copy_files.decode
-        and+ syntax_version = Syntax.get_exn Stanza.syntax in
+        and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
         [ Copy_files { add_line_directive = false; glob; syntax_version } ] )
     ; ( "copy_files#"
       , let+ glob = Copy_files.decode
-        and+ syntax_version = Syntax.get_exn Stanza.syntax in
+        and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
         [ Copy_files { add_line_directive = true; glob; syntax_version } ] )
     ; ( "include"
       , let+ loc = loc
@@ -2286,19 +2301,19 @@ module Stanzas = struct
       , let+ d = Documentation.decode in
         [ Documentation d ] )
     ; ( "jbuild_version"
-      , let+ () = Syntax.deleted_in Stanza.syntax (1, 0)
+      , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0)
         and+ _ = Jbuild_version.decode in
         [] )
     ; ( "tests"
-      , let+ () = Syntax.since Stanza.syntax (1, 0)
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
         and+ t = Tests.multi in
         [ Tests t ] )
     ; ( "test"
-      , let+ () = Syntax.since Stanza.syntax (1, 0)
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
         and+ t = Tests.single in
         [ Tests t ] )
     ; ( "external_variant"
-      , let+ () = Syntax.since library_variants (0, 2)
+      , let+ () = Dune_lang.Syntax.since library_variants (0, 2)
         and+ t = External_variant.decode in
         [ External_variant t ] )
     ; ( "env"
@@ -2306,7 +2321,7 @@ module Stanzas = struct
         [ Dune_env.T x ] )
     ; ( "include_subdirs"
       , let* project = Dune_project.get_exn () in
-        let+ () = Syntax.since Stanza.syntax (1, 1)
+        let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
           let enable_qualified =
             Option.is_some (Dune_project.find_extension_args project Coq.key)
@@ -2315,7 +2330,7 @@ module Stanzas = struct
         and+ loc = loc in
         [ Include_subdirs (loc, t) ] )
     ; ( "toplevel"
-      , let+ () = Syntax.since Stanza.syntax (1, 7)
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
         and+ t = Toplevel.decode in
         [ Toplevel t ] )
     ]
@@ -2353,7 +2368,7 @@ module Stanzas = struct
            then
              raise (Include_loop (current_file, include_stack));
            let sexps =
-             Dune_lang.Io.load ~lexer (Path.source current_file) ~mode:Many
+             Dune_lang.Parser.load ~lexer (Path.source current_file) ~mode:Many
            in
            parse_file_includes ~stanza_parser ~lexer ~current_file
              ~include_stack sexps

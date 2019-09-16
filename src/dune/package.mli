@@ -13,7 +13,7 @@ module Name : sig
 
   include Interned.S with type t := t
 
-  include Dune_lang.Conv with type t := t
+  include Dune_lang.Conv.S with type t := t
 
   module Infix : Comparator.OPS with type t = t
 

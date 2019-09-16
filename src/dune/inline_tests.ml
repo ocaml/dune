@@ -31,7 +31,7 @@ module Backend = struct
 
       open Dune_lang.Decoder
 
-      let parse =
+      let decode =
         fields
           (let+ loc = loc
            and+ runner_libraries =
@@ -45,6 +45,18 @@ module Backend = struct
              field "extends" (repeat (located Lib_name.decode)) ~default:[]
            in
            { loc; runner_libraries; flags; generate_runner; extends })
+
+      let encode t =
+        let open Dune_lang.Encoder in
+        let lib (_loc, x) = Lib_name.encode x in
+        ( (1, 0)
+        , record_fields
+          @@ [ field_l "runner_libraries" lib t.runner_libraries
+             ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.flags
+             ; field_o "generate_runner" Action_dune_lang.encode
+                 (Option.map t.generate_runner ~f:snd)
+             ; field_l "extends" lib t.extends
+             ] )
     end
 
     type t =
@@ -87,18 +99,20 @@ module Backend = struct
               | Some t -> Ok t))
       }
 
-    let encode t =
-      let open Dune_lang.Encoder in
-      let lib x = Lib_name.encode (Lib.name x) in
-      let f x = Lib_name.encode (Lib.name x.lib) in
-      ( (1, 0)
-      , record_fields
-        @@ [ field_l "runner_libraries" lib (Result.ok_exn t.runner_libraries)
-           ; field_i "flags" Ordered_set_lang.Unexpanded.encode t.info.flags
-           ; field_o "generate_runner" Action_dune_lang.encode
-               (Option.map t.info.generate_runner ~f:snd)
-           ; field_l "extends" f (Result.ok_exn t.extends)
-           ] )
+    let public_info t =
+      let open Result.O in
+      let+ runner_libraries = t.runner_libraries
+      and+ extends = t.extends in
+      { Info.loc = t.info.loc
+      ; flags = t.info.flags
+      ; generate_runner = t.info.generate_runner
+      ; runner_libraries =
+          List.map2 t.info.runner_libraries runner_libraries
+            ~f:(fun (loc, _) lib -> (loc, Lib.name lib))
+      ; extends =
+          List.map2 t.info.extends extends ~f:(fun (loc, _) t ->
+              (loc, Lib.name t.lib))
+      }
   end
 
   include M
@@ -174,7 +188,7 @@ include Sub_system.Register_end_point (struct
 
     open Dune_lang.Decoder
 
-    let parse =
+    let decode =
       if_eos ~then_:(loc >>| empty)
         ~else_:
           (fields
@@ -188,10 +202,15 @@ include Sub_system.Register_end_point (struct
                   ~default:[]
               and+ modes =
                 field "modes"
-                  (Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
+                  ( Dune_lang.Syntax.since syntax (1, 11)
+                  >>> Mode_conf.Set.decode )
                   ~default:Mode_conf.Set.default
               in
               { loc; deps; flags; backend; libraries; modes }))
+
+    (* We don't use this at the moment, but we could implement it for debugging
+       purposes *)
+    let encode _t = assert false
   end
 
   let gen_rules c ~(info : Info.t) ~backends =

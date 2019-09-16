@@ -87,7 +87,7 @@ type 'path t =
   ; pps : (Loc.t * Lib_name.t) list
   ; enabled : Enabled_status.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
-  ; dune_version : Syntax.Version.t option
+  ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_ : Modules.t Source.t option
   ; implements : (Loc.t * Lib_name.t) option

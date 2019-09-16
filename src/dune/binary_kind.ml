@@ -10,11 +10,11 @@ type t =
 let decode =
   let open Dune_lang.Decoder in
   sum
-    [ ("c", Syntax.since Stanza.syntax (1, 2) >>> return C)
+    [ ("c", Dune_lang.Syntax.since Stanza.syntax (1, 2) >>> return C)
     ; ("exe", return Exe)
     ; ("object", return Object)
     ; ("shared_object", return Shared_object)
-    ; ("js", Syntax.since Stanza.syntax (1, 11) >>> return Js)
+    ; ("js", Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> return Js)
     ]
 
 let to_string = function

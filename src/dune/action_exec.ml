@@ -61,7 +61,7 @@ type done_or_more_deps =
   | Done
   (* This code assumes that there can be at most one 'dynamic-run' within
      single action. [DAP.Dependency.t] stores relative paths so name clash
-     would possible if multiple 'dynamic-run' would be executed in different
+     would be possible if multiple 'dynamic-run' would be executed in different
      subdirectories that contains targets having the same name. *)
   | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
 

@@ -1,11 +1,18 @@
 (** Applicative and monadic interface for declaring dependencies.
 
-    This module is intended to be used as a interface for declaring
+    This module is intended to be used as an interface for declaring
     dependencies of a computation. Dependencies can be declared dynamically -
-    the list of dependencies can be depend on previous dependencies.
+    the list of dependencies can depend on previous dependencies.
 
-    Note: Monadic "bind" is provided, but it can be very costly. It's called
-    [stage] to discourage people from overusing it. *)
+    Note: Monadic "bind" is provided, but it can be very costly.
+    It's called [stage] to discourage people from overusing it.
+    When dune decides that the action needs to be re-run, it runs stages
+    one by one, and starts a process from scratch for every stage.
+    So a linear chain of binds leads to a linear number of program re-runs,
+    and therefore overall quadratic time complexity.
+    This also means that using non-deterministic mutable state can lead
+    to surprising results.
+*)
 
 module Path = Path
 
@@ -20,7 +27,7 @@ val return : 'a -> 'a t
     resulting in [f a]. *)
 val map : 'a t -> f:('a -> 'b) -> 'b t
 
-(** If [at] is a computation resulting in [a] and [ab] is computation resulting
+(** If [at] is a computation resulting in [a] and [bt] is computation resulting
     in [b] then [both at bt] is a computation resulting in [(a, b)]. *)
 val both : 'a t -> 'b t -> ('a * 'b) t
 
@@ -30,7 +37,7 @@ val both : 'a t -> 'b t -> ('a * 'b) t
     [bt] after computation [at].
 
     Note: This is a monadic "bind" function. This function is costly so
-    different name was chooden to discourage excessive use. *)
+    different name was chosen to discourage excessive use. *)
 val stage : 'a t -> f:('a -> 'b t) -> 'b t
 
 (** {1 Syntax sugar for applicative subset} *)

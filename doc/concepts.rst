@@ -703,13 +703,6 @@ of your project. What you should write instead is:
 
 .. _dune-action-plugin:
 
-Dune action plugin
-==================
-
-``Dune-action-plugin`` provides a monadic interface to express program
-dependencies directly inside the source code. Programs using this feature
-should be declared using ``dynamic-run`` construction instead of usual ``run``.
-
 Sandboxing
 ==========
 

@@ -151,7 +151,10 @@ module Memory = struct
       match memory.build_root with
       | Some p ->
         Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
-      | None -> Result.Error "relative path while no build root was set"
+      | None ->
+        Result.Error
+          (Printf.sprintf "relative path \"%s\" while no build root was set"
+             path)
     else
       Result.ok (Path.of_string path)
 

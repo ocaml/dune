@@ -1,4 +1,6 @@
-open Dune_action_plugin
+open Dune_action_plugin.V1
+
+module Private = Dune_action_plugin.Private
 
 let%expect_test _ =
   try ignore @@ Path.of_string "/some/absolute/path"

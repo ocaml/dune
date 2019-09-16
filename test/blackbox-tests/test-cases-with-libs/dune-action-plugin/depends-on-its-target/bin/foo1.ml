@@ -1,4 +1,4 @@
-open Dune_action_plugin
+open Dune_action_plugin.V1
 
 let path = Path.of_string "some_file1"
 

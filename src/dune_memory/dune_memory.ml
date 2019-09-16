@@ -122,10 +122,15 @@ module type memory = sig
 
   val search :
     t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+
+  val set_build_dir : t -> Path.t -> t
 end
 
 module Memory = struct
-  type t = { root : Path.t }
+  type t =
+    { root : Path.t
+    ; build_root : Path.t option
+    }
 
   let path_files memory = Path.L.relative memory.root [ "files" ]
 
@@ -139,6 +144,16 @@ module Memory = struct
     in
     let finally () = Stdune.Lock_file.unlock lock in
     Exn.protect ~f ~finally
+
+  let make_path memory path =
+    let path = Path.to_string path in
+    if Filename.is_relative path then
+      match memory.build_root with
+      | Some p ->
+        Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
+      | None -> Result.Error "relative path while no build root was set"
+    else
+      Result.ok (Path.of_string path)
 
   let search memory hash file =
     Collision.search (FSSchemeImpl.path (path_files memory) hash) file
@@ -155,8 +170,10 @@ module Memory = struct
         repo metadata
     in
     let promote (path, expected_hash) =
-      Log.infof "promote %s" (Path.to_string path);
-      let stat = Unix.lstat (Path.to_string path) in
+      make_path memory path
+      >>= fun abs_path ->
+      Log.infof "promote %s" (Path.to_string abs_path);
+      let stat = Unix.lstat (Path.to_string abs_path) in
       ( if stat.st_kind != S_REG then
         Result.Error "invalid file type"
       else
@@ -175,7 +192,7 @@ module Memory = struct
          Unix.link (Path.to_string path) dest);
         dest
       in
-      let tmp = hardlink path in
+      let tmp = hardlink abs_path in
       let effective_hash = Digest.file_with_stats tmp (Path.stat tmp) in
       if Digest.compare effective_hash expected_hash != Ordering.Eq then (
         let message =
@@ -256,13 +273,15 @@ module Memory = struct
       | _ -> Error "invalid metadata"
     in
     with_lock memory f
+
+  let set_build_dir memory p = { memory with build_root = Some p }
 end
 
 let make ?(root = default_root ()) () =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-memory"
   else
-    Result.ok { Memory.root }
+    Result.ok { Memory.root; Memory.build_root = None }
 
 let trim memory free =
   let path = Memory.path_files memory in

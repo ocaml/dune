@@ -40,7 +40,7 @@ module Client : sig
     -> Dune_memory.key
     -> (Dune_memory.metadata * Dune_memory.File.t list, string) Result.t
 
-  val set_build_dir : t -> Path.t -> unit
+  val set_build_dir : t -> Path.t -> t
 
   val make : unit -> (t, exn) Result.t
 

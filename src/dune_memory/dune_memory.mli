@@ -39,6 +39,8 @@ module type memory = sig
 
   val search :
     t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+
+  val set_build_dir : t -> Path.t -> t
 end
 
 module Memory : memory

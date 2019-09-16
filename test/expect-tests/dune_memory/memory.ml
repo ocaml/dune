@@ -43,7 +43,9 @@ let memory =
       ~root:(Path.of_string (Path.to_string dir ^ "/root/v2"))
       ()
   with
-  | Result.Ok memory -> memory
+  | Result.Ok memory ->
+    Dune_memory.Memory.set_build_dir memory
+      (Path.of_string (Path.External.to_string (Path.External.cwd ())))
   | Result.Error msg -> User_error.raise [ Pp.textf "%s" msg ]
 
 let clean_path p =

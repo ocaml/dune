@@ -17,7 +17,6 @@ type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
   ; output : out_channel
-  ; build_root : Path.t option
   ; common_metadata : Sexp.t list
   ; memory : Dune_memory.Memory.t
   ; repositories : (string * string * string) list
@@ -58,15 +57,6 @@ let check_port_file ?(close = true) p =
     Exn.protect ~f ~finally
   | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) -> Result.Ok None
   | Result.Error e -> Result.Error e
-
-let make_path client path =
-  if Filename.is_relative path then
-    match client.build_root with
-    | Some p ->
-      Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
-    | None -> Result.Error "relative path while no build root was set"
-  else
-    Result.ok (Path.of_string path)
 
 let send client sexp =
   output_string client (Csexp.to_string sexp);
@@ -207,8 +197,7 @@ let client_thread (events, client) =
                (Sexp.to_string (Sexp.List cmd)))
       and file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          make_path client path
-          >>= fun path -> Dune_memory.key_of_string hash >>| fun d -> (path, d)
+          Dune_memory.key_of_string hash >>| fun d -> (Path.of_string path, d)
         | sexp ->
           Result.Error
             (Printf.sprintf "invalid file in promotion message: %s"
@@ -254,7 +243,11 @@ let client_thread (events, client) =
     | args -> invalid_args args
   and handle_set_build_root client = function
     | [ Sexp.Atom dir ] ->
-      Result.ok { client with build_root = Some (Path.of_string dir) }
+      Result.ok
+        { client with
+          memory =
+            Dune_memory.Memory.set_build_dir client.memory (Path.of_string dir)
+        }
     | args -> invalid_args args
   and handle_set_metadata client arg =
     Result.ok { client with common_metadata = arg }
@@ -376,7 +369,6 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           ; peer
           ; output = Unix.out_channel_of_descr fd
           ; version = None
-          ; build_root = None
           ; common_metadata = []
           ; repositories = []
           ; memory =
@@ -491,7 +483,8 @@ module Client = struct
       (Sexp.List
          [ Sexp.Atom "set-build-root"
          ; Sexp.Atom (Path.to_absolute_filename path)
-         ])
+         ]);
+    client
 
   let search client key = Dune_memory.Memory.search client.memory key
 

@@ -1925,6 +1925,11 @@ let init ~contexts ?memory ~file_tree ~sandboxing_preference =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
+  let memory =
+    Option.map
+      ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
+      memory
+  in
   let t =
     { contexts
     ; files = Path.Build.Table.create 1024
@@ -1938,9 +1943,6 @@ let init ~contexts ?memory ~file_tree ~sandboxing_preference =
     ; rule_total = 0
     }
   in
-  Option.iter
-    ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
-    t.memory;
   Console.Status_line.set (fun () ->
       Some
         (Pp.verbatim

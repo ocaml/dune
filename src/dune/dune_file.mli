@@ -202,8 +202,8 @@ end
 
 module External_variant : sig
   type t =
-    { implementation : Lib_name.t
-    ; virtual_lib : Lib_name.t
+    { implementation : Loc.t * Lib_name.t
+    ; virtual_lib : Loc.t * Lib_name.t
     ; variant : Variant.t
     ; project : Dune_project.t
     ; loc : Loc.t

@@ -842,8 +842,8 @@ end
 
 module External_variant = struct
   type t =
-    { implementation : Lib_name.t
-    ; virtual_lib : Lib_name.t
+    { implementation : Loc.t * Lib_name.t
+    ; virtual_lib : Loc.t * Lib_name.t
     ; variant : Variant.t
     ; project : Dune_project.t
     ; loc : Loc.t
@@ -854,8 +854,8 @@ module External_variant = struct
     fields
       (let+ loc = loc
        and+ variant = field "variant" Variant.decode
-       and+ virtual_lib = field "virtual_library" Lib_name.decode
-       and+ implementation = field "implementation" Lib_name.decode
+       and+ virtual_lib = field "virtual_library" (located Lib_name.decode)
+       and+ implementation = field "implementation" (located Lib_name.decode)
        and+ project = Dune_project.get_exn () in
        { implementation; virtual_lib; variant; project; loc })
 end

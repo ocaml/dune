@@ -1510,8 +1510,9 @@ module DB = struct
 
   let check_valid_external_variants libmap external_variants =
     List.iter external_variants ~f:(fun (ev : Dune_file.External_variant.t) ->
+        let loc, virtual_lib = ev.virtual_lib in
         match
-          Option.map (Lib_name.Map.find libmap ev.virtual_lib) ~f:(fun res ->
+          Option.map (Lib_name.Map.find libmap virtual_lib) ~f:(fun res ->
               (* [res] is created by the code in [create_from_library_stanzas]
                  bellow. We know that it is either [Found] or [Redirect (_,
                  name)] where [name] is in [libmap] for sure and maps to [Found
@@ -1527,17 +1528,17 @@ module DB = struct
                 | _ -> assert false ))
         with
         | None ->
-          User_error.raise ~loc:ev.loc
+          User_error.raise ~loc
             [ Pp.textf "Virtual library %s hasn't been found in the project."
-                (Lib_name.to_string ev.virtual_lib)
+                (Lib_name.to_string virtual_lib)
             ]
         | Some info -> (
           match Lib_info.virtual_ info with
           | Some _ -> ()
           | None ->
-            User_error.raise ~loc:ev.loc
+            User_error.raise ~loc
               [ Pp.textf "Library %s isn't a virtual library."
-                  (Lib_name.to_string ev.virtual_lib)
+                  (Lib_name.to_string virtual_lib)
               ] ))
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
@@ -1574,8 +1575,9 @@ module DB = struct
       (* Add entries from external_variant stanzas *)
       List.fold_left external_variant_stanzas ~init:variant_map
         ~f:(fun acc (ev : Dune_file.External_variant.t) ->
-          Lib_name.Map.Multi.cons acc ev.virtual_lib
-            (ev.variant, (ev.loc, ev.implementation)))
+          let _, virtual_lib = ev.virtual_lib in
+          Lib_name.Map.Multi.cons acc virtual_lib
+            (ev.variant, ev.implementation))
     in
     let map =
       List.concat_map lib_stanzas
@@ -1871,8 +1873,8 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let* main_module_name = main_module_name lib in
   let+ requires = lib.requires in
   let requires = add_loc requires in
-  Dune_package.Lib.make ~info ~requires
-    ~modules:(Some modules) ~main_module_name
+  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
+    ~main_module_name
 
 module Local : sig
   type t = private lib

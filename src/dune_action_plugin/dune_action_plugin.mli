@@ -7,11 +7,15 @@ module V1 : sig
 
       Note: Monadic "bind" is provided, but it can be very costly. It's called
       [stage] to discourage people from overusing it. When dune decides that
-      the action needs to be re-run, it runs stages one by one, and starts a
-      process from scratch for every stage. So a linear chain of binds leads to
-      a linear number of program re-runs, and therefore overall quadratic time
-      complexity. This also means that using non-deterministic mutable state
-      can lead to surprising results. *)
+      the action needs to be re-run, it runs (nontrivial) stages one by one,
+      and starts a process from scratch for every stage. So a linear chain of
+      binds leads to a linear number of program re-runs, and therefore overall
+      quadratic time complexity. This also means that using non-deterministic
+      mutable state can lead to surprising results.
+      (note that with the current implementation, nontrivial stages are those
+      that have some dependencies, so a stage that merely writes out some
+      targets is "free")
+  *)
 
   module Path = Path
 
@@ -67,7 +71,9 @@ module V1 : sig
 
   (** [read_directory ~path:directory] returns a computation depending on a
       listing of a [directory] and all source and target files contained in
-      that directory. Computation will result in a directory listing. *)
+      that directory. Computation will result in a directory listing.
+
+      BUG: [read_directory] doesn't work for empty directories. *)
   val read_directory : path:Path.t -> string list t
 
   (** {1:running Running the computation} *)

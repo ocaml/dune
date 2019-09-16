@@ -1446,7 +1446,7 @@ end = struct
             in
             Log.infof "retrieve %s from cache" path;
             Unix.link (Path.to_string file.in_the_memory) path;
-            ignore (Cached_digest.refresh (Path.of_string path));
+            Cached_digest.set (Path.of_string path) file.digest;
             file.digest
           in
           let digests = List.map files ~f:retrieve in

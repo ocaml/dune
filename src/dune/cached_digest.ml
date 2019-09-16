@@ -72,11 +72,9 @@ let invalidate_cached_timestamps () =
 let set_max_timestamp cache (stat : Unix.stats) =
   cache.max_timestamp <- Float.max cache.max_timestamp stat.st_mtime
 
-let refresh fn =
+let set_with_stat fn digest stat =
   let cache = Lazy.force cache in
-  let stat = Path.stat fn in
-  let digest = Digest.file_with_stats fn stat in
-  let permissions = stat.st_perm in
+  let permissions = stat.Unix.st_perm in
   needs_dumping := true;
   set_max_timestamp cache stat;
   Path.Table.replace cache.table ~key:fn
@@ -86,7 +84,16 @@ let refresh fn =
       ; stats_checked = cache.checked_key
       ; size = stat.st_size
       ; permissions
-      };
+      }
+
+let set fn digest =
+  let stat = Path.stat fn in
+  set_with_stat fn digest stat
+
+let refresh fn =
+  let stat = Path.stat fn in
+  let digest = Digest.file_with_stats fn stat in
+  set_with_stat fn digest stat;
   digest
 
 let file fn =

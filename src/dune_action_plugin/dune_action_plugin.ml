@@ -124,7 +124,6 @@ module V1 = struct
     lift_stage
       { action
       ; dependencies = Dependency.Set.singleton (Directory path)
-
       ; targets = Stdune.String.Set.empty
       }
 

@@ -74,12 +74,19 @@ module V1 : sig
       listing of a [directory] and all source and target files contained in
       that directory. Computation will result in a directory listing.
 
-      BUG: [read_directory] doesn't work for empty directories. *)
+      BUG: [read_directory] doesn't work correctly for empty directories.
+
+      BUG: the returned listing includes directories even though that dependency
+      is not tracked.
+  *)
   val read_directory : path:Path.t -> string list t
 
   (** [read_directory_with_glob ~path:directory ~glob] returns a computation
       depending on a listing of a [directory] filtered by glob and resulting in
-      that listing. *)
+      that listing.
+
+      BUGS: (see [read_directory])
+  *)
   val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
 
   (** {1:running Running the computation} *)

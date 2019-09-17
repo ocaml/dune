@@ -122,8 +122,58 @@ val of_library_stanza :
 
 val user_written_deps : _ t -> Dune_file.Lib_deps.t
 
-val of_dune_lib : Sub_system_info.t Dune_package.Lib.t -> external_
+val set_obj_dir : 'a t -> 'a Obj_dir.t -> 'a t
 
 val of_local : local -> external_
 
 val as_local_exn : external_ -> local
+
+val set_version : 'a t -> string option -> 'a t
+
+val set_default_implementation : 'a t -> (Loc.t * Lib_name.t) option -> 'a t
+
+val set_implements : 'a t -> (Loc.t * Lib_name.t) option -> 'a t
+
+val set_orig_src_dir : 'a t -> 'a -> 'a t
+
+val set_ppx_runtime_deps : 'a t -> (Loc.t * Lib_name.t) list -> 'a t
+
+val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
+
+val set_foreign_objects : Path.t t -> Path.t list -> Path.t t
+
+val map_path : 'a t -> f:('a -> 'a) -> 'a t
+
+val create :
+     loc:Loc.t
+  -> name:Lib_name.t
+  -> kind:Lib_kind.t
+  -> status:Status.t
+  -> src_dir:'a
+  -> orig_src_dir:'a option
+  -> obj_dir:'a Obj_dir.t
+  -> version:string option
+  -> synopsis:string option
+  -> main_module_name:Dune_file.Library.Main_module_name.t
+  -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> requires:Deps.t
+  -> foreign_objects:'a list Source.t
+  -> plugins:'a list Mode.Dict.t
+  -> archives:'a list Mode.Dict.t
+  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
+  -> foreign_archives:'a list Mode.Dict.t
+  -> jsoo_runtime:'a list
+  -> jsoo_archive:'a option
+  -> pps:(Loc.t * Lib_name.t) list
+  -> enabled:Enabled_status.t
+  -> virtual_deps:(Loc.t * Lib_name.t) list
+  -> dune_version:Dune_lang.Syntax.Version.t option
+  -> virtual_:Modules.t Source.t option
+  -> implements:(Loc.t * Lib_name.t) option
+  -> variant:Variant.t option
+  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
+  -> default_implementation:(Loc.t * Lib_name.t) option
+  -> modes:Mode.Dict.Set.t
+  -> wrapped:Wrapped.t Dune_file.Library.Inherited.t option
+  -> special_builtin_support:Dune_file.Library.Special_builtin_support.t option
+  -> 'a t

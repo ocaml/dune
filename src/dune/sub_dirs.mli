@@ -42,10 +42,7 @@ val default : Predicate_lang.t Status.Map.t
 
 type status_map
 
-val eval :
-     Predicate_lang.t Status.Map.t
-  -> dirs:string list
-  -> status_map
+val eval : Predicate_lang.t Status.Map.t -> dirs:string list -> status_map
 
 val status : status_map -> dir:string -> Status.Or_ignored.t
 

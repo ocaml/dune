@@ -211,6 +211,10 @@ defined in the project:
 
 - ``(documentation <url>)`` - Where the documentation is hosted
 
+With this fields in, every time dune is called to execute some rules (either via
+``dune build``, ``dune runtest`` or something else), the opam files get
+generated.
+
 .. _package:
 
 package

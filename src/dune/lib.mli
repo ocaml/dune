@@ -64,14 +64,8 @@ module L : sig
 
   val c_include_flags : t -> _ Command.Args.t
 
-  val link_flags : t -> mode:Mode.t -> _ Command.Args.t
-
   val compile_and_link_flags :
     compile:t -> link:t -> mode:Mode.t -> _ Command.Args.t
-
-  (** All the library archive files (.a, .cmxa, _stubs.a, ...) that should be
-      linked in when linking an executable. *)
-  val archive_files : t -> mode:Mode.t -> Path.t list
 
   val jsoo_runtime_files : t -> Path.t list
 
@@ -242,7 +236,7 @@ module Sub_system : sig
       -> Info.t
       -> t
 
-    val encode : (t -> Dune_lang.Syntax.Version.t * Dune_lang.t list) option
+    val public_info : (t -> Info.t Or_exn.t) option
   end
 
   module Register (M : S) : sig
@@ -250,9 +244,7 @@ module Sub_system : sig
     val get : lib -> M.t option
   end
 
-  val dump_config :
-       lib
-    -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) Sub_system_name.Map.t
+  val public_info : lib -> Sub_system_info.t Sub_system_name.Map.t
 end
 with type lib := t
 
@@ -271,8 +263,7 @@ val to_dune_lib :
   -> modules:Modules.t
   -> foreign_objects:Path.t list
   -> dir:Path.t
-  -> (Dune_lang.Syntax.Version.t * Dune_lang.t list) Dune_package.Lib.t
-     Or_exn.t
+  -> Dune_package.Lib.t Or_exn.t
 
 module Local : sig
   type lib

@@ -33,8 +33,7 @@ module Lib = struct
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root
-      { info; requires; main_module_name; modules } =
+  let encode ~package_root { info; requires; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -43,8 +42,7 @@ module Lib = struct
       field_l name sexp (Mode.Dict.List.encode path xs)
     in
     let known_implementations =
-      Lib_info.known_implementations info
-      |> Variant.Map.to_list
+      Lib_info.known_implementations info |> Variant.Map.to_list
     in
     let libs name = field_l name (no_loc Lib_name.encode) in
     let name = Lib_info.name info in

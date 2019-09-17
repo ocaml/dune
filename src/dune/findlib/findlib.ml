@@ -289,8 +289,7 @@ module Package = struct
     in
     Dune_package.Lib.make ~info
       ~requires:(List.map ~f:add_loc (requires t))
-      ~modules:None
-      ~main_module_name:None
+      ~modules:None ~main_module_name:None
 
   (* XXX remove *)
 

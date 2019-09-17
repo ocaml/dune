@@ -217,6 +217,9 @@ val field_o_b :
 (** A field that can appear multiple times *)
 val multi_field : string -> 'a t -> 'a list fields_parser
 
+(** Treat the remainig fields as a list of sum values *)
+val leftover_fields_as_sums : (string * 'a t) list -> 'a list fields_parser
+
 (** Default value for [on_dup]. It fails with an appropriate error message. *)
 val field_present_too_many_times : Univ_map.t -> string -> Ast.t list -> _
 

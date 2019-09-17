@@ -42,7 +42,13 @@ val host : t -> t
 
 val external_lib_deps_mode : t -> bool
 
-val libs_of_package : t -> Package.Name.t -> Lib.Local.Set.t
+module Lib_entry : sig
+  type t =
+    | Library of Lib.Local.t
+    | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+end
+
+val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t

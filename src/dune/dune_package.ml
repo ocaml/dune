@@ -197,19 +197,62 @@ module Lib = struct
 
   let main_module_name t = t.main_module_name
 
-  let compare_name x y =
-    let x = Lib_info.name x.info in
-    let y = Lib_info.name y.info in
-    Lib_name.compare x y
-
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
 
   let info dp = dp.info
 end
 
+module Deprecated_library_name = struct
+  type t =
+    { loc : Loc.t
+    ; old_public_name : Lib_name.t
+    ; new_public_name : Lib_name.t
+    }
+
+  let decode =
+    let open Dune_lang.Decoder in
+    Dune_lang.Syntax.since Stanza.syntax (2, 0)
+    >>> fields
+          (let+ old_public_name = field "old_public_name" Lib_name.decode
+           and+ new_public_name = field "new_public_name" Lib_name.decode
+           and+ loc = loc in
+           { loc; old_public_name; new_public_name })
+
+  let encode { loc = _; old_public_name; new_public_name } =
+    let open Dune_lang.Encoder in
+    record_fields
+      [ field "old_public_name" Lib_name.encode old_public_name
+      ; field "new_public_name" Lib_name.encode new_public_name
+      ]
+end
+
+module Entry = struct
+  type t =
+    | Library of Lib.t
+    | Deprecated_library_name of Deprecated_library_name.t
+
+  let name = function
+    | Library lib -> Lib_info.name (Lib.info lib)
+    | Deprecated_library_name d -> d.old_public_name
+
+  let version = function
+    | Library lib -> Lib_info.version (Lib.info lib)
+    | Deprecated_library_name _ -> None
+
+  let cstrs ~lang ~dir =
+    let open Dune_lang.Decoder in
+    [ ( "library"
+      , let+ lib = Lib.decode ~lang ~base:dir in
+        Library lib )
+    ; ( "deprecated_library_name"
+      , let+ x = Deprecated_library_name.decode in
+        Deprecated_library_name x )
+    ]
+end
+
 type t =
-  { libs : Lib.t list
-  ; name : Package.Name.t
+  { name : Package.Name.t
+  ; entries : Entry.t list
   ; version : string option
   ; dir : Path.t
   }
@@ -218,15 +261,16 @@ let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" string
-  and+ libs = multi_field "library" (Lib.decode ~lang ~base:dir) in
-  { name
-  ; version
-  ; libs =
-      List.map libs ~f:(fun (lib : Lib.t) ->
+  and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
+  let entries =
+    List.map entries ~f:(fun e ->
+        match (e : Entry.t) with
+        | Library lib ->
           let info = Lib_info.set_version lib.info version in
-          { lib with info })
-  ; dir
-  }
+          Entry.Library { lib with info }
+        | _ -> e)
+  in
+  { name; version; entries; dir }
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -241,7 +285,7 @@ let prepend_version ~dune_version sexps =
   ]
   @ sexps
 
-let encode ~dune_version { libs; name; version; dir } =
+let encode ~dune_version { entries; name; version; dir } =
   let list s = Dune_lang.List s in
   let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
   let sexp =
@@ -255,11 +299,16 @@ let encode ~dune_version { libs; name; version; dir } =
             ]
         ]
   in
-  let libs =
-    List.map libs ~f:(fun lib ->
-        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
+  let entries =
+    List.map entries ~f:(function
+      | Entry.Library lib ->
+        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+      | Deprecated_library_name d ->
+        list
+          ( Dune_lang.atom "deprecated_library_name"
+          :: Deprecated_library_name.encode d ))
   in
-  prepend_version ~dune_version (sexp @ libs)
+  prepend_version ~dune_version (List.concat [ sexp; entries ])
 
 module Or_meta = struct
   type nonrec t =

@@ -9,8 +9,6 @@ module Lib : sig
 
   val dir_of_name : Lib_name.t -> Path.Local.t
 
-  val compare_name : t -> t -> Ordering.t
-
   val wrapped : t -> Wrapped.t option
 
   val info : t -> Path.t Lib_info.t
@@ -22,9 +20,27 @@ module Lib : sig
     -> t
 end
 
+module Deprecated_library_name : sig
+  type t =
+    { loc : Loc.t
+    ; old_public_name : Lib_name.t
+    ; new_public_name : Lib_name.t
+    }
+end
+
+module Entry : sig
+  type t =
+    | Library of Lib.t
+    | Deprecated_library_name of Deprecated_library_name.t
+
+  val name : t -> Lib_name.t
+
+  val version : t -> string option
+end
+
 type t =
-  { libs : Lib.t list
-  ; name : Package.Name.t
+  { name : Package.Name.t
+  ; entries : Entry.t list
   ; version : string option
   ; dir : Path.t
   }

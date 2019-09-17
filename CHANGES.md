@@ -138,6 +138,9 @@
   are marked with`re_export` and will automatically be provided to
   users of a library (#2605, @rgrinberg)
 
+- Add a `deprecated_library_name` stanza to redirect old names after a
+  library has been renamed (#2528, @diml)
+
 1.11.3 (23/08/2019)
 -------------------
 

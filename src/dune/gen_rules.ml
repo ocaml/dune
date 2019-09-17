@@ -272,7 +272,7 @@ let gen_rules sctx dir_contents cctxs ~dir :
 
 let gen_rules ~sctx ~dir components :
     Build_system.extra_sub_directories_to_keep =
-  Install_rules.init_meta sctx ~dir;
+  Install_rules.init_meta_and_dune_package sctx ~dir;
   let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
   Opam_create.add_rules sctx ~dir;
   let subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep =

@@ -18,6 +18,7 @@ module V1 : sig
   *)
 
   module Path = Path
+  module Glob = Glob
 
   type 'a t
 
@@ -75,6 +76,11 @@ module V1 : sig
 
       BUG: [read_directory] doesn't work for empty directories. *)
   val read_directory : path:Path.t -> string list t
+
+  (** [read_directory_with_glob ~path:directory ~glob] returns a computation
+      depending on a listing of a [directory] filtered by glob and resulting in
+      that listing. *)
+  val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
 
   (** {1:running Running the computation} *)
 

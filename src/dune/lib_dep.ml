@@ -91,15 +91,18 @@ let choice =
        in
        loop Lib_name.Set.empty Lib_name.Set.empty preds)
 
-let decode =
+let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   if_list
     ~then_:
       (enter
          (let* loc = loc in
-          let* constr = string in
+          let* cloc, constr = located string in
           match constr with
           | "re_export" ->
+            if not allow_re_export then
+              User_error.raise ~loc:cloc
+                [ Pp.text "re_export is not allowed here" ];
             let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
             and+ loc, name = located Lib_name.decode in
             Re_export (loc, name)

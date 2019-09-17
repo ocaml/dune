@@ -134,7 +134,8 @@ module Lib = struct
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives = mode_paths "foreign_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
-       and+ requires = field_l "requires" Lib_dep.decode
+       and+ requires =
+         field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =

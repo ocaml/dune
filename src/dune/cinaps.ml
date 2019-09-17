@@ -27,7 +27,10 @@ let decode =
          ~default:Dune_file.Preprocess_map.default
      and+ preprocessor_deps =
        field "preprocessor_deps" (repeat Dune_file.Dep_conf.decode) ~default:[]
-     and+ libraries = field "libraries" Dune_file.Lib_deps.decode ~default:[]
+     and+ libraries =
+       field "libraries"
+         (Dune_file.Lib_deps.decode ~allow_re_export:false)
+         ~default:[]
      and+ flags = Ocaml_flags.Spec.decode in
      { loc; files; libraries; preprocess; preprocessor_deps; flags })
 

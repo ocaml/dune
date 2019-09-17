@@ -80,7 +80,7 @@ module Lib_deps : sig
 
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
 module Dep_conf : sig

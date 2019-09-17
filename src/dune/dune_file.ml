@@ -491,9 +491,9 @@ module Lib_deps = struct
     | Optional
     | Forbidden
 
-  let decode =
+  let decode ~allow_re_export =
     let+ loc = loc
-    and+ t = repeat Lib_dep.decode in
+    and+ t = repeat (Lib_dep.decode ~allow_re_export) in
     let add kind name acc =
       match Lib_name.Map.find acc name with
       | None -> Lib_name.Map.set acc name kind
@@ -569,7 +569,7 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode ~since_c =
+  let decode ~since_c ~allow_re_export =
     let check_c t =
       match since_c with
       | None -> t
@@ -587,7 +587,8 @@ module Buildable = struct
     and+ modules = modules_field "modules"
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
-    and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+    and+ libraries =
+      field "libraries" (Lib_deps.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
@@ -936,7 +937,7 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~since_c:None
+      (let+ buildable = Buildable.decode ~since_c:None ~allow_re_export:true
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
@@ -1524,7 +1525,8 @@ module Executables = struct
     }
 
   let common =
-    let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
+    let+ buildable =
+      Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -2034,7 +2036,8 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
+      (let+ buildable =
+         Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
        and+ link_flags = field_oslu "link_flags"
        and+ variants = variants_field
        and+ names = names

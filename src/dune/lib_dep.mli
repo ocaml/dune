@@ -29,7 +29,7 @@ val re_export : Loc.t * Lib_name.t -> t
 
 val to_lib_names : t -> Lib_name.t list
 
-val decode : t Dune_lang.Decoder.t
+val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 
 val encode : t Dune_lang.Encoder.t
 

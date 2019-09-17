@@ -286,7 +286,8 @@ module Package = struct
         ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
         ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
         ~virtual_ ~implements ~variant ~known_implementations
-        ~default_implementation ~modes ~wrapped ~special_builtin_support ~re_exports
+        ~default_implementation ~modes ~wrapped ~special_builtin_support
+        ~re_exports
     in
     Dune_package.Lib.make ~info
       ~requires:(List.map ~f:add_loc (requires t))

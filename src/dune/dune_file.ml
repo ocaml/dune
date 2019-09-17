@@ -37,15 +37,6 @@ let module_name =
           Module_name.of_string s
         with Exit -> invalid_module_name ~loc name ))
 
-let file =
-  plain_string (fun ~loc s ->
-      match s with
-      | "."
-       |".." ->
-        User_error.raise ~loc
-          [ Pp.textf "'.' and '..' are not valid filenames" ]
-      | fn -> fn)
-
 let relative_file =
   plain_string (fun ~loc fn ->
       if Filename.is_relative fn then
@@ -492,96 +483,6 @@ module Js_of_ocaml = struct
     { flags = Ordered_set_lang.Unexpanded.standard; javascript_files = [] }
 end
 
-module Lib_dep = struct
-  type choice =
-    { required : Lib_name.Set.t
-    ; forbidden : Lib_name.Set.t
-    ; file : string
-    }
-
-  type select =
-    { result_fn : string
-    ; choices : choice list
-    ; loc : Loc.t (* For error messages *)
-    }
-
-  type t =
-    | Direct of (Loc.t * Lib_name.t)
-    | Re_export of (Loc.t * Lib_name.t)
-    | Select of select
-
-  let choice =
-    enter
-      (let+ loc = loc
-       and+ preds, file =
-         until_keyword "->"
-           ~before:
-             (let+ s = string
-              and+ loc = loc in
-              let len = String.length s in
-              if len > 0 && s.[0] = '!' then
-                Right
-                  (Lib_name.of_string_exn ~loc:(Some loc) (String.drop s 1))
-              else
-                Left (Lib_name.of_string_exn ~loc:(Some loc) s))
-           ~after:file
-       in
-       match file with
-       | None ->
-         User_error.raise ~loc
-           [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
-       | Some file ->
-         let rec loop required forbidden = function
-           | [] ->
-             let common = Lib_name.Set.inter required forbidden in
-             Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
-                 User_error.raise ~loc
-                   [ Pp.textf
-                       "library %S is both required and forbidden in this \
-                        clause"
-                       (Lib_name.to_string name)
-                   ]);
-             { required; forbidden; file }
-           | Left s :: l -> loop (Lib_name.Set.add required s) forbidden l
-           | Right s :: l -> loop required (Lib_name.Set.add forbidden s) l
-         in
-         loop Lib_name.Set.empty Lib_name.Set.empty preds)
-
-  let decode =
-    if_list
-      ~then_:
-        (enter
-           (let* loc = loc in
-            let* constr = string in
-            match constr with
-            | "re_export" ->
-              let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
-              and+ loc, name = located Lib_name.decode in
-              Re_export (loc, name)
-            | "select" ->
-                let+ result_fn = file
-                and+ () = keyword "from"
-                and+ choices = repeat choice
-                in
-                Select { result_fn; choices; loc }
-            | _ -> assert false))
-      ~else_:
-        (let+ loc, name = located Lib_name.decode in
-         Direct (loc, name))
-
-  let to_lib_names = function
-    | Direct (_, s)
-    | Re_export (_, s) -> [ s ]
-    | Select s ->
-      List.fold_left s.choices ~init:Lib_name.Set.empty ~f:(fun acc x ->
-          Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
-      |> Lib_name.Set.to_list
-
-  let direct x = Direct x
-
-  let of_lib_name (loc, pp) = Direct (loc, pp)
-end
-
 module Lib_deps = struct
   type t = Lib_dep.t list
 
@@ -623,27 +524,28 @@ module Lib_deps = struct
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
             | Lib_dep.Re_export (_, s)
-            | Lib_dep.Direct (_, s) -> add Required s acc
+             |Lib_dep.Direct (_, s) ->
+              add Required s acc
             | Select { choices; _ } ->
-              List.fold_left choices ~init:acc ~f:(fun acc c ->
+              List.fold_left choices ~init:acc
+                ~f:(fun acc (c : Lib_dep.Select.choice) ->
                   let acc =
-                    Lib_name.Set.fold c.Lib_dep.required ~init:acc
-                      ~f:(add Optional)
+                    Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
                   in
                   Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
         : kind Lib_name.Map.t );
     t
 
-  let of_pps pps =
-    List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
+  let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
 
   let info t ~kind =
     List.concat_map t ~f:(function
       | Lib_dep.Re_export (_, s)
-      | Lib_dep.Direct (_, s) -> [ (s, kind) ]
+       |Lib_dep.Direct (_, s) ->
+        [ (s, kind) ]
       | Select { choices; _ } ->
-        List.concat_map choices ~f:(fun c ->
-            Lib_name.Set.to_list c.Lib_dep.required
+        List.concat_map choices ~f:(fun (c : Lib_dep.Select.choice) ->
+            Lib_name.Set.to_list c.required
             |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
@@ -1093,8 +995,7 @@ module Library = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Special_builtin_support.decode )
-       and+ enabled_if = enabled_if ~since:(Some (1, 10))
-       in
+       and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in

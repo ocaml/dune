@@ -93,8 +93,7 @@ module Lib = struct
        ; field_o "special_builtin_support"
            Dune_file.Library.Special_builtin_support.encode
            special_builtin_support
-       ; field_l "re_exports" (no_loc Lib_name.encode)
-           re_exports
+       ; field_l "re_exports" (no_loc Lib_name.encode) re_exports
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -157,7 +156,8 @@ module Lib = struct
            >>> Dune_file.Library.Special_builtin_support.decode )
        and+ re_exports =
          field_l "re_exports"
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> located Lib_name.decode)
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+           >>> located Lib_name.decode )
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations

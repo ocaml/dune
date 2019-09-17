@@ -25,7 +25,7 @@ end
 module Deps : sig
   type t =
     | Simple of (Loc.t * Lib_name.t) list
-    | Complex of Dune_file.Lib_dep.t list
+    | Complex of Lib_dep.t list
 
   val of_lib_deps : Dune_file.Lib_deps.t -> t
 end

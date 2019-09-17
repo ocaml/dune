@@ -5,7 +5,7 @@ open Build.O
 type t =
   { loc : Loc.t
   ; files : Predicate_lang.t
-  ; libraries : Dune_file.Lib_dep.t list
+  ; libraries : Lib_dep.t list
   ; preprocess : Dune_file.Preprocess_map.t
   ; preprocessor_deps : Dune_file.Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
@@ -87,8 +87,7 @@ let gen_rules sctx t ~dir ~scope =
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (t.loc, name) ]
-      ( Dune_file.Lib_dep.Direct
-          (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
+      ( Lib_dep.Direct (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
       :: t.libraries )
       ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
       ~variants:None ~optional:false

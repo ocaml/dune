@@ -262,6 +262,15 @@ let plain_string f =
      |List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 
+let file =
+  plain_string (fun ~loc s ->
+      match s with
+      | "."
+       |".." ->
+        User_error.raise ~loc
+          [ Pp.textf "'.' and '..' are not valid filenames" ]
+      | fn -> fn)
+
 let enter t =
   next_with_user_context (fun uc sexp ->
       match sexp with

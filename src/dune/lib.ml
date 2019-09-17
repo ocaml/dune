@@ -1130,14 +1130,13 @@ end = struct
     let rec one (t : lib) =
       if Set.mem !visited t then
         Ok ()
-      else begin
+      else (
         visited := Set.add !visited t;
         let* re_exports = t.re_exports in
         let+ () = many re_exports in
-        res := t :: !res;
-      end
-    and many = Result.List.iter ~f:one
-    in
+        res := t :: !res
+      )
+    and many = Result.List.iter ~f:one in
     let+ () = many ts in
     List.rev !res
 
@@ -1146,7 +1145,7 @@ end = struct
       List.fold_left deps ~init:(Ok [], [])
         ~f:(fun (acc_res, acc_selects) dep ->
           let res, acc_selects =
-            match (dep : Dune_file.Lib_dep.t) with
+            match (dep : Lib_dep.t) with
             | Re_export _ -> assert false
             | Direct (loc, name) ->
               let res =
@@ -1899,10 +1898,10 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let* requires = lib.requires in
   let requires = add_loc requires in
   let+ re_exports = lib.re_exports in
-  let re_exports = List.map ~f:(fun t -> Loc.none, t.name) re_exports in
+  let re_exports = List.map ~f:(fun t -> (Loc.none, t.name)) re_exports in
   let info = Lib_info.set_re_exports info re_exports in
-  Dune_package.Lib.make ~info ~requires
-    ~modules:(Some modules) ~main_module_name
+  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
+    ~main_module_name
 
 module Local : sig
   type t = private lib

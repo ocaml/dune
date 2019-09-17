@@ -37,8 +37,9 @@ module Deps = struct
       match deps with
       | [] -> Some (List.rev acc)
       | Direct x :: deps -> loop (x :: acc) deps
-      | Re_export _ :: deps -> loop acc deps
-      | Select _ :: _ -> None
+      | Re_export _ :: _
+       |Select _ :: _ ->
+        None
     in
     match loop [] deps with
     | Some l -> Simple l
@@ -51,9 +52,16 @@ module Deps = struct
   let to_dyn =
     let open Dyn.Encoder in
     function
-    | Simple xs ->
-      constr "Simple" [list Lib_name.to_dyn (List.map ~f:snd xs)]
-    | Complex ld -> constr "Complex" [list Lib_dep.to_dyn ld]
+    | Simple xs -> constr "Simple" [ list Lib_name.to_dyn (List.map ~f:snd xs) ]
+    | Complex ld -> constr "Complex" [ list Lib_dep.to_dyn ld ]
+
+  let field_encode t ~name =
+    let t =
+      match t with
+      | Simple l -> List.map ~f:Lib_dep.direct l
+      | Complex l -> l
+    in
+    Lib_dep.L.field_encode t ~name
 end
 
 module Source = struct
@@ -107,7 +115,6 @@ type 'path t =
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support :
       Dune_file.Library.Special_builtin_support.t option
-  ; re_exports : (Loc.t * Lib_name.t) list
   }
 
 let name t = t.name
@@ -168,8 +175,6 @@ let main_module_name t = t.main_module_name
 
 let orig_src_dir t = t.orig_src_dir
 
-let re_exports t = t.re_exports
-
 let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
 let set_version t version = { t with version }
@@ -189,7 +194,7 @@ let set_sub_systems t sub_systems = { t with sub_systems }
 let set_foreign_objects t foreign_objects =
   { t with foreign_objects = External foreign_objects }
 
-let set_re_exports t re_exports = { t with re_exports }
+let set_requires t requires = { t with requires }
 
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
@@ -286,11 +291,6 @@ let of_library_stanza ~dir
       None
   in
   let requires = Deps.of_lib_deps conf.buildable.libraries in
-  let re_exports =
-    List.filter_map conf.buildable.libraries ~f:(function
-      | Re_export l -> Some l
-      | _ -> None)
-  in
   { loc = conf.buildable.loc
   ; name
   ; kind = conf.kind
@@ -322,7 +322,6 @@ let of_library_stanza ~dir
   ; modes
   ; wrapped = Some conf.wrapped
   ; special_builtin_support = conf.special_builtin_support
-  ; re_exports
   }
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
@@ -330,7 +329,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime
     ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
     ~implements ~variant ~known_implementations ~default_implementation ~modes
-    ~wrapped ~special_builtin_support ~re_exports =
+    ~wrapped ~special_builtin_support =
   { loc
   ; name
   ; kind
@@ -362,7 +361,6 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; modes
   ; wrapped
   ; special_builtin_support
-  ; re_exports
   }
 
 type external_ = Path.t t

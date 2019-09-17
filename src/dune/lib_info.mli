@@ -30,6 +30,8 @@ module Deps : sig
   val of_lib_deps : Dune_file.Lib_deps.t -> t
 
   val to_dyn : t -> Dyn.t
+
+  val field_encode : t -> name:string -> Dune_lang.Encoder.field
 end
 
 (** For values like modules that need to be evaluated to be fetched *)
@@ -107,8 +109,6 @@ val orig_src_dir : 'path t -> 'path option
 
 val version : _ t -> string option
 
-val re_exports : _ t -> (Loc.t * Lib_name.t) list
-
 (** Directory where the source files for the library are located. Returns the
     original src dir when it exists *)
 val best_src_dir : 'path t -> 'path
@@ -146,7 +146,7 @@ val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
 
 val set_foreign_objects : Path.t t -> Path.t list -> Path.t t
 
-val set_re_exports : 'a t -> (Loc.t * Lib_name.t) list -> 'a t
+val set_requires : 'a t -> Deps.t -> 'a t
 
 val map_path : 'a t -> f:('a -> 'a) -> 'a t
 
@@ -182,5 +182,4 @@ val create :
   -> modes:Mode.Dict.Set.t
   -> wrapped:Wrapped.t Dune_file.Library.Inherited.t option
   -> special_builtin_support:Dune_file.Library.Special_builtin_support.t option
-  -> re_exports:(Loc.t * Lib_name.t) list
   -> 'a t

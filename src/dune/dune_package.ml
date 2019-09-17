@@ -14,10 +14,9 @@ module Lib = struct
     { info : Path.t Lib_info.t
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
-    ; requires : (Loc.t * Lib_name.t) list
     }
 
-  let make ~info ~main_module_name ~requires ~modules =
+  let make ~info ~main_module_name ~modules =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
@@ -27,13 +26,13 @@ module Lib = struct
         p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; requires; modules }
+    { info; main_module_name; modules }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; requires; main_module_name; modules } =
+  let encode ~package_root { info; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -55,10 +54,10 @@ module Lib = struct
     let ppx_runtime_deps = Lib_info.ppx_runtime_deps info in
     let default_implementation = Lib_info.default_implementation info in
     let special_builtin_support = Lib_info.special_builtin_support info in
-    let re_exports = Lib_info.re_exports info in
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
+    let requires = Lib_info.requires info in
     let foreign_archives = Lib_info.foreign_archives info in
     let foreign_objects =
       match Lib_info.foreign_objects info with
@@ -78,7 +77,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; mode_paths "foreign_archives" foreign_archives
        ; paths "jsoo_runtime" jsoo_runtime
-       ; libs "requires" requires
+       ; Lib_info.Deps.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_l "known_implementations"
@@ -93,7 +92,6 @@ module Lib = struct
        ; field_o "special_builtin_support"
            Dune_file.Library.Special_builtin_support.encode
            special_builtin_support
-       ; field_l "re_exports" (no_loc Lib_name.encode) re_exports
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -136,7 +134,7 @@ module Lib = struct
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives = mode_paths "foreign_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
-       and+ requires = libs "requires"
+       and+ requires = field_l "requires" Lib_dep.decode
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =
@@ -154,10 +152,6 @@ module Lib = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Dune_file.Library.Special_builtin_support.decode )
-       and+ re_exports =
-         field_l "re_exports"
-           ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
-           >>> located Lib_name.decode )
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations
@@ -172,7 +166,6 @@ module Lib = struct
            Dune_file.Library.Inherited.This main_module_name
          in
          let foreign_objects = Lib_info.Source.External foreign_objects in
-         let requires = Lib_info.Deps.Simple requires in
          let jsoo_archive = None in
          let pps = [] in
          let virtual_deps = [] in
@@ -189,15 +182,16 @@ module Lib = struct
            Option.map modules ~f:Modules.wrapped
            |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
          in
+         let requires = Lib_info.Deps.Complex requires in
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
            ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
            ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
            ~known_implementations ~default_implementation ~modes ~wrapped
-           ~special_builtin_support ~re_exports
+           ~special_builtin_support
        in
-       { info; requires; main_module_name; modules })
+       { info; main_module_name; modules })
 
   let modules t = t.modules
 

@@ -919,7 +919,10 @@ module rec Resolve : sig
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> stack:Dep_stack.t
-    -> lib list Or_exn.t * lib list Or_exn.t * Resolved_select.t list
+    -> lib list Or_exn.t
+       * lib list Or_exn.t
+       * Resolved_select.t list
+       * lib list Or_exn.t
 
   val closure_with_overlap_checks :
        db option
@@ -1003,7 +1006,7 @@ end = struct
                  Lib_info.known_implementations info
                |> Variant.Map.map ~f:resolve_impl ))
     in
-    let requires, pps, resolved_selects =
+    let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
       Lib_info.requires info
       |> resolve_user_deps db ~allow_private_deps ~pps ~stack
@@ -1015,10 +1018,6 @@ end = struct
         let* impl = impl in
         let+ requires = requires in
         impl :: requires
-    in
-    let re_exports : t list Or_exn.t =
-      Lib_info.re_exports info
-      |> resolve_simple_deps db ~allow_private_deps ~stack
     in
     let ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info
@@ -1141,18 +1140,23 @@ end = struct
     List.rev !res
 
   let resolve_complex_deps db deps ~allow_private_deps ~stack =
-    let res, resolved_selects =
-      List.fold_left deps ~init:(Ok [], [])
-        ~f:(fun (acc_res, acc_selects) dep ->
-          let res, acc_selects =
+    let res, resolved_selects, re_exports =
+      List.fold_left deps ~init:(Ok [], [], Ok [])
+        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
+          let res, acc_selects, acc_re_exports =
             match (dep : Lib_dep.t) with
-            | Re_export _ -> assert false
+            | Re_export (loc, name) ->
+              let acc_re_exports =
+                resolve_dep db name ~allow_private_deps ~loc ~stack
+                >>| List.singleton
+              in
+              (acc_res, acc_selects, acc_re_exports)
             | Direct (loc, name) ->
               let res =
                 resolve_dep db name ~allow_private_deps ~loc ~stack
                 >>| List.singleton
               in
-              (res, acc_selects)
+              (res, acc_selects, acc_re_exports)
             | Select { result_fn; choices; loc } ->
               let res, src_fn =
                 match
@@ -1182,7 +1186,7 @@ end = struct
               in
               ( res
               , { Resolved_select.src_fn; dst_fn = result_fn } :: acc_selects
-              )
+              , acc_re_exports )
           in
           let res =
             match (res, acc_res) with
@@ -1191,29 +1195,20 @@ end = struct
              |_, (Error _ as res) ->
               res
           in
-          (res, acc_selects))
+          (res, acc_selects, acc_re_exports))
     in
-    let res =
-      match res with
-      | Ok l -> Ok (List.rev l)
-      | Error _ -> res
-    in
-    (res, resolved_selects)
+    let res = Result.map ~f:List.rev res in
+    let re_exports = Result.map ~f:List.rev re_exports in
+    (res, resolved_selects, re_exports)
 
   let resolve_deps db deps ~allow_private_deps ~stack =
-    (* Compute transitive closure *)
-    let libs, selects =
-      match (deps : Lib_info.Deps.t) with
-      | Simple names ->
-        (resolve_simple_deps db names ~allow_private_deps ~stack, [])
-      | Complex names ->
-        resolve_complex_deps db names ~allow_private_deps ~stack
-    in
-    (* Find implementations for virtual libraries. *)
-    (libs, selects)
+    match (deps : Lib_info.Deps.t) with
+    | Simple names ->
+      (resolve_simple_deps db names ~allow_private_deps ~stack, [], Ok [])
+    | Complex names -> resolve_complex_deps db names ~allow_private_deps ~stack
 
   let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-    let deps, resolved_selects =
+    let deps, resolved_selects, re_exports =
       resolve_deps db deps ~allow_private_deps ~stack
     in
     let deps, pps =
@@ -1248,7 +1243,7 @@ end = struct
         (deps, pps)
     in
     let deps = deps >>= re_exports_closure in
-    (deps, pps, resolved_selects)
+    (deps, pps, resolved_selects, re_exports)
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1751,7 +1746,7 @@ module DB = struct
           else
             Required )
     in
-    let res, pps, resolved_selects =
+    let res, pps, resolved_selects, _re_exports =
       Resolve.resolve_user_deps t
         (Lib_info.Deps.of_lib_deps deps)
         ~pps ~stack:Dep_stack.empty ~allow_private_deps:true
@@ -1899,9 +1894,12 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let requires = add_loc requires in
   let+ re_exports = lib.re_exports in
   let re_exports = List.map ~f:(fun t -> (Loc.none, t.name)) re_exports in
-  let info = Lib_info.set_re_exports info re_exports in
-  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
-    ~main_module_name
+  let requires =
+    List.map ~f:Lib_dep.direct requires
+    @ List.map ~f:Lib_dep.re_export re_exports
+  in
+  let info = Lib_info.set_requires info (Complex requires) in
+  Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 
 module Local : sig
   type t = private lib

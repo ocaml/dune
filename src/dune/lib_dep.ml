@@ -10,9 +10,9 @@ module Select = struct
   let dyn_of_choice { required; forbidden; file } =
     let open Dyn.Encoder in
     record
-      [ "required", Lib_name.Set.to_dyn required
-      ; "forbidden", Lib_name.Set.to_dyn forbidden
-      ; "file", string file
+      [ ("required", Lib_name.Set.to_dyn required)
+      ; ("forbidden", Lib_name.Set.to_dyn forbidden)
+      ; ("file", string file)
       ]
 
   type t =
@@ -21,11 +21,11 @@ module Select = struct
     ; loc : Loc.t
     }
 
-  let to_dyn { result_fn ; choices ; loc = _ } =
+  let to_dyn { result_fn; choices; loc = _ } =
     let open Dyn.Encoder in
     record
-      [ "result_fn", string result_fn
-      ; "choices", list dyn_of_choice choices
+      [ ("result_fn", string result_fn)
+      ; ("choices", list dyn_of_choice choices)
       ]
 end
 
@@ -38,10 +38,12 @@ let to_dyn =
   let open Dyn.Encoder in
   function
   | Direct (_, name) -> Lib_name.to_dyn name
-  | Re_export (_, name) -> constr "re_export" [Lib_name.to_dyn name]
-  | Select s -> constr "select" [Select.to_dyn s]
+  | Re_export (_, name) -> constr "re_export" [ Lib_name.to_dyn name ]
+  | Select s -> constr "select" [ Select.to_dyn s ]
 
 let direct x = Direct x
+
+let re_export x = Re_export x
 
 let to_lib_names = function
   | Direct (_, s)
@@ -110,3 +112,18 @@ let decode =
     ~else_:
       (let+ loc, name = located Lib_name.decode in
        Direct (loc, name))
+
+let encode =
+  let open Dune_lang.Encoder in
+  function
+  | Direct (_, name) -> Lib_name.encode name
+  | Re_export (_, name) -> constr "re_export" Lib_name.encode name
+  | Select select ->
+    Code_error.raise "Lib_dep.encode: cannot encode select"
+      [ ("select", Select.to_dyn select) ]
+
+module L = struct
+  let field_encode t ~name =
+    let open Dune_lang.Encoder in
+    field_l name encode t
+end

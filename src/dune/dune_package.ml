@@ -203,8 +203,6 @@ module Lib = struct
 
   let main_module_name t = t.main_module_name
 
-  let requires t = t.requires
-
   let compare_name x y =
     let x = Lib_info.name x.info in
     let y = Lib_info.name y.info in

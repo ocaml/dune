@@ -28,6 +28,8 @@ module Deps : sig
     | Complex of Lib_dep.t list
 
   val of_lib_deps : Dune_file.Lib_deps.t -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 (** For values like modules that need to be evaluated to be fetched *)

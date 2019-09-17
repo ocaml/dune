@@ -7,17 +7,39 @@ module Select = struct
     ; file : string
     }
 
+  let dyn_of_choice { required; forbidden; file } =
+    let open Dyn.Encoder in
+    record
+      [ "required", Lib_name.Set.to_dyn required
+      ; "forbidden", Lib_name.Set.to_dyn forbidden
+      ; "file", string file
+      ]
+
   type t =
     { result_fn : string
     ; choices : choice list
     ; loc : Loc.t
     }
+
+  let to_dyn { result_fn ; choices ; loc = _ } =
+    let open Dyn.Encoder in
+    record
+      [ "result_fn", string result_fn
+      ; "choices", list dyn_of_choice choices
+      ]
 end
 
 type t =
   | Direct of (Loc.t * Lib_name.t)
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
+
+let to_dyn =
+  let open Dyn.Encoder in
+  function
+  | Direct (_, name) -> Lib_name.to_dyn name
+  | Re_export (_, name) -> constr "re_export" [Lib_name.to_dyn name]
+  | Select s -> constr "select" [Select.to_dyn s]
 
 let direct x = Direct x
 

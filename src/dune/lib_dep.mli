@@ -12,6 +12,8 @@ module Select : sig
     ; choices : choice list
     ; loc : Loc.t
     }
+
+  val to_dyn : t -> Dyn.t
 end
 
 type t =
@@ -19,8 +21,12 @@ type t =
   | Re_export of (Loc.t * Lib_name.t)
   | Select of Select.t
 
+val to_dyn : t -> Dyn.t
+
 val direct : Loc.t * Lib_name.t -> t
 
 val to_lib_names : t -> Lib_name.t list
 
 val decode : t Dune_lang.Decoder.t
+
+val encode : t Dune_lang.Encoder.t

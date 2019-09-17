@@ -47,6 +47,13 @@ module Deps = struct
   let to_lib_deps = function
     | Simple l -> List.map l ~f:Lib_dep.direct
     | Complex l -> l
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Simple xs ->
+      constr "Simple" [list Lib_name.to_dyn (List.map ~f:snd xs)]
+    | Complex ld -> constr "Complex" [list Lib_dep.to_dyn ld]
 end
 
 module Source = struct

@@ -1,8 +1,6 @@
 module V1 = struct
-
   module Path = Path
   open Protocol
-
 
   module Execution_error = struct
     exception E of string
@@ -30,25 +28,25 @@ module V1 = struct
       let rec loop dh acc =
         match Unix.readdir dh with
         | "."
-        |".." ->
+         |".." ->
           loop dh acc
         | s -> loop dh (s :: acc)
         | exception End_of_file -> acc
       in
       fun path ->
         catch_system_exceptions ~name:"read_directory" (fun () ->
-          let dh = Unix.opendir path in
-          Stdune.Exn.protect
-            ~f:(fun () -> loop dh [] |> List.sort String.compare)
-            ~finally:(fun () -> Unix.closedir dh))
+            let dh = Unix.opendir path in
+            Stdune.Exn.protect
+              ~f:(fun () -> loop dh [] |> List.sort String.compare)
+              ~finally:(fun () -> Unix.closedir dh))
 
     let read_file path =
       catch_system_exceptions ~name:"read_file" (fun () ->
-        Stdune.Io.String_path.read_file path)
+          Stdune.Io.String_path.read_file path)
 
     let write_file path data =
       catch_system_exceptions ~name:"write_file" (fun () ->
-        Stdune.Io.String_path.write_file path data)
+          Stdune.Io.String_path.write_file path data)
   end
 
   module Stage = struct
@@ -91,7 +89,8 @@ module V1 = struct
     | Pure a1, _ -> map ~f:(fun a2 -> (a1, a2)) t2
     | _, Pure a2 -> map ~f:(fun a1 -> (a1, a2)) t1
     | Stage at1, Stage at2 ->
-      Stage (Stage.both at1 at2 |> Stage.map ~f:(fun (am1, am2) -> both am1 am2))
+      Stage
+        (Stage.both at1 at2 |> Stage.map ~f:(fun (am1, am2) -> both am1 am2))
 
   let read_file ~path =
     let path = Path.to_string path in
@@ -135,20 +134,20 @@ module V1 = struct
         Stdune.String.Set.diff at.targets allowed_targets
       in
       ( match Stdune.String.Set.to_list disallowed_targets with
-        | [] -> ()
-        | [ t ] ->
-          Execution_error.raise
-            (Printf.sprintf
-               "%s is written despite not being declared as a target in dune \
-                file. To fix, add it to target list in dune file."
-               t)
-        | ts ->
-          Execution_error.raise
-            (Printf.sprintf
-               "Following files were written despite not being declared as \
-                targets in dune file:\n\
-                %sTo fix, add them to target list in dune file."
-               (ts |> String.concat "\n")) );
+      | [] -> ()
+      | [ t ] ->
+        Execution_error.raise
+          (Printf.sprintf
+             "%s is written despite not being declared as a target in dune \
+              file. To fix, add it to target list in dune file."
+             t)
+      | ts ->
+        Execution_error.raise
+          (Printf.sprintf
+             "Following files were written despite not being declared as \
+              targets in dune file:\n\
+              %sTo fix, add them to target list in dune file."
+             (ts |> String.concat "\n")) );
       let prepared_dependencies = Context.prepared_dependencies context in
       let required_dependencies =
         Dependency.Set.diff at.dependencies prepared_dependencies
@@ -172,8 +171,8 @@ module V1 = struct
     | Error message ->
       Execution_error.raise
         (Printf.sprintf
-           "Error during communication with dune. %s Did you use different dune \
-            version to compile the executable?"
+           "Error during communication with dune. %s Did you use different \
+            dune version to compile the executable?"
            message)
     | Ok context -> run_by_dune t context
 
@@ -189,15 +188,15 @@ module V1 = struct
     let ( let+ ) at f = map at ~f
 
     let ( and+ ) = both
-end
+  end
 
-module Private = struct
-  module Protocol = Protocol
+  module Private = struct
+    module Protocol = Protocol
 
-  let do_run = do_run
+    let do_run = do_run
 
-  module Execution_error = Execution_error
-end
+    module Execution_error = Execution_error
+  end
 end
 
 module Private = V1.Private

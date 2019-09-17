@@ -166,3 +166,11 @@ everytime you commit your code the version would change and dune would
 need to rebuild all the binaries and everything that depend on them,
 such as tests. Instead Dune leaves a placeholder inside the binary and
 fills it during installation or promotion.
+
+
+Dune action plugin
+==================
+
+``Dune-action-plugin`` provides a monadic interface to express program
+dependencies directly inside the source code. Programs using this feature
+should be declared using ``dynamic-run`` construction instead of usual ``run``.

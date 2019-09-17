@@ -1,15 +1,34 @@
 open! Stdune
 
-module Context : sig
-  type t
+(** Type for dependency requested by the dynamic action.
 
-  val make :
-       targets:Path.Build.Set.t
-    -> context:Context.t option
-    -> env:Env.t option
-    -> t
+    Must be different from [Dep.t] type because we require it to be
+    marshallable. *)
+module Dynamic_dep : sig
+  type t =
+    | File of Path.t
+    | Glob of Path.t * Glob.t
 
-  val env : t -> Env.t
+  val to_dep : t -> Dep.t
+
+  val compare : t -> t -> Ordering.t
+
+  module Set : sig
+    include Set.S with type elt = t
+
+    val to_dep_set : t -> Dep.Set.t
+  end
 end
 
-val exec : Action.t -> Context.t -> unit Fiber.t
+module Exec_result : sig
+  type t = { dynamic_deps_stages : Dynamic_dep.Set.t List.t }
+end
+
+val exec :
+     targets:Path.Build.Set.t
+  -> context:Context.t option
+  -> env:Env.t
+  -> rule_loc:Loc.t
+  -> build_deps:(Dep.Set.t -> unit Fiber.t)
+  -> Action.t
+  -> Exec_result.t Fiber.t

@@ -147,7 +147,7 @@
 1.11.1 (09/08/2019)
 -------------------
 
-- Fix config file dependencies of ocamlformat (#2471, fixes #2646,
+- Fix config file dependencies of ocamlformat (#2471, fixes #2464,
   @nojb)
 
 - Cleanup stale directories when using `(source_tree ...)` in the

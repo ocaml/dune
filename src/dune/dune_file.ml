@@ -507,6 +507,7 @@ module Lib_dep = struct
 
   type t =
     | Direct of (Loc.t * Lib_name.t)
+    | Re_export of (Loc.t * Lib_name.t)
     | Select of select
 
   let choice =
@@ -550,18 +551,27 @@ module Lib_dep = struct
     if_list
       ~then_:
         (enter
-           (let+ loc = loc
-            and+ () = keyword "select"
-            and+ result_fn = file
-            and+ () = keyword "from"
-            and+ choices = repeat choice in
-            Select { result_fn; choices; loc }))
+           (let* loc = loc in
+            let* constr = string in
+            match constr with
+            | "re_export" ->
+              let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+              and+ loc, name = located Lib_name.decode in
+              Re_export (loc, name)
+            | "select" ->
+                let+ result_fn = file
+                and+ () = keyword "from"
+                and+ choices = repeat choice
+                in
+                Select { result_fn; choices; loc }
+            | _ -> assert false))
       ~else_:
         (let+ loc, name = located Lib_name.decode in
          Direct (loc, name))
 
   let to_lib_names = function
-    | Direct (_, s) -> [ s ]
+    | Direct (_, s)
+    | Re_export (_, s) -> [ s ]
     | Select s ->
       List.fold_left s.choices ~init:Lib_name.Set.empty ~f:(fun acc x ->
           Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
@@ -612,6 +622,7 @@ module Lib_deps = struct
     ignore
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
+            | Lib_dep.Re_export (_, s)
             | Lib_dep.Direct (_, s) -> add Required s acc
             | Select { choices; _ } ->
               List.fold_left choices ~init:acc ~f:(fun acc c ->
@@ -628,6 +639,7 @@ module Lib_deps = struct
 
   let info t ~kind =
     List.concat_map t ~f:(function
+      | Lib_dep.Re_export (_, s)
       | Lib_dep.Direct (_, s) -> [ (s, kind) ]
       | Select { choices; _ } ->
         List.concat_map choices ~f:(fun c ->
@@ -1018,7 +1030,6 @@ module Library = struct
     ; stdlib : Stdlib.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
-    ; re_exports : (Loc.t * Lib_name.t) list
     }
 
   let decode =
@@ -1083,10 +1094,6 @@ module Library = struct
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Special_builtin_support.decode )
        and+ enabled_if = enabled_if ~since:(Some (1, 10))
-       and+ re_exports =
-         field "re_exports" ~default:[]
-           (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>>
-            repeat (located Lib_name.decode))
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -1212,7 +1219,6 @@ module Library = struct
            ; stdlib
            ; special_builtin_support
            ; enabled_if
-           ; re_exports
            } ))
 
   let has_stubs t =

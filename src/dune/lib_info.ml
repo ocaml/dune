@@ -37,6 +37,7 @@ module Deps = struct
       match deps with
       | [] -> Some (List.rev acc)
       | Direct x :: deps -> loop (x :: acc) deps
+      | Re_export _ :: deps -> loop acc deps
       | Select _ :: _ -> None
     in
     match loop [] deps with
@@ -277,6 +278,12 @@ let of_library_stanza ~dir
      |Private _ ->
       None
   in
+  let requires = Deps.of_lib_deps conf.buildable.libraries in
+  let re_exports =
+    List.filter_map conf.buildable.libraries ~f:(function
+      | Re_export l -> Some l
+      | _ -> None)
+  in
   { loc = conf.buildable.loc
   ; name
   ; kind = conf.kind
@@ -294,7 +301,7 @@ let of_library_stanza ~dir
   ; jsoo_archive
   ; status
   ; virtual_deps = conf.virtual_deps
-  ; requires = Deps.of_lib_deps conf.buildable.libraries
+  ; requires
   ; ppx_runtime_deps = conf.ppx_runtime_libraries
   ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
   ; sub_systems = conf.sub_systems
@@ -308,7 +315,7 @@ let of_library_stanza ~dir
   ; modes
   ; wrapped = Some conf.wrapped
   ; special_builtin_support = conf.special_builtin_support
-  ; re_exports = conf.re_exports
+  ; re_exports
   }
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version

@@ -1,16 +1,14 @@
 (library
  (public_name pkg.aaa)
  (name aaa)
- (libraries bbb)
- (modules aaa)
- (re_exports bbb))
+ (libraries (re_export bbb))
+ (modules aaa))
 
 (library
  (public_name pkg.bbb)
  (name bbb)
- (libraries ccc)
- (modules bbb)
- (re_exports ccc))
+ (libraries (re_export ccc))
+ (modules bbb))
 
 (library
  (modules ccc)

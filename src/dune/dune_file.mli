@@ -88,6 +88,7 @@ module Lib_dep : sig
 
   type t =
     | Direct of (Loc.t * Lib_name.t)
+    | Re_export of (Loc.t * Lib_name.t)
     | Select of select
 
   val to_lib_names : t -> Lib_name.t list
@@ -280,7 +281,6 @@ module Library : sig
     ; stdlib : Stdlib.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
-    ; re_exports : (Loc.t * Lib_name.t) list
     }
 
   val has_stubs : t -> bool

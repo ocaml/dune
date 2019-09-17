@@ -1147,6 +1147,7 @@ end = struct
         ~f:(fun (acc_res, acc_selects) dep ->
           let res, acc_selects =
             match (dep : Dune_file.Lib_dep.t) with
+            | Re_export _ -> assert false
             | Direct (loc, name) ->
               let res =
                 resolve_dep db name ~allow_private_deps ~loc ~stack

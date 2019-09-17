@@ -10,5 +10,4 @@
 (library
  (name foo)
  (modules ())
- (libraries bar)
- (re_exports baz))
+ (libraries (re_export bar)))

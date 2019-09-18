@@ -197,7 +197,7 @@ module DB : sig
     -> (Loc.t * string) list
     -> ?allow_overlaps:bool
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
-    -> Dune_file.Lib_dep.t list
+    -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> variants:(Loc.t * Variant.Set.t) option
     -> optional:bool

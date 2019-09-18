@@ -73,38 +73,14 @@ module Js_of_ocaml : sig
   val default : t
 end
 
-module Lib_dep : sig
-  type choice =
-    { required : Lib_name.Set.t
-    ; forbidden : Lib_name.Set.t
-    ; file : string
-    }
-
-  type select =
-    { result_fn : string
-    ; choices : choice list
-    ; loc : Loc.t
-    }
-
-  type t =
-    | Direct of (Loc.t * Lib_name.t)
-    | Select of select
-
-  val to_lib_names : t -> Lib_name.t list
-
-  val direct : Loc.t * Lib_name.t -> t
-
-  val of_lib_name : Loc.t * Lib_name.t -> t
-end
-
 module Lib_deps : sig
-  type t = Lib_dep.t list
+  type nonrec t = Lib_dep.t list
 
   val of_pps : Lib_name.t list -> t
 
   val info : t -> kind:Lib_deps_info.Kind.t -> Lib_deps_info.t
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
 module Dep_conf : sig

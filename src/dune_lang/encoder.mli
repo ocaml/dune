@@ -6,6 +6,8 @@ val sexp : T.t t
 
 val record : (string * T.t) list -> T.t
 
+val constr : string -> 'a t -> 'a t
+
 type field
 
 val field :

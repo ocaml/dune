@@ -448,6 +448,11 @@ compilers.
 One example of supported syntax is the custom let-syntax that was
 introduced in 4.08, allowing the user to define custom let operators.
 
+Note that this feature is implemented by the third-party
+`ocaml-syntax-shims project
+<https://github.com/ocaml-ppx/ocaml-syntax-shims>`, so if you use this
+feature you must also declare a dependency on this package.
+
 .. _deps-field:
 
 Dependency specification

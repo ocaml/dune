@@ -32,8 +32,8 @@ module Mapper = Action_mapper.Make (Uast) (Uast)
 (* In [Action_exec] we rely on one-to-one mapping between the cwd-relative
    paths seen by the action and [Path.t] seen by dune.
 
-   Having more than one dynamic_run with different cwds could break that.
-   Also, we didn't really want to think about how multiple dynamic actions would
+   Having more than one dynamic_run with different cwds could break that. Also,
+   we didn't really want to think about how multiple dynamic actions would
    interact (do we want dependencies requested by one to be visible to the
    other?) *)
 let ensure_at_most_one_dynamic_run ~loc action =

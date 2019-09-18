@@ -11,11 +11,9 @@ module V1 : sig
       and starts a process from scratch for every stage. So a linear chain of
       binds leads to a linear number of program re-runs, and therefore overall
       quadratic time complexity. This also means that using non-deterministic
-      mutable state can lead to surprising results.
-      (note that with the current implementation, nontrivial stages are those
-      that have some dependencies, so a stage that merely writes out some
-      targets is "free")
-  *)
+      mutable state can lead to surprising results. (note that with the current
+      implementation, nontrivial stages are those that have some dependencies,
+      so a stage that merely writes out some targets is "free") *)
 
   module Path = Path
   module Glob = Glob

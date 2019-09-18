@@ -433,13 +433,10 @@ module Client = struct
 
   type command = Dedup of (Path.Build.t * Path.t)
 
-  let pp_command fmt = function
+  let command_to_dyn = function
     | Dedup (source, target) ->
-      Format.pp_print_string fmt "Dedup(";
-      Path.Local.pp fmt (Path.Build.local source);
-      Format.pp_print_string fmt ",";
-      Path.pp fmt target;
-      Format.pp_print_string fmt ")"
+      let open Dyn.Encoder in
+      constr "Dedup" [ Path.Build.to_dyn source; Path.to_dyn target ]
 
   let read input =
     let open Result.O in
@@ -484,7 +481,8 @@ module Client = struct
     let rec thread input =
       match
         let+ command = read input in
-        Log.infof "dune-cache command: %a" pp_command command;
+        Log.infof "dune-cache command: %a" Pp.render_ignore_tags
+          (Dyn.pp (command_to_dyn command));
         handle command
       with
       | Result.Error e -> Log.infof "dune-cache read error: %s" e

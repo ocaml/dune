@@ -42,6 +42,8 @@ module External : sig
   val cwd : unit -> t
 
   val as_local : t -> string
+
+  val descendant : t -> of_:t -> string option
 end = struct
   module T =
     Interned.No_interning
@@ -164,6 +166,9 @@ end = struct
       true
     else
       String.is_prefix ~prefix:(to_string a ^ "/") (to_string b)
+
+  let descendant t ~of_ =
+    String.drop_prefix ~prefix:(to_string of_ ^ "/") (to_string t)
 
   module Set = struct
     include T.Set
@@ -600,12 +605,13 @@ module Kind = struct
     | External of External.t
     | In_source_dir of Local.t
 
+    let to_external = function
+      | External e -> e
+      | In_source_dir l ->
+        External.relative (Lazy.force abs_root) (Local.to_string l)
+
   let to_absolute_filename t =
-    match t with
-    | External s -> External.to_string s
-    | In_source_dir l ->
-      External.to_string
-        (External.relative (Lazy.force abs_root) (Local.to_string l))
+      External.to_string (to_external t)
 
   let to_string = function
     | In_source_dir t -> Local.to_string t
@@ -724,6 +730,10 @@ module Build = struct
     in
     Fdecl.set build_dir new_build_dir;
     Fdecl.set build_dir_prefix new_build_dir_prefix
+
+  let absolute_build_dir = lazy (
+    Lazy.force build_dir_kind
+    |> Kind.to_external)
 
   let to_string p =
     match Fdecl.get build_dir with
@@ -855,7 +865,11 @@ let parse_string_exn ~loc s =
     if Filename.is_relative s then
       make_local_path (Local.parse_string_exn ~loc s)
     else
-      external_ (External.parse_string_exn ~loc s)
+      let s = External.parse_string_exn ~loc s in
+      let build_dir = Lazy.force Build.absolute_build_dir in
+      match External.descendant s ~of_:build_dir with
+      | None -> external_ s
+      | Some suffix -> in_build_dir (Local.of_string suffix)
 
 let of_string s = parse_string_exn ~loc:Loc0.none s
 

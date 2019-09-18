@@ -43,3 +43,14 @@ transtive deps expressed in the dune-package
 Attempting to re-export dependencies outside of libraries fails:
   $ dune build --root re-export-bad-attempt @all
   Entering directory 're-export-bad-attempt'
+
+Re-exporting deps in executables isn't allowed
+  $ dune build --root re-export-exe @all
+  Entering directory 're-export-exe'
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.0)
+  File "dune", line 7, characters 13-22:
+  7 |  (libraries (re_export foo)))
+                   ^^^^^^^^^
+  Error: re_export is not allowed here
+  [1]

@@ -1,0 +1,7 @@
+(library
+ (name foo)
+ (modules ()))
+
+(executable
+ (name bar)
+ (libraries (re_export foo)))

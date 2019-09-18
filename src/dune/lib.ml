@@ -1839,21 +1839,20 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       Some (loc, field.name)
   in
   let open Result.O in
-  let* implements =
+  let+ implements =
     use_public_name ~info_field:(Lib_info.implements info)
       ~lib_field:(implements lib)
-  in
-  let* default_implementation =
+  and+ default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
+  and+ ppx_runtime_deps = lib.ppx_runtime_deps
+  and+ main_module_name = main_module_name lib
+  and+ requires = lib.requires
+  and+ re_exports = lib.re_exports
   in
-  let* ppx_runtime_deps = lib.ppx_runtime_deps in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
   let sub_systems = Sub_system.public_info lib in
-  let* main_module_name = main_module_name lib in
-  let* requires = lib.requires in
-  let+ re_exports = lib.re_exports in
   let requires =
     List.map requires ~f:(fun lib ->
         if List.exists re_exports ~f:(fun r -> r = lib) then

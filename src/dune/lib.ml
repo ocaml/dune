@@ -1819,32 +1819,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     | None -> assert false
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in
-  let info = Lib_info.set_obj_dir info obj_dir in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
     Modules.version_installed modules ~install_dir
-  in
-  let info =
-    match !Clflags.store_orig_src_dir with
-    | false -> info
-    | true ->
-      let orig_src_dir =
-        let orig_src_dir = Lib_info.orig_src_dir info in
-        match orig_src_dir with
-        | Some src_dir -> src_dir
-        | None -> (
-          let src_dir = Lib_info.src_dir info in
-          match Path.drop_build_context src_dir with
-          | None -> src_dir
-          | Some src_dir ->
-            Path.(of_string (to_absolute_filename (Path.source src_dir))) )
-      in
-      Lib_info.set_orig_src_dir info orig_src_dir
-  in
-  let info =
-    match Lib_info.foreign_objects info with
-    | External _ -> info
-    | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
@@ -1867,12 +1844,9 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
   in
-  let info = Lib_info.set_implements info implements in
-  let info = Lib_info.set_default_implementation info default_implementation in
   let* ppx_runtime_deps = lib.ppx_runtime_deps in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
-  let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
+  let sub_systems = Sub_system.public_info lib in
   let* main_module_name = main_module_name lib in
   let* requires = lib.requires in
   let requires = add_loc requires in
@@ -1882,7 +1856,10 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     List.map ~f:Lib_dep.direct requires
     @ List.map ~f:Lib_dep.re_export re_exports
   in
-  let info = Lib_info.set_requires info requires in
+  let info =
+    Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects
+      ~obj_dir ~implements ~default_implementation ~sub_systems
+  in
   Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 
 module Local : sig

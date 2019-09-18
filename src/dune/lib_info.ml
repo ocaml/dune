@@ -142,22 +142,33 @@ let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
 let set_version t version = { t with version }
 
-let set_orig_src_dir t orig_src_dir =
-  { t with orig_src_dir = Some orig_src_dir }
-
-let set_default_implementation t default_implementation =
-  { t with default_implementation }
-
-let set_implements t implements = { t with implements }
-
-let set_ppx_runtime_deps t ppx_runtime_deps = { t with ppx_runtime_deps }
-
-let set_sub_systems t sub_systems = { t with sub_systems }
-
-let set_foreign_objects t foreign_objects =
-  { t with foreign_objects = External foreign_objects }
-
-let set_requires t requires = { t with requires }
+let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
+    ~implements ~default_implementation ~sub_systems =
+  let foreign_objects = Source.External foreign_objects in
+  let orig_src_dir =
+    match !Clflags.store_orig_src_dir with
+    | false -> t.orig_src_dir
+    | true ->
+      Some
+        ( match t.orig_src_dir with
+        | Some src_dir -> src_dir
+        | None -> (
+          match Path.drop_build_context t.src_dir with
+          | None -> t.src_dir
+          | Some src_dir ->
+            Path.source src_dir |> Path.to_absolute_filename |> Path.of_string
+          ) )
+  in
+  { t with
+    ppx_runtime_deps
+  ; requires
+  ; foreign_objects
+  ; obj_dir
+  ; implements
+  ; default_implementation
+  ; sub_systems
+  ; orig_src_dir
+  }
 
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
@@ -346,8 +357,6 @@ let map t ~f_path ~f_obj_dir =
   }
 
 let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fn.id
-
-let set_obj_dir t obj_dir = { t with obj_dir }
 
 let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 

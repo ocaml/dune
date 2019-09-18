@@ -85,6 +85,10 @@ module V1 : sig
       depending on a listing of a [directory] filtered by glob and resulting in
       that listing.
 
+      This is better than filtering the output of `read_directory` because this
+      makes dune aware of the filtering, so dune won't re-run the action when
+      the directory changes in an unimportant way.
+
       BUGS: (see [read_directory])
   *)
   val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t

@@ -1140,6 +1140,32 @@ end = struct
     List.rev !res
 
   let resolve_complex_deps db deps ~allow_private_deps ~stack =
+    let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
+      let res, src_fn =
+        match
+          List.find_map choices ~f:(fun { required; forbidden; file } ->
+              if
+                Lib_name.Set.exists forbidden ~f:(available_internal db ~stack)
+              then
+                None
+              else
+                match
+                  let deps =
+                    Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                        (loc, x) :: acc)
+                  in
+                  resolve_simple_deps ~allow_private_deps db deps ~stack
+                with
+                | Ok ts -> Some (ts, file)
+                | Error _ -> None)
+        with
+        | Some (ts, file) -> (Ok ts, Ok file)
+        | None ->
+          let e () = Error.no_solution_found_for_select ~loc in
+          (e (), e ())
+      in
+      (res, { Resolved_select.src_fn; dst_fn = result_fn })
+    in
     let res, resolved_selects, re_exports =
       List.fold_left deps ~init:(Ok [], [], Ok [])
         ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
@@ -1157,36 +1183,9 @@ end = struct
                 >>| List.singleton
               in
               (res, acc_selects, acc_re_exports)
-            | Select { result_fn; choices; loc } ->
-              let res, src_fn =
-                match
-                  List.find_map choices
-                    ~f:(fun { required; forbidden; file } ->
-                      if
-                        Lib_name.Set.exists forbidden
-                          ~f:(available_internal db ~stack)
-                      then
-                        None
-                      else
-                        match
-                          let deps =
-                            Lib_name.Set.fold required ~init:[]
-                              ~f:(fun x acc -> (loc, x) :: acc)
-                          in
-                          resolve_simple_deps ~allow_private_deps db deps
-                            ~stack
-                        with
-                        | Ok ts -> Some (ts, file)
-                        | Error _ -> None)
-                with
-                | Some (ts, file) -> (Ok ts, Ok file)
-                | None ->
-                  let e () = Error.no_solution_found_for_select ~loc in
-                  (e (), e ())
-              in
-              ( res
-              , { Resolved_select.src_fn; dst_fn = result_fn } :: acc_selects
-              , acc_re_exports )
+            | Select select ->
+              let res, resolved_select = resolve_select select in
+              (res, resolve_select :: acc_selects, acc_re_exports)
           in
           let res =
             match (res, acc_res) with

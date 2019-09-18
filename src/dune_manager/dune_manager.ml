@@ -431,12 +431,12 @@ module Client = struct
     ; thread : Thread.t
     }
 
-  type command = Dedup of (Path.t * Path.t)
+  type command = Dedup of (Path.Build.t * Path.t)
 
   let pp_command fmt = function
     | Dedup (source, target) ->
       Format.pp_print_string fmt "Dedup(";
-      Path.pp fmt source;
+      Path.Local.pp fmt (Path.Build.local source);
       Format.pp_print_string fmt ",";
       Path.pp fmt target;
       Format.pp_print_string fmt ")"
@@ -448,7 +448,7 @@ module Client = struct
     | Sexp.List
         [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom source; Sexp.Atom target ] ]
       ->
-      Result.Ok (Dedup (Path.of_string source, Path.of_string target))
+      Result.Ok (Dedup (Path.Build.of_string source, Path.of_string target))
     | exp ->
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 

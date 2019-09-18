@@ -19,7 +19,7 @@ module T = struct
     | Env of Env.Var.t
     | File of Path.t
     | Alias of Alias.t
-    | Glob of File_selector.t
+    | File_selector of File_selector.t
     | Universe
     | Sandbox_config of Sandbox_config.t
 
@@ -31,7 +31,7 @@ module T = struct
 
   let universe = Universe
 
-  let glob g = Glob g
+  let file_selector g = File_selector g
 
   let sandbox_config config = Sandbox_config config
 
@@ -46,9 +46,9 @@ module T = struct
     | Alias x, Alias y -> Alias.compare x y
     | Alias _, _ -> Lt
     | _, Alias _ -> Gt
-    | Glob x, Glob y -> File_selector.compare x y
-    | Glob _, _ -> Lt
-    | _, Glob _ -> Gt
+    | File_selector x, File_selector y -> File_selector.compare x y
+    | File_selector _, _ -> Lt
+    | _, File_selector _ -> Gt
     | Universe, Universe -> Ordering.Eq
     | Universe, _ -> Lt
     | _, Universe -> Gt
@@ -61,7 +61,7 @@ module T = struct
     | Env var -> Some (Env (var, Env.get env var))
     | File fn -> Some (File (trace_file fn))
     | Alias a -> Some (File (trace_file (Path.build (Alias.stamp_file a))))
-    | Glob dir_glob ->
+    | File_selector dir_glob ->
       let id = File_selector.to_dyn dir_glob
       and files =
         eval_pred dir_glob |> Path.Set.to_list |> List.map ~f:trace_file
@@ -91,7 +91,7 @@ module T = struct
                None))
     in
     match t with
-    | Glob g -> pair string File_selector.encode ("glob", g)
+    | File_selector g -> pair string File_selector.encode ("glob", g)
     | Env e -> pair string string ("Env", e)
     | File f -> pair string Dpath.encode ("File", f)
     | Alias a -> pair string Alias.encode ("Alias", a)
@@ -115,7 +115,7 @@ module Set = struct
     List.fold_left (to_list t) ~init:Sandbox_config.no_special_requirements
       ~f:(fun acc x ->
         match x with
-        | Glob _
+        | File_selector _
          |Env _
          |File _
          |Alias _
@@ -144,7 +144,7 @@ module Set = struct
         match d with
         | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file a))
         | File f -> Path.Set.add acc f
-        | Glob g -> Path.Set.union acc (eval_pred g)
+        | File_selector g -> Path.Set.union acc (eval_pred g)
         | Universe
          |Env _ ->
           acc
@@ -159,7 +159,7 @@ module Set = struct
     fold t ~init:Path.Set.empty ~f:(fun f acc ->
         match f with
         | Alias a -> Path.Set.add acc (Path.build (Alias.stamp_file_dir a))
-        | Glob g -> Path.Set.add acc (File_selector.dir g)
+        | File_selector g -> Path.Set.add acc (File_selector.dir g)
         | File f -> Path.Set.add acc (Path.parent_exn f)
         | Universe
          |Env _ ->

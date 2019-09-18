@@ -169,6 +169,12 @@ module Internal_rule = struct
   (* Create a shim for the main build goal *)
   let shim_of_build_goal ~build ~static_deps =
     { root with id = Id.gen (); static_deps; build }
+
+  let effective_env rule =
+    match (rule.env, rule.context) with
+    | None, None -> Env.initial
+    | Some e, _ -> e
+    | None, Some c -> c.env
 end
 
 module Alias0 = struct
@@ -282,6 +288,7 @@ module Trace_db : sig
   module Entry : sig
     type t =
       { rule_digest : Digest.t
+      ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
   end
@@ -293,6 +300,7 @@ end = struct
   module Entry = struct
     type t =
       { rule_digest : Digest.t
+      ; dynamic_deps_stages : (Action_exec.Dynamic_dep.Set.t * Digest.t) list
       ; targets_digest : Digest.t
       }
   end
@@ -307,7 +315,7 @@ end = struct
 
     let name = "INCREMENTAL-DB"
 
-    let version = 3
+    let version = 4
   end)
 
   let needs_dumping = ref false
@@ -1235,7 +1243,7 @@ end = struct
     Dep.Set.parallel_iter ~f:(function
       | Alias a -> build_file (Path.build (Alias.stamp_file a))
       | File f -> build_file f
-      | Glob g -> Pred.build g
+      | File_selector g -> Pred.build g
       | Universe
        |Env _
        |Sandbox_config _ ->
@@ -1348,11 +1356,27 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
+  let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode
+      =
+    let targets_as_list = Path.Build.Set.to_list rule.targets in
+    let env = Internal_rule.effective_env rule in
+    let trace =
+      ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
+      , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
+      , Option.map rule.context ~f:(fun c -> c.name)
+      , Action.for_shell action )
+    in
+    Digest.generic trace
+
+  let compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred =
+    Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
+    |> (Digest.generic : Dep.Trace.t -> _)
+
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.dir
         ; targets
-        ; env
+        ; env = _
         ; context
         ; mode
         ; locks
@@ -1369,7 +1393,9 @@ end = struct
     Fs.mkdir_p dir;
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
-    let prev_trace = Trace_db.get (Path.build head_target) in
+    let env = Internal_rule.effective_env rule in
+    let rule_loc = rule_loc ~file_tree:t.file_tree ~info ~dir in
+    let is_action_dynamic = Action.is_dynamic action in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
       | Clearly_not ->
@@ -1377,35 +1403,16 @@ end = struct
         if Sandbox_config.mem config Sandbox_mode.none then
           Sandbox_mode.none
         else
-          User_error.raise
-            ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
+          User_error.raise ~loc:rule_loc
             [ Pp.text
                 "Rule dependencies are configured to require sandboxing, but \
                  the rule has no actions that could potentially require \
                  sandboxing."
             ]
       | Maybe ->
-        select_sandbox_mode
-          ~loc:(rule_loc ~file_tree:t.file_tree ~info ~dir)
+        select_sandbox_mode ~loc:rule_loc
           (Dep.Set.sandbox_config deps)
           ~sandboxing_preference:t.sandboxing_preference
-    in
-    let action_ctx = Action_exec.Context.make ~targets ~context ~env in
-    let rule_digest =
-      let env = Action_exec.Context.env action_ctx in
-      let trace =
-        ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
-        , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
-        , Option.map context ~f:(fun c -> c.name)
-        , Action.for_shell action )
-      in
-      Digest.generic trace
-    in
-    let targets_digest = compute_targets_digest targets_as_list in
-    let sandbox =
-      Option.map sandbox_mode ~f:(fun mode ->
-          let digest = Digest.to_string rule_digest in
-          (Path.Build.relative sandbox_dir digest, mode))
     in
     let always_rerun =
       let force_rerun =
@@ -1414,27 +1421,69 @@ end = struct
       and depends_on_universe = Dep.Set.has_universe deps in
       force_rerun || depends_on_universe
     in
-    let something_changed =
-      match (prev_trace, targets_digest) with
-      | Some prev_trace, Some targets_digest ->
-        prev_trace.rule_digest <> rule_digest
-        || prev_trace.targets_digest <> targets_digest
-      | _ -> true
+    let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
+    let do_not_memoize = always_rerun || is_action_dynamic in
+    (* Here we determine if we need to rerun the action based on information
+       stored in Trace_db. *)
+    let* rule_need_rerun =
+      if always_rerun then
+        Fiber.return true
+      else
+        (* [prev_trace] will be [None] if rule is run for the first time. *)
+        let prev_trace = Trace_db.get (Path.build head_target) in
+        (* [targets_digest] will be [None] if not all targets were build. *)
+        let targets_digest = compute_targets_digest targets_as_list in
+        let rule_or_targets_changed =
+          match (prev_trace, targets_digest) with
+          | Some prev_trace, Some targets_digest ->
+            prev_trace.rule_digest <> rule_digest
+            || prev_trace.targets_digest <> targets_digest
+          | _ -> true
+        in
+        if rule_or_targets_changed then
+          Fiber.return true
+        else
+          let prev_trace = Option.value_exn prev_trace in
+          (* CR-someday aalekseyev: If there's a change at one of the last
+             stages, we still re-run all the previous stages, which is a bit of
+             a waste. We could remember what stage needs re-running and only
+             re-run that (and later stages). *)
+          let rec loop stages =
+            match stages with
+            | [] -> Fiber.return false
+            | (deps, old_digest) :: rest ->
+              let deps = Action_exec.Dynamic_dep.Set.to_dep_set deps in
+              let* () = build_deps deps in
+              let new_digest =
+                compute_dependencies_digest deps ~sandbox_mode ~env ~eval_pred
+              in
+              if old_digest <> new_digest then
+                Fiber.return true
+              else
+                loop rest
+          in
+          loop prev_trace.dynamic_deps_stages
+    in
+    let sandbox =
+      Option.map sandbox_mode ~f:(fun mode ->
+          let sandbox_suffix = rule_digest |> Digest.to_string in
+          (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let* () =
-      if always_rerun || something_changed then (
+      if rule_need_rerun then (
         List.iter targets_as_list ~f:(fun target ->
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
-          if always_rerun then
+          match (do_not_memoize, t.memory) with
+          | true, _
+           |_, None ->
             None
-          else
-            Option.bind t.memory ~f:(fun memory ->
-                match Dune_manager.Client.search memory rule_digest with
-                | Ok (_, files) -> Some files
-                | Error msg ->
-                  Log.infof "cache miss: %s" msg;
-                  None)
+          | false, Some memory -> (
+            match Dune_manager.Client.search memory rule_digest with
+            | Ok (_, files) -> Some files
+            | Error msg ->
+              Log.infof "cache miss: %s" msg;
+              None )
         in
         match from_dune_memory with
         | Some files ->
@@ -1449,7 +1498,12 @@ end = struct
           in
           let digests = List.map files ~f:retrieve in
           Trace_db.set (Path.build head_target)
-            { rule_digest; targets_digest = Digest.generic digests };
+            (* We do not cache dynamic actions so [dynamic_deps_stages] is
+               always an empty list here. *)
+            { rule_digest
+            ; targets_digest = Digest.generic digests
+            ; dynamic_deps_stages = []
+            };
           Fiber.return ()
         | None ->
           pending_targets := Path.Build.Set.union targets !pending_targets;
@@ -1474,14 +1528,18 @@ end = struct
           in
           let chdirs = Action.chdirs action in
           Path.Set.iter chdirs ~f:Fs.(mkdir_p_or_check_exists ~loc);
-          let+ () =
+          let+ exec_result =
             with_locks locks ~f:(fun () ->
                 let copy_files_from_sandbox sandboxed =
                   List.iter targets_as_list ~f:(fun target ->
                       rename_optional_file ~src:(sandboxed target) ~dst:target)
                 in
-                let+ () = Action_exec.exec action action_ctx in
-                Option.iter sandboxed ~f:copy_files_from_sandbox)
+                let+ exec_result =
+                  Action_exec.exec ~context ~env ~targets ~rule_loc ~build_deps
+                    action
+                in
+                Option.iter sandboxed ~f:copy_files_from_sandbox;
+                exec_result)
           in
           Option.iter sandbox ~f:(fun (p, _mode) -> Path.rm_rf (Path.build p));
           (* All went well, these targets are no longer pending *)
@@ -1492,7 +1550,15 @@ end = struct
           Option.iter t.memory ~f:(fun memory ->
               ignore
                 (Dune_manager.Client.promote memory targets rule_digest [] None));
-          Trace_db.set (Path.build head_target) { rule_digest; targets_digest }
+          let dynamic_deps_stages =
+            List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
+                ( deps
+                , Action_exec.Dynamic_dep.Set.to_dep_set deps
+                  |> compute_dependencies_digest ~sandbox_mode ~env ~eval_pred
+                ))
+          in
+          Trace_db.set (Path.build head_target)
+            { rule_digest; dynamic_deps_stages; targets_digest }
       ) else
         Fiber.return ()
     in

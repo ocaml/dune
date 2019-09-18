@@ -1510,8 +1510,9 @@ module DB = struct
 
   let check_valid_external_variants libmap external_variants =
     List.iter external_variants ~f:(fun (ev : Dune_file.External_variant.t) ->
+        let loc, virtual_lib = ev.virtual_lib in
         match
-          Option.map (Lib_name.Map.find libmap ev.virtual_lib) ~f:(fun res ->
+          Option.map (Lib_name.Map.find libmap virtual_lib) ~f:(fun res ->
               (* [res] is created by the code in [create_from_library_stanzas]
                  bellow. We know that it is either [Found] or [Redirect (_,
                  name)] where [name] is in [libmap] for sure and maps to [Found
@@ -1527,17 +1528,17 @@ module DB = struct
                 | _ -> assert false ))
         with
         | None ->
-          User_error.raise ~loc:ev.loc
+          User_error.raise ~loc
             [ Pp.textf "Virtual library %s hasn't been found in the project."
-                (Lib_name.to_string ev.virtual_lib)
+                (Lib_name.to_string virtual_lib)
             ]
         | Some info -> (
           match Lib_info.virtual_ info with
           | Some _ -> ()
           | None ->
-            User_error.raise ~loc:ev.loc
+            User_error.raise ~loc
               [ Pp.textf "Library %s isn't a virtual library."
-                  (Lib_name.to_string ev.virtual_lib)
+                  (Lib_name.to_string virtual_lib)
               ] ))
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
@@ -1574,8 +1575,9 @@ module DB = struct
       (* Add entries from external_variant stanzas *)
       List.fold_left external_variant_stanzas ~init:variant_map
         ~f:(fun acc (ev : Dune_file.External_variant.t) ->
-          Lib_name.Map.Multi.cons acc ev.virtual_lib
-            (ev.variant, (ev.loc, ev.implementation)))
+          let _, virtual_lib = ev.virtual_lib in
+          Lib_name.Map.Multi.cons acc virtual_lib
+            (ev.variant, ev.implementation))
     in
     let map =
       List.concat_map lib_stanzas
@@ -1663,19 +1665,22 @@ module DB = struct
     create () ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
-        | Ok pkg -> Found (Lib_info.of_dune_lib pkg)
+        | Ok pkg -> Found (Dune_package.Lib.info pkg)
         | Error e -> (
           match e with
           | Not_found ->
             if external_lib_deps_mode then
               let pkg = Findlib.dummy_package findlib ~name in
-              Found (Lib_info.of_dune_lib pkg)
+              Found (Dune_package.Lib.info pkg)
             else
               Not_found
           | Hidden pkg ->
-            Hidden (Lib_info.of_dune_lib pkg, "unsatisfied 'exist_if'") ))
+            Hidden (Dune_package.Lib.info pkg, "unsatisfied 'exist_if'") ))
       ~all:(fun () ->
-        Findlib.all_packages findlib |> List.map ~f:Dune_package.Lib.name)
+        Findlib.all_packages findlib
+        |> List.map ~f:(fun lib ->
+               let info = Dune_package.Lib.info lib in
+               Lib_info.name info))
 
   let find t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
@@ -1801,52 +1806,43 @@ module Meta = struct
   let ppx_runtime_deps t = to_names (ppx_runtime_deps_exn t)
 end
 
-let to_dune_lib ({ name; info; _ } as lib) ~modules ~foreign_objects ~dir =
+let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let add_loc =
     let loc = Lib_info.loc info in
     List.map ~f:(fun x -> (loc, x.name))
   in
-  let virtual_ = Option.is_some (Lib_info.virtual_ info) in
   let obj_dir =
     match Obj_dir.to_local (obj_dir lib) with
     | None -> assert false
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in
+  let info = Lib_info.set_obj_dir info obj_dir in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
     Modules.version_installed modules ~install_dir
   in
-  let orig_src_dir =
-    if !Clflags.store_orig_src_dir then
-      Some
-        (let orig_src_dir = Lib_info.orig_src_dir info in
-         match orig_src_dir with
-         | Some src_dir -> src_dir
-         | None -> (
-           let src_dir = Lib_info.src_dir info in
-           match Path.drop_build_context src_dir with
-           | None -> src_dir
-           | Some src_dir ->
-             Path.(of_string (to_absolute_filename (Path.source src_dir))) ))
-    else
-      None
+  let info =
+    match !Clflags.store_orig_src_dir with
+    | false -> info
+    | true ->
+      let orig_src_dir =
+        let orig_src_dir = Lib_info.orig_src_dir info in
+        match orig_src_dir with
+        | Some src_dir -> src_dir
+        | None -> (
+          let src_dir = Lib_info.src_dir info in
+          match Path.drop_build_context src_dir with
+          | None -> src_dir
+          | Some src_dir ->
+            Path.(of_string (to_absolute_filename (Path.source src_dir))) )
+      in
+      Lib_info.set_orig_src_dir info orig_src_dir
   in
-  let foreign_objects =
+  let info =
     match Lib_info.foreign_objects info with
-    | External f -> f
-    | Local -> foreign_objects
+    | External _ -> info
+    | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
-  let loc = Lib_info.loc info in
-  let synopsis = Lib_info.synopsis info in
-  let archives = Lib_info.archives info in
-  let plugins = Lib_info.plugins info in
-  let modes = Lib_info.modes info in
-  let kind = Lib_info.kind info in
-  let version = Lib_info.version info in
-  let jsoo_runtime = Lib_info.jsoo_runtime info in
-  let special_builtin_support = Lib_info.special_builtin_support info in
-  let known_implementations = Lib_info.known_implementations info in
-  let foreign_archives = Lib_info.foreign_archives info in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
@@ -1863,21 +1859,22 @@ let to_dune_lib ({ name; info; _ } as lib) ~modules ~foreign_objects ~dir =
     use_public_name ~info_field:(Lib_info.implements info)
       ~lib_field:(implements lib)
   in
-  let+ default_implementation =
+  let* default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
   in
-  Dune_package.Lib.make ~obj_dir ~orig_src_dir ~name ~loc ~kind ~synopsis
-    ~version ~archives ~plugins ~foreign_archives ~foreign_objects
-    ~jsoo_runtime
-    ~requires:(add_loc (requires_exn lib))
-    ~ppx_runtime_deps:(add_loc (ppx_runtime_deps_exn lib))
-    ~modes ~implements ~known_implementations ~default_implementation ~virtual_
-    ~modules:(Some modules)
-    ~main_module_name:(Result.ok_exn (main_module_name lib))
-    ~sub_systems:(Sub_system.public_info lib)
-    ~special_builtin_support
+  let info = Lib_info.set_implements info implements in
+  let info = Lib_info.set_default_implementation info default_implementation in
+  let* ppx_runtime_deps = lib.ppx_runtime_deps in
+  let ppx_runtime_deps = add_loc ppx_runtime_deps in
+  let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
+  let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
+  let* main_module_name = main_module_name lib in
+  let+ requires = lib.requires in
+  let requires = add_loc requires in
+  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
+    ~main_module_name
 
 module Local : sig
   type t = private lib

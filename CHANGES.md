@@ -126,6 +126,10 @@
 - Allow to mark directories as `data_only_dirs` and `vendored` directories
   without including them as `dirs` (#2619, fix #2584, @rgrinberg)
 
+- Add a `dune-action-plugin` library for describing dependencies direcly in
+  the executable source. Programs that use this feature can be run by a new
+  action (dynamic-run <progn> ...). (#2635, @staronj, @aalekseyev)
+
 1.11.3 (23/08/2019)
 -------------------
 
@@ -143,7 +147,7 @@
 1.11.1 (09/08/2019)
 -------------------
 
-- Fix config file dependencies of ocamlformat (#2471, fixes #2646,
+- Fix config file dependencies of ocamlformat (#2471, fixes #2464,
   @nojb)
 
 - Cleanup stale directories when using `(source_tree ...)` in the

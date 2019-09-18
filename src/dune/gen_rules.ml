@@ -355,15 +355,15 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
              dune-package file. *)
           match stanza with
           | Library
-              { public = Some { name = _, name; _ }
+              { public = Some { name; _ }
               ; variant = Some variant
-              ; implements = Some (_, virtual_lib)
+              ; implements = Some virtual_lib
               ; project
               ; buildable = { loc; _ }
               ; _
               }
             when Package.Name.Set.mem visible_pkgs
-                   (Lib_name.package_name virtual_lib) ->
+                   (Lib_name.package_name (snd virtual_lib)) ->
             Some
               (External_variant
                  { implementation = name; virtual_lib; variant; project; loc })

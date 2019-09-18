@@ -402,7 +402,8 @@ let make vars =
     in
 
     let file =
-      Path.relative (Path.of_string standard_library) "Makefile.config"
+      let stdlib = Path.external_ (Path.External.of_string standard_library) in
+      Path.relative stdlib "Makefile.config"
     in
     let vars = Vars.load_makefile_config file in
     let module Getters =

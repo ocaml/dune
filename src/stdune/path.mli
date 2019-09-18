@@ -169,6 +169,9 @@ val hash : t -> int
 val to_string_maybe_quoted : t -> string
 
 val root : t
+
+val external_ : External.t -> t
+
 val is_root : t -> bool
 
 val is_managed : t -> bool

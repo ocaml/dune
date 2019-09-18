@@ -1442,7 +1442,9 @@ end = struct
             let path = Path.Build.to_string file.in_the_build_directory in
             Log.infof "retrieve %s from cache" path;
             Unix.link (Path.to_string file.in_the_memory) path;
-            Cached_digest.set (Path.of_string path) file.digest;
+            Cached_digest.set
+              (Path.build file.in_the_build_directory)
+              file.digest;
             file.digest
           in
           let digests = List.map files ~f:retrieve in

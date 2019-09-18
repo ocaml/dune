@@ -16,7 +16,7 @@ transtive deps expressed in the dune-package
    (archives (byte aaa/aaa.cma) (native aaa/aaa.cmxa))
    (plugins (byte aaa/aaa.cma) (native aaa/aaa.cmxs))
    (foreign_archives (native aaa/aaa$ext_lib))
-   (requires (re_export pkg.bbb))
+   (requires pkg.ccc (re_export pkg.bbb))
    (main_module_name Aaa)
    (modes byte native)
    (modules (singleton (name Aaa) (obj_name aaa) (visibility public) (impl))))

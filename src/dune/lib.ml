@@ -1171,10 +1171,16 @@ end = struct
         ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
           match (dep : Lib_dep.t) with
           | Re_export (loc, name) ->
+            let lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
             let acc_re_exports =
-              let* lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
-              let+ acc_re_exports = acc_re_exports in
+              let+ lib = lib
+              and+ acc_re_exports = acc_re_exports in
               lib :: acc_re_exports
+            in
+            let acc_res =
+              let+ lib = lib
+              and+ acc_res = acc_res in
+              lib :: acc_res
             in
             (acc_res, acc_selects, acc_re_exports)
           | Direct (loc, name) ->
@@ -1810,10 +1816,8 @@ module Meta = struct
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
-  let add_loc =
-    let loc = Lib_info.loc info in
-    List.map ~f:(fun x -> (loc, x.name))
-  in
+  let loc = Lib_info.loc info in
+  let add_loc = List.map ~f:(fun x -> (loc, x.name)) in
   let obj_dir =
     match Obj_dir.to_local (obj_dir lib) with
     | None -> assert false
@@ -1849,12 +1853,13 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let sub_systems = Sub_system.public_info lib in
   let* main_module_name = main_module_name lib in
   let* requires = lib.requires in
-  let requires = add_loc requires in
   let+ re_exports = lib.re_exports in
-  let re_exports = add_loc re_exports in
   let requires =
-    List.map ~f:Lib_dep.direct requires
-    @ List.map ~f:Lib_dep.re_export re_exports
+    List.map requires ~f:(fun lib ->
+        if List.exists re_exports ~f:(fun r -> r = lib) then
+          Lib_dep.Re_export (loc, lib.name)
+        else
+          Direct (loc, lib.name))
   in
   let info =
     Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects

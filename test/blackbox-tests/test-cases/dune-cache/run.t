@@ -76,7 +76,5 @@
   $ cat _build/default/t1
   v1
   $ cat _build/default/t2
-  v2
-  v2
-
-^ Bug: the wrong cached version of t2 is used
+  v1
+  v1

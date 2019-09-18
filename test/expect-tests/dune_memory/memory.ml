@@ -43,7 +43,9 @@ let memory =
       ~root:(Path.of_string (Path.to_string dir ^ "/root/v2"))
       ()
   with
-  | Result.Ok memory -> memory
+  | Result.Ok memory ->
+    Dune_memory.Memory.set_build_dir memory
+      (Path.of_string (Path.External.to_string (Path.External.cwd ())))
   | Result.Error msg -> User_error.raise [ Pp.textf "%s" msg ]
 
 let clean_path p =
@@ -51,11 +53,16 @@ let clean_path p =
   Path.of_string
     (Option.value_exn (String.drop_prefix ~prefix (Path.to_string p)))
 
-let clean_promotion = function
-  | Dune_memory.Already_promoted (p1, p2) ->
-    Dune_memory.Already_promoted (clean_path p1, clean_path p2)
-  | Dune_memory.Promoted (p1, p2) ->
-    Dune_memory.Promoted (clean_path p1, clean_path p2)
+let promotion_to_string p =
+  let p =
+    match p with
+    | Dune_memory.Already_promoted (p1, p2) ->
+      Dune_memory.Already_promoted (p1, clean_path p2)
+    | Dune_memory.Promoted (p1, p2) -> Dune_memory.Promoted (p1, clean_path p2)
+  in
+  Option.value_exn
+    (String.drop_prefix ~prefix:(Path.to_string dir)
+       (Dune_memory.promotion_to_string p))
 
 (* Promote a file twice and check we can search it *)
 let file1 = make_file "file1"
@@ -66,7 +73,7 @@ let metadata = [ Sexp.List [ Sexp.Atom "test"; Sexp.Atom "metadata" ] ]
 let key = Digest.generic "dummy-hash"
 
 let%expect_test _ =
-  let f p = print_endline (Dune_memory.promotion_to_string (clean_promotion p))
+  let f p = print_endline (promotion_to_string p)
   and stats = Unix.stat (Path.to_string file1) in
   let open Result.O in
   match
@@ -84,15 +91,20 @@ let%expect_test _ =
     >>| fun searched ->
     ( match searched with
     | stored_metadata, [ file ] ->
+      let in_the_build_directory =
+        Path.of_local (Path.Build.local file.in_the_build_directory)
+      in
       if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
         failwith "Metadata mismatch"
-      else if Path.equal file.in_the_build_directory file1 then
+      else if Path.equal in_the_build_directory file1 then
         if Io.compare_files file.in_the_memory file1 = Ordering.Eq then
           ()
         else
           failwith "promoted file content does not match"
       else
-        failwith "original file path does not match"
+        failwith
+          (Format.asprintf "original file path does not match: %a != %a"
+             Path.pp in_the_build_directory Path.pp file1)
     | _ -> failwith "wrong number of file found" );
     (* Check write permissions where removed *)
     assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);

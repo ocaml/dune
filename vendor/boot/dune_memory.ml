@@ -1,8 +1,8 @@
 module File = struct
   type t =
     { in_the_memory : Stdune.Path.t
-    ; in_the_build_directory : Stdune.Path.t
-    ; digest : Digest.t
+    ; in_the_build_directory : Stdune.Path.Build.t
+    ; digest : Stdune.Digest.t
     }
 end
 

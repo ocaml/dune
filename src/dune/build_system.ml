@@ -1488,11 +1488,12 @@ end = struct
         match from_dune_memory with
         | Some files ->
           let retrieve (file : Dune_memory.File.t) =
-            Log.infof "retrieve %s from cache"
-              (Path.to_string file.in_the_build_directory);
-            Unix.link
-              (Path.to_string file.in_the_memory)
-              (Path.to_string file.in_the_build_directory);
+            let path = Path.Build.to_string file.in_the_build_directory in
+            Log.infof "retrieve %s from cache" path;
+            Unix.link (Path.to_string file.in_the_memory) path;
+            Cached_digest.set
+              (Path.build file.in_the_build_directory)
+              file.digest;
             file.digest
           in
           let digests = List.map files ~f:retrieve in
@@ -1991,6 +1992,11 @@ let init ~contexts ?memory ~file_tree ~sandboxing_preference =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
+  let memory =
+    Option.map
+      ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
+      memory
+  in
   let t =
     { contexts
     ; files = Path.Build.Table.create 1024
@@ -2004,9 +2010,6 @@ let init ~contexts ?memory ~file_tree ~sandboxing_preference =
     ; rule_total = 0
     }
   in
-  Option.iter
-    ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
-    t.memory;
   Console.Status_line.set (fun () ->
       Some
         (Pp.verbatim

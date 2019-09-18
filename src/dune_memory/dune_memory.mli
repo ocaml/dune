@@ -13,15 +13,15 @@ val key_to_string : key -> string
 val key_of_string : string -> key result
 
 type promotion =
-  | Already_promoted of Path.t * Path.t
-  | Promoted of Path.t * Path.t
+  | Already_promoted of Path.Build.t * Path.t
+  | Promoted of Path.Build.t * Path.t
 
 val promotion_to_string : promotion -> string
 
 module File : sig
   type t =
     { in_the_memory : Path.t
-    ; in_the_build_directory : Path.t
+    ; in_the_build_directory : Path.Build.t
     ; digest : Digest.t
     }
 end
@@ -39,6 +39,8 @@ module type memory = sig
 
   val search :
     t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+
+  val set_build_dir : t -> Path.t -> t
 end
 
 module Memory : memory

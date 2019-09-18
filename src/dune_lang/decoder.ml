@@ -262,7 +262,7 @@ let plain_string f =
      |List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
 
-let file =
+let filename =
   plain_string (fun ~loc s ->
       match s with
       | "."

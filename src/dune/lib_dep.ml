@@ -69,7 +69,7 @@ let choice =
               Right (Lib_name.of_string_exn ~loc:(Some loc) (String.drop s 1))
             else
               Left (Lib_name.of_string_exn ~loc:(Some loc) s))
-         ~after:file
+         ~after:filename
      in
      match file with
      | None ->
@@ -107,7 +107,7 @@ let decode ~allow_re_export =
             and+ loc, name = located Lib_name.decode in
             Re_export (loc, name)
           | "select" ->
-            let+ result_fn = file
+            let+ result_fn = filename
             and+ () = keyword "from"
             and+ choices = repeat choice in
             Select { result_fn; choices; loc }

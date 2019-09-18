@@ -1877,7 +1877,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let* requires = lib.requires in
   let requires = add_loc requires in
   let+ re_exports = lib.re_exports in
-  let re_exports = List.map ~f:(fun t -> (Loc.none, t.name)) re_exports in
+  let re_exports = add_loc re_exports in
   let requires =
     List.map ~f:Lib_dep.direct requires
     @ List.map ~f:Lib_dep.re_export re_exports

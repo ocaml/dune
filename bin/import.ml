@@ -30,15 +30,19 @@ include Common.Let_syntax
 
 (* FIXME: leverage fibers to actually connect in the background *)
 let make_memory () =
-  let handle = function
+  let handle =
+    let rm p = try Unix.unlink p with _ -> () in
+    function
     | Dune_manager.Client.Dedup (target, source) -> (
       let target = Path.Build.to_string target in
       let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
       Log.infof "deduplicate %s from %s" target (Path.to_string source);
       try
+        rm tmpname;
         Unix.link (Path.to_string source) tmpname;
         Unix.rename tmpname target
       with Unix.Unix_error (e, syscall, _) ->
+        rm tmpname;
         Log.infof "error handling dune-cache command: %s: %s" syscall
           (Unix.error_message e) )
   in

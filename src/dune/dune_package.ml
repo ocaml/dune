@@ -14,10 +14,9 @@ module Lib = struct
     { info : Path.t Lib_info.t
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
-    ; requires : (Loc.t * Lib_name.t) list
     }
 
-  let make ~info ~main_module_name ~requires ~modules =
+  let make ~info ~main_module_name ~modules =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
@@ -27,13 +26,13 @@ module Lib = struct
         p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; requires; modules }
+    { info; main_module_name; modules }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; requires; main_module_name; modules } =
+  let encode ~package_root { info; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -58,6 +57,7 @@ module Lib = struct
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
+    let requires = Lib_info.requires info in
     let foreign_archives = Lib_info.foreign_archives info in
     let foreign_objects =
       match Lib_info.foreign_objects info with
@@ -77,7 +77,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; mode_paths "foreign_archives" foreign_archives
        ; paths "jsoo_runtime" jsoo_runtime
-       ; libs "requires" requires
+       ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_l "known_implementations"
@@ -134,7 +134,8 @@ module Lib = struct
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives = mode_paths "foreign_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
-       and+ requires = libs "requires"
+       and+ requires =
+         field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =
@@ -166,7 +167,6 @@ module Lib = struct
            Dune_file.Library.Inherited.This main_module_name
          in
          let foreign_objects = Lib_info.Source.External foreign_objects in
-         let requires = Lib_info.Deps.Simple requires in
          let jsoo_archive = None in
          let pps = [] in
          let virtual_deps = [] in
@@ -191,13 +191,11 @@ module Lib = struct
            ~known_implementations ~default_implementation ~modes ~wrapped
            ~special_builtin_support
        in
-       { info; requires; main_module_name; modules })
+       { info; main_module_name; modules })
 
   let modules t = t.modules
 
   let main_module_name t = t.main_module_name
-
-  let requires t = t.requires
 
   let compare_name x y =
     let x = Lib_info.name x.info in

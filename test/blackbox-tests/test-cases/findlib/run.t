@@ -7,10 +7,10 @@
 Reproduction case for #484. The error should point to src/dune
 
   $ dune build @install
-  File "src/dune", line 4, characters 14-15:
+  File "src/dune", line 4, characters 18-19:
   4 |  (libraries   a b c))
-                    ^
-  Error: Library "a" not found.
+                        ^
+  Error: Library "c" not found.
   Hint: try: dune external-lib-deps --missing @install
   [1]
 
@@ -21,9 +21,9 @@ the code of dune more complicated to fix the hint.
 With dune and an explicit profile, it is the same:
 
   $ dune build --profile dev @install
-  File "src/dune", line 4, characters 14-15:
+  File "src/dune", line 4, characters 18-19:
   4 |  (libraries   a b c))
-                    ^
-  Error: Library "a" not found.
+                        ^
+  Error: Library "c" not found.
   Hint: try: dune external-lib-deps --missing --profile dev @install
   [1]

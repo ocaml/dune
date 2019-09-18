@@ -158,6 +158,14 @@ val get_call_stack : unit -> Stack_frame.t list
 (** Call a memoized function by name *)
 val call : string -> Dune_lang.Ast.t -> Dyn.t Fiber.t
 
+module Run : sig
+  (** A single build run *)
+  type t
+end
+
+(** Introduces a dependency on the current build run *)
+val current_run : unit -> Run.t
+
 module Function_info : sig
   type t =
     { name : string

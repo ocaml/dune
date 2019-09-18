@@ -161,6 +161,8 @@ module Run : sig
   (** Represent a run of the system *)
   type t
 
+  val to_dyn : t -> Dyn.t
+
   (** Return the current run *)
   val current : unit -> t
 
@@ -171,6 +173,8 @@ module Run : sig
   val restart : unit -> unit
 end = struct
   type t = bool ref
+
+  let to_dyn _ = Dyn.opaque
 
   let current = ref (ref true)
 
@@ -780,6 +784,16 @@ end
 module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
+
+let current_run =
+  let f () = Run.current () in
+  let memo =
+    create "current-run" ~doc:"current run"
+      ~input:(module Unit)
+      ~output:(Simple (module Run))
+      ~visibility:Hidden Sync f
+  in
+  fun () -> exec memo ()
 
 module Lazy_id = Stdune.Id.Make ()
 

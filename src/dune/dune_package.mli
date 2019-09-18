@@ -3,8 +3,6 @@ open! Stdune
 module Lib : sig
   type t
 
-  val requires : t -> (Loc.t * Lib_name.t) list
-
   val modules : t -> Modules.t option
 
   val main_module_name : t -> Module_name.t option
@@ -20,7 +18,6 @@ module Lib : sig
   val make :
        info:Path.t Lib_info.t
     -> main_module_name:Module_name.t option
-    -> requires:(Loc.t * Lib_name.t) list
     -> modules:Modules.t option
     -> t
 end

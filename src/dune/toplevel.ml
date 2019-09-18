@@ -104,9 +104,8 @@ module Stanza = struct
       in
       Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
         [ (source.loc, source.name) ]
-        ( Dune_file.Lib_dep.Direct (source.loc, compiler_libs)
-        :: List.map toplevel.libraries ~f:(fun d -> Dune_file.Lib_dep.Direct d)
-        )
+        ( Lib_dep.Direct (source.loc, compiler_libs)
+        :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
         ~pps:[] ~allow_overlaps:false ~variants:toplevel.variants
         ~optional:false
     in

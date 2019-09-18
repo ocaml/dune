@@ -27,27 +27,6 @@ module Status = struct
     | Public (name, _) -> Some name
 end
 
-module Deps = struct
-  type t =
-    | Simple of (Loc.t * Lib_name.t) list
-    | Complex of Dune_file.Lib_dep.t list
-
-  let of_lib_deps deps =
-    let rec loop acc (deps : Dune_file.Lib_dep.t list) =
-      match deps with
-      | [] -> Some (List.rev acc)
-      | Direct x :: deps -> loop (x :: acc) deps
-      | Select _ :: _ -> None
-    in
-    match loop [] deps with
-    | Some l -> Simple l
-    | None -> Complex deps
-
-  let to_lib_deps = function
-    | Simple l -> List.map l ~f:Dune_file.Lib_dep.direct
-    | Complex l -> l
-end
-
 module Source = struct
   type 'a t =
     | Local
@@ -82,7 +61,7 @@ type 'path t =
   ; foreign_archives : 'path list Mode.Dict.t  (** [.a/.lib/...] files *)
   ; jsoo_runtime : 'path list
   ; jsoo_archive : 'path option
-  ; requires : Deps.t
+  ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps : (Loc.t * Lib_name.t) list
   ; enabled : Enabled_status.t
@@ -163,25 +142,37 @@ let best_src_dir t = Option.value ~default:t.src_dir t.orig_src_dir
 
 let set_version t version = { t with version }
 
-let set_orig_src_dir t orig_src_dir =
-  { t with orig_src_dir = Some orig_src_dir }
-
-let set_default_implementation t default_implementation =
-  { t with default_implementation }
-
-let set_implements t implements = { t with implements }
-
-let set_ppx_runtime_deps t ppx_runtime_deps = { t with ppx_runtime_deps }
-
-let set_sub_systems t sub_systems = { t with sub_systems }
-
-let set_foreign_objects t foreign_objects =
-  { t with foreign_objects = External foreign_objects }
+let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
+    ~implements ~default_implementation ~sub_systems =
+  let foreign_objects = Source.External foreign_objects in
+  let orig_src_dir =
+    match !Clflags.store_orig_src_dir with
+    | false -> t.orig_src_dir
+    | true ->
+      Some
+        ( match t.orig_src_dir with
+        | Some src_dir -> src_dir
+        | None -> (
+          match Path.drop_build_context t.src_dir with
+          | None -> t.src_dir
+          | Some src_dir ->
+            Path.source src_dir |> Path.to_absolute_filename |> Path.of_string
+          ) )
+  in
+  { t with
+    ppx_runtime_deps
+  ; requires
+  ; foreign_objects
+  ; obj_dir
+  ; implements
+  ; default_implementation
+  ; sub_systems
+  ; orig_src_dir
+  }
 
 let user_written_deps t =
-  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
-    ~init:(Deps.to_lib_deps t.requires) ~f:(fun acc s ->
-      Dune_file.Lib_dep.Direct s :: acc)
+  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
+    ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
     ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
@@ -272,6 +263,7 @@ let of_library_stanza ~dir
      |Private _ ->
       None
   in
+  let requires = conf.buildable.libraries in
   { loc = conf.buildable.loc
   ; name
   ; kind = conf.kind
@@ -289,7 +281,7 @@ let of_library_stanza ~dir
   ; jsoo_archive
   ; status
   ; virtual_deps = conf.virtual_deps
-  ; requires = Deps.of_lib_deps conf.buildable.libraries
+  ; requires
   ; ppx_runtime_deps = conf.ppx_runtime_libraries
   ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
   ; sub_systems = conf.sub_systems
@@ -365,8 +357,6 @@ let map t ~f_path ~f_obj_dir =
   }
 
 let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fn.id
-
-let set_obj_dir t obj_dir = { t with obj_dir }
 
 let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 

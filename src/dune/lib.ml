@@ -283,6 +283,7 @@ module T = struct
     { info : Lib_info.external_
     ; name : Lib_name.t
     ; unique_id : Id.t
+    ; re_exports : t list Or_exn.t
     ; requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
@@ -914,11 +915,14 @@ module rec Resolve : sig
 
   val resolve_user_deps :
        db
-    -> Lib_info.Deps.t
+    -> Lib_dep.t list
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> stack:Dep_stack.t
-    -> lib list Or_exn.t * lib list Or_exn.t * Resolved_select.t list
+    -> lib list Or_exn.t
+       * lib list Or_exn.t
+       * Resolved_select.t list
+       * lib list Or_exn.t
 
   val closure_with_overlap_checks :
        db option
@@ -1002,7 +1006,7 @@ end = struct
                  Lib_info.known_implementations info
                |> Variant.Map.map ~f:resolve_impl ))
     in
-    let requires, pps, resolved_selects =
+    let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
       Lib_info.requires info
       |> resolve_user_deps db ~allow_private_deps ~pps ~stack
@@ -1041,6 +1045,7 @@ end = struct
       ; default_implementation
       ; resolved_implementations
       ; stdlib_dir = db.stdlib_dir
+      ; re_exports
       }
     in
     t.sub_systems <-
@@ -1118,80 +1123,84 @@ end = struct
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
 
-  let resolve_complex_deps db deps ~allow_private_deps ~stack =
-    let res, resolved_selects =
-      List.fold_left deps ~init:(Ok [], [])
-        ~f:(fun (acc_res, acc_selects) dep ->
-          let res, acc_selects =
-            match (dep : Dune_file.Lib_dep.t) with
-            | Direct (loc, name) ->
-              let res =
-                resolve_dep db name ~allow_private_deps ~loc ~stack
-                >>| List.singleton
-              in
-              (res, acc_selects)
-            | Select { result_fn; choices; loc } ->
-              let res, src_fn =
-                match
-                  List.find_map choices
-                    ~f:(fun { required; forbidden; file } ->
-                      if
-                        Lib_name.Set.exists forbidden
-                          ~f:(available_internal db ~stack)
-                      then
-                        None
-                      else
-                        match
-                          let deps =
-                            Lib_name.Set.fold required ~init:[]
-                              ~f:(fun x acc -> (loc, x) :: acc)
-                          in
-                          resolve_simple_deps ~allow_private_deps db deps
-                            ~stack
-                        with
-                        | Ok ts -> Some (ts, file)
-                        | Error _ -> None)
-                with
-                | Some (ts, file) -> (Ok ts, Ok file)
-                | None ->
-                  let e () = Error.no_solution_found_for_select ~loc in
-                  (e (), e ())
-              in
-              ( res
-              , { Resolved_select.src_fn; dst_fn = result_fn } :: acc_selects
-              )
-          in
-          let res =
-            match (res, acc_res) with
-            | Ok l, Ok acc -> Ok (List.rev_append l acc)
-            | (Error _ as res), _
-             |_, (Error _ as res) ->
-              res
-          in
-          (res, acc_selects))
-    in
-    let res =
-      match res with
-      | Ok l -> Ok (List.rev l)
-      | Error _ -> res
-    in
-    (res, resolved_selects)
+  let re_exports_closure ts =
+    let visited = ref Set.empty in
+    let res = ref [] in
+    let rec one (t : lib) =
+      if Set.mem !visited t then
+        Ok ()
+      else (
+        visited := Set.add !visited t;
+        let* re_exports = t.re_exports in
+        let+ () = many re_exports in
+        res := t :: !res
+      )
+    and many = Result.List.iter ~f:one in
+    let+ () = many ts in
+    List.rev !res
 
-  let resolve_deps db deps ~allow_private_deps ~stack =
-    (* Compute transitive closure *)
-    let libs, selects =
-      match (deps : Lib_info.Deps.t) with
-      | Simple names ->
-        (resolve_simple_deps db names ~allow_private_deps ~stack, [])
-      | Complex names ->
-        resolve_complex_deps db names ~allow_private_deps ~stack
+  let resolve_complex_deps db deps ~allow_private_deps ~stack =
+    let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
+      let res, src_fn =
+        match
+          List.find_map choices ~f:(fun { required; forbidden; file } ->
+              if
+                Lib_name.Set.exists forbidden ~f:(available_internal db ~stack)
+              then
+                None
+              else
+                match
+                  let deps =
+                    Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                        (loc, x) :: acc)
+                  in
+                  resolve_simple_deps ~allow_private_deps db deps ~stack
+                with
+                | Ok ts -> Some (ts, file)
+                | Error _ -> None)
+        with
+        | Some (ts, file) -> (Ok ts, Ok file)
+        | None ->
+          let e () = Error.no_solution_found_for_select ~loc in
+          (e (), e ())
+      in
+      (res, { Resolved_select.src_fn; dst_fn = result_fn })
     in
-    (* Find implementations for virtual libraries. *)
-    (libs, selects)
+    let res, resolved_selects, re_exports =
+      List.fold_left deps ~init:(Ok [], [], Ok [])
+        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
+          match (dep : Lib_dep.t) with
+          | Re_export (loc, name) ->
+            let lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
+            let acc_re_exports =
+              let+ lib = lib
+              and+ acc_re_exports = acc_re_exports in
+              lib :: acc_re_exports
+            in
+            let acc_res =
+              let+ lib = lib
+              and+ acc_res = acc_res in
+              lib :: acc_res
+            in
+            (acc_res, acc_selects, acc_re_exports)
+          | Direct (loc, name) ->
+            let res =
+              let+ lib = resolve_dep db name ~allow_private_deps ~loc ~stack
+              and+ acc_res = acc_res in
+              lib :: acc_res
+            in
+            (res, acc_selects, acc_re_exports)
+          | Select select ->
+            let res, resolved_select = resolve_select select in
+            (res, resolved_select :: acc_selects, acc_re_exports))
+    in
+    let res = Result.map ~f:List.rev res in
+    let re_exports = Result.map ~f:List.rev re_exports in
+    (res, resolved_selects, re_exports)
 
   let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-    let deps, resolved_selects =
-      resolve_deps db deps ~allow_private_deps ~stack
+    let deps, resolved_selects, re_exports =
+      resolve_complex_deps db deps ~allow_private_deps ~stack
     in
     let deps, pps =
       match pps with
@@ -1224,7 +1233,8 @@ end = struct
         in
         (deps, pps)
     in
-    (deps, pps, resolved_selects)
+    let deps = deps >>= re_exports_closure in
+    (deps, pps, resolved_selects, re_exports)
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1727,10 +1737,9 @@ module DB = struct
           else
             Required )
     in
-    let res, pps, resolved_selects =
-      Resolve.resolve_user_deps t
-        (Lib_info.Deps.of_lib_deps deps)
-        ~pps ~stack:Dep_stack.empty ~allow_private_deps:true
+    let res, pps, resolved_selects, _re_exports =
+      Resolve.resolve_user_deps t deps ~pps ~stack:Dep_stack.empty
+        ~allow_private_deps:true
     in
     let requires_link =
       lazy
@@ -1807,41 +1816,16 @@ module Meta = struct
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
-  let add_loc =
-    let loc = Lib_info.loc info in
-    List.map ~f:(fun x -> (loc, x.name))
-  in
+  let loc = Lib_info.loc info in
+  let add_loc = List.map ~f:(fun x -> (loc, x.name)) in
   let obj_dir =
     match Obj_dir.to_local (obj_dir lib) with
     | None -> assert false
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in
-  let info = Lib_info.set_obj_dir info obj_dir in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
     Modules.version_installed modules ~install_dir
-  in
-  let info =
-    match !Clflags.store_orig_src_dir with
-    | false -> info
-    | true ->
-      let orig_src_dir =
-        let orig_src_dir = Lib_info.orig_src_dir info in
-        match orig_src_dir with
-        | Some src_dir -> src_dir
-        | None -> (
-          let src_dir = Lib_info.src_dir info in
-          match Path.drop_build_context src_dir with
-          | None -> src_dir
-          | Some src_dir ->
-            Path.(of_string (to_absolute_filename (Path.source src_dir))) )
-      in
-      Lib_info.set_orig_src_dir info orig_src_dir
-  in
-  let info =
-    match Lib_info.foreign_objects info with
-    | External _ -> info
-    | Local -> Lib_info.set_foreign_objects info foreign_objects
   in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
@@ -1855,26 +1839,32 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       Some (loc, field.name)
   in
   let open Result.O in
-  let* implements =
+  let+ implements =
     use_public_name ~info_field:(Lib_info.implements info)
       ~lib_field:(implements lib)
-  in
-  let* default_implementation =
+  and+ default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
+  and+ ppx_runtime_deps = lib.ppx_runtime_deps
+  and+ main_module_name = main_module_name lib
+  and+ requires = lib.requires
+  and+ re_exports = lib.re_exports
   in
-  let info = Lib_info.set_implements info implements in
-  let info = Lib_info.set_default_implementation info default_implementation in
-  let* ppx_runtime_deps = lib.ppx_runtime_deps in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
-  let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
-  let* main_module_name = main_module_name lib in
-  let+ requires = lib.requires in
-  let requires = add_loc requires in
-  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
-    ~main_module_name
+  let sub_systems = Sub_system.public_info lib in
+  let requires =
+    List.map requires ~f:(fun lib ->
+        if List.exists re_exports ~f:(fun r -> r = lib) then
+          Lib_dep.Re_export (loc, lib.name)
+        else
+          Direct (loc, lib.name))
+  in
+  let info =
+    Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects
+      ~obj_dir ~implements ~default_implementation ~sub_systems
+  in
+  Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 
 module Local : sig
   type t = private lib

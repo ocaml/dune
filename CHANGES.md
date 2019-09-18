@@ -130,6 +130,10 @@
   the executable source. Programs that use this feature can be run by a new
   action (dynamic-run <progn> ...). (#2635, @staronj, @aalekseyev)
 
+- Add support for dependencies that are re-exported. Such dependencies
+  are marked with`re_export` and will automatically be provided to
+  users of a library (#2605, @rgrinberg)
+
 1.11.3 (23/08/2019)
 -------------------
 

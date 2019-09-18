@@ -24,9 +24,12 @@ let%expect_test _ =
     | Error _ -> assert false
   in
   (* "foo" should depend on "baz" *)
-  Dune_package.Lib.requires pkg
-  |> List.iter ~f:(fun (_, name) -> print_endline (Lib_name.to_string name));
-  [%expect {|baz|}]
+  let info = Dune_package.Lib.info pkg in
+  let requires = Lib_info.requires info in
+  let dyn = Dyn.Encoder.list Lib_dep.to_dyn requires in
+  let pp = Dyn.pp dyn in
+  Format.printf "%a@." Pp.render_ignore_tags pp;
+  [%expect {|["baz"]|}]
 
 (* Meta parsing/simplification *)
 

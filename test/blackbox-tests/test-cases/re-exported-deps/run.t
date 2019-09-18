@@ -40,10 +40,6 @@ transtive deps expressed in the dune-package
    (modes byte native)
    (modules (singleton (name Ccc) (obj_name ccc) (visibility public) (impl))))
 
-Attempting to re-export dependencies outside of libraries fails:
-  $ dune build --root re-export-bad-attempt @all
-  Entering directory 're-export-bad-attempt'
-
 Re-exporting deps in executables isn't allowed
   $ dune build --root re-export-exe @all
   Entering directory 're-export-exe'

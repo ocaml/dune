@@ -33,7 +33,7 @@ let make_memory () =
   let handle = function
     | Dune_manager.Client.Dedup (target, source) -> (
       let target = Path.Build.to_string target in
-      let tmpname = target ^ ".dedup" in
+      let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
       Log.infof "deduplicate %s from %s" target (Path.to_string source);
       try
         Unix.link (Path.to_string source) tmpname;

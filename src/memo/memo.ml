@@ -802,6 +802,51 @@ let lazy_ (type a) f =
   in
   fun () -> exec memo ()
 
+module Ref = struct
+  module Id = Stdune.Id.Make ()
+  type 'a t =
+    { mutable time : int
+    ; mutable data : 'a
+    ; mutable get : unit -> 'a
+    }
+
+  let create (type a) (data : a) : a t =
+    let module Output = struct
+      type nonrec t = a t
+
+      let to_dyn _ = Dyn.Opaque
+
+      let equal { time = t1; data = _ ; get = _ }
+            { time = t2; data = _; get = _ } =
+        t1 = t2
+    end in
+    let id = Id.gen () in
+    let t =
+      { time = 0
+      ; data
+      ; get = fun _ -> assert false
+      }
+    in
+    let memo =
+      create
+        (sprintf "ref-%d" (Id.to_int id))
+        ~doc:"a reference cell"
+        ~input:(module Unit)
+        ~visibility:Hidden
+        ~output:(Allow_cutoff (module Output))
+        Sync (fun () -> t)
+    in
+    let get () = (exec memo ()).data in
+    t.get <- get;
+    t
+
+  let set t data =
+    t.data <- data;
+    t.time <- t.time + 1
+
+  let get t = t.get ()
+end
+
 module Lazy = struct
   type 'a t = unit -> 'a
 

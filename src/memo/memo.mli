@@ -171,6 +171,16 @@ val registered_functions : unit -> Function_info.t list
 (** Lookup function's info *)
 val function_info : string -> Function_info.t
 
+module Ref : sig
+  type 'a t
+
+  val create : 'a -> 'a t
+
+  val set : 'a t -> 'a -> unit
+
+  val get : 'a t -> 'a
+end
+
 module Lazy : sig
   type +'a t
 

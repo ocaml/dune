@@ -1439,11 +1439,7 @@ end = struct
         match from_dune_memory with
         | Some files ->
           let retrieve (file : Dune_memory.File.t) =
-            let path =
-              Filename.concat
-                (Path.to_string Path.build_dir)
-                (Path.to_string file.in_the_build_directory)
-            in
+            let path = Path.Build.to_string file.in_the_build_directory in
             Log.infof "retrieve %s from cache" path;
             Unix.link (Path.to_string file.in_the_memory) path;
             Cached_digest.set (Path.of_string path) file.digest;

@@ -104,7 +104,7 @@ let apply ~f o v =
 module File = struct
   type t =
     { in_the_memory : Path.t
-    ; in_the_build_directory : Path.t
+    ; in_the_build_directory : Path.Build.t
     ; digest : Digest.t
     }
 end
@@ -261,7 +261,7 @@ module Memory = struct
           Result.List.map produced ~f:(function
             | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
               let in_the_build_directory =
-                Path.of_string in_the_build_directory
+                Path.Build.of_string in_the_build_directory
               and in_the_memory = Path.of_string in_the_memory in
               Ok
                 { File.in_the_memory

@@ -94,7 +94,7 @@ let main () =
                ; digest
                } ->
           Printf.printf "%s: %s (%s)\n"
-            (Path.to_string in_the_build_directory)
+            (Path.Local.to_string (Path.Build.local in_the_build_directory))
             (Path.to_string in_the_memory)
             (Digest.to_string digest))
         paths)

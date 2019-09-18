@@ -86,15 +86,20 @@ let%expect_test _ =
     >>| fun searched ->
     ( match searched with
     | stored_metadata, [ file ] ->
+      let in_the_build_directory =
+        Path.of_local (Path.Build.local file.in_the_build_directory)
+      in
       if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
         failwith "Metadata mismatch"
-      else if Path.equal file.in_the_build_directory file1 then
+      else if Path.equal in_the_build_directory file1 then
         if Io.compare_files file.in_the_memory file1 = Ordering.Eq then
           ()
         else
           failwith "promoted file content does not match"
       else
-        failwith "original file path does not match"
+        failwith
+          (Format.asprintf "original file path does not match: %a != %a"
+             Path.pp in_the_build_directory Path.pp file1)
     | _ -> failwith "wrong number of file found" );
     (* Check write permissions where removed *)
     assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);

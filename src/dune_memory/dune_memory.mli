@@ -21,7 +21,7 @@ val promotion_to_string : promotion -> string
 module File : sig
   type t =
     { in_the_memory : Path.t
-    ; in_the_build_directory : Path.t
+    ; in_the_build_directory : Path.Build.t
     ; digest : Digest.t
     }
 end

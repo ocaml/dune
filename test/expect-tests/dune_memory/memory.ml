@@ -53,11 +53,16 @@ let clean_path p =
   Path.of_string
     (Option.value_exn (String.drop_prefix ~prefix (Path.to_string p)))
 
-let clean_promotion = function
-  | Dune_memory.Already_promoted (p1, p2) ->
-    Dune_memory.Already_promoted (clean_path p1, clean_path p2)
-  | Dune_memory.Promoted (p1, p2) ->
-    Dune_memory.Promoted (clean_path p1, clean_path p2)
+let promotion_to_string p =
+  let p =
+    match p with
+    | Dune_memory.Already_promoted (p1, p2) ->
+      Dune_memory.Already_promoted (p1, clean_path p2)
+    | Dune_memory.Promoted (p1, p2) -> Dune_memory.Promoted (p1, clean_path p2)
+  in
+  Option.value_exn
+    (String.drop_prefix ~prefix:(Path.to_string dir)
+       (Dune_memory.promotion_to_string p))
 
 (* Promote a file twice and check we can search it *)
 let file1 = make_file "file1"
@@ -68,7 +73,7 @@ let metadata = [ Sexp.List [ Sexp.Atom "test"; Sexp.Atom "metadata" ] ]
 let key = Digest.generic "dummy-hash"
 
 let%expect_test _ =
-  let f p = print_endline (Dune_memory.promotion_to_string (clean_promotion p))
+  let f p = print_endline (promotion_to_string p)
   and stats = Unix.stat (Path.to_string file1) in
   let open Result.O in
   match

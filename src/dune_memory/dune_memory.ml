@@ -11,8 +11,8 @@ let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
 
 type promotion =
-  | Already_promoted of Path.t * Path.t
-  | Promoted of Path.t * Path.t
+  | Already_promoted of Path.Build.t * Path.t
+  | Promoted of Path.Build.t * Path.t
 
 let key_to_string = Digest.to_string
 
@@ -23,10 +23,12 @@ let key_of_string s =
 
 let promotion_to_string = function
   | Already_promoted (original, promoted) ->
-    Printf.sprintf "%s already promoted as %s" (Path.to_string original)
+    Printf.sprintf "%s already promoted as %s"
+      (Path.Local.to_string (Path.Build.local original))
       (Path.to_string promoted)
   | Promoted (original, promoted) ->
-    Printf.sprintf "%s promoted as %s" (Path.to_string original)
+    Printf.sprintf "%s promoted as %s"
+      (Path.Local.to_string (Path.Build.local original))
       (Path.to_string promoted)
 
 (* How to handle collisions. E.g. another version could assume collisions are
@@ -210,14 +212,15 @@ module Memory = struct
         | Collision.Found p ->
           Unix.unlink (Path.to_string tmp);
           Path.touch p;
-          Result.Ok (Already_promoted (path, p))
+          Result.Ok
+            (Already_promoted (Path.Build.of_local (Path.local_part path), p))
         | Collision.Not_found p ->
           mkpath (Path.parent_exn p);
           let dest = Path.to_string p in
           Unix.rename (Path.to_string tmp) dest;
           (* Remove write permissions *)
           Unix.chmod dest (stat.st_perm land 0o555);
-          Result.Ok (Promoted (path, p))
+          Result.Ok (Promoted (Path.Build.of_local (Path.local_part path), p))
     in
     let f () =
       Result.List.map ~f:promote paths
@@ -235,7 +238,8 @@ module Memory = struct
                          | Promoted (o, p)
                           |Already_promoted (o, p) ->
                            Sexp.List
-                             [ Sexp.Atom (Path.to_string o)
+                             [ Sexp.Atom
+                                 (Path.Local.to_string (Path.Build.local o))
                              ; Sexp.Atom (Path.to_string p)
                              ])
                        promoted )

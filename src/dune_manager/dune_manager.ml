@@ -208,7 +208,9 @@ let client_thread (events, client) =
         | Already_promoted (f, t) ->
           Some
             (Sexp.List
-               [ Sexp.Atom (Path.to_string f); Sexp.Atom (Path.to_string t) ])
+               [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
+               ; Sexp.Atom (Path.to_string t)
+               ])
         | _ -> None
       in
       repo

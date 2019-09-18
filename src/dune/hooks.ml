@@ -24,8 +24,6 @@ module Make () = struct
     List.iter !persistent_hooks ~f:(fun f -> f ())
 end
 
-module End_of_build = struct
-  include Make ()
-end
+module End_of_build = Make ()
 
 let () = at_exit End_of_build.run

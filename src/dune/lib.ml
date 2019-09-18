@@ -1169,32 +1169,24 @@ end = struct
     let res, resolved_selects, re_exports =
       List.fold_left deps ~init:(Ok [], [], Ok [])
         ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
-          let res, acc_selects, acc_re_exports =
-            match (dep : Lib_dep.t) with
-            | Re_export (loc, name) ->
-              let acc_re_exports =
-                resolve_dep db name ~allow_private_deps ~loc ~stack
-                >>| List.singleton
-              in
-              (acc_res, acc_selects, acc_re_exports)
-            | Direct (loc, name) ->
-              let res =
-                resolve_dep db name ~allow_private_deps ~loc ~stack
-                >>| List.singleton
-              in
-              (res, acc_selects, acc_re_exports)
-            | Select select ->
-              let res, resolved_select = resolve_select select in
-              (res, resolve_select :: acc_selects, acc_re_exports)
-          in
-          let res =
-            match (res, acc_res) with
-            | Ok l, Ok acc -> Ok (List.rev_append l acc)
-            | (Error _ as res), _
-             |_, (Error _ as res) ->
-              res
-          in
-          (res, acc_selects, acc_re_exports))
+          match (dep : Lib_dep.t) with
+          | Re_export (loc, name) ->
+            let acc_re_exports =
+              let* lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
+              let+ acc_re_exports = acc_re_exports in
+              lib :: acc_re_exports
+            in
+            (acc_res, acc_selects, acc_re_exports)
+          | Direct (loc, name) ->
+            let res =
+              let+ lib = resolve_dep db name ~allow_private_deps ~loc ~stack
+              and+ acc_res = acc_res in
+              lib :: acc_res
+            in
+            (res, acc_selects, acc_re_exports)
+          | Select select ->
+            let res, resolved_select = resolve_select select in
+            (res, resolved_select :: acc_selects, acc_re_exports))
     in
     let res = Result.map ~f:List.rev res in
     let re_exports = Result.map ~f:List.rev re_exports in

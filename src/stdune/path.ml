@@ -755,6 +755,8 @@ module Build = struct
       else
         Filename.concat (External.to_string b) (Local.to_string p)
 
+  let of_local t = t
+
   module Kind = Kind
 end
 

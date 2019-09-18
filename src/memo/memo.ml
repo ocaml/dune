@@ -646,7 +646,8 @@ module Exec_async = struct
        both returns a result and keeps producing errors. Not sure why. *)
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
-    Fiber.Ivar.fill ivar res >>= fun () -> Fiber.return res
+    let+ () = Fiber.Ivar.fill ivar res in
+    res
 
   (* the computation that force computes the fiber *)
   let recompute t inp (dep_node : _ Dep_node.t) =

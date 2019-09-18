@@ -111,9 +111,7 @@ let decode ~allow_re_export =
             and+ () = keyword "from"
             and+ choices = repeat choice in
             Select { result_fn; choices; loc }
-          | _ ->
-            User_error.raise ~loc:cloc [ Pp.text "invalid constructor" ]
-         ))
+          | _ -> User_error.raise ~loc:cloc [ Pp.text "invalid constructor" ]))
     ~else_:
       (let+ loc, name = located Lib_name.decode in
        Direct (loc, name))

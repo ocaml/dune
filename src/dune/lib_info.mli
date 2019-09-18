@@ -22,18 +22,6 @@ module Status : sig
   val project_name : t -> Dune_project.Name.t option
 end
 
-module Deps : sig
-  type t =
-    | Simple of (Loc.t * Lib_name.t) list
-    | Complex of Lib_dep.t list
-
-  val of_lib_deps : Dune_file.Lib_deps.t -> t
-
-  val to_dyn : t -> Dyn.t
-
-  val field_encode : t -> name:string -> Dune_lang.Encoder.field
-end
-
 (** For values like modules that need to be evaluated to be fetched *)
 module Source : sig
   type 'a t =
@@ -95,7 +83,7 @@ val implements : _ t -> (Loc.t * Lib_name.t) option
 
 val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
 
-val requires : _ t -> Deps.t
+val requires : _ t -> Lib_dep.t list
 
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
 
@@ -124,7 +112,7 @@ val of_library_stanza :
   -> Dune_file.Library.t
   -> local
 
-val user_written_deps : _ t -> Dune_file.Lib_deps.t
+val user_written_deps : _ t -> Lib_dep.t list
 
 val set_obj_dir : 'a t -> 'a Obj_dir.t -> 'a t
 
@@ -146,7 +134,7 @@ val set_sub_systems : 'a t -> Sub_system_info.t Sub_system_name.Map.t -> 'a t
 
 val set_foreign_objects : Path.t t -> Path.t list -> Path.t t
 
-val set_requires : 'a t -> Deps.t -> 'a t
+val set_requires : 'a t -> Lib_dep.t list -> 'a t
 
 val map_path : 'a t -> f:('a -> 'a) -> 'a t
 
@@ -162,7 +150,7 @@ val create :
   -> synopsis:string option
   -> main_module_name:Dune_file.Library.Main_module_name.t
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
-  -> requires:Deps.t
+  -> requires:Lib_dep.t list
   -> foreign_objects:'a list Source.t
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t

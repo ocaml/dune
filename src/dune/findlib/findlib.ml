@@ -259,7 +259,9 @@ module Package = struct
         This None
       in
       let enabled = Lib_info.Enabled_status.Normal in
-      let requires = Lib_info.Deps.Simple (List.map ~f:add_loc (requires t)) in
+      let requires =
+        requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
+      in
       let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
       let special_builtin_support :
           Dune_file.Library.Special_builtin_support.t option =

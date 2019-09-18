@@ -915,7 +915,7 @@ module rec Resolve : sig
 
   val resolve_user_deps :
        db
-    -> Lib_info.Deps.t
+    -> Lib_dep.t list
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> stack:Dep_stack.t
@@ -1201,15 +1201,9 @@ end = struct
     let re_exports = Result.map ~f:List.rev re_exports in
     (res, resolved_selects, re_exports)
 
-  let resolve_deps db deps ~allow_private_deps ~stack =
-    match (deps : Lib_info.Deps.t) with
-    | Simple names ->
-      (resolve_simple_deps db names ~allow_private_deps ~stack, [], Ok [])
-    | Complex names -> resolve_complex_deps db names ~allow_private_deps ~stack
-
   let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
     let deps, resolved_selects, re_exports =
-      resolve_deps db deps ~allow_private_deps ~stack
+      resolve_complex_deps db deps ~allow_private_deps ~stack
     in
     let deps, pps =
       match pps with
@@ -1747,9 +1741,8 @@ module DB = struct
             Required )
     in
     let res, pps, resolved_selects, _re_exports =
-      Resolve.resolve_user_deps t
-        (Lib_info.Deps.of_lib_deps deps)
-        ~pps ~stack:Dep_stack.empty ~allow_private_deps:true
+      Resolve.resolve_user_deps t deps ~pps ~stack:Dep_stack.empty
+        ~allow_private_deps:true
     in
     let requires_link =
       lazy
@@ -1898,7 +1891,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     List.map ~f:Lib_dep.direct requires
     @ List.map ~f:Lib_dep.re_export re_exports
   in
-  let info = Lib_info.set_requires info (Complex requires) in
+  let info = Lib_info.set_requires info requires in
   Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 
 module Local : sig

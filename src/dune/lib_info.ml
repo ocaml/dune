@@ -27,43 +27,6 @@ module Status = struct
     | Public (name, _) -> Some name
 end
 
-module Deps = struct
-  type t =
-    | Simple of (Loc.t * Lib_name.t) list
-    | Complex of Lib_dep.t list
-
-  let of_lib_deps deps =
-    let rec loop acc (deps : Lib_dep.t list) =
-      match deps with
-      | [] -> Some (List.rev acc)
-      | Direct x :: deps -> loop (x :: acc) deps
-      | Re_export _ :: _
-       |Select _ :: _ ->
-        None
-    in
-    match loop [] deps with
-    | Some l -> Simple l
-    | None -> Complex deps
-
-  let to_lib_deps = function
-    | Simple l -> List.map l ~f:Lib_dep.direct
-    | Complex l -> l
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Simple xs -> constr "Simple" [ list Lib_name.to_dyn (List.map ~f:snd xs) ]
-    | Complex ld -> constr "Complex" [ list Lib_dep.to_dyn ld ]
-
-  let field_encode t ~name =
-    let t =
-      match t with
-      | Simple l -> List.map ~f:Lib_dep.direct l
-      | Complex l -> l
-    in
-    Lib_dep.L.field_encode t ~name
-end
-
 module Source = struct
   type 'a t =
     | Local
@@ -98,7 +61,7 @@ type 'path t =
   ; foreign_archives : 'path list Mode.Dict.t  (** [.a/.lib/...] files *)
   ; jsoo_runtime : 'path list
   ; jsoo_archive : 'path option
-  ; requires : Deps.t
+  ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps : (Loc.t * Lib_name.t) list
   ; enabled : Enabled_status.t
@@ -197,9 +160,8 @@ let set_foreign_objects t foreign_objects =
 let set_requires t requires = { t with requires }
 
 let user_written_deps t =
-  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps)
-    ~init:(Deps.to_lib_deps t.requires) ~f:(fun acc s ->
-      Lib_dep.Direct s :: acc)
+  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
+    ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
 let of_library_stanza ~dir
     ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
@@ -290,7 +252,7 @@ let of_library_stanza ~dir
      |Private _ ->
       None
   in
-  let requires = Deps.of_lib_deps conf.buildable.libraries in
+  let requires = conf.buildable.libraries in
   { loc = conf.buildable.loc
   ; name
   ; kind = conf.kind

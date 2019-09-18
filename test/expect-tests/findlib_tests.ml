@@ -26,10 +26,10 @@ let%expect_test _ =
   (* "foo" should depend on "baz" *)
   let info = Dune_package.Lib.info pkg in
   let requires = Lib_info.requires info in
-  let dyn = Lib_info.Deps.to_dyn requires in
+  let dyn = Dyn.Encoder.list Lib_dep.to_dyn requires in
   let pp = Dyn.pp dyn in
   Format.printf "%a@." Pp.render_ignore_tags pp;
-  [%expect {|Simple ["baz"]|}]
+  [%expect {|["baz"]|}]
 
 (* Meta parsing/simplification *)
 

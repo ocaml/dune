@@ -77,7 +77,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; mode_paths "foreign_archives" foreign_archives
        ; paths "jsoo_runtime" jsoo_runtime
-       ; Lib_info.Deps.field_encode requires ~name:"requires"
+       ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_l "known_implementations"
@@ -183,7 +183,6 @@ module Lib = struct
            Option.map modules ~f:Modules.wrapped
            |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
          in
-         let requires = Lib_info.Deps.Complex requires in
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps

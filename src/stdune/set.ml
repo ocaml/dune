@@ -2,36 +2,15 @@ module type S = Set_intf.S
 
 module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) =
 struct
-  module T = Dune_caml.MoreLabels.Set.Make (struct
+  include Dune_caml.MoreLabels.Set.Make (struct
     type t = Key.t
 
     let compare x y = Ordering.to_int (Key.compare x y)
   end)
 
-  include struct
-    [@@@warning "-32"]
-
-    (* [map] is only available since 4.04 *)
-    let map ~f t = T.elements t |> List.map ~f |> T.of_list
-
-    (* Since 4.05 *)
-    let to_opt f t =
-      match f t with
-      | x -> Some x
-      | exception Not_found -> None
-
-    let choose_opt = to_opt T.choose
-
-    let min_elt_opt = to_opt T.min_elt
-
-    let max_elt_opt = to_opt T.max_elt
-  end
-
   type 'a map = 'a M.t
 
-  let to_list = T.elements
-
-  include T
+  let to_list = elements
 
   let mem t x = mem x t
 

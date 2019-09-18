@@ -3,47 +3,11 @@ module type S = Map_intf.S
 module type Key = Map_intf.Key
 
 module Make (Key : Key) : S with type key = Key.t = struct
-  module M = MoreLabels.Map.Make (struct
+  include MoreLabels.Map.Make (struct
     type t = Key.t
 
     let compare a b = Ordering.to_int (Key.compare a b)
   end)
-
-  include struct
-    [@@@warning "-32"]
-
-    let find_opt key t =
-      match M.find key t with
-      | x -> Some x
-      | exception Not_found -> None
-
-    let to_opt f t =
-      match f t with
-      | x -> Some x
-      | exception Not_found -> None
-
-    let choose_opt t = to_opt M.choose t
-
-    let min_binding_opt t = to_opt M.min_binding t
-
-    let max_binding_opt t = to_opt M.max_binding t
-
-    let update ~key ~f t =
-      match f (find_opt key t) with
-      | None -> M.remove key t
-      | Some v -> M.add t ~key ~data:v
-
-    let union ~f a b =
-      M.merge a b ~f:(fun k a b ->
-          match (a, b) with
-          | None, None -> None
-          | Some v, None
-           |None, Some v ->
-            Some v
-          | Some a, Some b -> f k a b)
-  end
-
-  include M
 
   let find key t = find_opt t key
 
@@ -81,11 +45,10 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let union a b ~f = union a b ~f
 
-  let compare a b ~compare =
-    M.compare a b ~cmp:(fun a b -> Ordering.to_int (compare a b))
-    |> Ordering.of_int
+  let compare a b ~compare:f =
+    compare a b ~cmp:(fun a b -> Ordering.to_int (f a b)) |> Ordering.of_int
 
-  let equal a b ~equal = M.equal a b ~cmp:equal
+  let equal a b ~equal:f = equal a b ~cmp:f
 
   let iteri t ~f = iter t ~f:(fun ~key ~data -> f key data)
 

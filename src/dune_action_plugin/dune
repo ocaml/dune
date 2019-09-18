@@ -2,6 +2,7 @@
  (name dune_action_plugin)
  (public_name dune._dune_action_plugin)
  (libraries stdune)
- (preprocess future_syntax)
  (synopsis
-   "Monadic interface for defining scripts with dynamic or complex sets of depencencies."))
+   "Monadic interface for defining scripts with dynamic or complex \
+   sets of depencencies.")
+ (preprocess future_syntax))

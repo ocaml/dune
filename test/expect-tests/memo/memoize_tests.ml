@@ -337,3 +337,25 @@ let%expect_test _ =
 (Some [("lazy-0", ()); ("lazy_memo", "foo")],
 Some [("lazy-0", ()); ("lazy_memo", "foo")])
 |}]
+
+(* Tests for depending on the current run*)
+
+let depends_on_run =
+  Memo.create "foobar" ~doc:"foo123"
+    ~input:(module Unit)
+    ~output:(Allow_cutoff (module Unit))
+    ~visibility:Hidden Sync
+    (fun () ->
+      let (_ : Memo.Run.t) = Memo.current_run () in
+      print_endline "running foobar")
+
+let%expect_test _ =
+  Memo.exec depends_on_run ();
+  Memo.exec depends_on_run ();
+  print_endline "resetting memo";
+  Memo.reset ();
+  Memo.exec depends_on_run ();
+  [%expect {|
+    running foobar
+    resetting memo
+    running foobar |}]

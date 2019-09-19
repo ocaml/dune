@@ -116,7 +116,7 @@ module Buildable : sig
     ; c_names : Ordered_set_lang.t option
     ; cxx_names : Ordered_set_lang.t option
     ; preprocess : Preprocess_map.t
-    ; preprocessor_deps : Dep_conf.t list
+    ; preprocessor_deps : Loc.t * Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t

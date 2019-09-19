@@ -17,3 +17,8 @@
   bin: [
     "DUNE_BUILD_DIR/install/default/bin/foo"
   ]
+  Internal error, please report upstream including the contents of _build/log.
+  Description:
+  ("[as_in_build_dir_exn] called on something not in build dir",
+  {t =
+     External

@@ -1,5 +1,23 @@
 open Stdune
-open Dune_manager.Utils
+open Import
+
+let doc = "Manage the shared artifacts cache"
+
+let man =
+  [ `S "DESCRIPTION"
+  ; `P
+      {|Dune allows to share build artifacts between workspaces.
+        $(b,dune cache-daemon) is a daemon that runs in the background
+        and manages this shared cache. For instance, it makes sure that it
+        does not grow too big and try to maximise sharing between the various
+        workspace that are using the shared cache.|}
+  ; `P
+      {|The daemon is automatically started by Dune when the shared cache is
+        enabled. You do not need to run this command manually.|}
+  ; `Blocks Common.help_secs
+  ]
+
+let info = Term.info "cache-daemon" ~doc ~man
 
 let path_option name var help =
   ( Printf.sprintf "--%s" name
@@ -115,18 +133,4 @@ let main () =
            (Printf.sprintf "unknown mode \"%s\".\nUsage: %s %s" Sys.argv.(1)
               Sys.argv.(0) help))
 
-let () =
-  try main () with
-  | Arg.Bad reason ->
-    Printf.fprintf stderr "%s: command line error: %s\n%!" Sys.argv.(0) reason;
-    exit 1
-  | User_error.E msg ->
-    Printf.fprintf stderr "%s: user error: %s\n" Sys.argv.(0)
-      (Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg));
-    exit 2
-  | Failure reason ->
-    Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) reason;
-    exit 3
-  | Arg.Help help ->
-    Printf.fprintf stdout "Usage: %s %s\n%!" Sys.argv.(0) help;
-    exit 0
+let command = (term, info)

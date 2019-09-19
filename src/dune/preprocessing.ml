@@ -569,7 +569,8 @@ let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocessor_deps =
-    Build.memoize "preprocessor deps" preprocessor_deps
+    SC.Deps.interpret sctx preprocessor_deps ~expander
+    |> Build.memoize "preprocessor deps"
   in
   let lint_module =
     Staged.unstage

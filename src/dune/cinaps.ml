@@ -79,8 +79,7 @@ let gen_rules sctx t ~dir ~scope =
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
       ~lint:Dune_file.Preprocess_map.no_preprocessing ~preprocess:t.preprocess
-      ~preprocessor_deps:
-        (Super_context.Deps.interpret sctx ~expander t.preprocessor_deps)
+      ~preprocessor_deps:t.preprocessor_deps
       ~lib_name:None ~scope
   in
   let modules =

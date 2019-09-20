@@ -2,6 +2,9 @@
 Should warn.
 
   $ touch a.ml b.ml
+
+  $ echo "(lang dune 1.11)" > dune-project
+  $ echo "(allow_approximate_merlin)" >> dune-project
   $ dune build
   File "dune", line 5, characters 1-39:
   5 |  (preprocessor_deps does-not-exist.txt))
@@ -13,3 +16,12 @@ Should warn.
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: This preprocessor_deps field will be ignored because no preprocessor
   is configured.
+
+  $ echo "(lang dune 2.0)" > dune-project
+  $ dune build
+  File "dune", line 5, characters 1-39:
+  5 |  (preprocessor_deps does-not-exist.txt))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: This preprocessor_deps field will be ignored because no preprocessor
+  is configured.
+  [1]

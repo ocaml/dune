@@ -581,12 +581,13 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
   in
   let preprocessor_deps =
     let loc, deps = preprocessor_deps in
-    if (not (is_preprocessing preprocess)) && not (List.is_empty deps) then
-      User_warning.emit ~loc
+    ( if (not (is_preprocessing preprocess)) && not (List.is_empty deps) then
+      let is_error = Dune_project.dune_version (Scope.project scope) >= (2, 0) in
+      User_warning.emit ~loc ~is_error
         [ Pp.text
             "This preprocessor_deps field will be ignored because no \
              preprocessor is configured."
-        ];
+        ] );
     SC.Deps.interpret sctx deps ~expander |> Build.memoize "preprocessor deps"
   in
   let lint_module =

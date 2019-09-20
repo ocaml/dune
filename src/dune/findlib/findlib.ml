@@ -255,16 +255,13 @@ module Package = struct
       let virtual_deps = [] in
       let implements = None in
       let orig_src_dir = None in
-      let main_module_name : Dune_file.Library.Main_module_name.t =
-        This None
-      in
+      let main_module_name : Lib_info.Main_module_name.t = This None in
       let enabled = Lib_info.Enabled_status.Normal in
       let requires =
         requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
       in
       let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-      let special_builtin_support :
-          Dune_file.Library.Special_builtin_support.t option =
+      let special_builtin_support : Lib_info.Special_builtin_support.t option =
         (* findlib has been around for much longer than dune, so it is
            acceptable to have a special case in dune for findlib. *)
         match Lib_name.to_string t.name with

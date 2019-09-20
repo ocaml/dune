@@ -187,29 +187,6 @@ module External_variant : sig
 end
 
 module Library : sig
-  module Inherited : sig
-    type 'a t =
-      | This of 'a
-      | From of (Loc.t * Lib_name.t)
-  end
-
-  module Special_builtin_support : sig
-    module Build_info : sig
-      type api_version = V1
-
-      type t =
-        { data_module : string
-        ; api_version : api_version
-        }
-    end
-
-    type t =
-      | Findlib_dynload
-      | Build_info of Build_info.t
-
-    include Dune_lang.Conv.S with type t := t
-  end
-
   type t =
     { name : Loc.t * Lib_name.Local.t
     ; public : Public_lib.t option
@@ -222,7 +199,7 @@ module Library : sig
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps : (Loc.t * Lib_name.t) list
-    ; wrapped : Wrapped.t Inherited.t
+    ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
     ; buildable : Buildable.t
     ; dynlink : Dynlink_supported.t
@@ -236,7 +213,7 @@ module Library : sig
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Lib_std.t option
-    ; special_builtin_support : Special_builtin_support.t option
+    ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     }
 
@@ -260,11 +237,14 @@ module Library : sig
 
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 
-  module Main_module_name : sig
-    type t = Module_name.t option Inherited.t
-  end
+  val main_module_name : t -> Lib_info.Main_module_name.t
 
-  val main_module_name : t -> Main_module_name.t
+  val to_lib_info :
+       t
+    -> dir:Path.Build.t
+    -> lib_config:Lib_config.t
+    -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
+    -> Lib_info.local
 end
 
 module Install_conf : sig

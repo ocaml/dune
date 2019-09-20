@@ -193,24 +193,6 @@ module Library : sig
       | From of (Loc.t * Lib_name.t)
   end
 
-  module Stdlib : sig
-    (** Extra information for the OCaml stdlib. Note: contrary to normal
-        libraries, the library interface of the stdlib (the Stdlib module) is
-        used as the alias module when compiling all the other modules. We
-        cannot generate an implicit one as that would break hard-coded names
-        inside the compiler. *)
-    type t =
-      { modules_before_stdlib : Module_name.Set.t
-            (** Modules that the Stdlib module depend on. *)
-      ; exit_module : Module_name.t option
-            (** Modules that's implicitely added by the compiler at the end
-                when linking an executable *)
-      ; internal_modules : Glob.t
-            (** Module names that are hardcoded in the compiler and so cannot
-                be wrapped *)
-      }
-  end
-
   module Special_builtin_support : sig
     module Build_info : sig
       type api_version = V1
@@ -253,7 +235,7 @@ module Library : sig
     ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
-    ; stdlib : Stdlib.t option
+    ; stdlib : Lib_std.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
     }

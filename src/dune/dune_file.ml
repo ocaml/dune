@@ -12,31 +12,6 @@ module Jbuild_version = struct
   let decode = enum [ ("1", V1) ]
 end
 
-let invalid_module_name ~loc name =
-  User_error.raise ~loc [ Pp.textf "invalid module name: %S" name ]
-
-let module_name =
-  plain_string (fun ~loc name ->
-      match name with
-      | "" -> invalid_module_name ~loc name
-      | s -> (
-        try
-          ( match s.[0] with
-          | 'A' .. 'Z'
-           |'a' .. 'z' ->
-            ()
-          | _ -> raise_notrace Exit );
-          String.iter s ~f:(function
-            | 'A' .. 'Z'
-             |'a' .. 'z'
-             |'0' .. '9'
-             |'\''
-             |'_' ->
-              ()
-            | _ -> raise_notrace Exit);
-          Module_name.of_string s
-        with Exit -> invalid_module_name ~loc name ))
-
 let relative_file =
   plain_string (fun ~loc fn ->
       if Filename.is_relative fn then
@@ -419,7 +394,7 @@ module Per_module = struct
         [ ( "per_module"
           , let+ x =
               repeat
-                (let+ pp, names = pair a (repeat module_name) in
+                (let+ pp, names = pair a (repeat Module_name.decode) in
                  (names, pp))
             in
             of_mapping x ~default
@@ -842,39 +817,6 @@ module Library = struct
         Dune_lang.List (Dune_lang.atom "build_info" :: Build_info.encode x)
   end
 
-  module Stdlib = struct
-    type t =
-      { modules_before_stdlib : Module_name.Set.t
-      ; exit_module : Module_name.t option
-      ; internal_modules : Glob.t
-      }
-
-    let syntax =
-      let syntax =
-        Dune_lang.Syntax.create
-          ~name:"experimental_building_ocaml_compiler_with_dune"
-          ~desc:"experimental feature for building the compiler with dune"
-          [ (0, 1) ]
-      in
-      Dune_project.Extension.register_simple ~experimental:true syntax
-        (Dune_lang.Decoder.return []);
-      syntax
-
-    let decode =
-      fields
-        (let+ modules_before_stdlib =
-           field "modules_before_stdlib" (repeat module_name) ~default:[]
-         and+ exit_module = field_o "exit_module" module_name
-         and+ internal_modules =
-           field "internal_modules" Glob.decode ~default:Glob.empty
-         in
-         { modules_before_stdlib =
-             Module_name.Set.of_list modules_before_stdlib
-         ; exit_module
-         ; internal_modules
-         })
-  end
-
   module Wrapped = struct
     include Wrapped
 
@@ -928,7 +870,7 @@ module Library = struct
     ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
-    ; stdlib : Stdlib.t option
+    ; stdlib : Lib_std.t option
     ; special_builtin_support : Special_builtin_support.t option
     ; enabled_if : Blang.t
     }
@@ -989,7 +931,7 @@ module Library = struct
             Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib"
-           (Dune_lang.Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
+           (Dune_lang.Syntax.since Lib_std.syntax (0, 1) >>> Lib_std.decode)
        and+ special_builtin_support =
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)

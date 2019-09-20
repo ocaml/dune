@@ -77,7 +77,7 @@ module Stdlib = struct
   (* Returns [true] is a special module, i.e. one whose compilation unit name
      is hard-coded inside the compiler. It is not possible to change the
      compilation unit name of such modules, so they cannot be wrapped. *)
-  let special_compiler_module (stdlib : Dune_file.Library.Stdlib.t) m =
+  let special_compiler_module (stdlib : Lib_std.t) m =
     let name = Module.name m in
     Glob.test stdlib.internal_modules (Module_name.to_string name)
     ||
@@ -85,7 +85,7 @@ module Stdlib = struct
     | None -> false
     | Some n -> n = name
 
-  let make ~(stdlib : Dune_file.Library.Stdlib.t) ~modules ~main_module_name =
+  let make ~(stdlib : Lib_std.t) ~modules ~main_module_name =
     let modules =
       Module_name.Map.map modules ~f:(fun m ->
           if

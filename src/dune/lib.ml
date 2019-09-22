@@ -1184,15 +1184,21 @@ end = struct
             in
             (acc_res, acc_selects, acc_re_exports)
           | Direct (loc, name) ->
-            let res =
+            let acc_res =
               let+ lib = resolve_dep db name ~allow_private_deps ~loc ~stack
               and+ acc_res = acc_res in
               lib :: acc_res
             in
-            (res, acc_selects, acc_re_exports)
+            (acc_res, acc_selects, acc_re_exports)
           | Select select ->
             let res, resolved_select = resolve_select select in
-            (res, resolved_select :: acc_selects, acc_re_exports))
+            let acc_res =
+              let+ res = res
+              and+ acc_res = acc_res
+              in
+              List.rev_append res acc_res
+            in
+            (acc_res, resolved_select :: acc_selects, acc_re_exports))
     in
     let res = Result.map ~f:List.rev res in
     let re_exports = Result.map ~f:List.rev re_exports in

@@ -85,8 +85,6 @@ let init_build_system ?only_packages ?external_lib_deps_mode
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts
     ~file_tree:w.conf.file_tree ?memory;
-  Option.iter memory ~f:(fun memory ->
-      Hooks.End_of_build.once (fun () -> Dune_manager.Client.teardown memory));
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages
       ?external_lib_deps_mode

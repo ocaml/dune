@@ -5,7 +5,10 @@ let run_build_command ~common ~targets =
   let once () =
     let open Fiber.O in
     let* setup = Main.setup common in
-    do_build setup (targets setup)
+    let+ _ = do_build setup (targets setup) in
+    Option.iter (Build_system.get_memory ()) ~f:(fun memory ->
+        Dune_manager.Client.teardown memory;
+        Scheduler.wait_for_dune_cache ())
   in
   if Common.watch common then
     let once () =

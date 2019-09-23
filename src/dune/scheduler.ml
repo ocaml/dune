@@ -63,6 +63,7 @@ module Event : sig
     | Files_changed
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Dune_cache_disconnected
 
   (** Return the next event. File changes event are always flattened and
       returned first. *)
@@ -83,13 +84,20 @@ module Event : sig
   val send_job_completed : job -> Unix.process_status -> unit
 
   val send_signal : Signal.t -> unit
+
+  val send_dedup : Path.Build.t -> Path.t -> unit
+
+  val send_dune_cache_disconnected : unit -> unit
 end = struct
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
+    | Dune_cache_disconnected
 
   let jobs_completed = Queue.create ()
+
+  let dedup_pending = Queue.create ()
 
   let files_changed = ref []
 
@@ -115,41 +123,61 @@ end = struct
     not
       ( List.is_empty !files_changed
       && Queue.is_empty jobs_completed
-      && Signal.Set.is_empty !signals )
+      && Signal.Set.is_empty !signals
+      && Queue.is_empty dedup_pending )
 
   let next () =
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
-      while not (available ()) do
-        Condition.wait cond mutex
-      done;
-      match Signal.Set.choose !signals with
-      | Some signal ->
-        signals := Signal.Set.remove !signals signal;
-        Signal signal
-      | None -> (
-        match !files_changed with
-        | [] ->
-          let job, status = Queue.pop jobs_completed in
-          decr pending_jobs;
-          Job_completed (job, status)
-        | fns ->
-          files_changed := [];
-          let only_ignored_files =
-            List.fold_left fns ~init:true ~f:(fun acc fn ->
-                let fn = Path.to_absolute_filename fn in
-                if String.Table.mem ignored_files fn then (
-                  (* only use ignored record once *)
-                  String.Table.remove ignored_files fn;
-                  acc
-                ) else
-                  false)
-          in
-          if only_ignored_files then
-            loop ()
-          else
-            Files_changed )
+      if not (Queue.is_empty dedup_pending) then
+        match Queue.pop dedup_pending with
+        | Some (target, source) ->
+          let target = Path.Build.to_string target in
+          let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
+          Log.infof "deduplicate %s from %s" target (Path.to_string source);
+          let rm p = try Unix.unlink p with _ -> () in
+          ( try
+              rm tmpname;
+              Unix.link (Path.to_string source) tmpname;
+              Unix.rename tmpname target
+            with Unix.Unix_error (e, syscall, _) ->
+              rm tmpname;
+              Log.infof "error handling dune-cache command: %s: %s" syscall
+                (Unix.error_message e) );
+          loop ()
+        | None -> Dune_cache_disconnected
+      else (
+        while not (available ()) do
+          Condition.wait cond mutex
+        done;
+        match Signal.Set.choose !signals with
+        | Some signal ->
+          signals := Signal.Set.remove !signals signal;
+          Signal signal
+        | None -> (
+          match !files_changed with
+          | [] ->
+            let job, status = Queue.pop jobs_completed in
+            decr pending_jobs;
+            Job_completed (job, status)
+          | fns ->
+            files_changed := [];
+            let only_ignored_files =
+              List.fold_left fns ~init:true ~f:(fun acc fn ->
+                  let fn = Path.to_absolute_filename fn in
+                  if String.Table.mem ignored_files fn then (
+                    (* only use ignored record once *)
+                    String.Table.remove ignored_files fn;
+                    acc
+                  ) else
+                    false)
+            in
+            if only_ignored_files then
+              loop ()
+            else
+              Files_changed )
+      )
     in
     let ev = loop () in
     Mutex.unlock mutex;
@@ -175,6 +203,17 @@ end = struct
     signals := Signal.Set.add !signals signal;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
+
+  let send_dune_cache v =
+    Mutex.lock mutex;
+    let avail = available () in
+    Queue.push v dedup_pending;
+    if not avail then Condition.signal cond;
+    Mutex.unlock mutex
+
+  let send_dedup target source = send_dune_cache (Some (target, source))
+
+  let send_dune_cache_disconnected () = send_dune_cache None
 
   let pending_jobs () = !pending_jobs
 end
@@ -548,6 +587,9 @@ let wait_for_process pid =
   Process_watcher.register_job { pid; ivar };
   Fiber.Ivar.read ivar
 
+let rec wait_for_dune_cache () =
+  if Event.next () <> Dune_cache_disconnected then wait_for_dune_cache ()
+
 let rec restart_waiting_for_available_job t =
   if
     Queue.is_empty t.waiting_for_available_job
@@ -656,6 +698,7 @@ end = struct
       | Signal signal ->
         got_signal signal;
         Fiber.return Got_signal
+      | Dune_cache_disconnected -> pump_events t
     )
 
   type run_error =
@@ -703,7 +746,8 @@ end
 
 let go ?config f =
   let t = prepare ?config () in
-  match Run_once.run_and_cleanup t f with
+  let res = Run_once.run_and_cleanup t f in
+  match res with
   | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
   | Ok res -> res
   | Error Got_signal -> raise Report_error.Already_reported
@@ -744,6 +788,7 @@ let poll ?config ~once ~finally () =
     | Signal signal ->
       got_signal signal;
       Exit
+    | Dune_cache_disconnected -> Continue
   in
   let wait msg =
     Console.Status_line.set_temporarily
@@ -777,3 +822,7 @@ let poll ?config ~once ~finally () =
   match bt with
   | None -> Exn.raise exn
   | Some bt -> Exn.raise_with_backtrace exn bt
+
+let send_dedup = Event.send_dedup
+
+let send_dune_cache_disconnected = Event.send_dune_cache_disconnected

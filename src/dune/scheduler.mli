@@ -19,6 +19,9 @@ val poll :
 (** Wait for the following process to terminate *)
 val wait_for_process : int -> Unix.process_status Fiber.t
 
+(** Wait for dune cache to be disconnected. Drop any other event. *)
+val wait_for_dune_cache : unit -> unit
+
 val set_concurrency : int -> unit
 
 (** Make the scheduler ignore next change to a certain file in watch mode.
@@ -39,3 +42,9 @@ val wait_for_available_job : unit -> t Fiber.t
 
 (** Execute the given callback with current directory temporarily changed *)
 val with_chdir : t -> dir:Path.t -> f:(unit -> 'a) -> 'a
+
+(** Notify the scheduler of a file to deduplicate from another thread *)
+val send_dedup : Path.Build.t -> Path.t -> unit
+
+(** Notify the scheduler that we were disconnected from dune_manager *)
+val send_dune_cache_disconnected : unit -> unit

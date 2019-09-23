@@ -16,7 +16,6 @@ mkdir -p cmdliner/src
     cd cmdliner
     dune subst
     cd src
-    sed -i.bak 's/Pervasives.result/Dune_caml.result/g' *.{ml,mli}
 )
 
 SRC=$TMP/cmdliner

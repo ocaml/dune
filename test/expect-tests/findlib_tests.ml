@@ -20,8 +20,8 @@ let findlib =
 let%expect_test _ =
   let pkg =
     match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
-    | Ok x -> x
-    | Error _ -> assert false
+    | Ok (Library x) -> x
+    | _ -> assert false
   in
   (* "foo" should depend on "baz" *)
   let info = Dune_package.Lib.info pkg in

@@ -142,16 +142,23 @@ let gen_lib pub_name lib ~version =
         ] )
     ]
 
-let gen ~package ~version libs =
+let gen ~package ~version entries =
   let version =
     match version with
     | None -> []
     | Some s -> [ rule "version" [] Set s ]
   in
   let pkgs =
-    List.map libs ~f:(fun lib ->
-        let pub_name = Pub_name.parse (Lib.name lib) in
-        (pub_name, gen_lib pub_name lib ~version))
+    List.map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
+        match e with
+        | Library lib ->
+          let name = Lib.Local.info lib |> Lib_info.name in
+          let pub_name = Pub_name.parse name in
+          (pub_name, gen_lib pub_name (Lib.Local.to_lib lib) ~version)
+        | Deprecated_library_name d ->
+          ( Pub_name.parse (snd d.old_public_name.name)
+          , version @ [ requires (Lib_name.Set.singleton d.new_public_name) ]
+          ))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->

@@ -501,6 +501,22 @@ JavaScript output.
 
 See :ref:`jsoo` for more information.
 
+deprecated_library_name
+-----------------------
+
+The ``deprecated_library_name`` stanza allows to redirect an old
+deprecated name after a library has been renamed. It's syntax is as
+follow:
+
+    (deprecated_library_name
+     (old_public_name <name>)
+     (new_public_name <name>))
+
+When a developer uses the old public name in a list of library
+dependencies, it will be transparently replaced by the new name. Note
+that it is not necessary for the new name to exist at definition time
+as it is only resolved at the point where the old name is used.
+
 executable
 ----------
 

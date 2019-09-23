@@ -208,6 +208,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name deprecated-library-name)
+ (deps (package dune) (source_tree test-cases/deprecated-library-name))
+ (action
+  (chdir
+   test-cases/deprecated-library-name
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name deps-conf-vars)
  (deps (package dune) (source_tree test-cases/deps-conf-vars))
  (action
@@ -1827,6 +1835,7 @@
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deprecated-library-name)
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
@@ -2042,6 +2051,7 @@
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deprecated-library-name)
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)

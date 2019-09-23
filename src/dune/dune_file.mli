@@ -504,6 +504,15 @@ module Include_subdirs : sig
     | Include of qualification
 end
 
+module Deprecated_library_name : sig
+  type t =
+    { loc : Loc.t
+    ; project : Dune_project.t
+    ; old_public_name : Public_lib.t
+    ; new_public_name : Lib_name.t
+    }
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Executables of Executables.t
@@ -516,6 +525,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
+  | Deprecated_library_name of Deprecated_library_name.t
 
 val stanza_package : Stanza.t -> Package.t option
 

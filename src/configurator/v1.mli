@@ -1,5 +1,3 @@
-open! Dune_result
-
 type t
 
 val create :
@@ -95,7 +93,7 @@ module Pkg_config : sig
       [package] should be just the name of the package. Returns [Error
       error_msg] if [package] is not available *)
   val query_expr_err :
-    t -> package:string -> expr:string -> (package_conf, string) Result.t
+    t -> package:string -> expr:string -> (package_conf, string) result
 end
 with type configurator := t
 

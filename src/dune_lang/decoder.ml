@@ -534,11 +534,18 @@ let fields t (Values (loc, cstr, uc)) sexps =
   let x = result ctx (t ctx { Fields.unparsed; known = [] }) in
   (x, [])
 
-let leftover_fields (Fields (_, _, _)) state =
-  ( Fields.unparsed_ast state
-  , { Fields.known = state.known @ Name.Map.keys state.unparsed
-    ; unparsed = Name.Map.empty
-    } )
+let leftover_fields_generic t more_fields (Fields (loc, cstr, uc)) state =
+  let x =
+    let ctx = Values (loc, cstr, uc) in
+    result ctx (repeat t ctx (Fields.unparsed_ast state))
+  in
+  (x, { Fields.known = state.known @ more_fields; unparsed = Name.Map.empty })
+
+let leftover_fields ctx (state : Fields.t) =
+  leftover_fields_generic raw (Name.Map.keys state.unparsed) ctx state
+
+let leftover_fields_as_sums cstrs =
+  leftover_fields_generic (sum cstrs) (List.map cstrs ~f:fst)
 
 type kind =
   | Values of Loc.t * string option

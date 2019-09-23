@@ -136,19 +136,25 @@ end = struct
     let rec loop () =
       if not (Queue.is_empty dedup_pending) then (
         match Queue.pop dedup_pending with
-        | Some (target, source, _) ->
-          let target = Path.Build.to_string target in
-          let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-          Log.infof "deduplicate %s from %s" target (Path.to_string source);
-          let rm p = try Unix.unlink p with _ -> () in
-          ( try
+        | Some (target, source, digest) ->
+          ( match Cached_digest.peek_file (Path.build target) with
+          | None -> ()
+          | Some d when not (Digest.equal d digest) -> ()
+          | _ -> (
+            let target = Path.Build.to_string target in
+            let tmpname =
+              Path.Build.to_string (Path.Build.of_string ".dedup")
+            in
+            Log.infof "deduplicate %s from %s" target (Path.to_string source);
+            let rm p = try Unix.unlink p with _ -> () in
+            try
               rm tmpname;
               Unix.link (Path.to_string source) tmpname;
               Unix.rename tmpname target
             with Unix.Unix_error (e, syscall, _) ->
               rm tmpname;
               Log.infof "error handling dune-cache command: %s: %s" syscall
-                (Unix.error_message e) );
+                (Unix.error_message e) ) );
           loop ()
         | None ->
           dune_cache_disconnected := true;

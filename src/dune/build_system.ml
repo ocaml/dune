@@ -1476,6 +1476,7 @@ end = struct
     let* () =
       if rule_need_rerun then (
         List.iter targets_as_list ~f:(fun target ->
+            Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
           match (do_not_memoize, t.memory) with

@@ -88,6 +88,8 @@ module Event : sig
   val send_dedup : Path.Build.t -> Path.t -> unit
 
   val send_dune_cache_disconnected : unit -> unit
+
+  val dune_cache_disconnected : bool ref
 end = struct
   type t =
     | Files_changed
@@ -98,6 +100,8 @@ end = struct
   let jobs_completed = Queue.create ()
 
   let dedup_pending = Queue.create ()
+
+  let dune_cache_disconnected = ref false
 
   let files_changed = ref []
 
@@ -130,7 +134,7 @@ end = struct
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
-      if not (Queue.is_empty dedup_pending) then
+      if not (Queue.is_empty dedup_pending) then (
         match Queue.pop dedup_pending with
         | Some (target, source) ->
           let target = Path.Build.to_string target in
@@ -146,8 +150,10 @@ end = struct
               Log.infof "error handling dune-cache command: %s: %s" syscall
                 (Unix.error_message e) );
           loop ()
-        | None -> Dune_cache_disconnected
-      else (
+        | None ->
+          dune_cache_disconnected := true;
+          Dune_cache_disconnected
+      ) else (
         while not (available ()) do
           Condition.wait cond mutex
         done;
@@ -588,7 +594,8 @@ let wait_for_process pid =
   Fiber.Ivar.read ivar
 
 let rec wait_for_dune_cache () =
-  if Event.next () <> Dune_cache_disconnected then wait_for_dune_cache ()
+  if not !Event.dune_cache_disconnected then
+    if Event.next () <> Dune_cache_disconnected then wait_for_dune_cache ()
 
 let rec restart_waiting_for_available_job t =
   if

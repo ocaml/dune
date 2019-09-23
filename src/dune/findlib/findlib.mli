@@ -29,12 +29,13 @@ module Unavailable_reason : sig
 end
 
 (** Lookup a package in the given database *)
-val find : t -> Lib_name.t -> (Dune_package.Lib.t, Unavailable_reason.t) result
+val find :
+  t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result
 
 val available : t -> Lib_name.t -> bool
 
 (** List all the packages available in this Database *)
-val all_packages : t -> Dune_package.Lib.t list
+val all_packages : t -> Dune_package.Entry.t list
 
 (** List all the packages that are not available in this database *)
 val all_unavailable_packages : t -> (Lib_name.t * Unavailable_reason.t) list

@@ -626,6 +626,18 @@ module Public_lib = struct
 
   let name t = snd t.name
 
+  let make project ((_, s) as loc_name) =
+    let pkg, rest = Lib_name.split s in
+    Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
+        { package = pkg
+        ; sub_dir =
+            ( if rest = [] then
+              None
+            else
+              Some (String.concat rest ~sep:"/") )
+        ; name = loc_name
+        })
+
   let public_name_field =
     map_validate
       (let+ project = Dune_project.get_exn ()
@@ -634,21 +646,7 @@ module Public_lib = struct
       ~f:(fun (project, loc_name) ->
         match loc_name with
         | None -> Ok None
-        | Some ((_, s) as loc_name) -> (
-          let pkg, rest = Lib_name.split s in
-          match Pkg.resolve project pkg with
-          | Ok pkg ->
-            Ok
-              (Some
-                 { package = pkg
-                 ; sub_dir =
-                     ( if rest = [] then
-                       None
-                     else
-                       Some (String.concat rest ~sep:"/") )
-                 ; name = loc_name
-                 })
-          | Error _ as e -> e ))
+        | Some x -> Result.map (make project x) ~f:Option.some)
 end
 
 module Mode_conf = struct
@@ -2150,6 +2148,30 @@ module Include_subdirs = struct
     enum opts_list
 end
 
+module Deprecated_library_name = struct
+  type t =
+    { loc : Loc.t
+    ; project : Dune_project.t
+    ; old_public_name : Public_lib.t
+    ; new_public_name : Lib_name.t
+    }
+
+  let decode =
+    fields
+      (let+ loc = loc
+       and+ project = Dune_project.get_exn ()
+       and+ old_public_name =
+         map_validate
+           (let+ project = Dune_project.get_exn ()
+            and+ loc_name =
+              field "old_public_name" (located Lib_name.decode)
+            in
+            (project, loc_name))
+           ~f:(fun (project, loc_name) -> Public_lib.make project loc_name)
+       and+ new_public_name = field "new_public_name" Lib_name.decode in
+       { loc; project; old_public_name; new_public_name })
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Executables of Executables.t
@@ -2162,6 +2184,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
+  | Deprecated_library_name of Deprecated_library_name.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2250,6 +2273,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
         and+ t = Toplevel.decode in
         [ Toplevel t ] )
+    ; ( "deprecated_library_name"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        and+ t = Deprecated_library_name.decode in
+        [ Deprecated_library_name t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

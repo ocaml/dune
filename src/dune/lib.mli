@@ -164,13 +164,16 @@ module DB : sig
     -> unit
     -> t
 
+  module Library_related_stanza : sig
+    type t =
+      | Library of Path.Build.t * Dune_file.Library.t
+      | External_variant of Dune_file.External_variant.t
+      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+  end
+
   (** Create a database from a list of library/variants stanzas *)
-  val create_from_library_stanzas :
-       ?parent:t
-    -> lib_config:Lib_config.t
-    -> (Path.Build.t * Dune_file.Library.t) list
-    -> Dune_file.External_variant.t list
-    -> t
+  val create_from_stanzas :
+    ?parent:t -> lib_config:Lib_config.t -> Library_related_stanza.t list -> t
 
   val create_from_findlib :
     ?external_lib_deps_mode:bool -> stdlib_dir:Path.t -> Findlib.t -> t

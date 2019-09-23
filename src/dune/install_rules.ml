@@ -261,58 +261,62 @@ let gen_dune_package sctx pkg =
     Dune_lang.Syntax.greatest_supported_version Stanza.syntax
   in
   let action =
+    let gen_dune_package () =
+      let dune_package =
+        let pkg_root =
+          Config.local_install_lib_dir ~context:ctx.name ~package:name
+        in
+        let lib_root lib =
+          let _, subdir = Lib_name.split (Lib.name lib) in
+          Path.Build.L.relative pkg_root subdir
+        in
+        let entries =
+          Super_context.lib_entries_of_package sctx pkg.name
+          |> List.map ~f:(function
+               | Super_context.Lib_entry.Deprecated_library_name d ->
+                 Dune_package.Entry.Deprecated_library_name
+                   { loc = d.loc
+                   ; old_public_name = snd d.old_public_name.name
+                   ; new_public_name = d.new_public_name
+                   }
+               | Library lib ->
+                 let dir_contents =
+                   let info = Lib.Local.info lib in
+                   let dir = Lib_info.src_dir info in
+                   Dir_contents.get sctx ~dir
+                 in
+                 let obj_dir = Lib.Local.obj_dir lib in
+                 let lib = Lib.Local.to_lib lib in
+                 let name = Lib.name lib in
+                 let foreign_objects =
+                   let dir = Obj_dir.obj_dir obj_dir in
+                   Dir_contents.c_sources_of_library dir_contents ~name
+                   |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
+                   |> List.map ~f:Path.build
+                 in
+                 let modules =
+                   Dir_contents.modules_of_library dir_contents ~name
+                 in
+                 Library
+                   (Result.ok_exn
+                      (Lib.to_dune_lib lib
+                         ~dir:(Path.build (lib_root lib))
+                         ~modules ~foreign_objects)))
+        in
+        Dune_package.Or_meta.Dune_package
+          { Dune_package.version = pkg.version
+          ; name
+          ; entries
+          ; dir = Path.build pkg_root
+          }
+      in
+      dune_package
+    in
     Build.write_file_dyn dune_package_file
       (let+ pkg =
          Build.if_file_exists (Path.build meta_template)
            ~then_:(Build.return Dune_package.Or_meta.Use_meta)
-           ~else_:
-             (Build.delayed (fun () ->
-                  let dune_package =
-                    let pkg_root =
-                      Config.local_install_lib_dir ~context:ctx.name
-                        ~package:name
-                    in
-                    let lib_root lib =
-                      let _, subdir = Lib_name.split (Lib.name lib) in
-                      Path.Build.L.relative pkg_root subdir
-                    in
-                    let libs =
-                      Super_context.libs_of_package sctx pkg.name
-                      |> Lib.Local.Set.to_list
-                      |> Result.List.map ~f:(fun lib ->
-                             let dir_contents =
-                               let info = Lib.Local.info lib in
-                               let dir = Lib_info.src_dir info in
-                               Dir_contents.get sctx ~dir
-                             in
-                             let obj_dir = Lib.Local.obj_dir lib in
-                             let lib = Lib.Local.to_lib lib in
-                             let name = Lib.name lib in
-                             let foreign_objects =
-                               let dir = Obj_dir.obj_dir obj_dir in
-                               Dir_contents.c_sources_of_library dir_contents
-                                 ~name
-                               |> C.Sources.objects ~dir
-                                    ~ext_obj:ctx.lib_config.ext_obj
-                               |> List.map ~f:Path.build
-                             in
-                             let modules =
-                               Dir_contents.modules_of_library dir_contents
-                                 ~name
-                             in
-                             Lib.to_dune_lib lib
-                               ~dir:(Path.build (lib_root lib))
-                               ~modules ~foreign_objects)
-                      |> Result.ok_exn
-                    in
-                    Dune_package.Or_meta.Dune_package
-                      { Dune_package.version = pkg.version
-                      ; name
-                      ; libs
-                      ; dir = Path.build pkg_root
-                      }
-                  in
-                  dune_package))
+           ~else_:(Build.delayed gen_dune_package)
        in
        Dune_package.Or_meta.encode ~dune_version pkg
        |> Format.asprintf "%a@."
@@ -320,12 +324,12 @@ let gen_dune_package sctx pkg =
   in
   Super_context.add_rule sctx ~dir:ctx.build_dir action
 
-let init_meta sctx ~dir =
+let init_meta_and_dune_package sctx ~dir =
   let ctx = Super_context.context sctx in
   Super_context.find_scope_by_dir sctx dir
   |> Scope.project |> Dune_project.packages
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-         let libs = Super_context.libs_of_package sctx pkg.name in
+         let entries = Super_context.lib_entries_of_package sctx pkg.name in
          let meta = Package_paths.meta_file ctx pkg in
          let meta_template =
            Path.build (Package_paths.meta_template ctx pkg)
@@ -336,9 +340,11 @@ let init_meta sctx ~dir =
               then clause. There's no way to express this in the build
               description however. *)
            let vlib =
-             Lib.Local.Set.find libs ~f:(fun lib ->
+             List.find_map entries ~f:(function
+               | Super_context.Lib_entry.Library lib ->
                  let info = Lib.Local.info lib in
-                 Option.is_some (Lib_info.virtual_ info))
+                 Option.some_if (Option.is_some (Lib_info.virtual_ info)) lib
+               | Deprecated_library_name _ -> None)
            in
            Build.if_file_exists meta_template
              ~then_:
@@ -367,8 +373,7 @@ let init_meta sctx ~dir =
             let meta =
               Gen_meta.gen
                 ~package:(Package.Name.to_string pkg.name)
-                ~version:pkg.version
-                (Lib.Local.Set.to_list libs |> List.map ~f:Lib.Local.to_lib)
+                ~version:pkg.version entries
             in
             let buf = Buffer.create 1024 in
             let ppf = Format.formatter_of_buffer buf in

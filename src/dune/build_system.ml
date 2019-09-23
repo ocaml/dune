@@ -457,6 +457,10 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
+let get_memory () =
+  let t = t () in
+  t.memory
+
 let get_dir_triage t ~dir =
   match Path.as_in_source_tree dir with
   | Some dir ->

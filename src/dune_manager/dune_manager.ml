@@ -205,11 +205,12 @@ let client_thread (events, client) =
       and f promotion =
         print_endline (Dune_memory.promotion_to_string promotion);
         match promotion with
-        | Already_promoted (f, t) ->
+        | Already_promoted (f, t, d) ->
           Some
             (Sexp.List
                [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
                ; Sexp.Atom (Path.to_string t)
+               ; Sexp.Atom (Digest.to_string d)
                ])
         | _ -> None
       in
@@ -432,21 +433,27 @@ module Client = struct
     ; finally : (unit -> unit) option
     }
 
-  type command = Dedup of (Path.Build.t * Path.t)
+  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
 
   let command_to_dyn = function
-    | Dedup (source, target) ->
+    | Dedup (source, target, hash) ->
       let open Dyn.Encoder in
-      constr "Dedup" [ Path.Build.to_dyn source; Path.to_dyn target ]
+      constr "Dedup"
+        [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
 
   let read input =
     let open Result.O in
     Csexp.parse input
     >>= function
     | Sexp.List
-        [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom source; Sexp.Atom target ] ]
-      ->
-      Result.Ok (Dedup (Path.Build.of_string source, Path.of_string target))
+        [ Sexp.Atom "dedup"
+        ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
+        ] -> (
+      match Digest.from_hex digest with
+      | Some digest ->
+        Result.Ok
+          (Dedup (Path.Build.of_string source, Path.of_string target, digest))
+      | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
     | exp ->
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 

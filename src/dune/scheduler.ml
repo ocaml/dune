@@ -85,7 +85,7 @@ module Event : sig
 
   val send_signal : Signal.t -> unit
 
-  val send_dedup : Path.Build.t -> Path.t -> unit
+  val send_dedup : Path.Build.t -> Path.t -> Digest.t -> unit
 
   val send_dune_cache_disconnected : unit -> unit
 
@@ -136,7 +136,7 @@ end = struct
     let rec loop () =
       if not (Queue.is_empty dedup_pending) then (
         match Queue.pop dedup_pending with
-        | Some (target, source) ->
+        | Some (target, source, _) ->
           let target = Path.Build.to_string target in
           let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
           Log.infof "deduplicate %s from %s" target (Path.to_string source);
@@ -217,7 +217,8 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
-  let send_dedup target source = send_dune_cache (Some (target, source))
+  let send_dedup target source digest =
+    send_dune_cache (Some (target, source, digest))
 
   let send_dune_cache_disconnected () = send_dune_cache None
 

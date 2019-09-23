@@ -44,7 +44,7 @@ val wait_for_available_job : unit -> t Fiber.t
 val with_chdir : t -> dir:Path.t -> f:(unit -> 'a) -> 'a
 
 (** Notify the scheduler of a file to deduplicate from another thread *)
-val send_dedup : Path.Build.t -> Path.t -> unit
+val send_dedup : Path.Build.t -> Path.t -> Digest.t -> unit
 
 (** Notify the scheduler that we were disconnected from dune_manager *)
 val send_dune_cache_disconnected : unit -> unit

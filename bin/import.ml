@@ -31,8 +31,8 @@ include Common.Let_syntax
 (* FIXME: leverage fibers to actually connect in the background *)
 let make_memory () =
   let handle = function
-    | Dune_manager.Client.Dedup (target, source) ->
-      Scheduler.send_dedup target source
+    | Dune_manager.Client.Dedup (target, source, digest) ->
+      Scheduler.send_dedup target source digest
   and finally = Scheduler.send_dune_cache_disconnected in
   match Sys.getenv_opt "DUNE_CACHE" with
   | Some _ ->

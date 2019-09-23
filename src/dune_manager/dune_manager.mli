@@ -44,7 +44,7 @@ module Client : sig
 
   val set_build_dir : t -> Path.t -> t
 
-  val make : (command -> unit) -> (t, exn) Result.t
+  val make : ?finally:(unit -> unit) -> (command -> unit) -> (t, exn) Result.t
 
   val teardown : t -> unit
 end

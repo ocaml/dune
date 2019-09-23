@@ -429,6 +429,7 @@ module Client = struct
     ; input : char Stream.t
     ; memory : Dune_memory.Memory.t
     ; thread : Thread.t
+    ; finally : (unit -> unit) option
     }
 
   type command = Dedup of (Path.Build.t * Path.t)
@@ -449,7 +450,7 @@ module Client = struct
     | exp ->
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
-  let make handle =
+  let make ?finally handle =
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -485,14 +486,16 @@ module Client = struct
           (Dyn.pp (command_to_dyn command));
         handle command
       with
-      | Result.Error e -> Log.infof "dune-cache read error: %s" e
+      | Result.Error e ->
+        Log.infof "dune-cache read error: %s" e;
+        Option.iter ~f:(fun f -> f ()) finally
       | Result.Ok () -> (thread [@tailcall]) input
     in
     send socket my_versions_command;
     (* FIXME: find highest common version *)
     ignore (read input);
     let thread = Thread.create thread input in
-    Result.Ok { socket; fd; input; memory; thread }
+    Result.Ok { socket; fd; input; memory; thread; finally }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key

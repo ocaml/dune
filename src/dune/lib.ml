@@ -1135,7 +1135,7 @@ end = struct
         let+ () = many re_exports in
         res := t :: !res
       )
-    and many = Result.List.iter ~f:one in
+    and many l = Result.List.iter l ~f:one in
     let+ () = many ts in
     List.rev !res
 
@@ -1849,8 +1849,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   and+ ppx_runtime_deps = lib.ppx_runtime_deps
   and+ main_module_name = main_module_name lib
   and+ requires = lib.requires
-  and+ re_exports = lib.re_exports
-  in
+  and+ re_exports = lib.re_exports in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
   let sub_systems = Sub_system.public_info lib in
   let requires =

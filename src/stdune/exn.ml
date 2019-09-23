@@ -34,6 +34,9 @@ let pp_uncaught ~backtrace fmt exn =
 
 let pp fmt exn = Format.pp_print_string fmt (Printexc.to_string exn)
 
+(* TODO: we should be replace this by [let raise_with_backtrace =
+   Printexc.raise_with_backtrace], however this doesn't work with OCaml 4.06.
+   We should check this again after we drop support for 4.06. *)
 include (
   struct
     [@@@warning "-32-3"]

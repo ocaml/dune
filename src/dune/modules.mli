@@ -9,7 +9,9 @@ val lib :
      src_dir:Path.Build.t
   -> main_module_name:Module_name.t option
   -> wrapped:Wrapped.t
-  -> lib:Dune_file.Library.t
+  -> stdlib:Ocaml_stdlib.t option
+  -> lib_name:Lib_name.Local.t
+  -> implements:bool
   -> modules:Module.Name_map.t
   -> t
 

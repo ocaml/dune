@@ -77,7 +77,7 @@ module Stdlib = struct
   (* Returns [true] is a special module, i.e. one whose compilation unit name
      is hard-coded inside the compiler. It is not possible to change the
      compilation unit name of such modules, so they cannot be wrapped. *)
-  let special_compiler_module (stdlib : Dune_file.Library.Stdlib.t) m =
+  let special_compiler_module (stdlib : Ocaml_stdlib.t) m =
     let name = Module.name m in
     Glob.test stdlib.internal_modules (Module_name.to_string name)
     ||
@@ -85,7 +85,7 @@ module Stdlib = struct
     | None -> false
     | Some n -> n = name
 
-  let make ~(stdlib : Dune_file.Library.Stdlib.t) ~modules ~main_module_name =
+  let make ~(stdlib : Ocaml_stdlib.t) ~modules ~main_module_name =
     let modules =
       Module_name.Map.map modules ~f:(fun m ->
           if
@@ -145,10 +145,10 @@ module Mangle = struct
     | Lib of Lib.t
     | Exe
 
-  let of_lib ~main_module_name ~modules ~(lib : Dune_file.Library.t) =
+  let of_lib ~lib_name ~implements ~main_module_name ~modules =
     let kind : Lib.kind =
-      if Option.is_some lib.implements then
-        Implementation (snd lib.name)
+      if implements then
+        Implementation lib_name
       else if Module_name.Map.mem modules main_module_name then
         Has_lib_interface
       else
@@ -240,8 +240,10 @@ module Wrapped = struct
           let prefix = Visibility.Map.find prefix visibility in
           Module.with_wrapper m ~main_module_name:prefix)
 
-  let make ~src_dir ~lib ~modules ~main_module_name ~wrapped =
-    let mangle = Mangle.of_lib ~main_module_name ~lib ~modules in
+  let make ~src_dir ~lib_name ~implements ~modules ~main_module_name ~wrapped =
+    let mangle =
+      Mangle.of_lib ~main_module_name ~lib_name ~implements ~modules
+    in
     let modules, wrapped_compat =
       let prefix = Mangle.prefix mangle in
       let wrapped_modules = wrap_modules prefix ~main_module_name ~modules in
@@ -475,11 +477,14 @@ let rec main_module_name = function
   | Stdlib w -> Some w.main_module_name
   | Impl { vlib; impl = _ } -> main_module_name vlib
 
-let lib ~src_dir ~main_module_name ~wrapped ~lib ~modules =
+let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
+    ~modules =
   let make_wrapped main_module_name =
-    Wrapped (Wrapped.make ~src_dir ~lib ~modules ~main_module_name ~wrapped)
+    Wrapped
+      (Wrapped.make ~src_dir ~lib_name ~implements ~modules ~main_module_name
+         ~wrapped)
   in
-  match lib.stdlib with
+  match stdlib with
   | Some stdlib ->
     let main_module_name = Option.value_exn main_module_name in
     Stdlib (Stdlib.make ~stdlib ~modules ~main_module_name)
@@ -488,7 +493,6 @@ let lib ~src_dir ~main_module_name ~wrapped ~lib ~modules =
     | Simple false, _, Some m -> Singleton m
     | Simple false, _, None -> Unwrapped modules
     | (Yes_with_transition _ | Simple true), Some main_module_name, Some m ->
-      let implements = Dune_file.Library.is_impl lib in
       if Module.name m = main_module_name && not implements then
         Singleton m
       else

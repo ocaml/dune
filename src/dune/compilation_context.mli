@@ -23,7 +23,7 @@ val create :
   -> ?preprocessing:Preprocessing.t
   -> ?no_keep_locs:bool
   -> opaque:bool
-  -> ?stdlib:Dune_file.Library.Stdlib.t
+  -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
   -> dynlink:bool
   -> package:Package.t option
@@ -63,7 +63,7 @@ val no_keep_locs : t -> bool
 
 val opaque : t -> bool
 
-val stdlib : t -> Dune_file.Library.Stdlib.t option
+val stdlib : t -> Ocaml_stdlib.t option
 
 val js_of_ocaml : t -> Dune_file.Js_of_ocaml.t option
 

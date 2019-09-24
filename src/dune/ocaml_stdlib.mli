@@ -1,7 +1,10 @@
-(** Extra information for the OCaml stdlib. Note: contrary to normal libraries,
-    the library interface of the stdlib (the Stdlib module) is used as the
-    alias module when compiling all the other modules. We cannot generate an
-    implicit one as that would break hard-coded names inside the compiler. *)
+(** Extra information for the OCaml stdlib.
+
+    Contrary to normal libraries, the library interface of the stdlib (the
+    Stdlib module) is used as the alias module when compiling all the other
+    modules. We cannot generate an implicit one as that would break hard-coded
+    names inside the compiler. *)
+
 type t =
   { modules_before_stdlib : Module_name.Set.t
         (** Modules that the Stdlib module depend on. *)

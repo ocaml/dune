@@ -291,8 +291,13 @@ end = struct
                 (Option.value ~default:Ordered_set_lang.standard
                    lib.private_modules)
           in
+          let stdlib = lib.stdlib in
+          let implements = Option.is_some lib.implements in
+          let _loc, lib_name = lib.name in
           Left
-            (lib, Modules.lib ~lib ~src_dir ~modules ~main_module_name ~wrapped)
+            ( lib
+            , Modules.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
+                ~main_module_name ~wrapped )
         | Executables exes
          |Tests { exes; _ } ->
           let modules =

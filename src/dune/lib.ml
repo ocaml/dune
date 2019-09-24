@@ -1638,8 +1638,8 @@ module DB = struct
                 error_two_impl_for_variant (snd conf.name) variant x y
             in
             let info =
-              Lib_info.of_library_stanza ~dir ~lib_config
-                ~known_implementations conf
+              Dune_file.Library.to_lib_info conf ~dir ~lib_config
+                ~known_implementations
               |> Lib_info.of_local
             in
             match conf.public with

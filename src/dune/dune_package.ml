@@ -90,8 +90,7 @@ module Lib = struct
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
-           Dune_file.Library.Special_builtin_support.encode
-           special_builtin_support
+           Lib_info.Special_builtin_support.encode special_builtin_support
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -152,7 +151,7 @@ module Lib = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Dune_file.Library.Special_builtin_support.decode )
+           >>> Lib_info.Special_builtin_support.decode )
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations
@@ -163,9 +162,7 @@ module Lib = struct
          let enabled = Lib_info.Enabled_status.Normal in
          let status = Lib_info.Status.Installed in
          let version = None in
-         let main_module_name =
-           Dune_file.Library.Inherited.This main_module_name
-         in
+         let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let jsoo_archive = None in
          let pps = [] in
@@ -181,7 +178,7 @@ module Lib = struct
          let variant = None in
          let wrapped =
            Option.map modules ~f:Modules.wrapped
-           |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
+           |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
          in
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires

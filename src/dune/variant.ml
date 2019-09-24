@@ -25,3 +25,12 @@ let plugin = make "plugin"
 let encode t = Dune_lang.atom_or_quoted_string (to_string t)
 
 let decode = Dune_lang.Decoder.plain_string (fun ~loc:_ s -> make s)
+
+let syntax =
+  let syntax =
+    Dune_lang.Syntax.create ~name:"library_variants"
+      ~desc:"the experimental library variants feature." [ (0, 2) ]
+  in
+  Dune_project.Extension.register_simple ~experimental:true syntax
+    (Dune_lang.Decoder.return []);
+  syntax

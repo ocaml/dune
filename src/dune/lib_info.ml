@@ -119,16 +119,79 @@ module Enabled_status = struct
     | Disabled_because_of_enabled_if
 end
 
+module Shared = struct
+  type t =
+    { synopsis : string option
+    ; kind : Lib_kind.t
+    ; variant : (Loc.t * Variant.t) option
+    ; default_implementation : (Loc.t * Lib_name.t) option
+    ; special_builtin_support : Special_builtin_support.t option
+    ; implements : (Loc.t * Lib_name.t) option
+    ; virtual_deps : (Loc.t * Lib_name.t) list
+    ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
+    }
+
+  let fields =
+    let open Dune_lang.Decoder in
+    let+ synopsis = field_o "synopsis" string
+    and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
+    and+ variant =
+      field_o "variant"
+        ( Dune_lang.Syntax.since Variant.syntax (0, 1)
+          >>> located Variant.decode )
+    and+ default_implementation =
+      field_o "default_implementation"
+        ( Dune_lang.Syntax.since Variant.syntax (0, 1)
+          >>> located Lib_name.decode )
+    and+ special_builtin_support =
+      field_o "special_builtin_support"
+        ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
+          >>> Special_builtin_support.decode )
+    and+ implements =
+      field_o "implements"
+        ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
+          >>> located Lib_name.decode )
+    and+ virtual_deps =
+      field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
+    and+ ppx_runtime_deps =
+      field "ppx_runtime_libraries"
+        (repeat (located Lib_name.decode))
+        ~default:[]
+    in
+    { synopsis
+    ; kind
+    ; variant
+    ; default_implementation
+    ; special_builtin_support
+    ; implements
+    ; virtual_deps
+    ; ppx_runtime_deps
+    }
+
+  let special_builtin_support t = t.special_builtin_support
+
+  let kind t = t.kind
+
+  let implements t = t.implements
+
+  let variant t = t.variant
+
+  let default_implementation t = t.default_implementation
+
+  let for_dune_package t ~ppx_runtime_deps ~implements ~default_implementation
+      =
+    { t with ppx_runtime_deps; implements; default_implementation }
+end
+
 type 'path t =
   { loc : Loc.t
   ; name : Lib_name.t
-  ; kind : Lib_kind.t
+  ; shared : Shared.t
   ; status : Status.t
   ; src_dir : 'path
   ; orig_src_dir : 'path option
   ; obj_dir : 'path Obj_dir.t
   ; version : string option
-  ; synopsis : string option
   ; archives : 'path list Mode.Dict.t
   ; plugins : 'path list Mode.Dict.t
   ; foreign_objects : 'path list Source.t
@@ -136,24 +199,20 @@ type 'path t =
   ; jsoo_runtime : 'path list
   ; jsoo_archive : 'path option
   ; requires : Lib_dep.t list
-  ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
   ; pps : (Loc.t * Lib_name.t) list
   ; enabled : Enabled_status.t
-  ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_ : Modules.t Source.t option
-  ; implements : (Loc.t * Lib_name.t) option
-  ; variant : Variant.t option
   ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
-  ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
   ; modes : Mode.Dict.Set.t
-  ; special_builtin_support : Special_builtin_support.t option
   }
 
 let name t = t.name
+
+let shared t = t.shared
 
 let version t = t.version
 
@@ -163,7 +222,7 @@ let requires t = t.requires
 
 let pps t = t.pps
 
-let ppx_runtime_deps t = t.ppx_runtime_deps
+let ppx_runtime_deps t = t.shared.ppx_runtime_deps
 
 let sub_systems t = t.sub_systems
 
@@ -179,15 +238,15 @@ let plugins t = t.plugins
 
 let src_dir t = t.src_dir
 
-let variant t = t.variant
+let variant t = t.shared.variant
 
 let enabled t = t.enabled
 
 let status t = t.status
 
-let kind t = t.kind
+let kind t = t.shared.kind
 
-let default_implementation t = t.default_implementation
+let default_implementation t = t.shared.default_implementation
 
 let known_implementations t = t.known_implementations
 
@@ -195,13 +254,13 @@ let obj_dir t = t.obj_dir
 
 let virtual_ t = t.virtual_
 
-let implements t = t.implements
+let implements t = t.shared.implements
 
-let synopsis t = t.synopsis
+let synopsis t = t.shared.synopsis
 
 let wrapped t = t.wrapped
 
-let special_builtin_support t = t.special_builtin_support
+let special_builtin_support t = t.shared.special_builtin_support
 
 let jsoo_runtime t = t.jsoo_runtime
 
@@ -232,20 +291,51 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
             Path.source src_dir |> Path.to_absolute_filename |> Path.of_string
           ) )
   in
+  let shared = Shared.for_dune_package t.shared ~ppx_runtime_deps ~default_implementation ~implements in
   { t with
-    ppx_runtime_deps
+    shared
   ; requires
   ; foreign_objects
   ; obj_dir
-  ; implements
-  ; default_implementation
   ; sub_systems
   ; orig_src_dir
   }
 
 let user_written_deps t =
-  List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
+  List.fold_left (t.shared.virtual_deps @ t.shared.ppx_runtime_deps) ~init:t.requires
     ~f:(fun acc s -> Lib_dep.Direct s :: acc)
+
+let create_with_shared ~loc ~name ~shared ~status ~src_dir ~orig_src_dir ~obj_dir ~version
+    ~main_module_name ~sub_systems ~requires ~foreign_objects
+    ~plugins ~archives ~foreign_archives ~jsoo_runtime
+    ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
+    ~known_implementations ~modes
+    ~wrapped =
+  { loc
+  ; name
+  ; status
+  ; shared
+  ; src_dir
+  ; orig_src_dir
+  ; obj_dir
+  ; version
+  ; requires
+  ; main_module_name
+  ; foreign_objects
+  ; plugins
+  ; archives
+  ; foreign_archives
+  ; jsoo_runtime
+  ; jsoo_archive
+  ; pps
+  ; known_implementations
+  ; enabled
+  ; dune_version
+  ; sub_systems
+  ; virtual_
+  ; modes
+  ; wrapped
+  }
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
@@ -253,37 +343,41 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
     ~implements ~variant ~known_implementations ~default_implementation ~modes
     ~wrapped ~special_builtin_support =
+  let shared =
+    { Shared.kind
+    ; synopsis
+    ; default_implementation
+    ; special_builtin_support
+    ; ppx_runtime_deps
+    ; virtual_deps
+    ; variant
+    ; implements
+    }
+  in
   { loc
   ; name
-  ; kind
   ; status
+  ; shared
   ; src_dir
   ; orig_src_dir
   ; obj_dir
   ; version
-  ; synopsis
   ; requires
   ; main_module_name
   ; foreign_objects
   ; plugins
   ; archives
-  ; ppx_runtime_deps
   ; foreign_archives
   ; jsoo_runtime
   ; jsoo_archive
   ; pps
+  ; known_implementations
   ; enabled
-  ; virtual_deps
   ; dune_version
   ; sub_systems
   ; virtual_
-  ; implements
-  ; variant
-  ; known_implementations
-  ; default_implementation
   ; modes
   ; wrapped
-  ; special_builtin_support
   }
 
 type external_ = Path.t t

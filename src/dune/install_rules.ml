@@ -27,7 +27,8 @@ module Stanzas_to_entries : sig
     Super_context.t -> (Loc.t option * Install.Entry.t) list Package.Name.Map.t
 end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
-    match lib.kind with
+    let kind = Lib_info.Shared.kind lib.shared in
+    match kind with
     | Normal
      |Ppx_deriver _ ->
       []

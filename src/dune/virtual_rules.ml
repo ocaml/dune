@@ -74,7 +74,8 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   Modules.iter_no_vlib vlib_modules ~f:(fun m -> copy_objs m)
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
-  Option.map lib.implements ~f:(fun (loc, implements) ->
+  let implements = Lib_info.Shared.implements lib.shared in
+  Option.map implements ~f:(fun (loc, implements) ->
       match Lib.DB.find (Scope.libs scope) implements with
       | None ->
         User_error.raise ~loc

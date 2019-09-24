@@ -63,7 +63,25 @@ module Main_module_name : sig
   type t = Module_name.t option Inherited.t
 end
 
+module Shared : sig
+  type t
+
+  val fields : dune_file:bool -> t Dune_lang.Decoder.fields_parser
+
+  val implements : t -> (Stdune.Loc.t * Lib_name.t) option
+
+  val variant : t -> (Stdune.Loc.t * Variant.t) option
+
+  val default_implementation : t -> (Stdune.Loc.t * Lib_name.t) option
+
+  val special_builtin_support : t -> Special_builtin_support.t option
+
+  val kind : t -> Lib_kind.t
+end
+
 type 'path t
+
+val shared : _ t -> Shared.t
 
 val name : _ t -> Lib_name.t
 
@@ -81,7 +99,7 @@ val src_dir : 'path t -> 'path
 
 val status : _ t -> Status.t
 
-val variant : _ t -> Variant.t option
+val variant : 'a t -> (Stdune.Loc.t * Variant.t) option
 
 val default_implementation : _ t -> (Loc.t * Lib_name.t) option
 
@@ -178,10 +196,37 @@ val create :
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option
   -> implements:(Loc.t * Lib_name.t) option
-  -> variant:Variant.t option
+  -> variant:(Loc.t * Variant.t) option
   -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Mode.Dict.Set.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
+  -> 'a t
+
+val create_with_shared :
+     loc:Loc.t
+  -> name:Lib_name.t
+  -> shared:Shared.t
+  -> status:Status.t
+  -> src_dir:'a
+  -> orig_src_dir:'a option
+  -> obj_dir:'a Obj_dir.t
+  -> version:string option
+  -> main_module_name:Main_module_name.t
+  -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
+  -> requires:Lib_dep.t list
+  -> foreign_objects:'a list Source.t
+  -> plugins:'a list Mode.Dict.t
+  -> archives:'a list Mode.Dict.t
+  -> foreign_archives:'a list Mode.Dict.t
+  -> jsoo_runtime:'a list
+  -> jsoo_archive:'a option
+  -> pps:(Loc.t * Lib_name.t) list
+  -> enabled:Enabled_status.t
+  -> dune_version:Dune_lang.Syntax.Version.t option
+  -> virtual_:Modules.t Source.t option
+  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
+  -> modes:Mode.Dict.Set.t
+  -> wrapped:Wrapped.t Inherited.t option
   -> 'a t

@@ -190,15 +190,11 @@ module Library : sig
   type t =
     { name : Loc.t * Lib_name.Local.t
     ; public : Public_lib.t option
-    ; synopsis : string option
     ; install_c_headers : string list
-    ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
-    ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
     ; buildable : Buildable.t
@@ -208,13 +204,10 @@ module Library : sig
     ; no_keep_locs : bool
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
-    ; implements : (Loc.t * Lib_name.t) option
-    ; variant : Variant.t option
-    ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; shared : Lib_info.Shared.t
     }
 
   val has_stubs : t -> bool

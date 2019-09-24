@@ -356,17 +356,22 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
           match stanza with
           | Library
               { public = Some { name; _ }
-              ; variant = Some variant
-              ; implements = Some virtual_lib
               ; project
               ; buildable = { loc; _ }
+              ; shared
               ; _
-              }
-            when Package.Name.Set.mem visible_pkgs
-                   (Lib_name.package_name (snd virtual_lib)) ->
-            Some
-              (External_variant
-                 { implementation = name; virtual_lib; variant; project; loc })
+              } ->
+            let open Option.O in
+            let* virtual_lib = Lib_info.Shared.implements shared in
+            if
+              Package.Name.Set.mem visible_pkgs
+                (Lib_name.package_name (snd virtual_lib))
+            then
+              let+ _loc, variant = Lib_info.Shared.variant shared in
+              External_variant
+                { implementation = name; virtual_lib; variant; project; loc }
+            else
+              None
           | _ -> None ))
 
 let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =

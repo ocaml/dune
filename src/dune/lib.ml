@@ -89,7 +89,7 @@ module Error = struct
             let variant = Lib_info.variant lib in
             Pp.seq (pp_lib lib)
               ( match variant with
-              | Some v -> Pp.textf " (variant %s)" (Variant.to_string v)
+              | Some (_, v) -> Pp.textf " (variant %s)" (Variant.to_string v)
               | None -> Pp.nop ))
       ]
 
@@ -961,7 +961,7 @@ end = struct
         let variant = Lib_info.variant info in
         match variant with
         | None -> Ok vlib
-        | Some variant ->
+        | Some (_loc, variant) ->
           (* If the library is an implementation tagged with a variant, we must
              make sure that that it's correctly part of the virtual library's
              known implementations. *)
@@ -1194,8 +1194,7 @@ end = struct
             let res, resolved_select = resolve_select select in
             let acc_res =
               let+ res = res
-              and+ acc_res = acc_res
-              in
+              and+ acc_res = acc_res in
               List.rev_append res acc_res
             in
             (acc_res, resolved_select :: acc_selects, acc_re_exports))
@@ -1588,15 +1587,14 @@ module DB = struct
     let variant_map =
       List.fold_left stanzas ~init:variant_map ~f:(fun acc stanza ->
           match (stanza : Library_related_stanza.t) with
-          | Library
-              ( _
-              , ( { implements = Some (_, vlib)
-                  ; variant = Some variant
-                  ; buildable = { loc; _ }
-                  ; _
-                  } as lib ) ) ->
-            Lib_name.Map.Multi.cons acc vlib
-              (variant, (loc, Dune_file.Library.best_name lib))
+          | Library (_, ({ buildable = { loc; _ }; shared; _ } as lib)) -> (
+            let implements = Lib_info.Shared.implements shared in
+            let variant = Lib_info.Shared.variant shared in
+            match (implements, variant) with
+            | Some (_, vlib), Some (_, variant) ->
+              Lib_name.Map.Multi.cons acc vlib
+                (variant, (loc, Dune_file.Library.best_name lib))
+            | _, _ -> acc )
           | External_variant ev ->
             Lib_name.Map.Multi.cons acc (snd ev.virtual_lib)
               (ev.variant, ev.implementation)

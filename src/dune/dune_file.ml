@@ -19,18 +19,9 @@ let relative_file =
       else
         User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
-let library_variants =
-  let syntax =
-    Dune_lang.Syntax.create ~name:"library_variants"
-      ~desc:"the experimental library variants feature." [ (0, 2) ]
-  in
-  Dune_project.Extension.register_simple ~experimental:true syntax
-    (Dune_lang.Decoder.return []);
-  syntax
-
 let variants_field =
   field_o "variants"
-    (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
+    (let* () = Dune_lang.Syntax.since Variant.syntax (0, 1) in
      located (repeat Variant.decode >>| Variant.Set.of_list))
 
 (* Parse and resolve "package" fields *)
@@ -781,15 +772,11 @@ module Library = struct
   type t =
     { name : Loc.t * Lib_name.Local.t
     ; public : Public_lib.t option
-    ; synopsis : string option
     ; install_c_headers : string list
-    ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
-    ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
-    ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
     ; buildable : Buildable.t
@@ -799,13 +786,10 @@ module Library = struct
     ; no_keep_locs : bool
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
-    ; implements : (Loc.t * Lib_name.t) option
-    ; variant : Variant.t option
-    ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
-    ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; shared : Lib_info.Shared.t
     }
 
   let decode =
@@ -814,20 +798,12 @@ module Library = struct
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
-       and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
-       and+ ppx_runtime_libraries =
-         field "ppx_runtime_libraries"
-           (repeat (located Lib_name.decode))
-           ~default:[]
        and+ library_flags = field_oslu "library_flags"
        and+ c_library_flags = field_oslu "c_library_flags"
-       and+ virtual_deps =
-         field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
          field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
-       and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
        and+ self_build_stubs_archive =
@@ -846,18 +822,6 @@ module Library = struct
          field_o "virtual_modules"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
            >>> Ordered_set_lang.decode )
-       and+ implements =
-         field_o "implements"
-           ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
-           >>> located Lib_name.decode )
-       and+ variant =
-         field_o "variant"
-           ( Dune_lang.Syntax.since library_variants (0, 1)
-           >>> located Variant.decode )
-       and+ default_implementation =
-         field_o "default_implementation"
-           ( Dune_lang.Syntax.since library_variants (0, 1)
-           >>> located Lib_name.decode )
        and+ private_modules =
          field_o "private_modules"
            (let* () = Dune_lang.Syntax.since Stanza.syntax (1, 2) in
@@ -866,11 +830,12 @@ module Library = struct
          field_o "stdlib"
            ( Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1)
            >>> Ocaml_stdlib.decode )
-       and+ special_builtin_support =
-         field_o "special_builtin_support"
-           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode )
-       and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
+       and+ enabled_if = enabled_if ~since:(Some (1, 10))
+       and+ shared = Lib_info.Shared.fields in
+       let implements = Lib_info.Shared.implements shared in
+       let special_builtin_support =
+         Lib_info.Shared.special_builtin_support shared
+       in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in
@@ -907,6 +872,9 @@ module Library = struct
                    "name field is missing" )
              ]
        in
+       let default_implementation =
+         Lib_info.Shared.default_implementation shared
+       in
        Option.both virtual_modules implements
        |> Option.iter ~f:(fun (virtual_modules, (_, impl)) ->
               User_error.raise
@@ -922,13 +890,13 @@ module Library = struct
            ]
        | _ -> (
          ();
+         let variant = Lib_info.Shared.variant shared in
          match (implements, variant) with
          | None, Some (loc, _) ->
            User_error.raise ~loc
              [ Pp.text "Only implementations can specify a variant." ]
          | _ ->
            ();
-           let variant = Option.map variant ~f:(fun (_, v) -> v) in
            let self_build_stubs_archive =
              let loc, self_build_stubs_archive = self_build_stubs_archive in
              let err =
@@ -969,16 +937,13 @@ module Library = struct
                        (String.enumerate_and Lib_config.allowed_in_enabled_if)
                    ]);
            { name
+           ; shared
            ; public
-           ; synopsis
            ; install_c_headers
-           ; ppx_runtime_libraries
            ; modes
-           ; kind
            ; library_flags
            ; c_library_flags
            ; self_build_stubs_archive
-           ; virtual_deps
            ; wrapped
            ; optional
            ; buildable
@@ -988,12 +953,8 @@ module Library = struct
            ; no_keep_locs
            ; dune_version
            ; virtual_modules
-           ; implements
-           ; variant
-           ; default_implementation
            ; private_modules
            ; stdlib
-           ; special_builtin_support
            ; enabled_if
            } ))
 
@@ -1030,7 +991,7 @@ module Library = struct
 
   let is_virtual t = Option.is_some t.virtual_modules
 
-  let is_impl t = Option.is_some t.implements
+  let is_impl t = Option.is_some (Lib_info.Shared.implements t.shared)
 
   let obj_dir ~dir t =
     Obj_dir.make_lib ~dir
@@ -1038,7 +999,8 @@ module Library = struct
       (snd t.name)
 
   let main_module_name t : Lib_info.Main_module_name.t =
-    match (t.implements, t.wrapped) with
+    let implements = Lib_info.Shared.implements t.shared in
+    match (implements, t.wrapped) with
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
      |None, From _ ->
@@ -1140,26 +1102,18 @@ module Library = struct
     in
     let requires = conf.buildable.libraries in
     let loc = conf.buildable.loc in
-    let kind = conf.kind in
     let src_dir = dir in
     let orig_src_dir = None in
-    let synopsis = conf.synopsis in
     let sub_systems = conf.sub_systems in
-    let ppx_runtime_deps = conf.ppx_runtime_libraries in
     let pps = Preprocess_map.pps conf.buildable.preprocess in
-    let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
-    let implements = conf.implements in
-    let variant = conf.variant in
-    let default_implementation = conf.default_implementation in
     let wrapped = Some conf.wrapped in
-    let special_builtin_support = conf.special_builtin_support in
-    Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
-      ~version ~synopsis ~main_module_name ~sub_systems ~requires
-      ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-      ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-      ~virtual_ ~implements ~variant ~known_implementations
-      ~default_implementation ~modes ~wrapped ~special_builtin_support
+    let shared = conf.shared in
+    Lib_info.create_with_shared ~loc ~name ~shared ~status ~src_dir
+      ~orig_src_dir ~obj_dir ~version ~main_module_name ~sub_systems ~requires
+      ~foreign_objects ~plugins ~archives ~foreign_archives ~jsoo_runtime
+      ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
+      ~known_implementations ~modes ~wrapped
 end
 
 module Install_conf = struct
@@ -2239,7 +2193,7 @@ module Stanzas = struct
         and+ t = Tests.single in
         [ Tests t ] )
     ; ( "external_variant"
-      , let+ () = Dune_lang.Syntax.since library_variants (0, 2)
+      , let+ () = Dune_lang.Syntax.since Variant.syntax (0, 2)
         and+ t = External_variant.decode in
         [ External_variant t ] )
     ; ( "env"

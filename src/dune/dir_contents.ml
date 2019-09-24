@@ -229,7 +229,8 @@ end = struct
         | Library lib ->
           let src_dir = d.ctx_dir in
           let kind, main_module_name, wrapped =
-            match lib.implements with
+            let implements = Lib_info.Shared.implements lib.shared in
+            match implements with
             | None ->
               (* In the two following pattern matching, we can only get [From
                  _] if [lib] is an implementation. Since we know that it is not
@@ -292,7 +293,8 @@ end = struct
                    lib.private_modules)
           in
           let stdlib = lib.stdlib in
-          let implements = Option.is_some lib.implements in
+          let implements = Lib_info.Shared.implements lib.shared in
+          let implements = Option.is_some implements in
           let _loc, lib_name = lib.name in
           Left
             ( lib

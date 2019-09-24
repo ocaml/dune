@@ -63,11 +63,12 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                        Command.quote_args "-cclib" (map_cclibs x)))
               ; Command.Args.dyn library_flags
               ; As
-                  ( match lib.kind with
-                  | Normal -> []
-                  | Ppx_deriver _
-                   |Ppx_rewriter _ ->
-                    [ "-linkall" ] )
+                  (let kind = Lib_info.Shared.kind lib.shared in
+                   match kind with
+                   | Normal -> []
+                   | Ppx_deriver _
+                    |Ppx_rewriter _ ->
+                     [ "-linkall" ])
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode
                   |> Build.map ~f:(fun x -> Command.Args.Deps x) )

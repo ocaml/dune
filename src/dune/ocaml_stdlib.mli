@@ -5,7 +5,7 @@
     modules. We cannot generate an implicit one as that would break hard-coded
     names inside the compiler. *)
 
-type t =
+type t = private
   { modules_before_stdlib : Module_name.Set.t
         (** Modules that the Stdlib module depend on. *)
   ; exit_module : Module_name.t option

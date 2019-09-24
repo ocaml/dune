@@ -168,10 +168,10 @@ module Lib = struct
            Option.map modules ~f:Modules.wrapped
            |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
          in
-         Lib_info.create_with_shared ~loc ~name ~shared ~status ~src_dir
-           ~orig_src_dir ~obj_dir ~version ~main_module_name ~sub_systems
-           ~requires ~foreign_objects ~plugins ~archives ~foreign_archives
-           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
+         Lib_info.create ~loc ~name ~shared ~status ~src_dir ~orig_src_dir
+           ~obj_dir ~version ~main_module_name ~sub_systems ~requires
+           ~foreign_objects ~plugins ~archives ~foreign_archives ~jsoo_runtime
+           ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
            ~known_implementations ~modes ~wrapped
        in
        { info; main_module_name; modules })

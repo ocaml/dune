@@ -1109,11 +1109,10 @@ module Library = struct
     let dune_version = Some conf.dune_version in
     let wrapped = Some conf.wrapped in
     let shared = conf.shared in
-    Lib_info.create_with_shared ~loc ~name ~shared ~status ~src_dir
-      ~orig_src_dir ~obj_dir ~version ~main_module_name ~sub_systems ~requires
-      ~foreign_objects ~plugins ~archives ~foreign_archives ~jsoo_runtime
-      ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
-      ~known_implementations ~modes ~wrapped
+    Lib_info.create ~loc ~name ~shared ~status ~src_dir ~orig_src_dir ~obj_dir
+      ~version ~main_module_name ~sub_systems ~requires ~foreign_objects
+      ~plugins ~archives ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps
+      ~enabled ~dune_version ~virtual_ ~known_implementations ~modes ~wrapped
 end
 
 module Install_conf = struct

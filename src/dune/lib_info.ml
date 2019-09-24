@@ -131,6 +131,18 @@ module Shared = struct
     ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
     }
 
+  let create ~synopsis ~kind ~variant ~default_implementation
+      ~special_builtin_support ~implements ~virtual_deps ~ppx_runtime_deps =
+    { synopsis
+    ; kind
+    ; variant
+    ; default_implementation
+    ; special_builtin_support
+    ; implements
+    ; virtual_deps
+    ; ppx_runtime_deps
+    }
+
   let fields ~dune_file =
     let open Dune_lang.Decoder in
     let variant =
@@ -319,53 +331,10 @@ let user_written_deps t =
   List.fold_left (t.shared.virtual_deps @ t.shared.ppx_runtime_deps)
     ~init:t.requires ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
-let create_with_shared ~loc ~name ~shared ~status ~src_dir ~orig_src_dir
-    ~obj_dir ~version ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps
-    ~enabled ~dune_version ~virtual_ ~known_implementations ~modes ~wrapped =
-  { loc
-  ; name
-  ; status
-  ; shared
-  ; src_dir
-  ; orig_src_dir
-  ; obj_dir
-  ; version
-  ; requires
-  ; main_module_name
-  ; foreign_objects
-  ; plugins
-  ; archives
-  ; foreign_archives
-  ; jsoo_runtime
-  ; jsoo_archive
-  ; pps
-  ; known_implementations
-  ; enabled
-  ; dune_version
-  ; sub_systems
-  ; virtual_
-  ; modes
-  ; wrapped
-  }
-
-let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
-    ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime
-    ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
-    ~implements ~variant ~known_implementations ~default_implementation ~modes
-    ~wrapped ~special_builtin_support =
-  let shared =
-    { Shared.kind
-    ; synopsis
-    ; default_implementation
-    ; special_builtin_support
-    ; ppx_runtime_deps
-    ; virtual_deps
-    ; variant
-    ; implements
-    }
-  in
+let create ~loc ~name ~shared ~status ~src_dir ~orig_src_dir ~obj_dir ~version
+    ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
+    ~archives ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
+    ~dune_version ~virtual_ ~known_implementations ~modes ~wrapped =
   { loc
   ; name
   ; status

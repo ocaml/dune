@@ -245,28 +245,16 @@ module Package = struct
     in
     let info : Path.t Lib_info.t =
       let name = name t in
-      let kind = Lib_kind.Normal in
       let sub_systems = Sub_system_name.Map.empty in
-      let synopsis = description t in
       let status = Lib_info.Status.Installed in
       let src_dir = Obj_dir.dir obj_dir in
       let version = version t in
       let dune_version = None in
-      let virtual_deps = [] in
-      let implements = None in
       let orig_src_dir = None in
       let main_module_name : Lib_info.Main_module_name.t = This None in
       let enabled = Lib_info.Enabled_status.Normal in
       let requires =
         requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
-      in
-      let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-      let special_builtin_support : Lib_info.Special_builtin_support.t option =
-        (* findlib has been around for much longer than dune, so it is
-           acceptable to have a special case in dune for findlib. *)
-        match Lib_name.to_string t.name with
-        | "findlib.dynload" -> Some Findlib_dynload
-        | _ -> None
       in
       let foreign_objects = Lib_info.Source.External [] in
       let plugins = plugins t in
@@ -275,16 +263,32 @@ module Package = struct
       let jsoo_archive = None in
       let pps = [] in
       let virtual_ = None in
-      let variant = None in
       let known_implementations = P.Map.empty in
-      let default_implementation = None in
       let wrapped = None in
-      Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
-        ~version ~synopsis ~main_module_name ~sub_systems ~requires
-        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-        ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-        ~virtual_ ~implements ~variant ~known_implementations
-        ~default_implementation ~modes ~wrapped ~special_builtin_support
+      let shared =
+        let special_builtin_support : Lib_info.Special_builtin_support.t option
+            =
+          (* findlib has been around for much longer than dune, so it is
+             acceptable to have a special case in dune for findlib. *)
+          match Lib_name.to_string t.name with
+          | "findlib.dynload" -> Some Findlib_dynload
+          | _ -> None
+        in
+        let synopsis = description t in
+        let implements = None in
+        let kind = Lib_kind.Normal in
+        let default_implementation = None in
+        let variant = None in
+        let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
+        let virtual_deps = [] in
+        Lib_info.Shared.create ~kind ~variant ~default_implementation ~synopsis
+          ~special_builtin_support ~ppx_runtime_deps ~implements ~virtual_deps
+      in
+      Lib_info.create ~loc ~name ~shared ~status ~src_dir ~orig_src_dir
+        ~obj_dir ~version ~main_module_name ~sub_systems ~requires
+        ~foreign_objects ~plugins ~archives ~foreign_archives ~jsoo_runtime
+        ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
+        ~known_implementations ~modes ~wrapped
     in
     Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
 

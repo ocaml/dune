@@ -66,13 +66,24 @@ end
 module Shared : sig
   type t
 
+  val create :
+       synopsis:string option
+    -> kind:Lib_kind.t
+    -> variant:(Loc.t * Variant.t) option
+    -> default_implementation:(Loc.t * Lib_name.t) option
+    -> special_builtin_support:Special_builtin_support.t option
+    -> implements:(Loc.t * Lib_name.t) option
+    -> virtual_deps:(Loc.t * Lib_name.t) list
+    -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
+    -> t
+
   val fields : dune_file:bool -> t Dune_lang.Decoder.fields_parser
 
-  val implements : t -> (Stdune.Loc.t * Lib_name.t) option
+  val implements : t -> (Loc.t * Lib_name.t) option
 
-  val variant : t -> (Stdune.Loc.t * Variant.t) option
+  val variant : t -> (Loc.t * Variant.t) option
 
-  val default_implementation : t -> (Stdune.Loc.t * Lib_name.t) option
+  val default_implementation : t -> (Loc.t * Lib_name.t) option
 
   val special_builtin_support : t -> Special_builtin_support.t option
 
@@ -99,7 +110,7 @@ val src_dir : 'path t -> 'path
 
 val status : _ t -> Status.t
 
-val variant : 'a t -> (Stdune.Loc.t * Variant.t) option
+val variant : 'a t -> (Loc.t * Variant.t) option
 
 val default_implementation : _ t -> (Loc.t * Lib_name.t) option
 
@@ -171,40 +182,6 @@ val for_dune_package :
 val map_path : 'a t -> f:('a -> 'a) -> 'a t
 
 val create :
-     loc:Loc.t
-  -> name:Lib_name.t
-  -> kind:Lib_kind.t
-  -> status:Status.t
-  -> src_dir:'a
-  -> orig_src_dir:'a option
-  -> obj_dir:'a Obj_dir.t
-  -> version:string option
-  -> synopsis:string option
-  -> main_module_name:Main_module_name.t
-  -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
-  -> requires:Lib_dep.t list
-  -> foreign_objects:'a list Source.t
-  -> plugins:'a list Mode.Dict.t
-  -> archives:'a list Mode.Dict.t
-  -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
-  -> foreign_archives:'a list Mode.Dict.t
-  -> jsoo_runtime:'a list
-  -> jsoo_archive:'a option
-  -> pps:(Loc.t * Lib_name.t) list
-  -> enabled:Enabled_status.t
-  -> virtual_deps:(Loc.t * Lib_name.t) list
-  -> dune_version:Dune_lang.Syntax.Version.t option
-  -> virtual_:Modules.t Source.t option
-  -> implements:(Loc.t * Lib_name.t) option
-  -> variant:(Loc.t * Variant.t) option
-  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
-  -> default_implementation:(Loc.t * Lib_name.t) option
-  -> modes:Mode.Dict.Set.t
-  -> wrapped:Wrapped.t Inherited.t option
-  -> special_builtin_support:Special_builtin_support.t option
-  -> 'a t
-
-val create_with_shared :
      loc:Loc.t
   -> name:Lib_name.t
   -> shared:Shared.t

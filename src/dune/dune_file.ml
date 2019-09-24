@@ -803,7 +803,7 @@ module Library = struct
     ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
-    ; stdlib : Lib_std.t option
+    ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     }
@@ -864,7 +864,8 @@ module Library = struct
             Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib"
-           (Dune_lang.Syntax.since Lib_std.syntax (0, 1) >>> Lib_std.decode)
+           ( Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1)
+           >>> Ocaml_stdlib.decode )
        and+ special_builtin_support =
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)

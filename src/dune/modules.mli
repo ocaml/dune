@@ -9,7 +9,7 @@ val lib :
      src_dir:Path.Build.t
   -> main_module_name:Module_name.t option
   -> wrapped:Wrapped.t
-  -> stdlib:Lib_std.t option
+  -> stdlib:Ocaml_stdlib.t option
   -> lib_name:Lib_name.Local.t
   -> implements:bool
   -> modules:Module.Name_map.t

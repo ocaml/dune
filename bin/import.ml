@@ -32,11 +32,10 @@ let make_memory () =
   let handle = function
     | Dune_manager.Client.Dedup (target, source, digest) ->
       Scheduler.send_dedup target source digest
-  and finally = Scheduler.send_dune_cache_disconnected in
+  in
   match Sys.getenv_opt "DUNE_CACHE" with
   | Some _ ->
-    Fiber.return
-      (Some (Result.ok_exn (Dune_manager.Client.make ~finally handle)))
+    Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make handle)))
   | _ -> Fiber.return None
 
 module Main = struct

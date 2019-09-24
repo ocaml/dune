@@ -63,11 +63,13 @@ module Event : sig
     | Files_changed
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
-    | Dune_cache_disconnected
 
   (** Return the next event. File changes event are always flattened and
       returned first. *)
   val next : unit -> t
+
+  (** Handle all enqueued deduplications. *)
+  val flush_dedup : unit -> unit
 
   (** Ignore the ne next file change event about this file. *)
   val ignore_next_file_change_event : Path.t -> unit
@@ -86,22 +88,15 @@ module Event : sig
   val send_signal : Signal.t -> unit
 
   val send_dedup : Path.Build.t -> Path.t -> Digest.t -> unit
-
-  val send_dune_cache_disconnected : unit -> unit
-
-  val dune_cache_disconnected : bool ref
 end = struct
   type t =
     | Files_changed
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
-    | Dune_cache_disconnected
 
   let jobs_completed = Queue.create ()
 
   let dedup_pending = Queue.create ()
-
-  let dune_cache_disconnected = ref false
 
   let files_changed = ref []
 
@@ -130,36 +125,38 @@ end = struct
       && Signal.Set.is_empty !signals
       && Queue.is_empty dedup_pending )
 
+  let dedup () =
+    if not (Queue.is_empty dedup_pending) then (
+      let target, source, digest = Queue.pop dedup_pending in
+      ( match Cached_digest.peek_file (Path.build target) with
+      | None -> ()
+      | Some d when not (Digest.equal d digest) -> ()
+      | _ -> (
+        let target = Path.Build.to_string target in
+        let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
+        Log.infof "deduplicate %s from %s" target (Path.to_string source);
+        let rm p = try Unix.unlink p with _ -> () in
+        try
+          rm tmpname;
+          Unix.link (Path.to_string source) tmpname;
+          Unix.rename tmpname target
+        with Unix.Unix_error (e, syscall, _) ->
+          rm tmpname;
+          Log.infof "error handling dune-cache command: %s: %s" syscall
+            (Unix.error_message e) ) );
+      true
+    ) else
+      false
+
+  let rec flush_dedup () = if dedup () then flush_dedup ()
+
   let next () =
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
-      if not (Queue.is_empty dedup_pending) then (
-        match Queue.pop dedup_pending with
-        | Some (target, source, digest) ->
-          ( match Cached_digest.peek_file (Path.build target) with
-          | None -> ()
-          | Some d when not (Digest.equal d digest) -> ()
-          | _ -> (
-            let target = Path.Build.to_string target in
-            let tmpname =
-              Path.Build.to_string (Path.Build.of_string ".dedup")
-            in
-            Log.infof "deduplicate %s from %s" target (Path.to_string source);
-            let rm p = try Unix.unlink p with _ -> () in
-            try
-              rm tmpname;
-              Unix.link (Path.to_string source) tmpname;
-              Unix.rename tmpname target
-            with Unix.Unix_error (e, syscall, _) ->
-              rm tmpname;
-              Log.infof "error handling dune-cache command: %s: %s" syscall
-                (Unix.error_message e) ) );
-          loop ()
-        | None ->
-          dune_cache_disconnected := true;
-          Dune_cache_disconnected
-      ) else (
+      if dedup () then
+        loop ()
+      else (
         while not (available ()) do
           Condition.wait cond mutex
         done;
@@ -216,17 +213,12 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
-  let send_dune_cache v =
+  let send_dedup target source digest =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push v dedup_pending;
+    Queue.push (target, source, digest) dedup_pending;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
-
-  let send_dedup target source digest =
-    send_dune_cache (Some (target, source, digest))
-
-  let send_dune_cache_disconnected () = send_dune_cache None
 
   let pending_jobs () = !pending_jobs
 end
@@ -600,9 +592,7 @@ let wait_for_process pid =
   Process_watcher.register_job { pid; ivar };
   Fiber.Ivar.read ivar
 
-let rec wait_for_dune_cache () =
-  if not !Event.dune_cache_disconnected then
-    if Event.next () <> Dune_cache_disconnected then wait_for_dune_cache ()
+let wait_for_dune_cache () = Event.flush_dedup ()
 
 let rec restart_waiting_for_available_job t =
   if
@@ -712,7 +702,6 @@ end = struct
       | Signal signal ->
         got_signal signal;
         Fiber.return Got_signal
-      | Dune_cache_disconnected -> pump_events t
     )
 
   type run_error =
@@ -802,7 +791,6 @@ let poll ?config ~once ~finally () =
     | Signal signal ->
       got_signal signal;
       Exit
-    | Dune_cache_disconnected -> Continue
   in
   let wait msg =
     Console.Status_line.set_temporarily
@@ -838,5 +826,3 @@ let poll ?config ~once ~finally () =
   | Some bt -> Exn.raise_with_backtrace exn bt
 
 let send_dedup = Event.send_dedup
-
-let send_dune_cache_disconnected = Event.send_dune_cache_disconnected

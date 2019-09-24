@@ -28,7 +28,6 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
-(* FIXME: leverage fibers to actually connect in the background *)
 let make_memory () =
   let handle = function
     | Dune_manager.Client.Dedup (target, source, digest) ->

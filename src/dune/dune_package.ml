@@ -105,17 +105,12 @@ module Lib = struct
     let open Dune_lang.Decoder in
     let path = Dpath.Local.decode ~dir:base in
     let field_l s x = field ~default:[] s (repeat x) in
-    let libs s = field_l s (located Lib_name.decode) in
     let paths s = field_l s path in
     let mode_paths name =
       field ~default:Mode.Dict.List.empty name (Mode.Dict.List.decode path)
     in
     fields
       (let* main_module_name = field_o "main_module_name" Module_name.decode in
-       let* implements = field_o "implements" (located Lib_name.decode) in
-       let* default_implementation =
-         field_o "default_implementation" (located Lib_name.decode)
-       in
        let* name = field "name" Lib_name.decode in
        let dir = Path.append_local base (dir_of_name name) in
        let* obj_dir = field_o "obj_dir" (Obj_dir.decode ~dir) in
@@ -124,10 +119,10 @@ module Lib = struct
          | None -> Obj_dir.make_external_no_private ~dir
          | Some obj_dir -> obj_dir
        in
-       let+ synopsis = field_o "synopsis" string
-       and+ loc = loc
+       let* shared = Lib_info.Shared.fields ~dune_file:false in
+       let implements = Lib_info.Shared.implements shared in
+       let+ loc = loc
        and+ modes = field_l "modes" Mode.decode
-       and+ kind = field "kind" Lib_kind.decode
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
@@ -135,7 +130,6 @@ module Lib = struct
        and+ jsoo_runtime = paths "jsoo_runtime"
        and+ requires =
          field_l "requires" (Lib_dep.decode ~allow_re_export:true)
-       and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =
          field_l "known_implementations"
@@ -148,10 +142,6 @@ module Lib = struct
            (Modules.decode
               ~implements:(Option.is_some implements)
               ~src_dir ~version:lang.version)
-       and+ special_builtin_support =
-         field_o "special_builtin_support"
-           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Lib_info.Special_builtin_support.decode )
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations
@@ -166,7 +156,6 @@ module Lib = struct
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let jsoo_archive = None in
          let pps = [] in
-         let virtual_deps = [] in
          let dune_version = None in
          let virtual_ =
            if virtual_ then
@@ -175,18 +164,15 @@ module Lib = struct
            else
              None
          in
-         let variant = None in
          let wrapped =
            Option.map modules ~f:Modules.wrapped
            |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
          in
-         Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
-           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
-           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-           ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
-           ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
-           ~known_implementations ~default_implementation ~modes ~wrapped
-           ~special_builtin_support
+         Lib_info.create_with_shared ~loc ~name ~shared ~status ~src_dir
+           ~orig_src_dir ~obj_dir ~version ~main_module_name ~sub_systems
+           ~requires ~foreign_objects ~plugins ~archives ~foreign_archives
+           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
+           ~known_implementations ~modes ~wrapped
        in
        { info; main_module_name; modules })
 

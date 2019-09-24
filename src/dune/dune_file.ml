@@ -831,7 +831,7 @@ module Library = struct
            ( Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1)
            >>> Ocaml_stdlib.decode )
        and+ enabled_if = enabled_if ~since:(Some (1, 10))
-       and+ shared = Lib_info.Shared.fields in
+       and+ shared = Lib_info.Shared.fields ~dune_file:true in
        let implements = Lib_info.Shared.implements shared in
        let special_builtin_support =
          Lib_info.Shared.special_builtin_support shared

@@ -131,32 +131,43 @@ module Shared = struct
     ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
     }
 
-  let fields =
+  let fields ~dune_file =
     let open Dune_lang.Decoder in
+    let variant =
+      if dune_file then
+        fun decode ->
+      Dune_lang.Syntax.since Variant.syntax (0, 1) >>> decode
+      else
+        Fn.id
+    in
+    let stanza ~min =
+      if dune_file then
+        fun decode ->
+      Dune_lang.Syntax.since Stanza.syntax min >>> decode
+      else
+        Fn.id
+    in
     let+ synopsis = field_o "synopsis" string
     and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
-    and+ variant =
-      field_o "variant"
-        ( Dune_lang.Syntax.since Variant.syntax (0, 1)
-          >>> located Variant.decode )
+    and+ variant = field_o "variant" (variant (located Variant.decode))
     and+ default_implementation =
-      field_o "default_implementation"
-        ( Dune_lang.Syntax.since Variant.syntax (0, 1)
-          >>> located Lib_name.decode )
+      field_o "default_implementation" (variant (located Lib_name.decode))
     and+ special_builtin_support =
       field_o "special_builtin_support"
         ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-          >>> Special_builtin_support.decode )
+        >>> Special_builtin_support.decode )
     and+ implements =
-      field_o "implements"
-        ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
-          >>> located Lib_name.decode )
+      field_o "implements" (stanza ~min:(1, 7) (located Lib_name.decode))
     and+ virtual_deps =
       field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
     and+ ppx_runtime_deps =
-      field "ppx_runtime_libraries"
-        (repeat (located Lib_name.decode))
-        ~default:[]
+      let name =
+        if dune_file then
+          "ppx_runtime_libraries"
+        else
+          "ppx_runtime_deps"
+      in
+      field name (repeat (located Lib_name.decode)) ~default:[]
     in
     { synopsis
     ; kind
@@ -291,7 +302,10 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
             Path.source src_dir |> Path.to_absolute_filename |> Path.of_string
           ) )
   in
-  let shared = Shared.for_dune_package t.shared ~ppx_runtime_deps ~default_implementation ~implements in
+  let shared =
+    Shared.for_dune_package t.shared ~ppx_runtime_deps ~default_implementation
+      ~implements
+  in
   { t with
     shared
   ; requires
@@ -302,15 +316,13 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
   }
 
 let user_written_deps t =
-  List.fold_left (t.shared.virtual_deps @ t.shared.ppx_runtime_deps) ~init:t.requires
-    ~f:(fun acc s -> Lib_dep.Direct s :: acc)
+  List.fold_left (t.shared.virtual_deps @ t.shared.ppx_runtime_deps)
+    ~init:t.requires ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
-let create_with_shared ~loc ~name ~shared ~status ~src_dir ~orig_src_dir ~obj_dir ~version
-    ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~foreign_archives ~jsoo_runtime
-    ~jsoo_archive ~pps ~enabled ~dune_version ~virtual_
-    ~known_implementations ~modes
-    ~wrapped =
+let create_with_shared ~loc ~name ~shared ~status ~src_dir ~orig_src_dir
+    ~obj_dir ~version ~main_module_name ~sub_systems ~requires ~foreign_objects
+    ~plugins ~archives ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps
+    ~enabled ~dune_version ~virtual_ ~known_implementations ~modes ~wrapped =
   { loc
   ; name
   ; status

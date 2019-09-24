@@ -4,6 +4,9 @@ open Stdune
 (** Digest the contents of the following file *)
 val file : Path.t -> Digest.t
 
+(** The digest of the following file, if cached *)
+val peek_file : Path.t -> Digest.t option
+
 (** Clear the following digest from the cache *)
 val remove : Path.t -> unit
 

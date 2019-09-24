@@ -11,8 +11,8 @@ let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
 
 type promotion =
-  | Already_promoted of Path.Build.t * Path.t
-  | Promoted of Path.Build.t * Path.t
+  | Already_promoted of Path.Build.t * Path.t * Digest.t
+  | Promoted of Path.Build.t * Path.t * Digest.t
 
 let key_to_string = Digest.to_string
 
@@ -22,11 +22,11 @@ let key_of_string s =
   | None -> Result.Error (Printf.sprintf "invalid key: %s" s)
 
 let promotion_to_string = function
-  | Already_promoted (original, promoted) ->
+  | Already_promoted (original, promoted, _) ->
     Printf.sprintf "%s already promoted as %s"
       (Path.Local.to_string (Path.Build.local original))
       (Path.to_string promoted)
-  | Promoted (original, promoted) ->
+  | Promoted (original, promoted, _) ->
     Printf.sprintf "%s promoted as %s"
       (Path.Local.to_string (Path.Build.local original))
       (Path.to_string promoted)
@@ -213,14 +213,17 @@ module Memory = struct
           Unix.unlink (Path.to_string tmp);
           Path.touch p;
           Result.Ok
-            (Already_promoted (Path.Build.of_local (Path.local_part path), p))
+            (Already_promoted
+               (Path.Build.of_local (Path.local_part path), p, effective_hash))
         | Collision.Not_found p ->
           mkpath (Path.parent_exn p);
           let dest = Path.to_string p in
           Unix.rename (Path.to_string tmp) dest;
           (* Remove write permissions *)
           Unix.chmod dest (stat.st_perm land 0o555);
-          Result.Ok (Promoted (Path.Build.of_local (Path.local_part path), p))
+          Result.Ok
+            (Promoted
+               (Path.Build.of_local (Path.local_part path), p, effective_hash))
     in
     let f () =
       Result.List.map ~f:promote paths
@@ -235,8 +238,8 @@ module Memory = struct
                   ( Atom "files"
                   :: List.map
                        ~f:(function
-                         | Promoted (o, p)
-                          |Already_promoted (o, p) ->
+                         | Promoted (o, p, _)
+                          |Already_promoted (o, p, _) ->
                            Sexp.List
                              [ Sexp.Atom
                                  (Path.Local.to_string (Path.Build.local o))

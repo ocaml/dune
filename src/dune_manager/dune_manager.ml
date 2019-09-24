@@ -205,11 +205,12 @@ let client_thread (events, client) =
       and f promotion =
         print_endline (Dune_memory.promotion_to_string promotion);
         match promotion with
-        | Already_promoted (f, t) ->
+        | Already_promoted (f, t, d) ->
           Some
             (Sexp.List
                [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
                ; Sexp.Atom (Path.to_string t)
+               ; Sexp.Atom (Digest.to_string d)
                ])
         | _ -> None
       in
@@ -226,6 +227,8 @@ let client_thread (events, client) =
       match List.filter_map ~f promotions with
       | [] -> client
       | dedup ->
+        Log.infof "send deduplication message for %s"
+          (Sexp.to_string (Sexp.List dedup));
         send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
         client )
     | args -> invalid_args args
@@ -424,10 +427,37 @@ module Client = struct
   type t =
     { socket : out_channel
     ; fd : Unix.file_descr
+    ; input : char Stream.t
     ; memory : Dune_memory.Memory.t
+    ; thread : Thread.t
+    ; finally : (unit -> unit) option
     }
 
-  let make () =
+  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+
+  let command_to_dyn = function
+    | Dedup (source, target, hash) ->
+      let open Dyn.Encoder in
+      constr "Dedup"
+        [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
+
+  let read input =
+    let open Result.O in
+    Csexp.parse input
+    >>= function
+    | Sexp.List
+        [ Sexp.Atom "dedup"
+        ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
+        ] -> (
+      match Digest.from_hex digest with
+      | Some digest ->
+        Result.Ok
+          (Dedup (Path.Build.of_string source, Path.of_string target, digest))
+      | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
+    | exp ->
+      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+
+  let make ?finally handle =
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -455,8 +485,24 @@ module Client = struct
       Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
     in
     let socket = Unix.out_channel_of_descr fd in
+    let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+    let rec thread input =
+      match
+        let+ command = read input in
+        Log.infof "dune-cache command: %a" Pp.render_ignore_tags
+          (Dyn.pp (command_to_dyn command));
+        handle command
+      with
+      | Result.Error e ->
+        Log.infof "dune-cache read error: %s" e;
+        Option.iter ~f:(fun f -> f ()) finally
+      | Result.Ok () -> (thread [@tailcall]) input
+    in
     send socket my_versions_command;
-    Result.Ok { socket; fd; memory }
+    (* FIXME: find highest common version *)
+    ignore (read input);
+    let thread = Thread.create thread input in
+    Result.Ok { socket; fd; input; memory; thread; finally }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key
@@ -490,7 +536,7 @@ module Client = struct
 
   let search client key = Dune_memory.Memory.search client.memory key
 
-  let teardown memory =
-    flush memory.socket;
-    Unix.shutdown memory.fd Unix.SHUTDOWN_ALL
+  let teardown client =
+    Unix.shutdown client.fd Unix.SHUTDOWN_SEND;
+    Thread.join client.thread
 end

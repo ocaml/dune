@@ -56,9 +56,10 @@ let clean_path p =
 let promotion_to_string p =
   let p =
     match p with
-    | Dune_memory.Already_promoted (p1, p2) ->
-      Dune_memory.Already_promoted (p1, clean_path p2)
-    | Dune_memory.Promoted (p1, p2) -> Dune_memory.Promoted (p1, clean_path p2)
+    | Dune_memory.Already_promoted (p1, p2, d) ->
+      Dune_memory.Already_promoted (p1, clean_path p2, d)
+    | Dune_memory.Promoted (p1, p2, d) ->
+      Dune_memory.Promoted (p1, clean_path p2, d)
   in
   Option.value_exn
     (String.drop_prefix ~prefix:(Path.to_string dir)

@@ -193,6 +193,20 @@ let readdir path =
     }
     |> Result.ok
 
+let get_vcs ~default:vcs ~path ~files ~dirs =
+  match
+    match
+      List.find_map dirs ~f:(function
+        | ".git", _, _ -> Some Vcs.Kind.Git
+        | ".hg", _, _ -> Some Vcs.Kind.Hg
+        | _ -> None)
+    with
+    | Some kind -> Some kind
+    | None -> Vcs.Kind.of_dir_contents files
+  with
+  | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
+  | None -> vcs
+
 let load path ~ancestor_vcs ~recognize_jbuilder_projects =
   let open Result.O in
   let nb_path_visited = ref 0 in
@@ -212,20 +226,7 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
              ~infer_from_opam_files:recognize_jbuilder_projects)
           ~default:parent_project
     in
-    let vcs =
-      match
-        match
-          List.find_map dirs ~f:(function
-            | ".git", _, _ -> Some Vcs.Kind.Git
-            | ".hg", _, _ -> Some Vcs.Kind.Hg
-            | _ -> None)
-        with
-        | Some kind -> Some kind
-        | None -> Vcs.Kind.of_dir_contents files
-      with
-      | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
-      | None -> vcs
-    in
+    let vcs = get_vcs ~default:vcs ~dirs ~files ~path in
     let contents =
       lazy
         (let dune_file, sub_dirs =
@@ -260,52 +261,53 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
            )
          in
          let sub_dirs =
-           Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
-         in
-         let sub_dirs =
-           dirs
-           |> List.fold_left ~init:String.Map.empty
-                ~f:(fun acc (fn, path, file) ->
-                  let status =
-                    if Bootstrap.data_only_path path then
-                      Sub_dirs.Status.Or_ignored.Ignored
-                    else
-                      Sub_dirs.status sub_dirs ~dir:fn
-                  in
-                  match status with
-                  | Ignored -> acc
-                  | Status status -> (
-                    let dir_status : Sub_dirs.Status.t =
-                      match (dir_status, status) with
-                      | Data_only, _ -> Data_only
-                      | Vendored, Normal -> Vendored
-                      | _, _ -> status
-                    in
-                    let dirs_visited =
-                      if Sys.win32 then
-                        dirs_visited
-                      else
-                        match File.Map.find dirs_visited file with
-                        | None -> File.Map.set dirs_visited file path
-                        | Some first_path ->
-                          User_error.raise
-                            [ Pp.textf
-                                "Path %s has already been scanned. Cannot \
-                                 scan it again through symlink %s"
-                                (Path.Source.to_string_maybe_quoted first_path)
-                                (Path.Source.to_string_maybe_quoted path)
-                            ]
-                    in
-                    match
-                      let+ x = readdir path in
-                      walk path ~dirs_visited ~project ~dir_status ~vcs x
-                    with
-                    | Ok dir -> String.Map.set acc fn dir
-                    | Error _ -> acc ))
+           get_sub_dirs ~project ~dirs ~sub_dirs ~dir_status ~dirs_visited ~vcs
          in
          { Dir.files; sub_dirs; dune_file })
     in
     Dir.create ~path ~contents ~status:dir_status ~project ~vcs
+  and get_sub_dirs ~vcs ~project ~dirs ~sub_dirs ~dir_status ~dirs_visited =
+    let sub_dirs =
+      Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
+    in
+    dirs
+    |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, file) ->
+           let status =
+             if Bootstrap.data_only_path path then
+               Sub_dirs.Status.Or_ignored.Ignored
+             else
+               Sub_dirs.status sub_dirs ~dir:fn
+           in
+           match status with
+           | Ignored -> acc
+           | Status status -> (
+             let dir_status : Sub_dirs.Status.t =
+               match (dir_status, status) with
+               | Data_only, _ -> Data_only
+               | Vendored, Normal -> Vendored
+               | _, _ -> status
+             in
+             let dirs_visited =
+               if Sys.win32 then
+                 dirs_visited
+               else
+                 match File.Map.find dirs_visited file with
+                 | None -> File.Map.set dirs_visited file path
+                 | Some first_path ->
+                   User_error.raise
+                     [ Pp.textf
+                         "Path %s has already been scanned. Cannot scan it \
+                          again through symlink %s"
+                         (Path.Source.to_string_maybe_quoted first_path)
+                         (Path.Source.to_string_maybe_quoted path)
+                     ]
+             in
+             match
+               let+ x = readdir path in
+               walk path ~dirs_visited ~project ~dir_status ~vcs x
+             with
+             | Ok dir -> String.Map.set acc fn dir
+             | Error _ -> acc ))
   in
   let walk =
     let+ x = readdir path in

@@ -232,32 +232,29 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
         (let dune_file, sub_dirs =
            if dir_status = Data_only then
              (None, Sub_dirs.default)
+           else if
+             (not recognize_jbuilder_projects) && String.Set.mem files "jbuild"
+           then
+             User_error.raise
+               ~loc:
+                 (Loc.in_file
+                    (Path.source (Path.Source.relative path "jbuild")))
+               [ Pp.text
+                   "jbuild files are no longer supported, please convert this \
+                    file to a dune file instead."
+               ; Pp.text
+                   "Note: You can use \"dune upgrade\" to convert your \
+                    project to dune."
+               ]
+           else if not (String.Set.mem files "dune") then
+             (None, Sub_dirs.default)
            else (
-             if
-               (not recognize_jbuilder_projects)
-               && String.Set.mem files "jbuild"
-             then
-               User_error.raise
-                 ~loc:
-                   (Loc.in_file
-                      (Path.source (Path.Source.relative path "jbuild")))
-                 [ Pp.text
-                     "jbuild files are no longer supported, please convert \
-                      this file to a dune file instead."
-                 ; Pp.text
-                     "Note: You can use \"dune upgrade\" to convert your \
-                      project to dune."
-                 ];
-             if not (String.Set.mem files "dune") then
-               (None, Sub_dirs.default)
-             else (
-               ignore
-                 ( Dune_project.ensure_project_file_exists project
-                   : Dune_project.created_or_already_exist );
-               let file = Path.Source.relative path "dune" in
-               let dune_file, sub_dirs = Dune_file.load file ~project in
-               (Some dune_file, sub_dirs)
-             )
+             ignore
+               ( Dune_project.ensure_project_file_exists project
+                 : Dune_project.created_or_already_exist );
+             let file = Path.Source.relative path "dune" in
+             let dune_file, sub_dirs = Dune_file.load file ~project in
+             (Some dune_file, sub_dirs)
            )
          in
          let sub_dirs =

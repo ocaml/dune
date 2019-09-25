@@ -306,8 +306,8 @@ and escape_sequence = parse
   | newline
     { Lexing.new_line lexbuf;
       Newline }
-  | "%{" as s
-    { Template.Buffer.add_text s;
+  | '%'
+    { Template.Buffer.add_text_c '%';
       Other
     }
   | ['\\' '\'' '"' 'n' 't' 'b' 'r'] as c

@@ -51,7 +51,7 @@ type todo =
   }
 
 let rename_basename base =
-  match String.drop_prefix base ~prefix:"jbuild" with
+  match String.drop_prefix base ~prefix:File_tree.Dune_file.jbuild_fname with
   | None -> base
   | Some suffix -> "dune" ^ suffix
 
@@ -360,8 +360,12 @@ let upgrade_dir todo dir =
         let fn = Package.opam_file pkg in
         if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   );
-  if String.Set.mem (File_tree.Dir.files dir) "jbuild" then
-    let fn = Path.Source.relative (File_tree.Dir.path dir) "jbuild" in
+  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
+  then
+    let fn =
+      Path.Source.relative (File_tree.Dir.path dir)
+        File_tree.Dune_file.jbuild_fname
+    in
     if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
       User_warning.emit
         ~loc:(Loc.in_file (Path.source fn))

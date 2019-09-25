@@ -14,6 +14,8 @@ module Dune_file : sig
       }
   end
 
+  val jbuild_fname : string
+
   type t = private
     | Plain of Plain.t
     | Ocaml_script of Path.Source.t

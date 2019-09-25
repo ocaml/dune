@@ -35,6 +35,10 @@ module Dune_file = struct
       }
   end
 
+  let fname = "dune"
+
+  let jbuild_fname = "jbuild"
+
   type t =
     | Plain of Plain.t
     | Ocaml_script of Path.Source.t
@@ -163,7 +167,9 @@ let readdir path =
       ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
       ; Pp.textf "to the dune file: %s"
           (Path.Source.to_string_maybe_quoted
-             (Path.Source.relative (Path.Source.parent_exn path) "dune"))
+             (Path.Source.relative
+                (Path.Source.parent_exn path)
+                Dune_file.fname))
       ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
       ];
     Error unix_error
@@ -230,12 +236,14 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
            if dir_status = Data_only then
              (None, Sub_dirs.default)
            else if
-             (not recognize_jbuilder_projects) && String.Set.mem files "jbuild"
+             (not recognize_jbuilder_projects)
+             && String.Set.mem files Dune_file.jbuild_fname
            then
              User_error.raise
                ~loc:
                  (Loc.in_file
-                    (Path.source (Path.Source.relative path "jbuild")))
+                    (Path.source
+                       (Path.Source.relative path Dune_file.jbuild_fname)))
                [ Pp.text
                    "jbuild files are no longer supported, please convert this \
                     file to a dune file instead."
@@ -243,13 +251,13 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
                    "Note: You can use \"dune upgrade\" to convert your \
                     project to dune."
                ]
-           else if not (String.Set.mem files "dune") then
+           else if not (String.Set.mem files Dune_file.fname) then
              (None, Sub_dirs.default)
            else (
              ignore
                ( Dune_project.ensure_project_file_exists project
                  : Dune_project.created_or_already_exist );
-             let file = Path.Source.relative path "dune" in
+             let file = Path.Source.relative path Dune_file.fname in
              let dune_file, sub_dirs = Dune_file.load file ~project in
              (Some dune_file, sub_dirs)
            )

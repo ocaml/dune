@@ -537,7 +537,7 @@ module Buildable = struct
     ; c_names : Ordered_set_lang.t option
     ; cxx_names : Ordered_set_lang.t option
     ; preprocess : Preprocess_map.t
-    ; preprocessor_deps : Dep_conf.t list
+    ; preprocessor_deps : Loc.t * Dep_conf.t list
     ; lint : Preprocess_map.t
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
@@ -554,7 +554,7 @@ module Buildable = struct
     and+ preprocess =
       field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
     and+ preprocessor_deps =
-      field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[]
+      located (field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[])
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ c_flags = Dune_env.Stanza.c_flags ~since:since_c
     and+ c_names = field_o "c_names" (check_c Ordered_set_lang.decode)

@@ -1,0 +1,11 @@
+(executable
+ (name a)
+ (modules a)
+ ;(preprocess (pps ppx_deriving.std))
+ (preprocessor_deps does-not-exist.txt))
+
+(library
+ (name b)
+ (modules b)
+ (preprocess future_syntax)
+ (preprocessor_deps does-not-exist.txt))

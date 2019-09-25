@@ -14,12 +14,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let modules =
     Dir_contents.modules_of_executables dir_contents ~first_exe ~obj_dir
   in
-  let preprocessor_deps =
-    SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
-  in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander
-      ~preprocess:exes.buildable.preprocess ~preprocessor_deps
+      ~preprocess:exes.buildable.preprocess
+      ~preprocessor_deps:exes.buildable.preprocessor_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
   let modules =

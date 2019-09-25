@@ -1607,6 +1607,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name unused-preprocessor-deps)
+ (deps (package dune) (source_tree test-cases/unused-preprocessor-deps))
+ (action
+  (chdir
+   test-cases/unused-preprocessor-deps
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name upgrader)
  (deps (package dune) (source_tree test-cases/upgrader))
  (action
@@ -2003,6 +2011,7 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
+  (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias use-meta)
   (alias variables-for-artifacts)
@@ -2199,6 +2208,7 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
+  (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
   (alias variant-dep-stack)

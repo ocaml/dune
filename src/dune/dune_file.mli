@@ -106,6 +106,10 @@ module Dep_conf : sig
   val to_dyn : t Dyn.Encoder.t
 end
 
+(** [preprocess] and [preprocessor_deps] fields *)
+val preprocess_fields :
+  (Preprocess_map.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
+
 module Buildable : sig
   type t =
     { loc : Loc.t
@@ -116,7 +120,7 @@ module Buildable : sig
     ; c_names : Ordered_set_lang.t option
     ; cxx_names : Ordered_set_lang.t option
     ; preprocess : Preprocess_map.t
-    ; preprocessor_deps : Loc.t * Dep_conf.t list
+    ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t

@@ -566,12 +566,6 @@ type t = (Module.t -> lint:bool -> Module.t) Per_module.t
 
 let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
-let is_preprocessing t =
-  Per_module.fold t ~init:true ~f:(fun p acc ->
-      match p with
-      | Preprocess.Without_future_syntax.No_preprocessing -> false
-      | _ -> acc)
-
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocess =
@@ -580,15 +574,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           (Super_context.context sctx).version)
   in
   let preprocessor_deps =
-    let loc, deps = preprocessor_deps in
-    ( if not (is_preprocessing preprocess) && not (List.is_empty deps) then
-      let is_error = Dune_project.dune_version (Scope.project scope) >= (2, 0) in
-      User_warning.emit ~loc ~is_error
-        [ Pp.text
-            "This preprocessor_deps field will be ignored because no \
-             preprocessor is configured."
-        ] );
-    SC.Deps.interpret sctx deps ~expander |> Build.memoize "preprocessor deps"
+    SC.Deps.interpret sctx preprocessor_deps ~expander
+    |> Build.memoize "preprocessor deps"
   in
   let lint_module =
     Staged.unstage

@@ -28,6 +28,8 @@ module type S = sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
+
+  val exists : 'a t -> f:('a -> bool) -> bool
 end
 
 module Make (Key : Map.Key) : S with type key = Key.t

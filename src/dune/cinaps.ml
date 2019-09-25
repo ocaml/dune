@@ -7,7 +7,7 @@ type t =
   ; files : Predicate_lang.t
   ; libraries : Lib_dep.t list
   ; preprocess : Dune_file.Preprocess_map.t
-  ; preprocessor_deps : Loc.t * Dune_file.Dep_conf.t list
+  ; preprocessor_deps : Dune_file.Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
   }
 
@@ -22,14 +22,7 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.decode ~default:Predicate_lang.true_
-     and+ preprocess =
-       field "preprocess" Dune_file.Preprocess_map.decode
-         ~default:Dune_file.Preprocess_map.default
-     and+ preprocessor_deps =
-       located
-         (field "preprocessor_deps"
-            (repeat Dune_file.Dep_conf.decode)
-            ~default:[])
+     and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
        field "libraries"
          (Dune_file.Lib_deps.decode ~allow_re_export:false)

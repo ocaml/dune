@@ -10,12 +10,12 @@ Should warn.
   5 |  (preprocessor_deps does-not-exist.txt))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: This preprocessor_deps field will be ignored because no preprocessor
-  is configured.
+  that might use them is configured.
   File "dune", line 11, characters 1-39:
   11 |  (preprocessor_deps does-not-exist.txt))
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: This preprocessor_deps field will be ignored because no preprocessor
-  is configured.
+  that might use them is configured.
 
   $ echo "(lang dune 2.0)" > dune-project
   $ dune build
@@ -23,5 +23,5 @@ Should warn.
   5 |  (preprocessor_deps does-not-exist.txt))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: This preprocessor_deps field will be ignored because no preprocessor
-  is configured.
+  that might use them is configured.
   [1]

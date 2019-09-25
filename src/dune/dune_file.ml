@@ -527,6 +527,40 @@ end
 
 let modules_field name = Ordered_set_lang.field name
 
+let preprocess_fields =
+  let+ preprocess =
+    field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
+  and+ preprocessor_deps =
+    field_o "preprocessor_deps"
+      (let+ loc = loc
+       and+ l = repeat Dep_conf.decode in
+       (loc, l))
+  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+  let preprocessor_deps =
+    match preprocessor_deps with
+    | None -> []
+    | Some (loc, deps) ->
+      let deps_might_be_used =
+        Per_module.exists preprocess ~f:(fun p ->
+            match (p : Preprocess.t) with
+            | Action _
+             |Pps _ ->
+              true
+            | No_preprocessing
+             |Future_syntax _ ->
+              false)
+      in
+      if not deps_might_be_used then
+        User_warning.emit ~loc
+          ~is_error:(syntax >= (2, 0))
+          [ Pp.text
+              "This preprocessor_deps field will be ignored because no \
+               preprocessor that might use them is configured."
+          ];
+      deps
+  in
+  (preprocess, preprocessor_deps)
+
 module Buildable = struct
   type t =
     { loc : Loc.t
@@ -551,10 +585,7 @@ module Buildable = struct
       | Some v -> Dune_lang.Syntax.since Stanza.syntax v >>> t
     in
     let+ loc = loc
-    and+ preprocess =
-      field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
-    and+ preprocessor_deps =
-      field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[]
+    and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ c_flags = Dune_env.Stanza.c_flags ~since:since_c
     and+ c_names = field_o "c_names" (check_c Ordered_set_lang.decode)

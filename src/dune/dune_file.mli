@@ -106,6 +106,10 @@ module Dep_conf : sig
   val to_dyn : t Dyn.Encoder.t
 end
 
+(** [preprocess] and [preprocessor_deps] fields *)
+val preprocess_fields :
+  (Preprocess_map.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
+
 module Buildable : sig
   type t =
     { loc : Loc.t

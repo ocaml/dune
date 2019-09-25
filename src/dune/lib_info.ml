@@ -1,5 +1,79 @@
 open Stdune
 
+module Inherited = struct
+  type 'a t =
+    | This of 'a
+    | From of (Loc.t * Lib_name.t)
+end
+
+module Main_module_name = struct
+  type t = Module_name.t option Inherited.t
+end
+
+module Special_builtin_support = struct
+  module Build_info = struct
+    type api_version = V1
+
+    let supported_api_versions = [ (1, V1) ]
+
+    type t =
+      { data_module : string
+      ; api_version : api_version
+      }
+
+    let decode =
+      let open Dune_lang.Decoder in
+      fields
+        (let+ data_module = field "data_module" string
+         and+ api_version =
+           field "api_version"
+             (let+ loc = loc
+              and+ ver = int in
+              match List.assoc supported_api_versions ver with
+              | Some x -> x
+              | None ->
+                User_error.raise ~loc
+                  [ Pp.textf
+                      "API version %d is not supported. Only the following \
+                       versions are currently supported:"
+                      ver
+                  ; Pp.enumerate supported_api_versions ~f:(fun (n, _) ->
+                        Pp.textf "%d" n)
+                  ])
+         in
+         { data_module; api_version })
+
+    let encode { data_module; api_version } =
+      let open Dune_lang.Encoder in
+      record_fields
+        [ field "data_module" string data_module
+        ; field "api_version" int
+            ( match api_version with
+            | V1 -> 1 )
+        ]
+  end
+
+  type t =
+    | Findlib_dynload
+    | Build_info of Build_info.t
+
+  let decode =
+    let open Dune_lang.Decoder in
+    sum
+      [ ("findlib_dynload", return Findlib_dynload)
+      ; ( "build_info"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
+          and+ info = Build_info.decode in
+          Build_info info )
+      ]
+
+  let encode t =
+    match t with
+    | Findlib_dynload -> Dune_lang.atom "findlib_dynload"
+    | Build_info x ->
+      Dune_lang.List (Dune_lang.atom "build_info" :: Build_info.encode x)
+end
+
 module Status = struct
   type t =
     | Installed
@@ -73,11 +147,10 @@ type 'path t =
   ; variant : Variant.t option
   ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
   ; default_implementation : (Loc.t * Lib_name.t) option
-  ; wrapped : Wrapped.t Dune_file.Library.Inherited.t option
-  ; main_module_name : Dune_file.Library.Main_module_name.t
+  ; wrapped : Wrapped.t Inherited.t option
+  ; main_module_name : Main_module_name.t
   ; modes : Mode.Dict.Set.t
-  ; special_builtin_support :
-      Dune_file.Library.Special_builtin_support.t option
+  ; special_builtin_support : Special_builtin_support.t option
   }
 
 let name t = t.name
@@ -173,129 +246,6 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
 let user_written_deps t =
   List.fold_left (t.virtual_deps @ t.ppx_runtime_deps) ~init:t.requires
     ~f:(fun acc s -> Lib_dep.Direct s :: acc)
-
-let of_library_stanza ~dir
-    ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
-    ~known_implementations (conf : Dune_file.Library.t) =
-  let _loc, lib_name = conf.name in
-  let obj_dir = Dune_file.Library.obj_dir ~dir conf in
-  let gen_archive_file ~dir ext =
-    Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext)
-  in
-  let archive_file = gen_archive_file ~dir in
-  let archive_files ~f_ext =
-    Mode.Dict.of_func (fun ~mode -> [ archive_file (f_ext mode) ])
-  in
-  let jsoo_runtime =
-    List.map conf.buildable.js_of_ocaml.javascript_files
-      ~f:(Path.Build.relative dir)
-  in
-  let status =
-    match conf.public with
-    | None -> Status.Private conf.project
-    | Some p -> Public (Dune_project.name conf.project, p.package)
-  in
-  let virtual_library = Dune_file.Library.is_virtual conf in
-  let foreign_archives =
-    let stubs =
-      if Dune_file.Library.has_stubs conf then
-        [ Dune_file.Library.stubs_archive conf ~dir ~ext_lib ]
-      else
-        []
-    in
-    { Mode.Dict.byte = stubs
-    ; native =
-        Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-        :: stubs
-    }
-  in
-  let foreign_archives =
-    match conf.stdlib with
-    | Some { exit_module = Some m; _ } ->
-      let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
-      { Mode.Dict.byte =
-          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
-          :: foreign_archives.byte
-      ; native =
-          Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          :: Path.Build.extend_basename obj_name ~suffix:ext_obj
-          :: foreign_archives.native
-      }
-    | _ -> foreign_archives
-  in
-  let jsoo_archive =
-    Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
-  in
-  let virtual_ = Option.map conf.virtual_modules ~f:(fun _ -> Source.Local) in
-  let foreign_objects = Source.Local in
-  let archives, plugins =
-    if virtual_library then
-      (Mode.Dict.make_both [], Mode.Dict.make_both [])
-    else
-      ( archive_files ~f_ext:Mode.compiled_lib_ext
-      , archive_files ~f_ext:Mode.plugin_ext )
-  in
-  let main_module_name = Dune_file.Library.main_module_name conf in
-  let name = Dune_file.Library.best_name conf in
-  let modes = Dune_file.Mode_conf.Set.eval ~has_native conf.modes in
-  let enabled =
-    let enabled_if_result =
-      Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
-          match
-            (String_with_vars.Var.name v, String_with_vars.Var.payload v)
-          with
-          | var, None ->
-            let value = Lib_config.get_for_enabled_if lib_config ~var in
-            Some [ String value ]
-          | _ -> None)
-    in
-    if not enabled_if_result then
-      Enabled_status.Disabled_because_of_enabled_if
-    else if conf.optional then
-      Optional
-    else
-      Normal
-  in
-  let version =
-    match status with
-    | Public (_, pkg) -> pkg.version
-    | Installed
-     |Private _ ->
-      None
-  in
-  let requires = conf.buildable.libraries in
-  { loc = conf.buildable.loc
-  ; name
-  ; kind = conf.kind
-  ; src_dir = dir
-  ; orig_src_dir = None
-  ; obj_dir
-  ; version
-  ; synopsis = conf.synopsis
-  ; archives
-  ; plugins
-  ; enabled
-  ; foreign_objects
-  ; foreign_archives
-  ; jsoo_runtime
-  ; jsoo_archive
-  ; status
-  ; virtual_deps = conf.virtual_deps
-  ; requires
-  ; ppx_runtime_deps = conf.ppx_runtime_libraries
-  ; pps = Dune_file.Preprocess_map.pps conf.buildable.preprocess
-  ; sub_systems = conf.sub_systems
-  ; dune_version = Some conf.dune_version
-  ; virtual_
-  ; implements = conf.implements
-  ; variant = conf.variant
-  ; known_implementations
-  ; default_implementation = conf.default_implementation
-  ; main_module_name
-  ; modes
-  ; wrapped = Some conf.wrapped
-  ; special_builtin_support = conf.special_builtin_support
-  }
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects

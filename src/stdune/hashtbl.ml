@@ -6,44 +6,28 @@ module Make (H : sig
   val to_dyn : t -> Dyn.t
 end) =
 struct
-  module Table = MoreLabels.Hashtbl.Make (H)
+  include MoreLabels.Hashtbl.Make (H)
 
-  include struct
-    open Table
+  let find = find_opt
 
-    [@@@warning "-32"]
+  let find_exn t key =
+    match find_opt t key with
+    | Some v -> v
+    | None -> Code_error.raise "Hashtbl.find_exn" [ ("key", H.to_dyn key) ]
 
-    let find_opt t key =
-      match find t key with
-      | x -> Some x
-      | exception Not_found -> None
-  end
+  let set t key data = add t ~key ~data
 
-  include Table
+  let find_or_add t key ~f =
+    match find t key with
+    | Some x -> x
+    | None ->
+      let x = f key in
+      set t key x;
+      x
 
-  include struct
-    let find = find_opt
+  let foldi t ~init ~f = fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
 
-    let find_exn t key =
-      match find_opt t key with
-      | Some v -> v
-      | None -> Code_error.raise "Hashtbl.find_exn" [ ("key", H.to_dyn key) ]
-
-    let set t key data = add t ~key ~data
-
-    let find_or_add t key ~f =
-      match find t key with
-      | Some x -> x
-      | None ->
-        let x = f key in
-        set t key x;
-        x
-
-    let foldi t ~init ~f =
-      fold t ~init ~f:(fun ~key ~data acc -> f key data acc)
-
-    let fold t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
-  end
+  let fold t ~init ~f = foldi t ~init ~f:(fun _ x -> f x)
 
   let of_list l =
     let h = create (List.length l) in

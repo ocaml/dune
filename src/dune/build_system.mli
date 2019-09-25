@@ -174,3 +174,5 @@ end
     transitive dependencies. *)
 val evaluate_rules :
   recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
+
+val get_memory : unit -> Dune_manager.Client.t option

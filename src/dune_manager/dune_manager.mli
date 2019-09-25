@@ -27,6 +27,8 @@ val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
 module Client : sig
   type t
 
+  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+
   val promote :
        t
     -> (Path.t * Digest.t) list
@@ -42,7 +44,7 @@ module Client : sig
 
   val set_build_dir : t -> Path.t -> t
 
-  val make : unit -> (t, exn) Result.t
+  val make : ?finally:(unit -> unit) -> (command -> unit) -> (t, exn) Result.t
 
   val teardown : t -> unit
 end

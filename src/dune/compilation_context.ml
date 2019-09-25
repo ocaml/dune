@@ -51,7 +51,7 @@ type t =
   ; preprocessing : Preprocessing.t
   ; no_keep_locs : bool
   ; opaque : bool
-  ; stdlib : Dune_file.Library.Stdlib.t option
+  ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Dune_file.Js_of_ocaml.t option
   ; dynlink : bool
   ; sandbox : Sandbox_config.t

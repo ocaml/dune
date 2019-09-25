@@ -36,6 +36,33 @@ module Enabled_status : sig
     | Disabled_because_of_enabled_if
 end
 
+module Special_builtin_support : sig
+  module Build_info : sig
+    type api_version = V1
+
+    type t =
+      { data_module : string
+      ; api_version : api_version
+      }
+  end
+
+  type t =
+    | Findlib_dynload
+    | Build_info of Build_info.t
+
+  include Dune_lang.Conv.S with type t := t
+end
+
+module Inherited : sig
+  type 'a t =
+    | This of 'a
+    | From of (Loc.t * Lib_name.t)
+end
+
+module Main_module_name : sig
+  type t = Module_name.t option Inherited.t
+end
+
 type 'path t
 
 val name : _ t -> Lib_name.t
@@ -70,12 +97,11 @@ val obj_dir : 'path t -> 'path Obj_dir.t
 
 val virtual_ : _ t -> Modules.t Source.t option
 
-val main_module_name : _ t -> Dune_file.Library.Main_module_name.t
+val main_module_name : _ t -> Main_module_name.t
 
-val wrapped : _ t -> Wrapped.t Dune_file.Library.Inherited.t option
+val wrapped : _ t -> Wrapped.t Inherited.t option
 
-val special_builtin_support :
-  _ t -> Dune_file.Library.Special_builtin_support.t option
+val special_builtin_support : _ t -> Special_builtin_support.t option
 
 val modes : _ t -> Mode.Dict.Set.t
 
@@ -104,13 +130,6 @@ val best_src_dir : 'path t -> 'path
 type external_ = Path.t t
 
 type local = Path.Build.t t
-
-val of_library_stanza :
-     dir:Path.Build.t
-  -> lib_config:Lib_config.t
-  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
-  -> Dune_file.Library.t
-  -> local
 
 val user_written_deps : _ t -> Lib_dep.t list
 
@@ -143,7 +162,7 @@ val create :
   -> obj_dir:'a Obj_dir.t
   -> version:string option
   -> synopsis:string option
-  -> main_module_name:Dune_file.Library.Main_module_name.t
+  -> main_module_name:Main_module_name.t
   -> sub_systems:Sub_system_info.t Sub_system_name.Map.t
   -> requires:Lib_dep.t list
   -> foreign_objects:'a list Source.t
@@ -163,6 +182,6 @@ val create :
   -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Mode.Dict.Set.t
-  -> wrapped:Wrapped.t Dune_file.Library.Inherited.t option
-  -> special_builtin_support:Dune_file.Library.Special_builtin_support.t option
+  -> wrapped:Wrapped.t Inherited.t option
+  -> special_builtin_support:Special_builtin_support.t option
   -> 'a t

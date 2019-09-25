@@ -13,8 +13,8 @@ val key_to_string : key -> string
 val key_of_string : string -> key result
 
 type promotion =
-  | Already_promoted of Path.Build.t * Path.t
-  | Promoted of Path.Build.t * Path.t
+  | Already_promoted of Path.Build.t * Path.t * Digest.t
+  | Promoted of Path.Build.t * Path.t * Digest.t
 
 val promotion_to_string : promotion -> string
 

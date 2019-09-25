@@ -91,7 +91,7 @@ let findlib_init_code ~preds ~libs =
 
 let build_info_code cctx ~libs ~api_version =
   ( match api_version with
-  | Dune_file.Library.Special_builtin_support.Build_info.V1 -> () );
+  | Lib_info.Special_builtin_support.Build_info.V1 -> () );
   let sctx = CC.super_context cctx in
   let file_tree = Super_context.file_tree sctx in
   (* [placeholders] is a mapping from source path to variable names. For each

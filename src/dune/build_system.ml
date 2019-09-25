@@ -457,6 +457,10 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
+let get_memory () =
+  let t = t () in
+  t.memory
+
 let get_dir_triage t ~dir =
   match Path.as_in_source_tree dir with
   | Some dir ->
@@ -1472,6 +1476,7 @@ end = struct
     let* () =
       if rule_need_rerun then (
         List.iter targets_as_list ~f:(fun target ->
+            Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
           match (do_not_memoize, t.memory) with

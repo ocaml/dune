@@ -12,7 +12,9 @@
 (package
  (name dune)
  (depends
-  (ocaml (>= 4.02))
+  ;; Please keep the lower bound in sync with .travis.yml and
+  ;; min_ocaml_version in bootstrap.ml
+  (ocaml (>= 4.06))
   base-unix
   base-threads)
  (conflicts
@@ -42,7 +44,6 @@ for free.
 (package
  (name dune-build-info)
  (depends
-  (ocaml (>= 4.02))
   (dune (>= 1.11)))
  (synopsis "Embed build informations inside executable")
  (description "\

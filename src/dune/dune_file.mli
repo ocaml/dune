@@ -187,47 +187,6 @@ module External_variant : sig
 end
 
 module Library : sig
-  module Inherited : sig
-    type 'a t =
-      | This of 'a
-      | From of (Loc.t * Lib_name.t)
-  end
-
-  module Stdlib : sig
-    (** Extra information for the OCaml stdlib. Note: contrary to normal
-        libraries, the library interface of the stdlib (the Stdlib module) is
-        used as the alias module when compiling all the other modules. We
-        cannot generate an implicit one as that would break hard-coded names
-        inside the compiler. *)
-    type t =
-      { modules_before_stdlib : Module_name.Set.t
-            (** Modules that the Stdlib module depend on. *)
-      ; exit_module : Module_name.t option
-            (** Modules that's implicitely added by the compiler at the end
-                when linking an executable *)
-      ; internal_modules : Glob.t
-            (** Module names that are hardcoded in the compiler and so cannot
-                be wrapped *)
-      }
-  end
-
-  module Special_builtin_support : sig
-    module Build_info : sig
-      type api_version = V1
-
-      type t =
-        { data_module : string
-        ; api_version : api_version
-        }
-    end
-
-    type t =
-      | Findlib_dynload
-      | Build_info of Build_info.t
-
-    include Dune_lang.Conv.S with type t := t
-  end
-
   type t =
     { name : Loc.t * Lib_name.Local.t
     ; public : Public_lib.t option
@@ -240,7 +199,7 @@ module Library : sig
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps : (Loc.t * Lib_name.t) list
-    ; wrapped : Wrapped.t Inherited.t
+    ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
     ; buildable : Buildable.t
     ; dynlink : Dynlink_supported.t
@@ -253,8 +212,8 @@ module Library : sig
     ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
-    ; stdlib : Stdlib.t option
-    ; special_builtin_support : Special_builtin_support.t option
+    ; stdlib : Ocaml_stdlib.t option
+    ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     }
 
@@ -278,11 +237,14 @@ module Library : sig
 
   val obj_dir : dir:Path.Build.t -> t -> Path.Build.t Obj_dir.t
 
-  module Main_module_name : sig
-    type t = Module_name.t option Inherited.t
-  end
+  val main_module_name : t -> Lib_info.Main_module_name.t
 
-  val main_module_name : t -> Main_module_name.t
+  val to_lib_info :
+       t
+    -> dir:Path.Build.t
+    -> lib_config:Lib_config.t
+    -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
+    -> Lib_info.local
 end
 
 module Install_conf : sig
@@ -504,6 +466,15 @@ module Include_subdirs : sig
     | Include of qualification
 end
 
+module Deprecated_library_name : sig
+  type t =
+    { loc : Loc.t
+    ; project : Dune_project.t
+    ; old_public_name : Public_lib.t
+    ; new_public_name : Lib_name.t
+    }
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Executables of Executables.t
@@ -516,6 +487,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
+  | Deprecated_library_name of Deprecated_library_name.t
 
 val stanza_package : Stanza.t -> Package.t option
 

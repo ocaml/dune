@@ -13,11 +13,11 @@ module V1 = struct
   end
 
   module Fs : sig
-    val read_directory : string -> (string list, string) Result.t
+    val read_directory : string -> (string list, string) result
 
-    val read_file : string -> (string, string) Result.t
+    val read_file : string -> (string, string) result
 
-    val write_file : string -> string -> (unit, string) Result.t
+    val write_file : string -> string -> (unit, string) result
   end = struct
     let catch_system_exceptions f ~name =
       try Ok (f ()) with

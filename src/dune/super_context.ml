@@ -20,6 +20,16 @@ module Env_context = struct
     }
 end
 
+module Lib_entry = struct
+  type t =
+    | Library of Lib.Local.t
+    | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+
+  let name = function
+    | Library lib -> Lib.Local.to_lib lib |> Lib.name
+    | Deprecated_library_name d -> snd d.old_public_name.name
+end
+
 type t =
   { context : Context.t
   ; scopes : Scope.DB.t
@@ -32,7 +42,7 @@ type t =
   ; artifacts : Artifacts.t
   ; expander : Expander.t
   ; host : t option
-  ; libs_by_package : (Package.t * Lib.Local.Set.t) Package.Name.Map.t
+  ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
   ; env_context : Env_context.t
   ; dir_status_db : Dir_status.DB.t
   ; external_lib_deps_mode : bool
@@ -70,10 +80,9 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
-let libs_of_package t pkg_name =
-  match Package.Name.Map.find t.libs_by_package pkg_name with
-  | None -> Lib.Local.Set.empty
-  | Some (_, libs) -> libs
+let lib_entries_of_package t pkg_name =
+  Package.Name.Map.find t.lib_entries_by_package pkg_name
+  |> Option.value ~default:[]
 
 let internal_lib_names t =
   List.fold_left t.stanzas ~init:Lib_name.Set.empty
@@ -413,21 +422,23 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
       ~external_lib_deps_mode
   in
   let scopes, public_libs =
-    let libs, external_variants =
-      Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
-        ~f:(fun dune_file stanza ((libs, external_variants) as acc) ->
+    let stanzas =
+      Dune_load.Dune_file.fold_stanzas stanzas ~init:[]
+        ~f:(fun dune_file stanza acc ->
           match stanza with
           | Dune_file.Library lib ->
             let ctx_dir =
               Path.Build.append_source context.build_dir dune_file.dir
             in
-            ((ctx_dir, lib) :: libs, external_variants)
-          | Dune_file.External_variant ev -> (libs, ev :: external_variants)
+            Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
+          | Dune_file.External_variant ev -> External_variant ev :: acc
+          | Dune_file.Deprecated_library_name d ->
+            Deprecated_library_name d :: acc
           | _ -> acc)
     in
     let lib_config = Context.lib_config context in
     Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
-      libs external_variants
+      stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->
@@ -510,17 +521,26 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; packages
   ; file_tree
   ; artifacts
-  ; libs_by_package =
-      Lib.DB.all public_libs |> Lib.Set.to_list
-      |> List.filter_map ~f:(fun lib ->
-             Lib.Local.of_lib lib
-             |> Option.map ~f:(fun local ->
-                    (Option.value_exn (Lib.package lib), local)))
+  ; lib_entries_by_package =
+      Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
+          match stanza with
+          | Dune_file.Library { public = Some pub; _ } -> (
+            match Lib.DB.find public_libs (snd pub.name) with
+            | None -> acc
+            | Some lib ->
+              ( pub.package.name
+              , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
+              :: acc )
+          | Dune_file.Deprecated_library_name d ->
+            ( d.old_public_name.package.name
+            , Lib_entry.Deprecated_library_name d )
+            :: acc
+          | _ -> acc)
       |> Package.Name.Map.of_list_multi
-      |> Package.Name.Map.merge packages ~f:(fun _name pkg libs ->
-             let pkg = Option.value_exn pkg in
-             let libs = Option.value libs ~default:[] in
-             Some (pkg, Lib.Local.Set.of_list libs))
+      |> Package.Name.Map.map
+           ~f:
+             (List.sort ~compare:(fun a b ->
+                  Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
   ; env_context
   ; default_env
   ; external_lib_deps_mode

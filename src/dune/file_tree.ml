@@ -196,10 +196,7 @@ let readdir path =
 let get_vcs ~default:vcs ~path ~files ~dirs =
   match
     match
-      List.find_map dirs ~f:(function
-        | ".git", _, _ -> Some Vcs.Kind.Git
-        | ".hg", _, _ -> Some Vcs.Kind.Hg
-        | _ -> None)
+      List.find_map dirs ~f:(fun (name, _, _) -> Vcs.Kind.of_filename name)
     with
     | Some kind -> Some kind
     | None -> Vcs.Kind.of_dir_contents files

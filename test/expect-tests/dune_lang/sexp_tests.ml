@@ -250,7 +250,7 @@ let%expect_test _ =
   [%expect
     {|
 Different {jbuild = Ok ["bar\\%foo"];
-            dune = Error "unknown escape sequence"}
+            dune = Ok ["bar%foo"]}
 |}]
 
 (* Printing tests *)

@@ -1194,8 +1194,7 @@ end = struct
             let res, resolved_select = resolve_select select in
             let acc_res =
               let+ res = res
-              and+ acc_res = acc_res
-              in
+              and+ acc_res = acc_res in
               List.rev_append res acc_res
             in
             (acc_res, resolved_select :: acc_selects, acc_re_exports))

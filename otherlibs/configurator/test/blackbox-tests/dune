@@ -8,8 +8,11 @@
  (action
   (chdir
    test-cases/configurator
-   (progn (run cram -test run.t) (diff? run.t run.t.corrected))))
- (enabled_if (<> %{ocaml-config:system} win)))
+   (progn
+    (run cram -test run.t)
+    (diff? run.t run.t.corrected))))
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
 
 (alias
  (name runtest)
@@ -20,5 +23,7 @@
   (source_tree test-cases/configurator-gh1166))
  (action
   (chdir
-    test-cases/configurator-gh1166
-   (progn (run cram -test run.t) (diff? run.t run.t.corrected)))))
+   test-cases/configurator-gh1166
+   (progn
+    (run cram -test run.t)
+    (diff? run.t run.t.corrected)))))

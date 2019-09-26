@@ -84,7 +84,7 @@ let%expect_test _ =
   |> option (list (pair string (fun x -> x)))
   |> print_dyn;
   [%expect {|
-Some [("another", "aa"); ("some", "a")]
+Some [ ("another", "aa"); ("some", "a") ]
 |}]
 
 let%expect_test _ =
@@ -165,7 +165,7 @@ let%expect_test _ =
 - 0
 - 2
 4
-[("cycle", 2); ("cycle", 1); ("cycle", 0); ("cycle", 5)]
+[ ("cycle", 2); ("cycle", 1); ("cycle", 0); ("cycle", 5) ]
 |}]
 
 let mfib =
@@ -318,8 +318,8 @@ let%expect_test _ =
   Builtin_lazy.deps () |> print_dyn;
   [%expect
     {|
-(Some [("lazy_memo", "foo")],
-Some [("id", "lazy: foo"); ("lazy_memo", "foo")])
+(Some [ ("lazy_memo", "foo") ],
+Some [ ("id", "lazy: foo"); ("lazy_memo", "foo") ])
 |}]
 
 module Memo_lazy = Test_lazy (Memo.Lazy)
@@ -334,8 +334,8 @@ let%expect_test _ =
   Memo_lazy.deps () |> print_dyn;
   [%expect
     {|
-(Some [("lazy-0", ()); ("lazy_memo", "foo")],
-Some [("lazy-0", ()); ("lazy_memo", "foo")])
+(Some [ ("lazy-0", ()); ("lazy_memo", "foo") ],
+Some [ ("lazy-0", ()); ("lazy_memo", "foo") ])
 |}]
 
 (* Tests for depending on the current run*)

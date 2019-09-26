@@ -59,7 +59,25 @@ let string_in_ocaml_syntax str =
                        escape_protect_first_space s ^ "\\n\\")
               @ [ escape_protect_first_space last ^ "\"" ] ))) )
 
-let rec pp = function
+let pp_sequence start stop x ~f =
+  let open Pp.O in
+  match x with
+  | [] -> Pp.verbatim start ++ Pp.verbatim stop
+  | _ ->
+    Pp.hvbox
+      ( Pp.concat_mapi ~sep:Pp.cut x ~f:(fun i x ->
+            Pp.box
+              ( ( if i = 0 then
+                  Pp.verbatim start ++ Pp.space
+                else
+                  Pp.char ';'
+                  ++ Pp.break ~nspaces:(String.length start) ~shift:0 )
+              ++ f x ))
+      ++ Pp.space ++ Pp.verbatim stop )
+
+let rec pp =
+  let open Pp.O in
+  function
   | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
@@ -70,60 +88,26 @@ let rec pp = function
   | Float f -> Pp.verbatim (string_of_float f)
   | Option None -> pp (Variant ("None", []))
   | Option (Some x) -> pp (Variant ("Some", [ x ]))
-  | List x ->
-    Pp.box
-      (Pp.concat
-         [ Pp.char '['
-         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) x ~f:pp
-         ; Pp.char ']'
-         ])
-  | Array a ->
-    Pp.box
-      (Pp.concat
-         [ Pp.verbatim "[|"
-         ; Pp.concat_map
-             ~sep:(Pp.seq (Pp.char ';') Pp.space)
-             (Array.to_list a) ~f:pp
-         ; Pp.verbatim "|]"
-         ])
+  | List xs -> pp_sequence "[" "]" xs ~f:pp
+  | Array xs -> pp_sequence "[|" "|]" (Array.to_list xs) ~f:pp
   | Set xs ->
-    Pp.box
-      (Pp.concat
-         [ Pp.verbatim "set {"
-         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ';') Pp.space) xs ~f:pp
-         ; Pp.verbatim "}"
-         ])
+    Pp.box ~indent:2
+      (Pp.verbatim "set" ++ Pp.space ++ pp_sequence "{" "}" xs ~f:pp)
   | Map xs ->
-    Pp.box
-      (Pp.concat
-         [ Pp.verbatim "map {"
-         ; Pp.concat_map
-             ~sep:(Pp.seq (Pp.char ';') Pp.space)
-             xs
-             ~f:(fun (k, v) ->
-               Pp.box
-                 (Pp.concat [ pp k; Pp.space; Pp.verbatim ":"; Pp.space; pp v ]))
-         ; Pp.verbatim "}"
-         ])
+    Pp.box ~indent:2
+      ( Pp.verbatim "map" ++ Pp.space
+      ++ pp_sequence "{" "}" xs ~f:(fun (k, v) ->
+             Pp.box ~indent:2
+               (pp k ++ Pp.space ++ Pp.char ':' ++ Pp.space ++ pp v)) )
   | Tuple x ->
     Pp.box
-      (Pp.concat
-         [ Pp.char '('
-         ; Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) x ~f:pp
-         ; Pp.char ')'
-         ])
+      ( Pp.char '('
+      ++ Pp.concat_map ~sep:(Pp.seq (Pp.char ',') Pp.space) x ~f:pp
+      ++ Pp.char ')' )
   | Record fields ->
-    Pp.vbox ~indent:2
-      (Pp.concat
-         [ Pp.char '{'
-         ; Pp.concat_map fields
-             ~sep:(Pp.seq (Pp.char ';') Pp.space)
-             ~f:(fun (f, v) ->
-               Pp.box ~indent:2
-                 (Pp.concat
-                    [ Pp.verbatim f; Pp.space; Pp.char '='; Pp.space; pp v ]))
-         ; Pp.char '}'
-         ])
+    pp_sequence "{" "}" fields ~f:(fun (f, v) ->
+        Pp.box ~indent:2
+          (Pp.verbatim f ++ Pp.space ++ Pp.char '=' ++ Pp.space ++ pp v))
   | Variant (v, []) -> Pp.verbatim v
   | Variant (v, xs) ->
     Pp.hvbox ~indent:2

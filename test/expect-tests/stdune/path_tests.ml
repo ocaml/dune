@@ -218,19 +218,19 @@ None
 let%expect_test _ =
   explode "a/b/c";
   [%expect {|
-Some ["a"; "b"; "c"]
+Some [ "a"; "b"; "c" ]
 |}]
 
 let%expect_test _ =
   explode "a/b";
   [%expect {|
-Some ["a"; "b"]
+Some [ "a"; "b" ]
 |}]
 
 let%expect_test _ =
   explode "a";
   [%expect {|
-Some ["a"]
+Some [ "a" ]
 |}]
 
 let%expect_test _ =
@@ -299,8 +299,7 @@ let%expect_test _ =
   [@@expect.uncaught_exn
     {|
   ( "(\"Path.insert_after_build_dir_exn\",\
-   \n{path = In_source_tree \".\";\
-   \n  insert = \"foobar\"})") |}]
+   \n{ path = In_source_tree \".\"; insert = \"foobar\" })") |}]
 
 let%expect_test _ =
   insert_after_build_dir_exn Path.build_dir "foobar";
@@ -340,7 +339,7 @@ let%expect_test _ =
   [@@expect.uncaught_exn
     {|
   ( "(\"Path.rm_rf called on external dir\",\
-   \n{t = External \"/does/not/exist/foo/bar/baz\"})") |}]
+   \n{ t = External \"/does/not/exist/foo/bar/baz\" })") |}]
 
 let%expect_test _ =
   drop_build_context (Path.relative Path.build_dir "foo/bar");

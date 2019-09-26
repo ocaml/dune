@@ -10,5 +10,5 @@ let%expect_test _ =
   |> String.Map.to_dyn (list int)
   |> print_dyn;
   [%expect {|
-map {"a" : [1; 2; 3]; "b" : [1; 2]}
+map { "a" : [ 1; 2; 3 ]; "b" : [ 1; 2 ] }
 |}]

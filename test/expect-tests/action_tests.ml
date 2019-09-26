@@ -22,13 +22,13 @@ let infer (a : Action.t) =
 let%expect_test _ =
   infer (Copy (p "a", b "b"));
   [%expect {|
-  (["a"], ["_build/b"])
+  ([ "a" ], [ "_build/b" ])
   |}]
 
 let%expect_test _ =
   infer (Progn [ Copy (p "a", b "b"); Copy (pb "b", b "c") ]);
   [%expect {|
-(["a"], ["_build/b"; "_build/c"])
+([ "a" ], [ "_build/b"; "_build/c" ])
 |}]
 
 let%expect_test _ =
@@ -37,5 +37,5 @@ let%expect_test _ =
      don't need to care about this too much. *)
   infer (Progn [ Copy (p "a", b "b"); Rename (b "b", b "c") ]);
   [%expect {|
-(["a"], ["_build/b"; "_build/c"])
+([ "a" ], [ "_build/b"; "_build/c" ])
 |}]

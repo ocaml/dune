@@ -19,6 +19,8 @@ val concat : ?sep:'a t -> 'a t list -> 'a t
 (** Convenience function for [List.map] followed by [concat] *)
 val concat_map : ?sep:'a t -> 'b list -> f:('b -> 'a t) -> 'a t
 
+val concat_mapi : ?sep:'a t -> 'b list -> f:(int -> 'b -> 'a t) -> 'a t
+
 (** An indivisible block of text *)
 val verbatim : string -> _ t
 

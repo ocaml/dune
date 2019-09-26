@@ -111,6 +111,12 @@ let concat_map ?(sep = Nop) l ~f =
   | [ x ] -> f x
   | l -> Concat (sep, List.map l ~f)
 
+let concat_mapi ?(sep = Nop) l ~f =
+  match l with
+  | [] -> Nop
+  | [ x ] -> f 0 x
+  | l -> Concat (sep, List.mapi l ~f)
+
 let box ?(indent = 0) t = Box (indent, t)
 
 let vbox ?(indent = 0) t = Vbox (indent, t)

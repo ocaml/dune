@@ -42,7 +42,7 @@ let%expect_test _ =
   |> Dyn.Encoder.(list int)
   |> print_dyn;
   [%expect {|
-[1; 2]
+[ 1; 2 ]
 |}]
 
 type 'res parse_result_diff =
@@ -96,7 +96,7 @@ let parse s =
 let%expect_test _ =
   parse {| # ## x##y x||y a#b|c#d copy# |};
   [%expect {|
-Same Ok ["#"; "##"; "x##y"; "x||y"; "a#b|c#d"; "copy#"]
+Same Ok [ "#"; "##"; "x##y"; "x||y"; "a#b|c#d"; "copy#" ]
 |}]
 
 let%expect_test _ =
@@ -104,8 +104,7 @@ let%expect_test _ =
   [%expect
     {|
 Different
-  {jbuild = Ok ["x"; "y"];
-    dune = Ok ["x"; "#|"; "comment"; "|#"; "y"]}
+  { jbuild = Ok [ "x"; "y" ]; dune = Ok [ "x"; "#|"; "comment"; "|#"; "y" ] }
 |}]
 
 let%expect_test _ =
@@ -113,8 +112,7 @@ let%expect_test _ =
   [%expect
     {|
 Different
-  {jbuild = Error "jbuild atoms cannot contain #|";
-    dune = Ok ["x#|y"]}
+  { jbuild = Error "jbuild atoms cannot contain #|"; dune = Ok [ "x#|y" ] }
 |}]
 
 let%expect_test _ =
@@ -122,86 +120,82 @@ let%expect_test _ =
   [%expect
     {|
 Different
-  {jbuild = Error "jbuild atoms cannot contain |#";
-    dune = Ok ["x|#y"]}
+  { jbuild = Error "jbuild atoms cannot contain |#"; dune = Ok [ "x|#y" ] }
 |}]
 
 let%expect_test _ =
   parse {|"\a"|};
   [%expect
     {|
-Different {jbuild = Ok ["\\a"];
-            dune = Error "unknown escape sequence"}
+Different { jbuild = Ok [ "\\a" ]; dune = Error "unknown escape sequence" }
 |}]
 
 let%expect_test _ =
   parse {|"\%{x}"|};
   [%expect
     {|
-Different {jbuild = Ok ["\\%{x}"];
-            dune = Ok ["%{x}"]}
+Different { jbuild = Ok [ "\\%{x}" ]; dune = Ok [ "%{x}" ] }
 |}]
 
 let%expect_test _ =
   parse {|"$foo"|};
   [%expect {|
-Same Ok ["$foo"]
+Same Ok [ "$foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"%foo"|};
   [%expect {|
-Same Ok ["%foo"]
+Same Ok [ "%foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar%foo"|};
   [%expect {|
-Same Ok ["bar%foo"]
+Same Ok [ "bar%foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"bar$foo"|};
   [%expect {|
-Same Ok ["bar$foo"]
+Same Ok [ "bar$foo" ]
 |}]
 
 let%expect_test _ =
   parse {|"%bar$foo%"|};
   [%expect {|
-Same Ok ["%bar$foo%"]
+Same Ok [ "%bar$foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|"$bar%foo%"|};
   [%expect {|
-Same Ok ["$bar%foo%"]
+Same Ok [ "$bar%foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|\${foo}|};
   [%expect {|
-Same Ok ["\\${foo}"]
+Same Ok [ "\\${foo}" ]
 |}]
 
 let%expect_test _ =
   parse {|\%{foo}|};
   [%expect
     {|
-Different {jbuild = Ok ["\\%{foo}"];
-            dune = Ok [template "\\%{foo}"]}
+Different { jbuild = Ok [ "\\%{foo}" ]; dune = Ok [ template "\\%{foo}" ] }
 |}]
 
 let%expect_test _ =
   parse {|\$bar%foo%|};
   [%expect {|
-Same Ok ["\\$bar%foo%"]
+Same Ok [ "\\$bar%foo%" ]
 |}]
 
 let%expect_test _ =
   parse {|\$bar\%foo%|};
   [%expect {|
-Same Ok ["\\$bar\\%foo%"]
+Same Ok [ "\\$bar\\%foo%" ]
 |}]
 
 let%expect_test _ =
@@ -209,48 +203,46 @@ let%expect_test _ =
   [%expect
     {|
 Different
-  {jbuild = Ok ["\\$bar\\%foo%{bar}"];
-    dune = Ok [template "\\$bar\\%foo%{bar}"]}
+  { jbuild = Ok [ "\\$bar\\%foo%{bar}" ]
+  ; dune = Ok [ template "\\$bar\\%foo%{bar}" ]
+  }
 |}]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
   [%expect
     {|
-Different {jbuild = Ok ["bar%{foo}"];
-            dune = Ok [template "\"bar%{foo}\""]}
+Different
+  { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "\"bar%{foo}\"" ] }
 |}]
 
 let%expect_test _ =
   parse {|"bar\%{foo}"|};
   [%expect
     {|
-Different {jbuild = Ok ["bar\\%{foo}"];
-            dune = Ok ["bar%{foo}"]}
+Different { jbuild = Ok [ "bar\\%{foo}" ]; dune = Ok [ "bar%{foo}" ] }
 |}]
 
 let%expect_test _ =
   parse {|bar%{foo}|};
   [%expect
     {|
-Different {jbuild = Ok ["bar%{foo}"];
-            dune = Ok [template "bar%{foo}"]}
+Different { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "bar%{foo}" ] }
 |}]
 
 let%expect_test _ =
   parse {|"bar%{foo}"|};
   [%expect
     {|
-Different {jbuild = Ok ["bar%{foo}"];
-            dune = Ok [template "\"bar%{foo}\""]}
+Different
+  { jbuild = Ok [ "bar%{foo}" ]; dune = Ok [ template "\"bar%{foo}\"" ] }
 |}]
 
 let%expect_test _ =
   parse {|"bar\%foo"|};
   [%expect
     {|
-Different {jbuild = Ok ["bar\\%foo"];
-            dune = Ok ["bar%foo"]}
+Different { jbuild = Ok [ "bar\\%foo" ]; dune = Ok [ "bar%foo" ] }
 |}]
 
 (* Printing tests *)
@@ -338,28 +330,22 @@ let%expect_test _ =
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "({pos_fname = \"<none>\";\
-   \n   start = {pos_lnum = 1;\
-   \n             pos_bol = 0;\
-   \n             pos_cnum = 0};\
-   \n   stop = {pos_lnum = 1;\
-   \n            pos_bol = 0;\
-   \n            pos_cnum = 0}},\
-   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+  ( "({ pos_fname = \"<none>\"\
+   \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
+   \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
+   \n },\
+   \n\"Invalid text in unquoted template\", { s = \"x%{\" })") |}]
 
 let%expect_test _ =
   test Dune (t [ Text "x%"; Text "{" ]);
   [%expect.unreachable]
   [@@expect.uncaught_exn
     {|
-  ( "({pos_fname = \"<none>\";\
-   \n   start = {pos_lnum = 1;\
-   \n             pos_bol = 0;\
-   \n             pos_cnum = 0};\
-   \n   stop = {pos_lnum = 1;\
-   \n            pos_bol = 0;\
-   \n            pos_cnum = 0}},\
-   \n\"Invalid text in unquoted template\", {s = \"x%{\"})") |}]
+  ( "({ pos_fname = \"<none>\"\
+   \n ; start = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
+   \n ; stop = { pos_lnum = 1; pos_bol = 0; pos_cnum = 0 }\
+   \n },\
+   \n\"Invalid text in unquoted template\", { s = \"x%{\" })") |}]
 
 let%expect_test _ =
   (* This round trip failure is expected *)
@@ -393,9 +379,12 @@ world
   |> print_dyn;
   [%expect
     {|
-[Atom A "hello"; Comment Lines [" comment"]; Atom A "world";
-Comment Lines [" multiline"; " comment"];
-List [Atom A "x"; Comment Lines [" comment inside list"]; Atom A "y"]]
+[ Atom A "hello"
+; Comment Lines [ " comment" ]
+; Atom A "world"
+; Comment Lines [ " multiline"; " comment" ]
+; List [ Atom A "x"; Comment Lines [ " comment inside list" ]; Atom A "y" ]
+]
 |}]
 
 let jbuild_file =
@@ -427,9 +416,12 @@ let%expect_test _ =
   |> print_dyn;
   [%expect
     {|
-[Atom A "hello"; Comment Lines [" comment"]; Atom A "world";
-Comment Lines [" multiline"; " comment"];
-List [Atom A "x"; Comment Lines [" comment inside list"]; Atom A "y"];
-Comment Lines ["(sexp"; "comment)"];
-Comment Lines ["old style"; "block"; "comment"]]
+[ Atom A "hello"
+; Comment Lines [ " comment" ]
+; Atom A "world"
+; Comment Lines [ " multiline"; " comment" ]
+; List [ Atom A "x"; Comment Lines [ " comment inside list" ]; Atom A "y" ]
+; Comment Lines [ "(sexp"; "comment)" ]
+; Comment Lines [ "old style"; "block"; "comment" ]
+]
 |}]

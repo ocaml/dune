@@ -15,44 +15,38 @@ let%expect_test _ =
   (* Link modes can be read as a (<mode> <kind>) list *)
   test "(best exe)";
   [%expect {|
-{mode = best;
-  kind = exe}
+{ mode = best; kind = exe }
 |}]
 
 let%expect_test _ =
   (* Some shortcuts also exist *)
   test "exe";
   [%expect {|
-{mode = best;
-  kind = exe}
+{ mode = best; kind = exe }
 |}]
 
 let%expect_test _ =
   test "object";
   [%expect {|
-{mode = best;
-  kind = object}
+{ mode = best; kind = object }
 |}]
 
 let%expect_test _ =
   test "shared_object";
   [%expect {|
-{mode = best;
-  kind = shared_object}
+{ mode = best; kind = shared_object }
 |}]
 
 let%expect_test _ =
   test "byte";
   [%expect {|
-{mode = byte;
-  kind = exe}
+{ mode = byte; kind = exe }
 |}]
 
 let%expect_test _ =
   test "native";
   [%expect {|
-{mode = native;
-  kind = exe}
+{ mode = native; kind = exe }
 |}]
 
 (* Dune_file.Executables.Link_mode.encode *)
@@ -67,7 +61,7 @@ let%expect_test _ =
     }
   |> Dune_lang.to_dyn |> print_dyn;
   [%expect {|
-["byte"; "shared_object"]
+[ "byte"; "shared_object" ]
 |}]
 
 (* But the specialized ones are serialized in the minimal version *)

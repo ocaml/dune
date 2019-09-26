@@ -150,4 +150,5 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info
   in
   SC.Libs.gen_select_rules sctx compile_info ~dir;
+  Bootstrap_info.gen_rules sctx exes ~dir compile_info;
   SC.Libs.with_lib_deps sctx compile_info ~dir ~f

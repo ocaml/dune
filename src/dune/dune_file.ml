@@ -1537,7 +1537,15 @@ module Executables = struct
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
+    ; bootstrap_info : string option
     }
+
+  let bootstrap_info_extension =
+    let syntax =
+      Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
+        ~desc:"private extension to handle Dune bootstrap" [ (0, 1) ]
+    in
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
   let common =
     let+ buildable =
@@ -1573,6 +1581,18 @@ module Executables = struct
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located Lib_name.decode) )
         ~default:[]
+    and+ bootstrap_info =
+      field_o "bootstrap_info"
+        (let+ loc = loc
+         and+ fname = filename
+         and+ project = Dune_project.get_exn () in
+         if
+           Option.is_none
+             (Dune_project.find_extension_args project bootstrap_info_extension)
+         then
+           User_error.raise ~loc
+             [ Pp.text "This field is reserved for Dune itself" ];
+         fname)
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1612,6 +1632,7 @@ module Executables = struct
       ; promote
       ; install_conf
       ; forbidden_libraries
+      ; bootstrap_info
       }
 
   let single, multi =
@@ -2086,6 +2107,7 @@ module Tests = struct
            ; promote = None
            ; install_conf = None
            ; forbidden_libraries
+           ; bootstrap_info = None
            }
        ; locks
        ; package

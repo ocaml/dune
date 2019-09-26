@@ -3,6 +3,9 @@
 
 (generate_opam_files true)
 
+; Reserved for Dune itself. This is to help with the bootstrap
+(using dune-bootstrap-info 0.1)
+
 (license MIT)
 (maintainers "Jane Street Group, LLC <opensource@janestreet.com>")
 (authors "Jane Street Group, LLC <opensource@janestreet.com>")

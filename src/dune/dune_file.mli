@@ -323,6 +323,7 @@ module Executables : sig
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
+    ; bootstrap_info : string option
     }
 
   val has_stubs : t -> bool

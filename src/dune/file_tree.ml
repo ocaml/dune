@@ -143,9 +143,38 @@ module Dir = struct
       ]
 end
 
-type t = Dir.t
+module Settings = struct
+  type t =
+    { root : Path.Source.t
+    ; ancestor_vcs : Vcs.t option
+    ; recognize_jbuilder_projects : bool
+    }
 
-let root t = t
+  let to_dyn { root; ancestor_vcs; recognize_jbuilder_projects } =
+    let open Dyn.Encoder in
+    record
+      [ ("root", Path.Source.to_dyn root)
+      ; ("ancestor_vcs", option Vcs.to_dyn ancestor_vcs)
+      ; ("recognize_jbuilder_projects", bool recognize_jbuilder_projects)
+      ]
+
+  let instance = ref None
+
+  let set root ~ancestor_vcs ~recognize_jbuilder_projects =
+    let new_instance = { root; ancestor_vcs; recognize_jbuilder_projects } in
+    match !instance with
+    | None -> instance := Some new_instance
+    | Some old_instance ->
+      Code_error.raise "File_tree.Settings.set: cannot set settings twice"
+        [ ("new_instance", to_dyn new_instance)
+        ; ("old_instance", to_dyn old_instance)
+        ]
+
+  let get () =
+    match !instance with
+    | Some t -> t
+    | None -> Code_error.raise "File_tree.Settings.get: no settings" []
+end
 
 let is_temp_file fn =
   String.is_prefix fn ~prefix:".#"
@@ -210,7 +239,14 @@ let get_vcs ~default:vcs ~path ~files ~dirs =
   | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
   | None -> vcs
 
-let load path ~ancestor_vcs ~recognize_jbuilder_projects =
+let init = Settings.set
+
+let make_root
+      { Settings.
+           root = path
+         ; ancestor_vcs
+         ; recognize_jbuilder_projects
+         } =
   let open Result.O in
   let nb_path_visited = ref 0 in
   Console.Status_line.set (fun () ->
@@ -334,7 +370,21 @@ let load path ~ancestor_vcs ~recognize_jbuilder_projects =
           (Unix.error_message m)
       ]
 
-let fold = Dir.fold
+let get =
+  let memo =
+    Memo.create "file-tree" ~doc:"file tree"
+      ~input:(module Unit)
+      ~visibility:Memo.Visibility.Hidden
+      ~output:(Simple (module Dir))
+      Sync (fun () ->
+        let (_ : Memo.Run.t) = Memo.current_run () in
+        make_root (Settings.get ()))
+  in
+  Memo.exec memo
+
+let root () = get ()
+
+let fold ~traverse ~init ~f = Dir.fold (get ()) ~traverse ~init ~f
 
 let rec find_dir t = function
   | [] -> Some t
@@ -343,7 +393,8 @@ let rec find_dir t = function
     let* t = String.Map.find (Dir.sub_dirs t) comp in
     find_dir t components
 
-let find_dir t path =
+let find_dir path =
+  let t = get () in
   let components = Path.Source.explode path in
   find_dir t components
 
@@ -354,14 +405,14 @@ let rec nearest_dir t = function
     | None -> t
     | Some t -> nearest_dir t components )
 
-let nearest_dir t path =
+let nearest_dir path =
   let components = Path.Source.explode path in
-  nearest_dir t components
+  nearest_dir (get ()) components
 
-let nearest_vcs t path = Dir.vcs (nearest_dir t path)
+let nearest_vcs path = Dir.vcs (nearest_dir path)
 
-let files_of t path =
-  match find_dir t path with
+let files_of path =
+  match find_dir path with
   | None -> Path.Source.Set.empty
   | Some dir ->
     Path.Source.Set.of_list
@@ -369,12 +420,12 @@ let files_of t path =
          (String.Set.to_list (Dir.files dir))
          ~f:(Path.Source.relative path))
 
-let file_exists t path =
-  match find_dir t (Path.Source.parent_exn path) with
+let file_exists path =
+  match find_dir (Path.Source.parent_exn path) with
   | None -> false
   | Some dir -> String.Set.mem (Dir.files dir) (Path.Source.basename path)
 
-let dir_exists t path = Option.is_some (find_dir t path)
+let dir_exists path = Option.is_some (find_dir path)
 
-let dir_is_vendored t path =
-  Option.map ~f:(fun dir -> Dir.vendored dir) (find_dir t path)
+let dir_is_vendored path =
+  Option.map ~f:(fun dir -> Dir.vendored dir) (find_dir path)

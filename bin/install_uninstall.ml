@@ -80,7 +80,7 @@ end
 module File_ops_real (W : Workspace) : File_operations = struct
   open W
 
-  let get_vcs p = Dune.File_tree.nearest_vcs workspace.conf.file_tree p
+  let get_vcs p = Dune.File_tree.nearest_vcs p
 
   type 'a load_special_file_result =
     | No_version_needed

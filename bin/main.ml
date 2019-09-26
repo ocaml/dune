@@ -5,7 +5,7 @@ let run_build_command ~common ~targets =
   let once () =
     let open Fiber.O in
     let* setup = Main.setup common in
-    do_build setup (targets setup)
+    do_build (targets setup)
   in
   if Common.watch common then
     let once () =

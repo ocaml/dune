@@ -11,7 +11,7 @@ type resolve_input =
   | Path of Path.t
   | Dep of Arg.Dep.t
 
-let request (setup : Dune.Main.build_system) targets =
+let request targets =
   List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
       let open Build.O in
       acc
@@ -24,7 +24,7 @@ let request (setup : Dune.Main.build_system) targets =
           Build_system.Alias.dep_rec_multi_contexts
         else
           Build_system.Alias.dep_multi_contexts )
-          ~dir ~name ~file_tree:setup.workspace.conf.file_tree ~contexts)
+          ~dir ~name ~contexts)
 
 let log_targets targets =
   List.iter targets ~f:(function
@@ -61,7 +61,7 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
   let can't_build path = Error (target_hint setup path) in
   let as_source_dir src =
-    if Dune.File_tree.dir_exists setup.workspace.conf.file_tree src then
+    if Dune.File_tree.dir_exists src then
       Some
         [ Alias
             (Alias.in_dir ~name:"default" ~recursive:true

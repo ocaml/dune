@@ -72,7 +72,7 @@ val declare_targets : Path.Build.Set.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
     [dir] and record them as dependencies. *)
-val source_tree : dir:Path.t -> file_tree:File_tree.t -> Path.Set.t t
+val source_tree : dir:Path.t -> Path.Set.t t
 
 (** Record dynamic dependencies *)
 val dyn_paths : ('a * Path.t list) t -> 'a t

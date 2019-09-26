@@ -379,10 +379,10 @@ let upgrade_dir todo dir =
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
-let upgrade ft =
+let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
-  File_tree.fold ft ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
+  File_tree.fold ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
     ~f:(fun dir () -> upgrade_dir todo dir);
   let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->

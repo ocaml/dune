@@ -123,8 +123,7 @@ let term =
           |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
           |> Build.paths
         | _ ->
-          Target.resolve_targets_exn common setup targets
-          |> Target.request setup
+          Target.resolve_targets_exn common setup targets |> Target.request
       in
       let* rules = Build_system.evaluate_rules ~request ~recursive in
       let print oc =

@@ -138,11 +138,10 @@ let opam_fields project (package : Package.t) =
     Opam_file.Create.normalise_field_order fields
 
 let opam_template sctx ~pkg =
-  let file_tree = Super_context.file_tree sctx in
   let opam_template_path =
     Package.opam_file pkg |> Path.Source.extend_basename ~suffix:".template"
   in
-  if File_tree.file_exists file_tree opam_template_path then
+  if File_tree.file_exists opam_template_path then
     let build_dir = Super_context.build_dir sctx in
     Some (Path.Build.append_source build_dir opam_template_path)
   else

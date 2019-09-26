@@ -11,14 +11,14 @@ let setup =
      Path.External.mkdir_p (Path.External.relative tmp deep_path);
      Path.set_root tmp;
      Path.Build.set_build_dir (Path.Build.Kind.of_string "_build");
-     let ft = (Dune_load.load ~ancestor_vcs:None ()).file_tree in
+     let _conf = Dune_load.load ~ancestor_vcs:None () in
      let path = Path.Source.of_string deep_path in
      at_exit (fun () -> Sys.remove "./dune-project");
-     (ft, path))
+     path)
 
 let%bench_fun "File_tree.find_dir" =
-  let ft, path = Lazy.force setup in
+  let path = Lazy.force setup in
   fun () ->
     ignore
-      ( Sys.opaque_identity (File_tree.find_dir ft path)
+      ( Sys.opaque_identity (File_tree.find_dir path)
         : File_tree.Dir.t option )

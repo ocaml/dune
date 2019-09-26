@@ -44,9 +44,7 @@ let gen_rules sctx t ~dir ~scope =
   let main_module_name = Module_name.of_string "_cinaps" in
   (* Files checked by cinaps *)
   let cinapsed_files =
-    File_tree.files_of
-      (Super_context.file_tree sctx)
-      (Path.Build.drop_build_context_exn dir)
+    File_tree.files_of (Path.Build.drop_build_context_exn dir)
     |> Path.Source.Set.to_list
     |> List.filter_map ~f:(fun p ->
            if

@@ -18,8 +18,7 @@ module Dune_files : sig
 end
 
 type conf = private
-  { file_tree : File_tree.t
-  ; dune_files : Dune_files.t
+  { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
   }

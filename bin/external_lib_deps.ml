@@ -135,7 +135,7 @@ let term =
         let open Fiber.O in
         let* setup = Import.Main.setup common ~external_lib_deps_mode:true in
         let targets = Target.resolve_targets_exn common setup targets in
-        let request = Target.request setup targets in
+        let request = Target.request targets in
         let+ deps = Build_system.all_lib_deps ~request in
         (setup, deps))
   in

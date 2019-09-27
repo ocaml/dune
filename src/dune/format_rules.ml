@@ -77,8 +77,7 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
           ~output:(Path.build output))
   in
-  File_tree.files_of (Super_context.file_tree sctx) source_dir
-  |> Path.Source.Set.iter ~f:setup_formatting;
+  File_tree.files_of source_dir |> Path.Source.Set.iter ~f:setup_formatting;
   Rules.Produce.Alias.add_deps alias_formatted Path.Set.empty
 
 let gen_rules ~dir =

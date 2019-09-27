@@ -38,7 +38,6 @@ type t =
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages : Package.t Package.Name.Map.t
-  ; file_tree : File_tree.t
   ; artifacts : Artifacts.t
   ; expander : Expander.t
   ; host : t option
@@ -61,8 +60,6 @@ let stanzas_in t ~dir = Path.Build.Map.find t.stanzas_per_dir dir
 let packages t = t.packages
 
 let artifacts t = t.artifacts
-
-let file_tree t = t.file_tree
 
 let build_dir t = t.context.build_dir
 
@@ -270,8 +267,8 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
-let source_files t ~src_path =
-  match File_tree.find_dir t.file_tree src_path with
+let source_files ~src_path =
+  match File_tree.find_dir src_path with
   | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
@@ -286,14 +283,14 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
-let dir_is_vendored t src_dir =
-  Option.value ~default:false (File_tree.dir_is_vendored t.file_tree src_dir)
+let dir_is_vendored src_dir =
+  Option.value ~default:false (File_tree.dir_is_vendored src_dir)
 
-let build_dir_is_vendored t build_dir =
+let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in
     let+ src_dir = Path.Build.drop_build_context build_dir in
-    dir_is_vendored t src_dir
+    dir_is_vendored src_dir
   in
   Option.value ~default:false opt
 
@@ -304,7 +301,7 @@ let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
       ~default:(Env.ocaml_flags t.env_context ~dir)
       ~eval:(Expander.expand_and_eval_set expander)
   in
-  let dir_is_vendored = build_dir_is_vendored t dir in
+  let dir_is_vendored = build_dir_is_vendored dir in
   if dir_is_vendored then
     Ocaml_flags.with_vendored_warnings flags
   else
@@ -414,7 +411,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           acc
       | _ -> acc)
 
-let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
+let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     ~external_lib_deps_mode =
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
@@ -505,7 +502,7 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
     ; bin_artifacts = artifacts.Artifacts.bin
     }
   in
-  let dir_status_db = Dir_status.DB.make file_tree ~stanzas_per_dir in
+  let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in
   let projects_by_key =
     Dune_project.File_key.Map.of_list_map_exn projects ~f:(fun project ->
         (Dune_project.file_key project, project))
@@ -519,7 +516,6 @@ let create ~(context : Context.t) ?host ~projects ~file_tree ~packages ~stanzas
   ; stanzas
   ; stanzas_per_dir
   ; packages
-  ; file_tree
   ; artifacts
   ; lib_entries_by_package =
       Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
@@ -596,7 +592,7 @@ module Deps = struct
     | Alias_rec s ->
       let+ () =
         Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
-          ~file_tree:t.file_tree (make_alias expander s)
+          (make_alias expander s)
       in
       []
     | Glob_files s ->
@@ -608,8 +604,7 @@ module Deps = struct
         (File_selector.create ~dir pred |> Build.paths_matching ~loc)
     | Source_tree s ->
       let path = Expander.expand_path expander s in
-      Build.map ~f:Path.Set.to_list
-        (Build.source_tree ~dir:path ~file_tree:t.file_tree)
+      Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path)
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
       let+ () =

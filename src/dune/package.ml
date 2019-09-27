@@ -1,5 +1,9 @@
 open! Stdune
 
+let opam_ext = ".opam"
+
+let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
+
 module Name = struct
   module T =
     Interned.Make
@@ -16,7 +20,12 @@ module Name = struct
 
   let of_string = make
 
-  let opam_fn (t : t) = to_string t ^ ".opam"
+  let of_basename basename =
+    let open Option.O in
+    let+ name = String.drop_suffix basename ~suffix:opam_ext in
+    make name
+
+  let opam_fn (t : t) = to_string t ^ opam_ext
 
   let meta_fn (t : t) = "META." ^ to_string t
 
@@ -271,3 +280,5 @@ let to_dyn
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 
 let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)
+
+let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)

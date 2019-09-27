@@ -11,7 +11,7 @@ type real =
   ; ppf : Format.formatter
   }
 
-let t = Fdecl.create ()
+let t = Fdecl.create Dyn.Encoder.opaque
 
 let init ?(file = File.Default) () =
   let oc =

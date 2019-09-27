@@ -124,7 +124,7 @@ let dump_stack v =
   Fiber.return v
 
 let mcompcycle =
-  let mcompcycle = Fdecl.create () in
+  let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
     Fiber.return x >>= dump_stack
     >>= fun x ->
@@ -169,7 +169,7 @@ let%expect_test _ =
 |}]
 
 let mfib =
-  let mfib = Fdecl.create () in
+  let mfib = Fdecl.create Dyn.Encoder.opaque in
   let compfib x =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;
@@ -205,7 +205,7 @@ let sync_int_fn_create name =
 let counter = ref 0
 
 let sync_fib =
-  let mfib = Fdecl.create () in
+  let mfib = Fdecl.create Dyn.Encoder.opaque in
   let compfib x =
     let mfib = Memo.exec (Fdecl.get mfib) in
     counter := !counter + 1;

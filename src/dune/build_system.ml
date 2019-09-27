@@ -392,7 +392,7 @@ module Action_and_deps = struct
 end
 
 module Rule_fn = struct
-  let loc_decl = Fdecl.create ()
+  let loc_decl = Fdecl.create Dyn.Encoder.opaque
 
   let loc () = Fdecl.get loc_decl ()
 end
@@ -1689,7 +1689,7 @@ let shim_of_build_goal request =
     ~static_deps:(static_deps request)
 
 let build_request ~request =
-  let result = Fdecl.create () in
+  let result = Fdecl.create Dyn.Encoder.opaque in
   let request =
     let open Build.O in
     let+ res = request in
@@ -1999,9 +1999,9 @@ let init ~contexts ?memory ~sandboxing_preference =
   let t =
     { contexts
     ; files = Path.Build.Table.create 1024
-    ; packages = Fdecl.create ()
-    ; gen_rules = Fdecl.create ()
-    ; init_rules = Fdecl.create ()
+    ; packages = Fdecl.create Dyn.Encoder.opaque
+    ; gen_rules = Fdecl.create Dyn.Encoder.opaque
+    ; init_rules = Fdecl.create Dyn.Encoder.opaque
     ; memory
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0

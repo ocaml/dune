@@ -123,7 +123,7 @@ module DB = struct
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config stanzas =
-    let t = Fdecl.create () in
+    let t = Fdecl.create Dyn.Encoder.opaque in
     let public_libs =
       public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir
         ~installed_libs stanzas

@@ -2,14 +2,21 @@ type 'a state =
   | Unset
   | Set of 'a
 
-type 'a t = { mutable state : 'a state }
+type 'a t =
+  { mutable state : 'a state
+  ; to_dyn : 'a -> Dyn.t
+  }
 
-let create () = { state = Unset }
+let create to_dyn = { state = Unset; to_dyn }
 
-let set t x =
+let set t new_ =
   match t.state with
-  | Unset -> t.state <- Set x
-  | Set _ -> Code_error.raise "Fdecl.set: already set" []
+  | Unset -> t.state <- Set new_
+  | Set old ->
+    Code_error.raise "Fdecl.set: already set"
+      [ "old", t.to_dyn old
+      ; "new_", t.to_dyn new_
+      ]
 
 let reset t x = t.state <- Set x
 

@@ -55,7 +55,7 @@ clean:
 	rm -rf _boot
 
 distclean: clean
-	rm -f src/setup.ml
+	rm -f src/dune/setup.ml
 
 doc:
 	cd doc && sphinx-build . _build

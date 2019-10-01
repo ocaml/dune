@@ -65,7 +65,7 @@ executable was built.
 !!!!!!!!!!!!!!!!!!!!!!
 
 This package contains code that is shared between various dune-xxx
-packages. However, it is not meant for public comsumption and provides
+packages. However, it is not meant for public consumption and provides
 no stability guarantee.
 "))
 

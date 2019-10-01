@@ -631,7 +631,7 @@ module Pkg_config = struct
             (Process.run_capture_exn c ~dir ?env t.pkg_config [ what; package ])
         with
         | "" -> []
-        | s -> String.split s ~on:' '
+        | s -> String.extract_blank_separated_words s
       in
       Ok { libs = run "--libs"; cflags = run "--cflags" }
     else

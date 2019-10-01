@@ -152,6 +152,8 @@
 
 - Do not setup rules for disabled libraries (#2491, fixes #2272, @bobot)
 
+- Configurator: filter out empty flags from `pkg-config` (#2716, @AltGr)
+
 1.11.4 (09/10/2019)
 -------------------
 

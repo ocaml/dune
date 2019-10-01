@@ -633,7 +633,16 @@ module Pkg_config = struct
         | "" -> []
         | s -> String.split s ~on:' '
       in
-      Ok { libs = run "--libs"; cflags = run "--cflags" }
+      let clink =
+        run "--libs" |> List.fold_left ~init:[] ~f:(fun acc f ->
+            if String.is_prefix f ~prefix:"-l" then f::acc
+            else f::"-ccopt"::acc)
+        |> List.rev
+      in
+      Ok
+        { libs   = clink
+        ; cflags = run "--cflags"
+        }
     else
       Error stderr
 

@@ -106,6 +106,69 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       Build.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
+let gen_manual_pack_module (lib : Library.t) cctx ~dep_graphs =
+  let modules = Compilation_context.modules cctx in
+  match Modules.main_module_name modules with
+  | None -> ()
+  | Some _main_module ->
+    let open Build.O in
+    let modules = Modules.for_alias modules |> Module_name.Map.values in
+    let contents =
+      let+ top_sorted_modules =
+        Dep_graph.top_closed dep_graphs.Ml_kind.Dict.impl modules
+      and+ contents =
+        List.fold_right ~init:(Build.return [])
+          ~f:(fun m acc ->
+            let x =
+              let+ name = Build.return (Module.name m)
+              and+ contents =
+                let+ l =
+                  let name = Module.name m |> Module_name.to_string in
+                  let l =
+                    match
+                      ( Module.file m ~ml_kind:Ml_kind.Intf
+                      , Module.file m ~ml_kind:Ml_kind.Impl )
+                    with
+                    | Some intf, Some impl ->
+                      [ Build.return (Printf.sprintf "module %s : sig\n" name)
+                      ; Build.contents intf
+                      ; Build.return "\nend = struct\n"
+                      ; Build.contents impl
+                      ; Build.return "\nend\n"
+                      ]
+                    | Some p, None
+                     |None, Some p ->
+                      [ Build.return
+                          (Printf.sprintf "module %s = struct\n" name)
+                      ; Build.contents p
+                      ; Build.return "\nend\n"
+                      ]
+                    | None, None -> assert false
+                  in
+                  Build.all l
+                in
+                String.concat ~sep:"" l
+              in
+              (name, contents)
+            in
+            Build.map2 x acc ~f:(fun x acc -> x :: acc))
+          modules
+        |> Build.map ~f:Module_name.Map.of_list_exn
+      in
+      List.filter_map
+        ~f:(fun m -> Module_name.Map.find contents (Module.name m))
+        top_sorted_modules
+      |> String.concat ~sep:""
+    in
+    let path =
+      Path.Build.relative
+        (Compilation_context.dir cctx)
+        (Lib_name.Local.to_string (snd lib.name) ^ ".pack.ml")
+    in
+    let action = Build.write_file_dyn path contents in
+    let sctx = Compilation_context.super_context cctx in
+    Super_context.add_rule sctx ~dir:(Compilation_context.dir cctx) action
+
 let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
     ~targets =
   Super_context.add_rule sctx ~sandbox ~dir ~loc:lib.buildable.loc
@@ -323,6 +386,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   Option.iter vimpl ~f:(Virtual_rules.setup_copy_rules_for_impl ~sctx ~dir);
   Check_rules.add_obj_dir sctx ~obj_dir;
   gen_wrapped_compat_modules lib cctx;
+  gen_manual_pack_module lib cctx ~dep_graphs;
   Module_compilation.build_all cctx ~dep_graphs;
   let expander = Super_context.expander sctx ~dir in
   if not (Library.is_virtual lib) then

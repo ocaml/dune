@@ -9,6 +9,8 @@ val make :
 
 val deps_of : t -> Module.t -> Module.t list Build.t
 
+val top_closed : t -> Module.t list -> Module.t list Build.t
+
 val top_closed_implementations : t -> Module.t list -> Module.t list Build.t
 
 module Ml_kind : sig

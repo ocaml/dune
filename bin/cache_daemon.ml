@@ -1,7 +1,7 @@
 open Stdune
 open Import
 
-let name = "cache-daemon"
+let name = "cache"
 
 let man =
   [ `S "DESCRIPTION"

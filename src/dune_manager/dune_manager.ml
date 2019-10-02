@@ -25,14 +25,17 @@ type client =
 
 let default_port_file () =
   let runtime_dir =
-    let xdg =
-      try Sys.getenv "XDG_RUNTIME_DIR"
-      with Not_found ->
-        User_error.raise [ Pp.textf "XDG_RUNTIME_DIR is not set" ]
-    in
-    Filename.concat xdg "dune-manager"
+    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    | Some p -> Path.L.relative (Path.of_string p) [ "dune-cache-daemon" ]
+    | None ->
+      (* The runtime directory is 0700 owned by the user for security reasons.
+         Defaulting to a directory in the dune cache root makes sense in that
+         regard, since if someone has access to this directory, it has access
+         to the cache content, and having access to the socket does not make a
+         difference. *)
+      Path.L.relative (Dune_memory.default_root ()) [ "runtime" ]
   in
-  Path.of_string (Filename.concat runtime_dir "port")
+  Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
 let max_port_size = 1024
 

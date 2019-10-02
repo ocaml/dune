@@ -72,7 +72,7 @@ no stability guarantee.
 (package
  (name dune-configurator)
  (depends
-  (dune-private-libs (= "\%{version}\%")))
+  (dune-private-libs (= :version)))
  (synopsis "Helper library for gathering system configuration")
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that
@@ -88,7 +88,7 @@ Among other things, dune-configurator allows one to:
 (package
  (name dune-action-plugin)
  (depends
-  (dune-private-libs (= "\%{version}\%")))
+  (dune-private-libs (= :version)))
  (synopsis "API for writing dynamic Dune actions")
  (description "\
 dune-action-plugin provides an API for writing dynamic Dune actions.

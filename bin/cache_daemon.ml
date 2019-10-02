@@ -42,16 +42,9 @@ let retry ?message ?(count = 100) f =
   in
   loop 0
 
-let start ~port_path ~root ~foreground =
+let start ~exit_no_client ~foreground ~port_path ~root =
   let show_endpoint ep = Printf.printf "listening on %s\n%!" ep in
-  let config =
-    let get item =
-      try Some (Sys.getenv ("DUNE_CACHE_" ^ String.uppercase item))
-      with Not_found -> None
-    in
-    let bool item = Option.is_some (get item) in
-    { Dune_manager.exit_no_client = bool "exit_no_client" }
-  in
+  let config = { Dune_manager.exit_no_client } in
   let f started =
     let started content =
       if foreground then show_endpoint content;
@@ -108,6 +101,12 @@ let term =
          value & flag
          & info [ "foreground"; "f" ]
              ~doc:"Whether to start in the foreground or as a daeon")
+     and+ exit_no_client =
+       let doc = "Whether to exit once all clients have disconnected" in
+       Arg.(
+         value & flag
+         & info [ "exit-no-client" ] ~doc
+             ~env:(Arg.env_var "DUNE_CACHE_EXIT_NO_CLIENT" ~doc))
      and+ port_path =
        Arg.(
          value
@@ -122,7 +121,7 @@ let term =
      in
      try
        match mode with
-       | Some Start -> `Ok (start ~foreground ~port_path ~root)
+       | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
        | Some Stop -> `Ok (stop ~port_path)
        | None -> `Help (`Pager, Some name)
      with Failure msg -> `Error (false, msg)

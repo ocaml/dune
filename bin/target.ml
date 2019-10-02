@@ -32,7 +32,7 @@ let log_targets targets =
     | Alias a -> Log.info (Alias.to_log_string a));
   flush stdout
 
-let target_hint (_setup : Dune.Main.build_system) path =
+let target_hint (_setup : Dune.Driver.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
   let candidates = Path.Build.Set.to_list (Build_system.all_targets ()) in
@@ -57,7 +57,7 @@ let target_hint (_setup : Dune.Main.build_system) path =
   let candidates = String.Set.of_list candidates |> String.Set.to_list in
   User_message.did_you_mean (Path.to_string path) ~candidates
 
-let resolve_path path ~(setup : Dune.Main.build_system) =
+let resolve_path path ~(setup : Dune.Driver.build_system) =
   let checked = Util.check_path setup.workspace.contexts path in
   let can't_build path = Error (target_hint setup path) in
   let as_source_dir src =
@@ -100,7 +100,7 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     | None -> build () )
   | In_install_dir _ -> build ()
 
-let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
+let expand_path common ~(setup : Dune.Driver.build_system) ctx sv =
   let sctx =
     Dune.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
   in
@@ -123,7 +123,7 @@ let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
   Path.relative Path.root
     (Common.prefix_target common (Dune.Expander.expand_str expander sv))
 
-let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
+let resolve_alias common ~recursive sv ~(setup : Dune.Driver.build_system) =
   match Dune.String_with_vars.text_only sv with
   | Some s ->
     Ok
@@ -174,7 +174,7 @@ let resolve_targets_mixed common setup user_targets =
     );
     targets
 
-let resolve_targets common (setup : Dune.Main.build_system) user_targets =
+let resolve_targets common (setup : Dune.Driver.build_system) user_targets =
   List.map ~f:(fun dep -> Dep dep) user_targets
   |> resolve_targets_mixed common setup
 

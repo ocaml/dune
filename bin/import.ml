@@ -79,7 +79,7 @@ let make_cache () =
   | _ -> Fiber.return Build_system.Disabled
 
 module Main = struct
-  include Dune.Main
+  include Dune.Driver
 
   let scan_workspace (common : Common.t) =
     let workspace_file =

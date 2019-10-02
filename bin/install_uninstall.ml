@@ -82,7 +82,7 @@ module type File_operations = sig
 end
 
 module type Workspace = sig
-  val workspace : Dune.Main.workspace
+  val workspace : Dune.Driver.workspace
 end
 
 module File_ops_dry_run : File_operations = struct

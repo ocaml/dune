@@ -112,7 +112,7 @@ let split_words s =
     else
       match s.[i] with
       | ' '
-       |'\t' ->
+      | '\t' ->
         skip_blanks (i + 1)
       | _ -> parse_word i (i + 1)
   and parse_word i j =
@@ -121,7 +121,7 @@ let split_words s =
     else
       match s.[j] with
       | ' '
-       |'\t' ->
+      | '\t' ->
         String.sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
       | _ -> parse_word i (j + 1)
   in
@@ -320,7 +320,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
                in
                match ext with
                | ".ml"
-                |".mll" ->
+               | ".mll" ->
                  let mod_name = String.capitalize_ascii base in
                  let fqn = fqn libname mod_name in
                  if is_boot || not (String_map.mem fqn impls) then

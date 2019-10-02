@@ -1,6 +1,7 @@
 (rule
  (mode promote)
- (action (copy ../bin/bootstrap-info libs.ml)))
+ (action
+  (copy ../bin/bootstrap-info libs.ml)))
 
 (alias
  (name runtest)

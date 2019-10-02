@@ -82,7 +82,7 @@ let rule_loc ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
   | Internal
-   |Source_file_copy ->
+  | Source_file_copy ->
     let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
       match
@@ -371,7 +371,7 @@ module Subdir_set = struct
   let union a b =
     match (a, b) with
     | All, _
-     |_, All ->
+    | _, All ->
       All
     | These a, These b -> These (String.Set.union a b)
 
@@ -528,7 +528,7 @@ let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
     ~hints:
       ( match (rule.info, rule'.info) with
       | Source_file_copy, _
-       |_, Source_file_copy ->
+      | _, Source_file_copy ->
         [ Pp.textf "rm -f %s"
             (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
@@ -806,8 +806,8 @@ end = struct
     List.filter rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
         | Standard
-         |Promote _
-         |Ignore_source_files ->
+        | Promote _
+        | Ignore_source_files ->
           true
         | Fallback ->
           let source_files_for_targtes =
@@ -889,8 +889,8 @@ end = struct
     let corresponding_source_dir ~dir =
       match Dpath.analyse_target dir with
       | Install _
-       |Alias _
-       |Other _ ->
+      | Alias _
+      | Other _ ->
         None
       | Regular (_ctx, sub_dir) -> File_tree.find_dir sub_dir
 
@@ -943,9 +943,9 @@ end = struct
       | Build (Install (ctx, path)) -> (Context_or_install.Install ctx, path)
       | Build (Regular (ctx, path)) -> (Context_or_install.Context ctx, path)
       | Build (Alias _)
-       |Build (Other _)
-       |Source _
-       |External _ ->
+      | Build (Other _)
+      | Source _
+      | External _ ->
         Code_error.raise "[load_dir_step2_exn] was called on a strange path"
           [ ("path", Path.to_dyn dir) ]
     in
@@ -988,7 +988,7 @@ end = struct
         ~f:(fun acc_ignored { Pre_rule.targets; mode; _ } ->
           match mode with
           | Promote { only = None; _ }
-           |Ignore_source_files ->
+          | Ignore_source_files ->
             Path.Build.Set.union targets acc_ignored
           | Promote { only = Some pred; _ } ->
             let to_ignore =
@@ -1244,8 +1244,8 @@ end = struct
       | File f -> build_file f
       | File_selector g -> Pred.build g
       | Universe
-       |Env _
-       |Sandbox_config _ ->
+      | Env _
+      | Sandbox_config _ ->
         Fiber.return ())
 
   let eval_pred = Pred.eval
@@ -1476,7 +1476,7 @@ end = struct
         let from_dune_memory =
           match (do_not_memoize, t.memory) with
           | true, _
-           |_, None ->
+          | _, None ->
             None
           | false, Some memory -> (
             match Dune_manager.Client.search memory rule_digest with
@@ -1565,7 +1565,7 @@ end = struct
     let+ () =
       match (mode, !Clflags.promote) with
       | (Standard | Fallback | Ignore_source_files), _
-       |Promote _, Some Never ->
+      | Promote _, Some Never ->
         Fiber.return ()
       | Promote { lifetime; into; only }, (Some Automatically | None) ->
         Fiber.sequential_iter targets_as_list ~f:(fun path ->

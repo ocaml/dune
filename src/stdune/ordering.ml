@@ -24,11 +24,11 @@ let to_string = function
 let neq = function
   | Eq -> false
   | Lt
-   |Gt ->
+  | Gt ->
     true
 
 let is_eq = function
   | Eq -> true
   | Lt
-   |Gt ->
+  | Gt ->
     false

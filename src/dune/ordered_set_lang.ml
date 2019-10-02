@@ -43,8 +43,8 @@ module Parse = struct
       >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "")
-       |Quoted_string (_, _)
-       |Template _ ->
+      | Quoted_string (_, _)
+      | Template _ ->
         elt
       | Atom (loc, A s) -> (
         match s with
@@ -170,7 +170,7 @@ module Eval = struct
           merge acc t ~f:(fun _name x y ->
               match (x, y) with
               | Some x, _
-               |_, Some x ->
+              | _, Some x ->
                 Some x
               | _ -> None))
     in
@@ -273,7 +273,7 @@ module Unexpanded = struct
       let open Ast in
       match ast with
       | Element _
-       |Standard ->
+      | Standard ->
         acc
       | Include fn -> Path.Set.add acc (f fn)
       | Union l -> List.fold_left l ~init:acc ~f:loop
@@ -286,7 +286,7 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Standard
-       |Include _ ->
+      | Include _ ->
         true
       | Element _ -> false
       | Union l -> List.exists l ~f:loop
@@ -303,7 +303,7 @@ module Unexpanded = struct
       let open Ast in
       match t with
       | Standard
-       |Include _ ->
+      | Include _ ->
         acc
       | Element x -> f pos x acc
       | Union l -> List.fold_left l ~init:acc ~f:(fun acc x -> loop x pos acc)

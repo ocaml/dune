@@ -375,7 +375,7 @@ let wrapped t =
     let wrapped = Lib_info.wrapped vlib.info in
     match wrapped with
     | Some (From _) (* can't inherit this value in virtual libs *)
-     |None ->
+    | None ->
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x )
 
@@ -1280,7 +1280,7 @@ end = struct
       match Map.find !vlib_default_parent lib with
       | Some (_ :: _) -> None
       | None
-       |Some [] ->
+      | Some [] ->
         Option.bind lib.default_implementation ~f:(fun (lazy default) ->
             match default with
             | Error _ -> None
@@ -1534,7 +1534,7 @@ module DB = struct
     List.iter stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
         match stanza with
         | Library _
-         |Deprecated_library_name _ ->
+        | Deprecated_library_name _ ->
           ()
         | External_variant ev -> (
           let loc, virtual_lib = ev.virtual_lib in
@@ -1546,7 +1546,7 @@ module DB = struct
                    [libmap] for sure and maps to [Found _]. *)
                 match res with
                 | Not_found
-                 |Hidden _ ->
+                | Hidden _ ->
                   assert false
                 | Found x -> x
                 | Redirect (_, name') -> (
@@ -1677,7 +1677,7 @@ module DB = struct
             | External_variant _ -> None)
         with
         | []
-         |[ _ ] ->
+        | [ _ ] ->
           assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise
@@ -1720,14 +1720,14 @@ module DB = struct
     | St_initializing _ -> assert false
     | St_found t -> Some t
     | St_not_found
-     |St_hidden _ ->
+    | St_hidden _ ->
       None
 
   let find_even_when_hidden t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t
-     |St_hidden (t, _, _) ->
+    | St_hidden (t, _, _) ->
       Some t
     | St_not_found -> None
 
@@ -1853,7 +1853,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
-     |None, Some _ ->
+    | None, Some _ ->
       assert false
     | None, None -> Ok None
     | Some (loc, _), Some field ->

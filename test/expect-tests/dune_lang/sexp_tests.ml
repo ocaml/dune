@@ -132,8 +132,7 @@ Different { jbuild = Ok [ "\\a" ]; dune = Error "unknown escape sequence" }
 
 let%expect_test _ =
   parse {|"\%{x}"|};
-  [%expect
-    {|
+  [%expect {|
 Different { jbuild = Ok [ "\\%{x}" ]; dune = Ok [ "%{x}" ] }
 |}]
 

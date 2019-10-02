@@ -83,7 +83,7 @@ let run_action (vcs : Vcs.t) action =
       |> List.map ~f:(fun s ->
              match s with
              | ""
-              |"dirty" ->
+             | "dirty" ->
                s
              | s
                when String.length s = 1
@@ -94,7 +94,7 @@ let run_action (vcs : Vcs.t) action =
              | _
                when String.for_all s ~f:(function
                       | '0' .. '9'
-                       |'a' .. 'z' ->
+                      | 'a' .. 'z' ->
                         true
                       | _ -> false) ->
                "<commit-id>"

@@ -12,8 +12,8 @@ module Op = struct
   let eval t (x : Ordering.t) =
     match (t, x) with
     | (Eq | Gte | Lte), Eq
-     |(Neq | Lt | Lte), Lt
-     |(Neq | Gt | Gte), Gt ->
+    | (Neq | Lt | Lte), Lt
+    | (Neq | Gt | Gte), Gt ->
       true
     | _, _ -> false
 
@@ -98,7 +98,7 @@ let rec fold_vars t ~init ~f =
   | Const _ -> init
   | Expr sw -> String_with_vars.fold_vars sw ~init ~f
   | And l
-   |Or l ->
+  | Or l ->
     fold_vars_list l ~init ~f
   | Compare (_, x, y) ->
     String_with_vars.fold_vars y ~f

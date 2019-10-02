@@ -116,10 +116,10 @@ module Set = struct
       ~f:(fun acc x ->
         match x with
         | File_selector _
-         |Env _
-         |File _
-         |Alias _
-         |Universe ->
+        | Env _
+        | File _
+        | Alias _
+        | Universe ->
           acc
         | Sandbox_config config -> Sandbox_config.inter acc config)
 
@@ -146,7 +146,7 @@ module Set = struct
         | File f -> Path.Set.add acc f
         | File_selector g -> Path.Set.union acc (eval_pred g)
         | Universe
-         |Env _ ->
+        | Env _ ->
           acc
         | Sandbox_config _ -> acc)
 
@@ -162,7 +162,7 @@ module Set = struct
         | File_selector g -> Path.Set.add acc (File_selector.dir g)
         | File f -> Path.Set.add acc (Path.parent_exn f)
         | Universe
-         |Env _ ->
+        | Env _ ->
           acc
         | Sandbox_config _ -> acc)
 end

@@ -258,7 +258,7 @@ module Run (P : PARAMS) : sig end = struct
             | Some "--only-tokens" -> (true, cmly)
             | Some "--cmly" -> (only_tokens, true)
             | Some _
-             |None ->
+            | None ->
               acc ))
     in
     if ocaml_type_inference_disabled || not stanza.infer then

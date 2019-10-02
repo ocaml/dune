@@ -1,7 +1,7 @@
 let compare x y =
   match (x, y) with
   | true, true
-   |false, false ->
+  | false, false ->
     Ordering.Eq
   | true, false -> Gt
   | false, true -> Lt

@@ -28,7 +28,7 @@ module V1 = struct
       let rec loop dh acc =
         match Unix.readdir dh with
         | "."
-         |".." ->
+        | ".." ->
           loop dh acc
         | s -> loop dh (s :: acc)
         | exception End_of_file -> acc

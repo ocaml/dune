@@ -78,7 +78,7 @@ let rec deps_of cctx ~ml_kind (m : Modules.Sourced_module.t) =
   let is_alias =
     match m with
     | Imported_from_vlib m
-     |Normal m ->
+    | Normal m ->
       Module.kind m = Alias
     | Impl_of_virtual_module _ -> false
   in

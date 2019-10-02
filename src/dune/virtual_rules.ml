@@ -97,7 +97,7 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
           let foreign_objects = Lib_info.foreign_objects info in
           match (virtual_, foreign_objects) with
           | External _, Local
-           |Local, External _ ->
+          | Local, External _ ->
             assert false
           | External modules, External fa -> (modules, fa)
           | Local, Local ->

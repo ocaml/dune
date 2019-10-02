@@ -72,7 +72,7 @@ end = struct
     len > 0
     && String.for_all name ~f:(function
          | '.'
-          |'/' ->
+         | '/' ->
            false
          | _ -> true)
 

@@ -13,3 +13,4 @@ space-around-lists
 space-around-arrays
 cases-exp-indent=2
 break-cases=all
+indicate-nested-or-patterns=unsafe-no

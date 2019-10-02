@@ -33,7 +33,7 @@ let rec add_targets ts acc =
       | Target fn -> fn :: acc
       | Hidden_targets fns -> List.rev_append fns acc
       | S ts
-       |Concat (_, ts) ->
+      | Concat (_, ts) ->
         add_targets ts acc
       | _ -> acc)
 

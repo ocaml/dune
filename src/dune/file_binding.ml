@@ -81,8 +81,8 @@ module Unexpanded = struct
       peek_exn
       >>= function
       | Atom _
-       |Quoted_string _
-       |Template _ ->
+      | Quoted_string _
+      | Template _ ->
         decode >>| fun src -> { src; dst = None }
       | List (_, [ _; Atom (_, A "as"); _ ]) ->
         enter

@@ -20,13 +20,13 @@ let can_be_displayed_wrapped =
   List.for_all ~f:(fun (c : Dune_lang.Cst.t) ->
       match c with
       | Atom _
-       |Quoted_string _
-       |Template _
-       |List (_, [])
-       |List (_, [ _ ]) ->
+      | Quoted_string _
+      | Template _
+      | List (_, [])
+      | List (_, [ _ ]) ->
         true
       | List _
-       |Comment _ ->
+      | Comment _ ->
         false)
 
 let pp_simple fmt t =

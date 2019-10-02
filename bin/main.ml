@@ -66,7 +66,7 @@ let runtest =
              let prefix =
                match s with
                | ""
-                |"." ->
+               | "." ->
                  ""
                | dir when dir.[String.length dir - 1] = '/' -> dir
                | dir -> dir ^ "/"

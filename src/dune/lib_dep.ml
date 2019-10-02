@@ -47,7 +47,7 @@ let re_export x = Re_export x
 
 let to_lib_names = function
   | Direct (_, s)
-   |Re_export (_, s) ->
+  | Re_export (_, s) ->
     [ s ]
   | Select s ->
     List.fold_left s.choices ~init:Lib_name.Set.empty

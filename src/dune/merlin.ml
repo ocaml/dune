@@ -20,7 +20,7 @@ module Preprocess = struct
     | No_preprocessing, No_preprocessing ->
       Dune_file.Preprocess.No_preprocessing
     | No_preprocessing, pp
-     |pp, No_preprocessing ->
+    | pp, No_preprocessing ->
       let loc =
         Dune_file.Preprocess.loc pp |> Option.value_exn
         (* only No_preprocessing has no loc*)
@@ -29,7 +29,7 @@ module Preprocess = struct
         ~reason:"Cannot mix preprocessed and non preprocessed specificiations";
       Dune_file.Preprocess.No_preprocessing
     | (Future_syntax _ as future_syntax), _
-     |_, (Future_syntax _ as future_syntax) ->
+    | _, (Future_syntax _ as future_syntax) ->
       future_syntax
     | Action (loc, a1), Action (_, a2) ->
       if Action_dune_lang.compare_no_locs a1 a2 <> Ordering.Eq then
@@ -39,7 +39,7 @@ module Preprocess = struct
              specifications.";
       Action (loc, a1)
     | Pps _, Action (loc, _)
-     |Action (loc, _), Pps _ ->
+    | Action (loc, _), Pps _ ->
       warn_dropped_pp loc ~allow_approx_merlin
         ~reason:"cannot mix action and pps preprocessors";
       No_preprocessing

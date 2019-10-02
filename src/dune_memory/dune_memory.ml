@@ -239,7 +239,7 @@ module Memory = struct
                   :: List.map
                        ~f:(function
                          | Promoted (o, p, _)
-                          |Already_promoted (o, p, _) ->
+                         | Already_promoted (o, p, _) ->
                            Sexp.List
                              [ Sexp.Atom
                                  (Path.Local.to_string (Path.Build.local o))

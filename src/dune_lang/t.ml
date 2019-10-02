@@ -97,8 +97,8 @@ module Deprecated = struct
        ; mark_close_tag =
            (function
            | "atom"
-            |"makefile-action"
-            |"makefile-stuff" ->
+           | "makefile-action"
+           | "makefile-stuff" ->
              state := List.tl !state;
              ""
            | s -> tfuncs.mark_close_tag s)

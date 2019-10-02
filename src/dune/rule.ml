@@ -14,7 +14,7 @@ module Info = struct
   let loc = function
     | From_dune_file loc -> Some loc
     | Internal
-     |Source_file_copy ->
+    | Source_file_copy ->
       None
 end
 
@@ -50,7 +50,7 @@ let make ?(sandbox = Sandbox_config.default)
       then
         match info with
         | Internal
-         |Source_file_copy ->
+        | Source_file_copy ->
           Code_error.raise "rule has targets in different directories"
             [ ("targets", Path.Build.Set.to_dyn targets) ]
         | From_dune_file loc ->

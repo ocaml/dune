@@ -25,7 +25,7 @@ let default = function
 
 let exceptions = function
   | Empty
-   |Universal ->
+  | Universal ->
     String.Map.empty
   | Nontrivial t -> t.exceptions
 
@@ -57,7 +57,7 @@ let merge_exceptions a b ~default ~f =
       let y = Option.value y ~default:(trivial b.default) in
       match (default, f x y) with
       | false, Empty
-       |true, Universal ->
+      | true, Universal ->
         None
       | _, res -> Some res)
 
@@ -70,10 +70,10 @@ let merge_nontrivial a b ~f_one ~f_set =
 let rec union x y =
   match (x, y) with
   | Empty, v
-   |v, Empty ->
+  | v, Empty ->
     v
   | Universal, _
-   |_, Universal ->
+  | _, Universal ->
     Universal
   | Nontrivial x, Nontrivial y ->
     merge_nontrivial x y ~f_one:( || ) ~f_set:union
@@ -81,10 +81,10 @@ let rec union x y =
 let rec inter x y =
   match (x, y) with
   | Universal, v
-   |v, Universal ->
+  | v, Universal ->
     v
   | Empty, _
-   |_, Empty ->
+  | _, Empty ->
     Empty
   | Nontrivial x, Nontrivial y ->
     merge_nontrivial x y ~f_one:( && ) ~f_set:inter
@@ -161,10 +161,10 @@ let singleton p = singleton' (Path.Local_gen.explode p)
 let rec is_subset t ~of_ =
   match (t, of_) with
   | _, Universal
-   |Empty, _ ->
+  | Empty, _ ->
     true
   | Universal, _
-   |_, Empty ->
+  | _, Empty ->
     false
   | Nontrivial x, Nontrivial y ->
     ((not x.here) || y.here)

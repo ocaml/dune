@@ -82,7 +82,7 @@ let gen_lib pub_name lib ~version =
     match kind with
     | Normal -> []
     | Ppx_rewriter _
-     |Ppx_deriver _ ->
+    | Ppx_deriver _ ->
       [ Pos "ppx_driver" ]
   in
   let lib_deps = Lib.Meta.requires lib in
@@ -102,7 +102,7 @@ let gen_lib pub_name lib ~version =
     ; ( match kind with
       | Normal -> []
       | Ppx_rewriter _
-       |Ppx_deriver _ ->
+      | Ppx_deriver _ ->
         (* Deprecated ppx method support *)
         let no_ppx_driver = Neg "ppx_driver"
         and no_custom_ppx = Neg "custom_ppx" in

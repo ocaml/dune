@@ -641,7 +641,7 @@ let gen_rules sctx ~dir:_ rest =
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | "_mlds" :: pkg :: _
-   |"_odoc" :: "pkg" :: pkg :: _ ->
+  | "_odoc" :: "pkg" :: pkg :: _ ->
     let pkg = Package.Name.of_string pkg in
     let packages = Super_context.packages sctx in
     Package.Name.Map.find packages pkg

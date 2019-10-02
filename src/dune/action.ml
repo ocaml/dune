@@ -144,28 +144,28 @@ end
 let fold_one_step t ~init:acc ~f =
   match t with
   | Chdir (_, t)
-   |Setenv (_, _, t)
-   |Redirect_out (_, _, t)
-   |Redirect_in (_, _, t)
-   |Ignore (_, t) ->
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t) ->
     f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
-   |Dynamic_run _
-   |Echo _
-   |Cat _
-   |Copy _
-   |Symlink _
-   |Copy_and_add_line_directive _
-   |System _
-   |Bash _
-   |Write_file _
-   |Rename _
-   |Remove_tree _
-   |Mkdir _
-   |Digest_files _
-   |Diff _
-   |Merge_files_into _ ->
+  | Dynamic_run _
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Copy_and_add_line_directive _
+  | System _
+  | Bash _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Mkdir _
+  | Digest_files _
+  | Diff _
+  | Merge_files_into _ ->
     acc
 
 include Action_mapper.Make (Ast) (Ast)
@@ -184,27 +184,27 @@ let chdirs =
 let rec is_dynamic = function
   | Dynamic_run _ -> true
   | Chdir (_, t)
-   |Setenv (_, _, t)
-   |Redirect_out (_, _, t)
-   |Redirect_in (_, _, t)
-   |Ignore (_, t) ->
+  | Setenv (_, _, t)
+  | Redirect_out (_, _, t)
+  | Redirect_in (_, _, t)
+  | Ignore (_, t) ->
     is_dynamic t
   | Progn l -> List.exists l ~f:is_dynamic
   | Run _
-   |System _
-   |Bash _
-   |Echo _
-   |Cat _
-   |Copy _
-   |Symlink _
-   |Copy_and_add_line_directive _
-   |Write_file _
-   |Rename _
-   |Remove_tree _
-   |Diff _
-   |Mkdir _
-   |Digest_files _
-   |Merge_files_into _ ->
+  | System _
+  | Bash _
+  | Echo _
+  | Cat _
+  | Copy _
+  | Symlink _
+  | Copy_and_add_line_directive _
+  | Write_file _
+  | Rename _
+  | Remove_tree _
+  | Diff _
+  | Mkdir _
+  | Digest_files _
+  | Merge_files_into _ ->
     false
 
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =

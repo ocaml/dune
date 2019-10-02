@@ -20,5 +20,4 @@ let%bench_fun "File_tree.find_dir" =
   let path = Lazy.force setup in
   fun () ->
     ignore
-      ( Sys.opaque_identity (File_tree.find_dir path)
-        : File_tree.Dir.t option )
+      (Sys.opaque_identity (File_tree.find_dir path) : File_tree.Dir.t option)

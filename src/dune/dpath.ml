@@ -60,7 +60,7 @@ let describe_target fn =
 let describe_path (p : Path.t) =
   match p with
   | External _
-   |In_source_tree _ ->
+  | In_source_tree _ ->
     Path.to_string_maybe_quoted p
   | In_build_dir p -> describe_target p
 

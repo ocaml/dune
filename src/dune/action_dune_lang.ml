@@ -40,26 +40,26 @@ let ensure_at_most_one_dynamic_run ~loc action =
   let rec loop : t -> bool = function
     | Dynamic_run _ -> true
     | Chdir (_, t)
-     |Setenv (_, _, t)
-     |Redirect_out (_, _, t)
-     |Redirect_in (_, _, t)
-     |Ignore (_, t) ->
+    | Setenv (_, _, t)
+    | Redirect_out (_, _, t)
+    | Redirect_in (_, _, t)
+    | Ignore (_, t) ->
       loop t
     | Run _
-     |Echo _
-     |Cat _
-     |Copy _
-     |Symlink _
-     |Copy_and_add_line_directive _
-     |System _
-     |Bash _
-     |Write_file _
-     |Rename _
-     |Remove_tree _
-     |Mkdir _
-     |Digest_files _
-     |Diff _
-     |Merge_files_into _ ->
+    | Echo _
+    | Cat _
+    | Copy _
+    | Symlink _
+    | Copy_and_add_line_directive _
+    | System _
+    | Bash _
+    | Write_file _
+    | Rename _
+    | Remove_tree _
+    | Mkdir _
+    | Digest_files _
+    | Diff _
+    | Merge_files_into _ ->
       false
     | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->

@@ -49,7 +49,7 @@ module File = struct
 
   let full_path = function
     | Dune { path; name; _ }
-     |Text { path; name; _ } ->
+    | Text { path; name; _ } ->
       Path.relative path name
 
   (** Inspection and manipulation of stanzas in a file *)

@@ -62,7 +62,7 @@ end = struct
               match status with
               | Private scope_name -> Some scope_name
               | Public _
-               |Installed ->
+              | Installed ->
                 None
             in
             match (acc, scope_for_key) with
@@ -402,7 +402,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
           match kind with
           | Normal -> []
           | Ppx_rewriter { cookies }
-           |Ppx_deriver { cookies } ->
+          | Ppx_deriver { cookies } ->
             List.map
               ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
                 (name, (Expander.expand_str expander value, Lib.name t)))

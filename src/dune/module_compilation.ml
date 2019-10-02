@@ -77,7 +77,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                       , [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ]
                       )
                     | Cmo, None, true
-                     |(Cmo | Cmx), _, _ ->
+                    | (Cmo | Cmx), _, _ ->
                       ( force_read_cmi src
                       , [ Path.build
                             (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)
@@ -94,7 +94,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                       ~ext:ctx.lib_config.ext_obj
                     :: other_targets
                   | Cmi
-                   |Cmo ->
+                  | Cmo ->
                     other_targets
                 in
                 let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
@@ -124,7 +124,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                   match cm_kind with
                   | Cmx -> (other_targets, Command.Args.S [])
                   | Cmi
-                   |Cmo ->
+                  | Cmo ->
                     let fn =
                       Option.value_exn
                         (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
@@ -155,7 +155,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
                   | true, Cmi, false -> (Obj_dir.byte_dir obj_dir, As [])
                   (* emulated -no-keep-locs *)
                   | true, (Cmo | Cmx), _
-                   |false, _, _ ->
+                  | false, _, _ ->
                     (ctx.build_dir, As [])
                 in
                 let flags =

@@ -168,20 +168,20 @@ module Section = struct
 
   let should_set_executable_bit = function
     | Lib
-     |Lib_root
-     |Toplevel
-     |Share
-     |Share_root
-     |Etc
-     |Doc
-     |Man
-     |Misc ->
+    | Lib_root
+    | Toplevel
+    | Share
+    | Share_root
+    | Etc
+    | Doc
+    | Man
+    | Misc ->
       false
     | Libexec
-     |Libexec_root
-     |Bin
-     |Sbin
-     |Stublibs ->
+    | Libexec_root
+    | Bin
+    | Sbin
+    | Stublibs ->
       true
 
   module Paths = struct

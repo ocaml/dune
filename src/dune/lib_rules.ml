@@ -66,7 +66,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                   ( match lib.kind with
                   | Normal -> []
                   | Ppx_deriver _
-                   |Ppx_rewriter _ ->
+                  | Ppx_rewriter _ ->
                     [ "-linkall" ] )
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode

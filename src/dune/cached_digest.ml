@@ -46,12 +46,12 @@ let delete_very_recent_entries () =
   match Float.compare cache.max_timestamp now with
   | Lt -> ()
   | Eq
-   |Gt ->
+  | Gt ->
     Path.Table.filteri_inplace cache.table ~f:(fun ~key:_ ~data ->
         match Float.compare data.timestamp now with
         | Lt -> true
         | Gt
-         |Eq ->
+        | Eq ->
           false)
 
 let dump () =

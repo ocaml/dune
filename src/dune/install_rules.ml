@@ -29,7 +29,7 @@ end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
     | Normal
-     |Ppx_deriver _ ->
+    | Ppx_deriver _ ->
       []
     | Ppx_rewriter _ ->
       let name = Dune_file.Library.best_name lib in
@@ -135,7 +135,7 @@ end = struct
       | Dune_file.Library lib ->
         Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       | Dune_file.Documentation _
-       |Dune_file.Install _ ->
+      | Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
         let compile_info =
@@ -177,7 +177,7 @@ end = struct
                ( match pkg.kind with
                | Dune false -> []
                | Dune true
-                |Opam ->
+               | Opam ->
                  let opam_file = Package_paths.opam_file ctx pkg in
                  [ (None, Install.Entry.make Lib opam_file ~dst:"opam") ] )
              in
@@ -203,7 +203,7 @@ end = struct
           let new_entries =
             match (stanza : Stanza.t) with
             | Dune_file.Install i
-             |Dune_file.Executables { install_conf = Some i; _ } ->
+            | Dune_file.Executables { install_conf = Some i; _ } ->
               let expander = Super_context.expander sctx ~dir in
               let path_expander =
                 File_binding.Unexpanded.expand ~dir

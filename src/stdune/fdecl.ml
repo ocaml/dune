@@ -14,9 +14,7 @@ let set t new_ =
   | Unset -> t.state <- Set new_
   | Set old ->
     Code_error.raise "Fdecl.set: already set"
-      [ "old", t.to_dyn old
-      ; "new_", t.to_dyn new_
-      ]
+      [ ("old", t.to_dyn old); ("new_", t.to_dyn new_) ]
 
 let reset t x = t.state <- Set x
 

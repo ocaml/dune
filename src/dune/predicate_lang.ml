@@ -10,7 +10,7 @@ module Ast = struct
 
   let diff a = function
     | Union []
-     |Inter [] ->
+    | Inter [] ->
       a
     | b -> Inter [ a; Compl b ]
 
@@ -33,8 +33,8 @@ module Ast = struct
       >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "")
-       |Quoted_string (_, _)
-       |Template _ ->
+      | Quoted_string (_, _)
+      | Template _ ->
         elt
       | Atom (loc, A s) -> (
         match s with
@@ -51,8 +51,8 @@ module Ast = struct
           User_error.raise ~loc
             [ Pp.text ":include isn't supported in the predicate language" ]
         | "or"
-         |"and"
-         |"not" ->
+        | "and"
+        | "not" ->
           bool_ops ()
         | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
           User_error.raise ~loc
@@ -112,7 +112,7 @@ let rec exec t ~standard elem =
 let filter (t : t) ~standard elems =
   match t with
   | Inter []
-   |Union [] ->
+  | Union [] ->
     []
   | _ -> List.filter elems ~f:(fun elem -> exec t ~standard elem)
 

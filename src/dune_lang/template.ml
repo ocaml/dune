@@ -25,8 +25,8 @@ type t =
 let compare_var_syntax x y =
   match (x, y) with
   | Percent, Percent
-   |Dollar_brace, Dollar_brace
-   |Dollar_paren, Dollar_paren ->
+  | Dollar_brace, Dollar_brace
+  | Dollar_paren, Dollar_paren ->
     Ordering.Eq
   | Percent, (Dollar_brace | Dollar_paren) -> Ordering.Lt
   | (Dollar_brace | Dollar_paren), Percent -> Ordering.Gt

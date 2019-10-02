@@ -18,8 +18,8 @@ let c_name, cxx_name =
     if
       match s with
       | ""
-       |"."
-       |".." ->
+      | "."
+      | ".." ->
         true
       | _ -> false
     then

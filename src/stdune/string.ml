@@ -99,16 +99,16 @@ let extract_words s ~is_word_char =
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
     | ','
-     |' '
-     |'\t'
-     |'\n' ->
+    | ' '
+    | '\t'
+    | '\n' ->
       false
     | _ -> true)
 
 let extract_blank_separated_words s =
   extract_words s ~is_word_char:(function
     | ' '
-     |'\t' ->
+    | '\t' ->
       false
     | _ -> true)
 
@@ -272,13 +272,13 @@ let need_quoting s =
     else
       match s.[i] with
       | ' '
-       |'\"'
-       |'('
-       |')'
-       |'{'
-       |'}'
-       |';'
-       |'#' ->
+      | '\"'
+      | '('
+      | ')'
+      | '{'
+      | '}'
+      | ';'
+      | '#' ->
         true
       | _ -> loop (i + 1)
   in

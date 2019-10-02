@@ -5,18 +5,18 @@ open Fiber.O
 let is_a_source_file path =
   ( match Path.extension path with
   | ".flv"
-   |".gif"
-   |".ico"
-   |".jpeg"
-   |".jpg"
-   |".mov"
-   |".mp3"
-   |".mp4"
-   |".otf"
-   |".pdf"
-   |".png"
-   |".ttf"
-   |".woff" ->
+  | ".gif"
+  | ".ico"
+  | ".jpeg"
+  | ".jpg"
+  | ".mov"
+  | ".mp3"
+  | ".mp4"
+  | ".otf"
+  | ".pdf"
+  | ".png"
+  | ".ttf"
+  | ".woff" ->
     false
   | _ -> true )
   && Path.is_file path
@@ -106,7 +106,7 @@ let subst_string s path ~map =
       match s.[i] with
       | '%' -> after_double_percent ~start:(i - 1) (i + 1) acc
       | 'A' .. 'Z'
-       |'_' ->
+      | '_' ->
         in_var ~start (i + 1) acc
       | _ -> loop (i + 1) acc
   and in_var ~start i acc =
@@ -118,7 +118,7 @@ let subst_string s path ~map =
       match s.[i] with
       | '%' -> end_of_var ~start (i + 1) acc
       | 'A' .. 'Z'
-       |'_' ->
+      | '_' ->
         in_var ~start (i + 1) acc
       | _ -> loop (i + 1) acc
   and end_of_var ~start i acc =

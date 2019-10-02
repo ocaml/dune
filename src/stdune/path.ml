@@ -345,7 +345,7 @@ end = struct
   let parse_string_exn ~loc s =
     match s with
     | ""
-     |"." ->
+    | "." ->
       root
     | _ when is_canonicalized s -> make s
     | _ -> relative root s ~error_loc:loc
@@ -661,7 +661,7 @@ module Build = struct
         (Some (of_string (".sandbox" ^ "/" ^ sandbox_name)), t)
       | None -> (None, t_original) )
     | Some _
-     |None ->
+    | None ->
       (None, t_original)
 
   let extract_build_context_dir_maybe_sandboxed t =
@@ -822,7 +822,7 @@ let build_dir = in_build_dir Local.root
 let is_root = function
   | In_source_tree s -> Local.is_root s
   | In_build_dir _
-   |External _ ->
+  | External _ ->
     false
 
 module Map = Map.Make (T)
@@ -834,7 +834,7 @@ let kind = function
 
 let is_managed = function
   | In_build_dir _
-   |In_source_tree _ ->
+  | In_source_tree _ ->
     true
   | External _ -> false
 
@@ -858,7 +858,7 @@ let of_local = make_local_path
 let relative ?error_loc t fn =
   match fn with
   | ""
-   |"." ->
+  | "." ->
     t
   | _ when not (Filename.is_relative fn) -> external_ (External.of_string fn)
   | _ -> (
@@ -870,7 +870,7 @@ let relative ?error_loc t fn =
 let parse_string_exn ~loc s =
   match s with
   | ""
-   |"." ->
+  | "." ->
     in_source_tree Local.root
   | s ->
     if Filename.is_relative s then
@@ -906,7 +906,7 @@ let reach t ~from =
   match (t, from) with
   | External t, _ -> External.to_string t
   | In_source_tree t, In_source_tree from
-   |In_build_dir t, In_build_dir from ->
+  | In_build_dir t, In_build_dir from ->
     Local.reach t ~from
   | In_source_tree t, In_build_dir from -> (
     match Lazy.force Build.build_dir_kind with
@@ -931,14 +931,14 @@ let reach_for_running ?(from = root) t =
 let descendant t ~of_ =
   match (t, of_) with
   | In_source_tree t, In_source_tree of_
-   |In_build_dir t, In_build_dir of_ ->
+  | In_build_dir t, In_build_dir of_ ->
     Option.map ~f:in_source_tree (Local.descendant t ~of_)
   | _ -> None
 
 let is_descendant t ~of_ =
   match (t, of_) with
   | In_source_tree t, In_source_tree of_
-   |In_build_dir t, In_build_dir of_ ->
+  | In_build_dir t, In_build_dir of_ ->
     Local.is_descendant t ~of_
   | _ -> false
 
@@ -970,25 +970,25 @@ let parent_exn t =
 let is_strict_descendant_of_build_dir = function
   | In_build_dir p -> not (Local.is_root p)
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     false
 
 let is_in_build_dir = function
   | In_build_dir _ -> true
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     false
 
 let is_in_source_tree = function
   | In_source_tree _ -> true
   | In_build_dir _
-   |External _ ->
+  | External _ ->
     false
 
 let as_in_source_tree = function
   | In_source_tree s -> Some s
   | In_build_dir _
-   |External _ ->
+  | External _ ->
     None
 
 let as_in_source_tree_exn t =
@@ -1002,13 +1002,13 @@ let as_in_source_tree_exn t =
 let as_in_build_dir = function
   | In_build_dir b -> Some b
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     None
 
 let as_in_build_dir_exn t =
   match t with
   | External _
-   |In_source_tree _ ->
+  | In_source_tree _ ->
     Code_error.raise
       "[as_in_build_dir_exn] called on something not in build dir"
       [ ("t", to_dyn t) ]
@@ -1016,7 +1016,7 @@ let as_in_build_dir_exn t =
 
 let extract_build_context = function
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     None
   | In_build_dir p when Local.is_root p -> None
   | In_build_dir t -> Build.extract_build_context t
@@ -1031,7 +1031,7 @@ let extract_build_context_exn t =
 
 let extract_build_context_dir = function
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     None
   | In_build_dir t ->
     Option.map (Build.extract_build_context_dir t) ~f:(fun (base, rest) ->
@@ -1039,7 +1039,7 @@ let extract_build_context_dir = function
 
 let extract_build_context_dir_maybe_sandboxed = function
   | In_source_tree _
-   |External _ ->
+  | External _ ->
     None
   | In_build_dir t ->
     Option.map (Build.extract_build_context_dir_maybe_sandboxed t)
@@ -1115,7 +1115,7 @@ let readdir_unsorted =
   let rec loop dh acc =
     match Unix.readdir dh with
     | "."
-     |".." ->
+    | ".." ->
       loop dh acc
     | s -> loop dh (s :: acc)
     | exception End_of_file -> acc
@@ -1189,7 +1189,7 @@ let insert_after_build_dir_exn =
     match a with
     | In_build_dir a -> in_build_dir (Local.append (Local.of_string b) a)
     | In_source_tree _
-     |External _ ->
+    | External _ ->
       error a b
 
 let rm_rf =
@@ -1239,7 +1239,7 @@ let extension t =
   match t with
   | External t -> External.extension t
   | In_build_dir t
-   |In_source_tree t ->
+  | In_source_tree t ->
     Local.extension t
 
 let split_extension t =

@@ -19,7 +19,7 @@ let equal a b =
   match compare a b with
   | Eq -> true
   | Lt
-   |Gt ->
+  | Gt ->
     false
 
 module Dict = struct
@@ -62,7 +62,7 @@ module Set = struct
     match compare a b with
     | Eq -> true
     | Lt
-     |Gt ->
+    | Gt ->
       false
 
   let of_func = Dict.of_func

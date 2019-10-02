@@ -137,7 +137,7 @@ let gen_id t =
 let quote_if_needed =
   let need_quote = function
     | ' '
-     |'\"' ->
+    | '\"' ->
       true
     | _ -> false
   in
@@ -580,8 +580,8 @@ module Pkg_config = struct
         if
           String.exists package ~f:(function
             | '='
-             |'>'
-             |'<' ->
+            | '>'
+            | '<' ->
               true
             | _ -> false)
         then

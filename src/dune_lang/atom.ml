@@ -15,11 +15,11 @@ let is_valid =
     match String.unsafe_get s i with
     | '%' -> after_percent s (i + 1) len
     | '"'
-     |'('
-     |')'
-     |';'
-     |'\000' .. '\032'
-     |'\127' .. '\255' ->
+    | '('
+    | ')'
+    | ';'
+    | '\000' .. '\032'
+    | '\127' .. '\255' ->
       false
     | _ -> loop s (i + 1) len
   and after_percent s i len =
@@ -28,12 +28,12 @@ let is_valid =
     match String.unsafe_get s i with
     | '%' -> after_percent s (i + 1) len
     | '"'
-     |'('
-     |')'
-     |';'
-     |'\000' .. '\032'
-     |'\127' .. '\255'
-     |'{' ->
+    | '('
+    | ')'
+    | ';'
+    | '\000' .. '\032'
+    | '\127' .. '\255'
+    | '{' ->
       false
     | _ -> loop s (i + 1) len
   in

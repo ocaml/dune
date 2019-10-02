@@ -242,11 +242,7 @@ let get_vcs ~default:vcs ~path ~files ~dirs =
 let init = Settings.set
 
 let make_root
-      { Settings.
-           root = path
-         ; ancestor_vcs
-         ; recognize_jbuilder_projects
-         } =
+    { Settings.root = path; ancestor_vcs; recognize_jbuilder_projects } =
   let open Result.O in
   let nb_path_visited = ref 0 in
   Console.Status_line.set (fun () ->
@@ -376,7 +372,8 @@ let get =
       ~input:(module Unit)
       ~visibility:Memo.Visibility.Hidden
       ~output:(Simple (module Dir))
-      Sync (fun () ->
+      Sync
+      (fun () ->
         let (_ : Memo.Run.t) = Memo.current_run () in
         make_root (Settings.get ()))
   in

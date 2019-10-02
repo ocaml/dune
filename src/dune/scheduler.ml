@@ -541,8 +541,8 @@ end = struct
       Event.send_signal signal;
       match signal with
       | Int
-       |Quit
-       |Term ->
+      | Quit
+      | Term ->
         let now = Unix.gettimeofday () in
         Queue.push now last_exit_signals;
         (* Discard old signals *)
@@ -640,7 +640,7 @@ let prepare ?(config = Config.default) () =
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
           | None
-           |Some "" ->
+          | Some "" ->
             None
           | Some s -> Some (String.drop s 1)
         in

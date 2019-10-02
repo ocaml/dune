@@ -72,7 +72,7 @@ let runtest =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
           Target.Alias
-            (Alias.in_dir ~name:Dune.Alias.Name.runtest ~recursive:true
+            (AliasTarget.in_dir ~name:Dune.Alias.Name.runtest ~recursive:true
                ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets

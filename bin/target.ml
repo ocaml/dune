@@ -5,7 +5,7 @@ module Build_system = Dune.Build_system
 
 type t =
   | File of Path.t
-  | Alias of Alias.t
+  | Alias of AliasTarget.t
 
 type resolve_input =
   | Path of Path.t
@@ -18,7 +18,7 @@ let request targets =
       >>>
       match target with
       | File path -> Build.path path
-      | Alias { Alias.name; recursive; dir; contexts } ->
+      | Alias { AliasTarget.name; recursive; dir; contexts } ->
         let contexts = List.map ~f:Dune.Context.name contexts in
         ( if recursive then
           Build_system.Alias.dep_rec_multi_contexts
@@ -29,7 +29,7 @@ let request targets =
 let log_targets targets =
   List.iter targets ~f:(function
     | File path -> Log.info @@ "- " ^ Path.to_string path
-    | Alias a -> Log.info (Alias.to_log_string a));
+    | Alias a -> Log.info (AliasTarget.to_log_string a));
   flush stdout
 
 let target_hint (_setup : Dune.Driver.build_system) path =
@@ -64,7 +64,7 @@ let resolve_path path ~(setup : Dune.Driver.build_system) =
     if Dune.File_tree.dir_exists src then
       Some
         [ Alias
-            (Alias.in_dir ~name:Dune.Alias.Name.default ~recursive:true
+            (AliasTarget.in_dir ~name:Dune.Alias.Name.default ~recursive:true
                ~contexts:setup.workspace.contexts path)
         ]
     else
@@ -128,7 +128,7 @@ let resolve_alias common ~recursive sv ~(setup : Dune.Driver.build_system) =
   | Some s ->
     Ok
       [ Alias
-          (Alias.of_string common ~recursive s
+          (AliasTarget.of_string common ~recursive s
              ~contexts:setup.workspace.contexts)
       ]
   | None -> Error [ Pp.text "alias cannot contain variables" ]

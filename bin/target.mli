@@ -2,7 +2,7 @@ open Stdune
 
 type t =
   | File of Path.t
-  | Alias of Alias.t
+  | Alias of AliasTarget.t
 
 val request : t list -> unit Dune.Build.t
 

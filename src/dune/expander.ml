@@ -344,7 +344,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
   | Var
       ( Project_root | First_dep | Deps | Targets | Target | Named_local
       | Values _ )
-   |Macro ((Ocaml_config | Env | Version), _) ->
+  | Macro ((Ocaml_config | Env | Version), _) ->
     assert false
   | Var Cc -> add_ddep (cc ~dir).c
   | Var Cxx -> add_ddep (cc ~dir).cxx
@@ -435,7 +435,7 @@ let check_multiplicity ~pform ~declaration ~use =
   in
   match (declaration, use) with
   | Multiplicity.One, Multiplicity.One
-   |Multiple, Multiple ->
+  | Multiple, Multiple ->
     ()
   | One, Multiple -> error "target" "targets"
   | Multiple, One -> error "targets" "target"
@@ -473,7 +473,7 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
          | Ok (Dynamic (expansion : Pform.Expansion.t)) -> (
            match expansion with
            | Var (Project_root | Values _)
-            |Macro ((Ocaml_config | Env | Version), _) ->
+           | Macro ((Ocaml_config | Env | Version), _) ->
              assert false (* these have been expanded statically *)
            | Var (First_dep | Deps | Named_local) -> None
            | Var Targets -> targets ~multiplicity:Multiple

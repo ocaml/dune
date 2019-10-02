@@ -40,7 +40,7 @@ end = struct
   let union_option ~f a b =
     match (a, b) with
     | None, x
-     |x, None ->
+    | x, None ->
       x
     | Some x, Some y -> Some (f x y)
 

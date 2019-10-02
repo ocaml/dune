@@ -53,8 +53,8 @@ let check_no_module_consumer stanzas =
   List.iter stanzas ~f:(fun stanza ->
       match stanza with
       | Library { buildable; _ }
-       |Executables { buildable; _ }
-       |Tests { exes = { buildable; _ }; _ } ->
+      | Executables { buildable; _ }
+      | Tests { exes = { buildable; _ }; _ } ->
         User_error.raise ~loc:buildable.loc
           [ Pp.text
               "This stanza is not allowed in a sub-directory of directory \

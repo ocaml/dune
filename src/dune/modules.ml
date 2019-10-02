@@ -161,7 +161,7 @@ module Mangle = struct
     | Lib { main_module_name; kind } -> (
       match kind with
       | Has_lib_interface
-       |Neither ->
+      | Neither ->
         Visibility.Map.make_both main_module_name
       | Implementation lib ->
         { private_ =
@@ -352,7 +352,7 @@ module Wrapped = struct
   let alias_for t m =
     match Module.kind m with
     | Alias
-     |Wrapped_compat ->
+    | Wrapped_compat ->
       None
     | _ -> Some t.alias_module
 
@@ -410,7 +410,7 @@ module Old_format = struct
          | Some m -> Singleton m
          | None -> Unwrapped modules )
        | Yes_with_transition _
-        |Simple true -> (
+       | Simple true -> (
          match (main_module_name, alias_module, as_singleton modules) with
          | Some main_module_name, _, Some m
            when Module.name m = main_module_name && not implements ->
@@ -424,7 +424,7 @@ module Old_format = struct
              ; wrapped
              }
          | None, _, _
-          |_, None, _ ->
+         | _, None, _ ->
            User_error.raise ~loc
              [ Pp.text "Cannot wrap without main module name or alias module" ]
          ))
@@ -505,9 +505,9 @@ let lib ~src_dir ~main_module_name ~wrapped ~stdlib ~lib_name ~implements
 let impl impl ~vlib =
   match (impl, vlib) with
   | _, Impl _
-   |Impl _, _
-   |Stdlib _, _
-   |_, Stdlib _ ->
+  | Impl _, _
+  | Stdlib _, _
+  | _, Stdlib _ ->
     Code_error.raise "Modules.impl: invalid arguments"
       [ ("impl", to_dyn impl); ("vlib", to_dyn vlib) ]
   | _, _ -> Impl { impl; vlib }
@@ -586,8 +586,8 @@ let rec fold_no_vlib t ~init ~f =
 let compat_for_exn t m =
   match t with
   | Singleton _
-   |Stdlib _
-   |Unwrapped _ ->
+  | Stdlib _
+  | Unwrapped _ ->
     assert false
   | Wrapped { modules; _ } ->
     Module_name.Map.find modules (Module.name m) |> Option.value_exn
@@ -597,8 +597,8 @@ let iter_no_vlib t ~f = fold_no_vlib t ~init:() ~f:(fun x () -> f x)
 
 let rec for_alias = function
   | Stdlib _
-   |Singleton _
-   |Unwrapped _ ->
+  | Singleton _
+  | Unwrapped _ ->
     Module_name.Map.empty
   | Wrapped
       { modules
@@ -619,9 +619,9 @@ let rec for_alias = function
 
 let wrapped_compat = function
   | Stdlib _
-   |Singleton _
-   |Impl _
-   |Unwrapped _ ->
+  | Singleton _
+  | Impl _
+  | Unwrapped _ ->
     Module_name.Map.empty
   | Wrapped w -> w.wrapped_compat
 
@@ -630,7 +630,7 @@ let rec fold_user_written t ~f ~init =
   | Stdlib w -> Stdlib.fold w ~init ~f
   | Singleton m -> f m init
   | Wrapped { modules; _ }
-   |Unwrapped modules ->
+  | Unwrapped modules ->
     Module_name.Map.fold modules ~init ~f
   | Impl { impl; vlib = _ } -> fold_user_written impl ~f ~init
 
@@ -689,7 +689,7 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
         | Some (Normal intf), Some (Normal impl) ->
           Some (f (Sourced_module.Impl_of_virtual_module { intf; impl }))
         | Some (Imported_from_vlib _ | Impl_of_virtual_module _), _
-         |_, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
+        | _, Some (Imported_from_vlib _ | Impl_of_virtual_module _) ->
           assert false)
 
 let entry_modules t =
@@ -716,8 +716,8 @@ let virtual_module_names =
 
 let rec alias_module = function
   | Stdlib _
-   |Singleton _
-   |Unwrapped _ ->
+  | Singleton _
+  | Unwrapped _ ->
     None
   | Wrapped w -> Some w.alias_module
   | Impl { impl; vlib = _ } -> alias_module impl
@@ -725,7 +725,7 @@ let rec alias_module = function
 let rec wrapped = function
   | Wrapped w -> w.wrapped
   | Singleton _
-   |Unwrapped _ ->
+  | Unwrapped _ ->
     Simple false
   | Stdlib _ -> Simple true
   | Impl { vlib = _; impl } -> wrapped impl
@@ -733,7 +733,7 @@ let rec wrapped = function
 let rec alias_for t m =
   match t with
   | Singleton _
-   |Unwrapped _ ->
+  | Unwrapped _ ->
     None
   | Wrapped w -> Wrapped.alias_for w m
   | Stdlib w -> Stdlib.alias_for w m

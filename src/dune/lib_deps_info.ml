@@ -30,7 +30,7 @@ let merge a b =
       match (a, b) with
       | None, None -> None
       | x, None
-       |None, x ->
+      | None, x ->
         x
       | Some a, Some b -> Some (Kind.merge a b))
 

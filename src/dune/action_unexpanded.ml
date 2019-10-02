@@ -374,12 +374,12 @@ module Infer = struct
       | Write_file (fn, _) -> acc +@+ fn
       | Rename (src, dst) -> acc +<+ src +@+ dst
       | Copy (src, dst)
-       |Copy_and_add_line_directive (src, dst)
-       |Symlink (src, dst) ->
+      | Copy_and_add_line_directive (src, dst)
+      | Symlink (src, dst) ->
         acc +< src +@+ dst
       | Chdir (_, t)
-       |Setenv (_, _, t)
-       |Ignore (_, t) ->
+      | Setenv (_, _, t)
+      | Ignore (_, t) ->
         infer acc t
       | Progn l -> List.fold_left l ~init:acc ~f:infer
       | Digest_files l -> List.fold_left l ~init:acc ~f:( +< )
@@ -391,10 +391,10 @@ module Infer = struct
       | Merge_files_into (sources, _extras, target) ->
         List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _
-       |System _
-       |Bash _
-       |Remove_tree _
-       |Mkdir _ ->
+      | System _
+      | Bash _
+      | Remove_tree _
+      | Mkdir _ ->
         acc
 
     let infer t =
@@ -462,7 +462,7 @@ module Infer = struct
           match (fn : Partial.program) with
           | Left (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
           | Left (Search _)
-           |Right _ ->
+          | Right _ ->
             acc
       end)
 
@@ -489,7 +489,7 @@ module Infer = struct
           match (fn : Partial.program) with
           | Left (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
           | Left (Search _)
-           |Right _ ->
+          | Right _ ->
             acc
       end)
 

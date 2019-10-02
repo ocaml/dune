@@ -92,7 +92,7 @@ module Status = struct
   let is_private = function
     | Private _ -> true
     | Installed
-     |Public _ ->
+    | Public _ ->
       false
 
   let project_name = function

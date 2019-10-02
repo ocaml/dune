@@ -38,7 +38,7 @@ let parse_coqdep ~coq_module (lines : string list) =
   let line =
     match lines with
     | []
-     |_ :: _ :: _ :: _ ->
+    | _ :: _ :: _ :: _ ->
       invalid "line"
     | [ line ] -> line
     | [ l1; _l2 ] ->

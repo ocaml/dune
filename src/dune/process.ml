@@ -206,7 +206,7 @@ module Fancy = struct
         else
           match s.[i] with
           | '\\'
-           |'/' ->
+          | '/' ->
             i + 1
           | _ -> find_prog_start (i - 1)
       in
@@ -508,7 +508,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   let output_filename, stdout_to, stderr_to =
     match (stdout_to.kind, stderr_to.kind) with
     | Terminal, _
-     |_, Terminal
+    | _, Terminal
       when !Clflags.capture_outputs ->
       let fn = Temp.create "dune" ".output" in
       let terminal = Io.file fn Io.Out in

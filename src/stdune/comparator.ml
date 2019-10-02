@@ -29,7 +29,7 @@ module Operators (X : S) = struct
     match X.compare a b with
     | Eq -> true
     | Gt
-     |Lt ->
+    | Lt ->
       false
 
   let equal = ( = )
@@ -39,7 +39,7 @@ module Operators (X : S) = struct
   let ( >= ) a b =
     match X.compare a b with
     | Gt
-     |Eq ->
+    | Eq ->
       true
     | Lt -> false
 
@@ -47,13 +47,13 @@ module Operators (X : S) = struct
     match X.compare a b with
     | Gt -> true
     | Lt
-     |Eq ->
+    | Eq ->
       false
 
   let ( <= ) a b =
     match X.compare a b with
     | Lt
-     |Eq ->
+    | Eq ->
       true
     | Gt -> false
 
@@ -61,6 +61,6 @@ module Operators (X : S) = struct
     match X.compare a b with
     | Lt -> true
     | Gt
-     |Eq ->
+    | Eq ->
       false
 end

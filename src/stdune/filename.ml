@@ -7,8 +7,8 @@ let extension_start =
      we make of it in this function and covers all platforms. *)
   let is_dir_sep = function
     | '/'
-     |'\\'
-     |':' ->
+    | '\\'
+    | ':' ->
       true
     | _ -> false
   in

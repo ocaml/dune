@@ -59,26 +59,26 @@ let upgrade_stanza stanza =
   let open Dune_lang.Ast in
   let simplify_field = function
     | "action"
-     |"generate_runner"
-     |"lint"
-     |"preprocess"
-     |"self_build_stubs_archive" ->
+    | "generate_runner"
+    | "lint"
+    | "preprocess"
+    | "self_build_stubs_archive" ->
       false
     | _ -> true
   in
   let is_rule_field = function
     | "targets"
-     |"deps"
-     |"action"
-     |"locks"
-     |"fallback"
-     |"mode" ->
+    | "deps"
+    | "action"
+    | "locks"
+    | "fallback"
+    | "mode" ->
       true
     | _ -> false
   in
   let rec uses_first_dep_var = function
     | Atom _
-     |Quoted_string _ ->
+    | Quoted_string _ ->
       false
     | List (_, l) -> List.exists l ~f:uses_first_dep_var
     | Template x ->
@@ -244,14 +244,14 @@ let rec end_offset_of_opam_value : OpamParserTypes.value -> int = function
   | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
   | String ((_, _, ofs), _) -> ofs + 1
   | Relop (_, _, _, v)
-   |Prefix_relop (_, _, v)
-   |Logop (_, _, _, v)
-   |Pfxop (_, _, v) ->
+  | Prefix_relop (_, _, v)
+  | Logop (_, _, _, v)
+  | Pfxop (_, _, v) ->
     end_offset_of_opam_value v
   | Ident ((_, _, ofs), x) -> ofs + String.length x
   | List ((_, _, ofs), _)
-   |Group ((_, _, ofs), _)
-   |Option ((_, _, ofs), _, _) ->
+  | Group ((_, _, ofs), _)
+  | Option ((_, _, ofs), _, _) ->
     ofs (* this is definitely wrong *)
   | Env_binding ((_, _, ofs), _, _, _) -> ofs
 
@@ -305,16 +305,16 @@ let upgrade_opam_file todo fn =
       in
       add_subst start stop {| "-p" name "-j" jobs|}
     | Bool _
-     |Int _
-     |String _
-     |Relop _
-     |Logop _
-     |Pfxop _
-     |Ident _
-     |Prefix_relop _ ->
+    | Int _
+    | String _
+    | Relop _
+    | Logop _
+    | Pfxop _
+    | Ident _
+    | Prefix_relop _ ->
       ()
     | List (_, l)
-     |Group (_, l) ->
+    | Group (_, l) ->
       List.iter l ~f:scan
     | Option (_, v, l) ->
       scan v;

@@ -367,7 +367,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       ~f:(fun var ver ->
         match expander var ver with
         | Expander.Unknown
-         |Restricted ->
+        | Restricted ->
           None
         | Expanded x -> Some x)
       sw
@@ -676,7 +676,7 @@ module Action = struct
     let map_exe = map_exe sctx in
     ( match (targets_written_by_user : Expander.Targets.t) with
     | Static _
-     |Infer ->
+    | Infer ->
       ()
     | Forbidden context -> (
       match U.Infer.unexpanded_targets t with

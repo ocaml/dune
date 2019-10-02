@@ -29,9 +29,9 @@ let fetch_legacy_comments t ~file_contents =
   let rec loop t =
     match t with
     | Template _
-     |Quoted_string _
-     |Atom _
-     |Comment (_, Lines _) ->
+    | Quoted_string _
+    | Atom _
+    | Comment (_, Lines _) ->
       t
     | List (loc, l) -> List (loc, List.map l ~f:loop)
     | Comment (loc, Legacy) ->
@@ -65,8 +65,8 @@ let to_sexp c = abstract c |> Option.map ~f:Ast.remove_locs
 let extract_comments =
   let rec loop acc = function
     | Atom _
-     |Quoted_string _
-     |Template _ ->
+    | Quoted_string _
+    | Template _ ->
       acc
     | List (_, l) -> List.fold_left l ~init:acc ~f:loop
     | Comment (loc, comment) -> (loc, comment) :: acc

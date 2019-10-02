@@ -338,7 +338,7 @@ let install_uninstall ~what =
             (contexts, prefix_from_command_line, libdir_from_command_line)
           with
         | _ :: _ :: _, Some _, _
-         |_ :: _ :: _, _, Some _ ->
+        | _ :: _ :: _, _, Some _ ->
           User_error.raise
             [ Pp.text
                 "Cannot specify --prefix or --libdir when installing into \

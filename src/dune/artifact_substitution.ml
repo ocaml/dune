@@ -312,8 +312,8 @@ let copy ~get_vcs ~input ~output =
       | Scan1 -> end_of_data - 1
       | Scan2 -> end_of_data - 2
       | Scan_prefix placeholder_start
-       |Scan_length (placeholder_start, _)
-       |Scan_placeholder (placeholder_start, _) ->
+      | Scan_length (placeholder_start, _)
+      | Scan_placeholder (placeholder_start, _) ->
         placeholder_start
     in
     (* All the data before [placeholder_start] can be sent to the output
@@ -349,8 +349,8 @@ let copy ~get_vcs ~input ~output =
       let scanner_state : Scanner.state =
         match scanner_state with
         | Scan0
-         |Scan1
-         |Scan2 ->
+        | Scan1
+        | Scan2 ->
           scanner_state
         | Scan_prefix _ -> Scan_prefix 0
         | Scan_length (_, acc) -> Scan_length (0, acc)

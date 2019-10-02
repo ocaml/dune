@@ -129,12 +129,12 @@ let insert_comments csts comments =
   let rec reconciliate acc tokens1 tokens2 =
     match (tokens1, tokens2) with
     | [], l
-     |l, [] ->
+    | l, [] ->
       List.rev_append acc l
     | tok1 :: rest1, tok2 :: rest2 -> (
       match compare tok1 tok2 with
       | Eq
-       |Lt ->
+      | Lt ->
         reconciliate (tok1 :: acc) rest1 tokens2
       | Gt -> reconciliate (tok2 :: acc) tokens1 rest2 )
   in

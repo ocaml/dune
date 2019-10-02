@@ -72,12 +72,12 @@ module DB = struct
           List.filter_map stanzas ~f:(fun stanza ->
               match stanza with
               | Library (_, { buildable = { loc; _ }; public = Some p; _ })
-               |Deprecated_library_name { loc; old_public_name = p; _ } ->
+              | Deprecated_library_name { loc; old_public_name = p; _ } ->
                 Option.some_if (name = Dune_file.Public_lib.name p) loc
               | _ -> None)
         with
         | []
-         |[ _ ] ->
+        | [ _ ] ->
           assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise

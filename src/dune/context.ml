@@ -251,7 +251,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let* s = Findlib.Config.get conf prog in
       match Filename.analyze_program_name s with
       | In_path
-       |Relative_to_current_dir ->
+      | Relative_to_current_dir ->
         which s
       | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
     in

@@ -94,8 +94,8 @@ let eval (t : _ Status.Map.t) ~dirs =
   List.fold_left vendored ~init:statuses ~f:(fun acc dir ->
       String.Map.update acc dir ~f:(function
         | None
-         |Some Status.Vendored
-         |Some Normal ->
+        | Some Status.Vendored
+        | Some Normal ->
           Some Vendored
         | Some Data_only ->
           User_error.raise
@@ -119,8 +119,8 @@ let decode =
                     ||
                     match dn with
                     | ""
-                     |"."
-                     |".." ->
+                    | "."
+                    | ".." ->
                       true
                     | _ -> false
                   then

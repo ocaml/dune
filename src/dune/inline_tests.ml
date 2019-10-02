@@ -336,7 +336,7 @@ include Sub_system.Register_end_point (struct
         let ext =
           match mode with
           | Native
-           |Best ->
+          | Best ->
             ".exe"
           | Javascript -> ".bc.js"
           | Byte -> ".bc"
@@ -344,8 +344,8 @@ include Sub_system.Register_end_point (struct
         let custom_runner =
           match mode with
           | Native
-           |Best
-           |Byte ->
+          | Best
+          | Byte ->
             None
           | Javascript -> Some "node"
         in

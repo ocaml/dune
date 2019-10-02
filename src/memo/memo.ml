@@ -727,7 +727,7 @@ let peek_exn t inp = Option.value_exn (peek t inp)
 let get_deps t inp =
   match Table.find t.cache inp with
   | None
-   |Some { state = Running_async _; _ } ->
+  | Some { state = Running_async _; _ } ->
     None
   | Some { state = Running_sync _; _ } -> None
   | Some { state = Failed _; _ } -> None

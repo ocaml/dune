@@ -295,7 +295,7 @@ module Package = struct
     let dir =
       match pkg_dir with
       | None
-       |Some "" ->
+      | Some "" ->
         parent_dir
       | Some pkg_dir ->
         if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then

@@ -47,15 +47,15 @@ let decode =
         try
           ( match s.[0] with
           | 'A' .. 'Z'
-           |'a' .. 'z' ->
+          | 'a' .. 'z' ->
             ()
           | _ -> raise_notrace Exit );
           String.iter s ~f:(function
             | 'A' .. 'Z'
-             |'a' .. 'z'
-             |'0' .. '9'
-             |'\''
-             |'_' ->
+            | 'a' .. 'z'
+            | '0' .. '9'
+            | '\''
+            | '_' ->
               ()
             | _ -> raise_notrace Exit);
           of_string s

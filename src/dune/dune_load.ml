@@ -15,7 +15,7 @@ module Dune_file = struct
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
-           |Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
+          | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
             false
           | _ -> true)
       else

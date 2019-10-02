@@ -70,7 +70,7 @@ let infof fmt =
 let command ~command_line ~output ~exit_status =
   match t () with
   | None
-   |Some { oc = None; _ } ->
+  | Some { oc = None; _ } ->
     ()
   | Some { oc = Some oc; _ } ->
     Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);

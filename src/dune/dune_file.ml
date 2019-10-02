@@ -141,7 +141,7 @@ module Pps_and_flags = struct
           match String_with_vars.is_prefix ~prefix:"-" s with
           | Yes -> Right s
           | No
-           |Unknown _ -> (
+          | Unknown _ -> (
             let loc = String_with_vars.loc s in
             match String_with_vars.text_only s with
             | None ->
@@ -319,8 +319,8 @@ module Preprocess = struct
   let loc = function
     | No_preprocessing -> None
     | Action (loc, _)
-     |Pps { loc; _ }
-     |Future_syntax loc ->
+    | Pps { loc; _ }
+    | Future_syntax loc ->
       Some loc
 
   let pps = function
@@ -479,7 +479,7 @@ module Lib_deps = struct
             [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
         | Optional, Required
-         |Required, Optional ->
+        | Required, Optional ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as an optional and required \
@@ -487,7 +487,7 @@ module Lib_deps = struct
                 (Lib_name.to_string name)
             ]
         | Forbidden, Required
-         |Required, Forbidden ->
+        | Required, Forbidden ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as a forbidden and required \
@@ -499,7 +499,7 @@ module Lib_deps = struct
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
             | Lib_dep.Re_export (_, s)
-             |Lib_dep.Direct (_, s) ->
+            | Lib_dep.Direct (_, s) ->
               add Required s acc
             | Select { choices; _ } ->
               List.fold_left choices ~init:acc
@@ -516,7 +516,7 @@ module Lib_deps = struct
   let info t ~kind =
     List.concat_map t ~f:(function
       | Lib_dep.Re_export (_, s)
-       |Lib_dep.Direct (_, s) ->
+      | Lib_dep.Direct (_, s) ->
         [ (s, kind) ]
       | Select { choices; _ } ->
         List.concat_map choices ~f:(fun (c : Lib_dep.Select.choice) ->
@@ -544,10 +544,10 @@ let preprocess_fields =
         Per_module.exists preprocess ~f:(fun p ->
             match (p : Preprocess.t) with
             | Action _
-             |Pps _ ->
+            | Pps _ ->
               true
             | No_preprocessing
-             |Future_syntax _ ->
+            | Future_syntax _ ->
               false)
       in
       if not deps_might_be_used then
@@ -734,7 +734,7 @@ module Mode_conf = struct
     let eval t ~has_native =
       let exists = function
         | Best
-         |Byte ->
+        | Byte ->
           true
         | Native -> has_native
       in
@@ -1072,7 +1072,7 @@ module Library = struct
     match (t.implements, t.wrapped) with
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
-     |None, From _ ->
+    | None, From _ ->
       assert false (* cannot inherit for normal libs *)
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
@@ -1166,7 +1166,7 @@ module Library = struct
       match status with
       | Public (_, pkg) -> pkg.version
       | Installed
-       |Private _ ->
+      | Private _ ->
         None
     in
     let requires = conf.buildable.libraries in
@@ -1615,7 +1615,7 @@ module Executables = struct
           let ext =
             match mode.mode with
             | Native
-             |Best ->
+            | Best ->
               ".exe"
             | Byte -> ".bc"
           in
@@ -2398,11 +2398,11 @@ end
 
 let stanza_package = function
   | Library { public = Some { package; _ }; _ }
-   |Alias { package = Some package; _ }
-   |Install { package; _ }
-   |Executables { install_conf = Some { package; _ }; _ }
-   |Documentation { package; _ }
-   |Tests { package = Some package; _ } ->
+  | Alias { package = Some package; _ }
+  | Install { package; _ }
+  | Executables { install_conf = Some { package; _ }; _ }
+  | Documentation { package; _ }
+  | Tests { package = Some package; _ } ->
     Some package
   | Coq.T { public = Some { package; _ }; _ } -> Some package
   | _ -> None

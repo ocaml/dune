@@ -466,7 +466,7 @@ module Client = struct
         (daemon ~root ~config:{ exit_no_client = true })
       >>| (function
             | Started (ep, _)
-             |Already_running (ep, _) ->
+            | Already_running (ep, _) ->
               ep
             | Finished ->
               Code_error.raise "dune-cache was run in the foreground" [])

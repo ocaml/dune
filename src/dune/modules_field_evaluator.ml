@@ -266,7 +266,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   let allow_new_public_modules =
     match kind with
     | Exe_or_normal_lib
-     |Virtual _ ->
+    | Virtual _ ->
       true
     | Implementation { allow_new_public_modules; _ } ->
       allow_new_public_modules
@@ -274,7 +274,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   let existing_virtual_modules =
     match kind with
     | Exe_or_normal_lib
-     |Virtual _ ->
+    | Virtual _ ->
       Module_name.Set.empty
     | Implementation { existing_virtual_modules; _ } ->
       existing_virtual_modules
@@ -282,7 +282,7 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
   let virtual_modules =
     match kind with
     | Exe_or_normal_lib
-     |Implementation _ ->
+    | Implementation _ ->
       Module_name.Map.empty
     | Virtual { virtual_modules } ->
       eval ~standard:Module_name.Map.empty virtual_modules

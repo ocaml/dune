@@ -21,7 +21,7 @@ let parse_deps_exn ~file lines =
   in
   match lines with
   | []
-   |_ :: _ :: _ ->
+  | _ :: _ :: _ ->
     invalid ()
   | [ line ] -> (
     match String.lsplit2 line ~on:':' with

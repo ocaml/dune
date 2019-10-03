@@ -27,12 +27,11 @@ let retry ?message ?(count = 100) f =
   let rec loop = function
     | x when x >= count ->
       Result.Error
-        (Failure
-           ( Printf.sprintf "too many retries (%i)" x
-           ^
-           match message with
-           | None -> ""
-           | Some msg -> ": " ^ msg ))
+        ( Printf.sprintf "too many retries (%i)" x
+        ^
+        match message with
+        | None -> ""
+        | Some msg -> ": " ^ msg )
     | x -> (
       match f () with
       | Some v -> Result.Ok v
@@ -73,10 +72,14 @@ let stop ~port_path =
   | None -> User_error.raise [ Pp.textf "not running" ]
   | Some (_, pid, fd) ->
     Unix.kill pid Sys.sigterm;
-    Result.ok_exn
-      (retry
-         ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
-         (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ()))
+    ignore
+      (Result.map_error
+         ~f:(fun s -> User_error.raise [ Pp.text s ])
+         (retry
+            ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
+            (fun () ->
+              Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())));
+    ()
 
 type mode =
   | Start
@@ -119,11 +122,9 @@ let term =
          & opt path_conv (Dune_memory.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      in
-     try
-       match mode with
-       | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
-       | Some Stop -> `Ok (stop ~port_path)
-       | None -> `Help (`Pager, Some name)
-     with Failure msg -> `Error (false, msg)
+     match mode with
+     | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
+     | Some Stop -> `Ok (stop ~port_path)
+     | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

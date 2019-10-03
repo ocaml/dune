@@ -11,7 +11,7 @@ let dlls t = t.dlls
 
 module Library = Dune_file.Library
 
-let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
+let make ~(ctx : Context.t) ~dir ~dir_contents ~is_empty (lib : Library.t) =
   let { Lib_config.has_native; ext_obj; ext_dll; ext_lib; _ } =
     ctx.lib_config
   in
@@ -43,9 +43,11 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
       ; if_
           (native && not virtual_library)
           (let files =
-             [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
-             ; Library.archive ~dir lib ~ext:ext_lib
-             ]
+             (Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)) ::
+             (if ctx.ccomp_type = "msvc" && is_empty then
+                []
+              else
+                [Library.archive ~dir lib ~ext:ext_lib])
            in
            if
              Dynlink_supported.get lib.dynlink

@@ -74,7 +74,12 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
-                  | Native -> [ Library.archive lib ~dir ~ext:ext_lib ] )
+                  | Native ->
+                    if ctx.ccomp_type = "msvc" &&
+                       Cm_files.unsorted_objects_and_cms cm_files ~mode = [] then
+                      []
+                    else
+                      [ Library.archive lib ~dir ~ext:ext_lib ] )
               ] ))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -179,7 +184,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
   | [] -> ()
   | o_files -> build_self_stubs lib ~cctx ~dir ~expander ~o_files
 
-let build_shared lib ~sctx ~dir ~flags =
+let build_shared lib ~sctx ~dir ~flags ~is_empty =
   let ctx = Super_context.context sctx in
   Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
@@ -192,17 +197,23 @@ let build_shared lib ~sctx ~dir ~flags =
         Library.archive lib ~dir ~ext
       in
       let build =
-        Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
-        >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
-              [ Command.Args.dyn (Ocaml_flags.get flags Native)
-              ; A "-shared"
-              ; A "-linkall"
-              ; A "-I"
-              ; Path (Path.build dir)
-              ; A "-o"
-              ; Target dst
-              ; Dep src
-              ]
+        let cmd =
+          Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
+            [ Command.Args.dyn (Ocaml_flags.get flags Native)
+            ; A "-shared"
+            ; A "-linkall"
+            ; A "-I"
+            ; Path (Path.build dir)
+            ; A "-o"
+            ; Target dst
+            ; Dep src
+            ]
+        in
+          if ctx.ccomp_type = "msvc" && is_empty then
+            cmd
+          else
+            Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
+            >>> cmd
       in
       let build =
         if Library.has_stubs lib then
@@ -242,11 +253,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
   let modes = Compilation_context.modes cctx in
-  (let cm_files =
-     Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
-   in
-   Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~sctx ~expander ~flags ~dir ~mode ~cm_files));
+  let cm_files =
+    Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
+  in
+  let is_empty = Cm_files.unsorted_objects_and_cms cm_files ~mode:Native = [] in
+  Mode.Dict.Set.iter modes ~f:(fun mode ->
+      build_lib lib ~sctx ~expander ~flags ~dir ~mode ~cm_files);
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -260,7 +272,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
        in
        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
-    build_shared ~sctx lib ~dir ~flags
+    build_shared ~sctx lib ~dir ~flags ~is_empty
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =

@@ -105,8 +105,10 @@ end = struct
             |> List.map ~f:(fun f -> (Visibility.Public, f))
           in
           cmi_file :: other_cm_files)
+      in
+    let archives =
+      Lib_archives.make ~ctx ~dir_contents ~dir ~is_empty:(module_files = []) lib
     in
-    let archives = Lib_archives.make ~ctx ~dir_contents ~dir lib in
     let execs = lib_ppxs sctx ~scope ~lib in
     List.concat
       [ sources

@@ -1,16 +1,16 @@
 Reproduction case for #2499: dune doesn't cleanup stale directories
 
   $ cat >dune-project <<EOF
-  > (lang dune 2.0)
+  > (lang dune 1.11)
   > EOF
 
   $ cat >dune <<EOF
   > (data_only_dirs data)
   > (rule
   >  (deps (source_tree data))
+  >  (targets list)
   >  (action (with-stdout-to list (system "find data -type f | sort"))))
   > EOF
-
 
   $ mkdir -p data/{a,b}
   $ touch data/{a,b}/x

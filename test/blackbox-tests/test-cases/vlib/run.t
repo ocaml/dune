@@ -328,7 +328,7 @@ Include variants and implementation information in dune-package
    (plugins (byte impl/impl.cma) (native impl/impl.cmxs))
    (foreign_archives (native impl/impl$ext_lib))
    (requires foo.vlib)
-   (implements vlib)
+   (implements foo.vlib)
    (main_module_name Vlib)
    (modes byte native)
    (modules

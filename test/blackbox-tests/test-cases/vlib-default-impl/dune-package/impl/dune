@@ -1,0 +1,9 @@
+(library
+ (name a_default)
+ (public_name a.default)
+ (implements a))
+
+(rule
+ (with-stdout-to
+  x.ml
+  (echo "")))

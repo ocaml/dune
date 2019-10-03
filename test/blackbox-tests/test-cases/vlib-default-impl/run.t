@@ -41,7 +41,7 @@ Check that default implementation data is installed in the dune package file.
    (kind normal)
    (virtual)
    (foreign_archives (native a$ext_lib))
-   (default_implementation a-default)
+   (default_implementation a.default)
    (main_module_name A)
    (modes byte native)
    (modules
@@ -52,6 +52,28 @@ Check that default implementation data is installed in the dune package file.
      (alias_module
       (name A)
       (obj_name a)
+      (visibility public)
+      (kind alias)
+      (impl))
+     (wrapped true))))
+  (library
+   (name a.default)
+   (kind normal)
+   (archives (byte default/a_default.cma) (native default/a_default.cmxa))
+   (plugins (byte default/a_default.cma) (native default/a_default.cmxs))
+   (foreign_archives (native default/a_default$ext_lib))
+   (requires a)
+   (implements a)
+   (main_module_name A)
+   (modes byte native)
+   (modules
+    (wrapped
+     (main_module_name A)
+     (modules
+      ((name X) (obj_name a__X) (visibility public) (kind impl_vmodule) (impl)))
+     (alias_module
+      (name A__a_default__)
+      (obj_name a__a_default__)
       (visibility public)
       (kind alias)
       (impl))

@@ -7,6 +7,13 @@ module File = struct
     ; dev : int
     }
 
+  let to_dyn { ino ; dev } =
+    let open Dyn.Encoder in
+    record
+      [ "ino", Int.to_dyn ino
+      ; "dev", Int.to_dyn dev
+      ]
+
   let compare a b =
     match Int.compare a.ino b.ino with
     | Eq -> Int.compare a.dev b.dev

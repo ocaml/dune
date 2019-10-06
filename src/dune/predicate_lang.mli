@@ -20,6 +20,8 @@ module Ast : sig
 
   val not_union : 'a t list -> 'a t
 
+  val decode_one : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+
   val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
 
   val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t

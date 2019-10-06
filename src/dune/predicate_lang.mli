@@ -22,6 +22,8 @@ module Ast : sig
 
   val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
 
+  val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
+
   val to_dyn : 'a Dyn.Encoder.t -> 'a t Dyn.Encoder.t
 end
 

@@ -81,6 +81,15 @@ module Ast = struct
     in
     many union []
 
+  let rec encode f =
+    let open Dune_lang.Encoder in
+    function
+    | Element a -> f a
+    | Compl a -> constr "not" (encode f) a
+    | Standard -> string ":standard"
+    | Union xs -> constr "or" (list (encode f)) xs
+    | Inter xs -> constr "and" (list (encode f)) xs
+
   let rec to_dyn f =
     let open Dyn.Encoder in
     function

@@ -2,6 +2,29 @@
 
 open! Stdune
 
+module Ast : sig
+  type 'a t =
+    | Element of 'a
+    | Compl of 'a t
+    | Standard
+    | Union of 'a t list
+    | Inter of 'a t list
+
+  val diff : 'a t -> 'a t -> 'a t
+
+  val inter : 'a t list -> 'a t
+
+  val compl : 'a t -> 'a t
+
+  val union : 'a t list -> 'a t
+
+  val not_union : 'a t list -> 'a t
+
+  val decode : 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+
+  val to_dyn : 'a Dyn.Encoder.t -> 'a t Dyn.Encoder.t
+end
+
 type t
 
 val to_dyn : t -> Dyn.t

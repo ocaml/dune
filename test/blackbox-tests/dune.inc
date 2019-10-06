@@ -1788,6 +1788,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name with-exit-codes)
+ (deps (package dune) (source_tree test-cases/with-exit-codes))
+ (action
+  (chdir
+   test-cases/with-exit-codes
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name with-stdin-from)
  (deps (package dune) (source_tree test-cases/with-stdin-from))
  (action
@@ -2042,6 +2050,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-exit-codes)
   (alias with-stdin-from)
   (alias workspace-paths)
   (alias workspaces)
@@ -2239,6 +2248,7 @@
   (alias vlib-default-impl)
   (alias vlib-wrong-default-impl)
   (alias windows-diff)
+  (alias with-exit-codes)
   (alias with-stdin-from)
   (alias workspace-paths)
   (alias workspaces)

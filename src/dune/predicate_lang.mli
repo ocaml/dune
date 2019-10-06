@@ -25,6 +25,8 @@ module Ast : sig
   val encode : 'a Dune_lang.Encoder.t -> 'a t Dune_lang.Encoder.t
 
   val to_dyn : 'a Dyn.Encoder.t -> 'a t Dyn.Encoder.t
+
+  val exec : 'a t -> standard:'a t -> ('a -> bool) -> bool
 end
 
 type t

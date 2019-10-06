@@ -98,6 +98,14 @@ module Ast = struct
     | Standard -> string ":standard"
     | Union xs -> constr "or" (List.map ~f:(to_dyn f) xs)
     | Inter xs -> constr "and" (List.map ~f:(to_dyn f) xs)
+
+  let rec exec t ~standard elem =
+    match (t : _ t) with
+    | Compl t -> not (exec t ~standard elem)
+    | Element f -> elem f
+    | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
+    | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
+    | Standard -> exec standard ~standard elem
 end
 
 type t = (string -> bool) Ast.t
@@ -110,13 +118,7 @@ let decode : t Dune_lang.Decoder.t =
 
 let empty = Ast.Union []
 
-let rec exec t ~standard elem =
-  match (t : _ Ast.t) with
-  | Compl t -> not (exec t ~standard elem)
-  | Element f -> f elem
-  | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
-  | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
-  | Standard -> exec standard ~standard elem
+let exec (t : t) ~standard elem = Ast.exec t ~standard (fun f -> f elem)
 
 let filter (t : t) ~standard elems =
   match t with

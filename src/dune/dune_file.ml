@@ -1744,6 +1744,7 @@ module Rule = struct
       ; ("with-stdout-to", Action)
       ; ("with-stderr-to", Action)
       ; ("with-outputs-to", Action)
+      ; ("with-stdin-from", Action)
       ; ("ignore-stdout", Action)
       ; ("ignore-stderr", Action)
       ; ("ignore-outputs", Action)

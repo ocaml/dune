@@ -165,7 +165,8 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
       Build.map action ~f:(function
         | Run (exe, args) -> pp_of_action exe args
         | Chdir (_, Run (exe, args)) -> pp_of_action exe args
-        | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
+        | Chdir (_, Chdir (_, Run (exe, args))) ->
+          pp_of_action exe args
         | _ -> None) )
   | _ -> Build.return None
 

@@ -147,7 +147,8 @@ let fold_one_step t ~init:acc ~f =
   | Setenv (_, _, t)
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
-  | Ignore (_, t) ->
+  | Ignore (_, t)
+  | With_exit_codes (_, t) ->
     f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -187,7 +188,8 @@ let rec is_dynamic = function
   | Setenv (_, _, t)
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
-  | Ignore (_, t) ->
+  | Ignore (_, t)
+  | With_exit_codes (_, t) ->
     is_dynamic t
   | Progn l -> List.exists l ~f:is_dynamic
   | Run _
@@ -265,7 +267,8 @@ let is_useful_to_sandbox =
     | Setenv (_, _, t) -> loop t
     | Redirect_out (_, _, t) -> loop t
     | Redirect_in (_, _, t) -> loop t
-    | Ignore (_, t) -> loop t
+    | Ignore (_, t)
+    | With_exit_codes (_, t) -> loop t
     | Progn l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> false

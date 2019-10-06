@@ -2,15 +2,11 @@
 
 open Import
 
-type accepted_codes =
-  | These of int list
-  | All
-
 (** How to handle sub-process failures *)
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
       (** Fail if the process exits with anything else than [0] *)
-  | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
+  | Accept : (int -> bool) -> ('a, ('a, int) result) failure_mode
       (** Accept the following non-zero exit codes, and return [Error code] if
           the process exists with one of these codes. *)
 

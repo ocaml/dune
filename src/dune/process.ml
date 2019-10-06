@@ -2,23 +2,13 @@ open! Stdune
 open Import
 open Fiber.O
 
-type accepted_codes =
-  | These of int list
-  | All
-
-let code_is_ok accepted_codes n =
-  match accepted_codes with
-  | These set -> List.mem n ~set
-  | All -> true
-
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  | Accept : accepted_codes -> ('a, ('a, int) result) failure_mode
+  | Accept : (int -> bool) -> ('a, ('a, int) result) failure_mode
 
-let accepted_codes : type a b. (a, b) failure_mode -> accepted_codes = function
-  | Strict -> These [ 0 ]
-  | Accept (These codes) -> These (0 :: codes)
-  | Accept All -> All
+let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
+  | Strict -> Int.equal 0
+  | Accept f -> f
 
 let map_result :
     type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t
@@ -360,7 +350,7 @@ module Exit_status = struct
      already included in the error message from the command. *)
   let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
 
-  let handle_verbose t ~id ~output ~command_line =
+  let handle_verbose t ~ok_codes ~id ~output ~command_line =
     let open Pp.O in
     let output = parse_output output in
     match t with
@@ -372,7 +362,7 @@ module Exit_status = struct
                  ++ pp_id id ++ Pp.char ':'
                ; output
                ]));
-      if n <> 0 then
+      if not (ok_codes n) then
         User_warning.emit
           [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
             ++ Pp.space ++ pp_id id
@@ -555,7 +545,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   Log.command ~command_line ~output ~exit_status;
   let exit_status : Exit_status.t =
     match exit_status with
-    | WEXITED n when code_is_ok ok_codes n -> Ok n
+    | WEXITED n when ok_codes n -> Ok n
     | WEXITED n -> Error (Failed n)
     | WSIGNALED n -> Error (Signaled (Signal.name n))
     | WSTOPPED _ -> assert false
@@ -563,7 +553,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   match (display, exit_status, output) with
   | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
   | Verbose, _, _ ->
-    Exit_status.handle_verbose exit_status ~id ~command_line:fancy_command_line
+    Exit_status.handle_verbose exit_status ~ok_codes ~id ~command_line:fancy_command_line
       ~output
   | _ ->
     Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line

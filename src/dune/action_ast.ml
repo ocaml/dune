@@ -57,6 +57,12 @@ struct
             , let+ prog = Program.decode
               and+ args = repeat String.decode in
               Run (prog, args) )
+          ; ( "with-exit-codes"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 0)
+              >>> let+ codes =
+                    Predicate_lang.Ast.decode_one Dune_lang.Decoder.int
+                  and+ t = t in
+                  With_exit_codes (codes, t) )
           ; ( "dynamic-run"
             , let+ prog = Program.decode
               and+ args = repeat String.decode in
@@ -133,6 +139,12 @@ struct
     let target = Target.encode in
     function
     | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
+    | With_exit_codes (pred, t) ->
+      List
+        [ atom "with-exit-codes"
+        ; Predicate_lang.Ast.encode Dune_lang.Encoder.int pred
+        ; encode t
+        ]
     | Dynamic_run (a, xs) ->
       List (atom "run_dynamic" :: program a :: List.map xs ~f:string)
     | Chdir (a, r) -> List [ atom "chdir"; path a; encode r ]

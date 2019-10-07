@@ -122,8 +122,7 @@ end = struct
     not
       ( List.is_empty !files_changed
       && Queue.is_empty jobs_completed
-      && Signal.Set.is_empty !signals
-      && Queue.is_empty dedup_pending )
+      && Signal.Set.is_empty !signals )
 
   let dedup () =
     if not (Queue.is_empty dedup_pending) then (

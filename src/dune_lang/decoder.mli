@@ -175,9 +175,9 @@ val sum : (string * 'a t) list -> 'a t
 (** Check the result of a list parser, and raise a properly located error in
     case of failure. *)
 val map_validate :
-     'a fields_parser
+     ('a, 'k) parser
   -> f:('a -> ('b, User_message.t) Result.t)
-  -> 'b fields_parser
+  -> ('b, 'k) parser
 
 (** {3 Parsing record fields} *)
 

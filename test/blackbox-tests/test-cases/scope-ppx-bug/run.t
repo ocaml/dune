@@ -8,13 +8,13 @@
       ocamlopt a/ppx/a.cmxs
       ocamlopt a/kernel/.a_kernel.objs/native/a_kernel.{cmx,o}
       ocamlopt a/kernel/a_kernel.{a,cmxa}
+      ocamlopt a/kernel/a_kernel.cmxs
       ocamlopt .ppx/3beabc6280a815808859f1884170b996/ppx.exe
       ocamlopt .ppx/631b31a68eb10e1850cf7721d41e5b84/ppx.exe
            ppx b/b.pp.ml
       ocamldep b/.b.objs/b.pp.ml.d
         ocamlc b/.b.objs/byte/b.{cmi,cmo,cmt}
         ocamlc b/b.cma
-      ocamlopt a/kernel/a_kernel.cmxs
       ocamlopt b/.b.objs/native/b.{cmx,o}
       ocamlopt b/b.{a,cmxa}
       ocamlopt b/b.cmxs

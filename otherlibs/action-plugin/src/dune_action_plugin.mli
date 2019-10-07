@@ -16,7 +16,7 @@ module V1 : sig
       so a stage that merely writes out some targets is "free") *)
 
   module Path = Path
-  module Glob = Glob
+  module Glob = Dune_glob.V1
 
   type 'a t
 

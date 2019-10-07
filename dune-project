@@ -96,3 +96,12 @@ Dynamic dune actions do not need to declare their dependencies
 upfront; they are instead discovered automatically during the
 execution of the action.
 "))
+
+(package
+ (name dune-glob)
+ (depends
+  (dune-private-libs (= :version)))
+ (synopsis "Glob string matching language supported by dune")
+ (description "\
+dune-glob provides a parser and interpreter for globs as \
+understood by dune language."))

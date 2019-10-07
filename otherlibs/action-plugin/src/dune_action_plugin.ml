@@ -1,6 +1,6 @@
 module V1 = struct
   module Path = Path
-  module Glob = Glob
+  module Glob = Dune_glob.V1
   open Protocol
 
   module Execution_error = struct

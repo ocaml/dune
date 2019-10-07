@@ -1,8 +1,0 @@
-(library
- (name        dune_glob_lexer)
- (public_name dune._dune_glob_lexer)
- (flags       (:standard -w -50))
- (synopsis "Internal Dune library, do not use!")
- (libraries stdune dune_re))
-
- (ocamllex dune_glob_lexer)

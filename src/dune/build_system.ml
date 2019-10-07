@@ -1183,9 +1183,10 @@ and get_rule t path =
       [ Pp.textf "File unavailable: %s" (Path.to_string_maybe_quoted path) ]
 
 let all_targets t =
+  let root = File_tree.root () in
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-         File_tree.fold ~traverse:Sub_dirs.Status.Set.all ~init:acc
+         File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.all ~init:acc
            ~f:(fun dir acc ->
              match
                load_dir

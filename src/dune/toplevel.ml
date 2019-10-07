@@ -80,7 +80,7 @@ let setup_module_rules t =
   Super_context.add_rule sctx ~dir main_ml
 
 let setup_rules t =
-  let linkage = Exe.Linkage.custom in
+  let linkage = Exe.Linkage.custom (Compilation_context.context t.cctx) in
   let program = Source.program t.source in
   let sctx = Compilation_context.super_context t.cctx in
   Exe.build_and_link t.cctx ~program ~linkages:[ linkage ]

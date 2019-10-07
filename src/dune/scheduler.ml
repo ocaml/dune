@@ -122,7 +122,8 @@ end = struct
     not
       ( List.is_empty !files_changed
       && Queue.is_empty jobs_completed
-      && Signal.Set.is_empty !signals )
+      && Signal.Set.is_empty !signals
+      && Queue.is_empty dedup_pending )
 
   let dedup () =
     if not (Queue.is_empty dedup_pending) then (
@@ -153,12 +154,12 @@ end = struct
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
+      while not (available ()) do
+        Condition.wait cond mutex
+      done;
       if dedup () then
         loop ()
-      else (
-        while not (available ()) do
-          Condition.wait cond mutex
-        done;
+      else
         match Signal.Set.choose !signals with
         | Some signal ->
           signals := Signal.Set.remove !signals signal;
@@ -185,7 +186,6 @@ end = struct
               loop ()
             else
               Files_changed )
-      )
     in
     let ev = loop () in
     Mutex.unlock mutex;

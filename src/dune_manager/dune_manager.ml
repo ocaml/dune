@@ -320,7 +320,8 @@ let client_thread (events, client) =
             handle_cmd client cmd
           with
           | Result.Error e ->
-            Log.infof "%s: command error: %s" (peer_name client.peer) e
+            Log.infof "%s: command error: %s" (peer_name client.peer) e;
+            handle client
           | Result.Ok client -> handle client )
       in
       handle client

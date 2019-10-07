@@ -469,6 +469,9 @@ module Client = struct
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
   let make ?finally handle =
+    (* This is a bit ugly as it is global, but flushing a closed socket will
+       nuke the program if we don't. *)
+    let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -528,14 +531,17 @@ module Client = struct
         [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
       | None -> []
     in
-    send client.socket
-      (Sexp.List
-         ( Sexp.Atom "promote"
-         :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-         :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
-         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
-         :: repo ));
-    Result.Ok ()
+    try
+      send client.socket
+        (Sexp.List
+           ( Sexp.Atom "promote"
+           :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
+           :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
+           :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
+           :: repo ));
+      Result.Ok ()
+    with Sys_error (* "Broken_pipe" *) _ ->
+      Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
     send client.socket
@@ -548,6 +554,7 @@ module Client = struct
   let search client key = Dune_memory.Memory.search client.memory key
 
   let teardown client =
-    Unix.shutdown client.fd Unix.SHUTDOWN_SEND;
+    ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
+      with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
     Thread.join client.thread
 end

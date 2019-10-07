@@ -158,22 +158,7 @@ module Settings = struct
       ; ("recognize_jbuilder_projects", bool recognize_jbuilder_projects)
       ]
 
-  let instance = ref None
-
-  let set root ~ancestor_vcs ~recognize_jbuilder_projects =
-    let new_instance = { root; ancestor_vcs; recognize_jbuilder_projects } in
-    match !instance with
-    | None -> instance := Some new_instance
-    | Some old_instance ->
-      Code_error.raise "File_tree.Settings.set: cannot set settings twice"
-        [ ("new_instance", to_dyn new_instance)
-        ; ("old_instance", to_dyn old_instance)
-        ]
-
-  let get () =
-    match !instance with
-    | Some t -> t
-    | None -> Code_error.raise "File_tree.Settings.get: no settings" []
+  let t = Fdecl.create to_dyn
 end
 
 let is_temp_file fn =
@@ -239,7 +224,9 @@ let get_vcs ~default:vcs ~path ~files ~dirs =
   | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
   | None -> vcs
 
-let init = Settings.set
+let init root ~ancestor_vcs ~recognize_jbuilder_projects =
+  Fdecl.set Settings.t
+    { Settings.root; ancestor_vcs; recognize_jbuilder_projects }
 
 let make_root
     { Settings.root = path; ancestor_vcs; recognize_jbuilder_projects } =
@@ -375,7 +362,7 @@ let get =
       Sync
       (fun () ->
         let (_ : Memo.Run.t) = Memo.current_run () in
-        make_root (Settings.get ()))
+        make_root (Fdecl.get Settings.t))
   in
   Memo.exec memo
 

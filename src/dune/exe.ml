@@ -12,6 +12,12 @@ module Program = struct
     }
 end
 
+let custom_or_output_complete_exe ctx =
+  if Ocaml_version.supports_output_complete_exe ctx.Context.version then
+    "-output-complete-exe"
+  else
+    "-custom"
+
 module Linkage = struct
   type t =
     { mode : Mode.t
@@ -23,11 +29,15 @@ module Linkage = struct
 
   let native = { mode = Native; ext = ".exe"; flags = [] }
 
-  let custom = { mode = Byte; ext = ".exe"; flags = [ "-custom" ] }
+  let custom context =
+    { mode = Byte
+    ; ext = ".exe"
+    ; flags = [ custom_or_output_complete_exe context ]
+    }
 
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with
-    | None -> custom
+    | None -> custom context
     | Some _ -> native
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
@@ -83,7 +93,7 @@ module Linkage = struct
       | Js -> []
       | Exe -> (
         match (wanted_mode, real_mode) with
-        | Native, Byte -> [ "-custom" ]
+        | Native, Byte -> [ custom_or_output_complete_exe ctx ]
         | _ -> [] )
       | Object -> o_flags
       | Shared_object -> (

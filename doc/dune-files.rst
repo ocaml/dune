@@ -508,6 +508,8 @@ The ``deprecated_library_name`` stanza allows to redirect an old
 deprecated name after a library has been renamed. It's syntax is as
 follow:
 
+.. code:: scheme
+
     (deprecated_library_name
      (old_public_name <name>)
      (new_public_name <name>))

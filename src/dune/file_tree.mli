@@ -69,11 +69,6 @@ val init :
   -> recognize_jbuilder_projects:bool
   -> unit
 
-(** Passing [~traverse_data_only_dirs:true] to this functions causes the whole
-    source tree to be deeply scanned, including ignored sub-trees. *)
-val fold :
-  traverse:Sub_dirs.Status.Set.t -> init:'a -> f:(Dir.t -> 'a -> 'a) -> 'a
-
 val root : unit -> Dir.t
 
 val find_dir : Path.Source.t -> Dir.t option

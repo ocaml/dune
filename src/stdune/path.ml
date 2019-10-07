@@ -701,53 +701,32 @@ module Build = struct
   let is_alias_stamp_file s =
     String.is_prefix (Local.to_string s) ~prefix:".aliases/"
 
-  let build_dir_kind, build_dir_prefix, set_build_dir =
-    let build_dir = ref None in
-    let build_dir_prefix = ref None in
-    let set_build_dir (new_build_dir : Kind.t) =
-      match !build_dir with
-      | None ->
-        ( match new_build_dir with
-        | External _ -> ()
-        | In_source_dir p ->
-          if Local.is_root p || Local.parent_exn p <> Local.root then
-            User_error.raise
-              [ Pp.textf "Invalid build directory: %s"
-                  (Local.to_string p |> String.maybe_quoted)
-              ; Pp.text
-                  "The build directory must be an absolute path or a \
-                   sub-directory of the root of the workspace."
-              ] );
-        build_dir := Some new_build_dir;
-        build_dir_prefix :=
-          Some
-            ( match new_build_dir with
-            | In_source_dir p -> Local.Prefix.make p
-            | External _ -> Local.Prefix.invalid )
-      | Some build_dir ->
-        Code_error.raise "set_build_dir: cannot set build_dir more than once"
-          [ ("build_dir", Kind.to_dyn build_dir)
-          ; ("new_build_dir", Kind.to_dyn new_build_dir)
-          ]
+  let build_dir = Fdecl.create Kind.to_dyn
+
+  let build_dir_prefix = Fdecl.create Dyn.Encoder.opaque
+
+  let set_build_dir (new_build_dir : Kind.t) =
+    let new_build_dir_prefix =
+      ( match new_build_dir with
+      | External _ -> ()
+      | In_source_dir p ->
+        if Local.is_root p || Local.parent_exn p <> Local.root then
+          User_error.raise
+            [ Pp.textf "Invalid build directory: %s"
+                (Local.to_string p |> String.maybe_quoted)
+            ; Pp.text
+                "The build directory must be an absolute path or a \
+                 sub-directory of the root of the workspace."
+            ] );
+      match new_build_dir with
+      | In_source_dir p -> Local.Prefix.make p
+      | External _ -> Local.Prefix.invalid
     in
-    let build_dir =
-      lazy
-        ( match !build_dir with
-        | None ->
-          Code_error.raise "build_dir: cannot use build dir before it's set" []
-        | Some build_dir -> build_dir )
-    in
-    let build_dir_prefix =
-      lazy
-        ( match !build_dir_prefix with
-        | None ->
-          Code_error.raise "build_dir: cannot use build dir before it's set" []
-        | Some prefix -> prefix )
-    in
-    (build_dir, build_dir_prefix, set_build_dir)
+    Fdecl.set build_dir new_build_dir;
+    Fdecl.set build_dir_prefix new_build_dir_prefix
 
   let to_string p =
-    match Lazy.force build_dir_kind with
+    match Fdecl.get build_dir with
     | In_source_dir b -> Local.to_string (Local.append b p)
     | External b ->
       if Local.is_root p then
@@ -828,7 +807,7 @@ let is_root = function
 module Map = Map.Make (T)
 
 let kind = function
-  | In_build_dir p -> Kind.append_local (Lazy.force Build.build_dir_kind) p
+  | In_build_dir p -> Kind.append_local (Fdecl.get Build.build_dir) p
   | In_source_tree s -> Kind.In_source_dir s
   | External s -> Kind.External s
 
@@ -849,7 +828,7 @@ let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
 let root = in_source_tree Local.root
 
 let make_local_path p =
-  match Local.Prefix.drop (Lazy.force Build.build_dir_prefix) p with
+  match Local.Prefix.drop (Fdecl.get Build.build_dir_prefix) p with
   | None -> in_source_tree p
   | Some p -> in_build_dir p
 
@@ -909,16 +888,16 @@ let reach t ~from =
   | In_build_dir t, In_build_dir from ->
     Local.reach t ~from
   | In_source_tree t, In_build_dir from -> (
-    match Lazy.force Build.build_dir_kind with
+    match Fdecl.get Build.build_dir with
     | In_source_dir b -> Local.reach t ~from:(Local.append b from)
     | External _ -> external_of_in_source_tree t )
   | In_build_dir t, In_source_tree from -> (
-    match Lazy.force Build.build_dir_kind with
+    match Fdecl.get Build.build_dir with
     | In_source_dir b -> Local.reach (Local.append b t) ~from
     | External b -> external_of_local t ~root:b )
   | In_source_tree t, External _ -> external_of_in_source_tree t
   | In_build_dir t, External _ -> (
-    match Lazy.force Build.build_dir_kind with
+    match Fdecl.get Build.build_dir with
     | In_source_dir b -> external_of_in_source_tree (Local.append b t)
     | External b -> external_of_local t ~root:b )
 
@@ -1213,7 +1192,7 @@ let mkdir_p = function
   | External s -> External.mkdir_p s
   | In_source_tree s -> Relative_to_source_root.mkdir_p s
   | In_build_dir k ->
-    Kind.mkdir_p (Kind.append_local (Lazy.force Build.build_dir_kind) k)
+    Kind.mkdir_p (Kind.append_local (Fdecl.get Build.build_dir) k)
 
 let touch p =
   let p =
@@ -1221,7 +1200,7 @@ let touch p =
     | External s -> External.to_string s
     | In_source_tree s -> Local_gen.to_string s
     | In_build_dir k ->
-      Kind.to_string (Kind.append_local (Lazy.force Build.build_dir_kind) k)
+      Kind.to_string (Kind.append_local (Fdecl.get Build.build_dir) k)
   in
   Unix.utimes p 0.0 0.0
 

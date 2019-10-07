@@ -1,9 +1,4 @@
   $ dune build @runtest @install-file
-          rbin alias runtest
-  Cppome
-  hello world
-  Bar
-  Foo
   lib: [
     "_build/install/default/lib/rlib/META"
     "_build/install/default/lib/rlib/bar.mli"
@@ -50,6 +45,11 @@
   bin: [
     "_build/install/default/bin/refmt"
   ]
+          rbin alias runtest
+  Cppome
+  hello world
+  Bar
+  Foo
 
 virtual libraries in reason
   $ PATH="_build/install/default/bin:$PATH" dune build --root vlib-impl @all

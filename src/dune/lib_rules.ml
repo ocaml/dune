@@ -192,8 +192,7 @@ let build_shared lib ~sctx ~dir ~flags =
         Library.archive lib ~dir ~ext
       in
       let build =
-        Build.dyn_paths_unit
-          (Build.return [ Path.build (Library.archive lib ~dir ~ext:ext_lib) ])
+        Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
               [ Command.Args.dyn (Ocaml_flags.get flags Native)
               ; A "-shared"

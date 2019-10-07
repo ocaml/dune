@@ -7,6 +7,8 @@ module Name : sig
 
   val of_string : string -> t
 
+  val parse_string_exn : (Loc.t * string) -> t
+
   val opam_fn : t -> string
 
   val version_fn : t -> string

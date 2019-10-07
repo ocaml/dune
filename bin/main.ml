@@ -158,6 +158,7 @@ let all =
   ; Format_dune_file.command
   ; Compute.command
   ; Upgrade.command
+  ; Cache_daemon.command
   ]
 
 let default =

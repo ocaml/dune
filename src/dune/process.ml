@@ -4,11 +4,14 @@ open Fiber.O
 
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
-  | Accept : (int -> bool) -> ('a, ('a, int) result) failure_mode
+  | Accept : int Predicate_lang.Ast.t -> ('a, ('a, int) result) failure_mode
 
 let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
   | Strict -> Int.equal 0
-  | Accept f -> f
+  | Accept exit_codes ->
+    fun i ->
+      Predicate_lang.Ast.exec exit_codes
+        ~standard:(Predicate_lang.Ast.Element 0) (Int.equal i)
 
 let map_result :
     type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t
@@ -553,8 +556,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   match (display, exit_status, output) with
   | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
   | Verbose, _, _ ->
-    Exit_status.handle_verbose exit_status ~ok_codes ~id ~command_line:fancy_command_line
-      ~output
+    Exit_status.handle_verbose exit_status ~ok_codes ~id
+      ~command_line:fancy_command_line ~output
   | _ ->
     Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
       ~output ~purpose ~display

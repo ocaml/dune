@@ -22,6 +22,8 @@ module Ast = struct
 
   let not_union a = compl (union a)
 
+  let any = not_union []
+
   let rec decode_one f =
     let open Dune_lang.Decoder in
     let bool_ops () =

@@ -26,15 +26,17 @@ let info = Term.info name ~doc ~man
 let retry ?message ?(count = 100) f =
   let rec loop = function
     | x when x >= count ->
-      Result.Error
-        ( Printf.sprintf "too many retries (%i)" x
-        ^
-        match message with
-        | None -> ""
-        | Some msg -> ": " ^ msg )
+      let open Pp.O in
+      User_error.raise
+        [ ( Pp.textf "too many retries (%i)" x
+          ++
+          match message with
+          | None -> Pp.nop
+          | Some msg -> Pp.char ':' ++ Pp.space ++ msg )
+        ]
     | x -> (
       match f () with
-      | Some v -> Result.Ok v
+      | Some v -> v
       | None ->
         Thread.delay 0.1;
         loop (x + 1) )
@@ -72,14 +74,8 @@ let stop ~port_path =
   | None -> User_error.raise [ Pp.textf "not running" ]
   | Some (_, pid, fd) ->
     Unix.kill pid Sys.sigterm;
-    ignore
-      (Result.map_error
-         ~f:(fun s -> User_error.raise [ Pp.text s ])
-         (retry
-            ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
-            (fun () ->
-              Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())));
-    ()
+    retry ~message:(Pp.textf "waiting for daemon to stop (PID %i)" pid)
+      (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())
 
 type mode =
   | Start

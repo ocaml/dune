@@ -342,6 +342,7 @@ let client_thread (events, client) =
       (Dyn.pp (Code_error.to_dyn e))
 
 let run ?(port_f = ignore) ?(port = 0) manager =
+  let () = Path.Build.reset_build_dir () in
   let rec accept_thread sock =
     let rec accept () =
       try Unix.accept sock

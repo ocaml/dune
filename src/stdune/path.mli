@@ -164,9 +164,11 @@ module Build : sig
     val of_string : string -> t
   end
 
-  (** set the build directory. Can only be called once and must be done before
-      paths are converted to strings elsewhere. *)
+  (** set the build directory *)
   val set_build_dir : Kind.t -> unit
+
+  (** reset to no build dir, making all build path relative paths *)
+  val reset_build_dir : unit -> unit
 
   val split_sandbox_root : t -> t option * t
 

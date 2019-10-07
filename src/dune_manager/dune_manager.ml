@@ -321,7 +321,7 @@ let client_thread (events, client) =
           with
           | Result.Error e ->
             Log.infof "%s: command error: %s" (peer_name client.peer) e
-          | Result.Ok client -> (handle [@tailcall]) client )
+          | Result.Ok client -> handle client )
       in
       handle client
     and finally () =

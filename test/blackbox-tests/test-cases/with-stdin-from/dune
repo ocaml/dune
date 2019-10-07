@@ -1,5 +1,0 @@
-(rule (with-stdout-to input.txt (echo "Hello!\n")))
-
-(alias
- (name runtest)
- (action (with-stdin-from input.txt (run cat))))

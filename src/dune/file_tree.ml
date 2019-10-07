@@ -7,6 +7,13 @@ module File = struct
     ; dev : int
     }
 
+  let to_dyn { ino ; dev } =
+    let open Dyn.Encoder in
+    record
+      [ "ino", Int.to_dyn ino
+      ; "dev", Int.to_dyn dev
+      ]
+
   let compare a b =
     match Int.compare a.ino b.ino with
     | Eq -> Int.compare a.dev b.dev
@@ -65,6 +72,76 @@ module Dune_file = struct
         in
         (t, sub_dirs))
 end
+
+module Readdir : sig
+  type t = private
+    { files : String.Set.t
+    ; dirs : (string * Path.Source.t * File.t) list
+    }
+
+  val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
+end = struct
+  type t =
+    { files : String.Set.t
+    ; dirs : (string * Path.Source.t * File.t) list
+    }
+
+  let _to_dyn { files ; dirs } =
+    let open Dyn.Encoder in
+    record
+      [ "files", String.Set.to_dyn files
+      ; "dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs
+      ]
+
+  let is_temp_file fn =
+    String.is_prefix fn ~prefix:".#"
+    || String.is_suffix fn ~suffix:".swp"
+    || String.is_suffix fn ~suffix:"~"
+
+  let of_source_path path =
+    match Path.readdir_unsorted (Path.source path) with
+    | Error unix_error ->
+      User_warning.emit
+        [ Pp.textf "Unable to read directory %s. Ignoring."
+            (Path.Source.to_string_maybe_quoted path)
+        ; Pp.text "Remove this message by ignoring by adding:"
+        ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
+        ; Pp.textf "to the dune file: %s"
+            (Path.Source.to_string_maybe_quoted
+               (Path.Source.relative
+                  (Path.Source.parent_exn path)
+                  Dune_file.fname))
+        ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
+        ];
+      Error unix_error
+    | Ok unsorted_contents ->
+      let files, dirs =
+        List.filter_partition_map unsorted_contents ~f:(fun fn ->
+          let path = Path.Source.relative path fn in
+          if Path.Source.is_in_build_dir path then
+            Skip
+          else
+            let is_directory, file =
+              match Path.stat (Path.source path) with
+              | exception _ -> (false, File.dummy)
+              | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+              | _ -> (false, File.dummy)
+            in
+            if is_directory then
+              Right (fn, path, file)
+            else if is_temp_file fn then
+              Skip
+            else
+              Left fn)
+      in
+      { files = String.Set.of_list files
+      ; dirs =
+          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+      }
+      |> Result.ok
+end
+
+
 
 module Dir = struct
   type t =
@@ -158,75 +235,8 @@ module Settings = struct
       ; ("recognize_jbuilder_projects", bool recognize_jbuilder_projects)
       ]
 
-  let instance = ref None
-
-  let set root ~ancestor_vcs ~recognize_jbuilder_projects =
-    let new_instance = { root; ancestor_vcs; recognize_jbuilder_projects } in
-    match !instance with
-    | None -> instance := Some new_instance
-    | Some old_instance ->
-      Code_error.raise "File_tree.Settings.set: cannot set settings twice"
-        [ ("new_instance", to_dyn new_instance)
-        ; ("old_instance", to_dyn old_instance)
-        ]
-
-  let get () =
-    match !instance with
-    | Some t -> t
-    | None -> Code_error.raise "File_tree.Settings.get: no settings" []
+  let t = Fdecl.create to_dyn
 end
-
-let is_temp_file fn =
-  String.is_prefix fn ~prefix:".#"
-  || String.is_suffix fn ~suffix:".swp"
-  || String.is_suffix fn ~suffix:"~"
-
-type readdir =
-  { files : String.Set.t
-  ; dirs : (string * Path.Source.t * File.t) list
-  }
-
-let readdir path =
-  match Path.readdir_unsorted (Path.source path) with
-  | Error unix_error ->
-    User_warning.emit
-      [ Pp.textf "Unable to read directory %s. Ignoring."
-          (Path.Source.to_string_maybe_quoted path)
-      ; Pp.text "Remove this message by ignoring by adding:"
-      ; Pp.textf "(dirs \\ %s)" (Path.Source.basename path)
-      ; Pp.textf "to the dune file: %s"
-          (Path.Source.to_string_maybe_quoted
-             (Path.Source.relative
-                (Path.Source.parent_exn path)
-                Dune_file.fname))
-      ; Pp.textf "Reason: %s" (Unix.error_message unix_error)
-      ];
-    Error unix_error
-  | Ok unsorted_contents ->
-    let files, dirs =
-      List.filter_partition_map unsorted_contents ~f:(fun fn ->
-          let path = Path.Source.relative path fn in
-          if Path.Source.is_in_build_dir path then
-            Skip
-          else
-            let is_directory, file =
-              match Path.stat (Path.source path) with
-              | exception _ -> (false, File.dummy)
-              | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-              | _ -> (false, File.dummy)
-            in
-            if is_directory then
-              Right (fn, path, file)
-            else if is_temp_file fn then
-              Skip
-            else
-              Left fn)
-    in
-    { files = String.Set.of_list files
-    ; dirs =
-        List.sort dirs ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
-    }
-    |> Result.ok
 
 let get_vcs ~default:vcs ~path ~files ~dirs =
   match
@@ -239,7 +249,9 @@ let get_vcs ~default:vcs ~path ~files ~dirs =
   | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
   | None -> vcs
 
-let init = Settings.set
+let init root ~ancestor_vcs ~recognize_jbuilder_projects =
+  Fdecl.set Settings.t
+    { Settings.root; ancestor_vcs; recognize_jbuilder_projects }
 
 let make_root
     { Settings.root = path; ancestor_vcs; recognize_jbuilder_projects } =
@@ -249,7 +261,7 @@ let make_root
       Some
         (Pp.verbatim (Printf.sprintf "Scanned %i directories" !nb_path_visited)));
   let rec walk path ~dirs_visited ~project:parent_project ~vcs
-      ~(dir_status : Sub_dirs.Status.t) { dirs; files } =
+      ~(dir_status : Sub_dirs.Status.t) { Readdir.dirs; files } =
     incr nb_path_visited;
     if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
     let project =
@@ -337,14 +349,14 @@ let make_root
                      ]
              in
              match
-               let+ x = readdir path in
+               let+ x = Readdir.of_source_path path in
                walk path ~dirs_visited ~project ~dir_status ~vcs x
              with
              | Ok dir -> String.Map.set acc fn dir
              | Error _ -> acc ))
   in
   let walk =
-    let+ x = readdir path in
+    let+ x = Readdir.of_source_path path in
     let project =
       match
         Dune_project.load ~dir:path ~files:x.files ~infer_from_opam_files:true
@@ -375,13 +387,11 @@ let get =
       Sync
       (fun () ->
         let (_ : Memo.Run.t) = Memo.current_run () in
-        make_root (Settings.get ()))
+        make_root (Fdecl.get Settings.t))
   in
   Memo.exec memo
 
 let root () = get ()
-
-let fold ~traverse ~init ~f = Dir.fold (get ()) ~traverse ~init ~f
 
 let rec find_dir t = function
   | [] -> Some t

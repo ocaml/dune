@@ -73,7 +73,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       && (not (L.Set.mem exes.modes L.native))
       && not (L.Set.mem exes.modes L.exe)
     then
-      Exe.Linkage.custom :: l
+      Exe.Linkage.custom ctx :: l
     else
       l
   in

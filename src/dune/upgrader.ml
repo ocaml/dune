@@ -382,7 +382,8 @@ let upgrade_dir todo dir =
 let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
-  File_tree.fold ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
+  let root = File_tree.root () in
+  File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
     ~f:(fun dir () -> upgrade_dir todo dir);
   let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->

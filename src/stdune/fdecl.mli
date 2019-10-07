@@ -3,7 +3,7 @@
 type 'a t
 
 (** [create ()] creates a forward declaration. *)
-val create : unit -> 'a t
+val create : ('a -> Dyn.t) -> 'a t
 
 (** [set t x] set's the value that is returned by [get t] to [x]. Raise if
     [set] was already called *)

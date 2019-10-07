@@ -163,11 +163,11 @@ let depend_on_dir_without_files =
   in
   fun dir -> Paths_glob (File_selector.create ~dir pred) |> ignore
 
-let source_tree ~dir ~file_tree =
+let source_tree ~dir =
   let prefix_with, dir = Path.extract_build_context_dir_exn dir in
   let paths, dirs_without_files =
     let init = (Path.Set.empty, return ()) in
-    match File_tree.find_dir file_tree dir with
+    match File_tree.find_dir dir with
     | None -> init
     | Some dir ->
       File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all

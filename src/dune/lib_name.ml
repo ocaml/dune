@@ -9,9 +9,9 @@ module Local = struct
 
   let valid_char = function
     | 'A' .. 'Z'
-     |'a' .. 'z'
-     |'_'
-     |'0' .. '9' ->
+    | 'a' .. 'z'
+    | '_'
+    | '0' .. '9' ->
       true
     | _ -> false
 

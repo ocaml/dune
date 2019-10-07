@@ -25,6 +25,8 @@ let array f a = list f (Array.to_list a)
 
 let sexp x = x
 
+let constr s f x = pair string f (s, x)
+
 let option f = function
   | None -> List []
   | Some x -> List [ f x ]

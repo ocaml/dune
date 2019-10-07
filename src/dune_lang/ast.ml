@@ -11,7 +11,7 @@ let atom_or_quoted_string loc s =
   | Atom a -> Atom (loc, a)
   | Quoted_string s -> Quoted_string (loc, s)
   | Template _
-   |List _ ->
+  | List _ ->
     assert false
 
 let loc

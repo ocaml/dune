@@ -285,7 +285,7 @@ let expand t ~mode ~dir ~f =
               User_error.raise ~loc:var.loc
                 [ Pp.textf "Unknown variable %S" (Var.name var) ]
           | Dollar_brace
-           |Dollar_paren ->
+          | Dollar_paren ->
             Some [ Value.String (string_of_var var) ] )
         | s -> s)
   with

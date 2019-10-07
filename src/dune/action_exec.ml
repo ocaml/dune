@@ -87,7 +87,7 @@ type exec_environment =
 let validate_context_and_prog context prog =
   match context with
   | None
-   |Some { Context.for_host = None; _ } ->
+  | Some { Context.for_host = None; _ } ->
     ()
   | Some ({ Context.for_host = Some host; _ } as target) ->
     let invalid_prefix prefix =

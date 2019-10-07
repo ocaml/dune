@@ -68,6 +68,9 @@ module Event : sig
       returned first. *)
   val next : unit -> t
 
+  (** Handle all enqueued deduplications. *)
+  val flush_dedup : unit -> unit
+
   (** Ignore the ne next file change event about this file. *)
   val ignore_next_file_change_event : Path.t -> unit
 
@@ -83,6 +86,8 @@ module Event : sig
   val send_job_completed : job -> Unix.process_status -> unit
 
   val send_signal : Signal.t -> unit
+
+  val send_dedup : Path.Build.t -> Path.t -> Digest.t -> unit
 end = struct
   type t =
     | Files_changed
@@ -90,6 +95,8 @@ end = struct
     | Signal of Signal.t
 
   let jobs_completed = Queue.create ()
+
+  let dedup_pending = Queue.create ()
 
   let files_changed = ref []
 
@@ -115,41 +122,71 @@ end = struct
     not
       ( List.is_empty !files_changed
       && Queue.is_empty jobs_completed
-      && Signal.Set.is_empty !signals )
+      && Signal.Set.is_empty !signals
+      && Queue.is_empty dedup_pending )
+
+  let dedup () =
+    if not (Queue.is_empty dedup_pending) then (
+      let target, source, digest = Queue.pop dedup_pending in
+      ( match Cached_digest.peek_file (Path.build target) with
+      | None -> ()
+      | Some d when not (Digest.equal d digest) -> ()
+      | _ -> (
+        let target = Path.Build.to_string target in
+        let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
+        Log.infof "deduplicate %s from %s" target (Path.to_string source);
+        let rm p = try Unix.unlink p with _ -> () in
+        try
+          rm tmpname;
+          Unix.link (Path.to_string source) tmpname;
+          Unix.rename tmpname target
+        with Unix.Unix_error (e, syscall, _) ->
+          rm tmpname;
+          Log.infof "error handling dune-cache command: %s: %s" syscall
+            (Unix.error_message e) ) );
+      true
+    ) else
+      false
+
+  let rec flush_dedup () = if dedup () then flush_dedup ()
 
   let next () =
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
-      while not (available ()) do
-        Condition.wait cond mutex
-      done;
-      match Signal.Set.choose !signals with
-      | Some signal ->
-        signals := Signal.Set.remove !signals signal;
-        Signal signal
-      | None -> (
-        match !files_changed with
-        | [] ->
-          let job, status = Queue.pop jobs_completed in
-          decr pending_jobs;
-          Job_completed (job, status)
-        | fns ->
-          files_changed := [];
-          let only_ignored_files =
-            List.fold_left fns ~init:true ~f:(fun acc fn ->
-                let fn = Path.to_absolute_filename fn in
-                if String.Table.mem ignored_files fn then (
-                  (* only use ignored record once *)
-                  String.Table.remove ignored_files fn;
-                  acc
-                ) else
-                  false)
-          in
-          if only_ignored_files then
-            loop ()
-          else
-            Files_changed )
+      if dedup () then
+        loop ()
+      else (
+        while not (available ()) do
+          Condition.wait cond mutex
+        done;
+        match Signal.Set.choose !signals with
+        | Some signal ->
+          signals := Signal.Set.remove !signals signal;
+          Signal signal
+        | None -> (
+          match !files_changed with
+          | [] ->
+            let job, status = Queue.pop jobs_completed in
+            decr pending_jobs;
+            Job_completed (job, status)
+          | fns ->
+            files_changed := [];
+            let only_ignored_files =
+              List.fold_left fns ~init:true ~f:(fun acc fn ->
+                  let fn = Path.to_absolute_filename fn in
+                  if String.Table.mem ignored_files fn then (
+                    (* only use ignored record once *)
+                    String.Table.remove ignored_files fn;
+                    acc
+                  ) else
+                    false)
+            in
+            if only_ignored_files then
+              loop ()
+            else
+              Files_changed )
+      )
     in
     let ev = loop () in
     Mutex.unlock mutex;
@@ -173,6 +210,13 @@ end = struct
     Mutex.lock mutex;
     let avail = available () in
     signals := Signal.Set.add !signals signal;
+    if not avail then Condition.signal cond;
+    Mutex.unlock mutex
+
+  let send_dedup target source digest =
+    Mutex.lock mutex;
+    let avail = available () in
+    Queue.push (target, source, digest) dedup_pending;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
@@ -497,8 +541,8 @@ end = struct
       Event.send_signal signal;
       match signal with
       | Int
-       |Quit
-       |Term ->
+      | Quit
+      | Term ->
         let now = Unix.gettimeofday () in
         Queue.push now last_exit_signals;
         (* Discard old signals *)
@@ -548,6 +592,8 @@ let wait_for_process pid =
   Process_watcher.register_job { pid; ivar };
   Fiber.Ivar.read ivar
 
+let wait_for_dune_cache () = Event.flush_dedup ()
+
 let rec restart_waiting_for_available_job t =
   if
     Queue.is_empty t.waiting_for_available_job
@@ -594,7 +640,7 @@ let prepare ?(config = Config.default) () =
         let descendant_simple p ~of_ =
           match String.drop_prefix p ~prefix:of_ with
           | None
-           |Some "" ->
+          | Some "" ->
             None
           | Some s -> Some (String.drop s 1)
         in
@@ -703,7 +749,8 @@ end
 
 let go ?config f =
   let t = prepare ?config () in
-  match Run_once.run_and_cleanup t f with
+  let res = Run_once.run_and_cleanup t f in
+  match res with
   | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
   | Ok res -> res
   | Error Got_signal -> raise Report_error.Already_reported
@@ -777,3 +824,5 @@ let poll ?config ~once ~finally () =
   match bt with
   | None -> Exn.raise exn
   | Some bt -> Exn.raise_with_backtrace exn bt
+
+let send_dedup = Event.send_dedup

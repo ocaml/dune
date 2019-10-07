@@ -74,7 +74,7 @@ let term =
       match Lazy.force targets with
       | [] -> ()
       | targets ->
-        Scheduler.go ~common (fun () -> do_build setup targets);
+        Scheduler.go ~common (fun () -> do_build targets);
         Hooks.End_of_build.run () );
     match prog_where with
     | `Search prog ->
@@ -84,7 +84,7 @@ let term =
       in
       Bin.which prog ~path
     | `This_rel prog
-     |`This_abs prog ->
+    | `This_abs prog ->
       if Path.exists prog then
         Some prog
       else if not Sys.win32 then

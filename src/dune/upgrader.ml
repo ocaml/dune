@@ -51,7 +51,7 @@ type todo =
   }
 
 let rename_basename base =
-  match String.drop_prefix base ~prefix:"jbuild" with
+  match String.drop_prefix base ~prefix:File_tree.Dune_file.jbuild_fname with
   | None -> base
   | Some suffix -> "dune" ^ suffix
 
@@ -59,26 +59,26 @@ let upgrade_stanza stanza =
   let open Dune_lang.Ast in
   let simplify_field = function
     | "action"
-     |"generate_runner"
-     |"lint"
-     |"preprocess"
-     |"self_build_stubs_archive" ->
+    | "generate_runner"
+    | "lint"
+    | "preprocess"
+    | "self_build_stubs_archive" ->
       false
     | _ -> true
   in
   let is_rule_field = function
     | "targets"
-     |"deps"
-     |"action"
-     |"locks"
-     |"fallback"
-     |"mode" ->
+    | "deps"
+    | "action"
+    | "locks"
+    | "fallback"
+    | "mode" ->
       true
     | _ -> false
   in
   let rec uses_first_dep_var = function
     | Atom _
-     |Quoted_string _ ->
+    | Quoted_string _ ->
       false
     | List (_, l) -> List.exists l ~f:uses_first_dep_var
     | Template x ->
@@ -244,14 +244,14 @@ let rec end_offset_of_opam_value : OpamParserTypes.value -> int = function
   | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
   | String ((_, _, ofs), _) -> ofs + 1
   | Relop (_, _, _, v)
-   |Prefix_relop (_, _, v)
-   |Logop (_, _, _, v)
-   |Pfxop (_, _, v) ->
+  | Prefix_relop (_, _, v)
+  | Logop (_, _, _, v)
+  | Pfxop (_, _, v) ->
     end_offset_of_opam_value v
   | Ident ((_, _, ofs), x) -> ofs + String.length x
   | List ((_, _, ofs), _)
-   |Group ((_, _, ofs), _)
-   |Option ((_, _, ofs), _, _) ->
+  | Group ((_, _, ofs), _)
+  | Option ((_, _, ofs), _, _) ->
     ofs (* this is definitely wrong *)
   | Env_binding ((_, _, ofs), _, _, _) -> ofs
 
@@ -305,16 +305,16 @@ let upgrade_opam_file todo fn =
       in
       add_subst start stop {| "-p" name "-j" jobs|}
     | Bool _
-     |Int _
-     |String _
-     |Relop _
-     |Logop _
-     |Pfxop _
-     |Ident _
-     |Prefix_relop _ ->
+    | Int _
+    | String _
+    | Relop _
+    | Logop _
+    | Pfxop _
+    | Ident _
+    | Prefix_relop _ ->
       ()
     | List (_, l)
-     |Group (_, l) ->
+    | Group (_, l) ->
       List.iter l ~f:scan
     | Option (_, v, l) ->
       scan v;
@@ -360,8 +360,12 @@ let upgrade_dir todo dir =
         let fn = Package.opam_file pkg in
         if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
   );
-  if String.Set.mem (File_tree.Dir.files dir) "jbuild" then
-    let fn = Path.Source.relative (File_tree.Dir.path dir) "jbuild" in
+  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
+  then
+    let fn =
+      Path.Source.relative (File_tree.Dir.path dir)
+        File_tree.Dune_file.jbuild_fname
+    in
     if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
       User_warning.emit
         ~loc:(Loc.in_file (Path.source fn))
@@ -375,10 +379,10 @@ let upgrade_dir todo dir =
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
-let upgrade ft =
+let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
-  File_tree.fold ft ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
+  File_tree.fold ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
     ~f:(fun dir () -> upgrade_dir todo dir);
   let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->

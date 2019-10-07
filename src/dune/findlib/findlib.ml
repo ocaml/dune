@@ -166,7 +166,7 @@ type t =
   ; paths : Path.t list
   ; builtins : Meta.Simplified.t Lib_name.Map.t
   ; packages :
-      (Lib_name.t, (Dune_package.Lib.t, Unavailable_reason.t) result) Table.t
+      (Lib_name.t, (Dune_package.Entry.t, Unavailable_reason.t) result) Table.t
   }
 
 module Package = struct
@@ -255,14 +255,13 @@ module Package = struct
       let virtual_deps = [] in
       let implements = None in
       let orig_src_dir = None in
-      let main_module_name : Dune_file.Library.Main_module_name.t =
-        This None
-      in
+      let main_module_name : Lib_info.Main_module_name.t = This None in
       let enabled = Lib_info.Enabled_status.Normal in
-      let requires = Lib_info.Deps.Simple (List.map ~f:add_loc (requires t)) in
+      let requires =
+        requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
+      in
       let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-      let special_builtin_support :
-          Dune_file.Library.Special_builtin_support.t option =
+      let special_builtin_support : Lib_info.Special_builtin_support.t option =
         (* findlib has been around for much longer than dune, so it is
            acceptable to have a special case in dune for findlib. *)
         match Lib_name.to_string t.name with
@@ -287,9 +286,7 @@ module Package = struct
         ~virtual_ ~implements ~variant ~known_implementations
         ~default_implementation ~modes ~wrapped ~special_builtin_support
     in
-    Dune_package.Lib.make ~info
-      ~requires:(List.map ~f:add_loc (requires t))
-      ~modules:None ~main_module_name:None
+    Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
 
   (* XXX remove *)
 
@@ -298,7 +295,7 @@ module Package = struct
     let dir =
       match pkg_dir with
       | None
-       |Some "" ->
+      | Some "" ->
         parent_dir
       | Some pkg_dir ->
         if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
@@ -399,7 +396,7 @@ end = struct
   (* Parse a single package from a META file *)
   let parse_package t ~meta_file ~name ~parent_dir ~vars =
     match Package.parse t ~meta_file ~name ~parent_dir ~vars with
-    | Ok pkg -> (pkg.dir, Ok (Package.to_dune pkg))
+    | Ok pkg -> (pkg.dir, Ok (Dune_package.Entry.Library (Package.to_dune pkg)))
     | Error pkg ->
       (pkg.dir, Error (Unavailable_reason.Hidden (Package.to_dune pkg)))
 
@@ -426,6 +423,22 @@ module Discovered_package = struct
   type t =
     | Dune of Dune_package.t
     | Findlib of Meta_source.t
+
+  let builtin_for_dune =
+    Dune
+      { name = Opam_package.Name.of_string "dune"
+      ; entries =
+          [ Deprecated_library_name
+              { loc = Loc.of_pos __POS__
+              ; old_public_name =
+                  Lib_name.of_string_exn "dune.configurator" ~loc:None
+              ; new_public_name =
+                  Lib_name.of_string_exn "dune-configurator" ~loc:None
+              }
+          ]
+      ; version = None
+      ; dir = Path.root
+      }
 end
 
 (* Search for a <package>/{META,dune-package} file in the findlib search path,
@@ -434,10 +447,13 @@ let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
   let rec loop dirs : Discovered_package.t option =
     match dirs with
-    | [] ->
-      Lib_name.Map.find t.builtins root_name
-      |> Option.map ~f:(fun meta ->
-             Discovered_package.Findlib (Meta_source.internal t ~meta))
+    | [] -> (
+      match Lib_name.to_string root_name with
+      | "dune" -> Some Discovered_package.builtin_for_dune
+      | _ ->
+        Lib_name.Map.find t.builtins root_name
+        |> Option.map ~f:(fun meta ->
+               Discovered_package.Findlib (Meta_source.internal t ~meta)) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
       let dune = Path.relative dir "dune-package" in
@@ -458,10 +474,9 @@ let find_and_acknowledge_package t ~fq_name =
   | Some (Findlib findlib_package) ->
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Dune pkg) ->
-    List.iter pkg.libs ~f:(fun lib ->
-        let info = Dune_package.Lib.info lib in
-        let name = Lib_info.name info in
-        Table.set t.packages name (Ok lib))
+    List.iter pkg.entries ~f:(fun entry ->
+        let name = Dune_package.Entry.name entry in
+        Table.set t.packages name (Ok entry))
 
 let find t name =
   match Table.find t.packages name with
@@ -509,7 +524,10 @@ let all_packages t =
       match x with
       | Ok p -> p :: acc
       | Error _ -> acc)
-  |> List.sort ~compare:Dune_package.Lib.compare_name
+  |> List.sort ~compare:(fun a b ->
+         Lib_name.compare
+           (Dune_package.Entry.name a)
+           (Dune_package.Entry.name b))
 
 let create ~stdlib_dir ~paths ~version =
   { stdlib_dir

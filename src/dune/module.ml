@@ -54,12 +54,12 @@ module Kind = struct
 
   let has_impl = function
     | Alias
-     |Impl_vmodule
-     |Wrapped_compat
-     |Impl ->
+    | Impl_vmodule
+    | Wrapped_compat
+    | Impl ->
       true
     | Intf_only
-     |Virtual ->
+    | Virtual ->
       false
 end
 
@@ -83,7 +83,7 @@ module Source = struct
       Code_error.raise "Module.Source.make called with no files"
         [ ("name", Module_name.to_dyn name) ]
     | Some _, _
-     |_, Some _ ->
+    | _, Some _ ->
       () );
     let files = Ml_kind.Dict.make ~impl ~intf in
     { name; files }
@@ -96,8 +96,8 @@ module Source = struct
     match (intf, impl) with
     | None, None -> assert false
     | Some x, Some _
-     |Some x, None
-     |None, Some x ->
+    | Some x, None
+    | None, Some x ->
       x
 
   let src_dir t = Path.parent_exn (choose_file t).path
@@ -124,7 +124,7 @@ let pp_flags t = t.pp
 let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   ( match (kind, visibility) with
   | (Alias | Impl_vmodule | Virtual | Wrapped_compat), Visibility.Public
-   |(Impl | Intf_only), _ ->
+  | (Impl | Intf_only), _ ->
     ()
   | _, _ ->
     Code_error.raise "Module.of_source: invalid kind, visibility combination"
@@ -134,9 +134,9 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
       ] );
   ( match (kind, source.files.impl, source.files.intf) with
   | (Alias | Impl_vmodule | Impl | Wrapped_compat), None, _
-   |(Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
-   |(Intf_only | Virtual), Some _, _
-   |(Intf_only | Virtual), _, None ->
+  | (Alias | Impl_vmodule | Wrapped_compat), Some _, Some _
+  | (Intf_only | Virtual), Some _, _
+  | (Intf_only | Virtual), _, None ->
     let open Dyn.Encoder in
     Code_error.raise "Module.make: invalid kind, impl, intf combination"
       [ ("name", Module_name.to_dyn source.name)
@@ -256,11 +256,11 @@ let encode
     | Kind.Impl when has_impl -> None
     | Intf_only when not has_impl -> None
     | Wrapped_compat
-     |Impl_vmodule
-     |Alias
-     |Impl
-     |Virtual
-     |Intf_only ->
+    | Impl_vmodule
+    | Alias
+    | Impl
+    | Virtual
+    | Intf_only ->
       Some kind
   in
   record_fields

@@ -68,8 +68,8 @@ let fully_qualified_name t = Path.Build.relative t.dir t.name
 
 let stamp_file t = Path.Build.relative (stamp_file_dir t) (t.name ^ suffix)
 
-let find_dir_specified_on_command_line ~dir ~file_tree =
-  match File_tree.find_dir file_tree dir with
+let find_dir_specified_on_command_line ~dir =
+  match File_tree.find_dir dir with
   | None ->
     User_error.raise
       [ Pp.textf "Don't know about directory %s specified on the command line!"

@@ -1,5 +1,8 @@
 [@@@ocaml.warning "-40"]
 
+(* Please keep this value in sync with .travis.yml and dune-project *)
+let min_ocaml_version = (4, 06)
+
 (* This module is here to build a version of Dune that is capable of
  * building itself. It accomplishes this by concatenating all its source files
  * into a single .ml file and simply compiling it. The source code of the
@@ -9,6 +12,18 @@
  * hit codepaths in which the vendored libraries are used. In order for this to
  * continue to work, dune files in the Dune repository should not use
  * globs. *)
+
+;;
+Scanf.sscanf Sys.ocaml_version "%u.%u" (fun x y ->
+    if (x, y) < min_ocaml_version then (
+      Printf.eprintf
+        "Sorry, your version of OCaml is too old to build dune.\n\
+         You need OCaml >= %u.%02u to build dune itself.\n\
+         Please use a more recent compiler.\n\
+         %!"
+        (fst min_ocaml_version) (snd min_ocaml_version);
+      exit 1
+    ))
 
 module Array = ArrayLabels
 module List = ListLabels
@@ -34,8 +49,7 @@ type subdirs =
 
 (* Directories with library names *)
 let dirs =
-  [ ("src/stdune/result", Some "Dune_result", No)
-  ; ("src/stdune/caml", Some "Dune_caml", No)
+  [ ("src/stdune/caml", Some "Dune_caml", No)
   ; ("src/stdune", Some "Stdune", No)
   ; ("src/fiber", Some "Fiber", No)
   ; ("src/xdg", Some "Xdg", No)
@@ -97,7 +111,7 @@ let split_words s =
     else
       match s.[i] with
       | ' '
-       |'\t' ->
+      | '\t' ->
         skip_blanks (i + 1)
       | _ -> parse_word i (i + 1)
   and parse_word i j =
@@ -106,7 +120,7 @@ let split_words s =
     else
       match s.[j] with
       | ' '
-       |'\t' ->
+      | '\t' ->
         String.sub s ~pos:i ~len:(j - i) :: skip_blanks (j + 1)
       | _ -> parse_word i (j + 1)
   in
@@ -305,7 +319,7 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
                in
                match ext with
                | ".ml"
-                |".mll" ->
+               | ".mll" ->
                  let mod_name = String.capitalize_ascii base in
                  let fqn = fqn libname mod_name in
                  if is_boot || not (String_map.mem fqn impls) then

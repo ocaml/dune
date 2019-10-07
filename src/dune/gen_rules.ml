@@ -187,7 +187,7 @@ let gen_rules sctx dir_contents cctxs
   in
   let allow_approx_merlin =
     let dune_project = Scope.project scope in
-    let dir_is_vendored = Super_context.dir_is_vendored sctx src_dir in
+    let dir_is_vendored = Super_context.dir_is_vendored src_dir in
     dir_is_vendored || Dune_project.allow_approx_merlin dune_project
   in
   Option.iter (Merlin.merge_all ~allow_approx_merlin merlins) ~f:(fun m ->
@@ -272,7 +272,7 @@ let gen_rules sctx dir_contents cctxs ~dir :
 
 let gen_rules ~sctx ~dir components :
     Build_system.extra_sub_directories_to_keep =
-  Install_rules.init_meta sctx ~dir;
+  Install_rules.init_meta_and_dune_package sctx ~dir;
   let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
   Opam_create.add_rules sctx ~dir;
   let subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep =
@@ -307,11 +307,7 @@ let gen_rules ~sctx ~dir components :
                let dst = File_binding.Expanded.dst_path t ~dir in
                Super_context.add_rule sctx ~loc ~dir (Build.symlink ~src ~dst))
       | _ -> (
-        match
-          File_tree.find_dir
-            (Super_context.file_tree sctx)
-            (Path.Build.drop_build_context_exn dir)
-        with
+        match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
         | None ->
           (* We get here when [dir] is a generated directory, such as [.utop]
              or [.foo.objs]. *)
@@ -371,7 +367,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 
 let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load.file_tree; dune_files; packages; projects } = conf in
+  let { Dune_load.dune_files; packages; projects } = conf in
   let packages =
     match only_packages with
     | None -> packages
@@ -402,7 +398,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
     in
     let* host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
-      Super_context.create ?host ~context ~projects ~file_tree ~packages
+      Super_context.create ?host ~context ~projects ~packages
         ~external_lib_deps_mode ~stanzas
     in
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in

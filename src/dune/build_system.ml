@@ -78,17 +78,15 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 
-let rule_loc ~file_tree ~info ~dir =
+let rule_loc ~info ~dir =
   match (info : Rule.Info.t) with
   | From_dune_file loc -> loc
   | Internal
-   |Source_file_copy ->
+  | Source_file_copy ->
     let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
       match
-        Option.bind
-          (File_tree.find_dir file_tree dir)
-          ~f:File_tree.Dir.dune_file
+        Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file
       with
       | Some file -> File_tree.Dune_file.path file
       | None -> Path.Source.relative dir "_unknown_"
@@ -182,8 +180,8 @@ module Alias0 = struct
 
   let dep t = Build.path (Path.build (stamp_file t))
 
-  let dep_multi_contexts ~dir ~name ~file_tree ~contexts =
-    ignore (find_dir_specified_on_command_line ~dir ~file_tree);
+  let dep_multi_contexts ~dir ~name ~contexts =
+    ignore (find_dir_specified_on_command_line ~dir);
     let context_to_stamp_file ctx =
       let dir = Path.Build.(append_source (relative root ctx) dir) in
       Path.build (stamp_file (make ~dir name))
@@ -207,11 +205,11 @@ module Alias0 = struct
         (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
            ~init:(Build.return true) ~f) )
 
-  let dep_rec t ~loc ~file_tree =
+  let dep_rec t ~loc =
     let ctx_dir, src_dir =
       Path.Build.extract_build_context_dir_exn (Alias.dir t)
     in
-    match File_tree.find_dir file_tree src_dir with
+    match File_tree.find_dir src_dir with
     | None ->
       Build.fail
         { fail =
@@ -232,9 +230,9 @@ module Alias0 = struct
               (Path.Source.to_string_maybe_quoted src_dir)
           ]
 
-  let dep_rec_multi_contexts ~dir:src_dir ~name ~file_tree ~contexts =
+  let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Build.O in
-    let dir = find_dir_specified_on_command_line ~dir:src_dir ~file_tree in
+    let dir = find_dir_specified_on_command_line ~dir:src_dir in
     let+ is_empty_list =
       Build.all
         (List.map contexts ~f:(fun ctx ->
@@ -373,7 +371,7 @@ module Subdir_set = struct
   let union a b =
     match (a, b) with
     | All, _
-     |_, All ->
+    | _, All ->
       All
     | These a, These b -> These (String.Set.union a b)
 
@@ -394,7 +392,7 @@ module Action_and_deps = struct
 end
 
 module Rule_fn = struct
-  let loc_decl = Fdecl.create ()
+  let loc_decl = Fdecl.create Dyn.Encoder.opaque
 
   let loc () = Fdecl.get loc_decl ()
 end
@@ -415,7 +413,6 @@ type t =
   { (* File specification by targets *)
     files : Internal_rule.t Path.Build.Table.t
   ; contexts : Context.t String.Map.t
-  ; file_tree : File_tree.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (   Context_or_install.t
@@ -457,12 +454,15 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
+let get_memory () =
+  let t = t () in
+  t.memory
+
 let get_dir_triage t ~dir =
   match Path.as_in_source_tree dir with
   | Some dir ->
     Dir_triage.Known
-      (Non_build
-         (Path.set_of_source_paths (File_tree.files_of t.file_tree dir)))
+      (Non_build (Path.set_of_source_paths (File_tree.files_of dir)))
   | None ->
     if Path.equal dir Path.build_dir then
       let allowed_subdirs =
@@ -528,7 +528,7 @@ let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
     ~hints:
       ( match (rule.info, rule'.info) with
       | Source_file_copy, _
-       |_, Source_file_copy ->
+      | _, Source_file_copy ->
         [ Pp.textf "rm -f %s"
             (Path.to_string_maybe_quoted (Path.drop_optional_build_context fn))
         ]
@@ -728,7 +728,7 @@ end = struct
           match Path.Build.extract_build_context_dir dir with
           | None -> aliases
           | Some (ctx_dir, src_dir) -> (
-            match File_tree.find_dir t.file_tree src_dir with
+            match File_tree.find_dir src_dir with
             | None -> aliases
             | Some dir ->
               let default_alias =
@@ -802,12 +802,12 @@ end = struct
       remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
       compiled
 
-  let filter_out_fallback_rules t ~to_copy ~dir rules =
+  let filter_out_fallback_rules ~to_copy ~dir rules =
     List.filter rules ~f:(fun (rule : Pre_rule.t) ->
         match rule.mode with
         | Standard
-         |Promote _
-         |Ignore_source_files ->
+        | Promote _
+        | Ignore_source_files ->
           true
         | Fallback ->
           let source_files_for_targtes =
@@ -836,7 +836,7 @@ end = struct
               Path.Source.Set.diff source_files_for_targtes absent_targets
             in
             User_error.raise
-              ~loc:(rule_loc ~file_tree:t.file_tree ~info:rule.info ~dir)
+              ~loc:(rule_loc ~info:rule.info ~dir)
               [ Pp.text
                   "Some of the targets of this fallback rule are present in \
                    the source tree, and some are not. This is not allowed. \
@@ -887,13 +887,12 @@ end = struct
       | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
     let corresponding_source_dir ~dir =
-      let t = t () in
       match Dpath.analyse_target dir with
       | Install _
-       |Alias _
-       |Other _ ->
+      | Alias _
+      | Other _ ->
         None
-      | Regular (_ctx, sub_dir) -> File_tree.find_dir t.file_tree sub_dir
+      | Regular (_ctx, sub_dir) -> File_tree.find_dir sub_dir
 
     let source_subdirs_of_build_dir ~dir =
       match corresponding_source_dir ~dir with
@@ -944,9 +943,9 @@ end = struct
       | Build (Install (ctx, path)) -> (Context_or_install.Install ctx, path)
       | Build (Regular (ctx, path)) -> (Context_or_install.Context ctx, path)
       | Build (Alias _)
-       |Build (Other _)
-       |Source _
-       |External _ ->
+      | Build (Other _)
+      | Source _
+      | External _ ->
         Code_error.raise "[load_dir_step2_exn] was called on a strange path"
           [ ("path", Path.to_dyn dir) ]
     in
@@ -980,7 +979,7 @@ end = struct
     let file_tree_dir =
       match context_name with
       | Install _ -> None
-      | Context _ -> File_tree.find_dir t.file_tree sub_dir
+      | Context _ -> File_tree.find_dir sub_dir
     in
     (* Compute the set of targets and the set of source files that must not be
        copied *)
@@ -989,7 +988,7 @@ end = struct
         ~f:(fun acc_ignored { Pre_rule.targets; mode; _ } ->
           match mode with
           | Promote { only = None; _ }
-           |Ignore_source_files ->
+          | Ignore_source_files ->
             Path.Build.Set.union targets acc_ignored
           | Promote { only = Some pred; _ } ->
             let to_ignore =
@@ -1038,7 +1037,7 @@ end = struct
         (* If there are no source files to copy, fallback rules are
            automatically kept *)
         rules
-      | Some (_, to_copy) -> filter_out_fallback_rules t ~to_copy ~dir rules
+      | Some (_, to_copy) -> filter_out_fallback_rules ~to_copy ~dir rules
     in
     (* Compile the rules and cleanup stale artifacts *)
     let rules =
@@ -1186,7 +1185,7 @@ and get_rule t path =
 let all_targets t =
   String.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
-         File_tree.fold t.file_tree ~traverse:Sub_dirs.Status.Set.all ~init:acc
+         File_tree.fold ~traverse:Sub_dirs.Status.Set.all ~init:acc
            ~f:(fun dir acc ->
              match
                load_dir
@@ -1245,8 +1244,8 @@ end = struct
       | File f -> build_file f
       | File_selector g -> Pred.build g
       | Universe
-       |Env _
-       |Sandbox_config _ ->
+      | Env _
+      | Sandbox_config _ ->
         Fiber.return ())
 
   let eval_pred = Pred.eval
@@ -1394,7 +1393,7 @@ end = struct
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
     let env = Internal_rule.effective_env rule in
-    let rule_loc = rule_loc ~file_tree:t.file_tree ~info ~dir in
+    let rule_loc = rule_loc ~info ~dir in
     let is_action_dynamic = Action.is_dynamic action in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
@@ -1472,11 +1471,12 @@ end = struct
     let* () =
       if rule_need_rerun then (
         List.iter targets_as_list ~f:(fun target ->
+            Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
           match (do_not_memoize, t.memory) with
           | true, _
-           |_, None ->
+          | _, None ->
             None
           | false, Some memory -> (
             match Dune_manager.Client.search memory rule_digest with
@@ -1488,11 +1488,12 @@ end = struct
         match from_dune_memory with
         | Some files ->
           let retrieve (file : Dune_memory.File.t) =
-            Log.infof "retrieve %s from cache"
-              (Path.to_string file.in_the_build_directory);
-            Unix.link
-              (Path.to_string file.in_the_memory)
-              (Path.to_string file.in_the_build_directory);
+            let path = Path.Build.to_string file.in_the_build_directory in
+            Log.infof "retrieve %s from cache" path;
+            Unix.link (Path.to_string file.in_the_memory) path;
+            Cached_digest.set
+              (Path.build file.in_the_build_directory)
+              file.digest;
             file.digest
           in
           let digests = List.map files ~f:retrieve in
@@ -1564,7 +1565,7 @@ end = struct
     let+ () =
       match (mode, !Clflags.promote) with
       | (Standard | Fallback | Ignore_source_files), _
-       |Promote _, Some Never ->
+      | Promote _, Some Never ->
         Fiber.return ()
       | Promote { lifetime; into; only }, (Some Automatically | None) ->
         Fiber.sequential_iter targets_as_list ~f:(fun path ->
@@ -1602,8 +1603,7 @@ end = struct
                   Promoted_to_delete.add in_source_tree;
                 Scheduler.ignore_for_watch in_source_tree;
                 Artifact_substitution.copy_file () ~src:path
-                  ~dst:in_source_tree
-                  ~get_vcs:(File_tree.nearest_vcs t.file_tree) ))
+                  ~dst:in_source_tree ~get_vcs:File_tree.nearest_vcs ))
     in
     t.rule_done <- t.rule_done + 1
 
@@ -1689,7 +1689,7 @@ let shim_of_build_goal request =
     ~static_deps:(static_deps request)
 
 let build_request ~request =
-  let result = Fdecl.create () in
+  let result = Fdecl.create Dyn.Encoder.opaque in
   let request =
     let open Build.O in
     let+ res = request in
@@ -1986,27 +1986,28 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?memory ~file_tree ~sandboxing_preference =
+let init ~contexts ?memory ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
+  let memory =
+    Option.map
+      ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
+      memory
+  in
   let t =
     { contexts
     ; files = Path.Build.Table.create 1024
-    ; packages = Fdecl.create ()
-    ; file_tree
-    ; gen_rules = Fdecl.create ()
-    ; init_rules = Fdecl.create ()
+    ; packages = Fdecl.create Dyn.Encoder.opaque
+    ; gen_rules = Fdecl.create Dyn.Encoder.opaque
+    ; init_rules = Fdecl.create Dyn.Encoder.opaque
     ; memory
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0
     }
   in
-  Option.iter
-    ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
-    t.memory;
   Console.Status_line.set (fun () ->
       Some
         (Pp.verbatim

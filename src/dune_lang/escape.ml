@@ -9,11 +9,11 @@ let quote_length s =
       +
       match String.unsafe_get s i with
       | '\"'
-       |'\\'
-       |'\n'
-       |'\t'
-       |'\r'
-       |'\b' ->
+      | '\\'
+      | '\n'
+      | '\t'
+      | '\r'
+      | '\b' ->
         2
       | '%' ->
         if i + 1 < len && s.[i + 1] = '{' then

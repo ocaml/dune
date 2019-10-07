@@ -48,7 +48,7 @@ module External = struct
     | Cmi, Private, None ->
       Code_error.raise "External.cm_dir" [ ("t", to_dyn t) ]
     | Cmi, Public, _
-     |(Cmo | Cmx), _, _ ->
+    | (Cmo | Cmx), _, _ ->
       t.public_dir
 
   let encode { public_dir; private_dir } =
@@ -156,7 +156,7 @@ module Local = struct
     match cm_kind with
     | Cm_kind.Cmx -> native_dir t
     | Cmo
-     |Cmi ->
+    | Cmi ->
       byte_dir t
 
   let cm_public_dir t (cm_kind : Cm_kind.t) =
@@ -303,7 +303,7 @@ module Module = struct
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
     | Cmx
-     |Cmo
+    | Cmo
       when not has_impl ->
       None
     | _ -> Some (cm_file_unsafe t m ~kind)
@@ -320,7 +320,7 @@ module Module = struct
     let has_impl = Module.has m ~ml_kind:Impl in
     match kind with
     | Cmx
-     |Cmo
+    | Cmo
       when not has_impl ->
       None
     | Cmi when is_private -> None

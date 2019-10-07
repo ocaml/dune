@@ -52,7 +52,7 @@ module Wrap_lexer = struct
         let tok, loc =
           match tok2 with
           | LET
-           |AND -> (
+          | AND -> (
             match Let_trail.op lb with
             | None ->
               add (tok2, loc2);

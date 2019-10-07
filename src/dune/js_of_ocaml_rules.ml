@@ -150,7 +150,7 @@ let setup_separate_compilation_rules sctx components =
   if separate_compilation_enabled sctx then
     match components with
     | []
-     |_ :: _ :: _ ->
+    | _ :: _ :: _ ->
       ()
     | [ pkg ] -> (
       let pkg = Lib_name.of_string_exn ~loc:None pkg in

@@ -283,6 +283,7 @@ module T = struct
     { info : Lib_info.external_
     ; name : Lib_name.t
     ; unique_id : Id.t
+    ; re_exports : t list Or_exn.t
     ; requires : t list Or_exn.t
     ; ppx_runtime_deps : t list Or_exn.t
     ; pps : t list Or_exn.t
@@ -374,7 +375,7 @@ let wrapped t =
     let wrapped = Lib_info.wrapped vlib.info in
     match wrapped with
     | Some (From _) (* can't inherit this value in virtual libs *)
-     |None ->
+    | None ->
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x )
 
@@ -914,11 +915,14 @@ module rec Resolve : sig
 
   val resolve_user_deps :
        db
-    -> Lib_info.Deps.t
+    -> Lib_dep.t list
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> stack:Dep_stack.t
-    -> lib list Or_exn.t * lib list Or_exn.t * Resolved_select.t list
+    -> lib list Or_exn.t
+       * lib list Or_exn.t
+       * Resolved_select.t list
+       * lib list Or_exn.t
 
   val closure_with_overlap_checks :
        db option
@@ -1002,7 +1006,7 @@ end = struct
                  Lib_info.known_implementations info
                |> Variant.Map.map ~f:resolve_impl ))
     in
-    let requires, pps, resolved_selects =
+    let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
       Lib_info.requires info
       |> resolve_user_deps db ~allow_private_deps ~pps ~stack
@@ -1041,6 +1045,7 @@ end = struct
       ; default_implementation
       ; resolved_implementations
       ; stdlib_dir = db.stdlib_dir
+      ; re_exports
       }
     in
     t.sub_systems <-
@@ -1118,80 +1123,89 @@ end = struct
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
 
-  let resolve_complex_deps db deps ~allow_private_deps ~stack =
-    let res, resolved_selects =
-      List.fold_left deps ~init:(Ok [], [])
-        ~f:(fun (acc_res, acc_selects) dep ->
-          let res, acc_selects =
-            match (dep : Dune_file.Lib_dep.t) with
-            | Direct (loc, name) ->
-              let res =
-                resolve_dep db name ~allow_private_deps ~loc ~stack
-                >>| List.singleton
-              in
-              (res, acc_selects)
-            | Select { result_fn; choices; loc } ->
-              let res, src_fn =
-                match
-                  List.find_map choices
-                    ~f:(fun { required; forbidden; file } ->
-                      if
-                        Lib_name.Set.exists forbidden
-                          ~f:(available_internal db ~stack)
-                      then
-                        None
-                      else
-                        match
-                          let deps =
-                            Lib_name.Set.fold required ~init:[]
-                              ~f:(fun x acc -> (loc, x) :: acc)
-                          in
-                          resolve_simple_deps ~allow_private_deps db deps
-                            ~stack
-                        with
-                        | Ok ts -> Some (ts, file)
-                        | Error _ -> None)
-                with
-                | Some (ts, file) -> (Ok ts, Ok file)
-                | None ->
-                  let e () = Error.no_solution_found_for_select ~loc in
-                  (e (), e ())
-              in
-              ( res
-              , { Resolved_select.src_fn; dst_fn = result_fn } :: acc_selects
-              )
-          in
-          let res =
-            match (res, acc_res) with
-            | Ok l, Ok acc -> Ok (List.rev_append l acc)
-            | (Error _ as res), _
-             |_, (Error _ as res) ->
-              res
-          in
-          (res, acc_selects))
-    in
-    let res =
-      match res with
-      | Ok l -> Ok (List.rev l)
-      | Error _ -> res
-    in
-    (res, resolved_selects)
+  let re_exports_closure ts =
+    let visited = ref Set.empty in
+    let res = ref [] in
+    let rec one (t : lib) =
+      if Set.mem !visited t then
+        Ok ()
+      else (
+        visited := Set.add !visited t;
+        let* re_exports = t.re_exports in
+        let+ () = many re_exports in
+        res := t :: !res
+      )
+    and many l = Result.List.iter l ~f:one in
+    let+ () = many ts in
+    List.rev !res
 
-  let resolve_deps db deps ~allow_private_deps ~stack =
-    (* Compute transitive closure *)
-    let libs, selects =
-      match (deps : Lib_info.Deps.t) with
-      | Simple names ->
-        (resolve_simple_deps db names ~allow_private_deps ~stack, [])
-      | Complex names ->
-        resolve_complex_deps db names ~allow_private_deps ~stack
+  let resolve_complex_deps db deps ~allow_private_deps ~stack =
+    let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
+      let res, src_fn =
+        match
+          List.find_map choices ~f:(fun { required; forbidden; file } ->
+              if
+                Lib_name.Set.exists forbidden ~f:(available_internal db ~stack)
+              then
+                None
+              else
+                match
+                  let deps =
+                    Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
+                        (loc, x) :: acc)
+                  in
+                  resolve_simple_deps ~allow_private_deps db deps ~stack
+                with
+                | Ok ts -> Some (ts, file)
+                | Error _ -> None)
+        with
+        | Some (ts, file) -> (Ok ts, Ok file)
+        | None ->
+          let e () = Error.no_solution_found_for_select ~loc in
+          (e (), e ())
+      in
+      (res, { Resolved_select.src_fn; dst_fn = result_fn })
     in
-    (* Find implementations for virtual libraries. *)
-    (libs, selects)
+    let res, resolved_selects, re_exports =
+      List.fold_left deps ~init:(Ok [], [], Ok [])
+        ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
+          match (dep : Lib_dep.t) with
+          | Re_export (loc, name) ->
+            let lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
+            let acc_re_exports =
+              let+ lib = lib
+              and+ acc_re_exports = acc_re_exports in
+              lib :: acc_re_exports
+            in
+            let acc_res =
+              let+ lib = lib
+              and+ acc_res = acc_res in
+              lib :: acc_res
+            in
+            (acc_res, acc_selects, acc_re_exports)
+          | Direct (loc, name) ->
+            let acc_res =
+              let+ lib = resolve_dep db name ~allow_private_deps ~loc ~stack
+              and+ acc_res = acc_res in
+              lib :: acc_res
+            in
+            (acc_res, acc_selects, acc_re_exports)
+          | Select select ->
+            let res, resolved_select = resolve_select select in
+            let acc_res =
+              let+ res = res
+              and+ acc_res = acc_res in
+              List.rev_append res acc_res
+            in
+            (acc_res, resolved_select :: acc_selects, acc_re_exports))
+    in
+    let res = Result.map ~f:List.rev res in
+    let re_exports = Result.map ~f:List.rev re_exports in
+    (res, resolved_selects, re_exports)
 
   let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
-    let deps, resolved_selects =
-      resolve_deps db deps ~allow_private_deps ~stack
+    let deps, resolved_selects, re_exports =
+      resolve_complex_deps db deps ~allow_private_deps ~stack
     in
     let deps, pps =
       match pps with
@@ -1224,7 +1238,8 @@ end = struct
         in
         (deps, pps)
     in
-    (deps, pps, resolved_selects)
+    let deps = deps >>= re_exports_closure in
+    (deps, pps, resolved_selects, re_exports)
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1265,7 +1280,7 @@ end = struct
       match Map.find !vlib_default_parent lib with
       | Some (_ :: _) -> None
       | None
-       |Some [] ->
+      | Some [] ->
         Option.bind lib.default_implementation ~f:(fun (lazy default) ->
             match default with
             | Error _ -> None
@@ -1508,38 +1523,50 @@ module DB = struct
     ; stdlib_dir
     }
 
-  let check_valid_external_variants libmap external_variants =
-    List.iter external_variants ~f:(fun (ev : Dune_file.External_variant.t) ->
-        let loc, virtual_lib = ev.virtual_lib in
-        match
-          Option.map (Lib_name.Map.find libmap virtual_lib) ~f:(fun res ->
-              (* [res] is created by the code in [create_from_library_stanzas]
-                 bellow. We know that it is either [Found] or [Redirect (_,
-                 name)] where [name] is in [libmap] for sure and maps to [Found
-                 _]. *)
-              match res with
-              | Not_found
-               |Hidden _ ->
-                assert false
-              | Found x -> x
-              | Redirect (_, name') -> (
-                match Lib_name.Map.find libmap name' with
-                | Some (Found x) -> x
-                | _ -> assert false ))
-        with
-        | None ->
-          User_error.raise ~loc
-            [ Pp.textf "Virtual library %s hasn't been found in the project."
-                (Lib_name.to_string virtual_lib)
-            ]
-        | Some info -> (
-          match Lib_info.virtual_ info with
-          | Some _ -> ()
+  module Library_related_stanza = struct
+    type t =
+      | Library of Path.Build.t * Dune_file.Library.t
+      | External_variant of Dune_file.External_variant.t
+      | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+  end
+
+  let check_valid_external_variants libmap stanzas =
+    List.iter stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
+        match stanza with
+        | Library _
+        | Deprecated_library_name _ ->
+          ()
+        | External_variant ev -> (
+          let loc, virtual_lib = ev.virtual_lib in
+          match
+            Option.map (Lib_name.Map.find libmap virtual_lib) ~f:(fun res ->
+                (* [res] is created by the code in
+                   [create_from_library_stanzas] bellow. We know that it is
+                   either [Found] or [Redirect (_, name)] where [name] is in
+                   [libmap] for sure and maps to [Found _]. *)
+                match res with
+                | Not_found
+                | Hidden _ ->
+                  assert false
+                | Found x -> x
+                | Redirect (_, name') -> (
+                  match Lib_name.Map.find libmap name' with
+                  | Some (Found x) -> x
+                  | _ -> assert false ))
+          with
           | None ->
             User_error.raise ~loc
-              [ Pp.textf "Library %s isn't a virtual library."
+              [ Pp.textf "Virtual library %s hasn't been found in the project."
                   (Lib_name.to_string virtual_lib)
-              ] ))
+              ]
+          | Some info -> (
+            match Lib_info.virtual_ info with
+            | Some _ -> ()
+            | None ->
+              User_error.raise ~loc
+                [ Pp.textf "Library %s isn't a virtual library."
+                    (Lib_name.to_string virtual_lib)
+                ] ) ))
 
   let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
     User_error.raise
@@ -1552,84 +1579,86 @@ module DB = struct
           (Loc.to_file_colon_line loc2)
       ]
 
-  let create_from_library_stanzas ?parent ~lib_config lib_stanzas
-      external_variant_stanzas =
+  let create_from_stanzas ?parent ~lib_config stanzas =
     (* Construct a mapping from virtual library name to a list of [(variant,
        implementation_for_this_variant)]. We check a bit later that there is
        duplicate in the inner lists. *)
     let variant_map = Lib_name.Map.empty in
     let variant_map =
-      (* Add entries from library stanzas *)
-      List.fold_left lib_stanzas ~init:variant_map ~f:(fun acc (_, lib) ->
-          match (lib : Dune_file.Library.t) with
-          | { implements = Some (_, vlib)
-            ; variant = Some variant
-            ; buildable = { loc; _ }
-            ; _
-            } ->
+      List.fold_left stanzas ~init:variant_map ~f:(fun acc stanza ->
+          match (stanza : Library_related_stanza.t) with
+          | Library
+              ( _
+              , ( { implements = Some (_, vlib)
+                  ; variant = Some variant
+                  ; buildable = { loc; _ }
+                  ; _
+                  } as lib ) ) ->
             Lib_name.Map.Multi.cons acc vlib
               (variant, (loc, Dune_file.Library.best_name lib))
+          | External_variant ev ->
+            Lib_name.Map.Multi.cons acc (snd ev.virtual_lib)
+              (ev.variant, ev.implementation)
           | _ -> acc)
     in
-    let variant_map =
-      (* Add entries from external_variant stanzas *)
-      List.fold_left external_variant_stanzas ~init:variant_map
-        ~f:(fun acc (ev : Dune_file.External_variant.t) ->
-          let _, virtual_lib = ev.virtual_lib in
-          Lib_name.Map.Multi.cons acc virtual_lib
-            (ev.variant, ev.implementation))
-    in
     let map =
-      List.concat_map lib_stanzas
-        ~f:(fun (dir, (conf : Dune_file.Library.t)) ->
-          (* In the [implements] field of library stanzas, the user might use
-             either public or private library names. As a result, we have to
-             lookup for implementations via both the public and private names. *)
-          let variants_private =
-            Lib_name.Map.find variant_map (Lib_name.of_local conf.name)
-            |> Option.value ~default:[]
-          in
-          let variants =
+      List.concat_map stanzas ~f:(fun stanza ->
+          match (stanza : Library_related_stanza.t) with
+          | External_variant _ -> []
+          | Deprecated_library_name x ->
+            [ ( Dune_file.Public_lib.name x.old_public_name
+              , Redirect (None, x.new_public_name) )
+            ]
+          | Library (dir, (conf : Dune_file.Library.t)) -> (
+            (* In the [implements] field of library stanzas, the user might use
+               either public or private library names. As a result, we have to
+               lookup for implementations via both the public and private
+               names. *)
+            let variants_private =
+              Lib_name.Map.find variant_map (Lib_name.of_local conf.name)
+              |> Option.value ~default:[]
+            in
+            let variants =
+              match conf.public with
+              | None -> variants_private
+              | Some { name = _loc, name; _ } -> (
+                if Lib_name.equal name (Lib_name.of_local conf.name) then
+                  variants_private
+                else
+                  match Lib_name.Map.find variant_map name with
+                  | None -> variants_private
+                  | Some variants_public ->
+                    List.rev_append variants_private variants_public )
+            in
+            let known_implementations =
+              match Variant.Map.of_list variants with
+              | Ok x -> x
+              | Error (variant, x, y) ->
+                error_two_impl_for_variant (snd conf.name) variant x y
+            in
+            let info =
+              Dune_file.Library.to_lib_info conf ~dir ~lib_config
+                ~known_implementations
+              |> Lib_info.of_local
+            in
             match conf.public with
-            | None -> variants_private
-            | Some { name = _loc, name; _ } -> (
+            | None ->
+              [ (Dune_file.Library.best_name conf, Resolve_result.Found info) ]
+            | Some p ->
+              let name = Dune_file.Public_lib.name p in
               if Lib_name.equal name (Lib_name.of_local conf.name) then
-                variants_private
+                [ (name, Found info) ]
               else
-                match Lib_name.Map.find variant_map name with
-                | None -> variants_private
-                | Some variants_public ->
-                  List.rev_append variants_private variants_public )
-          in
-          let known_implementations =
-            match Variant.Map.of_list variants with
-            | Ok x -> x
-            | Error (variant, x, y) ->
-              error_two_impl_for_variant (snd conf.name) variant x y
-          in
-          let info =
-            Lib_info.of_library_stanza ~dir ~lib_config ~known_implementations
-              conf
-            |> Lib_info.of_local
-          in
-          match conf.public with
-          | None ->
-            [ (Dune_file.Library.best_name conf, Resolve_result.Found info) ]
-          | Some p ->
-            let name = Dune_file.Public_lib.name p in
-            if Lib_name.equal name (Lib_name.of_local conf.name) then
-              [ (name, Found info) ]
-            else
-              [ (name, Found info)
-              ; (Lib_name.of_local conf.name, Redirect (None, name))
-              ])
+                [ (name, Found info)
+                ; (Lib_name.of_local conf.name, Redirect (None, name))
+                ] ))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
       | Error (name, _, _) -> (
         match
-          List.filter_map lib_stanzas
-            ~f:(fun (_, (conf : Dune_file.Library.t)) ->
+          List.filter_map stanzas ~f:(function
+            | Library (_, conf) ->
               if
                 Lib_name.equal name (Lib_name.of_local conf.name)
                 ||
@@ -1639,10 +1668,16 @@ module DB = struct
               then
                 Some conf.buildable.loc
               else
-                None)
+                None
+            | Deprecated_library_name x ->
+              Option.some_if
+                (Lib_name.equal name
+                   (Dune_file.Public_lib.name x.old_public_name))
+                x.loc
+            | External_variant _ -> None)
         with
         | []
-         |[ _ ] ->
+        | [ _ ] ->
           assert false
         | loc1 :: loc2 :: _ ->
           User_error.raise
@@ -1654,7 +1689,7 @@ module DB = struct
     (* We need to check that [external_variant] stanzas are correct, i.e.
        contain valid [virtual_library] fields now since this is the last time
        we analyse them. *)
-    check_valid_external_variants map external_variant_stanzas;
+    check_valid_external_variants map stanzas;
     create () ?parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         Lib_name.Map.find map name |> Option.value ~default:Not_found)
@@ -1665,7 +1700,8 @@ module DB = struct
     create () ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
-        | Ok pkg -> Found (Dune_package.Lib.info pkg)
+        | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
+        | Ok (Deprecated_library_name d) -> Redirect (None, d.new_public_name)
         | Error e -> (
           match e with
           | Not_found ->
@@ -1677,24 +1713,21 @@ module DB = struct
           | Hidden pkg ->
             Hidden (Dune_package.Lib.info pkg, "unsatisfied 'exist_if'") ))
       ~all:(fun () ->
-        Findlib.all_packages findlib
-        |> List.map ~f:(fun lib ->
-               let info = Dune_package.Lib.info lib in
-               Lib_info.name info))
+        Findlib.all_packages findlib |> List.map ~f:Dune_package.Entry.name)
 
   let find t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t -> Some t
     | St_not_found
-     |St_hidden _ ->
+    | St_hidden _ ->
       None
 
   let find_even_when_hidden t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t
-     |St_hidden (t, _, _) ->
+    | St_hidden (t, _, _) ->
       Some t
     | St_not_found -> None
 
@@ -1727,10 +1760,9 @@ module DB = struct
           else
             Required )
     in
-    let res, pps, resolved_selects =
-      Resolve.resolve_user_deps t
-        (Lib_info.Deps.of_lib_deps deps)
-        ~pps ~stack:Dep_stack.empty ~allow_private_deps:true
+    let res, pps, resolved_selects, _re_exports =
+      Resolve.resolve_user_deps t deps ~pps ~stack:Dep_stack.empty
+        ~allow_private_deps:true
     in
     let requires_link =
       lazy
@@ -1807,46 +1839,21 @@ module Meta = struct
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
-  let add_loc =
-    let loc = Lib_info.loc info in
-    List.map ~f:(fun x -> (loc, x.name))
-  in
+  let loc = Lib_info.loc info in
+  let add_loc = List.map ~f:(fun x -> (loc, x.name)) in
   let obj_dir =
     match Obj_dir.to_local (obj_dir lib) with
     | None -> assert false
     | Some obj_dir -> Obj_dir.convert_to_external ~dir obj_dir
   in
-  let info = Lib_info.set_obj_dir info obj_dir in
   let modules =
     let install_dir = Obj_dir.dir obj_dir in
     Modules.version_installed modules ~install_dir
   in
-  let info =
-    match !Clflags.store_orig_src_dir with
-    | false -> info
-    | true ->
-      let orig_src_dir =
-        let orig_src_dir = Lib_info.orig_src_dir info in
-        match orig_src_dir with
-        | Some src_dir -> src_dir
-        | None -> (
-          let src_dir = Lib_info.src_dir info in
-          match Path.drop_build_context src_dir with
-          | None -> src_dir
-          | Some src_dir ->
-            Path.(of_string (to_absolute_filename (Path.source src_dir))) )
-      in
-      Lib_info.set_orig_src_dir info orig_src_dir
-  in
-  let info =
-    match Lib_info.foreign_objects info with
-    | External _ -> info
-    | Local -> Lib_info.set_foreign_objects info foreign_objects
-  in
   let use_public_name ~lib_field ~info_field =
     match (info_field, lib_field) with
     | Some _, None
-     |None, Some _ ->
+    | None, Some _ ->
       assert false
     | None, None -> Ok None
     | Some (loc, _), Some field ->
@@ -1855,26 +1862,31 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
       Some (loc, field.name)
   in
   let open Result.O in
-  let* implements =
+  let+ implements =
     use_public_name ~info_field:(Lib_info.implements info)
       ~lib_field:(implements lib)
-  in
-  let* default_implementation =
+  and+ default_implementation =
     use_public_name
       ~info_field:(Lib_info.default_implementation info)
       ~lib_field:(Option.map ~f:Lazy.force lib.default_implementation)
-  in
-  let info = Lib_info.set_implements info implements in
-  let info = Lib_info.set_default_implementation info default_implementation in
-  let* ppx_runtime_deps = lib.ppx_runtime_deps in
+  and+ ppx_runtime_deps = lib.ppx_runtime_deps
+  and+ main_module_name = main_module_name lib
+  and+ requires = lib.requires
+  and+ re_exports = lib.re_exports in
   let ppx_runtime_deps = add_loc ppx_runtime_deps in
-  let info = Lib_info.set_ppx_runtime_deps info ppx_runtime_deps in
-  let info = Lib_info.set_sub_systems info (Sub_system.public_info lib) in
-  let* main_module_name = main_module_name lib in
-  let+ requires = lib.requires in
-  let requires = add_loc requires in
-  Dune_package.Lib.make ~info ~requires ~modules:(Some modules)
-    ~main_module_name
+  let sub_systems = Sub_system.public_info lib in
+  let requires =
+    List.map requires ~f:(fun lib ->
+        if List.exists re_exports ~f:(fun r -> r = lib) then
+          Lib_dep.Re_export (loc, lib.name)
+        else
+          Direct (loc, lib.name))
+  in
+  let info =
+    Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects
+      ~obj_dir ~implements ~default_implementation ~sub_systems
+  in
+  Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 
 module Local : sig
   type t = private lib

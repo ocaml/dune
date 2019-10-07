@@ -107,7 +107,7 @@ let field =
   match Dune_lang.Syntax.Version.compare dune_lang_version (2, 0) with
   | Lt -> return None
   | Gt
-   |Eq ->
+  | Eq ->
     field_dune2
 
 let loc t = t.loc

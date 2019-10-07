@@ -5,7 +5,7 @@ open Build.O
 type t =
   { loc : Loc.t
   ; files : Predicate_lang.t
-  ; libraries : Dune_file.Lib_dep.t list
+  ; libraries : Lib_dep.t list
   ; preprocess : Dune_file.Preprocess_map.t
   ; preprocessor_deps : Dune_file.Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
@@ -22,12 +22,11 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.decode ~default:Predicate_lang.true_
-     and+ preprocess =
-       field "preprocess" Dune_file.Preprocess_map.decode
-         ~default:Dune_file.Preprocess_map.default
-     and+ preprocessor_deps =
-       field "preprocessor_deps" (repeat Dune_file.Dep_conf.decode) ~default:[]
-     and+ libraries = field "libraries" Dune_file.Lib_deps.decode ~default:[]
+     and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
+     and+ libraries =
+       field "libraries"
+         (Dune_file.Lib_deps.decode ~allow_re_export:false)
+         ~default:[]
      and+ flags = Ocaml_flags.Spec.decode in
      { loc; files; libraries; preprocess; preprocessor_deps; flags })
 
@@ -45,9 +44,7 @@ let gen_rules sctx t ~dir ~scope =
   let main_module_name = Module_name.of_string "_cinaps" in
   (* Files checked by cinaps *)
   let cinapsed_files =
-    File_tree.files_of
-      (Super_context.file_tree sctx)
-      (Path.Build.drop_build_context_exn dir)
+    File_tree.files_of (Path.Build.drop_build_context_exn dir)
     |> Path.Source.Set.to_list
     |> List.filter_map ~f:(fun p ->
            if
@@ -76,9 +73,7 @@ let gen_rules sctx t ~dir ~scope =
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
       ~lint:Dune_file.Preprocess_map.no_preprocessing ~preprocess:t.preprocess
-      ~preprocessor_deps:
-        (Super_context.Deps.interpret sctx ~expander t.preprocessor_deps)
-      ~lib_name:None ~scope
+      ~preprocessor_deps:t.preprocessor_deps ~lib_name:None ~scope
   in
   let modules =
     Modules.exe_unwrapped modules
@@ -87,8 +82,7 @@ let gen_rules sctx t ~dir ~scope =
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (t.loc, name) ]
-      ( Dune_file.Lib_dep.Direct
-          (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
+      ( Lib_dep.Direct (loc, Lib_name.of_string_exn "cinaps.runtime" ~loc:None)
       :: t.libraries )
       ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
       ~variants:None ~optional:false

@@ -17,6 +17,8 @@ module type S = sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
+
+  val exists : 'a t -> f:('a -> bool) -> bool
 end
 
 module Make (Key : Map.Key) : S with type key = Key.t = struct
@@ -51,6 +53,8 @@ module Make (Key : Map.Key) : S with type key = Key.t = struct
   let map t ~f = { t with values = Array.map t.values ~f }
 
   let fold t ~init ~f = Array.fold_right t.values ~init ~f
+
+  let exists t ~f = Array.exists t.values ~f
 
   let is_constant t = Array.length t.values = 1
 end

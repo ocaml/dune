@@ -11,7 +11,6 @@ open! Import
 val init :
      contexts:Context.t list
   -> ?memory:Dune_manager.Client.t
-  -> file_tree:File_tree.t
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit
 
@@ -104,22 +103,14 @@ module Alias : sig
 
   (** Implements [@@alias] on the command line *)
   val dep_multi_contexts :
-       dir:Path.Source.t
-    -> name:string
-    -> file_tree:File_tree.t
-    -> contexts:string list
-    -> unit Build.t
+    dir:Path.Source.t -> name:string -> contexts:string list -> unit Build.t
 
   (** Implements [(alias_rec ...)] in dependency specification *)
-  val dep_rec : t -> loc:Loc.t -> file_tree:File_tree.t -> unit Build.t
+  val dep_rec : t -> loc:Loc.t -> unit Build.t
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts :
-       dir:Path.Source.t
-    -> name:string
-    -> file_tree:File_tree.t
-    -> contexts:string list
-    -> unit Build.t
+    dir:Path.Source.t -> name:string -> contexts:string list -> unit Build.t
 end
 
 (** {1 Building} *)
@@ -174,3 +165,5 @@ end
     transitive dependencies. *)
 val evaluate_rules :
   recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
+
+val get_memory : unit -> Dune_manager.Client.t option

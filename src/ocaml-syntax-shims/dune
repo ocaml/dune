@@ -1,7 +1,5 @@
 (executable
  (name pp)
- (package dune)
- (public_name ocaml-syntax-shims)
  (libraries compiler-libs.common))
 
 (ocamllex let_trail)

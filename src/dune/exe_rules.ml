@@ -14,12 +14,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let modules =
     Dir_contents.modules_of_executables dir_contents ~first_exe ~obj_dir
   in
-  let preprocessor_deps =
-    SC.Deps.interpret sctx exes.buildable.preprocessor_deps ~expander
-  in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander
-      ~preprocess:exes.buildable.preprocess ~preprocessor_deps
+      ~preprocess:exes.buildable.preprocess
+      ~preprocessor_deps:exes.buildable.preprocessor_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
   let modules =
@@ -75,7 +73,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       && (not (L.Set.mem exes.modes L.native))
       && not (L.Set.mem exes.modes L.exe)
     then
-      Exe.Linkage.custom :: l
+      Exe.Linkage.custom ctx :: l
     else
       l
   in
@@ -152,4 +150,5 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info
   in
   SC.Libs.gen_select_rules sctx compile_info ~dir;
+  Bootstrap_info.gen_rules sctx exes ~dir compile_info;
   SC.Libs.with_lib_deps sctx compile_info ~dir ~f

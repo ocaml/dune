@@ -37,7 +37,7 @@ let exe_ext = choose ".bc" ".exe"
 
 let of_cm_kind : Cm_kind.t -> t = function
   | Cmi
-   |Cmo ->
+  | Cmo ->
     Byte
   | Cmx -> Native
 

@@ -151,7 +151,7 @@ let finalize () =
     match !Clflags.promote with
     | Some Automatically -> do_promote !File.db All
     | Some Never
-     |None ->
+    | None ->
       !File.db
   in
   dump_db db

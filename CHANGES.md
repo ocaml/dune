@@ -130,6 +130,21 @@
   the executable source. Programs that use this feature can be run by a new
   action (dynamic-run <progn> ...). (#2635, @staronj, @aalekseyev)
 
+- Stop installing the `ocaml-syntax-shims` binary. In order to use
+  `future_syntax`, one now need to depend on the `ocaml-syntax-shims`
+  package (#2654, @diml)
+
+- Add support for dependencies that are re-exported. Such dependencies
+  are marked with`re_export` and will automatically be provided to
+  users of a library (#2605, @rgrinberg)
+
+- Add a `deprecated_library_name` stanza to redirect old names after a
+  library has been renamed (#2528, @diml)
+
+- Error out when a `preprocessor_deps` field is present but not
+  `preprocess` field is. It is a warning with Dune 1.x projects
+  (#2660, @Julow)
+
 1.11.3 (23/08/2019)
 -------------------
 

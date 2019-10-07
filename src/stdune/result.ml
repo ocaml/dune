@@ -1,4 +1,4 @@
-type ('a, 'error) t = ('a, 'error) Dune_caml.result =
+type ('a, 'error) t = ('a, 'error) result =
   | Ok of 'a
   | Error of 'error
 

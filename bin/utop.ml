@@ -48,7 +48,7 @@ let term =
           | Ok [ File target ] -> target
           | Ok _ -> assert false
         in
-        let+ () = do_build setup [ File target ] in
+        let+ () = do_build [ File target ] in
         (context, Path.to_string target))
   in
   Hooks.End_of_build.run ();

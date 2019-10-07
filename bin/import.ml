@@ -28,10 +28,14 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
-(* FIXME: leverage fibers to actually connect in the background *)
 let make_memory () =
+  let handle = function
+    | Dune_manager.Client.Dedup (target, source, digest) ->
+      Scheduler.send_dedup target source digest
+  in
   match Sys.getenv_opt "DUNE_CACHE" with
-  | Some _ -> Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make ())))
+  | Some _ ->
+    Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make handle)))
   | _ -> Fiber.return None
 
 module Main = struct
@@ -86,5 +90,4 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
   in
   Proc.restore_cwd_and_execve prog argv ~env
 
-let do_build (setup : Main.build_system) targets =
-  Build_system.do_build ~request:(Target.request setup targets)
+let do_build targets = Build_system.do_build ~request:(Target.request targets)

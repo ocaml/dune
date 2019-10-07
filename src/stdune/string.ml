@@ -1,40 +1,5 @@
 (* Because other the syntax s.[x] causes trouble *)
 module String = Dune_caml.String
-
-include struct
-  [@@@warning "-32-3"]
-
-  let capitalize_ascii = String.capitalize
-
-  let uncapitalize_ascii = String.uncapitalize
-
-  let uppercase_ascii = String.uppercase
-
-  let lowercase_ascii = String.lowercase
-
-  let equal (a : string) b = Pervasives.( = ) a b
-
-  let index_opt s ch =
-    match String.index s ch with
-    | i -> Some i
-    | exception Not_found -> None
-
-  let index_from_opt s i ch =
-    match String.index_from s i ch with
-    | i -> Some i
-    | exception Not_found -> None
-
-  let rindex_opt s ch =
-    match String.rindex s ch with
-    | i -> Some i
-    | exception Not_found -> None
-
-  let rindex_from_opt s i ch =
-    match String.rindex_from s i ch with
-    | i -> Some i
-    | exception Not_found -> None
-end
-
 include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
@@ -134,16 +99,16 @@ let extract_words s ~is_word_char =
 let extract_comma_space_separated_words s =
   extract_words s ~is_word_char:(function
     | ','
-     |' '
-     |'\t'
-     |'\n' ->
+    | ' '
+    | '\t'
+    | '\n' ->
       false
     | _ -> true)
 
 let extract_blank_separated_words s =
   extract_words s ~is_word_char:(function
     | ' '
-     |'\t' ->
+    | '\t' ->
       false
     | _ -> true)
 
@@ -307,13 +272,13 @@ let need_quoting s =
     else
       match s.[i] with
       | ' '
-       |'\"'
-       |'('
-       |')'
-       |'{'
-       |'}'
-       |';'
-       |'#' ->
+      | '\"'
+      | '('
+      | ')'
+      | '{'
+      | '}'
+      | ';'
+      | '#' ->
         true
       | _ -> loop (i + 1)
   in

@@ -94,8 +94,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     |> Glob.of_string_exn (String_with_vars.loc def.glob)
     |> Glob.to_pred
   in
-  let file_tree = Super_context.file_tree sctx in
-  if not (File_tree.dir_exists file_tree src_in_src) then
+  if not (File_tree.dir_exists src_in_src) then
     User_error.raise ~loc
       [ Pp.textf "Cannot find directory: %s" (Path.Source.to_string src_in_src)
       ];

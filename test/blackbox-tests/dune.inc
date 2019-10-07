@@ -87,23 +87,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name configurator)
- (deps (package dune) (source_tree test-cases/configurator))
- (action
-  (chdir
-   test-cases/configurator
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
- (enabled_if (<> %{ocaml-config:system} win)))
-
-(alias
- (name configurator-gh1166)
- (deps (package dune) (source_tree test-cases/configurator-gh1166))
- (action
-  (chdir
-   test-cases/configurator-gh1166
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
  (name contents-depends-on-glob)
  (deps (package dune) (source_tree test-cases/contents-depends-on-glob))
  (action
@@ -208,6 +191,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name deprecated-library-name)
+ (deps (package dune) (source_tree test-cases/deprecated-library-name))
+ (action
+  (chdir
+   test-cases/deprecated-library-name
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name deps-conf-vars)
  (deps (package dune) (source_tree test-cases/deps-conf-vars))
  (action
@@ -256,11 +247,19 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
- (name dune-cache)
- (deps (package dune) (source_tree test-cases/dune-cache))
+ (name dune-cache-dedup)
+ (deps (package dune) (source_tree test-cases/dune-cache-dedup))
  (action
   (chdir
-   test-cases/dune-cache
+   test-cases/dune-cache-dedup
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name dune-cache-promote)
+ (deps (package dune) (source_tree test-cases/dune-cache-promote))
+ (action
+  (chdir
+   test-cases/dune-cache-promote
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1322,7 +1321,10 @@
 
 (alias
  (name pkg-config-quoting)
- (deps (package dune) (source_tree test-cases/pkg-config-quoting))
+ (deps
+  (package dune)
+  (source_tree test-cases/pkg-config-quoting)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/pkg-config-quoting
@@ -1384,6 +1386,14 @@
  (action
   (chdir
    test-cases/quoting
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name re-exported-deps)
+ (deps (package dune) (source_tree test-cases/re-exported-deps))
+ (action
+  (chdir
+   test-cases/re-exported-deps
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1583,6 +1593,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name unused-preprocessor-deps)
+ (deps (package dune) (source_tree test-cases/unused-preprocessor-deps))
+ (action
+  (chdir
+   test-cases/unused-preprocessor-deps
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name upgrader)
  (deps (package dune) (source_tree test-cases/upgrader))
  (action
@@ -1712,7 +1730,10 @@
 
 (alias
  (name vlib)
- (deps (package dune) (source_tree test-cases/vlib))
+ (deps
+  (package dune)
+  (source_tree test-cases/vlib)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/vlib
@@ -1797,8 +1818,6 @@
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)
-  (alias configurator)
-  (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
@@ -1811,13 +1830,15 @@
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deprecated-library-name)
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
-  (alias dune-cache)
+  (alias dune-cache-dedup)
+  (alias dune-cache-promote)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -1952,6 +1973,7 @@
   (alias project-root)
   (alias promote)
   (alias quoting)
+  (alias re-exported-deps)
   (alias reason)
   (alias redirections)
   (alias reporting-of-cycles)
@@ -1976,6 +1998,7 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
+  (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias use-meta)
   (alias variables-for-artifacts)
@@ -2011,8 +2034,6 @@
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)
-  (alias configurator)
-  (alias configurator-gh1166)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
@@ -2024,13 +2045,15 @@
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
   (alias depend-on-the-universe)
+  (alias deprecated-library-name)
   (alias deps-conf-vars)
   (alias dialects)
   (alias dir-target-dep)
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
-  (alias dune-cache)
+  (alias dune-cache-dedup)
+  (alias dune-cache-promote)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2147,6 +2170,7 @@
   (alias project-root)
   (alias promote)
   (alias quoting)
+  (alias re-exported-deps)
   (alias redirections)
   (alias reporting-of-cycles)
   (alias rule-target-external)
@@ -2169,6 +2193,7 @@
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
+  (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
   (alias variant-dep-stack)

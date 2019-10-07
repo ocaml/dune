@@ -256,11 +256,20 @@ let until_keyword kwd ~before ~after =
 let plain_string f =
   next (function
     | Atom (loc, A s)
-     |Quoted_string (loc, s) ->
+    | Quoted_string (loc, s) ->
       f ~loc s
     | Template { loc; _ }
-     |List (loc, _) ->
+    | List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom or quoted string expected" ])
+
+let filename =
+  plain_string (fun ~loc s ->
+      match s with
+      | "."
+      | ".." ->
+        User_error.raise ~loc
+          [ Pp.textf "'.' and '..' are not valid filenames" ]
+      | fn -> fn)
 
 let enter t =
   next_with_user_context (fun uc sexp ->
@@ -343,8 +352,8 @@ let raw = next Fn.id
 let basic desc f =
   next (function
     | Template { loc; _ }
-     |List (loc, _)
-     |Quoted_string (loc, _) ->
+    | List (loc, _)
+    | Quoted_string (loc, _) ->
       User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) -> (
       match f (Atom.to_string s) with
@@ -385,15 +394,15 @@ let sum cstrs =
       match sexp with
       | Atom (loc, A s) -> find_cstr cstrs loc s (Values (loc, Some s, uc)) []
       | Template { loc; _ }
-       |Quoted_string (loc, _) ->
+      | Quoted_string (loc, _) ->
         User_error.raise ~loc [ Pp.text "Atom expected" ]
       | List (loc, []) ->
         User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
       | List (loc, name :: args) -> (
         match name with
         | Quoted_string (loc, _)
-         |List (loc, _)
-         |Template { loc; _ } ->
+        | List (loc, _)
+        | Template { loc; _ } ->
           User_error.raise ~loc [ Pp.text "Atom expected" ]
         | Atom (s_loc, A s) ->
           find_cstr cstrs s_loc s (Values (loc, Some s, uc)) args ))
@@ -401,8 +410,8 @@ let sum cstrs =
 let enum cstrs =
   next (function
     | Quoted_string (loc, _)
-     |Template { loc; _ }
-     |List (loc, _) ->
+    | Template { loc; _ }
+    | List (loc, _) ->
       User_error.raise ~loc [ Pp.text "Atom expected" ]
     | Atom (loc, A s) -> (
       match List.assoc cstrs s with
@@ -514,8 +523,8 @@ let fields t (Values (loc, cstr, uc)) sexps =
               ; prev = Name.Map.find acc name
               }
           | List (loc, _)
-           |Quoted_string (loc, _)
-           |Template { loc; _ } ->
+          | Quoted_string (loc, _)
+          | Template { loc; _ } ->
             User_error.raise ~loc [ Pp.text "Atom expected" ] )
         | _ ->
           User_error.raise ~loc:(Ast.loc sexp)
@@ -525,11 +534,18 @@ let fields t (Values (loc, cstr, uc)) sexps =
   let x = result ctx (t ctx { Fields.unparsed; known = [] }) in
   (x, [])
 
-let leftover_fields (Fields (_, _, _)) state =
-  ( Fields.unparsed_ast state
-  , { Fields.known = state.known @ Name.Map.keys state.unparsed
-    ; unparsed = Name.Map.empty
-    } )
+let leftover_fields_generic t more_fields (Fields (loc, cstr, uc)) state =
+  let x =
+    let ctx = Values (loc, cstr, uc) in
+    result ctx (repeat t ctx (Fields.unparsed_ast state))
+  in
+  (x, { Fields.known = state.known @ more_fields; unparsed = Name.Map.empty })
+
+let leftover_fields ctx (state : Fields.t) =
+  leftover_fields_generic raw (Name.Map.keys state.unparsed) ctx state
+
+let leftover_fields_as_sums cstrs =
+  leftover_fields_generic (sum cstrs) (List.map cstrs ~f:fst)
 
 type kind =
   | Values of Loc.t * string option

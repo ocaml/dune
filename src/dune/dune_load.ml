@@ -15,7 +15,7 @@ module Dune_file = struct
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
           | Rule { mode = Promote { only = None; _ }; _ }
-           |Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
+          | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
             false
           | _ -> true)
       else
@@ -187,8 +187,7 @@ end
 end
 
 type conf =
-  { file_tree : File_tree.t
-  ; dune_files : Dune_files.t
+  { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
   }
@@ -204,12 +203,10 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
   | Ocaml_script file -> Script { dir; project; file }
 
 let load ~ancestor_vcs () =
-  let ftree =
-    File_tree.load Path.Source.root ~ancestor_vcs
-      ~recognize_jbuilder_projects:false
-  in
+  File_tree.init Path.Source.root ~ancestor_vcs
+    ~recognize_jbuilder_projects:false;
   let projects =
-    File_tree.fold ftree
+    File_tree.fold
       ~traverse:{ data_only = false; vendored = true; normal = true } ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
@@ -254,5 +251,5 @@ let load ~ancestor_vcs () =
       in
       String.Map.fold sub_dirs ~init:dune_files ~f:walk
   in
-  let dune_files = walk (File_tree.root ftree) [] in
-  { file_tree = ftree; dune_files; packages; projects }
+  let dune_files = walk (File_tree.root ()) [] in
+  { dune_files; packages; projects }

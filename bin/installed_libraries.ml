@@ -35,21 +35,18 @@ let term =
       ) else
         let pkgs = Findlib.all_packages findlib in
         let max_len =
-          String.longest_map pkgs ~f:(fun (n : Dune_package.Lib.t) ->
-              let info = Dune_package.Lib.info n in
-              let name = Dune.Lib_info.name info in
-              Lib_name.to_string name)
+          String.longest_map pkgs ~f:(fun e ->
+              Lib_name.to_string (Dune_package.Entry.name e))
         in
-        List.iter pkgs ~f:(fun (pkg : Dune_package.Lib.t) ->
-            let info = Dune_package.Lib.info pkg in
+        List.iter pkgs ~f:(fun e ->
             let ver =
-              match Dune.Lib_info.version info with
+              match Dune_package.Entry.version e with
               | Some v -> v
               | _ -> "n/a"
             in
-            let name = Dune.Lib_info.name info in
             Printf.printf "%-*s (version: %s)\n" max_len
-              (Lib_name.to_string name) ver);
+              (Lib_name.to_string (Dune_package.Entry.name e))
+              ver);
         Fiber.return ())
 
 let command = (term, info)

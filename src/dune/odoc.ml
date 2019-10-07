@@ -326,17 +326,19 @@ let setup_toplevel_index_rule sctx =
   add_rule sctx (Build.write_file (Paths.toplevel_index ctx) html)
 
 let libs_of_pkg sctx ~pkg =
-  SC.libs_of_package sctx pkg
+  SC.lib_entries_of_package sctx pkg
   |> (* Filter out all implementations of virtual libraries *)
-     Lib.Local.Set.filter ~f:(fun lib ->
-         let lib = Lib.Local.to_lib lib in
-         not (Lib.is_impl lib))
+     List.filter_map ~f:(function
+       | Super_context.Lib_entry.Library lib ->
+         let is_impl = Lib.Local.to_lib lib |> Lib.is_impl in
+         Option.some_if (not is_impl) lib
+       | Deprecated_library_name _ -> None)
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in
   let ctx = Super_context.context sctx in
   Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Pkg pkg)));
-  Lib.Local.Set.iter pkg_libs ~f:(fun lib ->
+  List.iter pkg_libs ~f:(fun lib ->
       Build_system.load_dir ~dir:(Path.build (Paths.odocs ctx (Lib lib))));
   pkg_libs
 
@@ -515,7 +517,6 @@ let setup_package_aliases sctx (pkg : Package.t) =
   Rules.Produce.Alias.add_deps alias
     ( Dep.html_alias ctx (Pkg pkg.name)
       :: ( libs_of_pkg sctx ~pkg:pkg.name
-         |> Lib.Local.Set.to_list
          |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
     |> List.map ~f:(fun f -> Path.build (Alias.stamp_file f))
     |> Path.Set.of_list )
@@ -529,7 +530,7 @@ let entry_modules_by_lib sctx lib =
   |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =
-  libs_of_pkg sctx ~pkg |> Lib.Local.Set.to_list
+  libs_of_pkg sctx ~pkg
   |> Lib.Local.Map.of_list_map_exn ~f:(fun l ->
          (l, entry_modules_by_lib sctx l))
 
@@ -640,7 +641,7 @@ let gen_rules sctx ~dir:_ rest =
     setup_css_rule sctx;
     setup_toplevel_index_rule sctx
   | "_mlds" :: pkg :: _
-   |"_odoc" :: "pkg" :: pkg :: _ ->
+  | "_odoc" :: "pkg" :: pkg :: _ ->
     let pkg = Package.Name.of_string pkg in
     let packages = Super_context.packages sctx in
     Package.Name.Map.find packages pkg
@@ -659,8 +660,7 @@ let gen_rules sctx ~dir:_ rest =
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
     let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
     let setup_pkg_html_rules pkg =
-      setup_pkg_html_rules sctx ~pkg
-        ~libs:(Lib.Local.Set.to_list (load_all_odoc_rules_pkg sctx ~pkg))
+      setup_pkg_html_rules sctx ~pkg ~libs:(load_all_odoc_rules_pkg sctx ~pkg)
     in
     (* diml: why isn't [None] some kind of error here? *)
     let lib =

@@ -1,0 +1,29 @@
+(alias
+ (name runtest)
+ (package dune-configurator)
+ (deps
+  (package dune)
+  (package dune-configurator)
+  (source_tree test-cases/configurator))
+ (action
+  (chdir
+   test-cases/configurator
+   (progn
+    (run cram -test run.t)
+    (diff? run.t run.t.corrected))))
+ (enabled_if
+  (<> %{ocaml-config:system} win)))
+
+(alias
+ (name runtest)
+ (package dune-configurator)
+ (deps
+  (package dune)
+  (package dune-configurator)
+  (source_tree test-cases/configurator-gh1166))
+ (action
+  (chdir
+   test-cases/configurator-gh1166
+   (progn
+    (run cram -test run.t)
+    (diff? run.t run.t.corrected)))))

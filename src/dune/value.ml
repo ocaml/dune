@@ -19,7 +19,7 @@ let to_string t ~dir =
   match t with
   | String s -> s
   | Dir p
-   |Path p ->
+  | Path p ->
     string_of_path ~dir p
 
 let compare_vals ~dir x y =
@@ -33,7 +33,7 @@ let to_path ?error_loc t ~dir =
   match t with
   | String s -> Path.relative ?error_loc dir s
   | Dir p
-   |Path p ->
+  | Path p ->
     p
 
 module L = struct
@@ -47,7 +47,7 @@ module L = struct
   let deps_only =
     List.filter_map ~f:(function
       | Dir _
-       |String _ ->
+      | String _ ->
         None
       | Path p -> Some p)
 

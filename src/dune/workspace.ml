@@ -144,7 +144,7 @@ module Context = struct
 
   let host_context = function
     | Default { host_context; _ }
-     |Opam { base = { host_context; _ }; _ } ->
+    | Opam { base = { host_context; _ }; _ } ->
       host_context
 
   let t ~profile ~x =

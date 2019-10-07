@@ -1,6 +1,7 @@
 PREFIX_ARG := $(if $(PREFIX),--prefix $(PREFIX),)
 LIBDIR_ARG := $(if $(LIBDIR),--libdir $(LIBDIR),)
-INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG)
+DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
+INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./_boot/default/bin/main.exe
 
 -include Makefile.dev
@@ -54,7 +55,7 @@ clean:
 	rm -rf _boot
 
 distclean: clean
-	rm -f src/setup.ml
+	rm -f src/dune/setup.ml
 
 doc:
 	cd doc && sphinx-build . _build

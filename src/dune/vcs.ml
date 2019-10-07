@@ -5,13 +5,13 @@ module Kind = struct
     | Git
     | Hg
 
+  let filenames = [ (".git", Git); (".hg", Hg) ]
+
+  let of_filename = List.assoc filenames
+
   let of_dir_contents files =
-    if String.Set.mem files ".git" then
-      Some Git
-    else if String.Set.mem files ".hg" then
-      Some Hg
-    else
-      None
+    List.find_map filenames ~f:(fun (fname, kind) ->
+        Option.some_if (String.Set.mem files fname) kind)
 
   let to_dyn t =
     Dyn.Variant

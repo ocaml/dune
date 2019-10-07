@@ -14,11 +14,11 @@ let quote_length s =
       +
       match String.unsafe_get s i with
       | '\"'
-       |'\\'
-       |'\n'
-       |'\t'
-       |'\r'
-       |'\b' ->
+      | '\\'
+      | '\n'
+      | '\t'
+      | '\r'
+      | '\b' ->
         needs_quoting := true;
         2
       | ' ' ->

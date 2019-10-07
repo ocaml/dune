@@ -280,7 +280,7 @@ an appropriate error message.
   File "dune", line 7, characters 13-30:
   7 |  (implements dune.configurator))
                    ^^^^^^^^^^^^^^^^^
-  Error: Library "dune.configurator" is not virtual. It cannot be implemented
+  Error: Library "dune-configurator" is not virtual. It cannot be implemented
   by "foobar".
   [1]
 

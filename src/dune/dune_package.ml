@@ -14,10 +14,9 @@ module Lib = struct
     { info : Path.t Lib_info.t
     ; modules : Modules.t option
     ; main_module_name : Module_name.t option
-    ; requires : (Loc.t * Lib_name.t) list
     }
 
-  let make ~info ~main_module_name ~requires ~modules =
+  let make ~info ~main_module_name ~modules =
     let obj_dir = Lib_info.obj_dir info in
     let dir = Obj_dir.dir obj_dir in
     let map_path p =
@@ -27,13 +26,13 @@ module Lib = struct
         p
     in
     let info = Lib_info.map_path info ~f:map_path in
-    { info; main_module_name; requires; modules }
+    { info; main_module_name; modules }
 
   let dir_of_name name =
     let _, components = Lib_name.split name in
     Path.Local.L.relative Path.Local.root components
 
-  let encode ~package_root { info; requires; main_module_name; modules } =
+  let encode ~package_root { info; main_module_name; modules } =
     let open Dune_lang.Encoder in
     let no_loc f (_loc, x) = f x in
     let path = Dpath.Local.encode ~dir:package_root in
@@ -58,6 +57,7 @@ module Lib = struct
     let archives = Lib_info.archives info in
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
+    let requires = Lib_info.requires info in
     let foreign_archives = Lib_info.foreign_archives info in
     let foreign_objects =
       match Lib_info.foreign_objects info with
@@ -77,7 +77,7 @@ module Lib = struct
        ; paths "foreign_objects" foreign_objects
        ; mode_paths "foreign_archives" foreign_archives
        ; paths "jsoo_runtime" jsoo_runtime
-       ; libs "requires" requires
+       ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
        ; field_l "known_implementations"
@@ -90,8 +90,7 @@ module Lib = struct
        ; field_l "obj_dir" sexp (Obj_dir.encode obj_dir)
        ; field_o "modules" Modules.encode modules
        ; field_o "special_builtin_support"
-           Dune_file.Library.Special_builtin_support.encode
-           special_builtin_support
+           Lib_info.Special_builtin_support.encode special_builtin_support
        ]
     @ ( Sub_system_name.Map.to_list sub_systems
       |> List.map ~f:(fun (name, info) ->
@@ -134,7 +133,8 @@ module Lib = struct
        and+ foreign_objects = paths "foreign_objects"
        and+ foreign_archives = mode_paths "foreign_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
-       and+ requires = libs "requires"
+       and+ requires =
+         field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =
@@ -151,7 +151,7 @@ module Lib = struct
        and+ special_builtin_support =
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Dune_file.Library.Special_builtin_support.decode )
+           >>> Lib_info.Special_builtin_support.decode )
        in
        let known_implementations =
          Variant.Map.of_list_exn known_implementations
@@ -162,11 +162,8 @@ module Lib = struct
          let enabled = Lib_info.Enabled_status.Normal in
          let status = Lib_info.Status.Installed in
          let version = None in
-         let main_module_name =
-           Dune_file.Library.Inherited.This main_module_name
-         in
+         let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
-         let requires = Lib_info.Deps.Simple requires in
          let jsoo_archive = None in
          let pps = [] in
          let virtual_deps = [] in
@@ -181,7 +178,7 @@ module Lib = struct
          let variant = None in
          let wrapped =
            Option.map modules ~f:Modules.wrapped
-           |> Option.map ~f:(fun w -> Dune_file.Library.Inherited.This w)
+           |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
          in
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
@@ -191,27 +188,68 @@ module Lib = struct
            ~known_implementations ~default_implementation ~modes ~wrapped
            ~special_builtin_support
        in
-       { info; requires; main_module_name; modules })
+       { info; main_module_name; modules })
 
   let modules t = t.modules
 
   let main_module_name t = t.main_module_name
-
-  let requires t = t.requires
-
-  let compare_name x y =
-    let x = Lib_info.name x.info in
-    let y = Lib_info.name y.info in
-    Lib_name.compare x y
 
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
 
   let info dp = dp.info
 end
 
+module Deprecated_library_name = struct
+  type t =
+    { loc : Loc.t
+    ; old_public_name : Lib_name.t
+    ; new_public_name : Lib_name.t
+    }
+
+  let decode =
+    let open Dune_lang.Decoder in
+    Dune_lang.Syntax.since Stanza.syntax (2, 0)
+    >>> fields
+          (let+ old_public_name = field "old_public_name" Lib_name.decode
+           and+ new_public_name = field "new_public_name" Lib_name.decode
+           and+ loc = loc in
+           { loc; old_public_name; new_public_name })
+
+  let encode { loc = _; old_public_name; new_public_name } =
+    let open Dune_lang.Encoder in
+    record_fields
+      [ field "old_public_name" Lib_name.encode old_public_name
+      ; field "new_public_name" Lib_name.encode new_public_name
+      ]
+end
+
+module Entry = struct
+  type t =
+    | Library of Lib.t
+    | Deprecated_library_name of Deprecated_library_name.t
+
+  let name = function
+    | Library lib -> Lib_info.name (Lib.info lib)
+    | Deprecated_library_name d -> d.old_public_name
+
+  let version = function
+    | Library lib -> Lib_info.version (Lib.info lib)
+    | Deprecated_library_name _ -> None
+
+  let cstrs ~lang ~dir =
+    let open Dune_lang.Decoder in
+    [ ( "library"
+      , let+ lib = Lib.decode ~lang ~base:dir in
+        Library lib )
+    ; ( "deprecated_library_name"
+      , let+ x = Deprecated_library_name.decode in
+        Deprecated_library_name x )
+    ]
+end
+
 type t =
-  { libs : Lib.t list
-  ; name : Package.Name.t
+  { name : Package.Name.t
+  ; entries : Entry.t list
   ; version : string option
   ; dir : Path.t
   }
@@ -220,15 +258,16 @@ let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" string
-  and+ libs = multi_field "library" (Lib.decode ~lang ~base:dir) in
-  { name
-  ; version
-  ; libs =
-      List.map libs ~f:(fun (lib : Lib.t) ->
+  and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
+  let entries =
+    List.map entries ~f:(fun e ->
+        match (e : Entry.t) with
+        | Library lib ->
           let info = Lib_info.set_version lib.info version in
-          { lib with info })
-  ; dir
-  }
+          Entry.Library { lib with info }
+        | _ -> e)
+  in
+  { name; version; entries; dir }
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -243,7 +282,7 @@ let prepend_version ~dune_version sexps =
   ]
   @ sexps
 
-let encode ~dune_version { libs; name; version; dir } =
+let encode ~dune_version { entries; name; version; dir } =
   let list s = Dune_lang.List s in
   let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
   let sexp =
@@ -257,11 +296,16 @@ let encode ~dune_version { libs; name; version; dir } =
             ]
         ]
   in
-  let libs =
-    List.map libs ~f:(fun lib ->
-        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir))
+  let entries =
+    List.map entries ~f:(function
+      | Entry.Library lib ->
+        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+      | Deprecated_library_name d ->
+        list
+          ( Dune_lang.atom "deprecated_library_name"
+          :: Deprecated_library_name.encode d ))
   in
-  prepend_version ~dune_version (sexp @ libs)
+  prepend_version ~dune_version (List.concat [ sexp; entries ])
 
 module Or_meta = struct
   type nonrec t =

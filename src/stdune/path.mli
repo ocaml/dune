@@ -169,6 +169,8 @@ module Build : sig
   val set_build_dir : Kind.t -> unit
 
   val split_sandbox_root : t -> t option * t
+
+  val of_local : Local.t -> t
 end
 
 type t = private

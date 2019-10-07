@@ -66,7 +66,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                   ( match lib.kind with
                   | Normal -> []
                   | Ppx_deriver _
-                   |Ppx_rewriter _ ->
+                  | Ppx_rewriter _ ->
                     [ "-linkall" ] )
               ; Dyn
                   ( Cm_files.top_sorted_cms cm_files ~mode
@@ -278,9 +278,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind ~scope
       ~preprocess:lib.buildable.preprocess ~expander
-      ~preprocessor_deps:
-        (Super_context.Deps.interpret sctx ~expander
-           lib.buildable.preprocessor_deps)
+      ~preprocessor_deps:lib.buildable.preprocessor_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
   in

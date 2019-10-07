@@ -161,6 +161,8 @@ module Run : sig
   (** Represent a run of the system *)
   type t
 
+  val to_dyn : t -> Dyn.t
+
   (** Return the current run *)
   val current : unit -> t
 
@@ -171,6 +173,8 @@ module Run : sig
   val restart : unit -> unit
 end = struct
   type t = bool ref
+
+  let to_dyn _ = Dyn.opaque
 
   let current = ref (ref true)
 
@@ -646,7 +650,8 @@ module Exec_async = struct
        both returns a result and keeps producing errors. Not sure why. *)
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
-    Fiber.Ivar.fill ivar res >>= fun () -> Fiber.return res
+    let+ () = Fiber.Ivar.fill ivar res in
+    res
 
   (* the computation that force computes the fiber *)
   let recompute t inp (dep_node : _ Dep_node.t) =
@@ -722,7 +727,7 @@ let peek_exn t inp = Option.value_exn (peek t inp)
 let get_deps t inp =
   match Table.find t.cache inp with
   | None
-   |Some { state = Running_async _; _ } ->
+  | Some { state = Running_async _; _ } ->
     None
   | Some { state = Running_sync _; _ } -> None
   | Some { state = Failed _; _ } -> None
@@ -779,6 +784,16 @@ end
 module Async = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o Fiber.t) t
 end
+
+let current_run =
+  let f () = Run.current () in
+  let memo =
+    create "current-run" ~doc:"current run"
+      ~input:(module Unit)
+      ~output:(Simple (module Run))
+      ~visibility:Hidden Sync f
+  in
+  fun () -> exec memo ()
 
 module Lazy_id = Stdune.Id.Make ()
 

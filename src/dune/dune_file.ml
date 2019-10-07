@@ -12,40 +12,6 @@ module Jbuild_version = struct
   let decode = enum [ ("1", V1) ]
 end
 
-let invalid_module_name ~loc name =
-  User_error.raise ~loc [ Pp.textf "invalid module name: %S" name ]
-
-let module_name =
-  plain_string (fun ~loc name ->
-      match name with
-      | "" -> invalid_module_name ~loc name
-      | s -> (
-        try
-          ( match s.[0] with
-          | 'A' .. 'Z'
-           |'a' .. 'z' ->
-            ()
-          | _ -> raise_notrace Exit );
-          String.iter s ~f:(function
-            | 'A' .. 'Z'
-             |'a' .. 'z'
-             |'0' .. '9'
-             |'\''
-             |'_' ->
-              ()
-            | _ -> raise_notrace Exit);
-          Module_name.of_string s
-        with Exit -> invalid_module_name ~loc name ))
-
-let file =
-  plain_string (fun ~loc s ->
-      match s with
-      | "."
-       |".." ->
-        User_error.raise ~loc
-          [ Pp.textf "'.' and '..' are not valid filenames" ]
-      | fn -> fn)
-
 let relative_file =
   plain_string (fun ~loc fn ->
       if Filename.is_relative fn then
@@ -175,7 +141,7 @@ module Pps_and_flags = struct
           match String_with_vars.is_prefix ~prefix:"-" s with
           | Yes -> Right s
           | No
-           |Unknown _ -> (
+          | Unknown _ -> (
             let loc = String_with_vars.loc s in
             match String_with_vars.text_only s with
             | None ->
@@ -353,8 +319,8 @@ module Preprocess = struct
   let loc = function
     | No_preprocessing -> None
     | Action (loc, _)
-     |Pps { loc; _ }
-     |Future_syntax loc ->
+    | Pps { loc; _ }
+    | Future_syntax loc ->
       Some loc
 
   let pps = function
@@ -428,7 +394,7 @@ module Per_module = struct
         [ ( "per_module"
           , let+ x =
               repeat
-                (let+ pp, names = pair a (repeat module_name) in
+                (let+ pp, names = pair a (repeat Module_name.decode) in
                  (names, pp))
             in
             of_mapping x ~default
@@ -492,86 +458,6 @@ module Js_of_ocaml = struct
     { flags = Ordered_set_lang.Unexpanded.standard; javascript_files = [] }
 end
 
-module Lib_dep = struct
-  type choice =
-    { required : Lib_name.Set.t
-    ; forbidden : Lib_name.Set.t
-    ; file : string
-    }
-
-  type select =
-    { result_fn : string
-    ; choices : choice list
-    ; loc : Loc.t (* For error messages *)
-    }
-
-  type t =
-    | Direct of (Loc.t * Lib_name.t)
-    | Select of select
-
-  let choice =
-    enter
-      (let+ loc = loc
-       and+ preds, file =
-         until_keyword "->"
-           ~before:
-             (let+ s = string
-              and+ loc = loc in
-              let len = String.length s in
-              if len > 0 && s.[0] = '!' then
-                Right
-                  (Lib_name.of_string_exn ~loc:(Some loc) (String.drop s 1))
-              else
-                Left (Lib_name.of_string_exn ~loc:(Some loc) s))
-           ~after:file
-       in
-       match file with
-       | None ->
-         User_error.raise ~loc
-           [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
-       | Some file ->
-         let rec loop required forbidden = function
-           | [] ->
-             let common = Lib_name.Set.inter required forbidden in
-             Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
-                 User_error.raise ~loc
-                   [ Pp.textf
-                       "library %S is both required and forbidden in this \
-                        clause"
-                       (Lib_name.to_string name)
-                   ]);
-             { required; forbidden; file }
-           | Left s :: l -> loop (Lib_name.Set.add required s) forbidden l
-           | Right s :: l -> loop required (Lib_name.Set.add forbidden s) l
-         in
-         loop Lib_name.Set.empty Lib_name.Set.empty preds)
-
-  let decode =
-    if_list
-      ~then_:
-        (enter
-           (let+ loc = loc
-            and+ () = keyword "select"
-            and+ result_fn = file
-            and+ () = keyword "from"
-            and+ choices = repeat choice in
-            Select { result_fn; choices; loc }))
-      ~else_:
-        (let+ loc, name = located Lib_name.decode in
-         Direct (loc, name))
-
-  let to_lib_names = function
-    | Direct (_, s) -> [ s ]
-    | Select s ->
-      List.fold_left s.choices ~init:Lib_name.Set.empty ~f:(fun acc x ->
-          Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
-      |> Lib_name.Set.to_list
-
-  let direct x = Direct x
-
-  let of_lib_name (loc, pp) = Direct (loc, pp)
-end
-
 module Lib_deps = struct
   type t = Lib_dep.t list
 
@@ -580,9 +466,9 @@ module Lib_deps = struct
     | Optional
     | Forbidden
 
-  let decode =
+  let decode ~allow_re_export =
     let+ loc = loc
-    and+ t = repeat Lib_dep.decode in
+    and+ t = repeat (Lib_dep.decode ~allow_re_export) in
     let add kind name acc =
       match Lib_name.Map.find acc name with
       | None -> Lib_name.Map.set acc name kind
@@ -593,7 +479,7 @@ module Lib_deps = struct
             [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
         | Optional, Required
-         |Required, Optional ->
+        | Required, Optional ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as an optional and required \
@@ -601,7 +487,7 @@ module Lib_deps = struct
                 (Lib_name.to_string name)
             ]
         | Forbidden, Required
-         |Required, Forbidden ->
+        | Required, Forbidden ->
           User_error.raise ~loc
             [ Pp.textf
                 "library %S is present both as a forbidden and required \
@@ -612,31 +498,68 @@ module Lib_deps = struct
     ignore
       ( List.fold_left t ~init:Lib_name.Map.empty ~f:(fun acc x ->
             match x with
-            | Lib_dep.Direct (_, s) -> add Required s acc
+            | Lib_dep.Re_export (_, s)
+            | Lib_dep.Direct (_, s) ->
+              add Required s acc
             | Select { choices; _ } ->
-              List.fold_left choices ~init:acc ~f:(fun acc c ->
+              List.fold_left choices ~init:acc
+                ~f:(fun acc (c : Lib_dep.Select.choice) ->
                   let acc =
-                    Lib_name.Set.fold c.Lib_dep.required ~init:acc
-                      ~f:(add Optional)
+                    Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
                   in
                   Lib_name.Set.fold c.forbidden ~init:acc ~f:(add Forbidden)))
         : kind Lib_name.Map.t );
     t
 
-  let of_pps pps =
-    List.map pps ~f:(fun pp -> Lib_dep.of_lib_name (Loc.none, pp))
+  let of_pps pps = List.map pps ~f:(fun pp -> Lib_dep.direct (Loc.none, pp))
 
   let info t ~kind =
     List.concat_map t ~f:(function
-      | Lib_dep.Direct (_, s) -> [ (s, kind) ]
+      | Lib_dep.Re_export (_, s)
+      | Lib_dep.Direct (_, s) ->
+        [ (s, kind) ]
       | Select { choices; _ } ->
-        List.concat_map choices ~f:(fun c ->
-            Lib_name.Set.to_list c.Lib_dep.required
+        List.concat_map choices ~f:(fun (c : Lib_dep.Select.choice) ->
+            Lib_name.Set.to_list c.required
             |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
 let modules_field name = Ordered_set_lang.field name
+
+let preprocess_fields =
+  let+ preprocess =
+    field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
+  and+ preprocessor_deps =
+    field_o "preprocessor_deps"
+      (let+ loc = loc
+       and+ l = repeat Dep_conf.decode in
+       (loc, l))
+  and+ syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+  let preprocessor_deps =
+    match preprocessor_deps with
+    | None -> []
+    | Some (loc, deps) ->
+      let deps_might_be_used =
+        Per_module.exists preprocess ~f:(fun p ->
+            match (p : Preprocess.t) with
+            | Action _
+            | Pps _ ->
+              true
+            | No_preprocessing
+            | Future_syntax _ ->
+              false)
+      in
+      if not deps_might_be_used then
+        User_warning.emit ~loc
+          ~is_error:(syntax >= (2, 0))
+          [ Pp.text
+              "This preprocessor_deps field will be ignored because no \
+               preprocessor that might use them is configured."
+          ];
+      deps
+  in
+  (preprocess, preprocessor_deps)
 
 module Buildable = struct
   type t =
@@ -655,17 +578,14 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode ~since_c =
+  let decode ~since_c ~allow_re_export =
     let check_c t =
       match since_c with
       | None -> t
       | Some v -> Dune_lang.Syntax.since Stanza.syntax v >>> t
     in
     let+ loc = loc
-    and+ preprocess =
-      field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
-    and+ preprocessor_deps =
-      field "preprocessor_deps" (repeat Dep_conf.decode) ~default:[]
+    and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
     and+ c_flags = Dune_env.Stanza.c_flags ~since:since_c
     and+ c_names = field_o "c_names" (check_c Ordered_set_lang.decode)
@@ -673,7 +593,8 @@ module Buildable = struct
     and+ modules = modules_field "modules"
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
-    and+ libraries = field "libraries" Lib_deps.decode ~default:[]
+    and+ libraries =
+      field "libraries" (Lib_deps.decode ~allow_re_export) ~default:[]
     and+ flags = Ocaml_flags.Spec.decode
     and+ js_of_ocaml =
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
@@ -711,6 +632,18 @@ module Public_lib = struct
 
   let name t = snd t.name
 
+  let make project ((_, s) as loc_name) =
+    let pkg, rest = Lib_name.split s in
+    Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
+        { package = pkg
+        ; sub_dir =
+            ( if rest = [] then
+              None
+            else
+              Some (String.concat rest ~sep:"/") )
+        ; name = loc_name
+        })
+
   let public_name_field =
     map_validate
       (let+ project = Dune_project.get_exn ()
@@ -719,21 +652,7 @@ module Public_lib = struct
       ~f:(fun (project, loc_name) ->
         match loc_name with
         | None -> Ok None
-        | Some ((_, s) as loc_name) -> (
-          let pkg, rest = Lib_name.split s in
-          match Pkg.resolve project pkg with
-          | Ok pkg ->
-            Ok
-              (Some
-                 { package = pkg
-                 ; sub_dir =
-                     ( if rest = [] then
-                       None
-                     else
-                       Some (String.concat rest ~sep:"/") )
-                 ; name = loc_name
-                 })
-          | Error _ as e -> e ))
+        | Some x -> Result.map (make project x) ~f:Option.some)
 end
 
 module Mode_conf = struct
@@ -815,7 +734,7 @@ module Mode_conf = struct
     let eval t ~has_native =
       let exists = function
         | Best
-         |Byte ->
+        | Byte ->
           true
         | Native -> has_native
       in
@@ -861,113 +780,13 @@ module External_variant = struct
 end
 
 module Library = struct
-  module Inherited = struct
-    type 'a t =
-      | This of 'a
-      | From of (Loc.t * Lib_name.t)
-  end
-
-  module Special_builtin_support = struct
-    module Build_info = struct
-      type api_version = V1
-
-      let supported_api_versions = [ (1, V1) ]
-
-      type t =
-        { data_module : string
-        ; api_version : api_version
-        }
-
-      let decode =
-        fields
-          (let+ data_module = field "data_module" string
-           and+ api_version =
-             field "api_version"
-               (let+ loc = loc
-                and+ ver = int in
-                match List.assoc supported_api_versions ver with
-                | Some x -> x
-                | None ->
-                  User_error.raise ~loc
-                    [ Pp.textf
-                        "API version %d is not supported. Only the following \
-                         versions are currently supported:"
-                        ver
-                    ; Pp.enumerate supported_api_versions ~f:(fun (n, _) ->
-                          Pp.textf "%d" n)
-                    ])
-           in
-           { data_module; api_version })
-
-      let encode { data_module; api_version } =
-        let open Dune_lang.Encoder in
-        record_fields
-          [ field "data_module" string data_module
-          ; field "api_version" int
-              ( match api_version with
-              | V1 -> 1 )
-          ]
-    end
-
-    type t =
-      | Findlib_dynload
-      | Build_info of Build_info.t
-
-    let decode =
-      sum
-        [ ("findlib_dynload", return Findlib_dynload)
-        ; ( "build_info"
-          , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
-            and+ info = Build_info.decode in
-            Build_info info )
-        ]
-
-    let encode t =
-      match t with
-      | Findlib_dynload -> Dune_lang.atom "findlib_dynload"
-      | Build_info x ->
-        Dune_lang.List (Dune_lang.atom "build_info" :: Build_info.encode x)
-  end
-
-  module Stdlib = struct
-    type t =
-      { modules_before_stdlib : Module_name.Set.t
-      ; exit_module : Module_name.t option
-      ; internal_modules : Glob.t
-      }
-
-    let syntax =
-      let syntax =
-        Dune_lang.Syntax.create
-          ~name:"experimental_building_ocaml_compiler_with_dune"
-          ~desc:"experimental feature for building the compiler with dune"
-          [ (0, 1) ]
-      in
-      Dune_project.Extension.register_simple ~experimental:true syntax
-        (Dune_lang.Decoder.return []);
-      syntax
-
-    let decode =
-      fields
-        (let+ modules_before_stdlib =
-           field "modules_before_stdlib" (repeat module_name) ~default:[]
-         and+ exit_module = field_o "exit_module" module_name
-         and+ internal_modules =
-           field "internal_modules" Glob.decode ~default:Glob.empty
-         in
-         { modules_before_stdlib =
-             Module_name.Set.of_list modules_before_stdlib
-         ; exit_module
-         ; internal_modules
-         })
-  end
-
   module Wrapped = struct
     include Wrapped
 
     let default = Simple true
 
-    let make ~wrapped ~implements ~special_builtin_support : t Inherited.t =
+    let make ~wrapped ~implements ~special_builtin_support :
+        t Lib_info.Inherited.t =
       ( match (wrapped, special_builtin_support) with
       | Some (loc, Yes_with_transition _), Some _ ->
         User_error.raise ~loc
@@ -1002,7 +821,7 @@ module Library = struct
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; self_build_stubs_archive : string option
     ; virtual_deps : (Loc.t * Lib_name.t) list
-    ; wrapped : Wrapped.t Inherited.t
+    ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
     ; buildable : Buildable.t
     ; dynlink : Dynlink_supported.t
@@ -1015,14 +834,14 @@ module Library = struct
     ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
-    ; stdlib : Stdlib.t option
-    ; special_builtin_support : Special_builtin_support.t option
+    ; stdlib : Ocaml_stdlib.t option
+    ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     }
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~since_c:None
+      (let+ buildable = Buildable.decode ~since_c:None ~allow_re_export:true
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
@@ -1076,11 +895,12 @@ module Library = struct
             Ordered_set_lang.decode)
        and+ stdlib =
          field_o "stdlib"
-           (Dune_lang.Syntax.since Stdlib.syntax (0, 1) >>> Stdlib.decode)
+           ( Dune_lang.Syntax.since Ocaml_stdlib.syntax (0, 1)
+           >>> Ocaml_stdlib.decode )
        and+ special_builtin_support =
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>> Special_builtin_support.decode )
+           >>> Lib_info.Special_builtin_support.decode )
        and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -1248,19 +1068,129 @@ module Library = struct
       ~has_private_modules:(t.private_modules <> None)
       (snd t.name)
 
-  module Main_module_name = struct
-    type t = Module_name.t option Inherited.t
-  end
-
-  let main_module_name t : Main_module_name.t =
+  let main_module_name t : Lib_info.Main_module_name.t =
     match (t.implements, t.wrapped) with
     | Some x, From _ -> From x
     | Some _, This _ (* cannot specify for wrapped for implements *)
-     |None, From _ ->
+    | None, From _ ->
       assert false (* cannot inherit for normal libs *)
     | None, This (Simple false) -> This None
     | None, This (Simple true | Yes_with_transition _) ->
       This (Some (Module_name.of_local_lib_name (snd t.name)))
+
+  let to_lib_info conf ~dir
+      ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
+      ~known_implementations =
+    let _loc, lib_name = conf.name in
+    let obj_dir = obj_dir ~dir conf in
+    let gen_archive_file ~dir ext =
+      Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext)
+    in
+    let archive_file = gen_archive_file ~dir in
+    let archive_files ~f_ext =
+      Mode.Dict.of_func (fun ~mode -> [ archive_file (f_ext mode) ])
+    in
+    let jsoo_runtime =
+      List.map conf.buildable.js_of_ocaml.javascript_files
+        ~f:(Path.Build.relative dir)
+    in
+    let status =
+      match conf.public with
+      | None -> Lib_info.Status.Private conf.project
+      | Some p -> Public (Dune_project.name conf.project, p.package)
+    in
+    let virtual_library = is_virtual conf in
+    let foreign_archives =
+      let stubs =
+        if has_stubs conf then
+          [ stubs_archive conf ~dir ~ext_lib ]
+        else
+          []
+      in
+      { Mode.Dict.byte = stubs
+      ; native =
+          Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+          :: stubs
+      }
+    in
+    let foreign_archives =
+      match conf.stdlib with
+      | Some { exit_module = Some m; _ } ->
+        let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
+        { Mode.Dict.byte =
+            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
+            :: foreign_archives.byte
+        ; native =
+            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+            :: Path.Build.extend_basename obj_name ~suffix:ext_obj
+            :: foreign_archives.native
+        }
+      | _ -> foreign_archives
+    in
+    let jsoo_archive =
+      Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
+    in
+    let virtual_ =
+      Option.map conf.virtual_modules ~f:(fun _ -> Lib_info.Source.Local)
+    in
+    let foreign_objects = Lib_info.Source.Local in
+    let archives, plugins =
+      if virtual_library then
+        (Mode.Dict.make_both [], Mode.Dict.make_both [])
+      else
+        ( archive_files ~f_ext:Mode.compiled_lib_ext
+        , archive_files ~f_ext:Mode.plugin_ext )
+    in
+    let main_module_name = main_module_name conf in
+    let name = best_name conf in
+    let modes = Mode_conf.Set.eval ~has_native conf.modes in
+    let enabled =
+      let enabled_if_result =
+        Blang.eval conf.enabled_if ~dir:(Path.build dir) ~f:(fun v _ver ->
+            match
+              (String_with_vars.Var.name v, String_with_vars.Var.payload v)
+            with
+            | var, None ->
+              let value = Lib_config.get_for_enabled_if lib_config ~var in
+              Some [ String value ]
+            | _ -> None)
+      in
+      if not enabled_if_result then
+        Lib_info.Enabled_status.Disabled_because_of_enabled_if
+      else if conf.optional then
+        Optional
+      else
+        Normal
+    in
+    let version =
+      match status with
+      | Public (_, pkg) -> pkg.version
+      | Installed
+      | Private _ ->
+        None
+    in
+    let requires = conf.buildable.libraries in
+    let loc = conf.buildable.loc in
+    let kind = conf.kind in
+    let src_dir = dir in
+    let orig_src_dir = None in
+    let synopsis = conf.synopsis in
+    let sub_systems = conf.sub_systems in
+    let ppx_runtime_deps = conf.ppx_runtime_libraries in
+    let pps = Preprocess_map.pps conf.buildable.preprocess in
+    let virtual_deps = conf.virtual_deps in
+    let dune_version = Some conf.dune_version in
+    let implements = conf.implements in
+    let variant = conf.variant in
+    let default_implementation = conf.default_implementation in
+    let wrapped = Some conf.wrapped in
+    let special_builtin_support = conf.special_builtin_support in
+    Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
+      ~version ~synopsis ~main_module_name ~sub_systems ~requires
+      ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
+      ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
+      ~virtual_ ~implements ~variant ~known_implementations
+      ~default_implementation ~modes ~wrapped ~special_builtin_support
 end
 
 module Install_conf = struct
@@ -1607,10 +1537,19 @@ module Executables = struct
     ; promote : Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
+    ; bootstrap_info : string option
     }
 
+  let bootstrap_info_extension =
+    let syntax =
+      Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
+        ~desc:"private extension to handle Dune bootstrap" [ (0, 1) ]
+    in
+    Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
+
   let common =
-    let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
+    let+ buildable =
+      Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1642,6 +1581,18 @@ module Executables = struct
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located Lib_name.decode) )
         ~default:[]
+    and+ bootstrap_info =
+      field_o "bootstrap_info"
+        (let+ loc = loc
+         and+ fname = filename
+         and+ project = Dune_project.get_exn () in
+         if
+           Option.is_none
+             (Dune_project.find_extension_args project bootstrap_info_extension)
+         then
+           User_error.raise ~loc
+             [ Pp.text "This field is reserved for Dune itself" ];
+         fname)
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1664,7 +1615,7 @@ module Executables = struct
           let ext =
             match mode.mode with
             | Native
-             |Best ->
+            | Best ->
               ".exe"
             | Byte -> ".bc"
           in
@@ -1681,6 +1632,7 @@ module Executables = struct
       ; promote
       ; install_conf
       ; forbidden_libraries
+      ; bootstrap_info
       }
 
   let single, multi =
@@ -1792,6 +1744,7 @@ module Rule = struct
       ; ("with-stdout-to", Action)
       ; ("with-stderr-to", Action)
       ; ("with-outputs-to", Action)
+      ; ("with-stdin-from", Action)
       ; ("ignore-stdout", Action)
       ; ("ignore-stderr", Action)
       ; ("ignore-outputs", Action)
@@ -2120,7 +2073,8 @@ module Tests = struct
 
   let gen_parse names =
     fields
-      (let+ buildable = Buildable.decode ~since_c:(Some (2, 0))
+      (let+ buildable =
+         Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
        and+ link_flags = field_oslu "link_flags"
        and+ variants = variants_field
        and+ names = names
@@ -2154,6 +2108,7 @@ module Tests = struct
            ; promote = None
            ; install_conf = None
            ; forbidden_libraries
+           ; bootstrap_info = None
            }
        ; locks
        ; package
@@ -2233,6 +2188,30 @@ module Include_subdirs = struct
     enum opts_list
 end
 
+module Deprecated_library_name = struct
+  type t =
+    { loc : Loc.t
+    ; project : Dune_project.t
+    ; old_public_name : Public_lib.t
+    ; new_public_name : Lib_name.t
+    }
+
+  let decode =
+    fields
+      (let+ loc = loc
+       and+ project = Dune_project.get_exn ()
+       and+ old_public_name =
+         map_validate
+           (let+ project = Dune_project.get_exn ()
+            and+ loc_name =
+              field "old_public_name" (located Lib_name.decode)
+            in
+            (project, loc_name))
+           ~f:(fun (project, loc_name) -> Public_lib.make project loc_name)
+       and+ new_public_name = field "new_public_name" Lib_name.decode in
+       { loc; project; old_public_name; new_public_name })
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Executables of Executables.t
@@ -2245,6 +2224,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
+  | Deprecated_library_name of Deprecated_library_name.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2333,6 +2313,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 7)
         and+ t = Toplevel.decode in
         [ Toplevel t ] )
+    ; ( "deprecated_library_name"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        and+ t = Deprecated_library_name.decode in
+        [ Deprecated_library_name t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -2415,11 +2399,11 @@ end
 
 let stanza_package = function
   | Library { public = Some { package; _ }; _ }
-   |Alias { package = Some package; _ }
-   |Install { package; _ }
-   |Executables { install_conf = Some { package; _ }; _ }
-   |Documentation { package; _ }
-   |Tests { package = Some package; _ } ->
+  | Alias { package = Some package; _ }
+  | Install { package; _ }
+  | Executables { install_conf = Some { package; _ }; _ }
+  | Documentation { package; _ }
+  | Tests { package = Some package; _ } ->
     Some package
   | Coq.T { public = Some { package; _ }; _ } -> Some package
   | _ -> None

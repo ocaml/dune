@@ -53,8 +53,8 @@ let check_no_module_consumer stanzas =
   List.iter stanzas ~f:(fun stanza ->
       match stanza with
       | Library { buildable; _ }
-       |Executables { buildable; _ }
-       |Tests { exes = { buildable; _ }; _ } ->
+      | Executables { buildable; _ }
+      | Tests { exes = { buildable; _ }; _ } ->
         User_error.raise ~loc:buildable.loc
           [ Pp.text
               "This stanza is not allowed in a sub-directory of directory \
@@ -65,8 +65,7 @@ let check_no_module_consumer stanzas =
 
 module DB = struct
   type nonrec t =
-    { file_tree : File_tree.t
-    ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
+    { stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
     ; fn : (Path.Build.t, t) Memo.Sync.t
     }
 
@@ -80,9 +79,7 @@ module DB = struct
       | Some parent_dir -> current_group parent_dir (get ~dir:parent_dir)
     in
     match
-      Option.bind
-        (Path.Build.drop_build_context dir)
-        ~f:(File_tree.find_dir db.file_tree)
+      Option.bind (Path.Build.drop_build_context dir) ~f:File_tree.find_dir
     with
     | None -> (
       match enclosing_group ~dir with
@@ -120,7 +117,7 @@ module DB = struct
                 { stanzas = Some d; group_root }
             | No_group -> Standalone (Some (ft_dir, Some d)) ) ) )
 
-  let make file_tree ~stanzas_per_dir =
+  let make ~stanzas_per_dir =
     (* CR-someday aalekseyev: This local recursive module is a bit awkward. In
        the future the plan is to move the memo to the top-level to make it less
        awkward (and to dissolve the [DB] datatype). *)
@@ -129,8 +126,7 @@ module DB = struct
         val t : t
       end = struct
         let t =
-          { file_tree
-          ; stanzas_per_dir
+          { stanzas_per_dir
           ; fn =
               Memo.create "get-dir-status"
                 ~input:(module Path.Build)

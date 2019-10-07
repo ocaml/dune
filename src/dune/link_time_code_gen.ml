@@ -91,9 +91,7 @@ let findlib_init_code ~preds ~libs =
 
 let build_info_code cctx ~libs ~api_version =
   ( match api_version with
-  | Dune_file.Library.Special_builtin_support.Build_info.V1 -> () );
-  let sctx = CC.super_context cctx in
-  let file_tree = Super_context.file_tree sctx in
+  | Lib_info.Special_builtin_support.Build_info.V1 -> () );
   (* [placeholders] is a mapping from source path to variable names. For each
      binding [(p, v)], we will generate the following code:
 
@@ -107,7 +105,7 @@ let build_info_code cctx ~libs ~api_version =
       s
   in
   let placeholder p =
-    match File_tree.nearest_vcs file_tree p with
+    match File_tree.nearest_vcs p with
     | None -> "None"
     | Some vcs -> (
       let p =

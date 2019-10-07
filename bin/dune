@@ -3,5 +3,10 @@
  (public_name dune)
  (package dune)
  (libraries memo dune_lang fiber stdune unix dune_manager dune cmdliner
-   build_info)
- (preprocess future_syntax))
+   threads.posix build_info)
+ (preprocess future_syntax)
+ (bootstrap_info bootstrap-info))
+
+(deprecated_library_name
+ (old_public_name dune.configurator)
+ (new_public_name dune-configurator))

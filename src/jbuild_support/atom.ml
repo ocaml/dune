@@ -7,9 +7,9 @@ let is_valid str =
   let rec loop ix =
     match str.[ix] with
     | '"'
-     |'('
-     |')'
-     |';' ->
+    | '('
+    | ')'
+    | ';' ->
       true
     | '|' ->
       ix > 0
@@ -22,10 +22,10 @@ let is_valid str =
       let next = ix - 1 in
       str.[next] = '|' || loop next
     | ' '
-     |'\t'
-     |'\n'
-     |'\012'
-     |'\r' ->
+    | '\t'
+    | '\n'
+    | '\012'
+    | '\r' ->
       true
     | _ -> ix > 0 && loop (ix - 1)
   in

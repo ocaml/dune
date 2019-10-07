@@ -24,8 +24,7 @@ let%expect_test _ =
   |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
   |> print_dyn;
   [%expect {|
-Error [{exn = "Exit";
-         backtrace = ""}]
+Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
@@ -47,8 +46,7 @@ let%expect_test _ =
   |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
   |> print_dyn;
   [%expect {|
-Error [{exn = "Exit";
-         backtrace = ""}]
+Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
@@ -78,8 +76,7 @@ let%expect_test _ =
   |> Result.to_dyn (pair unit unit) (list Exn_with_backtrace.to_dyn)
   |> print_dyn;
   [%expect {|
-Error [{exn = "Exit";
-         backtrace = ""}]
+Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =

@@ -17,7 +17,6 @@ type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
   ; output : out_channel
-  ; build_root : Path.t option
   ; common_metadata : Sexp.t list
   ; memory : Dune_memory.Memory.t
   ; repositories : (string * string * string) list
@@ -58,15 +57,6 @@ let check_port_file ?(close = true) p =
     Exn.protect ~f ~finally
   | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) -> Result.Ok None
   | Result.Error e -> Result.Error e
-
-let make_path client path =
-  if Filename.is_relative path then
-    match client.build_root with
-    | Some p ->
-      Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
-    | None -> Result.Error "relative path while no build root was set"
-  else
-    Result.ok (Path.of_string path)
 
 let send client sexp =
   output_string client (Csexp.to_string sexp);
@@ -207,8 +197,7 @@ let client_thread (events, client) =
                (Sexp.to_string (Sexp.List cmd)))
       and file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          make_path client path
-          >>= fun path -> Dune_memory.key_of_string hash >>| fun d -> (path, d)
+          Dune_memory.key_of_string hash >>| fun d -> (Path.of_string path, d)
         | sexp ->
           Result.Error
             (Printf.sprintf "invalid file in promotion message: %s"
@@ -216,10 +205,13 @@ let client_thread (events, client) =
       and f promotion =
         print_endline (Dune_memory.promotion_to_string promotion);
         match promotion with
-        | Already_promoted (f, t) ->
+        | Already_promoted (f, t, d) ->
           Some
             (Sexp.List
-               [ Sexp.Atom (Path.to_string f); Sexp.Atom (Path.to_string t) ])
+               [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
+               ; Sexp.Atom (Path.to_string t)
+               ; Sexp.Atom (Digest.to_string d)
+               ])
         | _ -> None
       in
       repo
@@ -235,6 +227,8 @@ let client_thread (events, client) =
       match List.filter_map ~f promotions with
       | [] -> client
       | dedup ->
+        Log.infof "send deduplication message for %s"
+          (Sexp.to_string (Sexp.List dedup));
         send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
         client )
     | args -> invalid_args args
@@ -254,7 +248,11 @@ let client_thread (events, client) =
     | args -> invalid_args args
   and handle_set_build_root client = function
     | [ Sexp.Atom dir ] ->
-      Result.ok { client with build_root = Some (Path.of_string dir) }
+      Result.ok
+        { client with
+          memory =
+            Dune_memory.Memory.set_build_dir client.memory (Path.of_string dir)
+        }
     | args -> invalid_args args
   and handle_set_metadata client arg =
     Result.ok { client with common_metadata = arg }
@@ -376,7 +374,6 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           ; peer
           ; output = Unix.out_channel_of_descr fd
           ; version = None
-          ; build_root = None
           ; common_metadata = []
           ; repositories = []
           ; memory =
@@ -430,10 +427,37 @@ module Client = struct
   type t =
     { socket : out_channel
     ; fd : Unix.file_descr
+    ; input : char Stream.t
     ; memory : Dune_memory.Memory.t
+    ; thread : Thread.t
+    ; finally : (unit -> unit) option
     }
 
-  let make () =
+  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+
+  let command_to_dyn = function
+    | Dedup (source, target, hash) ->
+      let open Dyn.Encoder in
+      constr "Dedup"
+        [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
+
+  let read input =
+    let open Result.O in
+    Csexp.parse input
+    >>= function
+    | Sexp.List
+        [ Sexp.Atom "dedup"
+        ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
+        ] -> (
+      match Digest.from_hex digest with
+      | Some digest ->
+        Result.Ok
+          (Dedup (Path.Build.of_string source, Path.of_string target, digest))
+      | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
+    | exp ->
+      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+
+  let make ?finally handle =
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -442,7 +466,7 @@ module Client = struct
         (daemon ~root ~config:{ exit_no_client = true })
       >>| (function
             | Started (ep, _)
-             |Already_running (ep, _) ->
+            | Already_running (ep, _) ->
               ep
             | Finished ->
               Code_error.raise "dune-cache was run in the foreground" [])
@@ -461,8 +485,24 @@ module Client = struct
       Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
     in
     let socket = Unix.out_channel_of_descr fd in
+    let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+    let rec thread input =
+      match
+        let+ command = read input in
+        Log.infof "dune-cache command: %a" Pp.render_ignore_tags
+          (Dyn.pp (command_to_dyn command));
+        handle command
+      with
+      | Result.Error e ->
+        Log.infof "dune-cache read error: %s" e;
+        Option.iter ~f:(fun f -> f ()) finally
+      | Result.Ok () -> (thread [@tailcall]) input
+    in
     send socket my_versions_command;
-    Result.Ok { socket; fd; memory }
+    (* FIXME: find highest common version *)
+    ignore (read input);
+    let thread = Thread.create thread input in
+    Result.Ok { socket; fd; input; memory; thread; finally }
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key
@@ -491,11 +531,12 @@ module Client = struct
       (Sexp.List
          [ Sexp.Atom "set-build-root"
          ; Sexp.Atom (Path.to_absolute_filename path)
-         ])
+         ]);
+    client
 
   let search client key = Dune_memory.Memory.search client.memory key
 
-  let teardown memory =
-    flush memory.socket;
-    Unix.shutdown memory.fd Unix.SHUTDOWN_ALL
+  let teardown client =
+    Unix.shutdown client.fd Unix.SHUTDOWN_SEND;
+    Thread.join client.thread
 end

@@ -67,7 +67,7 @@ child 4 1 child 3 1 child 2 1 child 1 2 root child 4
 let rec adjacent_pairs l =
   match l with
   | []
-   |[ _ ] ->
+  | [ _ ] ->
     []
   | x :: y :: rest -> (x, y) :: adjacent_pairs (y :: rest)
 

@@ -50,8 +50,7 @@ val fmt : dir:Path.Build.t -> t
 (** Return the underlying stamp file *)
 val stamp_file : t -> Path.Build.t
 
-val find_dir_specified_on_command_line :
-  dir:Path.Source.t -> file_tree:File_tree.t -> File_tree.Dir.t
+val find_dir_specified_on_command_line : dir:Path.Source.t -> File_tree.Dir.t
 
 val is_standard : string -> bool
 

@@ -16,7 +16,6 @@ val create :
      context:Context.t
   -> ?host:t
   -> projects:Dune_project.t list
-  -> file_tree:File_tree.t
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
   -> external_lib_deps_mode:bool
@@ -30,8 +29,6 @@ val stanzas_in : t -> dir:Path.Build.t -> Stanzas.t Dir_with_dune.t option
 
 val packages : t -> Package.t Package.Name.Map.t
 
-val file_tree : t -> File_tree.t
-
 val artifacts : t -> Artifacts.t
 
 val build_dir : t -> Path.Build.t
@@ -42,7 +39,13 @@ val host : t -> t
 
 val external_lib_deps_mode : t -> bool
 
-val libs_of_package : t -> Package.Name.t -> Lib.Local.Set.t
+module Lib_entry : sig
+  type t =
+    | Library of Lib.Local.t
+    | Deprecated_library_name of Dune_file.Deprecated_library_name.t
+end
+
+val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
 
 (** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
@@ -78,7 +81,7 @@ val find_scope_by_project : t -> Dune_project.t -> Scope.t
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
 (** Tells whether the given source directory is marked as vendored *)
-val dir_is_vendored : t -> Path.Source.t -> bool
+val dir_is_vendored : Path.Source.t -> bool
 
 val add_rule :
      t
@@ -117,7 +120,7 @@ val add_alias_action :
   -> Action.t Build.t
   -> unit
 
-val source_files : t -> src_path:Path.Source.t -> String.Set.t
+val source_files : src_path:Path.Source.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
     workspace, if it is not found in the tree is is looked up in the PATH. If

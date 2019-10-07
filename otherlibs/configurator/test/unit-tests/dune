@@ -1,0 +1,4 @@
+(test
+ (name test_configurator)
+ (package dune-configurator)
+ (libraries configurator))

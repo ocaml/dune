@@ -3,15 +3,11 @@ open! Stdune
 module Lib : sig
   type t
 
-  val requires : t -> (Loc.t * Lib_name.t) list
-
   val modules : t -> Modules.t option
 
   val main_module_name : t -> Module_name.t option
 
   val dir_of_name : Lib_name.t -> Path.Local.t
-
-  val compare_name : t -> t -> Ordering.t
 
   val wrapped : t -> Wrapped.t option
 
@@ -20,14 +16,31 @@ module Lib : sig
   val make :
        info:Path.t Lib_info.t
     -> main_module_name:Module_name.t option
-    -> requires:(Loc.t * Lib_name.t) list
     -> modules:Modules.t option
     -> t
 end
 
+module Deprecated_library_name : sig
+  type t =
+    { loc : Loc.t
+    ; old_public_name : Lib_name.t
+    ; new_public_name : Lib_name.t
+    }
+end
+
+module Entry : sig
+  type t =
+    | Library of Lib.t
+    | Deprecated_library_name of Deprecated_library_name.t
+
+  val name : t -> Lib_name.t
+
+  val version : t -> string option
+end
+
 type t =
-  { libs : Lib.t list
-  ; name : Package.Name.t
+  { name : Package.Name.t
+  ; entries : Entry.t list
   ; version : string option
   ; dir : Path.t
   }

@@ -11,7 +11,7 @@ type real =
   ; ppf : Format.formatter
   }
 
-let t = Fdecl.create ()
+let t = Fdecl.create Dyn.Encoder.opaque
 
 let init ?(file = File.Default) () =
   let oc =
@@ -70,7 +70,7 @@ let infof fmt =
 let command ~command_line ~output ~exit_status =
   match t () with
   | None
-   |Some { oc = None; _ } ->
+  | Some { oc = None; _ } ->
     ()
   | Some { oc = Some oc; _ } ->
     Printf.fprintf oc "$ %s\n" (Ansi_color.strip command_line);

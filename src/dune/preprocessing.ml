@@ -62,7 +62,7 @@ end = struct
               match status with
               | Private scope_name -> Some scope_name
               | Public _
-               |Installed ->
+              | Installed ->
                 None
             in
             match (acc, scope_for_key) with
@@ -402,7 +402,7 @@ let get_cookies ~loc ~expander ~lib_name libs =
           match kind with
           | Normal -> []
           | Ppx_rewriter { cookies }
-           |Ppx_deriver { cookies } ->
+          | Ppx_deriver { cookies } ->
             List.map
               ~f:(fun { Lib_kind.Ppx_args.Cookie.name; value } ->
                 (name, (Expander.expand_str expander value, Lib.name t)))
@@ -568,18 +568,21 @@ let dummy = Per_module.for_all (fun m ~lint:_ -> m)
 
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
+  let preprocess =
+    Per_module.map preprocess ~f:(fun pp ->
+        Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp
+          (Super_context.context sctx).version)
+  in
   let preprocessor_deps =
-    Build.memoize "preprocessor deps" preprocessor_deps
+    SC.Deps.interpret sctx preprocessor_deps ~expander
+    |> Build.memoize "preprocessor deps"
   in
   let lint_module =
     Staged.unstage
       (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope)
   in
   Per_module.map preprocess ~f:(fun pp ->
-      match
-        Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp
-          (Super_context.context sctx).version
-      with
+      match pp with
       | No_preprocessing ->
         fun m ~lint ->
           let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in

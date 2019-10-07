@@ -1,6 +1,0 @@
-(library
- (name dune_action_plugin)
- (public_name dune._dune_action_plugin)
- (libraries stdune dune_re dune_glob_lexer)
- (synopsis
-   "Monadic interface for defining scripts with dynamic or complex sets of depencencies."))

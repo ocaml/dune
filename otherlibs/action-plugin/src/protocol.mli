@@ -6,6 +6,10 @@ module Dependency : sig
   type t =
     | File of string
     | Directory of string
+    | Glob of
+        { path : string
+        ; glob : string
+        }
 
   include Sexpable with type t := t
 

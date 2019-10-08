@@ -19,14 +19,21 @@ module Dependency = struct
     type t =
       | File of string
       | Directory of string
+      | Glob of
+          { path : string
+          ; glob : string
+          }
 
     let sexp_of_t : _ -> Sexp.t = function
       | File path -> List [ Atom "file"; Atom path ]
       | Directory path -> List [ Atom "directory"; Atom path ]
+      | Glob { path; glob } -> List [ Atom "glob"; Atom path; Atom glob ]
 
     let t_of_sexp : Sexp.t -> _ = function
       | List [ Atom "file"; Atom path ] -> Some (File path)
       | List [ Atom "directory"; Atom path ] -> Some (Directory path)
+      | List [ Atom "glob"; Atom path; Atom glob ] ->
+        Some (Glob { path; glob })
       | _ -> None
 
     let compare x y =
@@ -35,6 +42,13 @@ module Dependency = struct
       | File _, _ -> Lt
       | _, File _ -> Gt
       | Directory x, Directory y -> String.compare x y
+      | Directory _, _ -> Lt
+      | _, Directory _ -> Gt
+      | ( Glob { path = path1; glob = glob1 }
+        , Glob { path = path2; glob = glob2 } ) -> (
+        match String.compare path1 path2 with
+        | Eq -> String.compare glob1 glob2
+        | not_eq -> not_eq )
 
     let to_dyn _ = Dyn.opaque
   end

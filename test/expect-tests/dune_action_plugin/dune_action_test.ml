@@ -20,7 +20,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   let action =
-    read_directory ~path:(Path.of_string "some_dir")
+    read_directory_with_glob ~glob:Glob.universal
+      ~path:(Path.of_string "some_dir")
     |> map ~f:(fun data -> String.concat "," data |> print_endline)
   in
   Private.do_run action;
@@ -54,7 +55,8 @@ let%expect_test _ =
 
 let%expect_test _ =
   let action =
-    read_directory ~path:(Path.of_string "directory_that_does_not_exist")
+    read_directory_with_glob ~glob:Glob.universal
+      ~path:(Path.of_string "directory_that_does_not_exist")
     |> map ~f:ignore
   in
   run_action_expect_throws action;

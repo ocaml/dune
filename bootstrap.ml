@@ -50,7 +50,6 @@ type subdirs =
 (* Directories with library names *)
 let dirs =
   [ ("src/stdune/caml", Some "Dune_caml", No)
-  ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", No)
   ; ("src/stdune", Some "Stdune", No)
   ; ("src/fiber", Some "Fiber", No)
   ; ("src/xdg", Some "Xdg", No)

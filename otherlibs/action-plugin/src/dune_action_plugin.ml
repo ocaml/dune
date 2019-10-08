@@ -1,5 +1,6 @@
 module V1 = struct
   module Path = Path
+  module Glob = Dune_glob.V1
   open Protocol
 
   module Execution_error = struct
@@ -114,14 +115,16 @@ module V1 = struct
 
   (* TODO jstaron: If program tries to read empty directory, dune does not copy
      it to `_build` so we get a "No such file or directory" error. *)
-  let read_directory ~path =
+  let read_directory_with_glob ~path ~glob =
     let path = Path.to_string path in
     let action () =
       Fs.read_directory path |> Execution_error.raise_on_fs_error
+      |> List.filter (Glob.test glob)
     in
     lift_stage
       { action
-      ; dependencies = Dependency.Set.singleton (Directory path)
+      ; dependencies =
+          Dependency.Set.singleton (Glob { path; glob = Glob.to_string glob })
       ; targets = Stdune.String.Set.empty
       }
 

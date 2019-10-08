@@ -13,6 +13,7 @@ let local_libraries =
   ; ("src/dune_manager", Some "Dune_manager", No)
   ; ("vendor/re/src", Some "Dune_re", No)
   ; ("vendor/opam-file-format/src", None, No)
+  ; ("otherlibs/dune-glob", Some "Dune_glob", No)
   ; ("src/ocaml-config", Some "Ocaml_config", No)
   ; ("src/catapult", Some "Catapult", No)
   ; ("src/jbuild_support", Some "Jbuild_support", No)

@@ -206,7 +206,7 @@ let load ~ancestor_vcs () =
   File_tree.init Path.Source.root ~ancestor_vcs
     ~recognize_jbuilder_projects:false;
   let projects =
-    File_tree.fold
+    File_tree.Dir.fold (File_tree.root ())
       ~traverse:{ data_only = false; vendored = true; normal = true } ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in

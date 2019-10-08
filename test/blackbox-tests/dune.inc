@@ -263,6 +263,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-cache-symlink)
+ (deps (package dune) (source_tree test-cases/dune-cache-symlink))
+ (action
+  (chdir
+   test-cases/dune-cache-symlink
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-init)
  (deps (package dune) (source_tree test-cases/dune-init))
  (action
@@ -1839,6 +1847,7 @@
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
   (alias dune-cache-promote)
+  (alias dune-cache-symlink)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2054,6 +2063,7 @@
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
   (alias dune-cache-promote)
+  (alias dune-cache-symlink)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)

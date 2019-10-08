@@ -145,6 +145,10 @@
   `preprocess` field is. It is a warning with Dune 1.x projects
   (#2660, @Julow)
 
+- Dune will use `-output-complete-exe` instead of `-custom` when compiling
+  self-contained bytecode executables whenever this options is available
+  (OCaml version >= 4.10) (#2692, @nojb)
+
 1.11.3 (23/08/2019)
 -------------------
 

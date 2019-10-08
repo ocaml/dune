@@ -22,7 +22,11 @@ let is_a_source_file path =
   && Path.is_file path
 
 let make_watermark_map ~name ~version ~commit =
-  let opam_file = Opam_file.load (Path.in_source (name ^ ".opam")) in
+  let dir, name =
+    let path = Path.in_source (Package.Name.to_string name) in
+    (Path.parent_exn path, name)
+  in
+  let opam_file = Opam_file.load (Package.file ~dir ~name) in
   let version_num =
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
@@ -50,7 +54,7 @@ let make_watermark_map ~name ~version ~commit =
       | _ -> err () )
   in
   String.Map.of_list_exn
-    [ ("NAME", Ok name)
+    [ ("NAME", Ok (Package.Name.to_string name))
     ; ("VERSION", Ok version)
     ; ("VERSION_NUM", Ok version_num)
     ; ("VCS_COMMIT_ID", Ok commit)
@@ -158,10 +162,7 @@ let subst_string s path ~map =
 let subst_file path ~map =
   let s = Io.read_file path in
   let s =
-    if
-      Path.is_root (Path.parent_exn path)
-      && String.is_suffix (Path.to_string path) ~suffix:".opam"
-    then
+    if Path.is_root (Path.parent_exn path) && Package.is_opam_file path then
       "version: \"%%" ^ "VERSION_NUM" ^ "%%\"\n" ^ s
     else
       s
@@ -181,7 +182,7 @@ module Dune_project = struct
 
   type t =
     { contents : string
-    ; name : string simple_field option
+    ; name : Package.Name.t simple_field option
     ; version : string simple_field option
     }
 
@@ -201,7 +202,7 @@ module Dune_project = struct
       in
       enter
         (fields
-           (let+ name = simple_field "name" string
+           (let+ name = simple_field "name" Package.Name.decode
             and+ version = simple_field "version" string
             and+ () = junk_everything in
             { contents = s; name; version }))
@@ -261,11 +262,9 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
         match Path.parent fn with
-        | Some p when Path.is_root p -> (
+        | Some p when Path.is_root p ->
           let fn = Path.basename fn in
-          match Filename.split_extension fn with
-          | s, ".opam" -> Some s
-          | _ -> None )
+          Package.Name.of_basename fn
         | _ -> None)
   in
   if package_names = [] then
@@ -289,7 +288,8 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
         ]
     | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
   in
-  if not (List.mem name ~set:package_names) then
+  ( if not (List.mem name ~set:package_names) then
+    let name = Package.Name.to_string name in
     if Loc.is_none loc then
       User_error.raise [ Pp.textf "File %s.opam doesn't exist." name ]
     else
@@ -298,7 +298,7 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
             "File %s.opam doesn't exist. It is inferred from the name in the \
              dune-project file"
             name
-        ];
+        ] );
   name
 
 let subst vcs =

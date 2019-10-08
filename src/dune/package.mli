@@ -7,6 +7,8 @@ module Name : sig
 
   val of_string : string -> t
 
+  val parse_string_exn : (Loc.t * string) -> t
+
   val opam_fn : t -> string
 
   val version_fn : t -> string
@@ -18,6 +20,8 @@ module Name : sig
   module Infix : Comparator.OPS with type t = t
 
   val to_dyn : t -> Dyn.t
+
+  val of_basename : string -> t option
 end
 
 module Dependency : sig
@@ -79,6 +83,8 @@ type t =
   ; tags : string list
   }
 
+val file : dir:Path.t -> name:Name.t -> Path.t
+
 val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 
 val opam_file : t -> Path.Source.t
@@ -88,3 +94,5 @@ val meta_file : t -> Path.Source.t
 val to_dyn : t -> Dyn.t
 
 val hash : t -> int
+
+val is_opam_file : Path.t -> bool

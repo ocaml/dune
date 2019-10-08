@@ -1,5 +1,9 @@
 open! Stdune
 
+let opam_ext = ".opam"
+
+let is_opam_file path = String.is_suffix (Path.to_string path) ~suffix:opam_ext
+
 module Name = struct
   module T =
     Interned.Make
@@ -14,9 +18,39 @@ module Name = struct
 
   include T
 
-  let of_string = make
+  let of_string_opt s =
+    (* TODO verify no dots or spaces *)
+    if s = "" then
+      None
+    else
+      Some (make s)
 
-  let opam_fn (t : t) = to_string t ^ ".opam"
+  let of_string pkg =
+    match of_string_opt pkg with
+    | Some p -> p
+    | None ->
+      Code_error.raise "Invalid package name" ["pkg", Dyn.Encoder.string pkg]
+
+  let invalid_package_name (loc, s) =
+    User_error.make ~loc
+      [ Pp.textf "%S is an invalid package name" s ]
+
+  let of_string_user_error (loc, s) =
+    match of_string_opt s with
+    | Some s -> Ok s
+    | None -> Error (invalid_package_name (loc, s))
+
+  let parse_string_exn s =
+    match of_string_user_error s with
+    | Ok s -> s
+    | Error err -> raise (User_error.E err)
+
+  let of_basename basename =
+    let open Option.O in
+    let* name = String.drop_suffix basename ~suffix:opam_ext in
+    of_string_opt name
+
+  let opam_fn (t : t) = to_string t ^ opam_ext
 
   let meta_fn (t : t) = "META." ^ to_string t
 
@@ -24,7 +58,9 @@ module Name = struct
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
 
-  let decode = Dune_lang.Decoder.(map string ~f:of_string)
+  let decode =
+    let open Dune_lang.Decoder in
+    map_validate (located string) ~f:of_string_user_error
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
 
@@ -271,3 +307,5 @@ let to_dyn
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 
 let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)
+
+let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)

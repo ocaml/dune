@@ -400,13 +400,14 @@ let load_install_file path =
       | Some section -> (
         match files with
         | List (_, l) ->
+          let install_file src dst =
+            let src = Path.of_string src in
+            Entry.of_install_file ~src ~dst ~section
+          in
           List.map l ~f:(function
-            | String (_, src) ->
-              let src = Path.of_string src in
-              Entry.of_install_file ~src ~dst:None ~section
+            | String (_, src) -> install_file src None
             | Option (_, String (_, src), [ String (_, dst) ]) ->
-              let src = Path.of_string src in
-              Entry.of_install_file ~src ~dst:(Some dst) ~section
+              install_file src (Some dst)
             | v -> fail (pos_of_opam_value v) "Invalid value in .install file")
         | v -> fail (pos_of_opam_value v) "Invalid value for install section" )
       )

@@ -51,7 +51,7 @@ module Private = struct
         | Need_more_deps of Dependency.Set.t
 
       let deserialize _ =
-        (unimplemented () : (t, Deserialization_error.t) Result.t)
+        (unimplemented () : (t, Deserialization_error.t) result)
     end
     let run_by_dune_env_variable = "<NONE>"
   end

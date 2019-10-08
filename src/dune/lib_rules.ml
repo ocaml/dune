@@ -15,7 +15,7 @@ let msvc_hack_cclibs =
       in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
-let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
+let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~is_empty ~mode ~cm_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
   Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
@@ -75,8 +75,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
                   ( match mode with
                   | Byte -> []
                   | Native ->
-                    if ctx.ccomp_type = "msvc" &&
-                       Cm_files.unsorted_objects_and_cms cm_files ~mode = [] then
+                    if ctx.ccomp_type = "msvc" && is_empty then
                       []
                     else
                       [ Library.archive lib ~dir ~ext:ext_lib ] )
@@ -225,7 +224,7 @@ let build_shared lib ~sctx ~dir ~flags ~is_empty =
       Super_context.add_rule sctx build ~dir)
 
 let setup_build_archives (lib : Dune_file.Library.t) ~cctx
-    ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
+    ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander ~source_modules =
   let dir = Compilation_context.dir cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
   let flags = Compilation_context.flags cctx in
@@ -253,12 +252,12 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
   let modes = Compilation_context.modes cctx in
-  let cm_files =
-    Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
-  in
-  let is_empty = Cm_files.unsorted_objects_and_cms cm_files ~mode:Native = [] in
-  Mode.Dict.Set.iter modes ~f:(fun mode ->
-      build_lib lib ~sctx ~expander ~flags ~dir ~mode ~cm_files);
+  let is_empty = (source_modules = []) in
+  (let cm_files =
+     Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
+   in
+   Mode.Dict.Set.iter modes ~f:(fun mode ->
+       build_lib lib ~sctx ~expander ~flags ~dir ~is_empty ~mode ~cm_files));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -337,7 +336,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   Module_compilation.build_all cctx ~dep_graphs;
   let expander = Super_context.expander sctx ~dir in
   if not (Library.is_virtual lib) then
-    setup_build_archives lib ~cctx ~dep_graphs ~expander;
+    setup_build_archives lib ~cctx ~dep_graphs ~expander ~source_modules;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then

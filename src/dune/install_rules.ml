@@ -105,9 +105,13 @@ end = struct
             |> List.map ~f:(fun f -> (Visibility.Public, f))
           in
           cmi_file :: other_cm_files)
-      in
+    in
     let archives =
-      Lib_archives.make ~ctx ~dir_contents ~dir ~is_empty:(module_files = []) lib
+      let is_empty = (module_files = []) in
+      if is_empty && not (Ordered_set_lang.is_empty lib.buildable.modules) then
+        (* TODO !! *)
+        Printf.eprintf "A warning that dune-package may be corrupt should go here\n%!";
+      Lib_archives.make ~ctx ~dir_contents ~dir ~is_empty lib
     in
     let execs = lib_ppxs sctx ~scope ~lib in
     List.concat

@@ -30,7 +30,7 @@ The vendored_dirs stanza is available from version 1.11 of the dune language
   1 | (vendored_dirs *)
       ^^^^^^^^^^^^^^^^^
   Error: 'vendored_dirs' is only available since version 1.11 of the dune
-  language
+  language. Please update your dune-project file to have (lang 1.11).
   [1]
 
 The same directory cannot be marked as both vendored and data-only

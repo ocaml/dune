@@ -1,3 +1,5 @@
+  $ echo 'Hello, world!' > hello.expected
+
   $ dune runtest
 
   $ cp hello.wrong-output hello.expected

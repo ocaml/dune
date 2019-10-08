@@ -61,6 +61,8 @@ val standard : t
 
 val is_standard : t -> bool
 
+val is_empty : t -> bool
+
 val field :
      ?check:unit Dune_lang.Decoder.t
   -> string

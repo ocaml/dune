@@ -110,6 +110,11 @@ let is_standard t =
   | Ast.Standard -> true
   | _ -> false
 
+let is_empty t =
+  match (t.ast : ast_expanded) with
+  | Ast.Union [] -> true
+  | _ -> false
+
 module type Key = sig
   type t
 

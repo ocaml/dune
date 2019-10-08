@@ -1109,8 +1109,11 @@ module Library = struct
       in
       { Mode.Dict.byte = stubs
       ; native =
-          Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-          :: stubs
+          if not (Ordered_set_lang.is_empty conf.buildable.modules) then
+            Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
+            :: stubs
+          else
+            stubs
       }
     in
     let foreign_archives =

@@ -720,7 +720,8 @@ module Build = struct
         | In_source_dir p -> Local.Prefix.make p
         | External _ -> Local.Prefix.invalid
     and reset_build_dir () =
-      build_dir := Kind.In_source_dir (Local.of_string ".")
+      build_dir := Kind.In_source_dir (Local.of_string ".");
+      build_dir_prefix := Local.Prefix.invalid
     in
     let build_dir () = !build_dir in
     let build_dir_prefix () = !build_dir_prefix in

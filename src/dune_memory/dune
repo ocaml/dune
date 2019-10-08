@@ -3,11 +3,3 @@
  (modules Dune_memory Utils)
  (libraries stdune xdg dune_lang)
  (preprocess future_syntax))
-
-(executable
- (name main)
- (package dune)
- (modules main)
- (public_name dune-memory)
- (libraries dune_memory stdune)
- (preprocess future_syntax))

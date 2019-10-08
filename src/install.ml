@@ -228,8 +228,8 @@ module Section = struct
 end
 
 module Entry = struct
-  type t =
-    { src     : Path.Build.t
+  type 'src t =
+    { src     : 'src
     ; dst     : Dst.t
     ; section : Section.t
     }
@@ -320,21 +320,19 @@ module Entry = struct
     { t with dst = Dst.explicit dst }
 
   let of_install_file ~src ~dst ~section =
-    { src;
-      section;
-      dst = Dst.of_install_file ~section
-              ~src_basename:(Path.Build.basename src) dst;
+    { src
+    ; section
+    ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
     }
-
 end
 
 let files entries =
   List.fold_left entries ~init:Path.Set.empty
-    ~f:(fun acc (entry : Entry.t) ->
+    ~f:(fun acc (entry : Path.Build.t Entry.t) ->
       Path.Set.add acc (Path.build entry.src))
 
 let group entries =
-  List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
+  List.map entries ~f:(fun (entry : Path.Build.t Entry.t) -> (entry.section, entry))
   |> Section.Map.of_list_multi
 
 let gen_install_file entries =
@@ -343,7 +341,7 @@ let gen_install_file entries =
   Section.Map.iteri (group entries) ~f:(fun section entries ->
     pr "%s: [" (Section.to_string section);
     List.sort ~compare:Entry.compare entries
-    |> List.iter ~f:(fun (e : Entry.t) ->
+    |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
       let src = Path.to_string (Path.build e.src) in
       match
         Dst.to_install_file ~src_basename:(Path.Build.basename e.src)
@@ -373,37 +371,26 @@ let load_install_file path =
   let file = Opam_file.load path in
   let fail (fname, line, col) msg =
     let pos : Lexing.position =
-      { pos_fname = fname
-      ; pos_lnum = line
-      ; pos_bol = 0
-      ; pos_cnum = col
-      }
+      { pos_fname = fname; pos_lnum = line; pos_bol = 0; pos_cnum = col }
     in
-    User_error.raise ~loc:{ start =  pos; stop = pos }
-      [ Pp.text msg ]
+    User_error.raise ~loc:{ start = pos; stop = pos } [ Pp.text msg ]
   in
   List.concat_map file.file_contents ~f:(function
-    | Variable (pos, section, files) -> begin
-        match Section.of_string section with
-        | None -> fail pos "Unknown install section"
-        | Some section -> begin
-            match files with
-            | List (_, l) ->
-              List.map l ~f:(function
-                | String (_, src) ->
-                  let src = Path.as_in_build_dir_exn (Path.of_string src) in
-                  Entry.of_install_file ~src ~dst:None ~section
-                | Option (_, String (_, src),
-                          [String (_, dst)]) ->
-                  let src = Path.as_in_build_dir_exn (Path.of_string src) in
-                  Entry.of_install_file ~src ~dst:(Some dst) ~section
-                | v ->
-                  fail (pos_of_opam_value v)
-                    "Invalid value in .install file")
-            | v ->
-              fail (pos_of_opam_value v)
-                "Invalid value for install section"
-          end
-      end
-    | Section (pos, _) ->
-      fail pos "Sections are not allowed in .install file")
+    | Variable (pos, section, files) -> (
+      match Section.of_string section with
+      | None -> fail pos "Unknown install section"
+      | Some section -> (
+        match files with
+        | List (_, l) ->
+          let install_file src dst =
+            let src = Path.of_string src in
+            Entry.of_install_file ~src ~dst ~section
+          in
+          List.map l ~f:(function
+            | String (_, src) -> install_file src None
+            | Option (_, String (_, src), [ String (_, dst) ]) ->
+              install_file src (Some dst)
+            | v -> fail (pos_of_opam_value v) "Invalid value in .install file")
+        | v -> fail (pos_of_opam_value v) "Invalid value for install section" )
+      )
+    | Section (pos, _) -> fail pos "Sections are not allowed in .install file")

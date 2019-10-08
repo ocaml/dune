@@ -63,9 +63,9 @@ end
 
 module Entry : sig
 
-  type t = private
-    { src     : Path.Build.t
-    ; dst     : Dst.t
+  type 'src t = private
+    { src : 'src
+    ; dst : Dst.t
     ; section : Section.t
     }
 
@@ -75,14 +75,18 @@ module Entry : sig
     -> section:Section.t
     -> Dst.t
 
-  val make : Section.t -> ?dst:string -> Path.Build.t -> t
-  val set_src : t -> Path.Build.t -> t
+  val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
 
-  val relative_installed_path : t -> paths:Section.Paths.t -> Path.t
-  val add_install_prefix : t -> paths:Section.Paths.t -> prefix:Path.t -> t
+  val set_src : _ t -> 'src -> 'src t
+
+  val relative_installed_path : _ t -> paths:Section.Paths.t -> Path.t
+
+  val add_install_prefix :
+    Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
 end
 
-val files : Entry.t list -> Path.Set.t
-val gen_install_file : Entry.t list -> string
+val files : Path.Build.t Entry.t list -> Path.Set.t
 
-val load_install_file : Path.t -> Entry.t list
+val gen_install_file : Path.Build.t Entry.t list -> string
+
+val load_install_file : Path.t -> Path.t Entry.t list

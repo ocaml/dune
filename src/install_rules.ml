@@ -285,7 +285,7 @@ let lib_install_files sctx ~dir_contents ~dir ~sub_dir:lib_subdir
     ]
 
 let symlink_installed_artifacts_to_build_install
-      sctx (entries : (Loc.t option * Install.Entry.t) list)
+      sctx (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)
       ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Config.local_install_dir ~context:ctx.name in
@@ -398,7 +398,7 @@ let install_entries =
       ~input:(module Sctx_and_package)
       ~output:(
         Simple (module struct
-          type t = (Loc.t option * Install.Entry.t) list
+          type t = (Loc.t option * Path.Build.t Install.Entry.t) list
           let to_dyn _ = Dyn.Opaque
         end))
       "install-entries"

@@ -81,7 +81,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
 
   let get_vcs p = Dune.File_tree.nearest_vcs p
 
-  type 'a load_special_file_result =
+  type load_special_file_result =
     | No_version_needed
     | Need_version of (Format.formatter -> version:string -> unit)
 

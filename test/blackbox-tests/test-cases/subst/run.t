@@ -1,3 +1,8 @@
+  $ cat > dune-project <<EOF
+  > (lang dune 1.0)
+  > (name foo)
+  > EOF
+  $ echo 'authors: [ "John Doe <john@doe.com>" ]' > foo.opam
   $ sed 's/%_%/%%/g' file.ml.in > file.ml
   $ git init --quiet
   $ git add .

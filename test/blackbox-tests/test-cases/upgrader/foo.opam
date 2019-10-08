@@ -1,7 +1,0 @@
-build: [
-  ["jbuilder" "subst" "-p" name]
-  ["jbuilder" "build"]
-]
-depends: [
-  "jbuilder" {build & >= "1.0+beta42"}
-]

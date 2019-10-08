@@ -5,9 +5,30 @@ Note about versioning:
 
 Formatting can be checked using the @fmt target:
 
-  $ cp enabled/ocaml_file.ml.orig enabled/ocaml_file.ml
-  $ cp enabled/reason_file.re.orig enabled/reason_file.re
-  $ cp enabled/dune.orig enabled/dune
+  $ touch .ocamlformat
+  $ cat > enabled/ocaml_file.ml << EOF
+  > let  y=()
+  > EOF
+  $ cat > enabled/reason_file.re << EOF
+  > let  y = ();
+  > EOF
+  $ cat > enabled/dune << EOF
+  > (library
+  > 
+  > (name
+  > lib_reason
+  > 
+  > )
+  > )
+  > EOF
+  $ echo '(lang dune 2.0)' > dune-project
+  $ echo '(lang dune 2.0)' > lang2/default/dune-project
+  $ cat > lang2/partial/dune-project << EOF
+  > (lang dune 2.0)
+  > 
+  > (formatting
+  >  (enabled_for ocaml))
+  > EOF
   $ dune build --display short @fmt
           dune enabled/dune-ocaml-syntax/.formatted/dune
       ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d

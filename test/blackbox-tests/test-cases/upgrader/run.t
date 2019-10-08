@@ -1,3 +1,13 @@
+  $ cat > foo.opam <<EOF
+  > build: [
+  >   ["jbuilder" "subst" "-p" name]
+  >   ["jbuilder" "build"]
+  > ]
+  > depends: [
+  >   "jbuilder" {build & >= "1.0+beta42"}
+  > ]
+  > EOF
+
   $ dune upgrade
   Info: Creating file dune-project with this contents:
   | (lang dune 1.0)

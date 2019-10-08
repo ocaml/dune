@@ -1,3 +1,9 @@
+Duplicate hello.exe before writing to it, as modifying a produced file
+is prohibited.
+
+  $ cp bin/hello.exe.source bin/hello.exe
+  $ chmod u+w bin/hello.exe
+
   $ dune build
          hello alias default
   Hello: $TESTCASE_ROOT/a:/c

@@ -1,3 +1,14 @@
+Setup mutable files
+-------------------
+
+  $ mkdir -p existing_project/src
+  $ cat > existing_project/src/dune << EOF
+  > ; A comment
+  > (library
+  >   ; Another comment
+  >   (name test_lib))
+  > EOF
+
 Adding a library
 ----------------
 

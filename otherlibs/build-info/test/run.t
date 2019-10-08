@@ -47,6 +47,10 @@ Test embedding of build information
   >   List.iter process_lib (B.Statically_linked_libraries.to_list ())
   > EOF
 
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > EOF
+
   $ dune build
   $ dune install --prefix _install
   Installing _install/lib/a/META

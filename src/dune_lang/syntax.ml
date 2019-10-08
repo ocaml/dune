@@ -71,8 +71,10 @@ type t =
 
 module Error_msg = struct
   let since t ver ~what =
-    Printf.sprintf "%s is only available since version %s of %s" what
-      (Version.to_string ver) t.desc
+    Printf.sprintf
+      "%s is only available since version %s of %s. Please update your \
+       dune-project file to have (lang %s)."
+      what (Version.to_string ver) t.desc (Version.to_string ver)
 end
 
 module Error = struct

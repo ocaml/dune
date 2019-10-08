@@ -154,12 +154,12 @@ end = struct
     Stats.record ();
     Mutex.lock mutex;
     let rec loop () =
+      while not (available ()) do
+        Condition.wait cond mutex
+      done;
       if dedup () then
         loop ()
-      else (
-        while not (available ()) do
-          Condition.wait cond mutex
-        done;
+      else
         match Signal.Set.choose !signals with
         | Some signal ->
           signals := Signal.Set.remove !signals signal;
@@ -186,7 +186,6 @@ end = struct
               loop ()
             else
               Files_changed )
-      )
     in
     let ev = loop () in
     Mutex.unlock mutex;

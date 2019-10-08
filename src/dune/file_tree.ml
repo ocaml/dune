@@ -393,8 +393,6 @@ let get =
 
 let root () = get ()
 
-let fold ~traverse ~init ~f = Dir.fold (get ()) ~traverse ~init ~f
-
 let rec find_dir t = function
   | [] -> Some t
   | comp :: components ->

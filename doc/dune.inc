@@ -9,6 +9,15 @@
  (files   dune-build.1))
 
 (rule
+ (with-stdout-to dune-cache.1
+  (run dune cache --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-cache.1))
+
+(rule
  (with-stdout-to dune-clean.1
   (run dune clean --help=groff)))
 

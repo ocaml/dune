@@ -25,14 +25,17 @@ type client =
 
 let default_port_file () =
   let runtime_dir =
-    let xdg =
-      try Sys.getenv "XDG_RUNTIME_DIR"
-      with Not_found ->
-        User_error.raise [ Pp.textf "XDG_RUNTIME_DIR is not set" ]
-    in
-    Filename.concat xdg "dune-manager"
+    match Sys.getenv_opt "XDG_RUNTIME_DIR" with
+    | Some p -> Path.L.relative (Path.of_string p) [ "dune-cache-daemon" ]
+    | None ->
+      (* The runtime directory is 0700 owned by the user for security reasons.
+         Defaulting to a directory in the dune cache root makes sense in that
+         regard, since if someone has access to this directory, it has access
+         to the cache content, and having access to the socket does not make a
+         difference. *)
+      Path.L.relative (Dune_memory.default_root ()) [ "runtime" ]
   in
-  Path.of_string (Filename.concat runtime_dir "port")
+  Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
 let max_port_size = 1024
 
@@ -145,190 +148,198 @@ let int_of_string ?where s =
          s)
 
 let client_thread (events, client) =
-  let open Result.O in
-  let invalid_args args =
-    Result.Error
-      (Printf.sprintf "invalid arguments:%s"
-         (List.fold_left ~init:""
-            ~f:(fun a b -> a ^ " " ^ b)
-            (List.map ~f:Sexp.to_string args)))
-  in
-  let handle_lang client = function
-    | Sexp.Atom "dune-memory-protocol" :: versions -> (
-      let decode_version = function
-        | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
-          int_of_string ~where:"lang command version" major
-          >>= fun major ->
-          int_of_string ~where:"lang command version" minor
-          >>| fun minor -> (major, minor)
-        | v ->
-          Result.Error
-            (Printf.sprintf "invalid version in lang command: %s"
-               (Sexp.to_string v))
-      in
-      Result.List.map ~f:decode_version versions
-      >>| find_highest_common_version my_versions
-      >>= function
-      | None ->
-        Unix.close client.fd;
-        Result.Error "no compatible versions"
-      | Some (major, minor) as v ->
-        Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer) major
-          minor;
-        Result.ok { client with version = v } )
-    | args -> invalid_args args
-  and handle_promote client = function
-    | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-      :: Sexp.List (Sexp.Atom "files" :: files)
-         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ] :: rest as
-      cmd -> (
-      let repo =
-        match rest with
-        | [] -> Result.ok None
-        | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] -> (
-          int_of_string ~where:"repository index" repo
-          >>= fun repo ->
-          try Result.Ok (List.nth client.repositories repo)
-          with Failure _ ->
-            Result.Error (Printf.sprintf "repository out of range: %i" repo) )
-        | _ ->
-          Result.Error
-            (Printf.sprintf "invalid promotion message: %s"
-               (Sexp.to_string (Sexp.List cmd)))
-      and file = function
-        | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          Dune_memory.key_of_string hash >>| fun d -> (Path.of_string path, d)
-        | sexp ->
-          Result.Error
-            (Printf.sprintf "invalid file in promotion message: %s"
-               (Sexp.to_string sexp))
-      and f promotion =
-        print_endline (Dune_memory.promotion_to_string promotion);
-        match promotion with
-        | Already_promoted (f, t, d) ->
-          Some
-            (Sexp.List
-               [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
-               ; Sexp.Atom (Path.to_string t)
-               ; Sexp.Atom (Digest.to_string d)
-               ])
-        | _ -> None
-      in
-      repo
-      >>= fun repo ->
-      Result.List.map ~f:file files
-      >>= fun files ->
-      Dune_memory.key_of_string key
-      >>= fun key ->
-      Dune_memory.Memory.promote client.memory files key
-        (metadata @ client.common_metadata)
-        (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
-      >>| fun promotions ->
-      match List.filter_map ~f promotions with
-      | [] -> client
-      | dedup ->
-        Log.infof "send deduplication message for %s"
-          (Sexp.to_string (Sexp.List dedup));
-        send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
-        client )
-    | args -> invalid_args args
-  and handle_set_root client = function
-    | [ Sexp.Atom dir ] ->
-      Result.map_error
-        ~f:(function
-          | _ ->
-            send client.output
-              (Sexp.List
-                 [ Sexp.Atom "cannot-read-dune-memory"
-                 ; Sexp.List [ Sexp.Atom "supported-formats"; Sexp.Atom "v2" ]
-                 ]);
-            "unable to read Dune memory")
-        ( Dune_memory.make ~root:(Path.of_string dir) ()
-        >>| fun memory -> { client with memory } )
-    | args -> invalid_args args
-  and handle_set_build_root client = function
-    | [ Sexp.Atom dir ] ->
-      Result.ok
-        { client with
-          memory =
-            Dune_memory.Memory.set_build_dir client.memory (Path.of_string dir)
-        }
-    | args -> invalid_args args
-  and handle_set_metadata client arg =
-    Result.ok { client with common_metadata = arg }
-  and handle_set_repos client arg =
-    let convert = function
-      | Sexp.List
-          [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom dir ]
-          ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
-          ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
-          ] ->
-        Result.ok (dir, remote, commit)
-      | invalid ->
-        Result.Error
-          (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
-    in
-    Result.List.map ~f:convert arg
-    >>| fun repositories -> { client with repositories }
-  in
-  let handle_cmd client = function
-    | Sexp.List (Sexp.Atom cmd :: args) ->
-      if cmd <> "lang" && Option.is_none client.version then (
-        Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-        Result.Error "version was not negotiated"
-      ) else
-        Result.map_error
-          ~f:(fun s -> cmd ^ ": " ^ s)
-          ( match cmd with
-          | "lang" -> handle_lang client args
-          | "promote" -> handle_promote client args
-          | "set-build-root" -> handle_set_build_root client args
-          | "set-common-metadata" -> handle_set_metadata client args
-          | "set-dune-memory-root" -> handle_set_root client args
-          | "set-repos" -> handle_set_repos client args
-          | _ -> Result.Error (Printf.sprintf "unknown command: %s" cmd) )
-    | cmd ->
+  try
+    let open Result.O in
+    let invalid_args args =
       Result.Error
-        (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
-  in
-  let input = Stream.of_channel (Unix.in_channel_of_descr client.fd) in
-  let f () =
-    send client.output my_versions_command;
-    Log.infof "accept client: %s" (peer_name client.peer);
-    let rec handle client =
-      match Stream.peek input with
-      | None -> Log.infof "%s: ended" (peer_name client.peer)
-      | Some '\n' ->
-        (* Skip toplevel newlines, for easy netcat interaction *)
-        Stream.junk input;
-        (handle [@tailcall]) client
-      | _ -> (
-        let open Result.O in
-        match
-          Result.map_error
-            ~f:(fun r -> "parse error: " ^ r)
-            (Csexp.parse input)
-          >>= fun cmd ->
-          Log.infof "%s: received command: %s" (peer_name client.peer)
-            (Sexp.to_string cmd);
-          handle_cmd client cmd
-        with
-        | Result.Error e ->
-          Log.infof "%s: command error: %s" (peer_name client.peer) e
-        | Result.Ok client -> (handle [@tailcall]) client )
+        (Printf.sprintf "invalid arguments:%s"
+           (List.fold_left ~init:""
+              ~f:(fun a b -> a ^ " " ^ b)
+              (List.map ~f:Sexp.to_string args)))
     in
-    handle client
-  and finally () =
-    ( try
-        Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-        Unix.close client.fd
-      with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
-    Evt.sync (Evt.send events (Client_left client.fd))
-  in
-  try Exn.protect ~f ~finally with
-  | Unix.Unix_error (Unix.EBADF, _, _) ->
-    Log.infof "%s: ended" (peer_name client.peer)
-  | Sys_error msg -> Log.infof "%s: ended: %s" (peer_name client.peer) msg
+    let handle_lang client = function
+      | Sexp.Atom "dune-memory-protocol" :: versions -> (
+        let decode_version = function
+          | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
+            int_of_string ~where:"lang command version" major
+            >>= fun major ->
+            int_of_string ~where:"lang command version" minor
+            >>| fun minor -> (major, minor)
+          | v ->
+            Result.Error
+              (Printf.sprintf "invalid version in lang command: %s"
+                 (Sexp.to_string v))
+        in
+        Result.List.map ~f:decode_version versions
+        >>| find_highest_common_version my_versions
+        >>= function
+        | None ->
+          Unix.close client.fd;
+          Result.Error "no compatible versions"
+        | Some (major, minor) as v ->
+          Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer)
+            major minor;
+          Result.ok { client with version = v } )
+      | args -> invalid_args args
+    and handle_promote client = function
+      | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
+        :: Sexp.List (Sexp.Atom "files" :: files)
+           :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ] :: rest as
+        cmd -> (
+        let repo =
+          match rest with
+          | [] -> Result.ok None
+          | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] -> (
+            int_of_string ~where:"repository index" repo
+            >>= fun repo ->
+            try Result.Ok (List.nth client.repositories repo)
+            with Failure _ ->
+              Result.Error (Printf.sprintf "repository out of range: %i" repo)
+            )
+          | _ ->
+            Result.Error
+              (Printf.sprintf "invalid promotion message: %s"
+                 (Sexp.to_string (Sexp.List cmd)))
+        and file = function
+          | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
+            Dune_memory.key_of_string hash >>| fun d -> (Path.of_string path, d)
+          | sexp ->
+            Result.Error
+              (Printf.sprintf "invalid file in promotion message: %s"
+                 (Sexp.to_string sexp))
+        and f promotion =
+          print_endline (Dune_memory.promotion_to_string promotion);
+          match promotion with
+          | Already_promoted (f, t, d) ->
+            Some
+              (Sexp.List
+                 [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
+                 ; Sexp.Atom (Path.to_string t)
+                 ; Sexp.Atom (Digest.to_string d)
+                 ])
+          | _ -> None
+        in
+        repo
+        >>= fun repo ->
+        Result.List.map ~f:file files
+        >>= fun files ->
+        Dune_memory.key_of_string key
+        >>= fun key ->
+        Dune_memory.Memory.promote client.memory files key
+          (metadata @ client.common_metadata)
+          (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
+        >>| fun promotions ->
+        match List.filter_map ~f promotions with
+        | [] -> client
+        | dedup ->
+          Log.infof "send deduplication message for %s"
+            (Sexp.to_string (Sexp.List dedup));
+          send client.output (Sexp.List (Sexp.Atom "dedup" :: dedup));
+          client )
+      | args -> invalid_args args
+    and handle_set_root client = function
+      | [ Sexp.Atom dir ] ->
+        Result.map_error
+          ~f:(function
+            | _ ->
+              send client.output
+                (Sexp.List
+                   [ Sexp.Atom "cannot-read-dune-memory"
+                   ; Sexp.List [ Sexp.Atom "supported-formats"; Sexp.Atom "v2" ]
+                   ]);
+              "unable to read Dune memory")
+          ( Dune_memory.make ~root:(Path.of_string dir) ()
+          >>| fun memory -> { client with memory } )
+      | args -> invalid_args args
+    and handle_set_build_root client = function
+      | [ Sexp.Atom dir ] ->
+        Result.ok
+          { client with
+            memory =
+              Dune_memory.Memory.set_build_dir client.memory
+                (Path.of_string dir)
+          }
+      | args -> invalid_args args
+    and handle_set_metadata client arg =
+      Result.ok { client with common_metadata = arg }
+    and handle_set_repos client arg =
+      let convert = function
+        | Sexp.List
+            [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom dir ]
+            ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
+            ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+            ] ->
+          Result.ok (dir, remote, commit)
+        | invalid ->
+          Result.Error
+            (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
+      in
+      Result.List.map ~f:convert arg
+      >>| fun repositories -> { client with repositories }
+    in
+    let handle_cmd client = function
+      | Sexp.List (Sexp.Atom cmd :: args) ->
+        if cmd <> "lang" && Option.is_none client.version then (
+          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
+          Result.Error "version was not negotiated"
+        ) else
+          Result.map_error
+            ~f:(fun s -> cmd ^ ": " ^ s)
+            ( match cmd with
+            | "lang" -> handle_lang client args
+            | "promote" -> handle_promote client args
+            | "set-build-root" -> handle_set_build_root client args
+            | "set-common-metadata" -> handle_set_metadata client args
+            | "set-dune-memory-root" -> handle_set_root client args
+            | "set-repos" -> handle_set_repos client args
+            | _ -> Result.Error (Printf.sprintf "unknown command: %s" cmd) )
+      | cmd ->
+        Result.Error
+          (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
+    in
+    let input = Stream.of_channel (Unix.in_channel_of_descr client.fd) in
+    let f () =
+      send client.output my_versions_command;
+      Log.infof "accept client: %s" (peer_name client.peer);
+      let rec handle client =
+        match Stream.peek input with
+        | None -> Log.infof "%s: ended" (peer_name client.peer)
+        | Some '\n' ->
+          (* Skip toplevel newlines, for easy netcat interaction *)
+          Stream.junk input;
+          (handle [@tailcall]) client
+        | _ -> (
+          let open Result.O in
+          match
+            Result.map_error
+              ~f:(fun r -> "parse error: " ^ r)
+              (Csexp.parse input)
+            >>= fun cmd ->
+            Log.infof "%s: received command: %s" (peer_name client.peer)
+              (Sexp.to_string cmd);
+            handle_cmd client cmd
+          with
+          | Result.Error e ->
+            Log.infof "%s: command error: %s" (peer_name client.peer) e;
+            handle client
+          | Result.Ok client -> handle client )
+      in
+      handle client
+    and finally () =
+      ( try
+          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
+          Unix.close client.fd
+        with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+      Evt.sync (Evt.send events (Client_left client.fd))
+    in
+    try Exn.protect ~f ~finally with
+    | Unix.Unix_error (Unix.EBADF, _, _) ->
+      Log.infof "%s: ended" (peer_name client.peer)
+    | Sys_error msg -> Log.infof "%s: ended: %s" (peer_name client.peer) msg
+  with Code_error.E e ->
+    Log.infof "%s: fatal error: %a" (peer_name client.peer)
+      Pp.render_ignore_tags
+      (Dyn.pp (Code_error.to_dyn e))
 
 let run ?(port_f = ignore) ?(port = 0) manager =
   let rec accept_thread sock =
@@ -458,6 +469,9 @@ module Client = struct
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
   let make ?finally handle =
+    (* This is a bit ugly as it is global, but flushing a closed socket will
+       nuke the program if we don't. *)
+    let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.make ()) in
     let* port =
@@ -517,14 +531,17 @@ module Client = struct
         [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
       | None -> []
     in
-    send client.socket
-      (Sexp.List
-         ( Sexp.Atom "promote"
-         :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-         :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
-         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
-         :: repo ));
-    Result.Ok ()
+    try
+      send client.socket
+        (Sexp.List
+           ( Sexp.Atom "promote"
+           :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
+           :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
+           :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
+           :: repo ));
+      Result.Ok ()
+    with Sys_error (* "Broken_pipe" *) _ ->
+      Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
     send client.socket
@@ -537,6 +554,7 @@ module Client = struct
   let search client key = Dune_memory.Memory.search client.memory key
 
   let teardown client =
-    Unix.shutdown client.fd Unix.SHUTDOWN_SEND;
+    ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
+      with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
     Thread.join client.thread
 end

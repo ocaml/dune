@@ -24,7 +24,8 @@ end
 
 module Stanzas_to_entries : sig
   val stanzas_to_entries :
-    Super_context.t -> (Loc.t option * Install.Entry.t) list Package.Name.Map.t
+       Super_context.t
+    -> (Loc.t option * Path.Build.t Install.Entry.t) list Package.Name.Map.t
 end = struct
   let lib_ppxs sctx ~scope ~(lib : Dune_file.Library.t) =
     match lib.kind with
@@ -242,7 +243,8 @@ end = struct
           (Simple
              ( module struct
                type t =
-                 (Loc.t option * Install.Entry.t) list Package.Name.Map.t
+                 (Loc.t option * Path.Build.t Install.Entry.t) list
+                 Package.Name.Map.t
 
                let to_dyn _ = Dyn.Opaque
              end ))
@@ -394,7 +396,8 @@ let init_meta_and_dune_package sctx ~dir =
            |> Build.write_file_dyn meta))
 
 let symlink_installed_artifacts_to_build_install sctx
-    (entries : (Loc.t option * Install.Entry.t) list) ~install_paths =
+    (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)
+    ~install_paths =
   let ctx = Super_context.context sctx in
   let install_dir = Config.local_install_dir ~context:ctx.name in
   List.map entries ~f:(fun (loc, entry) ->

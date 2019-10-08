@@ -48,8 +48,7 @@ let clear_executable_bits x = x land lnot 0o111
 
 (** Operations that act on real files or just pretend to (for --dry-run) *)
 module type File_operations = sig
-  val copy_file :
-    src:Path.Build.t -> dst:Path.t -> executable:bool -> unit Fiber.t
+  val copy_file : src:Path.t -> dst:Path.t -> executable:bool -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
 
@@ -64,8 +63,8 @@ end
 
 module File_ops_dry_run : File_operations = struct
   let copy_file ~src ~dst ~executable =
-    Format.printf "Copying %a to %a (executable: %b)\n" Path.pp
-      (Path.build src) Path.pp dst executable;
+    Format.printf "Copying %a to %a (executable: %b)\n" Path.pp src Path.pp dst
+      executable;
     Fiber.return ()
 
   let mkdir_p path = Format.printf "Creating directory %a\n" Path.pp path
@@ -94,8 +93,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     in
     match f ic with
     | exception _ ->
-      User_warning.emit
-        ~loc:(Loc.in_file (Path.build src))
+      User_warning.emit ~loc:(Loc.in_file src)
         [ Pp.text "Failed to parse file, not adding version information." ];
       plain_copy ()
     | No_version_needed -> plain_copy ()
@@ -180,16 +178,16 @@ module File_ops_real (W : Workspace) : File_operations = struct
       else
         clear_executable_bits
     in
-    let ic, oc = Io.setup_copy ~chmod ~src:(Path.build src) ~dst () in
+    let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
     Fiber.finalize
       ~finally:(fun () ->
         Io.close_both (ic, oc);
         Fiber.return ())
       (fun () ->
-        match Path.Build.explode src with
-        | [ "install"; _ctx; "lib"; package_name; "META" ] ->
+        match Path.explode src with
+        | Some [ "install"; _ctx; "lib"; package_name; "META" ] ->
           copy_special_file ~src ~package_name ~ic ~oc ~f:process_meta
-        | [ "install"; _ctx; "lib"; package_name; "dune-package" ] ->
+        | Some [ "install"; _ctx; "lib"; package_name; "dune-package" ] ->
           copy_special_file ~src ~package_name ~ic ~oc ~f:process_dune_package
         | _ ->
           Dune.Artifact_substitution.copy ~get_vcs ~input:(input ic)
@@ -355,13 +353,13 @@ let install_uninstall ~what =
                        let entries = Install.load_install_file install_file in
                        let entries =
                          List.filter entries
-                           ~f:(fun (entry : Install.Entry.t) ->
+                           ~f:(fun (entry : Path.t Install.Entry.t) ->
                              Sections.should_install sections entry.section)
                        in
                        match
                          List.filter_map entries ~f:(fun entry ->
                              Option.some_if
-                               (not (Path.exists (Path.build entry.src)))
+                               (not (Path.exists entry.src))
                                entry.src)
                        with
                        | [] -> (package, entries)
@@ -372,8 +370,7 @@ let install_uninstall ~what =
                                 cannot be installed because they do not exist:"
                                (Path.to_string_maybe_quoted install_file)
                            ; Pp.enumerate missing_files ~f:(fun p ->
-                                 Pp.verbatim
-                                   (Path.Build.to_string_maybe_quoted p))
+                                 Pp.verbatim (Path.to_string_maybe_quoted p))
                            ])
                  in
                  (context, entries_per_package))

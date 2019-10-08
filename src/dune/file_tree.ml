@@ -7,12 +7,9 @@ module File = struct
     ; dev : int
     }
 
-  let to_dyn { ino ; dev } =
+  let to_dyn { ino; dev } =
     let open Dyn.Encoder in
-    record
-      [ "ino", Int.to_dyn ino
-      ; "dev", Int.to_dyn dev
-      ]
+    record [ ("ino", Int.to_dyn ino); ("dev", Int.to_dyn dev) ]
 
   let compare a b =
     match Int.compare a.ino b.ino with
@@ -86,11 +83,11 @@ end = struct
     ; dirs : (string * Path.Source.t * File.t) list
     }
 
-  let _to_dyn { files ; dirs } =
+  let _to_dyn { files; dirs } =
     let open Dyn.Encoder in
     record
-      [ "files", String.Set.to_dyn files
-      ; "dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs
+      [ ("files", String.Set.to_dyn files)
+      ; ("dirs", list (triple string Path.Source.to_dyn File.to_dyn) dirs)
       ]
 
   let is_temp_file fn =
@@ -117,31 +114,30 @@ end = struct
     | Ok unsorted_contents ->
       let files, dirs =
         List.filter_partition_map unsorted_contents ~f:(fun fn ->
-          let path = Path.Source.relative path fn in
-          if Path.Source.is_in_build_dir path then
-            Skip
-          else
-            let is_directory, file =
-              match Path.stat (Path.source path) with
-              | exception _ -> (false, File.dummy)
-              | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
-              | _ -> (false, File.dummy)
-            in
-            if is_directory then
-              Right (fn, path, file)
-            else if is_temp_file fn then
+            let path = Path.Source.relative path fn in
+            if Path.Source.is_in_build_dir path then
               Skip
             else
-              Left fn)
+              let is_directory, file =
+                match Path.stat (Path.source path) with
+                | exception _ -> (false, File.dummy)
+                | { st_kind = S_DIR; _ } as st -> (true, File.of_stats st)
+                | _ -> (false, File.dummy)
+              in
+              if is_directory then
+                Right (fn, path, file)
+              else if is_temp_file fn then
+                Skip
+              else
+                Left fn)
       in
       { files = String.Set.of_list files
       ; dirs =
-          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) -> String.compare a b)
+          List.sort dirs ~compare:(fun (a, _, _) (b, _, _) ->
+              String.compare a b)
       }
       |> Result.ok
 end
-
-
 
 module Dir = struct
   type t =

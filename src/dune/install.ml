@@ -246,8 +246,8 @@ module Section = struct
 end
 
 module Entry = struct
-  type t =
-    { src : Path.Build.t
+  type 'src t =
+    { src : 'src
     ; dst : Dst.t
     ; section : Section.t
     }
@@ -338,18 +338,18 @@ module Entry = struct
   let of_install_file ~src ~dst ~section =
     { src
     ; section
-    ; dst =
-        Dst.of_install_file ~section ~src_basename:(Path.Build.basename src)
-          dst
+    ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
     }
 end
 
 let files entries =
-  List.fold_left entries ~init:Path.Set.empty ~f:(fun acc (entry : Entry.t) ->
+  List.fold_left entries ~init:Path.Set.empty
+    ~f:(fun acc (entry : Path.Build.t Entry.t) ->
       Path.Set.add acc (Path.build entry.src))
 
 let group entries =
-  List.map entries ~f:(fun (entry : Entry.t) -> (entry.section, entry))
+  List.map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
+      (entry.section, entry))
   |> Section.Map.of_list_multi
 
 let gen_install_file entries =
@@ -358,7 +358,7 @@ let gen_install_file entries =
   Section.Map.iteri (group entries) ~f:(fun section entries ->
       pr "%s: [" (Section.to_string section);
       List.sort ~compare:Entry.compare entries
-      |> List.iter ~f:(fun (e : Entry.t) ->
+      |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
              let src = Path.to_string (Path.build e.src) in
              match
                Dst.to_install_file
@@ -400,13 +400,14 @@ let load_install_file path =
       | Some section -> (
         match files with
         | List (_, l) ->
+          let install_file src dst =
+            let src = Path.of_string src in
+            Entry.of_install_file ~src ~dst ~section
+          in
           List.map l ~f:(function
-            | String (_, src) ->
-              let src = Path.as_in_build_dir_exn (Path.of_string src) in
-              Entry.of_install_file ~src ~dst:None ~section
+            | String (_, src) -> install_file src None
             | Option (_, String (_, src), [ String (_, dst) ]) ->
-              let src = Path.as_in_build_dir_exn (Path.of_string src) in
-              Entry.of_install_file ~src ~dst:(Some dst) ~section
+              install_file src (Some dst)
             | v -> fail (pos_of_opam_value v) "Invalid value in .install file")
         | v -> fail (pos_of_opam_value v) "Invalid value for install section" )
       )

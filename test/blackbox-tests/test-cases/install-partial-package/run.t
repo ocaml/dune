@@ -6,5 +6,5 @@ are missing.
   $ dune install
   Error: The following files which are listed in _build/default/foo.install
   cannot be installed because they do not exist:
-  - install/default/bin/foo
+  - _build/install/default/bin/foo
   [1]

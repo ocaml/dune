@@ -1,0 +1,10 @@
+(executable
+ (name dune_config)
+ (modules dune_config)
+ (libraries dune.configurator))
+
+(rule
+ (targets
+   cflag-gtk+-3.0.sexp
+   clink-gtk+-3.0.sexp)
+ (action (run ./dune_config.exe -pkg gtk+-3.0 -version 3.18)))

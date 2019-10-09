@@ -1,0 +1,16 @@
+prefix=/tmp/mxe/usr/x86_64-w64-mingw32.shared
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+targets=win32
+
+gtk_binary_version=3.0.0
+gtk_host=x86_64-w64-mingw32.shared
+
+Name: GTK+
+Description: GTK+ Graphical UI Library
+Version: 3.22.7
+Requires: gdk-3.0 atk >= 2.15.1 cairo >= 1.14.0 cairo-gobject >= 1.14.0 gdk-pixbuf-2.0 >= 2.30.0 gio-2.0 >= 2.49.4
+Requires.private: atk   epoxy >= 1.0
+Libs: -L${libdir} -lgtk-3 -lgdi32 -limm32 -lshell32 -lole32 -Wl,-luuid -lwinmm -ldwmapi -lsetupapi -lcfgmgr32 -lpangowin32-1.0 -lpangocairo-1.0 -lpango-1.0 -lcairo-gobject -lcairo -lz -lmsimg32 -lgdi32 -lpixman-1 -lgdk_pixbuf-2.0 -lgio-2.0 -ldnsapi -liphlpapi -latk-1.0 -lgobject-2.0 -lglib-2.0 -lintl -lepoxy -lwinspool -lcomctl32 -lcomdlg32
+Cflags: -I${includedir}/gtk-3.0 -mms-bitfields

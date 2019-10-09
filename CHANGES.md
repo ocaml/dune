@@ -4,6 +4,9 @@
 - Allow to mark directories as `data_only_dirs` without including them as `dirs`
   (#2619, fix #2584, @rgrinberg)
 
+- Fix reading `.install` files generated with an external `--build-dir`. (#2638,
+  fix #2629, @rgrinberg)
+
 1.11.3 (23/08/2019)
 -------------------
 

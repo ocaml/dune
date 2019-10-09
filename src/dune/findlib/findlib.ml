@@ -458,7 +458,7 @@ let find_and_acknowledge_package t ~fq_name =
                Discovered_package.Findlib (Meta_source.internal t ~meta)) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
-      let dune = Path.relative dir "dune-package" in
+      let dune = Path.relative dir Dune_package.fn in
       match
         if Path.exists dune then
           Dune_package.Or_meta.load dune
@@ -507,7 +507,7 @@ let root_packages t =
             ]
         | Ok listing ->
           List.filter_map listing ~f:(fun name ->
-              if Path.exists (Path.relative dir (name ^ "/META")) then
+              if Path.exists (Path.relative dir (name ^ "/" ^ meta_fn)) then
                 Some (Lib_name.of_string_exn ~loc:None name)
               else
                 None))

@@ -57,7 +57,7 @@ module Special_file = struct
         let dst = Install.Dst.to_string e.dst in
         if dst = Findlib.meta_fn then
           Some META
-        else if dst = "dune-package" then
+        else if dst = Dune_package.fn then
           Some Dune_package
         else
           None)

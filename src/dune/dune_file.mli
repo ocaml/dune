@@ -1,4 +1,4 @@
-(** Representation and parsing of dune files *)
+(** Representation and parsing of Dune files *)
 
 open! Stdune
 open Import

@@ -498,7 +498,8 @@ module Buildable = struct
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located string) )
     and+ c_flags =
-      Ordered_set_lang.Unexpanded.field "c_flags" ?check:(Some (use_foreign >>> check_c (return ())))
+      Ordered_set_lang.Unexpanded.field "c_flags"
+        ?check:(Some (use_foreign >>> check_c (return ())))
     and+ cxx_flags =
       Ordered_set_lang.Unexpanded.field "cxx_flags"
         ?check:(Some (use_foreign >>> check_c (return ())))
@@ -979,6 +980,7 @@ module Library = struct
       [ default_archive_name t ] )
     @ List.map ~f:snd t.buildable.foreign_archives
 
+  (* TODO_AM: Code duplication. *)
   let lib_files t ~dir ~ext_lib =
     List.map (archive_names t) ~f:(fun name ->
         Path.Build.relative dir (sprintf "lib%s%s" name ext_lib))

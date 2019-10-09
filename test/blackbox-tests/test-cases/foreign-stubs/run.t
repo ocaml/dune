@@ -22,9 +22,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   [1]
 
 ----------------------------------------------------------------------------------
-* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
-* Warning when using (c_names ...) in Dune 2.0.
-* Error when a C source file is missing.
+* Error when using (c_names ...) in Dune 2.0.
 
   $ echo "(lang dune 2.0)" > dune-project
 
@@ -32,27 +30,12 @@ Testsuite for the (foreign_stubs ...) stanza.
   File "dune", line 3, characters 1-14:
   3 |  (c_names foo)
        ^^^^^^^^^^^^^
-  Warning: 'c_names' was deprecated in version 2.0 of the dune language. Use
-  the (foreign_stubs ...) stanza instead.
-  File "dune", line 4, characters 1-33:
-  4 |  (self_build_stubs_archive (bar)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_archives ...) stanza instead.
-  File "dune", line 3, characters 10-13:
-  3 |  (c_names foo)
-                ^^^
-  Error: Object "foo" has no source; "foo.c" must be present.
+  Error: 'c_names' was deleted in version 2.0 of the dune language. Use the
+  (foreign_stubs ...) field instead.
   [1]
 
 ----------------------------------------------------------------------------------
-* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
-* Error when a self-built archive is missing.
-
-  $ cat >foo.c <<EOF
-  > #include <caml/mlvalues.h>
-  > value foo() { return Val_int(9); }
-  > EOF
+* Error when using (self_build_stubs_archive ...) in Dune 2.0.
 
   $ cat >dune <<EOF
   > (library
@@ -65,13 +48,40 @@ Testsuite for the (foreign_stubs ...) stanza.
   File "dune", line 4, characters 1-33:
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_archives ...) stanza instead.
-  Error: No rule found for libbar_stubs$ext_lib
+  Error: 'self_build_stubs_archive' was deleted in version 2.0 of the dune
+  language. Use the (foreign_archives ...) field instead.
   [1]
 
 ----------------------------------------------------------------------------------
-* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
+* Error when a C source file is missing.
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name foo)
+  >  (foreign_stubs (language c) (names foo))
+  >  (foreign_archives bar))
+  > EOF
+
+  $ dune build
+  File "dune", line 3, characters 36-39:
+  3 |  (foreign_stubs (language c) (names foo))
+                                          ^^^
+  Error: Object "foo" has no source; "foo.c" must be present.
+  [1]
+
+----------------------------------------------------------------------------------
+* Error when a self-built archive is missing.
+
+  $ cat >foo.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value foo() { return Val_int(9); }
+  > EOF
+
+  $ dune build
+  Error: No rule found for libbar$ext_lib
+  [1]
+
+----------------------------------------------------------------------------------
 * Build succeeds when a self-built archive exists.
 
   $ cat >bar.c <<EOF
@@ -83,23 +93,18 @@ Testsuite for the (foreign_stubs ...) stanza.
   > (library
   >  (name foo)
   >  (foreign_stubs (language c) (names foo))
-  >  (self_build_stubs_archive (bar)))
+  >  (foreign_archives bar))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
   >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
   > (rule
-  >  (targets libbar_stubs.a)
+  >  (targets libbar.a)
   >  (deps bar%{ext_obj})
   >  (action (run ar rcs %{targets} %{deps})))
   > EOF
 
   $ dune build
-  File "dune", line 4, characters 1-33:
-  4 |  (self_build_stubs_archive (bar)))
-       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_archives ...) stanza instead.
 
 ----------------------------------------------------------------------------------
 * Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.
@@ -108,7 +113,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   > (library
   >  (name foo)
   >  (foreign_stubs (archive_name baz) (language c) (names foo))
-  >  (self_build_stubs_archive (bar)))
+  >  (foreign_archives bar))
   > (rule
   >  (targets bar%{ext_obj})
   >  (deps bar.c)
@@ -194,13 +199,15 @@ Testsuite for the (foreign_stubs ...) stanza.
   >  (modules main))
   > EOF
 
+  $ dune clean
   $ dune build --display short
-           gcc baz$ext_obj
-    ocamlmklib dllquad_stubs$ext_dll,libquad_stubs$ext_lib
+           gcc bar$ext_obj
            gcc dllbar$ext_dll
+           gcc baz$ext_obj
+        ocamlc foo$ext_obj
+    ocamlmklib dllquad_stubs$ext_dll,libquad_stubs$ext_lib
            gcc qux$ext_obj
             ar libqux$ext_lib
-            ar libbar$ext_lib
       ocamldep .quad.objs/quad.mli.d
         ocamlc .quad.objs/byte/quad.{cmi,cmti}
       ocamldep .main.eobjs/main.ml.d
@@ -209,12 +216,13 @@ Testsuite for the (foreign_stubs ...) stanza.
       ocamldep .quad.objs/quad.ml.d
       ocamlopt .quad.objs/native/quad.{cmx,o}
       ocamlopt quad.{a,cmxa}
-      ocamlopt quad.cmxs
+            ar libbar$ext_lib
+      ocamlopt main.exe
            gcc dllqux$ext_dll
         ocamlc .quad.objs/byte/quad.{cmo,cmt}
         ocamlc quad.cma
         ocamlc main.bc
-      ocamlopt main.exe
+      ocamlopt quad.cmxs
 
   $ dune exec ./main.exe
   2019

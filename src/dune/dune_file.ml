@@ -473,8 +473,8 @@ module Buildable = struct
 
   let decode ~since_c ~allow_re_export =
     let use_foreign =
-      Dune_lang.Syntax.deprecated_in Stanza.syntax (2, 0)
-        ~extra_info:"Use the (foreign_stubs ...) stanza instead."
+      Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+        ~extra_info:"Use the (foreign_stubs ...) field instead."
     in
     let check_c t =
       match since_c with
@@ -513,8 +513,8 @@ module Buildable = struct
     and+ loc_sbsa, self_build_stubs_archive =
       located
         (field "self_build_stubs_archive"
-           ( Dune_lang.Syntax.deprecated_in Stanza.syntax (2, 0)
-               ~extra_info:"Use the (foreign_archives ...) stanza instead."
+           ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+               ~extra_info:"Use the (foreign_archives ...) field instead."
            >>> option string )
            ~default:None)
     and+ modules_without_implementation =

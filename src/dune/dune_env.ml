@@ -8,7 +8,7 @@ module Stanza = struct
   let c_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
-          Dune_lang.Syntax.deprecated_in Stanza.syntax (2, 0)
+          Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
           >>> Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check

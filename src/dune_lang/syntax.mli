@@ -37,7 +37,8 @@ module Error : sig
   val renamed_in : Loc.t -> t -> Version.t -> what:string -> to_:string -> _
 
   val deleted_in :
-       Loc.t
+       ?extra_info:string
+    -> Loc.t
     -> t
     -> ?repl:User_message.Style.t Pp.t list
     -> Version.t
@@ -47,8 +48,8 @@ end
 
 module Warning : sig
   val deprecated_in :
-       Loc.t
-    -> extra_info:string
+       ?extra_info:string
+    -> Loc.t
     -> t
     -> ?repl:User_message.Style.t Pp.t list
     -> Version.t
@@ -76,7 +77,8 @@ val greatest_supported_version : t -> Version.t
 
 (** Indicate the field/constructor being parsed was deleted in the given
     version *)
-val deleted_in : t -> Version.t -> (unit, _) Decoder.parser
+val deleted_in :
+  ?extra_info:string -> t -> Version.t -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was deprecated in the given
     version *)

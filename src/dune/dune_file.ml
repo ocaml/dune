@@ -568,6 +568,9 @@ module Buildable = struct
     ; allow_overlapping_dependencies
     }
 
+  let has_stubs t =
+    List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
+
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
       Per_module.get t.preprocess (Module_name.of_string "")
@@ -958,9 +961,7 @@ module Library = struct
            ; enabled_if
            } ))
 
-  let has_stubs t =
-    List.is_non_empty t.buildable.foreign_stubs
-    || List.is_non_empty t.buildable.foreign_archives
+  let has_stubs t = Buildable.has_stubs t.buildable
 
   let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
 
@@ -1568,10 +1569,7 @@ module Executables = struct
     in
     (make false, make true)
 
-  let has_stubs t =
-    match t.buildable.foreign_stubs with
-    | [] -> false
-    | _ -> true
+  let has_stubs t = Buildable.has_stubs t.buildable
 
   let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end

@@ -79,10 +79,17 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
+  let archive_names = exes.buildable.foreign_archives |> List.map ~f:snd in
   let link_flags =
     link_deps
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
+  in
+  let link_flags =
+    let+ flags = link_flags in
+    flags
+    @ List.concat_map archive_names ~f:(fun archive_name ->
+          [ "-cclib"; "-l" ^ archive_name ])
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =
@@ -109,10 +116,17 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let o_files =
     if not (Executables.has_stubs exes) then
       []
-    else (
+    else
+      let what =
+        if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
+          "archives"
+        else
+          "stubs"
+      in
       if List.mem Exe.Linkage.byte ~set:linkages then
         User_error.raise ~loc:exes.buildable.loc
-          [ Pp.textf "Pure bytecode executables cannot contain C stubs."
+          [ Pp.textf "Pure bytecode executables cannot contain foreign %s."
+              what
           ; Pp.textf "Did you forget to add `(modes exe)'?"
           ];
       let foreign_sources =
@@ -126,7 +140,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       Check_rules.add_files sctx ~dir o_files;
       o_files
-    )
   in
   let requires_compile = Compilation_context.requires_compile cctx in
   Exe.build_and_link_many cctx ~programs ~linkages ~link_flags ~o_files

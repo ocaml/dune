@@ -103,6 +103,8 @@ module Buildable : sig
     ; allow_overlapping_dependencies : bool
     }
 
+  val has_stubs : t -> bool
+
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
   val single_preprocess : t -> Preprocess.t
 end
@@ -175,11 +177,12 @@ module Library : sig
     ; ppx_runtime_libraries : (Loc.t * Lib_name.t) list
     ; modes : Mode_conf.Set.t
     ; kind : Lib_kind.t
+          (* TODO: It may be worth remaming [c_library_flags] to
+             [link_time_flags_for_c_compiler] and [library_flags] to
+             [link_time_flags_for_ocaml_compiler], both here and in the Dune
+             language, to make it easier to understand the purpose of various
+             flags. Also we could add [c_library_flags] to [Foreign.Stubs.t]. *)
     ; library_flags : Ordered_set_lang.Unexpanded.t
-          (* TODO_AM: Maybe [c_library_flags] should be a part of
-             [foreign_library] declaration? This is used to pass a flag like
-             [-lgzip] when linking with the [gzip_stubs.a] C library. *)
-          (* TODO_AM: rename to "foreign_library_flags". *)
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
     ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t

@@ -42,6 +42,6 @@
   1 | (executable
   2 |  (name foo)
   3 |  (c_names stubs))
-  Error: Pure bytecode executables cannot contain C stubs.
+  Error: Pure bytecode executables cannot contain foreign stubs.
   Did you forget to add `(modes exe)'?
   [1]

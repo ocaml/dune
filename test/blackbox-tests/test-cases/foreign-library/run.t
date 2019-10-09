@@ -370,3 +370,102 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ (cd _build/default && ocamlrun -I lib lib/main.bc)
   October 2019
+
+----------------------------------------------------------------------------------
+* Error when using (foreign_archives ...) and a pure bytecode (executable ...).
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_archives addmul config))
+  > (executable
+  >  (name main)
+  >  (libraries calc)
+  >  (foreign_archives day)
+  >  (modules main))
+  > (foreign_library
+  >  (archive_name day)
+  >  (language c)
+  >  (names day))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (flags -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+
+  $ cat >lib/day.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value day() { return Val_int(8); }
+  > EOF
+
+  $ cat >lib/main.ml <<EOF
+  > external day : unit -> int = "day"
+  > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
+  > EOF
+
+  $ dune build
+  File "lib/dune", line 10, characters 0-83:
+  10 | (executable
+  11 |  (name main)
+  12 |  (libraries calc)
+  13 |  (foreign_archives day)
+  14 |  (modules main))
+  Error: Pure bytecode executables cannot contain foreign archives.
+  Did you forget to add `(modes exe)'?
+  [1]
+
+----------------------------------------------------------------------------------
+* Interaction of (foreign_archives ...) and (executables ...).
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_archives addmul config))
+  > (executable
+  >  (name main)
+  >  (modes exe)
+  >  (libraries calc)
+  >  (foreign_archives day)
+  >  (modules main))
+  > (foreign_library
+  >  (archive_name day)
+  >  (language c)
+  >  (names day))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (flags -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+
+  $ cat >lib/day.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value day() { return Val_int(8); }
+  > EOF
+
+  $ cat >lib/main.ml <<EOF
+  > external day : unit -> int = "day"
+  > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
+  > EOF
+
+  $ dune build
+
+  $ dune exec lib/main.exe
+  8 October 2019

@@ -252,7 +252,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only
   in
   let modes = Compilation_context.modes cctx in
-  let is_empty = (source_modules = []) in
+  let is_empty = (Modules.entry_modules modules = [] && source_modules = []) in
   (let cm_files =
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in

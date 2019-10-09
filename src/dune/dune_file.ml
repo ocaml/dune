@@ -1079,7 +1079,7 @@ module Library = struct
       This (Some (Module_name.of_local_lib_name (snd t.name)))
 
   let to_lib_info conf ~dir
-      ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
+      ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; ccomp_type; _ } as lib_config)
       ~known_implementations =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
@@ -1109,7 +1109,7 @@ module Library = struct
       in
       { Mode.Dict.byte = stubs
       ; native =
-          if not (Ordered_set_lang.is_empty conf.buildable.modules) then
+          if ccomp_type = "msvc" && not (Ordered_set_lang.is_empty conf.buildable.modules) then
             Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
             :: stubs
           else

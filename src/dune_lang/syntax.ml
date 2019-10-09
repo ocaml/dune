@@ -182,7 +182,7 @@ let renamed_in t ver ~to_ =
     let+ loc, what = desc () in
     Error.renamed_in loc t ver ~what ~to_
 
-let since ?(fatal = true) t ver =
+let since ?(desc = desc) ?(fatal = true) t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver >= ver then

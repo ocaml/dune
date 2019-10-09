@@ -88,7 +88,12 @@ val renamed_in : t -> Version.t -> to_:string -> (unit, _) Decoder.parser
 (** Indicate the field/constructor being parsed was introduced in the given
     version. When [fatal] is false, simply emit a warning instead of error.
     [fatal] defaults to true. *)
-val since : ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
+val since :
+     ?desc:(unit -> (Stdune.Loc.t * string, 'a) Decoder.parser)
+  -> ?fatal:bool
+  -> t
+  -> Version.t
+  -> (unit, 'a) Decoder.parser
 
 (** {2 Low-level functions} *)
 

@@ -381,7 +381,26 @@ let enabled_if ~since =
     | None -> Blang.decode
     | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode
   in
-  field "enabled_if" ~default:Blang.true_ decode
+  let validate enabled_if =
+    Blang.fold_vars enabled_if ~init:(Dune_lang.Decoder.return enabled_if) ~f:(fun var checks ->
+        let loc = String_with_vars.Var.loc var in
+        match
+          ( String_with_vars.Var.payload var
+          , List.assoc_opt (String_with_vars.Var.name var) Lib_config.allowed_in_enabled_if )
+        with
+        | None, Some version ->
+          let desc () = Dune_lang.Decoder.return (loc, "This variable") in
+          Dune_lang.Syntax.since ~desc Stanza.syntax version >>> checks
+        | _ ->
+          User_error.raise
+            ~loc
+            [ Pp.textf
+                "Only %s are allowed in the 'enabled_if' field of \
+                 libraries."
+                (String.enumerate_and (List.map ~f:fst Lib_config.allowed_in_enabled_if))
+            ])
+  in
+    field "enabled_if" ~default:Blang.true_ decode >>= validate
 
 module Per_module = struct
   include Per_item.Make (Module_name)
@@ -981,22 +1000,6 @@ module Library = struct
                      name
                  ]
            in
-           Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
-               match
-                 ( String_with_vars.Var.name var
-                 , String_with_vars.Var.payload var )
-               with
-               | var, None
-                 when List.mem var ~set:Lib_config.allowed_in_enabled_if ->
-                 ()
-               | _ ->
-                 User_error.raise
-                   ~loc:(String_with_vars.Var.loc var)
-                   [ Pp.textf
-                       "Only %s are allowed in the 'enabled_if' field of \
-                        libraries."
-                       (String.enumerate_and Lib_config.allowed_in_enabled_if)
-                   ]);
            { name
            ; public
            ; synopsis

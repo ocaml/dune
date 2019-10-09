@@ -11,8 +11,9 @@ type t =
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
   ; ext_dll : string
   ; stdlib_dir : Path.t
+  ; ccomp_type : string
   }
 
-val allowed_in_enabled_if : string list
+val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list
 
 val get_for_enabled_if : t -> var:string -> string

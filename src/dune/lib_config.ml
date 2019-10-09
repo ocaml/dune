@@ -11,6 +11,7 @@ type t =
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
   ; ext_dll : string
   ; stdlib_dir : Path.t
+  ; ccomp_type : string
   }
 
 let var_map =
@@ -18,9 +19,15 @@ let var_map =
   ; ("system", fun t -> t.system)
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> t.os_type)
+  ; ("ccomp_type", fun t -> t.ccomp_type)
   ]
 
-let allowed_in_enabled_if = List.map ~f:fst var_map
+let allowed_in_enabled_if =
+  let f = function
+  | "ccomp_type", _ -> ("ccomp_type", (2, 0))
+  | s, _ -> (s, (1, 10))
+  in
+    List.map ~f var_map
 
 let get_for_enabled_if t ~var =
   match List.assoc var_map var with

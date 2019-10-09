@@ -4,20 +4,19 @@ module Library = Dune_file.Library
 
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
-  ; foreign_libraries : Foreign.Sources.t String.Map.t
+  ; archives : Foreign.Sources.t String.Map.t
   ; executables : Foreign.Sources.t String.Map.t
   }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
 
-let for_foreign_lib t ~archive_name =
-  String.Map.find_exn t.foreign_libraries archive_name
+let for_archive t ~archive_name = String.Map.find_exn t.archives archive_name
 
 let for_exes t ~first_exe = String.Map.find_exn t.executables first_exe
 
 let empty =
   { libraries = Lib_name.Map.empty
-  ; foreign_libraries = String.Map.empty
+  ; archives = String.Map.empty
   ; executables = String.Map.empty
   }
 
@@ -115,7 +114,7 @@ let make (d : _ Dir_with_dune.t) ~(object_map : Foreign.Object_map.t) =
             (Lib_name.to_string name)
         ]
   in
-  let foreign_libraries =
+  let archives =
     String.Map.of_list_reducei foreign_libs
       ~f:(fun archive_name (loc1, _) (loc2, _) ->
         User_error.raise ~loc:loc2
@@ -147,4 +146,4 @@ let make (d : _ Dir_with_dune.t) ~(object_map : Foreign.Object_map.t) =
         ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
         ]
   in
-  { libraries; foreign_libraries; executables }
+  { libraries; archives; executables }

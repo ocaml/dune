@@ -83,8 +83,8 @@ let foreign_sources_of_executables t ~first_exe =
 let foreign_sources_of_library t ~name =
   Foreign_sources.for_lib (Memo.Lazy.force t.foreign_sources) ~name
 
-let foreign_sources_of_foreign_library t ~archive_name =
-  Foreign_sources.for_foreign_lib
+let foreign_sources_of_archive t ~archive_name =
+  Foreign_sources.for_archive
     (Memo.Lazy.force t.foreign_sources)
     ~archive_name
 

@@ -205,11 +205,8 @@ let build_foreign_library (library : Foreign.Library.t) ~sctx ~expander ~dir
                 (Command.Args.S args, Path.Set.union_all deps))))
     in
     let foreign_sources =
-      Dir_contents.foreign_sources_of_foreign_library dir_contents
-        ~archive_name
+      Dir_contents.foreign_sources_of_archive dir_contents ~archive_name
     in
-    (* Printf.printf "foreign_sources = %d" (List.length (String.Map.to_list
-       foreign_sources)); *)
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
       ~dir_contents ~foreign_sources ~extra_flags
       ~extra_deps:library.stubs.extra_deps

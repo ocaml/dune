@@ -8,6 +8,8 @@ type 'a t = 'a list
 
 val is_empty : _ t -> bool
 
+val is_non_empty : _ t -> bool
+
 val filter_map : 'a t -> f:('a -> 'b option) -> 'b t
 
 val filter_opt : 'a option t -> 'a t
@@ -68,3 +70,5 @@ val hash : ('a -> int) -> 'a list -> int
 val cons : 'a t -> 'a -> 'a t
 
 val fold_map : 'a list -> init:'b -> f:('b -> 'a -> 'b * 'c) -> 'b * 'c list
+
+val unzip : ('a * 'b) t -> 'a t * 'b t

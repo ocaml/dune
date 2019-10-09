@@ -48,6 +48,7 @@ end
 module Warning : sig
   val deprecated_in :
        Loc.t
+    -> extra_info:string
     -> t
     -> ?repl:User_message.Style.t Pp.t list
     -> Version.t
@@ -79,7 +80,8 @@ val deleted_in : t -> Version.t -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was deprecated in the given
     version *)
-val deprecated_in : t -> Version.t -> (unit, _) Decoder.parser
+val deprecated_in :
+  ?extra_info:string -> t -> Version.t -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was renamed in the given
     version *)

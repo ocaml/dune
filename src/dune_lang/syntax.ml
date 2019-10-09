@@ -95,10 +95,17 @@ module Error = struct
 end
 
 module Warning = struct
-  let deprecated_in loc t ?(repl = []) ver ~what =
+  let deprecated_in loc ~extra_info t ?(repl = []) ver ~what =
     User_warning.emit ~loc
-      ( Pp.textf "%s was deprecated in version %s of %s." what
-          (Version.to_string ver) t.desc
+      ( Pp.concat
+          [ Pp.textf "%s was deprecated in version %s of %s." what
+              (Version.to_string ver) t.desc
+          ; ( if extra_info = "" then
+              Pp.nop
+            else
+              Pp.space )
+          ; Pp.text extra_info
+          ]
       :: repl )
 end
 
@@ -164,14 +171,14 @@ let deleted_in t ver =
     let* loc, what = desc () in
     Error.deleted_in loc t ver ~what
 
-let deprecated_in t ver =
+let deprecated_in ?(extra_info = "") t ver =
   let open Version.Infix in
   let* current_ver = get_exn t in
   if current_ver < ver then
     return ()
   else
     let+ loc, what = desc () in
-    Warning.deprecated_in loc t ver ~what
+    Warning.deprecated_in ~extra_info loc t ver ~what
 
 let renamed_in t ver ~to_ =
   let open Version.Infix in

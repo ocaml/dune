@@ -4,7 +4,8 @@ c_names and cxx_names with overlapping names in the same stanza
   File "dune", line 4, characters 12-15:
   4 |  (cxx_names foo))
                   ^^^
-  Error: foo.cpp and foo.c have conflicting names. You must rename one of them.
+  Error: "foo.c" and "foo.cpp" map to the same object name "foo". This is not
+  allowed; please rename them.
   [1]
 
 c_names with overlapping names in different stanzas

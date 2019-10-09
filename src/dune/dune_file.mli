@@ -1,4 +1,4 @@
-(** Representation and parsing of jbuild files *)
+(** Representation and parsing of dune files *)
 
 open! Stdune
 open Import
@@ -83,29 +83,6 @@ module Lib_deps : sig
   val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
-module Dep_conf : sig
-  type t =
-    | File of String_with_vars.t
-    | Alias of String_with_vars.t
-    | Alias_rec of String_with_vars.t
-    | Glob_files of String_with_vars.t
-    | Source_tree of String_with_vars.t
-    | Package of String_with_vars.t
-    | Universe
-    | Env_var of String_with_vars.t
-    (* [Sandbox_config] is a way to declare that your action also depends on
-       there being a clean filesystem around its deps. (or, if you require
-       [no_sandboxing], it's that your action depends on something undeclared
-       (e.g. absolute path of cwd) and you want to allow it) *)
-    | Sandbox_config of Sandbox_config.t
-
-  val remove_locs : t -> t
-
-  include Dune_lang.Conv.S with type t := t
-
-  val to_dyn : t Dyn.Encoder.t
-end
-
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
   (Preprocess_map.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
@@ -116,9 +93,8 @@ module Buildable : sig
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-    ; c_names : Ordered_set_lang.t option
-    ; cxx_names : Ordered_set_lang.t option
+    ; foreign_archives : (Loc.t * string) list
+    ; foreign_stubs : Foreign.Stubs.t list
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
@@ -200,8 +176,11 @@ module Library : sig
     ; modes : Mode_conf.Set.t
     ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
+          (* TODO_AM: Maybe [c_library_flags] should be a part of
+             [foreign_library] declaration? This is used to pass a flag like
+             [-lgzip] when linking with the [gzip_stubs.a] C library. *)
+          (* TODO_AM: rename to "foreign_library_flags". *)
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
-    ; self_build_stubs_archive : string option
     ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
@@ -222,13 +201,21 @@ module Library : sig
 
   val has_stubs : t -> bool
 
-  val stubs_name : t -> string
+  val default_archive_name : t -> string
 
-  val stubs : t -> dir:Path.Build.t -> Path.Build.t
+  val default_lib_file :
+    t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
 
-  val stubs_archive : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
+  val default_dll_file :
+    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 
-  val dll : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+  val archive_names : t -> string list
+
+  val lib_files : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
+
+  val dll_files : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
+
+  val stubs_path : t -> dir:Path.Build.t -> Path.Build.t
 
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
@@ -481,6 +468,7 @@ end
 
 type Stanza.t +=
   | Library of Library.t
+  | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
   | Install of File_binding.Unexpanded.t Install_conf.t

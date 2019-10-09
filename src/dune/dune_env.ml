@@ -8,11 +8,12 @@ module Stanza = struct
   let c_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
-          Dune_lang.Syntax.since Stanza.syntax since)
+          Dune_lang.Syntax.deprecated_in Stanza.syntax (2, 0)
+          >>> Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
-    C.Kind.Dict.make ~c ~cxx
+    Foreign.Language.Dict.make ~c ~cxx
 
   module Inline_tests = struct
     type t =
@@ -32,7 +33,7 @@ module Stanza = struct
 
   type config =
     { flags : Ocaml_flags.Spec.t
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
+    ; c_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
@@ -40,7 +41,8 @@ module Stanza = struct
 
   let empty_config =
     { flags = Ocaml_flags.Spec.standard
-    ; c_flags = C.Kind.Dict.make_both Ordered_set_lang.Unexpanded.standard
+    ; c_flags =
+        Foreign.Language.Dict.make_both Ordered_set_lang.Unexpanded.standard
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None

@@ -1,13 +1,13 @@
 open Stdune
 
 type t =
-  { dlls : Path.Build.t list
-  ; files : Path.Build.t list
+  { dll_files : Path.Build.t list
+  ; lib_files : Path.Build.t list
   }
 
-let files t = t.files
+let lib_files t = t.lib_files
 
-let dlls t = t.dlls
+let dll_files t = t.dll_files
 
 module Library = Dune_file.Library
 
@@ -24,7 +24,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
     else
       []
   in
-  let files =
+  let lib_files =
     let virtual_library = Library.is_virtual lib in
     List.concat
       [ if_
@@ -32,14 +32,12 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Byte) ]
       ; ( if virtual_library then
           let files =
-            Dir_contents.c_sources_of_library dir_contents
+            Dir_contents.foreign_sources_of_library dir_contents
               ~name:(Library.best_name lib)
           in
-          C.Sources.objects files ~dir ~ext_obj
-        else if Library.has_stubs lib then
-          [ Library.stubs_archive ~dir lib ~ext_lib ]
+          Foreign.Sources.objects files ~dir ~ext_obj
         else
-          [] )
+          Library.lib_files lib ~dir ~ext_lib )
       ; if_
           (native && not virtual_library)
           (let files =
@@ -57,13 +55,12 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
       ; List.map lib.buildable.js_of_ocaml.javascript_files
           ~f:(Path.Build.relative dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-            Path.Build.relative dir (fn ^ C.header_ext))
+            Path.Build.relative dir (fn ^ Foreign.header_ext))
       ]
   in
-  let dlls =
+  let dll_files =
     if_
-      ( byte && Library.has_stubs lib
-      && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries )
-      [ Library.dll ~dir lib ~ext_dll ]
+      (byte && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
+      (Library.dll_files lib ~dir ~ext_dll)
   in
-  { files; dlls }
+  { lib_files; dll_files }

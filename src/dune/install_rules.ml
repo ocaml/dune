@@ -119,9 +119,9 @@ end = struct
               | Private, Some dir -> Some (Filename.concat dir ".private")
             in
             make_entry ?sub_dir Lib file)
-      ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
+      ; List.map (Lib_archives.lib_files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map (Lib_archives.dlls archives) ~f:(fun a ->
+      ; List.map (Lib_archives.dll_files archives) ~f:(fun a ->
             (Some loc, Install.Entry.make Stublibs a))
       ]
 
@@ -292,8 +292,9 @@ let gen_dune_package sctx pkg =
                  let name = Lib.name lib in
                  let foreign_objects =
                    let dir = Obj_dir.obj_dir obj_dir in
-                   Dir_contents.c_sources_of_library dir_contents ~name
-                   |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
+                   Dir_contents.foreign_sources_of_library dir_contents ~name
+                   |> Foreign.Sources.objects ~dir
+                        ~ext_obj:ctx.lib_config.ext_obj
                    |> List.map ~f:Path.build
                  in
                  let modules =

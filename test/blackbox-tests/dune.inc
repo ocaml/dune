@@ -587,6 +587,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name foreign-library)
+ (deps (package dune) (source_tree test-cases/foreign-library))
+ (action
+  (chdir
+   test-cases/foreign-library
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name format-dune-file)
  (deps (package dune) (source_tree test-cases/format-dune-file))
  (action
@@ -1909,6 +1917,7 @@
   (alias findlib-error)
   (alias forbidden_libraries)
   (alias force-test)
+  (alias foreign-library)
   (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
@@ -2126,6 +2135,7 @@
   (alias findlib-error)
   (alias forbidden_libraries)
   (alias force-test)
+  (alias foreign-library)
   (alias format-dune-file)
   (alias formatting)
   (alias github1019)

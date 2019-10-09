@@ -35,7 +35,7 @@ module Includes = struct
       in
       { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
 
-  let empty = Cm_kind.Dict.make_all (Command.Args.As [])
+  let empty = Cm_kind.Dict.make_all Command.Args.empty
 end
 
 type t =

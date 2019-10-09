@@ -237,9 +237,7 @@ module Package = struct
     let modes : Mode.Dict.Set.t =
       (* libraries without archives are compatible with all modes. mainly a
          hack for compiler-libs which doesn't have any archives *)
-      let discovered =
-        Mode.Dict.map ~f:(fun x -> not (List.is_empty x)) archives
-      in
+      let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
       if Mode.Dict.Set.is_empty discovered then
         Mode.Dict.Set.all
       else

@@ -1,4 +1,9 @@
   $ dune build --display short aa.exe bb.exe
+  File "dune", line 3, characters 1-14:
+  3 |  (c_names foo)
+       ^^^^^^^^^^^^^
+  Warning: 'c_names' was deprecated in version 2.0 of the dune language. Use
+  the (foreign_stubs ...) stanza instead.
         ocamlc .aa.eobjs/byte/dune__exe.{cmi,cmo,cmt}
       ocamlopt .aa.eobjs/native/dune__exe.{cmx,o}
       ocamldep .aa.eobjs/aa.ml.d
@@ -28,6 +33,11 @@
   Entering directory 'err'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)
+  File "dune", line 3, characters 1-16:
+  3 |  (c_names stubs))
+       ^^^^^^^^^^^^^^^
+  Warning: 'c_names' was deprecated in version 2.0 of the dune language. Use
+  the (foreign_stubs ...) stanza instead.
   File "dune", line 1, characters 0-41:
   1 | (executable
   2 |  (name foo)

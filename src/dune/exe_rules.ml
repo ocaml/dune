@@ -115,12 +115,13 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           [ Pp.textf "Pure bytecode executables cannot contain C stubs."
           ; Pp.textf "Did you forget to add `(modes exe)'?"
           ];
-      let c_sources =
-        Dir_contents.c_sources_of_executables dir_contents ~first_exe
+      let foreign_sources =
+        Dir_contents.foreign_sources_of_executables dir_contents ~first_exe
       in
       let o_files =
-        C_rules.build_o_files exes.buildable ~sctx ~dir ~expander
-          ~requires:requires_compile ~dir_contents ~c_sources
+        Foreign_rules.build_o_files ~sctx ~dir ~expander
+          ~requires:requires_compile ~dir_contents ~foreign_sources
+          ~extra_flags:Command.Args.empty ~extra_deps:[]
         |> List.map ~f:Path.build
       in
       Check_rules.add_files sctx ~dir o_files;

@@ -13,8 +13,8 @@ user intended.
   $ dune build --root same-stanza @all
   Entering directory 'same-stanza'
   File "dune", line 1, characters 0-0:
-  Error: c file foo appears in several directories:
+  Error: C source file "foo" appears in more than one directory:
   - .
   - sub
-  This is not allowed, please rename one of them.
+  This is not allowed; please rename them.
   [1]

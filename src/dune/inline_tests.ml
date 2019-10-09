@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Dune_file
 open Build.O
 open! No_io
 module SC = Super_context
@@ -356,7 +355,7 @@ include Sub_system.Register_end_point (struct
            in
            let exe, runner_args =
              match custom_runner with
-             | None -> (Ok exe, Command.Args.As [])
+             | None -> (Ok exe, Command.Args.empty)
              | Some runner ->
                ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
                , Dep exe )

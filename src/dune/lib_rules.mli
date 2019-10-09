@@ -1,6 +1,14 @@
 open! Stdune
 open Dune_file
 
+val build_foreign_library :
+     Foreign.Library.t
+  -> sctx:Super_context.t
+  -> expander:Expander.t
+  -> dir:Path.Build.t
+  -> dir_contents:Dir_contents.t
+  -> unit
+
 val rules :
      Library.t
   -> sctx:Super_context.t

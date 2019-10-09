@@ -100,10 +100,10 @@ Once installed, we have the version information:
   lib dune-build-info: XXX
 
   $ grep version _install/lib/a/dune-package
-  (version 1.0+a)
+  [1]
 
   $ grep version _install/lib/a/META
-  version = "1.0+a"
+  [1]
 
 Check what the generated build info module looks like:
 

@@ -24,8 +24,8 @@ val c_flags :
      t
   -> profile:Profile.t
   -> expander:Expander.t
-  -> default_context_flags:string list C.Kind.Dict.t
-  -> string list Build.t C.Kind.Dict.t
+  -> default_context_flags:string list Foreign.Language.Dict.t
+  -> string list Build.t Foreign.Language.Dict.t
 
 val local_binaries :
   t -> profile:Profile.t -> expander:Expander.t -> File_binding.Expanded.t list

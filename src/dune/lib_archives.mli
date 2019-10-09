@@ -9,6 +9,6 @@ val make :
   -> Dune_file.Library.t
   -> t
 
-val files : t -> Path.Build.t list
+val lib_files : t -> Path.Build.t list
 
-val dlls : t -> Path.Build.t list
+val dll_files : t -> Path.Build.t list

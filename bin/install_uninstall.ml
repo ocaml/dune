@@ -46,9 +46,30 @@ let set_executable_bits x = x lor 0o111
 
 let clear_executable_bits x = x land lnot 0o111
 
+module Special_file = struct
+  type t =
+    | META
+    | Dune_package
+
+  let of_entry (e : _ Install.Entry.t) =
+    match e.section with
+    | Lib -> (
+      match Install.Dst.to_string e.dst with
+      | "META" -> Some META
+      | "dune-package" -> Some Dune_package
+      | _ -> None )
+    | _ -> None
+end
+
 (** Operations that act on real files or just pretend to (for --dry-run) *)
 module type File_operations = sig
-  val copy_file : src:Path.t -> dst:Path.t -> executable:bool -> unit Fiber.t
+  val copy_file :
+       src:Path.t
+    -> dst:Path.t
+    -> executable:bool
+    -> special_file:Special_file.t option
+    -> package:Package.Name.t
+    -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
 
@@ -62,7 +83,7 @@ module type Workspace = sig
 end
 
 module File_ops_dry_run : File_operations = struct
-  let copy_file ~src ~dst ~executable =
+  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ =
     Format.printf "Copying %a to %a (executable: %b)\n" Path.pp src Path.pp dst
       executable;
     Fiber.return ()
@@ -85,7 +106,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     | No_version_needed
     | Need_version of (Format.formatter -> version:string -> unit)
 
-  let copy_special_file ~src ~package_name ~ic ~oc ~f =
+  let copy_special_file ~src ~package ~ic ~oc ~f =
     let plain_copy () =
       seek_in ic 0;
       Io.copy_channels ic oc;
@@ -100,10 +121,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     | Need_version print -> (
       match
         let open Option.O in
-        let package_name = Package.Name.of_string package_name in
-        let* package =
-          Package.Name.Map.find workspace.conf.packages package_name
-        in
+        let* package = Package.Name.Map.find workspace.conf.packages package in
         get_vcs package.path
       with
       | None -> plain_copy ()
@@ -171,7 +189,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
               Format.pp_print_cut ppf ());
           Format.pp_close_box ppf ())
 
-  let copy_file ~src ~dst ~executable =
+  let copy_file ~src ~dst ~executable ~special_file ~package =
     let chmod =
       if executable then
         set_executable_bits
@@ -184,12 +202,11 @@ module File_ops_real (W : Workspace) : File_operations = struct
         Io.close_both (ic, oc);
         Fiber.return ())
       (fun () ->
-        match Path.explode src with
-        | Some [ "install"; _ctx; "lib"; package_name; "META" ] ->
-          copy_special_file ~src ~package_name ~ic ~oc ~f:process_meta
-        | Some [ "install"; _ctx; "lib"; package_name; "dune-package" ] ->
-          copy_special_file ~src ~package_name ~ic ~oc ~f:process_dune_package
-        | _ ->
+        match (special_file : Special_file.t option) with
+        | Some META -> copy_special_file ~src ~package ~ic ~oc ~f:process_meta
+        | Some Dune_package ->
+          copy_special_file ~src ~package ~ic ~oc ~f:process_dune_package
+        | None ->
           Dune.Artifact_substitution.copy ~get_vcs ~input:(input ic)
             ~output:(output oc))
 
@@ -391,6 +408,7 @@ let install_uninstall ~what =
                       ()
                   in
                   Fiber.sequential_iter entries ~f:(fun entry ->
+                      let special_file = Special_file.of_entry entry in
                       let dst =
                         Install.Entry.relative_installed_path entry ~paths
                         |> interpret_destdir ~destdir
@@ -405,6 +423,7 @@ let install_uninstall ~what =
                             entry.section
                         in
                         Ops.copy_file ~src:entry.src ~dst ~executable
+                          ~special_file ~package
                       ) else (
                         Ops.remove_if_exists dst;
                         files_deleted_in := Path.Set.add !files_deleted_in dir;

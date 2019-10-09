@@ -633,7 +633,15 @@ module Pkg_config = struct
         | "" -> []
         | s -> String.split s ~on:' '
       in
-      let cflags = run "--cflags" in
+      let cflags =
+        run "--cflags"
+        |> List.fold_left ~init:[] ~f:(fun acc f ->
+          if String.is_prefix f ~prefix:"-I" then
+            f :: acc
+          else
+            f :: "-ccopt" :: acc)
+        |> List.rev
+      in
       let libs =
         run "--libs"
         |> List.fold_left ~init:[] ~f:(fun acc f ->

@@ -29,11 +29,11 @@ module Name = struct
     match of_string_opt pkg with
     | Some p -> p
     | None ->
-      Code_error.raise "Invalid package name" ["pkg", Dyn.Encoder.string pkg]
+      Code_error.raise "Invalid package name"
+        [ ("pkg", Dyn.Encoder.string pkg) ]
 
   let invalid_package_name (loc, s) =
-    User_error.make ~loc
-      [ Pp.textf "%S is an invalid package name" s ]
+    User_error.make ~loc [ Pp.textf "%S is an invalid package name" s ]
 
   let of_string_user_error (loc, s) =
     match of_string_opt s with

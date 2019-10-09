@@ -851,7 +851,8 @@ module Library = struct
            (repeat (located Lib_name.decode))
            ~default:[]
        and+ library_flags = Ordered_set_lang.Unexpanded.field "library_flags"
-       and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags"
+       and+ c_library_flags =
+         Ordered_set_lang.Unexpanded.field "c_library_flags"
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =

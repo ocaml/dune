@@ -1,4 +1,4 @@
-1.11.4 (03/10/2019)
+1.11.4 (09/10/2019)
 -------------------
 
 - Allow to mark directories as `data_only_dirs` without including them as `dirs`

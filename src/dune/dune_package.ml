@@ -1,10 +1,5 @@
 open! Stdune
 
-(* HACK Otherwise ocamldep doesn't detect this module in bootstrap *)
-let () =
-  let module M = Sub_system_info in
-  ()
-
 module Vfile = Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)

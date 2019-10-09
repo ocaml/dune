@@ -1,3 +1,9 @@
+----------------------------------------------------------------------------------
+Testsuite for the (foreign_library ...) stanza.
+
+----------------------------------------------------------------------------------
+* (foreign_library ...) is unavailable before Dune 2.0.
+
   $ echo "(lang dune 1.0)" > dune-project
   $ mkdir -p lib
 
@@ -16,7 +22,9 @@
   language. Please update your dune-project file to have (lang 2.0).
   [1]
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* (foreign_library ...) is available in Dune 2.0.
+* "archive_name" is a required field.
 
   $ echo "(lang dune 2.0)" > dune-project
 
@@ -28,7 +36,8 @@
   Error: field archive_name missing
   [1]
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Error message for a missing source file.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -49,16 +58,23 @@
   Error: Object "mul" has no source; "mul.c" must be present.
   [1]
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Successful build of a foreign library archive when all source files exist.
 
   $ cat >lib/mul.c <<EOF
   > #include <caml/mlvalues.h>
   > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
   > EOF
 
-  $ dune build
+  $ dune build --display short
+        ocamlc lib/add$ext_obj
+        ocamlc lib/mul$ext_obj
+    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Multiple (foreign_library ...) declarations.
+* Passing flags via (flags ...) field.
+* Interaction with (foreign_stubs_archives ...) stanza.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -108,7 +124,8 @@
   $ (cd _build/default && ocamlrun -I lib lib/main.bc)
   2009
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Error message for a missing C++ source.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -140,7 +157,10 @@
   "config.cpp" must be present.
   [1]
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Mixing C and C++ foreign library archives.
+* Include directories via the (include_dirs ...) field.
+* Extra dependencies via the (extra_deps ...) field.
 
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
@@ -191,7 +211,8 @@
   $ (cd _build/default && ocamlrun -I lib lib/main.bc)
   2019
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Error message when a given (include_dir ...) is not found.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -222,7 +243,8 @@
   Error: Include directory "another/dir" not found.
   [1]
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Warning about untracked dependencies in external include directories.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -253,7 +275,8 @@
   Warning: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
 
-----------------------------------------------------------------------
+----------------------------------------------------------------------------------
+* Error message for multiple declarations with the same "archive_name".
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -290,3 +313,60 @@
   Error: Multiple foreign libraries with the same archive name "addmul"; the
   name has already been taken in lib/dune:1.
   [1]
+
+----------------------------------------------------------------------------------
+* Interaction of (foreign_stubs ...) and (foreign_stubs_archives ...).
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_stubs_archives addmul config))
+  > (executable
+  >  (name main)
+  >  (libraries calc)
+  >  (modules main))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (flags -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+
+  $ cat >lib/month.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include <caml/alloc.h>
+  > value month() { return copy_string("October"); }
+  > EOF
+
+  $ cat >lib/calc.ml <<EOF
+  > external add : int -> int -> int = "add"
+  > external mul : int -> int -> int = "mul"
+  > external config : unit -> int = "config"
+  > external month : unit -> string = "month"
+  > let calc x y z = add (mul (add x y) z) (config ())
+  > EOF
+
+  $ cat >lib/calc.mli <<EOF
+  > val calc : int -> int -> int -> int
+  > val month : unit -> string
+  > EOF
+
+  $ cat >lib/main.ml <<EOF
+  > let () = Printf.printf "%s %d" (Calc.month ()) (Calc.calc 1 2 3)
+  > EOF
+
+  $ dune build
+
+  $ dune exec lib/main.exe
+  October 2019
+
+  $ (cd _build/default && ocamlrun -I lib lib/main.bc)
+  October 2019

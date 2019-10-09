@@ -1,3 +1,9 @@
+----------------------------------------------------------------------------------
+Testsuite for the (foreign_stubs ...) stanza.
+
+----------------------------------------------------------------------------------
+* Error when using both (self_build_stubs_archive ...) and (c_names ...) before 2.0.
+
   $ echo "(lang dune 1.0)" > dune-project
 
   $ cat >dune <<EOF
@@ -16,6 +22,9 @@
   [1]
 
 ----------------------------------------------------------------------------------
+* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
+* Warning when using (c_names ...) in Dune 2.0.
+* Error when a C source file is missing.
 
   $ echo "(lang dune 2.0)" > dune-project
 
@@ -37,6 +46,8 @@
   [1]
 
 ----------------------------------------------------------------------------------
+* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
+* Error when a self-built archive is missing.
 
   $ cat >foo.c <<EOF
   > #include <caml/mlvalues.h>
@@ -60,6 +71,8 @@
   [1]
 
 ----------------------------------------------------------------------------------
+* Warning when using (self_build_stubs_archive ...) in Dune 2.0.
+* Build succeeds when a self-built archive exists.
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>
@@ -89,6 +102,7 @@
   language. Use the (foreign_stubs_archives ...) stanza instead.
 
 ----------------------------------------------------------------------------------
+* Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.
 
   $ cat >dune <<EOF
   > (library
@@ -114,6 +128,8 @@
   [1]
 
 ----------------------------------------------------------------------------------
+* Foreign stubs in C and C++ language.
+* Multiple foreign stub archives.
 
   $ cat >baz.cpp <<EOF
   > #include <caml/mlvalues.h>

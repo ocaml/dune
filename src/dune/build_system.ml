@@ -409,6 +409,11 @@ module Context_or_install = struct
       Dyn.String s
 end
 
+type caching =
+  | Disabled
+  | Enabled of Dune_manager.Client.t
+  | Check of Dune_manager.Client.t
+
 type t =
   { (* File specification by targets *)
     files : Internal_rule.t Path.Build.Table.t
@@ -421,7 +426,7 @@ type t =
       Fdecl.t
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
-  ; memory : Dune_manager.Client.t option
+  ; cache : caching
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
@@ -456,7 +461,7 @@ let set_rule_generators ~init ~gen_rules =
 
 let get_memory () =
   let t = t () in
-  t.memory
+  t.cache
 
 let get_dir_triage t ~dir =
   match Path.as_in_source_tree dir with
@@ -1475,12 +1480,13 @@ end = struct
             Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
-          match (do_not_memoize, t.memory) with
+          match (do_not_memoize, t.cache) with
           | true, _
-          | _, None ->
+          | _, Disabled ->
             None
-          | false, Some memory -> (
-            match Dune_manager.Client.search memory rule_digest with
+          | false, Enabled cache
+          | false, Check cache -> (
+            match Dune_manager.Client.search cache rule_digest with
             | Ok (_, files) -> Some files
             | Error msg ->
               Log.infof "cache miss: %s" msg;
@@ -1548,9 +1554,12 @@ end = struct
           let targets, targets_digest =
             compute_targets_digest_or_raise_error ~info targets_as_list
           in
-          Option.iter t.memory ~f:(fun memory ->
-              ignore
-                (Dune_manager.Client.promote memory targets rule_digest [] None));
+          ( match t.cache with
+          | Enabled cache
+          | Check cache ->
+            ignore
+              (Dune_manager.Client.promote cache targets rule_digest [] None)
+          | Disabled -> () );
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps
@@ -1987,15 +1996,17 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?memory ~sandboxing_preference =
+let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
-  let memory =
-    Option.map
-      ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
-      memory
+  let cache =
+    let f c = Dune_manager.Client.set_build_dir c Path.build_dir in
+    match caching with
+    | Disabled -> Disabled
+    | Enabled c -> Enabled (f c)
+    | Check c -> Check (f c)
   in
   let t =
     { contexts
@@ -2003,7 +2014,7 @@ let init ~contexts ?memory ~sandboxing_preference =
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
-    ; memory
+    ; cache
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0

@@ -11,6 +11,7 @@ type t =
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
   ; ext_dll : string
   ; stdlib_dir : Path.t
+  ; ccomp_type : string
   }
 
 val allowed_in_enabled_if : string list

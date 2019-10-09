@@ -201,21 +201,13 @@ module Library : sig
 
   val has_stubs : t -> bool
 
-  val default_archive_name : t -> string
-
-  val default_lib_file :
-    t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
-
-  val default_dll_file :
-    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+  val stubs_archive_name : t -> string
 
   val archive_names : t -> string list
 
   val lib_files : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
   val dll_files : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
-
-  val stubs_path : t -> dir:Path.Build.t -> Path.Build.t
 
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 

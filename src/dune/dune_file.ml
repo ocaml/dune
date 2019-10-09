@@ -963,33 +963,22 @@ module Library = struct
     List.is_non_empty t.buildable.foreign_stubs
     || List.is_non_empty t.buildable.foreign_archives
 
-  let default_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
-
-  let default_lib_file t ~dir ~ext_lib =
-    Path.Build.relative dir
-      (sprintf "lib%s%s" (default_archive_name t) ext_lib)
-
-  let default_dll_file t ~dir ~ext_dll =
-    Path.Build.relative dir
-      (sprintf "dll%s%s" (default_archive_name t) ext_dll)
+  let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
 
   let archive_names t =
     ( if List.is_empty t.buildable.foreign_stubs then
       []
     else
-      [ default_archive_name t ] )
+      [ stubs_archive_name t ] )
     @ List.map ~f:snd t.buildable.foreign_archives
 
-  (* TODO_AM: Code duplication. *)
   let lib_files t ~dir ~ext_lib =
-    List.map (archive_names t) ~f:(fun name ->
-        Path.Build.relative dir (sprintf "lib%s%s" name ext_lib))
+    List.map (archive_names t) ~f:(fun archive_name ->
+        Foreign.lib_file ~archive_name ~dir ~ext_lib)
 
   let dll_files t ~dir ~ext_dll =
-    List.map (archive_names t) ~f:(fun name ->
-        Path.Build.relative dir (sprintf "dll%s%s" name ext_dll))
-
-  let stubs_path t ~dir = Path.Build.relative dir (default_archive_name t)
+    List.map (archive_names t) ~f:(fun archive_name ->
+        Foreign.dll_file ~archive_name ~dir ~ext_dll)
 
   let archive t ~dir ~ext =
     Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)

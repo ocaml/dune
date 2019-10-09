@@ -139,10 +139,11 @@ let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
 (* Add a rule calling [ocamlmklib] to build an OCaml library. *)
 let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
     ~custom ~targets =
-  ocamlmklib
-    ~path:(Path.build (Library.stubs_path lib ~dir))
-    ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags ~sctx ~dir
-    ~expander ~o_files ~sandbox ~custom ~targets
+  let path =
+    Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
+  in
+  ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
+    ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
 
 (* Build a static and a dynamic archive for a foreign library. *)
 let build_foreign_library (library : Foreign.Library.t) ~sctx ~expander ~dir
@@ -229,8 +230,9 @@ let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let static = Library.default_lib_file lib ~dir ~ext_lib in
-  let dynamic = Library.default_dll_file lib ~dir ~ext_dll in
+  let archive_name = Library.stubs_archive_name lib in
+  let static = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic = Foreign.dll_file ~archive_name ~dir ~ext_dll in
   let modes = Compilation_context.modes cctx in
   let ocamlmklib = ocamlmklib_ocaml lib ~sctx ~expander ~dir ~o_files in
   if

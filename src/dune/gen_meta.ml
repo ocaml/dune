@@ -142,7 +142,7 @@ let gen_lib pub_name lib ~version =
         ] )
     ]
 
-let gen ~package ~version entries =
+let gen ~package ~version ?(add_directory_entry = true) entries =
   let version =
     match version with
     | None -> []
@@ -155,10 +155,13 @@ let gen ~package ~version entries =
           let name = Lib.Local.info lib |> Lib_info.name in
           let pub_name = Pub_name.parse name in
           (pub_name, gen_lib pub_name (Lib.Local.to_lib lib) ~version)
-        | Deprecated_library_name d ->
-          ( Pub_name.parse (snd d.old_public_name.name)
-          , version @ [ requires (Lib_name.Set.singleton d.new_public_name) ]
-          ))
+        | Deprecated_library_name
+            { old_public_name = { public = old_public_name; _ }
+            ; new_public_name = _, new_public_name
+            ; _
+            } ->
+          ( Pub_name.parse (Dune_file.Public_lib.name old_public_name)
+          , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
   in
   let pkgs =
     List.map pkgs ~f:(fun (pn, meta) ->
@@ -179,7 +182,13 @@ let gen ~package ~version entries =
       |> String.Map.to_list
       |> List.map ~f:(fun (name, pkgs) ->
              let pkg = loop name pkgs in
-             Package { pkg with entries = directory name :: pkg.entries })
+             let pkg =
+               if add_directory_entry then
+                 { pkg with entries = directory name :: pkg.entries }
+               else
+                 pkg
+             in
+             Package pkg)
     in
     { name = Some (Lib_name.of_string_exn ~loc:None name)
     ; entries = entries @ subs

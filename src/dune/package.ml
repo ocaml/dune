@@ -246,6 +246,7 @@ type t =
   ; version : string option
   ; kind : Kind.t
   ; tags : string list
+  ; deprecated_package_names : Loc.t Name.Map.t
   }
 
 (* Package name are globally unique, so we can reasonably expect that there
@@ -263,7 +264,26 @@ let decode ~dir =
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
      and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
-     and+ tags = field "tags" (enter (repeat string)) ~default:[] in
+     and+ tags = field "tags" (enter (repeat string)) ~default:[]
+     and+ deprecated_package_names =
+       field ~default:[] "deprecated_package_names"
+         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+         >>> repeat (located Name.decode) )
+     in
+     let deprecated_package_names =
+       match
+         Name.Map.of_list_map deprecated_package_names ~f:(fun (loc, s) ->
+             (s, loc))
+       with
+       | Ok x -> x
+       | Error (name, (loc1, _), (loc2, _)) ->
+         User_error.raise
+           [ Pp.textf "Deprecated package name %s is declared twice:"
+               (Name.to_string name)
+           ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+           ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+           ]
+     in
      { name
      ; loc
      ; synopsis
@@ -275,6 +295,7 @@ let decode ~dir =
      ; version = None
      ; kind = Dune false
      ; tags
+     ; deprecated_package_names
      }
 
 let to_dyn
@@ -289,6 +310,7 @@ let to_dyn
     ; kind
     ; tags
     ; loc = _
+    ; deprecated_package_names
     } =
   let open Dyn.Encoder in
   record
@@ -302,6 +324,8 @@ let to_dyn
     ; ("kind", Kind.to_dyn kind)
     ; ("tags", list string tags)
     ; ("version", option string version)
+    ; ( "deprecated_package_names"
+      , Name.Map.to_dyn Loc.to_dyn deprecated_package_names )
     ]
 
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
@@ -309,3 +333,6 @@ let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
 let meta_file t = Path.Source.relative t.path (Name.meta_fn t.name)
 
 let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
+
+let deprecated_meta_file t name =
+  Path.Source.relative t.path (Name.meta_fn name)

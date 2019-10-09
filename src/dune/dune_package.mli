@@ -63,7 +63,9 @@ module Or_meta : sig
     | Dune_package of t
 
   val encode : dune_version:Dune_lang.Syntax.Version.t -> t -> Dune_lang.t list
-  val pp : dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
+
+  val pp :
+    dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
 
   val load : Dpath.t -> t
 

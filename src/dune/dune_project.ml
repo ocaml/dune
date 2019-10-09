@@ -725,6 +725,26 @@ let parse ~dir ~lang ~opam_packages ~file =
                    name
                ]
          | _, _ -> () );
+         let package_defined_twice name loc1 loc2 =
+           User_error.raise
+             [ Pp.textf "Package name %s is defined twice:"
+                 (Package.Name.to_string name)
+             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+             ]
+         in
+         let deprecated_package_names =
+           List.fold_left packages ~init:Package.Name.Map.empty
+             ~f:(fun acc { Package.deprecated_package_names; _ } ->
+               Package.Name.Map.union acc deprecated_package_names
+                 ~f:package_defined_twice)
+         in
+         List.iter packages ~f:(fun p ->
+             match
+               Package.Name.Map.find deprecated_package_names p.Package.name
+             with
+             | None -> ()
+             | Some loc -> package_defined_twice p.Package.name loc p.loc);
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> (p.name, p))
          with
@@ -870,6 +890,7 @@ let load ~dir ~files ~infer_from_opam_files =
                ; description = None
                ; kind = Opam
                ; tags = []
+               ; deprecated_package_names = Package.Name.Map.empty
                })
           in
           (name, (loc, pkg)) :: acc)

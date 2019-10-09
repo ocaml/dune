@@ -47,6 +47,7 @@ let package_fields
     ; kind = _
     ; tags
     ; loc = _
+    ; deprecated_package_names = _
     } ~project =
   let open Opam_file.Create in
   let tags =

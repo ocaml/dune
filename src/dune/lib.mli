@@ -146,7 +146,7 @@ module DB : sig
       | Not_found
       | Found of Lib_info.external_
       | Hidden of Lib_info.external_ * string
-      | Redirect of t option * Lib_name.t
+      | Redirect of t option * (Loc.t * Lib_name.t)
 
     val to_dyn : t Dyn.Encoder.t
   end

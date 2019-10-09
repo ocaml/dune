@@ -123,9 +123,6 @@
 
 - Drop support for `jbuild` and `jbuild-ignore` files (#2607, @diml)
 
-- Allow to mark directories as `data_only_dirs` and `vendored` directories
-  without including them as `dirs` (#2619, fix #2584, @rgrinberg)
-
 - Add a `dune-action-plugin` library for describing dependencies direcly in
   the executable source. Programs that use this feature can be run by a new
   action (dynamic-run <progn> ...). (#2635, @staronj, @aalekseyev)
@@ -148,6 +145,15 @@
 - Dune will use `-output-complete-exe` instead of `-custom` when compiling
   self-contained bytecode executables whenever this options is available
   (OCaml version >= 4.10) (#2692, @nojb)
+
+1.11.4 (09/10/2019)
+-------------------
+
+- Allow to mark directories as `data_only_dirs` without including them as `dirs`
+  (#2619, fix #2584, @rgrinberg)
+
+- Fix reading `.install` files generated with an external `--build-dir`. (#2638,
+  fix #2629, @rgrinberg)
 
 1.11.3 (23/08/2019)
 -------------------

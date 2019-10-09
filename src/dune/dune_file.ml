@@ -438,8 +438,6 @@ module Lint = struct
   let no_lint = default
 end
 
-let field_oslu name = Ordered_set_lang.Unexpanded.field name
-
 module Js_of_ocaml = struct
   type t =
     { flags : Ordered_set_lang.Unexpanded.t
@@ -448,7 +446,7 @@ module Js_of_ocaml = struct
 
   let decode =
     fields
-      (let+ flags = field_oslu "flags"
+      (let+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ javascript_files =
          field "javascript_files" (repeat string) ~default:[]
        in
@@ -852,8 +850,8 @@ module Library = struct
          field "ppx_runtime_libraries"
            (repeat (located Lib_name.decode))
            ~default:[]
-       and+ library_flags = field_oslu "library_flags"
-       and+ c_library_flags = field_oslu "c_library_flags"
+       and+ library_flags = Ordered_set_lang.Unexpanded.field "library_flags"
+       and+ c_library_flags = Ordered_set_lang.Unexpanded.field "c_library_flags"
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
@@ -1554,7 +1552,7 @@ module Executables = struct
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
-    and+ link_flags = field_oslu "link_flags"
+    and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
     and+ modes =
       field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
     and+ optional =
@@ -1930,7 +1928,7 @@ module Menhir = struct
   let decode =
     fields
       (let+ merge_into = field_o "merge_into" string
-       and+ flags = field_oslu "flags"
+       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ modules = field "modules" (repeat string)
        and+ mode = Rule.Mode.field
        and+ infer =
@@ -1989,7 +1987,7 @@ module Coq = struct
        and+ loc = loc
        and+ public = Public_lib.public_name_field
        and+ synopsis = field_o "synopsis" string
-       and+ flags = field_oslu "flags"
+       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
@@ -2075,7 +2073,7 @@ module Tests = struct
     fields
       (let+ buildable =
          Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
-       and+ link_flags = field_oslu "link_flags"
+       and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ variants = variants_field
        and+ names = names
        and+ package = field_o "package" Pkg.decode

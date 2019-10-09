@@ -70,10 +70,10 @@ module Language : sig
   with type language := t
 end
 
-(** A type of foreign library "stubs", which is almost like the [Library] type
-    but doesn't include the [archive_name] field. The type is parsed as an
-    optional [foreign_stubs] section of the [library] stanza, or as part of the
-    top-level [foreign_library] declaration. *)
+(** A type of foreign library "stubs", which includes all fields of the
+    [Library.t] type except for the [archive_name] field. The type is parsed as
+    an optional [foreign_stubs] field of the [library] stanza, or as part of
+    the top-level [foreign_library] stanza. *)
 module Stubs : sig
   type t =
     { loc : Loc.t
@@ -106,11 +106,7 @@ end
     [cxx] settings, but in future other languages/compilers could be supported,
     e.g. Rust and Clang.
 
-    [archive_name] is the name of the resulting [.a] archive file. This field
-    can be omitted in [foreign_stubs] in which case a valid name is generated
-    automatically. To support mixing different languages in the same foreign
-    library, we allow the same [archive_name] in different [foreign_library]
-    stanzas, as long as there are no conflicting object names.
+    [archive_name] determines the names of the resulting [.a] archive files.
 
     [names] are names of source files. The full paths to the files are
     determined by scanning package directories. Duplicate file names are

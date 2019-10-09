@@ -32,10 +32,13 @@ let dir =
 
 let () = Path.mkdir_p dir
 
+let () =
+  Path.Build.set_build_dir (Path.Build.Kind.of_string (Path.to_string dir))
+
 let make_file p =
-  let path = Path.of_string (Path.to_string dir ^ "/" ^ p) in
+  let path = Path.relative dir p in
   Io.write_file path p;
-  path
+  Path.Build.of_local (Path.Local.of_string p)
 
 let memory =
   match
@@ -75,16 +78,16 @@ let key = Digest.generic "dummy-hash"
 
 let%expect_test _ =
   let f p = print_endline (promotion_to_string p)
-  and stats = Unix.stat (Path.to_string file1) in
+  and stats = Unix.stat (Path.Build.to_string file1) in
   let open Result.O in
   match
     Dune_memory.Memory.promote memory
-      [ (file1, Digest.file_with_stats file1 stats) ]
+      [ (file1, Digest.file_with_stats (Path.build file1) stats) ]
       key metadata None
     >>= fun promotions ->
     List.iter ~f promotions;
     Dune_memory.Memory.promote memory
-      [ (file1, Digest.file_with_stats file1 stats) ]
+      [ (file1, Digest.file_with_stats (Path.build file1) stats) ]
       key metadata None
     >>= fun promotions ->
     List.iter ~f promotions;
@@ -97,18 +100,19 @@ let%expect_test _ =
       in
       if not (List.for_all2 ~f:Sexp.equal stored_metadata metadata) then
         failwith "Metadata mismatch"
-      else if Path.equal in_the_build_directory file1 then
-        if Io.compare_files file.in_the_memory file1 = Ordering.Eq then
+      else if Path.equal in_the_build_directory (Path.build file1) then
+        if Io.compare_files file.in_the_memory (Path.build file1) = Ordering.Eq
+        then
           ()
         else
           failwith "promoted file content does not match"
       else
         failwith
           (Format.asprintf "original file path does not match: %a != %a"
-             Path.pp in_the_build_directory Path.pp file1)
+             Path.pp in_the_build_directory Path.Build.pp file1)
     | _ -> failwith "wrong number of file found" );
     (* Check write permissions where removed *)
-    assert ((Unix.stat (Path.to_string file1)).st_perm land 0o222 = 0);
+    assert ((Unix.stat (Path.Build.to_string file1)).st_perm land 0o222 = 0);
     Path.rm_rf dir
   with
   | Result.Ok () ->

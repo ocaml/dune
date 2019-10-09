@@ -556,7 +556,7 @@ let compute_targets_digest_or_raise_error ~info targets =
     List.partition_map targets ~f:(fun target ->
         let fn = Path.build target in
         match Cached_digest.refresh fn with
-        | digest -> Left (fn, digest)
+        | digest -> Left (target, digest)
         | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
   match bad with

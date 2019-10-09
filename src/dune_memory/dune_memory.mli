@@ -31,7 +31,7 @@ module type memory = sig
 
   val promote :
        t
-    -> (Path.t * Digest.t) list
+    -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
     -> (string * string) option

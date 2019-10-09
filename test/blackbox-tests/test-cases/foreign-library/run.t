@@ -74,7 +74,7 @@ Testsuite for the (foreign_library ...) stanza.
 ----------------------------------------------------------------------------------
 * Multiple (foreign_library ...) declarations.
 * Passing flags via (flags ...) field.
-* Interaction with (foreign_stubs_archives ...) stanza.
+* Interaction with (foreign_archives ...) stanza.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -84,7 +84,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)
@@ -135,7 +135,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)
@@ -222,7 +222,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)
@@ -254,7 +254,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)
@@ -290,7 +290,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)
@@ -315,7 +315,7 @@ Testsuite for the (foreign_library ...) stanza.
   [1]
 
 ----------------------------------------------------------------------------------
-* Interaction of (foreign_stubs ...) and (foreign_stubs_archives ...).
+* Interaction of (foreign_stubs ...) and (foreign_archives ...).
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -326,7 +326,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_stubs (language c) (names month))
-  >  (foreign_stubs_archives addmul config))
+  >  (foreign_archives addmul config))
   > (executable
   >  (name main)
   >  (libraries calc)

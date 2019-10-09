@@ -38,7 +38,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_stubs_archives ...) stanza instead.
+  language. Use the (foreign_archives ...) stanza instead.
   File "dune", line 3, characters 10-13:
   3 |  (c_names foo)
                 ^^^
@@ -66,7 +66,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_stubs_archives ...) stanza instead.
+  language. Use the (foreign_archives ...) stanza instead.
   Error: No rule found for libbar_stubs$ext_lib
   [1]
 
@@ -99,7 +99,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Warning: 'self_build_stubs_archive' was deprecated in version 2.0 of the dune
-  language. Use the (foreign_stubs_archives ...) stanza instead.
+  language. Use the (foreign_archives ...) stanza instead.
 
 ----------------------------------------------------------------------------------
 * Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.
@@ -162,7 +162,7 @@ Testsuite for the (foreign_stubs ...) stanza.
   >  (name quad)
   >  (modules quad)
   >  (foreign_stubs (language c) (names foo))
-  >  (foreign_stubs_archives bar qux)
+  >  (foreign_archives bar qux)
   >  (foreign_stubs (language cxx) (names baz)))
   > (rule
   >  (targets bar%{ext_obj})

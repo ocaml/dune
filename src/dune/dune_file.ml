@@ -494,7 +494,7 @@ module Buildable = struct
       multi_field "foreign_stubs"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
     and+ foreign_archives =
-      field_o "foreign_stubs_archives"
+      field_o "foreign_archives"
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located string) )
     and+ c_flags =
@@ -514,8 +514,7 @@ module Buildable = struct
       located
         (field "self_build_stubs_archive"
            ( Dune_lang.Syntax.deprecated_in Stanza.syntax (2, 0)
-               ~extra_info:
-                 "Use the (foreign_stubs_archives ...) stanza instead."
+               ~extra_info:"Use the (foreign_archives ...) stanza instead."
            >>> option string )
            ~default:None)
     and+ modules_without_implementation =

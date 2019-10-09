@@ -1,3 +1,5 @@
+(data_only_dirs test-cases)
+
 (alias
  (name runtest)
  (package dune-configurator)

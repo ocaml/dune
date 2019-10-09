@@ -14,6 +14,7 @@ just quietly shadow the module in the virtual library.
   > (library
   >  (name vlib1855)
   >  (virtual_modules dom))
+  > EOF
   $ cat > impl/dune <<EOF
   > (library
   >  (name impl1855)

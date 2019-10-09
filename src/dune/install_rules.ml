@@ -170,7 +170,7 @@ end = struct
                let dune_package_file =
                  Package_paths.dune_package_file ctx pkg
                in
-               (None, Install.Entry.make Lib meta_file ~dst:"META")
+               (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
                :: ( None
                   , Install.Entry.make Lib dune_package_file
                       ~dst:"dune-package" )

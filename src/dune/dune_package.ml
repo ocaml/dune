@@ -4,6 +4,8 @@ module Vfile = Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 
+let fn = "dune-package"
+
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t

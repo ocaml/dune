@@ -113,6 +113,7 @@
                "run" "chdir" "setenv"
                "with-stdout-to" "with-stderr-to" "with-outputs-to"
                "ignore-stdout" "ignore-stderr" "ignore-outputs"
+               "with-stdin-from" "with-exit-codes"
                "progn" "echo" "write-file" "cat" "copy" "copy#" "system"
                "bash" "diff" "diff?" "cmp"
                ;; FIXME: "flags" is already a field and we do not have enough

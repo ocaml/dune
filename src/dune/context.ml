@@ -139,7 +139,7 @@ let opam_config_var ~env ~cache var =
     match Lazy.force opam with
     | None -> Fiber.return None
     | Some fn -> (
-      Process.run_capture (Accept All) fn ~env [ "config"; "var"; var ]
+      Process.run_capture (Accept Predicate_lang.Ast.any) fn ~env [ "config"; "var"; var ]
       >>| function
       | Ok s ->
         let s = String.trim s in

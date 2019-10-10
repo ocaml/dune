@@ -118,7 +118,8 @@ let auto_concurrency =
               | None -> loop rest
               | Some prog -> (
                 let* result =
-                  Process.run_capture (Accept All) prog args ~env:Env.initial
+                  Process.run_capture (Accept Predicate_lang.Ast.any) prog args
+                    ~env:Env.initial
                     ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
                 in
                 match result with

@@ -804,10 +804,10 @@ field. The following modes are available:
     from the source tree.
   - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
     the current directory. This feature is available since Dune 1.8.
-  - ``(only <predicate>)`` means that only a subset of the targets
-    should be promoted. The argument is a predicate in a syntax
-    similar to the argument of :ref:`(dirs ...) <dune-subdirs>`. This
-    feature is available since dune 1.10.
+  - ``(only <predicate>)`` means that only a subset of the targets should be
+    promoted. The argument is similar to the argument of :ref:`(dirs ...)
+    <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature is
+    available since dune 1.10.
 
 - ``promote-until-clean`` is the same as ``(promote (until-clean))``
 - ``(promote-into <dir>)`` is the same as ``(promote (into <dir>))``
@@ -1275,7 +1275,7 @@ dirs (since 1.6)
 -------------------
 
 The ``dirs`` stanza allows to tell specify the sub-directories dune will
-include in a build. The syntax is based on dune's predicate language and allows
+include in a build. The syntax is based on dune's :ref:`predicate-lang` and allows
 the user the following operations:
 
 - The special value ``:standard`` which refers to the default set of used

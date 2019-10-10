@@ -38,6 +38,7 @@ let simplify act =
   let rec loop (act : Action.For_shell.t) acc =
     match act with
     | Run (prog, args) -> Run (prog, args) :: acc
+    | With_exit_codes (_, t) -> loop t acc (* FIXME *)
     | Dynamic_run (prog, args) -> Run (prog, args) :: acc
     | Chdir (p, act) -> loop act (Chdir p :: mkdir p :: acc)
     | Setenv (k, v, act) -> loop act (Setenv (k, v) :: acc)

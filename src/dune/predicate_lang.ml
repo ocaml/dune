@@ -22,64 +22,77 @@ module Ast = struct
 
   let not_union a = compl (union a)
 
-  let decode elt =
+  let any = not_union []
+
+  let rec decode_one f =
     let open Dune_lang.Decoder in
+    let bool_ops () =
+      sum
+        [ ("or", many f union [])
+        ; ("and", many f inter [])
+        ; ("not", many f not_union [])
+        ]
+    in
     let elt =
-      let+ e = elt in
+      let+ e = f in
       Element e
     in
-    let rec one () =
-      peek_exn
-      >>= function
-      | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
-      | Atom (_, A "")
-      | Quoted_string (_, _)
-      | Template _ ->
-        elt
-      | Atom (loc, A s) -> (
-        match s with
-        | ":standard" -> junk >>> return Standard
-        | ":include" ->
-          User_error.raise ~loc
-            [ Pp.text ":include isn't supported in the predicate language" ]
-        | _ when s.[0] = ':' ->
-          User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
-        | _ -> elt )
-      | List (_, Atom (loc, A s) :: _) -> (
-        match s with
-        | ":include" ->
-          User_error.raise ~loc
-            [ Pp.text ":include isn't supported in the predicate language" ]
-        | "or"
-        | "and"
-        | "not" ->
-          bool_ops ()
-        | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
-          User_error.raise ~loc
-            [ Pp.text
-                "This atom must be quoted because it is the first element of \
-                 a list and doesn't start with - or:"
-            ]
-        | _ -> enter (many union []) )
-      | List _ -> enter (many union [])
-    and bool_ops () =
-      sum
-        [ ("or", many union [])
-        ; ("and", many inter [])
-        ; ("not", many not_union [])
-        ]
-    and many k acc =
-      peek
-      >>= function
-      | None -> return (k (List.rev acc))
-      | Some (Atom (_, A "\\")) ->
-        junk >>> many union []
-        >>| fun to_remove -> diff (k (List.rev acc)) to_remove
-      | Some _ ->
-        let* x = one () in
-        many k (x :: acc)
-    in
-    many union []
+    peek_exn
+    >>= function
+    | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
+    | Atom (_, A "")
+    | Quoted_string (_, _)
+    | Template _ ->
+      elt
+    | Atom (loc, A s) -> (
+      match s with
+      | ":standard" -> junk >>> return Standard
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | _ when s.[0] = ':' ->
+        User_error.raise ~loc [ Pp.textf "undefined symbol %s" s ]
+      | _ -> elt )
+    | List (_, Atom (loc, A s) :: _) -> (
+      match s with
+      | ":include" ->
+        User_error.raise ~loc
+          [ Pp.text ":include isn't supported in the predicate language" ]
+      | "or"
+      | "and"
+      | "not" ->
+        bool_ops ()
+      | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
+        User_error.raise ~loc
+          [ Pp.text
+              "This atom must be quoted because it is the first element of a \
+               list and doesn't start with - or:"
+          ]
+      | _ -> enter (many f union []) )
+    | List _ -> enter (many f union [])
+
+  and many f k acc =
+    let open Dune_lang.Decoder in
+    peek
+    >>= function
+    | None -> return (k (List.rev acc))
+    | Some (Atom (_, A "\\")) ->
+      junk >>> many f union []
+      >>| fun to_remove -> diff (k (List.rev acc)) to_remove
+    | Some _ ->
+      let* x = decode_one f in
+      many f k (x :: acc)
+
+  and decode f = many f union []
+
+  let rec encode f =
+    let open Dune_lang.Encoder in
+    function
+    | Element a -> f a
+    | Compl a -> constr "not" (encode f) a
+    | Standard -> string ":standard"
+    | Union xs -> constr "or" (list (encode f)) xs
+    | Inter xs -> constr "and" (list (encode f)) xs
 
   let rec to_dyn f =
     let open Dyn.Encoder in
@@ -89,6 +102,14 @@ module Ast = struct
     | Standard -> string ":standard"
     | Union xs -> constr "or" (List.map ~f:(to_dyn f) xs)
     | Inter xs -> constr "and" (List.map ~f:(to_dyn f) xs)
+
+  let rec exec t ~standard elem =
+    match (t : _ t) with
+    | Compl t -> not (exec t ~standard elem)
+    | Element f -> elem f
+    | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
+    | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
+    | Standard -> exec standard ~standard elem
 end
 
 type t = (string -> bool) Ast.t
@@ -101,13 +122,7 @@ let decode : t Dune_lang.Decoder.t =
 
 let empty = Ast.Union []
 
-let rec exec t ~standard elem =
-  match (t : _ Ast.t) with
-  | Compl t -> not (exec t ~standard elem)
-  | Element f -> f elem
-  | Union xs -> List.exists ~f:(fun t -> exec t ~standard elem) xs
-  | Inter xs -> List.for_all ~f:(fun t -> exec t ~standard elem) xs
-  | Standard -> exec standard ~standard elem
+let exec (t : t) ~standard elem = Ast.exec t ~standard (fun f -> f elem)
 
 let filter (t : t) ~standard elems =
   match t with

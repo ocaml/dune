@@ -146,6 +146,10 @@
   self-contained bytecode executables whenever this options is available
   (OCaml version >= 4.10) (#2692, @nojb)
 
+- Add action `(with-exit-codes <pred> <action>)` to specify the set of
+  successful exit codes of `<action>`. `<pred>` is specified using the predicate
+  language. (#2699, @nojb)
+
 1.11.4 (09/10/2019)
 -------------------
 

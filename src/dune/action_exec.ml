@@ -82,6 +82,7 @@ type exec_environment =
   ; stderr_to : Process.Io.output Process.Io.t
   ; stdin_from : Process.Io.input Process.Io.t
   ; prepared_dependencies : DAP.Dependency.Set.t
+  ; exit_codes : int Predicate_lang.Ast.t
   }
 
 let validate_context_and_prog context prog =
@@ -107,9 +108,10 @@ let validate_context_and_prog context prog =
 
 let exec_run ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
-  Process.run Strict ~dir:eenv.working_dir ~env:eenv.env
+  Process.run (Accept eenv.exit_codes) ~dir:eenv.working_dir ~env:eenv.env
     ~stdout_to:eenv.stdout_to ~stderr_to:eenv.stderr_to
     ~stdin_from:eenv.stdin_from ~purpose:ectx.purpose prog args
+  |> Fiber.map ~f:ignore
 
 let exec_run_dynamic_client ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;
@@ -183,6 +185,9 @@ let rec exec t ~ectx ~eenv =
   | Run (Ok prog, args) ->
     let+ () = exec_run ~ectx ~eenv prog args in
     Done
+  | With_exit_codes (exit_codes, t) ->
+    let eenv = { eenv with exit_codes } in
+    exec t ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
   | Dynamic_run (Ok prog, args) ->
     exec_run_dynamic_client ~ectx ~eenv prog args
@@ -416,6 +421,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.stdin
     ; prepared_dependencies = DAP.Dependency.Set.empty
+    ; exit_codes = Predicate_lang.Ast.Element 0
     }
   in
   exec_until_all_deps_ready t ~ectx ~eenv

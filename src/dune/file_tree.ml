@@ -27,6 +27,8 @@ module File = struct
 
     let to_dyn _ = Dyn.opaque
   end)
+
+  let of_source_path p = of_stats (Path.stat (Path.source p))
 end
 
 module Dune_file = struct
@@ -262,6 +264,30 @@ module rec Memoized : sig
 
   val find_dir : Path.Source.t -> Dir0.t option
 end = struct
+
+  module Output = struct
+    type t =
+      { dir : Dir0.t
+      ; visited : Path.Source.t File.Map.t
+      }
+
+    let root dir =
+      let visited =
+        let path = Dir0.path dir in
+        File.Map.singleton (File.of_source_path path) path
+      in
+      { dir
+      ; visited
+      }
+
+    let to_dyn { dir ; visited } =
+      let open Dyn.Encoder in
+      record
+        [ "dir", Dir0.to_dyn dir
+        ; "visited", File.Map.to_dyn Path.Source.to_dyn visited
+        ]
+  end
+
   (* This function will read the contents of sub directories. This is because
      we want to exclude directory names that are unreadable from being
      processed by callers *)
@@ -353,12 +379,14 @@ end = struct
       in
       let vcs = settings.ancestor_vcs in
       let contents = contents readdir ~project ~path ~dir_status in
-      Dir0.create ~project ~path ~status:dir_status ~contents ~vcs
+      let dir =
+        Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+      Output.root dir
     in
     let memo =
       Memo.create "file-tree-root" ~doc:"file tree root"
         ~input:(module Unit)
-        ~output:(Simple (module Dir0))
+        ~output:(Simple (module Output))
         ~visibility:Memo.Visibility.Hidden Sync f
     in
     Memo.exec memo
@@ -376,57 +404,60 @@ end = struct
 
   let make_subdir =
     let module Input = struct
-      type t = Dir0.t * Sub_dirs.Status.t * Readdir.t * string
+      type t = Output.t * Sub_dirs.Status.t * Readdir.t * string
 
-      let hash ((dir : Dir0.t), _, _, s) =
-        Tuple.T2.hash Path.Source.hash String.hash (dir.path, s)
+      let hash : t -> int =
+        fun ((dir : Output.t), _, _, s) ->
+        Tuple.T2.hash Path.Source.hash String.hash (dir.dir.path, s)
 
       let to_dyn (dir, status, readdir, name) =
         let open Dyn.Encoder in
         record
-          [ ("dir", Dir0.to_dyn dir)
+          [ ("dir", Output.to_dyn dir)
           ; ("status", Sub_dirs.Status.to_dyn status)
           ; ("readdir", Readdir.to_dyn readdir)
           ; ("name", String.to_dyn name)
           ]
 
       let equal ((d1, _, _, n1) : t) ((d2, _, _, n2) : t) =
-        Path.Source.equal d1.path d2.path && String.equal n1 n2
+        Path.Source.equal d1.dir.path d2.dir.path && String.equal n1 n2
     end in
     let f
-        ( (parent : Dir0.t)
+        ( (parent : Output.t)
         , (dir_status : Sub_dirs.Status.t)
         , (readdir : Readdir.t)
         , name ) =
-      let path = Path.Source.relative parent.path name in
+      let path = Path.Source.relative parent.dir.path name in
       let settings = Settings.get () in
       let project =
         if dir_status = Data_only then
-          parent.project
+          parent.dir.project
         else
           Option.value
             (Dune_project.load ~dir:path ~files:readdir.files
                ~infer_from_opam_files:settings.recognize_jbuilder_projects)
-            ~default:parent.project
+            ~default:parent.dir.project
       in
-      let vcs = get_vcs ~default:parent.vcs ~readdir ~path in
+      let vcs = get_vcs ~default:parent.dir.vcs ~readdir ~path in
       let contents = contents readdir ~project ~path ~dir_status in
-      Dir0.create ~project ~path ~status:dir_status ~contents ~vcs
+      let dir =
+        Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+      Output.root dir
     in
     let memo =
       Memo.create "make_subdir" ~doc:"make_subdir"
         ~input:(module Input)
-        ~output:(Simple (module Dir0))
+        ~output:(Simple (module Output))
         ~visibility:Memo.Visibility.Hidden Sync f
     in
     fun parent (dir_status, readdir) name ->
       Memo.exec memo (parent, dir_status, readdir, name)
 
-  let rec find_dir t = function
+  let rec find_dir (t : Output.t) = function
     | [] -> Some t
     | comp :: components ->
       let open Option.O in
-      let* subdir = String.Map.find (Dir0.sub_dirs t) comp in
+      let* subdir = String.Map.find (Dir0.sub_dirs t.dir) comp in
       let subdir = make_subdir t subdir comp in
       find_dir subdir components
 
@@ -434,6 +465,12 @@ end = struct
     let t = root () in
     let components = Path.Source.explode path in
     find_dir t components
+
+  let root () = (root ()).dir
+  let find_dir p =
+    let open Option.O in
+    let+ output = find_dir p in
+    output.dir
 end
 
 let root () = Memoized.root ()

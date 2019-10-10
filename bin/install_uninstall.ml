@@ -54,10 +54,13 @@ module Special_file = struct
   let of_entry (e : _ Install.Entry.t) =
     match e.section with
     | Lib -> (
-      match Install.Dst.to_string e.dst with
-      | "META" -> Some META
-      | "dune-package" -> Some Dune_package
-      | _ -> None )
+        let dst = Install.Dst.to_string e.dst in
+        if dst = Findlib.meta_fn then
+          Some META
+        else if dst = Dune_package.fn then
+          Some Dune_package
+        else
+          None)
     | _ -> None
 end
 

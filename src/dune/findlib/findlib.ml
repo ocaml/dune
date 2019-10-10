@@ -4,6 +4,8 @@ module Opam_package = Package
 module P = Variant
 module Ps = Variant.Set
 
+let meta_fn = "META"
+
 (* An assignment or addition *)
 module Rule = struct
   type t =
@@ -344,7 +346,7 @@ let dummy_package t ~name =
       Lib_name.package_name name |> Opam_package.Name.to_string
       |> Path.relative dir
   in
-  { Package.meta_file = Path.relative dir "META"
+  { Package.meta_file = Path.relative dir meta_fn
   ; name
   ; dir
   ; vars = String.Map.empty
@@ -380,14 +382,14 @@ end = struct
     { dir = db.stdlib_dir; meta_file = Path.of_string "<internal>"; meta }
 
   let discover ~dir ~name =
-    let meta_file = Path.relative dir "META" in
+    let meta_file = Path.relative dir meta_fn in
     if Path.exists meta_file then
       Some (create ~dir ~meta_file ~name)
     else
       (* Alternative layout *)
       let open Option.O in
       let* dir = Path.parent dir in
-      let meta_file = Path.relative dir ("META." ^ Lib_name.to_string name) in
+      let meta_file = Path.relative dir (meta_fn ^ "." ^ Lib_name.to_string name) in
       if Path.exists meta_file then
         Some (create ~dir ~meta_file ~name)
       else
@@ -456,7 +458,7 @@ let find_and_acknowledge_package t ~fq_name =
                Discovered_package.Findlib (Meta_source.internal t ~meta)) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
-      let dune = Path.relative dir "dune-package" in
+      let dune = Path.relative dir Dune_package.fn in
       match
         if Path.exists dune then
           Dune_package.Or_meta.load dune
@@ -505,7 +507,7 @@ let root_packages t =
             ]
         | Ok listing ->
           List.filter_map listing ~f:(fun name ->
-              if Path.exists (Path.relative dir (name ^ "/META")) then
+              if Path.exists (Path.relative dir (name ^ "/" ^ meta_fn)) then
                 Some (Lib_name.of_string_exn ~loc:None name)
               else
                 None))

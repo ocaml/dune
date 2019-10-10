@@ -6,6 +6,8 @@ open Import
 (** Findlib database *)
 type t
 
+val meta_fn : string
+
 val create :
   stdlib_dir:Path.t -> paths:Path.t list -> version:Ocaml_version.t -> t
 

@@ -16,8 +16,6 @@ let linker_script_filename s = s ^ ".linker-script"
 
 let linker_script_hot_filename s = s ^ ".linker-script-hot"
 
-let perf_data_filename s = s ^ ".perf.data"
-
 let phase_flags = function
   | None -> []
   | Some All -> [ "-g"; "-function-sections" ]

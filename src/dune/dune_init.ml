@@ -434,11 +434,16 @@ module Component = struct
         ({ context; common; options } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
       let dir = Path.relative context.dir common.name in
-      let name = common.name in
+      let name = Package.Name.parse_string_exn (Loc.none, common.name) in
       let proj_target =
         let files =
           match (pkg : Options.Project.Pkg.t) with
-          | Opam -> [ File.make_text dir (name ^ ".opam") "" ]
+          | Opam ->
+            let opam_file = Package.file ~dir ~name in
+            [ File.make_text
+                (Path.parent_exn opam_file)
+                (Path.basename opam_file) ""
+            ]
           | Esy -> [ File.make_text dir "package.json" "" ]
         in
         { dir; files }

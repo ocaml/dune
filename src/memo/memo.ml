@@ -531,6 +531,26 @@ let create_hidden (type output) name ~doc ~input typ impl =
     ~output:(Simple (module O))
     ~visibility:Hidden name ~doc ~input typ impl
 
+module Exec = struct
+  let make_dep_node t ~state ~input =
+    let dep_node : _ Dep_node.t =
+      { id = Id.gen ()
+      ; input
+      ; spec = t.spec
+      ; dag_node = lazy (assert false)
+      ; state
+      }
+    in
+    let dag_node : Dag.node =
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node.T dep_node
+      }
+    in
+    add_rev_dep dag_node;
+    dep_node.dag_node <- lazy dag_node;
+    dep_node
+end
+
 module Exec_sync = struct
   let compute run inp dep_node =
     (* define the function to update / double check intermediate result *)
@@ -591,22 +611,10 @@ module Exec_sync = struct
     match Table.find t.cache inp with
     | None ->
       let run = Run.current () in
-      let dep_node : _ Dep_node.t =
-        { id = Id.gen ()
-        ; input = inp
-        ; spec = t.spec
-        ; dag_node = lazy (assert false)
-        ; state = Running_sync run
-        }
+      let dep_node =
+        Exec.make_dep_node t ~input:inp ~state:(Running_sync run)
       in
-      let dag_node : Dag.node =
-        { info = Dag.create_node_info global_dep_dag
-        ; data = Dep_node.T dep_node
-        }
-      in
-      dep_node.dag_node <- lazy dag_node;
       Table.set t.cache inp dep_node;
-      add_rev_dep dag_node;
       compute run inp dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
@@ -664,22 +672,11 @@ module Exec_async = struct
     match Table.find t.cache inp with
     | None ->
       let ivar = Fiber.Ivar.create () in
-      let dep_node : _ Dep_node.t =
-        { id = Id.gen ()
-        ; input = inp
-        ; spec = t.spec
-        ; dag_node = lazy (assert false)
-        ; state = Running_async (Run.current (), ivar)
-        }
+      let dep_node =
+        Exec.make_dep_node t ~input:inp
+          ~state:(Running_async (Run.current (), ivar))
       in
-      let dag_node : Dag.node =
-        { info = Dag.create_node_info global_dep_dag
-        ; data = Dep_node.T dep_node
-        }
-      in
-      dep_node.dag_node <- lazy dag_node;
       Table.set t.cache inp dep_node;
-      add_rev_dep dag_node;
       compute inp ivar dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);

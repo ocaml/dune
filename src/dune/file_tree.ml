@@ -264,39 +264,25 @@ module rec Memoized : sig
 
   val find_dir : Path.Source.t -> Dir0.t option
 end = struct
-
   module Output = struct
-    type t =
-      { dir : Dir0.t
-      ; visited : Path.Source.t File.Map.t
-      }
+    type t = Dir0.t * Path.Source.t File.Map.t
 
-    let root dir =
-      let visited =
-        let path = Dir0.path dir in
-        File.Map.singleton (File.of_source_path path) path
-      in
-      { dir
-      ; visited
-      }
-
-    let to_dyn { dir ; visited } =
+    let to_dyn (t : t) =
       let open Dyn.Encoder in
-      record
-        [ "dir", Dir0.to_dyn dir
-        ; "visited", File.Map.to_dyn Path.Source.to_dyn visited
-        ]
+      pair Dir0.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
   end
 
   (* This function will read the contents of sub directories. This is because
      we want to exclude directory names that are unreadable from being
      processed by callers *)
-  let get_sub_dirs ~dirs ~sub_dirs ~(dir_status : Sub_dirs.Status.t) =
+  let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
+      ~(dir_status : Sub_dirs.Status.t) =
     let sub_dirs =
       Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
     in
     dirs
-    |> List.fold_left ~init:String.Map.empty ~f:(fun acc (fn, path, _file) ->
+    |> List.fold_left ~init:(dirs_visited, String.Map.empty)
+         ~f:(fun (dirs_visited, subdirs) (fn, path, file) ->
            let status =
              if Bootstrap.data_only_path path then
                Sub_dirs.Status.Or_ignored.Ignored
@@ -304,7 +290,7 @@ end = struct
                Sub_dirs.status sub_dirs ~dir:fn
            in
            match status with
-           | Ignored -> acc
+           | Ignored -> (dirs_visited, subdirs)
            | Status status ->
              let dir_status : Sub_dirs.Status.t =
                match (dir_status, status) with
@@ -312,11 +298,29 @@ end = struct
                | Vendored, Normal -> Vendored
                | _, _ -> status
              in
-             match Readdir.of_source_path path with
-             | Ok dir -> String.Map.set acc fn (dir_status, dir)
-             | Error _ -> acc ))
+             let dirs_visited =
+               if Sys.win32 then
+                 dirs_visited
+               else
+                 File.Map.update dirs_visited file ~f:(function
+                   | None -> Some path
+                   | Some first_path ->
+                     User_error.raise
+                       [ Pp.textf
+                           "Path %s has already been scanned. Cannot scan it \
+                            again through symlink %s"
+                           (Path.Source.to_string_maybe_quoted first_path)
+                           (Path.Source.to_string_maybe_quoted path)
+                       ])
+             in
+             let subdirs =
+               match Readdir.of_source_path path with
+               | Ok dir -> String.Map.set subdirs fn (dir_status, dir)
+               | Error _ -> subdirs
+             in
+             (dirs_visited, subdirs))
 
-  let contents { Readdir.dirs; files } ~project ~path
+  let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
     let recognize_jbuilder_projects =
       let settings = Settings.get () in
@@ -351,8 +355,10 @@ end = struct
         (Some dune_file, sub_dirs)
       )
     in
-    let sub_dirs = get_sub_dirs ~dirs ~sub_dirs ~dir_status in
-    Dir0.Contents.create ~files ~sub_dirs ~dune_file
+    let dirs_visited, sub_dirs =
+      get_sub_dirs ~dirs_visited ~dirs ~sub_dirs ~dir_status
+    in
+    (Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited)
 
   let root =
     let f () =
@@ -378,10 +384,12 @@ end = struct
         | Some p -> p
       in
       let vcs = settings.ancestor_vcs in
-      let contents = contents readdir ~project ~path ~dir_status in
-      let dir =
-        Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      Output.root dir
+      let dirs_visited = File.Map.singleton (File.of_source_path path) path in
+      let contents, visited =
+        contents readdir ~dirs_visited ~project ~path ~dir_status
+      in
+      let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+      (dir, visited)
     in
     let memo =
       Memo.create "file-tree-root" ~doc:"file tree root"
@@ -407,8 +415,8 @@ end = struct
       type t = Output.t * Sub_dirs.Status.t * Readdir.t * string
 
       let hash : t -> int =
-        fun ((dir : Output.t), _, _, s) ->
-        Tuple.T2.hash Path.Source.hash String.hash (dir.dir.path, s)
+       fun ((dir, _), _, _, s) ->
+        Tuple.T2.hash Path.Source.hash String.hash (dir.path, s)
 
       let to_dyn (dir, status, readdir, name) =
         let open Dyn.Encoder in
@@ -419,30 +427,31 @@ end = struct
           ; ("name", String.to_dyn name)
           ]
 
-      let equal ((d1, _, _, n1) : t) ((d2, _, _, n2) : t) =
-        Path.Source.equal d1.dir.path d2.dir.path && String.equal n1 n2
+      let equal (((d1, _), _, _, n1) : t) (((d2, _), _, _, n2) : t) =
+        Path.Source.equal d1.path d2.path && String.equal n1 n2
     end in
     let f
-        ( (parent : Output.t)
+        ( ((parent_dir, dirs_visited) : Output.t)
         , (dir_status : Sub_dirs.Status.t)
         , (readdir : Readdir.t)
         , name ) =
-      let path = Path.Source.relative parent.dir.path name in
+      let path = Path.Source.relative parent_dir.path name in
       let settings = Settings.get () in
       let project =
         if dir_status = Data_only then
-          parent.dir.project
+          parent_dir.project
         else
           Option.value
             (Dune_project.load ~dir:path ~files:readdir.files
                ~infer_from_opam_files:settings.recognize_jbuilder_projects)
-            ~default:parent.dir.project
+            ~default:parent_dir.project
       in
-      let vcs = get_vcs ~default:parent.dir.vcs ~readdir ~path in
-      let contents = contents readdir ~project ~path ~dir_status in
-      let dir =
-        Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      Output.root dir
+      let vcs = get_vcs ~default:parent_dir.vcs ~readdir ~path in
+      let contents, visited =
+        contents readdir ~dirs_visited ~project ~path ~dir_status
+      in
+      let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+      (dir, visited)
     in
     let memo =
       Memo.create "make_subdir" ~doc:"make_subdir"
@@ -457,7 +466,8 @@ end = struct
     | [] -> Some t
     | comp :: components ->
       let open Option.O in
-      let* subdir = String.Map.find (Dir0.sub_dirs t.dir) comp in
+      let parent_dir, _ = t in
+      let* subdir = String.Map.find (Dir0.sub_dirs parent_dir) comp in
       let subdir = make_subdir t subdir comp in
       find_dir subdir components
 
@@ -466,11 +476,14 @@ end = struct
     let components = Path.Source.explode path in
     find_dir t components
 
-  let root () = (root ()).dir
+  let root () =
+    let dir, _visited = root () in
+    dir
+
   let find_dir p =
     let open Option.O in
-    let+ output = find_dir p in
-    output.dir
+    let+ dir, _ = find_dir p in
+    dir
 end
 
 let root () = Memoized.root ()

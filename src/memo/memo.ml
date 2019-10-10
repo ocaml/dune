@@ -532,13 +532,13 @@ let create_hidden (type output) name ~doc ~input typ impl =
     ~visibility:Hidden name ~doc ~input typ impl
 
 module Exec_sync = struct
-  let compute t run inp dep_node =
+  let compute run inp dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res =
       match
         Call_stack.push_sync_frame (T dep_node) (fun () ->
-            match t.spec.f with
+            match dep_node.spec.f with
             | Function.Sync f ->
               (* If [f] raises an exception, [push_sync_frame] re-raises it
                  twice, so you'd end up with ugly "re-raised by" stack frames.
@@ -582,10 +582,10 @@ module Exec_sync = struct
     dep_node.state <- Done (Cached_value.create res ~deps);
     res
 
-  let recompute t inp (dep_node : _ Dep_node.t) =
+  let recompute inp (dep_node : _ Dep_node.t) =
     let run = Run.current () in
     dep_node.state <- Running_sync run;
-    compute t run inp dep_node
+    compute run inp dep_node
 
   let exec t inp =
     match Table.find t.cache inp with
@@ -607,7 +607,7 @@ module Exec_sync = struct
       dep_node.dag_node <- lazy dag_node;
       Table.set t.cache inp dep_node;
       add_rev_dep dag_node;
-      compute t run inp dep_node
+      compute run inp dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
@@ -615,7 +615,7 @@ module Exec_sync = struct
         if Run.is_current run then
           Nothing.unreachable_code (!on_already_reported exn)
         else
-          recompute t inp dep_node
+          recompute inp dep_node
       | Running_async _ -> assert false
       | Running_sync run ->
         if Run.is_current run then
@@ -626,21 +626,21 @@ module Exec_sync = struct
             ; ("adding", Stack_frame.to_dyn (T dep_node))
             ]
         else
-          recompute t inp dep_node
+          recompute inp dep_node
       | Done cv -> (
         Cached_value.get_sync cv
         |> function
         | Some v -> v
-        | None -> recompute t inp dep_node ) )
+        | None -> recompute inp dep_node ) )
 end
 
 module Exec_async = struct
-  let compute t inp ivar dep_node =
+  let compute inp ivar dep_node =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let* res =
       Call_stack.push_async_frame (T dep_node) (fun () ->
-          match t.spec.f with
+          match dep_node.spec.f with
           | Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
@@ -654,11 +654,11 @@ module Exec_async = struct
     res
 
   (* the computation that force computes the fiber *)
-  let recompute t inp (dep_node : _ Dep_node.t) =
+  let recompute inp (dep_node : _ Dep_node.t) =
     (* create an ivar so other threads can wait for the computation to finish *)
     let ivar : 'b Fiber.Ivar.t = Fiber.Ivar.create () in
     dep_node.state <- Running_async (Run.current (), ivar);
-    compute t inp ivar dep_node
+    compute inp ivar dep_node
 
   let exec t inp =
     match Table.find t.cache inp with
@@ -680,7 +680,7 @@ module Exec_async = struct
       dep_node.dag_node <- lazy dag_node;
       Table.set t.cache inp dep_node;
       add_rev_dep dag_node;
-      compute t inp ivar dep_node
+      compute inp ivar dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
@@ -688,18 +688,18 @@ module Exec_async = struct
         if Run.is_current run then
           already_reported exn
         else
-          recompute t inp dep_node
+          recompute inp dep_node
       | Running_sync _ -> assert false
       | Running_async (run, fut) ->
         if Run.is_current run then
           Fiber.Ivar.read fut
         else
-          recompute t inp dep_node
+          recompute inp dep_node
       | Done cv -> (
         Cached_value.get_async cv
         >>= function
         | Some v -> Fiber.return v
-        | None -> recompute t inp dep_node ) )
+        | None -> recompute inp dep_node ) )
 end
 
 let exec (type i o f) (t : (i, o, f) t) =

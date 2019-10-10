@@ -128,7 +128,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
       (ctx.build_dir, As [])
   in
   let flags =
-    let flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind in
+    let flags = Ocaml_flags.get (CC.flags cctx) mode in
     match Module.pp_flags m with
     | None -> flags
     | Some pp ->
@@ -204,7 +204,7 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
       List.concat_map deps ~f:(fun m ->
           [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
   in
-  let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
+  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
     (Build.action_dyn ~targets:[ output ]

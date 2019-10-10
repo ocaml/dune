@@ -29,8 +29,6 @@ val of_list : string list -> t
 
 val get : t -> Mode.t -> string list Build.t
 
-val get_for_cm : t -> cm_kind:Cm_kind.t -> string list Build.t
-
 val append_common : t -> string list -> t
 
 val prepend_common : string list -> t -> t

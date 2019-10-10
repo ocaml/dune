@@ -173,7 +173,7 @@ end = struct
                (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
                :: ( None
                   , Install.Entry.make Lib dune_package_file
-                      ~dst:Dune_package.fn)
+                      ~dst:Dune_package.fn )
                ::
                ( match pkg.kind with
                | Dune false -> []

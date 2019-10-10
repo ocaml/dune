@@ -389,7 +389,9 @@ end = struct
       (* Alternative layout *)
       let open Option.O in
       let* dir = Path.parent dir in
-      let meta_file = Path.relative dir (meta_fn ^ "." ^ Lib_name.to_string name) in
+      let meta_file =
+        Path.relative dir (meta_fn ^ "." ^ Lib_name.to_string name)
+      in
       if Path.exists meta_file then
         Some (create ~dir ~meta_file ~name)
       else

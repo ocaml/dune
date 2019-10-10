@@ -71,6 +71,10 @@ val init :
 
 val root : unit -> Dir.t
 
+(** Traverse starting from the root and report progress in the status line *)
+val fold_with_progress :
+  traverse:Sub_dirs.Status.Set.t -> init:'a -> f:(Dir.t -> 'a -> 'a) -> 'a
+
 val find_dir : Path.Source.t -> Dir.t option
 
 (** [nearest_dir t fn] returns the directory with the longest path that is an

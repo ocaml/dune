@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------------------
-Testsuite for the (foreign_stubs ...) stanza.
+Testsuite for the (foreign_stubs ...) field.
 
 ----------------------------------------------------------------------------------
 * Error when using both (self_build_stubs_archive ...) and (c_names ...) before 2.0.

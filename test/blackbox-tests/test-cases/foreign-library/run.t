@@ -272,8 +272,13 @@ Testsuite for the (foreign_library ...) stanza.
   File "lib/dune", line 16, characters 1-38:
   16 |  (include_dirs headers /absolute/path)
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Warning: "/absolute/path" is an external directory; dependencies in external
+  Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
+  Hint: You can specify "/absolute/path" as an untracked include directory like this:
+  
+    (flags -I /absolute/path)
+  
+  [1]
 
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".
@@ -420,7 +425,7 @@ Testsuite for the (foreign_library ...) stanza.
   13 |  (foreign_archives day)
   14 |  (modules main))
   Error: Pure bytecode executables cannot contain foreign archives.
-  Did you forget to add `(modes exe)'?
+  Hint: If you need to build only a native executable use "(modes exe)".
   [1]
 
 ----------------------------------------------------------------------------------

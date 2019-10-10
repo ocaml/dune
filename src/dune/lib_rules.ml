@@ -145,66 +145,69 @@ let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
   ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
     ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
 
+let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
+  let include_dirs_loc, include_dirs = stubs.include_dirs in
+  let include_dirs =
+    Build.map
+      ~f:(List.map ~f:(Path.relative (Path.build dir)))
+      (Expander.expand_and_eval_set expander include_dirs
+         ~standard:(Build.return []))
+  in
+  Command.Args.Dyn
+    (Build.dyn_path_set
+       (Build.map include_dirs ~f:(fun include_dirs ->
+            let args, deps =
+              List.unzip
+                (List.map include_dirs ~f:(fun include_dir ->
+                     let args = Command.Args.S [ A "-I"; Path include_dir ] in
+                     let deps =
+                       match Path.extract_build_context_dir include_dir with
+                       | None ->
+                         (* TODO: Track files in external directories. *)
+                         (* TODO_AM: Add test for the suggestion. *)
+                         let dir = Path.to_string include_dir in
+                         User_error.raise ~loc:include_dirs_loc
+                           [ Pp.textf
+                               "%S is an external directory; dependencies in \
+                                external directories are currently not \
+                                tracked."
+                               dir
+                           ]
+                           ~hints:
+                             [ Pp.textf
+                                 "You can specify %S as an untracked include \
+                                  directory like this:\n\n\
+                                 \  (flags -I %s)\n"
+                                 dir dir
+                             ]
+                       | Some (build_dir, source_dir) -> (
+                         match File_tree.find_dir source_dir with
+                         | None ->
+                           User_error.raise ~loc:include_dirs_loc
+                             [ Pp.textf "Include directory %S not found."
+                                 (Path.reach ~from:(Path.build dir) include_dir)
+                             ]
+                         | Some dir ->
+                           File_tree.Dir.fold dir
+                             ~traverse:Sub_dirs.Status.Set.all
+                             ~init:Path.Set.empty ~f:(fun t ->
+                               let paths =
+                                 Path.Source.Set.to_list
+                                   (File_tree.Dir.file_paths t)
+                                 |> List.map ~f:(Path.append_source build_dir)
+                               in
+                               Path.Set.union (Path.Set.of_list paths)) )
+                     in
+                     (args, deps)))
+            in
+            (Command.Args.S args, Path.Set.union_all deps))))
+
 (* Build a static and a dynamic archive for a foreign library. *)
 let build_foreign_library (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
   let o_files =
-    let include_dirs_loc, include_dirs = library.stubs.include_dirs in
-    let include_dirs =
-      Build.map
-        ~f:(List.map ~f:(Path.relative (Path.build dir)))
-        (Expander.expand_and_eval_set expander include_dirs
-           ~standard:(Build.return []))
-    in
-    let extra_flags =
-      Command.Args.Dyn
-        (Build.dyn_path_set
-           (Build.map include_dirs ~f:(fun include_dirs ->
-                let args, deps =
-                  List.unzip
-                    (List.map include_dirs ~f:(fun include_dir ->
-                         let args =
-                           Command.Args.S [ A "-I"; Path include_dir ]
-                         in
-                         let deps =
-                           match
-                             Path.extract_build_context_dir include_dir
-                           with
-                           | None ->
-                             (* TODO: Track files in external directories. *)
-                             User_warning.emit ~loc:include_dirs_loc
-                               [ Pp.textf
-                                   "%S is an external directory; dependencies \
-                                    in external directories are currently not \
-                                    tracked."
-                                   (Path.to_string include_dir)
-                               ];
-                             Path.Set.empty
-                           | Some (build_dir, source_dir) -> (
-                             match File_tree.find_dir source_dir with
-                             | None ->
-                               User_error.raise ~loc:include_dirs_loc
-                                 [ Pp.textf "Include directory %S not found."
-                                     (Path.reach ~from:(Path.build dir)
-                                        include_dir)
-                                 ]
-                             | Some dir ->
-                               File_tree.Dir.fold dir
-                                 ~traverse:Sub_dirs.Status.Set.all
-                                 ~init:Path.Set.empty ~f:(fun t ->
-                                   let paths =
-                                     Path.Source.Set.to_list
-                                       (File_tree.Dir.file_paths t)
-                                     |> List.map
-                                          ~f:(Path.append_source build_dir)
-                                   in
-                                   Path.Set.union (Path.Set.of_list paths)) )
-                         in
-                         (args, deps)))
-                in
-                (Command.Args.S args, Path.Set.union_all deps))))
-    in
+    let extra_flags = include_dir_flags ~expander ~dir library.stubs in
     let foreign_sources =
       Dir_contents.foreign_sources_of_archive dir_contents ~archive_name
     in

@@ -127,8 +127,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         User_error.raise ~loc:exes.buildable.loc
           [ Pp.textf "Pure bytecode executables cannot contain foreign %s."
               what
-          ; Pp.textf "Did you forget to add `(modes exe)'?"
-          ];
+          ]
+          ~hints:
+            [ Pp.text
+                "If you need to build only a native executable use \"(modes \
+                 exe)\"."
+            ];
       let foreign_sources =
         Dir_contents.foreign_sources_of_executables dir_contents ~first_exe
       in

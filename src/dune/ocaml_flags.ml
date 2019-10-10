@@ -111,21 +111,18 @@ let get t mode =
   and+ specific = Mode.Dict.get t.specific mode in
   common @ specific
 
-let get_for_cm t ~cm_kind = get t (Mode.of_cm_kind cm_kind)
+let map_common t ~f =
+  let common =
+    let+ l = t.common in
+    f l
+  in
+  { t with common }
 
 let append_common t flags =
-  { t with
-    common =
-      (let+ l = t.common in
-       l @ flags)
-  }
+  map_common t ~f:(fun l -> l @ flags)
 
 let prepend_common flags t =
-  { t with
-    common =
-      (let+ l = t.common in
-       flags @ l)
-  }
+  map_common t ~f:(fun l -> flags @ l)
 
 let with_vendored_warnings t = append_common t vendored_warnings
 

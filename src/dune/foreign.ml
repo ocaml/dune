@@ -128,7 +128,7 @@ module Stubs = struct
     ; language : Language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; include_dirs : Loc.t * Ordered_set_lang.Unexpanded.t
+    ; include_dirs : String_with_vars.t list
     ; extra_deps : Dep_conf.t list
     }
 
@@ -137,7 +137,7 @@ module Stubs = struct
     ; language
     ; names
     ; flags
-    ; include_dirs = (Loc.none, Ordered_set_lang.Unexpanded.standard)
+    ; include_dirs = []
     ; extra_deps = []
     }
 
@@ -150,7 +150,7 @@ module Stubs = struct
     and+ names = field "names" Ordered_set_lang.decode
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
-      located (Ordered_set_lang.Unexpanded.field "include_dirs")
+      field ~default:[] "include_dirs" (repeat String_with_vars.decode)
     and+ extra_deps = field_o "extra_deps" (repeat Dep_conf.decode) in
     let extra_deps = Option.value ~default:[] extra_deps in
     let () =

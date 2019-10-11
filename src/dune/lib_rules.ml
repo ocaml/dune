@@ -146,61 +146,54 @@ let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
     ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
 
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
-  let include_dirs_loc, include_dirs = stubs.include_dirs in
-  let include_dirs =
-    Build.map
-      ~f:(List.map ~f:(Path.relative (Path.build dir)))
-      (Expander.expand_and_eval_set expander include_dirs
-         ~standard:(Build.return []))
-  in
-  Command.Args.Dyn
-    (Build.dyn_path_set
-       (Build.map include_dirs ~f:(fun include_dirs ->
-            let args, deps =
-              List.unzip
-                (List.map include_dirs ~f:(fun include_dir ->
-                     let args = Command.Args.S [ A "-I"; Path include_dir ] in
-                     let deps =
-                       match Path.extract_build_context_dir include_dir with
-                       | None ->
-                         (* TODO: Track files in external directories. *)
-                         (* TODO_AM: Add test for the suggestion. *)
-                         let dir = Path.to_string include_dir in
-                         User_error.raise ~loc:include_dirs_loc
-                           [ Pp.textf
-                               "%S is an external directory; dependencies in \
-                                external directories are currently not \
-                                tracked."
-                               dir
-                           ]
-                           ~hints:
-                             [ Pp.textf
-                                 "You can specify %S as an untracked include \
-                                  directory like this:\n\n\
-                                 \  (flags -I %s)\n"
-                                 dir dir
-                             ]
-                       | Some (build_dir, source_dir) -> (
-                         match File_tree.find_dir source_dir with
-                         | None ->
-                           User_error.raise ~loc:include_dirs_loc
-                             [ Pp.textf "Include directory %S not found."
-                                 (Path.reach ~from:(Path.build dir) include_dir)
-                             ]
-                         | Some dir ->
-                           File_tree.Dir.fold dir
-                             ~traverse:Sub_dirs.Status.Set.all
-                             ~init:Path.Set.empty ~f:(fun t ->
-                               let paths =
-                                 Path.Source.Set.to_list
-                                   (File_tree.Dir.file_paths t)
-                                 |> List.map ~f:(Path.append_source build_dir)
-                               in
-                               Path.Set.union (Path.Set.of_list paths)) )
-                     in
-                     (args, deps)))
-            in
-            (Command.Args.S args, Path.Set.union_all deps))))
+  Command.Args.S
+    (List.map stubs.include_dirs ~f:(fun include_dir ->
+         let loc = String_with_vars.loc include_dir
+         and include_dir = Expander.expand_path expander include_dir in
+         match Path.extract_build_context_dir include_dir with
+         | None ->
+           (* TODO: Track files in external directories. *)
+           (* TODO_AM: Add test for the suggestion. *)
+           User_error.raise ~loc
+             [ Pp.textf
+                 "%S is an external directory; dependencies in external \
+                  directories are currently not tracked."
+                 (Path.to_string include_dir)
+             ]
+             ~hints:
+               [ Pp.textf
+                   "You can specify %S as an untracked include directory like \
+                    this:\n\n\
+                   \  (flags -I %s)\n"
+                   (Path.to_string include_dir)
+                   (Path.to_string include_dir)
+               ]
+         | Some (build_dir, source_dir) -> (
+           match File_tree.find_dir source_dir with
+           | None ->
+             User_error.raise ~loc
+               [ Pp.textf "Include directory %S not found."
+                   (Path.reach ~from:(Path.build dir) include_dir)
+               ]
+           | Some dir ->
+             Command.Args.S
+               [ A "-I"
+               ; Path include_dir
+               ; Command.Args.S
+                   (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
+                      ~init:[] ~f:(fun t args ->
+                        (* let dir = Path.append_source build_dir
+                           (File_tree.Dir.path t) and deps = Dep.Set.paths
+                           (File_selector.create ~dir (Predicate.create
+                           ~id:("files_in_" ^ Path.to_string dir) ~f:(fun _ ->
+                           true))) in *)
+                        let deps =
+                          Path.Source.Set.to_list (File_tree.Dir.file_paths t)
+                          |> List.map ~f:(Path.append_source build_dir)
+                        in
+                        Command.Args.Hidden_deps (Dep.Set.of_files deps)
+                        :: args))
+               ] )))
 
 (* Build a static and a dynamic archive for a foreign library. *)
 let build_foreign_library (library : Foreign.Library.t) ~sctx ~expander ~dir

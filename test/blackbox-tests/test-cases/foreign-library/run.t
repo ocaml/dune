@@ -237,9 +237,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 16, characters 1-35:
+  File "lib/dune", line 16, characters 23-34:
   16 |  (include_dirs headers another/dir)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                              ^^^^^^^^^^^
   Error: Include directory "another/dir" not found.
   [1]
 
@@ -269,9 +269,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 16, characters 1-38:
+  File "lib/dune", line 16, characters 23-37:
   16 |  (include_dirs headers /absolute/path)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                              ^^^^^^^^^^^^^^
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
   Hint: You can specify "/absolute/path" as an untracked include directory like this:
@@ -279,6 +279,8 @@ Testsuite for the (foreign_library ...) stanza.
     (flags -I /absolute/path)
   
   [1]
+
+
 
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".

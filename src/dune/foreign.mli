@@ -80,7 +80,7 @@ module Stubs : sig
     ; language : Language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; include_dirs : Loc.t * Ordered_set_lang.Unexpanded.t
+    ; include_dirs : String_with_vars.t list
     ; extra_deps : Dep_conf.t list
     }
 

@@ -85,10 +85,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language c)
@@ -112,16 +108,23 @@ Testsuite for the (foreign_library ...) stanza.
   > val calc : int -> int -> int -> int
   > EOF
 
-  $ cat >lib/main.ml <<EOF
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (libraries calc)
+  >  (modules main))
+  > EOF
+
+  $ cat >main.ml <<EOF
   > let () = Printf.printf "%d" (Calc.calc 1 2 3)
   > EOF
 
   $ dune build
 
-  $ dune exec lib/main.exe
+  $ dune exec ./main.exe
   2009
 
-  $ (cd _build/default && ocamlrun -I lib lib/main.bc)
+  $ (cd _build/default && ocamlrun -I lib main.bc)
   2009
 
 ----------------------------------------------------------------------------------
@@ -136,10 +139,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -150,8 +149,8 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 19, characters 8-14:
-  19 |  (names config))
+  File "lib/dune", line 15, characters 8-14:
+  15 |  (names config))
                ^^^^^^
   Error: Object "config" has no source; One of "config.cxx", "config.cc" or
   "config.cpp" must be present.
@@ -186,29 +185,29 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ dune clean
   $ dune build --display short
-        ocamlc lib/add$ext_obj
       ocamldep lib/.calc.objs/calc.mli.d
         ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
+      ocamldep .main.eobjs/main.ml.d
+        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
       ocamldep lib/.calc.objs/calc.ml.d
-        ocamlc lib/.calc.objs/byte/calc.{cmo,cmt}
-        ocamlc lib/calc.cma
+      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
+      ocamlopt lib/calc.{a,cmxa}
+        ocamlc lib/add$ext_obj
         ocamlc lib/mul$ext_obj
     ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
            gcc lib/config$ext_obj
     ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
-      ocamldep lib/.main.eobjs/main.ml.d
-        ocamlc lib/.main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-      ocamlopt lib/.main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
-      ocamlopt lib/calc.{a,cmxa}
+      ocamlopt main.exe
+        ocamlc lib/.calc.objs/byte/calc.{cmo,cmt}
+        ocamlc lib/calc.cma
+        ocamlc main.bc
       ocamlopt lib/calc.cmxs
-        ocamlc lib/main.bc
-      ocamlopt lib/main.exe
 
-  $ dune exec lib/main.exe
+  $ dune exec ./main.exe
   2019
 
-  $ (cd _build/default && ocamlrun -I lib lib/main.bc)
+  $ (cd _build/default && ocamlrun -I lib main.bc)
   2019
 
 ----------------------------------------------------------------------------------
@@ -223,10 +222,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -237,8 +232,8 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 16, characters 23-34:
-  16 |  (include_dirs headers another/dir)
+  File "lib/dune", line 12, characters 23-34:
+  12 |  (include_dirs headers another/dir)
                               ^^^^^^^^^^^
   Error: Include directory "another/dir" not found.
   [1]
@@ -255,10 +250,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -269,8 +260,8 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 16, characters 23-37:
-  16 |  (include_dirs headers /absolute/path)
+  File "lib/dune", line 12, characters 23-37:
+  12 |  (include_dirs headers /absolute/path)
                               ^^^^^^^^^^^^^^
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
@@ -279,6 +270,7 @@ Testsuite for the (foreign_library ...) stanza.
     (flags -I /absolute/path)
   
   [1]
+
 
 
 
@@ -298,10 +290,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (name calc)
   >  (modules calc)
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -334,10 +322,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules calc)
   >  (foreign_stubs (language c) (names month))
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (modules main))
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
@@ -366,16 +350,16 @@ Testsuite for the (foreign_library ...) stanza.
   > val month : unit -> string
   > EOF
 
-  $ cat >lib/main.ml <<EOF
+  $ cat >main.ml <<EOF
   > let () = Printf.printf "%s %d" (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
   $ dune build
 
-  $ dune exec lib/main.exe
+  $ dune exec ./main.exe
   October 2019
 
-  $ (cd _build/default && ocamlrun -I lib lib/main.bc)
+  $ (cd _build/default && ocamlrun -I lib main.bc)
   October 2019
 
 ----------------------------------------------------------------------------------
@@ -391,11 +375,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules calc)
   >  (foreign_stubs (language c) (names month))
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (libraries calc)
-  >  (foreign_archives day)
-  >  (modules main))
   > (foreign_library
   >  (archive_name day)
   >  (language c)
@@ -409,29 +388,38 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names config))
   > EOF
 
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (libraries calc)
+  >  (foreign_archives lib/day)
+  >  (modules main))
+  > EOF
+
   $ cat >lib/day.c <<EOF
   > #include <caml/mlvalues.h>
   > value day() { return Val_int(8); }
   > EOF
 
-  $ cat >lib/main.ml <<EOF
+  $ cat >main.ml <<EOF
   > external day : unit -> int = "day"
   > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
   $ dune build
-  File "lib/dune", line 10, characters 0-83:
-  10 | (executable
-  11 |  (name main)
-  12 |  (libraries calc)
-  13 |  (foreign_archives day)
-  14 |  (modules main))
+  File "dune", line 1, characters 0-87:
+  1 | (executable
+  2 |  (name main)
+  3 |  (libraries calc)
+  4 |  (foreign_archives lib/day)
+  5 |  (modules main))
   Error: Pure bytecode executables cannot contain foreign archives.
   Hint: If you need to build only a native executable use "(modes exe)".
   [1]
 
 ----------------------------------------------------------------------------------
 * Interaction of (foreign_archives ...) and (executables ...).
+* Foreign archives in subdirectories.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -443,12 +431,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules calc)
   >  (foreign_stubs (language c) (names month))
   >  (foreign_archives addmul config))
-  > (executable
-  >  (name main)
-  >  (modes exe)
-  >  (libraries calc)
-  >  (foreign_archives day)
-  >  (modules main))
   > (foreign_library
   >  (archive_name day)
   >  (language c)
@@ -462,17 +444,74 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names config))
   > EOF
 
+  $ cat >dune <<EOF
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (libraries calc)
+  >  (foreign_archives lib/day)
+  >  (modules main))
+  > EOF
+
   $ cat >lib/day.c <<EOF
   > #include <caml/mlvalues.h>
   > value day() { return Val_int(8); }
   > EOF
 
-  $ cat >lib/main.ml <<EOF
+  $ cat >main.ml <<EOF
   > external day : unit -> int = "day"
   > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
   $ dune build
 
-  $ dune exec lib/main.exe
+  $ dune exec ./main.exe
   8 October 2019
+
+----------------------------------------------------------------------------------
+* Generated header.
+
+  $ mkdir -p lib2/headers
+  $ cat >lib2/dune <<EOF
+  > (foreign_library
+  >  (archive_name today)
+  >  (language c)
+  >  (include_dirs headers)
+  >  (names today))
+  > EOF
+
+  $ cat >lib2/headers/dune <<EOF
+  > (rule
+  >  (action (write-file today.h "#define TODAY \"Today\"")))
+  > EOF
+
+  $ cat >lib2/today.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include <caml/alloc.h>
+  > #include "today.h"
+  > value today() { return copy_string(TODAY); }
+  > EOF
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (modes exe)
+  >  (libraries calc)
+  >  (foreign_archives lib/day lib2/today)
+  >  (modules main))
+  > EOF
+
+  $ cat >main.ml <<EOF
+  > external day : unit -> int = "day"
+  > external today : unit -> string = "today"
+  > let () = Printf.printf "%s: %d %s %d" (today ()) (day ()) (Calc.month ()) (Calc.calc 1 2 3)
+  > EOF
+
+  $ dune exec --display short ./main.exe
+      ocamldep .main.eobjs/main.ml.d
+        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
+        ocamlc lib2/today$ext_obj
+    ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
+      ocamlopt main.exe
+  Today: 8 October 2019

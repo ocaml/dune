@@ -126,6 +126,7 @@ let make (d : _ Dir_with_dune.t) ~(object_map : Foreign.Object_map.t) =
           ])
     |> String.Map.map ~f:snd
   in
+  (* TODO: Make this more type-safe by switching to non-empty lists. *)
   let executables =
     String.Map.of_list_map_exn exes ~f:(fun (exes, m) ->
         (snd (List.hd exes.names), m))

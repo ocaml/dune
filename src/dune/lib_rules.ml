@@ -182,17 +182,26 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                ; Command.Args.S
                    (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
                       ~init:[] ~f:(fun t args ->
-                        (* let dir = Path.append_source build_dir
-                           (File_tree.Dir.path t) and deps = Dep.Set.paths
-                           (File_selector.create ~dir (Predicate.create
-                           ~id:("files_in_" ^ Path.to_string dir) ~f:(fun _ ->
-                           true))) in *)
-                        let deps =
-                          Path.Source.Set.to_list (File_tree.Dir.file_paths t)
-                          |> List.map ~f:(Path.append_source build_dir)
+                        let local_dir =
+                          Path.Source.to_local (File_tree.Dir.path t)
                         in
-                        Command.Args.Hidden_deps (Dep.Set.of_files deps)
-                        :: args))
+                        let dir =
+                          Path.relative build_dir
+                            (Path.Local.to_string local_dir)
+                        in
+                        let deps =
+                          Dep.Set.singleton
+                            (Dep.file_selector
+                               (File_selector.create ~dir
+                                  (Predicate.create
+                                     ~id:
+                                       ( lazy
+                                         (String
+                                            ("files_in_" ^ Path.to_string dir))
+                                         )
+                                     ~f:(fun _ -> true))))
+                        in
+                        Command.Args.Hidden_deps deps :: args))
                ] )))
 
 (* Build a static and a dynamic archive for a foreign library. *)

@@ -43,10 +43,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                 (Module_name.to_string mod_name)
             ])
   in
+  let ctx = SC.context sctx in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
-    let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
       let modes =
@@ -85,11 +85,22 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
   in
-  let link_flags =
+  (* TODO_AM: Implement the same approach in lib_rules. *)
+  let link_args =
     let+ flags = link_flags in
-    flags
-    @ List.concat_map archive_names ~f:(fun archive_name ->
-          [ "-cclib"; "-l" ^ archive_name ])
+    Command.Args.S
+      [ Command.Args.As flags
+      ; Command.Args.S
+          (List.map archive_names ~f:(fun archive_name ->
+               let ext_lib = ctx.lib_config.ext_lib in
+               let dir =
+                 Path.Build.relative dir (Filename.dirname archive_name)
+               in
+               let archive_name = Filename.basename archive_name in
+               let lib = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+               Command.Args.S
+                 [ Command.Args.A "-cclib"; Command.Args.Dep (Path.build lib) ]))
+      ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =
@@ -146,7 +157,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files
   in
   let requires_compile = Compilation_context.requires_compile cctx in
-  Exe.build_and_link_many cctx ~programs ~linkages ~link_flags ~o_files
+  Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
     ~promote:exes.promote;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules

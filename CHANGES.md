@@ -150,6 +150,8 @@
   successful exit codes of `<action>`. `<pred>` is specified using the predicate
   language. (#2699, @nojb)
 
+- Do not setup rules for disabled libraries (#2491, fixes #2272, @bobot)
+
 1.11.4 (09/10/2019)
 -------------------
 

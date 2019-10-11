@@ -14,4 +14,6 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
+val to_dyn : t Stdune.Dyn.Encoder.t
+
 include Dune_lang.Conv.S with type t := t

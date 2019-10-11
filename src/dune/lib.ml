@@ -1511,6 +1511,15 @@ module DB = struct
       | Found of Lib_info.external_
       | Hidden of Lib_info.external_ * string
       | Redirect of db option * Lib_name.t
+
+    let to_dyn x =
+      let open Dyn.Encoder in
+      match x with
+      | Not_found -> constr "Not_found" []
+      | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
+      | Hidden (lib, s) ->
+        constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string s ]
+      | Redirect (_, name) -> constr "Redirect" [ Lib_name.to_dyn name ]
   end
 
   type t = db

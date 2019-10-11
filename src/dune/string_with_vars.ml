@@ -294,8 +294,6 @@ let expand t ~mode ~dir ~f =
 
 (* we are expanding every variable *)
 
-let partial_expand t ~mode ~dir ~f = partial_expand t ~mode ~dir ~f
-
 let is_var { template; syntax_version = _ } ~name =
   match template.parts with
   | [ Var n ] -> name = Var.full_name n

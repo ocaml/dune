@@ -237,6 +237,11 @@ It contains the following fields:
 
 - ``(tags <tags>)`` are the list of tags for the package
 
+- ``(deprecated_package_names <name list>)`` is a list of names that can be used
+  with the :ref:`deprecated-library-name` stanza to migrate legacy libraries
+  from other build systems which do not follow Dune's convention of prefixing
+  the public name of the library with the package name.
+
 The list of dependencies ``<dep-specification>`` is modeled after opam's own
 language: The syntax is as a list of the following elements:
 
@@ -494,6 +499,8 @@ JavaScript output.
 
 See :ref:`jsoo` for more information.
 
+.. _deprecated-library-name:
+
 deprecated_library_name
 -----------------------
 
@@ -511,6 +518,13 @@ When a developer uses the old public name in a list of library
 dependencies, it will be transparently replaced by the new name. Note
 that it is not necessary for the new name to exist at definition time
 as it is only resolved at the point where the old name is used.
+
+The ``old_public_name`` can also be one of the names declared in the
+``deprecated_package_names`` field of the package declaration in
+``dune-project`` file. In this case, the "old" library is understood to be a
+library whose name is not prefixed by the package name. Such a library cannot be
+defined in Dune, but other build systems allow it and this feature is meant to
+help migration from those systems.
 
 executable
 ----------

@@ -110,32 +110,6 @@ let is_standard t =
   | Ast.Standard -> true
   | _ -> false
 
-module type Key = sig
-  type t
-
-  val compare : t -> t -> Ordering.t
-
-  module Map : Map.S with type key = t
-end
-
-module type S = sig
-  module Key : Key
-
-  val eval :
-       t
-    -> parse:(loc:Loc.t -> string -> 'a)
-    -> key:('a -> Key.t)
-    -> standard:'a Key.Map.t
-    -> 'a Key.Map.t
-
-  val eval_loc :
-       t
-    -> parse:(loc:Loc.t -> string -> 'a)
-    -> key:('a -> Key.t)
-    -> standard:(Loc.t * 'a) Key.Map.t
-    -> (Loc.t * 'a) Key.Map.t
-end
-
 module Eval = struct
   let of_ast ~diff ~singleton ~union t ~parse ~standard =
     let rec loop (t : ast_expanded) =
@@ -185,7 +159,9 @@ end
 
 let eval t ~parse ~eq ~standard = Eval.ordered eq t ~parse ~standard
 
-module Unordered (Key : Key) = struct
+module Unordered (Key : Ordered_set_lang_intf.Key) = struct
+  type nonrec t = t
+
   module Key = Key
 
   let eval t ~parse ~key ~standard =

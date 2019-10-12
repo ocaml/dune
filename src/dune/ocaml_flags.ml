@@ -118,11 +118,9 @@ let map_common t ~f =
   in
   { t with common }
 
-let append_common t flags =
-  map_common t ~f:(fun l -> l @ flags)
+let append_common t flags = map_common t ~f:(fun l -> l @ flags)
 
-let prepend_common flags t =
-  map_common t ~f:(fun l -> flags @ l)
+let prepend_common flags t = map_common t ~f:(fun l -> flags @ l)
 
 let with_vendored_warnings t = append_common t vendored_warnings
 

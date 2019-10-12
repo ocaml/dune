@@ -55,8 +55,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Redirect_in (_, _, t)
     | Ignore (_, t) ->
       loop with_exit_codes t
-    | With_exit_codes (_, t) ->
-      loop true t
+    | With_exit_codes (_, t) -> loop true t
     | Run _
     | Echo _
     | Cat _

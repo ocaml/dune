@@ -64,7 +64,7 @@ end = struct
     }
 
   let of_stanza stanza ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents ~expander
-        ~files_to_install =
+      ~files_to_install =
     let dir = ctx_dir in
     match stanza with
     | Toplevel toplevel ->
@@ -91,9 +91,9 @@ end = struct
       ; js =
           Some
             (List.concat_map exes.names ~f:(fun (_, exe) ->
-               List.map
-                 [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
-                 ~f:(Path.Build.relative dir)))
+                 List.map
+                   [ exe ^ ".bc.js"; exe ^ ".bc.runtime.js" ]
+                   ~f:(Path.Build.relative dir)))
       ; source_dirs = None
       }
     | Alias alias ->

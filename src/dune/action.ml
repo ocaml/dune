@@ -268,7 +268,8 @@ let is_useful_to_sandbox =
     | Redirect_out (_, _, t) -> loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
-    | With_exit_codes (_, t) -> loop t
+    | With_exit_codes (_, t) ->
+      loop t
     | Progn l -> List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> false

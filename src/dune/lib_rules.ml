@@ -27,9 +27,11 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
           []
         else
           let stubs_name = Library.stubs_name lib in
+          let lstubs = "-l" ^ stubs_name in
+          let stubs = [ "-cclib"; lstubs ] in
           match mode with
-          | Byte -> [ "-dllib"; "-l" ^ stubs_name; "-cclib"; "-l" ^ stubs_name ]
-          | Native -> [ "-cclib"; "-l" ^ stubs_name ]
+          | Native -> stubs
+          | Byte -> "-dllib" :: lstubs :: stubs
       in
       let map_cclibs =
         (* https://github.com/ocaml/dune/issues/119 *)

@@ -14,10 +14,10 @@ module File_kind = struct
       [ ("kind", Ml_kind.to_dyn kind)
       ; ("extension", string extension)
       ; ( "preprocess"
-        , option (pair Loc.to_dyn Action_dune_lang.to_dyn) preprocess )
+        , option (fun (_, x) -> Action_dune_lang.to_dyn x) preprocess )
       ; ( "format"
         , option
-            (triple Loc.to_dyn Action_dune_lang.to_dyn (list string))
+            (fun (_, x, y) -> pair Action_dune_lang.to_dyn (list string) (x, y))
             format )
       ]
 end

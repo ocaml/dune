@@ -84,9 +84,7 @@ let foreign_sources_of_library t ~name =
   Foreign_sources.for_lib (Memo.Lazy.force t.foreign_sources) ~name
 
 let foreign_sources_of_archive t ~archive_name =
-  Foreign_sources.for_archive
-    (Memo.Lazy.force t.foreign_sources)
-    ~archive_name
+  Foreign_sources.for_archive (Memo.Lazy.force t.foreign_sources) ~archive_name
 
 let lookup_module t name =
   Module_name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -638,41 +636,8 @@ end = struct
                   let sources =
                     Foreign.Object_map.load ~dir ~dune_version ~files
                   in
-                  String.Map.union acc sources ~f:(fun name map1 map2 ->
-                      Some
-                        (Foreign.Language.Map.union map1 map2
-                           ~f:(fun language path1 path2 ->
-                             User_error.raise
-                               ~loc:
-                                 (Loc.in_file
-                                    (Path.source
-                                       ( match
-                                           File_tree.Dir.dune_file ft_dir
-                                         with
-                                       | None ->
-                                         Path.Source.relative
-                                           (File_tree.Dir.path ft_dir)
-                                           "_unknown_"
-                                       | Some d -> File_tree.Dune_file.path d
-                                       )))
-                               [ Pp.textf
-                                   "%s source file %S appears in more than \
-                                    one directory:"
-                                   (Foreign.Language.proper_name language)
-                                   name
-                               ; Pp.textf "- %s"
-                                   (Path.to_string_maybe_quoted
-                                      (Path.drop_optional_build_context
-                                         (Path.build
-                                            (Path.Build.parent_exn path1))))
-                               ; Pp.textf "- %s"
-                                   (Path.to_string_maybe_quoted
-                                      (Path.drop_optional_build_context
-                                         (Path.build
-                                            (Path.Build.parent_exn path2))))
-                               ; Pp.text
-                                   "This is not allowed; please rename them."
-                               ]))))
+                  String.Map.union acc sources ~f:(fun _ map1 map2 ->
+                      Some (Foreign.Language.Map.Multi.rev_union map1 map2)))
             in
             Foreign_sources.make d ~object_map)
       in

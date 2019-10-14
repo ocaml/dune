@@ -147,13 +147,13 @@ end
 
 (** A map from object names to the corresponding sources. *)
 module Object_map : sig
-  type t = Path.Build.t Language.Map.t String.Map.t
+  type t = Path.Build.t list Language.Map.t String.Map.t
 
   val to_dyn : t -> Dyn.t
 
   (** [load ~dir ~files] loads foreign sources in [dir] into a two-layer map
       whose first layer is keyed by the object name and the second layer is
-      keyed by the language of the source. *)
+      keyed by the language of the sources. *)
   val load :
        dune_version:Dune_lang.Syntax.Version.t
     -> dir:Path.Build.t

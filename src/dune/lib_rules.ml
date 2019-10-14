@@ -145,6 +145,8 @@ let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
   ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
     ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
 
+(* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
+   and track all files in specified directories as [Hidden_deps] dependencies. *)
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
   Command.Args.S
     (List.map stubs.include_dirs ~f:(fun include_dir ->

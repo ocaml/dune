@@ -2,6 +2,8 @@ open Stdune
 open Dune_file
 module Library = Dune_file.Library
 
+(* TODO: This is a strange module; it seems to add unnecessary indirection for
+   accessing foreign sources. It's worth checking if it can be simplified away. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
   ; archives : Foreign.Sources.t String.Map.t
@@ -44,27 +46,39 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
         if s' <> s then
           User_error.raise ~loc
             [ Pp.text
-                "relative part of stub is not necessary and should be \
+                "Relative part of stub is not necessary and should be \
                  removed. To include sources in subdirectories, use the \
-                 include_subdirs stanza"
+                 (include_subdirs ...) stanza."
             ];
         s')
       ~standard:String.Map.empty
-    |> String.Map.map ~f:(fun (loc, s) ->
+    |> String.Map.map ~f:(fun (loc, name) ->
            match
              let open Option.O in
-             let* map = String.Map.find object_map s in
-             let+ path = Foreign.Language.Map.find map language in
-             (loc, Foreign.Source.make ~stubs ~path)
+             let* map = String.Map.find object_map name in
+             let+ paths = Foreign.Language.Map.find map language in
+             paths
            with
-           | Some x -> x
-           | None ->
-             let dune_version = d.dune_version in
+           | Some [ path ] -> (loc, Foreign.Source.make ~stubs ~path)
+           | None
+           | Some [] ->
              User_error.raise ~loc
-               [ Pp.textf "Object %S has no source; %s must be present." s
+               [ Pp.textf "Object %S has no source; %s must be present." name
                    (String.enumerate_one_of
-                      ( Foreign.Language.possible_fns language s ~dune_version
+                      ( Foreign.Language.possible_fns language name
+                          ~dune_version:d.dune_version
                       |> List.map ~f:(fun s -> "\"" ^ s ^ "\"") ))
+               ]
+           | Some paths ->
+             User_error.raise ~loc
+               [ Pp.textf "Multiple %s sources for the same object %S:"
+                   (Foreign.Language.proper_name language)
+                   name
+               ; Pp.enumerate paths ~f:(fun path ->
+                     Pp.text
+                       (Path.to_string_maybe_quoted
+                          (Path.drop_optional_build_context (Path.build path))))
+               ; Pp.text "This is not allowed; please rename them."
                ])
   in
   let stub_maps = List.map foreign_stubs ~f:eval in

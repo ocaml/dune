@@ -133,13 +133,7 @@ module Stubs = struct
     }
 
   let make ~loc ~language ~names ~flags =
-    { loc
-    ; language
-    ; names
-    ; flags
-    ; include_dirs = []
-    ; extra_deps = []
-    }
+    { loc; language; names; flags; include_dirs = []; extra_deps = [] }
 
   let decode_stubs =
     let open Dune_lang.Decoder in
@@ -205,9 +199,14 @@ module Source = struct
 end
 
 module Object_map = struct
-  type t = Path.Build.t Language.Map.t String.Map.t
+  (* TODO: Switch to non-empty lists to get rid of the meaningless empty case. *)
+  type t = Path.Build.t list Language.Map.t String.Map.t
 
-  let to_dyn t = String.Map.to_dyn (Language.Map.to_dyn Path.Build.to_dyn) t
+  let to_dyn t =
+    String.Map.to_dyn
+      (Language.Map.to_dyn (fun xs ->
+           Dyn.List (List.map ~f:Path.Build.to_dyn xs)))
+      t
 
   let load ~dune_version ~dir ~files =
     let init = String.Map.empty in
@@ -226,25 +225,8 @@ module Object_map = struct
         | Recognized (obj, language) ->
           let path = Path.Build.relative dir fn in
           String.Map.update acc obj ~f:(function
-            | None -> Some (Language.Map.singleton language path)
-            | Some map ->
-              Some
-                (Language.Map.update map language ~f:(function
-                  | None -> Some path
-                  | Some existing_path ->
-                    let loc = Loc.in_dir (Path.build dir) in
-                    User_error.raise ~loc
-                      [ Pp.textf
-                          "Multiple %s sources for the same object name %S:"
-                          (Language.proper_name language)
-                          obj
-                      ; Pp.enumerate [ existing_path; path ] ~f:(fun path ->
-                            Pp.text
-                              (Path.to_string_maybe_quoted
-                                 (Path.drop_optional_build_context
-                                    (Path.build path))))
-                      ; Pp.text "This is not allowed; please rename them."
-                      ]))))
+            | None -> Some (Language.Map.singleton language [ path ])
+            | Some map -> Some (Language.Map.add_multi map language path)))
 end
 
 module Sources = struct

@@ -504,9 +504,9 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
   Option.map res ~f:static
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-    ~(c_flags :
+    ~(foreign_flags :
        dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t) =
-  let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
+  let cc ~dir = cc_of_c_flags t (foreign_flags ~dir) in
   let expand_var =
     expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir

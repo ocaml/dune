@@ -20,7 +20,7 @@ val ocaml_flags :
 
 val inline_tests : t -> profile:Profile.t -> Dune_env.Stanza.Inline_tests.t
 
-val c_flags :
+val foreign_flags :
      t
   -> profile:Profile.t
   -> expander:Expander.t

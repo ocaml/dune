@@ -636,8 +636,7 @@ end = struct
                   let sources =
                     Foreign.Object_map.load ~dir ~dune_version ~files
                   in
-                  String.Map.union acc sources ~f:(fun _ map1 map2 ->
-                      Some (Foreign.Language.Map.Multi.rev_union map1 map2)))
+                  String.Map.Multi.rev_union acc sources)
             in
             Foreign_sources.make d ~object_map)
       in

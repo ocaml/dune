@@ -3,9 +3,16 @@ stubs names, things are still broken if their .o files overlap:
 
   $ dune build --root diff-stanza @all
   Entering directory 'diff-stanza'
-  Error: Multiple rules generated for _build/default/foo$ext_obj:
-  - dune:4
-  - dune:9
+  File "dune", line 4, characters 10-13:
+  4 |  (c_names foo))
+                ^^^
+  Error: Multiple sources map to the same object name "foo":
+  - foo.c
+  - foo.cpp
+  This is not allowed; please rename them.
+  Hint: You can also avoid the name clash by placing the objects into different
+  foreign archives and building them in different directories. Foreign archives
+  can be defined using the (foreign_library ...) stanza.
   [1]
 
 Another form of this bug is if the same source is present in different
@@ -32,8 +39,11 @@ user intended.
   File "dune", line 4, characters 10-13:
   4 |  (c_names foo))
                 ^^^
-  Error: Multiple C sources for the same object "foo":
-  - foo.c
+  Error: Multiple sources map to the same object name "foo":
   - sub/foo.c
+  - foo.c
   This is not allowed; please rename them.
+  Hint: You can also avoid the name clash by placing the objects into different
+  foreign archives and building them in different directories. Foreign archives
+  can be defined using the (foreign_library ...) stanza.
   [1]

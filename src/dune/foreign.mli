@@ -147,7 +147,7 @@ end
 
 (** A map from object names to the corresponding sources. *)
 module Object_map : sig
-  type t = Path.Build.t list Language.Map.t String.Map.t
+  type t = (Language.t * Path.Build.t) String.Map.Multi.t
 
   val to_dyn : t -> Dyn.t
 

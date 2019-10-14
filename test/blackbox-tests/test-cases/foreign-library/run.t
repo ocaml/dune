@@ -72,9 +72,7 @@ Testsuite for the (foreign_library ...) stanza.
     ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
 
 ----------------------------------------------------------------------------------
-* Multiple (foreign_library ...) declarations.
-* Passing flags via (flags ...) field.
-* Interaction with (foreign_archives ...) stanza.
+* Error message for a missing C++ source file.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -87,14 +85,29 @@ Testsuite for the (foreign_library ...) stanza.
   >  (foreign_archives addmul config))
   > (foreign_library
   >  (archive_name config)
-  >  (language c)
+  >  (language cxx)
   >  (flags -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
-  $ cat >lib/config.c <<EOF
+  $ rm -rf _build
+  $ dune build
+  File "lib/dune", line 13, characters 8-14:
+  13 |  (names config))
+               ^^^^^^
+  Error: Object "config" has no source; One of "config.cxx", "config.cc" or
+  "config.cpp" must be present.
+  [1]
+
+----------------------------------------------------------------------------------
+* Multiple (foreign_library ...) declarations.
+* Mixing C and C++ foreign library archives.
+* Passing flags via (flags ...) field.
+* Interaction with (foreign_archives ...) stanza.
+
+  $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
-  > value config() { return Val_int(CONFIG_VALUE); }
+  > extern "C" value config() { return Val_int(CONFIG_VALUE); }
   > EOF
 
   $ cat >lib/calc.ml <<EOF
@@ -129,7 +142,8 @@ Testsuite for the (foreign_library ...) stanza.
   2009
 
 ----------------------------------------------------------------------------------
-* Error message for a missing C++ source.
+* Include directories via the (include_dirs ...) field.
+* Extra dependencies via the (extra_deps ...) field.
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -148,19 +162,6 @@ Testsuite for the (foreign_library ...) stanza.
   >  (flags -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
-
-  $ dune build
-  File "lib/dune", line 15, characters 8-14:
-  15 |  (names config))
-               ^^^^^^
-  Error: Object "config" has no source; One of "config.cxx", "config.cc" or
-  "config.cpp" must be present.
-  [1]
-
-----------------------------------------------------------------------------------
-* Mixing C and C++ foreign library archives.
-* Include directories via the (include_dirs ...) field.
-* Extra dependencies via the (extra_deps ...) field.
 
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
@@ -271,8 +272,6 @@ Testsuite for the (foreign_library ...) stanza.
     (flags -I /absolute/path)
   
   [1]
-
-
 
 
 
@@ -534,3 +533,41 @@ Testsuite for the (foreign_library ...) stanza.
     ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
       ocamlopt main.exe
   Today: 8 October 2019
+
+----------------------------------------------------------------------------------
+* Object files with the same name in different archives.
+
+  $ mkdir -p lib3
+  $ cat >lib3/dune <<EOF
+  > (foreign_library
+  >  (archive_name new_day)
+  >  (language c)
+  >  (names day))
+  > EOF
+
+  $ cat >lib3/day.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value new_day() { return Val_int(14); }
+  > EOF
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (name main)
+  >  (modes exe)
+  >  (libraries calc)
+  >  (foreign_archives lib/day lib2/today lib3/new_day)
+  >  (modules main))
+  > EOF
+
+  $ cat >main.ml <<EOF
+  > external day : unit -> int = "day"
+  > external today : unit -> string = "today"
+  > external new_day : unit -> int = "new_day"
+  > let () = Printf.printf "%s: %02d %s %d\n" (today ()) (    day ()) (Calc.month ()) (Calc.calc 1 2 3);
+  >          Printf.printf "%s: %02d %s %d\n" (today ()) (new_day ()) (Calc.month ()) (Calc.calc 1 2 3);
+  > EOF
+
+  $ rm -rf _build
+  $ dune exec ./main.exe
+  Today: 08 October 2019
+  Today: 14 October 2019

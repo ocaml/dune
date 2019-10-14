@@ -40,61 +40,63 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
     let osl = stubs.names in
     Ordered_set_lang.Unordered_string.eval_loc osl
       ~key:(fun x -> x)
+      ~standard:String.Map.empty
       ~parse:(fun ~loc s ->
-        let s = valid_name language ~loc s in
-        let s' = Filename.basename s in
-        if s' <> s then
+        let name = valid_name language ~loc s in
+        let basename = Filename.basename s in
+        if name <> basename then
           User_error.raise ~loc
             [ Pp.text
                 "Relative part of stub is not necessary and should be \
                  removed. To include sources in subdirectories, use the \
                  (include_subdirs ...) stanza."
             ];
-        s')
-      ~standard:String.Map.empty
+        name)
     |> String.Map.map ~f:(fun (loc, name) ->
-           match
-             let open Option.O in
-             let* map = String.Map.find object_map name in
-             let+ paths = Foreign.Language.Map.find map language in
-             paths
-           with
-           | Some [ path ] -> (loc, Foreign.Source.make ~stubs ~path)
-           | None
-           | Some [] ->
+           match String.Map.find object_map name with
+           | Some paths when List.length paths > 1 ->
+             User_error.raise ~loc
+               [ Pp.textf "Multiple sources map to the same object name %S:"
+                   name
+               ; Pp.enumerate (List.rev paths) ~f:(fun (_, path) ->
+                     Pp.text
+                       (Path.to_string_maybe_quoted
+                          (Path.drop_optional_build_context (Path.build path))))
+               ; Pp.text "This is not allowed; please rename them."
+               ]
+               ~hints:
+                 [ Pp.text
+                     "You can also avoid the name clash by placing the \
+                      objects into different foreign archives and building \
+                      them in different directories. Foreign archives can be \
+                      defined using the (foreign_library ...) stanza."
+                 ]
+           | Some [ (l, path) ] when l = language ->
+             (loc, Foreign.Source.make ~stubs ~path)
+           | _ ->
              User_error.raise ~loc
                [ Pp.textf "Object %S has no source; %s must be present." name
                    (String.enumerate_one_of
                       ( Foreign.Language.possible_fns language name
                           ~dune_version:d.dune_version
                       |> List.map ~f:(fun s -> "\"" ^ s ^ "\"") ))
-               ]
-           | Some paths ->
-             User_error.raise ~loc
-               [ Pp.textf "Multiple %s sources for the same object %S:"
-                   (Foreign.Language.proper_name language)
-                   name
-               ; Pp.enumerate paths ~f:(fun path ->
-                     Pp.text
-                       (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context (Path.build path))))
-               ; Pp.text "This is not allowed; please rename them."
                ])
   in
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
-      String.Map.union a b ~f:(fun name (loc, src) (_, another_src) ->
+      String.Map.union a b ~f:(fun name (_, src) (_, another_src) ->
           let path src =
             Path.to_string_maybe_quoted
               (Path.drop_optional_build_context
                  (Path.build (Foreign.Source.path src)))
           in
-          User_error.raise ~loc
-            [ Pp.textf
-                "%S and %S map to the same object name %S. This is not \
-                 allowed; please rename them."
-                (path another_src) (path src) name
-            ]))
+          Code_error.raise
+            (Printf.sprintf
+               "%S and %S from different (foreign_stubs ...) map to the same \
+                object name %S. This should be impossible because of the \
+                check we do in the [eval] function."
+               (path another_src) (path src) name)
+            []))
 
 let make (d : _ Dir_with_dune.t) ~(object_map : Foreign.Object_map.t) =
   let libs, exes =

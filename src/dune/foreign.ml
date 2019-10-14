@@ -199,13 +199,14 @@ module Source = struct
 end
 
 module Object_map = struct
-  (* TODO: Switch to non-empty lists to get rid of the meaningless empty case. *)
-  type t = Path.Build.t list Language.Map.t String.Map.t
+  type t = (Language.t * Path.Build.t) String.Map.Multi.t
 
   let to_dyn t =
     String.Map.to_dyn
-      (Language.Map.to_dyn (fun xs ->
-           Dyn.List (List.map ~f:Path.Build.to_dyn xs)))
+      (fun xs ->
+        Dyn.List
+          (List.map xs ~f:(fun (language, path) ->
+               Dyn.Tuple [ Language.to_dyn language; Path.Build.to_dyn path ])))
       t
 
   let load ~dune_version ~dir ~files =
@@ -224,9 +225,7 @@ module Object_map = struct
             ]
         | Recognized (obj, language) ->
           let path = Path.Build.relative dir fn in
-          String.Map.update acc obj ~f:(function
-            | None -> Some (Language.Map.singleton language [ path ])
-            | Some map -> Some (Language.Map.add_multi map language path)))
+          String.Map.add_multi acc obj (language, path))
 end
 
 module Sources = struct

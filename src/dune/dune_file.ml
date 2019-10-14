@@ -2029,7 +2029,7 @@ end
 
 module Alias_conf = struct
   type t =
-    { name : string
+    { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
     ; action : (Loc.t * Action_dune_lang.t) option
     ; locks : String_with_vars.t list
@@ -2038,16 +2038,9 @@ module Alias_conf = struct
     ; loc : Loc.t
     }
 
-  let alias_name =
-    plain_string (fun ~loc s ->
-        if Filename.basename s <> s then
-          User_error.raise ~loc [ Pp.textf "%S is not a valid alias name" s ]
-        else
-          s)
-
   let decode =
     fields
-      (let+ name = field "name" alias_name
+      (let+ name = field "name" Alias.Name.decode
        and+ loc = loc
        and+ package = field_o "package" Pkg.decode
        and+ action = field_o "action" (located Action_dune_lang.decode)

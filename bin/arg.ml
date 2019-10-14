@@ -29,9 +29,17 @@ module Dep = struct
 
   let file s = Dep_conf.File (String_with_vars.make_text Loc.none s)
 
-  let alias s = Dep_conf.Alias (String_with_vars.make_text Loc.none s)
+  let make_alias_sw ~dir s =
+    let path =
+      Dune.Alias.Name.to_string s
+      |> Stdune.Path.Local.relative dir
+      |> Stdune.Path.Local.to_string
+    in
+    String_with_vars.make_text Loc.none path
 
-  let alias_rec s = Dep_conf.Alias_rec (String_with_vars.make_text Loc.none s)
+  let alias ~dir s = Dep_conf.Alias (make_alias_sw ~dir s)
+
+  let alias_rec ~dir s = Dep_conf.Alias_rec (make_alias_sw ~dir s)
 
   let parse_alias s =
     if not (String.is_prefix s ~prefix:"@") then
@@ -44,15 +52,19 @@ module Dep = struct
           (1, true)
       in
       let s = String.drop s pos in
-      Some (recursive, s)
+      let dir, alias =
+        let path = Stdune.Path.Local.of_string s in
+        Dune.Alias.Name.parse_local_path (Loc.none, path)
+      in
+      Some (recursive, dir, alias)
 
   let dep_parser =
     Dune_lang.Syntax.set Stanza.syntax Stanza.latest_version Dep_conf.decode
 
   let parser s =
     match parse_alias s with
-    | Some (true, s) -> `Ok (alias_rec s)
-    | Some (false, s) -> `Ok (alias s)
+    | Some (true, dir, name) -> `Ok (alias_rec ~dir name)
+    | Some (false, dir, name) -> `Ok (alias ~dir name)
     | None -> (
       match
         Dune_lang.Decoder.parse dep_parser Univ_map.empty

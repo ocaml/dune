@@ -1,5 +1,31 @@
 open Stdune
 
+module Name : sig
+  type t
+
+  val decode : t Dune_lang.Decoder.t
+
+  val of_string : string -> t
+
+  val parse_string_exn : Loc.t * string -> t
+
+  val to_string : t -> string
+
+  val to_dyn : t -> Dyn.t
+
+  val default : t
+
+  val runtest : t
+
+  val install : t
+
+  val all : t
+
+  val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
+
+  module Map : Map.S with type key = t
+end
+
 type t
 
 val equal : t -> t -> bool
@@ -8,12 +34,12 @@ val hash : t -> int
 
 val compare : t -> t -> Ordering.t
 
-val make : string -> dir:Path.Build.t -> t
+val make : Name.t -> dir:Path.Build.t -> t
 
 (** The following always holds:
 
     {[ make (name t) ~dir:(dir t) = t ]} *)
-val name : t -> string
+val name : t -> Name.t
 
 val dir : t -> Path.Build.t
 
@@ -52,7 +78,7 @@ val stamp_file : t -> Path.Build.t
 
 val find_dir_specified_on_command_line : dir:Path.Source.t -> File_tree.Dir.t
 
-val is_standard : string -> bool
+val is_standard : Name.t -> bool
 
 val suffix : string
 

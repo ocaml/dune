@@ -1,7 +1,7 @@
 open Stdune
 
 type t =
-  { name : string
+  { name : Dune.Alias.Name.t
   ; recursive : bool
   ; dir : Path.Source.t
   ; contexts : Dune.Context.t list
@@ -18,7 +18,7 @@ let to_log_string { name; recursive; dir; contexts = _ } =
     else
       "@@" )
     (Path.Source.to_string_maybe_quoted dir)
-    name
+    (Dune.Alias.Name.to_string name)
 
 let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in
@@ -50,5 +50,5 @@ let of_string common ~recursive s ~contexts =
       ]
   else
     let dir = Path.parent_exn path in
-    let name = Path.basename path in
+    let name = Dune.Alias.Name.of_string (Path.basename path) in
     in_dir ~name ~recursive ~contexts dir

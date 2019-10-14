@@ -63,20 +63,13 @@ let runtest =
     Common.set_common common
       ~targets:
         (List.map dirs ~f:(fun s ->
-             let prefix =
-               match s with
-               | ""
-               | "." ->
-                 ""
-               | dir when dir.[String.length dir - 1] = '/' -> dir
-               | dir -> dir ^ "/"
-             in
-             Arg.Dep.alias_rec (prefix ^ "runtest")));
+             let dir = Path.Local.of_string s in
+             Arg.Dep.alias_rec ~dir Dune.Alias.Name.runtest));
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
           Target.Alias
-            (Alias.in_dir ~name:"runtest" ~recursive:true
+            (Alias.in_dir ~name:Dune.Alias.Name.runtest ~recursive:true
                ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets

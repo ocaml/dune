@@ -1,6 +1,56 @@
 open! Stdune
 open Import
 
+module Name = struct
+  type t = string
+
+  let of_string_opt s =
+    if Filename.basename s <> s then
+      None
+    else
+      Some s
+
+  let invalid_alias = Pp.textf "%S is not a valid alias name"
+
+  let parse_string_exn (loc, s) =
+    match of_string_opt s with
+    | None -> User_error.raise ~loc [ invalid_alias s ]
+    | Some s -> s
+
+  let decode =
+    let open Dune_lang.Decoder in
+    plain_string (fun ~loc s -> parse_string_exn (loc, s))
+
+  let of_string s =
+    match of_string_opt s with
+    | Some s -> s
+    | None ->
+      Code_error.raise "invalid alias name" [ ("s", Dyn.Encoder.string s) ]
+
+  let to_string s = s
+
+  let default = "default"
+
+  let runtest = "runtest"
+
+  let install = "install"
+
+  let all = "all"
+
+  let to_dyn = String.to_dyn
+
+  module Map = String.Map
+
+  let parse_local_path (loc, p) =
+    match Path.Local.parent p with
+    | Some dir -> (dir, Path.Local.basename p)
+    | None ->
+      User_error.raise ~loc
+        [ Pp.textf "Invalid alias path: %S"
+            (Path.Local.to_string_maybe_quoted p)
+        ]
+end
+
 module T : sig
   type t = private
     { dir : Path.Build.t
@@ -85,11 +135,11 @@ let make_standard name =
   Table.add_exn standard_aliases name ();
   make name
 
-let default = make_standard "default"
+let default = make_standard Name.default
 
-let runtest = make_standard "runtest"
+let runtest = make_standard Name.runtest
 
-let install = make_standard "install"
+let install = make_standard Name.install
 
 let doc = make_standard "doc"
 

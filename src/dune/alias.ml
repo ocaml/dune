@@ -4,22 +4,37 @@ open Import
 module Name = struct
   type t = string
 
-  let of_string_opt s =
-    if Filename.basename s <> s then
+  let of_string_opt_loose s = Option.some_if (Filename.basename s = s) s
+
+  let of_string_opt = function
+    (* The [""] case is caught by of_string_opt_loose. But there's no harm in
+       being more explicit about it *)
+    | ""
+    | "."
+    | "/"
+    | ".." ->
       None
-    else
-      Some s
+    | s -> of_string_opt_loose s
 
   let invalid_alias = Pp.textf "%S is not a valid alias name"
 
-  let parse_string_exn (loc, s) =
+  let parse_string_exn ~syntax (loc, s) =
+    let of_string_opt =
+      if syntax >= (2, 0) then
+        of_string_opt
+      else
+        of_string_opt_loose
+    in
     match of_string_opt s with
     | None -> User_error.raise ~loc [ invalid_alias s ]
     | Some s -> s
 
   let decode =
     let open Dune_lang.Decoder in
-    plain_string (fun ~loc s -> parse_string_exn (loc, s))
+    let* syntax = Dune_lang.Syntax.get_exn Stanza.syntax in
+    plain_string (fun ~loc s -> parse_string_exn ~syntax (loc, s))
+
+  let parse_string_exn = parse_string_exn ~syntax:Stanza.latest_version
 
   let of_string s =
     match of_string_opt s with

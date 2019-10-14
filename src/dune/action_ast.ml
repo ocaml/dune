@@ -60,8 +60,16 @@ struct
           ; ( "with-exit-codes"
             , Dune_lang.Syntax.since Stanza.syntax (2, 0)
               >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
-                  and+ t = t in
-                  With_exit_codes (codes, t) )
+                  and+ t = located t in
+                  match t with
+                  | _, ((Run _ | Bash _ | System _) as t) ->
+                    With_exit_codes (codes, t)
+                  | loc, _ ->
+                    User_error.raise ~loc
+                      [ Pp.textf
+                          "with-exit-codes can only be used with \"run\", \
+                           \"bash\" or \"system\""
+                      ] )
           ; ( "dynamic-run"
             , let+ prog = Program.decode
               and+ args = repeat String.decode in

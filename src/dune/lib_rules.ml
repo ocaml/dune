@@ -153,7 +153,6 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
          match Path.extract_build_context_dir include_dir with
          | None ->
            (* TODO: Track files in external directories. *)
-           (* TODO_AM: Add test for the suggestion. *)
            User_error.raise ~loc
              [ Pp.textf
                  "%S is an external directory; dependencies in external \
@@ -182,24 +181,13 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                ; Command.Args.S
                    (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
                       ~init:[] ~f:(fun t args ->
-                        let local_dir =
-                          Path.Source.to_local (File_tree.Dir.path t)
-                        in
                         let dir =
-                          Path.relative build_dir
-                            (Path.Local.to_string local_dir)
+                          Path.append_source build_dir (File_tree.Dir.path t)
                         in
                         let deps =
                           Dep.Set.singleton
                             (Dep.file_selector
-                               (File_selector.create ~dir
-                                  (Predicate.create
-                                     ~id:
-                                       ( lazy
-                                         (String
-                                            ("files_in_" ^ Path.to_string dir))
-                                         )
-                                     ~f:(fun _ -> true))))
+                               (File_selector.create ~dir Predicate.true_))
                         in
                         Command.Args.Hidden_deps deps :: args))
                ] )))

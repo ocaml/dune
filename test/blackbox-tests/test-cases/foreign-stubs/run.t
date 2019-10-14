@@ -199,7 +199,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (modules main))
   > EOF
 
-  $ dune clean
+  $ rm -rf _build
   $ dune build --display short
            gcc bar$ext_obj
            gcc dllbar$ext_dll

@@ -119,6 +119,7 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%d" (Calc.calc 1 2 3)
   > EOF
 
+  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -183,7 +184,7 @@ Testsuite for the (foreign_library ...) stanza.
   > #define EIGHT 8
   > EOF
 
-  $ dune clean
+  $ rm -rf _build
   $ dune build --display short
       ocamldep lib/.calc.objs/calc.mli.d
         ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
@@ -274,6 +275,7 @@ Testsuite for the (foreign_library ...) stanza.
 
 
 
+
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".
 
@@ -354,6 +356,7 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%s %d" (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
+  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -463,6 +466,7 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
+  $ rm -rf _build
   $ dune build
 
   $ dune exec ./main.exe
@@ -507,10 +511,25 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%s: %d %s %d" (today ()) (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
+  $ rm -rf _build
   $ dune exec --display short ./main.exe
+      ocamldep lib/.calc.objs/calc.mli.d
+        ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
       ocamldep .main.eobjs/main.ml.d
         ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
+      ocamldep lib/.calc.objs/calc.ml.d
+      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
+      ocamlopt lib/calc.{a,cmxa}
+        ocamlc lib/add$ext_obj
+        ocamlc lib/mul$ext_obj
+    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
+        ocamlc lib/month$ext_obj
+    ocamlmklib lib/dllcalc_stubs$ext_dll,lib/libcalc_stubs$ext_lib
+           gcc lib/config$ext_obj
+    ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
+        ocamlc lib/day$ext_obj
+    ocamlmklib lib/dllday$ext_dll,lib/libday$ext_lib
         ocamlc lib2/today$ext_obj
     ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
       ocamlopt main.exe

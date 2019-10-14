@@ -85,7 +85,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
   in
-  (* TODO_AM: Implement the same approach in lib_rules. *)
+  (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
+     the reason is unclear. It would be nice to make the code more uniform. *)
   let link_args =
     let+ flags = link_flags in
     Command.Args.S

@@ -6,7 +6,7 @@ open Import
 type ('a, 'b) failure_mode =
   | Strict : ('a, 'a) failure_mode
       (** Fail if the process exits with anything else than [0] *)
-  | Accept : int Predicate_lang.Ast.t -> ('a, ('a, int) result) failure_mode
+  | Accept : int Predicate_lang.t -> ('a, ('a, int) result) failure_mode
       (** Accept the following non-zero exit codes, and return [Error code] if
           the process exists with one of these codes. *)
 

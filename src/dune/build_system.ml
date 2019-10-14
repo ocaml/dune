@@ -993,9 +993,9 @@ end = struct
           | Promote { only = Some pred; _ } ->
             let to_ignore =
               Path.Build.Set.filter targets ~f:(fun target ->
-                  Predicate_lang.exec pred
+                  Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
-                    ~standard:Predicate_lang.true_)
+                    ~standard:Predicate_lang.any)
             in
             Path.Build.Set.union to_ignore acc_ignored
           | _ -> acc_ignored)
@@ -1574,9 +1574,9 @@ end = struct
               match only with
               | None -> true
               | Some pred ->
-                Predicate_lang.exec pred
+                Predicate_lang.Glob.exec pred
                   (Path.reach (Path.build path) ~from:(Path.build dir))
-                  ~standard:Predicate_lang.true_
+                  ~standard:Predicate_lang.any
             in
             match consider_for_promotion with
             | false -> Fiber.return ()

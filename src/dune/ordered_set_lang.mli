@@ -11,36 +11,6 @@ val decode : t Dune_lang.Decoder.t
 (** Return the location of the set. [loc standard] returns [None] *)
 val loc : t -> Loc.t option
 
-module type Key = sig
-  type t
-
-  val compare : t -> t -> Ordering.t
-
-  module Map : Map.S with type key = t
-end
-
-module type S = sig
-  (** Evaluate an ordered set. [standard] is the interpretation of [:standard]
-      inside the DSL. *)
-  module Key : Key
-
-  (** Same as [eval] but the result is unordered *)
-  val eval :
-       t
-    -> parse:(loc:Loc.t -> string -> 'a)
-    -> key:('a -> Key.t)
-    -> standard:'a Key.Map.t
-    -> 'a Key.Map.t
-
-  (** Same as [eval] but the result is unordered *)
-  val eval_loc :
-       t
-    -> parse:(loc:Loc.t -> string -> 'a)
-    -> key:('a -> Key.t)
-    -> standard:(Loc.t * 'a) Key.Map.t
-    -> (Loc.t * 'a) Key.Map.t
-end
-
 val eval :
      t
   -> parse:(loc:Loc.t -> string -> 'a)
@@ -48,7 +18,8 @@ val eval :
   -> standard:'a list
   -> 'a list
 
-module Unordered (Key : Key) : S with module Key := Key
+module Unordered (Key : Ordered_set_lang_intf.Key) :
+  Ordered_set_lang_intf.Unordered_eval with type t = t and module Key := Key
 
 val eval_loc :
      t
@@ -112,4 +83,5 @@ module Unexpanded : sig
 end
 with type expanded := t
 
-module Unordered_string : S with module Key := String
+module Unordered_string :
+  Ordered_set_lang_intf.Unordered_eval with type t = t and module Key := String

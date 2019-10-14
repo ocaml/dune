@@ -82,7 +82,7 @@ type exec_environment =
   ; stderr_to : Process.Io.output Process.Io.t
   ; stdin_from : Process.Io.input Process.Io.t
   ; prepared_dependencies : DAP.Dependency.Set.t
-  ; exit_codes : int Predicate_lang.Ast.t
+  ; exit_codes : int Predicate_lang.t
   }
 
 let validate_context_and_prog context prog =
@@ -421,7 +421,7 @@ let exec ~targets ~context ~env ~rule_loc ~build_deps t =
     ; stderr_to = Process.Io.stderr
     ; stdin_from = Process.Io.stdin
     ; prepared_dependencies = DAP.Dependency.Set.empty
-    ; exit_codes = Predicate_lang.Ast.Element 0
+    ; exit_codes = Predicate_lang.Element 0
     }
   in
   exec_until_all_deps_ready t ~ectx ~eenv

@@ -1228,7 +1228,7 @@ module Promote = struct
   type t =
     { lifetime : Lifetime.t
     ; into : Into.t option
-    ; only : Predicate_lang.t option
+    ; only : Predicate_lang.Glob.t option
     }
 
   let decode =
@@ -1243,7 +1243,7 @@ module Promote = struct
        and+ only =
          field_o "only"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>= fun () -> Predicate_lang.decode )
+           >>= fun () -> Predicate_lang.Glob.decode )
        in
        { lifetime =
            ( if until_clean then

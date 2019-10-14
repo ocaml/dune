@@ -58,7 +58,7 @@ let status status_by_dir ~dir : Status.Or_ignored.t =
 
 let default =
   let standard_dirs =
-    Predicate_lang.of_pred (function
+    Predicate_lang.Glob.of_pred (function
       | "" -> false
       | s -> s.[0] <> '.' && s.[0] <> '_')
   in
@@ -79,8 +79,10 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
 type status_map = Status.t String.Map.t
 
 let eval (t : _ Status.Map.t) ~dirs =
-  let normal = Predicate_lang.filter t.normal ~standard:default.normal dirs in
-  let eval ~standard pred = Predicate_lang.filter pred ~standard dirs in
+  let normal =
+    Predicate_lang.Glob.filter t.normal ~standard:default.normal dirs
+  in
+  let eval ~standard pred = Predicate_lang.Glob.filter pred ~standard dirs in
   let data_only = eval ~standard:default.data_only t.data_only in
   let vendored = eval ~standard:default.vendored t.vendored in
   let statuses =
@@ -129,7 +131,7 @@ let decode =
                   else
                     dn)))
       in
-      Predicate_lang.of_string_set (String.Set.of_list l)
+      Predicate_lang.Glob.of_string_set (String.Set.of_list l)
     in
     let+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc, ignored = located ignored in
@@ -143,15 +145,15 @@ let decode =
     ignored
   in
   let plang =
-    Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.decode
+    Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.Glob.decode
   in
   let vendored_dirs =
     let decode =
       if Bootstrap.bootstrapping then
-        let pred = Predicate_lang.of_pred (fun _ -> true) in
+        let pred = Predicate_lang.any in
         Dune_lang.Decoder.(map ~f:(fun () -> pred) (keyword "*"))
       else
-        Predicate_lang.decode
+        Predicate_lang.Glob.decode
     in
     located (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> decode)
   in

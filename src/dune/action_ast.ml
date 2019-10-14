@@ -59,8 +59,7 @@ struct
               Run (prog, args) )
           ; ( "with-exit-codes"
             , Dune_lang.Syntax.since Stanza.syntax (2, 0)
-              >>> let+ codes =
-                    Predicate_lang.Ast.decode_one Dune_lang.Decoder.int
+              >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
                   and+ t = t in
                   With_exit_codes (codes, t) )
           ; ( "dynamic-run"
@@ -142,7 +141,7 @@ struct
     | With_exit_codes (pred, t) ->
       List
         [ atom "with-exit-codes"
-        ; Predicate_lang.Ast.encode Dune_lang.Encoder.int pred
+        ; Predicate_lang.encode Dune_lang.Encoder.int pred
         ; encode t
         ]
     | Dynamic_run (a, xs) ->

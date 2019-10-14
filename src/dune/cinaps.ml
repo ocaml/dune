@@ -4,7 +4,7 @@ open Build.O
 
 type t =
   { loc : Loc.t
-  ; files : Predicate_lang.t
+  ; files : Predicate_lang.Glob.t
   ; libraries : Lib_dep.t list
   ; preprocess : Dune_file.Preprocess_map.t
   ; preprocessor_deps : Dune_file.Dep_conf.t list
@@ -21,7 +21,7 @@ let decode =
   fields
     (let+ loc = loc
      and+ files =
-       field "files" Predicate_lang.decode ~default:Predicate_lang.true_
+       field "files" Predicate_lang.Glob.decode ~default:Predicate_lang.any
      and+ preprocess, preprocessor_deps = Dune_file.preprocess_fields
      and+ libraries =
        field "libraries"
@@ -48,8 +48,8 @@ let gen_rules sctx t ~dir ~scope =
     |> Path.Source.Set.to_list
     |> List.filter_map ~f:(fun p ->
            if
-             Predicate_lang.exec t.files (Path.Source.basename p)
-               ~standard:Predicate_lang.true_
+             Predicate_lang.Glob.exec t.files (Path.Source.basename p)
+               ~standard:Predicate_lang.any
            then
              Some (Path.Build.append_source (Super_context.build_dir sctx) p)
            else

@@ -88,6 +88,7 @@ Among other things, dune-configurator allows one to:
 (package
  (name dune-action-plugin)
  (depends
+  dune-glob
   (dune-private-libs (= :version)))
  (synopsis "API for writing dynamic Dune actions")
  (description "\

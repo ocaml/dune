@@ -268,9 +268,9 @@ Testsuite for the (foreign_library ...) stanza.
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
   Hint: You can specify "/absolute/path" as an untracked include directory like this:
-  
+
     (flags -I /absolute/path)
-  
+
   [1]
 
 
@@ -472,7 +472,67 @@ Testsuite for the (foreign_library ...) stanza.
   8 October 2019
 
 ----------------------------------------------------------------------------------
+* Use (env ...) to pass C++ flags.
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_archives addmul config))
+  > (foreign_library
+  >  (archive_name day)
+  >  (language c)
+  >  (names day))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (extra_deps eight.h)
+  >  (names config))
+  > EOF
+
+  $ cat >dune <<EOF
+  > (env (_ (cxx_flags -DCONFIG_VALUE=2000)))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (libraries calc)
+  >  (foreign_archives lib/day)
+  >  (modules main))
+  > EOF
+
+  $ dune exec ./main.exe
+
+----------------------------------------------------------------------------------
 * Generated header.
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_stubs (language c) (names month))
+  >  (foreign_archives addmul config))
+  > (foreign_library
+  >  (archive_name day)
+  >  (language c)
+  >  (names day))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers)
+  >  (flags -DCONFIG_VALUE=2000)
+  >  (extra_deps eight.h)
+  >  (names config))
+  > EOF
 
   $ mkdir -p lib2/headers
   $ cat >lib2/dune <<EOF

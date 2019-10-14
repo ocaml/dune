@@ -8,8 +8,7 @@ module Stanza = struct
   let foreign_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
-          Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
-          >>> Dune_lang.Syntax.since Stanza.syntax since)
+          Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in

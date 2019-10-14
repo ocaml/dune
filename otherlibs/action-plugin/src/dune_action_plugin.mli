@@ -17,10 +17,6 @@ module V1 : sig
 
   module Path = Path
 
-  module Glob : module type of struct
-    include Dune_glob.V1
-  end
-
   type 'a t
 
   (** {1:monadic_interface Applicative/monadic interface} *)
@@ -85,7 +81,8 @@ module V1 : sig
 
       BUG: the returned listing includes directories even though that
       dependency is not tracked. *)
-  val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
+  val read_directory_with_glob :
+    path:Path.t -> glob:Dune_glob.V1.t -> string list t
 
   (** {1:running Running the computation} *)
 

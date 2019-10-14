@@ -145,7 +145,15 @@ let stop beacon =
   check_beacon ~close:false (Path.to_string beacon)
   >>= function
   | None -> Result.Error "not running"
-  | Some (_, pid, fd) ->
-    Unix.kill pid Sys.sigterm;
-    retry ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
-      (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())
+  | Some (_, pid, fd) -> (
+    let kill signal =
+      Unix.kill pid signal;
+      retry ~message:(Printf.sprintf "waiting for daemon to stop (PID %i)" pid)
+        (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())
+    in
+    match kill Sys.sigterm with
+    | Error _ ->
+      (* Unfortunately the logger may not be set. Print on stderr directly? *)
+      (* Log.infof "unable to terminate daemon with SIGTERM, using SIGKILL"; *)
+      kill Sys.sigkill
+    | ok -> ok )

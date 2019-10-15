@@ -35,6 +35,16 @@ let check_filename =
       Path.as_in_build_dir_exn p
     | Dir p -> not_in_dir ~error_loc (Path.to_string p)
 
+let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
+  let alias = Alias.make name ~dir in
+  SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
+
+let stamp ~deps ~action ~extra_bindings =
+  ( "user-alias"
+  , Bindings.map ~f:Dep_conf.remove_locs deps
+  , Option.map ~f:Action_unexpanded.remove_locs action
+  , Option.map extra_bindings ~f:Pform.Map.to_stamp )
+
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
   | false -> Path.Build.Set.empty
@@ -57,6 +67,17 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
+    let action =
+      SC.Deps.interpret_named sctx ~expander rule.deps
+      |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
+           ~dep_kind:Required ~targets ~targets_dir:dir
+    in
+    Option.iter rule.alias ~f:(fun name ->
+        let stamp =
+          let action = Some (snd rule.action) in
+          stamp ~deps:rule.deps ~extra_bindings ~action
+        in
+        add_alias sctx ~dir ~name ~stamp ~loc:(Some (fst rule.action)) action);
     SC.add_rule_get_targets
       sctx
       (* user rules may have extra requirements, in which case they will be
@@ -114,18 +135,10 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            ~src:file_src ~dst:file_dst);
       Path.build file_dst)
 
-let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
-  let alias = Alias.make name ~dir in
-  SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
-
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let stamp =
-    ( "user-alias"
-    , Bindings.map ~f:Dep_conf.remove_locs alias_conf.deps
-    , Option.map
-        ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
-        alias_conf.action
-    , Option.map extra_bindings ~f:Pform.Map.to_stamp )
+    let action = Option.map ~f:snd alias_conf.action in
+    stamp ~deps:alias_conf.deps ~extra_bindings ~action
   in
   let loc = Some alias_conf.loc in
   let locks, action =

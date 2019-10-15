@@ -76,7 +76,7 @@ module Readdir : sig
     ; dirs : (string * Path.Source.t * File.t) list
     }
 
-  val to_dyn : t -> Dyn.t
+  val empty : t
 
   val of_source_path : Path.Source.t -> (t, Unix.error) Result.t
 end = struct
@@ -85,7 +85,9 @@ end = struct
     ; dirs : (string * Path.Source.t * File.t) list
     }
 
-  let to_dyn { files; dirs } =
+  let empty = { files = String.Set.empty; dirs = [] }
+
+  let _to_dyn { files; dirs } =
     let open Dyn.Encoder in
     record
       [ ("files", String.Set.to_dyn files)
@@ -145,7 +147,7 @@ module Dir0 = struct
   module Contents = struct
     type t =
       { files : String.Set.t
-      ; sub_dirs : (Sub_dirs.Status.t * Readdir.t) String.Map.t
+      ; sub_dirs : Sub_dirs.Status.t String.Map.t
       ; dune_file : Dune_file.t option
       }
 
@@ -155,10 +157,7 @@ module Dir0 = struct
       let open Dyn.Encoder in
       record
         [ ("files", String.Set.to_dyn files)
-        ; ( "sub_dirs"
-          , String.Map.to_dyn
-              (pair Sub_dirs.Status.to_dyn Readdir.to_dyn)
-              sub_dirs )
+        ; ("sub_dirs", String.Map.to_dyn Sub_dirs.Status.to_dyn sub_dirs)
         ; ("dune_file", Dyn.Encoder.(option opaque dune_file))
         ; ("project", Dyn.opaque)
         ]
@@ -214,12 +213,6 @@ module Dir0 = struct
       ; ("contents", Contents.to_dyn contents)
       ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
       ]
-
-  let empty_contents =
-    { files = String.Set.empty; sub_dirs = String.Map.empty; dune_file = None }
-
-  let empty ~project ~path ~status ~vcs =
-    { project; path; status; vcs; contents = lazy empty_contents }
 end
 
 module Settings : sig
@@ -272,9 +265,6 @@ end = struct
       pair Dir0.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
   end
 
-  (* This function will read the contents of sub directories. This is because
-     we want to exclude directory names that are unreadable from being
-     processed by callers *)
   let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
       ~(dir_status : Sub_dirs.Status.t) =
     let sub_dirs =
@@ -313,11 +303,7 @@ end = struct
                            (Path.Source.to_string_maybe_quoted path)
                        ])
              in
-             let subdirs =
-               match Readdir.of_source_path path with
-               | Ok dir -> String.Map.set subdirs fn (dir_status, dir)
-               | Error _ -> subdirs
-             in
+             let subdirs = String.Map.set subdirs fn dir_status in
              (dirs_visited, subdirs))
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
@@ -412,31 +398,34 @@ end = struct
 
   let make_subdir =
     let module Input = struct
-      type t = Output.t * Sub_dirs.Status.t * Readdir.t * string
+      type t = Output.t * Sub_dirs.Status.t * string
 
       let hash : t -> int =
-       fun ((dir, _), _, _, s) ->
+       fun ((dir, _), _, s) ->
         Tuple.T2.hash Path.Source.hash String.hash (dir.path, s)
 
-      let to_dyn (dir, status, readdir, name) =
+      let to_dyn (dir, status, name) =
         let open Dyn.Encoder in
         record
           [ ("dir", Output.to_dyn dir)
           ; ("status", Sub_dirs.Status.to_dyn status)
-          ; ("readdir", Readdir.to_dyn readdir)
           ; ("name", String.to_dyn name)
           ]
 
-      let equal (((d1, _), _, _, n1) : t) (((d2, _), _, _, n2) : t) =
+      let equal (((d1, _), _, n1) : t) (((d2, _), _, n2) : t) =
         Path.Source.equal d1.path d2.path && String.equal n1 n2
     end in
     let f
         ( ((parent_dir, dirs_visited) : Output.t)
         , (dir_status : Sub_dirs.Status.t)
-        , (readdir : Readdir.t)
         , name ) =
       let path = Path.Source.relative parent_dir.path name in
       let settings = Settings.get () in
+      let readdir =
+        match Readdir.of_source_path path with
+        | Ok dir -> dir
+        | Error _ -> Readdir.empty
+      in
       let project =
         if dir_status = Data_only then
           parent_dir.project
@@ -459,8 +448,7 @@ end = struct
         ~output:(Simple (module Output))
         ~visibility:Memo.Visibility.Hidden Sync f
     in
-    fun parent (dir_status, readdir) name ->
-      Memo.exec memo (parent, dir_status, readdir, name)
+    fun parent dir_status name -> Memo.exec memo (parent, dir_status, name)
 
   let rec find_dir (t : Output.t) = function
     | [] -> Some t
@@ -543,7 +531,7 @@ module Dir = struct
 
   let sub_dirs (t : t) =
     t.contents.sub_dirs
-    |> String.Map.mapi ~f:(fun name (_, _) ->
+    |> String.Map.mapi ~f:(fun name _ ->
            let path = Path.Source.relative t.path name in
            Option.value_exn (find_dir path))
 end

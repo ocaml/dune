@@ -214,6 +214,20 @@ module Dir = struct
       ; ("contents", dyn_of_contents contents)
       ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
       ]
+
+  let empty_contents =
+    { files = String.Set.empty
+    ; sub_dirs = String.Map.empty
+    ; dune_file = None
+    }
+
+  let empty ~project ~path ~status ~vcs =
+    { project
+    ; path
+    ; status
+    ; vcs
+    ; contents = lazy empty_contents
+    }
 end
 
 module Settings = struct
@@ -338,12 +352,16 @@ let make_root
                          (Path.Source.to_string_maybe_quoted path)
                      ]
              in
-             match
-               let+ x = Readdir.of_source_path path in
-               walk path ~dirs_visited ~project ~dir_status ~vcs x
-             with
-             | Ok dir -> String.Map.set acc fn dir
-             | Error _ -> acc ))
+             let dir =
+               match
+                 let+ x = Readdir.of_source_path path in
+                 walk path ~dirs_visited ~project ~dir_status ~vcs x
+               with
+               | Ok dir -> dir
+               | Error _ -> Dir.empty ~vcs ~project ~path ~status
+             in
+             String.Map.set acc fn dir
+           ))
   in
   let walk =
     let+ x = Readdir.of_source_path path in

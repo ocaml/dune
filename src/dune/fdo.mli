@@ -11,6 +11,10 @@ val linear_fdo_ext : string
 
 val phase_flags : phase option -> string list
 
+val c_flags : Context.t -> string list
+
+val cxx_flags : Context.t -> string list
+
 val opt_rule : Compilation_context.t -> Module.t -> string -> unit
 
 module Linker_script : sig

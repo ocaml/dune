@@ -23,6 +23,17 @@ let phase_flags = function
     [ "-g"; "-stop-after"; "scheduling"; "-save-ir-after"; "scheduling" ]
   | Some Emit -> [ "-g"; "-start-from"; "emit"; "-function-sections" ]
 
+(* CR-soon gyorsh: add a rule to use profile with c/cxx profile if available,
+   similarly to opt_rule for ocaml modules. The profile will have to be
+   generated externally from perf data for example using google's autofdo
+   toolset: create_gcov for gcc or create_llvm_prof for llvm. *)
+let c_flags (ctx : Context.t) =
+  match ctx.fdo_target_exe with
+  | None -> []
+  | Some _ -> [ "-ffunction-sections" ]
+
+let cxx_flags = c_flags
+
 (* Location of ocamlfdo binary tool is independent of the module, but may
    depend on the context. If it isn't cached elsewhere, we should do it here.
    CR gyorsh: is it cached? *)

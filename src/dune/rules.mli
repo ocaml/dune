@@ -30,7 +30,7 @@ module Dir_rules : sig
   (** A ready to process view of the rules of a directory *)
   type ready =
     { rules : Rule.t list
-    ; aliases : Alias_spec.t String.Map.t
+    ; aliases : Alias_spec.t Alias.Name.Map.t
     }
 
   val consume : t -> ready

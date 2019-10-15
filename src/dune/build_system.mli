@@ -103,14 +103,20 @@ module Alias : sig
 
   (** Implements [@@alias] on the command line *)
   val dep_multi_contexts :
-    dir:Path.Source.t -> name:string -> contexts:string list -> unit Build.t
+       dir:Path.Source.t
+    -> name:Alias.Name.t
+    -> contexts:string list
+    -> unit Build.t
 
   (** Implements [(alias_rec ...)] in dependency specification *)
   val dep_rec : t -> loc:Loc.t -> unit Build.t
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts :
-    dir:Path.Source.t -> name:string -> contexts:string list -> unit Build.t
+       dir:Path.Source.t
+    -> name:Alias.Name.t
+    -> contexts:string list
+    -> unit Build.t
 end
 
 (** {1 Building} *)

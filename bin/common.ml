@@ -248,7 +248,8 @@ module Options_implied_by_dash_p = struct
     and+ default_target =
       Arg.(
         value
-        & opt dep (Dep.alias "default")
+        & opt dep
+            (Dep.alias ~dir:Stdune.Path.Local.root Dune.Alias.Name.default)
         & info [ "default-target" ] ~docs ~docv:"TARGET"
             ~doc:
               {|Set the default target that when none is specified to
@@ -295,7 +296,8 @@ module Options_implied_by_dash_p = struct
     ; ignore_promoted_rules = true
     ; config_file = No_config
     ; profile = Some Profile.Release
-    ; default_target = Arg.Dep.alias_rec "install"
+    ; default_target =
+        Arg.Dep.alias_rec ~dir:Path.Local.root Dune.Alias.Name.install
     ; always_show_command_line = true
     ; promote_install_files = true
     }

@@ -1585,7 +1585,7 @@ end = struct
                 User_warning.emit
                   [ Pp.text "unexpected list of targets in the cache"
                   ; pp "expected: " targets ~f:fst
-                  ; pp "got:      " cached ~f:(fun c ->
+                  ; pp "got:      " cached ~f:(fun (c : Dune_memory.File.t) ->
                         c.in_the_build_directory)
                   ]
               else

@@ -528,9 +528,9 @@ end = struct
                   Memo.lazy_ (fun () ->
                       let dune_version = d.dune_version in
                       Foreign_sources.make d
-                        ~object_map:
-                          (Foreign.Object_map.load ~dune_version ~dir:d.ctx_dir
-                             ~files))
+                        ~sources:
+                          (Foreign.Sources.Unresolved.load ~dune_version
+                             ~dir:d.ctx_dir ~files))
               ; coq_modules =
                   Memo.lazy_ (fun () ->
                       build_coq_modules_map d ~dir:d.ctx_dir
@@ -630,15 +630,15 @@ end = struct
             check_no_qualified Loc.none qualif_mode;
             let dune_version = d.dune_version in
             let init = String.Map.empty in
-            let object_map =
+            let sources =
               List.fold_left ((dir, [], files) :: subdirs) ~init
                 ~f:(fun acc (dir, _local, files) ->
                   let sources =
-                    Foreign.Object_map.load ~dir ~dune_version ~files
+                    Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
                   in
                   String.Map.Multi.rev_union acc sources)
             in
-            Foreign_sources.make d ~object_map)
+            Foreign_sources.make d ~sources)
       in
       let coq_modules =
         Memo.lazy_ (fun () ->

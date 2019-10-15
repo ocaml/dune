@@ -34,7 +34,7 @@ let valid_name language ~loc s =
   | _ -> s
 
 let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
-    ~(object_map : Foreign.Object_map.t) : Foreign.Sources.t =
+    ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t =
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
     let osl = stubs.names in
@@ -53,7 +53,7 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
             ];
         name)
     |> String.Map.map ~f:(fun (loc, name) ->
-           match String.Map.find object_map name with
+           match String.Map.find sources name with
            | Some paths when List.length paths > 1 ->
              User_error.raise ~loc
                [ Pp.textf "Multiple sources map to the same object name %S:"
@@ -98,21 +98,21 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
                (path another_src) (path src) name)
             []))
 
-let make (d : _ Dir_with_dune.t) ~(object_map : Foreign.Object_map.t) =
+let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t) =
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
           let all =
-            eval_foreign_sources d lib.buildable.foreign_stubs ~object_map
+            eval_foreign_sources d lib.buildable.foreign_stubs ~sources
           in
           Left (Left (lib, all))
         | Foreign_library library ->
-          let all = eval_foreign_sources d [ library.stubs ] ~object_map in
+          let all = eval_foreign_sources d [ library.stubs ] ~sources in
           Left (Right (library.archive_name, (library.stubs.loc, all)))
         | Executables exes ->
           let all =
-            eval_foreign_sources d exes.buildable.foreign_stubs ~object_map
+            eval_foreign_sources d exes.buildable.foreign_stubs ~sources
           in
           Right (exes, all)
         | _ -> Skip)

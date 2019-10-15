@@ -293,7 +293,7 @@ let gen_dune_package sctx pkg =
                  let foreign_objects =
                    let dir = Obj_dir.obj_dir obj_dir in
                    Dir_contents.foreign_sources_of_library dir_contents ~name
-                   |> Foreign.Sources.objects ~dir
+                   |> Foreign.Sources.object_files ~dir
                         ~ext_obj:ctx.lib_config.ext_obj
                    |> List.map ~f:Path.build
                  in

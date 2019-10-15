@@ -198,40 +198,40 @@ module Source = struct
   let make ~stubs ~path = { stubs; path }
 end
 
-module Object_map = struct
-  type t = (Language.t * Path.Build.t) String.Map.Multi.t
-
-  let to_dyn t =
-    String.Map.to_dyn
-      (fun xs ->
-        Dyn.List
-          (List.map xs ~f:(fun (language, path) ->
-               Dyn.Tuple [ Language.to_dyn language; Path.Build.to_dyn path ])))
-      t
-
-  let load ~dune_version ~dir ~files =
-    let init = String.Map.empty in
-    String.Set.fold files ~init ~f:(fun fn acc ->
-        match Language.split_extension fn ~dune_version with
-        | Unrecognized -> acc
-        | Not_allowed_until version ->
-          let loc = Loc.in_dir (Path.build dir) in
-          User_error.raise ~loc
-            [ Pp.textf
-                "The extension %s of the source file %S is not supported \
-                 until version %s."
-                (Filename.extension fn) fn
-                (Dune_lang.Syntax.Version.to_string version)
-            ]
-        | Recognized (obj, language) ->
-          let path = Path.Build.relative dir fn in
-          String.Map.add_multi acc obj (language, path))
-end
-
 module Sources = struct
   type t = (Loc.t * Source.t) String.Map.t
 
-  let objects t ~dir ~ext_obj =
+  let object_files t ~dir ~ext_obj =
     String.Map.keys t
     |> List.map ~f:(fun c -> Path.Build.relative dir (c ^ ext_obj))
+
+  module Unresolved = struct
+    type t = (Language.t * Path.Build.t) String.Map.Multi.t
+
+    let to_dyn t =
+      String.Map.to_dyn
+        (fun xs ->
+          Dyn.List
+            (List.map xs ~f:(fun (language, path) ->
+                 Dyn.Tuple [ Language.to_dyn language; Path.Build.to_dyn path ])))
+        t
+
+    let load ~dune_version ~dir ~files =
+      let init = String.Map.empty in
+      String.Set.fold files ~init ~f:(fun fn acc ->
+          match Language.split_extension fn ~dune_version with
+          | Unrecognized -> acc
+          | Not_allowed_until version ->
+            let loc = Loc.in_dir (Path.build dir) in
+            User_error.raise ~loc
+              [ Pp.textf
+                  "The extension %s of the source file %S is not supported \
+                   until version %s."
+                  (Filename.extension fn) fn
+                  (Dune_lang.Syntax.Version.to_string version)
+              ]
+          | Recognized (obj, language) ->
+            let path = Path.Build.relative dir fn in
+            String.Map.add_multi acc obj (language, path))
+  end
 end

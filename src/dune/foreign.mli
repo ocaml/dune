@@ -133,6 +133,8 @@ val lib_file :
 val dll_file :
   archive_name:string -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 
+(** A foreign source file that has a [path] and all information of the
+    corresponnding [Foreign.Stubs.t] declaration. *)
 module Source : sig
   type t
 
@@ -146,23 +148,24 @@ module Source : sig
 end
 
 (** A map from object names to the corresponding sources. *)
-module Object_map : sig
-  type t = (Language.t * Path.Build.t) String.Map.Multi.t
-
-  val to_dyn : t -> Dyn.t
-
-  (** [load ~dir ~files] loads foreign sources in [dir] into a two-layer map
-      whose first layer is keyed by the object name and the second layer is
-      keyed by the language of the sources. *)
-  val load :
-       dune_version:Dune_lang.Syntax.Version.t
-    -> dir:Path.Build.t
-    -> files:String.Set.t
-    -> t
-end
-
 module Sources : sig
   type t = (Loc.t * Source.t) String.Map.t
 
-  val objects : t -> dir:Path.Build.t -> ext_obj:string -> Path.Build.t list
+  val object_files :
+    t -> dir:Path.Build.t -> ext_obj:string -> Path.Build.t list
+
+  (** A map from object names to lists of possible language/path combinations. *)
+  module Unresolved : sig
+    type t = (Language.t * Path.Build.t) String.Map.Multi.t
+
+    val to_dyn : t -> Dyn.t
+
+    (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
+        the object name. *)
+    val load :
+         dune_version:Dune_lang.Syntax.Version.t
+      -> dir:Path.Build.t
+      -> files:String.Set.t
+      -> t
+  end
 end

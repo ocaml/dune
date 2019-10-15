@@ -35,7 +35,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
             Dir_contents.foreign_sources_of_library dir_contents
               ~name:(Library.best_name lib)
           in
-          Foreign.Sources.objects files ~dir ~ext_obj
+          Foreign.Sources.object_files files ~dir ~ext_obj
         else
           Library.lib_files lib ~dir ~ext_lib )
       ; if_

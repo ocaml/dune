@@ -212,13 +212,16 @@ module Library : sig
   (** The names of all foreign archives, including the foreign stubs archive. *)
   val archive_names : t -> string list
 
-  (** The [lib*.a] files of all foreign archives, including foreign stubs. *)
+  (** The [lib*.a] files of all foreign archives, including foreign stubs.
+      [dir] is the directory the library is declared in. *)
   val lib_files : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
-  (** The [dll*.a] files of all foreign archives, including foreign stubs. *)
+  (** The [dll*.a] files of all foreign archives, including foreign stubs.
+      [dir] is the directory the library is declared in. *)
   val dll_files : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
 
-  (** The path to a library archive. *)
+  (** The path to a library archive.
+      [dir] is the directory the library is declared in. *)
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t

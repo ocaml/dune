@@ -153,7 +153,7 @@ module Stubs = struct
       | Some _ ->
         User_error.raise ~loc:loc_archive_name
           [ Pp.textf
-              "The field \"archive_name\" is disallowed in the (foreign_stubs \
+              "The field \"archive_name\" is not allowed in the (foreign_stubs \
                ...) stanza. For named foreign archives use the \
                (foreign_library ...) stanza."
           ]
@@ -186,6 +186,8 @@ let dll_file ~archive_name ~dir ~ext_dll =
   Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
 
 module Source = struct
+  (* we store the entire [stubs] record even though [t] only describes an
+     individual source file *)
   type t =
     { stubs : Stubs.t
     ; path : Path.Build.t
@@ -224,6 +226,12 @@ module Sources = struct
           match Language.split_extension fn ~dune_version with
           | Unrecognized -> acc
           | Not_allowed_until version ->
+            (* CR-someday aalekseyev:
+               Raising in [Not_allowed_until] can break backwards compatibility
+               when we change a file from [Unrecognized] to [Not_allowed_until].
+
+               One way could be to instead pass the dune language version here
+               and interpret those as [Unrecognized]. *)
             let loc = Loc.in_dir (Path.build dir) in
             User_error.raise ~loc
               [ Pp.textf

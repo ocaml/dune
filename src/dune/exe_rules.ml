@@ -96,10 +96,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       [ Command.Args.As flags
       ; Command.Args.S
           (List.map archive_names ~f:(fun archive_name ->
-               let dir =
-                 Path.Build.relative dir (Filename.dirname archive_name)
+               let dir, archive_name =
+                 Path.Build.relative dir (Filename.dirname archive_name),
+                 Filename.basename archive_name
                in
-               let archive_name = Filename.basename archive_name in
                let lib = Foreign.lib_file ~archive_name ~dir ~ext_lib in
                Command.Args.S
                  [ Command.Args.A "-cclib"; Command.Args.Dep (Path.build lib) ]))

@@ -37,7 +37,7 @@ module Dir_rules = struct
   end
 
   type alias =
-    { name : string
+    { name : Alias.Name.t
     ; spec : Alias_spec.t
     }
 
@@ -52,13 +52,14 @@ module Dir_rules = struct
       Dyn.Variant
         ("Rule", [ Record [ ("targets", Path.Build.Set.to_dyn rule.targets) ] ])
     | Alias alias ->
-      Dyn.Variant ("Alias", [ Record [ ("name", Dyn.String alias.name) ] ])
+      Dyn.Variant
+        ("Alias", [ Record [ ("name", Alias.Name.to_dyn alias.name) ] ])
 
   let to_dyn t = Dyn.Encoder.(list data_to_dyn) (Id.Map.values t)
 
   type ready =
     { rules : Rule.t list
-    ; aliases : Alias_spec.t String.Map.t
+    ; aliases : Alias_spec.t Alias.Name.Map.t
     }
 
   let consume t =
@@ -69,11 +70,11 @@ module Dir_rules = struct
         | Alias _ -> None)
     in
     let aliases =
-      String.Map.of_list_multi
+      Alias.Name.Map.of_list_multi
         (List.filter_map data ~f:(function
           | Rule _ -> None
           | Alias { name; spec } -> Some (name, spec)))
-      |> String.Map.map ~f:(fun specs ->
+      |> Alias.Name.Map.map ~f:(fun specs ->
              List.fold_left specs ~init:Alias_spec.empty ~f:Alias_spec.union)
     in
     { rules; aliases }

@@ -209,7 +209,6 @@ module Library : sig
     ; dynlink : Dynlink_supported.t
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-    ; no_keep_locs : bool
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
@@ -276,7 +275,7 @@ module Promote : sig
   type t =
     { lifetime : Lifetime.t
     ; into : Into.t option
-    ; only : Predicate_lang.t option
+    ; only : Predicate_lang.Glob.t option
     }
 end
 
@@ -415,7 +414,7 @@ end
 
 module Alias_conf : sig
   type t =
-    { name : string
+    { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
     ; action : (Loc.t * Action_dune_lang.t) option
     ; locks : String_with_vars.t list

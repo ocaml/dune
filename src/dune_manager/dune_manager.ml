@@ -420,13 +420,17 @@ let daemon ~root ~config started =
   let log_file = Path.relative root "log" in
   Log.init ~file:(This log_file) ();
   let manager = make ~root ~config () in
-  let handler _ =
-    Log.info "caught signal";
+  (* Event blocks signals when waiting. Use a separate thread to catch signals. *)
+  let signal_handler s =
+    Log.infof "caught signal %i, exiting" s;
     ignore (Thread.create stop manager)
+  and signals = [ Sys.sigint; Sys.sigterm ] in
+  let rec signals_handler () =
+    signal_handler (Thread.wait_signal signals);
+    signals_handler ()
   in
-  (* Unfortunately it seems using Event prevents signals from working :-( *)
-  Sys.set_signal Sys.sigint (Sys.Signal_handle handler);
-  Sys.set_signal Sys.sigterm (Sys.Signal_handle handler);
+  ignore (Thread.sigmask Unix.SIG_BLOCK signals);
+  ignore (Thread.create signals_handler ());
   try run ~port_f:started manager
   with Error s ->
     Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;

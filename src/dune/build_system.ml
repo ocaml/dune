@@ -226,7 +226,7 @@ module Alias0 = struct
         User_error.raise ~loc
           [ Pp.text "This alias is empty."
           ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-              name
+              (Alias.Name.to_string name)
               (Path.Source.to_string_maybe_quoted src_dir)
           ]
 
@@ -242,14 +242,15 @@ module Alias0 = struct
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
     if is_empty && not (is_standard name) then
       User_error.raise
-        [ Pp.textf "Alias %S specified on the command line is empty." name
+        [ Pp.textf "Alias %S specified on the command line is empty."
+            (Alias.Name.to_string name)
         ; Pp.textf "It is not defined in %s or any of its descendants."
             (Path.Source.to_string_maybe_quoted src_dir)
         ]
 
   let package_install ~(context : Context.t) ~pkg =
     make
-      (sprintf ".%s-files" (Package.Name.to_string pkg))
+      (Alias.Name.of_string (sprintf ".%s-files" (Package.Name.to_string pkg)))
       ~dir:context.build_dir
 end
 
@@ -727,7 +728,7 @@ end = struct
       let open Build.O in
       let aliases = collected.aliases in
       let aliases =
-        if String.Map.mem aliases "default" then
+        if Alias.Name.Map.mem aliases Alias.Name.default then
           aliases
         else
           match Path.Build.extract_build_context_dir dir with
@@ -741,11 +742,11 @@ end = struct
                   File_tree.Dir.project dir |> Dune_project.dune_version
                 in
                 if dune_version >= (2, 0) then
-                  "all"
+                  Alias.Name.all
                 else
-                  "install"
+                  Alias.Name.install
               in
-              String.Map.set aliases "default"
+              Alias.Name.Map.set aliases Alias.Name.default
                 { deps = Path.Set.empty
                 ; dyn_deps =
                     (let+ _ =
@@ -756,12 +757,14 @@ end = struct
                 ; actions = Appendable_list.empty
                 } )
       in
-      String.Map.foldi aliases ~init:[]
+      Alias.Name.Map.foldi aliases ~init:[]
         ~f:(fun name
                 { Rules.Dir_rules.Alias_spec.deps; dyn_deps; actions }
                 rules
                 ->
-          let base_path = Path.Build.relative alias_dir name in
+          let base_path =
+            Path.Build.relative alias_dir (Alias.Name.to_string name)
+          in
           let rules, action_stamp_files =
             List.fold_left (Appendable_list.to_list actions)
               ~init:(rules, Path.Set.empty)
@@ -998,9 +1001,9 @@ end = struct
           | Promote { only = Some pred; _ } ->
             let to_ignore =
               Path.Build.Set.filter targets ~f:(fun target ->
-                  Predicate_lang.exec pred
+                  Predicate_lang.Glob.exec pred
                     (Path.reach (Path.build target) ~from:(Path.build dir))
-                    ~standard:Predicate_lang.true_)
+                    ~standard:Predicate_lang.any)
             in
             Path.Build.Set.union to_ignore acc_ignored
           | _ -> acc_ignored)
@@ -1630,9 +1633,9 @@ end = struct
               match only with
               | None -> true
               | Some pred ->
-                Predicate_lang.exec pred
+                Predicate_lang.Glob.exec pred
                   (Path.reach (Path.build path) ~from:(Path.build dir))
-                  ~standard:Predicate_lang.true_
+                  ~standard:Predicate_lang.any
             in
             match consider_for_promotion with
             | false -> Fiber.return ()

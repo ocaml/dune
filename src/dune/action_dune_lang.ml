@@ -40,22 +40,15 @@ module Mapper = Action_mapper.Make (Uast) (Uast)
    Moreover, we also check that 'dynamic-run' is not used within
    'with-exit-codes', since the meaning of this interaction is not clear. *)
 let ensure_at_most_one_dynamic_run ~loc action =
-  let rec loop : bool -> t -> bool =
-   fun with_exit_codes -> function
-    | Dynamic_run _ when with_exit_codes ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "'dynamic-run' can not be used within the scope of \
-             'with-exit-codes'."
-        ]
+  let rec loop : t -> bool = function
     | Dynamic_run _ -> true
     | Chdir (_, t)
     | Setenv (_, _, t)
     | Redirect_out (_, _, t)
     | Redirect_in (_, _, t)
-    | Ignore (_, t) ->
-      loop with_exit_codes t
-    | With_exit_codes (_, t) -> loop true t
+    | Ignore (_, t)
+    | With_accepted_exit_codes (_, t) ->
+      loop t
     | Run _
     | Echo _
     | Cat _
@@ -74,7 +67,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
       false
     | Progn ts ->
       List.fold_left ts ~init:false ~f:(fun acc t ->
-          let have_dyn = loop with_exit_codes t in
+          let have_dyn = loop t in
           if acc && have_dyn then
             User_error.raise ~loc
               [ Pp.text
@@ -84,7 +77,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
           else
             acc || have_dyn)
   in
-  ignore (loop false action)
+  ignore (loop action)
 
 let validate ~loc t = ensure_at_most_one_dynamic_run ~loc t
 

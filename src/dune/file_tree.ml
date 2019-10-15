@@ -214,6 +214,20 @@ module Dir = struct
       ; ("contents", dyn_of_contents contents)
       ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
       ]
+
+  let empty_contents =
+    { files = String.Set.empty
+    ; sub_dirs = String.Map.empty
+    ; dune_file = None
+    }
+
+  let empty ~project ~path ~status ~vcs =
+    { project
+    ; path
+    ; status
+    ; vcs
+    ; contents = lazy empty_contents
+    }
 end
 
 module Settings = struct
@@ -252,14 +266,8 @@ let init root ~ancestor_vcs ~recognize_jbuilder_projects =
 let make_root
     { Settings.root = path; ancestor_vcs; recognize_jbuilder_projects } =
   let open Result.O in
-  let nb_path_visited = ref 0 in
-  Console.Status_line.set (fun () ->
-      Some
-        (Pp.verbatim (Printf.sprintf "Scanned %i directories" !nb_path_visited)));
   let rec walk path ~dirs_visited ~project:parent_project ~vcs
       ~(dir_status : Sub_dirs.Status.t) { Readdir.dirs; files } =
-    incr nb_path_visited;
-    if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
     let project =
       if dir_status = Data_only then
         parent_project
@@ -344,12 +352,16 @@ let make_root
                          (Path.Source.to_string_maybe_quoted path)
                      ]
              in
-             match
-               let+ x = Readdir.of_source_path path in
-               walk path ~dirs_visited ~project ~dir_status ~vcs x
-             with
-             | Ok dir -> String.Map.set acc fn dir
-             | Error _ -> acc ))
+             let dir =
+               match
+                 let+ x = Readdir.of_source_path path in
+                 walk path ~dirs_visited ~project ~dir_status ~vcs x
+               with
+               | Ok dir -> dir
+               | Error _ -> Dir.empty ~vcs ~project ~path ~status
+             in
+             String.Map.set acc fn dir
+           ))
   in
   let walk =
     let+ x = Readdir.of_source_path path in
@@ -364,7 +376,6 @@ let make_root
       ~dirs_visited:(File.Map.singleton (File.of_source_path path) path)
       ~dir_status:Normal ~project ~vcs:ancestor_vcs x
   in
-  Console.Status_line.set (Fn.const None);
   match walk with
   | Ok dir -> dir
   | Error m ->
@@ -432,3 +443,17 @@ let dir_exists path = Option.is_some (find_dir path)
 
 let dir_is_vendored path =
   Option.map ~f:(fun dir -> Dir.vendored dir) (find_dir path)
+
+let fold_with_progress ~traverse ~init ~f =
+  let root = root () in
+  let nb_path_visited = ref 0 in
+  Console.Status_line.set (fun () ->
+      Some (Pp.textf "Scanned %i directories" !nb_path_visited));
+  let res =
+    Dir.fold root ~traverse ~init ~f:(fun dir acc ->
+        incr nb_path_visited;
+        if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
+        f dir acc)
+  in
+  Console.Status_line.set (Fn.const None);
+  res

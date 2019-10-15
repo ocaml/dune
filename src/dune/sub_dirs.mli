@@ -38,13 +38,14 @@ module Status : sig
   end
 end
 
-val default : Predicate_lang.t Status.Map.t
+val default : Predicate_lang.Glob.t Status.Map.t
 
 type status_map
 
-val eval : Predicate_lang.t Status.Map.t -> dirs:string list -> status_map
+val eval : Predicate_lang.Glob.t Status.Map.t -> dirs:string list -> status_map
 
 val status : status_map -> dir:string -> Status.Or_ignored.t
 
 val decode :
-  (Predicate_lang.t Status.Map.t * Dune_lang.Ast.t list) Dune_lang.Decoder.t
+  (Predicate_lang.Glob.t Status.Map.t * Dune_lang.Ast.t list)
+  Dune_lang.Decoder.t

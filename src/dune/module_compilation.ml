@@ -114,19 +114,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
     else
       As []
   in
-  let dir, no_keep_locs =
-    match
-      ( CC.no_keep_locs cctx
-      , cm_kind
-      , Ocaml_version.supports_no_keep_locs ctx.version )
-    with
-    | true, Cmi, true -> (ctx.build_dir, Command.Args.As [ "-no-keep-locs" ])
-    | true, Cmi, false -> (Obj_dir.byte_dir obj_dir, As [])
-    (* emulated -no-keep-locs *)
-    | true, (Cmo | Cmx), _
-    | false, _, _ ->
-      (ctx.build_dir, As [])
-  in
+  let dir = ctx.build_dir in
   let flags =
     let flags = Ocaml_flags.get (CC.flags cctx) mode in
     match Module.pp_flags m with
@@ -143,7 +131,6 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
     Build.paths extra_deps >>> other_cm_files
     >>> Command.run ~dir:(Path.build dir) (Ok compiler)
           [ Command.Args.dyn flags
-          ; no_keep_locs
           ; cmt_args
           ; Command.Args.S
               ( Obj_dir.all_obj_dirs obj_dir ~mode

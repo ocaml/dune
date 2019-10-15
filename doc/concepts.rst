@@ -107,7 +107,7 @@ specification of the language:
 The exact meaning of ``:standard`` and the nature of ``<element>`` depends on
 the context. For example, in the case of the :ref:`dune-subdirs`, an
 ``<element>`` corresponds to file glob patterns. Another example is the user
-action :ref:`(with-exit-codes ...) <user-actions>`, where an ``<element>``
+action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an ``<element>``
 corresponds to a literal integer.
 
 .. _variables:
@@ -643,10 +643,10 @@ The following constructions are available:
 - ``(ignore-<outputs> <DSL)`` to ignore the output, where
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
-- ``(with-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
+- ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and is specified using the :ref:`predicate-lang`. This action is
-  available since dune 2.0.
+  values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` must be
+  one of ``run``, ``bash`` or ``system``. This action is available since dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``

@@ -74,7 +74,7 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ cat >foo.c <<EOF
   > #include <caml/mlvalues.h>
-  > value foo() { return Val_int(9); }
+  > value foo(value unit) { return Val_int(9); }
   > EOF
 
   $ dune build
@@ -86,7 +86,7 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ cat >bar.c <<EOF
   > #include <caml/mlvalues.h>
-  > value bar() { return Val_int(10); }
+  > value bar(value unit) { return Val_int(10); }
   > EOF
 
   $ cat >dune <<EOF
@@ -138,12 +138,12 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ cat >baz.cpp <<EOF
   > #include <caml/mlvalues.h>
-  > extern "C" value baz() { return Val_int(0); }
+  > extern "C" value baz(value unit) { return Val_int(0); }
   > EOF
 
   $ cat >qux.cpp <<EOF
   > #include <caml/mlvalues.h>
-  > extern "C" value qux() { return Val_int(2000); }
+  > extern "C" value qux(value unit) { return Val_int(2000); }
   > EOF
 
   $ cat >quad.ml <<EOF

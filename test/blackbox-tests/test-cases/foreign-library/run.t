@@ -107,7 +107,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
-  > extern "C" value config() { return Val_int(CONFIG_VALUE); }
+  > extern "C" value config(value unit) { return Val_int(CONFIG_VALUE); }
   > EOF
 
   $ cat >lib/calc.ml <<EOF
@@ -166,7 +166,7 @@ Testsuite for the (foreign_library ...) stanza.
   $ cat >lib/config.cpp <<EOF
   > #include <caml/mlvalues.h>
   > #include "ten.h"
-  > extern "C" value config() { return Val_int(CONFIG_VALUE + TEN); }
+  > extern "C" value config(value unit) { return Val_int(CONFIG_VALUE + TEN); }
   > EOF
 
   $ mkdir -p lib/headers
@@ -268,9 +268,9 @@ Testsuite for the (foreign_library ...) stanza.
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
   Hint: You can specify "/absolute/path" as an untracked include directory like this:
-  
+
     (flags -I /absolute/path)
-  
+
   [1]
 
 
@@ -332,7 +332,7 @@ Testsuite for the (foreign_library ...) stanza.
   $ cat >lib/month.c <<EOF
   > #include <caml/mlvalues.h>
   > #include <caml/alloc.h>
-  > value month() { return copy_string("October"); }
+  > value month(value unit) { return caml_copy_string("October"); }
   > EOF
 
   $ cat >lib/calc.ml <<EOF
@@ -397,7 +397,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ cat >lib/day.c <<EOF
   > #include <caml/mlvalues.h>
-  > value day() { return Val_int(8); }
+  > value day(value unit) { return Val_int(8); }
   > EOF
 
   $ cat >main.ml <<EOF
@@ -454,7 +454,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ cat >lib/day.c <<EOF
   > #include <caml/mlvalues.h>
-  > value day() { return Val_int(8); }
+  > value day(value unit) { return Val_int(8); }
   > EOF
 
   $ cat >main.ml <<EOF
@@ -550,7 +550,7 @@ Testsuite for the (foreign_library ...) stanza.
   > #include <caml/mlvalues.h>
   > #include <caml/alloc.h>
   > #include "today.h"
-  > value today() { return copy_string(TODAY); }
+  > value today(value unit) { return caml_copy_string(TODAY); }
   > EOF
 
   $ cat >dune <<EOF

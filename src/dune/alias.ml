@@ -86,8 +86,6 @@ end = struct
 
   let to_dyn = String.to_dyn
 
-  module Map = String.Map
-
   let parse_local_path (loc, p) =
     match Path.Local.parent p with
     | Some dir -> (dir, Path.Local.basename p)

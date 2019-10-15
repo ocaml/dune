@@ -274,7 +274,6 @@ Testsuite for the (foreign_library ...) stanza.
   [1]
 
 
-
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".
 
@@ -625,84 +624,28 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune exec ./main.exe
+  $ dune exec ./main.exe --display short
+      ocamldep lib/.calc.objs/calc.mli.d
+        ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
+      ocamldep .main.eobjs/main.ml.d
+        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
+      ocamldep lib/.calc.objs/calc.ml.d
+      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
+      ocamlopt lib/calc.{a,cmxa}
+        ocamlc lib/add$ext_obj
+        ocamlc lib/mul$ext_obj
+    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
+        ocamlc lib/month$ext_obj
+    ocamlmklib lib/dllcalc_stubs$ext_dll,lib/libcalc_stubs$ext_lib
+           gcc lib/config$ext_obj
+    ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
+        ocamlc lib/day$ext_obj
+    ocamlmklib lib/dllday$ext_dll,lib/libday$ext_lib
+        ocamlc lib2/today$ext_obj
+    ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
+        ocamlc lib3/day$ext_obj
+    ocamlmklib lib3/dllnew_day$ext_dll,lib3/libnew_day$ext_lib
+      ocamlopt main.exe
   Today: 08 October 2019
   Today: 14 October 2019
-
-  $ dune rules _build/default/*/day.*
-  ((deps
-    ((File (In_source_tree lib/day.c))
-     (Sandbox_config ((disallow symlink) (disallow copy)))))
-   (targets ((In_build_dir _build/default/lib/day.c)))
-   (action (copy lib/day.c _build/default/lib/day.c)))
-  
-  ((deps
-    ((File (External /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt))
-     (File (In_build_dir _build/default/lib/day.c))
-     (File (In_build_dir _build/default/lib/eight.h))
-     (Sandbox_config ((disallow symlink) (disallow copy)))))
-   (targets ((In_build_dir _build/default/lib/day$ext_obj)))
-   (context default)
-   (action
-    (chdir
-     _build/default/lib
-     (run
-      /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt
-      -g
-      -ccopt
-      -std=gnu99
-      -ccopt
-      -O2
-      -ccopt
-      -fno-strict-aliasing
-      -ccopt
-      -fwrapv
-      -ccopt
-      -fno-builtin-memcmp
-      -ccopt
-      -fPIC
-      -ccopt
-      -g
-      -o
-      day$ext_obj
-      day.c))))
-  
-  ((deps ((Sandbox_config ())))
-   (targets ((In_build_dir _build/default/lib3/day.c)))
-   (context default)
-   (action
-    (chdir
-     _build/default/lib3
-     (write-file
-      day.c
-      "#include <caml/mlvalues.h>\nvalue new_day() { return Val_int(14); }\n"))))
-  
-  ((deps
-    ((File (External /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt))
-     (File (In_build_dir _build/default/lib3/day.c))
-     (Sandbox_config ((disallow symlink) (disallow copy)))))
-   (targets ((In_build_dir _build/default/lib3/day$ext_obj)))
-   (context default)
-   (action
-    (chdir
-     _build/default/lib3
-     (run
-      /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt
-      -g
-      -ccopt
-      -std=gnu99
-      -ccopt
-      -O2
-      -ccopt
-      -fno-strict-aliasing
-      -ccopt
-      -fwrapv
-      -ccopt
-      -fno-builtin-memcmp
-      -ccopt
-      -fPIC
-      -ccopt
-      -g
-      -o
-      day$ext_obj
-      day.c))))

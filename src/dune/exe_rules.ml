@@ -144,7 +144,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           ]
           ~hints:
             [ Pp.text
-                "If you need to build only a native executable use \"(modes \
+                "If you only need to build a native executable use \"(modes \
                  exe)\"."
             ];
       let foreign_sources =

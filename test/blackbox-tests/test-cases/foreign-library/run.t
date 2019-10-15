@@ -413,7 +413,7 @@ Testsuite for the (foreign_library ...) stanza.
   4 |  (foreign_archives lib/day)
   5 |  (modules main))
   Error: Pure bytecode executables cannot contain foreign archives.
-  Hint: If you need to build only a native executable use "(modes exe)".
+  Hint: If you only need to build a native executable use "(modes exe)".
   [1]
 
 ----------------------------------------------------------------------------------

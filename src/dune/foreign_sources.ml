@@ -58,10 +58,14 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
              User_error.raise ~loc
                [ Pp.textf "Multiple sources map to the same object name %S:"
                    name
-               ; Pp.enumerate (List.rev paths) ~f:(fun (_, path) ->
+               ; Pp.enumerate (
+                   List.map paths ~f:snd
+                   |> List.sort ~compare:(Path.Build.compare))
+                   ~f:(fun path ->
                      Pp.text
                        (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context (Path.build path))))
+                          (Path.drop_optional_build_context (Path.build path)))
+                   )
                ; Pp.text "This is not allowed; please rename them."
                ]
                ~hints:

@@ -40,8 +40,8 @@ user intended.
   4 |  (c_names foo))
                 ^^^
   Error: Multiple sources map to the same object name "foo":
-  - sub/foo.c
   - foo.c
+  - sub/foo.c
   This is not allowed; please rename them.
   Hint: You can also avoid the name clash by placing the objects into different
   foreign archives and building them in different directories. Foreign archives

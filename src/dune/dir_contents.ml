@@ -636,7 +636,7 @@ end = struct
                   let sources =
                     Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
                   in
-                  String.Map.Multi.rev_union acc sources)
+                  String.Map.Multi.rev_union sources acc)
             in
             Foreign_sources.make d ~sources)
       in

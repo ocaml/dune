@@ -415,7 +415,7 @@ end
 
 module Alias_conf : sig
   type t =
-    { name : string
+    { name : Alias.Name.t
     ; deps : Dep_conf.t Bindings.t
     ; action : (Loc.t * Action_dune_lang.t) option
     ; locks : String_with_vars.t list

@@ -64,7 +64,7 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
     if Dune.File_tree.dir_exists src then
       Some
         [ Alias
-            (Alias.in_dir ~name:"default" ~recursive:true
+            (Alias.in_dir ~name:Dune.Alias.Name.default ~recursive:true
                ~contexts:setup.workspace.contexts path)
         ]
     else

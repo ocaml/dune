@@ -93,7 +93,7 @@ end
 module Dep = struct
   let html_alias ctx m = Alias.doc ~dir:(Paths.html ctx m)
 
-  let alias = Alias.make ".odoc-all"
+  let alias = Alias.make (Alias.Name.of_string ".odoc-all")
 
   let deps ctx pkg requires =
     Build.of_result_map requires ~f:(fun libs ->

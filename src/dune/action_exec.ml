@@ -185,7 +185,7 @@ let rec exec t ~ectx ~eenv =
   | Run (Ok prog, args) ->
     let+ () = exec_run ~ectx ~eenv prog args in
     Done
-  | With_exit_codes (exit_codes, t) ->
+  | With_accepted_exit_codes (exit_codes, t) ->
     let eenv = { eenv with exit_codes } in
     exec t ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e

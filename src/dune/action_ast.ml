@@ -57,11 +57,19 @@ struct
             , let+ prog = Program.decode
               and+ args = repeat String.decode in
               Run (prog, args) )
-          ; ( "with-exit-codes"
+          ; ( "with-accepted-exit-codes"
             , Dune_lang.Syntax.since Stanza.syntax (2, 0)
               >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
-                  and+ t = t in
-                  With_exit_codes (codes, t) )
+                  and+ t = located t in
+                  match t with
+                  | _, ((Run _ | Bash _ | System _) as t) ->
+                    With_accepted_exit_codes (codes, t)
+                  | loc, _ ->
+                    User_error.raise ~loc
+                      [ Pp.textf
+                          "with-accepted-exit-codes can only be used with \
+                           \"run\", \"bash\" or \"system\""
+                      ] )
           ; ( "dynamic-run"
             , let+ prog = Program.decode
               and+ args = repeat String.decode in
@@ -138,9 +146,9 @@ struct
     let target = Target.encode in
     function
     | Run (a, xs) -> List (atom "run" :: program a :: List.map xs ~f:string)
-    | With_exit_codes (pred, t) ->
+    | With_accepted_exit_codes (pred, t) ->
       List
-        [ atom "with-exit-codes"
+        [ atom "with-accepted-exit-codes"
         ; Predicate_lang.encode Dune_lang.Encoder.int pred
         ; encode t
         ]

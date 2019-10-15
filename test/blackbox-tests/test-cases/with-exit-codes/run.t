@@ -12,7 +12,7 @@
   $ cat >> dune <<EOF
   > (alias
   >  (name a)
-  >  (action (with-exit-codes 0 (run ./exit.exe 1))))
+  >  (action (with-accepted-exit-codes 0 (run ./exit.exe 1))))
   > EOF
 
   $ dune build --display=short --root . @a
@@ -27,7 +27,7 @@
   $ cat >> dune <<EOF
   > (alias
   >  (name b)
-  >  (action (with-exit-codes (not 0) (run ./exit.exe 1))))
+  >  (action (with-accepted-exit-codes (not 0) (run ./exit.exe 1))))
   > EOF
 
   $ dune build --display=short --root . @b
@@ -36,10 +36,10 @@
   $ cat >> dune <<EOF
   > (alias
   >  (name c)
-  >  (action (with-exit-codes (or 1 2 3) (run ./exit.exe 2))))
+  >  (action (with-accepted-exit-codes (or 1 2 3) (run ./exit.exe 2))))
   > (alias
   >  (name d)
-  >  (action (with-exit-codes (or 4 5 6) (run ./exit.exe 7))))
+  >  (action (with-accepted-exit-codes (or 4 5 6) (run ./exit.exe 7))))
   > EOF
 
   $ dune build --display=short --root . @c
@@ -53,12 +53,13 @@
   $ cat >> dune <<EOF
   > (alias
   >  (name e)
-  >  (action (with-exit-codes (not 0) (dynamic-run ./exit.exe 1))))
+  >  (action (with-accepted-exit-codes (not 0) (dynamic-run ./exit.exe 1))))
   > EOF
 
   $ dune build --display=short --root . @e
-  File "dune", line 19, characters 9-61:
-  19 |  (action (with-exit-codes (not 0) (dynamic-run ./exit.exe 1))))
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: 'dynamic-run' can not be used within the scope of 'with-exit-codes'.
+  File "dune", line 19, characters 43-69:
+  19 |  (action (with-accepted-exit-codes (not 0) (dynamic-run ./exit.exe 1))))
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: with-accepted-exit-codes can only be used with "run", "bash" or
+  "system"
   [1]

@@ -59,8 +59,7 @@ let build_cxx_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
 (* TODO: [requires] is a confusing name, probably because it's too general: it
    looks like it's a list of libraries we depend on. *)
 let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
-    ~requires ~dir_contents ?extra_flags ~(extra_deps : Dep_conf.t list) =
-  let extra_flags = Option.value ~default:Command.Args.empty extra_flags in
+    ~requires ~dir_contents ~extra_flags ~(extra_deps : Dep_conf.t list) =
   let ctx = Super_context.context sctx in
   let all_dirs = Dir_contents.dirs dir_contents in
   let h_files =

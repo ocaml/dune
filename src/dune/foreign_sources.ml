@@ -109,7 +109,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t) =
           Left (Left (lib, all))
         | Foreign_library library ->
           let all = eval_foreign_sources d [ library.stubs ] ~sources in
-          Left (Right (library.archive_name, (library.stubs.loc, all)))
+          Left (Right (library.archive_name, (library.archive_name_loc, all)))
         | Executables exes ->
           let all =
             eval_foreign_sources d exes.buildable.foreign_stubs ~sources

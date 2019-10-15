@@ -237,7 +237,7 @@ Testsuite for the (foreign_library ...) stanza.
   File "lib/dune", line 12, characters 23-34:
   12 |  (include_dirs headers another/dir)
                               ^^^^^^^^^^^
-  Error: Include directory "another/dir" not found.
+  Error: Include directory "another/dir" does not exist.
   [1]
 
 ----------------------------------------------------------------------------------
@@ -275,8 +275,6 @@ Testsuite for the (foreign_library ...) stanza.
 
 
 
-
-
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".
 
@@ -303,13 +301,11 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune build
-  File "lib/dune", line 5, characters 0-67:
-  5 | (foreign_library
+  File "lib/dune", line 6, characters 1-22:
   6 |  (archive_name addmul)
-  7 |  (language c)
-  8 |  (names mul))
+       ^^^^^^^^^^^^^^^^^^^^^
   Error: Multiple foreign libraries with the same archive name "addmul"; the
-  name has already been taken in lib/dune:1.
+  name has already been taken in lib/dune:2.
   [1]
 
 ----------------------------------------------------------------------------------
@@ -599,6 +595,7 @@ Testsuite for the (foreign_library ...) stanza.
 
 ----------------------------------------------------------------------------------
 * Object files with the same name in different archives.
+* Generated C source file.
 
   $ mkdir -p lib3
   $ cat >lib3/dune <<EOF
@@ -606,11 +603,8 @@ Testsuite for the (foreign_library ...) stanza.
   >  (archive_name new_day)
   >  (language c)
   >  (names day))
-  > EOF
-
-  $ cat >lib3/day.c <<EOF
-  > #include <caml/mlvalues.h>
-  > value new_day() { return Val_int(14); }
+  > (rule
+  >  (action (write-file day.c "#include <caml/mlvalues.h>\nvalue new_day() { return Val_int(14); }\n")))
   > EOF
 
   $ cat >dune <<EOF
@@ -634,3 +628,81 @@ Testsuite for the (foreign_library ...) stanza.
   $ dune exec ./main.exe
   Today: 08 October 2019
   Today: 14 October 2019
+
+  $ dune rules _build/default/*/day.*
+  ((deps
+    ((File (In_source_tree lib/day.c))
+     (Sandbox_config ((disallow symlink) (disallow copy)))))
+   (targets ((In_build_dir _build/default/lib/day.c)))
+   (action (copy lib/day.c _build/default/lib/day.c)))
+  
+  ((deps
+    ((File (External /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt))
+     (File (In_build_dir _build/default/lib/day.c))
+     (File (In_build_dir _build/default/lib/eight.h))
+     (Sandbox_config ((disallow symlink) (disallow copy)))))
+   (targets ((In_build_dir _build/default/lib/day$ext_obj)))
+   (context default)
+   (action
+    (chdir
+     _build/default/lib
+     (run
+      /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt
+      -g
+      -ccopt
+      -std=gnu99
+      -ccopt
+      -O2
+      -ccopt
+      -fno-strict-aliasing
+      -ccopt
+      -fwrapv
+      -ccopt
+      -fno-builtin-memcmp
+      -ccopt
+      -fPIC
+      -ccopt
+      -g
+      -o
+      day$ext_obj
+      day.c))))
+  
+  ((deps ((Sandbox_config ())))
+   (targets ((In_build_dir _build/default/lib3/day.c)))
+   (context default)
+   (action
+    (chdir
+     _build/default/lib3
+     (write-file
+      day.c
+      "#include <caml/mlvalues.h>\nvalue new_day() { return Val_int(14); }\n"))))
+  
+  ((deps
+    ((File (External /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt))
+     (File (In_build_dir _build/default/lib3/day.c))
+     (Sandbox_config ((disallow symlink) (disallow copy)))))
+   (targets ((In_build_dir _build/default/lib3/day$ext_obj)))
+   (context default)
+   (action
+    (chdir
+     _build/default/lib3
+     (run
+      /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt
+      -g
+      -ccopt
+      -std=gnu99
+      -ccopt
+      -O2
+      -ccopt
+      -fno-strict-aliasing
+      -ccopt
+      -fwrapv
+      -ccopt
+      -fno-builtin-memcmp
+      -ccopt
+      -fPIC
+      -ccopt
+      -g
+      -o
+      day$ext_obj
+      day.c))))

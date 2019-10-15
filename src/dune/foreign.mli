@@ -121,6 +121,7 @@ end
 module Library : sig
   type t =
     { archive_name : string
+    ; archive_name_loc : Loc.t
     ; stubs : Stubs.t
     }
 

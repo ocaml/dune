@@ -166,15 +166,17 @@ end
 module Library = struct
   type t =
     { archive_name : string
+    ; archive_name_loc : Loc.t
     ; stubs : Stubs.t
     }
 
   let decode =
     let open Dune_lang.Decoder in
     fields
-      (let+ archive_name = field "archive_name" string
+      (let+ archive_name_loc, archive_name =
+         located (field "archive_name" string)
        and+ stubs = Stubs.decode_stubs in
-       { archive_name; stubs })
+       { archive_name; archive_name_loc; stubs })
 end
 
 let lib_file ~archive_name ~dir ~ext_lib =

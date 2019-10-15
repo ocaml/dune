@@ -173,7 +173,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
            match File_tree.find_dir source_dir with
            | None ->
              User_error.raise ~loc
-               [ Pp.textf "Include directory %S not found."
+               [ Pp.textf "Include directory %S does not exist."
                    (Path.reach ~from:(Path.build dir) include_dir)
                ]
            | Some dir ->
@@ -195,7 +195,7 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                ] )))
 
 (* Build a static and a dynamic archive for a foreign library. *)
-let build_foreign_library (library : Foreign.Library.t) ~sctx ~expander ~dir
+let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
   let o_files =

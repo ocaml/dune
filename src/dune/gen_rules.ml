@@ -82,7 +82,7 @@ end = struct
       ; source_dirs = None
       }
     | Foreign_library lib ->
-      Lib_rules.build_foreign_library lib ~sctx ~dir ~dir_contents ~expander;
+      Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander;
       empty_none
     | Executables exes ->
       Option.iter exes.install_conf ~f:files_to_install;

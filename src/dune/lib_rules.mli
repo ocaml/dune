@@ -1,7 +1,7 @@
 open! Stdune
 open Dune_file
 
-val build_foreign_library :
+val foreign_rules :
      Foreign.Library.t
   -> sctx:Super_context.t
   -> expander:Expander.t

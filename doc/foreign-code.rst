@@ -24,24 +24,24 @@ Adding C/C++ stubs to an OCaml library
 ======================================
 
 To add C stubs to an OCaml library, simply list the C files without
-the ``.c`` extension via the ``c_names`` field of the :ref:`library`
-stanza. For instance:
+the ``.c`` extension in the :ref:`foreign-stubs` field. For instance:
 
 .. code:: scheme
 
           (library
            (name mylib)
-           (c_names file1 file2))
+           (foreign_stubs (language c) (names file1 file2)))
 
-Similarly, you can add C++ stubs to an OCaml library by listing them
-without the ``.cpp`` extension via the ``cxx_names`` field.
+You can also add C++ stubs to an OCaml library by specifying
+``(language cxx)`` instead.
 
 Dune is currently not flexible regarding the extension of the C/C++
-source files. They have to be ``.c`` and ``.cpp``. If you have source
-files that that do not follow this extension and you want to build
-them with Dune, you need to rename them first. Alternatively, you can
-use the :ref:`foreign build sandboxing <foreign-sandboxing>` method
-described bellow.
+source files. They have to be ``.c`` for C files and ``.cpp``, ``.cc``
+or ``.cxx`` for C++ files. If you have source files with other
+extensions and you want to build them with Dune, you need to rename
+them first. Alternatively, you can use the
+:ref:`foreign build sandboxing <foreign-sandboxing>` method described
+below.
 
 Header files
 ------------
@@ -80,12 +80,9 @@ To do that, follow the following procedure:
   :ref:`data_only_dirs <dune-data_only_dirs>` stanza
 - write a custom rule that:
 
-  - depend on this directory recursively via :ref:`source_tree <source_tree>`
-  - invoke the external build system
-  - copy the C archive files (``.a``, ``.so``, ...) in main library
-    directory with a specific names (see bellow)
-- *attach* the C archive files to an OCaml library via the
-  :ref:`self_build_stubs_archive <self_build_stubs_archive>` field
+  - depends on this directory recursively via :ref:`source_tree <source_tree>`
+  - invokes the external build system
+- *attach* the C archive files to an OCaml library via :ref:`foreign-archives`.
 
 For instance, let's assume that you want to build a C library
 ``libfoo`` using ``libfoo``'s own build system and attach it to an
@@ -106,16 +103,8 @@ writing the following code ``src/dune``:
 
           (rule
            (deps (source_tree libfoo))
-           (targets libfoo_stubs.a dllfoo_stubs.so)
-           (action (progn
-                    (chdir libfoo (run make)))
-                    (copy libfoo/libfoo.a libfoo_stubs.a)
-                    (copy libfoo/libfoo.so dllfoo_stubs.so)))
-
-Note that the rule copies the files to ``libfoo_stubs.a`` and
-``dllfoo_stubs.so``. It is important that the files produced are
-named ``lib<ocaml-lib-name>_stubs.a`` and
-``dll<ocaml-lib-name>_stubs.so``.
+           (targets libfoo.a dllfoo.so)
+           (action (chdir libfoo (run make))))
 
 The last step is to attach these archives to an OCaml library as
 follows:
@@ -124,7 +113,7 @@ follows:
 
           (library
            (name bar)
-           (self_build_stubs_archive foo))
+           (foreign_archives libfoo/foo))
 
 Then, whenever you use the ``bar`` library, you will also be able to
 use C functions from ``libfoo``.

@@ -372,10 +372,16 @@ to use the :ref:`include_subdirs` stanza.
   or in the installed world. You can use this to provide extra features without
   adding hard dependencies to your project
 
-- ``(c_names (<names>))``, if your library has stubs, you must list the C files
-  in this field, without the ``.c`` extension
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.
+  C or C++ stubs, to be compiled and packaged together with the library. See
+  the section :ref:`foreign-sources-and-archives` for more details. This field
+  replaces the now deprecated fields ``c_names``, ``c_flags``, ``cxx_names``
+  and ``cxx_flags``.
 
-- ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
+- ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
+  object files to be packaged with the library. See the section
+  :ref:`foreign-archives` for more details. This field replaces the now
+  deprecated field ``self_build_stubs_archive``.
 
 - ``(install_c_headers (<names>))``, if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
@@ -422,25 +428,12 @@ to use the :ref:`include_subdirs` stanza.
   use this to specify ``-linkall`` for instance. ``<flags>`` is a list of
   strings supporting :ref:`variables`
 
-- ``(c_flags <flags>)`` specifies the compilation flags for C stubs, using the
-  :ref:`ordered-set-language`. This field supports ``(:include ...)`` forms
-
-- ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
-
 - ``(c_library_flags <flags>)`` specifies the flags to pass to the C compiler
   when constructing the library archive file for the C stubs. ``<flags>`` uses
   the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When you
   are writing bindings for a C library named ``bar``, you should typically write
   ``-lbar`` here, or whatever flags are necessary to to link against this
   library
-
-.. _self_build_stubs_archive:
-
-- ``(self_build_stubs_archive <c-libname>)`` indicates to dune that the
-  library has stubs, but that the stubs are built manually. The aim of the field
-  is to embed a library written in foreign language and/or building with another
-  build system. It is not for casual uses, see the `re2 library
-  <https://github.com/janestreet/re2>`__ for an example of use
 
 - ``(modules_without_implementation <modules>)`` specifies a list of
   modules that have only a ``.mli`` or ``.rei`` but no ``.ml`` or
@@ -617,15 +610,13 @@ Executables can also be linked as object or shared object files. See
   ``executable`` stanza will cause Dune to copy the ``.exe`` files to
   the source tree and ``dune clean`` to delete them
 
-- ``(c_names (<names>))``, if your executable needs C stubs, you must list the C
-  files in this field, without the ``.c`` extension
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source
+  files, e.g. C or C++ stubs, to be linked into the executable. See the
+  section :ref:`foreign-sources-and-archives` for more details.
 
-- ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
-
-- ``(c_flags <flags>)`` specifies the compilation flags for C stubs, using the
-  :ref:`ordered-set-language`. This field supports ``(:include ...)`` forms
-
-- ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
+- ``(foreign_archives <foreign-archives-list>)`` specifies archives of
+  foreign object files to be linked into the executable. See the section
+  :ref:`foreign-archives` for more details.
 
 - ``(forbidden_libraries <libraries>)`` ensures that the given
   libraries are not linked in the resulting executable. If they end up

@@ -86,14 +86,16 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           ~standard:(Build.return [])
   in
   (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
-     the reason is unclear. It would be nice to make the code more uniform. *)
+     the reason is unclear. For example, instead of building an archive for
+     foreign stubs, we link the corresponding object files directly. It would
+     be nice to make the code more uniform. *)
+  let ext_lib = ctx.lib_config.ext_lib in
   let link_args =
     let+ flags = link_flags in
     Command.Args.S
       [ Command.Args.As flags
       ; Command.Args.S
           (List.map archive_names ~f:(fun archive_name ->
-               let ext_lib = ctx.lib_config.ext_lib in
                let dir =
                  Path.Build.relative dir (Filename.dirname archive_name)
                in
@@ -126,7 +128,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~js_of_ocaml ~opaque:(SC.opaque sctx) ~dynlink ~package:exes.package
   in
   let o_files =
-    if not (Executables.has_stubs exes) then
+    if not (Executables.has_foreign exes) then
       []
     else
       let what =

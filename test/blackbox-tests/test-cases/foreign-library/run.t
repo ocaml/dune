@@ -268,10 +268,12 @@ Testsuite for the (foreign_library ...) stanza.
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
   Hint: You can specify "/absolute/path" as an untracked include directory like this:
-
+  
     (flags -I /absolute/path)
-
+  
   [1]
+
+
 
 
 
@@ -507,6 +509,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ dune exec ./main.exe
+  8 October 2019
 
 ----------------------------------------------------------------------------------
 * Generated header.

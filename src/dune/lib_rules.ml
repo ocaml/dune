@@ -409,7 +409,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     setup_build_archives lib ~cctx ~dep_graphs ~expander;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-    if Library.has_stubs lib || List.is_non_empty vlib_stubs_o_files then
+    if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then
       build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files
   in

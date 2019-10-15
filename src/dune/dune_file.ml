@@ -510,7 +510,7 @@ module Buildable = struct
       located
         (field_o "cxx_names" (use_foreign >>> check_c Ordered_set_lang.decode))
     and+ modules = modules_field "modules"
-    and+ loc_sbsa, self_build_stubs_archive =
+    and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
         (field "self_build_stubs_archive"
            ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
@@ -539,7 +539,7 @@ module Buildable = struct
         && List.is_non_empty foreign_stubs
         && Option.is_some self_build_stubs_archive
       then
-        User_error.raise ~loc:loc_sbsa
+        User_error.raise ~loc:self_build_stubs_archive_loc
           [ Pp.concat
               [ Pp.textf "A library cannot use "
               ; Pp.hbox (Pp.textf "(self_build_stubs_archive ...)")
@@ -552,6 +552,10 @@ module Buildable = struct
       else
         match self_build_stubs_archive with
         | None -> foreign_archives
+        (* Note: we add "_stubs" to the name, since [self_build_stubs_archive]
+           used this naming convention; [foreign_archives] does not use it and
+           allows users to name archives as they like (they still need to add
+           the "lib" prefix, however, since standard linkers require it). *)
         | Some name -> (loc, name ^ "_stubs") :: foreign_archives
     in
     { loc
@@ -568,7 +572,7 @@ module Buildable = struct
     ; allow_overlapping_dependencies
     }
 
-  let has_stubs t =
+  let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
 
   let single_preprocess t =
@@ -961,7 +965,7 @@ module Library = struct
            ; enabled_if
            } ))
 
-  let has_stubs t = Buildable.has_stubs t.buildable
+  let has_foreign t = Buildable.has_foreign t.buildable
 
   let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
 
@@ -1569,7 +1573,7 @@ module Executables = struct
     in
     (make false, make true)
 
-  let has_stubs t = Buildable.has_stubs t.buildable
+  let has_foreign t = Buildable.has_foreign t.buildable
 
   let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end

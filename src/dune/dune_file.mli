@@ -103,7 +103,8 @@ module Buildable : sig
     ; allow_overlapping_dependencies : bool
     }
 
-  val has_stubs : t -> bool
+  (** Check if the buildable has any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
   val single_preprocess : t -> Preprocess.t
@@ -202,16 +203,22 @@ module Library : sig
     ; enabled_if : Blang.t
     }
 
-  val has_stubs : t -> bool
+  (** Check if the library has any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
+  (** The name of the automatically built foreign stubs archive. *)
   val stubs_archive_name : t -> string
 
+  (** The names of all foreign archives, including the foreign stubs archive. *)
   val archive_names : t -> string list
 
+  (** The [lib*.a] files of all foreign archives, including foreign stubs. *)
   val lib_files : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
+  (** The [dll*.a] files of all foreign archives, including foreign stubs. *)
   val dll_files : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
 
+  (** The path to a library archive. *)
   val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t
@@ -307,7 +314,8 @@ module Executables : sig
     ; bootstrap_info : string option
     }
 
-  val has_stubs : t -> bool
+  (** Check if the executables have any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
   val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 end

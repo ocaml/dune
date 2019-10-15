@@ -1,8 +1,38 @@
 open! Stdune
 open Import
 
-module Name = struct
-  type t = string
+module Name : sig
+  type t
+
+  include Dune_lang.Conv.S with type t := t
+
+  val equal : t -> t -> bool
+
+  val hash : t -> int
+
+  val compare : t -> t -> Ordering.t
+
+  val of_string : string -> t
+
+  val parse_string_exn : Loc.t * string -> t
+
+  val to_string : t -> string
+
+  val to_dyn : t -> Dyn.t
+
+  val default : t
+
+  val runtest : t
+
+  val install : t
+
+  val all : t
+
+  val parse_local_path : Loc.t * Path.Local.t -> Path.Local.t * t
+
+  module Map : Map.S with type key = t
+end = struct
+  include String
 
   let of_string_opt_loose s = Option.some_if (Filename.basename s = s) s
 
@@ -28,6 +58,8 @@ module Name = struct
     match of_string_opt s with
     | None -> User_error.raise ~loc [ invalid_alias s ]
     | Some s -> s
+
+  let encode = Dune_lang.Encoder.string
 
   let decode =
     let open Dune_lang.Decoder in
@@ -69,28 +101,26 @@ end
 module T : sig
   type t = private
     { dir : Path.Build.t
-    ; name : string
+    ; name : Name.t
     }
 
-  val make : string -> dir:Path.Build.t -> t
+  val make : Name.t -> dir:Path.Build.t -> t
 
   val of_user_written_path : loc:Loc.t -> Path.t -> t
 end = struct
   type t =
     { dir : Path.Build.t
-    ; name : string
+    ; name : Name.t
     }
 
   let make name ~dir =
-    if String.contains name '/' then
-      Code_error.raise "Alias0.make: Invalid alias"
-        [ ("name", Dyn.Encoder.string name); ("dir", Path.Build.to_dyn dir) ];
     { dir; name }
 
   let of_user_written_path ~loc path =
     match Path.as_in_build_dir path with
     | Some path ->
-      { dir = Path.Build.parent_exn path; name = Path.Build.basename path }
+      let name = Name.of_string (Path.Build.basename path) in
+      { dir = Path.Build.parent_exn path; name }
     | None ->
       User_error.raise ~loc
         [ Pp.text "Invalid alias!"
@@ -102,19 +132,20 @@ end
 include T
 
 let compare x y =
-  match String.compare x.name y.name with
+  match Name.compare x.name y.name with
   | (Lt | Gt) as x -> x
   | Eq -> Path.Build.compare x.dir y.dir
 
 let equal x y = compare x y = Eq
 
-let hash { dir; name } = Tuple.T2.hash Path.Build.hash String.hash (dir, name)
+let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
 
-let pp fmt t = Path.Build.pp fmt (Path.Build.relative t.dir t.name)
+let pp fmt t =
+  Path.Build.pp fmt (Path.Build.relative t.dir (Name.to_string t.name))
 
 let to_dyn { dir; name } =
   let open Dyn in
-  Record [ ("dir", Path.Build.to_dyn dir); ("name", String name) ]
+  Record [ ("dir", Path.Build.to_dyn dir); ("name", Name.to_dyn name) ]
 
 let suffix = "-" ^ String.make 32 '0'
 
@@ -129,9 +160,9 @@ let stamp_file_dir t =
   let local = Path.Build.local t.dir in
   Path.Build.append_local alias_dir local
 
-let fully_qualified_name t = Path.Build.relative t.dir t.name
+let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
-let stamp_file t = Path.Build.relative (stamp_file_dir t) (t.name ^ suffix)
+let stamp_file t = Path.Build.relative (stamp_file_dir t) ((Name.to_string t.name) ^ suffix)
 
 let find_dir_specified_on_command_line ~dir =
   match File_tree.find_dir dir with
@@ -142,7 +173,7 @@ let find_dir_specified_on_command_line ~dir =
       ]
   | Some dir -> dir
 
-let standard_aliases = Table.create (module String) 7
+let standard_aliases = Table.create (module Name) 7
 
 let is_standard name = Table.mem standard_aliases name
 
@@ -156,18 +187,18 @@ let runtest = make_standard Name.runtest
 
 let install = make_standard Name.install
 
-let doc = make_standard "doc"
+let doc = make_standard (Name.of_string "doc")
 
-let private_doc = make_standard "doc-private"
+let private_doc = make_standard (Name.of_string "doc-private")
 
-let lint = make_standard "lint"
+let lint = make_standard (Name.of_string "lint")
 
-let all = make_standard "all"
+let all = make_standard (Name.of_string "all")
 
-let check = make_standard "check"
+let check = make_standard (Name.of_string "check")
 
-let fmt = make_standard "fmt"
+let fmt = make_standard (Name.of_string "fmt")
 
 let encode { dir; name } =
   let open Dune_lang.Encoder in
-  record [ ("dir", Dpath.encode (Path.build dir)); ("name", string name) ]
+  record [ ("dir", Dpath.encode (Path.build dir)); ("name", Name.encode name) ]

@@ -825,7 +825,6 @@ module Library = struct
     ; dynlink : Dynlink_supported.t
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-    ; no_keep_locs : bool
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
@@ -864,9 +863,17 @@ module Library = struct
          located
            (field "self_build_stubs_archive" (option string) ~default:None)
        and+ no_dynlink = field_b "no_dynlink"
-       and+ no_keep_locs =
-         field_b "no_keep_locs"
-           ~check:(Dune_lang.Syntax.deprecated_in Stanza.syntax (1, 7))
+       and+ () =
+         let check =
+           let+ loc = loc
+           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax
+           in
+           let is_error = dune_version >= (2, 0) in
+           User_warning.emit ~loc ~is_error
+             [ Pp.text "no_keep_locs is a no-op. Please delete it." ]
+         in
+         let+ _ = field_b "no_keep_locs" ~check in
+         ()
        and+ sub_systems =
          let* () = return () in
          Sub_system_info.record_parser ()
@@ -1015,7 +1022,6 @@ module Library = struct
            ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
            ; project
            ; sub_systems
-           ; no_keep_locs
            ; dune_version
            ; virtual_modules
            ; implements

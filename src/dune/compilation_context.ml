@@ -49,7 +49,6 @@ type t =
   ; requires_link : Lib.t list Or_exn.t Lazy.t
   ; includes : Includes.t
   ; preprocessing : Preprocessing.t
-  ; no_keep_locs : bool
   ; opaque : bool
   ; stdlib : Ocaml_stdlib.t option
   ; js_of_ocaml : Dune_file.Js_of_ocaml.t option
@@ -82,8 +81,6 @@ let includes t = t.includes
 
 let preprocessing t = t.preprocessing
 
-let no_keep_locs t = t.no_keep_locs
-
 let opaque t = t.opaque
 
 let stdlib t = t.stdlib
@@ -104,7 +101,7 @@ let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
-    ?(no_keep_locs = false) ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package
+    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package
     ?vimpl ?modes () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
@@ -131,7 +128,6 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; requires_link
   ; includes = Includes.make ~opaque ~requires:requires_compile
   ; preprocessing
-  ; no_keep_locs
   ; opaque
   ; stdlib
   ; js_of_ocaml

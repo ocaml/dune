@@ -50,5 +50,5 @@
   File "dune", line 3, characters 1-15:
   3 |  (no_keep_locs))
        ^^^^^^^^^^^^^^
-  Warning: 'no_keep_locs' was deprecated in version 1.7 of the dune language.
+  Warning: no_keep_locs is a no-op. Please delete it.
   $ rm -f dune

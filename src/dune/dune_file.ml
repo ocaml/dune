@@ -1707,6 +1707,7 @@ module Rule = struct
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
+    ; alias : Alias.Name.t option
     }
 
   type action_or_field =
@@ -1754,6 +1755,7 @@ module Rule = struct
     ; locks = []
     ; loc
     ; enabled_if = Blang.true_
+    ; alias = None
     }
 
   let long_form =
@@ -1788,8 +1790,12 @@ module Rule = struct
           | false, Some mode -> Ok mode
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
-    and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-    { targets; deps; action; mode; locks; loc; enabled_if }
+    and+ enabled_if = enabled_if ~since:(Some (1, 4))
+    and+ alias =
+      field_o "alias"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+    in
+    { targets; deps; action; mode; locks; loc; enabled_if; alias }
 
   let decode =
     peek_exn
@@ -1860,6 +1866,7 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
+        ; alias = None
         })
 
   let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
@@ -1884,6 +1891,7 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
+        ; alias = None
         })
 end
 

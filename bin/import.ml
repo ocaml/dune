@@ -31,16 +31,19 @@ include Common.Let_syntax
 let make_cache () =
   let handle = function
     | Dune_manager.Client.Dedup (target, source, digest) ->
-      Scheduler.send_dedup target source digest
+       Scheduler.send_dedup target source digest
+    and var = "DUNE_CACHE"
   in
-  match Sys.getenv_opt "DUNE_CACHE" with
+  match Sys.getenv_opt var with
   | Some v ->
     let cache = Result.ok_exn (Dune_manager.Client.make handle) in
     Fiber.return
       ( if v = "check" then
         Build_system.Check cache
-      else
-        Build_system.Enabled cache )
+        else if v = "1" then
+          Build_system.Enabled cache
+        else
+          User_error.raise [Pp.textf "Unrecognized value for %s: %s" var v])
   | _ -> Fiber.return Build_system.Disabled
 
 module Main = struct

@@ -1377,6 +1377,8 @@ end = struct
     Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
     |> (Digest.generic : Dep.Trace.t -> _)
 
+  module PathMap = Map.Make (Path.Build)
+
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.dir
@@ -1559,43 +1561,36 @@ end = struct
             compute_targets_digest_or_raise_error ~info targets_as_list
           in
           let () =
-            (* Check cache *)
+            (* Check cache. We don't check for missing cache in the file, since
+               the file list is part of the rule hash this really never should
+               happen. *)
             match from_dune_memory with
             | Some cached when cache_checking ->
-              let rec check cached = function
-                | (file, digest) :: targets ->
-                  let cached_file, cached =
-                    List.partition
-                      ~f:(fun (cached_file : Dune_memory.File.t) ->
-                        Path.Build.equal cached_file.in_the_build_directory
-                          file)
-                      cached
-                  in
-                  ( match cached_file with
-                  | [] ->
+              let targets =
+                List.fold_left ~init:PathMap.empty
+                  ~f:(fun map (path, digest) -> PathMap.set map path digest)
+                  targets
+              in
+              let f (cached : Dune_memory.File.t) =
+                match PathMap.find targets cached.in_the_build_directory with
+                | Some digest ->
+                  if not (Digest.equal cached.digest digest) then
                     Console.print
                       (Format.asprintf
-                         "cache mismatch on %a: missing from the cache\n"
-                         Path.Build.pp file)
-                  | [ cached_file ] ->
-                    if not (Digest.equal cached_file.digest digest) then
-                      Console.print
-                        (Format.asprintf
-                           "cache mismatch on %a: hash differ with %a\n"
-                           Path.Build.pp file Path.pp cached_file.in_the_memory)
-                  | _ ->
-                    Code_error.raise "file matched multiple times from cache"
-                      [] );
-                  check cached targets
-                | [] ->
-                  List.iter cached ~f:(fun (f : Dune_memory.File.t) ->
-                      Console.print
-                        (Format.asprintf
-                           "cache mismatch on %a: extra file in cache: %a\n"
-                           Path.Build.pp head_target Path.Build.pp
-                           f.in_the_build_directory))
+                         "cache mismatch on %a: hash differ with %a\n"
+                         Path.Build.pp cached.in_the_build_directory Path.pp
+                         cached.in_the_memory)
+                | None ->
+                  (* This really never should happen either, but we probably
+                     don't want to stop builds because of an error in the cache
+                     on disk. *)
+                  Console.print
+                    (Format.asprintf
+                       "cache mismatch on %a: extra file in cache: %a\n"
+                       Path.Build.pp head_target Path.Build.pp
+                       cached.in_the_build_directory)
               in
-              check cached targets
+              List.iter ~f cached
             | _ -> ()
           in
           ( match t.cache with

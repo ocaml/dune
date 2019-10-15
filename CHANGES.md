@@ -154,6 +154,10 @@
 
 - Configurator: filter out empty flags from `pkg-config` (#2716, @AltGr)
 
+- `no_keep_locs` is a no-op for projects that use `lang dune` older than 2.0. In
+  projects where the language is at least `2.0`, the field is now forbidden.
+  (#2752, fixes #2747, @rgrinberg)
+
 1.11.4 (09/10/2019)
 -------------------
 

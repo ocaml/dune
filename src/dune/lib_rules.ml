@@ -300,7 +300,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
-    ~no_keep_locs:lib.no_keep_locs ~opaque
+    ~opaque
     ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
     ?vimpl ~modes

@@ -209,7 +209,6 @@ module Library : sig
     ; dynlink : Dynlink_supported.t
     ; project : Dune_project.t
     ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
-    ; no_keep_locs : bool
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option

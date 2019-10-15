@@ -40,6 +40,9 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
     let osl = stubs.names in
     Ordered_set_lang.Unordered_string.eval_loc osl
       ~key:(fun x -> x)
+      (* CR-someday aalekseyev:
+         Might be a good idea to change [standard] to mean
+         "all files with the relevant extension". *)
       ~standard:String.Map.empty
       ~parse:(fun ~loc s ->
         let name = valid_name language ~loc s in
@@ -53,8 +56,13 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
             ];
         name)
     |> String.Map.map ~f:(fun (loc, name) ->
-           match String.Map.find sources name with
-           | Some paths when List.length paths > 1 ->
+      match String.Map.find sources name with
+      | Some (_ :: _ :: _ as paths) ->
+          (* CR aalekseyev:
+             This looks suspicious to me.
+             If the user writes foo.c and foo.cpp and only declares a foreign
+             library that uses foo.cpp, will that be an error?
+             I think it shouldn't be. *)
              User_error.raise ~loc
                [ Pp.textf "Multiple sources map to the same object name %S:"
                    name
@@ -77,13 +85,13 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
                  ]
            | Some [ (l, path) ] when l = language ->
              (loc, Foreign.Source.make ~stubs ~path)
-           | _ ->
+           | Some [] | None | [ (_wrong_lang, _) ] ->
              User_error.raise ~loc
                [ Pp.textf "Object %S has no source; %s must be present." name
                    (String.enumerate_one_of
                       ( Foreign.Language.possible_fns language name
                           ~dune_version:d.dune_version
-                      |> List.map ~f:(fun s -> "\"" ^ s ^ "\"") ))
+                      |> List.map ~f:(fun s -> sprintf "%S" s) ))
                ])
   in
   let stub_maps = List.map foreign_stubs ~f:eval in

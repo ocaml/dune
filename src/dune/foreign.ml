@@ -230,8 +230,8 @@ module Sources = struct
                Raising in [Not_allowed_until] can break backwards compatibility
                when we change a file from [Unrecognized] to [Not_allowed_until].
 
-               One way could be to instead pass the dune language version here
-               and interpret those as [Unrecognized]. *)
+               An easy fix would be to treat [Not_allowed_until] as
+               [Unrecognized], but the error messages are not good then. *)
             let loc = Loc.in_dir (Path.build dir) in
             User_error.raise ~loc
               [ Pp.textf

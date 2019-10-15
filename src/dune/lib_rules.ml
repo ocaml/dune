@@ -136,12 +136,17 @@ let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
        ; Hidden_targets targets
        ])
 
-(* Add a rule calling [ocamlmklib] to build an OCaml library. *)
+(* Add a rule calling [ocamlmklib] to build a stubs archive for an OCaml
+   library. *)
 let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
     ~custom ~targets =
   let path =
     Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
   in
+  (* CR-someday aalekseyev:
+     I'm not sure why [c_library_flags] is needed here. I think it's unused
+     at least when building a static archive. But maybe it's used for
+     dynamic libraries. It would be nice to clarify that somewhere. *)
   ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
     ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
 
@@ -194,6 +199,10 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                         Command.Args.Hidden_deps deps :: args))
                ] )))
 
+(* CR aalekseyev:
+   Maybe we'll need to support the case when dynamic library can't be
+   built for some reason. It seems that the OCaml library code path has to deal
+   with that case. *)
 (* Build a static and a dynamic archive for a foreign library. *)
 let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =

@@ -410,6 +410,11 @@ module Context_or_install = struct
       Dyn.String s
 end
 
+type caching =
+  | Disabled
+  | Enabled of Dune_manager.Client.t
+  | Check of Dune_manager.Client.t
+
 type t =
   { (* File specification by targets *)
     files : Internal_rule.t Path.Build.Table.t
@@ -422,7 +427,7 @@ type t =
       Fdecl.t
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
-  ; memory : Dune_manager.Client.t option
+  ; cache : caching
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
@@ -457,7 +462,7 @@ let set_rule_generators ~init ~gen_rules =
 
 let get_memory () =
   let t = t () in
-  t.memory
+  t.cache
 
 let get_dir_triage t ~dir =
   match Path.as_in_source_tree dir with
@@ -1478,19 +1483,24 @@ end = struct
             Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_dune_memory =
-          match (do_not_memoize, t.memory) with
+          match (do_not_memoize, t.cache) with
           | true, _
-          | _, None ->
+          | _, Disabled ->
             None
-          | false, Some memory -> (
-            match Dune_manager.Client.search memory rule_digest with
+          | false, Enabled cache
+          | false, Check cache -> (
+            match Dune_manager.Client.search cache rule_digest with
             | Ok (_, files) -> Some files
             | Error msg ->
               Log.infof "cache miss: %s" msg;
               None )
+        and cache_checking =
+          match t.cache with
+          | Check _ -> true
+          | _ -> false
         in
         match from_dune_memory with
-        | Some files ->
+        | Some files when not cache_checking ->
           let retrieve (file : Dune_memory.File.t) =
             let path = Path.Build.to_string file.in_the_build_directory in
             Log.infof "retrieve %s from cache" path;
@@ -1509,7 +1519,7 @@ end = struct
             ; dynamic_deps_stages = []
             };
           Fiber.return ()
-        | None ->
+        | _ ->
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let loc = Rule.Info.loc info in
           let sandboxed, action =
@@ -1551,9 +1561,55 @@ end = struct
           let targets, targets_digest =
             compute_targets_digest_or_raise_error ~info targets_as_list
           in
-          Option.iter t.memory ~f:(fun memory ->
-              ignore
-                (Dune_manager.Client.promote memory targets rule_digest [] None));
+          let () =
+            (* Check cache. We don't check for missing file in the cache, since
+               the file list is part of the rule hash this really never should
+               happen. *)
+            match from_dune_memory with
+            | Some cached when cache_checking ->
+              (* This being [false] is unexpected and means we have a hash
+                 collision *)
+              let data_are_ok =
+                try
+                  List.for_all2 targets cached
+                    ~f:(fun (target, _) (c : Dune_memory.File.t) ->
+                      Path.Build.equal target c.in_the_build_directory)
+                with _ -> false
+              in
+              if not data_are_ok then
+                let open Pp.O in
+                let pp x l ~f =
+                  Pp.box ~indent:2
+                    ( Pp.verbatim x
+                    ++ Dyn.pp
+                         (Dyn.Encoder.list Path.Build.to_dyn (List.map l ~f))
+                    )
+                in
+                User_warning.emit
+                  [ Pp.text "unexpected list of targets in the cache"
+                  ; pp "expected: " targets ~f:fst
+                  ; pp "got:      " cached ~f:(fun (c : Dune_memory.File.t) ->
+                        c.in_the_build_directory)
+                  ]
+              else
+                List.iter2 targets cached
+                  ~f:(fun (_, digest) (c : Dune_memory.File.t) ->
+                    if not (Digest.equal digest c.digest) then
+                      User_warning.emit
+                        [ Pp.textf "cache mismatch on %s: hash differ with %s"
+                            (Path.Build.to_string_maybe_quoted
+                               c.in_the_build_directory)
+                            (Path.Build.to_string_maybe_quoted
+                               c.in_the_build_directory)
+                        ])
+            | _ -> ()
+          in
+          ( match t.cache with
+          | Enabled cache
+          | Check cache ->
+            ignore
+              (Dune_manager.Client.promote cache targets rule_digest [] None)
+          | Disabled -> () );
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps
@@ -1990,15 +2046,17 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?memory ~sandboxing_preference =
+let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> String.Map.of_list_exn
   in
-  let memory =
-    Option.map
-      ~f:(fun m -> Dune_manager.Client.set_build_dir m Path.build_dir)
-      memory
+  let cache =
+    let f c = Dune_manager.Client.set_build_dir c Path.build_dir in
+    match caching with
+    | Disabled -> Disabled
+    | Enabled c -> Enabled (f c)
+    | Check c -> Check (f c)
   in
   let t =
     { contexts
@@ -2006,7 +2064,7 @@ let init ~contexts ?memory ~sandboxing_preference =
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
-    ; memory
+    ; cache
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0

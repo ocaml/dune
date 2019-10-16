@@ -32,7 +32,7 @@ val init_build_system :
      ?only_packages:Package.Name.Set.t
   -> ?external_lib_deps_mode:bool
   -> sandboxing_preference:Sandbox_mode.t list
-  -> ?memory:Dune_manager.Client.t
+  -> ?caching:Build_system.caching
   -> workspace
   -> build_system Fiber.t
 

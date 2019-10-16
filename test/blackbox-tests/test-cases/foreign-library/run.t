@@ -268,10 +268,11 @@ Testsuite for the (foreign_library ...) stanza.
   Error: "/absolute/path" is an external directory; dependencies in external
   directories are currently not tracked.
   Hint: You can specify "/absolute/path" as an untracked include directory like this:
-
+  
     (flags -I /absolute/path)
-
+  
   [1]
+
 
 
 ----------------------------------------------------------------------------------
@@ -603,7 +604,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (language c)
   >  (names day))
   > (rule
-  >  (action (write-file day.c "#include <caml/mlvalues.h>\nvalue new_day() { return Val_int(14); }\n")))
+  >  (action (write-file day.c "#include <caml/mlvalues.h>\nvalue new_day(value unit) { return Val_int(14); }\n")))
   > EOF
 
   $ cat >dune <<EOF

@@ -471,20 +471,24 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode ~since_c ~allow_re_export =
+  let decode ~in_library ~allow_re_export =
     let use_foreign =
       Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
         ~extra_info:"Use the (foreign_stubs ...) field instead."
     in
-    let check_c t =
-      match since_c with
-      | None -> t
-      | Some v -> Dune_lang.Syntax.since Stanza.syntax v >>> t
+    let only_in_library decode =
+      if in_library then
+        decode
+      else
+        return None
     in
     let add_stubs language ~loc ~names ~flags foreign_stubs =
       match names with
       | None -> foreign_stubs
       | Some names ->
+        let flags =
+          Option.value ~default:Ordered_set_lang.Unexpanded.standard flags
+        in
         Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
     in
     let+ loc = loc
@@ -498,25 +502,28 @@ module Buildable = struct
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat (located string) )
     and+ c_flags =
-      Ordered_set_lang.Unexpanded.field "c_flags"
-        ?check:(Some (use_foreign >>> check_c (return ())))
+      only_in_library
+        (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
     and+ cxx_flags =
-      Ordered_set_lang.Unexpanded.field "cxx_flags"
-        ?check:(Some (use_foreign >>> check_c (return ())))
+      only_in_library
+        (field_o "cxx_flags"
+           (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
     and+ c_names_loc, c_names =
       located
-        (field_o "c_names" (use_foreign >>> check_c Ordered_set_lang.decode))
+        (only_in_library
+           (field_o "c_names" (use_foreign >>> Ordered_set_lang.decode)))
     and+ cxx_names_loc, cxx_names =
       located
-        (field_o "cxx_names" (use_foreign >>> check_c Ordered_set_lang.decode))
+        (only_in_library
+           (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
     and+ modules = modules_field "modules"
     and+ self_build_stubs_archive_loc, self_build_stubs_archive =
       located
-        (field "self_build_stubs_archive"
-           ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
-               ~extra_info:"Use the (foreign_archives ...) field instead."
-           >>> option string )
-           ~default:None)
+        (only_in_library
+           (field ~default:None "self_build_stubs_archive"
+              ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+                  ~extra_info:"Use the (foreign_archives ...) field instead."
+              >>> option string )))
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries =
@@ -798,7 +805,7 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~since_c:None ~allow_re_export:true
+      (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = Public_lib.public_name_field
@@ -1476,8 +1483,7 @@ module Executables = struct
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
   let common =
-    let+ buildable =
-      Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
+    let+ buildable = Buildable.decode ~in_library:false ~allow_re_export:false
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1992,7 +1998,7 @@ module Tests = struct
   let gen_parse names =
     fields
       (let+ buildable =
-         Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
+         Buildable.decode ~in_library:false ~allow_re_export:false
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ variants = variants_field
        and+ names = names

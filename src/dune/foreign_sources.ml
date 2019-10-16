@@ -40,9 +40,8 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
     let osl = stubs.names in
     Ordered_set_lang.Unordered_string.eval_loc osl
       ~key:(fun x -> x)
-      (* CR-someday aalekseyev:
-         Might be a good idea to change [standard] to mean
-         "all files with the relevant extension". *)
+        (* CR-someday aalekseyev: Might be a good idea to change [standard] to
+           mean "all files with the relevant extension". *)
       ~standard:String.Map.empty
       ~parse:(fun ~loc s ->
         let name = valid_name language ~loc s in
@@ -56,24 +55,21 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
             ];
         name)
     |> String.Map.map ~f:(fun (loc, name) ->
-      match String.Map.find sources name with
-      | Some (_ :: _ :: _ as paths) ->
-          (* CR aalekseyev:
-             This looks suspicious to me.
-             If the user writes foo.c and foo.cpp and only declares a foreign
-             library that uses foo.cpp, will that be an error?
-             I think it shouldn't be. *)
+           match String.Map.find sources name with
+           | Some (_ :: _ :: _ as paths) ->
+             (* CR aalekseyev: This looks suspicious to me. If the user writes
+                foo.c and foo.cpp and only declares a foreign library that uses
+                foo.cpp, will that be an error? I think it shouldn't be. *)
              User_error.raise ~loc
                [ Pp.textf "Multiple sources map to the same object name %S:"
                    name
-               ; Pp.enumerate (
-                   List.map paths ~f:snd
-                   |> List.sort ~compare:(Path.Build.compare))
+               ; Pp.enumerate
+                   ( List.map paths ~f:snd
+                   |> List.sort ~compare:Path.Build.compare )
                    ~f:(fun path ->
                      Pp.text
                        (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context (Path.build path)))
-                   )
+                          (Path.drop_optional_build_context (Path.build path))))
                ; Pp.text "This is not allowed; please rename them."
                ]
                ~hints:
@@ -85,7 +81,10 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
                  ]
            | Some [ (l, path) ] when l = language ->
              (loc, Foreign.Source.make ~stubs ~path)
-           | Some [] | None | [ (_wrong_lang, _) ] ->
+           | None
+           | Some []
+           | Some [ (_, _) ]
+           (* Found a matching source file, but in a wrong language. *) ->
              User_error.raise ~loc
                [ Pp.textf "Object %S has no source; %s must be present." name
                    (String.enumerate_one_of

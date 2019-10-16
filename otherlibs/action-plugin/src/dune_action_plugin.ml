@@ -1,5 +1,5 @@
 module V1 = struct
-  module Path = Path
+  module Path = ActionPath
   module Glob = Dune_glob.V1
   open Protocol
 

@@ -17,7 +17,7 @@ module V1 : sig
       implementation, nontrivial stages are those that have some dependencies,
       so a stage that merely writes out some targets is "free") *)
 
-  module Path = Path
+  module Path = ActionPath
 
   type 'a t
 

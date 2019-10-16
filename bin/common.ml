@@ -233,18 +233,6 @@ module Options_implied_by_dash_p = struct
            Option.some_if x No_config)
       in
       Option.value x ~default:Default
-    and+ profile =
-      let doc = "Build profile. dev if unspecified or release if -p is set." in
-      Arg.(
-        value
-        & opt (some profile) None
-        & info [ "profile" ] ~docs
-            ~env:(Arg.env_var ~doc "DUNE_PROFILE")
-            ~doc:
-              (sprintf
-                 {|Select the build profile, for instance $(b,dev) or
-                        $(b,release). The default is $(b,%s).|}
-                 (Profile.to_string Dune.Profile.default)))
     and+ default_target =
       Arg.(
         value
@@ -269,7 +257,7 @@ module Options_implied_by_dash_p = struct
     ; only_packages
     ; ignore_promoted_rules
     ; config_file
-    ; profile
+    ; profile = None
     ; default_target
     ; always_show_command_line
     ; promote_install_files
@@ -302,7 +290,26 @@ module Options_implied_by_dash_p = struct
     ; promote_install_files = true
     }
 
-  let term = one_of options dash_p
+  let term =
+    let+ t = one_of options dash_p
+    and+ profile =
+      let doc =
+        "Build profile. $(b,dev) if unspecified or $(b,release) if -p is set."
+      in
+      Arg.(
+        value
+        & opt (some profile) None
+        & info [ "profile" ] ~docs
+            ~env:(Arg.env_var ~doc "DUNE_PROFILE")
+            ~doc:
+              (Printf.sprintf
+                 "Select the build profile, for instance $(b,dev) \
+                  or$(b,release). The default is $(b,%s)."
+                 (Profile.to_string Dune.Profile.default)))
+    in
+    match profile with
+    | None -> t
+    | Some _ -> { t with profile }
 end
 
 let term =

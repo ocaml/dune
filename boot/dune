@@ -6,3 +6,11 @@
 (alias
  (name runtest)
  (deps libs.ml))
+
+(executable
+ (name duneboot)
+ (libraries unix))
+
+;; For unused value warnings. We don't write a plain empty
+;; duneboot.mli to simplify ../bootstrap.ml
+(rule (with-stdout-to duneboot.mli (progn)))

@@ -200,6 +200,8 @@
   the `byte` mode, we statically link in foreign archives into the runtime
   system; (iii) we do not generate any `dll*.so` rules. (#2864, @snowleopard)
 
+- Reimplement the bootstrap procedure. The new procedure is faster and
+  should no longer stack overflow (#2854, @dra27, @diml)
 
 1.11.4 (09/10/2019)
 -------------------

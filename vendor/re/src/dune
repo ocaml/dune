@@ -3,5 +3,3 @@
  (public_name dune-private-libs.dune_re)
  (flags       (:standard -w -50))
  (synopsis "Internal Dune library, do not use!"))
-
-(rule (with-stdout-to dune_re.ml (echo "include Re")))

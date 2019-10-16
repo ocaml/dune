@@ -109,20 +109,26 @@ $ opam install dune
 You can also build it manually with:
 
 ```sh
-$ make release
+$ make
 $ make install
 ```
-
-Running simply `make` will build dune using the development
-settings.
 
 If you do not have `make`, you can do the following:
 
 ```sh
-$ ocaml bootstrap.ml
-$ ./boot.exe
-$ ./_boot/default/bin/main.exe install dune --build-dir _boot
+$ ocaml bootstrap.mlt
+$ ./dune.exe build -p dune --profile dune-bootstrap
+$ ./dune.exe install dune --build-dir _boot
 ```
+
+The first command build the `dune.exe` binary. The second builds the
+additional files that are installed by dune, such as the man pages and
+the last simply installs all of that on the system.
+
+Note that unless you ran the optional `./configure` script, you can
+simply copy `dune.exe` anywhere and it will just works. `dune` is
+fully relocatable and discovers its environment at runtime rather than
+hard-coding it at compilation time.
 
 Support
 -------

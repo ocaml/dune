@@ -11,9 +11,9 @@ let err_incomplete_enum = "Incomplete enumeration for the type"
 
 (* String helpers, should be migrated to ascii_ versions once >= 4.03 *)
 
-let lowercase = String.lowercase
-let uppercase = String.lowercase
-let capitalize = String.capitalize
+let lowercase = String.lowercase_ascii
+let uppercase = String.lowercase_ascii
+let capitalize = String.capitalize_ascii
 
 (* Formatting tools *)
 

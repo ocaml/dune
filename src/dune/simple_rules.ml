@@ -12,6 +12,29 @@ let dep_bindings ~extra_bindings deps =
   | Some bindings -> Pform.Map.superpose base bindings
   | None -> base
 
+let check_filename =
+  let not_in_dir ~error_loc s =
+    User_error.raise ~loc:error_loc
+      [ Pp.textf "%s does not denote a file in the current directory" s ]
+  in
+  fun ~error_loc ~dir fn ->
+    match fn with
+    | Value.String ("." | "..") ->
+      User_error.raise ~loc:error_loc
+        [ Pp.text "'.' and '..' are not valid filenames" ]
+    | String s ->
+      if Filename.dirname s <> Filename.current_dir_name then
+        not_in_dir ~error_loc s;
+      Path.Build.relative ~error_loc dir s
+    | Path p ->
+      if
+        Option.compare Path.compare (Path.parent p) (Some (Path.build dir))
+        <> Eq
+      then
+        not_in_dir ~error_loc (Path.to_string p);
+      Path.as_in_build_dir_exn p
+    | Dir p -> not_in_dir ~error_loc (Path.to_string p)
+
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
   | false -> Path.Build.Set.empty
@@ -20,29 +43,6 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       match rule.targets with
       | Infer -> Infer
       | Static { targets; multiplicity } ->
-        let not_in_dir ~error_loc s =
-          User_error.raise ~loc:error_loc
-            [ Pp.textf "%s does not denote a file in the current directory" s ]
-        in
-        let check_filename ~error_loc fn =
-          match fn with
-          | Value.String ("." | "..") ->
-            User_error.raise ~loc:error_loc
-              [ Pp.text "'.' and '..' are not valid filenames" ]
-          | String s ->
-            if Filename.dirname s <> Filename.current_dir_name then
-              not_in_dir ~error_loc s;
-            Path.Build.relative ~error_loc dir s
-          | Path p ->
-            if
-              Option.compare Path.compare (Path.parent p)
-                (Some (Path.build dir))
-              <> Eq
-            then
-              not_in_dir ~error_loc (Path.to_string p);
-            Path.as_in_build_dir_exn p
-          | Dir p -> not_in_dir ~error_loc (Path.to_string p)
-        in
         let targets =
           List.concat_map targets ~f:(fun target ->
               let error_loc = String_with_vars.loc target in
@@ -51,10 +51,10 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
                 let res =
                   Expander.expand expander ~mode:Single ~template:target
                 in
-                [ check_filename ~error_loc res ]
+                [ check_filename ~dir ~error_loc res ]
               | Multiple ->
                 Expander.expand expander ~mode:Many ~template:target
-                |> List.map ~f:(check_filename ~error_loc))
+                |> List.map ~f:(check_filename ~dir ~error_loc))
         in
         Expander.Targets.Static { multiplicity; targets }
     in

@@ -27,7 +27,9 @@ module Lib_entry = struct
 
   let name = function
     | Library lib -> Lib.Local.to_lib lib |> Lib.name
-    | Deprecated_library_name d -> snd d.old_public_name.name
+    | Deprecated_library_name
+        { old_public_name = { public = old_public_name; _ }; _ } ->
+      Dune_file.Public_lib.name old_public_name
 end
 
 type t =
@@ -525,8 +527,10 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
               ( pub.package.name
               , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
               :: acc )
-          | Dune_file.Deprecated_library_name d ->
-            ( d.old_public_name.package.name
+          | Dune_file.Deprecated_library_name
+              ({ old_public_name = { public = old_public_name; _ }; _ } as d)
+            ->
+            ( (Dune_file.Public_lib.package old_public_name).name
             , Lib_entry.Deprecated_library_name d )
             :: acc
           | _ -> acc)

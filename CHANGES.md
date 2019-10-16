@@ -164,6 +164,13 @@
   stanza as well as the `(foreign_stubs ...)` and `(foreign_archives ...)` fields.
   (#2659, RFC #2650, @snowleopard)
 
+- Add (deprecated_package_names) field to (package) declaration in
+  dune-project. The names declared here can be used in the (old_public_name)
+  field of (deprecated_library_name) stanza. These names are interpreted as
+  library names (not prefixed by a package name) and appropiate redirections are
+  setup in their META files. This feaure is meant to migrate old libraries which
+  do not follow Dune's convention of prefixing libraries with the package
+  name. (#2696, @nojb)
 
 1.11.4 (09/10/2019)
 -------------------

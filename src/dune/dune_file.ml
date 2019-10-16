@@ -598,27 +598,42 @@ module Public_lib = struct
 
   let name t = snd t.name
 
-  let make project ((_, s) as loc_name) =
-    let pkg, rest = Lib_name.split s in
-    Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
-        { package = pkg
-        ; sub_dir =
-            ( if rest = [] then
-              None
-            else
-              Some (String.concat rest ~sep:"/") )
-        ; name = loc_name
-        })
+  let package t = t.package
 
-  let public_name_field =
+  let make ?(allow_deprecated_names = false) project ((_, s) as loc_name) =
+    let pkg, rest = Lib_name.split s in
+    let x =
+      if not allow_deprecated_names then
+        None
+      else
+        List.find_map
+          (Package.Name.Map.values (Dune_project.packages project))
+          ~f:(fun ({ deprecated_package_names; _ } as package) ->
+            if Package.Name.Map.mem deprecated_package_names pkg then
+              Some { package; sub_dir = None; name = loc_name }
+            else
+              None)
+    in
+    match x with
+    | Some x -> Ok x
+    | None ->
+      Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
+          { package = pkg
+          ; sub_dir =
+              ( if rest = [] then
+                None
+              else
+                Some (String.concat rest ~sep:"/") )
+          ; name = loc_name
+          })
+
+  let decode ?allow_deprecated_names () =
     map_validate
       (let+ project = Dune_project.get_exn ()
-       and+ loc_name = field_o "public_name" (located Lib_name.decode) in
+       and+ loc_name = located Lib_name.decode in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
-        match loc_name with
-        | None -> Ok None
-        | Some x -> Result.map (make project x) ~f:Option.some)
+        make ?allow_deprecated_names project loc_name)
 end
 
 module Mode_conf = struct
@@ -808,7 +823,7 @@ module Library = struct
       (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
@@ -1918,7 +1933,7 @@ module Coq = struct
     fields
       (let+ name = field "name" Lib_name.Local.decode_loc
        and+ loc = loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ modules = modules_field "modules"
@@ -2113,26 +2128,38 @@ module Include_subdirs = struct
 end
 
 module Deprecated_library_name = struct
+  module Old_public_name = struct
+    type t =
+      { deprecated : bool
+      ; public : Public_lib.t
+      }
+
+    let decode =
+      let+ public = Public_lib.decode ~allow_deprecated_names:true () in
+      let deprecated =
+        not
+          (Package.Name.equal
+             (Lib_name.package_name (Public_lib.name public))
+             (Public_lib.package public).name)
+      in
+      { deprecated; public }
+  end
+
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Public_lib.t
-    ; new_public_name : Lib_name.t
+    ; old_public_name : Old_public_name.t
+    ; new_public_name : Loc.t * Lib_name.t
     }
 
   let decode =
     fields
       (let+ loc = loc
        and+ project = Dune_project.get_exn ()
-       and+ old_public_name =
-         map_validate
-           (let+ project = Dune_project.get_exn ()
-            and+ loc_name =
-              field "old_public_name" (located Lib_name.decode)
-            in
-            (project, loc_name))
-           ~f:(fun (project, loc_name) -> Public_lib.make project loc_name)
-       and+ new_public_name = field "new_public_name" Lib_name.decode in
+       and+ old_public_name = field "old_public_name" Old_public_name.decode
+       and+ new_public_name =
+         field "new_public_name" (located Lib_name.decode)
+       in
        { loc; project; old_public_name; new_public_name })
 end
 

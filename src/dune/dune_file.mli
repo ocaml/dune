@@ -119,6 +119,8 @@ module Public_lib : sig
     }
 
   val name : t -> Lib_name.t
+
+  val package : t -> Package.t
 end
 
 module Mode_conf : sig
@@ -464,11 +466,18 @@ module Include_subdirs : sig
 end
 
 module Deprecated_library_name : sig
+  module Old_public_name : sig
+    type t =
+      { deprecated : bool
+      ; public : Public_lib.t
+      }
+  end
+
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Public_lib.t
-    ; new_public_name : Lib_name.t
+    ; old_public_name : Old_public_name.t
+    ; new_public_name : Loc.t * Lib_name.t
     }
 end
 

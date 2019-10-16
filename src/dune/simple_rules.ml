@@ -131,21 +131,25 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
     , Option.map extra_bindings ~f:Pform.Map.to_stamp )
   in
   let loc = Some alias_conf.loc in
-  if Expander.eval_blang expander alias_conf.enabled_if then
-    add_alias sctx ~dir ~loc ~name:alias_conf.name ~stamp
-      ~locks:(interpret_locks ~expander alias_conf.locks)
-      ( SC.Deps.interpret_named sctx ~expander alias_conf.deps
-      |>
-      match alias_conf.action with
-      | None ->
-        fun x ->
-          let open Build.O in
-          Build.ignore x >>> Build.progn []
-      | Some (loc, action) ->
-        let bindings = dep_bindings ~extra_bindings alias_conf.deps in
-        let expander = Expander.add_bindings expander ~bindings in
-        SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
-          ~targets:(Forbidden "aliases") ~targets_dir:dir )
-  else
-    add_alias sctx ~loc ~dir ~name:alias_conf.name ~stamp
-      (Build.return (Action.Progn []))
+  let locks, action =
+    match Expander.eval_blang expander alias_conf.enabled_if with
+    | false -> (None, Build.return (Action.Progn []))
+    | true ->
+      let locks = interpret_locks ~expander alias_conf.locks in
+      let action =
+        SC.Deps.interpret_named sctx ~expander alias_conf.deps
+        |>
+        match alias_conf.action with
+        | None ->
+          fun x ->
+            let open Build.O in
+            Build.ignore x >>> Build.progn []
+        | Some (loc, action) ->
+          let bindings = dep_bindings ~extra_bindings alias_conf.deps in
+          let expander = Expander.add_bindings expander ~bindings in
+          SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+            ~targets:(Forbidden "aliases") ~targets_dir:dir
+      in
+      (Some locks, action)
+  in
+  add_alias sctx ~loc ~dir ~name:alias_conf.name ~stamp ?locks action

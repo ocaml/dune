@@ -299,8 +299,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
-    ~opaque
+    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp ~opaque
     ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
     ?vimpl ~modes

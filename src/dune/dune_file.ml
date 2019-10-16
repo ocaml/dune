@@ -866,8 +866,7 @@ module Library = struct
        and+ () =
          let check =
            let+ loc = loc
-           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax
-           in
+           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
            let is_error = dune_version >= (2, 0) in
            User_warning.emit ~loc ~is_error
              [ Pp.text "no_keep_locs is a no-op. Please delete it." ]

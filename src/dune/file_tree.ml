@@ -216,18 +216,10 @@ module Dir = struct
       ]
 
   let empty_contents =
-    { files = String.Set.empty
-    ; sub_dirs = String.Map.empty
-    ; dune_file = None
-    }
+    { files = String.Set.empty; sub_dirs = String.Map.empty; dune_file = None }
 
   let empty ~project ~path ~status ~vcs =
-    { project
-    ; path
-    ; status
-    ; vcs
-    ; contents = lazy empty_contents
-    }
+    { project; path; status; vcs; contents = lazy empty_contents }
 end
 
 module Settings = struct
@@ -330,7 +322,7 @@ let make_root
            in
            match status with
            | Ignored -> acc
-           | Status status -> (
+           | Status status ->
              let dir_status : Sub_dirs.Status.t =
                match (dir_status, status) with
                | Data_only, _ -> Data_only
@@ -360,8 +352,7 @@ let make_root
                | Ok dir -> dir
                | Error _ -> Dir.empty ~vcs ~project ~path ~status
              in
-             String.Map.set acc fn dir
-           ))
+             String.Map.set acc fn dir)
   in
   let walk =
     let+ x = Readdir.of_source_path path in

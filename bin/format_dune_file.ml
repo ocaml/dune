@@ -1,4 +1,4 @@
-open Import
+open DuneImport
 open Stdune
 module Format_dune_lang = Dune.Format_dune_lang
 

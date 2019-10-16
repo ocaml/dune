@@ -1,3 +1,4 @@
+module Import = struct
 open Stdune
 open Dune
 module Term = Cmdliner.Term
@@ -131,3 +132,6 @@ let restore_cwd_and_execve (common : Common.t) prog argv env =
   Proc.restore_cwd_and_execve prog argv ~env
 
 let do_build targets = Build_system.do_build ~request:(Target.request targets)
+end
+
+include Import

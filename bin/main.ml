@@ -1,5 +1,5 @@
 open! Stdune
-open Import
+open DuneImport
 
 let run_build_command ~common ~targets =
   let once () =

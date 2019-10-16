@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 module Utop = Dune.Utop
 
 let doc = "Load library in utop"

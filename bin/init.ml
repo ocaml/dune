@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 open Dune.Dune_init
 
 (* TODO(shonfeder): Remove when nested subcommands are available *)

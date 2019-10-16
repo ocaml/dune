@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 
 (** A string that is "%%VERSION%%" but not expanded by [dune subst] *)
 let literal_version = "%%" ^ "VERSION%%"

@@ -1,5 +1,5 @@
 open! Stdune
-open Import
+open DuneImport
 
 let doc = "Upgrade jbuilder projects to dune"
 

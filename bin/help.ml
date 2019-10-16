@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 
 let config =
   ( ("dune-config", 5, "", "Dune", "Dune manual")

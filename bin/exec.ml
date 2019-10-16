@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 
 let doc =
   "Execute a command in a similar environment as if installation was performed."

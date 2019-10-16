@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 
 let interpret_destdir ~destdir path =
   match destdir with

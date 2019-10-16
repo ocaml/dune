@@ -1,5 +1,5 @@
 open Stdune
-open Import
+open DuneImport
 
 let pp_external_libs libs =
   Pp.enumerate (Lib_name.Map.to_list libs) ~f:(fun (name, kind) ->

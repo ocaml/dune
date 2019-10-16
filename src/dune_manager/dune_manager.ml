@@ -1,6 +1,6 @@
 module Evt = Event
 open Stdune
-module Utils = Utils
+module Utils = ManagerUtils
 open Utils
 
 type version = int * int

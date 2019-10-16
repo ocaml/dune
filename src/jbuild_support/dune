@@ -4,4 +4,4 @@
  (synopsis "Internal Dune library, do not use!")
  (preprocess future_syntax))
 
-(ocamllex lexer)
+(ocamllex jbuildLexer)

@@ -13,11 +13,42 @@ let string_of_syntax = function
   | Dune -> "dune"
   | Jbuild -> "jbuild"
 
+let jbuild_atom_is_valid str =
+  let len = String.length str in
+  len > 0
+  &&
+  let rec loop ix =
+    match str.[ix] with
+    | '"'
+    | '('
+    | ')'
+    | ';' ->
+      true
+    | '|' ->
+      ix > 0
+      &&
+      let next = ix - 1 in
+      str.[next] = '#' || loop next
+    | '#' ->
+      ix > 0
+      &&
+      let next = ix - 1 in
+      str.[next] = '|' || loop next
+    | ' '
+    | '\t'
+    | '\n'
+    | '\012'
+    | '\r' ->
+      true
+    | _ -> ix > 0 && loop (ix - 1)
+  in
+  not (loop (len - 1))
+
 let () =
   [ (Dune, Dune_lang.Lexer.token, fun s -> Dune_lang.Atom.is_valid s)
   ; ( Jbuild
-    , Jbuild_support.Lexer.token
-    , fun s -> Jbuild_support.Atom.is_valid s )
+    , Jbuild_support.JbuildLexer.token
+    , fun s -> jbuild_atom_is_valid s )
   ]
   |> List.iter ~f:(fun (syntax, lexer, validator) ->
          for len = 0 to 3 do

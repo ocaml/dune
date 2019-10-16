@@ -83,7 +83,7 @@ let parse s =
     | User_error.E msg -> Error (string_of_user_error msg)
     | e -> Error (Printexc.to_string e)
   in
-  let jbuild = f ~lexer:Jbuild_support.Lexer.token in
+  let jbuild = f ~lexer:Jbuild_support.JbuildLexer.token in
   let dune = f ~lexer:Dune_lang.Lexer.token in
   let res =
     if jbuild <> dune then
@@ -303,7 +303,7 @@ let test syntax sexp =
         Dune_lang.Parser.parse_string s ~mode:Single ~fname:""
           ~lexer:
             ( match syntax with
-            | Jbuild -> Jbuild_support.Lexer.token
+            | Jbuild -> Jbuild_support.JbuildLexer.token
             | Dune -> Dune_lang.Lexer.token )
       with
       | sexp' ->
@@ -407,7 +407,7 @@ comment|#
 |}
 
 let%expect_test _ =
-  Dune_lang.Parser.parse ~lexer:Jbuild_support.Lexer.token ~mode:Cst
+  Dune_lang.Parser.parse ~lexer:Jbuild_support.JbuildLexer.token ~mode:Cst
     (Lexing.from_string jbuild_file)
   |> List.map
        ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:jbuild_file)

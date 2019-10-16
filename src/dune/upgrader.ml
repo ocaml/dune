@@ -11,7 +11,7 @@ let scan_included_files path =
       let csts =
         Dune_lang.Parser.parse_string s
           ~fname:(Path.Source.to_string path)
-          ~lexer:Jbuild_support.Lexer.token ~mode:Cst
+          ~lexer:Jbuild_support.JbuildLexer.token ~mode:Cst
         |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:s)
       in
       let comments = Dune_lang.Cst.extract_comments csts in
@@ -99,7 +99,7 @@ let upgrade_stanza stanza =
         }
   in
   let upgrade_string s ~loc ~quoted =
-    Jbuild_support.String_with_vars.upgrade_to_dune s ~loc ~quoted
+    Jbuild_support.Jbuild_string_with_vars.upgrade_to_dune s ~loc ~quoted
       ~allow_first_dep_var:true
     |> String_with_vars.make |> String_with_vars.encode
     |> Dune_lang.Ast.add_loc ~loc

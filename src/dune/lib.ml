@@ -332,7 +332,7 @@ and resolve_result =
   | Not_found
   | Found of Lib_info.external_
   | Hidden of Lib_info.external_ * string
-  | Redirect of db option * Lib_name.t
+  | Redirect of db option * (Loc.t * Lib_name.t)
 
 type lib = t
 
@@ -1088,7 +1088,7 @@ end = struct
 
   let resolve_name db name ~stack =
     match db.resolve name with
-    | Redirect (db', name') -> (
+    | Redirect (db', (_, name')) -> (
       let db' = Option.value db' ~default:db in
       match find_internal db' name' ~stack with
       | St_initializing _ as x -> x
@@ -1510,7 +1510,16 @@ module DB = struct
       | Not_found
       | Found of Lib_info.external_
       | Hidden of Lib_info.external_ * string
-      | Redirect of db option * Lib_name.t
+      | Redirect of db option * (Loc.t * Lib_name.t)
+
+    let to_dyn x =
+      let open Dyn.Encoder in
+      match x with
+      | Not_found -> constr "Not_found" []
+      | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
+      | Hidden (lib, s) ->
+        constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string s ]
+      | Redirect (_, (_, name)) -> constr "Redirect" [ Lib_name.to_dyn name ]
   end
 
   type t = db
@@ -1549,7 +1558,7 @@ module DB = struct
                 | Hidden _ ->
                   assert false
                 | Found x -> x
-                | Redirect (_, name') -> (
+                | Redirect (_, (_, name')) -> (
                   match Lib_name.Map.find libmap name' with
                   | Some (Found x) -> x
                   | _ -> assert false ))
@@ -1605,9 +1614,13 @@ module DB = struct
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | External_variant _ -> []
-          | Deprecated_library_name x ->
-            [ ( Dune_file.Public_lib.name x.old_public_name
-              , Redirect (None, x.new_public_name) )
+          | Deprecated_library_name
+              { old_public_name = { public = old_public_name; _ }
+              ; new_public_name
+              ; _
+              } ->
+            [ ( Dune_file.Public_lib.name old_public_name
+              , Redirect (None, new_public_name) )
             ]
           | Library (dir, (conf : Dune_file.Library.t)) -> (
             (* In the [implements] field of library stanzas, the user might use
@@ -1650,41 +1663,38 @@ module DB = struct
                 [ (name, Found info) ]
               else
                 [ (name, Found info)
-                ; (Lib_name.of_local conf.name, Redirect (None, name))
+                ; (Lib_name.of_local conf.name, Redirect (None, p.name))
                 ] ))
-      |> Lib_name.Map.of_list
-      |> function
-      | Ok x -> x
-      | Error (name, _, _) -> (
-        match
-          List.filter_map stanzas ~f:(function
-            | Library (_, conf) ->
-              if
-                Lib_name.equal name (Lib_name.of_local conf.name)
-                ||
-                match conf.public with
-                | None -> false
-                | Some p -> Lib_name.equal name (Dune_file.Public_lib.name p)
-              then
-                Some conf.buildable.loc
-              else
-                None
-            | Deprecated_library_name x ->
-              Option.some_if
-                (Lib_name.equal name
-                   (Dune_file.Public_lib.name x.old_public_name))
-                x.loc
-            | External_variant _ -> None)
-        with
-        | []
-        | [ _ ] ->
-          assert false
-        | loc1 :: loc2 :: _ ->
-          User_error.raise
-            [ Pp.textf "Library %s is defined twice:" (Lib_name.to_string name)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
-            ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
-            ] )
+      |> Lib_name.Map.of_list_reducei ~f:(fun name v1 v2 ->
+             let res =
+               match (v1, v2) with
+               | Found info1, Found info2 ->
+                 Error (Lib_info.loc info1, Lib_info.loc info2)
+               | Found info, Redirect (None, (loc, _))
+               | Redirect (None, (loc, _)), Found info ->
+                 Error (loc, Lib_info.loc info)
+               | Redirect (None, (loc1, lib1)), Redirect (None, (loc2, lib2))
+                 ->
+                 if Lib_name.equal lib1 lib2 then
+                   Ok v1
+                 else
+                   Error (loc1, loc2)
+               | _ ->
+                 Code_error.raise
+                   "create_from_stanzas produced unexpected result"
+                   [ ("v1", Resolve_result.to_dyn v1)
+                   ; ("v2", Resolve_result.to_dyn v2)
+                   ]
+             in
+             match res with
+             | Ok x -> x
+             | Error (loc1, loc2) ->
+               User_error.raise
+                 [ Pp.textf "Library %s is defined twice:"
+                     (Lib_name.to_string name)
+                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+                 ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+                 ])
     in
     (* We need to check that [external_variant] stanzas are correct, i.e.
        contain valid [virtual_library] fields now since this is the last time
@@ -1701,7 +1711,8 @@ module DB = struct
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
-        | Ok (Deprecated_library_name d) -> Redirect (None, d.new_public_name)
+        | Ok (Deprecated_library_name d) ->
+          Redirect (None, (Loc.none, d.new_public_name))
         | Error e -> (
           match e with
           | Not_found ->

@@ -23,7 +23,7 @@ let profile =
     , fun fmt t -> Format.pp_print_string fmt (Profile.to_string t) )
 
 module Dep = struct
-  module Dep_conf = Dune_file.Dep_conf
+  module Dep_conf = Dep_conf
 
   type t = Dep_conf.t
 

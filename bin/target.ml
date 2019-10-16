@@ -132,7 +132,7 @@ let resolve_alias common ~recursive sv ~(setup : Dune.Main.build_system) =
   | None -> Error [ Pp.text "alias cannot contain variables" ]
 
 let resolve_target common ~setup = function
-  | Dune.Dune_file.Dep_conf.Alias sv as dep ->
+  | Dune.Dep_conf.Alias sv as dep ->
     Result.map_error
       ~f:(fun hints -> (dep, hints))
       (resolve_alias common ~recursive:false sv ~setup)

@@ -60,12 +60,13 @@ val internal_lib_names : t -> Lib_name.Set.t
     stanza *)
 val ocaml_flags : t -> dir:Path.Build.t -> Buildable.t -> Ocaml_flags.t
 
-val c_flags :
+val foreign_flags :
      t
   -> dir:Path.Build.t
   -> expander:Expander.t
-  -> flags:Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-  -> string list Build.t C.Kind.Dict.t
+  -> flags:Ordered_set_lang.Unexpanded.t
+  -> language:Foreign.Language.t
+  -> string list Build.t
 
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
@@ -143,8 +144,8 @@ module Libs : sig
 
       /!\ WARNING /!\: make sure the last function call inside [f] is fully
       applied, otherwise the function might end up being executed after this
-      function has returned. Consider addin a type annotation to make sure this
-      doesn't happen by mistake. *)
+      function has returned. Consider adding a type annotation to make sure
+      this doesn't happen by mistake. *)
   val with_lib_deps :
     t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
 
@@ -152,7 +153,7 @@ module Libs : sig
   val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
 end
 
-(** Interpret dependencies written in jbuild files *)
+(** Interpret dependencies written in Dune files *)
 module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies. *)
@@ -169,7 +170,7 @@ module Deps : sig
     -> Path.t Bindings.t Build.t
 end
 
-(** Interpret action written in jbuild files *)
+(** Interpret action written in Dune files *)
 module Action : sig
   (** This function takes as input the list of dependencies written by user,
       which is used for action expansion. These must be registered with the

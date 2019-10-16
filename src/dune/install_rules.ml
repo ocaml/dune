@@ -11,12 +11,20 @@ module Package_paths = struct
   let meta_file (ctx : Context.t) pkg =
     Path.Build.append_source ctx.build_dir (Package.meta_file pkg)
 
+  let deprecated_meta_file (ctx : Context.t) pkg name =
+    Path.Build.append_source ctx.build_dir
+      (Package.deprecated_meta_file pkg name)
+
   let build_dir (ctx : Context.t) (pkg : Package.t) =
     Path.Build.append_source ctx.build_dir pkg.path
 
   let dune_package_file ctx pkg =
     Path.Build.relative (build_dir ctx pkg)
       (Package.Name.to_string pkg.name ^ ".dune-package")
+
+  let deprecated_dune_package_file ctx pkg name =
+    Path.Build.relative (build_dir ctx pkg)
+      (Package.Name.to_string name ^ ".dune-package")
 
   let meta_template ctx pkg =
     Path.Build.extend_basename (meta_file ctx pkg) ~suffix:".template"
@@ -119,9 +127,9 @@ end = struct
               | Private, Some dir -> Some (Filename.concat dir ".private")
             in
             make_entry ?sub_dir Lib file)
-      ; List.map (Lib_archives.files archives) ~f:(make_entry Lib)
+      ; List.map (Lib_archives.lib_files archives) ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
-      ; List.map (Lib_archives.dlls archives) ~f:(fun a ->
+      ; List.map (Lib_archives.dll_files archives) ~f:(fun a ->
             (Some loc, Install.Entry.make Stublibs a))
       ]
 
@@ -170,17 +178,40 @@ end = struct
                let dune_package_file =
                  Package_paths.dune_package_file ctx pkg
                in
+               let deprecated_meta_and_dune_files =
+                 List.concat_map
+                   (Package.Name.Map.to_list pkg.deprecated_package_names)
+                   ~f:(fun (name, _) ->
+                     let meta_file =
+                       Package_paths.deprecated_meta_file ctx pkg name
+                     in
+                     let dune_package_file =
+                       Package_paths.deprecated_dune_package_file ctx pkg name
+                     in
+                     [ ( None
+                       , Install.Entry.make Lib_root meta_file
+                           ~dst:
+                             ( Package.Name.to_string name
+                             ^ "/" ^ Findlib.meta_fn ) )
+                     ; ( None
+                       , Install.Entry.make Lib_root dune_package_file
+                           ~dst:
+                             ( Package.Name.to_string name
+                             ^ "/" ^ Dune_package.fn ) )
+                     ])
+               in
                (None, Install.Entry.make Lib meta_file ~dst:Findlib.meta_fn)
                :: ( None
                   , Install.Entry.make Lib dune_package_file
                       ~dst:Dune_package.fn )
                ::
                ( match pkg.kind with
-               | Dune false -> []
+               | Dune false -> deprecated_meta_and_dune_files
                | Dune true
                | Opam ->
                  let opam_file = Package_paths.opam_file ctx pkg in
-                 [ (None, Install.Entry.make Lib opam_file ~dst:"opam") ] )
+                 (None, Install.Entry.make Lib opam_file ~dst:"opam")
+                 :: deprecated_meta_and_dune_files )
              in
              String.Set.fold files ~init ~f:(fun fn acc ->
                  if is_odig_doc_file fn then
@@ -262,6 +293,18 @@ let gen_dune_package sctx pkg =
   let dune_version =
     Dune_lang.Syntax.greatest_supported_version Stanza.syntax
   in
+  let lib_entries = Super_context.lib_entries_of_package sctx pkg.name in
+  let deprecated_dune_packages =
+    List.filter_map lib_entries ~f:(function
+      | Super_context.Lib_entry.Deprecated_library_name
+          ( { old_public_name = { deprecated = true; public = old_public_name }
+            ; _
+            } as t ) ->
+        Some
+          (Lib_name.package_name (Dune_file.Public_lib.name old_public_name), t)
+      | _ -> None)
+    |> Package.Name.Map.of_list_multi
+  in
   let action =
     let gen_dune_package () =
       let dune_package =
@@ -273,37 +316,49 @@ let gen_dune_package sctx pkg =
           Path.Build.L.relative pkg_root subdir
         in
         let entries =
-          Super_context.lib_entries_of_package sctx pkg.name
-          |> List.map ~f:(function
-               | Super_context.Lib_entry.Deprecated_library_name d ->
-                 Dune_package.Entry.Deprecated_library_name
-                   { loc = d.loc
-                   ; old_public_name = snd d.old_public_name.name
-                   ; new_public_name = d.new_public_name
-                   }
-               | Library lib ->
-                 let dir_contents =
-                   let info = Lib.Local.info lib in
-                   let dir = Lib_info.src_dir info in
-                   Dir_contents.get sctx ~dir
-                 in
-                 let obj_dir = Lib.Local.obj_dir lib in
-                 let lib = Lib.Local.to_lib lib in
-                 let name = Lib.name lib in
-                 let foreign_objects =
-                   let dir = Obj_dir.obj_dir obj_dir in
-                   Dir_contents.c_sources_of_library dir_contents ~name
-                   |> C.Sources.objects ~dir ~ext_obj:ctx.lib_config.ext_obj
-                   |> List.map ~f:Path.build
-                 in
-                 let modules =
-                   Dir_contents.modules_of_library dir_contents ~name
-                 in
-                 Library
+          List.filter_map lib_entries ~f:(function
+            | Super_context.Lib_entry.Deprecated_library_name
+                { old_public_name = { deprecated = true; _ }; _ } ->
+              None
+            | Super_context.Lib_entry.Deprecated_library_name
+                { old_public_name =
+                    { public = old_public_name; deprecated = false }
+                ; new_public_name = _, new_public_name
+                ; loc
+                ; _
+                } ->
+              Some
+                (Dune_package.Entry.Deprecated_library_name
+                   { loc
+                   ; old_public_name =
+                       Dune_file.Public_lib.name old_public_name
+                   ; new_public_name
+                   })
+            | Library lib ->
+              let dir_contents =
+                let info = Lib.Local.info lib in
+                let dir = Lib_info.src_dir info in
+                Dir_contents.get sctx ~dir
+              in
+              let obj_dir = Lib.Local.obj_dir lib in
+              let lib = Lib.Local.to_lib lib in
+              let name = Lib.name lib in
+              let foreign_objects =
+                let dir = Obj_dir.obj_dir obj_dir in
+                Dir_contents.foreign_sources_of_library dir_contents ~name
+                |> Foreign.Sources.object_files ~dir
+                     ~ext_obj:ctx.lib_config.ext_obj
+                |> List.map ~f:Path.build
+              in
+              let modules =
+                Dir_contents.modules_of_library dir_contents ~name
+              in
+              Some
+                (Library
                    (Result.ok_exn
                       (Lib.to_dune_lib lib
                          ~dir:(Path.build (lib_root lib))
-                         ~modules ~foreign_objects)))
+                         ~modules ~foreign_objects))))
         in
         Dune_package.Or_meta.Dune_package
           { Dune_package.version = pkg.version
@@ -320,10 +375,43 @@ let gen_dune_package sctx pkg =
            ~then_:(Build.return Dune_package.Or_meta.Use_meta)
            ~else_:(Build.delayed gen_dune_package)
        in
-       Dune_package.Or_meta.encode ~dune_version pkg
-       |> Format.asprintf "%a@."
-            (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp))
+       Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
   in
+  Package.Name.Map.iteri pkg.deprecated_package_names ~f:(fun name _ ->
+      let dune_pkg =
+        let entries =
+          match Package.Name.Map.find deprecated_dune_packages name with
+          | None -> []
+          | Some entries ->
+            List.map entries
+              ~f:(fun { Dune_file.Deprecated_library_name.old_public_name =
+                          { public = old_public_name; _ }
+                      ; new_public_name = _, new_public_name
+                      ; loc
+                      ; _
+                      }
+                      ->
+                let old_public_name =
+                  Dune_file.Public_lib.name old_public_name
+                in
+                Dune_package.Entry.Deprecated_library_name
+                  { loc; old_public_name; new_public_name })
+        in
+        { Dune_package.version = pkg.version
+        ; name
+        ; entries
+        ; dir =
+            Path.build
+              (Config.local_install_lib_dir ~context:ctx.name ~package:name)
+        }
+      in
+      Build.write_file
+        (Package_paths.deprecated_dune_package_file ctx pkg
+           dune_pkg.Dune_package.name)
+        (Format.asprintf "%a"
+           (Dune_package.Or_meta.pp ~dune_version)
+           (Dune_package.Or_meta.Dune_package dune_pkg))
+      |> Super_context.add_rule sctx ~dir:ctx.build_dir);
   Super_context.add_rule sctx ~dir:ctx.build_dir action
 
 let init_meta_and_dune_package sctx ~dir =
@@ -332,6 +420,21 @@ let init_meta_and_dune_package sctx ~dir =
   |> Scope.project |> Dune_project.packages
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
          let entries = Super_context.lib_entries_of_package sctx pkg.name in
+         let deprecated_packages, entries =
+           List.partition_map entries ~f:(function
+             | Super_context.Lib_entry.Deprecated_library_name
+                 { old_public_name =
+                     { deprecated = true
+                     ; public = { sub_dir = None; name = _, name; _ }
+                     }
+                 ; _
+                 } as entry ->
+               Left (Lib_name.package_name name, entry)
+             | entry -> Right entry)
+         in
+         let deprecated_packages =
+           Package.Name.Map.of_list_multi deprecated_packages
+         in
          let meta = Package_paths.meta_file ctx pkg in
          let meta_template =
            Path.build (Package_paths.meta_template ctx pkg)
@@ -393,7 +496,22 @@ let init_meta_and_dune_package sctx ~dir =
             Format.pp_close_box ppf ();
             Format.pp_print_flush ppf ();
             Buffer.contents buf)
-           |> Build.write_file_dyn meta))
+           |> Build.write_file_dyn meta);
+         Package.Name.Map.iteri pkg.deprecated_package_names ~f:(fun name _ ->
+             let meta = Package_paths.deprecated_meta_file ctx pkg name in
+             Super_context.add_rule sctx ~dir:ctx.build_dir
+               ( (let meta =
+                    let entries =
+                      match Package.Name.Map.find deprecated_packages name with
+                      | None -> []
+                      | Some entries -> entries
+                    in
+                    Gen_meta.gen
+                      ~package:(Package.Name.to_string pkg.name)
+                      ~version:pkg.version entries ~add_directory_entry:false
+                  in
+                  Format.asprintf "@[<v>%a@,@]" Meta.pp meta.entries)
+               |> Build.write_file meta )))
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)

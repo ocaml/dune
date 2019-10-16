@@ -25,5 +25,5 @@ This form does not exist, but displays an hint:
   File "dune", line 7, characters 17-54:
   7 |         (echo "%{path-no-dep:file-that-does-not-exist}\n")
                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  Error: %{path-no-dep:..} was deleted in version 1.0 of the dune language
+  Error: %{path-no-dep:..} was deleted in version 1.0 of the dune language.
   [1]

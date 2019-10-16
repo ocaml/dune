@@ -41,14 +41,14 @@ module DB = struct
 
   type redirect_to =
     | Project of Dune_project.t
-    | Name of Lib_name.t
+    | Name of (Loc.t * Lib_name.t)
 
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
     | None -> Not_found
     | Some (Project project) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Redirect (Some scope.db, name)
+      Redirect (Some scope.db, (Loc.none, name))
     | Some (Name name) -> Redirect (None, name)
 
   let public_libs t ~stdlib_dir ~installed_libs stanzas =
@@ -60,10 +60,13 @@ module DB = struct
             Some (Dune_file.Public_lib.name p, Project project)
           | Library _ -> None
           | External_variant _ -> None
-          | Deprecated_library_name x ->
+          | Deprecated_library_name
+              { old_public_name = { public = old_public_name; _ }
+              ; new_public_name
+              ; _
+              } ->
             Some
-              ( Dune_file.Public_lib.name x.old_public_name
-              , Name x.new_public_name ))
+              (Dune_file.Public_lib.name old_public_name, Name new_public_name))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
@@ -72,7 +75,8 @@ module DB = struct
           List.filter_map stanzas ~f:(fun stanza ->
               match stanza with
               | Library (_, { buildable = { loc; _ }; public = Some p; _ })
-              | Deprecated_library_name { loc; old_public_name = p; _ } ->
+              | Deprecated_library_name
+                  { loc; old_public_name = { public = p; _ }; _ } ->
                 Option.some_if (name = Dune_file.Public_lib.name p) loc
               | _ -> None)
         with

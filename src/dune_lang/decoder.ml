@@ -436,6 +436,8 @@ let map_validate t ~f ctx state1 =
     in
     raise (User_error.E msg)
 
+(** TODO: Improve consistency of error messages, e.g. use %S consistently for
+    field names: see [field_missing] and [field_present_too_many_times]. *)
 let field_missing loc name =
   User_error.raise ~loc [ Pp.textf "field %s missing" name ]
   [@@inline never]

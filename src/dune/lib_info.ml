@@ -4,15 +4,26 @@ module Inherited = struct
   type 'a t =
     | This of 'a
     | From of (Loc.t * Lib_name.t)
+
+  let to_dyn f x =
+    let open Dyn.Encoder in
+    match x with
+    | This x -> constr "This" [ f x ]
+    | From (_, name) -> constr "From" [ Lib_name.to_dyn name ]
 end
 
 module Main_module_name = struct
   type t = Module_name.t option Inherited.t
+
+  let to_dyn x = Inherited.to_dyn (Dyn.Encoder.option Module_name.to_dyn) x
 end
 
 module Special_builtin_support = struct
   module Build_info = struct
     type api_version = V1
+
+    let api_version_to_dyn = function
+      | V1 -> Dyn.Encoder.constr "V1" []
 
     let supported_api_versions = [ (1, V1) ]
 
@@ -20,6 +31,13 @@ module Special_builtin_support = struct
       { data_module : string
       ; api_version : api_version
       }
+
+    let to_dyn { data_module; api_version } =
+      let open Dyn.Encoder in
+      record
+        [ ("data_module", string data_module)
+        ; ("api_version", api_version_to_dyn api_version)
+        ]
 
     let decode =
       let open Dune_lang.Decoder in
@@ -57,6 +75,12 @@ module Special_builtin_support = struct
     | Findlib_dynload
     | Build_info of Build_info.t
 
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Findlib_dynload -> constr "Findlib_dynload" []
+    | Build_info info -> constr "Build_info" [ Build_info.to_dyn info ]
+
   let decode =
     let open Dune_lang.Decoder in
     sum
@@ -79,6 +103,14 @@ module Status = struct
     | Installed
     | Public of Dune_project.Name.t * Package.t
     | Private of Dune_project.t
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Installed -> constr "Installed" []
+    | Public (name, package) ->
+      constr "Public" [ Dune_project.Name.to_dyn name; Package.to_dyn package ]
+    | Private proj -> constr "Private" [ Dune_project.to_dyn proj ]
 
   let pp ppf t =
     Format.pp_print_string ppf
@@ -106,6 +138,12 @@ module Source = struct
     | Local
     | External of 'a
 
+  let to_dyn f x =
+    let open Dyn.Encoder in
+    match x with
+    | Local -> constr "Local" []
+    | External x -> constr "External" [ f x ]
+
   let map t ~f =
     match t with
     | Local -> Local
@@ -117,6 +155,14 @@ module Enabled_status = struct
     | Normal
     | Optional
     | Disabled_because_of_enabled_if
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Normal -> constr "Normal" []
+    | Optional -> constr "Optional" []
+    | Disabled_because_of_enabled_if ->
+      constr "Disabled_because_of_enabled_if" []
 end
 
 type 'path t =
@@ -312,3 +358,75 @@ let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 
 let as_local_exn =
   map ~f_path:Path.as_in_build_dir_exn ~f_obj_dir:Obj_dir.as_local_exn
+
+let to_dyn path
+    { loc
+    ; name
+    ; kind
+    ; status
+    ; src_dir
+    ; orig_src_dir
+    ; obj_dir
+    ; version
+    ; synopsis
+    ; requires
+    ; main_module_name
+    ; foreign_objects
+    ; plugins
+    ; archives
+    ; ppx_runtime_deps
+    ; foreign_archives
+    ; jsoo_runtime
+    ; jsoo_archive
+    ; pps
+    ; enabled
+    ; virtual_deps
+    ; dune_version
+    ; sub_systems
+    ; virtual_
+    ; implements
+    ; variant
+    ; known_implementations
+    ; default_implementation
+    ; modes
+    ; wrapped
+    ; special_builtin_support
+    } =
+  let open Dyn.Encoder in
+  let snd f (_, x) = f x in
+  record
+    [ ("loc", Loc.to_dyn loc)
+    ; ("name", Lib_name.to_dyn name)
+    ; ("kind", Lib_kind.to_dyn kind)
+    ; ("status", Status.to_dyn status)
+    ; ("src_dir", path src_dir)
+    ; ("orig_src_dir", option path orig_src_dir)
+    ; ("obj_dir", Obj_dir.to_dyn obj_dir)
+    ; ("version", option string version)
+    ; ("synopsis", option string synopsis)
+    ; ("archives", Mode.Dict.to_dyn (list path) archives)
+    ; ("plugins", Mode.Dict.to_dyn (list path) plugins)
+    ; ("foreign_objects", Source.to_dyn (list path) foreign_objects)
+    ; ("foreign_archives", Mode.Dict.to_dyn (list path) foreign_archives)
+    ; ("jsoo_runtime", list path jsoo_runtime)
+    ; ("jsoo_archive", option path jsoo_archive)
+    ; ("requires", list Lib_dep.to_dyn requires)
+    ; ("ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps)
+    ; ("pps", list (snd Lib_name.to_dyn) pps)
+    ; ("enabled", Enabled_status.to_dyn enabled)
+    ; ("virtual_deps", list (snd Lib_name.to_dyn) virtual_deps)
+    ; ("dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version)
+    ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.Encoder.opaque sub_systems)
+    ; ("virtual_", option (Source.to_dyn Modules.to_dyn) virtual_)
+    ; ("implements", option (snd Lib_name.to_dyn) implements)
+    ; ("variant", option Variant.to_dyn variant)
+    ; ( "known_implementation"
+      , Variant.Map.to_dyn (snd Lib_name.to_dyn) known_implementations )
+    ; ( "default_implementation"
+      , option (snd Lib_name.to_dyn) default_implementation )
+    ; ("wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped)
+    ; ("main_module_name", Main_module_name.to_dyn main_module_name)
+    ; ("modes", Mode.Dict.Set.to_dyn modes)
+    ; ( "special_builtin_support"
+      , option Special_builtin_support.to_dyn special_builtin_support )
+    ]

@@ -7,7 +7,7 @@ type t =
   ; files : Predicate_lang.Glob.t
   ; libraries : Lib_dep.t list
   ; preprocess : Dune_file.Preprocess_map.t
-  ; preprocessor_deps : Dune_file.Dep_conf.t list
+  ; preprocessor_deps : Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
   }
 

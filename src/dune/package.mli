@@ -81,6 +81,7 @@ type t =
   ; version : string option
   ; kind : Kind.t
   ; tags : string list
+  ; deprecated_package_names : Loc.t Name.Map.t
   }
 
 val file : dir:Path.t -> name:Name.t -> Path.t
@@ -90,6 +91,8 @@ val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 val opam_file : t -> Path.Source.t
 
 val meta_file : t -> Path.Source.t
+
+val deprecated_meta_file : t -> Name.t -> Path.Source.t
 
 val to_dyn : t -> Dyn.t
 

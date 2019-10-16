@@ -19,7 +19,7 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 
 let opens modules m =
   match Modules.alias_for modules m with
-  | None -> Command.Args.S []
+  | None -> Command.Args.empty
   | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
@@ -99,7 +99,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   in
   let other_targets, cmt_args =
     match cm_kind with
-    | Cmx -> (other_targets, Command.Args.S [])
+    | Cmx -> (other_targets, Command.Args.empty)
     | Cmi
     | Cmo ->
       let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
@@ -112,7 +112,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
     then
       Command.Args.A "-opaque"
     else
-      As []
+      Command.Args.empty
   in
   let dir = ctx.build_dir in
   let flags =
@@ -139,7 +139,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
           ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
           ; As extra_args
           ; ( if dynlink || cm_kind <> Cmx then
-              As []
+              Command.Args.empty
             else
               A "-nodynlink" )
           ; A "-no-alias-deps"

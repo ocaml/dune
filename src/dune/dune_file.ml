@@ -162,110 +162,6 @@ module Pps_and_flags = struct
     (pps, all_flags)
 end
 
-module Dep_conf = struct
-  type t =
-    | File of String_with_vars.t
-    | Alias of String_with_vars.t
-    | Alias_rec of String_with_vars.t
-    | Glob_files of String_with_vars.t
-    | Source_tree of String_with_vars.t
-    | Package of String_with_vars.t
-    | Universe
-    | Env_var of String_with_vars.t
-    | Sandbox_config of Sandbox_config.t
-
-  let remove_locs = function
-    | File sw -> File (String_with_vars.remove_locs sw)
-    | Alias sw -> Alias (String_with_vars.remove_locs sw)
-    | Alias_rec sw -> Alias_rec (String_with_vars.remove_locs sw)
-    | Glob_files sw -> Glob_files (String_with_vars.remove_locs sw)
-    | Source_tree sw -> Source_tree (String_with_vars.remove_locs sw)
-    | Package sw -> Package (String_with_vars.remove_locs sw)
-    | Universe -> Universe
-    | Env_var sw -> Env_var sw
-    | Sandbox_config s -> Sandbox_config s
-
-  let decode_sandbox_config =
-    let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 12)
-    and+ loc, x =
-      located
-        (repeat
-           (sum
-              [ ("none", return Sandbox_config.Partial.no_sandboxing)
-              ; ("always", return Sandbox_config.Partial.needs_sandboxing)
-              ; ( "preserve_file_kind"
-                , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink)
-                )
-              ]))
-    in
-    Sandbox_config.Partial.merge ~loc x
-
-  let decode =
-    let decode =
-      let sw = String_with_vars.decode in
-      sum
-        [ ("file", sw >>| fun x -> File x)
-        ; ("alias", sw >>| fun x -> Alias x)
-        ; ("alias_rec", sw >>| fun x -> Alias_rec x)
-        ; ("glob_files", sw >>| fun x -> Glob_files x)
-        ; ("package", sw >>| fun x -> Package x)
-        ; ("universe", return Universe)
-        ; ( "files_recursively_in"
-          , let+ () =
-              Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
-                ~to_:"source_tree"
-            and+ x = sw in
-            Source_tree x )
-        ; ( "source_tree"
-          , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 0)
-            and+ x = sw in
-            Source_tree x )
-        ; ("env_var", sw >>| fun x -> Env_var x)
-        ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
-        ]
-    in
-    if_list ~then_:decode ~else_:(String_with_vars.decode >>| fun x -> File x)
-
-  open Dune_lang
-
-  let encode = function
-    | File t ->
-      List [ Dune_lang.unsafe_atom_of_string "file"; String_with_vars.encode t ]
-    | Alias t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "alias"; String_with_vars.encode t ]
-    | Alias_rec t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "alias_rec"
-        ; String_with_vars.encode t
-        ]
-    | Glob_files t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "glob_files"
-        ; String_with_vars.encode t
-        ]
-    | Source_tree t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "source_tree"
-        ; String_with_vars.encode t
-        ]
-    | Package t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "package"; String_with_vars.encode t ]
-    | Universe -> Dune_lang.unsafe_atom_of_string "universe"
-    | Env_var t ->
-      List
-        [ Dune_lang.unsafe_atom_of_string "env_var"; String_with_vars.encode t ]
-    | Sandbox_config config ->
-      if Sandbox_config.equal config Sandbox_config.no_special_requirements
-      then
-        List []
-      else
-        Code_error.raise "There's no syntax for [Sandbox_config] yet" []
-
-  let to_dyn t = Dune_lang.to_dyn (encode t)
-end
-
 module Preprocess = struct
   module Pps = struct
     type t =
@@ -565,9 +461,8 @@ module Buildable = struct
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
-    ; c_names : Ordered_set_lang.t option
-    ; cxx_names : Ordered_set_lang.t option
+    ; foreign_archives : (Loc.t * string) list
+    ; foreign_stubs : Foreign.Stubs.t list
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Preprocess_map.t
@@ -576,19 +471,59 @@ module Buildable = struct
     ; allow_overlapping_dependencies : bool
     }
 
-  let decode ~since_c ~allow_re_export =
-    let check_c t =
-      match since_c with
-      | None -> t
-      | Some v -> Dune_lang.Syntax.since Stanza.syntax v >>> t
+  let decode ~in_library ~allow_re_export =
+    let use_foreign =
+      Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+        ~extra_info:"Use the (foreign_stubs ...) field instead."
+    in
+    let only_in_library decode =
+      if in_library then
+        decode
+      else
+        return None
+    in
+    let add_stubs language ~loc ~names ~flags foreign_stubs =
+      match names with
+      | None -> foreign_stubs
+      | Some names ->
+        let flags =
+          Option.value ~default:Ordered_set_lang.Unexpanded.standard flags
+        in
+        Foreign.Stubs.make ~loc ~language ~names ~flags :: foreign_stubs
     in
     let+ loc = loc
     and+ preprocess, preprocessor_deps = preprocess_fields
     and+ lint = field "lint" Lint.decode ~default:Lint.default
-    and+ c_flags = Dune_env.Stanza.c_flags ~since:since_c
-    and+ c_names = field_o "c_names" (check_c Ordered_set_lang.decode)
-    and+ cxx_names = field_o "cxx_names" (check_c Ordered_set_lang.decode)
+    and+ foreign_stubs =
+      multi_field "foreign_stubs"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
+    and+ foreign_archives =
+      field_o "foreign_archives"
+        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        >>> repeat (located string) )
+    and+ c_flags =
+      only_in_library
+        (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
+    and+ cxx_flags =
+      only_in_library
+        (field_o "cxx_flags"
+           (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
+    and+ c_names_loc, c_names =
+      located
+        (only_in_library
+           (field_o "c_names" (use_foreign >>> Ordered_set_lang.decode)))
+    and+ cxx_names_loc, cxx_names =
+      located
+        (only_in_library
+           (field_o "cxx_names" (use_foreign >>> Ordered_set_lang.decode)))
     and+ modules = modules_field "modules"
+    and+ self_build_stubs_archive_loc, self_build_stubs_archive =
+      located
+        (only_in_library
+           (field ~default:None "self_build_stubs_archive"
+              ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
+                  ~extra_info:"Use the (foreign_archives ...) field instead."
+              >>> option string )))
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries =
@@ -598,6 +533,37 @@ module Buildable = struct
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
+    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    let foreign_stubs =
+      foreign_stubs
+      |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
+      |> add_stubs Cxx ~loc:cxx_names_loc ~names:cxx_names ~flags:cxx_flags
+    in
+    let foreign_archives = Option.value ~default:[] foreign_archives in
+    let foreign_archives =
+      if
+        version < (2, 0)
+        && List.is_non_empty foreign_stubs
+        && Option.is_some self_build_stubs_archive
+      then
+        User_error.raise ~loc:self_build_stubs_archive_loc
+          [ Pp.concat
+              [ Pp.textf "A library cannot use "
+              ; Pp.hbox (Pp.textf "(self_build_stubs_archive ...)")
+              ; Pp.textf " and "
+              ; Pp.hbox (Pp.textf "(c_names ...)")
+              ; Pp.textf " simultaneously. This is supported starting from "
+              ; Pp.hbox (Pp.textf "Dune 2.0.")
+              ]
+          ]
+      else
+        match self_build_stubs_archive with
+        | None -> foreign_archives
+        (* Note: we add "_stubs" to the name, since [self_build_stubs_archive]
+           used this naming convention; [foreign_archives] does not use it and
+           allows users to name archives as they like (they still need to add
+           the "lib" prefix, however, since standard linkers require it). *)
+        | Some name -> (loc, name ^ "_stubs") :: foreign_archives
     in
     { loc
     ; preprocess
@@ -605,14 +571,16 @@ module Buildable = struct
     ; lint
     ; modules
     ; modules_without_implementation
-    ; c_flags
-    ; c_names
-    ; cxx_names
+    ; foreign_stubs
+    ; foreign_archives
     ; libraries
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
     }
+
+  let has_foreign t =
+    List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
 
   let single_preprocess t =
     if Per_module.is_constant t.preprocess then
@@ -630,27 +598,42 @@ module Public_lib = struct
 
   let name t = snd t.name
 
-  let make project ((_, s) as loc_name) =
-    let pkg, rest = Lib_name.split s in
-    Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
-        { package = pkg
-        ; sub_dir =
-            ( if rest = [] then
-              None
-            else
-              Some (String.concat rest ~sep:"/") )
-        ; name = loc_name
-        })
+  let package t = t.package
 
-  let public_name_field =
+  let make ?(allow_deprecated_names = false) project ((_, s) as loc_name) =
+    let pkg, rest = Lib_name.split s in
+    let x =
+      if not allow_deprecated_names then
+        None
+      else
+        List.find_map
+          (Package.Name.Map.values (Dune_project.packages project))
+          ~f:(fun ({ deprecated_package_names; _ } as package) ->
+            if Package.Name.Map.mem deprecated_package_names pkg then
+              Some { package; sub_dir = None; name = loc_name }
+            else
+              None)
+    in
+    match x with
+    | Some x -> Ok x
+    | None ->
+      Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
+          { package = pkg
+          ; sub_dir =
+              ( if rest = [] then
+                None
+              else
+                Some (String.concat rest ~sep:"/") )
+          ; name = loc_name
+          })
+
+  let decode ?allow_deprecated_names () =
     map_validate
       (let+ project = Dune_project.get_exn ()
-       and+ loc_name = field_o "public_name" (located Lib_name.decode) in
+       and+ loc_name = located Lib_name.decode in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
-        match loc_name with
-        | None -> Ok None
-        | Some x -> Result.map (make project x) ~f:Option.some)
+        make ?allow_deprecated_names project loc_name)
 end
 
 module Mode_conf = struct
@@ -817,7 +800,6 @@ module Library = struct
     ; kind : Lib_kind.t
     ; library_flags : Ordered_set_lang.Unexpanded.t
     ; c_library_flags : Ordered_set_lang.Unexpanded.t
-    ; self_build_stubs_archive : string option
     ; virtual_deps : (Loc.t * Lib_name.t) list
     ; wrapped : Wrapped.t Lib_info.Inherited.t
     ; optional : bool
@@ -838,10 +820,10 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~since_c:None ~allow_re_export:true
+      (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ loc = loc
        and+ name = field_o "name" Lib_name.Local.decode_loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
@@ -859,15 +841,11 @@ module Library = struct
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
-       and+ self_build_stubs_archive =
-         located
-           (field "self_build_stubs_archive" (option string) ~default:None)
        and+ no_dynlink = field_b "no_dynlink"
        and+ () =
          let check =
            let+ loc = loc
-           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax
-           in
+           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
            let is_error = dune_version >= (2, 0) in
            User_warning.emit ~loc ~is_error
              [ Pp.text "no_keep_locs is a no-op. Please delete it." ]
@@ -966,29 +944,6 @@ module Library = struct
          | _ ->
            ();
            let variant = Option.map variant ~f:(fun (_, v) -> v) in
-           let self_build_stubs_archive =
-             let loc, self_build_stubs_archive = self_build_stubs_archive in
-             let err =
-               match
-                 ( buildable.c_names
-                 , buildable.cxx_names
-                 , self_build_stubs_archive )
-               with
-               | _, _, None -> None
-               | Some _, _, Some _ -> Some "c_names"
-               | _, Some _, Some _ -> Some "cxx_names"
-               | None, None, _ -> None
-             in
-             match err with
-             | None -> self_build_stubs_archive
-             | Some name ->
-               User_error.raise ~loc
-                 [ Pp.textf
-                     "A library cannot use (self_build_stubs_archive ...) and \
-                      (%s ...) simultaneously."
-                     name
-                 ]
-           in
            Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
                match
                  ( String_with_vars.Var.name var
@@ -1014,7 +969,6 @@ module Library = struct
            ; kind
            ; library_flags
            ; c_library_flags
-           ; self_build_stubs_archive
            ; virtual_deps
            ; wrapped
            ; optional
@@ -1033,28 +987,24 @@ module Library = struct
            ; enabled_if
            } ))
 
-  let has_stubs t =
-    match
-      (t.buildable.c_names, t.buildable.cxx_names, t.self_build_stubs_archive)
-    with
-    | None, None, None -> false
-    | _ -> true
+  let has_foreign t = Buildable.has_foreign t.buildable
 
-  let stubs_name t =
-    let name =
-      match t.self_build_stubs_archive with
-      | None -> Lib_name.Local.to_string (snd t.name)
-      | Some s -> s
-    in
-    name ^ "_stubs"
+  let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
 
-  let stubs t ~dir = Path.Build.relative dir (stubs_name t)
+  let archive_names t =
+    ( if List.is_empty t.buildable.foreign_stubs then
+      []
+    else
+      [ stubs_archive_name t ] )
+    @ List.map ~f:snd t.buildable.foreign_archives
 
-  let stubs_archive t ~dir ~ext_lib =
-    Path.Build.relative dir (sprintf "lib%s%s" (stubs_name t) ext_lib)
+  let lib_files t ~dir ~ext_lib =
+    List.map (archive_names t) ~f:(fun archive_name ->
+        Foreign.lib_file ~archive_name ~dir ~ext_lib)
 
-  let dll t ~dir ~ext_dll =
-    Path.Build.relative dir (sprintf "dll%s%s" (stubs_name t) ext_dll)
+  let dll_files t ~dir ~ext_dll =
+    List.map (archive_names t) ~f:(fun archive_name ->
+        Foreign.dll_file ~archive_name ~dir ~ext_dll)
 
   let archive t ~dir ~ext =
     Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
@@ -1106,12 +1056,7 @@ module Library = struct
     in
     let virtual_library = is_virtual conf in
     let foreign_archives =
-      let stubs =
-        if has_stubs conf then
-          [ stubs_archive conf ~dir ~ext_lib ]
-        else
-          []
-      in
+      let stubs = lib_files conf ~dir ~ext_lib in
       { Mode.Dict.byte = stubs
       ; native =
           Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
@@ -1553,8 +1498,7 @@ module Executables = struct
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
   let common =
-    let+ buildable =
-      Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
+    let+ buildable = Buildable.decode ~in_library:false ~allow_re_export:false
     and+ (_ : bool) =
       field "link_executables" ~default:true
         (Dune_lang.Syntax.deleted_in Stanza.syntax (1, 0) >>> bool)
@@ -1650,10 +1594,7 @@ module Executables = struct
     in
     (make false, make true)
 
-  let has_stubs t =
-    match (t.buildable.c_names, t.buildable.cxx_names) with
-    | None, None -> false
-    | _ -> true
+  let has_foreign t = Buildable.has_foreign t.buildable
 
   let obj_dir t ~dir = Obj_dir.make_exe ~dir ~name:(snd (List.hd t.names))
 end
@@ -1992,7 +1933,7 @@ module Coq = struct
     fields
       (let+ name = field "name" Lib_name.Local.decode_loc
        and+ loc = loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ modules = modules_field "modules"
@@ -2072,7 +2013,7 @@ module Tests = struct
   let gen_parse names =
     fields
       (let+ buildable =
-         Buildable.decode ~since_c:(Some (2, 0)) ~allow_re_export:false
+         Buildable.decode ~in_library:false ~allow_re_export:false
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
        and+ variants = variants_field
        and+ names = names
@@ -2187,31 +2128,44 @@ module Include_subdirs = struct
 end
 
 module Deprecated_library_name = struct
+  module Old_public_name = struct
+    type t =
+      { deprecated : bool
+      ; public : Public_lib.t
+      }
+
+    let decode =
+      let+ public = Public_lib.decode ~allow_deprecated_names:true () in
+      let deprecated =
+        not
+          (Package.Name.equal
+             (Lib_name.package_name (Public_lib.name public))
+             (Public_lib.package public).name)
+      in
+      { deprecated; public }
+  end
+
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Public_lib.t
-    ; new_public_name : Lib_name.t
+    ; old_public_name : Old_public_name.t
+    ; new_public_name : Loc.t * Lib_name.t
     }
 
   let decode =
     fields
       (let+ loc = loc
        and+ project = Dune_project.get_exn ()
-       and+ old_public_name =
-         map_validate
-           (let+ project = Dune_project.get_exn ()
-            and+ loc_name =
-              field "old_public_name" (located Lib_name.decode)
-            in
-            (project, loc_name))
-           ~f:(fun (project, loc_name) -> Public_lib.make project loc_name)
-       and+ new_public_name = field "new_public_name" Lib_name.decode in
+       and+ old_public_name = field "old_public_name" Old_public_name.decode
+       and+ new_public_name =
+         field "new_public_name" (located Lib_name.decode)
+       in
        { loc; project; old_public_name; new_public_name })
 end
 
 type Stanza.t +=
   | Library of Library.t
+  | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
   | Install of File_binding.Unexpanded.t Install_conf.t
@@ -2243,6 +2197,10 @@ module Stanzas = struct
     [ ( "library"
       , let+ x = Library.decode in
         [ Library x ] )
+    ; ( "foreign_library"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        and+ x = Foreign.Library.decode in
+        [ Foreign_library x ] )
     ; ("executable", Executables.single >>| execs)
     ; ("executables", Executables.multi >>| execs)
     ; ( "rule"

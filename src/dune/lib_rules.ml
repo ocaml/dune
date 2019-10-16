@@ -15,6 +15,7 @@ let msvc_hack_cclibs =
       in
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
+(* Build an OCaml library. *)
 let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
@@ -23,15 +24,13 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
         Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode)
       in
       let stubs_flags =
-        if not (Library.has_stubs lib) then
-          []
-        else
-          let stubs_name = Library.stubs_name lib in
-          let lstubs = "-l" ^ stubs_name in
-          let stubs = [ "-cclib"; lstubs ] in
-          match mode with
-          | Native -> stubs
-          | Byte -> "-dllib" :: lstubs :: stubs
+        List.concat_map (Library.archive_names lib) ~f:(fun name ->
+            let lname = "-l" ^ name in
+            let cclib = [ "-cclib"; lname ] in
+            let dllib = [ "-dllib"; lname ] in
+            match mode with
+            | Native -> cclib
+            | Byte -> dllib @ cclib)
       in
       let map_cclibs =
         (* https://github.com/ocaml/dune/issues/119 *)
@@ -108,11 +107,12 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       Build.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
-let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
-    ~targets =
-  Super_context.add_rule sctx ~sandbox ~dir ~loc:lib.buildable.loc
+(* Add a rule calling [ocamlmklib] to build a library. *)
+let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
+    ~sandbox ~custom ~targets =
+  Super_context.add_rule sctx ~sandbox ~dir ~loc
     (let cclibs_args =
-       Expander.expand_and_eval_set expander lib.c_library_flags
+       Expander.expand_and_eval_set expander c_library_flags
          ~standard:(Build.return [])
      in
      let ctx = Super_context.context sctx in
@@ -121,9 +121,9 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
        ; ( if custom then
            A "-custom"
          else
-           As [] )
+           Command.Args.empty )
        ; A "-o"
-       ; Path (Path.build (Library.stubs lib ~dir))
+       ; Path path
        ; Deps o_files
        ; Dyn
            (Build.map cclibs_args ~f:(fun cclibs ->
@@ -136,14 +136,109 @@ let ocamlmklib (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox ~custom
        ; Hidden_targets targets
        ])
 
+(* Add a rule calling [ocamlmklib] to build a stubs archive for an OCaml
+   library. *)
+let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
+    ~custom ~targets =
+  let path =
+    Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
+  in
+  (* CR-someday aalekseyev:
+     I'm not sure why [c_library_flags] is needed here. I think it's unused
+     at least when building a static archive. But maybe it's used for
+     dynamic libraries. It would be nice to clarify that somewhere. *)
+  ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
+    ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
+
+(* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
+   and track all files in specified directories as [Hidden_deps] dependencies. *)
+let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
+  Command.Args.S
+    (List.map stubs.include_dirs ~f:(fun include_dir ->
+         let loc = String_with_vars.loc include_dir
+         and include_dir = Expander.expand_path expander include_dir in
+         match Path.extract_build_context_dir include_dir with
+         | None ->
+           (* TODO: Track files in external directories. *)
+           User_error.raise ~loc
+             [ Pp.textf
+                 "%S is an external directory; dependencies in external \
+                  directories are currently not tracked."
+                 (Path.to_string include_dir)
+             ]
+             ~hints:
+               [ Pp.textf
+                   "You can specify %S as an untracked include directory like \
+                    this:\n\n\
+                   \  (flags -I %s)\n"
+                   (Path.to_string include_dir)
+                   (Path.to_string include_dir)
+               ]
+         | Some (build_dir, source_dir) -> (
+           match File_tree.find_dir source_dir with
+           | None ->
+             User_error.raise ~loc
+               [ Pp.textf "Include directory %S does not exist."
+                   (Path.reach ~from:(Path.build dir) include_dir)
+               ]
+           | Some dir ->
+             Command.Args.S
+               [ A "-I"
+               ; Path include_dir
+               ; Command.Args.S
+                   (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
+                      ~init:[] ~f:(fun t args ->
+                        let dir =
+                          Path.append_source build_dir (File_tree.Dir.path t)
+                        in
+                        let deps =
+                          Dep.Set.singleton
+                            (Dep.file_selector
+                               (File_selector.create ~dir Predicate.true_))
+                        in
+                        Command.Args.Hidden_deps deps :: args))
+               ] )))
+
+(* CR aalekseyev:
+   Maybe we'll need to support the case when dynamic library can't be
+   built for some reason. It seems that the OCaml library code path has to deal
+   with that case. *)
+(* Build a static and a dynamic archive for a foreign library. *)
+let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
+    ~dir_contents =
+  let archive_name = library.archive_name in
+  let o_files =
+    let extra_flags = include_dir_flags ~expander ~dir library.stubs in
+    let foreign_sources =
+      Dir_contents.foreign_sources_of_archive dir_contents ~archive_name
+    in
+    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
+      ~dir_contents ~foreign_sources ~extra_flags
+      ~extra_deps:library.stubs.extra_deps
+    |> List.map ~f:Path.build
+  in
+  Check_rules.add_files sctx ~dir o_files;
+  let ctx = Super_context.context sctx in
+  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
+  let static = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic = Foreign.dll_file ~archive_name ~dir ~ext_dll in
+  ocamlmklib
+    ~path:(Path.build (Path.Build.relative dir archive_name))
+    ~loc:library.stubs.loc
+    ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
+    ~o_files ~sandbox:Sandbox_config.no_special_requirements ~custom:false
+    ~targets:[ static; dynamic ]
+
+(* Build a required set of archives for an OCaml library. *)
 let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let static = Library.stubs_archive lib ~dir ~ext_lib in
-  let dynamic = Library.dll lib ~dir ~ext_dll in
+  let archive_name = Library.stubs_archive_name lib in
+  let static = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic = Foreign.dll_file ~archive_name ~dir ~ext_dll in
   let modes = Compilation_context.modes cctx in
-  let ocamlmklib = ocamlmklib lib ~sctx ~expander ~dir ~o_files in
+  let ocamlmklib = ocamlmklib_ocaml lib ~sctx ~expander ~dir ~o_files in
   if
     modes.native && modes.byte
     && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
@@ -165,16 +260,13 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
   let sctx = Compilation_context.super_context cctx in
   let lib_o_files =
-    if Library.has_stubs lib then
-      let c_sources =
-        Dir_contents.c_sources_of_library dir_contents
-          ~name:(Library.best_name lib)
-      in
-      C_rules.build_o_files lib.buildable ~sctx ~dir ~expander ~requires
-        ~dir_contents ~c_sources
-      |> List.map ~f:Path.build
-    else
-      []
+    let foreign_sources =
+      Dir_contents.foreign_sources_of_library dir_contents
+        ~name:(Library.best_name lib)
+    in
+    Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
+      ~foreign_sources ~extra_flags:Command.Args.empty ~extra_deps:[]
+    |> List.map ~f:Path.build
   in
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
@@ -207,11 +299,8 @@ let build_shared lib ~sctx ~dir ~flags =
               ]
       in
       let build =
-        if Library.has_stubs lib then
-          Build.path (Path.build (Library.stubs_archive ~dir lib ~ext_lib))
-          >>> build
-        else
-          build
+        List.fold_left ~init:build (Library.lib_files lib ~dir ~ext_lib)
+          ~f:(fun build lib -> Build.path (Path.build lib) >>> build)
       in
       Super_context.add_rule sctx build ~dir)
 
@@ -299,8 +388,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
-    ~opaque
+    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp ~opaque
     ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
     ?vimpl ~modes
@@ -330,7 +418,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     setup_build_archives lib ~cctx ~dep_graphs ~expander;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
-    if Library.has_stubs lib || not (List.is_empty vlib_stubs_o_files) then
+    if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then
       build_stubs lib ~cctx ~dir ~expander ~requires:requires_compile
         ~dir_contents ~vlib_stubs_o_files
   in

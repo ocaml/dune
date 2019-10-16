@@ -7,6 +7,11 @@ module Ppx_args = struct
       ; value : String_with_vars.t
       }
 
+    let to_dyn x =
+      let open Dyn.Encoder in
+      record
+        [ ("name", string x.name); ("value", String_with_vars.to_dyn x.value) ]
+
     let decode =
       let open Dune_lang.Decoder in
       let* () = Dune_lang.Syntax.since Stanza.syntax (1, 10) in
@@ -28,6 +33,10 @@ module Ppx_args = struct
 
   type t = { cookies : Cookie.t list }
 
+  let to_dyn { cookies } =
+    let open Dyn.Encoder in
+    record [ ("cookies", list Cookie.to_dyn cookies) ]
+
   let decode =
     let open Dune_lang.Decoder in
     let args =
@@ -45,6 +54,13 @@ type t =
   | Normal
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
+
+let to_dyn x =
+  let open Dyn.Encoder in
+  match x with
+  | Normal -> constr "Normal" []
+  | Ppx_deriver args -> constr "Ppx_deriver" [ Ppx_args.to_dyn args ]
+  | Ppx_rewriter args -> constr "Ppx_rewriter" [ Ppx_args.to_dyn args ]
 
 let decode =
   let open Dune_lang.Decoder in

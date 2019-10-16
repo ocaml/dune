@@ -5,14 +5,14 @@ type stanza = Stanza.t = ..
 module Stanza = struct
   open Dune_lang.Decoder
 
-  let c_flags ~since =
+  let foreign_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
           Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ c = Ordered_set_lang.Unexpanded.field "c_flags" ?check
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
-    C.Kind.Dict.make ~c ~cxx
+    Foreign.Language.Dict.make ~c ~cxx
 
   module Inline_tests = struct
     type t =
@@ -32,7 +32,7 @@ module Stanza = struct
 
   type config =
     { flags : Ocaml_flags.Spec.t
-    ; c_flags : Ordered_set_lang.Unexpanded.t C.Kind.Dict.t
+    ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
@@ -40,7 +40,8 @@ module Stanza = struct
 
   let empty_config =
     { flags = Ocaml_flags.Spec.standard
-    ; c_flags = C.Kind.Dict.make_both Ordered_set_lang.Unexpanded.standard
+    ; foreign_flags =
+        Foreign.Language.Dict.make_both Ordered_set_lang.Unexpanded.standard
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None
@@ -72,14 +73,14 @@ module Stanza = struct
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode
-    and+ c_flags = c_flags ~since:(Some (1, 7))
+    and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
     and+ env_vars = env_vars_field
     and+ binaries =
       field ~default:[] "binaries"
         ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
         >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field in
-    { flags; c_flags; env_vars; binaries; inline_tests }
+    { flags; foreign_flags; env_vars; binaries; inline_tests }
 
   let rule =
     enter

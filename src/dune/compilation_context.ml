@@ -35,7 +35,7 @@ module Includes = struct
       in
       { cmi = cmi_includes; cmo = cmi_includes; cmx = cmx_includes }
 
-  let empty = Cm_kind.Dict.make_all (Command.Args.As [])
+  let empty = Cm_kind.Dict.make_all Command.Args.empty
 end
 
 type t =
@@ -101,8 +101,7 @@ let context t = Super_context.context t.super_context
 
 let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
-    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package
-    ?vimpl ?modes () =
+    ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes () =
   let requires_compile =
     if Dune_project.implicit_transitive_deps (Scope.project scope) then
       Lazy.force requires_link

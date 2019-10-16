@@ -111,8 +111,7 @@ end = struct
     ; name : Name.t
     }
 
-  let make name ~dir =
-    { dir; name }
+  let make name ~dir = { dir; name }
 
   let of_user_written_path ~loc path =
     match Path.as_in_build_dir path with
@@ -160,7 +159,8 @@ let stamp_file_dir t =
 
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 
-let stamp_file t = Path.Build.relative (stamp_file_dir t) ((Name.to_string t.name) ^ suffix)
+let stamp_file t =
+  Path.Build.relative (stamp_file_dir t) (Name.to_string t.name ^ suffix)
 
 let find_dir_specified_on_command_line ~dir =
   match File_tree.find_dir dir with

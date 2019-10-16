@@ -117,10 +117,36 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     Sandbox_config.no_sandboxing
   in
   let modes =
-    let default =
-      Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited) in
-    Option.value ~default modes
-    |> Mode.Dict.map ~f:Option.is_some
+    let modes =
+      let default =
+        Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited)
+      in
+      Option.value ~default modes
+    in
+    let init = Mode.Dict.map ~f:Option.is_some modes in
+    match Lazy.force requires_link with
+    (* TODO it doesn't matter that we are assigning dummy modes here since
+       we'll get an error anyway *)
+    | Error _ -> init
+    | Ok libs ->
+      List.iter libs ~f:(fun lib ->
+          let info = Lib.info lib in
+          let lib_modes = Lib_info.modes info in
+          Mode.Dict.iteri modes ~f:(fun mode available ->
+              match available with
+              | None
+              | Some Dune_file.Mode_conf.Kind.Inherited ->
+                ()
+              | Some (Dune_file.Mode_conf.Kind.Requested loc) ->
+                if not (Mode.Dict.get lib_modes mode) then
+                  let name = Lib_info.name info in
+                  User_error.raise ~loc
+                    [ Pp.textf
+                        "mode %s isn't available. It's not provided in the \
+                         dependency: %s"
+                        (Mode.to_string mode) (Lib_name.to_string name)
+                    ]));
+      init
   in
   { super_context
   ; scope

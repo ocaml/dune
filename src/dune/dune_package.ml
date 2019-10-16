@@ -195,12 +195,12 @@ module Lib = struct
 
   let info dp = dp.info
 
-  let to_dyn { info ; modules ; main_module_name } =
+  let to_dyn { info; modules; main_module_name } =
     let open Dyn.Encoder in
     record
-      [ "info", Lib_info.to_dyn Path.to_dyn info
-      ; "modules", option Modules.to_dyn modules
-      ; "main_module_name", option Module_name.to_dyn main_module_name
+      [ ("info", Lib_info.to_dyn Path.to_dyn info)
+      ; ("modules", option Modules.to_dyn modules)
+      ; ("main_module_name", option Module_name.to_dyn main_module_name)
       ]
 end
 
@@ -230,8 +230,8 @@ module Deprecated_library_name = struct
   let to_dyn { loc = _; old_public_name; new_public_name } =
     let open Dyn.Encoder in
     record
-      [ "old_public_name", Lib_name.to_dyn old_public_name
-      ; "new_public_name", Lib_name.to_dyn new_public_name
+      [ ("old_public_name", Lib_name.to_dyn old_public_name)
+      ; ("new_public_name", Lib_name.to_dyn new_public_name)
       ]
 end
 
@@ -261,10 +261,9 @@ module Entry = struct
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
-    | Library lib ->
-      constr "Library" [Lib.to_dyn lib]
+    | Library lib -> constr "Library" [ Lib.to_dyn lib ]
     | Deprecated_library_name lib ->
-      constr "Deprecated_library_name" [Deprecated_library_name.to_dyn lib]
+      constr "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
 end
 
 type t =
@@ -330,10 +329,10 @@ let encode ~dune_version { entries; name; version; dir } =
 let to_dyn { entries; name; version; dir } =
   let open Dyn.Encoder in
   record
-    [ "entries", list Entry.to_dyn entries
-    ; "name", Package.Name.to_dyn name
-    ; "version", option string version
-    ; "dir", Path.to_dyn dir
+    [ ("entries", list Entry.to_dyn entries)
+    ; ("name", Package.Name.to_dyn name)
+    ; ("version", option string version)
+    ; ("dir", Path.to_dyn dir)
     ]
 
 module Or_meta = struct
@@ -361,11 +360,13 @@ module Or_meta = struct
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in
-    Format.fprintf ppf "%a@." (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp) t
+    Format.fprintf ppf "%a@."
+      (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp)
+      t
 
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
     | Use_meta -> constr "Use_meta" []
-    | Dune_package t -> constr "Dune_package" [to_dyn t]
+    | Dune_package t -> constr "Dune_package" [ to_dyn t ]
 end

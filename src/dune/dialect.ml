@@ -17,7 +17,8 @@ module File_kind = struct
         , option (fun (_, x) -> Action_dune_lang.to_dyn x) preprocess )
       ; ( "format"
         , option
-            (fun (_, x, y) -> pair Action_dune_lang.to_dyn (list string) (x, y))
+            (fun (_, x, y) ->
+              pair Action_dune_lang.to_dyn (list string) (x, y))
             format )
       ]
 end

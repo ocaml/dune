@@ -13,7 +13,9 @@ let dep_bindings ~extra_bindings deps =
   | None -> base
 
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
-  if Expander.eval_blang expander rule.enabled_if then
+  match Expander.eval_blang expander rule.enabled_if with
+  | false -> Path.Build.Set.empty
+  | true ->
     let targets : Expander.Targets.t =
       match rule.targets with
       | Infer -> Infer
@@ -69,8 +71,6 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       ( SC.Deps.interpret_named sctx ~expander rule.deps
       |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
            ~dep_kind:Required ~targets ~targets_dir:dir )
-  else
-    Path.Build.Set.empty
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.glob in

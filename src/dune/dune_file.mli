@@ -157,6 +157,12 @@ module Mode_conf : sig
     (** Byte inherited, Best is requested *)
     val default : t
 
+    module Details : sig
+      type t = Kind.t option
+    end
+
+    val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
+
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end
 end

@@ -27,7 +27,7 @@ val create :
   -> dynlink:bool
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
-  -> ?modes:Mode.Dict.Set.t
+  -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> unit
   -> t
 

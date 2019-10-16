@@ -710,7 +710,7 @@ module Mode_conf = struct
       in
       repeat decode >>| of_list
 
-    let default = of_list [ (Byte, Inherited); (Best, Requested Loc.none) ]
+    let default loc = of_list [ (Byte, Inherited); (Best, Requested loc) ]
 
     module Details = struct
       type t = Kind.t option
@@ -847,8 +847,8 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
-       and+ loc = loc
+      (let* stanza_loc = loc in
+       let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
@@ -864,7 +864,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
+         field "modes" Mode_conf.Set.decode
+           ~default:(Mode_conf.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
@@ -941,7 +942,7 @@ module Library = struct
                     dune language"
                ]
          | None, None ->
-           User_error.raise ~loc
+           User_error.raise ~loc:stanza_loc
              [ Pp.text
                  ( if dune_version >= (1, 1) then
                    "supply at least least one of name or public_name fields"

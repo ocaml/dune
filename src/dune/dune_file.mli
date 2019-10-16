@@ -155,7 +155,7 @@ module Mode_conf : sig
     val decode : t Dune_lang.Decoder.t
 
     (** Byte inherited, Best is requested *)
-    val default : t
+    val default : Loc.t -> t
 
     module Details : sig
       type t = Kind.t option

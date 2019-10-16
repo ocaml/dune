@@ -23,6 +23,8 @@ module Args = struct
 
   (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)
   let dyn args = Dyn (Build.map args ~f:(fun x -> As x))
+
+  let empty = S []
 end
 
 open Args

@@ -587,6 +587,22 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name foreign-library)
+ (deps (package dune) (source_tree test-cases/foreign-library))
+ (action
+  (chdir
+   test-cases/foreign-library
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name foreign-stubs)
+ (deps (package dune) (source_tree test-cases/foreign-stubs))
+ (action
+  (chdir
+   test-cases/foreign-stubs
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name format-dune-file)
  (deps (package dune) (source_tree test-cases/format-dune-file))
  (action
@@ -632,14 +648,6 @@
  (action
   (chdir
    test-cases/github1231
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(alias
- (name github1306)
- (deps (package dune) (source_tree test-cases/github1306))
- (action
-  (chdir
-   test-cases/github1306
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1909,13 +1917,14 @@
   (alias findlib-error)
   (alias forbidden_libraries)
   (alias force-test)
+  (alias foreign-library)
+  (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
   (alias github1019)
   (alias github1099)
   (alias github1231)
-  (alias github1306)
   (alias github1342)
   (alias github1372)
   (alias github1395)
@@ -2126,12 +2135,13 @@
   (alias findlib-error)
   (alias forbidden_libraries)
   (alias force-test)
+  (alias foreign-library)
+  (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)
   (alias github1019)
   (alias github1099)
   (alias github1231)
-  (alias github1306)
   (alias github1342)
   (alias github1395)
   (alias github1426)

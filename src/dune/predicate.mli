@@ -20,6 +20,9 @@ val to_dyn : _ t -> Dyn.t
    [id]. [id] is used to safely compare predicates for equality for memoization *)
 val create : id:Dyn.t Lazy.t -> f:('a -> bool) -> 'a t
 
+(** The predicate that evaluates to [true] for any query. *)
+val true_ : _ t
+
 val test : 'a t -> 'a -> bool
 
 (** the user of this function must take care not to break the uniqueness of the

@@ -45,8 +45,11 @@ module Args : sig
     | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
 
-  (* Create dynamic command line arguments. *)
+  (** Create dynamic command line arguments. *)
   val dyn : string list Build.t -> dynamic t
+
+  (** Create an empty command line. *)
+  val empty : _ t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we

@@ -134,7 +134,7 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       ~existing_virtual_modules ~allow_new_public_modules
   in
   if
-    (not (List.is_empty errors))
+    List.is_non_empty errors
     || not (Module_name.Set.is_empty unimplemented_virt_modules)
   then (
     let get kind =

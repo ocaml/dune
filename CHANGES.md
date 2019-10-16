@@ -102,6 +102,8 @@
 
 - `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
   and `executables` stanzas. (#2562, @nojb)
+  Note: this feature has been subsequently extended into a separate
+  `foreign_stubs` field. (#2659, RFC #2650, @snowleopard)
 
 - Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
 
@@ -157,6 +159,11 @@
 - `no_keep_locs` is a no-op for projects that use `lang dune` older than 2.0. In
   projects where the language is at least `2.0`, the field is now forbidden.
   (#2752, fixes #2747, @rgrinberg)
+
+- Extend support for foreign sources and archives via the `(foreign_library ...)`
+  stanza as well as the `(foreign_stubs ...)` and `(foreign_archives ...)` fields.
+  (#2659, RFC #2650, @snowleopard)
+
 
 1.11.4 (09/10/2019)
 -------------------

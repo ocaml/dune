@@ -329,7 +329,7 @@ let upgrade_opam_file todo fn =
   in
   List.iter t.file_contents ~f:scan_item;
   let substs = List.sort !substs ~compare in
-  if not (List.is_empty substs) then (
+  if List.is_non_empty substs then (
     let buf = Buffer.create (String.length s + 128) in
     let ofs =
       List.fold_left substs ~init:0 ~f:(fun ofs (start, stop, repl) ->

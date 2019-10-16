@@ -119,7 +119,8 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-    ~promote ?(link_flags = Build.return []) ?(o_files = []) cctx =
+    ~promote ?(link_args = Build.return Command.Args.empty) ?(o_files = [])
+    cctx =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -151,7 +152,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            ; A "-o"
            ; Target exe
            ; As linkage.flags
-           ; Command.Args.dyn link_flags
+           ; Command.Args.Dyn link_args
            ; Command.of_result_map link_time_code_gen
                ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                  S
@@ -182,8 +183,7 @@ let link_js ~name ~cm_files ~promote cctx =
   Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
-let build_and_link_many ~programs ~linkages ~promote ?link_flags ?o_files cctx
-    =
+let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files cctx =
   let modules = Compilation_context.modules cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;
@@ -207,7 +207,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_flags ?o_files cctx
             link_js ~name ~cm_files ~promote cctx
           else
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
-              ~promote ?link_flags ?o_files))
+              ~promote ?link_args ?o_files))
 
 let build_and_link ~program = build_and_link_many ~programs:[ program ]
 

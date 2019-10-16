@@ -1,4 +1,4 @@
 (executables
  (names aa bb)
- (c_names foo)
+ (foreign_stubs (language c) (names foo))
  (modes exe))

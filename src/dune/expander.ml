@@ -307,9 +307,9 @@ type expansion_kind =
   | Dynamic
   | Static
 
-let cc_of_c_flags t (cc : string list Build.t C.Kind.Dict.t) =
+let cc_of_c_flags t (cc : string list Build.t Foreign.Language.Dict.t) =
   let open Build.O in
-  C.Kind.Dict.map cc ~f:(fun cc ->
+  Foreign.Language.Dict.map cc ~f:(fun cc ->
       let+ flags = cc in
       Value.L.strings (t.c_compiler :: flags))
 
@@ -325,7 +325,7 @@ let cannot_be_used_here pform =
 
 let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     ~(dir : Path.Build.t) ~pform t expansion
-    ~(cc : dir:Path.Build.t -> Value.t list Build.t C.Kind.Dict.t) =
+    ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
   let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
@@ -504,8 +504,9 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
   Option.map res ~f:static
 
 let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
-    ~(c_flags : dir:Path.Build.t -> string list Build.t C.Kind.Dict.t) =
-  let cc ~dir = cc_of_c_flags t (c_flags ~dir) in
+    ~(foreign_flags :
+       dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t) =
+  let cc ~dir = cc_of_c_flags t (foreign_flags ~dir) in
   let expand_var =
     expand
       (* we keep the dir constant here to replicate the old behavior of: (chdir

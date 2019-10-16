@@ -14,7 +14,7 @@ module Path : sig
 end
 
 module Dep : sig
-  type t = Dune_file.Dep_conf.t
+  type t = Dep_conf.t
 
   val file : string -> t
 

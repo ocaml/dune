@@ -43,10 +43,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                 (Module_name.to_string mod_name)
             ])
   in
+  let ctx = SC.context sctx in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
-    let ctx = SC.context sctx in
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
       let modes =
@@ -79,10 +79,31 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
+  let archive_names = exes.buildable.foreign_archives |> List.map ~f:snd in
   let link_flags =
     link_deps
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
+  in
+  (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
+     the reason is unclear. For example, instead of building an archive for
+     foreign stubs, we link the corresponding object files directly. It would
+     be nice to make the code more uniform. *)
+  let ext_lib = ctx.lib_config.ext_lib in
+  let link_args =
+    let+ flags = link_flags in
+    Command.Args.S
+      [ Command.Args.As flags
+      ; Command.Args.S
+          (List.map archive_names ~f:(fun archive_name ->
+               let dir, archive_name =
+                 Path.Build.relative dir (Filename.dirname archive_name),
+                 Filename.basename archive_name
+               in
+               let lib = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+               Command.Args.S
+                 [ Command.Args.A "-cclib"; Command.Args.Dep (Path.build lib) ]))
+      ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let cctx =
@@ -107,28 +128,39 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       ~js_of_ocaml ~opaque:(SC.opaque sctx) ~dynlink ~package:exes.package
   in
   let o_files =
-    if not (Executables.has_stubs exes) then
+    if not (Executables.has_foreign exes) then
       []
-    else (
+    else
+      let what =
+        if List.is_empty exes.buildable.Dune_file.Buildable.foreign_stubs then
+          "archives"
+        else
+          "stubs"
+      in
       if List.mem Exe.Linkage.byte ~set:linkages then
         User_error.raise ~loc:exes.buildable.loc
-          [ Pp.textf "Pure bytecode executables cannot contain C stubs."
-          ; Pp.textf "Did you forget to add `(modes exe)'?"
-          ];
-      let c_sources =
-        Dir_contents.c_sources_of_executables dir_contents ~first_exe
+          [ Pp.textf "Pure bytecode executables cannot contain foreign %s."
+              what
+          ]
+          ~hints:
+            [ Pp.text
+                "If you only need to build a native executable use \"(modes \
+                 exe)\"."
+            ];
+      let foreign_sources =
+        Dir_contents.foreign_sources_of_executables dir_contents ~first_exe
       in
       let o_files =
-        C_rules.build_o_files exes.buildable ~sctx ~dir ~expander
-          ~requires:requires_compile ~dir_contents ~c_sources
+        Foreign_rules.build_o_files ~sctx ~dir ~expander
+          ~requires:requires_compile ~dir_contents ~foreign_sources
+          ~extra_flags:Command.Args.empty ~extra_deps:[]
         |> List.map ~f:Path.build
       in
       Check_rules.add_files sctx ~dir o_files;
       o_files
-    )
   in
   let requires_compile = Compilation_context.requires_compile cctx in
-  Exe.build_and_link_many cctx ~programs ~linkages ~link_flags ~o_files
+  Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
     ~promote:exes.promote;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules

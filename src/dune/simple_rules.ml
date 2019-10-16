@@ -124,7 +124,7 @@ let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let stamp =
     ( "user-alias"
-    , Bindings.map ~f:Dune_file.Dep_conf.remove_locs alias_conf.deps
+    , Bindings.map ~f:Dep_conf.remove_locs alias_conf.deps
     , Option.map
         ~f:(fun (_loc, a) -> Action_unexpanded.remove_locs a)
         alias_conf.action

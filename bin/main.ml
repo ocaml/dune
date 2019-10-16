@@ -146,7 +146,7 @@ let all =
   ; Exec.command
   ; Subst.command
   ; Print_rules.command
-  ; Utop.command
+  ; UtopCommand.command
   ; Init.command
   ; promote
   ; Printenv.command

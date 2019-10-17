@@ -1,9 +1,5 @@
 open Stdune
 
-val header_ext : string
-
-val c_cxx_or_header : fn:string -> bool
-
 module Language : sig
   type t =
     | C
@@ -23,19 +19,6 @@ module Language : sig
   val encode : t -> string
 
   val decode : t Dune_lang.Decoder.t
-
-  type split =
-    | Unrecognized
-    | Not_allowed_until of Dune_lang.Syntax.Version.t
-    | Recognized of string * t
-
-  val split_extension :
-    string -> dune_version:Dune_lang.Syntax.Version.t -> split
-
-  (** [possible_fns t s] returns the possible filenames given the
-      extension-less basenames [s] *)
-  val possible_fns :
-    t -> string -> dune_version:Dune_lang.Syntax.Version.t -> string list
 
   module Map : sig
     include Map.S with type key = t
@@ -69,6 +52,21 @@ module Language : sig
   end
   with type language := t
 end
+
+val header_extension : string
+
+val has_foreign_extension : fn:string -> bool
+
+val drop_source_extension :
+     string
+  -> dune_version:Dune_lang.Syntax.Version.t
+  -> (string * Language.t) option
+
+val possible_sources :
+     language:Language.t
+  -> string
+  -> dune_version:Dune_lang.Syntax.Version.t
+  -> string list
 
 (** A type of foreign library "stubs", which includes all fields of the
     [Library.t] type except for the [archive_name] field. The type is parsed as

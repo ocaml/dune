@@ -95,8 +95,8 @@ Testsuite for the (foreign_library ...) stanza.
   File "lib/dune", line 13, characters 8-14:
   13 |  (names config))
                ^^^^^^
-  Error: Object "config" has no source; One of "config.cxx", "config.cc" or
-  "config.cpp" must be present.
+  Error: Object "config" has no source; One of "config.cc", "config.cpp" or
+  "config.cxx" must be present.
   [1]
 
 ----------------------------------------------------------------------------------

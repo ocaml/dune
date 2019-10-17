@@ -33,8 +33,26 @@ let valid_name language ~loc s =
       ]
   | _ -> s
 
-let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
+let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
     ~(sources : Foreign.Sources.Unresolved.t) : Foreign.Sources.t =
+  let multiple_sources_error ~name ~loc ~paths =
+    User_error.raise ~loc
+      [ Pp.textf "Multiple sources map to the same object name %S:" name
+      ; Pp.enumerate (List.sort ~compare:Path.Build.compare paths)
+          ~f:(fun path ->
+            Pp.text
+              (Path.to_string_maybe_quoted
+                 (Path.drop_optional_build_context (Path.build path))))
+      ; Pp.text "This is not allowed; please rename them."
+      ]
+      ~hints:
+        [ Pp.text
+            "You can also avoid the name clash by placing the objects into \
+             different foreign archives and building them in different \
+             directories. Foreign archives can be defined using the \
+             (foreign_library ...) stanza."
+        ]
+  in
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
     let osl = stubs.names in
@@ -55,75 +73,48 @@ let eval_foreign_sources (d : _ Dir_with_dune.t) foreign_stubs
             ];
         name)
     |> String.Map.map ~f:(fun (loc, name) ->
-           match String.Map.find sources name with
-           | Some (_ :: _ :: _ as paths) ->
-             (* CR aalekseyev: This looks suspicious to me. If the user writes
-                foo.c and foo.cpp and only declares a foreign library that uses
-                foo.cpp, will that be an error? I think it shouldn't be. *)
-             User_error.raise ~loc
-               [ Pp.textf "Multiple sources map to the same object name %S:"
-                   name
-               ; Pp.enumerate
-                   ( List.map paths ~f:snd
-                   |> List.sort ~compare:Path.Build.compare )
-                   ~f:(fun path ->
-                     Pp.text
-                       (Path.to_string_maybe_quoted
-                          (Path.drop_optional_build_context (Path.build path))))
-               ; Pp.text "This is not allowed; please rename them."
-               ]
-               ~hints:
-                 [ Pp.text
-                     "You can also avoid the name clash by placing the \
-                      objects into different foreign archives and building \
-                      them in different directories. Foreign archives can be \
-                      defined using the (foreign_library ...) stanza."
-                 ]
-           | Some [ (l, path) ] when l = language ->
-             (loc, Foreign.Source.make ~stubs ~path)
+           let candidates =
+             Option.map
+               (String.Map.find sources name)
+               ~f:
+                 (List.filter_map ~f:(fun (l, path) ->
+                      Option.some_if (l == language) path))
+           in
+           match candidates with
+           | Some [ path ] -> (loc, Foreign.Source.make ~stubs ~path)
            | None
-           | Some []
-           | Some [ (_, _) ]
-           (* Found a matching source file, but in a wrong language. *) ->
+           | Some [] ->
              User_error.raise ~loc
                [ Pp.textf "Object %S has no source; %s must be present." name
                    (String.enumerate_one_of
-                      ( Foreign.Language.possible_fns language name
+                      ( Foreign.possible_sources ~language name
                           ~dune_version:d.dune_version
                       |> List.map ~f:(fun s -> sprintf "%S" s) ))
-               ])
+               ]
+           | Some paths -> multiple_sources_error ~name ~loc ~paths)
   in
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
-      String.Map.union a b ~f:(fun name (_, src) (_, another_src) ->
-          let path src =
-            Path.to_string_maybe_quoted
-              (Path.drop_optional_build_context
-                 (Path.build (Foreign.Source.path src)))
-          in
-          Code_error.raise
-            (Printf.sprintf
-               "%S and %S from different (foreign_stubs ...) map to the same \
-                object name %S. This should be impossible because of the \
-                check we do in the [eval] function."
-               (path another_src) (path src) name)
-            []))
+      String.Map.union a b ~f:(fun name (loc, src1) (_, src2) ->
+          multiple_sources_error ~name ~loc
+            ~paths:Foreign.Source.[ path src1; path src2 ]))
 
-let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t) =
+let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
+    ~ext_obj =
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
           let all =
-            eval_foreign_sources d lib.buildable.foreign_stubs ~sources
+            eval_foreign_stubs d lib.buildable.foreign_stubs ~sources
           in
           Left (Left (lib, all))
         | Foreign_library library ->
-          let all = eval_foreign_sources d [ library.stubs ] ~sources in
+          let all = eval_foreign_stubs d [ library.stubs ] ~sources in
           Left (Right (library.archive_name, (library.archive_name_loc, all)))
         | Executables exes ->
           let all =
-            eval_foreign_sources d exes.buildable.foreign_stubs ~sources
+            eval_foreign_stubs d exes.buildable.foreign_stubs ~sources
           in
           Right (exes, all)
         | _ -> Skip)
@@ -159,19 +150,36 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t) =
         (snd (List.hd exes.names), m))
   in
   let () =
-    let rev_map =
-      List.concat_map libs ~f:(fun (_, c_sources) ->
-          String.Map.values c_sources
-          |> List.map ~f:(fun (loc, source) ->
-                 (Foreign.Source.path source, loc)))
-      |> Path.Build.Map.of_list
-    in
-    match rev_map with
-    | Ok _ -> ()
-    | Error (_, loc1, loc2) ->
-      User_error.raise ~loc:loc2
-        [ Pp.text "This c stub is already used in another stanza:"
-        ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+    let objects =
+      List.concat
+        [ List.map libs ~f:snd
+        ; List.map foreign_libs ~f:(fun (_, (_, sources)) -> sources)
+        ; List.map exes ~f:snd
         ]
+      |> List.concat_map ~f:(fun sources ->
+             String.Map.values sources
+             |> List.map ~f:(fun (loc, source) ->
+                    let object_path =
+                      Foreign.Source.path source |> Path.Build.split_extension
+                      |> fst |> Path.build |> Path.drop_optional_build_context
+                      |> Path.to_string
+                    in
+                    (object_path ^ ext_obj, loc)))
+    in
+    match String.Map.of_list objects with
+    | Ok _ -> ()
+    | Error (path, loc, another_loc) ->
+      User_error.raise ~loc
+        [ Pp.textf
+            "Multiple definitions for the same object file %S. See another \
+             definition at %s."
+            path
+            (Loc.to_file_colon_line another_loc)
+        ]
+        ~hints:
+          [ Pp.text
+              "You can avoid the name clash by renaming one of the objects, \
+               or by placing it into a different directory."
+          ]
   in
   { libraries; archives; executables }

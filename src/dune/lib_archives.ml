@@ -55,7 +55,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
       ; List.map lib.buildable.js_of_ocaml.javascript_files
           ~f:(Path.Build.relative dir)
       ; List.map lib.install_c_headers ~f:(fun fn ->
-            Path.Build.relative dir (fn ^ Foreign.header_ext))
+            Path.Build.relative dir (fn ^ Foreign.header_extension))
       ]
   in
   let dll_files =

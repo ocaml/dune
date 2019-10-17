@@ -355,44 +355,35 @@ end = struct
     in
     (Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited)
 
-  let root =
-    let f () =
-      let settings = Settings.get () in
-      let path = settings.root in
-      let dir_status : Sub_dirs.Status.t = Normal in
-      let readdir =
-        match Readdir.of_source_path path with
-        | Ok dir -> dir
-        | Error m ->
-          User_error.raise
-            [ Pp.textf "Unable to load source %s.@.Reason:%s@."
-                (Path.Source.to_string_maybe_quoted path)
-                (Unix.error_message m)
-            ]
-      in
-      let project =
-        match
-          Dune_project.load ~dir:path ~files:readdir.files
-            ~infer_from_opam_files:true
-        with
-        | None -> Dune_project.anonymous ~dir:path
-        | Some p -> p
-      in
-      let vcs = settings.ancestor_vcs in
-      let dirs_visited = File.Map.singleton (File.of_source_path path) path in
-      let contents, visited =
-        contents readdir ~dirs_visited ~project ~path ~dir_status
-      in
-      let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      (dir, visited)
+  let root () =
+    let settings = Settings.get () in
+    let path = settings.root in
+    let dir_status : Sub_dirs.Status.t = Normal in
+    let readdir =
+      match Readdir.of_source_path path with
+      | Ok dir -> dir
+      | Error m ->
+        User_error.raise
+          [ Pp.textf "Unable to load source %s.@.Reason:%s@."
+              (Path.Source.to_string_maybe_quoted path)
+              (Unix.error_message m)
+          ]
     in
-    let memo =
-      Memo.create "file-tree-root" ~doc:"file tree root"
-        ~input:(module Unit)
-        ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden Sync f
+    let project =
+      match
+        Dune_project.load ~dir:path ~files:readdir.files
+          ~infer_from_opam_files:true
+      with
+      | None -> Dune_project.anonymous ~dir:path
+      | Some p -> p
     in
-    Memo.exec memo
+    let vcs = settings.ancestor_vcs in
+    let dirs_visited = File.Map.singleton (File.of_source_path path) path in
+    let contents, visited =
+      contents readdir ~dirs_visited ~project ~path ~dir_status
+    in
+    let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
+    (dir, visited)
 
   let get_vcs ~default:vcs ~path ~readdir:{ Readdir.files; dirs } =
     match
@@ -454,14 +445,14 @@ end = struct
     in
     Memo.exec memo
 
-  let root () =
-    let dir, _visited = root () in
-    dir
-
   let find_dir p =
     let open Option.O in
     let+ dir, _ = find_dir_raw p in
     dir
+
+  let root () =
+    let settings = Settings.get () in
+    Option.value_exn (find_dir settings.root)
 end
 
 let root () = Memoized.root ()

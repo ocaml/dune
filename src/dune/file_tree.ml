@@ -253,10 +253,19 @@ let init root ~ancestor_vcs ~recognize_jbuilder_projects =
   Settings.set { Settings.root; ancestor_vcs; recognize_jbuilder_projects }
 
 module rec Memoized : sig
+  module Output : sig
+    type t = Dir0.t * Path.Source.t File.Map.t
+  end
+
   val root : unit -> Dir0.t
+
+  (* Not part of the interface. Only necessary to call recursively *)
+  val find_dir_raw : Path.Source.t -> Output.t option
 
   val find_dir : Path.Source.t -> Dir0.t option
 end = struct
+  open Memoized
+
   module Output = struct
     type t = Dir0.t * Path.Source.t File.Map.t
 
@@ -396,30 +405,18 @@ end = struct
     | None -> vcs
     | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
-  let make_subdir =
-    let module Input = struct
-      type t = Output.t * Sub_dirs.Status.t * string
-
-      let hash : t -> int =
-       fun ((dir, _), _, s) ->
-        Tuple.T2.hash Path.Source.hash String.hash (dir.path, s)
-
-      let to_dyn (dir, status, name) =
-        let open Dyn.Encoder in
-        record
-          [ ("dir", Output.to_dyn dir)
-          ; ("status", Sub_dirs.Status.to_dyn status)
-          ; ("name", String.to_dyn name)
-          ]
-
-      let equal (((d1, _), _, n1) : t) (((d2, _), _, n2) : t) =
-        Path.Source.equal d1.path d2.path && String.equal n1 n2
-    end in
-    let f
-        ( ((parent_dir, dirs_visited) : Output.t)
-        , (dir_status : Sub_dirs.Status.t)
-        , name ) =
-      let path = Path.Source.relative parent_dir.path name in
+  let find_dir_raw_impl path =
+    let settings = Settings.get () in
+    if Path.Source.equal settings.root path then
+      Some (root ())
+    else
+      let open Option.O in
+      let* parent_dir = Path.Source.parent path in
+      let* (parent_dir, dirs_visited) = find_dir_raw parent_dir in
+      let* dir_status =
+        let basename = Path.Source.basename path in
+        String.Map.find parent_dir.contents.sub_dirs basename
+      in
       let settings = Settings.get () in
       let readdir =
         match Readdir.of_source_path path with
@@ -440,29 +437,22 @@ end = struct
         contents readdir ~dirs_visited ~project ~path ~dir_status
       in
       let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      (dir, visited)
-    in
+      Some (dir, visited)
+
+  let find_dir_raw =
+    let module Output = struct
+      type t = Output.t option
+      let to_dyn t =
+        let open Dyn.Encoder in
+        option Output.to_dyn t
+    end in
     let memo =
-      Memo.create "make_subdir" ~doc:"make_subdir"
-        ~input:(module Input)
+      Memo.create "find-dir-raw" ~doc:"get file tree"
+        ~input:(module Path.Source)
         ~output:(Simple (module Output))
-        ~visibility:Memo.Visibility.Hidden Sync f
+        ~visibility:Memo.Visibility.Hidden Sync find_dir_raw_impl
     in
-    fun parent dir_status name -> Memo.exec memo (parent, dir_status, name)
-
-  let rec find_dir (t : Output.t) = function
-    | [] -> Some t
-    | comp :: components ->
-      let open Option.O in
-      let parent_dir, _ = t in
-      let* subdir = String.Map.find (Dir0.sub_dirs parent_dir) comp in
-      let subdir = make_subdir t subdir comp in
-      find_dir subdir components
-
-  let find_dir path =
-    let t = root () in
-    let components = Path.Source.explode path in
-    find_dir t components
+    Memo.exec memo
 
   let root () =
     let dir, _visited = root () in
@@ -470,7 +460,7 @@ end = struct
 
   let find_dir p =
     let open Option.O in
-    let+ dir, _ = find_dir p in
+    let+ dir, _ = find_dir_raw p in
     dir
 end
 

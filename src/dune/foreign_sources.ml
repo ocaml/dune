@@ -78,7 +78,7 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
                (String.Map.find sources name)
                ~f:
                  (List.filter_map ~f:(fun (l, path) ->
-                      Option.some_if (l == language) path))
+                      Option.some_if (Foreign.Language.equal l language) path))
            in
            match candidates with
            | Some [ path ] -> (loc, Foreign.Source.make ~stubs ~path)
@@ -91,7 +91,8 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
                           ~dune_version:d.dune_version
                       |> List.map ~f:(fun s -> sprintf "%S" s) ))
                ]
-           | Some paths -> multiple_sources_error ~name ~loc ~paths)
+           | Some (_ :: _ :: _ as paths) ->
+             multiple_sources_error ~name ~loc ~paths)
   in
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
@@ -159,12 +160,11 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
       |> List.concat_map ~f:(fun sources ->
              String.Map.values sources
              |> List.map ~f:(fun (loc, source) ->
-                    let object_path =
+                    let object_name =
                       Foreign.Source.path source |> Path.Build.split_extension
-                      |> fst |> Path.build |> Path.drop_optional_build_context
-                      |> Path.to_string
+                      |> fst |> Path.Build.basename
                     in
-                    (object_path ^ ext_obj, loc)))
+                    (object_name ^ ext_obj, loc)))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()

@@ -94,12 +94,12 @@ let drop_source_extension fn ~dune_version =
   let* language, version = String.Map.find source_extentions ext in
   Option.some_if (dune_version >= version) (obj, language)
 
-let possible_sources ~language fn ~dune_version =
+let possible_sources ~language obj ~dune_version =
   List.filter_map (String.Map.to_list source_extentions)
     ~f:(fun (ext, (lang, version)) ->
       Option.some_if
-        (lang == language && dune_version >= version)
-        (fn ^ "." ^ ext))
+        (Language.equal lang language && dune_version >= version)
+        (obj ^ "." ^ ext))
 
 module Stubs = struct
   type t =

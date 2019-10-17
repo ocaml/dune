@@ -7,10 +7,15 @@ open! Import
 
 (** {2 Creation} *)
 
+type caching =
+  | Disabled
+  | Enabled of Dune_manager.Client.t
+  | Check of Dune_manager.Client.t
+
 (** Initializes the build system. This must be called first. *)
 val init :
      contexts:Context.t list
-  -> ?memory:Dune_manager.Client.t
+  -> ?caching:caching
   -> sandboxing_preference:Sandbox_mode.t list
   -> unit
 
@@ -172,4 +177,4 @@ end
 val evaluate_rules :
   recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
 
-val get_memory : unit -> Dune_manager.Client.t option
+val get_memory : unit -> caching

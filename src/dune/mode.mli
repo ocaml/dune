@@ -61,6 +61,8 @@ module Dict : sig
 
   val mapi : 'a t -> f:(mode -> 'a -> 'b) -> 'b t
 
+  val iteri : 'a t -> f:(mode -> 'a -> unit) -> unit
+
   val make_both : 'a -> 'a t
 
   val make : byte:'a -> native:'a -> 'a t

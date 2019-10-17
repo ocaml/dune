@@ -185,3 +185,5 @@ val create :
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
   -> 'a t
+
+val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t

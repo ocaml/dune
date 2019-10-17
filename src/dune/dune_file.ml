@@ -598,27 +598,42 @@ module Public_lib = struct
 
   let name t = snd t.name
 
-  let make project ((_, s) as loc_name) =
-    let pkg, rest = Lib_name.split s in
-    Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
-        { package = pkg
-        ; sub_dir =
-            ( if rest = [] then
-              None
-            else
-              Some (String.concat rest ~sep:"/") )
-        ; name = loc_name
-        })
+  let package t = t.package
 
-  let public_name_field =
+  let make ?(allow_deprecated_names = false) project ((_, s) as loc_name) =
+    let pkg, rest = Lib_name.split s in
+    let x =
+      if not allow_deprecated_names then
+        None
+      else
+        List.find_map
+          (Package.Name.Map.values (Dune_project.packages project))
+          ~f:(fun ({ deprecated_package_names; _ } as package) ->
+            if Package.Name.Map.mem deprecated_package_names pkg then
+              Some { package; sub_dir = None; name = loc_name }
+            else
+              None)
+    in
+    match x with
+    | Some x -> Ok x
+    | None ->
+      Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
+          { package = pkg
+          ; sub_dir =
+              ( if rest = [] then
+                None
+              else
+                Some (String.concat rest ~sep:"/") )
+          ; name = loc_name
+          })
+
+  let decode ?allow_deprecated_names () =
     map_validate
       (let+ project = Dune_project.get_exn ()
-       and+ loc_name = field_o "public_name" (located Lib_name.decode) in
+       and+ loc_name = located Lib_name.decode in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
-        match loc_name with
-        | None -> Ok None
-        | Some x -> Result.map (make project x) ~f:Option.some)
+        make ?allow_deprecated_names project loc_name)
 end
 
 module Mode_conf = struct
@@ -695,22 +710,43 @@ module Mode_conf = struct
       in
       repeat decode >>| of_list
 
-    let default = of_list [ (Byte, Inherited); (Best, Requested Loc.none) ]
+    let default loc = of_list [ (Byte, Inherited); (Best, Requested loc) ]
 
-    let eval t ~has_native =
+    module Details = struct
+      type t = Kind.t option
+
+      let validate t ~if_ =
+        if if_ then
+          t
+        else
+          None
+
+      let (|||) x y =
+        if Option.is_some x then
+          x
+        else
+          y
+    end
+
+    let eval_detailed t ~has_native =
       let exists = function
         | Best
         | Byte ->
           true
         | Native -> has_native
       in
-      let get key =
+      let get key : Details.t =
         match Map.find t key with
-        | None -> false
-        | Some Kind.Inherited -> exists key
+        | None -> None
+        | Some Kind.Inherited ->
+          Option.some_if (exists key) Kind.Inherited
         | Some (Kind.Requested loc) ->
-          exists key
-          || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
+          (* TODO always true for now, but we should delay this error *)
+          let exists =
+            exists key
+            || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
+          in
+          Option.some_if exists (Kind.Requested loc)
       in
       let best_mode =
         if has_native then
@@ -719,9 +755,15 @@ module Mode_conf = struct
           Byte
       in
       let best = get Best in
-      let byte = get Byte || (best && best_mode = Byte) in
-      let native = get Native || (best && best_mode = Native) in
+      let open Details in
+      let byte = get Byte ||| (validate best ~if_:(best_mode = Byte)) in
+      let native = get Native ||| (validate best ~if_:(best_mode = Native)) in
       { Mode.Dict.byte; native }
+
+    let eval t ~has_native =
+      eval_detailed t ~has_native
+      |> Mode.Dict.map ~f:Option.is_some
+
   end
 end
 
@@ -805,10 +847,10 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
-       and+ loc = loc
+      (let* stanza_loc = loc in
+       let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
@@ -822,7 +864,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
+         field "modes" Mode_conf.Set.decode
+           ~default:(Mode_conf.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
@@ -899,7 +942,7 @@ module Library = struct
                     dune language"
                ]
          | None, None ->
-           User_error.raise ~loc
+           User_error.raise ~loc:stanza_loc
              [ Pp.text
                  ( if dune_version >= (1, 1) then
                    "supply at least least one of name or public_name fields"
@@ -1918,7 +1961,7 @@ module Coq = struct
     fields
       (let+ name = field "name" Lib_name.Local.decode_loc
        and+ loc = loc
-       and+ public = Public_lib.public_name_field
+       and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ modules = modules_field "modules"
@@ -2113,26 +2156,38 @@ module Include_subdirs = struct
 end
 
 module Deprecated_library_name = struct
+  module Old_public_name = struct
+    type t =
+      { deprecated : bool
+      ; public : Public_lib.t
+      }
+
+    let decode =
+      let+ public = Public_lib.decode ~allow_deprecated_names:true () in
+      let deprecated =
+        not
+          (Package.Name.equal
+             (Lib_name.package_name (Public_lib.name public))
+             (Public_lib.package public).name)
+      in
+      { deprecated; public }
+  end
+
   type t =
     { loc : Loc.t
     ; project : Dune_project.t
-    ; old_public_name : Public_lib.t
-    ; new_public_name : Lib_name.t
+    ; old_public_name : Old_public_name.t
+    ; new_public_name : Loc.t * Lib_name.t
     }
 
   let decode =
     fields
       (let+ loc = loc
        and+ project = Dune_project.get_exn ()
-       and+ old_public_name =
-         map_validate
-           (let+ project = Dune_project.get_exn ()
-            and+ loc_name =
-              field "old_public_name" (located Lib_name.decode)
-            in
-            (project, loc_name))
-           ~f:(fun (project, loc_name) -> Public_lib.make project loc_name)
-       and+ new_public_name = field "new_public_name" Lib_name.decode in
+       and+ old_public_name = field "old_public_name" Old_public_name.decode
+       and+ new_public_name =
+         field "new_public_name" (located Lib_name.decode)
+       in
        { loc; project; old_public_name; new_public_name })
 end
 

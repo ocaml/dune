@@ -384,7 +384,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   in
   let modes =
     let { Lib_config.has_native; _ } = ctx.lib_config in
-    Dune_file.Mode_conf.Set.eval lib.modes ~has_native
+    Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp ~opaque

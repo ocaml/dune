@@ -262,3 +262,11 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ (cd _build/default && ocamlrun -I . ./main.bc)
   2019
+
+----------------------------------------------------------------------------------
+* Unused foreign sources are ignored.
+
+  $ touch foo.cpp
+  $ touch foo.cxx
+
+  $ dune build

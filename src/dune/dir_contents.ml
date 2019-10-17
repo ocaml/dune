@@ -504,6 +504,7 @@ end = struct
 
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
+    let ctx = Super_context.context sctx in
     match Dir_status.DB.get dir_status_db ~dir with
     | Standalone x -> (
       match x with
@@ -527,7 +528,7 @@ end = struct
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
                       let dune_version = d.dune_version in
-                      Foreign_sources.make d
+                      Foreign_sources.make d ~ext_obj:ctx.lib_config.ext_obj
                         ~sources:
                           (Foreign.Sources.Unresolved.load ~dune_version
                              ~dir:d.ctx_dir ~files))
@@ -638,7 +639,7 @@ end = struct
                   in
                   String.Map.Multi.rev_union sources acc)
             in
-            Foreign_sources.make d ~sources)
+            Foreign_sources.make d ~sources ~ext_obj:ctx.lib_config.ext_obj)
       in
       let coq_modules =
         Memo.lazy_ (fun () ->

@@ -66,7 +66,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
     List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
         String.Set.fold (Dir_contents.text_files dc) ~init:acc
           ~f:(fun fn acc ->
-            if String.is_suffix fn ~suffix:Foreign.header_ext then
+            if String.is_suffix fn ~suffix:Foreign.header_extension then
               Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
             else
               acc))

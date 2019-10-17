@@ -1,7 +1,5 @@
 open Stdune
 
-let header_ext = ".h"
-
 module Language = struct
   module T = struct
     type t =
@@ -37,45 +35,6 @@ module Language = struct
     | Cxx -> "cxx"
 
   let decode = Dune_lang.Decoder.enum [ (encode C, C); (encode Cxx, Cxx) ]
-
-  type split =
-    | Unrecognized
-    | Not_allowed_until of Dune_lang.Syntax.Version.t
-    | Recognized of string * t
-
-  let cxx_version_introduced ~obj ~dune_version ~version_introduced =
-    if dune_version >= version_introduced then
-      Recognized (obj, Cxx)
-    else
-      Not_allowed_until version_introduced
-
-  let split_extension fn ~dune_version =
-    match String.rsplit2 fn ~on:'.' with
-    | Some (obj, "c") -> Recognized (obj, C)
-    | Some (obj, "cpp") -> Recognized (obj, Cxx)
-    | Some (obj, "cxx") ->
-      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 8)
-    | Some (obj, "cc") ->
-      cxx_version_introduced ~obj ~dune_version ~version_introduced:(1, 10)
-    | _ -> Unrecognized
-
-  let possible_exts ~dune_version = function
-    | C -> [ ".c" ]
-    | Cxx ->
-      let exts = [ ".cpp" ] in
-      let exts =
-        if dune_version >= (1, 10) then
-          ".cc" :: exts
-        else
-          exts
-      in
-      if dune_version >= (1, 8) then
-        ".cxx" :: exts
-      else
-        exts
-
-  let possible_fns t fn ~dune_version =
-    possible_exts t ~dune_version |> List.map ~f:(fun ext -> fn ^ ext)
 
   include Comparable.Make (T)
 
@@ -114,13 +73,33 @@ module Language = struct
   end
 end
 
-let all_possible_exts =
-  let exts = Language.possible_exts ~dune_version:Stanza.latest_version in
-  (header_ext :: exts C) @ exts Cxx
+let header_extension = ".h"
 
-let c_cxx_or_header ~fn =
+let source_extentions =
+  String.Map.of_list_exn
+    [ ("c", (Language.C, (1, 0)))
+    ; ("cpp", (Cxx, (1, 0)))
+    ; ("cxx", (Cxx, (1, 8)))
+    ; ("cc", (Cxx, (1, 10)))
+    ]
+
+let has_foreign_extension ~fn =
   let ext = Filename.extension fn in
-  List.mem ~set:all_possible_exts ext
+  ext = header_extension
+  || String.Map.mem source_extentions (String.drop ext 1)
+
+let drop_source_extension fn ~dune_version =
+  let open Option.O in
+  let* obj, ext = String.rsplit2 fn ~on:'.' in
+  let* language, version = String.Map.find source_extentions ext in
+  Option.some_if (dune_version >= version) (obj, language)
+
+let possible_sources ~language obj ~dune_version =
+  List.filter_map (String.Map.to_list source_extentions)
+    ~f:(fun (ext, (lang, version)) ->
+      Option.some_if
+        (Language.equal lang language && dune_version >= version)
+        (obj ^ "." ^ ext))
 
 module Stubs = struct
   type t =
@@ -153,8 +132,8 @@ module Stubs = struct
       | Some _ ->
         User_error.raise ~loc:loc_archive_name
           [ Pp.textf
-              "The field \"archive_name\" is not allowed in the (foreign_stubs \
-               ...) stanza. For named foreign archives use the \
+              "The field \"archive_name\" is not allowed in the \
+               (foreign_stubs ...) stanza. For named foreign archives use the \
                (foreign_library ...) stanza."
           ]
     in
@@ -223,24 +202,9 @@ module Sources = struct
     let load ~dune_version ~dir ~files =
       let init = String.Map.empty in
       String.Set.fold files ~init ~f:(fun fn acc ->
-          match Language.split_extension fn ~dune_version with
-          | Unrecognized -> acc
-          | Not_allowed_until version ->
-            (* CR-someday aalekseyev:
-               Raising in [Not_allowed_until] can break backwards compatibility
-               when we change a file from [Unrecognized] to [Not_allowed_until].
-
-               An easy fix would be to treat [Not_allowed_until] as
-               [Unrecognized], but the error messages are not good then. *)
-            let loc = Loc.in_dir (Path.build dir) in
-            User_error.raise ~loc
-              [ Pp.textf
-                  "The extension %s of the source file %S is not supported \
-                   until version %s."
-                  (Filename.extension fn) fn
-                  (Dune_lang.Syntax.Version.to_string version)
-              ]
-          | Recognized (obj, language) ->
+          match drop_source_extension fn ~dune_version with
+          | None -> acc
+          | Some (obj, language) ->
             let path = Path.Build.relative dir fn in
             String.Map.add_multi acc obj (language, path))
   end

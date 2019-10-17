@@ -65,6 +65,10 @@ module Dict = struct
 
   let mapi t ~f = { byte = f Byte t.byte; native = f Native t.native }
 
+  let iteri t ~f =
+    f Byte t.byte;
+    f Native t.native
+
   let make_both x = { byte = x; native = x }
 
   let make ~byte ~native = { byte; native }

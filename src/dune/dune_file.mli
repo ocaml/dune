@@ -155,7 +155,13 @@ module Mode_conf : sig
     val decode : t Dune_lang.Decoder.t
 
     (** Byte inherited, Best is requested *)
-    val default : t
+    val default : Loc.t -> t
+
+    module Details : sig
+      type t = Kind.t option
+    end
+
+    val eval_detailed : t -> has_native:bool -> Details.t Mode.Dict.t
 
     val eval : t -> has_native:bool -> Mode.Dict.Set.t
   end

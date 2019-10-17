@@ -710,22 +710,43 @@ module Mode_conf = struct
       in
       repeat decode >>| of_list
 
-    let default = of_list [ (Byte, Inherited); (Best, Requested Loc.none) ]
+    let default loc = of_list [ (Byte, Inherited); (Best, Requested loc) ]
 
-    let eval t ~has_native =
+    module Details = struct
+      type t = Kind.t option
+
+      let validate t ~if_ =
+        if if_ then
+          t
+        else
+          None
+
+      let (|||) x y =
+        if Option.is_some x then
+          x
+        else
+          y
+    end
+
+    let eval_detailed t ~has_native =
       let exists = function
         | Best
         | Byte ->
           true
         | Native -> has_native
       in
-      let get key =
+      let get key : Details.t =
         match Map.find t key with
-        | None -> false
-        | Some Kind.Inherited -> exists key
+        | None -> None
+        | Some Kind.Inherited ->
+          Option.some_if (exists key) Kind.Inherited
         | Some (Kind.Requested loc) ->
-          exists key
-          || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
+          (* TODO always true for now, but we should delay this error *)
+          let exists =
+            exists key
+            || User_error.raise ~loc [ Pp.text "this mode isn't available" ]
+          in
+          Option.some_if exists (Kind.Requested loc)
       in
       let best_mode =
         if has_native then
@@ -734,9 +755,15 @@ module Mode_conf = struct
           Byte
       in
       let best = get Best in
-      let byte = get Byte || (best && best_mode = Byte) in
-      let native = get Native || (best && best_mode = Native) in
+      let open Details in
+      let byte = get Byte ||| (validate best ~if_:(best_mode = Byte)) in
+      let native = get Native ||| (validate best ~if_:(best_mode = Native)) in
       { Mode.Dict.byte; native }
+
+    let eval t ~has_native =
+      eval_detailed t ~has_native
+      |> Mode.Dict.map ~f:Option.is_some
+
   end
 end
 
@@ -820,8 +847,8 @@ module Library = struct
 
   let decode =
     fields
-      (let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
-       and+ loc = loc
+      (let* stanza_loc = loc in
+       let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
@@ -837,7 +864,8 @@ module Library = struct
        and+ virtual_deps =
          field "virtual_deps" (repeat (located Lib_name.decode)) ~default:[]
        and+ modes =
-         field "modes" Mode_conf.Set.decode ~default:Mode_conf.Set.default
+         field "modes" Mode_conf.Set.decode
+           ~default:(Mode_conf.Set.default stanza_loc)
        and+ kind = field "kind" Lib_kind.decode ~default:Lib_kind.Normal
        and+ wrapped = Wrapped.field
        and+ optional = field_b "optional"
@@ -914,7 +942,7 @@ module Library = struct
                     dune language"
                ]
          | None, None ->
-           User_error.raise ~loc
+           User_error.raise ~loc:stanza_loc
              [ Pp.text
                  ( if dune_version >= (1, 1) then
                    "supply at least least one of name or public_name fields"

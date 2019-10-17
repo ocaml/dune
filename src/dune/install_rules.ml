@@ -91,7 +91,7 @@ end = struct
         else
           []
       in
-      let { Mode.Dict.byte; native } =
+      let { Mode.Dict.byte ; native } =
         Dune_file.Mode_conf.Set.eval lib.modes ~has_native
       in
       let virtual_library = Library.is_virtual lib in

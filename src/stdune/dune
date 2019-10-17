@@ -4,4 +4,6 @@
  (synopsis "[Internal] Standard library of Dune")
  (preprocess future_syntax)
  (libraries dune_caml unix)
- (foreign_stubs (language c) (names fcntl)))
+ (foreign_stubs
+  (language c)
+  (names fcntl)))

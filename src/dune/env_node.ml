@@ -136,7 +136,8 @@ let rec foreign_flags t ~profile ~expander ~default_context_flags =
     let default =
       match t.inherit_from with
       | None -> Foreign.Language.Dict.map ~f:Build.return default_context_flags
-      | Some (lazy t) -> foreign_flags t ~profile ~expander ~default_context_flags
+      | Some (lazy t) ->
+        foreign_flags t ~profile ~expander ~default_context_flags
     in
     let flags =
       let cfg = find_config t ~profile in

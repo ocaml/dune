@@ -46,15 +46,12 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         let targets =
           List.concat_map targets ~f:(fun target ->
               let error_loc = String_with_vars.loc target in
-              match multiplicity with
+              ( match multiplicity with
               | One ->
-                let res =
-                  Expander.expand expander ~mode:Single ~template:target
-                in
-                [ check_filename ~dir ~error_loc res ]
+                [ Expander.expand expander ~mode:Single ~template:target ]
               | Multiple ->
-                Expander.expand expander ~mode:Many ~template:target
-                |> List.map ~f:(check_filename ~dir ~error_loc))
+                Expander.expand expander ~mode:Many ~template:target )
+              |> List.map ~f:(check_filename ~dir ~error_loc))
         in
         Expander.Targets.Static { multiplicity; targets }
     in

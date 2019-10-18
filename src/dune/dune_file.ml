@@ -1059,8 +1059,8 @@ module Library = struct
       This (Some (Module_name.of_local_lib_name (snd t.name)))
 
   let to_lib_info conf ~dir
-      ~lib_config:({ Lib_config.has_native; ext_lib; ext_obj; _ } as lib_config)
-      ~known_implementations =
+      ~lib_config:( { Lib_config.has_native; ext_lib; ext_dll; ext_obj; _ } as
+                  lib_config ) ~known_implementations =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
     let gen_archive_file ~dir ext =
@@ -1080,12 +1080,18 @@ module Library = struct
       | Some p -> Public (Dune_project.name conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
+    (* TODO: The name [foreign_archives] is confusing since we include
+       [compiled_native_archive] into the list. *)
     let foreign_archives =
-      let stubs = lib_files conf ~dir ~ext_lib in
-      { Mode.Dict.byte = stubs
+      let static_archives = lib_files conf ~dir ~ext_lib
+      and dynamic_archives = dll_files conf ~dir ~ext_dll in
+      { Mode.Dict.byte = static_archives @ dynamic_archives
       ; native =
-          Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib)
-          :: stubs
+          (let compiled_native_archive =
+             Path.Build.relative dir
+               (Lib_name.Local.to_string lib_name ^ ext_lib)
+           in
+           compiled_native_archive :: static_archives)
       }
     in
     let foreign_archives =

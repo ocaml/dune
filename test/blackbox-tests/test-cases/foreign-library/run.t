@@ -1,6 +1,12 @@
 ----------------------------------------------------------------------------------
 Testsuite for the (foreign_library ...) stanza.
 
+  $ cat >sdune <<'EOF'
+  > #!/usr/bin/env bash
+  > DUNE_SANDBOX=symlink dune "$@"
+  > EOF
+  $ chmod +x sdune
+
 ----------------------------------------------------------------------------------
 * (foreign_library ...) is unavailable before Dune 2.0.
 
@@ -13,7 +19,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names add))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 1, characters 0-44:
   1 | (foreign_library
   2 |  (language c)
@@ -28,7 +34,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ echo "(lang dune 2.0)" > dune-project
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 1, characters 0-44:
   1 | (foreign_library
   2 |  (language c)
@@ -51,7 +57,7 @@ Testsuite for the (foreign_library ...) stanza.
   > value add(value x, value y) { return Val_int(Int_val(x) + Int_val(y)); }
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 4, characters 12-15:
   4 |  (names add mul))
                   ^^^
@@ -66,7 +72,7 @@ Testsuite for the (foreign_library ...) stanza.
   > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
   > EOF
 
-  $ dune build
+  $ ./sdune build
 ----------------------------------------------------------------------------------
 * Error message for a missing C++ source file.
 
@@ -87,7 +93,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 13, characters 8-14:
   13 |  (names config))
                ^^^^^^
@@ -129,9 +135,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   2009
 
   $ (cd _build/default && ocamlrun -I lib main.bc)
@@ -182,9 +188,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   2019
 
   $ (cd _build/default && ocamlrun -I lib main.bc)
@@ -211,7 +217,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names config))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 12, characters 23-34:
   12 |  (include_dirs headers another/dir)
                               ^^^^^^^^^^^
@@ -239,7 +245,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names config))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 12, characters 23-37:
   12 |  (include_dirs headers /absolute/path)
                               ^^^^^^^^^^^^^^
@@ -277,7 +283,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (names config))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "lib/dune", line 6, characters 1-22:
   6 |  (archive_name addmul)
        ^^^^^^^^^^^^^^^^^^^^^
@@ -331,9 +337,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   October 2019
 
   $ (cd _build/default && ocamlrun -I lib main.bc)
@@ -383,7 +389,7 @@ Testsuite for the (foreign_library ...) stanza.
   > let () = Printf.printf "%d %s %d" (day ()) (Calc.month ()) (Calc.calc 1 2 3)
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 1, characters 0-87:
   1 | (executable
   2 |  (name main)
@@ -441,9 +447,9 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   8 October 2019
 
 ----------------------------------------------------------------------------------
@@ -481,7 +487,7 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules main))
   > EOF
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   8 October 2019
 
 ----------------------------------------------------------------------------------
@@ -547,7 +553,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   Today: 8 October 2019
 
 ----------------------------------------------------------------------------------
@@ -582,6 +588,6 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   Today: 08 October 2019
   Today: 14 October 2019

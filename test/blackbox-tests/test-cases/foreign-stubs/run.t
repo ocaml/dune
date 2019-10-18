@@ -1,6 +1,12 @@
 ----------------------------------------------------------------------------------
 Testsuite for the (foreign_stubs ...) field.
 
+  $ cat >sdune <<'EOF'
+  > #!/usr/bin/env bash
+  > DUNE_SANDBOX=symlink dune "$@"
+  > EOF
+  $ chmod +x sdune
+
 ----------------------------------------------------------------------------------
 * Error when using both (self_build_stubs_archive ...) and (c_names ...) before 2.0.
 
@@ -13,7 +19,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (self_build_stubs_archive (bar)))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 4, characters 1-33:
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +32,7 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ echo "(lang dune 2.0)" > dune-project
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 3, characters 1-14:
   3 |  (c_names foo)
        ^^^^^^^^^^^^^
@@ -43,7 +49,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (c_names bar))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 3, characters 2-9:
   3 |  (c_names bar))
         ^^^^^^^
@@ -60,7 +66,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (self_build_stubs_archive (bar)))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 4, characters 1-33:
   4 |  (self_build_stubs_archive (bar)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +84,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (self_build_stubs_archive (baz)))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 4, characters 2-26:
   4 |  (self_build_stubs_archive (baz)))
         ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,7 +101,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (foreign_archives bar))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 3, characters 36-39:
   3 |  (foreign_stubs (language c) (names foo))
                                           ^^^
@@ -110,7 +116,7 @@ Testsuite for the (foreign_stubs ...) field.
   > value foo(value unit) { return Val_int(9); }
   > EOF
 
-  $ dune build
+  $ ./sdune build
   Error: No rule found for libbar$ext_lib
   [1]
 
@@ -135,9 +141,13 @@ Testsuite for the (foreign_stubs ...) field.
   >  (targets libbar.a)
   >  (deps bar%{ext_obj})
   >  (action (run ar rcs %{targets} %{deps})))
+  > (rule
+  >  (targets dllbar%{ext_dll})
+  >  (deps bar%{ext_obj})
+  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
   > EOF
 
-  $ dune build
+  $ ./sdune build
 
 ----------------------------------------------------------------------------------
 * Error when specifying an (archive_name ...) in (foreign_stubs ...) stanza.
@@ -157,7 +167,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (action (run ar rcs %{targets} %{deps})))
   > EOF
 
-  $ dune build
+  $ ./sdune build
   File "dune", line 3, characters 16-34:
   3 |  (foreign_stubs (archive_name baz) (language c) (names foo))
                       ^^^^^^^^^^^^^^^^^^
@@ -233,9 +243,9 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ rm -rf _build
-  $ dune build
+  $ ./sdune build
 
-  $ dune exec ./main.exe
+  $ ./sdune exec ./main.exe
   2019
 
   $ (cd _build/default && ocamlrun -I . ./main.bc)
@@ -247,4 +257,4 @@ Testsuite for the (foreign_stubs ...) field.
   $ touch foo.cpp
   $ touch foo.cxx
 
-  $ dune build
+  $ ./sdune build

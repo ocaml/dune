@@ -66,11 +66,7 @@ Testsuite for the (foreign_library ...) stanza.
   > value mul(value x, value y) { return Val_int(Int_val(x) * Int_val(y)); }
   > EOF
 
-  $ dune build --display short
-        ocamlc lib/add$ext_obj
-        ocamlc lib/mul$ext_obj
-    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
-
+  $ dune build
 ----------------------------------------------------------------------------------
 * Error message for a missing C++ source file.
 
@@ -186,25 +182,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune build --display short
-      ocamldep lib/.calc.objs/calc.mli.d
-        ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
-      ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamldep lib/.calc.objs/calc.ml.d
-      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
-      ocamlopt lib/calc.{a,cmxa}
-        ocamlc lib/add$ext_obj
-        ocamlc lib/mul$ext_obj
-    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
-           gcc lib/config$ext_obj
-    ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
-      ocamlopt main.exe
-        ocamlc lib/.calc.objs/byte/calc.{cmo,cmt}
-        ocamlc lib/calc.cma
-        ocamlc main.bc
-      ocamlopt lib/calc.cmxs
+  $ dune build
 
   $ dune exec ./main.exe
   2019
@@ -272,7 +250,6 @@ Testsuite for the (foreign_library ...) stanza.
     (flags -I /absolute/path)
   
   [1]
-
 
 
 ----------------------------------------------------------------------------------
@@ -570,27 +547,7 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune exec --display short ./main.exe
-      ocamldep lib/.calc.objs/calc.mli.d
-        ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
-      ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamldep lib/.calc.objs/calc.ml.d
-      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
-      ocamlopt lib/calc.{a,cmxa}
-        ocamlc lib/add$ext_obj
-        ocamlc lib/mul$ext_obj
-    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
-        ocamlc lib/month$ext_obj
-    ocamlmklib lib/dllcalc_stubs$ext_dll,lib/libcalc_stubs$ext_lib
-           gcc lib/config$ext_obj
-    ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
-        ocamlc lib/day$ext_obj
-    ocamlmklib lib/dllday$ext_dll,lib/libday$ext_lib
-        ocamlc lib2/today$ext_obj
-    ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
-      ocamlopt main.exe
+  $ dune exec ./main.exe
   Today: 8 October 2019
 
 ----------------------------------------------------------------------------------
@@ -625,28 +582,6 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ dune exec ./main.exe --display short
-      ocamldep lib/.calc.objs/calc.mli.d
-        ocamlc lib/.calc.objs/byte/calc.{cmi,cmti}
-      ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamldep lib/.calc.objs/calc.ml.d
-      ocamlopt lib/.calc.objs/native/calc.{cmx,o}
-      ocamlopt lib/calc.{a,cmxa}
-        ocamlc lib/add$ext_obj
-        ocamlc lib/mul$ext_obj
-    ocamlmklib lib/dlladdmul$ext_dll,lib/libaddmul$ext_lib
-        ocamlc lib/month$ext_obj
-    ocamlmklib lib/dllcalc_stubs$ext_dll,lib/libcalc_stubs$ext_lib
-           gcc lib/config$ext_obj
-    ocamlmklib lib/dllconfig$ext_dll,lib/libconfig$ext_lib
-        ocamlc lib/day$ext_obj
-    ocamlmklib lib/dllday$ext_dll,lib/libday$ext_lib
-        ocamlc lib2/today$ext_obj
-    ocamlmklib lib2/dlltoday$ext_dll,lib2/libtoday$ext_lib
-        ocamlc lib3/day$ext_obj
-    ocamlmklib lib3/dllnew_day$ext_dll,lib3/libnew_day$ext_lib
-      ocamlopt main.exe
+  $ dune exec ./main.exe
   Today: 08 October 2019
   Today: 14 October 2019

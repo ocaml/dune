@@ -233,29 +233,7 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ rm -rf _build
-  $ dune build --display short
-           gcc bar$ext_obj
-           gcc dllbar$ext_dll
-           gcc baz$ext_obj
-        ocamlc foo$ext_obj
-    ocamlmklib dllquad_stubs$ext_dll,libquad_stubs$ext_lib
-           gcc qux$ext_obj
-            ar libqux$ext_lib
-      ocamldep .quad.objs/quad.mli.d
-        ocamlc .quad.objs/byte/quad.{cmi,cmti}
-      ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
-      ocamldep .quad.objs/quad.ml.d
-      ocamlopt .quad.objs/native/quad.{cmx,o}
-      ocamlopt quad.{a,cmxa}
-            ar libbar$ext_lib
-      ocamlopt main.exe
-           gcc dllqux$ext_dll
-        ocamlc .quad.objs/byte/quad.{cmo,cmt}
-        ocamlc quad.cma
-        ocamlc main.bc
-      ocamlopt quad.cmxs
+  $ dune build
 
   $ dune exec ./main.exe
   2019

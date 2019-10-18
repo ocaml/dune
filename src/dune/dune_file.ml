@@ -721,7 +721,7 @@ module Mode_conf = struct
         else
           None
 
-      let (|||) x y =
+      let ( ||| ) x y =
         if Option.is_some x then
           x
         else
@@ -738,8 +738,7 @@ module Mode_conf = struct
       let get key : Details.t =
         match Map.find t key with
         | None -> None
-        | Some Kind.Inherited ->
-          Option.some_if (exists key) Kind.Inherited
+        | Some Kind.Inherited -> Option.some_if (exists key) Kind.Inherited
         | Some (Kind.Requested loc) ->
           (* TODO always true for now, but we should delay this error *)
           let exists =
@@ -756,14 +755,12 @@ module Mode_conf = struct
       in
       let best = get Best in
       let open Details in
-      let byte = get Byte ||| (validate best ~if_:(best_mode = Byte)) in
-      let native = get Native ||| (validate best ~if_:(best_mode = Native)) in
+      let byte = get Byte ||| validate best ~if_:(best_mode = Byte) in
+      let native = get Native ||| validate best ~if_:(best_mode = Native) in
       { Mode.Dict.byte; native }
 
     let eval t ~has_native =
-      eval_detailed t ~has_native
-      |> Mode.Dict.map ~f:Option.is_some
-
+      eval_detailed t ~has_native |> Mode.Dict.map ~f:Option.is_some
   end
 end
 

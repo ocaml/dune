@@ -118,9 +118,9 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   in
   let modes =
     let default =
-      Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited) in
-    Option.value ~default modes
-    |> Mode.Dict.map ~f:Option.is_some
+      Mode.Dict.make_both (Some Dune_file.Mode_conf.Kind.Inherited)
+    in
+    Option.value ~default modes |> Mode.Dict.map ~f:Option.is_some
   in
   { super_context
   ; scope

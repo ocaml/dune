@@ -15,7 +15,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
   let { Lib_config.has_native; ext_obj; ext_dll; ext_lib; _ } =
     ctx.lib_config
   in
-  let { Mode.Dict.byte ; native } =
+  let { Mode.Dict.byte; native } =
     Dune_file.Mode_conf.Set.eval lib.modes ~has_native
   in
   let if_ cond l =

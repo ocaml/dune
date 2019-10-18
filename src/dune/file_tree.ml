@@ -403,7 +403,7 @@ end = struct
     else
       let open Option.O in
       let* parent_dir = Path.Source.parent path in
-      let* (parent_dir, dirs_visited) = find_dir_raw parent_dir in
+      let* parent_dir, dirs_visited = find_dir_raw parent_dir in
       let* dir_status =
         let basename = Path.Source.basename path in
         String.Map.find parent_dir.contents.sub_dirs basename
@@ -433,6 +433,7 @@ end = struct
   let find_dir_raw =
     let module Output = struct
       type t = Output.t option
+
       let to_dyn t =
         let open Dyn.Encoder in
         option Output.to_dyn t

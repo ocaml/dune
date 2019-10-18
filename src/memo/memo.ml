@@ -124,6 +124,72 @@ module type Output_allow_cutoff = sig
   val equal : t -> t -> bool
 end
 
+module type Store = sig
+  type key
+
+  type 'a t
+
+  val clear : _ t -> unit
+
+  val create : unit -> _ t
+
+  val set : 'a t -> key -> 'a -> unit
+
+  val find : 'a t -> key -> 'a option
+end
+
+module Store = struct
+  module type S = sig
+    include Store
+
+    type value
+
+    val store : value t
+  end
+
+  type ('k, 'v) t = (module S with type key = 'k and type value = 'v)
+
+  let make (type k v) (module S : Store with type key = k) : (k, v) t =
+    ( module struct
+      include S
+
+      type value = v
+
+      let store = S.create ()
+    end )
+
+  let clear (type k v) (module S : S with type key = k and type value = v) =
+    S.clear S.store
+
+  let set (type k v) (module S : S with type key = k and type value = v)
+      (k : k) (v : v) =
+    S.set S.store k v
+
+  let find (type k v) (module S : S with type key = k and type value = v)
+      (k : k) : v option =
+    S.find S.store k
+
+  let of_table (type k v) (table : (k, v) Table.t) : (k, v) t =
+    ( module struct
+      type key = k
+
+      type value = v
+
+      let store = table
+
+      type 'a t = (key, 'a) Table.t
+
+      let clear = Table.clear
+
+      let find = Table.find
+
+      let set = Table.set
+
+      (* the store is already created *)
+      let create () = assert false
+    end )
+end
+
 module type Input = sig
   type t
 
@@ -459,7 +525,7 @@ let get_deps_from_graph_exn dep_node =
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t
-  ; cache : ('input, ('input, 'output, 'f) Dep_node.t) Table.t
+  ; cache : ('input, ('input, 'output, 'f) Dep_node.t) Store.t
   }
 
 module Stack_frame = struct
@@ -486,9 +552,9 @@ module Output = struct
     | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
 end
 
-let create (type i o f) name ~doc ~input:(module Input : Input with type t = i)
-    ~visibility ~(output : o Output.t) (typ : (i, o, f) Function_type.t)
-    (f : f) =
+let create_with_cache (type i o f) name ~cache ~doc
+    ~input:(module Input : Input with type t = i) ~visibility
+    ~(output : o Output.t) (typ : (i, o, f) Function_type.t) (f : f) =
   let name = Function_name.make name in
   let decode : i Dune_lang.Decoder.t =
     match visibility with
@@ -517,9 +583,19 @@ let create (type i o f) name ~doc ~input:(module Input : Input with type t = i)
   ( match visibility with
   | Public _ -> Spec.register spec
   | Hidden -> () );
-  let cache = Table.create (module Input) 1024 in
-  Caches.register ~clear:(fun () -> Table.clear cache);
+  Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
+
+let create_with_store (type i) name ~store:(module S : Store with type key = i)
+    ~doc ~input ~visibility ~output typ f =
+  let cache = Store.make (module S) in
+  create_with_cache name ~cache ~doc ~input ~output ~visibility typ f
+
+let create (type i) name ~doc ~input:(module Input : Input with type t = i)
+    ~visibility ~output typ f =
+  let cache = Store.of_table (Table.create (module Input) 1024) in
+  let input = (module Input : Input with type t = i) in
+  create_with_cache name ~cache ~doc ~input ~visibility ~output typ f
 
 let create_hidden (type output) name ~doc ~input typ impl =
   let module O = struct
@@ -608,13 +684,13 @@ module Exec_sync = struct
     compute run inp dep_node
 
   let exec t inp =
-    match Table.find t.cache inp with
+    match Store.find t.cache inp with
     | None ->
       let run = Run.current () in
       let dep_node =
         Exec.make_dep_node t ~input:inp ~state:(Running_sync run)
       in
-      Table.set t.cache inp dep_node;
+      Store.set t.cache inp dep_node;
       compute run inp dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
@@ -669,14 +745,14 @@ module Exec_async = struct
     compute inp ivar dep_node
 
   let exec t inp =
-    match Table.find t.cache inp with
+    match Store.find t.cache inp with
     | None ->
       let ivar = Fiber.Ivar.create () in
       let dep_node =
         Exec.make_dep_node t ~input:inp
           ~state:(Running_async (Run.current (), ivar))
       in
-      Table.set t.cache inp dep_node;
+      Store.set t.cache inp dep_node;
       compute inp ivar dep_node
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
@@ -705,7 +781,7 @@ let exec (type i o f) (t : (i, o, f) t) =
   | Function.Sync _ -> (Exec_sync.exec t : f)
 
 let peek t inp =
-  match Table.find t.cache inp with
+  match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
     add_rev_dep (dag_node dep_node);
@@ -722,7 +798,7 @@ let peek t inp =
 let peek_exn t inp = Option.value_exn (peek t inp)
 
 let get_deps t inp =
-  match Table.find t.cache inp with
+  match Store.find t.cache inp with
   | None
   | Some { state = Running_async _; _ } ->
     None

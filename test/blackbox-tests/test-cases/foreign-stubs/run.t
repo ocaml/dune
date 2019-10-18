@@ -141,10 +141,6 @@ Testsuite for the (foreign_stubs ...) field.
   >  (targets libbar.a)
   >  (deps bar%{ext_obj})
   >  (action (run ar rcs %{targets} %{deps})))
-  > (rule
-  >  (targets dllbar%{ext_dll})
-  >  (deps bar%{ext_obj})
-  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
   > EOF
 
   $ ./sdune build

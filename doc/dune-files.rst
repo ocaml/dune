@@ -475,6 +475,16 @@ using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
 
 .. _configurator: https://github.com/janestreet/configurator
 
+.. _foreign_library:
+
+foreign_library
+---------------
+
+The ``foreign_library`` stanza describes archives of separately compiled
+foreign object files that can be packaged with an OCaml library or linked
+into an OCaml executable. See :ref:`foreign-sources-and-archives` for
+further details and examples.
+
 .. _jsoo-field:
 
 js_of_ocaml

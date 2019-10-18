@@ -40,7 +40,15 @@ module Context = struct
       ; name : Context_name.t
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
+      ; fdo_target_exe : string option
       }
+
+    let fdo_suffix t =
+      match t.fdo_target_exe with
+      | None -> ""
+      | Some file ->
+        let name, _ = Filename.(basename file |> split_extension) in
+        "-fdo-" ^ name
 
     let t ~profile =
       let+ env = env_field
@@ -53,6 +61,8 @@ module Context = struct
       and+ toolchain =
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
+      and+ fdo_target_exe =
+        field_o "fdo" (Dune_lang.Syntax.since syntax (1, 12) >>> string)
       and+ paths =
         let f l =
           match
@@ -79,6 +89,19 @@ module Context = struct
                   "`targets` and `host` options cannot be used in the same \
                    context."
               ]);
+      ( match fdo_target_exe with
+      | None -> ()
+      | Some file ->
+        let ext = Filename.extension file in
+        if not (ext = ".exe") then
+          User_error.raise ~loc
+            [ Pp.textf
+                "`fdo %s` expects executable filename ending with .exe \
+                 extension, not %s. \n\
+                 Please specify the name of the executable to optimize,\
+                 including path from <root>."
+                file ext
+            ] );
       { targets
       ; profile
       ; loc
@@ -87,6 +110,7 @@ module Context = struct
       ; host_context
       ; toolchain
       ; paths
+      ; fdo_target_exe
       }
   end
 
@@ -104,7 +128,8 @@ module Context = struct
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
       and+ base = Common.t ~profile in
-      let name = Option.value ~default:switch name in
+      let default = switch ^ Common.fdo_suffix base in
+      let name = Option.value ~default name in
       let base = { base with targets = Target.add base.targets x; name } in
       { base; switch; root; merlin }
   end
@@ -119,7 +144,8 @@ module Context = struct
           ( Dune_lang.Syntax.since syntax (1, 10)
           >>= fun () -> Context_name.decode )
       in
-      let name = Option.value ~default:common.name name in
+      let default = common.name ^ Common.fdo_suffix common in
+      let name = Option.value ~default name in
       { common with targets = Target.add common.targets x; name }
   end
 
@@ -171,6 +197,7 @@ module Context = struct
       ; env = Dune_env.Stanza.empty
       ; toolchain = None
       ; paths = []
+      ; fdo_target_exe = None
       }
 end
 

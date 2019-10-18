@@ -20,6 +20,7 @@ module Context : sig
       ; name : Context_name.t
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
+      ; fdo_target_exe : string option
       }
   end
 

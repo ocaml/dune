@@ -48,6 +48,9 @@ type t =
   ; profile : Profile.t
         (** [true] if this context is used for the .merlin files *)
   ; merlin : bool
+        (** [Some path/to/foo.exe] if this contexts is for feedback-directed
+            optimization of target path/to/foo.exe *)
+  ; fdo_target_exe : string option
         (** If this context is a cross-compilation context, you need another
             context for building tools used for the compilation that run on the
             host. *)

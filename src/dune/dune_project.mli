@@ -41,16 +41,6 @@ module Project_file : sig
   val to_dyn : t -> Dyn.t
 end
 
-module Source_kind : sig
-  type t =
-    | Github of string * string
-    | Url of string
-
-  val pp : t Fmt.t
-
-  val to_dyn : t -> Dyn.t
-end
-
 type t
 
 module File_key : sig
@@ -77,19 +67,7 @@ val name : t -> Name.t
 
 val root : t -> Path.Source.t
 
-val source : t -> Source_kind.t option
-
-val license : t -> string option
-
-val maintainers : t -> string list
-
-val bug_reports : t -> string option
-
-val documentation : t -> string option
-
-val homepage : t -> string option
-
-val authors : t -> string list
+val info : t -> Package.Info.t
 
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 

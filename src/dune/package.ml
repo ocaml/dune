@@ -234,6 +234,140 @@ module Kind = struct
     | Opam -> constr "Opam" []
 end
 
+module Source_kind = struct
+  type t =
+    | Github of string * string
+    | Url of string
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Github (user, repo) -> constr "Github" [ string user; string repo ]
+    | Url url -> constr "Url" [ string url ]
+
+  let pp fmt = function
+    | Github (user, repo) ->
+      Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
+    | Url u -> Format.pp_print_string fmt u
+
+  let decode =
+    let open Dune_lang.Decoder in
+    sum
+      [ ( "github"
+        , plain_string (fun ~loc s ->
+              match String.split ~on:'/' s with
+              | [ user; repo ] -> Github (user, repo)
+              | _ ->
+                User_error.raise ~loc
+                  [ Pp.textf "GitHub repository must be of form user/repo" ])
+        )
+      ; ("uri", string >>| fun s -> Url s)
+      ]
+end
+
+module Info = struct
+  type t =
+    { source : Source_kind.t option
+    ; license : string option
+    ; authors : string list option
+    ; homepage : string option
+    ; bug_reports : string option
+    ; documentation : string option
+    ; maintainers : string list option
+    }
+
+  let empty =
+    { source = None
+    ; license = None
+    ; authors = None
+    ; homepage = None
+    ; bug_reports = None
+    ; documentation = None
+    ; maintainers = None
+    }
+
+  let to_dyn
+      { source
+      ; license
+      ; authors
+      ; homepage
+      ; bug_reports
+      ; documentation
+      ; maintainers
+      } =
+    let open Dyn.Encoder in
+    record
+      [ ("source", (option Source_kind.to_dyn) source)
+      ; ("license", (option string) license)
+      ; ("homepage", (option string) homepage)
+      ; ("documentation", (option string) documentation)
+      ; ("bug_reports", (option string) bug_reports)
+      ; ("maintainers", option (list string) maintainers)
+      ; ("authors", option (list string) authors)
+      ]
+
+  let decode ?since () =
+    let open Dune_lang.Decoder in
+    let v default = Option.value since ~default in
+    let+ source =
+      field_o "source"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 7)) >>> Source_kind.decode)
+    and+ authors =
+      field_o "authors"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> repeat string)
+    and+ license =
+      field_o "license"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 9)) >>> string)
+    and+ homepage =
+      field_o "homepage"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    and+ documentation =
+      field_o "documentation"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    and+ bug_reports =
+      field_o "bug_reports"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> string)
+    and+ maintainers =
+      field_o "maintainers"
+        (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
+    in
+    let homepage =
+      match (homepage, source) with
+      | None, Some (Github (user, repo)) ->
+        Some (sprintf "https://github.com/%s/%s" user repo)
+      | s, _ -> s
+    in
+    let bug_reports =
+      match (bug_reports, source) with
+      | None, Some (Github (user, repo)) ->
+        Some (sprintf "https://github.com/%s/%s/issues" user repo)
+      | s, _ -> s
+    in
+    { source
+    ; authors
+    ; license
+    ; homepage
+    ; documentation
+    ; bug_reports
+    ; maintainers
+    }
+
+  let superpose t1 t2 =
+    let f o1 o2 =
+      match o2 with
+      | Some _ as x -> x
+      | None -> o1
+    in
+    { source = f t1.source t2.source
+    ; authors = f t1.authors t2.authors
+    ; license = f t1.license t2.license
+    ; homepage = f t1.homepage t2.homepage
+    ; documentation = f t1.documentation t2.documentation
+    ; bug_reports = f t1.bug_reports t2.bug_reports
+    ; maintainers = f t1.maintainers t2.maintainers
+    }
+end
+
 type t =
   { name : Name.t
   ; loc : Loc.t
@@ -242,6 +376,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
   ; kind : Kind.t
@@ -264,6 +399,7 @@ let decode ~dir =
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
      and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
+     and+ info = Info.decode ~since:(2, 0) ()
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
      and+ deprecated_package_names =
        field ~default:[] "deprecated_package_names"
@@ -291,6 +427,7 @@ let decode ~dir =
      ; depends
      ; conflicts
      ; depopts
+     ; info
      ; path = dir
      ; version = None
      ; kind = Dune false
@@ -307,6 +444,7 @@ let to_dyn
     ; depends
     ; conflicts
     ; depopts
+    ; info
     ; kind
     ; tags
     ; loc = _
@@ -321,6 +459,7 @@ let to_dyn
     ; ("depends", list Dependency.to_dyn depends)
     ; ("conflicts", list Dependency.to_dyn conflicts)
     ; ("depopts", list Dependency.to_dyn depopts)
+    ; ("info", Info.to_dyn info)
     ; ("kind", Kind.to_dyn kind)
     ; ("tags", list string tags)
     ; ("version", option string version)

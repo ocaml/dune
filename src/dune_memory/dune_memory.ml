@@ -130,8 +130,7 @@ module type memory = sig
     -> int option
     -> (promotion list, string) Result.t
 
-  val search :
-    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> key -> (metadata * File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> t
 end
@@ -268,7 +267,7 @@ module Memory = struct
     in
     with_lock memory f
 
-  let search memory ?(touch = true) key =
+  let search memory key =
     let path = FSSchemeImpl.path (path_meta memory) key in
     let f () =
       let open Result.O in
@@ -294,8 +293,8 @@ module Memory = struct
                 }
             | _ -> Error "invalid metadata scheme in produced files list")
         in
-        if touch then
-          List.iter produced ~f:(fun f -> Path.touch f.File.in_the_memory);
+        (* Touch cache files so they are removed last by LRU trimming *)
+        List.iter produced ~f:(fun f -> Path.touch f.File.in_the_memory);
         (metadata, produced)
       | _ -> Error "invalid metadata"
     in

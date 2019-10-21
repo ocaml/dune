@@ -45,8 +45,7 @@ module type memory = sig
     -> int option
     -> (promotion list, string) Result.t
 
-  val search :
-    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> key -> (metadata * File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> t
 end

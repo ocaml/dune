@@ -276,7 +276,7 @@ module Client = struct
                          [ Sexp.Atom "supported-formats"; Sexp.Atom "v2" ]
                      ]);
                 "unable to read Dune memory")
-            ( Dune_memory.make ~root:(Path.of_string dir)
+            ( Dune_memory.Memory.make ~root:(Path.of_string dir)
                 (client_handle client.output)
             >>| fun memory -> { client with memory } )
         | args -> invalid_args args
@@ -424,7 +424,8 @@ module Client = struct
             ; common_metadata = []
             ; memory =
                 ( match
-                    Dune_memory.make ?root:manager.root (client_handle output)
+                    Dune_memory.Memory.make ?root:manager.root
+                      (client_handle output)
                   with
                 | Result.Ok m -> m
                 | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
@@ -477,7 +478,7 @@ module Client = struct
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let open Result.O in
-    let* memory = Result.map_error ~f:err (Dune_memory.make ignore) in
+    let* memory = Result.map_error ~f:err (Dune_memory.Memory.make ignore) in
     let* port =
       let root = Dune_memory.default_root () in
       Daemonize.daemonize ~workdir:root (default_port_file ())

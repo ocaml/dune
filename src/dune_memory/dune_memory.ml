@@ -269,14 +269,13 @@ module Memory = struct
   let set_build_dir memory p = { memory with build_root = Some p }
 
   let teardown _ = ()
-end
 
-let make ?(root = default_root ()) handler =
-  if Path.basename root <> "v2" then
-    Result.Error "unable to read dune-memory"
-  else
-    Result.ok
-      { Memory.root; Memory.build_root = None; repositories = []; handler }
+  let make ?(root = default_root ()) handler =
+    if Path.basename root <> "v2" then
+      Result.Error "unable to read dune-memory"
+    else
+      Result.ok { root; build_root = None; repositories = []; handler }
+end
 
 let trim memory free =
   let path = Memory.path_files memory in

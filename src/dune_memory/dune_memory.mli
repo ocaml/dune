@@ -22,8 +22,8 @@ module Memory : sig
     -> metadata
     -> int option
     -> (promotion list, string) Result.t
-end
 
-val make : ?root:Path.t -> Memory.handler -> (Memory.t, string) Result.t
+  val make : ?root:Path.t -> handler -> (t, string) Result.t
+end
 
 val trim : Memory.t -> int -> int * Path.t list

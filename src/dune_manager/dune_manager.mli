@@ -28,6 +28,4 @@ module Client : sig
   include Dune_memory.memory
 
   val make : ?finally:(unit -> unit) -> (command -> unit) -> (t, exn) Result.t
-
-  val teardown : t -> unit
 end

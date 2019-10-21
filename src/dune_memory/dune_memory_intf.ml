@@ -46,4 +46,6 @@ module type memory = sig
   val search : t -> key -> (metadata * File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> t
+
+  val teardown : t -> unit
 end

@@ -267,6 +267,8 @@ module Memory = struct
     with_lock memory f
 
   let set_build_dir memory p = { memory with build_root = Some p }
+
+  let teardown _ = ()
 end
 
 let make ?(root = default_root ()) handler =

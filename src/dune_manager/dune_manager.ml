@@ -19,7 +19,6 @@ type client =
   ; output : out_channel
   ; common_metadata : Sexp.t list
   ; memory : Dune_memory.Memory.t
-  ; repositories : (string * string * string) list
   ; version : version option
   }
 
@@ -188,14 +187,10 @@ let client_thread (events, client) =
         cmd -> (
         let repo =
           match rest with
-          | [] -> Result.ok None
-          | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] -> (
-            int_of_string ~where:"repository index" repo
-            >>= fun repo ->
-            try Result.Ok (List.nth client.repositories repo)
-            with Failure _ ->
-              Result.Error (Printf.sprintf "repository out of range: %i" repo)
-            )
+          | [] -> Result.Ok None
+          | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] ->
+            Result.map ~f:Option.some
+              (int_of_string ~where:"repository index" repo)
           | _ ->
             Result.Error
               (Printf.sprintf "invalid promotion message: %s"
@@ -228,7 +223,7 @@ let client_thread (events, client) =
         >>= fun key ->
         Dune_memory.Memory.promote client.memory files key
           (metadata @ client.common_metadata)
-          (Option.map ~f:(fun (_, remote, commit) -> (remote, commit)) repo)
+          repo
         >>| fun promotions ->
         match List.filter_map ~f promotions with
         | [] -> client
@@ -266,17 +261,21 @@ let client_thread (events, client) =
     and handle_set_repos client arg =
       let convert = function
         | Sexp.List
-            [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom dir ]
+            [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
             ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
             ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
             ] ->
-          Result.ok (dir, remote, commit)
+          Result.ok { Dune_memory.Memory.directory; remote; commit }
         | invalid ->
           Result.Error
             (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
       in
       Result.List.map ~f:convert arg
-      >>| fun repositories -> { client with repositories }
+      >>| fun repositories ->
+      let memory =
+        Dune_memory.Memory.with_repositories client.memory repositories
+      in
+      { client with memory }
     in
     let handle_cmd client = function
       | Sexp.List (Sexp.Atom cmd :: args) ->
@@ -388,7 +387,6 @@ let run ?(port_f = ignore) ?(port = 0) manager =
           ; output = Unix.out_channel_of_descr fd
           ; version = None
           ; common_metadata = []
-          ; repositories = []
           ; memory =
               ( match Dune_memory.make ?root:manager.root () with
               | Result.Ok m -> m
@@ -448,6 +446,12 @@ module Client = struct
     ; memory : Dune_memory.Memory.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
+    }
+
+  type repository =
+    { directory : string
+    ; remote : string
+    ; commit : string
     }
 
   type command = Dedup of (Path.Build.t * Path.t * Digest.t)
@@ -523,6 +527,20 @@ module Client = struct
     ignore (read input);
     let thread = Thread.create thread input in
     Result.Ok { socket; fd; input; memory; thread; finally }
+
+  let with_repositories client repos =
+    let repos =
+      let f { directory; remote; commit } =
+        Sexp.List
+          [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
+          ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
+          ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+          ]
+      in
+      List.map ~f repos
+    in
+    send client.socket (Sexp.List (Sexp.Atom "set-repos" :: repos));
+    client
 
   let promote client paths key metadata repo =
     let key = Dune_memory.key_to_string key

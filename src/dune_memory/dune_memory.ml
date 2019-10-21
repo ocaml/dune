@@ -114,12 +114,20 @@ end
 module type memory = sig
   type t
 
+  type repository =
+    { directory : string
+    ; remote : string
+    ; commit : string
+    }
+
+  val with_repositories : t -> repository list -> t
+
   val promote :
        t
     -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
-    -> (string * string) option
+    -> int option
     -> (promotion list, string) Result.t
 
   val search :
@@ -129,9 +137,16 @@ module type memory = sig
 end
 
 module Memory = struct
+  type repository =
+    { directory : string
+    ; remote : string
+    ; commit : string
+    }
+
   type t =
     { root : Path.t
     ; build_root : Path.t option
+    ; repositories : repository list
     }
 
   let path_files memory = Path.L.relative memory.root [ "files" ]
@@ -158,14 +173,25 @@ module Memory = struct
   let search memory hash file =
     Collision.search (FSSchemeImpl.path (path_files memory) hash) file
 
+  let with_repositories memory repositories = { memory with repositories }
+
   let promote memory paths key metadata repo =
     let open Result.O in
+    let* repo =
+      match repo with
+      | Some idx -> (
+        match List.nth memory.repositories idx with
+        | None ->
+          Result.Error (Printf.sprintf "repository out of range: %i" idx)
+        | repo -> Result.Ok repo )
+      | None -> Result.Ok None
+    in
     let metadata =
       apply
-        ~f:(fun metadata (remote, commit) ->
+        ~f:(fun metadata repository ->
           metadata
-          @ [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom remote ]
-            ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+          @ [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repository.remote ]
+            ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom repository.commit ]
             ])
         repo metadata
     in
@@ -282,7 +308,7 @@ let make ?(root = default_root ()) () =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-memory"
   else
-    Result.ok { Memory.root; Memory.build_root = None }
+    Result.ok { Memory.root; Memory.build_root = None; repositories = [] }
 
 let trim memory free =
   let path = Memory.path_files memory in

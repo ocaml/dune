@@ -27,7 +27,15 @@ val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
 module Client : sig
   type t
 
+  type repository =
+    { directory : string
+    ; remote : string
+    ; commit : string
+    }
+
   type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+
+  val with_repositories : t -> repository list -> t
 
   val promote :
        t

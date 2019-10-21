@@ -29,12 +29,20 @@ end
 module type memory = sig
   type t
 
+  type repository =
+    { directory : string
+    ; remote : string
+    ; commit : string
+    }
+
+  val with_repositories : t -> repository list -> t
+
   val promote :
        t
     -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
-    -> (string * string) option
+    -> int option
     -> (promotion list, string) Result.t
 
   val search :

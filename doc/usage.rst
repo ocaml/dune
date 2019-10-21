@@ -222,7 +222,7 @@ definition is assumed:
 
    (alias
     (name default)
-    (deps (alias_rec install)))
+    (deps (alias_rec all)))
 
 Which means that by default ``dune build`` will build everything that
 is installable.
@@ -249,7 +249,7 @@ There's a few aliases that dune automatically creates for the user
 
 * ``default`` - this alias includes all the targets that dune will build if a
   target isn't specified, i.e. ``$ dune build``. By default, this is set to the
-  ``install`` alias.
+  ``all`` alias. Note that for dune 1.x, this was set to the ``install`` alias.
 
 * ``runtest`` - this is the alias to run all the tests, building them if
   necessary.

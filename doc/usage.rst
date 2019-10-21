@@ -267,7 +267,7 @@ There's a few aliases that dune automatically creates for the user
 
 * ``check`` - This alias will build the minimal set of targets required for
   tooling support. Essentially, this is ``.cmi``, ``.cmt``, ``.cmti``, and
-  .merlin files.
+  ``.merlin`` files.
 
 Variables for artifacts
 -----------------------

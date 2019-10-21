@@ -107,48 +107,58 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       Build.write_file (Path.as_in_build_dir_exn source_path) contents
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
-(* Add a rule calling [ocamlmklib] to build a library. *)
+(* Rules for building static and dynamic libraries using [ocamlmklib]. *)
 let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
-    ~sandbox ~custom ~targets =
-  Super_context.add_rule sctx ~sandbox ~dir ~loc
-    (let cclibs_args =
-       Expander.expand_and_eval_set expander c_library_flags
-         ~standard:(Build.return [])
-     in
-     let ctx = Super_context.context sctx in
-     Command.run ~dir:(Path.build ctx.build_dir) (Ok ctx.ocamlmklib)
-       [ A "-g"
-       ; ( if custom then
-           A "-custom"
-         else
-           Command.Args.empty )
-       ; A "-o"
-       ; Path path
-       ; Deps o_files
-       ; Dyn
-           (Build.map cclibs_args ~f:(fun cclibs ->
-                (* https://github.com/ocaml/dune/issues/119 *)
-                if ctx.ccomp_type = "msvc" then
-                  let cclibs = msvc_hack_cclibs cclibs in
-                  Command.quote_args "-ldopt" cclibs
-                else
-                  As cclibs))
-       ; Hidden_targets targets
-       ])
-
-(* Add a rule calling [ocamlmklib] to build a stubs archive for an OCaml
-   library. *)
-let ocamlmklib_ocaml (lib : Library.t) ~sctx ~dir ~expander ~o_files ~sandbox
-    ~custom ~targets =
-  let path =
-    Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
+    ~static_target ~dynamic_target ~build_targets_together =
+  let build ~custom ~sandbox targets =
+    Super_context.add_rule sctx ~sandbox ~dir ~loc
+      (let cclibs_args =
+         Expander.expand_and_eval_set expander c_library_flags
+           ~standard:(Build.return [])
+       in
+       let ctx = Super_context.context sctx in
+       Command.run ~dir:(Path.build ctx.build_dir) (Ok ctx.ocamlmklib)
+         [ A "-g"
+         ; ( if custom then
+             A "-custom"
+           else
+             Command.Args.empty )
+         ; A "-o"
+         ; Path path
+         ; Deps o_files
+         ; Dyn
+             (Build.map cclibs_args ~f:(fun cclibs ->
+                  (* https://github.com/ocaml/dune/issues/119 *)
+                  if ctx.ccomp_type = "msvc" then
+                    let cclibs = msvc_hack_cclibs cclibs in
+                    Command.quote_args "-ldopt" cclibs
+                  else
+                    As cclibs))
+         ; Hidden_targets targets
+         ])
   in
-  (* CR-someday aalekseyev: I'm not sure why [c_library_flags] is needed here.
-     I think it's unused at least when building a static archive. But maybe
-     it's used for dynamic libraries. It would be nice to clarify that
-     somewhere. *)
-  ocamlmklib ~path ~loc:lib.buildable.loc ~c_library_flags:lib.c_library_flags
-    ~sctx ~dir ~expander ~o_files ~sandbox ~custom ~targets
+  if build_targets_together then
+    (* Build both the static and dynamic targets in one ocamlmklib invocation. *)
+    build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
+      [ static_target; dynamic_target ]
+  else (
+    (* Build the static target only by passing the [-custom] flag. *)
+    build ~sandbox:Sandbox_config.no_special_requirements ~custom:true
+      [ static_target ];
+    (* The second rule (below) may fail on some platforms, but the build will
+       succeed as long as the resulting dynamic library isn't actually needed
+       (the rule will not fire in that case). We can't tell ocamlmklib to build
+       only the dynamic target, so it will actually build *both* and we
+       therefore sandbox the action to avoid overwriting the static archive.
+
+       TODO: Figure out how to avoid duplicating work in the case when both
+       rules fire. It seems like this might require introducing the notion of
+       "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
+       flag, which always produces the static target and sometimes produces the
+       dynamic target too. *)
+    build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
+      [ dynamic_target ]
+  )
 
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
    and track all files in specified directories as [Hidden_deps] dependencies. *)
@@ -199,10 +209,9 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                         Command.Args.Hidden_deps deps :: args))
                ] )))
 
-(* CR aalekseyev: Maybe we'll need to support the case when dynamic library
-   can't be built for some reason. It seems that the OCaml library code path
-   has to deal with that case. *)
-(* Build a static and a dynamic archive for a foreign library. *)
+(* Build a static and a dynamic archive for a foreign library. Note that the
+   dynamic archive can't be built on some platforms, in which case the rule
+   that produces it will fail. *)
 let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
@@ -219,14 +228,13 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
   Check_rules.add_files sctx ~dir o_files;
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let static = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-  let dynamic = Foreign.dll_file ~archive_name ~dir ~ext_dll in
+  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
   ocamlmklib
     ~path:(Path.build (Path.Build.relative dir archive_name))
     ~loc:library.stubs.loc
     ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
-    ~o_files ~sandbox:Sandbox_config.no_special_requirements ~custom:false
-    ~targets:[ static; dynamic ]
+    ~o_files ~static_target ~dynamic_target ~build_targets_together:false
 
 (* Build a required set of archives for an OCaml library. *)
 let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
@@ -234,26 +242,23 @@ let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
   let archive_name = Library.stubs_archive_name lib in
-  let static = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-  let dynamic = Foreign.dll_file ~archive_name ~dir ~ext_dll in
+  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
   let modes = Compilation_context.modes cctx in
-  let ocamlmklib = ocamlmklib_ocaml lib ~sctx ~expander ~dir ~o_files in
-  if
+  let path =
+    Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
+  in
+  (* CR-someday aalekseyev: I'm not sure why [c_library_flags] is needed here.
+     I think it's unused at least when building a static archive. But maybe
+     it's used for dynamic libraries. It would be nice to clarify that
+     somewhere. *)
+  let build_targets_together =
     modes.native && modes.byte
     && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-  then
-    (* If we build for both modes and support dynlink, use a single invocation
-       to build both the static and dynamic libraries *)
-    ocamlmklib ~sandbox:Sandbox_config.no_special_requirements ~custom:false
-      ~targets:[ static; dynamic ]
-  else (
-    ocamlmklib ~sandbox:Sandbox_config.no_special_requirements ~custom:true
-      ~targets:[ static ];
-    (* We can't tell ocamlmklib to build only the dll, so we sandbox the action
-       to avoid overriding the static archive *)
-    ocamlmklib ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
-      ~targets:[ dynamic ]
-  )
+  in
+  ocamlmklib ~path ~loc:lib.buildable.loc ~sctx ~expander ~dir ~o_files
+    ~c_library_flags:lib.c_library_flags ~static_target ~dynamic_target
+    ~build_targets_together
 
 let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =

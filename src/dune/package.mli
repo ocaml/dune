@@ -82,15 +82,21 @@ module Source_kind : sig
 end
 
 module Info : sig
-  type t =
-    { source : Source_kind.t option
-    ; license : string option
-    ; authors : string list option
-    ; homepage : string option
-    ; bug_reports : string option
-    ; documentation : string option
-    ; maintainers : string list option
-    }
+  type t
+
+  val source : t -> Source_kind.t option
+
+  val license : t -> string option
+
+  val authors : t -> string list option
+
+  val homepage : t -> string option
+
+  val bug_reports : t -> string option
+
+  val documentation : t -> string option
+
+  val maintainers : t -> string list option
 
   val empty : t
 

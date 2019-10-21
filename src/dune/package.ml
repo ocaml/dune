@@ -276,6 +276,28 @@ module Info = struct
     ; maintainers : string list option
     }
 
+  let source t = t.source
+
+  let license t = t.license
+
+  let authors t = t.authors
+
+  let homepage t =
+    match (t.homepage, t.source) with
+    | None, Some (Github (user, repo)) ->
+      Some (sprintf "https://github.com/%s/%s" user repo)
+    | s, _ -> s
+
+  let bug_reports t =
+    match (t.bug_reports, t.source) with
+    | None, Some (Github (user, repo)) ->
+      Some (sprintf "https://github.com/%s/%s/issues" user repo)
+    | s, _ -> s
+
+  let documentation t = t.documentation
+
+  let maintainers t = t.maintainers
+
   let empty =
     { source = None
     ; license = None
@@ -330,18 +352,6 @@ module Info = struct
     and+ maintainers =
       field_o "maintainers"
         (Dune_lang.Syntax.since Stanza.syntax (v (1, 10)) >>> repeat string)
-    in
-    let homepage =
-      match (homepage, source) with
-      | None, Some (Github (user, repo)) ->
-        Some (sprintf "https://github.com/%s/%s" user repo)
-      | s, _ -> s
-    in
-    let bug_reports =
-      match (bug_reports, source) with
-      | None, Some (Github (user, repo)) ->
-        Some (sprintf "https://github.com/%s/%s/issues" user repo)
-      | s, _ -> s
     in
     { source
     ; authors

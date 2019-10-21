@@ -103,6 +103,7 @@ module Memory = struct
     { root : Path.t
     ; build_root : Path.t option
     ; repositories : repository list
+    ; handler : handler
     }
 
   let path_files memory = Path.L.relative memory.root [ "files" ]
@@ -220,6 +221,11 @@ module Memory = struct
                              ])
                        promoted )
               ]));
+      let f = function
+        | Already_promoted (f, t, d) -> memory.handler (Dedup (f, t, d))
+        | _ -> ()
+      in
+      List.iter ~f promoted;
       promoted
     in
     with_lock memory f
@@ -263,11 +269,12 @@ module Memory = struct
   let set_build_dir memory p = { memory with build_root = Some p }
 end
 
-let make ?(root = default_root ()) () =
+let make ?(root = default_root ()) handler =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-memory"
   else
-    Result.ok { Memory.root; Memory.build_root = None; repositories = [] }
+    Result.ok
+      { Memory.root; Memory.build_root = None; repositories = []; handler }
 
 let trim memory free =
   let path = Memory.path_files memory in

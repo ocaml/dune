@@ -22,6 +22,10 @@ module MemoryTypes = struct
     ; remote : string
     ; commit : string
     }
+
+  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+
+  type handler = command -> unit
 end
 
 module type memory = sig

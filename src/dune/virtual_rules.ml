@@ -5,14 +5,14 @@ module Pp_spec : sig
   type t
 
   val make :
-    Dune_file.Preprocess.t Dune_file.Per_module.t -> Ocaml_version.t -> t
+    Dune_file.Preprocess.t Module_name.Per_item.t -> Ocaml_version.t -> t
 
   val pped_module : t -> Module.t -> Module.t
 end = struct
-  type t = (Module.t -> Module.t) Dune_file.Per_module.t
+  type t = (Module.t -> Module.t) Module_name.Per_item.t
 
   let make preprocess v =
-    Dune_file.Per_module.map preprocess ~f:(fun pp ->
+    Module_name.Per_item.map preprocess ~f:(fun pp ->
         match
           Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v
         with
@@ -25,7 +25,7 @@ end = struct
             fun m ->
           Module.pped (Module.ml_source m))
 
-  let pped_module (t : t) m = Dune_file.Per_module.get t (Module.name m) m
+  let pped_module (t : t) m = Module_name.Per_item.get t (Module.name m) m
 end
 
 let setup_copy_rules_for_impl ~sctx ~dir vimpl =

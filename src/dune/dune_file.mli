@@ -40,10 +40,8 @@ module Preprocess : sig
     t -> for_:Pp_flag_consumer.t -> Ocaml_version.t -> Without_future_syntax.t
 end
 
-module Per_module : Per_item.S with type key = Module_name.t
-
 module Preprocess_map : sig
-  type t = Preprocess.t Per_module.t
+  type t = Preprocess.t Module_name.Per_item.t
 
   val decode : t Dune_lang.Decoder.t
 

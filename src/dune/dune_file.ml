@@ -280,7 +280,7 @@ let enabled_if ~since =
   field "enabled_if" ~default:Blang.true_ decode
 
 module Per_module = struct
-  include Per_item.Make (Module_name)
+  include Module_name.Per_item
 
   let decode ~default a =
     peek_exn

@@ -109,22 +109,22 @@ let opam_fields project (package : Package.t) =
     Package.Info.superpose (Dune_project.info project) package.Package.info
   in
   let optional_fields =
-    [ ("bug-reports", info.Package.Info.bug_reports)
-    ; ("homepage", info.Package.Info.homepage)
-    ; ("doc", info.Package.Info.documentation)
-    ; ("license", info.Package.Info.license)
+    [ ("bug-reports", Package.Info.bug_reports info)
+    ; ("homepage", Package.Info.homepage info)
+    ; ("doc", Package.Info.documentation info)
+    ; ("license", Package.Info.license info)
     ; ("version", Dune_project.version project)
     ; ( "dev-repo"
       , Option.map
           ~f:(Format.asprintf "%a" Package.Source_kind.pp)
-          info.Package.Info.source )
+          (Package.Info.source info) )
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            Option.map v ~f:(fun v -> (k, string v)))
   in
   let list_fields =
-    [ ("maintainer", info.Package.Info.maintainers)
-    ; ("authors", info.Package.Info.authors)
+    [ ("maintainer", Package.Info.maintainers info)
+    ; ("authors", Package.Info.authors info)
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            match v with

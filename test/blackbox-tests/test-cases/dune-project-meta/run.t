@@ -72,7 +72,7 @@ Package information fields can be overriden per-package:
   opam-version: "2.0"
   authors: ["Foo" "Bar"]
   license: "MIT"
-  homepage: "https://github.com/mirage/foo"
+  homepage: "https://my.home.page"
   bug-reports: "https://github.com/mirage/foo/issues"
   depends: [
     "dune" {>= "2.0"}

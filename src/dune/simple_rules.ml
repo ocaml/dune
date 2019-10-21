@@ -72,12 +72,24 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
            ~dep_kind:Required ~targets ~targets_dir:dir
     in
-    Option.iter rule.alias ~f:(fun name ->
+    let action =
+      match rule.alias with
+      | None -> action
+      | Some alias ->
         let stamp =
           let action = Some (snd rule.action) in
           stamp ~deps:rule.deps ~extra_bindings ~action
+          |> Digest.generic
+          |> Digest.to_string
         in
-        add_alias sctx ~dir ~name ~stamp ~loc:(Some (fst rule.action)) action);
+        let stamp_target = Path.Build.relative dir stamp in
+        let () =
+          let alias = Alias.make alias ~dir in
+          let deps = Path.Set.singleton (Path.build stamp_target) in
+          Rules.Produce.Alias.add_deps alias deps
+        in
+        Build.progn [action; Build.create_file stamp_target]
+    in
     SC.add_rule_get_targets
       sctx
       (* user rules may have extra requirements, in which case they will be
@@ -86,9 +98,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
       ~loc:rule.loc
       ~locks:(interpret_locks ~expander rule.locks)
-      ( SC.Deps.interpret_named sctx ~expander rule.deps
-      |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
-           ~dep_kind:Required ~targets ~targets_dir:dir )
+      action
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.glob in

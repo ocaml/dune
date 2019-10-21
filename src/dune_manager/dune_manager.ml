@@ -221,7 +221,7 @@ let client_thread (events, client) =
         >>= fun files ->
         Dune_memory.key_of_string key
         >>= fun key ->
-        Dune_memory.Memory.promote client.memory files key
+        Dune_memory.Memory.promote_sync client.memory files key
           (metadata @ client.common_metadata)
           repo
         >>| fun promotions ->

@@ -43,14 +43,24 @@ module type memory = sig
     -> key
     -> metadata
     -> int option
-    -> (promotion list, string) Result.t
+    -> (unit, string) Result.t
 
   val search : t -> key -> (metadata * File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> t
 end
 
-module Memory : memory
+module Memory : sig
+  include memory
+
+  val promote_sync :
+       t
+    -> (Path.Build.t * Digest.t) list
+    -> key
+    -> metadata
+    -> int option
+    -> (promotion list, string) Result.t
+end
 
 val make : ?root:Path.t -> unit -> (Memory.t, string) Result.t
 

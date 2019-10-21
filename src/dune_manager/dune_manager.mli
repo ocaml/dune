@@ -25,32 +25,9 @@ val endpoint : t -> string option
 val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
 
 module Client : sig
-  type t
-
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
-    }
+  include Dune_memory.memory
 
   type command = Dedup of (Path.Build.t * Path.t * Digest.t)
-
-  val with_repositories : t -> repository list -> t
-
-  val promote :
-       t
-    -> (Path.Build.t * Digest.t) list
-    -> Dune_memory.key
-    -> Dune_memory.metadata
-    -> int option
-    -> (unit, string) Result.t
-
-  val search :
-       t
-    -> Dune_memory.key
-    -> (Dune_memory.metadata * Dune_memory.File.t list, string) Result.t
-
-  val set_build_dir : t -> Path.t -> t
 
   val make : ?finally:(unit -> unit) -> (command -> unit) -> (t, exn) Result.t
 

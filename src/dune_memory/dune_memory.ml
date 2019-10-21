@@ -128,7 +128,7 @@ module type memory = sig
     -> key
     -> metadata
     -> int option
-    -> (promotion list, string) Result.t
+    -> (unit, string) Result.t
 
   val search : t -> key -> (metadata * File.t list, string) Result.t
 
@@ -174,7 +174,7 @@ module Memory = struct
 
   let with_repositories memory repositories = { memory with repositories }
 
-  let promote memory paths key metadata repo =
+  let promote_sync memory paths key metadata repo =
     let open Result.O in
     let* repo =
       match repo with
@@ -266,6 +266,9 @@ module Memory = struct
       promoted
     in
     with_lock memory f
+
+  let promote memory paths key metadata repo =
+    Result.map ~f:ignore (promote_sync memory paths key metadata repo)
 
   let search memory key =
     let path = FSSchemeImpl.path (path_meta memory) key in

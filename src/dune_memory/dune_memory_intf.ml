@@ -16,21 +16,17 @@ module File = struct
     }
 end
 
-module MemoryTypes = struct
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
-    }
+type repository =
+  { directory : string
+  ; remote : string
+  ; commit : string
+  }
 
-  type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+type command = Dedup of (Path.Build.t * Path.t * Digest.t)
 
-  type handler = command -> unit
-end
+type handler = command -> unit
 
 module type memory = sig
-  include module type of MemoryTypes
-
   type t
 
   val with_repositories : t -> repository list -> t

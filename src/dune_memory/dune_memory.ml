@@ -24,6 +24,12 @@ let promotion_to_string = function
       (Path.Local.to_string (Path.Build.local original))
       (Path.to_string promoted)
 
+let command_to_dyn = function
+  | Dedup (source, target, hash) ->
+    let open Dyn.Encoder in
+    constr "Dedup"
+      [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
+
 (* How to handle collisions. E.g. another version could assume collisions are
    not possible *)
 module Collision = struct
@@ -97,8 +103,6 @@ let apply ~f o v =
   | None -> v
 
 module Memory = struct
-  include MemoryTypes
-
   type t =
     { root : Path.t
     ; build_root : Path.t option

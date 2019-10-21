@@ -27,5 +27,8 @@ val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
 module Client : sig
   include Dune_memory.memory
 
-  val make : ?finally:(unit -> unit) -> (command -> unit) -> (t, exn) Result.t
+  val make :
+       ?finally:(unit -> unit)
+    -> (Dune_memory.command -> unit)
+    -> (t, exn) Result.t
 end

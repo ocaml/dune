@@ -150,8 +150,6 @@ let endpoint m = m.endpoint
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
 module Client = struct
-  include Dune_memory.MemoryTypes
-
   type t =
     { socket : out_channel
     ; fd : Unix.file_descr
@@ -160,12 +158,6 @@ module Client = struct
     ; thread : Thread.t
     ; finally : (unit -> unit) option
     }
-
-  let command_to_dyn = function
-    | Dedup (source, target, hash) ->
-      let open Dyn.Encoder in
-      constr "Dedup"
-        [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
 
   let read input =
     let open Result.O in
@@ -178,13 +170,14 @@ module Client = struct
       match Digest.from_hex digest with
       | Some digest ->
         Result.Ok
-          (Dedup (Path.Build.of_string source, Path.of_string target, digest))
+          (Dune_memory.Dedup
+             (Path.Build.of_string source, Path.of_string target, digest))
       | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
     | exp ->
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
   let client_handle output = function
-    | Dune_memory.Memory.Dedup (f, t, d) ->
+    | Dune_memory.Dedup (f, t, d) ->
       send output
         (Sexp.List
            [ Sexp.Atom "dedup"
@@ -298,7 +291,7 @@ module Client = struct
               ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
               ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
               ] ->
-            Result.ok { Dune_memory.Memory.directory; remote; commit }
+            Result.ok { Dune_memory.directory; remote; commit }
           | invalid ->
             Result.Error
               (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
@@ -509,7 +502,7 @@ module Client = struct
       match
         let+ command = read input in
         Log.infof "dune-cache command: %a" Pp.render_ignore_tags
-          (Dyn.pp (command_to_dyn command));
+          (Dyn.pp (Dune_memory.command_to_dyn command));
         handle command
       with
       | Result.Error e ->
@@ -525,7 +518,7 @@ module Client = struct
 
   let with_repositories client repos =
     let repos =
-      let f { directory; remote; commit } =
+      let f { Dune_memory.directory; remote; commit } =
         Sexp.List
           [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
           ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]

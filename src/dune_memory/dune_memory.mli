@@ -12,6 +12,8 @@ val key_of_string : string -> key result
 
 val promotion_to_string : promotion -> string
 
+val command_to_dyn : command -> Dyn.t
+
 module Memory : sig
   include memory
 

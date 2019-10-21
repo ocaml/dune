@@ -172,6 +172,10 @@
   do not follow Dune's convention of prefixing libraries with the package
   name. (#2696, @nojb)
 
+- The fields `license`, `authors`, `maintainers`, `source`, `bug_reports`,
+  `homepage`, and `documentation` of `dune-project` can now be overriden on a
+  per-package basis. (#2774, @nojb)
+
 1.11.4 (09/10/2019)
 -------------------
 

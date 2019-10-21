@@ -215,6 +215,9 @@ With this fields in, every time dune is called to execute some rules (either via
 ``dune build``, ``dune runtest`` or something else), the opam files get
 generated.
 
+Some or all of these fields may be overriden for each package of the project, see
+:ref:`package`.
+
 .. _package:
 
 package
@@ -241,6 +244,11 @@ It contains the following fields:
   with the :ref:`deprecated-library-name` stanza to migrate legacy libraries
   from other build systems which do not follow Dune's convention of prefixing
   the public name of the library with the package name.
+
+- ``(license <name>)``, ``(authors <authors>)``, ``(maintainers
+  <maintainers>)``, ``(source <source>)``, ``(bug_reports <url>)``, ``(homepage
+  <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
+  the corresponding global fields. These fields are available since Dune 2.0.
 
 The list of dependencies ``<dep-specification>`` is modeled after opam's own
 language: The syntax is as a list of the following elements:

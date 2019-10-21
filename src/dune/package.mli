@@ -69,6 +69,41 @@ module Kind : sig
     | Opam
 end
 
+module Source_kind : sig
+  type t =
+    | Github of string * string
+    | Url of string
+
+  val to_dyn : t Dyn.Encoder.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val decode : t Dune_lang.Decoder.t
+end
+
+module Info : sig
+  type t =
+    { source : Source_kind.t option
+    ; license : string option
+    ; authors : string list option
+    ; homepage : string option
+    ; bug_reports : string option
+    ; documentation : string option
+    ; maintainers : string list option
+    }
+
+  val empty : t
+
+  val to_dyn : t Dyn.Encoder.t
+
+  val decode :
+       ?since:Dune_lang.Syntax.Version.t
+    -> unit
+    -> t Dune_lang.Decoder.fields_parser
+
+  val superpose : t -> t -> t
+end
+
 type t =
   { name : Name.t
   ; loc : Loc.t
@@ -77,6 +112,7 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
   ; kind : Kind.t

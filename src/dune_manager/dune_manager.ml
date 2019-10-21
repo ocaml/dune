@@ -1,6 +1,5 @@
 module Evt = Event
 open Stdune
-open Dune_memory
 module Utils = Utils
 open Utils
 
@@ -439,6 +438,8 @@ let endpoint m = m.endpoint
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
 module Client = struct
+  include Dune_memory.MemoryTypes
+
   type t =
     { socket : out_channel
     ; fd : Unix.file_descr
@@ -446,12 +447,6 @@ module Client = struct
     ; memory : Dune_memory.Memory.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
-    }
-
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
     }
 
   type command = Dedup of (Path.Build.t * Path.t * Digest.t)

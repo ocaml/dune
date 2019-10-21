@@ -1,18 +1,11 @@
 open Stdune
 open Utils
-
-type key = Digest.t
-
-type metadata = Sexp.t list
+include Dune_memory_intf
 
 type 'a result = ('a, string) Result.t
 
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
-
-type promotion =
-  | Already_promoted of Path.Build.t * Path.t * Digest.t
-  | Promoted of Path.Build.t * Path.t * Digest.t
 
 let key_to_string = Digest.to_string
 
@@ -103,44 +96,8 @@ let apply ~f o v =
   | Some o -> f v o
   | None -> v
 
-module File = struct
-  type t =
-    { in_the_memory : Path.t
-    ; in_the_build_directory : Path.Build.t
-    ; digest : Digest.t
-    }
-end
-
-module type memory = sig
-  type t
-
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
-    }
-
-  val with_repositories : t -> repository list -> t
-
-  val promote :
-       t
-    -> (Path.Build.t * Digest.t) list
-    -> key
-    -> metadata
-    -> int option
-    -> (unit, string) Result.t
-
-  val search : t -> key -> (metadata * File.t list, string) Result.t
-
-  val set_build_dir : t -> Path.t -> t
-end
-
 module Memory = struct
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
-    }
+  include MemoryTypes
 
   type t =
     { root : Path.t

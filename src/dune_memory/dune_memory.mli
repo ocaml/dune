@@ -1,8 +1,6 @@
 open Stdune
 
-type key = Digest.t
-
-type metadata = Sexp.t list
+include module type of Dune_memory_intf
 
 type 'a result = ('a, string) Result.t
 
@@ -12,43 +10,7 @@ val key_to_string : key -> string
 
 val key_of_string : string -> key result
 
-type promotion =
-  | Already_promoted of Path.Build.t * Path.t * Digest.t
-  | Promoted of Path.Build.t * Path.t * Digest.t
-
 val promotion_to_string : promotion -> string
-
-module File : sig
-  type t =
-    { in_the_memory : Path.t
-    ; in_the_build_directory : Path.Build.t
-    ; digest : Digest.t
-    }
-end
-
-module type memory = sig
-  type t
-
-  type repository =
-    { directory : string
-    ; remote : string
-    ; commit : string
-    }
-
-  val with_repositories : t -> repository list -> t
-
-  val promote :
-       t
-    -> (Path.Build.t * Digest.t) list
-    -> key
-    -> metadata
-    -> int option
-    -> (unit, string) Result.t
-
-  val search : t -> key -> (metadata * File.t list, string) Result.t
-
-  val set_build_dir : t -> Path.t -> t
-end
 
 module Memory : sig
   include memory

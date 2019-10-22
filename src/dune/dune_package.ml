@@ -4,6 +4,8 @@ module Vfile = Dune_lang.Versioned_file.Make (struct
   type t = unit
 end)
 
+let fn = "dune-package"
+
 module Lib = struct
   type t =
     { info : Path.t Lib_info.t
@@ -192,6 +194,14 @@ module Lib = struct
   let wrapped t = Option.map t.modules ~f:Modules.wrapped
 
   let info dp = dp.info
+
+  let to_dyn { info; modules; main_module_name } =
+    let open Dyn.Encoder in
+    record
+      [ ("info", Lib_info.to_dyn Path.to_dyn info)
+      ; ("modules", option Modules.to_dyn modules)
+      ; ("main_module_name", option Module_name.to_dyn main_module_name)
+      ]
 end
 
 module Deprecated_library_name = struct
@@ -215,6 +225,13 @@ module Deprecated_library_name = struct
     record_fields
       [ field "old_public_name" Lib_name.encode old_public_name
       ; field "new_public_name" Lib_name.encode new_public_name
+      ]
+
+  let to_dyn { loc = _; old_public_name; new_public_name } =
+    let open Dyn.Encoder in
+    record
+      [ ("old_public_name", Lib_name.to_dyn old_public_name)
+      ; ("new_public_name", Lib_name.to_dyn new_public_name)
       ]
 end
 
@@ -240,6 +257,13 @@ module Entry = struct
       , let+ x = Deprecated_library_name.decode in
         Deprecated_library_name x )
     ]
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Library lib -> constr "Library" [ Lib.to_dyn lib ]
+    | Deprecated_library_name lib ->
+      constr "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
 end
 
 type t =
@@ -302,6 +326,15 @@ let encode ~dune_version { entries; name; version; dir } =
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
+let to_dyn { entries; name; version; dir } =
+  let open Dyn.Encoder in
+  record
+    [ ("entries", list Entry.to_dyn entries)
+    ; ("name", Package.Name.to_dyn name)
+    ; ("version", option string version)
+    ; ("dir", Path.to_dyn dir)
+    ]
+
 module Or_meta = struct
   type nonrec t =
     | Use_meta
@@ -324,4 +357,16 @@ module Or_meta = struct
 
   let load p =
     Vfile.load p ~f:(fun lang -> decode ~lang ~dir:(Path.parent_exn p))
+
+  let pp ~dune_version ppf t =
+    let t = encode ~dune_version t in
+    Format.fprintf ppf "%a@."
+      (Fmt.list ~pp_sep:Fmt.nl Dune_lang.Deprecated.pp)
+      t
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Use_meta -> constr "Use_meta" []
+    | Dune_package t -> constr "Dune_package" [ to_dyn t ]
 end

@@ -116,7 +116,7 @@ module type memory = sig
 
   val promote :
        t
-    -> (Path.t * Digest.t) list
+    -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
     -> (string * string) option
@@ -148,17 +148,12 @@ module Memory = struct
     Exn.protect ~f ~finally
 
   let make_path memory path =
-    let path = Path.to_string path in
-    if Filename.is_relative path then
-      match memory.build_root with
-      | Some p ->
-        Result.ok (Path.of_string (Filename.concat (Path.to_string p) path))
-      | None ->
-        Result.Error
-          (Printf.sprintf "relative path \"%s\" while no build root was set"
-             path)
-    else
-      Result.ok (Path.of_string path)
+    match memory.build_root with
+    | Some p -> Result.ok (Path.append_local p path)
+    | None ->
+      Result.Error
+        (Format.asprintf "relative path \"%a\" while no build root was set"
+           Path.Local.pp path)
 
   let search memory hash file =
     Collision.search (FSSchemeImpl.path (path_files memory) hash) file
@@ -175,7 +170,7 @@ module Memory = struct
         repo metadata
     in
     let promote (path, expected_hash) =
-      make_path memory path
+      make_path memory (Path.Build.local path)
       >>= fun abs_path ->
       Log.infof "promote %s" (Path.to_string abs_path);
       let stat = Unix.lstat (Path.to_string abs_path) in
@@ -212,18 +207,14 @@ module Memory = struct
         | Collision.Found p ->
           Unix.unlink (Path.to_string tmp);
           Path.touch p;
-          Result.Ok
-            (Already_promoted
-               (Path.Build.of_local (Path.local_part path), p, effective_hash))
+          Result.Ok (Already_promoted (path, p, effective_hash))
         | Collision.Not_found p ->
           mkpath (Path.parent_exn p);
           let dest = Path.to_string p in
           Unix.rename (Path.to_string tmp) dest;
           (* Remove write permissions *)
           Unix.chmod dest (stat.st_perm land 0o555);
-          Result.Ok
-            (Promoted
-               (Path.Build.of_local (Path.local_part path), p, effective_hash))
+          Result.Ok (Promoted (path, p, effective_hash))
     in
     let f () =
       Result.List.map ~f:promote paths

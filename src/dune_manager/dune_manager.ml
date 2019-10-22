@@ -202,7 +202,8 @@ let client_thread (events, client) =
                  (Sexp.to_string (Sexp.List cmd)))
         and file = function
           | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-            Dune_memory.key_of_string hash >>| fun d -> (Path.of_string path, d)
+            Dune_memory.key_of_string hash
+            >>| fun d -> (Path.Build.of_local (Path.Local.of_string path), d)
           | sexp ->
             Result.Error
               (Printf.sprintf "invalid file in promotion message: %s"
@@ -336,10 +337,11 @@ let client_thread (events, client) =
     | Unix.Unix_error (Unix.EBADF, _, _) ->
       Log.infof "%s: ended" (peer_name client.peer)
     | Sys_error msg -> Log.infof "%s: ended: %s" (peer_name client.peer) msg
-  with Code_error.E e ->
+  with Code_error.E e as exn ->
     Log.infof "%s: fatal error: %a" (peer_name client.peer)
       Pp.render_ignore_tags
-      (Dyn.pp (Code_error.to_dyn e))
+      (Dyn.pp (Code_error.to_dyn e));
+    raise exn
 
 let run ?(port_f = ignore) ?(port = 0) manager =
   let rec accept_thread sock =
@@ -418,13 +420,17 @@ let daemon ~root ~config started =
   let log_file = Path.relative root "log" in
   Log.init ~file:(This log_file) ();
   let manager = make ~root ~config () in
-  let handler _ =
-    Log.info "caught signal";
+  (* Event blocks signals when waiting. Use a separate thread to catch signals. *)
+  let signal_handler s =
+    Log.infof "caught signal %i, exiting" s;
     ignore (Thread.create stop manager)
+  and signals = [ Sys.sigint; Sys.sigterm ] in
+  let rec signals_handler () =
+    signal_handler (Thread.wait_signal signals);
+    signals_handler ()
   in
-  (* Unfortunately it seems using Event prevents signals from working :-( *)
-  Sys.set_signal Sys.sigint (Sys.Signal_handle handler);
-  Sys.set_signal Sys.sigterm (Sys.Signal_handle handler);
+  ignore (Thread.sigmask Unix.SIG_BLOCK signals);
+  ignore (Thread.create signals_handler ());
   try run ~port_f:started manager
   with Error s ->
     Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
@@ -522,7 +528,7 @@ module Client = struct
     let key = Dune_memory.key_to_string key
     and f (path, digest) =
       Sexp.List
-        [ Sexp.Atom (Path.reach ~from:Path.build_dir path)
+        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
         ; Sexp.Atom (Digest.to_string digest)
         ]
     and repo =

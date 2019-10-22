@@ -34,7 +34,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
       in
       let add_alias ~loc ~action ~locks =
         let alias =
-          { Dune_file.Alias_conf.name = "runtest"
+          { Dune_file.Alias_conf.name = Alias.Name.runtest
           ; locks
           ; package = t.package
           ; deps = t.deps

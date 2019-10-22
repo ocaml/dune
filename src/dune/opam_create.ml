@@ -41,12 +41,14 @@ let package_fields
     ; depends
     ; conflicts
     ; depopts
+    ; info = _
     ; name = _
     ; path = _
     ; version = _
     ; kind = _
     ; tags
     ; loc = _
+    ; deprecated_package_names = _
     } ~project =
   let open Opam_file.Create in
   let tags =
@@ -103,28 +105,33 @@ let opam_fields project (package : Package.t) =
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in
+  let info =
+    Package.Info.superpose (Dune_project.info project) package.Package.info
+  in
   let optional_fields =
-    [ ("bug-reports", Dune_project.bug_reports project)
-    ; ("homepage", Dune_project.homepage project)
-    ; ("doc", Dune_project.documentation project)
-    ; ("license", Dune_project.license project)
+    [ ("bug-reports", Package.Info.bug_reports info)
+    ; ("homepage", Package.Info.homepage info)
+    ; ("doc", Package.Info.documentation info)
+    ; ("license", Package.Info.license info)
     ; ("version", Dune_project.version project)
     ; ( "dev-repo"
       , Option.map
-          ~f:(Format.asprintf "%a" Dune_project.Source_kind.pp)
-          (Dune_project.source project) )
+          ~f:(Format.asprintf "%a" Package.Source_kind.pp)
+          (Package.Info.source info) )
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            Option.map v ~f:(fun v -> (k, string v)))
   in
   let list_fields =
-    [ ("maintainer", Dune_project.maintainers project)
-    ; ("authors", Dune_project.authors project)
+    [ ("maintainer", Package.Info.maintainers info)
+    ; ("authors", Package.Info.authors info)
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            match v with
-           | [] -> None
-           | _ :: _ -> Some (k, string_list v))
+           | None
+           | Some [] ->
+             None
+           | Some (_ :: _ as v) -> Some (k, string_list v))
   in
   let fields =
     [ ("opam-version", string "2.0"); ("build", default_build_command project) ]

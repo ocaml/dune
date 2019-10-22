@@ -28,15 +28,21 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
-let make_memory () =
+let make_cache () =
   let handle = function
     | Dune_manager.Client.Dedup (target, source, digest) ->
       Scheduler.send_dedup target source digest
-  in
-  match Sys.getenv_opt "DUNE_CACHE" with
-  | Some _ ->
-    Fiber.return (Some (Result.ok_exn (Dune_manager.Client.make handle)))
-  | _ -> Fiber.return None
+  and var = "DUNE_CACHE" in
+  match Sys.getenv_opt var with
+  | Some v ->
+    let cache = Result.ok_exn (Dune_manager.Client.make handle) in
+    Fiber.return
+      ( match v with
+      | "check" -> Build_system.Check cache
+      | "1" -> Build_system.Enabled cache
+      | _ -> User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
+      )
+  | _ -> Fiber.return Build_system.Disabled
 
 module Main = struct
   include Dune.Main
@@ -55,11 +61,11 @@ module Main = struct
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in
     let only_packages = Common.only_packages common in
-    let* memory = make_memory () in
+    let* caching = make_cache () in
     let* workspace = scan_workspace common in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
-      ?memory ?external_lib_deps_mode ?only_packages
+      ~caching ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

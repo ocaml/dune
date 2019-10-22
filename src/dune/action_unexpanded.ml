@@ -111,6 +111,8 @@ module Partial = struct
     | Run (prog, args) ->
       let prog, args = expand_run prog args in
       Run (prog, args)
+    | With_accepted_exit_codes (pred, t) ->
+      With_accepted_exit_codes (pred, expand ~expander ~map_exe t)
     | Dynamic_run (prog, args) ->
       let prog, args = expand_run prog args in
       Dynamic_run (prog, args)
@@ -220,6 +222,8 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Run (prog, args)
+  | With_accepted_exit_codes (pred, t) ->
+    With_accepted_exit_codes (pred, partial_expand t ~expander ~map_exe)
   | Dynamic_run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Dynamic_run (prog, args)
@@ -367,6 +371,7 @@ module Infer = struct
     let rec infer acc t =
       match t with
       | Run (prog, _) -> acc +<! prog
+      | With_accepted_exit_codes (_, t) -> infer acc t
       | Dynamic_run (prog, _) -> acc +<! prog
       | Redirect_out (_, fn, t) -> infer (acc +@+ fn) t
       | Redirect_in (_, fn, t) -> infer (acc +< fn) t

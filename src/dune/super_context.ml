@@ -27,7 +27,9 @@ module Lib_entry = struct
 
   let name = function
     | Library lib -> Lib.Local.to_lib lib |> Lib.name
-    | Deprecated_library_name d -> snd d.old_public_name.name
+    | Deprecated_library_name
+        { old_public_name = { public = old_public_name; _ }; _ } ->
+      Dune_file.Public_lib.name old_public_name
 end
 
 type t =
@@ -112,7 +114,8 @@ module Env : sig
 
   val ocaml_flags : t -> dir:Path.Build.t -> Ocaml_flags.t
 
-  val c_flags : t -> dir:Path.Build.t -> string list Build.t C.Kind.Dict.t
+  val foreign_flags :
+    t -> dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t
 
   val external_ : t -> dir:Path.Build.t -> External_env.t
 
@@ -225,11 +228,11 @@ end = struct
       List.filter ctx.ocamlc_cflags ~f:(fun s ->
           not (String.is_prefix s ~prefix:"-std="))
     in
-    C.Kind.Dict.make ~c ~cxx
+    Foreign.Language.Dict.make ~c ~cxx
 
-  let c_flags t ~dir =
+  let foreign_flags t ~dir =
     let default_context_flags = default_context_flags t.context in
-    Env_node.c_flags (get t ~dir) ~profile:t.profile
+    Env_node.foreign_flags (get t ~dir) ~profile:t.profile
       ~expander:(expander t ~dir) ~default_context_flags
 end
 
@@ -275,10 +278,10 @@ let source_files ~src_path =
 let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
     =
   let acc = Expander.Resolved_forms.empty () in
-  let c_flags ~dir = Env.c_flags sctx.env_context ~dir in
+  let foreign_flags ~dir = Env.foreign_flags sctx.env_context ~dir in
   let expander =
     Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~c_flags
+      ~map_exe ~foreign_flags
   in
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
@@ -307,20 +310,17 @@ let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
   else
     flags
 
-let c_flags t ~dir ~expander ~flags =
+let foreign_flags t ~dir ~expander ~flags ~language =
   let t = t.env_context in
   let ccg = Context.cc_g t.context in
-  let default = Env.c_flags t ~dir in
-  C.Kind.Dict.mapi flags ~f:(fun ~kind flags ->
-      let name = C.Kind.to_string kind in
-      Build.memoize (sprintf "%s flags" name)
-        (let default = C.Kind.Dict.get default kind in
-         let c =
-           Expander.expand_and_eval_set expander flags ~standard:default
-         in
-         let open Build.O in
-         let+ l = c in
-         l @ ccg))
+  let default = Env.foreign_flags t ~dir in
+  let name = Foreign.Language.proper_name language in
+  Build.memoize (sprintf "%s flags" name)
+    (let default = Foreign.Language.Dict.get default language in
+     let c = Expander.expand_and_eval_set expander flags ~standard:default in
+     let open Build.O in
+     let+ l = c in
+     l @ ccg)
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 
@@ -329,9 +329,9 @@ let dump_env t ~dir =
   let open Build.O in
   let+ o_dump = Ocaml_flags.dump (Env.ocaml_flags t ~dir)
   and+ c_dump =
-    let c_flags = Env.c_flags t ~dir in
-    let+ c_flags = c_flags.c
-    and+ cxx_flags = c_flags.cxx in
+    let foreign_flags = Env.foreign_flags t ~dir in
+    let+ c_flags = foreign_flags.c
+    and+ cxx_flags = foreign_flags.cxx in
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
@@ -527,8 +527,10 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
               ( pub.package.name
               , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
               :: acc )
-          | Dune_file.Deprecated_library_name d ->
-            ( d.old_public_name.package.name
+          | Dune_file.Deprecated_library_name
+              ({ old_public_name = { public = old_public_name; _ }; _ } as d)
+            ->
+            ( (Dune_file.Public_lib.package old_public_name).name
             , Lib_entry.Deprecated_library_name d )
             :: acc
           | _ -> acc)
@@ -575,7 +577,7 @@ end
 
 module Deps = struct
   open Build.O
-  open Dune_file.Dep_conf
+  open Dep_conf
 
   let make_alias expander s =
     let loc = String_with_vars.loc s in
@@ -625,10 +627,10 @@ module Deps = struct
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
-    let c_flags ~dir = Env.c_flags t.env_context ~dir in
+    let foreign_flags ~dir = Env.foreign_flags t.env_context ~dir in
     let expander =
       Expander.with_record_no_ddeps expander forms ~dep_kind:Optional
-        ~map_exe:Fn.id ~c_flags
+        ~map_exe:Fn.id ~foreign_flags
     in
     let+ deps =
       Build.map ~f:List.concat (List.map l ~f:(f t expander) |> Build.all)

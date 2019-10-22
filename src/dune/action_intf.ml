@@ -22,6 +22,7 @@ module type Ast = sig
 
   type t =
     | Run of program * string list
+    | With_accepted_exit_codes of int Predicate_lang.t * t
     | Dynamic_run of program * string list
     | Chdir of path * t
     | Setenv of string * string * t

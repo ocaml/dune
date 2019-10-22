@@ -15,12 +15,15 @@ let run_build_command ~common ~targets =
     Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run ()
   else
     Scheduler.go ~common once;
-  Option.iter (Build_system.get_memory ()) ~f:(fun memory ->
-      (* Synchronously wait for the end of the connection with the cache
-         daemon, ensuring all dedup messages have been queued. *)
-      Dune_manager.Client.teardown memory;
-      (* Hande all remaining dedup mesages. *)
-      Scheduler.wait_for_dune_cache ())
+  match Build_system.get_memory () with
+  | Enabled cache
+  | Check cache ->
+    (* Synchronously wait for the end of the connection with the cache daemon,
+       ensuring all dedup messages have been queued. *)
+    Dune_manager.Client.teardown cache;
+    (* Hande all remaining dedup mesages. *)
+    Scheduler.wait_for_dune_cache ()
+  | Disabled -> ()
 
 let build_targets =
   let doc =
@@ -63,20 +66,13 @@ let runtest =
     Common.set_common common
       ~targets:
         (List.map dirs ~f:(fun s ->
-             let prefix =
-               match s with
-               | ""
-               | "." ->
-                 ""
-               | dir when dir.[String.length dir - 1] = '/' -> dir
-               | dir -> dir ^ "/"
-             in
-             Arg.Dep.alias_rec (prefix ^ "runtest")));
+             let dir = Path.Local.of_string s in
+             Arg.Dep.alias_rec ~dir Dune.Alias.Name.runtest));
     let targets (setup : Main.build_system) =
       List.map dirs ~f:(fun dir ->
           let dir = Path.(relative root) (Common.prefix_target common dir) in
           Target.Alias
-            (Alias.in_dir ~name:"runtest" ~recursive:true
+            (Alias.in_dir ~name:Dune.Alias.Name.runtest ~recursive:true
                ~contexts:setup.workspace.contexts dir))
     in
     run_build_command ~common ~targets

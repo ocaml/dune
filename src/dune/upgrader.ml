@@ -329,7 +329,7 @@ let upgrade_opam_file todo fn =
   in
   List.iter t.file_contents ~f:scan_item;
   let substs = List.sort !substs ~compare in
-  if not (List.is_empty substs) then (
+  if List.is_non_empty substs then (
     let buf = Buffer.create (String.length s + 128) in
     let ofs =
       List.fold_left substs ~init:0 ~f:(fun ofs (start, stop, repl) ->
@@ -382,9 +382,8 @@ let upgrade_dir todo dir =
 let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
-  let root = File_tree.root () in
-  File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.normal_only ~init:()
-    ~f:(fun dir () -> upgrade_dir todo dir);
+  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only
+    ~init:() ~f:(fun dir () -> upgrade_dir todo dir);
   let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
       log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);

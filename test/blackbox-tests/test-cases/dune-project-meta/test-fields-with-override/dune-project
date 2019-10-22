@@ -1,0 +1,14 @@
+(lang dune 2.0)
+(name foo)
+(source (github mirage/ocaml-cohttp))
+(license ISC)
+(authors "Anil Madhavapeddy" "Rudi Grinberg")
+(homepage https://my.home.page)
+
+(generate_opam_files true)
+
+(package
+ (name foo)
+ (source (github mirage/foo))
+ (license MIT)
+ (authors "Foo" "Bar"))

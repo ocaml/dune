@@ -23,26 +23,6 @@ let doc = "Manage the shared artifacts cache"
 
 let info = Term.info name ~doc ~man
 
-let retry ?message ?(count = 100) f =
-  let rec loop = function
-    | x when x >= count ->
-      let open Pp.O in
-      User_error.raise
-        [ ( Pp.textf "too many retries (%i)" x
-          ++
-          match message with
-          | None -> Pp.nop
-          | Some msg -> Pp.char ':' ++ Pp.space ++ msg )
-        ]
-    | x -> (
-      match f () with
-      | Some v -> v
-      | None ->
-        Thread.delay 0.1;
-        loop (x + 1) )
-  in
-  loop 0
-
 let start ~exit_no_client ~foreground ~port_path ~root =
   let show_endpoint ep = Printf.printf "listening on %s\n%!" ep in
   let config = { Dune_manager.exit_no_client } in
@@ -68,14 +48,9 @@ let start ~exit_no_client ~foreground ~port_path ~root =
   | Result.Error reason -> User_error.raise [ Pp.text reason ]
 
 let stop ~port_path =
-  match
-    Result.ok_exn (Dune_manager.check_port_file ~close:false port_path)
-  with
-  | None -> User_error.raise [ Pp.textf "not running" ]
-  | Some (_, pid, fd) ->
-    Unix.kill pid Sys.sigterm;
-    retry ~message:(Pp.textf "waiting for daemon to stop (PID %i)" pid)
-      (fun () -> Option.some_if (Fcntl.lock_get fd Fcntl.Write = None) ())
+  match Daemonize.stop port_path with
+  | Error s -> User_error.raise [ Pp.text s ]
+  | Ok () -> ()
 
 type mode =
   | Start

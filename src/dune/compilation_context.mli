@@ -21,14 +21,13 @@ val create :
   -> requires_compile:Lib.t list Or_exn.t
   -> requires_link:Lib.t list Or_exn.t Lazy.t
   -> ?preprocessing:Preprocessing.t
-  -> ?no_keep_locs:bool
   -> opaque:bool
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
   -> dynlink:bool
   -> package:Package.t option
   -> ?vimpl:Vimpl.t
-  -> ?modes:Mode.Dict.Set.t
+  -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> unit
   -> t
 
@@ -58,8 +57,6 @@ val requires_compile : t -> Lib.t list Or_exn.t
 val includes : t -> Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
 val preprocessing : t -> Preprocessing.t
-
-val no_keep_locs : t -> bool
 
 val opaque : t -> bool
 

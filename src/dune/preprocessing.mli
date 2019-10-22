@@ -15,7 +15,7 @@ val make :
   -> dep_kind:Lib_deps_info.Kind.t
   -> lint:Dune_file.Preprocess_map.t
   -> preprocess:Dune_file.Preprocess_map.t
-  -> preprocessor_deps:Dune_file.Dep_conf.t list
+  -> preprocessor_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t
   -> t

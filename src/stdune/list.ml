@@ -8,6 +8,10 @@ let is_empty = function
   | [] -> true
   | _ -> false
 
+let is_non_empty = function
+  | [] -> false
+  | _ -> true
+
 let rec filter_map l ~f =
   match l with
   | [] -> []
@@ -180,3 +184,6 @@ let fold_map t ~init ~f =
         y)
   in
   (!acc, result)
+
+let unzip l =
+  fold_right ~init:([], []) ~f:(fun (x, y) (xs, ys) -> (x :: xs, y :: ys)) l

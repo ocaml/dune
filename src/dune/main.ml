@@ -66,7 +66,7 @@ let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
   { contexts; conf; env }
 
 let init_build_system ?only_packages ?external_lib_deps_mode
-    ~sandboxing_preference ?memory w =
+    ~sandboxing_preference ?caching w =
   Option.iter only_packages ~f:(fun set ->
       Package.Name.Set.iter set ~f:(fun pkg ->
           if not (Package.Name.Map.mem w.conf.packages pkg) then
@@ -83,7 +83,7 @@ let init_build_system ?only_packages ?external_lib_deps_mode
                      ( Package.Name.Map.keys w.conf.packages
                      |> List.map ~f:Package.Name.to_string ))));
   Build_system.reset ();
-  Build_system.init ~sandboxing_preference ~contexts:w.contexts ?memory;
+  Build_system.init ~sandboxing_preference ~contexts:w.contexts ?caching;
   let+ scontexts =
     Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages
       ?external_lib_deps_mode
@@ -118,7 +118,8 @@ let auto_concurrency =
               | None -> loop rest
               | Some prog -> (
                 let* result =
-                  Process.run_capture (Accept All) prog args ~env:Env.initial
+                  Process.run_capture (Accept Predicate_lang.any) prog args
+                    ~env:Env.initial
                     ~stderr_to:(Process.Io.file Config.dev_null Process.Io.Out)
                 in
                 match result with

@@ -16,7 +16,6 @@ module V1 : sig
       so a stage that merely writes out some targets is "free") *)
 
   module Path = Path
-  module Glob : module type of struct include Dune_glob.V1 end
 
   type 'a t
 
@@ -72,18 +71,18 @@ module V1 : sig
       depending on a listing of a [directory] (including source and target
       files) filtered by glob and resulting in that listing.
 
-      It's better to specify as narrow filtering by [glob] as possible
-      (as opposed to filtering afterwards) because this
-      makes dune aware of the filtering, so dune won't re-run the action when
-      the directory changes in an unimportant way.
+      It's better to specify as narrow filtering by [glob] as possible (as
+      opposed to filtering afterwards) because this makes dune aware of the
+      filtering, so dune won't re-run the action when the directory changes in
+      an unimportant way.
 
       BUG: [read_directory_with_glob] doesn't work correctly for empty
       directories.
 
-      BUG: the returned listing includes directories even though that dependency
-      is not tracked.
-  *)
-  val read_directory_with_glob : path:Path.t -> glob:Glob.t -> string list t
+      BUG: the returned listing includes directories even though that
+      dependency is not tracked. *)
+  val read_directory_with_glob :
+    path:Path.t -> glob:Dune_glob.V1.t -> string list t
 
   (** {1:running Running the computation} *)
 

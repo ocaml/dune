@@ -31,7 +31,7 @@ module Client : sig
 
   val promote :
        t
-    -> (Path.t * Digest.t) list
+    -> (Path.Build.t * Digest.t) list
     -> Dune_memory.key
     -> Dune_memory.metadata
     -> int option

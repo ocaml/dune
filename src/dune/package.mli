@@ -7,7 +7,7 @@ module Name : sig
 
   val of_string : string -> t
 
-  val parse_string_exn : (Loc.t * string) -> t
+  val parse_string_exn : Loc.t * string -> t
 
   val opam_fn : t -> string
 
@@ -69,6 +69,47 @@ module Kind : sig
     | Opam
 end
 
+module Source_kind : sig
+  type t =
+    | Github of string * string
+    | Url of string
+
+  val to_dyn : t Dyn.Encoder.t
+
+  val pp : Format.formatter -> t -> unit
+
+  val decode : t Dune_lang.Decoder.t
+end
+
+module Info : sig
+  type t
+
+  val source : t -> Source_kind.t option
+
+  val license : t -> string option
+
+  val authors : t -> string list option
+
+  val homepage : t -> string option
+
+  val bug_reports : t -> string option
+
+  val documentation : t -> string option
+
+  val maintainers : t -> string list option
+
+  val empty : t
+
+  val to_dyn : t Dyn.Encoder.t
+
+  val decode :
+       ?since:Dune_lang.Syntax.Version.t
+    -> unit
+    -> t Dune_lang.Decoder.fields_parser
+
+  val superpose : t -> t -> t
+end
+
 type t =
   { name : Name.t
   ; loc : Loc.t
@@ -77,10 +118,12 @@ type t =
   ; depends : Dependency.t list
   ; conflicts : Dependency.t list
   ; depopts : Dependency.t list
+  ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
   ; kind : Kind.t
   ; tags : string list
+  ; deprecated_package_names : Loc.t Name.Map.t
   }
 
 val file : dir:Path.t -> name:Name.t -> Path.t
@@ -90,6 +133,8 @@ val decode : dir:Path.Source.t -> t Dune_lang.Decoder.t
 val opam_file : t -> Path.Source.t
 
 val meta_file : t -> Path.Source.t
+
+val deprecated_meta_file : t -> Name.t -> Path.Source.t
 
 val to_dyn : t -> Dyn.t
 

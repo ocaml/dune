@@ -11,7 +11,7 @@ module Group = struct
   let ext = function
     | Cmi -> Cm_kind.ext Cmi
     | Cmx -> Cm_kind.ext Cmx
-    | Header -> C.header_ext
+    | Header -> Foreign.header_extension
 
   let obj_dir t obj_dir =
     match t with

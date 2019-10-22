@@ -87,6 +87,29 @@ an flambda compiler with the help of variable expansion:
 
    (and %{ocamlc-config:flambda} (= %{ocamlc-config:system} macosx))
 
+.. _predicate-lang:
+
+Predicate language
+==================
+
+The predicate language allows the user to define simple predicates
+(boolean-valued functions) that dune can evaluate. Here is a semi formal
+specification of the language:
+
+.. code::
+
+   pred := (and <pred> <pred>)
+         | (or <pred> <pred>)
+         | (not <pred>)
+         | :standard
+         | <element>
+
+The exact meaning of ``:standard`` and the nature of ``<element>`` depends on
+the context. For example, in the case of the :ref:`dune-subdirs`, an
+``<element>`` corresponds to file glob patterns. Another example is the user
+action :ref:`(with-accepted-exit-codes ...) <user-actions>`, where an ``<element>``
+corresponds to a literal integer.
+
 .. _variables:
 
 Variables
@@ -620,6 +643,10 @@ The following constructions are available:
 - ``(ignore-<outputs> <DSL)`` to ignore the output, where
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
+- ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
+  for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
+  values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` must be
+  one of ``run``, ``bash`` or ``system``. This action is available since dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``
@@ -1030,3 +1057,109 @@ Other files
 
 For all other kinds of elements, you need to attach them manually via
 an :ref:`install` stanza.
+
+
+.. _foreign-sources-and-archives:
+
+Foreign sources and archives
+============================
+
+Dune provides basic support for including foreign source files as well
+as archives of foreign object files into OCaml projects via the
+``foreign_stubs`` and ``foreign_archives`` fields.
+
+.. _foreign-stubs:
+
+Foreign stubs
+-------------
+
+You can specify foreign sources using the ``foreign_stubs`` field of the
+``library`` and ``executable`` stanzas. For example:
+
+.. code:: scheme
+
+    (library
+     (name lib)
+     (foreign_stubs (language c) (names src1 src2))
+     (foreign_stubs (language cxx) (names src3) (flags -O2)))
+
+Here we declare an OCaml library ``lib``, which contains two C sources
+``src1`` and ``src2``, and one C++ source ``src3`` that needs to be
+compiled with ``-O2``. These source files will be compiled and packaged
+with the library, along with the link-time flags to be used when
+linking the final executables. When matching ``names`` to source files,
+Dune treats ``*.c`` files as C sources, and ``*.cpp``, ``*.cc`` and
+``*.cxx`` files as C++ sources.
+
+Here is a complete list of supported subfields:
+
+- ``language`` specifies the source language, where ``c`` means C and
+  ``cxx`` means C++. In future, more languages may be supported.
+- ``names`` specifies the *names* of source files. When specifying a source
+  file, you should omit the extension and any relative parts of the path;
+  Dune will scan all library directories, finding all matching files and
+  raising an error if multiple source files map to the same object name.
+  If you need to have multiple object files with the same name, you can
+  package them into different :ref:`foreign-archives` via the
+  ``foreign_archives`` field.
+- ``flags`` are passed when compiling source files. This field is specified
+  using the :ref:`ordered-set-language`, where the ``:standard`` value comes
+  from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
+- ``include_dirs`` are tracked as dependencies and passed to the compiler
+  via the ``-I`` flag. You can use :ref:`variables` in this field. The
+  contents of included directories is tracked recursively, e.g. if you
+  use ``(include_dir dir)`` and have headers ``dir/base.h`` and
+  ``dir/lib/lib.h`` then they both will be tracked as dependencies.
+- ``extra_deps`` specifies any other dependencies that should be tracked.
+  This is useful when dealing with ``#include`` statements that escape into
+  a parent directory like ``#include "../a.h"``.
+
+
+.. _foreign-archives:
+
+Foreign archives
+----------------
+
+You can also specify archives of separately compiled foreign object files
+that need to be packaged with an OCaml library or linked into an OCaml
+executable. To do that, use the ``foreign_archives`` field of the
+corresponding ``library`` or ``executable`` stanza. For example:
+
+.. code:: scheme
+
+    (library
+     (name lib)
+     (foreign_stubs (language c) (names src1 src2))
+     (foreign_stubs (language cxx) (names src3) (flags -O2))
+     (foreign_archives arch1 some/dir/arch2))
+
+Here, in addition to :ref:`foreign-stubs`, we also specify foreign archives
+``arch1`` and ``arch2``, where the latter is stored in a subdirectory
+``some/dir``.
+
+You can build a foreign archive manually, e.g. using a custom ``rule`` as
+described in :ref:`foreign-sandboxing`, or ask Dune to build it via the
+``foreign_library`` stanza:
+
+.. code:: scheme
+
+    (foreign_library
+     (archive_name arch1)
+     (language c)
+     (names src4 src5)
+     (include_dir headers))
+
+This asks Dune to compile C source files ``src4`` and ``src5`` with
+headers tracked in the ``headers`` directory, and put the resulting
+object files into an archive ``arch1``, whose full name is typically
+``libarch1.a`` for static linking and ``dllarch1.so`` for dynamic
+linking.
+
+The ``foreign_library`` stanza supports all :ref:`foreign-stubs` fields plus
+the ``archive_name`` field, which specifies the archive's name. You can refer
+to the same archive name from multiple OCaml libraries and executables, so a
+foreign archive is a bit like a foreign library, hence the name of the stanza.
+
+Foreign archives are particularly useful when embedding a library written in
+a foreign language and/or built with another build system. See
+:ref:`foreign-sandboxing` for more details.

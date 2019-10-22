@@ -14,13 +14,13 @@ module Path : sig
 end
 
 module Dep : sig
-  type t = Dune_file.Dep_conf.t
+  type t = Dep_conf.t
 
   val file : string -> t
 
-  val alias : string -> t
+  val alias : dir:Stdune.Path.Local.t -> Dune.Alias.Name.t -> t
 
-  val alias_rec : string -> t
+  val alias_rec : dir:Stdune.Path.Local.t -> Dune.Alias.Name.t -> t
 
   val to_string_maybe_quoted : t -> string
 end

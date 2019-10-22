@@ -35,7 +35,10 @@ module Mapper = Action_mapper.Make (Uast) (Uast)
    Having more than one dynamic_run with different cwds could break that. Also,
    we didn't really want to think about how multiple dynamic actions would
    interact (do we want dependencies requested by one to be visible to the
-   other?) *)
+   other?).
+
+   Moreover, we also check that 'dynamic-run' is not used within
+   'with-exit-codes', since the meaning of this interaction is not clear. *)
 let ensure_at_most_one_dynamic_run ~loc action =
   let rec loop : t -> bool = function
     | Dynamic_run _ -> true
@@ -43,7 +46,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Setenv (_, _, t)
     | Redirect_out (_, _, t)
     | Redirect_in (_, _, t)
-    | Ignore (_, t) ->
+    | Ignore (_, t)
+    | With_accepted_exit_codes (_, t) ->
       loop t
     | Run _
     | Echo _

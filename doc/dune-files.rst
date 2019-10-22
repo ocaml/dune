@@ -215,6 +215,9 @@ With this fields in, every time dune is called to execute some rules (either via
 ``dune build``, ``dune runtest`` or something else), the opam files get
 generated.
 
+Some or all of these fields may be overriden for each package of the project, see
+:ref:`package`.
+
 .. _package:
 
 package
@@ -236,6 +239,16 @@ It contains the following fields:
 - ``(depopts <dep-specification)`` are optional package dependencies
 
 - ``(tags <tags>)`` are the list of tags for the package
+
+- ``(deprecated_package_names <name list>)`` is a list of names that can be used
+  with the :ref:`deprecated-library-name` stanza to migrate legacy libraries
+  from other build systems which do not follow Dune's convention of prefixing
+  the public name of the library with the package name.
+
+- ``(license <name>)``, ``(authors <authors>)``, ``(maintainers
+  <maintainers>)``, ``(source <source>)``, ``(bug_reports <url>)``, ``(homepage
+  <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
+  the corresponding global fields. These fields are available since Dune 2.0.
 
 The list of dependencies ``<dep-specification>`` is modeled after opam's own
 language: The syntax is as a list of the following elements:
@@ -372,10 +385,16 @@ to use the :ref:`include_subdirs` stanza.
   or in the installed world. You can use this to provide extra features without
   adding hard dependencies to your project
 
-- ``(c_names (<names>))``, if your library has stubs, you must list the C files
-  in this field, without the ``.c`` extension
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.
+  C or C++ stubs, to be compiled and packaged together with the library. See
+  the section :ref:`foreign-sources-and-archives` for more details. This field
+  replaces the now deprecated fields ``c_names``, ``c_flags``, ``cxx_names``
+  and ``cxx_flags``.
 
-- ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
+- ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
+  object files to be packaged with the library. See the section
+  :ref:`foreign-archives` for more details. This field replaces the now
+  deprecated field ``self_build_stubs_archive``.
 
 - ``(install_c_headers (<names>))``, if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
@@ -422,25 +441,12 @@ to use the :ref:`include_subdirs` stanza.
   use this to specify ``-linkall`` for instance. ``<flags>`` is a list of
   strings supporting :ref:`variables`
 
-- ``(c_flags <flags>)`` specifies the compilation flags for C stubs, using the
-  :ref:`ordered-set-language`. This field supports ``(:include ...)`` forms
-
-- ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
-
 - ``(c_library_flags <flags>)`` specifies the flags to pass to the C compiler
   when constructing the library archive file for the C stubs. ``<flags>`` uses
   the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When you
   are writing bindings for a C library named ``bar``, you should typically write
   ``-lbar`` here, or whatever flags are necessary to to link against this
   library
-
-.. _self_build_stubs_archive:
-
-- ``(self_build_stubs_archive <c-libname>)`` indicates to dune that the
-  library has stubs, but that the stubs are built manually. The aim of the field
-  is to embed a library written in foreign language and/or building with another
-  build system. It is not for casual uses, see the `re2 library
-  <https://github.com/janestreet/re2>`__ for an example of use
 
 - ``(modules_without_implementation <modules>)`` specifies a list of
   modules that have only a ``.mli`` or ``.rei`` but no ``.ml`` or
@@ -477,6 +483,16 @@ using ``(c_flags (:include ...))`` and ``(c_library_flags (:include ...))``.
 
 .. _configurator: https://github.com/janestreet/configurator
 
+.. _foreign_library:
+
+foreign_library
+---------------
+
+The ``foreign_library`` stanza describes archives of separately compiled
+foreign object files that can be packaged with an OCaml library or linked
+into an OCaml executable. See :ref:`foreign-sources-and-archives` for
+further details and examples.
+
 .. _jsoo-field:
 
 js_of_ocaml
@@ -501,6 +517,8 @@ JavaScript output.
 
 See :ref:`jsoo` for more information.
 
+.. _deprecated-library-name:
+
 deprecated_library_name
 -----------------------
 
@@ -518,6 +536,13 @@ When a developer uses the old public name in a list of library
 dependencies, it will be transparently replaced by the new name. Note
 that it is not necessary for the new name to exist at definition time
 as it is only resolved at the point where the old name is used.
+
+The ``old_public_name`` can also be one of the names declared in the
+``deprecated_package_names`` field of the package declaration in
+``dune-project`` file. In this case, the "old" library is understood to be a
+library whose name is not prefixed by the package name. Such a library cannot be
+defined in Dune, but other build systems allow it and this feature is meant to
+help migration from those systems.
 
 executable
 ----------
@@ -617,15 +642,13 @@ Executables can also be linked as object or shared object files. See
   ``executable`` stanza will cause Dune to copy the ``.exe`` files to
   the source tree and ``dune clean`` to delete them
 
-- ``(c_names (<names>))``, if your executable needs C stubs, you must list the C
-  files in this field, without the ``.c`` extension
+- ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source
+  files, e.g. C or C++ stubs, to be linked into the executable. See the
+  section :ref:`foreign-sources-and-archives` for more details.
 
-- ``(cxx_names (<names>))`` is the same as ``c_names`` but for C++ stubs
-
-- ``(c_flags <flags>)`` specifies the compilation flags for C stubs, using the
-  :ref:`ordered-set-language`. This field supports ``(:include ...)`` forms
-
-- ``(cxx_flags <flags>)`` is the same as ``c_flags`` but for C++ stubs
+- ``(foreign_archives <foreign-archives-list>)`` specifies archives of
+  foreign object files to be linked into the executable. See the section
+  :ref:`foreign-archives` for more details.
 
 - ``(forbidden_libraries <libraries>)`` ensures that the given
   libraries are not linked in the resulting executable. If they end up
@@ -804,10 +827,10 @@ field. The following modes are available:
     from the source tree.
   - ``(into <dir>)`` means that the files are promoted in ``<dir>`` instead of
     the current directory. This feature is available since Dune 1.8.
-  - ``(only <predicate>)`` means that only a subset of the targets
-    should be promoted. The argument is a predicate in a syntax
-    similar to the argument of :ref:`(dirs ...) <dune-subdirs>`. This
-    feature is available since dune 1.10.
+  - ``(only <predicate>)`` means that only a subset of the targets should be
+    promoted. The argument is similar to the argument of :ref:`(dirs ...)
+    <dune-subdirs>`, specified using the :ref:`predicate-lang`. This feature is
+    available since dune 1.10.
 
 - ``promote-until-clean`` is the same as ``(promote (until-clean))``
 - ``(promote-into <dir>)`` is the same as ``(promote (into <dir>))``
@@ -1275,7 +1298,7 @@ dirs (since 1.6)
 -------------------
 
 The ``dirs`` stanza allows to tell specify the sub-directories dune will
-include in a build. The syntax is based on dune's predicate language and allows
+include in a build. The syntax is based on dune's :ref:`predicate-lang` and allows
 the user the following operations:
 
 - The special value ``:standard`` which refers to the default set of used

@@ -70,7 +70,9 @@ end = struct
     | Toplevel toplevel ->
       Toplevel_rules.setup ~sctx ~dir ~toplevel;
       empty_none
-    | Library lib ->
+    | Library lib
+      when Lib.DB.available (Scope.libs scope)
+             (Dune_file.Library.best_name lib) ->
       let cctx, merlin =
         Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
       in
@@ -79,6 +81,9 @@ end = struct
       ; js = None
       ; source_dirs = None
       }
+    | Foreign_library lib ->
+      Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander;
+      empty_none
     | Executables exes ->
       Option.iter exes.install_conf ~f:files_to_install;
       let cctx, merlin =

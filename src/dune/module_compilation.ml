@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Build.O
 open! No_io
 module CC = Compilation_context
 module SC = Super_context
@@ -20,8 +19,32 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 
 let opens modules m =
   match Modules.alias_for modules m with
-  | None -> Command.Args.S []
+  | None -> Command.Args.empty
   | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
+
+let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
+  let open Build.O in
+  let+ deps = Dep_graph.deps_of dep_graph m in
+  List.concat_map deps ~f:(fun m ->
+      let deps =
+        [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]
+      in
+      if Module.has m ~ml_kind:Impl && cm_kind = Cmx && not opaque then
+        let cmx = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx in
+        Path.build cmx :: deps
+      else
+        deps)
+
+let copy_interface ~sctx ~dir ~obj_dir m =
+  (* symlink the .cmi into the public interface directory *)
+  if
+    Module.visibility m <> Visibility.Private
+    && Obj_dir.need_dedicated_public_dir obj_dir
+  then
+    SC.add_rule sctx ~dir
+      (Build.symlink
+         ~src:(Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi))
+         ~dst:(Obj_dir.Module.cm_public_file_unsafe obj_dir m ~kind:Cmi))
 
 let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let sctx = CC.super_context cctx in
@@ -32,178 +55,110 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) =
   let mode = Mode.of_cm_kind cm_kind in
   let dynlink = CC.dynlink cctx in
   let sandbox = CC.sandbox cctx in
-  Context.compiler ctx mode
-  |> Option.iter ~f:(fun compiler ->
-         let ml_kind = Cm_kind.source cm_kind in
-         Module.file m ~ml_kind
-         |> Option.iter ~f:(fun src ->
-                let dst =
-                  Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind
-                in
-                let copy_interface () =
-                  (* symlink the .cmi into the public interface directory *)
-                  if
-                    Module.visibility m <> Visibility.Private
-                    && Obj_dir.need_dedicated_public_dir obj_dir
-                  then
-                    SC.add_rule sctx ~dir
-                      (Build.symlink
-                         ~src:
-                           (Path.build
-                              (Obj_dir.Module.cm_file_unsafe obj_dir m
-                                 ~kind:Cmi))
-                         ~dst:
-                           (Obj_dir.Module.cm_public_file_unsafe obj_dir m
-                              ~kind:Cmi))
-                in
-                let extra_args, extra_deps, other_targets =
-                  if precompiled_cmi then
-                    (force_read_cmi src, [], [])
-                  else
-                    (* If we're compiling an implementation, then the cmi is
-                       present *)
-                    let public_vlib_module = Module.kind m = Impl_vmodule in
-                    match
-                      (cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module)
-                    with
-                    (* If there is no mli, [ocamlY -c file.ml] produces both
-                       the .cmY and .cmi. We choose to use ocamlc to produce
-                       the cmi and to produce the cmx we have to wait to avoid
-                       race conditions. *)
-                    | Cmo, None, false ->
-                      copy_interface ();
-                      ( []
-                      , []
-                      , [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ]
-                      )
-                    | Cmo, None, true
-                    | (Cmo | Cmx), _, _ ->
-                      ( force_read_cmi src
-                      , [ Path.build
-                            (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi)
-                        ]
-                      , [] )
-                    | Cmi, _, _ ->
-                      copy_interface ();
-                      ([], [], [])
-                in
-                let other_targets =
-                  match cm_kind with
-                  | Cmx ->
-                    Obj_dir.Module.obj_file obj_dir m ~kind:Cmx
-                      ~ext:ctx.lib_config.ext_obj
-                    :: other_targets
-                  | Cmi
-                  | Cmo ->
-                    other_targets
-                in
-                let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
-                let opaque = CC.opaque cctx in
-                let other_cm_files =
-                  Build.dyn_paths_unit
-                    (let+ deps = Dep_graph.deps_of dep_graph m in
-                     List.concat_map deps ~f:(fun m ->
-                         let deps =
-                           [ Path.build
-                               (Obj_dir.Module.cm_file_unsafe obj_dir m
-                                  ~kind:Cmi)
-                           ]
-                         in
-                         if
-                           Module.has m ~ml_kind:Impl && cm_kind = Cmx
-                           && not opaque
-                         then
-                           let cmx =
-                             Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmx
-                           in
-                           Path.build cmx :: deps
-                         else
-                           deps))
-                in
-                let other_targets, cmt_args =
-                  match cm_kind with
-                  | Cmx -> (other_targets, Command.Args.S [])
-                  | Cmi
-                  | Cmo ->
-                    let fn =
-                      Option.value_exn
-                        (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-                    in
-                    (fn :: other_targets, A "-bin-annot")
-                in
-                let opaque_arg =
-                  let intf_only =
-                    cm_kind = Cmi && not (Module.has m ~ml_kind:Impl)
-                  in
-                  if
-                    opaque
-                    || intf_only
-                       && Ocaml_version.supports_opaque_for_mli ctx.version
-                  then
-                    Command.Args.A "-opaque"
-                  else
-                    As []
-                in
-                let dir, no_keep_locs =
-                  match
-                    ( CC.no_keep_locs cctx
-                    , cm_kind
-                    , Ocaml_version.supports_no_keep_locs ctx.version )
-                  with
-                  | true, Cmi, true ->
-                    (ctx.build_dir, Command.Args.As [ "-no-keep-locs" ])
-                  | true, Cmi, false -> (Obj_dir.byte_dir obj_dir, As [])
-                  (* emulated -no-keep-locs *)
-                  | true, (Cmo | Cmx), _
-                  | false, _, _ ->
-                    (ctx.build_dir, As [])
-                in
-                let flags =
-                  let flags =
-                    Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind
-                  in
-                  match Module.pp_flags m with
-                  | None -> flags
-                  | Some pp ->
-                    let+ flags = flags
-                    and+ pp_flags = pp in
-                    flags @ pp_flags
-                in
-                let modules = Compilation_context.modules cctx in
-                SC.add_rule sctx ~sandbox ~dir
-                  ( Build.paths extra_deps >>> other_cm_files
-                  >>> Command.run ~dir:(Path.build dir) (Ok compiler)
-                        [ Command.Args.dyn flags
-                        ; no_keep_locs
-                        ; cmt_args
-                        ; Command.Args.S
-                            ( Obj_dir.all_obj_dirs obj_dir ~mode
-                            |> List.concat_map ~f:(fun p ->
-                                   [ Command.Args.A "-I"; Path (Path.build p) ])
-                            )
-                        ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
-                        ; As extra_args
-                        ; ( if dynlink || cm_kind <> Cmx then
-                            As []
-                          else
-                            A "-nodynlink" )
-                        ; A "-no-alias-deps"
-                        ; opaque_arg
-                        ; opens modules m
-                        ; As
-                            ( match stdlib with
-                            | None -> []
-                            | Some _ ->
-                              (* XXX why aren't these just normal library
-                                 flags? *)
-                              [ "-nopervasives"; "-nostdlib" ] )
-                        ; A "-o"
-                        ; Target dst
-                        ; A "-c"
-                        ; Command.Ml_kind.flag ml_kind
-                        ; Dep src
-                        ; Hidden_targets other_targets
-                        ] )))
+  (let open Option.O in
+  let* compiler = Context.compiler ctx mode in
+  let ml_kind = Cm_kind.source cm_kind in
+  let+ src = Module.file m ~ml_kind in
+  let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in
+  let extra_args, extra_deps, other_targets =
+    if precompiled_cmi then
+      (force_read_cmi src, [], [])
+    else
+      (* If we're compiling an implementation, then the cmi is present *)
+      let public_vlib_module = Module.kind m = Impl_vmodule in
+      match (cm_kind, Module.file m ~ml_kind:Intf, public_vlib_module) with
+      (* If there is no mli, [ocamlY -c file.ml] produces both the .cmY and
+         .cmi. We choose to use ocamlc to produce the cmi and to produce the
+         cmx we have to wait to avoid race conditions. *)
+      | Cmo, None, false ->
+        copy_interface ~dir ~obj_dir ~sctx m;
+        ([], [], [ Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi ])
+      | Cmo, None, true
+      | (Cmo | Cmx), _, _ ->
+        ( force_read_cmi src
+        , [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]
+        , [] )
+      | Cmi, _, _ ->
+        copy_interface ~dir ~obj_dir ~sctx m;
+        ([], [], [])
+  in
+  let other_targets =
+    match cm_kind with
+    | Cmx ->
+      Obj_dir.Module.obj_file obj_dir m ~kind:Cmx ~ext:ctx.lib_config.ext_obj
+      :: other_targets
+    | Cmi
+    | Cmo ->
+      other_targets
+  in
+  let dep_graph = Ml_kind.Dict.get dep_graphs ml_kind in
+  let opaque = CC.opaque cctx in
+  let other_cm_files =
+    Build.dyn_paths_unit
+      (other_cm_files ~opaque ~cm_kind ~dep_graph ~obj_dir m)
+  in
+  let other_targets, cmt_args =
+    match cm_kind with
+    | Cmx -> (other_targets, Command.Args.empty)
+    | Cmi
+    | Cmo ->
+      let fn = Option.value_exn (Obj_dir.Module.cmt_file obj_dir m ~ml_kind) in
+      (fn :: other_targets, A "-bin-annot")
+  in
+  let opaque_arg =
+    let intf_only = cm_kind = Cmi && not (Module.has m ~ml_kind:Impl) in
+    if
+      opaque || (intf_only && Ocaml_version.supports_opaque_for_mli ctx.version)
+    then
+      Command.Args.A "-opaque"
+    else
+      Command.Args.empty
+  in
+  let dir = ctx.build_dir in
+  let flags =
+    let flags = Ocaml_flags.get (CC.flags cctx) mode in
+    match Module.pp_flags m with
+    | None -> flags
+    | Some pp ->
+      let open Build.O in
+      let+ flags = flags
+      and+ pp_flags = pp in
+      flags @ pp_flags
+  in
+  let modules = Compilation_context.modules cctx in
+  SC.add_rule sctx ~sandbox ~dir
+    (let open Build.O in
+    Build.paths extra_deps >>> other_cm_files
+    >>> Command.run ~dir:(Path.build dir) (Ok compiler)
+          [ Command.Args.dyn flags
+          ; cmt_args
+          ; Command.Args.S
+              ( Obj_dir.all_obj_dirs obj_dir ~mode
+              |> List.concat_map ~f:(fun p ->
+                     [ Command.Args.A "-I"; Path (Path.build p) ]) )
+          ; Cm_kind.Dict.get (CC.includes cctx) cm_kind
+          ; As extra_args
+          ; ( if dynlink || cm_kind <> Cmx then
+              Command.Args.empty
+            else
+              A "-nodynlink" )
+          ; A "-no-alias-deps"
+          ; opaque_arg
+          ; opens modules m
+          ; As
+              ( match stdlib with
+              | None -> []
+              | Some _ ->
+                (* XXX why aren't these just normal library flags? *)
+                [ "-nopervasives"; "-nostdlib" ] )
+          ; A "-o"
+          ; Target dst
+          ; A "-c"
+          ; Command.Ml_kind.flag ml_kind
+          ; Dep src
+          ; Hidden_targets other_targets
+          ]))
+  |> Option.value ~default:()
 
 let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmo;
@@ -231,15 +186,17 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let sandbox = Compilation_context.sandbox cctx in
   let cm_deps =
     Build.dyn_paths_unit
-      (let+ deps = Dep_graph.deps_of dep_graph m in
-       List.concat_map deps ~f:(fun m ->
-           [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
+      (let open Build.O in
+      let+ deps = Dep_graph.deps_of dep_graph m in
+      List.concat_map deps ~f:(fun m ->
+          [ Path.build (Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cmi) ]))
   in
-  let ocaml_flags = Ocaml_flags.get_for_cm (CC.flags cctx) ~cm_kind:Cmo in
+  let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
     (Build.action_dyn ~targets:[ output ]
-       ( cm_deps
+       (let open Build.O in
+       cm_deps
        >>> Build.map
              ~f:(Action.with_stdout_to output)
              (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
@@ -253,7 +210,7 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
                 ; A "-i"
                 ; Command.Ml_kind.flag Impl
                 ; Dep src
-                ]) ))
+                ])))
 
 (* The alias module is an implementation detail to support wrapping library
    modules under a single toplevel name. Since OCaml doesn't have proper

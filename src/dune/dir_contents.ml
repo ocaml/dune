@@ -38,7 +38,7 @@ type t =
   ; dir : Path.Build.t
   ; text_files : String.Set.t
   ; modules : Dir_modules.t Memo.Lazy.t
-  ; c_sources : C_sources.t Memo.Lazy.t
+  ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
   ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
   ; artifacts : Dir_artifacts.t Memo.Lazy.t
@@ -77,11 +77,14 @@ let modules_of_executables t ~obj_dir ~first_exe =
   let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe |> Modules.relocate_alias_module ~src_dir
 
-let c_sources_of_executables t ~first_exe =
-  C_sources.for_exes (Memo.Lazy.force t.c_sources) ~first_exe
+let foreign_sources_of_executables t ~first_exe =
+  Foreign_sources.for_exes (Memo.Lazy.force t.foreign_sources) ~first_exe
 
-let c_sources_of_library t ~name =
-  C_sources.for_lib (Memo.Lazy.force t.c_sources) ~name
+let foreign_sources_of_library t ~name =
+  Foreign_sources.for_lib (Memo.Lazy.force t.foreign_sources) ~name
+
+let foreign_sources_of_archive t ~archive_name =
+  Foreign_sources.for_archive (Memo.Lazy.force t.foreign_sources) ~archive_name
 
 let lookup_module t name =
   Module_name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -501,6 +504,7 @@ end = struct
 
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
+    let ctx = Super_context.context sctx in
     match Dir_status.DB.get dir_status_db ~dir with
     | Standalone x -> (
       match x with
@@ -521,13 +525,13 @@ end = struct
               ; text_files = files
               ; modules = Memo.Lazy.map ~f:make_modules libs_and_exes
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-              ; c_sources =
+              ; foreign_sources =
                   Memo.lazy_ (fun () ->
                       let dune_version = d.dune_version in
-                      C_sources.make d
-                        ~c_sources:
-                          (C_sources.load_sources ~dune_version ~dir:d.ctx_dir
-                             ~files))
+                      Foreign_sources.make d ~ext_obj:ctx.lib_config.ext_obj
+                        ~sources:
+                          (Foreign.Sources.Unresolved.load ~dune_version
+                             ~dir:d.ctx_dir ~files))
               ; coq_modules =
                   Memo.lazy_ (fun () ->
                       build_coq_modules_map d ~dir:d.ctx_dir
@@ -547,7 +551,7 @@ end = struct
               ; text_files = String.Set.empty
               ; modules = Memo.Lazy.of_val Dir_modules.empty
               ; mlds = Memo.Lazy.of_val []
-              ; c_sources = Memo.Lazy.of_val C_sources.empty
+              ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
               ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
               ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
               }
@@ -622,48 +626,20 @@ end = struct
       in
       let modules = Memo.Lazy.map ~f:make_modules libs_and_exes in
       let artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes in
-      let c_sources =
+      let foreign_sources =
         Memo.lazy_ (fun () ->
             check_no_qualified Loc.none qualif_mode;
             let dune_version = d.dune_version in
-            let init = C.Kind.Dict.make_both String.Map.empty in
-            let c_sources =
+            let init = String.Map.empty in
+            let sources =
               List.fold_left ((dir, [], files) :: subdirs) ~init
                 ~f:(fun acc (dir, _local, files) ->
                   let sources =
-                    C_sources.load_sources ~dir ~dune_version ~files
+                    Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
                   in
-                  let f acc sources =
-                    String.Map.union acc sources ~f:(fun name x y ->
-                        User_error.raise
-                          ~loc:
-                            (Loc.in_file
-                               (Path.source
-                                  ( match File_tree.Dir.dune_file ft_dir with
-                                  | None ->
-                                    Path.Source.relative
-                                      (File_tree.Dir.path ft_dir)
-                                      "_unknown_"
-                                  | Some d -> File_tree.Dune_file.path d )))
-                          [ Pp.textf
-                              "%s file %s appears in several directories:"
-                              (C.Kind.to_string (C.Source.kind x))
-                              name
-                          ; Pp.textf "- %s"
-                              (Path.to_string_maybe_quoted
-                                 (Path.drop_optional_build_context
-                                    (Path.build (C.Source.src_dir x))))
-                          ; Pp.textf "- %s"
-                              (Path.to_string_maybe_quoted
-                                 (Path.drop_optional_build_context
-                                    (Path.build (C.Source.src_dir y))))
-                          ; Pp.text
-                              "This is not allowed, please rename one of them."
-                          ])
-                  in
-                  C.Kind.Dict.merge acc sources ~f)
+                  String.Map.Multi.rev_union sources acc)
             in
-            C_sources.make d ~c_sources)
+            Foreign_sources.make d ~sources ~ext_obj:ctx.lib_config.ext_obj)
       in
       let coq_modules =
         Memo.lazy_ (fun () ->
@@ -678,7 +654,7 @@ end = struct
             ; dir
             ; text_files = files
             ; modules
-            ; c_sources
+            ; foreign_sources
             ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
             ; coq_modules
             ; artifacts
@@ -689,7 +665,7 @@ end = struct
         ; dir
         ; text_files = files
         ; modules
-        ; c_sources
+        ; foreign_sources
         ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
         ; coq_modules
         ; artifacts

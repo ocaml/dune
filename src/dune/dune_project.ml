@@ -139,37 +139,6 @@ module Project_file = struct
       ]
 end
 
-module Source_kind = struct
-  type t =
-    | Github of string * string
-    | Url of string
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Github (user, repo) -> constr "Github" [ string user; string repo ]
-    | Url url -> constr "Url" [ string url ]
-
-  let pp fmt = function
-    | Github (user, repo) ->
-      Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
-    | Url u -> Format.pp_print_string fmt u
-
-  let decode =
-    let open Dune_lang.Decoder in
-    sum
-      [ ( "github"
-        , plain_string (fun ~loc s ->
-              match String.split ~on:'/' s with
-              | [ user; repo ] -> Github (user, repo)
-              | _ ->
-                User_error.raise ~loc
-                  [ Pp.textf "GitHub repository must be of form user/repo" ])
-        )
-      ; ("uri", string >>| fun s -> Url s)
-      ]
-end
-
 module File_key = struct
   type t = string
 
@@ -188,13 +157,7 @@ type t =
   { name : Name.t
   ; root : Path.Source.t
   ; version : string option
-  ; source : Source_kind.t option
-  ; license : string option
-  ; authors : string list
-  ; homepage : string option
-  ; bug_reports : string option
-  ; documentation : string option
-  ; maintainers : string list
+  ; info : Package.Info.t
   ; packages : Package.t Package.Name.Map.t
   ; stanza_parser : Stanza.t list Dune_lang.Decoder.t
   ; project_file : Project_file.t
@@ -219,19 +182,7 @@ let packages t = t.packages
 
 let version t = t.version
 
-let source t = t.source
-
-let license t = t.license
-
-let homepage t = t.homepage
-
-let documentation t = t.documentation
-
-let bug_reports t = t.bug_reports
-
-let maintainers t = t.maintainers
-
-let authors t = t.authors
+let info t = t.info
 
 let name t = t.name
 
@@ -257,15 +208,9 @@ let to_dyn
     { name
     ; root
     ; version
-    ; source
-    ; license
-    ; authors
-    ; homepage
-    ; documentation
+    ; info
     ; project_file
     ; parsing_context = _
-    ; bug_reports
-    ; maintainers
     ; extension_args = _
     ; stanza_parser = _
     ; packages
@@ -284,13 +229,7 @@ let to_dyn
     [ ("name", Name.to_dyn name)
     ; ("root", Path.Source.to_dyn root)
     ; ("version", (option string) version)
-    ; ("source", (option Source_kind.to_dyn) source)
-    ; ("license", (option string) license)
-    ; ("homepage", (option string) homepage)
-    ; ("documentation", (option string) documentation)
-    ; ("bug_reports", (option string) bug_reports)
-    ; ("maintainers", (list string) maintainers)
-    ; ("authors", (list string) authors)
+    ; ("info", Package.Info.to_dyn info)
     ; ("project_file", Project_file.to_dyn project_file)
     ; ( "packages"
       , (list (pair Package.Name.to_dyn Package.to_dyn))
@@ -618,13 +557,7 @@ let infer ~dir packages =
   { name
   ; packages
   ; root
-  ; source = None
-  ; license = None
-  ; homepage = None
-  ; bug_reports = None
-  ; documentation = None
-  ; maintainers = []
-  ; authors = []
+  ; info = Package.Info.empty
   ; version = None
   ; implicit_transitive_deps
   ; wrapped_executables
@@ -647,28 +580,8 @@ let parse ~dir ~lang ~opam_packages ~file =
   fields
     (let+ name = field_o "name" Name.decode
      and+ version = field_o "version" string
-     and+ source =
-       field_o "source"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 7) >>> Source_kind.decode)
+     and+ info = Package.Info.decode ()
      and+ packages = multi_field "package" (Package.decode ~dir)
-     and+ authors =
-       field ~default:[] "authors"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 9) >>> repeat string)
-     and+ license =
-       field_o "license"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 9) >>> string)
-     and+ homepage =
-       field_o "homepage"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
-     and+ documentation =
-       field_o "documentation"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
-     and+ bug_reports =
-       field_o "bug_reports"
-         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> string)
-     and+ maintainers =
-       field "maintainers" ~default:[]
-         (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> repeat string)
      and+ explicit_extensions =
        multi_field "using"
          (let+ loc = loc
@@ -699,18 +612,6 @@ let parse ~dir ~lang ~opam_packages ~file =
        field_o_b "explicit_js_mode"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
      and+ format_config = Format_config.field in
-     let homepage =
-       match (homepage, source) with
-       | None, Some (Github (user, repo)) ->
-         Some (sprintf "https://github.com/%s/%s" user repo)
-       | s, _ -> s
-     in
-     let bug_reports =
-       match (bug_reports, source) with
-       | None, Some (Github (user, repo)) ->
-         Some (sprintf "https://github.com/%s/%s/issues" user repo)
-       | s, _ -> s
-     in
      let packages =
        if List.is_empty packages then
          Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)
@@ -725,6 +626,26 @@ let parse ~dir ~lang ~opam_packages ~file =
                    name
                ]
          | _, _ -> () );
+         let package_defined_twice name loc1 loc2 =
+           User_error.raise
+             [ Pp.textf "Package name %s is defined twice:"
+                 (Package.Name.to_string name)
+             ; Pp.textf "- %s" (Loc.to_file_colon_line loc1)
+             ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
+             ]
+         in
+         let deprecated_package_names =
+           List.fold_left packages ~init:Package.Name.Map.empty
+             ~f:(fun acc { Package.deprecated_package_names; _ } ->
+               Package.Name.Map.union acc deprecated_package_names
+                 ~f:package_defined_twice)
+         in
+         List.iter packages ~f:(fun p ->
+             match
+               Package.Name.Map.find deprecated_package_names p.Package.name
+             with
+             | None -> ()
+             | Some loc -> package_defined_twice p.Package.name loc p.loc);
          match
            Package.Name.Map.of_list_map packages ~f:(fun p -> (p.name, p))
          with
@@ -800,13 +721,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; file_key
      ; root
      ; version
-     ; source
-     ; license
-     ; authors
-     ; homepage
-     ; documentation
-     ; bug_reports
-     ; maintainers
+     ; info
      ; packages
      ; stanza_parser
      ; project_file
@@ -866,10 +781,12 @@ let load ~dir ~files ~infer_from_opam_files =
                ; conflicts = []
                ; depends = []
                ; depopts = []
+               ; info = Package.Info.empty
                ; synopsis = None
                ; description = None
                ; kind = Opam
                ; tags = []
+               ; deprecated_package_names = Package.Name.Map.empty
                })
           in
           (name, (loc, pkg)) :: acc)

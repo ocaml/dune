@@ -22,16 +22,16 @@
   $ cat > err/dune << EOF
   > (executable
   >  (name foo)
-  >  (c_names stubs))
+  >  (foreign_stubs (language c) (names stubs)))
   > EOF
   $ dune build --root err @all
   Entering directory 'err'
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)
-  File "dune", line 1, characters 0-41:
+  File "dune", line 1, characters 0-68:
   1 | (executable
   2 |  (name foo)
-  3 |  (c_names stubs))
-  Error: Pure bytecode executables cannot contain C stubs.
-  Did you forget to add `(modes exe)'?
+  3 |  (foreign_stubs (language c) (names stubs)))
+  Error: Pure bytecode executables cannot contain foreign stubs.
+  Hint: If you only need to build a native executable use "(modes exe)".
   [1]

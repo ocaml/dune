@@ -63,7 +63,8 @@
                "ocamllex" "ocamlyacc" "menhir" "alias" "install"
                "copy_files" "copy_files#" "include" "tests" "test" "dirs"
                "env" "ignored_subdirs" "include_subdirs" "data_only_dirs"
-               "documentation" "cinaps" "coqlib" "coq.theory" "coq.pp")
+               "documentation" "cinaps" "coqlib" "coq.theory" "coq.pp"
+               "foreign_library")
              ) "\\(?:\\_>\\|[[:space:]]\\)"))
   "Stanzas in dune files.")
 
@@ -72,9 +73,9 @@
     (regexp-opt
      '("name" "public_name" "synopsis" "modules" "libraries" "wrapped"
        "preprocess" "preprocessor_deps" "optional" "c_names" "cxx_names"
-       "install_c_headers" "modes" "no_dynlink" "kind"
-       "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml" "flags"
-       "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
+       "foreign_stubs" "foreign_archives" "install_c_headers" "modes"
+       "no_dynlink" "kind" "ppx_runtime_libraries" "virtual_deps" "js_of_ocaml"
+       "flags" "ocamlc_flags" "ocamlopt_flags" "library_flags" "c_flags"
        "cxx_flags" "c_library_flags" "self_build_stubs_archive" "inline_tests"
        "modules_without_implementation" "private_modules"
        ;; + special_builtin_support
@@ -87,6 +88,8 @@
        ;; + for "executable" and "executables":
        "package" "link_flags" "link_deps" "names" "public_names" "variants"
        "forbidden_libraries"
+       ;; + for "foreign_library" and "foreign_stubs":
+       "archive_name" "language" "names" "flags" "include_dirs" "extra_deps"
        ;; + for "rule":
        "targets" "action" "deps" "mode" "fallback" "locks"
        ;; + for "menhir":
@@ -113,6 +116,7 @@
                "run" "chdir" "setenv"
                "with-stdout-to" "with-stderr-to" "with-outputs-to"
                "ignore-stdout" "ignore-stderr" "ignore-outputs"
+               "with-stdin-from" "with-exit-codes"
                "progn" "echo" "write-file" "cat" "copy" "copy#" "system"
                "bash" "diff" "diff?" "cmp"
                ;; FIXME: "flags" is already a field and we do not have enough

@@ -1,4 +1,8 @@
+(** Representation of dune-package files *)
 open! Stdune
+
+(** The filename of a dune-package file*)
+val fn : string
 
 module Lib : sig
   type t
@@ -18,6 +22,8 @@ module Lib : sig
     -> main_module_name:Module_name.t option
     -> modules:Modules.t option
     -> t
+
+  val to_dyn : t Dyn.Encoder.t
 end
 
 module Deprecated_library_name : sig
@@ -26,6 +32,8 @@ module Deprecated_library_name : sig
     ; old_public_name : Lib_name.t
     ; new_public_name : Lib_name.t
     }
+
+  val to_dyn : t Dyn.Encoder.t
 end
 
 module Entry : sig
@@ -36,6 +44,8 @@ module Entry : sig
   val name : t -> Lib_name.t
 
   val version : t -> string option
+
+  val to_dyn : t Dyn.Encoder.t
 end
 
 type t =
@@ -45,6 +55,8 @@ type t =
   ; dir : Path.t
   }
 
+val to_dyn : t Dyn.Encoder.t
+
 module Or_meta : sig
   type nonrec t =
     | Use_meta
@@ -52,5 +64,10 @@ module Or_meta : sig
 
   val encode : dune_version:Dune_lang.Syntax.Version.t -> t -> Dune_lang.t list
 
+  val pp :
+    dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
+
   val load : Dpath.t -> t
+
+  val to_dyn : t Dyn.Encoder.t
 end

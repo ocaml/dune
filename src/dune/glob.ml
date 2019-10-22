@@ -1,9 +1,9 @@
 open! Stdune
 open Import
-
 include Dune_glob.V1
 
 let of_string = `shadowed
+
 let _ = of_string
 
 let compare x y = String.compare (to_string x) (to_string y)

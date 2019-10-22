@@ -16,6 +16,8 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     match t with
     | Run (prog, args) ->
       Run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
+    | With_accepted_exit_codes (pred, t) ->
+      With_accepted_exit_codes (pred, f t ~dir)
     | Dynamic_run (prog, args) ->
       Dynamic_run (f_program ~dir prog, List.map args ~f:(f_string ~dir))
     | Chdir (fn, t) -> Chdir (f_path ~dir fn, f t ~dir:fn)

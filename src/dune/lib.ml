@@ -482,15 +482,19 @@ module Lib_and_module = struct
              | Lib t -> link_flags t mode
              | Module (obj_dir, m) ->
                Command.Args.S
-                 [ Dep
+                 ( Dep
                      (Obj_dir.Module.cm_file_unsafe obj_dir m
                         ~kind:(Mode.cm_kind mode))
-                 ; Command.Args.Hidden_deps
-                     (Dep.Set.of_files
-                        [ Obj_dir.Module.o_file_unsafe obj_dir m
-                            ~ext_obj:lib_config.ext_obj
-                        ])
-                 ]) )
+                 ::
+                 ( match mode with
+                 | Native ->
+                   [ Command.Args.Hidden_deps
+                       (Dep.Set.of_files
+                          [ Obj_dir.Module.o_file_unsafe obj_dir m
+                              ~ext_obj:lib_config.ext_obj
+                          ])
+                   ]
+                 | Byte -> [] ) )) )
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)
   end

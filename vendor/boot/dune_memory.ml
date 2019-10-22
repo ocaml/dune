@@ -1,3 +1,7 @@
+type key = Stdune.Digest.t
+
+type metadata = Stdune.Sexp.t list
+
 module File = struct
   type t =
     { in_the_memory : Stdune.Path.t
@@ -6,12 +10,24 @@ module File = struct
     }
 end
 
-module Memory = struct
-  type t = unit
+module type memory = sig
+  type t
 
-  let result = Stdune.Result.Error "Dune_memory is disabled during bootstrap."
+  val promote :
+       t
+    -> (Stdune.Path.Build.t * Stdune.Digest.t) list
+    -> key
+    -> metadata
+    -> int option
+    -> (unit, string) Result.t
 
-  let promote _ _ _ _ _ = result
+  val search : t -> key -> (metadata * File.t list, string) Result.t
 
-  let search _ _ = result
+  val set_build_dir : t -> Stdune.Path.t -> t
+end
+
+module type caching = sig
+  module Cache : memory
+
+  val cache : Cache.t
 end

@@ -108,8 +108,12 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
-let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
-    ~static_target ~dynamic_target ~build_targets_together =
+let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
+    ~archive_name ~build_targets_together =
+  let ctx = Super_context.context sctx in
+  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
+  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
+  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
@@ -124,9 +128,11 @@ let ocamlmklib ~path ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
            else
              Command.Args.empty )
          ; A "-o"
-         ; Path path
+         ; Path (Path.build (Path.Build.relative dir archive_name))
          ; Deps o_files
          ; Dyn
+             (* The [c_library_flags] is needed only for the [dynamic_target]
+                case, but we pass them unconditionally for simplicity. *)
              (Build.map cclibs_args ~f:(fun cclibs ->
                   (* https://github.com/ocaml/dune/issues/119 *)
                   if ctx.ccomp_type = "msvc" then
@@ -226,40 +232,11 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     |> List.map ~f:Path.build
   in
   Check_rules.add_files sctx ~dir o_files;
-  let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
-  ocamlmklib
-    ~path:(Path.build (Path.Build.relative dir archive_name))
-    ~loc:library.stubs.loc
+  ocamlmklib ~archive_name ~loc:library.stubs.loc
     ~c_library_flags:Ordered_set_lang.Unexpanded.standard ~sctx ~dir ~expander
-    ~o_files ~static_target ~dynamic_target ~build_targets_together:false
+    ~o_files ~build_targets_together:false
 
 (* Build a required set of archives for an OCaml library. *)
-let build_self_stubs lib ~cctx ~expander ~dir ~o_files =
-  let sctx = Compilation_context.super_context cctx in
-  let ctx = Super_context.context sctx in
-  let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let archive_name = Library.stubs_archive_name lib in
-  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
-  let modes = Compilation_context.modes cctx in
-  let path =
-    Path.build (Path.Build.relative dir (Library.stubs_archive_name lib))
-  in
-  (* CR-someday aalekseyev: I'm not sure why [c_library_flags] is needed here.
-     I think it's unused at least when building a static archive. But maybe
-     it's used for dynamic libraries. It would be nice to clarify that
-     somewhere. *)
-  let build_targets_together =
-    modes.native && modes.byte
-    && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-  in
-  ocamlmklib ~path ~loc:lib.buildable.loc ~sctx ~expander ~dir ~o_files
-    ~c_library_flags:lib.c_library_flags ~static_target ~dynamic_target
-    ~build_targets_together
-
 let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ~vlib_stubs_o_files =
   let sctx = Compilation_context.super_context cctx in
@@ -275,7 +252,16 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
   Check_rules.add_files sctx ~dir lib_o_files;
   match vlib_stubs_o_files @ lib_o_files with
   | [] -> ()
-  | o_files -> build_self_stubs lib ~cctx ~dir ~expander ~o_files
+  | o_files ->
+    let ctx = Super_context.context sctx in
+    let archive_name = Library.stubs_archive_name lib in
+    let modes = Compilation_context.modes cctx in
+    let build_targets_together =
+      modes.native && modes.byte
+      && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
+    in
+    ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
+      ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
 
 let build_shared lib ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in

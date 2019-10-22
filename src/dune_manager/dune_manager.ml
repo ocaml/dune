@@ -59,11 +59,11 @@ let check_port_file ?(close = true) p =
   | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) -> Result.Ok None
   | Result.Error e -> Result.Error e
 
-let send client sexp =
-  output_string client (Csexp.to_string sexp);
-  (* We need to flush when sending the version. Other instances are more
-     debatable. *)
-  flush client
+let send_sexp output sexp =
+  output_string output (Csexp.to_string sexp);
+  flush output
+
+let send output message = send_sexp output (Messages.sexp_of_message message)
 
 module ClientsKey = struct
   type t = Unix.file_descr
@@ -112,12 +112,8 @@ let stop manager = Evt.sync (Evt.send manager.events Stop)
 let my_versions : version list = [ (1, 0) ]
 
 let my_versions_command =
-  Sexp.List
-    ( Sexp.Atom "lang" :: Sexp.Atom "dune-memory-protocol"
-    :: (List.map ~f:(function maj, min ->
-            Sexp.List
-              [ Sexp.Atom (string_of_int maj); Sexp.Atom (string_of_int min) ]))
-         my_versions )
+  Messages.Lang
+    (List.map ~f:(fun (major, minor) -> { Messages.major; minor }) my_versions)
 
 let find_highest_common_version (a : version list) (b : version list) :
     version option =
@@ -169,7 +165,7 @@ module Client = struct
 
   let client_handle output = function
     | Dune_memory.Dedup { in_the_build_directory; in_the_memory; digest } ->
-      send output
+      send_sexp output
         (Sexp.List
            [ Sexp.Atom "dedup"
            ; Sexp.List
@@ -180,6 +176,8 @@ module Client = struct
                ; Sexp.Atom (Digest.to_string digest)
                ]
            ])
+
+  (* FIXME *)
 
   let client_thread (events, (client : client)) =
     try
@@ -428,51 +426,20 @@ module Client = struct
     let thread = Thread.create thread input in
     Result.Ok { socket; fd; input; memory; thread; finally }
 
-  let with_repositories client repos =
-    let repos =
-      let f { Dune_memory.directory; remote; commit } =
-        Sexp.List
-          [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
-          ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
-          ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
-          ]
-      in
-      List.map ~f repos
-    in
-    send client.socket (Sexp.List (Sexp.Atom "set-repos" :: repos));
+  let with_repositories client repositories =
+    send client.socket (Messages.SetRepos repositories);
     client
 
-  let promote client paths key metadata ~repository =
-    let key = Dune_memory.Key.to_string key
-    and f (path, digest) =
-      Sexp.List
-        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
-        ; Sexp.Atom (Digest.to_string digest)
-        ]
-    and repo =
-      match repository with
-      | Some idx ->
-        [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
-      | None -> []
-    in
+  let promote client files key metadata ~repository =
     try
       send client.socket
-        (Sexp.List
-           ( Sexp.Atom "promote"
-           :: Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-           :: Sexp.List (Sexp.Atom "files" :: List.map ~f paths)
-           :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ]
-           :: repo ));
+        (Messages.Promote { key; files; metadata; repository });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
-    send client.socket
-      (Sexp.List
-         [ Sexp.Atom "set-build-root"
-         ; Sexp.Atom (Path.to_absolute_filename path)
-         ]);
+    send client.socket (Messages.SetBuildRoot path);
     client
 
   let search client key = Dune_memory.Memory.search client.memory key

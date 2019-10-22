@@ -101,9 +101,9 @@ module type Store = sig
 
   type 'a t
 
-  val clear : _ t -> unit
-
   val create : unit -> _ t
+
+  val clear : _ t -> unit
 
   val set : 'a t -> key -> 'a -> unit
 

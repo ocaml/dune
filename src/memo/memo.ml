@@ -124,72 +124,6 @@ module type Output_allow_cutoff = sig
   val equal : t -> t -> bool
 end
 
-module type Store = sig
-  type key
-
-  type 'a t
-
-  val clear : _ t -> unit
-
-  val create : unit -> _ t
-
-  val set : 'a t -> key -> 'a -> unit
-
-  val find : 'a t -> key -> 'a option
-end
-
-module Store = struct
-  module type S = sig
-    include Store
-
-    type value
-
-    val store : value t
-  end
-
-  type ('k, 'v) t = (module S with type key = 'k and type value = 'v)
-
-  let make (type k v) (module S : Store with type key = k) : (k, v) t =
-    ( module struct
-      include S
-
-      type value = v
-
-      let store = S.create ()
-    end )
-
-  let clear (type k v) (module S : S with type key = k and type value = v) =
-    S.clear S.store
-
-  let set (type k v) (module S : S with type key = k and type value = v)
-      (k : k) (v : v) =
-    S.set S.store k v
-
-  let find (type k v) (module S : S with type key = k and type value = v)
-      (k : k) : v option =
-    S.find S.store k
-
-  let of_table (type k v) (table : (k, v) Table.t) : (k, v) t =
-    ( module struct
-      type key = k
-
-      type value = v
-
-      let store = table
-
-      type 'a t = (key, 'a) Table.t
-
-      let clear = Table.clear
-
-      let find = Table.find
-
-      let set = Table.set
-
-      (* the store is already created *)
-      let create () = assert false
-    end )
-end
-
 module type Input = sig
   type t
 
@@ -585,6 +519,8 @@ let create_with_cache (type i o f) name ~cache ~doc
   | Hidden -> () );
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
+
+module type Store = Store.Store
 
 let create_with_store (type i) name ~store:(module S : Store with type key = i)
     ~doc ~input ~visibility ~output typ f =

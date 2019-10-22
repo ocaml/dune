@@ -255,6 +255,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-cache-dedup-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache-dedup-direct))
+ (action
+  (chdir
+   test-cases/dune-cache-dedup-direct
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-cache-promote)
  (deps (package dune) (source_tree test-cases/dune-cache-promote))
  (action
@@ -263,11 +271,27 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
+ (name dune-cache-promote-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache-promote-direct))
+ (action
+  (chdir
+   test-cases/dune-cache-promote-direct
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name dune-cache-symlink)
  (deps (package dune) (source_tree test-cases/dune-cache-symlink))
  (action
   (chdir
    test-cases/dune-cache-symlink
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
+ (name dune-cache-symlink-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache-symlink-direct))
+ (action
+  (chdir
+   test-cases/dune-cache-symlink-direct
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -1886,8 +1910,11 @@
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
+  (alias dune-cache-dedup-direct)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-direct)
   (alias dune-cache-symlink)
+  (alias dune-cache-symlink-direct)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2107,8 +2134,11 @@
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
+  (alias dune-cache-dedup-direct)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-direct)
   (alias dune-cache-symlink)
+  (alias dune-cache-symlink-direct)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)

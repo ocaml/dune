@@ -14,6 +14,7 @@
       ocamldep bin/.toto.eobjs/toto.ml.d
         ocamlc bin/.toto.eobjs/byte/dune__exe__Toto.{cmi,cmo,cmt}
         ocamlc bin/toto.bc
+      ocamldep src/.foo.objs/foo.ml.d
         ocamlc src/.foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc src/foo.cma
         ocamlc bin/toto.exe

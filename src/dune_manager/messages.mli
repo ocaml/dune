@@ -2,6 +2,8 @@ open Stdune
 
 include module type of Messages_intf
 
-val message_of_sexp : Sexp.t -> (message, string) Result.t
+val incoming_message_of_sexp : Sexp.t -> (incoming message, string) Result.t
 
-val sexp_of_message : message -> Sexp.t
+val outgoing_message_of_sexp : Sexp.t -> (outgoing message, string) Result.t
+
+val sexp_of_message : 'a message -> Sexp.t

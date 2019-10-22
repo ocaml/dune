@@ -9,7 +9,78 @@ let invalid_args args =
           ~f:(fun a b -> a ^ " " ^ b)
           (List.map ~f:Sexp.to_string args)))
 
-let message_of_sexp =
+let sexp_of_message : type a. a message -> Sexp.t =
+  let cmd name args = Sexp.List (Sexp.Atom name :: args) in
+  function
+  | Lang versions ->
+    cmd "lang"
+      ( Sexp.Atom "dune-memory-protocol"
+      :: (List.map ~f:(fun { major; minor } ->
+              Sexp.List
+                [ Sexp.Atom (string_of_int major)
+                ; Sexp.Atom (string_of_int minor)
+                ]))
+           versions )
+  | Promote promotion ->
+    let key = Dune_memory.Key.to_string promotion.key
+    and f (path, digest) =
+      Sexp.List
+        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
+        ; Sexp.Atom (Digest.to_string digest)
+        ]
+    and repo =
+      match promotion.repository with
+      | Some idx ->
+        [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
+      | None -> []
+    in
+    cmd "promote"
+      ( Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
+      :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
+      :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
+      :: repo )
+  | SetBuildRoot root ->
+    cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
+  | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
+  | SetDuneMemoryRoot root ->
+    cmd "set-dune-memory-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
+  | SetRepos repositories ->
+    let f { Dune_memory.directory; remote; commit } =
+      Sexp.List
+        [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
+        ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
+        ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
+        ]
+    in
+    cmd "set-repos" (List.map ~f repositories)
+  | Dedup f ->
+    cmd "dedup"
+      [ Sexp.List
+          [ Sexp.Atom
+              (Path.Local.to_string (Path.Build.local f.in_the_build_directory))
+          ; Sexp.Atom (Path.to_string f.in_the_memory)
+          ; Sexp.Atom (Digest.to_string f.digest)
+          ]
+      ]
+
+let incoming_message_of_sexp = function
+  | Sexp.List
+      [ Sexp.Atom "dedup"
+      ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
+      ] -> (
+    match Digest.from_hex digest with
+    | Some digest ->
+      Result.Ok
+        (Dedup
+           { in_the_build_directory = Path.Build.of_string source
+           ; in_the_memory = Path.of_string target
+           ; digest
+           })
+    | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
+  | exp ->
+    Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+
+let outgoing_message_of_sexp =
   let lang_of_sexp = function
     | Sexp.Atom "dune-memory-protocol" :: versions ->
       let decode_version = function
@@ -96,48 +167,3 @@ let message_of_sexp =
   | cmd ->
     Result.Error
       (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
-
-let sexp_of_message =
-  let cmd name args = Sexp.List (Sexp.Atom name :: args) in
-  function
-  | Lang versions ->
-    cmd "lang"
-      ( Sexp.Atom "dune-memory-protocol"
-      :: (List.map ~f:(fun { major; minor } ->
-              Sexp.List
-                [ Sexp.Atom (string_of_int major)
-                ; Sexp.Atom (string_of_int minor)
-                ]))
-           versions )
-  | Promote promotion ->
-    let key = Dune_memory.Key.to_string promotion.key
-    and f (path, digest) =
-      Sexp.List
-        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
-        ; Sexp.Atom (Digest.to_string digest)
-        ]
-    and repo =
-      match promotion.repository with
-      | Some idx ->
-        [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
-      | None -> []
-    in
-    cmd "promote"
-      ( Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-      :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
-      :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
-      :: repo )
-  | SetBuildRoot root ->
-    cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
-  | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
-  | SetDuneMemoryRoot root ->
-    cmd "set-dune-memory-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
-  | SetRepos repositories ->
-    let f { Dune_memory.directory; remote; commit } =
-      Sexp.List
-        [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
-        ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
-        ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
-        ]
-    in
-    cmd "set-repos" (List.map ~f repositories)

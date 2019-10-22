@@ -2,6 +2,7 @@ module Evt = Event
 open Stdune
 module Utils = Utils
 open Utils
+open Messages
 
 type version = int * int
 
@@ -145,37 +146,13 @@ module Client = struct
 
   let read input =
     let open Result.O in
-    Csexp.parse input
-    >>= function
-    | Sexp.List
-        [ Sexp.Atom "dedup"
-        ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
-        ] -> (
-      match Digest.from_hex digest with
-      | Some digest ->
-        Result.Ok
-          (Dune_memory.Dedup
-             { in_the_build_directory = Path.Build.of_string source
-             ; in_the_memory = Path.of_string target
-             ; digest
-             })
-      | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
-    | exp ->
-      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+    let* sexp = Csexp.parse input in
+    Messages.incoming_message_of_sexp sexp
+    >>| function
+    | Messages.Dedup v -> Dune_memory.Dedup v
 
   let client_handle output = function
-    | Dune_memory.Dedup { in_the_build_directory; in_the_memory; digest } ->
-      send_sexp output
-        (Sexp.List
-           [ Sexp.Atom "dedup"
-           ; Sexp.List
-               [ Sexp.Atom
-                   (Path.Local.to_string
-                      (Path.Build.local in_the_build_directory))
-               ; Sexp.Atom (Path.to_string in_the_memory)
-               ; Sexp.Atom (Digest.to_string digest)
-               ]
-           ])
+    | Dune_memory.Dedup f -> send output (Messages.Dedup f)
 
   (* FIXME *)
 
@@ -183,7 +160,7 @@ module Client = struct
     try
       let open Result.O in
       let handle_cmd client sexp =
-        let* msg = Messages.message_of_sexp sexp in
+        let* msg = Messages.outgoing_message_of_sexp sexp in
         let* () =
           match msg with
           | Lang _ -> Result.Ok ()

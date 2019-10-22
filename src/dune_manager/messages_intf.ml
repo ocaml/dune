@@ -12,10 +12,15 @@ type promotion =
   ; repository : int option
   }
 
-type message =
-  | Lang of version list
-  | Promote of promotion
-  | SetBuildRoot of Path.t
-  | SetCommonMetadata of Sexp.t list
-  | SetDuneMemoryRoot of Path.t
-  | SetRepos of Dune_memory.repository list
+type outgoing = Outgoing
+
+type incoming = Incoming
+
+type _ message =
+  | Lang : version list -> outgoing message
+  | Promote : promotion -> outgoing message
+  | SetBuildRoot : Path.t -> outgoing message
+  | SetCommonMetadata : Sexp.t list -> outgoing message
+  | SetDuneMemoryRoot : Path.t -> outgoing message
+  | SetRepos : Dune_memory.repository list -> outgoing message
+  | Dedup : Dune_memory.File.t -> incoming message

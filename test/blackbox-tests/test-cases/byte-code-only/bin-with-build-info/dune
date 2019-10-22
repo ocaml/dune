@@ -1,0 +1,4 @@
+(executable
+ (name print_version)
+ (libraries build_info)
+ )

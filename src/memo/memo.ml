@@ -529,7 +529,7 @@ let create_with_store (type i) name ~store:(module S : Store with type key = i)
 
 let create (type i) name ~doc ~input:(module Input : Input with type t = i)
     ~visibility ~output typ f =
-  let cache = Store.of_table (Table.create (module Input) 1024) in
+  let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Input with type t = i) in
   create_with_cache name ~cache ~doc ~input ~visibility ~output typ f
 

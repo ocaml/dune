@@ -19,9 +19,9 @@ module type memory = sig
     -> key
     -> metadata
     -> int option
-    -> (unit, string) Result.t
+    -> (unit, string) Stdune.Result.t
 
-  val search : t -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> key -> (metadata * File.t list, string) Stdune.Result.t
 
   val set_build_dir : t -> Stdune.Path.t -> t
 end

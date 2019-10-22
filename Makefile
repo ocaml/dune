@@ -21,7 +21,7 @@ install:
 uninstall:
 	$(BIN) uninstall $(INSTALL_ARGS) dune --build-dir _boot
 
-reinstall: uninstall reinstall
+reinstall: uninstall install
 
 test:
 	$(BIN) runtest

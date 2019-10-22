@@ -304,3 +304,11 @@ let trim memory free =
   in
   Memory.with_lock memory (fun () ->
       List.fold_left ~init:(0, []) ~f:delete files)
+
+let make_caching (type t) (module Caching : memory with type t = t) (cache : t)
+    : (module caching) =
+  ( module struct
+    module Cache = Caching
+
+    let cache = cache
+  end )

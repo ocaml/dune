@@ -45,3 +45,9 @@ module type memory = sig
 
   val teardown : t -> unit
 end
+
+module type caching = sig
+  module Cache : memory
+
+  val cache : Cache.t
+end

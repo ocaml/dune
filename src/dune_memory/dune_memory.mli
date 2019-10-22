@@ -29,3 +29,5 @@ module Memory : sig
 end
 
 val trim : Memory.t -> int -> int * Path.t list
+
+val make_caching : (module memory with type t = 'a) -> 'a -> (module caching)

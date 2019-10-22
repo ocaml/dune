@@ -409,10 +409,16 @@ module Context_or_install = struct
     | Context s -> Context_name.to_dyn s
 end
 
+module type caching = sig
+  module Cache : Dune_memory.memory
+
+  val cache : Cache.t
+end
+
 type caching =
   | Disabled
-  | Enabled of Dune_manager.Client.t
-  | Check of Dune_manager.Client.t
+  | Enabled of (module caching)
+  | Check of (module caching)
 
 type t =
   { (* File specification by targets *)
@@ -1497,9 +1503,9 @@ end = struct
           | true, _
           | _, Disabled ->
             None
-          | false, Enabled cache
-          | false, Check cache -> (
-            match Dune_manager.Client.search cache rule_digest with
+          | false, Enabled (module Caching)
+          | false, Check (module Caching) -> (
+            match Caching.Cache.search Caching.cache rule_digest with
             | Ok (_, files) -> Some files
             | Error msg ->
               Log.infof "cache miss: %s" msg;
@@ -1615,10 +1621,10 @@ end = struct
             | _ -> ()
           in
           ( match t.cache with
-          | Enabled cache
-          | Check cache ->
+          | Enabled (module Caching)
+          | Check (module Caching) ->
             ignore
-              (Dune_manager.Client.promote cache targets rule_digest [] None)
+              (Caching.Cache.promote Caching.cache targets rule_digest [] None)
           | Disabled -> () );
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
@@ -2065,7 +2071,13 @@ let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
     |> Context_name.Map.of_list_exn
   in
   let cache =
-    let f c = Dune_manager.Client.set_build_dir c Path.build_dir in
+    let f (module Caching : caching) =
+      ( module struct
+        module Cache = Caching.Cache
+
+        let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
+      end : caching )
+    in
     match caching with
     | Disabled -> Disabled
     | Enabled c -> Enabled (f c)

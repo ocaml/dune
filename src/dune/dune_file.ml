@@ -1791,7 +1791,7 @@ module Rule = struct
     and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
     { targets; deps; action; mode; locks; loc; enabled_if }
 
-  let dune_syntax =
+  let decode =
     peek_exn
     >>= function
     | List (_, Atom (loc, A s) :: _) -> (
@@ -1807,8 +1807,6 @@ module Rule = struct
     | sexp ->
       User_error.raise ~loc:(Dune_lang.Ast.loc sexp)
         [ Pp.textf "S-expression of the form (<atom> ...) expected" ]
-
-  let decode = dune_syntax
 
   type lex_or_yacc =
     { modules : string list

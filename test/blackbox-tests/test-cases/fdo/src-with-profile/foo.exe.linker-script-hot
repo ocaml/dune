@@ -1,6 +1,1 @@
-*(.text.caml_page_table_add)
-*(.text.caml_page_table_modify)
-*(.text.caml_set_minor_heap_size)
-*(.text.reset_table)
-*(.text.caml_init_gc)
-*(.text.caml_init_major_heap)
+

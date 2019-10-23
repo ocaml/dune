@@ -63,12 +63,8 @@ guaranteed to fail if ocamlfdo attempts to load the profile.
   [1]
   $ OCAMLFDO_USE_PROFILE=if-exists dune build src/foo.exe --workspace dune-workspace.4
 
-  $ OCAMLFDO_USE_PROFILE=if-exists dune build src-with-profile/foo.exe --workspace dune-workspace.5  2>&1 | grep -v 'new crc'
-      ocamlfdo src-with-profile/.foo.eobjs/native/foo.cmir-linear-fdo [fdo] (exit 65)
-  (cd _build/fdo/src-with-profile && /usr/local/home/gyorsh/.opam/dunefdo/bin/ocamlfdo opt .foo.eobjs/native/foo.cmir-linear -fdo-profile foo.exe.fdo-profile -md5-unit -reorder-blocks opt -q)
-  Error: Linear IR for Foo from file .foo.eobjs/native/foo.cmir-linear does not match the version of this IR used for creating the profiled binary.
-  old crc: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  
+  $ OCAMLFDO_USE_PROFILE=if-exists dune build src-with-profile/foo.exe --workspace dune-workspace.5  2>&1 | grep 'Error: '
+  Error: Linear IR for Dune__exe__Foo from file .foo.eobjs/native/dune__exe__Foo.cmir-linear does not match the version of this IR used for creating the profiled binary.
 
   $ OCAMLFDO_USE_PROFILE=never dune build src/foo.exe --workspace dune-workspace.4
 
@@ -84,18 +80,14 @@ guaranteed to fail if ocamlfdo attempts to load the profile.
   src/foo.exe.fdo-profile does not exist.
   [1]
 
-  $ OCAMLFDO_USE_PROFILE=always dune build src-with-profile/foo.exe --workspace dune-workspace.5  2>&1 | grep -v 'new crc'
-      ocamlfdo src-with-profile/.foo.eobjs/native/foo.cmir-linear-fdo [fdo] (exit 65)
-  (cd _build/fdo/src-with-profile && /usr/local/home/gyorsh/.opam/dunefdo/bin/ocamlfdo opt .foo.eobjs/native/foo.cmir-linear -fdo-profile foo.exe.fdo-profile -md5-unit -reorder-blocks opt -q)
-  Error: Linear IR for Foo from file .foo.eobjs/native/foo.cmir-linear does not match the version of this IR used for creating the profiled binary.
-  old crc: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  
+  $ OCAMLFDO_USE_PROFILE=always dune build src-with-profile/foo.exe --workspace dune-workspace.5  2>&1 | grep 'Error: '
+  Error: Linear IR for Dune__exe__Foo from file .foo.eobjs/native/dune__exe__Foo.cmir-linear does not match the version of this IR used for creating the profiled binary.
 
 
 Check OCAMLFDO_FLAGS are passed on to "ocamlfdo opt"
 
   $ OCAMLFDO_FLAGS="-help" dune build src/foo.exe --workspace dune-workspace.4 2>&1 | head -n 4
-      ocamlfdo src/.foo.eobjs/native/foo.cmir-linear-fdo [fdo]
+      ocamlfdo src/.foo.eobjs/native/dune__exe__Foo.cmir-linear-fdo [fdo]
   Use a profile to optimize intermediate representation of the program.
   
     ocamlfdo opt [INPUT ...]

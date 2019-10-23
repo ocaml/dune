@@ -41,7 +41,6 @@ let ocamlfdo_binary sctx dir =
   Super_context.resolve_program sctx ~dir ~loc:None "ocamlfdo"
     ~hint:"try: opam install ocamlfdo"
 
-(* CR gyorsh: this should also be cached *)
 let fdo_use_profile (ctx : Context.t) name fdo_profile =
   let fdo_profile_src = Path.Source.(relative root fdo_profile) in
   let profile_exists = File_tree.file_exists fdo_profile_src in

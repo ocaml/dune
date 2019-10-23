@@ -98,7 +98,7 @@ module Context = struct
             [ Pp.textf
                 "`fdo %s` expects executable filename ending with .exe \
                  extension, not %s. \n\
-                 Please specify the name of the executable to optimize,\
+                 Please specify the name of the executable to optimize, \
                  including path from <root>."
                 file ext
             ] );

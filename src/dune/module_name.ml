@@ -4,13 +4,13 @@ module T = struct
   type t = string
 
   let compare = compare
+
+  let to_dyn = Dyn.Encoder.string
 end
 
 include T
 
 let encode = Dune_lang.Encoder.string
-
-let to_dyn = Dyn.Encoder.string
 
 let add_suffix = ( ^ )
 
@@ -60,3 +60,5 @@ let decode =
             | _ -> raise_notrace Exit);
           of_string s
         with Exit -> invalid_module_name ~loc name ))
+
+module Per_item = Per_item.Make (T)

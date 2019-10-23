@@ -507,7 +507,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
        SC.add_alias_action sctx alias build ~dir ~stamp:("lint", lib_name, fn)
      in
      let lint =
-       Per_module.map lint ~f:(function
+       Module_name.Per_item.map lint ~f:(function
          | Preprocess.No_preprocessing -> fun ~source:_ ~ast:_ -> ()
          | Future_syntax loc ->
            User_error.raise ~loc
@@ -560,16 +560,16 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
                              ])))))
      in
      fun ~(source : Module.t) ~ast ->
-       Per_module.get lint (Module.name source) ~source ~ast)
+       Module_name.Per_item.get lint (Module.name source) ~source ~ast)
 
-type t = (Module.t -> lint:bool -> Module.t) Per_module.t
+type t = (Module.t -> lint:bool -> Module.t) Module_name.Per_item.t
 
-let dummy = Per_module.for_all (fun m ~lint:_ -> m)
+let dummy = Module_name.Per_item.for_all (fun m ~lint:_ -> m)
 
 let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocess =
-    Per_module.map preprocess ~f:(fun pp ->
+    Module_name.Per_item.map preprocess ~f:(fun pp ->
         Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp
           (Super_context.context sctx).version)
   in
@@ -581,7 +581,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     Staged.unstage
       (lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope)
   in
-  Per_module.map preprocess ~f:(fun pp ->
+  Module_name.Per_item.map preprocess ~f:(fun pp ->
       match pp with
       | No_preprocessing ->
         fun m ~lint ->
@@ -680,9 +680,11 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
             if lint then lint_module ~ast ~source:m;
             Module.set_pp ast pp)
 
-let pp_module t ?(lint = true) m = Per_module.get t (Module.name m) m ~lint
+let pp_module t ?(lint = true) m =
+  Module_name.Per_item.get t (Module.name m) m ~lint
 
-let pp_module_as t ?(lint = true) name m = Per_module.get t name m ~lint
+let pp_module_as t ?(lint = true) name m =
+  Module_name.Per_item.get t name m ~lint
 
 let get_ppx_driver sctx ~loc ~expander ~scope ~lib_name ~flags pps =
   let open Result.O in

@@ -25,6 +25,8 @@ module Set : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Per_item : Per_item.S with type key = t
+
 module Map : Map.S with type key = t
 
 module Infix : Comparator.OPS with type t = t

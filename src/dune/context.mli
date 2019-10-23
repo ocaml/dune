@@ -50,7 +50,7 @@ type t =
   ; merlin : bool
         (** [Some path/to/foo.exe] if this contexts is for feedback-directed
             optimization of target path/to/foo.exe *)
-  ; fdo_target_exe : string option
+  ; fdo_target_exe : Path.t option
         (** If this context is a cross-compilation context, you need another
             context for building tools used for the compilation that run on the
             host. *)

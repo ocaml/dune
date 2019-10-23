@@ -69,15 +69,10 @@ guaranteed to fail if ocamlfdo attempts to load the profile.
   $ OCAMLFDO_USE_PROFILE=never dune build src/foo.exe --workspace dune-workspace.4
 
   $ OCAMLFDO_USE_PROFILE=never dune build src-with-profile/foo.exe --workspace dune-workspace.5
-  Warning: Linker script generation with ocamlfdo cannot get hot function
-  layout from profile, because either OCAMLFDO_USE_PROFILE=never or
-  src-with-profile/foo.exe.fdo-profile not found. Hot functions layout from
-  file src-with-profile/foo.exe.linker-script-hot will be used.
-  Hint: To ignore src-with-profile/foo.exe.linker-script-hot, rename it.
 
   $ OCAMLFDO_USE_PROFILE=always dune build src/foo.exe --workspace dune-workspace.4
-  Error: Cannot build Foo: OCAMLFDO_USE_PROFILE=always but profile file
-  src/foo.exe.fdo-profile does not exist.
+  Error: OCAMLFDO_USE_PROFILE=always but profile file src/foo.exe.fdo-profile
+  does not exist.
   [1]
 
   $ OCAMLFDO_USE_PROFILE=always dune build src-with-profile/foo.exe --workspace dune-workspace.5  2>&1 | grep 'Error: '

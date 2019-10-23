@@ -40,15 +40,15 @@ module Context = struct
       ; name : Context_name.t
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
-      ; fdo_target_exe : string option
+      ; fdo_target_exe : Path.t option
       }
 
     let fdo_suffix t =
       match t.fdo_target_exe with
       | None -> ""
       | Some file ->
-        let name, _ = Filename.(basename file |> split_extension) in
-        "-fdo-" ^ name
+        let name, _ = Path.split_extension file in
+        "-fdo-" ^ Path.basename name
 
     let t ~profile =
       let+ env = env_field
@@ -62,7 +62,21 @@ module Context = struct
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
       and+ fdo_target_exe =
-        field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> string)
+        let f file =
+          let ext = Filename.extension file in
+          if ext = ".exe" then
+            Path.(relative root file)
+          else
+            User_error.raise
+              [ Pp.textf
+                  "`fdo %s` expects executable filename ending with .exe \
+                   extension, not %s. \n\
+                   Please specify the name of the executable to optimize, \
+                   including path from <root>."
+                  file ext
+              ]
+        in
+        field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> map string ~f)
       and+ paths =
         let f l =
           match
@@ -89,19 +103,6 @@ module Context = struct
                   "`targets` and `host` options cannot be used in the same \
                    context."
               ]);
-      ( match fdo_target_exe with
-      | None -> ()
-      | Some file ->
-        let ext = Filename.extension file in
-        if not (ext = ".exe") then
-          User_error.raise ~loc
-            [ Pp.textf
-                "`fdo %s` expects executable filename ending with .exe \
-                 extension, not %s. \n\
-                 Please specify the name of the executable to optimize, \
-                 including path from <root>."
-                file ext
-            ] );
       { targets
       ; profile
       ; loc

@@ -40,7 +40,7 @@ type t =
   ; kind : Kind.t
   ; profile : Profile.t
   ; merlin : bool
-  ; fdo_target_exe : string option
+  ; fdo_target_exe : Path.t option
   ; for_host : t option
   ; implicit : bool
   ; build_dir : Path.Build.t
@@ -110,7 +110,7 @@ let to_dyn t : Dyn.t =
     ; ( "for_host"
       , option Context_name.to_dyn (Option.map t.for_host ~f:(fun t -> t.name))
       )
-    ; ("fdo_target_exe", option string t.fdo_target_exe)
+    ; ("fdo_target_exe", option path t.fdo_target_exe)
     ; ("build_dir", Path.Build.to_dyn t.build_dir)
     ; ("toplevel_path", option path t.toplevel_path)
     ; ("ocaml_bin", path t.ocaml_bin)

@@ -208,10 +208,10 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
   | Some _, false ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
       ~phase:(Some Fdo.All)
-  | Some fdo_target_exe, true ->
+  | Some _, true ->
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
       ~phase:(Some Fdo.Compile);
-    Fdo.opt_rule cctx m fdo_target_exe;
+    Fdo.opt_rule cctx m;
     build_cm cctx m ~dep_graphs ~precompiled_cmi ~cm_kind:Cmx
       ~phase:(Some Fdo.Emit) );
   if not precompiled_cmi then

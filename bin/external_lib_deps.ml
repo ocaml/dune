@@ -13,7 +13,7 @@ let man =
   [ `S "DESCRIPTION"
   ; `P {|Print out the external libraries needed to build the given targets.|}
   ; `P
-      {|The output of $(b,jbuild external-lib-deps @install) should be included
+      {|The output of $(b,dune external-lib-deps @install) should be included
           in what is written in your $(i,<package>.opam) file.|}
   ; `Blocks Common.help_secs
   ]

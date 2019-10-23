@@ -2,8 +2,8 @@ open! Stdune
 open Import
 open Dune_lang.Decoder
 
-(* This file defines the jbuild types as well as the S-expression syntax for
-   the various supported version of the specification. *)
+(* This file defines Dune types as well as the S-expression syntax for the
+   various supported versions of the specification. *)
 
 (* Deprecated *)
 module Jbuild_version = struct

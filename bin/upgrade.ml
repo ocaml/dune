@@ -7,7 +7,7 @@ let man =
   [ `S "DESCRIPTION"
   ; `P
       {|$(b,dune upgrade) upgrade all the jbuilder projects
-         in the workspace to dune|}
+         in the workspace to Dune|}
   ; `Blocks Common.help_secs
   ]
 

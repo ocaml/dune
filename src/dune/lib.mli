@@ -192,8 +192,8 @@ module DB : sig
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
-  (** Resolve libraries written by the user in a jbuild file. The resulting
-      list of libraries is transitively closed and sorted by order of
+  (** Resolve libraries written by the user in a [dune] file. The resulting
+      list of libraries is transitively closed and sorted by the order of
       dependencies.
 
       This function is for executables stanzas. *)

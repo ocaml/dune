@@ -1,5 +1,7 @@
 (** API for jbuild plugins *)
 
+(* CR-someday amokhov: rename to [dune_plugin]. *)
+
 module V1 : sig
   (** Current build context *)
   val context : string
@@ -11,10 +13,10 @@ module V1 : sig
   (** Output of [ocamlc -config] for this context *)
   val ocamlc_config : (string * string) list
 
-  (** [send s] send [s] to jbuilder. [s] should be the contents of a jbuild
-      file following the specification described in the manual. *)
+  (** [send s] send [s] to Dune. [s] should be the contents of a [dune] file
+      following the specification described in the manual. *)
   val send : string -> unit
 
-  (** Execute a command and read it's output *)
+  (** Execute a command and read its output *)
   val run_and_read_lines : string -> string list
 end

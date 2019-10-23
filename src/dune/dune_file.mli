@@ -523,7 +523,7 @@ module Stanzas : sig
       The stanzas are parsed in the context of the dune [project].
 
       The syntax [kind] determines whether the expected syntax is the
-      depreciated jbuilder syntax or the version of dune syntax specified by
+      depreciated jbuilder syntax or the version of Dune syntax specified by
       the current [project]. *)
   val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end

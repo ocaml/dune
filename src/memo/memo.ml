@@ -1,6 +1,8 @@
 open! Stdune
 open Fiber.O
 
+module Run = Run
+
 let on_already_reported = ref Exn_with_backtrace.reraise
 
 module Code_error_with_memo_backtrace = struct
@@ -156,36 +158,6 @@ module Spec = struct
 end
 
 module Id = Id.Make ()
-
-module Run : sig
-  (** Represent a run of the system *)
-  type t
-
-  val to_dyn : t -> Dyn.t
-
-  (** Return the current run *)
-  val current : unit -> t
-
-  (** Whether this run is the current one *)
-  val is_current : t -> bool
-
-  (** End the current run and start a new one *)
-  val restart : unit -> unit
-end = struct
-  type t = bool ref
-
-  let to_dyn _ = Dyn.opaque
-
-  let current = ref (ref true)
-
-  let restart () =
-    !current := false;
-    current := ref true
-
-  let current () = !current
-
-  let is_current t = !t
-end
 
 (* We can get rid of this once we use the memoization system more pervasively
    and all the dependencies are properly specified *)

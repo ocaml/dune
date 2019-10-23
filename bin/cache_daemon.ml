@@ -16,6 +16,7 @@ let man =
         enabled. You do not need to run this command manually.|}
   ; `S "ACTIONS"
   ; `P {|$(b,start) starts the daemon if not already running.|}
+  ; `P {|$(b,stop) stops the daemon.|}
   ; `Blocks Common.help_secs
   ]
 

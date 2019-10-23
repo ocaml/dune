@@ -38,13 +38,8 @@ let cxx_flags = c_flags
    depend on the context. If it isn't cached elsewhere, we should do it here.
    CR gyorsh: is it cached? *)
 let ocamlfdo_binary sctx dir =
-  let ocamlfdo =
-    Super_context.resolve_program sctx ~dir ~loc:None "ocamlfdo"
-      ~hint:"try: opam install ocamlfdo"
-  in
-  match ocamlfdo with
-  | Error e -> Action.Prog.Not_found.raise e
-  | Ok _ -> ocamlfdo
+  Super_context.resolve_program sctx ~dir ~loc:None "ocamlfdo"
+    ~hint:"try: opam install ocamlfdo"
 
 (* CR gyorsh: this should also be cached *)
 let fdo_use_profile (ctx : Context.t) name fdo_profile =
@@ -117,31 +112,11 @@ module Linker_script = struct
     let sctx = CC.super_context cctx in
     let ctx = CC.context cctx in
     let dir = CC.dir cctx in
-    let ocamlfdo = ocamlfdo_binary sctx dir in
     let linker_script_hot = linker_script_hot_filename fdo_target_exe in
     let fdo_profile = fdo_profile_filename fdo_target_exe in
     let linker_script = linker_script_filename fdo_target_exe in
     let linker_script_path =
       Path.Build.(relative ctx.build_dir linker_script)
-    in
-    let linker_script_template =
-      match ocamlfdo with
-      | Error _ -> assert false
-      | Ok ocamlfdo_path ->
-        let ocamlfdo_dir =
-          ocamlfdo_path |> Path.to_absolute_filename |> Filename.dirname
-        in
-        ocamlfdo_dir ^ "/../etc/ocamlfdo/linker-script"
-    in
-    (* CR gyorsh: is there a gracefull way to check it? *)
-    if not (Sys.file_exists linker_script_template) then
-      User_error.raise
-        [ Pp.textf
-            "Cannot find template linker script for %s: %s does not exist."
-            linker_script_template fdo_target_exe
-        ];
-    let linker_script_template_path =
-      Path.of_filename_relative_to_initial_cwd linker_script_template
     in
     let extra_flags =
       Env.get ctx.env "OCAMLFDO_LINKER_SCRIPT_FLAGS"
@@ -175,10 +150,8 @@ module Linker_script = struct
         As []
     in
     Super_context.add_rule sctx ~dir
-      (Command.run ~dir:(Path.build ctx.build_dir) ocamlfdo
+      (Command.run ~dir:(Path.build ctx.build_dir) (ocamlfdo_binary sctx dir)
          [ A "linker-script"
-         ; A "-linker-script-template"
-         ; Dep linker_script_template_path
          ; A "-o"
          ; Target linker_script_path
          ; flags

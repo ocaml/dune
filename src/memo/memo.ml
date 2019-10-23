@@ -2,6 +2,7 @@ open! Stdune
 open Fiber.O
 
 module Run = Run
+module Function = Function
 
 let on_already_reported = ref Exn_with_backtrace.reraise
 
@@ -41,39 +42,6 @@ module Code_error_with_memo_backtrace = struct
 end
 
 let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
-
-module Function_name =
-  Interned.Make
-    (struct
-      let initial_size = 1024
-
-      let resize_policy = Interned.Greedy
-
-      let order = Interned.Fast
-    end)
-    ()
-
-module Function_type : sig
-  type ('a, 'b, 'f) t =
-    | Sync : ('a, 'b, 'a -> 'b) t
-    | Async : ('a, 'b, 'a -> 'b Fiber.t) t
-end = struct
-  type ('a, 'b, 'f) t =
-    | Sync : ('a, 'b, 'a -> 'b) t
-    | Async : ('a, 'b, 'a -> 'b Fiber.t) t
-end
-
-module Function = struct
-  type ('a, 'b, 'f) t =
-    | Sync : ('a -> 'b) -> ('a, 'b, 'a -> 'b) t
-    | Async : ('a -> 'b Fiber.t) -> ('a, 'b, 'a -> 'b Fiber.t) t
-
-  let of_type (type a b f) (t : (a, b, f) Function_type.t) (f : f) :
-      (a, b, f) t =
-    match t with
-    | Function_type.Sync -> Sync f
-    | Function_type.Async -> Async f
-end
 
 module Witness : sig
   type 'a t
@@ -134,7 +102,7 @@ end
 
 module Spec = struct
   type ('a, 'b, 'f) t =
-    { name : Function_name.t
+    { name : Function.Name.t
     ; input : (module Input with type t = 'a)
     ; output : (module Output_simple with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
@@ -146,15 +114,15 @@ module Spec = struct
 
   type packed = T : (_, _, _) t -> packed [@@unboxed]
 
-  let by_name = Function_name.Table.create ~default_value:None
+  let by_name = Function.Name.Table.create ~default_value:None
 
-  let find name = Function_name.Table.get by_name name
+  let find name = Function.Name.Table.get by_name name
 
   let register t =
     match find t.name with
     | Some _ ->
       Code_error.raise "[Spec.register] called twice on the same function" []
-    | None -> Function_name.Table.set by_name ~key:t.name ~data:(Some (T t))
+    | None -> Function.Name.Table.set by_name ~key:t.name ~data:(Some (T t))
 end
 
 module Id = Id.Make ()
@@ -339,7 +307,7 @@ module Stack_frame0 = struct
 
   type t = packed
 
-  let name (T t) = Function_name.to_string t.spec.name
+  let name (T t) = Function.Name.to_string t.spec.name
 
   let input (T t) = ser_input t
 
@@ -460,8 +428,8 @@ end
 
 let create_with_cache (type i o f) name ~cache ~doc
     ~input:(module Input : Input with type t = i) ~visibility
-    ~(output : o Output.t) (typ : (i, o, f) Function_type.t) (f : f) =
-  let name = Function_name.make name in
+    ~(output : o Output.t) (typ : (i, o, f) Function.Type.t) (f : f) =
+  let name = Function.Name.make name in
   let decode : i Dune_lang.Decoder.t =
     match visibility with
     | Visibility.Hidden ->
@@ -715,12 +683,12 @@ let get_deps t inp =
   | Some { state = Done cv; _ } ->
     Some
       (List.map cv.deps ~f:(fun (Last_dep.T (n, _u)) ->
-           (Function_name.to_string n.spec.name, ser_input n)))
+           (Function.Name.to_string n.spec.name, ser_input n)))
 
 let get_func name =
   match
     let open Option.O in
-    Function_name.get name >>= Spec.find
+    Function.Name.get name >>= Spec.find
   with
   | None -> User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
   | Some spec -> spec
@@ -738,21 +706,17 @@ let call name input =
   Output.to_dyn output
 
 module Function_info = struct
-  type t =
-    { name : string
-    ; doc : string
-    }
-
+  include Function.Info
   let of_spec (Spec.T spec) =
-    { name = Function_name.to_string spec.name; doc = spec.doc }
+    { name = spec.name; doc = spec.doc }
 end
 
 let registered_functions () =
-  Function_name.all ()
-  |> List.filter_map ~f:(Function_name.Table.get Spec.by_name)
+  Function.Name.all ()
+  |> List.filter_map ~f:(Function.Name.Table.get Spec.by_name)
   |> List.map ~f:Function_info.of_spec
   |> List.sort ~compare:(fun a b ->
-         String.compare a.Function_info.name b.Function_info.name)
+         Function.Name.compare a.Function_info.name b.Function_info.name)
 
 let function_info name = get_func name |> Function_info.of_spec
 
@@ -819,7 +783,7 @@ module With_implicit_output = struct
 
   let create (type i o f io) name ~doc ~input ~visibility
       ~output:(module O : Output_simple with type t = o) ~implicit_output
-      (typ : (i, o, f) Function_type.t) (impl : f) =
+      (typ : (i, o, f) Function.Type.t) (impl : f) =
     let output =
       Output.Simple
         ( module struct
@@ -830,7 +794,7 @@ module With_implicit_output = struct
         end )
     in
     match typ with
-    | Function_type.Sync ->
+    | Function.Type.Sync ->
       let memo =
         create name ~doc ~input ~visibility ~output Sync (fun i ->
             Implicit_output.collect_sync implicit_output (fun () -> impl i))
@@ -840,7 +804,7 @@ module With_implicit_output = struct
           Implicit_output.produce_opt implicit_output output;
           res
         : f )
-    | Function_type.Async ->
+    | Function.Type.Async ->
       let memo =
         create name ~doc ~input ~visibility ~output Async (fun i ->
             Implicit_output.collect_async implicit_output (fun () -> impl i))

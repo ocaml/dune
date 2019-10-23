@@ -97,7 +97,6 @@ end
 module type Input = sig
   type t
 
-  (* TODO only to_dyn is necessary if using a custom store *)
   include Table.Key with type t := t
 end
 
@@ -107,25 +106,32 @@ module Visibility : sig
     | Public of 'i Dune_lang.Decoder.t
 end
 
-module type Store = sig
-  type key
+module Store : sig
+  module type Input = sig
+    type t
+    val to_dyn : t -> Dyn.t
+  end
 
-  type 'a t
+  module type S = sig
+    type key
 
-  val create : unit -> _ t
+    type 'a t
 
-  val clear : _ t -> unit
+    val create : unit -> _ t
 
-  val set : 'a t -> key -> 'a -> unit
+    val clear : _ t -> unit
 
-  val find : 'a t -> key -> 'a option
+    val set : 'a t -> key -> 'a -> unit
+
+    val find : 'a t -> key -> 'a option
+  end
 end
 
 val create_with_store :
      string
-  -> store:(module Store with type key = 'i)
+  -> store:(module Store.S with type key = 'i)
   -> doc:string
-  -> input:(module Input with type t = 'i)
+  -> input:(module Store.Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
   -> ('i, 'o, 'f) Function.Type.t

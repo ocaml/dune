@@ -103,7 +103,7 @@ end
 module Spec = struct
   type ('a, 'b, 'f) t =
     { name : Function.Name.t
-    ; input : (module Input with type t = 'a)
+    ; input : (module Store_intf.Input with type t = 'a)
     ; output : (module Output_simple with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
@@ -297,7 +297,7 @@ module Cached_value = struct
 end
 
 let ser_input (type a) (node : (a, _, _) Dep_node.t) =
-  let (module Input : Input with type t = a) = node.spec.input in
+  let (module Input : Store_intf.Input with type t = a) = node.spec.input in
   Input.to_dyn node.input
 
 let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
@@ -427,7 +427,7 @@ module Output = struct
 end
 
 let create_with_cache (type i o f) name ~cache ~doc
-    ~input:(module Input : Input with type t = i) ~visibility
+    ~input:(module Input : Store_intf.Input with type t = i) ~visibility
     ~(output : o Output.t) (typ : (i, o, f) Function.Type.t) (f : f) =
   let name = Function.Name.make name in
   let decode : i Dune_lang.Decoder.t =
@@ -460,9 +460,7 @@ let create_with_cache (type i o f) name ~cache ~doc
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
-module type Store = Store.Store
-
-let create_with_store (type i) name ~store:(module S : Store with type key = i)
+let create_with_store (type i) name ~store:(module S : Store_intf.S with type key = i)
     ~doc ~input ~visibility ~output typ f =
   let cache = Store.make (module S) in
   create_with_cache name ~cache ~doc ~input ~output ~visibility typ f
@@ -470,7 +468,7 @@ let create_with_store (type i) name ~store:(module S : Store with type key = i)
 let create (type i) name ~doc ~input:(module Input : Input with type t = i)
     ~visibility ~output typ f =
   let cache = Store.of_table (Table.create (module Input) 16) in
-  let input = (module Input : Input with type t = i) in
+  let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ~doc ~input ~visibility ~output typ f
 
 let create_hidden (type output) name ~doc ~input typ impl =
@@ -819,5 +817,7 @@ module With_implicit_output = struct
 end
 
 module Implicit_output = Implicit_output
+
+module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f

@@ -3,12 +3,6 @@ open! Stdune
 
 open Import
 
-module Kind : sig
-  type t =
-    | Dune
-    | Jbuilder
-end
-
 module Name : sig
   (** Invariants: - Named s -> s <> "" and s does not contain '.' or '/' -
       Anonymous p -> p is a local path in the source tree *)

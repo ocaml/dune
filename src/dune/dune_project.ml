@@ -2,12 +2,6 @@ open! Stdune
 open Import
 open Dune_lang.Decoder
 
-module Kind = struct
-  type t =
-    | Dune
-    | Jbuilder
-end
-
 module Name : sig
   type t = private
     | Named of string

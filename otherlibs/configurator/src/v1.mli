@@ -99,7 +99,7 @@ with type configurator := t
 
 module Flags : sig
   (** [write_sexp fname s] writes the list of strings [s] to the file [fname]
-      in an appropriate format so that it can used in jbuild files with
+      in an appropriate format so that it can used in [dune] files with
       [(:include [fname])]. *)
   val write_sexp : string -> string list -> unit
 

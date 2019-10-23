@@ -33,15 +33,15 @@ module type PARAMS = sig
   val cctx : Compilation_context.t
 
   (* [dir] is the directory inside [_build/<context>/...] where the build
-     happens. If the [(menhir ...)] stanza appears in [src/jbuild], then [dir]
-     is of the form [_build/<context>/src], e.g., [_build/default/src]. *)
+     happens. If the [(menhir ...)] stanza appears in [src/dune], then [dir] is
+     of the form [_build/<context>/src], e.g., [_build/default/src]. *)
   val dir : Path.Build.t
 
   (* [build_dir] is the base directory of the context; we run menhir from this
      directoy to we get correct error paths. *)
   val build_dir : Path.Build.t
 
-  (* [stanza] is the [(menhir ...)] stanza, as found in the [jbuild] file. *)
+  (* [stanza] is the [(menhir ...)] stanza, as found in the [dune] file. *)
 
   val stanza : stanza
 end

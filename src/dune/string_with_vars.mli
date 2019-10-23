@@ -11,7 +11,7 @@ type t
 
 val compare_no_loc : t -> t -> Ordering.t
 
-(** [loc t] returns the location of [t] — typically, in the jbuild file. *)
+(** [loc t] returns the location of [t] — typically, in the [dune] file. *)
 val loc : t -> Loc.t
 
 val syntax_version : t -> Dune_lang.Syntax.Version.t

@@ -1,8 +1,8 @@
 (** Compilation contexts *)
 
-(** jbuild supports two different kind of contexts:
+(** Dune supports two different kind of contexts:
 
-    - the default context, which correspond to the environment jbuild is run,
+    - the default context, which correspond to the environment Dune is run,
     i.e. it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
     configuration where it can find it
 
@@ -14,7 +14,7 @@
     - _build/default for the default context - _build/<switch> for other
     contexts
 
-    jbuild is able to build simultaneously against several contexts. In
+    Dune is able to build simultaneously against several contexts. In
     particular this allow for simple cross-compilation: when an executable
     running on the host is needed, it is obtained by looking in another
     context. *)

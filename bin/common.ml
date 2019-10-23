@@ -196,7 +196,7 @@ module Options_implied_by_dash_p = struct
               {|Ignore stanzas referring to a package that is not in
                       $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
                       of package names. Note that this has the same effect
-                      as deleting the relevant stanzas from jbuild files.
+                      as deleting the relevant stanzas from dune files.
                       It is mostly meant for releases. During development,
                       it is likely that what you want instead is to
                       build a particular $(b,<package>.install) target.|})

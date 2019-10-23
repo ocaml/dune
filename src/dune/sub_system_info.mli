@@ -1,7 +1,7 @@
 open Stdune
 
 (** The type of all kind of sub-system information. This type is what we get
-    just after parsing a [jbuild] file. *)
+    just after parsing a [dune] file. *)
 type t = ..
 
 type sub_system = t = ..
@@ -16,13 +16,13 @@ module type S = sig
   (** Name of the sub-system *)
   val name : Sub_system_name.t
 
-  (** Location of the parameters in the jbuild/dune file. *)
+  (** Location of the parameters in the [jbuild] or [dune] file. *)
   val loc : t -> Loc.t
 
-  (** Syntax for jbuild/dune files *)
+  (** Syntax for [jbuild]/[dune] files *)
   val syntax : Dune_lang.Syntax.t
 
-  (** Parse parameters written by the user in jbuid/dune files *)
+  (** Parse parameters written by the user in [jbuild]/[dune] files *)
   val decode : t Dune_lang.Decoder.t
 
   (** Dump the sub-system configuration. This is used to generate dune-package

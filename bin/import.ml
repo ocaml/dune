@@ -34,7 +34,7 @@ type cache_mode =
 
 let get_cache_mode () =
   let var = "DUNE_CACHE_MODE" in
-  match Sys.getenv_opt var with
+  match Env.get Env.initial var with
   | None
   | Some "DAEMON" ->
     Daemon
@@ -48,7 +48,7 @@ let make_cache () =
     | Dune_memory.Dedup (target, source, digest) ->
       Scheduler.send_dedup target source digest
   in
-  match Sys.getenv_opt var with
+  match Env.get Env.initial var with
   | Some v ->
     let cache =
       match get_cache_mode () with

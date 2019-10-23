@@ -86,6 +86,7 @@ end
 module type Input = sig
   type t
 
+  (* TODO only to_dyn is necessary if using a custom store *)
   include Table.Key with type t := t
 end
 
@@ -94,6 +95,31 @@ module Visibility : sig
     | Hidden
     | Public of 'i Dune_lang.Decoder.t
 end
+
+module type Store = sig
+  type key
+
+  type 'a t
+
+  val create : unit -> _ t
+
+  val clear : _ t -> unit
+
+  val set : 'a t -> key -> 'a -> unit
+
+  val find : 'a t -> key -> 'a option
+end
+
+val create_with_store :
+     string
+  -> store:(module Store with type key = 'i)
+  -> doc:string
+  -> input:(module Input with type t = 'i)
+  -> visibility:'i Visibility.t
+  -> output:'o Output.t
+  -> ('i, 'o, 'f) Function_type.t
+  -> 'f
+  -> ('i, 'o, 'f) t
 
 (** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
     version of [f]. The result of [f] for a given input is cached, so that the

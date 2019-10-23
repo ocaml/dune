@@ -300,7 +300,7 @@ let trim memory free =
   let f path =
     let stat = Path.stat path in
     if stat.st_nlink = 1 then
-      Some (path, stat.st_size, stat.st_ctime)
+      Some (path, stat.st_size, stat.st_mtime)
     else
       None
   and compare (_, _, t1) (_, _, t2) =

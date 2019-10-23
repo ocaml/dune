@@ -268,7 +268,16 @@ module Memory = struct
             | _ -> Error "invalid metadata scheme in produced files list")
         in
         (* Touch cache files so they are removed last by LRU trimming *)
-        List.iter produced ~f:(fun f -> Path.touch f.File.in_the_memory);
+        let () =
+          let f (file : File.t) =
+            (* There is no point in trying to trim out files that are missing :
+               dune will have to check when hardlinking anyway since they could
+               disappear inbetween. *)
+            try Path.touch file.in_the_memory
+            with Unix.(Unix_error (ENOENT, _, _)) -> ()
+          in
+          ignore (List.iter ~f produced)
+        in
         (metadata, produced)
       | _ -> Error "invalid metadata"
     in

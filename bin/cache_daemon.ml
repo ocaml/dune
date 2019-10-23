@@ -17,6 +17,7 @@ let man =
   ; `S "ACTIONS"
   ; `P {|$(b,start) starts the daemon if not already running.|}
   ; `P {|$(b,stop) stops the daemon.|}
+  ; `P {|$(b,trim) remove oldest files from the cache to free space.|}
   ; `Blocks Common.help_secs
   ]
 
@@ -53,11 +54,22 @@ let stop ~port_path =
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok () -> ()
 
+let trim ~trimmed_size =
+  let open Result.O in
+  match
+    let+ memory = Dune_memory.Memory.make (fun _ -> ()) in
+    Dune_memory.trim memory trimmed_size
+  with
+  | Error s -> User_error.raise [ Pp.text s ]
+  | Ok (size, _) ->
+    User_message.print (User_message.make [ Pp.textf "Freed %i bytes" size ])
+
 type mode =
   | Start
   | Stop
+  | Trim
 
-let modes = [ ("start", Start); ("stop", Stop) ]
+let modes = [ ("start", Start); ("stop", Stop); ("trim", Trim) ]
 
 let path_conv = ((fun s -> `Ok (Path.of_string s)), Path.pp)
 
@@ -93,10 +105,16 @@ let term =
          value
          & opt path_conv (Dune_memory.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
+     and+ trimmed_size =
+       Arg.(
+         value & opt int 0
+         & info ~docv:"PATH" [ "trimmed-size" ]
+             ~doc:"size to trim from the cache")
      in
      match mode with
      | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
      | Some Stop -> `Ok (stop ~port_path)
+     | Some Trim -> `Ok (trim ~trimmed_size)
      | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

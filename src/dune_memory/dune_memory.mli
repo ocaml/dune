@@ -32,6 +32,8 @@ module Memory : sig
   val make : ?root:Path.t -> handler -> (t, string) Result.t
 end
 
+(** [trim memory size] removes files from [memory], starting with the least
+    recently used one, until [size] bytes have been freed. *)
 val trim : Memory.t -> int -> int * Path.t list
 
 val make_caching : (module Memory with type t = 'a) -> 'a -> (module Caching)

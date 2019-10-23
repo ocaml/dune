@@ -1509,27 +1509,35 @@ end = struct
           | Check _ -> true
           | _ -> false
         in
-        match from_dune_memory with
-        | Some files when not cache_checking ->
-          let retrieve (file : Dune_memory.File.t) =
-            let path = Path.Build.to_string file.in_the_build_directory in
-            Log.infof "retrieve %s from cache" path;
-            Unix.link (Path.to_string file.in_the_memory) path;
-            Cached_digest.set
-              (Path.build file.in_the_build_directory)
-              file.digest;
-            file.digest
-          in
-          let digests = List.map files ~f:retrieve in
-          Trace_db.set (Path.build head_target)
-            (* We do not cache dynamic actions so [dynamic_deps_stages] is
-               always an empty list here. *)
-            { rule_digest
-            ; targets_digest = Digest.generic digests
-            ; dynamic_deps_stages = []
-            };
+        let pulled_from_cache =
+          match from_dune_memory with
+          | Some files when not cache_checking -> (
+            let retrieve (file : Dune_memory.File.t) =
+              let path = Path.Build.to_string file.in_the_build_directory in
+              Log.infof "retrieve %s from cache" path;
+              Unix.link (Path.to_string file.in_the_memory) path;
+              Cached_digest.set
+                (Path.build file.in_the_build_directory)
+                file.digest;
+              file.digest
+            in
+            match
+              let digests = List.map files ~f:retrieve in
+              Trace_db.set (Path.build head_target)
+                (* We do not cache dynamic actions so [dynamic_deps_stages] is
+                   alwa ys an empty list here. *)
+                { rule_digest
+                ; targets_digest = Digest.generic digests
+                ; dynamic_deps_stages = []
+                }
+            with
+            | exception Unix.(Unix_error (ENOENT, _, _)) -> false
+            | () -> true )
+          | _ -> false
+        in
+        if pulled_from_cache then
           Fiber.return ()
-        | _ ->
+        else (
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let loc = Rule.Info.loc info in
           let sandboxed, action =
@@ -1632,6 +1640,7 @@ end = struct
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
+        )
       ) else
         Fiber.return ()
     in

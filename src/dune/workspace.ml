@@ -62,7 +62,7 @@ module Context = struct
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
       and+ fdo_target_exe =
-        field_o "fdo" (Dune_lang.Syntax.since syntax (1, 12) >>> string)
+        field_o "fdo" (Dune_lang.Syntax.since syntax (2, 0) >>> string)
       and+ paths =
         let f l =
           match

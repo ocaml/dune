@@ -416,7 +416,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
         let open Option.O in
         Option.value ~default:Package.Name.Set.empty
           (let* ctx_name, _ = Path.Build.extract_build_context path in
-           let ctx_name = Context_name.parse_string_exn (Loc.none, ctx_name) in
+           let* ctx_name = Context_name.of_string_opt ctx_name in
            let* sctx = Context_name.Map.find sctxs ctx_name in
            Path.Build.Map.find (Install_rules.packages sctx) path))
   in

@@ -1,50 +1,11 @@
 ----------------------------------------------------------------------------------
-Testing
+Handling ppx_runtime_libraries dependencies correctly
 
   $ cat >sdune <<'EOF'
   > #!/usr/bin/env bash
   > DUNE_SANDBOX=symlink dune "$@"
   > EOF
   $ chmod +x sdune
-
-----------------------------------------------------------------------------------
-* Correct cycle detection
-
-  $ echo "(lang dune 2.0)" > dune-project
-
-  $ cat >dune <<EOF
-  > (library
-  >  (name a)
-  >  (modules a)
-  >  (libraries b))
-  > (library
-  >  (name b)
-  >  (modules)
-  >  (libraries c))
-  > (library
-  >  (name c)
-  >  (modules c)
-  >  (libraries a))
-  > EOF
-
-  $ cat >a.ml <<EOF
-  > include B
-  > let a = 1
-  > EOF
-
-  $ cat >c.ml <<EOF
-  > include A
-  > let c = 3
-  > EOF
-
-  $ ./sdune build
-  Error: Dependency cycle detected between the following libraries:
-     "a" in _build/default
-  -> "b" in _build/default
-  -> "c" in _build/default
-  -> "a" in _build/default
-  -> required by library "c" in _build/default
-  [1]
 
 ----------------------------------------------------------------------------------
 * Incorrect cycle detection due to ppx_runtime_libraries (TODO: fix this bug!)

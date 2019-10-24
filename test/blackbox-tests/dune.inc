@@ -1373,6 +1373,14 @@
     (diff? run.t run.t.corrected)))))
 
 (alias
+ (name ppx-runtime-dependencies)
+ (deps (package dune) (source_tree test-cases/ppx-runtime-dependencies))
+ (action
+  (chdir
+   test-cases/ppx-runtime-dependencies
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(alias
  (name preprocess-with-action)
  (deps (package dune) (source_tree test-cases/preprocess-with-action))
  (action
@@ -2011,6 +2019,7 @@
   (alias path-variables)
   (alias pkg-config-quoting)
   (alias ppx-rewriter)
+  (alias ppx-runtime-dependencies)
   (alias preprocess-with-action)
   (alias private-modules)
   (alias private-public-overlap)
@@ -2214,6 +2223,7 @@
   (alias output-obj)
   (alias path-variables)
   (alias pkg-config-quoting)
+  (alias ppx-runtime-dependencies)
   (alias preprocess-with-action)
   (alias private-modules)
   (alias project-root)

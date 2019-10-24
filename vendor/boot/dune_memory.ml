@@ -1,12 +1,14 @@
-type key = Stdune.Digest.t
+open Stdune
 
-type metadata = Stdune.Sexp.t list
+type key = Digest.t
+
+type metadata = Sexp.t list
 
 module File = struct
   type t =
-    { in_the_memory : Stdune.Path.t
-    ; in_the_build_directory : Stdune.Path.Build.t
-    ; digest : Stdune.Digest.t
+    { in_the_memory : Path.t
+    ; in_the_build_directory : Path.Build.t
+    ; digest : Digest.t
     }
 end
 
@@ -15,15 +17,15 @@ module type memory = sig
 
   val promote :
        t
-    -> (Stdune.Path.Build.t * Stdune.Digest.t) list
+    -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
     -> int option
-    -> (unit, string) Stdune.Result.t
+    -> (unit, string) Result.t
 
-  val search : t -> key -> (metadata * File.t list, string) Stdune.Result.t
+  val search : t -> key -> (metadata * File.t list, string) Result.t
 
-  val set_build_dir : t -> Stdune.Path.t -> t
+  val set_build_dir : t -> Path.t -> t
 end
 
 module type caching = sig

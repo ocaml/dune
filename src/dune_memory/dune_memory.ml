@@ -121,9 +121,9 @@ module Memory = struct
 
   let with_lock memory f =
     let lock =
-      Stdune.Lock_file.create (Path.L.relative memory.root [ ".lock" ])
+      Lock_file.create (Path.L.relative memory.root [ ".lock" ])
     in
-    let finally () = Stdune.Lock_file.unlock lock in
+    let finally () = Lock_file.unlock lock in
     Exn.protect ~f ~finally
 
   let make_path memory path =

@@ -2223,7 +2223,6 @@
   (alias output-obj)
   (alias path-variables)
   (alias pkg-config-quoting)
-  (alias ppx-runtime-dependencies)
   (alias preprocess-with-action)
   (alias private-modules)
   (alias project-root)

@@ -1,9 +1,9 @@
 open Stdune
 
 type target_kind =
-  | Regular of string * Path.Source.t
-  | Alias of string * Path.Source.t
-  | Install of string * Path.Source.t
+  | Regular of Context_name.t * Path.Source.t
+  | Alias of Context_name.t * Path.Source.t
+  | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
 type path_kind =
@@ -27,6 +27,7 @@ let analyse_target (fn as original_fn) : target_kind =
             assert (String.length digest = 32);
             name
         in
+        let ctx = Context_name.of_string ctx in
         Alias
           ( ctx
           , Path.Source.relative
@@ -35,14 +36,21 @@ let analyse_target (fn as original_fn) : target_kind =
   | Some ("install", sub) -> (
     match Path.Local.split_first_component sub with
     | None -> Other fn
-    | Some (ctx, fn) -> Install (ctx, Path.Source.of_local fn) )
-  | Some (ctx, sub) -> Regular (ctx, Path.Source.of_local sub)
+    | Some (ctx, fn) ->
+      let ctx = Context_name.of_string ctx in
+      Install (ctx, Path.Source.of_local fn) )
+  | Some (ctx, sub) -> (
+    match Context_name.of_string_opt ctx with
+    | None -> Other fn
+    | Some ctx -> Regular (ctx, Path.Source.of_local sub) )
   | None -> Other fn
 
 let describe_target fn =
-  let ctx_suffix = function
-    | "default" -> ""
-    | ctx -> sprintf " (context %s)" ctx
+  let ctx_suffix name =
+    if Context_name.is_default name then
+      ""
+    else
+      sprintf " (context %s)" (Context_name.to_string name)
   in
   match analyse_target fn with
   | Alias (ctx, p) ->

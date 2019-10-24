@@ -12,7 +12,7 @@ type checked =
 
 let check_path contexts =
   let contexts =
-    String.Map.of_list_exn
+    Dune.Context_name.Map.of_list_exn
       (List.map contexts ~f:(fun c -> (c.Context.name, c)))
   in
   fun path ->
@@ -23,17 +23,20 @@ let check_path contexts =
         ]
     in
     let context_exn ctx =
-      match String.Map.find contexts ctx with
+      match Dune.Context_name.Map.find contexts ctx with
       | Some context -> context
       | None ->
         User_error.raise
           [ Pp.textf "%s refers to unknown build context: %s"
               (Path.to_string_maybe_quoted path)
-              ctx
+              (Dune.Context_name.to_string ctx)
           ]
           ~hints:
-            (User_message.did_you_mean ctx
-               ~candidates:(String.Map.keys contexts))
+            (User_message.did_you_mean
+               (Dune.Context_name.to_string ctx)
+               ~candidates:
+                 ( Dune.Context_name.Map.keys contexts
+                 |> List.map ~f:Dune.Context_name.to_string ))
     in
     match path with
     | External e -> External e
@@ -47,6 +50,8 @@ let check_path contexts =
           match Path.Source.split_first_component src with
           | None -> internal_path ()
           | Some (ctx, src) ->
+            let ctx = Dune.Context_name.parse_string_exn (Loc.none, ctx) in
             In_install_dir (context_exn ctx, Path.Source.of_local src)
         else
+          let name = Dune.Context_name.parse_string_exn (Loc.none, name) in
           In_build_dir (context_exn name, src) )

@@ -139,7 +139,8 @@ module Jbuild_plugin = struct
 end
 # 1 %S
 %s|}
-          context.name context.version_string ocamlc_config
+          (Context_name.to_string context.name)
+          context.version_string ocamlc_config
           (Path.reach ~from:exec_dir (Path.build target))
           (Path.to_string plugin) plugin_contents);
     check_no_requires plugin plugin_contents
@@ -154,7 +155,8 @@ end
     Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
         let generated_dune_file =
           Path.Build.append_source
-            (Path.Build.relative generated_dune_files_dir context.name)
+            (Path.Build.relative generated_dune_files_dir
+               (Context_name.to_string context.name))
             file
         in
         let wrapper =

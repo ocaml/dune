@@ -26,7 +26,7 @@ module Kind : sig
   module Opam : sig
     type t =
       { root : string option
-      ; switch : string
+      ; switch : Context_name.t
       }
   end
 
@@ -43,7 +43,7 @@ module Env_nodes : sig
 end
 
 type t =
-  { name : string
+  { name : Context_name.t
   ; kind : Kind.t
   ; profile : Profile.t
         (** [true] if this context is used for the .merlin files *)
@@ -71,7 +71,7 @@ type t =
   ; ocamlobjinfo : Path.t option  (** Environment variables *)
   ; env : Env.t
   ; findlib : Findlib.t
-  ; findlib_toolchain : string option  (** Misc *)
+  ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; arch_sixtyfour : bool
   ; opam_var_cache : (string, string) Table.t
   ; ocaml_config : Ocaml_config.t
@@ -140,7 +140,7 @@ val best_mode : t -> Mode.t
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
 val cc_g : t -> string list
 
-val name : t -> string
+val name : t -> Context_name.t
 
 val has_native : t -> bool
 

@@ -319,6 +319,10 @@ let install_uninstall ~what =
                all defined contexts.")
     and+ sections = Sections.term in
     Common.set_common common ~targets:[];
+    let context =
+      Option.map context ~f:(fun context ->
+          Dune.Context_name.parse_string_exn (Loc.none, context))
+    in
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
         let* workspace = Import.Main.scan_workspace common in

@@ -39,8 +39,8 @@ type extra_sub_directories_to_keep = Subdir_set.t
 
 module Context_or_install : sig
   type t =
-    | Install of string
-    | Context of string
+    | Install of Context_name.t
+    | Context of Context_name.t
 
   val to_dyn : t -> Dyn.t
 end
@@ -110,7 +110,7 @@ module Alias : sig
   val dep_multi_contexts :
        dir:Path.Source.t
     -> name:Alias.Name.t
-    -> contexts:string list
+    -> contexts:Context_name.t list
     -> unit Build.t
 
   (** Implements [(alias_rec ...)] in dependency specification *)
@@ -120,7 +120,7 @@ module Alias : sig
   val dep_rec_multi_contexts :
        dir:Path.Source.t
     -> name:Alias.Name.t
-    -> contexts:string list
+    -> contexts:Context_name.t list
     -> unit Build.t
 end
 
@@ -140,7 +140,7 @@ val is_target : Path.t -> bool
     build this request, by context name *)
 val all_lib_deps :
      request:unit Build.t
-  -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
+  -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t Fiber.t
 
 (** List of all buildable targets *)
 val all_targets : unit -> Path.Build.Set.t

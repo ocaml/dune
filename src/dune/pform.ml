@@ -231,7 +231,7 @@ module Map = struct
       ; ("ext_exe", string context.ext_exe)
       ; ("profile", string (Profile.to_string context.profile))
       ; ("workspace_root", values [ Value.Dir (Path.build context.build_dir) ])
-      ; ("context_name", string (Context.name context))
+      ; ("context_name", string (Context_name.to_string context.name))
       ; ("ROOT", renamed_in ~version:(1, 0) ~new_name:"workspace_root")
       ; ( "os_type"
         , since ~version:(1, 10) (Var.Values [ String context.os_type ]) )

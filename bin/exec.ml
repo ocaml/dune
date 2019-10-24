@@ -40,6 +40,7 @@ let term =
   and+ args = Arg.(value & pos_right 0 string [] (Arg.info [] ~docv:"ARGS")) in
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
   let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
+  let context = Dune.Context_name.parse_string_exn (Loc.none, context) in
   let context = Import.Main.find_context_exn setup.workspace ~name:context in
   let prog_where =
     match Filename.analyze_program_name prog with

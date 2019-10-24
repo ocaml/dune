@@ -2,7 +2,7 @@ type t
 
 val workspace_file : t -> Arg.Path.t option
 
-val x : t -> string option
+val x : t -> Dune.Context_name.t option
 
 val profile : t -> Dune.Profile.t option
 

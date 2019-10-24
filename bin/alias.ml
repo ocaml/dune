@@ -39,7 +39,9 @@ let in_dir ~name ~recursive ~contexts dir =
     ; recursive
     ; name
     ; contexts =
-        [ List.find_exn contexts ~f:(fun c -> Dune.Context.name c = ctx.name) ]
+        [ List.find_exn contexts ~f:(fun c ->
+              Dune.Context_name.equal (Dune.Context.name c) ctx.name)
+        ]
     }
 
 let of_string common ~recursive s ~contexts =

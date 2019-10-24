@@ -25,7 +25,7 @@ type t =
   ; target_prefix : string
   ; only_packages : Dune.Package.Name.Set.t option
   ; capture_outputs : bool
-  ; x : string option
+  ; x : Dune.Context_name.t option
   ; diff_command : string option
   ; promote : Clflags.Promote.t option
   ; force : bool
@@ -519,6 +519,9 @@ let term =
   let config =
     Config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
+  in
+  let x =
+    Option.map x ~f:(fun x -> Dune.Context_name.parse_string_exn (Loc.none, x))
   in
   { debug_dep_path
   ; debug_findlib

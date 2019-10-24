@@ -101,7 +101,9 @@ let resolve_path path ~(setup : Dune.Main.build_system) =
   | In_install_dir _ -> build ()
 
 let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
-  let sctx = String.Map.find_exn setup.scontexts (Context.name ctx) in
+  let sctx =
+    Dune.Context_name.Map.find_exn setup.scontexts (Context.name ctx)
+  in
   let dir =
     Path.Build.relative ctx.Context.build_dir
       (String.concat ~sep:Filename.dir_sep (Common.root common).to_cwd)

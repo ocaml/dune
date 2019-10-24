@@ -13,12 +13,12 @@ module Context = struct
   module Target = struct
     type t =
       | Native
-      | Named of string
+      | Named of Context_name.t
 
     let t =
       map string ~f:(function
         | "native" -> Native
-        | s -> Named s)
+        | s -> Named (Context_name.parse_string_exn (Loc.none, s)))
 
     let add ts x =
       match x with
@@ -30,29 +30,15 @@ module Context = struct
           ts @ [ t ]
   end
 
-  module Name = struct
-    let t =
-      plain_string (fun ~loc name ->
-          if
-            name = ""
-            || String.is_prefix name ~prefix:"."
-            || name = "log" || name = "install" || String.contains name '/'
-            || String.contains name '\\'
-          then
-            User_error.raise ~loc
-              [ Pp.textf "%S is not allowed as a build context name" name ];
-          name)
-  end
-
   module Common = struct
     type t =
       { loc : Loc.t
       ; profile : Profile.t
       ; targets : Target.t list
       ; env : Dune_env.Stanza.t
-      ; toolchain : string option
-      ; name : string
-      ; host_context : string option
+      ; toolchain : Context_name.t option
+      ; name : Context_name.t
+      ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       }
 
@@ -62,9 +48,11 @@ module Context = struct
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
       and+ profile = field "profile" Profile.decode ~default:profile
       and+ host_context =
-        field_o "host" (Dune_lang.Syntax.since syntax (1, 10) >>> string)
+        field_o "host"
+          (Dune_lang.Syntax.since syntax (1, 10) >>> Context_name.decode)
       and+ toolchain =
-        field_o "toolchain" (Dune_lang.Syntax.since syntax (1, 5) >>> string)
+        field_o "toolchain"
+          (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
       and+ paths =
         let f l =
           match
@@ -95,7 +83,7 @@ module Context = struct
       ; profile
       ; loc
       ; env
-      ; name = "default"
+      ; name = Context_name.default
       ; host_context
       ; toolchain
       ; paths
@@ -105,14 +93,14 @@ module Context = struct
   module Opam = struct
     type t =
       { base : Common.t
-      ; switch : string
+      ; switch : Context_name.t
       ; root : string option
       ; merlin : bool
       }
 
     let t ~profile ~x =
-      let+ switch = field "switch" string
-      and+ name = field_o "name" Name.t
+      let+ switch = field "switch" Context_name.decode
+      and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
       and+ base = Common.t ~profile in
@@ -128,7 +116,8 @@ module Context = struct
       let+ common = Common.t ~profile
       and+ name =
         field_o "name"
-          (Dune_lang.Syntax.since syntax (1, 10) >>= fun () -> Name.t)
+          ( Dune_lang.Syntax.since syntax (1, 10)
+          >>= fun () -> Context_name.decode )
       in
       let name = Option.value ~default:common.name name in
       { common with targets = Target.add common.targets x; name }
@@ -170,14 +159,14 @@ module Context = struct
     n
     :: List.filter_map (targets t) ~f:(function
          | Native -> None
-         | Named s -> Some (n ^ "." ^ s))
+         | Named s -> Some (Context_name.target n ~toolchain:s))
 
   let default ?x ?profile () =
     Default
       { loc = Loc.of_pos __POS__
       ; targets = [ Option.value x ~default:Target.Native ]
       ; profile = Option.value profile ~default:Profile.default
-      ; name = "default"
+      ; name = Context_name.default
       ; host_context = None
       ; env = Dune_env.Stanza.empty
       ; toolchain = None
@@ -186,7 +175,7 @@ module Context = struct
 end
 
 type t =
-  { merlin_context : string option
+  { merlin_context : Context_name.t option
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t
   }
@@ -199,11 +188,14 @@ let () = Lang.register syntax ()
 
 let bad_configuration_check map =
   let find_exn loc name host =
-    match String.Map.find map host with
+    match Context_name.Map.find map host with
     | Some host_ctx -> host_ctx
     | None ->
       User_error.raise ~loc
-        [ Pp.textf "Undefined host context '%s' for '%s'." host name ]
+        [ Pp.textf "Undefined host context '%s' for '%s'."
+            (Context_name.to_string host)
+            (Context_name.to_string name)
+        ]
   in
   let check elt =
     Context.host_context elt
@@ -217,21 +209,25 @@ let bad_configuration_check map =
                     [ Pp.textf
                         "Context '%s' is both a host (for '%s') and a target \
                          (for '%s')."
-                        host name host_of_host
+                        (Context_name.to_string host)
+                        (Context_name.to_string name)
+                        (Context_name.to_string host_of_host)
                     ]))
   in
-  String.Map.iter map ~f:check
+  Context_name.Map.iter map ~f:check
 
 let top_sort contexts =
   let key = Context.name in
-  let map = String.Map.of_list_map_exn contexts ~f:(fun x -> (key x, x)) in
+  let map =
+    Context_name.Map.of_list_map_exn contexts ~f:(fun x -> (key x, x))
+  in
   let deps def =
     match Context.host_context def with
     | None -> []
-    | Some ctx -> [ String.Map.find_exn map ctx ]
+    | Some ctx -> [ Context_name.Map.find_exn map ctx ]
   in
   bad_configuration_check map;
-  match Top_closure.String.top_closure ~key ~deps contexts with
+  match Context_name.Top_closure.top_closure ~key ~deps contexts with
   | Ok topo_contexts -> topo_contexts
   | Error _ -> assert false
 
@@ -241,16 +237,18 @@ let t ?x ?profile:cmdline_profile () =
   let* profile = field "profile" Profile.decode ~default:Profile.default in
   let profile = Option.value cmdline_profile ~default:profile in
   let+ contexts = multi_field "context" (Context.t ~profile ~x) in
-  let defined_names = ref String.Set.empty in
+  let defined_names = ref Context_name.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
         let name = Context.name ctx in
-        if String.Set.mem !defined_names name then
+        if Context_name.Set.mem !defined_names name then
           User_error.raise ~loc:(Context.loc ctx)
-            [ Pp.textf "second definition of build context %S" name ];
+            [ Pp.textf "second definition of build context %S"
+                (Context_name.to_string name)
+            ];
         defined_names :=
-          String.Set.union !defined_names
-            (String.Set.of_list (Context.all_names ctx));
+          Context_name.Set.union !defined_names
+            (Context_name.Set.of_list (Context.all_names ctx));
         match (ctx, acc) with
         | Opam { merlin = true; _ }, Some _ ->
           User_error.raise ~loc:(Context.loc ctx)
@@ -272,7 +270,7 @@ let t ?x ?profile:cmdline_profile () =
           | Context.Default _ -> true
           | _ -> false)
       then
-        Some "default"
+        Some Context_name.default
       else
         None
   in
@@ -281,7 +279,7 @@ let t ?x ?profile:cmdline_profile () =
 let t ?x ?profile () = fields (t ?x ?profile ())
 
 let default ?x ?profile () =
-  { merlin_context = Some "default"
+  { merlin_context = Some Context_name.default
   ; contexts = [ Context.default ?x ?profile () ]
   ; env = Dune_env.Stanza.empty
   }

@@ -9,7 +9,7 @@ type workspace =
 
 type build_system =
   { workspace : workspace
-  ; scontexts : Super_context.t String.Map.t
+  ; scontexts : Super_context.t Context_name.Map.t
   }
 
 (* Returns [Error ()] if [pkg] is unknown *)
@@ -20,7 +20,7 @@ val package_install_file :
 val scan_workspace :
      ?workspace:Workspace.t
   -> ?workspace_file:Path.t
-  -> ?x:string
+  -> ?x:Context_name.t
   -> ?capture_outputs:bool
   -> ?profile:Profile.t
   -> ancestor_vcs:Vcs.t option
@@ -36,7 +36,7 @@ val init_build_system :
   -> workspace
   -> build_system Fiber.t
 
-val find_context_exn : workspace -> name:string -> Context.t
+val find_context_exn : workspace -> name:Context_name.t -> Context.t
 
 (** Setup the environment *)
 val setup_env : capture_outputs:bool -> Env.t

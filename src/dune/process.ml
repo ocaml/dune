@@ -270,12 +270,13 @@ module Fancy = struct
     | Internal_job -> Pp.verbatim "(internal)"
     | Build_job targets -> (
       let rec split_paths targets_acc ctxs_acc = function
-        | [] -> (List.rev targets_acc, String.Set.to_list ctxs_acc)
+        | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
           let add_ctx ctx acc =
-            match ctx with
-            | "default" -> acc
-            | _ -> String.Set.add acc ctx
+            if Context_name.is_default ctx then
+              acc
+            else
+              Context_name.Set.add acc ctx
           in
           match Dpath.analyse_target path with
           | Other path ->
@@ -296,7 +297,9 @@ module Fancy = struct
               (add_ctx ctx ctxs_acc) rest )
       in
       let targets = Path.Build.Set.to_list targets in
-      let target_names, contexts = split_paths [] String.Set.empty targets in
+      let target_names, contexts =
+        split_paths [] Context_name.Set.empty targets
+      in
       let targets =
         List.map target_names ~f:Filename.split_extension_after_dot
         |> String.Map.of_list_multi |> String.Map.to_list
@@ -315,7 +318,8 @@ module Fancy = struct
         pp ++ Pp.char ' '
         ++ Pp.tag ~tag:User_message.Style.Details
              ( Pp.char '['
-             ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:Pp.verbatim
+             ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
+                    Pp.verbatim (Context_name.to_string ctx))
              ++ Pp.char ']' ) )
 end
 

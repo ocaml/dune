@@ -14,7 +14,7 @@ end
 module Prog : sig
   module Not_found : sig
     type t = private
-      { context : string
+      { context : Context_name.t
       ; program : string
       ; hint : string option
       ; loc : Loc.t option
@@ -22,7 +22,7 @@ module Prog : sig
 
     val create :
          ?hint:string
-      -> context:string
+      -> context:Context_name.t
       -> program:string
       -> loc:Loc.t option
       -> unit

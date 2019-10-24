@@ -26,6 +26,7 @@ let term =
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
   Common.set_common_other common ~targets:[ utop_target ];
+  let ctx_name = Dune.Context_name.parse_string_exn (Loc.none, ctx_name) in
   let context, utop_path =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in

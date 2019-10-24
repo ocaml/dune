@@ -620,6 +620,12 @@ let no_rule_found t ~loc fn =
     User_error.raise ?loc
       [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
   in
+  let hints ctx =
+    let candidates =
+      Context_name.Map.keys t.contexts |> List.map ~f:Context_name.to_string
+    in
+    User_message.did_you_mean (Context_name.to_string ctx) ~candidates
+  in
   match Dpath.analyse_target fn with
   | Other _ -> fail fn ~loc
   | Regular (ctx, _) ->
@@ -631,12 +637,7 @@ let no_rule_found t ~loc fn =
             (Path.Build.to_string_maybe_quoted fn)
             (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean
-             (Context_name.to_string ctx)
-             ~candidates:
-               ( Context_name.Map.keys t.contexts
-               |> List.map ~f:Context_name.to_string ))
+        ~hints:(hints ctx)
   | Install (ctx, _) ->
     if Context_name.Map.mem t.contexts ctx then
       fail fn ~loc
@@ -647,12 +648,7 @@ let no_rule_found t ~loc fn =
             (Path.Build.to_string_maybe_quoted fn)
             (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean
-             (Context_name.to_string ctx)
-             ~candidates:
-               ( Context_name.Map.keys t.contexts
-               |> List.map ~f:Context_name.to_string ))
+        ~hints:(hints ctx)
   | Alias (ctx, fn') ->
     if Context_name.Map.mem t.contexts ctx then
       fail fn ~loc
@@ -660,18 +656,13 @@ let no_rule_found t ~loc fn =
       let fn =
         Path.append_source (Path.build (Context_name.build_dir ctx)) fn'
       in
-      let ctx = Context_name.to_string ctx in
       User_error.raise
         [ Pp.textf
             "Trying to build alias %s but build context %s doesn't exist."
             (Path.to_string_maybe_quoted fn)
-            ctx
+            (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean ctx
-             ~candidates:
-               ( Context_name.Map.keys t.contexts
-               |> List.map ~f:Context_name.to_string ))
+        ~hints:(hints ctx)
 
 (* +-------------------- Adding rules to the system --------------------+ *)
 

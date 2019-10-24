@@ -454,7 +454,7 @@ let term =
   and+ x =
     Arg.(
       value
-      & opt (some string) None
+      & opt (some Arg.context_name) None
       & info [ "x" ] ~docs ~doc:{|Cross-compile using this toolchain.|})
   and+ build_dir =
     let doc = "Specified build directory. _build if unspecified" in
@@ -520,9 +520,6 @@ let term =
     Config.adapt_display config
       ~output_is_a_tty:(Lazy.force Ansi_color.stderr_supports_color)
   in
-  let x =
-    Option.map x ~f:(fun x -> Dune.Context_name.parse_string_exn (Loc.none, x))
-  in
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
@@ -558,4 +555,7 @@ let term =
   { t with orig_args }
 
 let context_arg ~doc =
-  Arg.(value & opt string "default" & info [ "context" ] ~docv:"CONTEXT" ~doc)
+  Arg.(
+    value
+    & opt Arg.context_name Dune.Context_name.default
+    & info [ "context" ] ~docv:"CONTEXT" ~doc)

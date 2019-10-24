@@ -41,7 +41,7 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
-val context_arg : doc:string -> string Cmdliner.Term.t
+val context_arg : doc:string -> Dune.Context_name.t Cmdliner.Term.t
 
 (** A [--build-info] command line argument that print build informations
     (included in [term]) *)

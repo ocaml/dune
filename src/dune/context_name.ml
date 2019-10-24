@@ -30,8 +30,10 @@ let of_string_opt name =
   else
     Some (make name)
 
+let error_message = sprintf "%S is an invalid context name"
+
 let invalid_context_name (loc, s) =
-  User_error.make ~loc [ Pp.textf "%S is an invalid context name" s ]
+  User_error.make ~loc [ Pp.text (error_message s) ]
 
 let of_string_user_error (loc, s) =
   match of_string_opt s with
@@ -60,6 +62,11 @@ let to_dyn t = Dyn.Encoder.string (to_string t)
 
 let target t ~toolchain =
   make (sprintf "%s.%s" (to_string t) (to_string toolchain))
+
+let arg_parse s =
+  match of_string_opt s with
+  | Some s -> `Ok s
+  | None -> `Error (error_message s)
 
 module Infix = Comparator.Operators (T)
 module Top_closure = Top_closure.Make (Set) (Monad.Id)

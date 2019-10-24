@@ -25,6 +25,8 @@ module Dep : sig
   val to_string_maybe_quoted : t -> string
 end
 
+val context_name : Context_name.t conv
+
 val dep : Dep.t conv
 
 val path : Path.t conv

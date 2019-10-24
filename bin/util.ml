@@ -42,16 +42,10 @@ let check_path contexts =
     | External e -> External e
     | In_source_tree s -> In_source_dir s
     | In_build_dir path -> (
-      match Path.Build.extract_build_context path with
-      | None -> internal_path ()
-      | Some (name, src) ->
-        if name = "" || name.[0] = '.' then internal_path ();
-        if name = "install" then
-          match Path.Source.split_first_component src with
-          | None -> internal_path ()
-          | Some (ctx, src) ->
-            let ctx = Dune.Context_name.parse_string_exn (Loc.none, ctx) in
-            In_install_dir (context_exn ctx, Path.Source.of_local src)
-        else
-          let name = Dune.Context_name.parse_string_exn (Loc.none, name) in
+        match Dune.Dpath.analyse_target path with
+        | Other _ -> internal_path ()
+        | Alias (_, _) -> internal_path ()
+        | Install (name, src) ->
+          In_install_dir (context_exn name, src)
+        | Regular (name, src) ->
           In_build_dir (context_exn name, src) )

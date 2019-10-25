@@ -35,7 +35,7 @@ module External : sig
 
   val relative : t -> string -> t
 
-  val mkdir_p : t -> unit
+  val mkdir_p : ?perms:int -> t -> unit
 
   val initial_cwd : t
 
@@ -101,16 +101,16 @@ end = struct
     | "." -> x
     | _ -> make (Filename.concat (to_string x) y)
 
-  let rec mkdir_p t =
+  let rec mkdir_p ?(perms=0o777) t =
     let t_s = to_string t in
     let p_s = Filename.dirname t_s in
     let p = make p_s in
     if p <> t then (
-      try Unix.mkdir t_s 0o777 with
+      try Unix.mkdir t_s perms with
       | Unix.Unix_error (EEXIST, _, _) -> ()
       | Unix.Unix_error (ENOENT, _, _) ->
-        mkdir_p p;
-        Unix.mkdir t_s 0o777
+        mkdir_p ~perms p;
+        Unix.mkdir t_s perms
     )
 
   let basename t = Filename.basename (to_string t)
@@ -552,24 +552,24 @@ end = struct
 end
 
 module Relative_to_source_root : sig
-  val mkdir_p : Local.t -> unit
+  val mkdir_p : ?perms:int -> Local.t -> unit
 end = struct
   open Local
 
-  let rec mkdir_p t =
+  let rec mkdir_p ?(perms=0o777) t =
     if is_root t then
       ()
     else
       let t_s = to_string t in
-      try Unix.mkdir t_s 0o777 with
+      try Unix.mkdir t_s perms with
       | Unix.Unix_error (EEXIST, _, _) -> ()
       | Unix.Unix_error (ENOENT, _, _) as e ->
         let parent = parent_exn t in
         if is_root parent then
           raise e
         else (
-          mkdir_p parent;
-          Unix.mkdir t_s 0o777
+          mkdir_p parent ~perms;
+          Unix.mkdir t_s perms
         )
 end
 
@@ -619,9 +619,9 @@ module Kind = struct
     else
       External (External.of_string s)
 
-  let mkdir_p = function
-    | In_source_dir t -> Relative_to_source_root.mkdir_p t
-    | External t -> External.mkdir_p t
+  let mkdir_p ?perms = function
+    | In_source_dir t -> Relative_to_source_root.mkdir_p ?perms t
+    | External t -> External.mkdir_p ?perms t
 
   let append_local x y =
     match x with
@@ -1141,11 +1141,12 @@ let unlink_no_err t = try unlink t with _ -> ()
 let build_dir_exists () = is_directory build_dir
 
 let ensure_build_dir_exists () =
+  let perms = 0o777 in
   match kind build_dir with
-  | In_source_dir p -> Relative_to_source_root.mkdir_p p
+  | In_source_dir p -> Relative_to_source_root.mkdir_p p ~perms
   | External p -> (
     let p = External.to_string p in
-    try Unix.mkdir p 0o777 with
+    try Unix.mkdir p perms with
     | Unix.Unix_error (EEXIST, _, _) -> ()
     | Unix.Unix_error (ENOENT, _, _) ->
       User_error.raise
@@ -1190,11 +1191,11 @@ let rm_rf =
     | exception Unix.Unix_error (ENOENT, _, _) -> ()
     | _ -> loop fn
 
-let mkdir_p = function
-  | External s -> External.mkdir_p s
-  | In_source_tree s -> Relative_to_source_root.mkdir_p s
+let mkdir_p ?perms = function
+  | External s -> External.mkdir_p s ?perms
+  | In_source_tree s -> Relative_to_source_root.mkdir_p s ?perms
   | In_build_dir k ->
-    Kind.mkdir_p (Kind.append_local (Fdecl.get Build.build_dir) k)
+    Kind.mkdir_p ?perms (Kind.append_local (Fdecl.get Build.build_dir) k)
 
 let touch p =
   let p =

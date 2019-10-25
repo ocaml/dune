@@ -230,7 +230,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
       | _ -> ()
 
-  let mkdir_p = Path.mkdir_p
+  let mkdir_p p = Path.mkdir_p p
 end
 
 module Sections = struct

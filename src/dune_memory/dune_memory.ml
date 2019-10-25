@@ -1,5 +1,4 @@
 open Stdune
-open Utils
 
 module Key = Key
 
@@ -171,7 +170,7 @@ module Memory = struct
         (if Path.exists dest then
            Path.unlink dest
          else
-           Utils.mkpath tmp;
+           Path.mkdir_p tmp;
          Path.link path dest);
         dest
       in
@@ -197,7 +196,7 @@ module Memory = struct
                ; digest = effective_hash
                })
         | Collision.Not_found in_the_memory ->
-          Utils.mkpath (Path.parent_exn in_the_memory);
+          Path.mkdir_p (Path.parent_exn in_the_memory);
           let dest = Path.to_string in_the_memory in
           Unix.rename (Path.to_string tmp) dest;
           (* Remove write permissions *)
@@ -213,7 +212,7 @@ module Memory = struct
       Result.List.map ~f:promote paths
       >>| fun promoted ->
       let metadata_path = FSSchemeImpl.path (path_meta memory) key in
-      Utils.mkpath (Path.parent_exn metadata_path);
+      Path.mkdir_p (Path.parent_exn metadata_path);
       Io.write_file metadata_path
         (Csexp.to_string
            (List

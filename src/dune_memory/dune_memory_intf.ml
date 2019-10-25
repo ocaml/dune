@@ -36,7 +36,7 @@ module type Memory = sig
     -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
-    -> int option
+    -> repository:int option
     -> (unit, string) Result.t
 
   val search : t -> key -> (metadata * File.t list, string) Result.t

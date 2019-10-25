@@ -252,14 +252,14 @@ module Client = struct
                    (Sexp.to_string sexp))
           in
           repo
-          >>= fun repo ->
+          >>= fun repository ->
           Result.List.map ~f:file files
           >>= fun files ->
           Dune_memory.key_of_string key
           >>= fun key ->
           Dune_memory.Memory.promote client.memory files key
             (metadata @ client.common_metadata)
-            repo
+            ~repository
           >>| fun _ -> client
         | args -> invalid_args args
       and handle_set_root (client : client) = function
@@ -535,7 +535,7 @@ module Client = struct
     send client.socket (Sexp.List (Sexp.Atom "set-repos" :: repos));
     client
 
-  let promote client paths key metadata repo =
+  let promote client paths key metadata ~repository =
     let key = Dune_memory.key_to_string key
     and f (path, digest) =
       Sexp.List
@@ -543,7 +543,7 @@ module Client = struct
         ; Sexp.Atom (Digest.to_string digest)
         ]
     and repo =
-      match repo with
+      match repository with
       | Some idx ->
         [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
       | None -> []

@@ -248,8 +248,8 @@ module Memory = struct
     in
     with_lock memory f
 
-  let promote memory paths key metadata repo =
-    Result.map ~f:ignore (promote_sync memory paths key metadata repo)
+  let promote memory paths key metadata ~repository =
+    Result.map ~f:ignore (promote_sync memory paths key metadata repository)
 
   let search memory key =
     let path = FSSchemeImpl.path (path_meta memory) key in

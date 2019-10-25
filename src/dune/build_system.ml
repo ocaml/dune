@@ -1624,7 +1624,8 @@ end = struct
           | Enabled (module Caching)
           | Check (module Caching) ->
             ignore
-              (Caching.Cache.promote Caching.cache targets rule_digest [] None)
+              (Caching.Cache.promote Caching.cache targets rule_digest []
+                 ~repository:None)
           | Disabled -> () );
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->

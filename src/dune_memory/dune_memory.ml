@@ -171,7 +171,7 @@ module Memory = struct
         let tmp = path_tmp memory in
         (* dune-memory uses a single writer model, the promoted file name can
            be constant *)
-        let dest = Path.L.relative tmp [ "promoting" ] in
+        let dest = Path.relative tmp "promoting" in
         (let dest = Path.to_string dest in
          if Sys.file_exists dest then
            Unix.unlink dest
@@ -193,7 +193,7 @@ module Memory = struct
       ) else
         match search memory effective_hash tmp with
         | Collision.Found in_the_memory ->
-          Unix.unlink (Path.to_string tmp);
+          Path.unlink tmp;
           Path.touch in_the_memory;
           Result.Ok
             (Already_promoted
@@ -299,7 +299,7 @@ let trim memory free =
   let path = Memory.path_files memory in
   let files = FSSchemeImpl.list path in
   let f path =
-    let stat = Unix.stat (Path.to_string path) in
+    let stat = Path.stat path in
     if stat.st_nlink = 1 then
       Some (path, stat.st_size, stat.st_ctime)
     else
@@ -312,7 +312,7 @@ let trim memory free =
     if freed >= free then
       (freed, res)
     else (
-      Unix.unlink (Path.to_string path);
+      Path.unlink path;
       (freed + size, path :: res)
     )
   in

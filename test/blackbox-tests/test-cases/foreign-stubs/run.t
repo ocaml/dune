@@ -260,24 +260,18 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ cat >foo.c <<EOF
   > #include <caml/mlvalues.h>
-  > #include "some/dir/eight.h"
+  > #include "eight.h"
   > value foo(value unit) { return Val_int(1 + EIGHT); }
   > EOF
 
-  $ ./sdune build
-        ocamlc foo$ext_obj (exit 2)
-  (cd _build/default && /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt -g -ccopt -std=gnu99 -ccopt -O2 -ccopt -fno-strict-aliasing -ccopt -fwrapv -ccopt -fno-builtin-memcmp -ccopt -fPIC -ccopt -g -o foo$ext_obj foo.c)
-  foo.c:2:28: fatal error: some/dir/eight.h: No such file or directory
-   #include "some/dir/eight.h"
-                              ^
-  compilation terminated.
-  [1]
+  $ ./sdune build |& grep eight.h
+  foo.c:2:19: fatal error: eight.h: No such file or directory
+   #include "eight.h"
 
 ----------------------------------------------------------------------------------
 * Succeeds when (extra_deps ...) is present
 
-  $ mkdir -p some/dir
-  $ cat >some/dir/eight.h <<EOF
+  $ cat >eight.h <<EOF
   > #define EIGHT 8
   > EOF
 
@@ -285,7 +279,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (library
   >  (name quad)
   >  (modules quad)
-  >  (foreign_stubs (language c) (names foo) (extra_deps some/dir/eight.h))
+  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h))
   >  (foreign_archives bar qux)
   >  (foreign_stubs (language cxx) (names baz)))
   > (rule
@@ -329,19 +323,14 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ cat >foo.c <<EOF
   > #include <caml/mlvalues.h>
-  > #include "some/dir/eight.h"
+  > #include "eight.h"
   > #include "another/dir/one.h"
   > value foo(value unit) { return Val_int(ONE + EIGHT); }
   > EOF
 
-  $ ./sdune build
-        ocamlc foo$ext_obj (exit 2)
-  (cd _build/default && /usr/local/home/amokhov/code/.opam/default/bin/ocamlc.opt -g -ccopt -std=gnu99 -ccopt -O2 -ccopt -fno-strict-aliasing -ccopt -fwrapv -ccopt -fno-builtin-memcmp -ccopt -fPIC -ccopt -g -o foo$ext_obj foo.c)
+  $ ./sdune build |& grep another/dir/one.h
   foo.c:3:29: fatal error: another/dir/one.h: No such file or directory
    #include "another/dir/one.h"
-                               ^
-  compilation terminated.
-  [1]
 
 ----------------------------------------------------------------------------------
 * Succeeds when (include_dirs ...) is present
@@ -355,7 +344,7 @@ Testsuite for the (foreign_stubs ...) field.
   > (library
   >  (name quad)
   >  (modules quad)
-  >  (foreign_stubs (language c) (names foo) (extra_deps some/dir/eight.h) (include_dirs another/dir))
+  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))
   >  (foreign_archives bar qux)
   >  (foreign_stubs (language cxx) (names baz)))
   > (rule

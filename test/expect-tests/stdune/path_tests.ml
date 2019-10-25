@@ -443,5 +443,5 @@ let%expect_test _ =
   |> Dyn.Encoder.(option (pair string Local.to_dyn))
   |> print_dyn;
   [%expect {|
-Some (".", ".")
+None
 |}]

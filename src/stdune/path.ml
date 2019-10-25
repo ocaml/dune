@@ -638,20 +638,13 @@ module Build = struct
 
   let local t = t
 
-  let extract_build_context t =
-    let t = Local.to_string t in
-    match String.lsplit2 t ~on:'/' with
-    | None -> Some (t, Source0.root)
-    | Some (before, after) -> Some (before, after |> Source0.of_string)
+  let extract_build_context t = split_first_component t
 
   let extract_first_component = extract_build_context
 
   let extract_build_context_dir t =
-    let t_str = Local.to_string t in
-    match String.lsplit2 t_str ~on:'/' with
-    | None -> Some (t, Source0.root)
-    | Some (before, after) ->
-      Some (Local.of_string before, after |> Source0.of_string)
+    Option.map (split_first_component t) ~f:(fun (before, after) ->
+      Local.of_string before, after)
 
   let split_sandbox_root t_original =
     match split_first_component t_original with
@@ -1068,14 +1061,11 @@ let drop_optional_build_context_src_exn t =
   | In_source_tree p -> p
 
 let split_first_component t =
-  match (kind t, is_root t) with
-  | In_source_dir t, false -> (
-    let t = Local.to_string t in
-    match String.lsplit2 t ~on:'/' with
-    | None -> Some (t, root)
-    | Some (before, after) ->
-      Some (before, after |> Local.of_string |> in_source_tree) )
-  | _, _ -> None
+  match kind t with
+  | In_source_dir t ->
+      Option.map (Local.split_first_component t)
+        ~f:(fun (before, after) -> before, (after |> in_source_tree))
+  | _ -> None
 
 let explode t =
   match kind t with

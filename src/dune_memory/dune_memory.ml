@@ -88,7 +88,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
       and root = Path.L.relative root [ dir ] in
       if String.for_all ~f:is_hex_char dir then
         Array.map
-          ~f:(fun filename -> Path.L.relative root [ filename ])
+          ~f:(Path.relative root)
           (Sys.readdir (Path.to_string root))
       else
         Array.of_list []
@@ -113,11 +113,11 @@ module Memory = struct
     ; handler : handler
     }
 
-  let path_files memory = Path.L.relative memory.root [ "files" ]
+  let path_files memory = Path.relative memory.root "files"
 
-  let path_meta memory = Path.L.relative memory.root [ "meta" ]
+  let path_meta memory = Path.relative memory.root "meta"
 
-  let path_tmp memory = Path.L.relative memory.root [ "temp" ]
+  let path_tmp memory = Path.relative memory.root "temp"
 
   let with_lock memory f =
     let lock = Lock_file.create (Path.relative memory.root ".lock") in

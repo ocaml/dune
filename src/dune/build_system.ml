@@ -409,16 +409,10 @@ module Context_or_install = struct
     | Context s -> Context_name.to_dyn s
 end
 
-module type caching = sig
-  module Cache : Dune_memory.Memory
-
-  val cache : Cache.t
-end
-
 type caching =
   | Disabled
-  | Enabled of (module caching)
-  | Check of (module caching)
+  | Enabled of (module Dune_memory.Caching)
+  | Check of (module Dune_memory.Caching)
 
 type t =
   { (* File specification by targets *)
@@ -2072,12 +2066,12 @@ let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
     |> Context_name.Map.of_list_exn
   in
   let cache =
-    let f (module Caching : caching) =
+    let f (module Caching : Dune_memory.Caching) =
       ( module struct
         module Cache = Caching.Cache
 
         let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-      end : caching )
+      end : Dune_memory.Caching )
     in
     match caching with
     | Disabled -> Disabled

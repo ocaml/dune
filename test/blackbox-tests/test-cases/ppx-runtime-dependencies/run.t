@@ -69,13 +69,10 @@ Handling ppx_runtime_libraries dependencies correctly
   [1]
 
 ----------------------------------------------------------------------------------
-* Make sure our usage of ppx_runtime_libraries is actually correct
-TODO: Delete after fixing the test above
-
-  $ cat >dune-project <<EOF
-  > (lang dune 2.0)
-  > (implicit_transitive_deps true)
-  > EOF
+* Ppx rewriters (and their ppx_runtime_libraries information) are collected recursively
+In this case we have the following dependency graph:
+main --[pps]--> b ---> ppx --[runtime]--> c ---> a
+Note the direct dependency b ---> ppx that separates pps and runtime dependencies.
 
   $ cat >dune <<EOF
   > (library
@@ -83,10 +80,15 @@ TODO: Delete after fixing the test above
   >  (modules a))
   > (library
   >  (name b)
+  >  (modules b)
+  >  (libraries ppx))
+  > (library
+  >  (name ppx)
+  >  (modules ppx)
   >  (kind ppx_rewriter)
-  >  (modules b ppx)
   >  (libraries ppxlib)
-  >  (ppx_runtime_libraries c))
+  >  (ppx_runtime_libraries c)
+  >  )
   > (library
   >  (name c)
   >  (modules c)
@@ -99,3 +101,56 @@ TODO: Delete after fixing the test above
 
   $ ./sdune exec bin/main.exe
   Should print 3: 3
+
+----------------------------------------------------------------------------------
+* Dependency cycle between ppx rewriters created via [ppx_runtime_libraries]
+In this case we have the following dependency graph:
+gen_c --[pps]--> ppx --[runtime]--> c --[pps]--> gen_c
+Note that pps dependencies are separated by a runtime dependency.
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name gen_c)
+  >  (modules gen_c)
+  >  (kind ppx_rewriter)
+  >  (libraries ppxlib)
+  >  (preprocess (pps ppx)))
+  > (library
+  >  (name ppx)
+  >  (modules ppx)
+  >  (kind ppx_rewriter)
+  >  (libraries ppxlib)
+  >  (ppx_runtime_libraries c)
+  >  )
+  > (library
+  >  (name c)
+  >  (modules c)
+  >  (libraries ppxlib)
+  >  (preprocess (pps gen_c))
+  > )
+  > EOF
+
+  $ cat >c.ml <<EOF
+  > let c = [%c]
+  > EOF
+
+  $ cat >bin/dune <<EOF
+  > (executable
+  >  (name main)
+  >  (libraries c)
+  >  (modules main))
+  > EOF
+
+  $ cat >bin/main.ml <<EOF
+  > let () = Printf.printf "Should be impossible: %d\n" C.c
+  > EOF
+
+  $ ./sdune exec bin/main.exe
+  Error: Dependency cycle detected between the following libraries:
+     "gen_c" in _build/default
+  -> "ppx" in _build/default
+  -> "c" in _build/default
+  -> "gen_c" in _build/default
+  -> required by library "c" in _build/default
+  -> required by executable main in bin/dune:2
+  [1]

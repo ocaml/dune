@@ -16,3 +16,5 @@ val get : 'a t -> 'a
 (** [set t x] set's the value that is returned by [get t] to [x], overwritting
     it in needed *)
 val reset : 'a t -> 'a -> unit
+
+val peek : 'a t -> 'a option

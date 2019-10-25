@@ -22,3 +22,8 @@ let get t =
   match t.state with
   | Unset -> Code_error.raise "Fdecl.get: not set" []
   | Set x -> x
+
+let peek t =
+  match t.state with
+  | Unset -> None
+  | Set x -> Some x

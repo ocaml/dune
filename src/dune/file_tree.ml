@@ -232,6 +232,12 @@ end = struct
     ; recognize_jbuilder_projects : bool
     }
 
+  let equal { root; ancestor_vcs; recognize_jbuilder_projects } y =
+    Path.Source.equal root y.root
+    && Option.equal Vcs.equal ancestor_vcs y.ancestor_vcs
+    && Bool.equal recognize_jbuilder_projects y.recognize_jbuilder_projects
+
+
   let to_dyn { root; ancestor_vcs; recognize_jbuilder_projects } =
     let open Dyn.Encoder in
     record
@@ -242,7 +248,13 @@ end = struct
 
   let t = Fdecl.create to_dyn
 
-  let set = Fdecl.set t
+  let set x =
+    match Fdecl.peek t with
+    | None -> Fdecl.set t x
+    | Some x' ->
+      if not (equal x x') then
+        (* The next call will fail, but will give a good error message *)
+        Fdecl.set t x
 
   let get () =
     let (_ : Memo.Run.t) = Memo.current_run () in

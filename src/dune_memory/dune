@@ -1,4 +1,5 @@
-(library (name dune_memory)
-         (modules Dune_memory Dune_memory_intf Utils)
-         (libraries stdune xdg dune_lang)
-         (preprocess future_syntax))
+(library
+ (name dune_memory)
+ (modules Dune_memory Dune_memory_intf Utils)
+ (libraries stdune xdg dune_lang)
+ (preprocess future_syntax))

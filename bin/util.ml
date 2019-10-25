@@ -42,10 +42,8 @@ let check_path contexts =
     | External e -> External e
     | In_source_tree s -> In_source_dir s
     | In_build_dir path -> (
-        match Dune.Dpath.analyse_target path with
-        | Other _ -> internal_path ()
-        | Alias (_, _) -> internal_path ()
-        | Install (name, src) ->
-          In_install_dir (context_exn name, src)
-        | Regular (name, src) ->
-          In_build_dir (context_exn name, src) )
+      match Dune.Dpath.analyse_target path with
+      | Other _ -> internal_path ()
+      | Alias (_, _) -> internal_path ()
+      | Install (name, src) -> In_install_dir (context_exn name, src)
+      | Regular (name, src) -> In_build_dir (context_exn name, src) )

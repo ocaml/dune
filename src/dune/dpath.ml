@@ -35,10 +35,11 @@ let analyse_target (fn as original_fn) : target_kind =
               basename ) )
   | Some ("install", sub) -> (
     match Path.Local.split_first_component sub with
-    | None -> Other fn
-    | Some (ctx, fn) ->
-      let ctx = Context_name.of_string ctx in
-      Install (ctx, Path.Source.of_local fn) )
+    | None -> Other original_fn
+    | Some (ctx, fn) -> (
+      match Context_name.of_string_opt ctx with
+      | None -> Other original_fn
+      | Some ctx -> Install (ctx, Path.Source.of_local fn) ) )
   | Some (ctx, sub) -> (
     match Context_name.of_string_opt ctx with
     | None -> Other fn

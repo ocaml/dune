@@ -12,7 +12,7 @@ module File = struct
     }
 end
 
-module type memory = sig
+module type Memory = sig
   type t
 
   val promote :
@@ -20,7 +20,7 @@ module type memory = sig
     -> (Path.Build.t * Digest.t) list
     -> key
     -> metadata
-    -> int option
+    -> repository:int option
     -> (unit, string) Result.t
 
   val search : t -> key -> (metadata * File.t list, string) Result.t
@@ -28,8 +28,8 @@ module type memory = sig
   val set_build_dir : t -> Path.t -> t
 end
 
-module type caching = sig
-  module Cache : memory
+module type Caching = sig
+  module Cache : Memory
 
   val cache : Cache.t
 end

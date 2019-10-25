@@ -59,15 +59,20 @@ let term =
        `Ok ()
      | `List ->
        let fns = Memo.registered_functions () in
-       let longest = String.longest_map fns ~f:(fun info -> info.name) in
-       List.iter fns ~f:(fun { Memo.Function_info.name; doc } ->
+       let longest = String.longest_map fns ~f:(fun info ->
+         info.Memo.Function.Info.name
+         |> Memo.Function.Name.to_string)
+       in
+       List.iter fns ~f:(fun { Memo.Function.Info.name; doc } ->
+         let name = Memo.Function.Name.to_string name in
            Printf.printf "%-*s : %s\n" longest name doc);
        flush stdout;
        `Ok ()
      | `Show_doc fn ->
        let info = Memo.function_info fn in
-       Printf.printf "%s\n%s\n%s\n" info.name
-         (String.make (String.length info.name) '=')
+       let name = Memo.Function.Name.to_string info.name in
+       Printf.printf "%s\n%s\n%s\n" name
+         (String.make (String.length name) '=')
          info.doc;
        `Ok ()
 

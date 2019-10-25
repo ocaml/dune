@@ -49,10 +49,21 @@ end
     forgotten, pending computations are cancelled. *)
 val reset : unit -> unit
 
-module Function_type : sig
-  type ('a, 'b, 'f) t =
-    | Sync : ('a, 'b, 'a -> 'b) t
-    | Async : ('a, 'b, 'a -> 'b Fiber.t) t
+module Function : sig
+  module Name : Interned.S
+
+  module Type : sig
+    type ('a, 'b, 'f) t =
+      | Sync : ('a, 'b, 'a -> 'b) t
+      | Async : ('a, 'b, 'a -> 'b Fiber.t) t
+  end
+
+  module Info : sig
+    type t =
+      { name : Name.t
+      ; doc : string
+      }
+  end
 end
 
 module type Output_simple = sig
@@ -117,7 +128,7 @@ val create_with_store :
   -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function_type.t
+  -> ('i, 'o, 'f) Function.Type.t
   -> 'f
   -> ('i, 'o, 'f) t
 
@@ -145,7 +156,7 @@ val create :
   -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
-  -> ('i, 'o, 'f) Function_type.t
+  -> ('i, 'o, 'f) Function.Type.t
   -> 'f
   -> ('i, 'o, 'f) t
 
@@ -153,7 +164,7 @@ val create_hidden :
      string
   -> doc:string
   -> input:(module Input with type t = 'i)
-  -> ('i, 'o, 'f) Function_type.t
+  -> ('i, 'o, 'f) Function.Type.t
   -> 'f
   -> ('i, 'o, 'f) t
 
@@ -192,18 +203,11 @@ end
 (** Introduces a dependency on the current build run *)
 val current_run : unit -> Run.t
 
-module Function_info : sig
-  type t =
-    { name : string
-    ; doc : string
-    }
-end
-
 (** Return the list of registered functions *)
-val registered_functions : unit -> Function_info.t list
+val registered_functions : unit -> Function.Info.t list
 
 (** Lookup function's info *)
-val function_info : string -> Function_info.t
+val function_info : string -> Function.Info.t
 
 module Lazy : sig
   type +'a t
@@ -233,7 +237,7 @@ module With_implicit_output : sig
     -> visibility:'i Visibility.t
     -> output:(module Output_simple with type t = 'o)
     -> implicit_output:'io Implicit_output.t
-    -> ('i, 'o, 'f) Function_type.t
+    -> ('i, 'o, 'f) Function.Type.t
     -> 'f
     -> ('i, 'o, 'f) t
 

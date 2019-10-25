@@ -119,21 +119,19 @@ let my_versions_command =
               [ Sexp.Atom (string_of_int maj); Sexp.Atom (string_of_int min) ]))
          my_versions )
 
-module Int_map = Map.Make (Int)
-
 let find_highest_common_version (a : version list) (b : version list) :
     version option =
-  let a = Int_map.of_list_exn a
-  and b = Int_map.of_list_exn b in
+  let a = Int.Map.of_list_exn a
+  and b = Int.Map.of_list_exn b in
   let common =
-    Int_map.merge
+    Int.Map.merge
       ~f:(fun _ minor_in_a minor_in_b ->
         match (minor_in_a, minor_in_b) with
         | Some a, Some b -> Some (min a b)
         | _ -> None)
       a b
   in
-  Int_map.max_binding common
+  Int.Map.max_binding common
 
 let int_of_string ?where s =
   try Result.Ok (int_of_string s)

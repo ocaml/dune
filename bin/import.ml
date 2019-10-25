@@ -45,8 +45,7 @@ let get_cache_mode () =
 let make_cache () =
   let var = "DUNE_CACHE"
   and handle = function
-    | Dune_memory.Dedup (target, source, digest) ->
-      Scheduler.send_dedup target source digest
+    | Dune_memory.Dedup file -> Scheduler.send_dedup file
   in
   match Env.get Env.initial var with
   | Some v ->

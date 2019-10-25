@@ -4,10 +4,6 @@ type key = Digest.t
 
 type metadata = Sexp.t list
 
-type promotion =
-  | Already_promoted of Path.Build.t * Path.t * Digest.t
-  | Promoted of Path.Build.t * Path.t * Digest.t
-
 module File = struct
   type t =
     { in_the_memory : Path.t
@@ -16,13 +12,17 @@ module File = struct
     }
 end
 
+type promotion =
+  | Already_promoted of File.t
+  | Promoted of File.t
+
 type repository =
   { directory : string
   ; remote : string
   ; commit : string
   }
 
-type command = Dedup of (Path.Build.t * Path.t * Digest.t)
+type command = Dedup of File.t
 
 type handler = command -> unit
 

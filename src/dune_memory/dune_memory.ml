@@ -15,20 +15,23 @@ let key_of_string s =
   | None -> Result.Error (Printf.sprintf "invalid key: %s" s)
 
 let promotion_to_string = function
-  | Already_promoted (original, promoted, _) ->
+  | Already_promoted { in_the_memory; in_the_build_directory; _ } ->
     Printf.sprintf "%s already promoted as %s"
-      (Path.Local.to_string (Path.Build.local original))
-      (Path.to_string promoted)
-  | Promoted (original, promoted, _) ->
+      (Path.Local.to_string (Path.Build.local in_the_build_directory))
+      (Path.to_string in_the_memory)
+  | Promoted { in_the_memory; in_the_build_directory; _ } ->
     Printf.sprintf "%s promoted as %s"
-      (Path.Local.to_string (Path.Build.local original))
-      (Path.to_string promoted)
+      (Path.Local.to_string (Path.Build.local in_the_build_directory))
+      (Path.to_string in_the_memory)
 
 let command_to_dyn = function
-  | Dedup (source, target, hash) ->
+  | Dedup { in_the_build_directory; in_the_memory; digest } ->
     let open Dyn.Encoder in
     constr "Dedup"
-      [ Path.Build.to_dyn source; Path.to_dyn target; Digest.to_dyn hash ]
+      [ Path.Build.to_dyn in_the_build_directory
+      ; Path.to_dyn in_the_memory
+      ; Digest.to_dyn digest
+      ]
 
 (* How to handle collisions. E.g. another version could assume collisions are
    not possible *)
@@ -191,17 +194,27 @@ module Memory = struct
         Result.Error message
       ) else
         match search memory effective_hash tmp with
-        | Collision.Found p ->
+        | Collision.Found in_the_memory ->
           Unix.unlink (Path.to_string tmp);
-          Path.touch p;
-          Result.Ok (Already_promoted (path, p, effective_hash))
-        | Collision.Not_found p ->
-          mkpath (Path.parent_exn p);
-          let dest = Path.to_string p in
+          Path.touch in_the_memory;
+          Result.Ok
+            (Already_promoted
+               { in_the_build_directory = path
+               ; in_the_memory
+               ; digest = effective_hash
+               })
+        | Collision.Not_found in_the_memory ->
+          mkpath (Path.parent_exn in_the_memory);
+          let dest = Path.to_string in_the_memory in
           Unix.rename (Path.to_string tmp) dest;
           (* Remove write permissions *)
           Unix.chmod dest (stat.st_perm land 0o555);
-          Result.Ok (Promoted (path, p, effective_hash))
+          Result.Ok
+            (Promoted
+               { in_the_build_directory = path
+               ; in_the_memory
+               ; digest = effective_hash
+               })
     in
     let f () =
       Result.List.map ~f:promote paths
@@ -216,17 +229,20 @@ module Memory = struct
                   ( Atom "files"
                   :: List.map
                        ~f:(function
-                         | Promoted (o, p, _)
-                         | Already_promoted (o, p, _) ->
+                         | Promoted
+                             { in_the_build_directory; in_the_memory; _ }
+                         | Already_promoted
+                             { in_the_build_directory; in_the_memory; _ } ->
                            Sexp.List
                              [ Sexp.Atom
-                                 (Path.Local.to_string (Path.Build.local o))
-                             ; Sexp.Atom (Path.to_string p)
+                                 (Path.Local.to_string
+                                    (Path.Build.local in_the_build_directory))
+                             ; Sexp.Atom (Path.to_string in_the_memory)
                              ])
                        promoted )
               ]));
       let f = function
-        | Already_promoted (f, t, d) -> memory.handler (Dedup (f, t, d))
+        | Already_promoted file -> memory.handler (Dedup file)
         | _ -> ()
       in
       List.iter ~f promoted;

@@ -171,20 +171,25 @@ module Client = struct
       | Some digest ->
         Result.Ok
           (Dune_memory.Dedup
-             (Path.Build.of_string source, Path.of_string target, digest))
+             { in_the_build_directory = Path.Build.of_string source
+             ; in_the_memory = Path.of_string target
+             ; digest
+             })
       | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
     | exp ->
       Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
   let client_handle output = function
-    | Dune_memory.Dedup (f, t, d) ->
+    | Dune_memory.Dedup { in_the_build_directory; in_the_memory; digest } ->
       send output
         (Sexp.List
            [ Sexp.Atom "dedup"
            ; Sexp.List
-               [ Sexp.Atom (Path.Local.to_string (Path.Build.local f))
-               ; Sexp.Atom (Path.to_string t)
-               ; Sexp.Atom (Digest.to_string d)
+               [ Sexp.Atom
+                   (Path.Local.to_string
+                      (Path.Build.local in_the_build_directory))
+               ; Sexp.Atom (Path.to_string in_the_memory)
+               ; Sexp.Atom (Digest.to_string digest)
                ]
            ])
 

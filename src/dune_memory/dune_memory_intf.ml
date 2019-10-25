@@ -1,7 +1,5 @@
 open Stdune
 
-type key = Digest.t
-
 type metadata = Sexp.t list
 
 module File = struct
@@ -34,12 +32,12 @@ module type Memory = sig
   val promote :
        t
     -> (Path.Build.t * Digest.t) list
-    -> key
+    -> Key.t
     -> metadata
     -> repository:int option
     -> (unit, string) Result.t
 
-  val search : t -> key -> (metadata * File.t list, string) Result.t
+  val search : t -> Key.t -> (metadata * File.t list, string) Result.t
 
   val set_build_dir : t -> Path.t -> t
 

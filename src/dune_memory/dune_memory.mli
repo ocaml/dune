@@ -6,9 +6,13 @@ type 'a result = ('a, string) Result.t
 
 val default_root : unit -> Path.t
 
-val key_to_string : key -> string
+module Key : sig
+  type t = Digest.t
 
-val key_of_string : string -> key result
+  val of_string : string -> (t, string) Result.t
+
+  val to_string : t -> string
+end
 
 val promotion_to_string : promotion -> string
 
@@ -20,7 +24,7 @@ module Memory : sig
   val promote_sync :
        t
     -> (Path.Build.t * Digest.t) list
-    -> key
+    -> Key.t
     -> metadata
     -> int option
     -> (promotion list, string) Result.t

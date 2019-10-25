@@ -242,7 +242,7 @@ module Client = struct
                    (Sexp.to_string (Sexp.List cmd)))
           and file = function
             | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-              Dune_memory.key_of_string hash
+              Dune_memory.Key.of_string hash
               >>| fun d -> (Path.Build.of_local (Path.Local.of_string path), d)
             | sexp ->
               Result.Error
@@ -253,7 +253,7 @@ module Client = struct
           >>= fun repository ->
           Result.List.map ~f:file files
           >>= fun files ->
-          Dune_memory.key_of_string key
+          Dune_memory.Key.of_string key
           >>= fun key ->
           Dune_memory.Memory.promote client.memory files key
             (metadata @ client.common_metadata)
@@ -534,7 +534,7 @@ module Client = struct
     client
 
   let promote client paths key metadata ~repository =
-    let key = Dune_memory.key_to_string key
+    let key = Dune_memory.Key.to_string key
     and f (path, digest) =
       Sexp.List
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))

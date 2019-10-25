@@ -10,13 +10,6 @@ type 'a result = ('a, string) Result.t
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
 
-let key_to_string = Digest.to_string
-
-let key_of_string s =
-  match Digest.from_hex s with
-  | Some d -> Result.Ok d
-  | None -> Result.Error (Printf.sprintf "invalid key: %s" s)
-
 let promotion_to_string = function
   | Already_promoted { in_the_memory; in_the_build_directory; _ } ->
     Printf.sprintf "%s already promoted as %s"

@@ -42,37 +42,6 @@ end
 
 let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
 
-module Witness : sig
-  type 'a t
-
-  val create : unit -> 'a t
-
-  val same : 'a t -> 'b t -> ('a, 'b) Type_eq.t option
-end = struct
-  type _ w = ..
-
-  module type T = sig
-    type a
-
-    type _ w += W : a w
-  end
-
-  type 'a t = (module T with type a = 'a)
-
-  let create (type a) () =
-    ( ( module struct
-        type nonrec a = a
-
-        type _ w += W : a w
-      end )
-      : a t )
-
-  let same (type a b) ((module M1) : a t) ((module M2) : b t) =
-    match M1.W with
-    | M2.W -> Some (Type_eq.T : (a, b) Type_eq.t)
-    | _ -> None
-end
-
 module Allow_cutoff = struct
   type 'o t =
     | No
@@ -106,7 +75,7 @@ module Spec = struct
     ; output : (module Output_simple with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
-    ; witness : 'a Witness.t
+    ; witness : 'a Type_eq.Id.t
     ; f : ('a, 'b, 'f) Function.t
     ; doc : string
     }
@@ -408,7 +377,7 @@ module Stack_frame = struct
 
   let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) :
       i option =
-    match Witness.same memo.spec.witness t.spec.witness with
+    match Type_eq.Id.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T -> Some t.input
     | None -> None
 end
@@ -448,7 +417,7 @@ let create_with_cache (type i o f) name ~cache ~doc
     ; output
     ; allow_cutoff
     ; decode
-    ; witness = Witness.create ()
+    ; witness = Type_eq.Id.create ()
     ; f = Function.of_type typ f
     ; doc
     }

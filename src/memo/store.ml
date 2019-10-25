@@ -1,39 +1,9 @@
 open! Stdune
 
-module type Store = sig
-  type key
-
-  type 'a t
-
-  val create : unit -> 'a t
-
-  val clear : 'a t -> unit
-
-  val set : 'a t -> key -> 'a -> unit
-
-  val find : 'a t -> key -> 'a option
-end
-
-module type Store_instance = sig
-  type key
-
-  type value
-
-  type t
-
-  val clear : t -> unit
-
-  val set : t -> key -> value -> unit
-
-  val find : t -> key -> value option
-
-  val store : t
-end
-
 type ('k, 'v) t =
-  (module Store_instance with type key = 'k and type value = 'v)
+  (module Store_intf.Instance with type key = 'k and type value = 'v)
 
-let make (type k v) (module S : Store with type key = k) : (k, v) t =
+let make (type k v) (module S : Store_intf.S with type key = k) : (k, v) t =
   ( module struct
     type key = k
 

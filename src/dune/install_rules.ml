@@ -601,6 +601,7 @@ let install_rules sctx (package : Package.t) =
          match ctx.findlib_toolchain with
          | None -> entries
          | Some toolchain ->
+           let toolchain = Context_name.to_string toolchain in
            let prefix = Path.of_string (toolchain ^ "-sysroot") in
            List.map entries
              ~f:(Install.Entry.add_install_prefix ~paths:install_paths ~prefix)

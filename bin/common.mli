@@ -2,7 +2,7 @@ type t
 
 val workspace_file : t -> Arg.Path.t option
 
-val x : t -> string option
+val x : t -> Dune.Context_name.t option
 
 val profile : t -> Dune.Profile.t option
 
@@ -41,7 +41,7 @@ val footer : Cmdliner.Manpage.block
 
 val term : t Cmdliner.Term.t
 
-val context_arg : doc:string -> string Cmdliner.Term.t
+val context_arg : doc:string -> Dune.Context_name.t Cmdliner.Term.t
 
 (** A [--build-info] command line argument that print build informations
     (included in [term]) *)

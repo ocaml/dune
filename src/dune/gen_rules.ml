@@ -380,7 +380,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
       Package.Name.Map.filter packages ~f:(fun { Package.name; _ } ->
           Package.Name.Set.mem pkgs name)
   in
-  let sctxs = Table.create (module String) 4 in
+  let sctxs = Table.create (module Context_name) 4 in
   List.iter contexts ~f:(fun c ->
       Table.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));
   let make_sctx (context : Context.t) : _ Fiber.t =
@@ -410,22 +410,23 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
     (context.name, sctx)
   in
   let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
-  let sctxs = String.Map.of_list_exn contexts in
+  let sctxs = Context_name.Map.of_list_exn contexts in
   let () =
     Build_system.set_packages (fun path ->
         let open Option.O in
         Option.value ~default:Package.Name.Set.empty
           (let* ctx_name, _ = Path.Build.extract_build_context path in
-           let* sctx = String.Map.find sctxs ctx_name in
+           let* ctx_name = Context_name.of_string_opt ctx_name in
+           let* sctx = Context_name.Map.find sctxs ctx_name in
            Path.Build.Map.find (Install_rules.packages sctx) path))
   in
   Build_system.set_rule_generators
-    ~init:(fun () -> String.Map.iter sctxs ~f:Odoc.init)
+    ~init:(fun () -> Context_name.Map.iter sctxs ~f:Odoc.init)
     ~gen_rules:(function
       | Install ctx ->
-        Option.map (String.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
+        Option.map (Context_name.Map.find sctxs ctx) ~f:(fun sctx ~dir _ ->
             Install_rules.gen_rules sctx ~dir)
       | Context ctx ->
-        String.Map.find sctxs ctx
+        Context_name.Map.find sctxs ctx
         |> Option.map ~f:(fun sctx -> gen_rules ~sctx));
   sctxs

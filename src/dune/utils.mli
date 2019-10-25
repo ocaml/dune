@@ -11,13 +11,13 @@ val bash_exn : needed_to:string -> Path.t
 
 (** Raise an error about a program not found in the PATH or in the tree *)
 val program_not_found :
-  ?context:string -> ?hint:string -> loc:Loc.t option -> string -> _
+  ?context:Context_name.t -> ?hint:string -> loc:Loc.t option -> string -> _
 
 (** Raise an error about a library not found *)
-val library_not_found : ?context:string -> ?hint:string -> string -> _
+val library_not_found : ?context:Context_name.t -> ?hint:string -> string -> _
 
 val install_file :
-  package:Package.Name.t -> findlib_toolchain:string option -> string
+  package:Package.Name.t -> findlib_toolchain:Context_name.t option -> string
 
 (** Produce a line directive *)
 val line_directive : filename:string -> line_number:int -> string

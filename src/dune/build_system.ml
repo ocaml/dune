@@ -183,7 +183,8 @@ module Alias0 = struct
   let dep_multi_contexts ~dir ~name ~contexts =
     ignore (find_dir_specified_on_command_line ~dir);
     let context_to_stamp_file ctx =
-      let dir = Path.Build.(append_source (relative root ctx) dir) in
+      let ctx_dir = Context_name.build_dir ctx in
+      let dir = Path.Build.(append_source ctx_dir dir) in
       Path.build (stamp_file (make ~dir name))
     in
     Build.paths (List.map contexts ~f:context_to_stamp_file)
@@ -236,7 +237,7 @@ module Alias0 = struct
     let+ is_empty_list =
       Build.all
         (List.map contexts ~f:(fun ctx ->
-             let ctx_dir = Path.Build.(relative root) ctx in
+             let ctx_dir = Context_name.build_dir ctx in
              dep_rec_internal ~name ~dir ~ctx_dir))
     in
     let is_empty = List.for_all is_empty_list ~f:Fn.id in
@@ -400,14 +401,12 @@ end
 
 module Context_or_install = struct
   type t =
-    | Install of string
-    | Context of string
+    | Install of Context_name.t
+    | Context of Context_name.t
 
   let to_dyn = function
-    | Install ctx -> Dyn.List [ Dyn.String "install"; Dyn.String ctx ]
-    | Context s ->
-      assert (not (s = "install"));
-      Dyn.String s
+    | Install ctx -> Dyn.List [ Dyn.String "install"; Context_name.to_dyn ctx ]
+    | Context s -> Context_name.to_dyn s
 end
 
 type caching =
@@ -418,7 +417,7 @@ type caching =
 type t =
   { (* File specification by targets *)
     files : Internal_rule.t Path.Build.Table.t
-  ; contexts : Context.t String.Map.t
+  ; contexts : Context.t Context_name.Map.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (   Context_or_install.t
@@ -474,12 +473,17 @@ let get_dir_triage t ~dir =
       let allowed_subdirs =
         Subdir_set.to_dir_set
           (Subdir_set.of_list
-             ([ ".aliases"; "install" ] @ String.Map.keys t.contexts))
+             ( [ ".aliases"; "install" ]
+             @ ( Context_name.Map.keys t.contexts
+               |> List.map ~f:Context_name.to_string ) ))
       in
       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
     else if Path.equal dir (Path.relative Path.build_dir "install") then
       let allowed_subdirs =
-        Subdir_set.to_dir_set (Subdir_set.of_list (String.Map.keys t.contexts))
+        Subdir_set.to_dir_set
+          (Subdir_set.of_list
+             ( Context_name.Map.keys t.contexts
+             |> List.map ~f:Context_name.to_string ))
       in
       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
     else if not (Path.is_managed dir) then
@@ -498,7 +502,10 @@ let get_dir_triage t ~dir =
       let ctx, sub_dir = Path.extract_build_context_exn dir in
       if ctx = ".aliases" then
         Alias_dir_of (Path.Build.(append_source root) sub_dir)
-      else if ctx <> "install" && not (String.Map.mem t.contexts ctx) then
+      else if
+        ctx <> "install"
+        && not (Context_name.Map.mem t.contexts (Context_name.of_string ctx))
+      then
         Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
       else
         Need_step2
@@ -613,47 +620,49 @@ let no_rule_found t ~loc fn =
     User_error.raise ?loc
       [ Pp.textf "No rule found for %s" (Dpath.describe_target fn) ]
   in
+  let hints ctx =
+    let candidates =
+      Context_name.Map.keys t.contexts |> List.map ~f:Context_name.to_string
+    in
+    User_message.did_you_mean (Context_name.to_string ctx) ~candidates
+  in
   match Dpath.analyse_target fn with
   | Other _ -> fail fn ~loc
   | Regular (ctx, _) ->
-    if String.Map.mem t.contexts ctx then
+    if Context_name.Map.mem t.contexts ctx then
       fail fn ~loc
     else
       User_error.raise
         [ Pp.textf "Trying to build %s but build context %s doesn't exist."
             (Path.Build.to_string_maybe_quoted fn)
-            ctx
+            (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+        ~hints:(hints ctx)
   | Install (ctx, _) ->
-    if String.Map.mem t.contexts ctx then
+    if Context_name.Map.mem t.contexts ctx then
       fail fn ~loc
     else
       User_error.raise
         [ Pp.textf
             "Trying to build %s for install but build context %s doesn't exist."
             (Path.Build.to_string_maybe_quoted fn)
-            ctx
+            (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+        ~hints:(hints ctx)
   | Alias (ctx, fn') ->
-    if String.Map.mem t.contexts ctx then
+    if Context_name.Map.mem t.contexts ctx then
       fail fn ~loc
     else
-      let fn = Path.append_source (Path.relative Path.build_dir ctx) fn' in
+      let fn =
+        Path.append_source (Path.build (Context_name.build_dir ctx)) fn'
+      in
       User_error.raise
         [ Pp.textf
             "Trying to build alias %s but build context %s doesn't exist."
             (Path.to_string_maybe_quoted fn)
-            ctx
+            (Context_name.to_string ctx)
         ]
-        ~hints:
-          (User_message.did_you_mean ctx
-             ~candidates:(String.Map.keys t.contexts))
+        ~hints:(hints ctx)
 
 (* +-------------------- Adding rules to the system --------------------+ *)
 
@@ -720,6 +729,7 @@ end = struct
   let compute_alias_rules t ~context_name ~(collected : Rules.Dir_rules.ready)
       ~dir ~sub_dir =
     let alias_dir =
+      let context_name = Context_name.to_string context_name in
       Path.Build.append_source
         (Path.Build.relative Alias.alias_dir context_name)
         sub_dir
@@ -1019,7 +1029,7 @@ end = struct
       | Install _ -> (None, String.Set.empty)
       | Context context_name ->
         (* This condition is [true] because of [get_dir_status] *)
-        assert (String.Map.mem t.contexts context_name);
+        assert (Context_name.Map.mem t.contexts context_name);
         let files, subdirs =
           match file_tree_dir with
           | None -> (Path.Source.Set.empty, String.Set.empty)
@@ -1030,7 +1040,7 @@ end = struct
         if Path.Source.Set.is_empty files then
           (None, subdirs)
         else
-          let ctx_path = Path.Build.(relative root) context_name in
+          let ctx_path = Context_name.build_dir context_name in
           (Some (ctx_path, files), subdirs)
     in
     let subdirs_to_keep =
@@ -1192,7 +1202,7 @@ and get_rule t path =
 
 let all_targets t =
   let root = File_tree.root () in
-  String.Map.to_list t.contexts
+  Context_name.Map.to_list t.contexts
   |> List.fold_left ~init:Path.Build.Set.empty ~f:(fun acc (_, ctx) ->
          File_tree.Dir.fold root ~traverse:Sub_dirs.Status.Set.all ~init:acc
            ~f:(fun dir acc ->
@@ -1983,7 +1993,7 @@ include Print_rules
 module All_lib_deps : sig
   val all_lib_deps :
        request:unit Build.t
-    -> Lib_deps_info.t Path.Source.Map.t String.Map.t Fiber.t
+    -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t Fiber.t
 end = struct
   let static_deps_of_request request =
     Static_deps.paths @@ Build.static_deps request ~list_targets:targets_of
@@ -2029,10 +2039,13 @@ end = struct
         else
           match Path.Build.extract_build_context rule.Internal_rule.dir with
           | None -> acc
-          | Some (context, p) -> (context, (p, deps)) :: acc)
-    |> String.Map.of_list_multi
-    |> String.Map.filteri ~f:(fun ctx _ -> String.Map.mem t.contexts ctx)
-    |> String.Map.map
+          | Some (context, p) ->
+            let context = Context_name.of_string context in
+            (context, (p, deps)) :: acc)
+    |> Context_name.Map.of_list_multi
+    |> Context_name.Map.filteri ~f:(fun ctx _ ->
+           Context_name.Map.mem t.contexts ctx)
+    |> Context_name.Map.map
          ~f:(Path.Source.Map.of_list_reduce ~f:Lib_deps_info.merge)
 end
 
@@ -2049,7 +2062,7 @@ let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
-    |> String.Map.of_list_exn
+    |> Context_name.Map.of_list_exn
   in
   let cache =
     let f c = Dune_manager.Client.set_build_dir c Path.build_dir in

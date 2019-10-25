@@ -25,7 +25,7 @@ type t =
   ; target_prefix : string
   ; only_packages : Dune.Package.Name.Set.t option
   ; capture_outputs : bool
-  ; x : string option
+  ; x : Dune.Context_name.t option
   ; diff_command : string option
   ; promote : Clflags.Promote.t option
   ; force : bool
@@ -454,7 +454,7 @@ let term =
   and+ x =
     Arg.(
       value
-      & opt (some string) None
+      & opt (some Arg.context_name) None
       & info [ "x" ] ~docs ~doc:{|Cross-compile using this toolchain.|})
   and+ build_dir =
     let doc = "Specified build directory. _build if unspecified" in
@@ -555,4 +555,7 @@ let term =
   { t with orig_args }
 
 let context_arg ~doc =
-  Arg.(value & opt string "default" & info [ "context" ] ~docv:"CONTEXT" ~doc)
+  Arg.(
+    value
+    & opt Arg.context_name Dune.Context_name.default
+    & info [ "context" ] ~docv:"CONTEXT" ~doc)

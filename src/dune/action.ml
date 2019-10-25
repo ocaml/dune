@@ -6,7 +6,7 @@ module Inputs = Action_ast.Inputs
 module Prog = struct
   module Not_found = struct
     type t =
-      { context : string
+      { context : Context_name.t
       ; program : string
       ; hint : string option
       ; loc : Loc.t option

@@ -91,20 +91,22 @@ let validate_context_and_prog context prog =
   | Some { Context.for_host = None; _ } ->
     ()
   | Some ({ Context.for_host = Some host; _ } as target) ->
+    let target_name = Context_name.to_string target.name in
     let invalid_prefix prefix =
       match Path.descendant prog ~of_:prefix with
       | None -> ()
       | Some _ ->
         User_error.raise
-          [ Pp.textf "Context %s has a host %s." target.name host.name
+          [ Pp.textf "Context %s has a host %s." target_name
+              (Context_name.to_string host.name)
           ; Pp.textf "It's not possible to execute binary %s in it."
               (Path.to_string_maybe_quoted prog)
           ; Pp.nop
           ; Pp.text "This is a bug and should be reported upstream."
           ]
     in
-    invalid_prefix (Path.relative Path.build_dir target.name);
-    invalid_prefix (Path.relative Path.build_dir ("install/" ^ target.name))
+    invalid_prefix (Path.relative Path.build_dir target_name);
+    invalid_prefix (Path.relative Path.build_dir ("install/" ^ target_name))
 
 let exec_run ~ectx ~eenv prog args =
   validate_context_and_prog ectx.context prog;

@@ -312,7 +312,7 @@ let install_uninstall ~what =
     and+ context =
       Arg.(
         value
-        & opt (some string) None
+        & opt (some Arg.context_name) None
         & info [ "context" ] ~docv:"CONTEXT"
             ~doc:
               "Select context to install from. By default, install files from \

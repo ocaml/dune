@@ -105,3 +105,7 @@ module Dep = struct
 end
 
 let dep = Dep.conv
+
+let context_name =
+  let printer ppf t = Format.pp_print_string ppf (Context_name.to_string t) in
+  (Context_name.arg_parse, printer)

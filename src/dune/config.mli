@@ -3,14 +3,14 @@
 open! Import
 
 (** Local installation directory *)
-val local_install_dir : context:string -> Path.Build.t
+val local_install_dir : context:Context_name.t -> Path.Build.t
 
-val local_install_bin_dir : context:string -> Path.Build.t
+val local_install_bin_dir : context:Context_name.t -> Path.Build.t
 
-val local_install_man_dir : context:string -> Path.Build.t
+val local_install_man_dir : context:Context_name.t -> Path.Build.t
 
 val local_install_lib_dir :
-  context:string -> package:Package.Name.t -> Path.Build.t
+  context:Context_name.t -> package:Package.Name.t -> Path.Build.t
 
 val dev_null : Path.t
 

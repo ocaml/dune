@@ -24,7 +24,7 @@ module DB : sig
   (** Return the new scope database as well as the public libraries database *)
   val create :
        projects:Dune_project.t list
-    -> context:string
+    -> context:Context_name.t
     -> installed_libs:Lib.DB.t
     -> lib_config:Lib_config.t
     -> Lib.DB.Library_related_stanza.t list

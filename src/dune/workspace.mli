@@ -7,7 +7,7 @@ module Context : sig
   module Target : sig
     type t =
       | Native
-      | Named of string
+      | Named of Context_name.t
   end
 
   module Common : sig
@@ -16,9 +16,9 @@ module Context : sig
       ; profile : Profile.t
       ; targets : Target.t list
       ; env : Dune_env.Stanza.t
-      ; toolchain : string option
-      ; name : string
-      ; host_context : string option
+      ; toolchain : Context_name.t option
+      ; name : Context_name.t
+      ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       }
   end
@@ -26,7 +26,7 @@ module Context : sig
   module Opam : sig
     type t =
       { base : Common.t
-      ; switch : string
+      ; switch : Context_name.t
       ; root : string option
       ; merlin : bool
       }
@@ -42,26 +42,26 @@ module Context : sig
 
   val loc : t -> Loc.t
 
-  val name : t -> string
+  val name : t -> Context_name.t
 
   val env : t -> Dune_env.Stanza.t
 
-  val host_context : t -> string option
+  val host_context : t -> Context_name.t option
 end
 
 (** Representation of a workspace. The list of context is topologically sorted,
     i.e. a context always comes before the contexts where it is used as host
     context. *)
 type t = private
-  { merlin_context : string option
+  { merlin_context : Context_name.t option
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t
   }
 
-val load : ?x:string -> ?profile:Profile.t -> Path.t -> t
+val load : ?x:Context_name.t -> ?profile:Profile.t -> Path.t -> t
 
 (** Default name of workspace files *)
 val filename : string
 
 (** Default configuration *)
-val default : ?x:string -> ?profile:Profile.t -> unit -> t
+val default : ?x:Context_name.t -> ?profile:Profile.t -> unit -> t

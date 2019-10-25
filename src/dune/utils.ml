@@ -35,7 +35,8 @@ let not_found fmt ?loc ?context ?hint x =
     ::
     ( match context with
     | None -> []
-    | Some name -> [ Pp.textf " (context: %s)" name ] ) )
+    | Some name -> [ Pp.textf " (context: %s)" (Context_name.to_string name) ]
+    ) )
     ~hints:
       ( match hint with
       | None -> []
@@ -52,7 +53,7 @@ let install_file ~(package : Package.Name.t) ~findlib_toolchain =
   let package = Package.Name.to_string package in
   match findlib_toolchain with
   | None -> package ^ ".install"
-  | Some x -> sprintf "%s-%s.install" package x
+  | Some x -> sprintf "%s-%s.install" package (Context_name.to_string x)
 
 let line_directive ~filename:fn ~line_number =
   let directive =

@@ -12,7 +12,7 @@ type workspace =
 
 type build_system =
   { workspace : workspace
-  ; scontexts : Super_context.t String.Map.t
+  ; scontexts : Super_context.t Context_name.Map.t
   }
 
 let package_install_file w pkg =
@@ -239,6 +239,8 @@ let bootstrap () =
     exit 1
 
 let find_context_exn t ~name =
-  match List.find t.contexts ~f:(fun c -> c.name = name) with
+  match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with
   | Some ctx -> ctx
-  | None -> User_error.raise [ Pp.textf "Context %S not found!" name ]
+  | None ->
+    User_error.raise
+      [ Pp.textf "Context %S not found!" (Context_name.to_string name) ]

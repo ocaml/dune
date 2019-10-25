@@ -61,8 +61,7 @@ let print_rule_sexp ppf (rule : Build_system.Rule.t) =
            ]
          ; ( match rule.context with
            | None -> []
-           | Some c -> [ ("context", Dune_lang.atom_or_quoted_string c.name) ]
-           )
+           | Some c -> [ ("context", Dune.Context_name.encode c.name) ] )
          ; [ ("action", sexp_of_action rule.action) ]
          ])
   in

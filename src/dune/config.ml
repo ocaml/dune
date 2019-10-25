@@ -3,7 +3,9 @@ open! Import
 
 let local_install_dir =
   let dir = Path.Build.relative Path.Build.root "install" in
-  fun ~context -> Path.Build.relative dir context
+  fun ~context ->
+    let context = Context_name.to_string context in
+    Path.Build.relative dir context
 
 let local_install_bin_dir ~context =
   Path.Build.relative (local_install_dir ~context) "bin"

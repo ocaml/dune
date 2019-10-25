@@ -1,9 +1,9 @@
 open Stdune
 
 type target_kind =
-  | Regular of string (* build context *) * Path.Source.t
-  | Alias of string (* build context *) * Path.Source.t
-  | Install of string (* build context *) * Path.Source.t
+  | Regular of Context_name.t * Path.Source.t
+  | Alias of Context_name.t * Path.Source.t
+  | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
 type path_kind =

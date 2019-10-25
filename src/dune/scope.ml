@@ -20,7 +20,7 @@ module DB = struct
 
   type t =
     { by_dir : scope Path.Source.Map.t
-    ; context : string
+    ; context : Context_name.t
     }
 
   let find_by_dir t (dir : Path.Source.t) =
@@ -96,7 +96,7 @@ module DB = struct
       ~all:(fun () -> Lib_name.Map.keys public_libs)
 
   let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas =
-    let build_context_dir = Path.Build.relative Path.Build.root context in
+    let build_context_dir = Context_name.build_dir context in
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
           (Dune_project.root project, project))
@@ -143,7 +143,7 @@ module DB = struct
     if Path.Build.is_root dir then
       Code_error.raise "Scope.DB.find_by_dir got an invalid path"
         [ ("dir", Path.Build.to_dyn dir)
-        ; ("context", Dyn.Encoder.string t.context)
+        ; ("context", Context_name.to_dyn t.context)
         ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
 end

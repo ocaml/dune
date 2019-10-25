@@ -35,10 +35,12 @@ let term =
         Build.all
           ( match checked with
           | In_build_dir (ctx, _) ->
-            let sctx = String.Map.find_exn setup.scontexts ctx.name in
+            let sctx =
+              Dune.Context_name.Map.find_exn setup.scontexts ctx.name
+            in
             [ dump sctx ~dir:(Path.as_in_build_dir_exn dir) ]
           | In_source_dir dir ->
-            String.Map.values setup.scontexts
+            Dune.Context_name.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
                    let dir =
                      Path.Build.append_source
@@ -58,7 +60,8 @@ let term =
       | [ (_, env) ] -> Format.printf "%a" pp env
       | l ->
         List.iter l ~f:(fun (name, env) ->
-            Format.printf "@[<v2>Environment for context %s:@,%a@]@." name pp
-              env))
+            Format.printf "@[<v2>Environment for context %s:@,%a@]@."
+              (Dune.Context_name.to_string name)
+              pp env))
 
 let command = (term, info)

@@ -264,7 +264,7 @@ Testsuite for the (foreign_stubs ...) field.
   > value foo(value unit) { return Val_int(1 + EIGHT); }
   > EOF
 
-  $ ./sdune build |& grep eight.h
+  $ ./sdune build 2>&1 | grep eight.h
   foo.c:2:19: fatal error: eight.h: No such file or directory
    #include "eight.h"
 
@@ -328,7 +328,7 @@ Testsuite for the (foreign_stubs ...) field.
   > value foo(value unit) { return Val_int(ONE + EIGHT); }
   > EOF
 
-  $ ./sdune build |& grep another/dir/one.h
+  $ ./sdune build 2>&1 | grep another/dir/one.h
   foo.c:3:29: fatal error: another/dir/one.h: No such file or directory
    #include "another/dir/one.h"
 

@@ -26,7 +26,7 @@ type command = Dedup of File.t
 
 type handler = command -> unit
 
-module type memory = sig
+module type Memory = sig
   type t
 
   val with_repositories : t -> repository list -> t
@@ -46,8 +46,8 @@ module type memory = sig
   val teardown : t -> unit
 end
 
-module type caching = sig
-  module Cache : memory
+module type Caching = sig
+  module Cache : Memory
 
   val cache : Cache.t
 end

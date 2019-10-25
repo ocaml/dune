@@ -120,9 +120,7 @@ module Memory = struct
   let path_tmp memory = Path.L.relative memory.root [ "temp" ]
 
   let with_lock memory f =
-    let lock =
-      Lock_file.create (Path.L.relative memory.root [ ".lock" ])
-    in
+    let lock = Lock_file.create (Path.L.relative memory.root [ ".lock" ]) in
     let finally () = Lock_file.unlock lock in
     Exn.protect ~f ~finally
 
@@ -321,8 +319,8 @@ let trim memory free =
   Memory.with_lock memory (fun () ->
       List.fold_left ~init:(0, []) ~f:delete files)
 
-let make_caching (type t) (module Caching : memory with type t = t) (cache : t)
-    : (module caching) =
+let make_caching (type t) (module Caching : Memory with type t = t) (cache : t)
+    : (module Caching) =
   ( module struct
     module Cache = Caching
 

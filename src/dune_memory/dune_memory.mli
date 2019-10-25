@@ -15,7 +15,7 @@ val promotion_to_string : promotion -> string
 val command_to_dyn : command -> Dyn.t
 
 module Memory : sig
-  include memory
+  include Memory
 
   val promote_sync :
        t
@@ -30,4 +30,4 @@ end
 
 val trim : Memory.t -> int -> int * Path.t list
 
-val make_caching : (module memory with type t = 'a) -> 'a -> (module caching)
+val make_caching : (module Memory with type t = 'a) -> 'a -> (module Caching)

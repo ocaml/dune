@@ -9,8 +9,8 @@ open! Import
 
 type caching =
   | Disabled
-  | Enabled of (module Dune_memory.caching)
-  | Check of (module Dune_memory.caching)
+  | Enabled of (module Dune_memory.Caching)
+  | Check of (module Dune_memory.Caching)
 
 (** Initializes the build system. This must be called first. *)
 val init :

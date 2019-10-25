@@ -410,7 +410,7 @@ module Context_or_install = struct
 end
 
 module type caching = sig
-  module Cache : Dune_memory.memory
+  module Cache : Dune_memory.Memory
 
   val cache : Cache.t
 end

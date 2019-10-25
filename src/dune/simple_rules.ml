@@ -84,6 +84,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         in
         let stamp_target = Path.Build.relative dir stamp in
         let () =
+          (* TODO do not add stamp_target to alias expansion *)
           let alias = Alias.make alias ~dir in
           let deps = Path.Set.singleton (Path.build stamp_target) in
           Rules.Produce.Alias.add_deps alias deps

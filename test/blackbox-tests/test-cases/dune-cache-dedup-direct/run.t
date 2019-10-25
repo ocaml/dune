@@ -19,7 +19,7 @@ deduplication message. Upon reception dune should replace "target"
 with a hardlink to the cache (and thus also "source"), upping the
 hardlink counts to 3 and 3.
 
-  $ env DUNE_CACHE=1 DUNE_CACHE_MODE=DIRECT DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
+  $ env DUNE_CACHE=1 DUNE_CACHE_MODE=direct DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
   $ ./stat.sh --format=%h _build/default/source
   3
   $ ./stat.sh --format=%h _build/default/target

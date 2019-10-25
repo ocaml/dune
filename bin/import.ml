@@ -28,18 +28,27 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
-type cache_mode =
-  | Daemon
-  | Direct
+module Cache_mode = struct
+  type t =
+    | Daemon
+    | Direct
 
-let get_cache_mode () =
-  let var = "DUNE_CACHE_MODE" in
-  match Env.get Env.initial var with
-  | None -> Daemon
-  | Some v when String.lowercase v = "daemon" -> Daemon
-  | Some v when String.lowercase v = "direct" -> Direct
-  | Some v ->
-    User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
+  let of_string = function
+    | "daemon" -> Some Daemon
+    | "direct" -> Some Direct
+    | _ -> None
+
+  let get () =
+    let var = "DUNE_CACHE_MODE" in
+    match Env.get Env.initial var with
+    | None -> Daemon
+    | Some v ->
+      begin match of_string v with
+      | Some v -> v
+      | None ->
+        User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
+      end
+end
 
 let make_cache () =
   let var = "DUNE_CACHE"
@@ -49,7 +58,7 @@ let make_cache () =
   match Env.get Env.initial var with
   | Some v ->
     let cache =
-      match get_cache_mode () with
+      match Cache_mode.get () with
       | Daemon ->
         let cache =
           Result.ok_exn

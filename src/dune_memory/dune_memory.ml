@@ -27,10 +27,10 @@ let promotion_to_string = function
 let command_to_dyn = function
   | Dedup { in_the_build_directory; in_the_memory; digest } ->
     let open Dyn.Encoder in
-    constr "Dedup"
-      [ Path.Build.to_dyn in_the_build_directory
-      ; Path.to_dyn in_the_memory
-      ; Digest.to_dyn digest
+    record
+      [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
+      ; ("in_the_memory", Path.to_dyn in_the_memory)
+      ; ("digest", Digest.to_dyn digest)
       ]
 
 (* How to handle collisions. E.g. another version could assume collisions are

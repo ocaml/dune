@@ -1,6 +1,5 @@
 open! Stdune
 open Fiber.O
-
 module Run = Run
 module Function = Function
 
@@ -460,8 +459,9 @@ let create_with_cache (type i o f) name ~cache ~doc
   Caches.register ~clear:(fun () -> Store.clear cache);
   { cache; spec }
 
-let create_with_store (type i) name ~store:(module S : Store_intf.S with type key = i)
-    ~doc ~input ~visibility ~output typ f =
+let create_with_store (type i) name
+    ~store:(module S : Store_intf.S with type key = i) ~doc ~input ~visibility
+    ~output typ f =
   let cache = Store.make (module S) in
   create_with_cache name ~cache ~doc ~input ~output ~visibility typ f
 
@@ -705,8 +705,8 @@ let call name input =
 
 module Function_info = struct
   include Function.Info
-  let of_spec (Spec.T spec) =
-    { name = spec.name; doc = spec.doc }
+
+  let of_spec (Spec.T spec) = { name = spec.name; doc = spec.doc }
 end
 
 let registered_functions () =
@@ -817,7 +817,6 @@ module With_implicit_output = struct
 end
 
 module Implicit_output = Implicit_output
-
 module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f

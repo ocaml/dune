@@ -109,6 +109,7 @@ end
 module Store : sig
   module type Input = sig
     type t
+
     val to_dyn : t -> Dyn.t
   end
 

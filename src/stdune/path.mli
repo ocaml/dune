@@ -108,7 +108,7 @@ module External : sig
 
   val relative : t -> string -> t
 
-  val mkdir_p : t -> unit
+  val mkdir_p : ?perms:int -> t -> unit
 end
 
 module Build : sig
@@ -302,9 +302,11 @@ val unlink : t -> unit
 
 val unlink_no_err : t -> unit
 
+val link : t -> t -> unit
+
 val rm_rf : t -> unit
 
-val mkdir_p : t -> unit
+val mkdir_p : ?perms:int -> t -> unit
 
 val touch : t -> unit
 

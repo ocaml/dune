@@ -28,17 +28,52 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
+module Cache_mode = struct
+  type t =
+    | Daemon
+    | Direct
+
+  let of_string = function
+    | "daemon" -> Some Daemon
+    | "direct" -> Some Direct
+    | _ -> None
+
+  let get () =
+    let var = "DUNE_CACHE_MODE" in
+    match Env.get Env.initial var with
+    | None -> Daemon
+    | Some v ->
+      begin match of_string v with
+      | Some v -> v
+      | None ->
+        User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
+      end
+end
+
 let make_cache () =
-  let handle = function
-    | Dune_manager.Client.Dedup (target, source, digest) ->
-      Scheduler.send_dedup target source digest
-  and var = "DUNE_CACHE" in
-  match Sys.getenv_opt var with
+  let var = "DUNE_CACHE"
+  and handle = function
+    | Dune_memory.Dedup file -> Scheduler.send_dedup file
+  in
+  match Env.get Env.initial var with
   | Some v ->
-    let cache = Result.ok_exn (Dune_manager.Client.make handle) in
+    let cache =
+      match Cache_mode.get () with
+      | Daemon ->
+        let cache =
+          Result.ok_exn
+            (Result.map_error
+               ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
+               (Dune_memory.Memory.make handle))
+        in
+        Dune_memory.make_caching (module Dune_memory.Memory) cache
+      | Direct ->
+        let cache = Result.ok_exn (Dune_manager.Client.make handle) in
+        Dune_memory.make_caching (module Dune_manager.Client) cache
+    in
     Fiber.return
       ( match v with
-      | "check" -> Build_system.Check cache
+      | v when String.lowercase v = "check" -> Build_system.Check cache
       | "1" -> Build_system.Enabled cache
       | _ -> User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
       )

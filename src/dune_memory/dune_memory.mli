@@ -1,50 +1,37 @@
 open Stdune
 
-type key = Digest.t
-
-type metadata = Sexp.t list
+include module type of Dune_memory_intf
 
 type 'a result = ('a, string) Result.t
 
 val default_root : unit -> Path.t
 
-val key_to_string : key -> string
+module Key : sig
+  type t = Digest.t
 
-val key_of_string : string -> key result
+  val of_string : string -> (t, string) Result.t
 
-type promotion =
-  | Already_promoted of Path.Build.t * Path.t * Digest.t
-  | Promoted of Path.Build.t * Path.t * Digest.t
+  val to_string : t -> string
+end
 
 val promotion_to_string : promotion -> string
 
-module File : sig
-  type t =
-    { in_the_memory : Path.t
-    ; in_the_build_directory : Path.Build.t
-    ; digest : Digest.t
-    }
-end
+val command_to_dyn : command -> Dyn.t
 
-module type memory = sig
-  type t
+module Memory : sig
+  include Memory
 
-  val promote :
+  val promote_sync :
        t
     -> (Path.Build.t * Digest.t) list
-    -> key
+    -> Key.t
     -> metadata
-    -> (string * string) option
+    -> int option
     -> (promotion list, string) Result.t
 
-  val search :
-    t -> ?touch:bool -> key -> (metadata * File.t list, string) Result.t
-
-  val set_build_dir : t -> Path.t -> t
+  val make : ?root:Path.t -> handler -> (t, string) Result.t
 end
 
-module Memory : memory
-
-val make : ?root:Path.t -> unit -> (Memory.t, string) Result.t
-
 val trim : Memory.t -> int -> int * Path.t list
+
+val make_caching : (module Memory with type t = 'a) -> 'a -> (module Caching)

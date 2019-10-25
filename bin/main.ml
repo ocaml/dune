@@ -16,11 +16,11 @@ let run_build_command ~common ~targets =
   else
     Scheduler.go ~common once;
   match Build_system.get_memory () with
-  | Enabled cache
-  | Check cache ->
+  | Enabled (module Caching)
+  | Check (module Caching) ->
     (* Synchronously wait for the end of the connection with the cache daemon,
        ensuring all dedup messages have been queued. *)
-    Dune_manager.Client.teardown cache;
+    Caching.Cache.teardown Caching.cache;
     (* Hande all remaining dedup mesages. *)
     Scheduler.wait_for_dune_cache ()
   | Disabled -> ()

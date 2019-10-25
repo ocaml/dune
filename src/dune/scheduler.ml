@@ -87,7 +87,7 @@ module Event : sig
 
   val send_signal : Signal.t -> unit
 
-  val send_dedup : Path.Build.t -> Path.t -> Digest.t -> unit
+  val send_dedup : Dune_memory.File.t -> unit
 end = struct
   type t =
     | Files_changed
@@ -127,18 +127,21 @@ end = struct
 
   let dedup () =
     if not (Queue.is_empty dedup_pending) then (
-      let target, source, digest = Queue.pop dedup_pending in
-      ( match Cached_digest.peek_file (Path.build target) with
+      let { Dune_memory.File.in_the_memory; in_the_build_directory; digest } =
+        Queue.pop dedup_pending
+      in
+      ( match Cached_digest.peek_file (Path.build in_the_build_directory) with
       | None -> ()
       | Some d when not (Digest.equal d digest) -> ()
       | _ -> (
-        let target = Path.Build.to_string target in
+        let target = Path.Build.to_string in_the_build_directory in
         let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-        Log.infof "deduplicate %s from %s" target (Path.to_string source);
+        Log.infof "deduplicate %s from %s" target
+          (Path.to_string in_the_memory);
         let rm p = try Unix.unlink p with _ -> () in
         try
           rm tmpname;
-          Unix.link (Path.to_string source) tmpname;
+          Unix.link (Path.to_string in_the_memory) tmpname;
           Unix.rename tmpname target
         with Unix.Unix_error (e, syscall, _) ->
           rm tmpname;
@@ -212,10 +215,10 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
-  let send_dedup target source digest =
+  let send_dedup file =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push (target, source, digest) dedup_pending;
+    Queue.push file dedup_pending;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 

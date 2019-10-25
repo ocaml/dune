@@ -120,7 +120,7 @@ module Memory = struct
   let path_tmp memory = Path.L.relative memory.root [ "temp" ]
 
   let with_lock memory f =
-    let lock = Lock_file.create (Path.L.relative memory.root [ ".lock" ]) in
+    let lock = Lock_file.create (Path.relative memory.root ".lock") in
     let finally () = Lock_file.unlock lock in
     Exn.protect ~f ~finally
 

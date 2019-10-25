@@ -1134,6 +1134,8 @@ let unlink_operation =
 
 let unlink t = unlink_operation (to_string t)
 
+let link x y = Unix.link (to_string x) (to_string y)
+
 let unlink_no_err t = try unlink t with _ -> ()
 
 let build_dir_exists () = is_directory build_dir

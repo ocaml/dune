@@ -45,7 +45,7 @@ module Collision = struct
   let search path file =
     let rec loop n =
       let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
-      if Sys.file_exists (Path.to_string path) then
+      if Path.exists path then
         if Io.compare_files path file == Ordering.Eq then
           Found path
         else
@@ -172,12 +172,11 @@ module Memory = struct
         (* dune-memory uses a single writer model, the promoted file name can
            be constant *)
         let dest = Path.relative tmp "promoting" in
-        (let dest = Path.to_string dest in
-         if Sys.file_exists dest then
-           Unix.unlink dest
+        (if Path.exists dest then
+           Path.unlink dest
          else
            mkpath tmp;
-         Unix.link (Path.to_string path) dest);
+         Path.link path dest);
         dest
       in
       let tmp = hardlink abs_path in

@@ -135,7 +135,10 @@ val dll_file :
 (** A foreign source file that has a [path] and all information of the
     corresponnding [Foreign.Stubs.t] declaration. *)
 module Source : sig
-  type t
+  type t =
+    { stubs : Stubs.t
+    ; path : Path.Build.t
+    }
 
   val language : t -> Language.t
 

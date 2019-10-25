@@ -35,10 +35,9 @@ type cache_mode =
 let get_cache_mode () =
   let var = "DUNE_CACHE_MODE" in
   match Env.get Env.initial var with
-  | None
-  | Some "DAEMON" ->
-    Daemon
-  | Some "DIRECT" -> Direct
+  | None -> Daemon
+  | Some v when String.lowercase v = "daemon" -> Daemon
+  | Some v when String.lowercase v = "direct" -> Direct
   | Some v ->
     User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
 
@@ -65,7 +64,7 @@ let make_cache () =
     in
     Fiber.return
       ( match v with
-      | "check" -> Build_system.Check cache
+      | v when String.lowercase v = "check" -> Build_system.Check cache
       | "1" -> Build_system.Enabled cache
       | _ -> User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
       )

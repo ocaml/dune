@@ -244,20 +244,18 @@ let chdir_to_build_context_root t build =
       | Chdir _ -> action
       | _ -> Chdir (Path.build t.context.build_dir, action))
 
-let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
+let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
   let env = Env.external_ t.env_context ~dir in
-  Rules.Produce.rule
-    (Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-       ~context:(Some t.context) ~env:(Some env) build)
+  Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
+    ~context:(Some t.context) ~env:(Some env) build
+
+let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
+  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
+  Rules.Produce.rule rule
 
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
-  let build = chdir_to_build_context_root t build in
-  let env = Env.external_ t.env_context ~dir in
-  let rule =
-    Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
-      ~context:(Some t.context) ~env:(Some env) build
-  in
+  let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
   Rules.Produce.rule rule;
   rule.targets
 

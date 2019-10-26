@@ -436,3 +436,12 @@ let%expect_test _ =
   [%expect {|
 "c/d"
 |}]
+
+
+let%expect_test _ =
+  Path.Build.extract_first_component (Path.Build.root)
+  |> Dyn.Encoder.(option (pair string Local.to_dyn))
+  |> print_dyn;
+  [%expect {|
+None
+|}]

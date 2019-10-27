@@ -45,10 +45,42 @@ let stamp ~deps ~action ~extra_bindings =
   , Option.map ~f:Action_unexpanded.remove_locs action
   , Option.map extra_bindings ~f:Pform.Map.to_stamp )
 
+type rule_kind =
+  | Alias_only of Alias.Name.t
+  | Alias_with_targets of Alias.Name.t * Path.Build.t
+  | No_alias
+
+let rule_kind ~(rule : Rule.t) ~action =
+  match rule.alias with
+  | None -> No_alias
+  | Some alias -> (
+    match Build.targets action |> Path.Build.Set.choose with
+    | None -> Alias_only alias
+    | Some target -> Alias_with_targets (alias, target) )
+
+let add_user_rule sctx ~dir ~(rule : Rule.t) ~action ~expander =
+  SC.add_rule_get_targets
+    sctx
+    (* user rules may have extra requirements, in which case they will be
+       specified as a part of rule.deps, which will be correctly taken care of
+       by the build description *)
+    ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
+    ~loc:rule.loc
+    ~locks:(interpret_locks ~expander rule.locks)
+    action
+
 let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
-  | false -> Path.Build.Set.empty
-  | true ->
+  | false ->
+    Option.iter rule.alias ~f:(fun name ->
+        let stamp =
+          let action = Some (snd rule.action) in
+          stamp ~deps:rule.deps ~extra_bindings ~action
+        in
+        let action = Build.return (Action.Progn []) in
+        add_alias sctx ~loc:(Some rule.loc) ~dir ~name ~stamp action);
+    Path.Build.Set.empty
+  | true -> (
     let targets : Expander.Targets.t =
       match rule.targets with
       | Infer -> Infer
@@ -72,34 +104,22 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
            ~dep_kind:Required ~targets ~targets_dir:dir
     in
-    let action =
-      match rule.alias with
-      | None -> action
-      | Some alias ->
-        let stamp =
-          let action = Some (snd rule.action) in
-          stamp ~deps:rule.deps ~extra_bindings ~action
-          |> Digest.generic
-          |> Digest.to_string
-        in
-        let stamp_target = Path.Build.relative dir stamp in
-        let () =
-          (* TODO do not add stamp_target to alias expansion *)
-          let alias = Alias.make alias ~dir in
-          let deps = Path.Set.singleton (Path.build stamp_target) in
-          Rules.Produce.Alias.add_deps alias deps
-        in
-        Build.progn [action; Build.create_file stamp_target]
-    in
-    SC.add_rule_get_targets
-      sctx
-      (* user rules may have extra requirements, in which case they will be
-         specified as a part of rule.deps, which will be correctly taken care
-         of by the build description *)
-      ~sandbox:Sandbox_config.no_special_requirements ~dir ~mode:rule.mode
-      ~loc:rule.loc
-      ~locks:(interpret_locks ~expander rule.locks)
-      action
+    match rule_kind ~rule ~action with
+    | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
+    | Alias_with_targets (alias, alias_target) ->
+      let () =
+        let alias = Alias.make alias ~dir in
+        Path.Set.singleton (Path.build alias_target)
+        |> Rules.Produce.Alias.add_deps alias
+      in
+      add_user_rule sctx ~dir ~rule ~action ~expander
+    | Alias_only name ->
+      let stamp =
+        let action = Some (snd rule.action) in
+        stamp ~deps:rule.deps ~extra_bindings ~action
+      in
+      add_alias ~name sctx ~dir ~stamp ~loc:(Some rule.loc) action;
+      Path.Build.Set.empty )
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.glob in

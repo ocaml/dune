@@ -4,6 +4,27 @@ open Dune_file
 open! No_io
 module SC = Super_context
 
+module Alias_rules = struct
+  let stamp ~deps ~action ~extra_bindings =
+    ( "user-alias"
+    , Bindings.map ~f:Dep_conf.remove_locs deps
+    , Option.map ~f:Action_unexpanded.remove_locs action
+    , Option.map extra_bindings ~f:Pform.Map.to_stamp )
+
+  let add sctx ~alias ~stamp ~loc ?(locks = []) build =
+    let dir = Alias.dir alias in
+    SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
+
+  let add_empty sctx ~loc ~expander ~alias ~deps ~stamp =
+    let action =
+      let open Build.O in
+      SC.Deps.interpret_named sctx ~expander deps
+      |> Build.ignore
+      >>> Build.progn []
+    in
+    add sctx ~loc ~alias ~stamp action
+end
+
 let interpret_locks ~expander = List.map ~f:(Expander.expand_path expander)
 
 let dep_bindings ~extra_bindings deps =
@@ -35,16 +56,6 @@ let check_filename =
       Path.as_in_build_dir_exn p
     | Dir p -> not_in_dir ~error_loc (Path.to_string p)
 
-let add_alias sctx ~dir ~name ~stamp ~loc ?(locks = []) build =
-  let alias = Alias.make name ~dir in
-  SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
-
-let stamp ~deps ~action ~extra_bindings =
-  ( "user-alias"
-  , Bindings.map ~f:Dep_conf.remove_locs deps
-  , Option.map ~f:Action_unexpanded.remove_locs action
-  , Option.map extra_bindings ~f:Pform.Map.to_stamp )
-
 type rule_kind =
   | Alias_only of Alias.Name.t
   | Alias_with_targets of Alias.Name.t * Path.Build.t
@@ -73,12 +84,13 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
   match Expander.eval_blang expander rule.enabled_if with
   | false ->
     Option.iter rule.alias ~f:(fun name ->
+        let alias = Alias.make ~dir name in
+        let action = Some (snd rule.action) in
         let stamp =
-          let action = Some (snd rule.action) in
-          stamp ~deps:rule.deps ~extra_bindings ~action
+          Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings
         in
-        let action = Build.return (Action.Progn []) in
-        add_alias sctx ~loc:(Some rule.loc) ~dir ~name ~stamp action);
+        Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~deps:rule.deps
+          ~expander ~stamp);
     Path.Build.Set.empty
   | true -> (
     let targets : Expander.Targets.t =
@@ -114,11 +126,12 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       in
       add_user_rule sctx ~dir ~rule ~action ~expander
     | Alias_only name ->
+      let alias = Alias.make ~dir name in
       let stamp =
         let action = Some (snd rule.action) in
-        stamp ~deps:rule.deps ~extra_bindings ~action
+        Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
       in
-      add_alias ~name sctx ~dir ~stamp ~loc:(Some rule.loc) action;
+      Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action;
       Path.Build.Set.empty )
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
@@ -167,30 +180,30 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       Path.build file_dst)
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
+  let alias = Alias.make ~dir alias_conf.name in
   let stamp =
     let action = Option.map ~f:snd alias_conf.action in
-    stamp ~deps:alias_conf.deps ~extra_bindings ~action
+    Alias_rules.stamp ~deps:alias_conf.deps ~extra_bindings ~action
   in
   let loc = Some alias_conf.loc in
-  let locks, action =
-    match Expander.eval_blang expander alias_conf.enabled_if with
-    | false -> (None, Build.return (Action.Progn []))
-    | true ->
-      let locks = interpret_locks ~expander alias_conf.locks in
-      let action =
-        SC.Deps.interpret_named sctx ~expander alias_conf.deps
-        |>
-        match alias_conf.action with
-        | None ->
-          fun x ->
-            let open Build.O in
-            Build.ignore x >>> Build.progn []
-        | Some (loc, action) ->
-          let bindings = dep_bindings ~extra_bindings alias_conf.deps in
-          let expander = Expander.add_bindings expander ~bindings in
-          SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
-            ~targets:(Forbidden "aliases") ~targets_dir:dir
-      in
-      (Some locks, action)
-  in
-  add_alias sctx ~loc ~dir ~name:alias_conf.name ~stamp ?locks action
+  match Expander.eval_blang expander alias_conf.enabled_if with
+  | false ->
+    Alias_rules.add_empty sctx ~loc ~expander ~alias ~deps:alias_conf.deps
+      ~stamp
+  | true ->
+    let locks = interpret_locks ~expander alias_conf.locks in
+    let action =
+      SC.Deps.interpret_named sctx ~expander alias_conf.deps
+      |>
+      match alias_conf.action with
+      | None ->
+        fun x ->
+          let open Build.O in
+          Build.ignore x >>> Build.progn []
+      | Some (loc, action) ->
+        let bindings = dep_bindings ~extra_bindings alias_conf.deps in
+        let expander = Expander.add_bindings expander ~bindings in
+        SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+          ~targets:(Forbidden "aliases") ~targets_dir:dir
+    in
+    Alias_rules.add sctx ~loc ~stamp ~locks action ~alias

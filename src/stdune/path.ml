@@ -101,7 +101,7 @@ end = struct
     | "." -> x
     | _ -> make (Filename.concat (to_string x) y)
 
-  let rec mkdir_p ?(perms=0o777) t =
+  let rec mkdir_p ?(perms = 0o777) t =
     let t_s = to_string t in
     let p_s = Filename.dirname t_s in
     let p = make p_s in
@@ -556,7 +556,7 @@ module Relative_to_source_root : sig
 end = struct
   open Local
 
-  let rec mkdir_p ?(perms=0o777) t =
+  let rec mkdir_p ?(perms = 0o777) t =
     if is_root t then
       ()
     else
@@ -644,7 +644,7 @@ module Build = struct
 
   let extract_build_context_dir t =
     Option.map (split_first_component t) ~f:(fun (before, after) ->
-      Local.of_string before, after)
+        (Local.of_string before, after))
 
   let split_sandbox_root t_original =
     match split_first_component t_original with
@@ -1063,8 +1063,8 @@ let drop_optional_build_context_src_exn t =
 let split_first_component t =
   match kind t with
   | In_source_dir t ->
-      Option.map (Local.split_first_component t)
-        ~f:(fun (before, after) -> before, (after |> in_source_tree))
+    Option.map (Local.split_first_component t) ~f:(fun (before, after) ->
+        (before, after |> in_source_tree))
   | _ -> None
 
 let explode t =

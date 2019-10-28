@@ -42,12 +42,11 @@ module Cache_mode = struct
     let var = "DUNE_CACHE_MODE" in
     match Env.get Env.initial var with
     | None -> Daemon
-    | Some v ->
-      begin match of_string v with
+    | Some v -> (
+      match of_string v with
       | Some v -> v
       | None ->
-        User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
-      end
+        User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ] )
 end
 
 let make_cache () =

@@ -237,7 +237,6 @@ end = struct
     && Option.equal Vcs.equal ancestor_vcs y.ancestor_vcs
     && Bool.equal recognize_jbuilder_projects y.recognize_jbuilder_projects
 
-
   let to_dyn { root; ancestor_vcs; recognize_jbuilder_projects } =
     let open Dyn.Encoder in
     record

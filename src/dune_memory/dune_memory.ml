@@ -1,7 +1,5 @@
 open Stdune
-
 module Key = Key
-
 include Dune_memory_intf
 
 type 'a result = ('a, string) Result.t
@@ -82,9 +80,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
         char_in 'a' 'f' || char_in '0' '9'
       and root = Path.L.relative root [ dir ] in
       if String.for_all ~f:is_hex_char dir then
-        Array.map
-          ~f:(Path.relative root)
-          (Sys.readdir (Path.to_string root))
+        Array.map ~f:(Path.relative root) (Sys.readdir (Path.to_string root))
       else
         Array.of_list []
     in
@@ -167,11 +163,11 @@ module Memory = struct
         (* dune-memory uses a single writer model, the promoted file name can
            be constant *)
         let dest = Path.relative tmp "promoting" in
-        (if Path.exists dest then
-           Path.unlink dest
-         else
-           Path.mkdir_p tmp;
-         Path.link path dest);
+        if Path.exists dest then
+          Path.unlink dest
+        else
+          Path.mkdir_p tmp;
+        Path.link path dest;
         dest
       in
       let tmp = hardlink abs_path in

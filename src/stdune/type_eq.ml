@@ -17,10 +17,10 @@ module Id = struct
 
   let create (type a) () =
     ( ( module struct
-      type nonrec a = a
+        type nonrec a = a
 
-      type _ w += W : a w
-    end )
+        type _ w += W : a w
+      end )
       : a t )
 
   let same (type a b) ((module M1) : a t) ((module M2) : b t) =

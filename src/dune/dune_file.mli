@@ -369,6 +369,7 @@ module Rule : sig
     ; loc : Loc.t
     ; enabled_if : Blang.t
     ; alias : Alias.Name.t option
+    ; package : Package.t option
     }
 end
 

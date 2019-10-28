@@ -60,6 +60,7 @@ let rules (t : Dune_file.Tests.t) ~sctx ~dir ~scope ~expander ~dir_contents =
           ; loc
           ; enabled_if = t.enabled_if
           ; alias = None
+          ; package = t.package
           }
         in
         add_alias ~loc ~action:(Diff diff) ~locks:t.locks;

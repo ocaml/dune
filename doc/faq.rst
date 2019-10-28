@@ -84,3 +84,17 @@ non-fatal:
   (env
     (dev
       (flags (:standard -warn-error -A))))
+
+How to display the output of commands as they run?
+==================================================
+
+When ``dune`` runs external commands, it redirects and saves their output and
+displays it when they have completed. This ensures that there is no interleaving
+when writing to the console.
+
+But this might not be what the you want, for example when debugging a hanging
+build.
+
+In that case, one can pass ``-j1 --no-buffer`` so that the commands are directly
+printed on the console (and the parallelism is disabled so that the output stays
+readable).

@@ -1,4 +1,7 @@
-  $ echo "(lang dune 2.0)" > dune-project
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
 
   $ cat > dune << EOF
   > (alias

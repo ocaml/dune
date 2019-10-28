@@ -2,7 +2,10 @@ This test checks that 'dynamic-run' will not be reexecuted if
 dependencies do not change (have the same digest) even if
 they were forced to rebuild.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
 
   $ cat > dune << EOF
   > (rule

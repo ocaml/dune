@@ -1,3 +1,5 @@
+(** This API is experimental. The API may change without warning *)
+
 module V1 : sig
   (** Applicative and monadic interface for declaring dependencies.
 

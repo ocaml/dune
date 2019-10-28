@@ -168,8 +168,11 @@ such as tests. Instead Dune leaves a placeholder inside the binary and
 fills it during installation or promotion.
 
 
-Dune action plugin
-==================
+(Experimental) Dune action plugin
+=================================
+
+*This library is experimental and no backwards compatibility is implied. Use at
+ your own risk.*
 
 ``Dune-action-plugin`` provides a monadic interface to express program
 dependencies directly inside the source code. Programs using this feature

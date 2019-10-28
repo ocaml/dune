@@ -153,7 +153,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       let o_files =
         Foreign_rules.build_o_files ~sctx ~dir ~expander
           ~requires:requires_compile ~dir_contents ~foreign_sources
-          ~extra_flags:Command.Args.empty ~extra_deps:[]
         |> List.map ~f:Path.build
       in
       Check_rules.add_files sctx ~dir o_files;

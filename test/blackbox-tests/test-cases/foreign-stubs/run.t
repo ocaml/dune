@@ -254,3 +254,129 @@ Testsuite for the (foreign_stubs ...) field.
   $ touch foo.cxx
 
   $ ./sdune build
+
+----------------------------------------------------------------------------------
+* Fails when (extra_deps ...) is missing
+
+  $ cat >foo.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include "eight.h"
+  > value foo(value unit) { return Val_int(1 + EIGHT); }
+  > EOF
+
+  $ ./sdune build 2> /dev/null
+  [1]
+
+----------------------------------------------------------------------------------
+* Succeeds when (extra_deps ...) is present
+
+  $ cat >eight.h <<EOF
+  > #define EIGHT 8
+  > EOF
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name quad)
+  >  (modules quad)
+  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h))
+  >  (foreign_archives bar qux)
+  >  (foreign_stubs (language cxx) (names baz)))
+  > (rule
+  >  (targets bar%{ext_obj})
+  >  (deps bar.c)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libbar.a)
+  >  (deps bar%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > (rule
+  >  (targets dllbar%{ext_dll})
+  >  (deps bar%{ext_obj})
+  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  > (rule
+  >  (targets qux%{ext_obj})
+  >  (deps qux.cpp)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libqux.a)
+  >  (deps qux%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > (rule
+  >  (targets dllqux%{ext_dll})
+  >  (deps qux%{ext_obj})
+  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  > (executable
+  >  (name main)
+  >  (libraries quad)
+  >  (modules main))
+  > EOF
+
+  $ ./sdune exec ./main.exe
+  2019
+
+  $ (cd _build/default && ocamlrun -I . ./main.bc)
+  2019
+
+----------------------------------------------------------------------------------
+* Fails when (include_dirs ...) is missing
+
+  $ cat >foo.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include "eight.h"
+  > #include "another/dir/one.h"
+  > value foo(value unit) { return Val_int(ONE + EIGHT); }
+  > EOF
+
+  $ ./sdune build 2> /dev/null
+  [1]
+
+----------------------------------------------------------------------------------
+* Succeeds when (include_dirs ...) is present
+
+  $ mkdir -p another/dir
+  $ cat >another/dir/one.h <<EOF
+  > #define ONE 1
+  > EOF
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name quad)
+  >  (modules quad)
+  >  (foreign_stubs (language c) (names foo) (extra_deps eight.h) (include_dirs another/dir))
+  >  (foreign_archives bar qux)
+  >  (foreign_stubs (language cxx) (names baz)))
+  > (rule
+  >  (targets bar%{ext_obj})
+  >  (deps bar.c)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libbar.a)
+  >  (deps bar%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > (rule
+  >  (targets dllbar%{ext_dll})
+  >  (deps bar%{ext_obj})
+  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  > (rule
+  >  (targets qux%{ext_obj})
+  >  (deps qux.cpp)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libqux.a)
+  >  (deps qux%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > (rule
+  >  (targets dllqux%{ext_dll})
+  >  (deps qux%{ext_obj})
+  >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
+  > (executable
+  >  (name main)
+  >  (libraries quad)
+  >  (modules main))
+  > EOF
+
+  $ ./sdune exec ./main.exe
+  2019
+
+  $ (cd _build/default && ocamlrun -I . ./main.bc)
+  2019

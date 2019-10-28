@@ -166,55 +166,6 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
       [ dynamic_target ]
   )
 
-(* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
-   and track all files in specified directories as [Hidden_deps] dependencies. *)
-let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
-  Command.Args.S
-    (List.map stubs.include_dirs ~f:(fun include_dir ->
-         let loc = String_with_vars.loc include_dir
-         and include_dir = Expander.expand_path expander include_dir in
-         match Path.extract_build_context_dir include_dir with
-         | None ->
-           (* TODO: Track files in external directories. *)
-           User_error.raise ~loc
-             [ Pp.textf
-                 "%S is an external directory; dependencies in external \
-                  directories are currently not tracked."
-                 (Path.to_string include_dir)
-             ]
-             ~hints:
-               [ Pp.textf
-                   "You can specify %S as an untracked include directory like \
-                    this:\n\n\
-                   \  (flags -I %s)\n"
-                   (Path.to_string include_dir)
-                   (Path.to_string include_dir)
-               ]
-         | Some (build_dir, source_dir) -> (
-           match File_tree.find_dir source_dir with
-           | None ->
-             User_error.raise ~loc
-               [ Pp.textf "Include directory %S does not exist."
-                   (Path.reach ~from:(Path.build dir) include_dir)
-               ]
-           | Some dir ->
-             Command.Args.S
-               [ A "-I"
-               ; Path include_dir
-               ; Command.Args.S
-                   (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
-                      ~init:[] ~f:(fun t args ->
-                        let dir =
-                          Path.append_source build_dir (File_tree.Dir.path t)
-                        in
-                        let deps =
-                          Dep.Set.singleton
-                            (Dep.file_selector
-                               (File_selector.create ~dir Predicate.true_))
-                        in
-                        Command.Args.Hidden_deps deps :: args))
-               ] )))
-
 (* Build a static and a dynamic archive for a foreign library. Note that the
    dynamic archive can't be built on some platforms, in which case the rule
    that produces it will fail. *)
@@ -222,13 +173,11 @@ let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
   let o_files =
-    let extra_flags = include_dir_flags ~expander ~dir library.stubs in
     let foreign_sources =
       Dir_contents.foreign_sources_of_archive dir_contents ~archive_name
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires:(Result.ok [])
-      ~dir_contents ~foreign_sources ~extra_flags
-      ~extra_deps:library.stubs.extra_deps
+      ~dir_contents ~foreign_sources
     |> List.map ~f:Path.build
   in
   Check_rules.add_files sctx ~dir o_files;
@@ -246,7 +195,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
         ~name:(Library.best_name lib)
     in
     Foreign_rules.build_o_files ~sctx ~dir ~expander ~requires ~dir_contents
-      ~foreign_sources ~extra_flags:Command.Args.empty ~extra_deps:[]
+      ~foreign_sources
     |> List.map ~f:Path.build
   in
   Check_rules.add_files sctx ~dir lib_o_files;

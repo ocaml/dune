@@ -785,6 +785,72 @@ module With_implicit_output = struct
   let exec t = t
 end
 
+module Cell = struct
+  type ('a, 'b, 'f) t = ('a, 'b, 'f) Dep_node.t
+
+  let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Failed (run, exn) ->
+      if Run.is_current run then
+        Nothing.unreachable_code (!on_already_reported exn)
+      else
+        Exec_sync.recompute dep_node.input dep_node
+    | Running_async _ -> assert false
+    | Running_sync run ->
+      if Run.is_current run then
+        (* hopefully this branch should be unreachable and [add_rev_dep]
+           reports a cycle above instead *)
+        Code_error.raise "bug: unreported sync dependency_cycle"
+          [ ("stack", Call_stack.get_call_stack_as_dyn ())
+          ; ("adding", Stack_frame.to_dyn (T dep_node))
+          ]
+      else
+        Exec_sync.recompute dep_node.input dep_node
+    | Done cv -> (
+        Cached_value.get_sync cv
+        |> function
+        | Some v -> v
+        | None -> Exec_sync.recompute dep_node.input dep_node )
+
+  let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Failed (run, exn) ->
+      if Run.is_current run then
+        already_reported exn
+      else
+        Exec_async.recompute dep_node.input dep_node
+    | Running_sync _ -> assert false
+    | Running_async (run, fut) ->
+      if Run.is_current run then
+        Fiber.Ivar.read fut
+      else
+        Exec_async.recompute dep_node.input dep_node
+    | Done cv -> (
+        Cached_value.get_async cv
+        >>= function
+        | Some v -> Fiber.return v
+        | None -> Exec_async.recompute dep_node.input dep_node )
+end
+
+let cell (type i o f) (t : (i, o, f) t) inp =
+  match Store.find t.cache inp with
+  | Some dep_node -> dep_node
+  | None ->
+    let run = Run.current () in
+    let dep_node =
+      match t.spec.f with
+      | Function.Async _ ->
+        let ivar = Fiber.Ivar.create () in
+        Exec.make_dep_node t ~input:inp
+          ~state:(Running_async (run, ivar))
+      | Function.Sync _ ->
+        Exec.make_dep_node t ~input:inp ~state:(Running_sync run)
+    in
+    Store.set t.cache inp dep_node;
+    dep_node
+
 module Implicit_output = Implicit_output
 module Store = Store_intf
 

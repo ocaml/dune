@@ -2,7 +2,10 @@ This test checks that executable that uses 'dynamic-run'
 and depends on directory listing forces all targets in that
 directory to be build.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
 
   $ cat > dune << EOF
   > (alias

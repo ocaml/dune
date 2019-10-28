@@ -1,7 +1,10 @@
 This test checks that dune can gracefully handle situation when user provides
 ordinary executable instead of one linked against dune-action-plugin.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
 
   $ cat > dune << EOF
   > (alias

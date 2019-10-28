@@ -71,9 +71,10 @@ struct
                            \"run\", \"bash\" or \"system\""
                       ] )
           ; ( "dynamic-run"
-            , let+ prog = Program.decode
-              and+ args = repeat String.decode in
-              Dynamic_run (prog, args) )
+            , Dune_lang.Syntax.since Action_plugin.syntax (0, 1)
+              >>> let+ prog = Program.decode
+                  and+ args = repeat String.decode in
+                  Dynamic_run (prog, args) )
           ; ( "chdir"
             , let+ dn = path
               and+ t = t in

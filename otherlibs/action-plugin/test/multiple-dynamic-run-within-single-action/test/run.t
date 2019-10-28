@@ -1,7 +1,10 @@
 Check that multiple 'dynamic-run' commands within single action are
 detected and error is printed even if the rule is not executed.
 
-  $ echo "(lang dune 2.0)" > dune-project
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > (using action-plugin 0.1)
+  > EOF
 
   $ cat > dune << EOF
   > (rule

@@ -3,5 +3,5 @@
  (public_name dune-action-plugin)
  (libraries dune-private-libs.stdune dune-glob)
  (synopsis
-   "Monadic interface for defining scripts with dynamic or complex sets of depencencies.")
+   "[Internal] Monadic interface for defining scripts with dynamic or complex sets of depencencies.")
  (preprocess future_syntax))

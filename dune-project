@@ -90,8 +90,11 @@ Among other things, dune-configurator allows one to:
  (depends
   dune-glob
   (dune-private-libs (= :version)))
- (synopsis "API for writing dynamic Dune actions")
+ (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\
+
+This library is experimental. No backwards compatibility is implied.
+
 dune-action-plugin provides an API for writing dynamic Dune actions.
 Dynamic dune actions do not need to declare their dependencies
 upfront; they are instead discovered automatically during the

@@ -15,13 +15,8 @@ module Alias_rules = struct
     let dir = Alias.dir alias in
     SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
-  let add_empty sctx ~loc ~expander ~alias ~deps ~stamp =
-    let action =
-      let open Build.O in
-      SC.Deps.interpret_named sctx ~expander deps
-      |> Build.ignore
-      >>> Build.progn []
-    in
+  let add_empty sctx ~loc ~alias ~stamp =
+    let action = Build.return (Action.Progn []) in
     add sctx ~loc ~alias ~stamp action
 end
 
@@ -89,8 +84,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         let stamp =
           Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings
         in
-        Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~deps:rule.deps
-          ~expander ~stamp);
+        Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp);
     Path.Build.Set.empty
   | true -> (
     let targets : Expander.Targets.t =
@@ -187,9 +181,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   in
   let loc = Some alias_conf.loc in
   match Expander.eval_blang expander alias_conf.enabled_if with
-  | false ->
-    Alias_rules.add_empty sctx ~loc ~expander ~alias ~deps:alias_conf.deps
-      ~stamp
+  | false -> Alias_rules.add_empty sctx ~loc ~alias ~stamp
   | true ->
     let locks = interpret_locks ~expander alias_conf.locks in
     let action =

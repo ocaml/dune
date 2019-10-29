@@ -1793,8 +1793,9 @@ module Rule = struct
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
     and+ enabled_if = enabled_if ~since:(Some (1, 4))
-    and+ package = field_o "package"
-                     (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Pkg.decode)
+    and+ package =
+      field_o "package"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Pkg.decode)
     and+ alias =
       field_o "alias"
         (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Alias.Name.decode)

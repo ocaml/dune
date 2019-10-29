@@ -101,3 +101,5 @@ val set : t -> Version.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
 val get_exn : t -> (Version.t, 'k) Decoder.parser
 
 val key : t -> Version.t Univ_map.Key.t
+
+val inside_dune : bool ref

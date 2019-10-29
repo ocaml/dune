@@ -83,3 +83,20 @@ When a file is pulled from the cache, its mtime is touched so it's deleted last.
   2
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b
+
+
+Reset build tree and cache.
+
+  $ rm -f _build/default/{beacon,target}_{a,b}
+  $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18
+  Freed 18 bytes
+
+Check background trimming.
+
+  $ env DUNE_CACHE=1 DUNE_CACHE_TRIM_SIZE=1 DUNE_CACHE_TRIM_PERIOD=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache start > /dev/null
+  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a
+  $ rm -f _build/default/{beacon,target}_a
+  $ sleep 2
+  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a
+  $ test -e _build/default/beacon_a
+  $ env DUNE_CACHE=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache stop

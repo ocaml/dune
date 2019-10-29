@@ -5,9 +5,7 @@ include Messages_intf
 let invalid_args args =
   Result.Error
     (Printf.sprintf "invalid arguments:%s"
-       (List.fold_left ~init:""
-          ~f:(fun a b -> a ^ " " ^ b)
-          (List.map ~f:Sexp.to_string args)))
+       (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
 let sexp_of_message : type a. a message -> Sexp.t =
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in

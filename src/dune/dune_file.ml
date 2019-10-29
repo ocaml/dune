@@ -1794,10 +1794,10 @@ module Rule = struct
           | false, None -> Ok Standard)
     and+ enabled_if = enabled_if ~since:(Some (1, 4))
     and+ package = field_o "package"
-                     (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Pkg.decode)
+                     (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Pkg.decode)
     and+ alias =
       field_o "alias"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Alias.Name.decode)
+        (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Alias.Name.decode)
     in
     { targets; deps; action; mode; locks; loc; enabled_if; alias; package }
 

@@ -10,8 +10,15 @@ dependency of the alias.
   >  (alias bar))
   > EOF
   $ dune build @bar --display short
+  File "dune", line 3, characters 1-12:
+  3 |  (alias bar))
+       ^^^^^^^^^^^
+  Error: 'alias' is only available since version 2.1 of the dune language.
+  Please update your dune-project file to have (lang 2.1).
+  [1]
   $ cat _build/default/foo
-  hello world
+  cat: _build/default/foo: No such file or directory
+  [1]
   $ cd ..
 
 A rule may now have an empty set of targets if it has an alias field
@@ -25,4 +32,9 @@ A rule may now have an empty set of targets if it has an alias field
   >  (alias bar))
   > EOF
   $ dune build @bar --display short
-  hello world
+  File "dune", line 3, characters 1-12:
+  3 |  (alias bar))
+       ^^^^^^^^^^^
+  Error: 'alias' is only available since version 2.1 of the dune language.
+  Please update your dune-project file to have (lang 2.1).
+  [1]

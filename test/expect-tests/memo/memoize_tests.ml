@@ -359,3 +359,22 @@ let%expect_test _ =
     running foobar
     resetting memo
     running foobar |}]
+
+(* Tests for Memo.Cell *)
+
+let%expect_test _ =
+  let f x = x ^ x in
+  let memo =
+    Memo.create "for-cell" ~input:(module String)
+      ~visibility:(Public Dune_lang.Decoder.string)
+      ~output:(Allow_cutoff (module String))
+      ~doc:""
+      Sync f
+  in
+  let cell = Memo.cell memo "foobar" in
+  let res = Cell.get_sync cell in
+  print_endline res;
+  [%expect.unreachable]
+[@@expect.uncaught_exn {|
+  ( "(\"bug: unreported sync dependency_cycle\",\
+   \n{ stack = []; adding = (\"for-cell\", \"foobar\") })") |}]

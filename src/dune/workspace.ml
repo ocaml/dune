@@ -129,7 +129,11 @@ module Context = struct
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
       and+ base = Common.t ~profile in
-      let default = switch ^ Common.fdo_suffix base in
+      let default =
+        (* TODO this needs proper error handling with locations *)
+        let name = Context_name.to_string switch ^ Common.fdo_suffix base in
+        Context_name.parse_string_exn (Loc.none, name)
+      in
       let name = Option.value ~default name in
       let base = { base with targets = Target.add base.targets x; name } in
       { base; switch; root; merlin }
@@ -145,7 +149,13 @@ module Context = struct
           ( Dune_lang.Syntax.since syntax (1, 10)
           >>= fun () -> Context_name.decode )
       in
-      let default = common.name ^ Common.fdo_suffix common in
+      let default =
+        (* TODO proper error handling with locs *)
+        let name =
+          Context_name.to_string common.name ^ Common.fdo_suffix common
+        in
+        Context_name.parse_string_exn (Loc.none, name)
+      in
       let name = Option.value ~default name in
       { common with targets = Target.add common.targets x; name }
   end

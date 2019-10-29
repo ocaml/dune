@@ -224,7 +224,8 @@ let check_fdo_support has_native ocfg ~name =
       [ Pp.textf
           "fdo requires ocamlopt version >= 4.10, current version is %s \
            (context: %s)"
-          name version_string
+          (Context_name.to_string name)
+          version_string
       ]
   in
   if not has_native then err ();
@@ -243,7 +244,8 @@ let check_fdo_support has_native ocfg ~name =
         [ Pp.textf
             "fdo requires ocamlopt version >= 4.10, current version %s has \
              partial support. Some optimizations are disabled! (context: %s)"
-            name version_string
+            (Context_name.to_string name)
+            version_string
         ]
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets

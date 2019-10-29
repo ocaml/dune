@@ -72,3 +72,9 @@ val cons : 'a t -> 'a -> 'a t
 val fold_map : 'a list -> init:'b -> f:('b -> 'a -> 'b * 'c) -> 'b * 'c list
 
 val unzip : ('a * 'b) t -> 'a t * 'b t
+
+val for_all2 :
+     'a list
+  -> 'b list
+  -> f:('a -> 'b -> bool)
+  -> (bool, [`Length_mismatch]) Result.t

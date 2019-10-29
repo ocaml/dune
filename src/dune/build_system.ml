@@ -1580,11 +1580,13 @@ end = struct
               (* This being [false] is unexpected and means we have a hash
                  collision *)
               let data_are_ok =
-                try
+                match
                   List.for_all2 targets cached
                     ~f:(fun (target, _) (c : Dune_memory.File.t) ->
                       Path.Build.equal target c.in_the_build_directory)
-                with _ -> false
+                with
+                | Ok b -> b
+                | Error `Length_mismatch -> false
               in
               if not data_are_ok then
                 let open Pp.O in

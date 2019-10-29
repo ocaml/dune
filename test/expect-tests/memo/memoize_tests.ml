@@ -423,12 +423,17 @@ let%expect_test "fib linked list" =
   printf "7th: %d\n" seventh.value;
   printf "prev: %d\n" (force seventh.prev_cell).value;
   printf "prev: %d\n" (force (force seventh.prev_cell).prev_cell).value;
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  "Assert_failure src/memo/memo.ml:367:23"
-  Trailing output
-  ---------------
-  computing 4
-  computing 3
-  computing 2
-  computing 1 |}]
+  [%expect{|
+    computing 4
+    computing 3
+    computing 2
+    computing 1
+    computing 0
+    4th: 3
+    computing 5
+    next: 5
+    computing 7
+    computing 6
+    7th: 13
+    prev: 8
+    prev: 5 |}]

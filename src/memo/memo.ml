@@ -469,10 +469,17 @@ module Exec = struct
       ; data = Dep_node.T dep_node
       }
     in
-    add_rev_dep dag_node;
     dep_node.dag_node <- lazy dag_node;
     dep_node
 end
+
+let dep_node (type i o f) (t : (i, o, f) t) inp =
+  match Store.find t.cache inp with
+  | Some dep_node -> dep_node
+  | None ->
+    let dep_node = Exec.make_dep_node t ~input:inp ~state:Init in
+    Store.set t.cache inp dep_node;
+    dep_node
 
 module Exec_sync = struct
   let compute run inp dep_node =
@@ -530,41 +537,36 @@ module Exec_sync = struct
     dep_node.state <- Running_sync run;
     compute run inp dep_node
 
-  let exec t inp =
-    match Store.find t.cache inp with
-    | None ->
-      let run = Run.current () in
-      let dep_node =
-        Exec.make_dep_node t ~input:inp ~state:(Running_sync run)
-      in
-      Store.set t.cache inp dep_node;
-      compute run inp dep_node
-    | Some dep_node -> (
-      add_rev_dep (dag_node dep_node);
-      match dep_node.state with
-      | Init -> assert false
-      | Failed (run, exn) ->
-        if Run.is_current run then
-          Nothing.unreachable_code (!on_already_reported exn)
-        else
-          recompute inp dep_node
-      | Running_async _ -> assert false
-      | Running_sync run ->
-        if Run.is_current run then
-          (* hopefully this branch should be unreachable and [add_rev_dep]
-             reports a cycle above instead *)
-          Code_error.raise "bug: unreported sync dependency_cycle"
-            [ ("stack", Call_stack.get_call_stack_as_dyn ())
-            ; ("adding", Stack_frame.to_dyn (T dep_node))
-            ]
-        else
-          recompute inp dep_node
-      | Done cv -> (
+  let exec_dep_node dep_node inp =
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Init ->
+      recompute inp dep_node
+    | Failed (run, exn) ->
+      if Run.is_current run then
+        Nothing.unreachable_code (!on_already_reported exn)
+      else
+        recompute inp dep_node
+    | Running_async _ -> assert false
+    | Running_sync run ->
+      if Run.is_current run then
+        (* hopefully this branch should be unreachable and [add_rev_dep]
+           reports a cycle above instead *)
+        Code_error.raise "bug: unreported sync dependency_cycle"
+          [ ("stack", Call_stack.get_call_stack_as_dyn ())
+          ; ("adding", Stack_frame.to_dyn (T dep_node))
+          ]
+      else
+        recompute inp dep_node
+    | Done cv -> (
         Cached_value.get_sync cv
         |> function
         | Some v -> v
-        | None -> recompute inp dep_node ) )
+        | None -> recompute inp dep_node )
+
+  let exec t inp = exec_dep_node (dep_node t inp) inp
 end
+
 
 module Exec_async = struct
   let compute inp ivar dep_node =
@@ -592,36 +594,29 @@ module Exec_async = struct
     dep_node.state <- Running_async (Run.current (), ivar);
     compute inp ivar dep_node
 
-  let exec t inp =
-    match Store.find t.cache inp with
-    | None ->
-      let ivar = Fiber.Ivar.create () in
-      let dep_node =
-        Exec.make_dep_node t ~input:inp
-          ~state:(Running_async (Run.current (), ivar))
-      in
-      Store.set t.cache inp dep_node;
-      compute inp ivar dep_node
-    | Some dep_node -> (
-      add_rev_dep (dag_node dep_node);
-      match dep_node.state with
-      | Init -> assert false
-      | Failed (run, exn) ->
-        if Run.is_current run then
-          already_reported exn
-        else
-          recompute inp dep_node
-      | Running_sync _ -> assert false
-      | Running_async (run, fut) ->
-        if Run.is_current run then
-          Fiber.Ivar.read fut
-        else
-          recompute inp dep_node
-      | Done cv -> (
+  let exec_dep_node dep_node inp =
+    add_rev_dep (dag_node dep_node);
+    match dep_node.state with
+    | Init ->
+      recompute inp dep_node
+    | Failed (run, exn) ->
+      if Run.is_current run then
+        already_reported exn
+      else
+        recompute inp dep_node
+    | Running_sync _ -> assert false
+    | Running_async (run, fut) ->
+      if Run.is_current run then
+        Fiber.Ivar.read fut
+      else
+        recompute inp dep_node
+    | Done cv -> (
         Cached_value.get_async cv
         >>= function
         | Some v -> Fiber.return v
-        | None -> recompute inp dep_node ) )
+        | None -> recompute inp dep_node )
+
+  let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
 let exec (type i o f) (t : (i, o, f) t) =
@@ -797,66 +792,12 @@ module Cell = struct
   type ('a, 'b, 'f) t = ('a, 'b, 'f) Dep_node.t
 
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
-    add_rev_dep (dag_node dep_node);
-    match dep_node.state with
-    | Init ->
-      let run = Run.current () in
-      dep_node.state <- Running_sync run;
-      Exec_sync.compute run dep_node.input dep_node
-    | Failed (run, exn) ->
-      if Run.is_current run then
-        Nothing.unreachable_code (!on_already_reported exn)
-      else
-        Exec_sync.recompute dep_node.input dep_node
-    | Running_async _ -> assert false
-    | Running_sync run ->
-      if Run.is_current run then
-        (* hopefully this branch should be unreachable and [add_rev_dep]
-           reports a cycle above instead *)
-        Code_error.raise "bug: unreported sync dependency_cycle"
-          [ ("stack", Call_stack.get_call_stack_as_dyn ())
-          ; ("adding", Stack_frame.to_dyn (T dep_node))
-          ]
-      else
-        Exec_sync.recompute dep_node.input dep_node
-    | Done cv -> (
-        Cached_value.get_sync cv
-        |> function
-        | Some v -> v
-        | None -> Exec_sync.recompute dep_node.input dep_node )
-
+    Exec_sync.exec_dep_node dep_node dep_node.input
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
-    add_rev_dep (dag_node dep_node);
-    match dep_node.state with
-    | Init ->
-      let ivar = Fiber.Ivar.create () in
-      dep_node.state <- Running_async (Run.current (), ivar);
-      Exec_async.compute dep_node.input ivar dep_node
-    | Failed (run, exn) ->
-      if Run.is_current run then
-        already_reported exn
-      else
-        Exec_async.recompute dep_node.input dep_node
-    | Running_sync _ -> assert false
-    | Running_async (run, fut) ->
-      if Run.is_current run then
-        Fiber.Ivar.read fut
-      else
-        Exec_async.recompute dep_node.input dep_node
-    | Done cv -> (
-        Cached_value.get_async cv
-        >>= function
-        | Some v -> Fiber.return v
-        | None -> Exec_async.recompute dep_node.input dep_node )
+    Exec_async.exec_dep_node dep_node dep_node.input
 end
 
-let cell (type i o f) (t : (i, o, f) t) inp =
-  match Store.find t.cache inp with
-  | Some dep_node -> dep_node
-  | None ->
-    let dep_node = Exec.make_dep_node t ~input:inp ~state:Init in
-    Store.set t.cache inp dep_node;
-    dep_node
+let cell t inp = dep_node t inp
 
 module Implicit_output = Implicit_output
 module Store = Store_intf

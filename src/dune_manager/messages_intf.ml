@@ -21,6 +21,5 @@ type _ message =
   | Promote : promotion -> outgoing message
   | SetBuildRoot : Path.t -> outgoing message
   | SetCommonMetadata : Sexp.t list -> outgoing message
-  | SetDuneMemoryRoot : Path.t -> outgoing message
   | SetRepos : Dune_memory.repository list -> outgoing message
   | Dedup : Dune_memory.File.t -> incoming message

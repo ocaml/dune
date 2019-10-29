@@ -84,19 +84,24 @@ type t =
   ; mutable accept_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
+  ; memory : Dune_memory.Memory.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
-  { root
-  ; socket = None
-  ; clients = Clients.empty
-  ; endpoint = None
-  ; accept_thread = None
-  ; config
-  ; events = Evt.new_channel ()
-  }
+  match Dune_memory.Memory.make ?root (fun _ -> ()) with
+  | Result.Ok memory ->
+    { root
+    ; socket = None
+    ; clients = Clients.empty
+    ; endpoint = None
+    ; accept_thread = None
+    ; config
+    ; events = Evt.new_channel ()
+    ; memory
+    }
+  | Result.Error msg -> User_error.raise [ Pp.text msg ]
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -199,11 +204,6 @@ module Client = struct
             }
         | SetCommonMetadata metadata ->
           Result.ok { client with common_metadata = metadata }
-        | SetDuneMemoryRoot root ->
-          let+ memory =
-            Dune_memory.Memory.make ~root (client_handle client.output)
-          in
-          { client with memory }
         | SetRepos repositories ->
           let memory =
             Dune_memory.Memory.with_repositories client.memory repositories

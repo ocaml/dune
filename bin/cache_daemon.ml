@@ -62,11 +62,7 @@ let trim ~trimmed_size ~size =
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size ->
-        let+ total_size =
-          Result.map_error ~f:Unix.error_message (Dune_memory.size memory)
-        in
-        total_size - size
+      | None, Some size -> Result.Ok (Dune_memory.size memory - size)
       | _ -> Result.Error "specify either --size either --trimmed-size"
     in
     Dune_memory.trim memory trimmed_size

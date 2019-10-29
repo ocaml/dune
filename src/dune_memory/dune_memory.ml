@@ -1,7 +1,6 @@
 open Stdune
 module Key = Key
 include Dune_memory_intf
-open Result.O
 
 type 'a result = ('a, string) Result.t
 
@@ -320,11 +319,15 @@ let trim memory free =
       List.fold_left ~init:(0, []) ~f:delete files)
 
 let size memory =
-  let+ files = Path.readdir_unsorted (Memory.path_files memory) in
-  let stats = List.map ~f:Unix.stat files in
-  List.fold_left
-    ~f:(fun size (stats : Unix.stats) -> size + stats.st_size)
-    ~init:0 stats
+  let root = Memory.path_files memory in
+  let files = FSSchemeImpl.list root in
+  let stats =
+    let f p =
+      try (Path.stat p).st_size with Unix.Unix_error (Unix.ENOENT, _, _) -> 0
+    in
+    List.map ~f files
+  in
+  List.fold_left ~f:(fun acc size -> acc + size) ~init:0 stats
 
 let make_caching (type t) (module Caching : Memory with type t = t) (cache : t)
     : (module Caching) =

@@ -33,7 +33,7 @@ module Memory : sig
 end
 
 (** The size of cached files. *)
-val size : Memory.t -> (int, Unix.error) Stdlib.result
+val size : Memory.t -> int
 
 (** [trim memory size] removes files from [memory], starting with the least
     recently used one, until [size] bytes have been freed. *)

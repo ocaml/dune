@@ -54,10 +54,20 @@ let stop ~port_path =
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok () -> ()
 
-let trim ~trimmed_size =
+let trim ~trimmed_size ~size =
   let open Result.O in
   match
-    let+ memory = Dune_memory.Memory.make (fun _ -> ()) in
+    let* memory = Dune_memory.Memory.make (fun _ -> ()) in
+    let+ trimmed_size =
+      match (trimmed_size, size) with
+      | Some trimmed_size, None -> Result.Ok trimmed_size
+      | None, Some size ->
+        let+ total_size =
+          Result.map_error ~f:Unix.error_message (Dune_memory.size memory)
+        in
+        total_size - size
+      | _ -> Result.Error "specify either --size either --trimmed-size"
+    in
     Dune_memory.trim memory trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
@@ -107,14 +117,20 @@ let term =
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      and+ trimmed_size =
        Arg.(
-         value & opt int 0
-         & info ~docv:"PATH" [ "trimmed-size" ]
+         value
+         & opt (some int) None
+         & info ~docv:"BYTES" [ "trimmed-size" ]
              ~doc:"size to trim from the cache")
+     and+ size =
+       Arg.(
+         value
+         & opt (some int) None
+         & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
      in
      match mode with
      | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
      | Some Stop -> `Ok (stop ~port_path)
-     | Some Trim -> `Ok (trim ~trimmed_size)
+     | Some Trim -> `Ok (trim ~trimmed_size ~size)
      | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

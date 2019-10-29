@@ -1,6 +1,7 @@
 open Stdune
 module Key = Key
 include Dune_memory_intf
+open Result.O
 
 type 'a result = ('a, string) Result.t
 
@@ -317,6 +318,13 @@ let trim memory free =
   in
   Memory.with_lock memory (fun () ->
       List.fold_left ~init:(0, []) ~f:delete files)
+
+let size memory =
+  let+ files = Path.readdir_unsorted (Memory.path_files memory) in
+  let stats = List.map ~f:Unix.stat files in
+  List.fold_left
+    ~f:(fun size (stats : Unix.stats) -> size + stats.st_size)
+    ~init:0 stats
 
 let make_caching (type t) (module Caching : Memory with type t = t) (cache : t)
     : (module Caching) =

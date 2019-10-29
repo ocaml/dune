@@ -32,6 +32,9 @@ module Memory : sig
   val make : ?root:Path.t -> handler -> (t, string) Result.t
 end
 
+(** The size of cached files. *)
+val size : Memory.t -> (int, Unix.error) Stdlib.result
+
 (** [trim memory size] removes files from [memory], starting with the least
     recently used one, until [size] bytes have been freed. *)
 val trim : Memory.t -> int -> int * Path.t list

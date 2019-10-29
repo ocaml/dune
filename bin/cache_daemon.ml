@@ -55,6 +55,7 @@ let stop ~port_path =
   | Ok () -> ()
 
 let trim ~trimmed_size ~size =
+  Log.init_disabled ();
   let open Result.O in
   match
     let* memory = Dune_memory.Memory.make (fun _ -> ()) in

@@ -367,7 +367,8 @@ let get_deps_from_graph_exn dep_node =
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
          match node.state with
          | Init
-         | Failed _ -> assert false
+         | Failed _ ->
+           assert false
          | Running_sync _ -> assert false
          | Running_async _ -> assert false
          | Done res -> Last_dep.T (node, res.data))
@@ -543,8 +544,7 @@ module Exec_sync = struct
   let exec_dep_node dep_node inp =
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
-    | Init ->
-      recompute inp dep_node
+    | Init -> recompute inp dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
         Nothing.unreachable_code (!on_already_reported exn)
@@ -562,14 +562,13 @@ module Exec_sync = struct
       else
         recompute inp dep_node
     | Done cv -> (
-        Cached_value.get_sync cv
-        |> function
-        | Some v -> v
-        | None -> recompute inp dep_node )
+      Cached_value.get_sync cv
+      |> function
+      | Some v -> v
+      | None -> recompute inp dep_node )
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
-
 
 module Exec_async = struct
   let compute inp ivar dep_node =
@@ -600,8 +599,7 @@ module Exec_async = struct
   let exec_dep_node dep_node inp =
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
-    | Init ->
-      recompute inp dep_node
+    | Init -> recompute inp dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
         already_reported exn
@@ -614,10 +612,10 @@ module Exec_async = struct
       else
         recompute inp dep_node
     | Done cv -> (
-        Cached_value.get_async cv
-        >>= function
-        | Some v -> Fiber.return v
-        | None -> recompute inp dep_node )
+      Cached_value.get_async cv
+      >>= function
+      | Some v -> Fiber.return v
+      | None -> recompute inp dep_node )
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
@@ -634,7 +632,8 @@ let peek t inp =
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
     | Init
-    | Running_sync _ -> None
+    | Running_sync _ ->
+      None
     | Running_async _ -> None
     | Failed _ -> None
     | Done cv ->
@@ -648,9 +647,9 @@ let peek_exn t inp = Option.value_exn (peek t inp)
 let get_deps t inp =
   match Store.find t.cache inp with
   | None
-  | Some { state = Init; _ } -> None
-  | Some { state = Running_async _; _ } ->
+  | Some { state = Init; _ } ->
     None
+  | Some { state = Running_async _; _ } -> None
   | Some { state = Running_sync _; _ } -> None
   | Some { state = Failed _; _ } -> None
   | Some { state = Done cv; _ } ->
@@ -796,6 +795,7 @@ module Cell = struct
 
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
     Exec_sync.exec_dep_node dep_node dep_node.input
+
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
     Exec_async.exec_dep_node dep_node dep_node.input
 end

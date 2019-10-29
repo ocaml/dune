@@ -255,6 +255,7 @@ module Cell : sig
   type ('a, 'b, 'f) t
 
   val get_sync : ('a, 'b, 'a -> 'b) t -> 'b
+
   val get_async : ('a, 'b, 'a -> 'b Fiber.t) t -> 'b Fiber.t
 end
 

@@ -2,6 +2,6 @@
 
 module V1 : sig
   include module type of struct
-    include Glob
+    include V1
   end
 end

@@ -1,1 +1,1 @@
-module V1 = Glob
+module V1 = V1

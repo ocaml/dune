@@ -13,7 +13,7 @@ let empty = { re = Re.compile Re.empty; repr = "\000" }
 let universal = { re = Re.compile (Re.rep Re.any); repr = "**" }
 
 let of_string_result repr =
-  Lexer.parse_string repr
+  GlobLexer.parse_string repr
   |> Result.map ~f:(fun re -> { re = Re.compile re; repr })
 
 let of_string repr =

@@ -1,5 +1,15 @@
 open Stdune
 
+let int_of_string ?where s =
+  try Result.Ok (int_of_string s)
+  with Failure _ ->
+    Result.Error
+      (Printf.sprintf "invalid integer%s: %s"
+         ( match where with
+         | Some l -> " in " ^ l
+         | None -> "" )
+         s)
+
 let retry ?message ?(count = 100) f =
   let rec loop = function
     | x when x >= count ->

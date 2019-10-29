@@ -374,7 +374,4 @@ let%expect_test _ =
   let cell = Memo.cell memo "foobar" in
   let res = Cell.get_sync cell in
   print_endline res;
-  [%expect.unreachable]
-[@@expect.uncaught_exn {|
-  ( "(\"bug: unreported sync dependency_cycle\",\
-   \n{ stack = []; adding = (\"for-cell\", \"foobar\") })") |}]
+  [%expect{| foobarfoobar |}]

@@ -126,6 +126,7 @@ module M = struct
     type 'a t =
       (* [Running] includes computations that already terminated with an
          exception or cancelled because we've advanced to the next run. *)
+      | Init
       | Running_sync of Run.t
       | Running_async of Run.t * 'a Fiber.Ivar.t
       | Failed of Run.t * Exn_with_backtrace.t
@@ -181,6 +182,7 @@ module Cached_value = struct
       let dep_changed = function
         | Last_dep.T (node, prev_output) -> (
           match node.state with
+          | Init -> assert false
           | Failed (run, exn) ->
             if Run.is_current run then
               already_reported exn
@@ -218,6 +220,7 @@ module Cached_value = struct
         | [] -> Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
+          | Init -> assert false
           | Failed (run, exn) ->
             if Run.is_current run then
               already_reported exn
@@ -360,6 +363,7 @@ let get_deps_from_graph_exn dep_node =
   Dag.children (dag_node dep_node)
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
          match node.state with
+         | Init
          | Failed _ -> assert false
          | Running_sync _ -> assert false
          | Running_async _ -> assert false
@@ -538,6 +542,7 @@ module Exec_sync = struct
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
+      | Init -> assert false
       | Failed (run, exn) ->
         if Run.is_current run then
           Nothing.unreachable_code (!on_already_reported exn)
@@ -600,6 +605,7 @@ module Exec_async = struct
     | Some dep_node -> (
       add_rev_dep (dag_node dep_node);
       match dep_node.state with
+      | Init -> assert false
       | Failed (run, exn) ->
         if Run.is_current run then
           already_reported exn
@@ -629,6 +635,7 @@ let peek t inp =
   | Some dep_node -> (
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
+    | Init
     | Running_sync _ -> None
     | Running_async _ -> None
     | Failed _ -> None
@@ -643,6 +650,7 @@ let peek_exn t inp = Option.value_exn (peek t inp)
 let get_deps t inp =
   match Store.find t.cache inp with
   | None
+  | Some { state = Init; _ } -> None
   | Some { state = Running_async _; _ } ->
     None
   | Some { state = Running_sync _; _ } -> None
@@ -791,6 +799,10 @@ module Cell = struct
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
+    | Init ->
+      let run = Run.current () in
+      dep_node.state <- Running_sync run;
+      Exec_sync.compute run dep_node.input dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
         Nothing.unreachable_code (!on_already_reported exn)
@@ -816,6 +828,10 @@ module Cell = struct
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
     add_rev_dep (dag_node dep_node);
     match dep_node.state with
+    | Init ->
+      let ivar = Fiber.Ivar.create () in
+      dep_node.state <- Running_async (Run.current (), ivar);
+      Exec_async.compute dep_node.input ivar dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
         already_reported exn
@@ -838,16 +854,7 @@ let cell (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | Some dep_node -> dep_node
   | None ->
-    let run = Run.current () in
-    let dep_node =
-      match t.spec.f with
-      | Function.Async _ ->
-        let ivar = Fiber.Ivar.create () in
-        Exec.make_dep_node t ~input:inp
-          ~state:(Running_async (run, ivar))
-      | Function.Sync _ ->
-        Exec.make_dep_node t ~input:inp ~state:(Running_sync run)
-    in
+    let dep_node = Exec.make_dep_node t ~input:inp ~state:Init in
     Store.set t.cache inp dep_node;
     dep_node
 

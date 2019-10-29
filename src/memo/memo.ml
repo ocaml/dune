@@ -125,7 +125,10 @@ module M = struct
   and State : sig
     type 'a t =
       (* [Running] includes computations that already terminated with an
-         exception or cancelled because we've advanced to the next run. *)
+         exception or cancelled because we've advanced to the next run.
+
+         [Init] should be treated exactly the same as [Running*] with a stale
+         value of [Run.t]. *)
       | Init
       | Running_sync of Run.t
       | Running_async of Run.t * 'a Fiber.Ivar.t
@@ -182,7 +185,7 @@ module Cached_value = struct
       let dep_changed = function
         | Last_dep.T (node, prev_output) -> (
           match node.state with
-          | Init -> assert false
+          | Init -> true
           | Failed (run, exn) ->
             if Run.is_current run then
               already_reported exn
@@ -220,7 +223,7 @@ module Cached_value = struct
         | [] -> Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
-          | Init -> assert false
+          | Init -> Fiber.return true
           | Failed (run, exn) ->
             if Run.is_current run then
               already_reported exn

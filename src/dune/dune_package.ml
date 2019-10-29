@@ -55,7 +55,6 @@ module Lib = struct
     let sub_systems = Lib_info.sub_systems info in
     let plugins = Lib_info.plugins info in
     let requires = Lib_info.requires info in
-    let foreign_archives = Lib_info.foreign_archives info in
     let foreign_objects =
       match Lib_info.foreign_objects info with
       | External e -> e
@@ -72,7 +71,8 @@ module Lib = struct
        ; mode_paths "archives" archives
        ; mode_paths "plugins" plugins
        ; paths "foreign_objects" foreign_objects
-       ; mode_paths "foreign_archives" foreign_archives
+       ; paths "foreign_archives" (Lib_info.foreign_archives info)
+       ; paths "native_archives" (Lib_info.native_archives info)
        ; paths "jsoo_runtime" jsoo_runtime
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
@@ -128,7 +128,13 @@ module Lib = struct
        and+ archives = mode_paths "archives"
        and+ plugins = mode_paths "plugins"
        and+ foreign_objects = paths "foreign_objects"
-       and+ foreign_archives = mode_paths "foreign_archives"
+       and+ foreign_archives =
+         if lang.version >= (2, 0) then
+           paths "foreign_archives"
+         else
+           let+ m = mode_paths "foreign_archives" in
+           m.byte
+       and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
        and+ requires =
          field_l "requires" (Lib_dep.decode ~allow_re_export:true)
@@ -180,10 +186,11 @@ module Lib = struct
          Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-           ~foreign_archives ~jsoo_runtime ~jsoo_archive ~pps ~enabled
-           ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
-           ~known_implementations ~default_implementation ~modes ~wrapped
-           ~special_builtin_support
+           ~foreign_archives ~native_archives ~foreign_dll_files:[]
+           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
+           ~dune_version ~virtual_ ~implements ~variant ~known_implementations
+           ~default_implementation ~modes ~wrapped ~special_builtin_support
+           ~exit_module:None
        in
        { info; main_module_name; modules })
 

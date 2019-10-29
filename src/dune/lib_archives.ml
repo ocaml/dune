@@ -37,7 +37,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           in
           Foreign.Sources.object_files files ~dir ~ext_obj
         else
-          Library.lib_files lib ~dir ~ext_lib )
+          Library.foreign_archives lib ~dir ~ext_lib )
       ; if_
           (native && not virtual_library)
           (let files =
@@ -61,6 +61,6 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
   let dll_files =
     if_
       (byte && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
-      (Library.dll_files lib ~dir ~ext_dll)
+      (Library.foreign_dll_files lib ~dir ~ext_dll)
   in
   { lib_files; dll_files }

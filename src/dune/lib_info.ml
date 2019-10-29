@@ -178,7 +178,9 @@ type 'path t =
   ; archives : 'path list Mode.Dict.t
   ; plugins : 'path list Mode.Dict.t
   ; foreign_objects : 'path list Source.t
-  ; foreign_archives : 'path list Mode.Dict.t  (** [.a/.lib/...] files *)
+  ; foreign_archives : 'path list
+  ; native_archives : 'path list
+  ; foreign_dll_files : 'path list
   ; jsoo_runtime : 'path list
   ; jsoo_archive : 'path option
   ; requires : Lib_dep.t list
@@ -197,6 +199,7 @@ type 'path t =
   ; main_module_name : Main_module_name.t
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support : Special_builtin_support.t option
+  ; exit_module : Module_name.t option
   }
 
 let name t = t.name
@@ -219,7 +222,13 @@ let archives t = t.archives
 
 let foreign_archives t = t.foreign_archives
 
+let native_archives t = t.native_archives
+
+let foreign_dll_files t = t.foreign_dll_files
+
 let foreign_objects t = t.foreign_objects
+
+let exit_module t = t.exit_module
 
 let plugins t = t.plugins
 
@@ -295,10 +304,11 @@ let user_written_deps t =
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~jsoo_runtime
-    ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
-    ~implements ~variant ~known_implementations ~default_implementation ~modes
-    ~wrapped ~special_builtin_support =
+    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
+    ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
+    ~dune_version ~virtual_ ~implements ~variant ~known_implementations
+    ~default_implementation ~modes ~wrapped ~special_builtin_support
+    ~exit_module =
   { loc
   ; name
   ; kind
@@ -315,6 +325,8 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; archives
   ; ppx_runtime_deps
   ; foreign_archives
+  ; native_archives
+  ; foreign_dll_files
   ; jsoo_runtime
   ; jsoo_archive
   ; pps
@@ -330,6 +342,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; modes
   ; wrapped
   ; special_builtin_support
+  ; exit_module
   }
 
 type external_ = Path.t t
@@ -347,7 +360,9 @@ let map t ~f_path ~f_obj_dir =
   ; archives = mode_list t.archives
   ; plugins = mode_list t.plugins
   ; foreign_objects = Source.map ~f:(List.map ~f) t.foreign_objects
-  ; foreign_archives = mode_list t.foreign_archives
+  ; foreign_archives = List.map ~f t.foreign_archives
+  ; foreign_dll_files = List.map ~f t.foreign_dll_files
+  ; native_archives = List.map ~f t.native_archives
   ; jsoo_runtime = List.map ~f t.jsoo_runtime
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
@@ -376,6 +391,8 @@ let to_dyn path
     ; archives
     ; ppx_runtime_deps
     ; foreign_archives
+    ; native_archives
+    ; foreign_dll_files
     ; jsoo_runtime
     ; jsoo_archive
     ; pps
@@ -391,6 +408,7 @@ let to_dyn path
     ; modes
     ; wrapped
     ; special_builtin_support
+    ; exit_module
     } =
   let open Dyn.Encoder in
   let snd f (_, x) = f x in
@@ -407,7 +425,9 @@ let to_dyn path
     ; ("archives", Mode.Dict.to_dyn (list path) archives)
     ; ("plugins", Mode.Dict.to_dyn (list path) plugins)
     ; ("foreign_objects", Source.to_dyn (list path) foreign_objects)
-    ; ("foreign_archives", Mode.Dict.to_dyn (list path) foreign_archives)
+    ; ("foreign_archives", list path foreign_archives)
+    ; ("native_archives", list path native_archives)
+    ; ("foreign_dll_files", list path foreign_dll_files)
     ; ("jsoo_runtime", list path jsoo_runtime)
     ; ("jsoo_archive", option path jsoo_archive)
     ; ("requires", list Lib_dep.to_dyn requires)
@@ -429,4 +449,5 @@ let to_dyn path
     ; ("modes", Mode.Dict.Set.to_dyn modes)
     ; ( "special_builtin_support"
       , option Special_builtin_support.to_dyn special_builtin_support )
+    ; ("exit_module", option Module_name.to_dyn exit_module)
     ]

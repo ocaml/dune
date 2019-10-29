@@ -37,3 +37,9 @@ let supports_output_complete_exe version = version >= (4, 10, 0)
 let supports_function_sections version = version > (4, 10, 0)
 
 let supports_split_at_emit version = version >= (4, 11, 0)
+
+let custom_or_output_complete_exe version =
+  if supports_output_complete_exe version then
+    "-output-complete-exe"
+  else
+    "-custom"

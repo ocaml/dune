@@ -299,6 +299,11 @@ let ppx_exe sctx ~key =
 let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   let ctx = SC.context sctx in
   let mode = Context.best_mode ctx in
+  let link_mode : Link_mode.t =
+    match mode with
+    | Byte -> Byte_with_stubs_statically_linked_in
+    | Native -> Native
+  in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let jbuild_driver, pps, pp_names = (None, pps, pp_names) in
   let driver_and_libs =
@@ -332,11 +337,18 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
           ; Target target
           ; A "-w"
           ; A "-24"
+          ; As
+              ( match link_mode with
+              | Byte_with_stubs_statically_linked_in ->
+                [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+              | Byte
+              | Native ->
+                [] )
           ; Command.of_result
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
                    Command.Args.S
-                     [ Lib.L.compile_and_link_flags ~mode ~compile:libs
-                         ~link:libs
+                     [ Lib.L.compile_and_link_flags ~mode:link_mode
+                         ~compile:libs ~link:libs ~lib_config:ctx.lib_config
                      ; Hidden_deps
                          (Lib_file_deps.deps libs ~groups:[ Cmi; Cmx ])
                      ]))

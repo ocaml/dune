@@ -270,7 +270,6 @@ module Package = struct
       in
       let foreign_objects = Lib_info.Source.External [] in
       let plugins = plugins t in
-      let foreign_archives = Mode.Dict.make_both [] in
       let jsoo_runtime = jsoo_runtime t in
       let jsoo_archive = None in
       let pps = [] in
@@ -281,10 +280,12 @@ module Package = struct
       let wrapped = None in
       Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
         ~version ~synopsis ~main_module_name ~sub_systems ~requires
-        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
+        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
+        ~foreign_archives:[] ~native_archives:[] ~foreign_dll_files:[]
         ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
         ~virtual_ ~implements ~variant ~known_implementations
         ~default_implementation ~modes ~wrapped ~special_builtin_support
+        ~exit_module:None
     in
     Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
 

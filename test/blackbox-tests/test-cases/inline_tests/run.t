@@ -45,7 +45,7 @@ The expected behavior for the following three tests is to output nothing: the te
    (kind normal)
    (archives (byte foo.cma) (native foo.cmxa))
    (plugins (byte foo.cma) (native foo.cmxs))
-   (foreign_archives (native foo$ext_lib))
+   (native_archives foo$ext_lib)
    (main_module_name Foo)
    (modes byte native)
    (modules

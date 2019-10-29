@@ -363,7 +363,7 @@ let%expect_test _ =
 (* Tests for Memo.Cell *)
 
 let%expect_test _ =
-  let f x = x ^ x in
+  let f x = "*" ^ x in
   let memo =
     Memo.create "for-cell" ~input:(module String)
       ~visibility:(Public Dune_lang.Decoder.string)
@@ -372,6 +372,8 @@ let%expect_test _ =
       Sync f
   in
   let cell = Memo.cell memo "foobar" in
-  let res = Cell.get_sync cell in
-  print_endline res;
-  [%expect{| foobarfoobar |}]
+  print_endline (Cell.get_sync cell);
+  print_endline (Cell.get_sync cell);
+  [%expect{|
+    *foobar
+    *foobar |}]

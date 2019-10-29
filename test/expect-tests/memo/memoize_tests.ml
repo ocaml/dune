@@ -359,3 +359,81 @@ let%expect_test _ =
     running foobar
     resetting memo
     running foobar |}]
+
+(* Tests for Memo.Cell *)
+
+let%expect_test _ =
+  let f x = "*" ^ x in
+  let memo =
+    Memo.create "for-cell" ~input:(module String)
+      ~visibility:(Public Dune_lang.Decoder.string)
+      ~output:(Allow_cutoff (module String))
+      ~doc:""
+      Sync f
+  in
+  let cell = Memo.cell memo "foobar" in
+  print_endline (Cell.get_sync cell);
+  print_endline (Cell.get_sync cell);
+  [%expect{|
+    *foobar
+    *foobar |}]
+
+let printf = Printf.printf
+
+let%expect_test "fib linked list" =
+  let module Element = struct
+    type t = {
+      prev_cell : (int, t, int -> t) Memo.Cell.t;
+      value : int;
+      next_cell : (int, t, int -> t) Memo.Cell.t;
+    }
+
+    let to_dyn t = Dyn.Int t.value
+  end
+  in
+  let force cell : Element.t = Memo.Cell.get_sync cell in
+  let memo_fdecl = Fdecl.create Dyn.Encoder.opaque in
+  let compute_element x =
+    let memo = Fdecl.get memo_fdecl in
+    printf "computing %d\n" x;
+    let prev_cell = (Memo.cell memo (x - 1)) in
+    let value =
+      if x < 1 then 0
+      else if x = 1 then 1
+      else
+        (force prev_cell).value
+        + ((force ((force prev_cell).prev_cell))).value
+    in
+    { Element.next_cell = Memo.cell memo (x + 1)
+    ; prev_cell
+    ; value
+    }
+  in
+  let memo = (
+    Memo.create "fib"
+      ~input:(module Int)
+      ~visibility:Hidden Sync
+      ~output:(Simple (module Element)) compute_element ~doc:"")
+  in
+  Fdecl.set memo_fdecl memo;
+  let fourth = Memo.exec memo 4 in
+  printf "4th: %d\n" fourth.value;
+  printf "next: %d\n" (force (fourth.next_cell)).value;
+  let seventh = Memo.exec memo 7 in
+  printf "7th: %d\n" seventh.value;
+  printf "prev: %d\n" (force seventh.prev_cell).value;
+  printf "prev: %d\n" (force (force seventh.prev_cell).prev_cell).value;
+  [%expect{|
+    computing 4
+    computing 3
+    computing 2
+    computing 1
+    computing 0
+    4th: 3
+    computing 5
+    next: 5
+    computing 7
+    computing 6
+    7th: 13
+    prev: 8
+    prev: 5 |}]

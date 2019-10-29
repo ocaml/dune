@@ -251,4 +251,13 @@ module With_implicit_output : sig
   val exec : (_, _, 'f) t -> 'f
 end
 
+module Cell : sig
+  type ('a, 'b, 'f) t
+
+  val get_sync : ('a, 'b, 'a -> 'b) t -> 'b
+  val get_async : ('a, 'b, 'a -> 'b Fiber.t) t -> 'b Fiber.t
+end
+
+val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
+
 module Implicit_output = Implicit_output

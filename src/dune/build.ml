@@ -121,7 +121,13 @@ let lines_of p = Lines_of p
 let strings p =
   let f x =
     match Scanf.unescaped x with
-    | Error () -> Code_error.raise "Build.strings" []
+    | Error () ->
+      User_error.raise
+        [ Pp.textf "Unable to parse %s" (Path.to_string_maybe_quoted p)
+        ; Pp.textf
+            "This file must be a list of lines escaped using OCaml's \
+             conventions"
+        ]
     | Ok s -> s
   in
   Map ((fun l -> List.map l ~f), lines_of p)

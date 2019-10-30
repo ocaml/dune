@@ -102,12 +102,30 @@ let possible_sources ~language obj ~dune_version =
         (obj ^ "." ^ ext))
 
 module Stubs = struct
+  module Include_dir = struct
+    type t =
+      | Dir of String_with_vars.t
+      | Lib of Loc.t * Lib_name.t
+
+    let decode : t Dune_lang.Decoder.t =
+      let open Dune_lang.Decoder in
+      let parse_dir =
+        let+ s = String_with_vars.decode in
+        Dir s
+      in
+      let parse_lib =
+        let+ loc, lib_name = sum [ ("lib", located Lib_name.decode) ] in
+        Lib (loc, lib_name)
+      in
+      if_list ~then_:parse_lib ~else_:parse_dir
+  end
+
   type t =
     { loc : Loc.t
     ; language : Language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; include_dirs : String_with_vars.t list
+    ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
     }
 
@@ -123,7 +141,7 @@ module Stubs = struct
     and+ names = field "names" Ordered_set_lang.decode
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
-      field ~default:[] "include_dirs" (repeat String_with_vars.decode)
+      field ~default:[] "include_dirs" (repeat Include_dir.decode)
     and+ extra_deps = field_o "extra_deps" (repeat Dep_conf.decode) in
     let extra_deps = Option.value ~default:[] extra_deps in
     let () =

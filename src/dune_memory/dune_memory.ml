@@ -102,7 +102,7 @@ let apply ~f o v =
   | Some o -> f v o
   | None -> v
 
-module MetadataFile = struct
+module Metadata_file = struct
   type t =
     { metadata : Sexp.t list
     ; files : File.t list
@@ -261,10 +261,10 @@ module Memory = struct
       >>| fun promoted ->
       let metadata_path = FSSchemeImpl.path (path_meta memory) key
       and files = List.map ~f:file_of_promotion promoted in
-      let metadata_file : MetadataFile.t = { metadata; files } in
+      let metadata_file : Metadata_file.t = { metadata; files } in
       Path.mkdir_p (Path.parent_exn metadata_path);
       Io.write_file metadata_path
-        (Csexp.to_string (MetadataFile.to_sexp metadata_file));
+        (Csexp.to_string (Metadata_file.to_sexp metadata_file));
       let f = function
         | Already_promoted file -> memory.handler (Dedup file)
         | _ -> ()
@@ -286,7 +286,7 @@ module Memory = struct
               Csexp.parse (Stream.of_channel input))
         with Sys_error _ -> Error "no cached file"
       in
-      let+ metadata = MetadataFile.of_sexp sexp in
+      let+ metadata = Metadata_file.of_sexp sexp in
       (* Touch cache files so they are removed last by LRU trimming *)
       let () =
         let f (file : File.t) =
@@ -327,7 +327,7 @@ let default_trim : trimming_result =
 let _garbage_collect default_trim memory =
   let path = Memory.path_meta memory in
   let metas =
-    List.map ~f:(fun p -> (p, MetadataFile.parse p)) (FSSchemeImpl.list path)
+    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list path)
   in
   let f default_trim = function
     | p, Result.Error msg ->
@@ -335,7 +335,7 @@ let _garbage_collect default_trim memory =
           Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
           Path.unlink_no_err p;
           { default_trim with trimmed_metafiles = [ p ] })
-    | p, Result.Ok { MetadataFile.files; _ } ->
+    | p, Result.Ok { Metadata_file.files; _ } ->
       if
         List.for_all
           ~f:(fun { File.in_the_memory; _ } -> Path.exists in_the_memory)

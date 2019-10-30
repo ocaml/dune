@@ -368,6 +368,8 @@ module Rule : sig
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
+    ; alias : Alias.Name.t option
+    ; package : Package.t option
     }
 end
 

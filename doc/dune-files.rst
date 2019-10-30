@@ -795,6 +795,12 @@ See the :ref:`user-actions` section for more details.
 - ``(locks (<lock-names>))`` specify that the action must be run while
   holding the following locks. See the :ref:`locks` section for more details.
 
+- ``(alias <alias-name>)`` specify the alias this rule belongs to. Building this
+  alias means building the targets of this rule.
+
+- ``(package <package>)`` specify the package this rule belongs to. This rule
+  will be unavailable when installing other packages in release mode.
+
 Note that contrary to makefiles or other build systems, user rules currently
 don't support patterns, such as a rule to produce ``%.y`` from ``%.x`` for any
 given ``%``. This might be supported in the future.

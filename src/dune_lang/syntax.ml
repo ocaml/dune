@@ -43,6 +43,8 @@ module Version = struct
     parser_major = data_major && parser_minor >= data_minor
 end
 
+let inside_dune = ref false
+
 module Supported_versions = struct
   type t = int Int.Map.t
 
@@ -54,7 +56,7 @@ module Supported_versions = struct
 
   let is_supported t (major, minor) =
     match Int.Map.find t major with
-    | Some minor' -> minor' >= minor
+    | Some minor' -> minor' >= minor || !inside_dune
     | None -> false
 
   let supported_ranges t =

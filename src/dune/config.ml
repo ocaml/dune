@@ -31,6 +31,8 @@ let inside_emacs = Option.is_some (Env.get Env.initial "INSIDE_EMACS")
 
 let inside_dune = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
 
+let () = Dune_lang.Syntax.inside_dune := inside_dune
+
 let inside_ci = Option.is_some (Env.get Env.initial "CI")
 
 let show_full_command_on_error () =

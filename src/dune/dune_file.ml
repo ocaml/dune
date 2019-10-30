@@ -1707,6 +1707,8 @@ module Rule = struct
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
+    ; alias : Alias.Name.t option
+    ; package : Package.t option
     }
 
   type action_or_field =
@@ -1754,6 +1756,8 @@ module Rule = struct
     ; locks = []
     ; loc
     ; enabled_if = Blang.true_
+    ; alias = None
+    ; package = None
     }
 
   let long_form =
@@ -1788,8 +1792,15 @@ module Rule = struct
           | false, Some mode -> Ok mode
           | true, None -> Ok Fallback
           | false, None -> Ok Standard)
-    and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-    { targets; deps; action; mode; locks; loc; enabled_if }
+    and+ enabled_if = enabled_if ~since:(Some (1, 4))
+    and+ package =
+      field_o "package"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Pkg.decode)
+    and+ alias =
+      field_o "alias"
+        (Dune_lang.Syntax.since Stanza.syntax (2, 1) >>> Alias.Name.decode)
+    in
+    { targets; deps; action; mode; locks; loc; enabled_if; alias; package }
 
   let decode =
     peek_exn
@@ -1860,6 +1871,8 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
+        ; alias = None
+        ; package = None
         })
 
   let ocamlyacc_to_rule loc { modules; mode; enabled_if } =
@@ -1884,6 +1897,8 @@ module Rule = struct
         ; locks = []
         ; loc
         ; enabled_if
+        ; alias = None
+        ; package = None
         })
 end
 
@@ -2385,6 +2400,7 @@ end
 let stanza_package = function
   | Library { public = Some { package; _ }; _ }
   | Alias { package = Some package; _ }
+  | Rule { package = Some package; _ }
   | Install { package; _ }
   | Executables { install_conf = Some { package; _ }; _ }
   | Documentation { package; _ }

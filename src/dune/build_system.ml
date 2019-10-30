@@ -1513,9 +1513,10 @@ end = struct
           match from_dune_memory with
           | Some files when not cache_checking -> (
             let retrieve (file : Dune_memory.File.t) =
-              let path = Path.Build.to_string file.in_the_build_directory in
-              Log.infof "retrieve %s from cache" path;
-              Unix.link (Path.to_string file.in_the_memory) path;
+              Log.infof "retrieve %a from cache" Path.Build.pp
+                file.in_the_build_directory;
+              Path.link file.in_the_memory
+                (Path.build file.in_the_build_directory);
               Cached_digest.set
                 (Path.build file.in_the_build_directory)
                 file.digest;

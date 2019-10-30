@@ -337,11 +337,12 @@ let _garbage_collect default_trim memory =
           { default_trim with trimmed_metafiles = [ p ] })
     | p, Result.Ok { MetadataFile.files; _ } ->
       if
-        not
-          (List.for_all
-             ~f:(fun { File.in_the_memory; _ } -> Path.exists in_the_memory)
-             files)
+        List.for_all
+          ~f:(fun { File.in_the_memory; _ } -> Path.exists in_the_memory)
+          files
       then
+        default_trim
+      else
         Memory.with_lock memory (fun () ->
             Log.infof
               "remove metadata file %a as some produced files are missing"
@@ -364,8 +365,6 @@ let _garbage_collect default_trim memory =
             in
             Path.unlink_no_err p;
             res)
-      else
-        default_trim
   in
   List.fold_left ~init:default_trim ~f metas
 

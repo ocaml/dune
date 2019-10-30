@@ -73,12 +73,22 @@ val possible_sources :
     an optional [foreign_stubs] field of the [library] stanza, or as part of
     the top-level [foreign_library] stanza. *)
 module Stubs : sig
+  (* Foreign sources can depend on a directly specified directory [Dir] or on a
+     source directory of a library [Lib]. *)
+  module Include_dir : sig
+    type t =
+      | Dir of String_with_vars.t
+      | Lib of Loc.t * Lib_name.t
+
+    val decode : t Dune_lang.Decoder.t
+  end
+
   type t =
     { loc : Loc.t
     ; language : Language.t
     ; names : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
-    ; include_dirs : String_with_vars.t list
+    ; include_dirs : Include_dir.t list
     ; extra_deps : Dep_conf.t list
     }
 

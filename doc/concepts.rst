@@ -1106,10 +1106,14 @@ Here is a complete list of supported subfields:
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.
 - ``include_dirs`` are tracked as dependencies and passed to the compiler
-  via the ``-I`` flag. You can use :ref:`variables` in this field. The
-  contents of included directories is tracked recursively, e.g. if you
-  use ``(include_dir dir)`` and have headers ``dir/base.h`` and
-  ``dir/lib/lib.h`` then they both will be tracked as dependencies.
+  via the ``-I`` flag. You can use :ref:`variables` in this field, and
+  refer to a library source directory using the ``(lib library-name)`` syntax.
+  For example, ``(include_dirs dir1 (lib lib1) (lib lib2) dir2)`` specifies
+  the directory ``dir1``, the source directories of ``lib1`` and ``lib2``,
+  and the directory ``dir2``, in this order. The contents of included
+  directories is tracked recursively, e.g. if you use ``(include_dir dir)``
+  and have headers ``dir/base.h`` and ``dir/lib/lib.h`` then they both will
+  be tracked as dependencies.
 - ``extra_deps`` specifies any other dependencies that should be tracked.
   This is useful when dealing with ``#include`` statements that escape into
   a parent directory like ``#include "../a.h"``.

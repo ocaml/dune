@@ -17,47 +17,55 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
              (String_with_vars.loc dir, Expander.expand_path expander dir)
            | Lib (loc, lib_name) -> (loc, lib_dir loc lib_name)
          in
-         match Path.extract_build_context_dir include_dir with
-         | None ->
-           (* TODO: Track files in external directories. *)
-           User_error.raise ~loc
-             [ Pp.textf
-                 "%S is an external directory; dependencies in external \
-                  directories are currently not tracked."
-                 (Path.to_string include_dir)
-             ]
-             ~hints:
-               [ Pp.textf
-                   "You can specify %S as an untracked include directory like \
-                    this:\n\n\
-                   \  (flags -I %s)\n"
-                   (Path.to_string include_dir)
-                   (Path.to_string include_dir)
-               ]
-         | Some (build_dir, source_dir) -> (
-           match File_tree.find_dir source_dir with
+         let dep_args =
+           match Path.extract_build_context_dir include_dir with
            | None ->
-             User_error.raise ~loc
-               [ Pp.textf "Include directory %S does not exist."
-                   (Path.reach ~from:(Path.build dir) include_dir)
-               ]
-           | Some dir ->
-             Command.Args.S
-               [ A "-I"
-               ; Path include_dir
-               ; Command.Args.S
-                   (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
-                      ~init:[] ~f:(fun t args ->
-                        let dir =
-                          Path.append_source build_dir (File_tree.Dir.path t)
-                        in
-                        let deps =
-                          Dep.Set.singleton
-                            (Dep.file_selector
-                               (File_selector.create ~dir Predicate.true_))
-                        in
-                        Command.Args.Hidden_deps deps :: args))
-               ] )))
+             (* This branch corresponds to an external directory. The current
+                implementation tracks its contents NON-recursively. *)
+             (* TODO: Track the contents recursively. One way to implement this
+                is to change [Build_system.Loaded.Non_build] so that it
+                contains not only files but also directories and traverse them
+                recursively in [Build_system.Exported.Pred]. *)
+             let () =
+               match Path.readdir_unsorted include_dir with
+               | Error m ->
+                 User_error.raise ~loc
+                   [ Pp.textf "Unable to read the include directory %S."
+                       (Path.to_string include_dir)
+                   ; Pp.textf "Reason: %s." (Unix.error_message m)
+                   ]
+               | Ok _ -> ()
+             in
+             let deps =
+               Dep.Set.singleton
+                 (Dep.file_selector
+                    (File_selector.create ~dir:include_dir Predicate.true_))
+             in
+             Command.Args.Hidden_deps deps
+           | Some (build_dir, source_dir) -> (
+             (* This branch corresponds to a source directory. We track its
+                contents recursively. *)
+             match File_tree.find_dir source_dir with
+             | None ->
+               User_error.raise ~loc
+                 [ Pp.textf "Include directory %S does not exist."
+                     (Path.reach ~from:(Path.build dir) include_dir)
+                 ]
+             | Some dir ->
+               Command.Args.S
+                 (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all
+                    ~init:[] ~f:(fun t args ->
+                      let dir =
+                        Path.append_source build_dir (File_tree.Dir.path t)
+                      in
+                      let deps =
+                        Dep.Set.singleton
+                          (Dep.file_selector
+                             (File_selector.create ~dir Predicate.true_))
+                      in
+                      Command.Args.Hidden_deps deps :: args)) )
+         in
+         Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
 
 let build_c_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let flags = Foreign.Source.flags src in

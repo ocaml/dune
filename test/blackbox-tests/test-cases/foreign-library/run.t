@@ -225,7 +225,7 @@ Testsuite for the (foreign_library ...) stanza.
   [1]
 
 ----------------------------------------------------------------------------------
-* Warning about untracked dependencies in external include directories.
+* Error when specifying a non-existing external directory in (include_dirs... )
 
   $ cat >lib/dune <<EOF
   > (foreign_library
@@ -239,24 +239,19 @@ Testsuite for the (foreign_library ...) stanza.
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
-  >  (include_dirs headers /absolute/path)
+  >  (include_dirs headers /some/path)
   >  (extra_deps eight.h)
   >  (flags -DCONFIG_VALUE=2000)
   >  (names config))
   > EOF
 
   $ ./sdune build
-  File "lib/dune", line 12, characters 23-37:
-  12 |  (include_dirs headers /absolute/path)
-                              ^^^^^^^^^^^^^^
-  Error: "/absolute/path" is an external directory; dependencies in external
-  directories are currently not tracked.
-  Hint: You can specify "/absolute/path" as an untracked include directory like this:
-  
-    (flags -I /absolute/path)
-  
+  File "lib/dune", line 12, characters 23-33:
+  12 |  (include_dirs headers /some/path)
+                              ^^^^^^^^^^
+  Error: Unable to read the include directory "/some/path".
+  Reason: No such file or directory.
   [1]
-
 
 ----------------------------------------------------------------------------------
 * Error message for multiple declarations with the same "archive_name".
@@ -277,7 +272,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (foreign_library
   >  (archive_name config)
   >  (language cxx)
-  >  (include_dirs headers /absolute/path)
+  >  (include_dirs headers)
   >  (extra_deps eight.h)
   >  (flags -DCONFIG_VALUE=2000)
   >  (names config))
@@ -596,8 +591,8 @@ Testsuite for the (foreign_library ...) stanza.
 * Library directories in (include_dir ...)
 * Build fails due to the missing "header.h"
 
-  $ mkdir -p expansions/answer
-  $ cat >expansions/dune <<EOF
+  $ mkdir -p some/dir/answer
+  $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
@@ -609,35 +604,35 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules main))
   > EOF
 
-  $ cat >expansions/answer/dune <<EOF
+  $ cat >some/dir/answer/dune <<EOF
   > (library
   >  (name answer))
   > EOF
 
-  $ cat >expansions/answer/header.h <<EOF
+  $ cat >some/dir/answer/header.h <<EOF
   > #define ANSWER 42
   > EOF
 
-  $ cat >expansions/src.c <<EOF
+  $ cat >some/dir/src.c <<EOF
   > #include <caml/mlvalues.h>
   > #include "header.h"
   > value answer(value unit) { return Val_int(ANSWER); }
   > EOF
 
-  $ cat >expansions/main.ml <<EOF
+  $ cat >some/dir/main.ml <<EOF
   > external answer : unit -> int = "answer"
   > let () = Printf.printf "Answer = %d\n" (answer ());
   > EOF
 
   $ rm -rf _build
-  $ ./sdune exec expansions/main.exe 2> /dev/null
+  $ ./sdune exec some/dir/main.exe 2> /dev/null
   [1]
 
 ----------------------------------------------------------------------------------
 * Library directories in (include_dir ...)
 * Build succeeds
 
-  $ cat >expansions/dune <<EOF
+  $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
@@ -651,15 +646,14 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ ./sdune exec expansions/main.exe
+  $ ./sdune exec some/dir/main.exe
   Answer = 42
 
 ----------------------------------------------------------------------------------
 * External library directories in (include_dir ...)
-* Build fails with "dependencies in external directories are currently not tracked"
-* TODO: Fix this limitation, and make this test succeed
+* Using an external directory in (include_dir ...)
 
-  $ cat >expansions/dune <<EOF
+  $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
@@ -672,15 +666,27 @@ Testsuite for the (foreign_library ...) stanza.
   >  (modules main))
   > EOF
 
+  $ cat >some/dir/src.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include "header.h"
+  > #include "internalhash.h"
+  > value answer(value unit)
+  > {
+  >   // Base_internalhash_fold_blob is from "internalhash.h" in the base library
+  >   if (&Base_internalhash_fold_blob != 0) return Val_int(ANSWER);
+  >   return Val_int(ANSWER + 1);
+  > }
+  > EOF
+
   $ rm -rf _build
-  $ ./sdune exec expansions/main.exe 2> /dev/null
-  [1]
+  $ ./sdune exec some/dir/main.exe
+  Answer = 42
 
 ----------------------------------------------------------------------------------
 * External library directories in (include_dir ...)
 * Build fails when using an uknown library
 
-  $ cat >expansions/dune <<EOF
+  $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
@@ -694,10 +700,10 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ rm -rf _build
-  $ ./sdune exec expansions/main.exe
-  File "expansions/dune", line 4, characters 33-44:
+  $ ./sdune exec some/dir/main.exe
+  File "some/dir/dune", line 4, characters 33-44:
   4 |  (include_dirs (lib answer) (lib unknown_lib))
                                        ^^^^^^^^^^^
   Error: Library "unknown_lib" not found.
-  Hint: try: dune external-lib-deps --missing expansions/main.exe
+  Hint: try: dune external-lib-deps --missing some/dir/main.exe
   [1]

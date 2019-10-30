@@ -377,7 +377,15 @@ let make vars =
     in
     let version_string = get vars "version" in
     let version =
-      Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> (a, b, c))
+      match
+        Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> (a, b, c))
+      with
+      | Ok t -> t
+      | Error () ->
+        User_error.raise
+          [ Pp.textf "Unable to parse ocamlc -config version: %s"
+              version_string
+          ]
     in
     let os_type = get vars "os_type" in
     let standard_library_default = get vars "standard_library_default" in
@@ -512,7 +520,5 @@ let make vars =
   | exception Vars.E (origin, msg) -> Error (origin, msg)
 
 let is_dev_version t =
-  try
-    Scanf.sscanf t.version_string "%u.%u.%u+dev" (fun _ _ _ -> ());
-    true
-  with _ -> false
+  Scanf.sscanf t.version_string "%u.%u.%u+dev" (fun _ _ _ -> ())
+  |> Result.is_ok

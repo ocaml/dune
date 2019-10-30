@@ -32,8 +32,9 @@ module Version = struct
     raw
     >>| function
     | Atom (loc, A s) -> (
-      try Scanf.sscanf s "%u.%u" (fun a b -> (a, b))
-      with _ ->
+      match Scanf.sscanf s "%u.%u" (fun a b -> (a, b)) with
+      | Ok s -> s
+      | Error () ->
         User_error.raise ~loc [ Pp.text "Atom of the form NNN.NNN expected" ] )
     | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "Atom expected" ]
 

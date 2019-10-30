@@ -626,8 +626,9 @@ let opam_version =
             let+ version =
               Process.run_capture_line Strict ~env opam [ "--version" ]
             in
-            try Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c))
-            with _ ->
+            match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
+            | Ok s -> s
+            | Error () ->
               User_error.raise
                 [ Pp.textf "`%s config --version' returned invalid output:"
                     (Path.to_string_maybe_quoted opam)

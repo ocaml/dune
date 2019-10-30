@@ -12,3 +12,4 @@ module ListLabels = ListLabels
 module List = List
 module MoreLabels = MoreLabels
 module ArrayLabels = ArrayLabels
+module Scanf = Scanf

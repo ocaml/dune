@@ -3,10 +3,20 @@ open! Stdune
 (* Compute command line flags for the [include_dirs] field of [Foreign.Stubs.t]
    and track all files in specified directories as [Hidden_deps] dependencies. *)
 let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
+  let scope = Expander.scope expander in
+  let lib_dir loc lib_name =
+    match Lib.DB.resolve (Scope.libs scope) (loc, lib_name) with
+    | Error e -> raise e
+    | Ok lib -> Lib_info.src_dir (Lib.info lib)
+  in
   Command.Args.S
     (List.map stubs.include_dirs ~f:(fun include_dir ->
-         let loc = String_with_vars.loc include_dir
-         and include_dir = Expander.expand_path expander include_dir in
+         let loc, include_dir =
+           match (include_dir : Foreign.Stubs.Include_dir.t) with
+           | Dir dir ->
+             (String_with_vars.loc dir, Expander.expand_path expander dir)
+           | Lib (loc, lib_name) -> (loc, lib_dir loc lib_name)
+         in
          match Path.extract_build_context_dir include_dir with
          | None ->
            (* TODO: Track files in external directories. *)

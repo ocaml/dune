@@ -591,3 +591,113 @@ Testsuite for the (foreign_library ...) stanza.
   $ ./sdune exec ./main.exe
   Today: 08 October 2019
   Today: 14 October 2019
+
+----------------------------------------------------------------------------------
+* Library directories in (include_dir ...)
+* Build fails due to the missing "header.h"
+
+  $ mkdir -p expansions/answer
+  $ cat >expansions/dune <<EOF
+  > (foreign_library
+  >  (archive_name clib)
+  >  (language c)
+  >  (names src))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (foreign_archives clib)
+  >  (modules main))
+  > EOF
+
+  $ cat >expansions/answer/dune <<EOF
+  > (library
+  >  (name answer))
+  > EOF
+
+  $ cat >expansions/answer/header.h <<EOF
+  > #define ANSWER 42
+  > EOF
+
+  $ cat >expansions/src.c <<EOF
+  > #include <caml/mlvalues.h>
+  > #include "header.h"
+  > value answer(value unit) { return Val_int(ANSWER); }
+  > EOF
+
+  $ cat >expansions/main.ml <<EOF
+  > external answer : unit -> int = "answer"
+  > let () = Printf.printf "Answer = %d\n" (answer ());
+  > EOF
+
+  $ rm -rf _build
+  $ ./sdune exec expansions/main.exe 2> /dev/null
+  [1]
+
+----------------------------------------------------------------------------------
+* Library directories in (include_dir ...)
+* Build succeeds
+
+  $ cat >expansions/dune <<EOF
+  > (foreign_library
+  >  (archive_name clib)
+  >  (language c)
+  >  (include_dirs (lib answer))
+  >  (names src))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (foreign_archives clib)
+  >  (modules main))
+  > EOF
+
+  $ rm -rf _build
+  $ ./sdune exec expansions/main.exe
+  Answer = 42
+
+----------------------------------------------------------------------------------
+* External library directories in (include_dir ...)
+* Build fails with "dependencies in external directories are currently not tracked"
+* TODO: Fix this limitation, and make this test succeed
+
+  $ cat >expansions/dune <<EOF
+  > (foreign_library
+  >  (archive_name clib)
+  >  (language c)
+  >  (include_dirs (lib answer) (lib base))
+  >  (names src))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (foreign_archives clib)
+  >  (modules main))
+  > EOF
+
+  $ rm -rf _build
+  $ ./sdune exec expansions/main.exe 2> /dev/null
+  [1]
+
+----------------------------------------------------------------------------------
+* External library directories in (include_dir ...)
+* Build fails when using an uknown library
+
+  $ cat >expansions/dune <<EOF
+  > (foreign_library
+  >  (archive_name clib)
+  >  (language c)
+  >  (include_dirs (lib answer) (lib unknown_lib))
+  >  (names src))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (foreign_archives clib)
+  >  (modules main))
+  > EOF
+
+  $ rm -rf _build
+  $ ./sdune exec expansions/main.exe
+  File "expansions/dune", line 4, characters 33-44:
+  4 |  (include_dirs (lib answer) (lib unknown_lib))
+                                       ^^^^^^^^^^^
+  Error: Library "unknown_lib" not found.
+  Hint: try: dune external-lib-deps --missing expansions/main.exe
+  [1]

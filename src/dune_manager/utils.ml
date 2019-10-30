@@ -1,8 +1,9 @@
 open Stdune
 
 let int_of_string ?where s =
-  try Result.Ok (int_of_string s)
-  with Failure _ ->
+  match Int.of_string s with
+  | Some s -> Ok s
+  | None ->
     Result.Error
       (Printf.sprintf "invalid integer%s: %s"
          ( match where with

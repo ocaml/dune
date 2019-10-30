@@ -189,7 +189,7 @@ let unzip l =
   fold_right ~init:([], []) ~f:(fun (x, y) (xs, ys) -> (x :: xs, y :: ys)) l
 
 let rec for_all2 x y ~f =
-  match x, y with
+  match (x, y) with
   | [], [] -> Ok true
   | x :: xs, y :: ys ->
     if f x y then

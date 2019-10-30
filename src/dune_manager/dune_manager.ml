@@ -92,6 +92,7 @@ exception Error of string
 
 let make ?root ~config () : t =
   match Dune_memory.Memory.make ?root (fun _ -> ()) with
+  | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok memory ->
     { root
     ; socket = None
@@ -103,7 +104,6 @@ let make ?root ~config () : t =
     ; events = Evt.new_channel ()
     ; memory
     }
-  | Result.Error msg -> User_error.raise [ Pp.text msg ]
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->

@@ -1,6 +1,7 @@
 open Stdune
 module Key = Key
 include Dune_memory_intf
+open Result.O
 
 type 'a result = ('a, string) Result.t
 
@@ -16,6 +17,11 @@ let promotion_to_string = function
     Printf.sprintf "%s promoted as %s"
       (Path.Local.to_string (Path.Build.local in_the_build_directory))
       (Path.to_string in_the_memory)
+
+let file_of_promotion = function
+  | Already_promoted f
+  | Promoted f ->
+    f
 
 let command_to_dyn = function
   | Dedup { in_the_build_directory; in_the_memory; digest } ->
@@ -95,6 +101,47 @@ let apply ~f o v =
   match o with
   | Some o -> f v o
   | None -> v
+
+module MetadataFile = struct
+  type t =
+    { metadata : Sexp.t list
+    ; files : File.t list
+    }
+
+  let to_sexp { metadata; files } =
+    let open Sexp in
+    let f ({ in_the_build_directory; in_the_memory; _ } : File.t) =
+      Sexp.List
+        [ Sexp.Atom
+            (Path.Local.to_string (Path.Build.local in_the_build_directory))
+        ; Sexp.Atom (Path.to_string in_the_memory)
+        ]
+    in
+    List
+      [ List (Atom "metadata" :: metadata)
+      ; List (Atom "files" :: List.map ~f files)
+      ]
+
+  let of_sexp = function
+    | Sexp.List
+        [ List (Atom "metadata" :: metadata); List (Atom "files" :: produced) ]
+      ->
+      let+ files =
+        Result.List.map produced ~f:(function
+          | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
+            let in_the_build_directory =
+              Path.Build.of_string in_the_build_directory
+            and in_the_memory = Path.of_string in_the_memory in
+            Ok
+              { File.in_the_memory
+              ; in_the_build_directory
+              ; digest = FSSchemeImpl.digest in_the_memory
+              }
+          | _ -> Error "invalid metadata scheme in produced files list")
+      in
+      { metadata; files }
+    | _ -> Error "invalid metadata"
+end
 
 module Memory = struct
   type t =
@@ -207,28 +254,12 @@ module Memory = struct
     let f () =
       Result.List.map ~f:promote paths
       >>| fun promoted ->
-      let metadata_path = FSSchemeImpl.path (path_meta memory) key in
+      let metadata_path = FSSchemeImpl.path (path_meta memory) key
+      and files = List.map ~f:file_of_promotion promoted in
+      let metadata_file : MetadataFile.t = { metadata; files } in
       Path.mkdir_p (Path.parent_exn metadata_path);
       Io.write_file metadata_path
-        (Csexp.to_string
-           (List
-              [ List (Atom "metadata" :: metadata)
-              ; List
-                  ( Atom "files"
-                  :: List.map
-                       ~f:(function
-                         | Promoted
-                             { in_the_build_directory; in_the_memory; _ }
-                         | Already_promoted
-                             { in_the_build_directory; in_the_memory; _ } ->
-                           Sexp.List
-                             [ Sexp.Atom
-                                 (Path.Local.to_string
-                                    (Path.Build.local in_the_build_directory))
-                             ; Sexp.Atom (Path.to_string in_the_memory)
-                             ])
-                       promoted )
-              ]));
+        (Csexp.to_string (MetadataFile.to_sexp metadata_file));
       let f = function
         | Already_promoted file -> memory.handler (Dedup file)
         | _ -> ()
@@ -244,42 +275,25 @@ module Memory = struct
   let search memory key =
     let path = FSSchemeImpl.path (path_meta memory) key in
     let f () =
-      let open Result.O in
-      ( try
+      let* sexp =
+        try
           Io.with_file_in path ~f:(fun input ->
               Csexp.parse (Stream.of_channel input))
-        with Sys_error _ -> Error "no cached file" )
-      >>= function
-      | Sexp.List
-          [ List (Atom "metadata" :: metadata)
-          ; List (Atom "files" :: produced)
-          ] ->
-        let+ produced =
-          Result.List.map produced ~f:(function
-            | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
-              let in_the_build_directory =
-                Path.Build.of_string in_the_build_directory
-              and in_the_memory = Path.of_string in_the_memory in
-              Ok
-                { File.in_the_memory
-                ; in_the_build_directory
-                ; digest = FSSchemeImpl.digest in_the_memory
-                }
-            | _ -> Error "invalid metadata scheme in produced files list")
+        with Sys_error _ -> Error "no cached file"
+      in
+      let+ metadata = MetadataFile.of_sexp sexp in
+      (* Touch cache files so they are removed last by LRU trimming *)
+      let () =
+        let f (file : File.t) =
+          (* There is no point in trying to trim out files that are missing :
+             dune will have to check when hardlinking anyway since they could
+             disappear inbetween. *)
+          try Path.touch file.in_the_memory
+          with Unix.(Unix_error (ENOENT, _, _)) -> ()
         in
-        (* Touch cache files so they are removed last by LRU trimming *)
-        let () =
-          let f (file : File.t) =
-            (* There is no point in trying to trim out files that are missing :
-               dune will have to check when hardlinking anyway since they could
-               disappear inbetween. *)
-            try Path.touch file.in_the_memory
-            with Unix.(Unix_error (ENOENT, _, _)) -> ()
-          in
-          List.iter ~f produced
-        in
-        (metadata, produced)
-      | _ -> Error "invalid metadata"
+        List.iter ~f metadata.files
+      in
+      (metadata.metadata, metadata.files)
     in
     with_lock memory f
 

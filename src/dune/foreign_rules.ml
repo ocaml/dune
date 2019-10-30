@@ -27,14 +27,19 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
                 contains not only files but also directories and traverse them
                 recursively in [Build_system.Exported.Pred]. *)
              let () =
-               match Path.readdir_unsorted include_dir with
-               | Error m ->
+               let error msg =
                  User_error.raise ~loc
-                   [ Pp.textf "Unable to read the include directory %S."
-                       (Path.to_string include_dir)
-                   ; Pp.textf "Reason: %s." (Unix.error_message m)
+                   [ Pp.textf "Unable to read the include directory."
+                   ; Pp.textf "Reason: %s." msg
                    ]
-               | Ok _ -> ()
+               in
+               match Path.is_directory_with_error include_dir with
+               | Error msg -> error msg
+               | Ok false ->
+                 error
+                   (Printf.sprintf "%S is not a directory"
+                      (Path.to_string include_dir))
+               | Ok true -> ()
              in
              let deps =
                Dep.Set.singleton

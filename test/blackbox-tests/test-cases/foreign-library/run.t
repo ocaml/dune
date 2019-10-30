@@ -249,8 +249,37 @@ Testsuite for the (foreign_library ...) stanza.
   File "lib/dune", line 12, characters 23-33:
   12 |  (include_dirs headers /some/path)
                               ^^^^^^^^^^
-  Error: Unable to read the include directory "/some/path".
-  Reason: No such file or directory.
+  Error: Unable to read the include directory.
+  Reason: /some/path: No such file or directory.
+  [1]
+
+----------------------------------------------------------------------------------
+* Error when specifying an external file in (include_dirs... )
+
+  $ cat >lib/dune <<EOF
+  > (foreign_library
+  >  (archive_name addmul)
+  >  (language c)
+  >  (names add mul))
+  > (library
+  >  (name calc)
+  >  (modules calc)
+  >  (foreign_archives addmul config))
+  > (foreign_library
+  >  (archive_name config)
+  >  (language cxx)
+  >  (include_dirs headers /usr/bin/env)
+  >  (extra_deps eight.h)
+  >  (flags -DCONFIG_VALUE=2000)
+  >  (names config))
+  > EOF
+
+  $ ./sdune build
+  File "lib/dune", line 12, characters 23-35:
+  12 |  (include_dirs headers /usr/bin/env)
+                              ^^^^^^^^^^^^
+  Error: Unable to read the include directory.
+  Reason: "/usr/bin/env" is not a directory.
   [1]
 
 ----------------------------------------------------------------------------------

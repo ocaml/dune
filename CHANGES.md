@@ -1,5 +1,5 @@
-2.0.0 (unreleased)
-------------------
+2.0.0+draft1 (31/10/2019)
+-------------------------
 
 - Introduce `alias` and `package` fields to the `rule` stanza. This is the
   preferred way of attaching rules to aliases. (#2744, @rgrinberg)

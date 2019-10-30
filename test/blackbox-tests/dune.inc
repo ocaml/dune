@@ -576,7 +576,9 @@
  (action
   (chdir
    test-cases/fdo
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.11.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (alias
  (name findlib)

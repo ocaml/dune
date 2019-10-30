@@ -139,7 +139,7 @@ let exclusions =
   ; odoc "github717-odoc-index"
   ; odoc "multiple-private-libs"
   ; make "cinaps" ~external_deps:true ~enabled:false
-  ; make "fdo" ~external_deps:true ~enabled:false
+  ; make "fdo" ~external_deps:true ~enabled:false ~skip_ocaml:"<4.11.0"
   ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
   ; make "cross-compilation" ~external_deps:true
   ; make "dune-ppx-driver-system" ~external_deps:true

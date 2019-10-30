@@ -276,7 +276,7 @@ module Memory = struct
             try Path.touch file.in_the_memory
             with Unix.(Unix_error (ENOENT, _, _)) -> ()
           in
-          ignore (List.iter ~f produced)
+          List.iter ~f produced
         in
         (metadata, produced)
       | _ -> Error "invalid metadata"

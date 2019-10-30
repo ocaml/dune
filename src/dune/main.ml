@@ -195,7 +195,7 @@ let bootstrap () =
         , " always print exception backtraces" )
       ]
       anon "Usage: boot.exe [-j JOBS] [--dev]\nOptions are:";
-    Clflags.debug_dep_path := true;
+    Fdecl.set Clflags.debug_dep_path true;
     let config =
       (* Only load the configuration with --dev *)
       if !profile = Some Profile.Release then

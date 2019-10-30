@@ -1,3 +1,5 @@
+open Stdune
+
 module Promote = struct
   type t =
     | Automatically
@@ -6,7 +8,7 @@ end
 
 let debug_findlib = ref false
 
-let debug_dep_path = ref false
+let debug_dep_path = Fdecl.create ~default:false Dyn.Encoder.bool
 
 let external_lib_deps_hint = ref []
 

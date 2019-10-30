@@ -119,7 +119,7 @@ let report { Exn_with_backtrace.exn; backtrace } =
           (Printexc.raw_backtrace_to_string backtrace);
       let dependency_path =
         let dependency_path = Option.value dependency_path ~default:[] in
-        if !Clflags.debug_dep_path then
+        if Fdecl.get Clflags.debug_dep_path then
           dependency_path
         else
           (* Only keep the part that doesn't come from the build system *)

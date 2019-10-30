@@ -1,7 +1,8 @@
 (** Command line flags *)
+open Stdune
 
 (** Print dependency path in case of error *)
-val debug_dep_path : bool ref
+val debug_dep_path : bool Fdecl.t
 
 (** Debug the findlib implementation *)
 val debug_findlib : bool ref

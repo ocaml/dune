@@ -1,0 +1,20 @@
+(lang dune 2.0)
+
+; this is a test for various ways of specifying an fdo context
+; and inferring the names of these contexts from the name
+; of the target executable, unless explicitly specified.
+
+(context (default))
+
+;; ; explicitly named context with fdo
+(context (default
+           (fdo src/foo.exe)
+           (name foofoo)
+           ))
+
+;; default named context with fdo
+(context (default
+           (fdo src/foo.exe)
+               ; expected name:
+               ;; (name default-fdo-foo)
+           ))

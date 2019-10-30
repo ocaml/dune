@@ -1,0 +1,18 @@
+(lang dune 2.0)
+
+; this is a test for various ways of specifying an fdo context
+; and inferring the names of these contexts from the name
+; of the target executable, unless explicitly specified.
+
+(context (default
+           (fdo src/test2.exe)
+               ; expected name:
+               ;; (name default-fdo-test2)
+           ))
+
+; the following context is expected to cause an error
+; because it has the same name as the inferred names of fdo context
+(context (default
+           (name default-fdo-test2)
+           ))
+

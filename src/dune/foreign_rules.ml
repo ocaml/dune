@@ -56,6 +56,7 @@ let build_c_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     Super_context.foreign_flags sctx ~dir ~expander ~flags
       ~language:Foreign.Language.C
   in
+  let c_flags = Build.map c_flags ~f:(List.append (Fdo.c_flags ctx)) in
   Super_context.add_rule sctx ~loc
     ~dir
       (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
@@ -88,6 +89,7 @@ let build_cxx_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
     Super_context.foreign_flags sctx ~dir ~expander ~flags
       ~language:Foreign.Language.Cxx
   in
+  let cxx_flags = Build.map cxx_flags ~f:(List.append (Fdo.cxx_flags ctx)) in
   Super_context.add_rule sctx ~loc
     ~dir
       (* this seems to work with sandboxing, but for symmetry with

@@ -24,7 +24,7 @@ Workspaces let you set custom profiles
   Entering directory 'custom-profile'
   build profile: foobar
 
-A workspace context can ve defined using an opam switch. This test is disabled
+A workspace context can be defined using an opam switch. This test is disabled
 because we don't really have a way to mock an opam switch.
 
 #  $ dune build --root opam --display quiet 2>&1

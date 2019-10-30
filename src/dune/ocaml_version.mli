@@ -50,3 +50,10 @@ val supports_let_syntax : t -> bool
 
 (** Does this support [-output-complete-exe]? *)
 val supports_output_complete_exe : t -> bool
+
+(** Whether the compiler supports options for splitting compilation at emit:
+    [-stop-after scheduling] [-save-ir-after scheduling] [-start-from emit] *)
+val supports_split_at_emit : t -> bool
+
+(** Whether the compiler supports -function-sections *)
+val supports_function_sections : t -> bool

@@ -510,3 +510,9 @@ let make vars =
   with
   | t -> Ok t
   | exception Vars.E (origin, msg) -> Error (origin, msg)
+
+let is_dev_version t =
+  try
+    Scanf.sscanf t.version_string "%u.%u.%u+dev" (fun _ _ _ -> ());
+    true
+  with _ -> false

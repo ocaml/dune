@@ -128,6 +128,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:linkage.mode in
+  let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   SC.add_rule sctx ~loc ~dir
     ~mode:
       ( match promote with
@@ -166,6 +167,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                    ])
            ; Deps o_files
            ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
+           ; Fdo.Linker_script.flags fdo_linker_script
            ])
 
 let link_js ~name ~cm_files ~promote cctx =

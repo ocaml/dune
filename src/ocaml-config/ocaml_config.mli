@@ -159,3 +159,5 @@ module Value : sig
 end
 
 val to_list : t -> (string * Value.t) list
+
+val is_dev_version : t -> bool

@@ -32,7 +32,8 @@ module Memory : sig
   val make : ?root:Path.t -> handler -> (t, string) Result.t
 end
 
-(** The size of cached files. *)
+(** The size overhead of cached files. That is, the total size of cached files
+    that are not linked in a build directory. *)
 val size : Memory.t -> int
 
 (** [trim memory size] removes files from [memory], starting with the least

@@ -403,7 +403,13 @@ let size memory =
   let files = FSSchemeImpl.list root in
   let stats =
     let f p =
-      try (Path.stat p).st_size with Unix.Unix_error (Unix.ENOENT, _, _) -> 0
+      try
+        let stats = Path.stat p in
+        if trimmable ~stats p then
+          stats.st_size
+        else
+          0
+      with Unix.Unix_error (Unix.ENOENT, _, _) -> 0
     in
     List.map ~f files
   in

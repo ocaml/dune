@@ -39,4 +39,7 @@ val size : Memory.t -> int
     recently used one, until [size] bytes have been freed. *)
 val trim : Memory.t -> int -> int * Path.t list
 
+(** Purge invalid or incomplete cached rules. *)
+val garbage_collect : Memory.t -> unit
+
 val make_caching : (module Memory with type t = 'a) -> 'a -> (module Caching)

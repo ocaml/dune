@@ -141,6 +141,11 @@ module MetadataFile = struct
       in
       { metadata; files }
     | _ -> Error "invalid metadata"
+
+  let parse path =
+    Io.with_file_in path ~f:(fun input ->
+        Csexp.parse (Stream.of_channel input))
+    >>= of_sexp
 end
 
 module Memory = struct
@@ -308,13 +313,55 @@ module Memory = struct
       Result.ok { root; build_root = None; repositories = []; handler }
 end
 
+let trimmable ?stats p =
+  let stats =
+    match stats with
+    | None -> Path.stat p
+    | Some stats -> stats
+  in
+  stats.Unix.st_nlink = 1
+
+let garbage_collect memory =
+  let path = Memory.path_meta memory in
+  let metas =
+    List.map ~f:(fun p -> (p, MetadataFile.parse p)) (FSSchemeImpl.list path)
+  in
+  let f = function
+    | p, Result.Error msg ->
+      Memory.with_lock memory (fun () ->
+          Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
+          Path.unlink_no_err p)
+    | p, Result.Ok { MetadataFile.files; _ } ->
+      if
+        not
+          (List.for_all
+             ~f:(fun { File.in_the_memory; _ } -> Path.exists in_the_memory)
+             files)
+      then
+        Memory.with_lock memory (fun () ->
+            Log.infof
+              "remove metadata file %a as some produced files are missing"
+              Path.pp p;
+            List.iter
+              ~f:(fun f ->
+                let p = f.File.in_the_memory in
+                if
+                  try trimmable p
+                  with Unix.Unix_error (Unix.ENOENT, _, _) -> true
+                then
+                  Path.unlink_no_err p)
+              files;
+            Path.unlink_no_err p)
+  in
+  List.iter ~f metas
+
 let trim memory free =
   let path = Memory.path_files memory in
   let files = FSSchemeImpl.list path in
   let f path =
-    let stat = Path.stat path in
-    if stat.st_nlink = 1 then
-      Some (path, stat.st_size, stat.st_mtime)
+    let stats = Path.stat path in
+    if trimmable ~stats path then
+      Some (path, stats.st_size, stats.st_mtime)
     else
       None
   and compare (_, _, t1) (_, _, t2) =
@@ -329,8 +376,12 @@ let trim memory free =
       (freed + size, path :: res)
     )
   in
-  Memory.with_lock memory (fun () ->
-      List.fold_left ~init:(0, []) ~f:delete files)
+  let res =
+    Memory.with_lock memory (fun () ->
+        List.fold_left ~init:(0, []) ~f:delete files)
+  in
+  garbage_collect memory;
+  res
 
 let size memory =
   let root = Memory.path_files memory in

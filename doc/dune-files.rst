@@ -1666,6 +1666,22 @@ context or can be the description of an opam switch, as follows:
   Relative paths are interpreted with respect to the workspace root, see
   :ref:`finding-root`.
 
+- ``(fdo <target_exe>)`` build this context with feedback-direct
+  optimizations. Requires `OCamlFDO
+  <https://github.com/gretay-js/ocamlfdo>`__. ``<target_exe>`` is a
+  path interpreted relative to the workspace root, see
+  :ref:`finding-root`. ``<target_exe>`` specifies which executable to
+  optimize. Users should define a different context for each target
+  executable built with FDO. The name of the context is derived
+  automatically from the default name and ``<target-exe>``, unless
+  explicitly specified using ``(name ...)`` field.  For example, if
+  ``<target_exe>`` is *src/foo.exe* in a default context, then the
+  name of the cotext is *default-fdo-foo* and the name of the file
+  that contains execution counters is *src/fdo.exe.fdo-profile*.  This
+  feature is **experimental** and no backwards compatibility is
+  implied.
+
+
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to
 setup cross compilation. See :ref:`cross-compilation` for more
 information.

@@ -1,11 +1,8 @@
-2.1.0 (unreleased)
-----------------
+2.0.0 (unreleased)
+------------------
 
 - Introduce `alias` and `package` fields to the `rule` stanza. This is the
   preferred way of attaching rules to aliases. (#2744, @rgrinberg)
-
-2.0.0 (unreleased)
-------------------
 
 - Add field `(optional)` for executable stanzas (#2463, fixes #2433, @bobot)
 

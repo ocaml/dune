@@ -322,7 +322,7 @@ let trimmable ?stats p =
   stats.Unix.st_nlink = 1
 
 let default_trim : trimming_result =
-  { trimmed_files = (0, []); trimmed_metafiles = [] }
+  { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }
 
 let _garbage_collect default_trim memory =
   let path = Memory.path_meta memory in
@@ -349,14 +349,17 @@ let _garbage_collect default_trim memory =
               Path.pp p;
             let res =
               List.fold_left ~init:default_trim
-                ~f:(fun ({ trimmed_files = size, files; _ } as trim) f ->
+                ~f:
+                  (fun ( { trimmed_files_size = size; trimmed_files = files; _ }
+                       as trim ) f ->
                   let p = f.File.in_the_memory in
                   try
                     let stats = Path.stat p in
                     if trimmable p then (
                       Path.unlink_no_err p;
                       { trim with
-                        trimmed_files = (size + stats.st_size, p :: files)
+                        trimmed_files_size = size + stats.st_size
+                      ; trimmed_files = p :: files
                       }
                     ) else
                       trim
@@ -383,12 +386,16 @@ let trim memory free =
     Ordering.of_int (Pervasives.compare t1 t2)
   in
   let files = List.sort ~compare (List.filter_map ~f files)
-  and delete ({ trimmed_files = freed, files; _ } as trim) (path, size, _) =
+  and delete ({ trimmed_files_size = freed; trimmed_files = files; _ } as trim)
+      (path, size, _) =
     if freed >= free then
       trim
     else (
       Path.unlink path;
-      { trim with trimmed_files = (freed + size, path :: files) }
+      { trim with
+        trimmed_files_size = freed + size
+      ; trimmed_files = path :: files
+      }
     )
   in
   let trim =

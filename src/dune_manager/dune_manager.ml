@@ -267,7 +267,7 @@ module Client = struct
             ) else
               None
           with
-          | Some { trimmed_files = freed, _; _ } ->
+          | Some { trimmed_files_size = freed; _ } ->
             Log.infof "trimming freed %i bytes" freed
           | None -> Log.infof "skip trimming"
         in

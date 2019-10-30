@@ -21,7 +21,8 @@ type repository =
   }
 
 type trimming_result =
-  { trimmed_files : int * Path.t list
+  { trimmed_files_size : int
+  ; trimmed_files : Path.t list
   ; trimmed_metafiles : Path.t list
   }
 

@@ -321,16 +321,20 @@ let trimmable ?stats p =
   in
   stats.Unix.st_nlink = 1
 
-let garbage_collect memory =
+let default_trim : trimming_result =
+  { trimmed_files = (0, []); trimmed_metafiles = [] }
+
+let _garbage_collect default_trim memory =
   let path = Memory.path_meta memory in
   let metas =
     List.map ~f:(fun p -> (p, MetadataFile.parse p)) (FSSchemeImpl.list path)
   in
-  let f = function
+  let f default_trim = function
     | p, Result.Error msg ->
       Memory.with_lock memory (fun () ->
           Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
-          Path.unlink_no_err p)
+          Path.unlink_no_err p;
+          { default_trim with trimmed_metafiles = [ p ] })
     | p, Result.Ok { MetadataFile.files; _ } ->
       if
         not
@@ -342,18 +346,30 @@ let garbage_collect memory =
             Log.infof
               "remove metadata file %a as some produced files are missing"
               Path.pp p;
-            List.iter
-              ~f:(fun f ->
-                let p = f.File.in_the_memory in
-                if
-                  try trimmable p
-                  with Unix.Unix_error (Unix.ENOENT, _, _) -> true
-                then
-                  Path.unlink_no_err p)
-              files;
-            Path.unlink_no_err p)
+            let res =
+              List.fold_left ~init:default_trim
+                ~f:(fun ({ trimmed_files = size, files; _ } as trim) f ->
+                  let p = f.File.in_the_memory in
+                  try
+                    let stats = Path.stat p in
+                    if trimmable p then (
+                      Path.unlink_no_err p;
+                      { trim with
+                        trimmed_files = (size + stats.st_size, p :: files)
+                      }
+                    ) else
+                      trim
+                  with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
+                files
+            in
+            Path.unlink_no_err p;
+            res)
+      else
+        default_trim
   in
-  List.iter ~f metas
+  List.fold_left ~init:default_trim ~f metas
+
+let garbage_collect = _garbage_collect default_trim
 
 let trim memory free =
   let path = Memory.path_files memory in
@@ -368,20 +384,19 @@ let trim memory free =
     Ordering.of_int (Pervasives.compare t1 t2)
   in
   let files = List.sort ~compare (List.filter_map ~f files)
-  and delete (freed, res) (path, size, _) =
+  and delete ({ trimmed_files = freed, files; _ } as trim) (path, size, _) =
     if freed >= free then
-      (freed, res)
+      trim
     else (
       Path.unlink path;
-      (freed + size, path :: res)
+      { trim with trimmed_files = (freed + size, path :: files) }
     )
   in
-  let res =
+  let trim =
     Memory.with_lock memory (fun () ->
-        List.fold_left ~init:(0, []) ~f:delete files)
+        List.fold_left ~init:default_trim ~f:delete files)
   in
-  garbage_collect memory;
-  res
+  _garbage_collect trim memory
 
 let size memory =
   let root = Memory.path_files memory in

@@ -20,6 +20,11 @@ type repository =
   ; commit : string
   }
 
+type trimming_result =
+  { trimmed_files : int * Path.t list
+  ; trimmed_metafiles : Path.t list
+  }
+
 type command = Dedup of File.t
 
 type handler = command -> unit

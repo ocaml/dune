@@ -68,7 +68,7 @@ let trim ~trimmed_size ~size =
     Dune_memory.trim memory trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
-  | Ok (size, _) ->
+  | Ok { trimmed_files = size, _; _ } ->
     User_message.print (User_message.make [ Pp.textf "Freed %i bytes" size ])
 
 type mode =

@@ -1016,19 +1016,19 @@ module Library = struct
 
   let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
 
-  let archive_names t =
+  let foreign_archive_names t =
     ( if List.is_empty t.buildable.foreign_stubs then
       []
     else
       [ stubs_archive_name t ] )
     @ List.map ~f:snd t.buildable.foreign_archives
 
-  let lib_files t ~dir ~ext_lib =
-    List.map (archive_names t) ~f:(fun archive_name ->
+  let foreign_archives t ~dir ~ext_lib =
+    List.map (foreign_archive_names t) ~f:(fun archive_name ->
         Foreign.lib_file ~archive_name ~dir ~ext_lib)
 
-  let dll_files t ~dir ~ext_dll =
-    List.map (archive_names t) ~f:(fun archive_name ->
+  let foreign_dll_files t ~dir ~ext_dll =
+    List.map (foreign_archive_names t) ~f:(fun archive_name ->
         Foreign.dll_file ~archive_name ~dir ~ext_dll)
 
   let archive t ~dir ~ext =
@@ -1059,8 +1059,8 @@ module Library = struct
       This (Some (Module_name.of_local_lib_name (snd t.name)))
 
   let to_lib_info conf ~dir
-      ~lib_config:( { Lib_config.has_native; ext_lib; ext_dll; ext_obj; _ } as
-                  lib_config ) ~known_implementations =
+      ~lib_config:({ Lib_config.has_native; ext_lib; ext_dll; _ } as lib_config)
+      ~known_implementations =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
     let gen_archive_file ~dir ext =
@@ -1080,34 +1080,12 @@ module Library = struct
       | Some p -> Public (Dune_project.name conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
-    (* TODO: The name [foreign_archives] is confusing since we include
-       [compiled_native_archive] into the list. *)
-    let foreign_archives =
-      let static_archives = lib_files conf ~dir ~ext_lib
-      and dynamic_archives = dll_files conf ~dir ~ext_dll in
-      { Mode.Dict.byte = static_archives @ dynamic_archives
-      ; native =
-          (let compiled_native_archive =
-             Path.Build.relative dir
-               (Lib_name.Local.to_string lib_name ^ ext_lib)
-           in
-           compiled_native_archive :: static_archives)
-      }
+    let foreign_archives = foreign_archives conf ~dir ~ext_lib in
+    let native_archives =
+      [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib) ]
     in
-    let foreign_archives =
-      match conf.stdlib with
-      | Some { exit_module = Some m; _ } ->
-        let obj_name = Path.Build.relative dir (Module_name.uncapitalize m) in
-        { Mode.Dict.byte =
-            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo)
-            :: foreign_archives.byte
-        ; native =
-            Path.Build.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-            :: Path.Build.extend_basename obj_name ~suffix:ext_obj
-            :: foreign_archives.native
-        }
-      | _ -> foreign_archives
-    in
+    let foreign_dll_files = foreign_dll_files conf ~dir ~ext_dll in
+    let exit_module = Option.bind conf.stdlib ~f:(fun x -> x.exit_module) in
     let jsoo_archive =
       Some (gen_archive_file ~dir:(Obj_dir.obj_dir obj_dir) ".cma.js")
     in
@@ -1169,9 +1147,10 @@ module Library = struct
     Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
       ~version ~synopsis ~main_module_name ~sub_systems ~requires
       ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-      ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-      ~virtual_ ~implements ~variant ~known_implementations
-      ~default_implementation ~modes ~wrapped ~special_builtin_support
+      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps
+      ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
+      ~known_implementations ~default_implementation ~modes ~wrapped
+      ~special_builtin_support ~exit_module
 end
 
 module Install_conf = struct

@@ -394,12 +394,35 @@ let hash t = Id.hash (to_id t)
 
 include Comparable.Make (T)
 
-let link_flags t mode =
+let link_flags t (mode : Link_mode.t) (lib_config : Lib_config.t) =
   let archives = Lib_info.archives t.info in
   let foreign_archives = Lib_info.foreign_archives t.info in
+  let hidden =
+    match mode with
+    | Byte -> Lib_info.foreign_dll_files t.info
+    | Byte_with_stubs_statically_linked_in -> foreign_archives
+    | Native ->
+      List.rev_append (Lib_info.native_archives t.info) foreign_archives
+  in
+  let hidden =
+    match Lib_info.exit_module t.info with
+    | None -> hidden
+    | Some m -> (
+      let obj_name =
+        Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
+      in
+      match mode with
+      | Byte
+      | Byte_with_stubs_statically_linked_in ->
+        Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden
+      | Native ->
+        Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+        :: Path.extend_basename obj_name ~suffix:lib_config.ext_obj
+        :: hidden )
+  in
   Command.Args.S
-    [ Deps (Mode.Dict.get archives mode)
-    ; Hidden_deps (Mode.Dict.get foreign_archives mode |> Dep.Set.of_files)
+    [ Deps (Mode.Dict.get archives (Link_mode.mode mode))
+    ; Hidden_deps (Dep.Set.of_files hidden)
     ]
 
 module L = struct
@@ -438,10 +461,11 @@ module L = struct
 
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let compile_and_link_flags ~compile ~link ~mode =
+  let compile_and_link_flags ~compile ~link ~mode ~lib_config =
     let dirs = Path.Set.union (include_paths compile) (c_include_paths link) in
     Command.Args.S
-      (to_iflags dirs :: List.map link ~f:(fun t -> link_flags t mode))
+      ( to_iflags dirs
+      :: List.map link ~f:(fun t -> link_flags t mode lib_config) )
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
@@ -479,12 +503,12 @@ module Lib_and_module = struct
       Command.Args.S
         ( L.c_include_flags libs
         :: List.map ts ~f:(function
-             | Lib t -> link_flags t mode
+             | Lib t -> link_flags t mode lib_config
              | Module (obj_dir, m) ->
                Command.Args.S
                  ( Dep
                      (Obj_dir.Module.cm_file_unsafe obj_dir m
-                        ~kind:(Mode.cm_kind mode))
+                        ~kind:(Mode.cm_kind (Link_mode.mode mode)))
                  ::
                  ( match mode with
                  | Native ->
@@ -494,7 +518,9 @@ module Lib_and_module = struct
                               ~ext_obj:lib_config.ext_obj
                           ])
                    ]
-                 | Byte -> [] ) )) )
+                 | Byte
+                 | Byte_with_stubs_statically_linked_in ->
+                   [] ) )) )
 
     let of_libs l = List.map l ~f:(fun x -> Lib x)
   end

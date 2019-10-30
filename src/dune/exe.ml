@@ -12,15 +12,9 @@ module Program = struct
     }
 end
 
-let custom_or_output_complete_exe ctx =
-  if Ocaml_version.supports_output_complete_exe ctx.Context.version then
-    "-output-complete-exe"
-  else
-    "-custom"
-
 module Linkage = struct
   type t =
-    { mode : Mode.t
+    { mode : Link_mode.t
     ; ext : string
     ; flags : string list
     }
@@ -30,9 +24,10 @@ module Linkage = struct
   let native = { mode = Native; ext = ".exe"; flags = [] }
 
   let custom context =
-    { mode = Byte
+    { mode = Byte_with_stubs_statically_linked_in
     ; ext = ".exe"
-    ; flags = [ custom_or_output_complete_exe context ]
+    ; flags =
+        [ Ocaml_version.custom_or_output_complete_exe context.Context.version ]
     }
 
   let native_or_custom (context : Context.t) =
@@ -41,8 +36,6 @@ module Linkage = struct
     | Some _ -> native
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
-
-  let make ~mode ~ext ?(flags = []) () = { mode; ext; flags }
 
   let c_flags = [ "-output-obj" ]
 
@@ -54,13 +47,7 @@ module Linkage = struct
 
   let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t)
       =
-    let wanted_mode : Mode.t =
-      match m.mode with
-      | Byte -> Byte
-      | Native -> Native
-      | Best -> Native
-    in
-    let real_mode : Mode.t =
+    let link_mode : Link_mode.t =
       match m.mode with
       | Byte -> Byte
       | Native -> Native
@@ -68,10 +55,19 @@ module Linkage = struct
         if Option.is_some ctx.ocamlopt then
           Native
         else
-          Byte
+          Byte_with_stubs_statically_linked_in
     in
     let ext =
-      match (wanted_mode, m.kind) with
+      let same_as_mode : Mode.t =
+        match m.mode with
+        | Byte -> Byte
+        | Native
+        | Best ->
+          (* From the point of view of the extension, [native] and [best] are
+             the same *)
+          Native
+      in
+      match (same_as_mode, m.kind) with
       | Byte, C -> ".bc.c"
       | Native, C ->
         User_error.raise ~loc:m.loc
@@ -92,8 +88,9 @@ module Linkage = struct
       | C -> c_flags
       | Js -> []
       | Exe -> (
-        match (wanted_mode, real_mode) with
-        | Native, Byte -> [ custom_or_output_complete_exe ctx ]
+        match link_mode with
+        | Byte_with_stubs_statically_linked_in ->
+          [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
         | _ -> [] )
       | Object -> o_flags
       | Shared_object -> (
@@ -103,16 +100,18 @@ module Linkage = struct
           else
             so_flags_unix
         in
-        match real_mode with
+        match link_mode with
         | Native ->
           (* The compiler doesn't pass these flags in native mode. This looks
              like a bug in the compiler. *)
           List.concat_map ctx.native_c_libraries ~f:(fun flag ->
               [ "-cclib"; flag ])
           @ so_flags
-        | Byte -> so_flags )
+        | Byte
+        | Byte_with_stubs_statically_linked_in ->
+          so_flags )
     in
-    { ext; mode = real_mode; flags }
+    { ext; mode = link_mode; flags }
 end
 
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
@@ -124,10 +123,10 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
-  let mode = linkage.mode in
+  let mode = Link_mode.mode linkage.mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
   let compiler = Option.value_exn (Context.compiler ctx mode) in
-  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:linkage.mode in
+  let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   SC.add_rule sctx ~loc ~dir
     ~mode:
@@ -163,7 +162,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                        else
                          [] )
                    ; Lib.Lib_and_module.L.link_flags to_link
-                       ~lib_config:ctx.lib_config ~mode
+                       ~lib_config:ctx.lib_config ~mode:linkage.mode
                    ])
            ; Deps o_files
            ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))

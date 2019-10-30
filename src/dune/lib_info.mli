@@ -71,9 +71,21 @@ val loc : _ t -> Loc.t
 
 val archives : 'path t -> 'path list Mode.Dict.t
 
-val foreign_archives : 'path t -> 'path list Mode.Dict.t
+(** All the [.a/.lib/...] files for stubs *)
+val foreign_archives : 'path t -> 'path list
+
+(** The [.a/.lib/...] files for the OCaml code when compiling to native mode *)
+val native_archives : 'path t -> 'path list
+
+(** [.so/.dll/...] files for stubs. These are read when linking a bytecode
+    executable and are loaded dynamically at runtime by bytecode executables. *)
+val foreign_dll_files : 'path t -> 'path list
 
 val foreign_objects : 'path t -> 'path list Source.t
+
+(** The library has a module that must be linked at the end. This is used for
+    the [Std_exit] module of the stdlib. *)
+val exit_module : _ t -> Module_name.t option
 
 val plugins : 'path t -> 'path list Mode.Dict.t
 
@@ -169,7 +181,9 @@ val create :
   -> plugins:'a list Mode.Dict.t
   -> archives:'a list Mode.Dict.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
-  -> foreign_archives:'a list Mode.Dict.t
+  -> foreign_archives:'a list
+  -> native_archives:'a list
+  -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
   -> jsoo_archive:'a option
   -> pps:(Loc.t * Lib_name.t) list
@@ -184,6 +198,7 @@ val create :
   -> modes:Mode.Dict.Set.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
+  -> exit_module:Module_name.t option
   -> 'a t
 
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t

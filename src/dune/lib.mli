@@ -65,7 +65,11 @@ module L : sig
   val c_include_flags : t -> _ Command.Args.t
 
   val compile_and_link_flags :
-    compile:t -> link:t -> mode:Mode.t -> _ Command.Args.t
+       compile:t
+    -> link:t
+    -> mode:Link_mode.t
+    -> lib_config:Lib_config.t
+    -> _ Command.Args.t
 
   val jsoo_runtime_files : t -> Path.t list
 
@@ -93,7 +97,7 @@ module Lib_and_module : sig
     val of_libs : lib list -> t
 
     val link_flags :
-      t -> lib_config:Lib_config.t -> mode:Mode.t -> _ Command.Args.t
+      t -> lib_config:Lib_config.t -> mode:Link_mode.t -> _ Command.Args.t
   end
 end
 with type lib := t

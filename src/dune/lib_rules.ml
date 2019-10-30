@@ -24,7 +24,7 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
         Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode)
       in
       let stubs_flags =
-        List.concat_map (Library.archive_names lib) ~f:(fun name ->
+        List.concat_map (Library.foreign_archive_names lib) ~f:(fun name ->
             let lname = "-l" ^ name in
             let cclib = [ "-cclib"; lname ] in
             let dllib = [ "-dllib"; lname ] in
@@ -225,7 +225,9 @@ let build_shared lib ~sctx ~dir ~flags =
         Library.archive lib ~dir ~ext
       in
       let build =
-        Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
+        Build.paths
+          (Library.foreign_archives lib ~dir ~ext_lib |> List.map ~f:Path.build)
+        >>> Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
               [ Command.Args.dyn (Ocaml_flags.get flags Native)
               ; A "-shared"
@@ -236,10 +238,6 @@ let build_shared lib ~sctx ~dir ~flags =
               ; Target dst
               ; Dep src
               ]
-      in
-      let build =
-        List.fold_left ~init:build (Library.lib_files lib ~dir ~ext_lib)
-          ~f:(fun build lib -> Build.path (Path.build lib) >>> build)
       in
       Super_context.add_rule sctx build ~dir)
 

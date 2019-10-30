@@ -33,3 +33,29 @@ the second run of dune.
   -> _build/default/cd2
   -> _build/default/cd1
   [1]
+
+In some cases the dependencies are indirect (#666, #2818).
+They can make the error message worse.
+
+For the simple case, dependencies are enough to detect a cycle with a nice
+error message.
+
+  $ echo 'val x : unit' > indirect/c.mli
+  $ dune build @indirect-deps
+  Error: dependency cycle between modules in _build/default/indirect:
+     A
+  -> C
+  -> A
+  [1]
+
+But when the cycle is due to the cmi files themselves, the message becomes
+cryptic and can involve unrelated files:
+
+  $ echo 'val xx : B.t' >> indirect/c.mli
+  $ dune build @indirect-deps
+  Error: Dependency cycle between the following files:
+     _build/default/indirect/.a.eobjs/b.impl.all-deps
+  -> _build/default/indirect/.a.eobjs/c.intf.all-deps
+  -> _build/default/indirect/.a.eobjs/a.impl.all-deps
+  -> _build/default/indirect/.a.eobjs/b.impl.all-deps
+  [1]

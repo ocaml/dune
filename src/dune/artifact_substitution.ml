@@ -91,7 +91,11 @@ let encode ?(min_len = 0) t =
    rather than speed. *)
 let decode s =
   let fail () = raise_notrace Exit in
-  let parse_int s = try int_of_string s with _ -> fail () in
+  let parse_int s =
+    match Int.of_string s with
+    | None -> fail ()
+    | Some i -> i
+  in
   let len = String.length s in
   match
     if

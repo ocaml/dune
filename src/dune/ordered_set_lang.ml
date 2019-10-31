@@ -186,10 +186,10 @@ let standard = { ast = Ast.Standard; loc = None; context = Univ_map.empty }
 let replace_standard ~where ~with_ : ast_expanded generic =
   let rec f (t : ast_expanded) : ast_expanded =
     match t with
-    | Element x -> Element x
-    | Standard -> with_
-    | Union xs -> Union (List.map xs ~f)
-    | Diff (x, y) -> Diff (f x, f y)
+    | Ast.Element x -> Element x
+    | Ast.Standard -> with_
+    | Ast.Union xs -> Union (List.map xs ~f)
+    | Ast.Diff (x, y) -> Diff (f x, f y)
   in
   { ast = f where.ast; loc = where.loc; context = where.context }
 

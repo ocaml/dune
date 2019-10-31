@@ -1,0 +1,8 @@
+; a.ml -> c.mli -> b.mli
+
+(executable
+ (name a))
+
+(alias
+ (name indirect-deps)
+ (deps a.exe))

@@ -486,6 +486,7 @@ module Buildable = struct
       match names with
       | None -> foreign_stubs
       | Some names ->
+        let names = Ordered_set_lang.replace_standard_with_empty names in
         let flags =
           Option.value ~default:Ordered_set_lang.Unexpanded.standard flags
         in

@@ -30,6 +30,9 @@ val eval_loc :
 
 val standard : t
 
+(** Replace all occurrences of [:standard] with the empty set. *)
+val replace_standard_with_empty : t -> t
+
 val is_standard : t -> bool
 
 val field :

@@ -525,6 +525,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
+  >  (libraries base)
   >  (foreign_stubs (language c) (names month))
   >  (foreign_archives addmul config))
   > (foreign_library
@@ -670,6 +671,7 @@ Testsuite for the (foreign_library ...) stanza.
   > (executable
   >  (modes exe)
   >  (name main)
+  >  (libraries base)
   >  (foreign_archives clib)
   >  (modules main))
   > EOF

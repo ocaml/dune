@@ -42,14 +42,6 @@ module Env_nodes : sig
     }
 end
 
-module Ccomp_type : sig
-  type t =
-    | Msvc
-    | Other of string
-
-  val to_dyn : t -> Dyn.t
-end
-
 type t =
   { name : Context_name.t
   ; kind : Kind.t
@@ -89,7 +81,7 @@ type t =
   ; version_string : string
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
-  ; ccomp_type : Ccomp_type.t
+  ; ccomp_type : Lib_config.Ccomp_type.t
   ; c_compiler : string
   ; ocamlc_cflags : string list
   ; ocamlopt_cflags : string list

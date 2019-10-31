@@ -35,22 +35,6 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
-module Ccomp_type = struct
-  type t =
-    | Msvc
-    | Other of string
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Msvc -> constr "Msvc" []
-    | Other s -> constr "Other" [ string s ]
-
-  let of_string = function
-    | "msvc" -> Msvc
-    | s -> Other s
-end
-
 type t =
   { name : Context_name.t
   ; kind : Kind.t
@@ -79,7 +63,7 @@ type t =
   ; version_string : string
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
-  ; ccomp_type : Ccomp_type.t
+  ; ccomp_type : Lib_config.Ccomp_type.t
   ; c_compiler : string
   ; ocamlc_cflags : string list
   ; ocamlopt_cflags : string list
@@ -474,6 +458,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let ocamlopt = get_ocaml_tool "ocamlopt" in
+    let ccomp_type = Lib_config.Ccomp_type.of_config ocfg in
     let lib_config =
       { Lib_config.has_native = Option.is_some ocamlopt
       ; ext_obj = Ocaml_config.ext_obj ocfg
@@ -486,11 +471,11 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; natdynlink_supported =
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
       ; stdlib_dir
+      ; ccomp_type
       }
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
-    let ccomp_type = Ccomp_type.of_string (Ocaml_config.ccomp_type ocfg) in
     let t =
       { name
       ; implicit

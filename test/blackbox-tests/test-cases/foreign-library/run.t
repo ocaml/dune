@@ -3,7 +3,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ cat >sdune <<'EOF'
   > #!/usr/bin/env bash
-  > DUNE_SANDBOX=symlink dune "$@"
+  > dune "$@"
   > EOF
   $ chmod +x sdune
 

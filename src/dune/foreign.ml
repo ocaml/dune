@@ -138,7 +138,7 @@ module Stubs = struct
     and+ loc_archive_name, archive_name =
       located (field_o "archive_name" string)
     and+ language = field "language" Language.decode
-    and+ names = field "names" Ordered_set_lang.decode
+    and+ names = Ordered_set_lang.field "names"
     and+ flags = Ordered_set_lang.Unexpanded.field "flags"
     and+ include_dirs =
       field ~default:[] "include_dirs" (repeat Include_dir.decode)
@@ -195,6 +195,9 @@ module Source = struct
   let flags t = t.stubs.flags
 
   let path t = t.path
+
+  let object_name t =
+    t.path |> Path.Build.split_extension |> fst |> Path.Build.basename
 
   let make ~stubs ~path = { stubs; path }
 end

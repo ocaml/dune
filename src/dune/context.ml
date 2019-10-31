@@ -35,6 +35,22 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
+module Ccomp_type = struct
+  type t =
+    | Msvc
+    | Other of string
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Msvc -> constr "Msvc" []
+    | Other s -> constr "Other" [ string s ]
+
+  let of_string = function
+    | "msvc" -> Msvc
+    | s -> Other s
+end
+
 type t =
   { name : Context_name.t
   ; kind : Kind.t
@@ -63,7 +79,7 @@ type t =
   ; version_string : string
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
-  ; ccomp_type : string
+  ; ccomp_type : Ccomp_type.t
   ; c_compiler : string
   ; ocamlc_cflags : string list
   ; ocamlopt_cflags : string list
@@ -474,6 +490,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
+    let ccomp_type = Ccomp_type.of_string (Ocaml_config.ccomp_type ocfg) in
     let t =
       { name
       ; implicit
@@ -508,7 +525,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_config = ocfg
       ; version_string
       ; version
-      ; ccomp_type = Ocaml_config.ccomp_type ocfg
+      ; ccomp_type
       ; c_compiler = Ocaml_config.c_compiler ocfg
       ; ocamlc_cflags = Ocaml_config.ocamlc_cflags ocfg
       ; ocamlopt_cflags = Ocaml_config.ocamlopt_cflags ocfg
@@ -788,10 +805,9 @@ let best_mode t : Mode.t =
   | None -> Byte
 
 let cc_g (ctx : t) =
-  if ctx.ccomp_type <> "msvc" then
-    [ "-g" ]
-  else
-    []
+  match ctx.ccomp_type with
+  | Msvc -> []
+  | Other _ -> [ "-g" ]
 
 let name t = t.name
 

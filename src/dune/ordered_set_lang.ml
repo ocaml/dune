@@ -183,6 +183,19 @@ let eval_loc t ~parse ~eq ~standard =
 
 let standard = { ast = Ast.Standard; loc = None; context = Univ_map.empty }
 
+let replace_standard ~where ~with_ : ast_expanded generic =
+  let rec f (t : ast_expanded) : ast_expanded =
+    match t with
+    | Ast.Element x -> Element x
+    | Ast.Standard -> with_
+    | Ast.Union xs -> Union (List.map xs ~f)
+    | Ast.Diff (x, y) -> Diff (f x, f y)
+  in
+  { ast = f where.ast; loc = where.loc; context = where.context }
+
+let replace_standard_with_empty where =
+  replace_standard ~where ~with_:(Union [] : ast_expanded)
+
 let field ?check name =
   let decode =
     match check with

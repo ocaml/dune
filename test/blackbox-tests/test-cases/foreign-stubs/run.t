@@ -380,3 +380,50 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ (cd _build/default && ocamlrun -I . ./main.bc)
   2019
+
+----------------------------------------------------------------------------------
+* Fails when using standard names in foreign stubs due to multiple C++ sources
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name quad)
+  >  (modules quad)
+  >  (foreign_stubs (language cxx)))
+  > EOF
+
+  $ ./sdune build --display short
+  File "dune", line 4, characters 1-31:
+  4 |  (foreign_stubs (language cxx)))
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: Multiple sources map to the same object name "foo":
+  - foo.cpp
+  - foo.cxx
+  This is not allowed; please rename them or remove "foo" from object names.
+  Hint: You can also avoid the name clash by placing the objects into different
+  foreign archives and building them in different directories. Foreign archives
+  can be defined using the (foreign_library ...) stanza.
+  [1]
+
+----------------------------------------------------------------------------------
+* Succeeds when using a subset of standard names
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name quad)
+  >  (modules quad)
+  >  (foreign_stubs (language cxx) (names :standard \ foo)))
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune build --display short
+           gcc baz$ext_obj
+           gcc qux$ext_obj
+    ocamlmklib dllquad_stubs$ext_dll,libquad_stubs$ext_lib
+      ocamldep .quad.objs/quad.mli.d
+        ocamlc .quad.objs/byte/quad.{cmi,cmti}
+      ocamldep .quad.objs/quad.ml.d
+        ocamlc .quad.objs/byte/quad.{cmo,cmt}
+        ocamlc quad.cma
+      ocamlopt .quad.objs/native/quad.{cmx,o}
+      ocamlopt quad.{a,cmxa}
+      ocamlopt quad.cmxs

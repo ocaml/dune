@@ -43,7 +43,10 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
             Pp.text
               (Path.to_string_maybe_quoted
                  (Path.drop_optional_build_context (Path.build path))))
-      ; Pp.text "This is not allowed; please rename them."
+      ; Pp.textf
+          "This is not allowed; please rename them or remove %S from object \
+           names."
+          name
       ]
       ~hints:
         [ Pp.text
@@ -55,13 +58,18 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
   in
   let eval (stubs : Foreign.Stubs.t) =
     let language = stubs.language in
-    let osl = stubs.names in
-    Ordered_set_lang.Unordered_string.eval_loc osl
-      ~key:(fun x -> x)
-        (* CR-someday aalekseyev: Might be a good idea to change [standard] to
-           mean "all files with the relevant extension". *)
-      ~standard:String.Map.empty
-      ~parse:(fun ~loc s ->
+    let standard : (Loc.t * string) String.Map.t =
+      String.Map.filter_mapi sources ~f:(fun name srcs ->
+          List.find_map srcs ~f:(fun (l, _) ->
+              Option.some_if
+                (Foreign.Language.equal l language)
+                (stubs.loc, name)))
+    in
+    let names =
+      Ordered_set_lang.Unordered_string.eval_loc stubs.names ~key:Fn.id
+        ~standard ~parse:(fun ~loc:_ -> Fn.id)
+    in
+    String.Map.map names ~f:(fun (loc, s) ->
         let name = valid_name language ~loc s in
         let basename = Filename.basename s in
         if name <> basename then
@@ -71,28 +79,27 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
                  removed. To include sources in subdirectories, use the \
                  (include_subdirs ...) stanza."
             ];
-        name)
-    |> String.Map.map ~f:(fun (loc, name) ->
-           let candidates =
-             Option.map
-               (String.Map.find sources name)
-               ~f:
-                 (List.filter_map ~f:(fun (l, path) ->
-                      Option.some_if (Foreign.Language.equal l language) path))
-           in
-           match candidates with
-           | Some [ path ] -> (loc, Foreign.Source.make ~stubs ~path)
-           | None
-           | Some [] ->
-             User_error.raise ~loc
-               [ Pp.textf "Object %S has no source; %s must be present." name
-                   (String.enumerate_one_of
-                      ( Foreign.possible_sources ~language name
-                          ~dune_version:d.dune_version
-                      |> List.map ~f:(fun s -> sprintf "%S" s) ))
-               ]
-           | Some (_ :: _ :: _ as paths) ->
-             multiple_sources_error ~name ~loc ~paths)
+        let open Option.O in
+        let source =
+          let* candidates = String.Map.find sources name in
+          match
+            List.filter_map candidates ~f:(fun (l, path) ->
+                Option.some_if (Foreign.Language.equal l language) path)
+          with
+          | [ path ] -> Some (loc, Foreign.Source.make ~stubs ~path)
+          | [] -> None
+          | _ :: _ :: _ as paths -> multiple_sources_error ~name ~loc ~paths
+        in
+        match source with
+        | Some source -> source
+        | None ->
+          User_error.raise ~loc
+            [ Pp.textf "Object %S has no source; %s must be present." name
+                (String.enumerate_one_of
+                   ( Foreign.possible_sources ~language name
+                       ~dune_version:d.dune_version
+                   |> List.map ~f:(fun s -> sprintf "%S" s) ))
+            ])
   in
   let stub_maps = List.map foreign_stubs ~f:eval in
   List.fold_left stub_maps ~init:String.Map.empty ~f:(fun a b ->
@@ -160,11 +167,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
       |> List.concat_map ~f:(fun sources ->
              String.Map.values sources
              |> List.map ~f:(fun (loc, source) ->
-                    let object_name =
-                      Foreign.Source.path source |> Path.Build.split_extension
-                      |> fst |> Path.Build.basename
-                    in
-                    (object_name ^ ext_obj, loc)))
+                    (Foreign.Source.object_name source ^ ext_obj, loc)))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()

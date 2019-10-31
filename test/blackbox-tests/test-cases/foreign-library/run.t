@@ -3,7 +3,7 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ cat >sdune <<'EOF'
   > #!/usr/bin/env bash
-  > dune "$@"
+  > DUNE_SANDBOX=symlink dune "$@"
   > EOF
   $ chmod +x sdune
 
@@ -525,7 +525,6 @@ Testsuite for the (foreign_library ...) stanza.
   > (library
   >  (name calc)
   >  (modules calc)
-  >  (libraries base)
   >  (foreign_stubs (language c) (names month))
   >  (foreign_archives addmul config))
   > (foreign_library
@@ -671,7 +670,6 @@ Testsuite for the (foreign_library ...) stanza.
   > (executable
   >  (modes exe)
   >  (name main)
-  >  (libraries base)
   >  (foreign_archives clib)
   >  (modules main))
   > EOF
@@ -685,17 +683,16 @@ Testsuite for the (foreign_library ...) stanza.
 * Using an external directory in (include_dir ...)
 
   $ cat >some/dir/dune <<EOF
-  > (executable
-  >  (modes exe)
-  >  (name main)
-  >  (libraries base)
-  >  (foreign_archives clib)
-  >  (modules main))
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
   >  (include_dirs (lib answer) (lib base))
   >  (names src))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (foreign_archives clib)
+  >  (modules main))
   > EOF
 
   $ cat >some/dir/src.c <<EOF

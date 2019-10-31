@@ -148,6 +148,7 @@ let exclusions =
   ; make "install-libdir" ~external_deps:true
   ; make "lint" ~external_deps:true
   ; make "ppx-runtime-dependencies" ~external_deps:true
+  ; make "foreign-library" ~external_deps:true
   ; make "package-dep" ~external_deps:true
   ; make "merlin-tests" ~external_deps:true
   ; make "use-meta" ~external_deps:true

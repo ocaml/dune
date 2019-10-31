@@ -683,16 +683,17 @@ Testsuite for the (foreign_library ...) stanza.
 * Using an external directory in (include_dir ...)
 
   $ cat >some/dir/dune <<EOF
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (libraries base)
+  >  (foreign_archives clib)
+  >  (modules main))
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
   >  (include_dirs (lib answer) (lib base))
   >  (names src))
-  > (executable
-  >  (modes exe)
-  >  (name main)
-  >  (foreign_archives clib)
-  >  (modules main))
   > EOF
 
   $ cat >some/dir/src.c <<EOF

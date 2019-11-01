@@ -42,7 +42,7 @@ module Env_nodes : sig
     }
 end
 
-type t =
+type t = private
   { name : Context_name.t
   ; kind : Kind.t
   ; profile : Profile.t

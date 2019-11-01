@@ -391,7 +391,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (foreign_stubs (language cxx)))
   > EOF
 
-  $ ./sdune build --display short
+  $ ./sdune build
   File "dune", line 4, characters 1-31:
   4 |  (foreign_stubs (language cxx)))
        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -415,15 +415,4 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune clean
-  $ ./sdune build --display short
-           gcc baz$ext_obj
-           gcc qux$ext_obj
-    ocamlmklib dllquad_stubs$ext_dll,libquad_stubs$ext_lib
-      ocamldep .quad.objs/quad.mli.d
-        ocamlc .quad.objs/byte/quad.{cmi,cmti}
-      ocamldep .quad.objs/quad.ml.d
-        ocamlc .quad.objs/byte/quad.{cmo,cmt}
-        ocamlc quad.cma
-      ocamlopt .quad.objs/native/quad.{cmx,o}
-      ocamlopt quad.{a,cmxa}
-      ocamlopt quad.cmxs
+  $ ./sdune build

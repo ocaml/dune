@@ -89,6 +89,7 @@ Among other things, dune-configurator allows one to:
  (name dune-action-plugin)
  (depends
   dune-glob
+  (ppx_expect :test)
   (dune-private-libs (= :version)))
  (synopsis "[experimental] API for writing dynamic Dune actions")
  (description "\

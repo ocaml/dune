@@ -15,6 +15,12 @@ module Context = struct
       | Native
       | Named of Context_name.t
 
+    let equal x y =
+      match (x, y) with
+      | Native, Native -> true
+      | Named x, Named y -> Context_name.equal x y
+      | _, _ -> false
+
     let t =
       map string ~f:(function
         | "native" -> Native
@@ -43,6 +49,30 @@ module Context = struct
       ; fdo_target_exe : Path.t option
       ; disable_dynamically_linked_foreign_archives : bool
       }
+
+    let equal
+        { loc = _
+        ; profile
+        ; targets
+        ; env
+        ; toolchain
+        ; name
+        ; host_context
+        ; paths
+        ; fdo_target_exe
+        ; disable_dynamically_linked_foreign_archives
+        } t =
+      Profile.equal profile t.profile
+      && List.equal Target.equal targets t.targets
+      && Dune_env.Stanza.equal env t.env
+      && Option.equal Context_name.equal toolchain t.toolchain
+      && Context_name.equal name t.name
+      && Option.equal Context_name.equal host_context t.host_context
+      && List.equal
+           (Tuple.T2.equal String.equal Ordered_set_lang.equal)
+              && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
+      && Bool.equal disable_dynamically_linked_foreign_archives
+           t.disable_dynamically_linked_foreign_archives
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -128,6 +158,12 @@ module Context = struct
       ; merlin : bool
       }
 
+    let equal { base; switch; root; merlin } t =
+      Common.equal base t.base
+      && Context_name.equal switch t.switch
+      && Option.equal String.equal root t.root
+      && Bool.equal merlin t.merlin
+
     let t ~profile ~x =
       let+ switch = field "switch" Context_name.decode
       and+ name = field_o "name" Context_name.decode
@@ -163,11 +199,19 @@ module Context = struct
       in
       let name = Option.value ~default name in
       { common with targets = Target.add common.targets x; name }
+
+    let equal = Common.equal
   end
 
   type t =
     | Default of Default.t
     | Opam of Opam.t
+
+  let equal x y =
+    match (x, y) with
+    | Default x, Default y -> Default.equal x y
+    | Opam x, Opam y -> Opam.equal x y
+    | _, _ -> false
 
   let loc = function
     | Default x -> x.loc
@@ -223,6 +267,11 @@ type t =
   ; contexts : Context.t list
   ; env : Dune_env.Stanza.t
   }
+
+let equal { merlin_context; contexts; env } w =
+  Option.equal Context_name.equal merlin_context w.merlin_context
+  && List.equal Context.equal contexts w.contexts
+  && Dune_env.Stanza.equal env w.env
 
 include Dune_lang.Versioned_file.Make (struct
   type t = unit

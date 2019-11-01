@@ -222,6 +222,49 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
+module DB = struct
+  module Settings = struct
+    let t = Fdecl.create Dyn.Encoder.opaque
+
+    let equal (e1, w1) (e2, w2) = Env.equal e1 e2 && Workspace.equal w1 w2
+
+    type state =
+      | Already_initialized
+      | Needs_initialization
+
+    let set ~env workspace =
+      match Fdecl.peek t with
+      | Some v ->
+        if equal v (env, workspace) then
+          Already_initialized
+        else
+          User_error.raise
+            [ Pp.text "You must restart dune after updating a workspace file" ]
+      | None ->
+        Fdecl.set t (env, workspace);
+        Needs_initialization
+  end
+
+  let t = Fiber.Ivar.create ()
+
+  let get dir =
+    match Fiber.Ivar.peek t with
+    | None ->
+      Code_error.raise "Context.DB.get: called before initialization" []
+    | Some db -> (
+      match Path.Build.extract_build_context dir with
+      | None ->
+        Code_error.raise "Context.DB.get: invalid dir"
+          [ ("dir", Path.Build.to_dyn dir) ]
+      | Some (name, _) -> (
+        let name = Context_name.of_string name in
+        match Context_name.Map.find db name with
+        | Some c -> c
+        | None ->
+          Code_error.raise "Context.DB.get: context does not exist"
+            [ ("name", Context_name.to_dyn name) ] ) )
+end
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives =
@@ -688,7 +731,7 @@ let instantiate_context env (workspace : Workspace.t)
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
       ~disable_dynamically_linked_foreign_archives
 
-let create ~env (workspace : Workspace.t) =
+let create ~env (workspace : Workspace.t) : t list Fiber.t =
   let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
     lazy
       ( List.map workspace.contexts ~f:(fun context ->
@@ -717,6 +760,21 @@ let create ~env (workspace : Workspace.t) =
   Lazy.force contexts |> Context_name.Map.values
   |> Fiber.parallel_map ~f:Fiber.Once.get
   |> Fiber.map ~f:List.concat
+
+let create ~env workspace =
+  match DB.Settings.set ~env workspace with
+  | Already_initialized ->
+    let+ contexts = Fiber.Ivar.read DB.t in
+    Context_name.Map.values contexts
+  | Needs_initialization ->
+    let open Fiber.O in
+    let* contexts = create ~env workspace in
+    let+ () =
+      Fiber.Ivar.fill DB.t
+        (Context_name.Map.of_list_map_exn contexts ~f:(fun ctx ->
+             (ctx.name, ctx)))
+    in
+    contexts
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

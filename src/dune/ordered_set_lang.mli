@@ -40,10 +40,14 @@ val field :
   -> string
   -> t Dune_lang.Decoder.fields_parser
 
+val equal : t -> t -> bool
+
 module Unexpanded : sig
   type expanded = t
 
   type t
+
+  val equal : t -> t -> bool
 
   include Dune_lang.Conv.S with type t := t
 

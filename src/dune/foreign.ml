@@ -44,6 +44,8 @@ module Language = struct
       ; cxx : 'a
       }
 
+    let equal f { c; cxx } t = f c t.c && f cxx t.cxx
+
     let c t = t.c
 
     let cxx t = t.cxx

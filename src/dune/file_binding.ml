@@ -5,6 +5,8 @@ type ('src, 'dst) t =
   ; dst : 'dst option
   }
 
+let equal f g { src; dst } t = f src t.src && Option.equal g dst t.dst
+
 module Expanded = struct
   type nonrec t = (Loc.t * Path.Build.t, Loc.t * string) t
 
@@ -27,6 +29,8 @@ end
 
 module Unexpanded = struct
   type nonrec t = (String_with_vars.t, String_with_vars.t) t
+
+  let equal = equal String_with_vars.equal_no_loc String_with_vars.equal_no_loc
 
   let make ~src:(locs, src) ~dst:(locd, dst) =
     { src = String_with_vars.make_text locs src

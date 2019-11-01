@@ -66,6 +66,8 @@ type t = private
   ; env : Dune_env.Stanza.t
   }
 
+val equal : t -> t -> bool
+
 val load : ?x:Context_name.t -> ?profile:Profile.t -> Path.t -> t
 
 (** Default name of workspace files *)

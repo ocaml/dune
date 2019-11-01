@@ -5,6 +5,13 @@ type t =
   | Release
   | User_defined of string
 
+let equal x y =
+  match (x, y) with
+  | Dev, Dev -> true
+  | Release, Release -> true
+  | User_defined x, User_defined y -> String.equal x y
+  | _, _ -> false
+
 let of_string = function
   | "dev" -> Dev
   | "release" -> Release

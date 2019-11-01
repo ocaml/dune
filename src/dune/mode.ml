@@ -47,6 +47,8 @@ module Dict = struct
     ; native : 'a
     }
 
+  let equal f { byte; native } t = f byte t.byte && f native t.native
+
   let for_all { byte; native } ~f = f byte && f native
 
   let to_dyn to_dyn { byte; native } =

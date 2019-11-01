@@ -156,7 +156,8 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ];
   (* add rules *)
   let src_in_build =
-    Path.Build.append_source (SC.context sctx).build_dir src_in_src
+    let context = Context.DB.get dir in
+    Path.Build.append_source context.build_dir src_in_src
   in
   let files =
     Build_system.eval_pred

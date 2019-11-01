@@ -127,3 +127,7 @@ val name : t -> Context_name.t
 val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
+
+module DB : sig
+  val get : Path.Build.t -> t
+end

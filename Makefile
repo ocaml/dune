@@ -82,7 +82,7 @@ dune: $(BIN)
 .PHONY: promote accept-corrections opam-release dune check fmt
 
 opam-release:
-	dune-release distrib --skip-build --skip-lint --skip-tests
-	dune-release publish distrib --verbose
-	dune-release opam pkg
-	dune-release opam submit
+	dune-release distrib --skip-build --skip-lint --skip-tests -n dune
+	dune-release publish distrib --verbose -n dune
+	dune-release opam pkg -n dune
+	dune-release opam submit -n dune

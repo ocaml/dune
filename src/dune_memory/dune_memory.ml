@@ -1,6 +1,7 @@
 open Stdune
 module Key = Key
 include Dune_memory_intf
+open Result.O
 
 type 'a result = ('a, string) Result.t
 
@@ -16,6 +17,11 @@ let promotion_to_string = function
     Printf.sprintf "%s promoted as %s"
       (Path.Local.to_string (Path.Build.local in_the_build_directory))
       (Path.to_string in_the_memory)
+
+let file_of_promotion = function
+  | Already_promoted f
+  | Promoted f ->
+    f
 
 let command_to_dyn = function
   | Dedup { in_the_build_directory; in_the_memory; digest } ->
@@ -95,6 +101,52 @@ let apply ~f o v =
   match o with
   | Some o -> f v o
   | None -> v
+
+module Metadata_file = struct
+  type t =
+    { metadata : Sexp.t list
+    ; files : File.t list
+    }
+
+  let to_sexp { metadata; files } =
+    let open Sexp in
+    let f ({ in_the_build_directory; in_the_memory; _ } : File.t) =
+      Sexp.List
+        [ Sexp.Atom
+            (Path.Local.to_string (Path.Build.local in_the_build_directory))
+        ; Sexp.Atom (Path.to_string in_the_memory)
+        ]
+    in
+    List
+      [ List (Atom "metadata" :: metadata)
+      ; List (Atom "files" :: List.map ~f files)
+      ]
+
+  let of_sexp = function
+    | Sexp.List
+        [ List (Atom "metadata" :: metadata); List (Atom "files" :: produced) ]
+      ->
+      let+ files =
+        Result.List.map produced ~f:(function
+          | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
+            let in_the_build_directory =
+              Path.Build.of_string in_the_build_directory
+            and in_the_memory = Path.of_string in_the_memory in
+            Ok
+              { File.in_the_memory
+              ; in_the_build_directory
+              ; digest = FSSchemeImpl.digest in_the_memory
+              }
+          | _ -> Error "invalid metadata scheme in produced files list")
+      in
+      { metadata; files }
+    | _ -> Error "invalid metadata"
+
+  let parse path =
+    Io.with_file_in path ~f:(fun input ->
+        Csexp.parse (Stream.of_channel input))
+    >>= of_sexp
+end
 
 module Memory = struct
   type t =
@@ -207,28 +259,12 @@ module Memory = struct
     let f () =
       Result.List.map ~f:promote paths
       >>| fun promoted ->
-      let metadata_path = FSSchemeImpl.path (path_meta memory) key in
+      let metadata_path = FSSchemeImpl.path (path_meta memory) key
+      and files = List.map ~f:file_of_promotion promoted in
+      let metadata_file : Metadata_file.t = { metadata; files } in
       Path.mkdir_p (Path.parent_exn metadata_path);
       Io.write_file metadata_path
-        (Csexp.to_string
-           (List
-              [ List (Atom "metadata" :: metadata)
-              ; List
-                  ( Atom "files"
-                  :: List.map
-                       ~f:(function
-                         | Promoted
-                             { in_the_build_directory; in_the_memory; _ }
-                         | Already_promoted
-                             { in_the_build_directory; in_the_memory; _ } ->
-                           Sexp.List
-                             [ Sexp.Atom
-                                 (Path.Local.to_string
-                                    (Path.Build.local in_the_build_directory))
-                             ; Sexp.Atom (Path.to_string in_the_memory)
-                             ])
-                       promoted )
-              ]));
+        (Csexp.to_string (Metadata_file.to_sexp metadata_file));
       let f = function
         | Already_promoted file -> memory.handler (Dedup file)
         | _ -> ()
@@ -244,33 +280,25 @@ module Memory = struct
   let search memory key =
     let path = FSSchemeImpl.path (path_meta memory) key in
     let f () =
-      let open Result.O in
-      ( try
+      let* sexp =
+        try
           Io.with_file_in path ~f:(fun input ->
               Csexp.parse (Stream.of_channel input))
-        with Sys_error _ -> Error "no cached file" )
-      >>= function
-      | Sexp.List
-          [ List (Atom "metadata" :: metadata)
-          ; List (Atom "files" :: produced)
-          ] ->
-        let+ produced =
-          Result.List.map produced ~f:(function
-            | List [ Atom in_the_build_directory; Atom in_the_memory ] ->
-              let in_the_build_directory =
-                Path.Build.of_string in_the_build_directory
-              and in_the_memory = Path.of_string in_the_memory in
-              Ok
-                { File.in_the_memory
-                ; in_the_build_directory
-                ; digest = FSSchemeImpl.digest in_the_memory
-                }
-            | _ -> Error "invalid metadata scheme in produced files list")
+        with Sys_error _ -> Error "no cached file"
+      in
+      let+ metadata = Metadata_file.of_sexp sexp in
+      (* Touch cache files so they are removed last by LRU trimming *)
+      let () =
+        let f (file : File.t) =
+          (* There is no point in trying to trim out files that are missing :
+             dune will have to check when hardlinking anyway since they could
+             disappear inbetween. *)
+          try Path.touch file.in_the_memory
+          with Unix.(Unix_error (ENOENT, _, _)) -> ()
         in
-        (* Touch cache files so they are removed last by LRU trimming *)
-        List.iter produced ~f:(fun f -> Path.touch f.File.in_the_memory);
-        (metadata, produced)
-      | _ -> Error "invalid metadata"
+        List.iter ~f metadata.files
+      in
+      (metadata.metadata, metadata.files)
     in
     with_lock memory f
 
@@ -285,29 +313,108 @@ module Memory = struct
       Result.ok { root; build_root = None; repositories = []; handler }
 end
 
+let trimmable stats =
+  stats.Unix.st_nlink = 1
+
+let default_trim : trimming_result =
+  { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }
+
+let _garbage_collect default_trim memory =
+  let path = Memory.path_meta memory in
+  let metas =
+    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list path)
+  in
+  let f default_trim = function
+    | p, Result.Error msg ->
+      Memory.with_lock memory (fun () ->
+          Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
+          Path.unlink_no_err p;
+          { default_trim with trimmed_metafiles = [ p ] })
+    | p, Result.Ok { Metadata_file.files; _ } ->
+      if
+        List.for_all
+          ~f:(fun { File.in_the_memory; _ } -> Path.exists in_the_memory)
+          files
+      then
+        default_trim
+      else
+        Memory.with_lock memory (fun () ->
+            Log.infof
+              "remove metadata file %a as some produced files are missing"
+              Path.pp p;
+            let res =
+              List.fold_left ~init:default_trim
+                ~f:
+                  (fun ( { trimmed_files_size = size; trimmed_files = files; _ }
+                       as trim ) f ->
+                  let p = f.File.in_the_memory in
+                  try
+                    let stats = Path.stat p in
+                    if trimmable stats then (
+                      Path.unlink_no_err p;
+                      { trim with
+                        trimmed_files_size = size + stats.st_size
+                      ; trimmed_files = p :: files
+                      }
+                    ) else
+                      trim
+                  with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
+                files
+            in
+            Path.unlink_no_err p;
+            res)
+  in
+  List.fold_left ~init:default_trim ~f metas
+
+let garbage_collect = _garbage_collect default_trim
+
 let trim memory free =
   let path = Memory.path_files memory in
   let files = FSSchemeImpl.list path in
   let f path =
-    let stat = Path.stat path in
-    if stat.st_nlink = 1 then
-      Some (path, stat.st_size, stat.st_ctime)
+    let stats = Path.stat path in
+    if trimmable stats then
+      Some (path, stats.st_size, stats.st_mtime)
     else
       None
   and compare (_, _, t1) (_, _, t2) =
     Ordering.of_int (Pervasives.compare t1 t2)
   in
   let files = List.sort ~compare (List.filter_map ~f files)
-  and delete (freed, res) (path, size, _) =
+  and delete ({ trimmed_files_size = freed; trimmed_files = files; _ } as trim)
+      (path, size, _) =
     if freed >= free then
-      (freed, res)
+      trim
     else (
       Path.unlink path;
-      (freed + size, path :: res)
+      { trim with
+        trimmed_files_size = freed + size
+      ; trimmed_files = path :: files
+      }
     )
   in
-  Memory.with_lock memory (fun () ->
-      List.fold_left ~init:(0, []) ~f:delete files)
+  let trim =
+    Memory.with_lock memory (fun () ->
+        List.fold_left ~init:default_trim ~f:delete files)
+  in
+  _garbage_collect trim memory
+
+let size memory =
+  let root = Memory.path_files memory in
+  let files = FSSchemeImpl.list root in
+  let stats =
+    let f p =
+      try
+        let stats = Path.stat p in
+        if trimmable stats then
+          stats.st_size
+        else
+          0
+      with Unix.Unix_error (Unix.ENOENT, _, _) -> 0
+    in
+    List.map ~f files
+  in
+  List.fold_left ~f:(fun acc size -> acc + size) ~init:0 stats
 
 let make_caching (type t) (module Caching : Memory with type t = t) (cache : t)
     : (module Caching) =

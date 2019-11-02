@@ -40,8 +40,6 @@ let sexp_of_message : type a. a message -> Sexp.t =
   | SetBuildRoot root ->
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
-  | SetDuneMemoryRoot root ->
-    cmd "set-dune-memory-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetRepos repositories ->
     let f { Dune_memory.directory; remote; commit } =
       Sexp.List
@@ -155,9 +153,6 @@ let outgoing_message_of_sexp =
         let+ path = path_of_sexp args in
         SetBuildRoot path
       | "set-common-metadata" -> Result.Ok (SetCommonMetadata args)
-      | "set-dune-memory-root" ->
-        let+ path = path_of_sexp args in
-        SetDuneMemoryRoot path
       | "set-repos" ->
         let+ repos = repos_of_sexp args in
         SetRepos repos

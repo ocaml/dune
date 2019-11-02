@@ -16,6 +16,8 @@ let man =
         enabled. You do not need to run this command manually.|}
   ; `S "ACTIONS"
   ; `P {|$(b,start) starts the daemon if not already running.|}
+  ; `P {|$(b,stop) stops the daemon.|}
+  ; `P {|$(b,trim) remove oldest files from the cache to free space.|}
   ; `Blocks Common.help_secs
   ]
 
@@ -52,11 +54,29 @@ let stop ~port_path =
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok () -> ()
 
+let trim ~trimmed_size ~size =
+  Log.init_disabled ();
+  let open Result.O in
+  match
+    let* memory = Dune_memory.Memory.make (fun _ -> ()) in
+    let+ trimmed_size =
+      match (trimmed_size, size) with
+      | Some trimmed_size, None -> Result.Ok trimmed_size
+      | None, Some size -> Result.Ok (Dune_memory.size memory - size)
+      | _ -> Result.Error "specify either --size either --trimmed-size"
+    in
+    Dune_memory.trim memory trimmed_size
+  with
+  | Error s -> User_error.raise [ Pp.text s ]
+  | Ok { trimmed_files_size = size; _ } ->
+    User_message.print (User_message.make [ Pp.textf "Freed %i bytes" size ])
+
 type mode =
   | Start
   | Stop
+  | Trim
 
-let modes = [ ("start", Start); ("stop", Stop) ]
+let modes = [ ("start", Start); ("stop", Stop); ("trim", Trim) ]
 
 let path_conv = ((fun s -> `Ok (Path.of_string s)), Path.pp)
 
@@ -92,10 +112,22 @@ let term =
          value
          & opt path_conv (Dune_memory.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
+     and+ trimmed_size =
+       Arg.(
+         value
+         & opt (some int) None
+         & info ~docv:"BYTES" [ "trimmed-size" ]
+             ~doc:"size to trim from the cache")
+     and+ size =
+       Arg.(
+         value
+         & opt (some int) None
+         & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
      in
      match mode with
      | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
      | Some Stop -> `Ok (stop ~port_path)
+     | Some Trim -> `Ok (trim ~trimmed_size ~size)
      | None -> `Help (`Pager, Some name)
 
 let command = (term, info)

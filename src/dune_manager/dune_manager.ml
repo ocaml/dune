@@ -1,8 +1,9 @@
 module Evt = Event
-open Stdune
 module Utils = Utils
+open Stdune
 open Utils
 open Messages
+open Result.O
 
 type version = int * int
 
@@ -45,7 +46,6 @@ let check_port_file ?(close = true) p =
   with
   | Result.Ok fd ->
     let f () =
-      let open Result.O in
       retry (fun () ->
           match Fcntl.lock_get fd Fcntl.Write with
           | None -> Some None
@@ -82,21 +82,28 @@ type t =
   ; mutable clients : (client * Thread.t) Clients.t
   ; mutable endpoint : string option
   ; mutable accept_thread : Thread.t option
+  ; mutable trim_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
+  ; memory : Dune_memory.Memory.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
-  { root
-  ; socket = None
-  ; clients = Clients.empty
-  ; endpoint = None
-  ; accept_thread = None
-  ; config
-  ; events = Evt.new_channel ()
-  }
+  match Dune_memory.Memory.make ?root (fun _ -> ()) with
+  | Result.Error msg -> User_error.raise [ Pp.text msg ]
+  | Result.Ok memory ->
+    { root
+    ; socket = None
+    ; clients = Clients.empty
+    ; endpoint = None
+    ; accept_thread = None
+    ; trim_thread = None
+    ; config
+    ; events = Evt.new_channel ()
+    ; memory
+    }
 
 let getsockname = function
   | Unix.ADDR_UNIX _ ->
@@ -145,7 +152,6 @@ module Client = struct
     }
 
   let read input =
-    let open Result.O in
     let* sexp = Csexp.parse input in
     Messages.incoming_message_of_sexp sexp
     >>| function
@@ -158,7 +164,6 @@ module Client = struct
 
   let client_thread (events, (client : client)) =
     try
-      let open Result.O in
       let handle_cmd client sexp =
         let* msg = Messages.outgoing_message_of_sexp sexp in
         let* () =
@@ -199,11 +204,6 @@ module Client = struct
             }
         | SetCommonMetadata metadata ->
           Result.ok { client with common_metadata = metadata }
-        | SetDuneMemoryRoot root ->
-          let+ memory =
-            Dune_memory.Memory.make ~root (client_handle client.output)
-          in
-          { client with memory }
         | SetRepos repositories ->
           let memory =
             Dune_memory.Memory.with_repositories client.memory repositories
@@ -222,7 +222,6 @@ module Client = struct
             Stream.junk input;
             (handle [@tailcall]) client
           | _ -> (
-            let open Result.O in
             match
               Result.map_error
                 ~f:(fun r -> "parse error: " ^ r)
@@ -256,6 +255,26 @@ module Client = struct
       raise exn
 
   let run ?(port_f = ignore) ?(port = 0) manager =
+    let trim_thread max_size period memory =
+      let rec trim () =
+        Unix.sleep period;
+        let () =
+          match
+            let size = Dune_memory.size memory in
+            if size > max_size then (
+              Log.infof "trimming %i bytes" (size - max_size);
+              Some (Dune_memory.trim memory (size - max_size))
+            ) else
+              None
+          with
+          | Some { trimmed_files_size = freed; _ } ->
+            Log.infof "trimming freed %i bytes" freed
+          | None -> Log.infof "skip trimming"
+        in
+        trim ()
+      in
+      trim ()
+    in
     let rec accept_thread sock =
       let rec accept () =
         try Unix.accept sock
@@ -267,6 +286,17 @@ module Client = struct
       (accept_thread [@tailcall]) sock
     in
     let f () =
+      let+ trim_period =
+        Option.value
+          ~default:(Result.Ok (10 * 60))
+          (Option.map ~f:int_of_string
+             (Env.get Env.initial "DUNE_CACHE_TRIM_PERIOD"))
+      and+ trim_size =
+        Option.value
+          ~default:(Result.Ok (10 * 1024 * 1024 * 1024))
+          (Option.map ~f:int_of_string
+             (Env.get Env.initial "DUNE_CACHE_TRIM_SIZE"))
+      in
       let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
       manager.socket <- Some sock;
       Unix.bind sock
@@ -279,6 +309,8 @@ module Client = struct
       port_f endpoint;
       Unix.listen sock 1024;
       manager.accept_thread <- Some (Thread.create accept_thread sock);
+      manager.trim_thread <-
+        Some (Thread.create (trim_thread trim_size trim_period) manager.memory);
       let rec handle () =
         let stop () =
           match manager.socket with
@@ -326,8 +358,10 @@ module Client = struct
       in
       handle ()
     in
-    try f ()
-    with Unix.Unix_error (errno, f, _) ->
+    match f () with
+    | Result.Ok () -> ()
+    | Result.Error msg -> User_error.raise [ Pp.text msg ]
+    | exception Unix.Unix_error (errno, f, _) ->
       User_error.raise
         [ Pp.textf "unable to %s: %s\n" f (Unix.error_message errno) ]
 
@@ -357,7 +391,6 @@ module Client = struct
     (* This is a bit ugly as it is global, but flushing a closed socket will
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-    let open Result.O in
     let* memory = Result.map_error ~f:err (Dune_memory.Memory.make ignore) in
     let* port =
       let root = Dune_memory.default_root () in

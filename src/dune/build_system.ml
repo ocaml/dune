@@ -473,12 +473,13 @@ let get_dir_triage t ~dir =
       let allowed_subdirs =
         Subdir_set.to_dir_set
           (Subdir_set.of_list
-             ( [ ".aliases"; "install" ]
+             ( ( [ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
+               |> List.map ~f:Path.Build.basename )
              @ ( Context_name.Map.keys t.contexts
                |> List.map ~f:Context_name.to_string ) ))
       in
       Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-    else if Path.equal dir (Path.relative Path.build_dir "install") then
+    else if Path.equal dir (Path.build Dpath.Build.install_dir) then
       let allowed_subdirs =
         Subdir_set.to_dir_set
           (Subdir_set.of_list
@@ -500,10 +501,10 @@ let get_dir_triage t ~dir =
            | Ok filenames -> Path.Set.of_listing ~dir ~filenames ))
     else
       let ctx, sub_dir = Path.extract_build_context_exn dir in
-      if ctx = ".aliases" then
+      if ctx = Path.Build.basename Dpath.Build.alias_dir then
         Alias_dir_of (Path.Build.(append_source root) sub_dir)
       else if
-        ctx <> "install"
+        ctx <> Path.Build.basename Dpath.Build.install_dir
         && not (Context_name.Map.mem t.contexts (Context_name.of_string ctx))
       then
         Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
@@ -731,7 +732,7 @@ end = struct
     let alias_dir =
       let context_name = Context_name.to_string context_name in
       Path.Build.append_source
-        (Path.Build.relative Alias.alias_dir context_name)
+        (Path.Build.relative Dpath.Build.alias_dir context_name)
         sub_dir
     in
     let alias_rules =
@@ -1435,7 +1436,7 @@ end = struct
     let always_rerun =
       let force_rerun =
         !Clflags.force
-        && List.exists targets_as_list ~f:Path.Build.is_alias_stamp_file
+        && List.exists targets_as_list ~f:Dpath.Build.is_alias_stamp_file
       and depends_on_universe = Dep.Set.has_universe deps in
       force_rerun || depends_on_universe
     in

@@ -33,4 +33,10 @@ module Build : sig
   include Dune_lang.Conv.S with type t = Path.Build.t
 
   val is_dev_null : t -> bool
+
+  val install_dir : t
+
+  val alias_dir : t
+
+  val is_alias_stamp_file : t -> bool
 end

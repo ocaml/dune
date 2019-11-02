@@ -689,11 +689,6 @@ module Build = struct
     | None ->
       Code_error.raise "Path.Build.drop_build_context_exn" [ ("t", to_dyn t) ]
 
-  (* CR-someday rgrinberg: I think we should just move this function to the
-     alias module. *)
-  let is_alias_stamp_file s =
-    String.is_prefix (Local.to_string s) ~prefix:".aliases/"
-
   let build_dir = Fdecl.create Kind.to_dyn
 
   let build_dir_prefix = Fdecl.create Dyn.Encoder.opaque

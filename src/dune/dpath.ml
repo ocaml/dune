@@ -11,40 +11,45 @@ type path_kind =
   | External of Path.External.t
   | Build of target_kind
 
+let install_dir = Path.Build.(relative root) "install"
+
+let alias_dir = Path.Build.(relative root ".aliases")
+
 let analyse_target (fn as original_fn) : target_kind =
   match Path.Build.extract_first_component fn with
-  | Some (".aliases", sub) -> (
-    match Path.Local.split_first_component sub with
-    | None -> Other fn
-    | Some (ctx, fn) ->
-      if Path.Local.is_root fn then
-        Other original_fn
-      else
-        let basename =
-          match String.rsplit2 (Path.Local.basename fn) ~on:'-' with
-          | None -> assert false
-          | Some (name, digest) ->
-            assert (String.length digest = 32);
-            name
-        in
-        let ctx = Context_name.of_string ctx in
-        Alias
-          ( ctx
-          , Path.Source.relative
-              (Path.Source.of_local (Path.Local.parent_exn fn))
-              basename ) )
-  | Some ("install", sub) -> (
-    match Path.Local.split_first_component sub with
-    | None -> Other original_fn
-    | Some (ctx, fn) -> (
-      match Context_name.of_string_opt ctx with
-      | None -> Other original_fn
-      | Some ctx -> Install (ctx, Path.Source.of_local fn) ) )
-  | Some (ctx, sub) -> (
-    match Context_name.of_string_opt ctx with
-    | None -> Other fn
-    | Some ctx -> Regular (ctx, Path.Source.of_local sub) )
   | None -> Other fn
+  | Some (name, sub) -> (
+    if name = Path.Build.basename alias_dir then
+      match Path.Local.split_first_component sub with
+      | None -> Other fn
+      | Some (ctx, fn) ->
+        if Path.Local.is_root fn then
+          Other original_fn
+        else
+          let basename =
+            match String.rsplit2 (Path.Local.basename fn) ~on:'-' with
+            | None -> assert false
+            | Some (name, digest) ->
+              assert (String.length digest = 32);
+              name
+          in
+          let ctx = Context_name.of_string ctx in
+          Alias
+            ( ctx
+            , Path.Source.relative
+                (Path.Source.of_local (Path.Local.parent_exn fn))
+                basename )
+    else if name = Path.Build.basename install_dir then
+      match Path.Local.split_first_component sub with
+      | None -> Other original_fn
+      | Some (ctx, fn) -> (
+        match Context_name.of_string_opt ctx with
+        | None -> Other original_fn
+        | Some ctx -> Install (ctx, Path.Source.of_local fn) )
+    else
+      match Context_name.of_string_opt name with
+      | None -> Other fn
+      | Some ctx -> Regular (ctx, Path.Source.of_local sub) )
 
 let describe_target fn =
   let ctx_suffix name =
@@ -131,4 +136,13 @@ module Build = struct
     Path.Build.(relative root) base
 
   let is_dev_null = Fn.const false
+
+  let install_dir = install_dir
+
+  let alias_dir = alias_dir
+
+  let is_alias_stamp_file =
+    let prefix = Path.Build.basename alias_dir ^ "/" in
+    fun s ->
+      String.is_prefix (Path.Local.to_string (Path.Build.local s)) ~prefix
 end

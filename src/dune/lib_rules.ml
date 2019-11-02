@@ -34,10 +34,9 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
       in
       let map_cclibs =
         (* https://github.com/ocaml/dune/issues/119 *)
-        if ctx.ccomp_type = "msvc" then
-          msvc_hack_cclibs
-        else
-          Fn.id
+        match ctx.ccomp_type with
+        | Msvc -> msvc_hack_cclibs
+        | Other _ -> Fn.id
       in
       let obj_deps =
         Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
@@ -135,11 +134,11 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
                 case, but we pass them unconditionally for simplicity. *)
              (Build.map cclibs_args ~f:(fun cclibs ->
                   (* https://github.com/ocaml/dune/issues/119 *)
-                  if ctx.ccomp_type = "msvc" then
+                  match ctx.ccomp_type with
+                  | Msvc ->
                     let cclibs = msvc_hack_cclibs cclibs in
                     Command.quote_args "-ldopt" cclibs
-                  else
-                    As cclibs))
+                  | Other _ -> As cclibs))
          ; Hidden_targets targets
          ])
   in

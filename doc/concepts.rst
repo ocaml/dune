@@ -1101,7 +1101,9 @@ Here is a complete list of supported subfields:
   raising an error if multiple source files map to the same object name.
   If you need to have multiple object files with the same name, you can
   package them into different :ref:`foreign-archives` via the
-  ``foreign_archives`` field.
+  ``foreign_archives`` field. This field uses the :ref:`ordered-set-language`
+  where the ``:standard`` value corresponds to the set of names of all
+  source files whose extensions match the specified ``language``.
 - ``flags`` are passed when compiling source files. This field is specified
   using the :ref:`ordered-set-language`, where the ``:standard`` value comes
   from the environment settings ``c_flags`` and ``cxx_flags``, respectively.

@@ -2203,7 +2203,6 @@
   (alias findlib-error)
   (alias forbidden_libraries)
   (alias force-test)
-  (alias foreign-library)
   (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)

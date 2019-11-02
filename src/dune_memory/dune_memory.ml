@@ -313,12 +313,7 @@ module Memory = struct
       Result.ok { root; build_root = None; repositories = []; handler }
 end
 
-let trimmable ?stats p =
-  let stats =
-    match stats with
-    | None -> Path.stat p
-    | Some stats -> stats
-  in
+let trimmable stats =
   stats.Unix.st_nlink = 1
 
 let default_trim : trimming_result =
@@ -355,7 +350,7 @@ let _garbage_collect default_trim memory =
                   let p = f.File.in_the_memory in
                   try
                     let stats = Path.stat p in
-                    if trimmable p then (
+                    if trimmable stats then (
                       Path.unlink_no_err p;
                       { trim with
                         trimmed_files_size = size + stats.st_size
@@ -378,7 +373,7 @@ let trim memory free =
   let files = FSSchemeImpl.list path in
   let f path =
     let stats = Path.stat path in
-    if trimmable ~stats path then
+    if trimmable stats then
       Some (path, stats.st_size, stats.st_mtime)
     else
       None
@@ -411,7 +406,7 @@ let size memory =
     let f p =
       try
         let stats = Path.stat p in
-        if trimmable ~stats p then
+        if trimmable stats then
           stats.st_size
         else
           0

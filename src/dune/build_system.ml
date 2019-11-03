@@ -464,52 +464,48 @@ let get_cache () =
   t.cache
 
 let get_dir_triage t ~dir =
-  match Path.as_in_source_tree dir with
-  | Some dir ->
+  match Dpath.analyse_dir dir with
+  | Source dir ->
     Dir_triage.Known
       (Non_build (Path.set_of_source_paths (File_tree.files_of dir)))
-  | None ->
-    if Path.equal dir Path.build_dir then
-      let allowed_subdirs =
-        Subdir_set.to_dir_set
-          (Subdir_set.of_list
-             ( ( [ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
-               |> List.map ~f:Path.Build.basename )
-             @ ( Context_name.Map.keys t.contexts
-               |> List.map ~f:Context_name.to_string ) ))
-      in
-      Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-    else if Path.equal dir (Path.build Dpath.Build.install_dir) then
-      let allowed_subdirs =
-        Subdir_set.to_dir_set
-          (Subdir_set.of_list
-             ( Context_name.Map.keys t.contexts
-             |> List.map ~f:Context_name.to_string ))
-      in
-      Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
-    else if not (Path.is_managed dir) then
-      Dir_triage.Known
-        (Non_build
-           ( match Path.readdir_unsorted dir with
-           | Error Unix.ENOENT -> Path.Set.empty
-           | Error m ->
-             User_warning.emit
-               [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
-               ; Pp.textf "Reason: %s" (Unix.error_message m)
-               ];
-             Path.Set.empty
-           | Ok filenames -> Path.Set.of_listing ~dir ~filenames ))
-    else
-      let ctx, sub_dir = Path.extract_build_context_exn dir in
-      if ctx = Path.Build.basename Dpath.Build.alias_dir then
-        Alias_dir_of (Path.Build.(append_source root) sub_dir)
-      else if
-        ctx <> Path.Build.basename Dpath.Build.install_dir
-        && not (Context_name.Map.mem t.contexts (Context_name.of_string ctx))
-      then
-        Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
-      else
-        Need_step2
+  | External _ ->
+    Dir_triage.Known
+      (Non_build
+         ( match Path.readdir_unsorted dir with
+         | Error Unix.ENOENT -> Path.Set.empty
+         | Error m ->
+           User_warning.emit
+             [ Pp.textf "Unable to read %s" (Path.to_string_maybe_quoted dir)
+             ; Pp.textf "Reason: %s" (Unix.error_message m)
+             ];
+           Path.Set.empty
+         | Ok filenames -> Path.Set.of_listing ~dir ~filenames ))
+  | Build (Regular Root) ->
+    let allowed_subdirs =
+      Subdir_set.to_dir_set
+        (Subdir_set.of_list
+           ( ( [ Dpath.Build.alias_dir; Dpath.Build.install_dir ]
+             |> List.map ~f:Path.Build.basename )
+           @ ( Context_name.Map.keys t.contexts
+             |> List.map ~f:Context_name.to_string ) ))
+    in
+    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+  | Build (Install Root) ->
+    let allowed_subdirs =
+      Subdir_set.to_dir_set
+        (Subdir_set.of_list
+           ( Context_name.Map.keys t.contexts
+           |> List.map ~f:Context_name.to_string ))
+    in
+    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs)
+  | Build (Alias p) ->
+    let build_dir = Dpath.Target_dir.build_dir p in
+    Alias_dir_of build_dir
+  | Build (Invalid _) ->
+    Dir_triage.Known (Loaded.no_rules ~allowed_subdirs:Dir_set.empty)
+  | Build (Install (With_context _))
+  | Build (Regular (With_context _)) ->
+    Need_step2
 
 let add_spec_exn t fn rule =
   match Path.Build.Table.find t.files fn with

@@ -1200,12 +1200,11 @@ module Promote = struct
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
        and+ into =
          field_o "into"
-           ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>= fun () -> Into.decode )
+           (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> Into.decode)
        and+ only =
          field_o "only"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
-           >>= fun () -> Predicate_lang.Glob.decode )
+           >>> Predicate_lang.Glob.decode )
        in
        { lifetime =
            ( if until_clean then

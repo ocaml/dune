@@ -201,15 +201,15 @@ module Memory = struct
         repo metadata
     in
     let promote (path, expected_hash) =
-      make_path memory (Path.Build.local path)
-      >>= fun abs_path ->
+      let* abs_path = make_path memory (Path.Build.local path) in
       Log.infof "promote %s" (Path.to_string abs_path);
       let stat = Unix.lstat (Path.to_string abs_path) in
-      ( if stat.st_kind != S_REG then
-        Result.Error "invalid file type"
-      else
-        Result.Ok stat )
-      >>= fun stat ->
+      let* stat =
+        if stat.st_kind != S_REG then
+          Result.Error "invalid file type"
+        else
+          Result.Ok stat
+      in
       let hardlink path =
         let tmp = path_tmp memory in
         (* dune-memory uses a single writer model, the promoted file name can
@@ -257,8 +257,7 @@ module Memory = struct
                })
     in
     let f () =
-      Result.List.map ~f:promote paths
-      >>| fun promoted ->
+      let+ promoted = Result.List.map ~f:promote paths in
       let metadata_path = FSSchemeImpl.path (path_meta memory) key
       and files = List.map ~f:file_of_promotion promoted in
       let metadata_file : Metadata_file.t = { metadata; files } in
@@ -313,8 +312,7 @@ module Memory = struct
       Result.ok { root; build_root = None; repositories = []; handler }
 end
 
-let trimmable stats =
-  stats.Unix.st_nlink = 1
+let trimmable stats = stats.Unix.st_nlink = 1
 
 let default_trim : trimming_result =
   { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }

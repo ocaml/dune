@@ -95,6 +95,15 @@ let ( >>> ) a b ctx state =
   let (), state = a ctx state in
   b ctx state
 
+let ( let* ) = ( >>= )
+
+let ( let+ ) = ( >>| )
+
+let ( and+ ) a b ctx state =
+  let a, state = a ctx state in
+  let b, state = b ctx state in
+  ((a, b), state)
+
 let map t ~f = t >>| f
 
 let try_ t f ctx state = try t ctx state with exn -> f exn ctx state
@@ -489,12 +498,11 @@ let field_o name ?on_dup t (Fields (_, _, uc)) state =
 
 let field_b_gen field_gen ?check ?on_dup name =
   field_gen name ?on_dup
-    ( Option.value check ~default:(return ())
-    >>= fun () ->
-    eos
-    >>= function
-    | true -> return true
-    | _ -> bool )
+    (let* () = Option.value check ~default:(return ()) in
+     eos
+     >>= function
+     | true -> return true
+     | _ -> bool)
 
 let field_b = field_b_gen (field ~default:false)
 
@@ -602,12 +610,3 @@ let fields_mutually_exclusive ?on_dup ?default fields
   | _ :: _ :: _ as results ->
     let names = List.map ~f:fst results in
     fields_mutual_exclusion_violation loc names
-
-let ( let* ) = ( >>= )
-
-let ( let+ ) = ( >>| )
-
-let ( and+ ) a b ctx state =
-  let a, state = a ctx state in
-  let b, state = b ctx state in
-  ((a, b), state)

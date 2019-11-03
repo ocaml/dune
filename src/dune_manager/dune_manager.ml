@@ -223,10 +223,11 @@ module Client = struct
             (handle [@tailcall]) client
           | _ -> (
             match
-              Result.map_error
-                ~f:(fun r -> "parse error: " ^ r)
-                (Csexp.parse input)
-              >>= fun cmd ->
+              let* cmd =
+                Result.map_error
+                  ~f:(fun r -> "parse error: " ^ r)
+                  (Csexp.parse input)
+              in
               Log.infof "%s: received command: %s" (peer_name client.peer)
                 (Sexp.to_string cmd);
               handle_cmd client cmd

@@ -126,7 +126,9 @@ end = struct
       && Queue.is_empty dedup_pending )
 
   let dedup () =
-    if not (Queue.is_empty dedup_pending) then (
+    if Queue.is_empty dedup_pending then
+      false
+    else
       let { Dune_memory.File.in_the_memory; in_the_build_directory; digest } =
         Queue.pop dedup_pending
       in
@@ -148,8 +150,6 @@ end = struct
           Log.infof "error handling dune-cache command: %s: %s" syscall
             (Unix.error_message e) ) );
       true
-    ) else
-      false
 
   let rec flush_dedup () = if dedup () then flush_dedup ()
 

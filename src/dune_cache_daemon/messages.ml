@@ -113,8 +113,8 @@ let outgoing_message_of_sexp =
       cmd ->
       let file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          Dune_cache.Key.of_string hash
-          >>| fun d -> (Path.Build.of_local (Path.Local.of_string path), d)
+          let+ d = Dune_cache.Key.of_string hash in
+          (Path.Build.of_local (Path.Local.of_string path), d)
         | sexp ->
           Result.Error
             (Printf.sprintf "invalid file in promotion message: %s"

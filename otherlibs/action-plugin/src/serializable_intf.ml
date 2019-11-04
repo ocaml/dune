@@ -48,7 +48,7 @@ module Make (TypeToSerialize : S) : T with type t := TypeToSerialize.t = struct
       | _ -> Error Deserialization_error.Parse_error
     in
     let* format_version =
-      int_of_string_opt format_version |> parsing_error_of_option
+      Int.of_string format_version |> parsing_error_of_option
     in
     if format_version <> version then
       Error (Deserialization_error.Version_mismatch format_version)

@@ -408,7 +408,7 @@ module Client = struct
     let* addr, port =
       match String.split_on_char ~sep:':' port with
       | [ addr; port ] -> (
-        match int_of_string_opt port with
+        match Int.of_string port with
         | Some i -> Result.Ok (Unix.inet_addr_of_string addr, i)
         | None -> Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
       | _ -> Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))

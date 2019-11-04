@@ -11,8 +11,8 @@
   > EOF
 
   $ cat >> dune <<EOF
-  > (alias
-  >  (name a)
+  > (rule
+  >  (alias a)
   >  (action (with-accepted-exit-codes 0 (run ./exit.exe 1))))
   > EOF
 
@@ -26,8 +26,8 @@
   [1]
 
   $ cat >> dune <<EOF
-  > (alias
-  >  (name b)
+  > (rule
+  >  (alias b)
   >  (action (with-accepted-exit-codes (not 0) (run ./exit.exe 1))))
   > EOF
 
@@ -35,11 +35,11 @@
           exit alias b
 
   $ cat >> dune <<EOF
-  > (alias
-  >  (name c)
+  > (rule
+  >  (alias c)
   >  (action (with-accepted-exit-codes (or 1 2 3) (run ./exit.exe 2))))
-  > (alias
-  >  (name d)
+  > (rule
+  >  (alias d)
   >  (action (with-accepted-exit-codes (or 4 5 6) (run ./exit.exe 7))))
   > EOF
 
@@ -52,8 +52,8 @@
   [1]
 
   $ cat >> dune <<EOF
-  > (alias
-  >  (name e)
+  > (rule
+  >  (alias e)
   >  (action (with-accepted-exit-codes (not 0) (dynamic-run ./exit.exe 1))))
   > EOF
 

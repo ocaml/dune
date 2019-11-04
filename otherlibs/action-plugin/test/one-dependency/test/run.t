@@ -11,8 +11,8 @@ and requires one dependency can be successfully run.
   >  (target some_dependency)
   >  (action (with-stdout-to %{target} (echo "Hello from some_dependency!"))))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 

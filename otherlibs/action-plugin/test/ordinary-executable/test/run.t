@@ -7,8 +7,8 @@ ordinary executable instead of one linked against dune-action-plugin.
   > EOF
 
   $ cat > dune << EOF
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 
@@ -18,8 +18,8 @@ ordinary executable instead of one linked against dune-action-plugin.
            foo alias runtest
   Hello from foo!
   File "dune", line 1, characters 0-57:
-  1 | (alias
-  2 |  (name runtest)
+  1 | (rule
+  2 |  (alias runtest)
   3 |  (action (dynamic-run ./foo.exe)))
   Error: Executable 'foo.exe' declared as using dune-action-plugin (declared
   with 'dynamic-run' tag) failed to respond to dune.

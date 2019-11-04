@@ -827,14 +827,14 @@ same lock:
 
 .. code:: scheme
 
-    (alias
-     (name   runtest)
+    (rule
+     (alias  runtest)
      (deps   foo)
      (locks  m)
      (action (run test.exe %{deps})))
 
     (alias
-     (name   runtest)
+     (rule   runtest)
      (deps   bar)
      (locks  m)
      (action (run test.exe %{deps})))
@@ -853,8 +853,8 @@ simply use an absolute filename:
 
 .. code:: scheme
 
-    (alias
-     (name   runtest)
+    (rule
+     (alias   runtest)
      (deps   foo)
      (locks  /tcp-port/1042)
      (action (run test.exe %{deps})))
@@ -913,8 +913,8 @@ More precisely, let's consider the following dune file:
    (rule
     (with-stdout-to data.out (run ./test.exe)))
 
-   (alias
-    (name   runtest)
+   (rule
+    (alias   runtest)
     (action (diff data.expected data.out)))
 
 Where ``data.expected`` is a file committed in the source

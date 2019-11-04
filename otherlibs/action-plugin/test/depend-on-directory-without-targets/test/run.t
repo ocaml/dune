@@ -6,8 +6,8 @@
   $ cat > dune << EOF
   > (data_only_dirs some_dir)
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 

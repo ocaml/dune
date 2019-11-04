@@ -96,8 +96,8 @@ This works because the translation layer from pre-2.0 to 2.0 replaces
   > (name bar)
   > (libraries foo)
   > (modules bar))
-  > (alias
-  > (name default)
+  > (rule
+  > (alias default)
   > (action (run ./bar.exe)))
   > EOF
 

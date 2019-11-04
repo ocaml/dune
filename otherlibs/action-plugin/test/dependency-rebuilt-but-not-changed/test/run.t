@@ -16,8 +16,8 @@ they were forced to rebuild.
   >   (echo "Building some_file!\n")
   >   (with-stdout-to %{target} (echo "Hello from some_file!")))))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 

@@ -4,8 +4,8 @@
   > EOF
 
   $ cat > dune << EOF
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 

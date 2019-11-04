@@ -42,9 +42,14 @@ module Platform = struct
 end
 
 let alias ?enabled_if ?action name ~deps =
-  Sexp.constr "alias"
+  let (stanza, alias_or_name) =
+    match action with
+    | None -> ("alias", "name")
+    | Some _ -> ("rule", "alias")
+  in
+  Sexp.constr stanza
     (Sexp.fields
-       ( [ ("name", [ Dune_lang.atom name ]); ("deps", deps) ]
+       ( [ (alias_or_name, [ Dune_lang.atom name ]); ("deps", deps) ]
        @ ( match action with
          | None -> []
          | Some a -> [ ("action", [ a ]) ] )

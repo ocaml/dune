@@ -1,7 +1,7 @@
 (data_only_dirs sample-projects)
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps
   (package dune)
   (source_tree sample-projects/hello_world))
@@ -12,8 +12,8 @@
     (run %{exe:../test/blackbox-tests/cram.exe} -test run.t)
     (diff? run.t run.t.corrected)))))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps
   (package dune)
   (source_tree sample-projects/with-configure-step))

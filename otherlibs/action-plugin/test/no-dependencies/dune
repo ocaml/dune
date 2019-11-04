@@ -1,7 +1,7 @@
 (data_only_dirs test)
 
-(alias
- (name run_dynamic)
+(rule
+ (alias run_dynamic)
  (deps
   (package dune)
   (source_tree test/)

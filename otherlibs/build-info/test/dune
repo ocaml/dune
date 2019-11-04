@@ -1,5 +1,5 @@
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (deps
   (package dune)
   (package dune-build-info))

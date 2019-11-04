@@ -6,7 +6,7 @@ Test embedding of build information
   $ for i in a b c; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 1.11)
+  > (lang dune 2.0)
   > (name $i)
   > (package (name $i))
   > EOF

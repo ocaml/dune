@@ -9,8 +9,8 @@
   >  (action
   >   (dynamic-run ./foo.exe)))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (cat some_target)))
   > EOF
 

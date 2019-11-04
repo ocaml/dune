@@ -3,18 +3,18 @@
 ;; $ ./_build/default/bin/main.exe build @test/fail-with-background-jobs-running
 ;;
 
-(alias
- (name sleep5)
+(rule
+ (alias sleep5)
  (action
   (system "sleep 5")))
 
-(alias
- (name sleep1-and-fail)
+(rule
+ (alias sleep1-and-fail)
  (action
   (system "sleep 1; exit 1")))
 
-(alias
- (name sleep4-and-fail)
+(rule
+ (alias sleep4-and-fail)
  (action
   (system "sleep 4; exit 1")))
 
@@ -30,8 +30,8 @@
 ;; $ ./_build/default/bin/main.exe build -j10 @test/locks
 ;;
 
-(alias
- (name locks)
+(rule
+ (alias locks)
  (deps
   (glob_files *.{foo,bar}))
  (action

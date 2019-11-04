@@ -1069,8 +1069,8 @@ The typical use of the ``alias`` stanza is to define tests:
 
 .. code:: scheme
 
-    (alias
-     (name   runtest)
+    (rule
+     (alias   runtest)
      (action (run %{exe:my-test-program.exe} blah)))
 
 See the section about :ref:`running-tests` for details.

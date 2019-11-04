@@ -1,3 +1,4 @@
-(library (name dune_cache_daemon)
-         (preprocess future_syntax)
-         (libraries threads.posix dune_cache stdune))
+(library
+ (name dune_cache_daemon)
+ (preprocess future_syntax)
+ (libraries threads.posix dune_cache stdune))

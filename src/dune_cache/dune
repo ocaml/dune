@@ -1,3 +1,4 @@
-(library (name dune_cache)
-         (libraries stdune xdg dune_lang)
-         (preprocess future_syntax))
+(library
+ (name dune_cache)
+ (libraries stdune xdg dune_lang)
+ (preprocess future_syntax))

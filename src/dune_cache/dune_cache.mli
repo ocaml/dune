@@ -1,6 +1,6 @@
 open Stdune
 
-include module type of Dune_memory_intf
+include module type of Dune_cache_intf
 
 type 'a result = ('a, string) Result.t
 

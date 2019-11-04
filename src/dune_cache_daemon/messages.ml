@@ -20,7 +20,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
                 ]))
            versions )
   | Promote promotion ->
-    let key = Dune_memory.Key.to_string promotion.key
+    let key = Dune_cache.Key.to_string promotion.key
     and f (path, digest) =
       Sexp.List
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
@@ -41,7 +41,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
   | SetRepos repositories ->
-    let f { Dune_memory.directory; remote; commit } =
+    let f { Dune_cache.directory; remote; commit } =
       Sexp.List
         [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
         ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
@@ -100,7 +100,7 @@ let outgoing_message_of_sexp =
           ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
           ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
           ] ->
-        Result.ok { Dune_memory.directory; remote; commit }
+        Result.ok { Dune_cache.directory; remote; commit }
       | invalid ->
         Result.Error
           (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
@@ -113,7 +113,7 @@ let outgoing_message_of_sexp =
       cmd ->
       let file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          Dune_memory.Key.of_string hash
+          Dune_cache.Key.of_string hash
           >>| fun d -> (Path.Build.of_local (Path.Local.of_string path), d)
         | sexp ->
           Result.Error
@@ -131,7 +131,7 @@ let outgoing_message_of_sexp =
             (Printf.sprintf "invalid promotion message: %s"
                (Sexp.to_string (Sexp.List cmd)))
       and+ files = Result.List.map ~f:file files
-      and+ key = Dune_memory.Key.of_string key in
+      and+ key = Dune_cache.Key.of_string key in
       { repository; files; key; metadata }
     | args -> invalid_args args
   and path_of_sexp = function

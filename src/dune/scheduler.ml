@@ -87,7 +87,7 @@ module Event : sig
 
   val send_signal : Signal.t -> unit
 
-  val send_dedup : Dune_memory.File.t -> unit
+  val send_dedup : Dune_cache.File.t -> unit
 end = struct
   type t =
     | Files_changed
@@ -129,7 +129,7 @@ end = struct
     if Queue.is_empty dedup_pending then
       false
     else
-      let { Dune_memory.File.in_the_memory; in_the_build_directory; digest } =
+      let { Dune_cache.File.in_the_memory; in_the_build_directory; digest } =
         Queue.pop dedup_pending
       in
       ( match Cached_digest.peek_file (Path.build in_the_build_directory) with

@@ -27,7 +27,7 @@ let info = Term.info name ~doc ~man
 
 let start ~exit_no_client ~foreground ~port_path ~root =
   let show_endpoint ep = Printf.eprintf "listening on %s\n%!" ep in
-  let config = { Dune_manager.exit_no_client } in
+  let config = { Dune_cache_daemon.exit_no_client } in
   let f started =
     let started content =
       if foreground then show_endpoint content;
@@ -38,7 +38,7 @@ let start ~exit_no_client ~foreground ~port_path ~root =
         Verbose
       else
         Quiet );
-    Dune_manager.daemon ~root ~config started
+    Dune_cache_daemon.daemon ~root ~config started
   in
   match Daemonize.daemonize ~workdir:root ~foreground port_path f with
   | Result.Ok Finished -> ()
@@ -58,14 +58,14 @@ let trim ~trimmed_size ~size =
   Log.init_disabled ();
   let open Result.O in
   match
-    let* memory = Dune_memory.Memory.make (fun _ -> ()) in
+    let* memory = Dune_cache.Memory.make (fun _ -> ()) in
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size -> Result.Ok (Dune_memory.size memory - size)
+      | None, Some size -> Result.Ok (Dune_cache.size memory - size)
       | _ -> Result.Error "specify either --size either --trimmed-size"
     in
-    Dune_memory.trim memory trimmed_size
+    Dune_cache.trim memory trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_files_size = size; _ } ->
@@ -104,13 +104,13 @@ let term =
      and+ port_path =
        Arg.(
          value
-         & opt path_conv (Dune_manager.default_port_file ())
+         & opt path_conv (Dune_cache_daemon.default_port_file ())
          & info ~docv:"PATH" [ "port-file" ]
              ~doc:"The file to read/write the daemon port to/from.")
      and+ root =
        Arg.(
          value
-         & opt path_conv (Dune_memory.default_root ())
+         & opt path_conv (Dune_cache.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      and+ trimmed_size =
        Arg.(

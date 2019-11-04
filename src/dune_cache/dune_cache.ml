@@ -1,6 +1,6 @@
 open Stdune
 module Key = Key
-include Dune_memory_intf
+include Dune_cache_intf
 open Result.O
 
 type 'a result = ('a, string) Result.t

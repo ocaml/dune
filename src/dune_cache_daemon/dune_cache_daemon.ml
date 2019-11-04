@@ -19,7 +19,7 @@ type client =
   ; peer : Unix.sockaddr
   ; output : out_channel
   ; common_metadata : Sexp.t list
-  ; memory : Dune_memory.Memory.t
+  ; memory : Dune_cache.Memory.t
   ; version : version option
   }
 
@@ -33,7 +33,7 @@ let default_port_file () =
          regard, since if someone has access to this directory, it has access
          to the cache content, and having access to the socket does not make a
          difference. *)
-      Path.relative (Dune_memory.default_root ()) "runtime"
+      Path.relative (Dune_cache.default_root ()) "runtime"
   in
   Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
@@ -85,13 +85,13 @@ type t =
   ; mutable trim_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
-  ; memory : Dune_memory.Memory.t
+  ; memory : Dune_cache.Memory.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
-  match Dune_memory.Memory.make ?root (fun _ -> ()) with
+  match Dune_cache.Memory.make ?root (fun _ -> ()) with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok memory ->
     { root
@@ -146,7 +146,7 @@ module Client = struct
     { socket : out_channel
     ; fd : Unix.file_descr
     ; input : char Stream.t
-    ; memory : Dune_memory.Memory.t
+    ; memory : Dune_cache.Memory.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
     }
@@ -155,10 +155,10 @@ module Client = struct
     let* sexp = Csexp.parse input in
     Messages.incoming_message_of_sexp sexp
     >>| function
-    | Messages.Dedup v -> Dune_memory.Dedup v
+    | Messages.Dedup v -> Dune_cache.Dedup v
 
   let client_handle output = function
-    | Dune_memory.Dedup f -> send output (Messages.Dedup f)
+    | Dune_cache.Dedup f -> send output (Messages.Dedup f)
 
   (* FIXME *)
 
@@ -191,7 +191,7 @@ module Client = struct
             Result.ok { client with version = v } )
         | Promote promotion ->
           let+ () =
-            Dune_memory.Memory.promote client.memory promotion.files
+            Dune_cache.Memory.promote client.memory promotion.files
               promotion.key
               (promotion.metadata @ client.common_metadata)
               ~repository:promotion.repository
@@ -200,13 +200,13 @@ module Client = struct
         | SetBuildRoot root ->
           Result.Ok
             { client with
-              memory = Dune_memory.Memory.set_build_dir client.memory root
+              memory = Dune_cache.Memory.set_build_dir client.memory root
             }
         | SetCommonMetadata metadata ->
           Result.ok { client with common_metadata = metadata }
         | SetRepos repositories ->
           let memory =
-            Dune_memory.Memory.with_repositories client.memory repositories
+            Dune_cache.Memory.with_repositories client.memory repositories
           in
           Result.Ok { client with memory }
       in
@@ -261,10 +261,10 @@ module Client = struct
         Unix.sleep period;
         let () =
           match
-            let size = Dune_memory.size memory in
+            let size = Dune_cache.size memory in
             if size > max_size then (
               Log.infof "trimming %i bytes" (size - max_size);
-              Some (Dune_memory.trim memory (size - max_size))
+              Some (Dune_cache.trim memory (size - max_size))
             ) else
               None
           with
@@ -337,7 +337,7 @@ module Client = struct
             ; common_metadata = []
             ; memory =
                 ( match
-                    Dune_memory.Memory.make ?root:manager.root
+                    Dune_cache.Memory.make ?root:manager.root
                       (client_handle output)
                   with
                 | Result.Ok m -> m
@@ -392,9 +392,9 @@ module Client = struct
     (* This is a bit ugly as it is global, but flushing a closed socket will
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-    let* memory = Result.map_error ~f:err (Dune_memory.Memory.make ignore) in
+    let* memory = Result.map_error ~f:err (Dune_cache.Memory.make ignore) in
     let* port =
-      let root = Dune_memory.default_root () in
+      let root = Dune_cache.default_root () in
       Daemonize.daemonize ~workdir:root (default_port_file ())
         (daemon ~root ~config:{ exit_no_client = true })
       >>| (function
@@ -423,7 +423,7 @@ module Client = struct
       match
         let+ command = read input in
         Log.infof "dune-cache command: %a" Pp.render_ignore_tags
-          (Dyn.pp (Dune_memory.command_to_dyn command));
+          (Dyn.pp (Dune_cache.command_to_dyn command));
         handle command
       with
       | Result.Error e ->
@@ -453,7 +453,7 @@ module Client = struct
     send client.socket (Messages.SetBuildRoot path);
     client
 
-  let search client key = Dune_memory.Memory.search client.memory key
+  let search client key = Dune_cache.Memory.search client.memory key
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

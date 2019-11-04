@@ -52,7 +52,7 @@ end
 let make_cache () =
   let var = "DUNE_CACHE"
   and handle = function
-    | Dune_memory.Dedup file -> Scheduler.send_dedup file
+    | Dune_cache.Dedup file -> Scheduler.send_dedup file
   in
   match Env.get Env.initial var with
   | Some v ->
@@ -63,12 +63,12 @@ let make_cache () =
           Result.ok_exn
             (Result.map_error
                ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-               (Dune_memory.Memory.make handle))
+               (Dune_cache.Memory.make handle))
         in
-        Dune_memory.make_caching (module Dune_memory.Memory) cache
+        Dune_cache.make_caching (module Dune_cache.Memory) cache
       | Direct ->
-        let cache = Result.ok_exn (Dune_manager.Client.make handle) in
-        Dune_memory.make_caching (module Dune_manager.Client) cache
+        let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
+        Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
     in
     Fiber.return
       ( match v with

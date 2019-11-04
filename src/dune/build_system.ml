@@ -410,9 +410,9 @@ module Context_or_install = struct
 end
 
 type caching =
-  | Disabled
-  | Enabled of (module Dune_cache.Caching)
-  | Check of (module Dune_cache.Caching)
+  { cache : (module Dune_cache.Caching)
+  ; check_probability : float
+  }
 
 type t =
   { (* File specification by targets *)
@@ -426,7 +426,7 @@ type t =
       Fdecl.t
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
-  ; cache : caching
+  ; caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
@@ -461,7 +461,7 @@ let set_rule_generators ~init ~gen_rules =
 
 let get_cache () =
   let t = t () in
-  t.cache
+  t.caching
 
 let get_dir_triage t ~dir =
   match Dpath.analyse_dir dir with
@@ -1490,20 +1490,20 @@ end = struct
             Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
         let from_Dune_cache =
-          match (do_not_memoize, t.cache) with
+          match (do_not_memoize, t.caching) with
           | true, _
-          | _, Disabled ->
+          | _, None ->
             None
-          | false, Enabled (module Caching)
-          | false, Check (module Caching) -> (
+          | false, Some { cache = (module Caching); _ } -> (
             match Caching.Cache.search Caching.cache rule_digest with
             | Ok (_, files) -> Some files
             | Error msg ->
               Log.infof "cache miss: %s" msg;
               None )
         and cache_checking =
-          match t.cache with
-          | Check _ -> true
+          match t.caching with
+          | Some { check_probability; _ } ->
+            Random.float 1. < check_probability
           | _ -> false
         in
         let pulled_from_cache =
@@ -1620,13 +1620,12 @@ end = struct
                         ])
             | _ -> ()
           in
-          ( match t.cache with
-          | Enabled (module Caching)
-          | Check (module Caching) ->
+          let f { cache = (module Caching : Dune_cache.Caching); _ } =
             ignore
               (Caching.Cache.promote Caching.cache targets rule_digest []
                  ~repository:None)
-          | Disabled -> () );
+          in
+          Option.iter ~f t.caching;
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps
@@ -2067,23 +2066,23 @@ let load_dir_and_produce_its_rules ~dir =
 
 let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
-let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
+let init ~contexts ?caching ~sandboxing_preference =
   let contexts =
     List.map contexts ~f:(fun c -> (c.Context.name, c))
     |> Context_name.Map.of_list_exn
   in
-  let cache =
-    let f (module Caching : Dune_cache.Caching) =
-      ( module struct
-        module Cache = Caching.Cache
+  let caching =
+    let f ({ cache = (module Caching : Dune_cache.Caching); _ } as v) =
+      let cache =
+        ( module struct
+          module Cache = Caching.Cache
 
-        let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-      end : Dune_cache.Caching )
+          let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
+        end : Dune_cache.Caching )
+      in
+      { v with cache }
     in
-    match caching with
-    | Disabled -> Disabled
-    | Enabled c -> Enabled (f c)
-    | Check c -> Check (f c)
+    Option.map ~f caching
   in
   let t =
     { contexts
@@ -2091,7 +2090,7 @@ let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
-    ; cache
+    ; caching
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0
     ; rule_total = 0

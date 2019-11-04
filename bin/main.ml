@@ -16,14 +16,13 @@ let run_build_command ~common ~targets =
   else
     Scheduler.go ~common once;
   match Build_system.get_cache () with
-  | Enabled (module Caching)
-  | Check (module Caching) ->
+  | Some { cache = (module Caching : Dune_cache.Caching); _ } ->
     (* Synchronously wait for the end of the connection with the cache daemon,
        ensuring all dedup messages have been queued. *)
     Caching.Cache.teardown Caching.cache;
     (* Hande all remaining dedup mesages. *)
     Scheduler.wait_for_dune_cache ()
-  | Disabled -> ()
+  | None -> ()
 
 let build_targets =
   let doc =

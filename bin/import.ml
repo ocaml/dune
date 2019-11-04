@@ -46,9 +46,14 @@ let make_cache (config : Config.t) =
   in
   Fiber.return
     ( match config.cache_mode with
-    | Config.Caching.Mode.Check -> Build_system.Check (make_cache ())
-    | Enabled -> Build_system.Enabled (make_cache ())
-    | Disabled -> Build_system.Disabled )
+    | Config.Caching.Mode.Check ->
+      Some { Build_system.cache = make_cache (); check_probability = 1. }
+    | Config.Caching.Mode.Enabled ->
+      Some
+        { Build_system.cache = make_cache ()
+        ; check_probability = config.cache_check_probability
+        }
+    | Config.Caching.Mode.Disabled -> None )
 
 module Main = struct
   include Dune.Main
@@ -71,7 +76,7 @@ module Main = struct
     let* workspace = scan_workspace common in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
-      ~caching ?external_lib_deps_mode ?only_packages
+      ?caching ?external_lib_deps_mode ?only_packages
 end
 
 module Scheduler = struct

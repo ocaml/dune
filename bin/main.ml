@@ -15,7 +15,7 @@ let run_build_command ~common ~targets =
     Scheduler.poll ~common ~once ~finally:Hooks.End_of_build.run ()
   else
     Scheduler.go ~common once;
-  match Build_system.get_memory () with
+  match Build_system.get_cache () with
   | Enabled (module Caching)
   | Check (module Caching) ->
     (* Synchronously wait for the end of the connection with the cache daemon,

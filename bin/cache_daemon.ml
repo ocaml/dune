@@ -58,14 +58,14 @@ let trim ~trimmed_size ~size =
   Log.init_disabled ();
   let open Result.O in
   match
-    let* memory = Dune_cache.Memory.make (fun _ -> ()) in
+    let* cache = Dune_cache.Cache.make (fun _ -> ()) in
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size -> Result.Ok (Dune_cache.size memory - size)
+      | None, Some size -> Result.Ok (Dune_cache.size cache - size)
       | _ -> Result.Error "specify either --size either --trimmed-size"
     in
-    Dune_cache.trim memory trimmed_size
+    Dune_cache.trim cache trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_files_size = size; _ } ->

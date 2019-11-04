@@ -129,7 +129,7 @@ end = struct
     if Queue.is_empty dedup_pending then
       false
     else
-      let { Dune_cache.File.in_the_memory; in_the_build_directory; digest } =
+      let { Dune_cache.File.in_the_cache; in_the_build_directory; digest } =
         Queue.pop dedup_pending
       in
       ( match Cached_digest.peek_file (Path.build in_the_build_directory) with
@@ -138,12 +138,11 @@ end = struct
       | _ -> (
         let target = Path.Build.to_string in_the_build_directory in
         let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-        Log.infof "deduplicate %s from %s" target
-          (Path.to_string in_the_memory);
+        Log.infof "deduplicate %s from %s" target (Path.to_string in_the_cache);
         let rm p = try Unix.unlink p with _ -> () in
         try
           rm tmpname;
-          Unix.link (Path.to_string in_the_memory) tmpname;
+          Unix.link (Path.to_string in_the_cache) tmpname;
           Unix.rename tmpname target
         with Unix.Unix_error (e, syscall, _) ->
           rm tmpname;

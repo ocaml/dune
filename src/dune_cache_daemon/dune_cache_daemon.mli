@@ -25,7 +25,7 @@ val endpoint : t -> string option
 val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
 
 module Client : sig
-  include Dune_cache.Memory
+  include Dune_cache.Cache
 
   val make :
        ?finally:(unit -> unit)

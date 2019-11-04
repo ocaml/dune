@@ -63,9 +63,9 @@ let make_cache () =
           Result.ok_exn
             (Result.map_error
                ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-               (Dune_cache.Memory.make handle))
+               (Dune_cache.Cache.make handle))
         in
-        Dune_cache.make_caching (module Dune_cache.Memory) cache
+        Dune_cache.make_caching (module Dune_cache.Cache) cache
       | Direct ->
         let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
         Dune_cache.make_caching (module Dune_cache_daemon.Client) cache

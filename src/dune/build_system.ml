@@ -459,7 +459,7 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
-let get_memory () =
+let get_cache () =
   let t = t () in
   t.cache
 
@@ -1245,7 +1245,7 @@ module rec Used_recursively : Rec = Exported
 and Exported : sig
   include Rec
 
-  (* exported to inspect memory cycles *)
+  (* exported to inspect cache cycles *)
 
   val evaluate_action_and_dynamic_deps_memo :
     ( Internal_rule.t
@@ -1516,7 +1516,7 @@ end = struct
               let path = Path.build file.in_the_build_directory in
               Log.infof "retrieve %s from cache"
                 (Path.to_string_maybe_quoted path);
-              Path.link file.in_the_memory path;
+              Path.link file.in_the_cache path;
               Cached_digest.set path file.digest;
               file.digest
             in

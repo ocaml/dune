@@ -12,7 +12,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
   function
   | Lang versions ->
     cmd "lang"
-      ( Sexp.Atom "dune-memory-protocol"
+      ( Sexp.Atom "dune-cache-protocol"
       :: (List.map ~f:(fun { major; minor } ->
               Sexp.List
                 [ Sexp.Atom (string_of_int major)
@@ -54,7 +54,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
       [ Sexp.List
           [ Sexp.Atom
               (Path.Local.to_string (Path.Build.local f.in_the_build_directory))
-          ; Sexp.Atom (Path.to_string f.in_the_memory)
+          ; Sexp.Atom (Path.to_string f.in_the_cache)
           ; Sexp.Atom (Digest.to_string f.digest)
           ]
       ]
@@ -69,7 +69,7 @@ let incoming_message_of_sexp = function
       Result.Ok
         (Dedup
            { in_the_build_directory = Path.Build.of_string source
-           ; in_the_memory = Path.of_string target
+           ; in_the_cache = Path.of_string target
            ; digest
            })
     | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
@@ -78,7 +78,7 @@ let incoming_message_of_sexp = function
 
 let outgoing_message_of_sexp =
   let lang_of_sexp = function
-    | Sexp.Atom "dune-memory-protocol" :: versions ->
+    | Sexp.Atom "dune-cache-protocol" :: versions ->
       let decode_version = function
         | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
           let+ major = Utils.int_of_string ~where:"lang command version" major

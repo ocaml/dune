@@ -18,8 +18,8 @@ val promotion_to_string : promotion -> string
 
 val command_to_dyn : command -> Dyn.t
 
-module Memory : sig
-  include Memory
+module Cache : sig
+  include Cache
 
   val promote_sync :
        t
@@ -34,13 +34,13 @@ end
 
 (** The size overhead of cached files. That is, the total size of cached files
     that are not linked in a build directory. *)
-val size : Memory.t -> int
+val size : Cache.t -> int
 
-(** [trim memory size] removes files from [memory], starting with the least
+(** [trim cache size] removes files from [cache], starting with the least
     recently used one, until [size] bytes have been freed. *)
-val trim : Memory.t -> int -> trimming_result
+val trim : Cache.t -> int -> trimming_result
 
 (** Purge invalid or incomplete cached rules. *)
-val garbage_collect : Memory.t -> trimming_result
+val garbage_collect : Cache.t -> trimming_result
 
-val make_caching : (module Memory with type t = 'a) -> 'a -> (module Caching)
+val make_caching : (module Cache with type t = 'a) -> 'a -> (module Caching)

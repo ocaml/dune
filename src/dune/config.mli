@@ -78,11 +78,15 @@ module Caching : sig
     | Enabled
     | Check
 
+  val modes : (string * mode) list
+
   val decode_mode : mode Dune_lang.Decoder.t
 
   type transport =
     | Daemon
     | Direct
+
+  val transports : (string * transport) list
 
   val decode_transport : transport Dune_lang.Decoder.t
 end

@@ -119,14 +119,17 @@ module Caching = struct
     | Enabled
     | Check
 
-  let decode_mode =
-    enum [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+  let modes = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+
+  let decode_mode = enum modes
 
   type transport =
     | Daemon
     | Direct
 
-  let decode_transport = enum [ ("daemon", Daemon); ("direct", Direct) ]
+  let transports = [ ("daemon", Daemon); ("direct", Direct) ]
+
+  let decode_transport = enum transports
 end
 
 module type S = sig

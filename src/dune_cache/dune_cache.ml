@@ -278,28 +278,25 @@ module Cache = struct
 
   let search cache key =
     let path = FSSchemeImpl.path (path_meta cache) key in
-    let f () =
-      let* sexp =
-        try
-          Io.with_file_in path ~f:(fun input ->
-              Csexp.parse (Stream.of_channel input))
-        with Sys_error _ -> Error "no cached file"
-      in
-      let+ metadata = Metadata_file.of_sexp sexp in
-      (* Touch cache files so they are removed last by LRU trimming *)
-      let () =
-        let f (file : File.t) =
-          (* There is no point in trying to trim out files that are missing :
-             dune will have to check when hardlinking anyway since they could
-             disappear inbetween. *)
-          try Path.touch file.in_the_cache
-          with Unix.(Unix_error (ENOENT, _, _)) -> ()
-        in
-        List.iter ~f metadata.files
-      in
-      (metadata.metadata, metadata.files)
+    let* sexp =
+      try
+        Io.with_file_in path ~f:(fun input ->
+            Csexp.parse (Stream.of_channel input))
+      with Sys_error _ -> Error "no cached file"
     in
-    with_lock cache f
+    let+ metadata = Metadata_file.of_sexp sexp in
+    (* Touch cache files so they are removed last by LRU trimming *)
+    let () =
+      let f (file : File.t) =
+        (* There is no point in trying to trim out files that are missing :
+           dune will have to check when hardlinking anyway since they could
+           disappear inbetween. *)
+        try Path.touch file.in_the_cache
+        with Unix.(Unix_error (ENOENT, _, _)) -> ()
+      in
+      List.iter ~f metadata.files
+    in
+    (metadata.metadata, metadata.files)
 
   let set_build_dir cache p = { cache with build_root = Some p }
 

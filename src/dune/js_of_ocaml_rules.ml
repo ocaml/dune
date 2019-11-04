@@ -196,7 +196,7 @@ let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.t) ~flags ~promote
   let mk_target ext = Path.Build.extend_basename src ~suffix:ext in
   let target = mk_target ".js" in
   let standalone_runtime = mk_target ".runtime.js" in
-  let mode : Dune_file.Rule.Mode.t =
+  let mode : Rule.Mode.t =
     match promote with
     | None -> Standard
     | Some p -> Promote p

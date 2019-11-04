@@ -1170,43 +1170,24 @@ module Install_conf = struct
 end
 
 module Promote = struct
-  module Lifetime = struct
-    type t =
-      | Unlimited
-      | Until_clean
-  end
+  let into_decode =
+    let+ loc, dir = located relative_file in
+    { Rule.Promote.Into.loc; dir }
 
-  module Into = struct
-    type t =
-      { loc : Loc.t
-      ; dir : string
-      }
-
-    let decode =
-      let+ loc, dir = located relative_file in
-      { loc; dir }
-  end
-
-  type t =
-    { lifetime : Lifetime.t
-    ; into : Into.t option
-    ; only : Predicate_lang.Glob.t option
-    }
-
-  let decode =
+  let decode : Rule.Promote.t Dune_lang.Decoder.t =
     fields
       (let+ until_clean =
          field_b "until-clean"
            ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 10))
        and+ into =
          field_o "into"
-           (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> Into.decode)
+           (Dune_lang.Syntax.since Stanza.syntax (1, 10) >>> into_decode)
        and+ only =
          field_o "only"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Predicate_lang.Glob.decode )
        in
-       { lifetime =
+       { Rule.Promote.lifetime =
            ( if until_clean then
              Until_clean
            else
@@ -1494,7 +1475,7 @@ module Executables = struct
     ; buildable : Buildable.t
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
-    ; promote : Promote.t option
+    ; promote : Rule.Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -1650,39 +1631,36 @@ module Rule = struct
   end
 
   module Mode = struct
-    type t =
-      | Standard
-      | Fallback
-      | Promote of Promote.t
-      | Ignore_source_files
+    include Rule.Mode
 
     let decode =
       let promote_into lifetime =
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
-        and+ into = Promote.Into.decode in
-        Promote { lifetime; into = Some into; only = None }
+        and+ into = Promote.into_decode in
+        Rule.Mode.Promote { lifetime; into = Some into; only = None }
       in
       sum
-        [ ("standard", return Standard)
-        ; ("fallback", return Fallback)
+        [ ("standard", return Rule.Mode.Standard)
+        ; ("fallback", return Rule.Mode.Fallback)
         ; ( "promote"
           , let+ p = Promote.decode in
-            Promote p )
+            Rule.Mode.Promote p )
         ; ( "promote-until-clean"
           , return
-              (Promote { lifetime = Until_clean; into = None; only = None }) )
+              (Rule.Mode.Promote
+                 { lifetime = Until_clean; into = None; only = None }) )
         ; ("promote-into", promote_into Unlimited)
         ; ("promote-until-clean-into", promote_into Until_clean)
         ]
 
-    let field = field "mode" decode ~default:Standard
+    let field = field "mode" decode ~default:Rule.Mode.Standard
   end
 
   type t =
     { targets : Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
-    ; mode : Mode.t
+    ; mode : Rule.Mode.t
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
@@ -1800,7 +1778,7 @@ module Rule = struct
 
   type lex_or_yacc =
     { modules : string list
-    ; mode : Mode.t
+    ; mode : Rule.Mode.t
     ; enabled_if : Blang.t
     }
 

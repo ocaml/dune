@@ -18,20 +18,48 @@ module Info = struct
       None
 end
 
+module Promote = struct
+  module Lifetime = struct
+    type t =
+      | Unlimited
+      | Until_clean
+  end
+
+  module Into = struct
+    type t =
+      { loc : Loc.t
+      ; dir : string
+      }
+  end
+
+  type t =
+    { lifetime : Lifetime.t
+    ; into : Into.t option
+    ; only : Predicate_lang.Glob.t option
+    }
+end
+
+module Mode = struct
+  type t =
+    | Standard
+    | Fallback
+    | Promote of Promote.t
+    | Ignore_source_files
+end
+
 type t =
   { context : Context.t option
   ; env : Env.t option
   ; build : Action.t Build.t
   ; targets : Path.Build.Set.t
-  ; mode : Dune_file.Rule.Mode.t
+  ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t
   ; dir : Path.Build.t
   }
 
-let make ?(sandbox = Sandbox_config.default)
-    ?(mode = Dune_file.Rule.Mode.Standard) ~context ~env ?(locks = [])
-    ?(info = Info.Internal) build =
+let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
+    ~env ?(locks = []) ?(info = Info.Internal) build =
   let open Build.O in
   let build = Build.dep (Dep.sandbox_config sandbox) >>> build in
   let targets = Build.targets build in

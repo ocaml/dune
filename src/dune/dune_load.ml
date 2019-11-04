@@ -1,21 +1,21 @@
 open! Stdune
 open Import
-open Dune_file
 
 module Dune_file = struct
   type t =
     { dir : Path.Source.t
     ; project : Dune_project.t
-    ; stanzas : Stanzas.t
+    ; stanzas : Dune_file.Stanzas.t
     }
 
   let parse sexps ~dir ~file ~project =
-    let stanzas = Stanzas.parse ~file project sexps in
+    let stanzas = Dune_file.Stanzas.parse ~file project sexps in
     let stanzas =
       if !Clflags.ignore_promoted_rules then
         List.filter stanzas ~f:(function
-          | Rule { mode = Promote { only = None; _ }; _ }
-          | Dune_file.Menhir.T { mode = Promote { only = None; _ }; _ } ->
+          | Dune_file.Rule { mode = Rule.Mode.Promote { only = None; _ }; _ }
+          | Dune_file.Menhir.T
+              { mode = Rule.Mode.Promote { only = None; _ }; _ } ->
             false
           | _ -> true)
       else

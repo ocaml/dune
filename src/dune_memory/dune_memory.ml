@@ -45,7 +45,7 @@ module Collision = struct
     let rec loop n =
       let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
       if Path.exists path then
-        if Io.compare_files path file == Ordering.Eq then
+        if Io.compare_files path file = Ordering.Eq then
           Found path
         else
           loop (n + 1)

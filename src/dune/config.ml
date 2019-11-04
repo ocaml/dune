@@ -191,7 +191,7 @@ let decode =
     field "sandboxing_preference" Sandboxing_preference.decode
       ~default:default.sandboxing_preference
   and+ cache_mode =
-    field "cache-mode" Caching.decode_mode ~default:default.cache_mode
+    field "cache" Caching.decode_mode ~default:default.cache_mode
   and+ cache_transport =
     field "cache-transport" Caching.decode_transport
       ~default:default.cache_transport

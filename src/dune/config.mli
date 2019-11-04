@@ -105,6 +105,7 @@ module type S = sig
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
+    ; cache_check_probability : float field
     }
 end
 

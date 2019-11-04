@@ -207,6 +207,7 @@ let bootstrap () =
         ; terminal_persistence
         ; cache_mode = None
         ; cache_transport = None
+        ; cache_check_probability = None
         }
     in
     let config =

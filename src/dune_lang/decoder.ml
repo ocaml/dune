@@ -377,6 +377,12 @@ let int =
       | x -> Ok x
       | exception _ -> Result.Error ())
 
+let float =
+  basic "Float" (fun s ->
+      match float_of_string s with
+      | x -> Ok x
+      | exception _ -> Result.Error ())
+
 let pair a b = enter (a >>= fun a -> b >>= fun b -> return (a, b))
 
 let triple a b c =

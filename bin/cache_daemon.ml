@@ -26,7 +26,7 @@ let doc = "Manage the shared artifacts cache"
 let info = Term.info name ~doc ~man
 
 let start ~exit_no_client ~foreground ~port_path ~root =
-  let show_endpoint ep = Printf.printf "listening on %s\n%!" ep in
+  let show_endpoint ep = Printf.eprintf "listening on %s\n%!" ep in
   let config = { Dune_manager.exit_no_client } in
   let f started =
     let started content =

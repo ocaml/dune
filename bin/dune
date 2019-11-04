@@ -2,8 +2,8 @@
  (name main)
  (public_name dune)
  (package dune)
- (libraries memo dune_lang fiber stdune unix dune_manager dune_memory dune
-   cmdliner threads.posix build_info)
+ (libraries memo dune_lang fiber stdune unix dune_cache_daemon dune_cache
+   dune cmdliner threads.posix build_info)
  (preprocess future_syntax)
  (bootstrap_info bootstrap-info))
 

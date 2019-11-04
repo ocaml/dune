@@ -1,4 +1,4 @@
 (library
- (name dune_memory)
+ (name dune_cache)
  (libraries stdune xdg dune_lang)
  (preprocess future_syntax))

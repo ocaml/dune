@@ -19,7 +19,7 @@ type client =
   ; peer : Unix.sockaddr
   ; output : out_channel
   ; common_metadata : Sexp.t list
-  ; memory : Dune_memory.Memory.t
+  ; cache : Dune_cache.Cache.t
   ; version : version option
   }
 
@@ -33,7 +33,7 @@ let default_port_file () =
          regard, since if someone has access to this directory, it has access
          to the cache content, and having access to the socket does not make a
          difference. *)
-      Path.relative (Dune_memory.default_root ()) "runtime"
+      Path.relative (Dune_cache.default_root ()) "runtime"
   in
   Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
@@ -85,15 +85,15 @@ type t =
   ; mutable trim_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
-  ; memory : Dune_memory.Memory.t
+  ; cache : Dune_cache.Cache.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
-  match Dune_memory.Memory.make ?root (fun _ -> ()) with
+  match Dune_cache.Cache.make ?root (fun _ -> ()) with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
-  | Result.Ok memory ->
+  | Result.Ok cache ->
     { root
     ; socket = None
     ; clients = Clients.empty
@@ -102,7 +102,7 @@ let make ?root ~config () : t =
     ; trim_thread = None
     ; config
     ; events = Evt.new_channel ()
-    ; memory
+    ; cache
     }
 
 let getsockname = function
@@ -115,7 +115,7 @@ let peer_name s =
   let addr, port = getsockname s in
   Printf.sprintf "%s:%d" (Unix.string_of_inet_addr addr) port
 
-let stop manager = Evt.sync (Evt.send manager.events Stop)
+let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
 let my_versions : version list = [ (1, 0) ]
 
@@ -146,7 +146,7 @@ module Client = struct
     { socket : out_channel
     ; fd : Unix.file_descr
     ; input : char Stream.t
-    ; memory : Dune_memory.Memory.t
+    ; cache : Dune_cache.Cache.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
     }
@@ -155,10 +155,10 @@ module Client = struct
     let* sexp = Csexp.parse input in
     Messages.incoming_message_of_sexp sexp
     >>| function
-    | Messages.Dedup v -> Dune_memory.Dedup v
+    | Messages.Dedup v -> Dune_cache.Dedup v
 
   let client_handle output = function
-    | Dune_memory.Dedup f -> send output (Messages.Dedup f)
+    | Dune_cache.Dedup f -> send output (Messages.Dedup f)
 
   (* FIXME *)
 
@@ -191,8 +191,7 @@ module Client = struct
             Result.ok { client with version = v } )
         | Promote promotion ->
           let+ () =
-            Dune_memory.Memory.promote client.memory promotion.files
-              promotion.key
+            Dune_cache.Cache.promote client.cache promotion.files promotion.key
               (promotion.metadata @ client.common_metadata)
               ~repository:promotion.repository
           in
@@ -200,15 +199,15 @@ module Client = struct
         | SetBuildRoot root ->
           Result.Ok
             { client with
-              memory = Dune_memory.Memory.set_build_dir client.memory root
+              cache = Dune_cache.Cache.set_build_dir client.cache root
             }
         | SetCommonMetadata metadata ->
           Result.ok { client with common_metadata = metadata }
         | SetRepos repositories ->
-          let memory =
-            Dune_memory.Memory.with_repositories client.memory repositories
+          let cache =
+            Dune_cache.Cache.with_repositories client.cache repositories
           in
-          Result.Ok { client with memory }
+          Result.Ok { client with cache }
       in
       let input = Stream.of_channel (Unix.in_channel_of_descr client.fd) in
       let f () =
@@ -255,16 +254,16 @@ module Client = struct
         (Dyn.pp (Code_error.to_dyn e));
       raise exn
 
-  let run ?(port_f = ignore) ?(port = 0) manager =
-    let trim_thread max_size period memory =
+  let run ?(port_f = ignore) ?(port = 0) daemon =
+    let trim_thread max_size period cache =
       let rec trim () =
         Unix.sleep period;
         let () =
           match
-            let size = Dune_memory.size memory in
+            let size = Dune_cache.size cache in
             if size > max_size then (
               Log.infof "trimming %i bytes" (size - max_size);
-              Some (Dune_memory.trim memory (size - max_size))
+              Some (Dune_cache.trim cache (size - max_size))
             ) else
               None
           with
@@ -282,7 +281,7 @@ module Client = struct
         with Unix.Unix_error (Unix.EINTR, _, _) -> (accept [@tailcall]) ()
       in
       let fd, peer = accept () in
-      ( try Evt.sync (Evt.send manager.events (New_client (fd, peer)))
+      ( try Evt.sync (Evt.send daemon.events (New_client (fd, peer)))
         with Unix.Unix_error (Unix.EBADF, _, _) -> () );
       (accept_thread [@tailcall]) sock
     in
@@ -299,25 +298,25 @@ module Client = struct
              (Env.get Env.initial "DUNE_CACHE_TRIM_SIZE"))
       in
       let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-      manager.socket <- Some sock;
+      daemon.socket <- Some sock;
       Unix.bind sock
         (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port));
       let addr, port = getsockname (Unix.getsockname sock) in
       let endpoint =
         Printf.sprintf "%s:%i" (Unix.string_of_inet_addr addr) port
       in
-      manager.endpoint <- Some endpoint;
+      daemon.endpoint <- Some endpoint;
       port_f endpoint;
       Unix.listen sock 1024;
-      manager.accept_thread <- Some (Thread.create accept_thread sock);
-      manager.trim_thread <-
-        Some (Thread.create (trim_thread trim_size trim_period) manager.memory);
+      daemon.accept_thread <- Some (Thread.create accept_thread sock);
+      daemon.trim_thread <-
+        Some (Thread.create (trim_thread trim_size trim_period) daemon.cache);
       let rec handle () =
         let stop () =
-          match manager.socket with
+          match daemon.socket with
           | Some fd ->
-            manager.socket <- None;
-            let clean f = ignore (Clients.iter ~f manager.clients) in
+            daemon.socket <- None;
+            let clean f = ignore (Clients.iter ~f daemon.clients) in
             clean (fun (client, _) ->
                 Unix.shutdown client.fd Unix.SHUTDOWN_ALL);
             clean (fun (_, tid) -> Thread.join tid);
@@ -325,7 +324,7 @@ module Client = struct
             Unix.close fd
           | _ -> Log.infof "stop"
         in
-        ( match Evt.sync (Evt.receive manager.events) with
+        ( match Evt.sync (Evt.receive daemon.events) with
         | Stop -> stop ()
         | New_client (fd, peer) ->
           let output = Unix.out_channel_of_descr fd in
@@ -335,27 +334,27 @@ module Client = struct
             ; output
             ; version = None
             ; common_metadata = []
-            ; memory =
+            ; cache =
                 ( match
-                    Dune_memory.Memory.make ?root:manager.root
+                    Dune_cache.Cache.make ?root:daemon.root
                       (client_handle output)
                   with
                 | Result.Ok m -> m
                 | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
             }
           in
-          let tid = Thread.create client_thread (manager.events, client) in
-          manager.clients <-
-            ( match Clients.add manager.clients client.fd (client, tid) with
+          let tid = Thread.create client_thread (daemon.events, client) in
+          daemon.clients <-
+            ( match Clients.add daemon.clients client.fd (client, tid) with
             | Result.Ok v -> v
             | Result.Error _ -> User_error.raise [ Pp.textf "duplicate socket" ]
             )
         | Client_left fd ->
-          manager.clients <- Clients.remove manager.clients fd;
-          if manager.config.exit_no_client && Clients.is_empty manager.clients
+          daemon.clients <- Clients.remove daemon.clients fd;
+          if daemon.config.exit_no_client && Clients.is_empty daemon.clients
           then
             stop () );
-        if Option.is_some manager.socket then (handle [@tailcall]) ()
+        if Option.is_some daemon.socket then (handle [@tailcall]) ()
       in
       handle ()
     in
@@ -370,12 +369,12 @@ module Client = struct
     Path.mkdir_p root;
     let log_file = Path.relative root "log" in
     Log.init ~file:(This log_file) ();
-    let manager = make ~root ~config () in
+    let daemon = make ~root ~config () in
     (* Event blocks signals when waiting. Use a separate thread to catch
        signals. *)
     let signal_handler s =
       Log.infof "caught signal %i, exiting" s;
-      ignore (Thread.create stop manager)
+      ignore (Thread.create stop daemon)
     and signals = [ Sys.sigint; Sys.sigterm ] in
     let rec signals_handler () =
       signal_handler (Thread.wait_signal signals);
@@ -383,7 +382,7 @@ module Client = struct
     in
     ignore (Thread.sigmask Unix.SIG_BLOCK signals);
     ignore (Thread.create signals_handler ());
-    try run ~port_f:started manager
+    try run ~port_f:started daemon
     with Error s ->
       Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
       exit 1
@@ -392,9 +391,9 @@ module Client = struct
     (* This is a bit ugly as it is global, but flushing a closed socket will
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-    let* memory = Result.map_error ~f:err (Dune_memory.Memory.make ignore) in
+    let* cache = Result.map_error ~f:err (Dune_cache.Cache.make ignore) in
     let* port =
-      let root = Dune_memory.default_root () in
+      let root = Dune_cache.default_root () in
       Daemonize.daemonize ~workdir:root (default_port_file ())
         (daemon ~root ~config:{ exit_no_client = true })
       >>| (function
@@ -423,7 +422,7 @@ module Client = struct
       match
         let+ command = read input in
         Log.infof "dune-cache command: %a" Pp.render_ignore_tags
-          (Dyn.pp (Dune_memory.command_to_dyn command));
+          (Dyn.pp (Dune_cache.command_to_dyn command));
         handle command
       with
       | Result.Error e ->
@@ -435,7 +434,7 @@ module Client = struct
     (* FIXME: find highest common version *)
     ignore (read input);
     let thread = Thread.create thread input in
-    Result.Ok { socket; fd; input; memory; thread; finally }
+    Result.Ok { socket; fd; input; cache; thread; finally }
 
   let with_repositories client repositories =
     send client.socket (Messages.SetRepos repositories);
@@ -453,7 +452,7 @@ module Client = struct
     send client.socket (Messages.SetBuildRoot path);
     client
 
-  let search client key = Dune_memory.Memory.search client.memory key
+  let search client key = Dune_cache.Cache.search client.cache key
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

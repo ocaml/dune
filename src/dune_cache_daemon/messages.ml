@@ -12,7 +12,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
   function
   | Lang versions ->
     cmd "lang"
-      ( Sexp.Atom "dune-memory-protocol"
+      ( Sexp.Atom "dune-cache-protocol"
       :: (List.map ~f:(fun { major; minor } ->
               Sexp.List
                 [ Sexp.Atom (string_of_int major)
@@ -20,7 +20,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
                 ]))
            versions )
   | Promote promotion ->
-    let key = Dune_memory.Key.to_string promotion.key
+    let key = Dune_cache.Key.to_string promotion.key
     and f (path, digest) =
       Sexp.List
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
@@ -41,7 +41,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
   | SetRepos repositories ->
-    let f { Dune_memory.directory; remote; commit } =
+    let f { Dune_cache.directory; remote; commit } =
       Sexp.List
         [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
         ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
@@ -54,7 +54,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
       [ Sexp.List
           [ Sexp.Atom
               (Path.Local.to_string (Path.Build.local f.in_the_build_directory))
-          ; Sexp.Atom (Path.to_string f.in_the_memory)
+          ; Sexp.Atom (Path.to_string f.in_the_cache)
           ; Sexp.Atom (Digest.to_string f.digest)
           ]
       ]
@@ -69,7 +69,7 @@ let incoming_message_of_sexp = function
       Result.Ok
         (Dedup
            { in_the_build_directory = Path.Build.of_string source
-           ; in_the_memory = Path.of_string target
+           ; in_the_cache = Path.of_string target
            ; digest
            })
     | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
@@ -78,7 +78,7 @@ let incoming_message_of_sexp = function
 
 let outgoing_message_of_sexp =
   let lang_of_sexp = function
-    | Sexp.Atom "dune-memory-protocol" :: versions ->
+    | Sexp.Atom "dune-cache-protocol" :: versions ->
       let decode_version = function
         | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
           let+ major = Utils.int_of_string ~where:"lang command version" major
@@ -100,7 +100,7 @@ let outgoing_message_of_sexp =
           ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
           ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
           ] ->
-        Result.ok { Dune_memory.directory; remote; commit }
+        Result.ok { Dune_cache.directory; remote; commit }
       | invalid ->
         Result.Error
           (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
@@ -113,8 +113,8 @@ let outgoing_message_of_sexp =
       cmd ->
       let file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          Dune_memory.Key.of_string hash
-          >>| fun d -> (Path.Build.of_local (Path.Local.of_string path), d)
+          let+ d = Dune_cache.Key.of_string hash in
+          (Path.Build.of_local (Path.Local.of_string path), d)
         | sexp ->
           Result.Error
             (Printf.sprintf "invalid file in promotion message: %s"
@@ -131,7 +131,7 @@ let outgoing_message_of_sexp =
             (Printf.sprintf "invalid promotion message: %s"
                (Sexp.to_string (Sexp.List cmd)))
       and+ files = Result.List.map ~f:file files
-      and+ key = Dune_memory.Key.of_string key in
+      and+ key = Dune_cache.Key.of_string key in
       { repository; files; key; metadata }
     | args -> invalid_args args
   and path_of_sexp = function

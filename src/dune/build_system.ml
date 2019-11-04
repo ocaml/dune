@@ -411,8 +411,8 @@ end
 
 type caching =
   | Disabled
-  | Enabled of (module Dune_memory.Caching)
-  | Check of (module Dune_memory.Caching)
+  | Enabled of (module Dune_cache.Caching)
+  | Check of (module Dune_cache.Caching)
 
 type t =
   { (* File specification by targets *)
@@ -459,7 +459,7 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
 
-let get_memory () =
+let get_cache () =
   let t = t () in
   t.cache
 
@@ -1245,7 +1245,7 @@ module rec Used_recursively : Rec = Exported
 and Exported : sig
   include Rec
 
-  (* exported to inspect memory cycles *)
+  (* exported to inspect cache cycles *)
 
   val evaluate_action_and_dynamic_deps_memo :
     ( Internal_rule.t
@@ -1492,7 +1492,7 @@ end = struct
         List.iter targets_as_list ~f:(fun target ->
             Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
-        let from_dune_memory =
+        let from_Dune_cache =
           match (do_not_memoize, t.cache) with
           | true, _
           | _, Disabled ->
@@ -1510,13 +1510,13 @@ end = struct
           | _ -> false
         in
         let pulled_from_cache =
-          match from_dune_memory with
+          match from_Dune_cache with
           | Some files when not cache_checking -> (
-            let retrieve (file : Dune_memory.File.t) =
+            let retrieve (file : Dune_cache.File.t) =
               let path = Path.build file.in_the_build_directory in
               Log.infof "retrieve %s from cache"
                 (Path.to_string_maybe_quoted path);
-              Path.link file.in_the_memory path;
+              Path.link file.in_the_cache path;
               Cached_digest.set path file.digest;
               file.digest
             in
@@ -1582,14 +1582,14 @@ end = struct
             (* Check cache. We don't check for missing file in the cache, since
                the file list is part of the rule hash this really never should
                happen. *)
-            match from_dune_memory with
+            match from_Dune_cache with
             | Some cached when cache_checking ->
               (* This being [false] is unexpected and means we have a hash
                  collision *)
               let data_are_ok =
                 match
                   List.for_all2 targets cached
-                    ~f:(fun (target, _) (c : Dune_memory.File.t) ->
+                    ~f:(fun (target, _) (c : Dune_cache.File.t) ->
                       Path.Build.equal target c.in_the_build_directory)
                 with
                 | Ok b -> b
@@ -1607,12 +1607,12 @@ end = struct
                 User_warning.emit
                   [ Pp.text "unexpected list of targets in the cache"
                   ; pp "expected: " targets ~f:fst
-                  ; pp "got:      " cached ~f:(fun (c : Dune_memory.File.t) ->
+                  ; pp "got:      " cached ~f:(fun (c : Dune_cache.File.t) ->
                         c.in_the_build_directory)
                   ]
               else
                 List.iter2 targets cached
-                  ~f:(fun (_, digest) (c : Dune_memory.File.t) ->
+                  ~f:(fun (_, digest) (c : Dune_cache.File.t) ->
                     if not (Digest.equal digest c.digest) then
                       User_warning.emit
                         [ Pp.textf "cache mismatch on %s: hash differ with %s"
@@ -2076,12 +2076,12 @@ let init ~contexts ?(caching = Disabled) ~sandboxing_preference =
     |> Context_name.Map.of_list_exn
   in
   let cache =
-    let f (module Caching : Dune_memory.Caching) =
+    let f (module Caching : Dune_cache.Caching) =
       ( module struct
         module Cache = Caching.Cache
 
         let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-      end : Dune_memory.Caching )
+      end : Dune_cache.Caching )
     in
     match caching with
     | Disabled -> Disabled

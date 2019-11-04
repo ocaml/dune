@@ -9,8 +9,8 @@ open! Import
 
 type caching =
   | Disabled
-  | Enabled of (module Dune_memory.Caching)
-  | Check of (module Dune_memory.Caching)
+  | Enabled of (module Dune_cache.Caching)
+  | Check of (module Dune_cache.Caching)
 
 (** Initializes the build system. This must be called first. *)
 val init :
@@ -177,4 +177,4 @@ end
 val evaluate_rules :
   recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
 
-val get_memory : unit -> caching
+val get_cache : unit -> caching

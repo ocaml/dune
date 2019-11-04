@@ -159,13 +159,7 @@ let bootstrap () =
     in
     let subst () =
       let config : Config.t =
-        { display = Quiet
-        ; concurrency = Fixed 1
-        ; terminal_persistence = Preserve
-        ; sandboxing_preference = []
-        ; cache_mode = Config.Caching.Mode.Disabled
-        ; cache_transport = Config.Caching.Transport.Direct
-        }
+        { Config.default with display = Quiet; concurrency = Fixed 1 }
       in
       init config;
       Scheduler.go ~config Watermarks.subst;

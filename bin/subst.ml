@@ -60,13 +60,7 @@ let info = Term.info "subst" ~doc ~man
 let term =
   let+ () = Common.build_info in
   let config : Config.t =
-    { display = Quiet
-    ; concurrency = Fixed 1
-    ; terminal_persistence = Preserve
-    ; sandboxing_preference = []
-    ; cache_mode = Config.Caching.Mode.Disabled
-    ; cache_transport = Config.Caching.Transport.Direct
-    }
+    { Config.default with display = Quiet; concurrency = Fixed 1 }
   in
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Build.Kind.of_string Common.default_build_dir);

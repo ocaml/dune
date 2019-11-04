@@ -1702,6 +1702,7 @@ module Rule = struct
       ; ("locks", Field)
       ; ("fallback", Field)
       ; ("mode", Field)
+      ; ("alias", Field)
       ]
 
   let short_form =

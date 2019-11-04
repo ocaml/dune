@@ -6,13 +6,13 @@ type metadata = Sexp.t list
 
 module File = struct
   type t =
-    { in_the_memory : Path.t
+    { in_the_cache : Path.t
     ; in_the_build_directory : Path.Build.t
     ; digest : Digest.t
     }
 end
 
-module type Memory = sig
+module type Cache = sig
   type t
 
   val promote :
@@ -29,7 +29,7 @@ module type Memory = sig
 end
 
 module type Caching = sig
-  module Cache : Memory
+  module Cache : Cache
 
   val cache : Cache.t
 end

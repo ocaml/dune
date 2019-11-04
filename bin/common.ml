@@ -514,6 +514,8 @@ let term =
       ; sandboxing_preference =
           Option.map sandboxing_preference ~f:(fun x -> [ x ])
       ; terminal_persistence
+      ; cache_mode = None
+      ; cache_transport = None
       }
   in
   let config =

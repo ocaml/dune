@@ -72,6 +72,21 @@ module Sandboxing_preference : sig
   type t = Sandbox_mode.t list
 end
 
+module Caching : sig
+  type mode =
+    | Disabled
+    | Enabled
+    | Check
+
+  val decode_mode : mode Dune_lang.Decoder.t
+
+  type transport =
+    | Daemon
+    | Direct
+
+  val decode_transport : transport Dune_lang.Decoder.t
+end
+
 module type S = sig
   type 'a field
 
@@ -80,6 +95,8 @@ module type S = sig
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
+    ; cache_mode : Caching.mode field
+    ; cache_transport : Caching.transport field
     }
 end
 

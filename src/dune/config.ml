@@ -113,6 +113,22 @@ module Sandboxing_preference = struct
            | Ok s -> s))
 end
 
+module Caching = struct
+  type mode =
+    | Disabled
+    | Enabled
+    | Check
+
+  let decode_mode =
+    enum [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+
+  type transport =
+    | Daemon
+    | Direct
+
+  let decode_transport = enum [ ("daemon", Daemon); ("direct", Direct) ]
+end
+
 module type S = sig
   type 'a field
 
@@ -121,6 +137,8 @@ module type S = sig
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
+    ; cache_mode : Caching.mode field
+    ; cache_transport : Caching.transport field
     }
 end
 
@@ -138,6 +156,8 @@ let merge t (partial : Partial.t) =
       field t.terminal_persistence partial.terminal_persistence
   ; sandboxing_preference =
       field t.sandboxing_preference partial.sandboxing_preference
+  ; cache_mode = field t.cache_mode partial.cache_mode
+  ; cache_transport = field t.cache_transport partial.cache_transport
   }
 
 let default =
@@ -153,6 +173,8 @@ let default =
         Auto )
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
+  ; cache_mode = Disabled
+  ; cache_transport = Direct
   }
 
 let decode =
@@ -165,8 +187,19 @@ let decode =
   and+ sandboxing_preference =
     field "sandboxing_preference" Sandboxing_preference.decode
       ~default:default.sandboxing_preference
+  and+ cache_mode =
+    field "cache-mode" Caching.decode_mode ~default:default.cache_mode
+  and+ cache_transport =
+    field "cache-transport" Caching.decode_transport
+      ~default:default.cache_transport
   and+ () = Dune_lang.Versioned_file.no_more_lang in
-  { display; concurrency; terminal_persistence; sandboxing_preference }
+  { display
+  ; concurrency
+  ; terminal_persistence
+  ; sandboxing_preference
+  ; cache_mode
+  ; cache_transport
+  }
 
 let decode = fields decode
 

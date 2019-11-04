@@ -28,55 +28,27 @@ module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
 include Common.Let_syntax
 
-module Cache_mode = struct
-  type t =
-    | Daemon
-    | Direct
-
-  let of_string = function
-    | "daemon" -> Some Daemon
-    | "direct" -> Some Direct
-    | _ -> None
-
-  let get () =
-    let var = "DUNE_CACHE_MODE" in
-    match Env.get Env.initial var with
-    | None -> Daemon
-    | Some v -> (
-      match of_string v with
-      | Some v -> v
-      | None ->
-        User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ] )
-end
-
-let make_cache () =
-  let var = "DUNE_CACHE"
-  and handle = function
-    | Dune_cache.Dedup file -> Scheduler.send_dedup file
+let make_cache (config : Config.t) =
+  let make_cache () =
+    let handle (Dune_cache.Dedup file) = Scheduler.send_dedup file in
+    match config.cache_transport with
+    | Config.Caching.Direct ->
+      let cache =
+        Result.ok_exn
+          (Result.map_error
+             ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
+             (Dune_cache.Cache.make handle))
+      in
+      Dune_cache.make_caching (module Dune_cache.Cache) cache
+    | Config.Caching.Daemon ->
+      let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
+      Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
   in
-  match Env.get Env.initial var with
-  | Some v ->
-    let cache =
-      match Cache_mode.get () with
-      | Daemon ->
-        let cache =
-          Result.ok_exn
-            (Result.map_error
-               ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-               (Dune_cache.Cache.make handle))
-        in
-        Dune_cache.make_caching (module Dune_cache.Cache) cache
-      | Direct ->
-        let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
-        Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
-    in
-    Fiber.return
-      ( match v with
-      | v when String.lowercase v = "check" -> Build_system.Check cache
-      | "1" -> Build_system.Enabled cache
-      | _ -> User_error.raise [ Pp.textf "Unrecognized value for %s: %s" var v ]
-      )
-  | _ -> Fiber.return Build_system.Disabled
+  Fiber.return
+    ( match config.cache_mode with
+    | Config.Caching.Check -> Build_system.Check (make_cache ())
+    | Config.Caching.Enabled -> Build_system.Enabled (make_cache ())
+    | Config.Caching.Disabled -> Build_system.Disabled )
 
 module Main = struct
   include Dune.Main
@@ -95,7 +67,7 @@ module Main = struct
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in
     let only_packages = Common.only_packages common in
-    let* caching = make_cache () in
+    let* caching = make_cache (Common.config common) in
     let* workspace = scan_workspace common in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference

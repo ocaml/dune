@@ -183,6 +183,10 @@
   `homepage`, and `documentation` of `dune-project` can now be overriden on a
   per-package basis. (#2774, @nojb)
 
+- Change the default `modes` field of executables to `(mode exe)`. If
+  one wants to build a bytecode program, it now needs to be explicitly
+  requested via `(modes byte exe)`. (#2851, @diml)
+
 1.11.4 (09/10/2019)
 -------------------
 

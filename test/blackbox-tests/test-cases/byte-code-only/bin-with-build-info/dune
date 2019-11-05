@@ -1,4 +1,5 @@
 (executable
  (name print_version)
+ (modes exe byte)
  (libraries build_info)
  )

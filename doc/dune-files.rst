@@ -557,12 +557,14 @@ format of executable stanzas is as follows:
      <optional-fields>)
 
 ``<name>`` is a module name that contains the main entry point of the
-executable. There can be additional modules in the current directory, you only
-need to specify the entry point. Given an ``executable`` stanza with ``(name
-<name>)``, dune will know how to build ``<name>.exe``, ``<name>.bc`` and
-``<name>.bc.js``. ``<name>.exe`` is a native code executable, ``<name>.bc`` is a
-bytecode executable which requires ``ocamlrun`` to run and ``<name>.bc.js`` is a
-JavaScript generated using js_of_ocaml.
+executable. There can be additional modules in the current directory,
+you only need to specify the entry point. Given an ``executable``
+stanza with ``(name <name>)``, dune will know how to build
+``<name>.exe``. If requested, it will also know how to build
+``<name>.bc`` and ``<name>.bc.js``. ``<name>.exe`` is a native code
+executable, ``<name>.bc`` is a bytecode executable which requires
+``ocamlrun`` to run and ``<name>.bc.js`` is a JavaScript generated
+using js_of_ocaml.
 
 Note that in case native compilation is not available, ``<name>.exe``
 will in fact be a custom byte-code executable. Custom in the sense of
@@ -615,7 +617,7 @@ Executables can also be linked as object or shared object files. See
   ...)`` field of `library`_
 
 - ``(modes (<modes>))`` sets the `linking modes`_. The default is
-  ``(byte exe)``
+  ``(exe)``. Before 2.0, it used to be ``(byte exe)``.
 
 - ``(preprocess <preprocess-spec>)`` is the same as the ``(preprocess ...)``
   field of `library`_

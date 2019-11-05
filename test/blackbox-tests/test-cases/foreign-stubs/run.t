@@ -234,6 +234,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
+  >  (modes exe byte)
   >  (libraries quad)
   >  (modules main))
   > EOF
@@ -307,6 +308,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
+  >  (modes exe byte)
   >  (libraries quad)
   >  (modules main))
   > EOF
@@ -371,6 +373,7 @@ Testsuite for the (foreign_stubs ...) field.
   >  (action (run %{ocaml-config:c_compiler} -shared -o %{targets} %{deps})))
   > (executable
   >  (name main)
+  >  (modes exe byte)
   >  (libraries quad)
   >  (modules main))
   > EOF

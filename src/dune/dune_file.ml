@@ -711,7 +711,8 @@ module Mode_conf = struct
       in
       repeat decode >>| of_list
 
-    let default loc = of_list [ (Byte, Inherited); (Best, Requested loc) ]
+    let default loc : t =
+      { empty with byte = Some Inherited; best = Some (Requested loc) }
 
     module Details = struct
       type t = Kind.t option
@@ -1460,7 +1461,13 @@ module Executables = struct
           else
             t
 
-      let default = of_list [ byte; exe ]
+      let default_for_exes ~version =
+        if version < (2, 0) then
+          of_list [ byte; exe ]
+        else
+          singleton exe
+
+      let default_for_tests = of_list [ byte; exe ]
 
       let best_install_mode t = List.find ~f:(mem t) installable_modes
     end
@@ -1489,6 +1496,7 @@ module Executables = struct
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
   let common =
+    let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let+ buildable = Buildable.decode ~in_library:false ~allow_re_export:false
     and+ (_ : bool) =
       field "link_executables" ~default:true
@@ -1496,7 +1504,8 @@ module Executables = struct
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
     and+ modes =
-      field "modes" Link_mode.Set.decode ~default:Link_mode.Set.default
+      field "modes" Link_mode.Set.decode
+        ~default:(Link_mode.Set.default_for_exes ~version:dune_version)
     and+ optional =
       field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
@@ -2031,7 +2040,7 @@ module Tests = struct
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ modes =
          field "modes" Executables.Link_mode.Set.decode
-           ~default:Executables.Link_mode.Set.default
+           ~default:Executables.Link_mode.Set.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = enabled_if ~since:(Some (1, 4))

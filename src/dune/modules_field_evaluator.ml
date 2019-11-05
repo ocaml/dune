@@ -168,7 +168,8 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
         User_error.raise ~loc (List.concat [ before; [ line_list l ]; after ])
     in
     print
-      [ Pp.text "The folowing modules are implementations of virtual modules:" ]
+      [ Pp.text "The folowing modules are implementations of virtual modules:"
+      ]
       vmodule_impls_with_own_intf
       [ Pp.text "They cannot have their own interface files." ];
     print
@@ -211,7 +212,8 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       [ Pp.text "These modules are declared virtual, but are missing." ]
       ( unimplemented_virt_modules |> Module_name.Set.to_list
       |> List.map ~f:(fun name -> (buildable.loc, name)) )
-      [ Pp.text "You must provide an implementation for all of these modules." ];
+      [ Pp.text "You must provide an implementation for all of these modules."
+      ];
     ( if missing_intf_only <> [] then
       match Ordered_set_lang.loc buildable.modules_without_implementation with
       | None ->

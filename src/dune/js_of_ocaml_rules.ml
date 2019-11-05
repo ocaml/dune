@@ -142,7 +142,8 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in
-    [ js_of_ocaml_rule sctx ~dir ~flags:(Command.Args.dyn flags) ~spec ~target ]
+    [ js_of_ocaml_rule sctx ~dir ~flags:(Command.Args.dyn flags) ~spec ~target
+    ]
   else
     []
 

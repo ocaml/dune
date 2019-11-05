@@ -16,8 +16,7 @@ let system_shell_exn =
       User_error.raise
         [ Pp.textf
             "I need %s to %s but I couldn't find it :(\n\
-             Who doesn't have %s%s?!"
-            cmd needed_to cmd os
+             Who doesn't have %s%s?!" cmd needed_to cmd os
         ]
 
 let bash_exn =

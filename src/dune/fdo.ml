@@ -82,8 +82,7 @@ module Mode = struct
           [ Pp.textf
               "Failed to parse environment variable: %s=%s\n\
                Permitted values: if-exists always never\n\
-               Default: %s"
-              var v (to_string default)
+               Default: %s" var v (to_string default)
           ] )
 end
 

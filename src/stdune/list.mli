@@ -77,4 +77,4 @@ val for_all2 :
      'a list
   -> 'b list
   -> f:('a -> 'b -> bool)
-  -> (bool, [`Length_mismatch]) result
+  -> (bool, [ `Length_mismatch ]) result

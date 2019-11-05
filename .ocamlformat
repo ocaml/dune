@@ -1,4 +1,8 @@
-version=0.11.0
+version=0.12
+margin=79
+break-infix-before-func
+break-separators=before
+dock-collection-brackets=false
 break-sequences=true
 doc-comments=before
 field-space=loose

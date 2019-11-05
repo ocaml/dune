@@ -16,7 +16,8 @@ let to_dyn t = Dyn.Encoder.string (to_string t)
 
 let of_string_exn loc repr =
   match of_string_result repr with
-  | Error (_, msg) -> User_error.raise ~loc [ Pp.textf "invalid glob: :%s" msg ]
+  | Error (_, msg) ->
+    User_error.raise ~loc [ Pp.textf "invalid glob: :%s" msg ]
   | Ok t -> t
 
 let encode t =

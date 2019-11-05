@@ -122,8 +122,8 @@ let daemonize ?workdir ?(foreground = false) beacon
       let* fd =
         retry
           ~message:
-            (Printf.sprintf "waiting for beacon file \"%s\" to be created" path)
-          (fun () ->
+            (Printf.sprintf "waiting for beacon file \"%s\" to be created"
+               path) (fun () ->
             try Some (Unix.openfile path [ Unix.O_RDONLY ] 0o600)
             with Unix.Unix_error (Unix.ENOENT, _, _) -> None)
       in

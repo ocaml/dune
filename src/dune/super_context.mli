@@ -1,8 +1,7 @@
 (** An augmented context *)
 
-(** A context augmented with: a lib-db, ...
-
-    Super context are used for generating rules. *)
+(** A context augmented with: a lib-db, ... Super context are used for
+    generating rules. *)
 
 open! Stdune
 open Import

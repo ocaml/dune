@@ -252,8 +252,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           sigh... *)
        ( match Env.get env "OCAMLFIND_CONF" with
        | Some s -> Fiber.return s
-       | None -> Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]
-       )
+       | None ->
+         Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
        >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
@@ -779,7 +779,8 @@ let install_ocaml_libdir t =
     match which t "ocamlfind" with
     | Some fn ->
       let+ s =
-        Process.run_capture_line ~env:t.env Strict fn [ "printconf"; "destdir" ]
+        Process.run_capture_line ~env:t.env Strict fn
+          [ "printconf"; "destdir" ]
       in
       Some (Path.of_filename_relative_to_initial_cwd s)
     | None -> Fiber.return None )

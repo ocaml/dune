@@ -347,8 +347,8 @@ module Client = struct
           daemon.clients <-
             ( match Clients.add daemon.clients client.fd (client, tid) with
             | Result.Ok v -> v
-            | Result.Error _ -> User_error.raise [ Pp.textf "duplicate socket" ]
-            )
+            | Result.Error _ ->
+              User_error.raise [ Pp.textf "duplicate socket" ] )
         | Client_left fd ->
           daemon.clients <- Clients.remove daemon.clients fd;
           if daemon.config.exit_no_client && Clients.is_empty daemon.clients

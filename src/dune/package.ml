@@ -80,7 +80,13 @@ module Dependency = struct
       | Neq
 
     let map =
-      [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
+      [ ("=", Eq)
+      ; (">=", Gte)
+      ; ("<=", Lte)
+      ; (">", Gt)
+      ; ("<", Lt)
+      ; ("<>", Neq)
+      ]
 
     let to_dyn =
       let open Dyn.Encoder in

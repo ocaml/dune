@@ -330,11 +330,11 @@ let setup_toplevel_index_rule sctx =
 let libs_of_pkg sctx ~pkg =
   SC.lib_entries_of_package sctx pkg
   |> (* Filter out all implementations of virtual libraries *)
-     List.filter_map ~f:(function
-       | Super_context.Lib_entry.Library lib ->
-         let is_impl = Lib.Local.to_lib lib |> Lib.is_impl in
-         Option.some_if (not is_impl) lib
-       | Deprecated_library_name _ -> None)
+  List.filter_map ~f:(function
+    | Super_context.Lib_entry.Library lib ->
+      let is_impl = Lib.Local.to_lib lib |> Lib.is_impl in
+      Option.some_if (not is_impl) lib
+    | Deprecated_library_name _ -> None)
 
 let load_all_odoc_rules_pkg sctx ~pkg =
   let pkg_libs = libs_of_pkg sctx ~pkg in

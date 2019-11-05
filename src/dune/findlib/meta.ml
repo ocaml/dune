@@ -35,8 +35,8 @@ let add_versions t ~get_version =
         match get_version (List.rev rev_path) with
         | None -> []
         | Some v ->
-          [ Rule { var = "version"; predicates = []; action = Set; value = v } ]
-      )
+          [ Rule { var = "version"; predicates = []; action = Set; value = v }
+          ] )
     | entry :: entries -> (
       match entry with
       | Comment _ ->

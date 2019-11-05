@@ -196,6 +196,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
          let merlin_file = Path.Build.relative dir ".merlin" in
+
          (* We make the compilation of .ml/.mli files depend on the existence
             of .merlin so that they are always generated, however the command
             themselves don't read the merlin file, so we don't want to declare

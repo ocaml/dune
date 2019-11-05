@@ -1,6 +1,10 @@
 2.0.0 (unreleased)
 ------------------
 
+- The `action` field in the `alias` stanza is not available starting `lang dune
+  2.0`. The `alias` field in the `rule` stanza is a replacement. (#2846, fixes
+  2681, @rgrinberg)
+
 - Introduce `alias` and `package` fields to the `rule` stanza. This is the
   preferred way of attaching rules to aliases. (#2744, @rgrinberg)
 

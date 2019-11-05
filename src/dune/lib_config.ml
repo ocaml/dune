@@ -15,6 +15,10 @@ module Ccomp_type = struct
     | "msvc" -> Msvc
     | s -> Other s
 
+  let to_string = function
+    | Msvc -> "msvc"
+    | Other s -> s
+
   let of_config ocfg = of_string (Ocaml_config.ccomp_type ocfg)
 end
 
@@ -37,9 +41,17 @@ let var_map =
   ; ("system", fun t -> t.system)
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> t.os_type)
+  ; ("ccomp_type", fun t -> Ccomp_type.to_string t.ccomp_type)
   ]
 
-let allowed_in_enabled_if = List.map ~f:fst var_map
+let allowed_in_enabled_if =
+  List.map var_map ~f:(fun (var, _) ->
+      let min_version =
+        match var with
+        | "ccomp_type" -> (2, 0)
+        | _ -> (1, 0)
+      in
+      (var, min_version))
 
 let get_for_enabled_if t ~var =
   match List.assoc var_map var with

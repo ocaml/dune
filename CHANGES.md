@@ -187,6 +187,9 @@
   one wants to build a bytecode program, it now needs to be explicitly
   requested via `(modes byte exe)`. (#2851, @diml)
 
+- Allow `ccomp_type` as a variable for evaluating `enabled_if`. (#2855, @dra27,
+  @rgrinberg)
+
 1.11.4 (09/10/2019)
 -------------------
 

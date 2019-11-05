@@ -31,8 +31,8 @@ only the dependencies up to this stage are rebuilt.
   >    (echo "Building foo_or_bar!\n")
   >    (copy %{deps} %{target}))))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./client.exe)))
   > EOF
 

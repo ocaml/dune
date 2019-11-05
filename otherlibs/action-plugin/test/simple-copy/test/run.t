@@ -13,8 +13,8 @@
   >  (action
   >   (dynamic-run ./foo.exe)))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action
   >   (progn
   >    (cat some_source)

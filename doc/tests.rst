@@ -407,8 +407,8 @@ command. For instance let's consider this test:
           (rule
            (with-stdout-to tests.output (run ./tests.exe)))
 
-          (alias
-           (name runtest)
+          (rule
+           (alias runtest)
            (action (diff tests.expected test.output)))
 
 After having run ``tests.exe`` and dumping its output to ``tests.output``, dune

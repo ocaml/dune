@@ -4,7 +4,7 @@
 It's OK if there's no correction:
 
   $ cat > dune <<EOF
-  > (alias (name no_correction)
+  > (rule (alias no_correction)
   >   (deps )
   >   (action (progn (diff? text-file text-file-corrected)))
   > )
@@ -15,7 +15,7 @@ Dependency on the first argument of diff? is automatically added
 and dune correctly complains
 
   $ cat > dune <<EOF
-  > (alias (name correction1)
+  > (rule (alias correction1)
   >   (deps)
   >   (action
   >     (progn (bash "> text-file-corrected echo corrected-contents-1")
@@ -41,7 +41,7 @@ When correction is no longer produced, dune no longer complains.
 (relies on stale artifact deletion, it seems)
 
   $ cat > dune <<EOF
-  > (alias (name correction1)
+  > (rule (alias correction1)
   >   (deps text-file)
   >   (action
   >     (progn 
@@ -54,7 +54,7 @@ When correction is no longer produced, dune no longer complains.
 Promotion should work when sandboxing is used:
 
   $ cat > dune <<EOF
-  > (alias (name correction1)
+  > (rule (alias correction1)
   >   (deps)
   >   (action
   >     (progn
@@ -76,7 +76,7 @@ Dependency on the second argument of diff? is *not* automatically added.
 This is fine because we think of it as an intermediate file rather than dep.
 
   $ cat > dune <<EOF
-  > (alias (name correction1)
+  > (rule (alias correction1)
   >   (deps)
   >   (action
   >     (progn
@@ -117,7 +117,7 @@ Sandboxing does help if the command producing the
 correction is non-trivial.
 
   $ cat > dune <<EOF
-  > (alias (name correction1)
+  > (rule (alias correction1)
   >   (deps)
   >   (action
   >     (progn

@@ -29,7 +29,7 @@
    %{targets}
    (run bash %{dep:update-jbuild.sh}))))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (action
   (diff dune.inc dune.inc.gen)))

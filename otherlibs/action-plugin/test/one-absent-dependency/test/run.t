@@ -7,8 +7,8 @@ and requires dependency that can not be build fails.
   > EOF
 
   $ cat > dune << EOF
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./foo.exe)))
   > EOF
 
@@ -17,8 +17,8 @@ and requires dependency that can not be build fails.
   $ dune runtest --display short
            foo alias runtest
   File "dune", line 1, characters 0-57:
-  1 | (alias
-  2 |  (name runtest)
+  1 | (rule
+  2 |  (alias runtest)
   3 |  (action (dynamic-run ./foo.exe)))
   Error: No rule found for some_absent_dependency
   [1]

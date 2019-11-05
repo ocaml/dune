@@ -17,8 +17,8 @@
   >   (progn
   >    (bash "ls -1 some_directory > some_target"))))
   > \
-  > (alias
-  >  (name some_alias)
+  > (rule
+  >  (alias some_alias)
   >  (deps (universe))
   >  (action (cat some_target)))
   > EOF
@@ -46,8 +46,8 @@
   >   (progn
   >    (bash "ls -1 some_directory > some_target"))))
   > \
-  > (alias
-  >  (name some_alias)
+  > (rule
+  >  (alias some_alias)
   >  (deps (universe))
   >  (action (cat some_target)))
   > EOF

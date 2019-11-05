@@ -25,8 +25,8 @@ on based on dependency from the previous stage.
   >  (target foo_or_bar)
   >  (action (with-stdout-to %{target} (echo "bar"))))
   > \
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action (dynamic-run ./client.exe)))
   > EOF
 

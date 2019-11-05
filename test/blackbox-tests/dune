@@ -23,7 +23,7 @@
    %{targets}
    (run ./gen_tests.exe))))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (action
   (diff dune.inc dune.inc.gen)))

@@ -7,11 +7,11 @@ when we 'chdir' into different directory.
   > EOF
 
   $ cat > dune << EOF
-  > (alias
-  >  (name runtest)
+  > (rule
+  >  (alias runtest)
   >  (action
   >   (chdir some_dir
-  >   (dynamic-run ./foo.exe))))
+  >    (dynamic-run ./foo.exe))))
   > EOF
 
   $ mkdir some_dir

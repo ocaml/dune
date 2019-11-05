@@ -1,7 +1,7 @@
 (data_only_dirs test-cases)
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package dune-configurator)
  (deps
   (package dune)
@@ -16,8 +16,8 @@
  (enabled_if
   (<> %{ocaml-config:system} win)))
 
-(alias
- (name runtest)
+(rule
+ (alias runtest)
  (package dune-configurator)
  (deps
   (package dune)

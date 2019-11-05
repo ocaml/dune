@@ -1,5 +1,5 @@
-(alias
- (name foo)
+(rule
+ (alias foo)
  (action (echo Hello!)))
 
 (rule

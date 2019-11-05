@@ -202,8 +202,8 @@ should be rewritten to the following dune file:
 
 .. code:: scheme
 
-          (alias
-           (name   runtest)
+          (rule
+           (alias  runtest)
            (deps   (:x input))
            (action (run ./test.exe %{x})))
 

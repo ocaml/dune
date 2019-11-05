@@ -1702,6 +1702,7 @@ module Rule = struct
       ; ("locks", Field)
       ; ("fallback", Field)
       ; ("mode", Field)
+      ; ("alias", Field)
       ]
 
   let short_form =
@@ -1989,9 +1990,17 @@ module Alias_conf = struct
   let decode =
     fields
       (let+ name = field "name" Alias.Name.decode
-       and+ loc = loc
        and+ package = field_o "package" Pkg.decode
-       and+ action = field_o "action" (located Action_dune_lang.decode)
+       and+ action =
+         field_o "action"
+           (let extra_info =
+              "Use a rule stanza with the alias field instead"
+            in
+            let* () =
+              Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
+            in
+            located Action_dune_lang.decode)
+       and+ loc = loc
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty

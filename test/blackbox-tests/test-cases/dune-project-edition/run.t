@@ -1,7 +1,7 @@
   $ [ -e dune-project ] || echo File does not exist
   File does not exist
   $ mkdir src
-  $ echo '(alias (name runtest) (action (progn)))' >  src/dune
+  $ echo '(rule (alias runtest) (action (progn)))' >  src/dune
   $ dune build
   Info: Creating file dune-project with this contents:
   | (lang dune 2.0)

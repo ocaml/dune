@@ -126,6 +126,7 @@ Testsuite for the (foreign_library ...) stanza.
   $ cat >dune <<EOF
   > (executable
   >  (name main)
+  >  (modes exe byte)
   >  (libraries calc)
   >  (modules main))
   > EOF
@@ -398,6 +399,7 @@ Testsuite for the (foreign_library ...) stanza.
   $ cat >dune <<EOF
   > (executable
   >  (name main)
+  >  (modes exe byte)
   >  (libraries calc)
   >  (foreign_archives lib/day)
   >  (modules main))
@@ -414,12 +416,13 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ ./sdune build
-  File "dune", line 1, characters 0-87:
+  File "dune", line 1, characters 0-105:
   1 | (executable
   2 |  (name main)
-  3 |  (libraries calc)
-  4 |  (foreign_archives lib/day)
-  5 |  (modules main))
+  3 |  (modes exe byte)
+  4 |  (libraries calc)
+  5 |  (foreign_archives lib/day)
+  6 |  (modules main))
   Error: Pure bytecode executables cannot contain foreign archives.
   Hint: If you only need to build a native executable use "(modes exe)".
   [1]

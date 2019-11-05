@@ -16,7 +16,8 @@ let create ~dir predicate = { dir; predicate }
 
 let to_dyn { dir; predicate } =
   let open Dyn in
-  Record [ ("dir", Path.to_dyn dir); ("predicate", Predicate.to_dyn predicate) ]
+  Record
+    [ ("dir", Path.to_dyn dir); ("predicate", Predicate.to_dyn predicate) ]
 
 let encode { dir; predicate } =
   let open Dune_lang.Encoder in

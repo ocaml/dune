@@ -325,7 +325,8 @@ let rec exec t ~ectx ~eenv =
                   ~source_file:
                     (snd
                        (Option.value_exn
-                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                          (Path.extract_build_context_dir_maybe_sandboxed
+                             file1)))
                   ~correction_file:(Path.as_in_build_dir_exn file2)
             | true ->
               if is_copied_from_source_tree file1 then
@@ -333,7 +334,8 @@ let rec exec t ~ectx ~eenv =
                   ~source_file:
                     (snd
                        (Option.value_exn
-                          (Path.extract_build_context_dir_maybe_sandboxed file1)))
+                          (Path.extract_build_context_dir_maybe_sandboxed
+                             file1)))
                   ~correction_file:(Path.as_in_build_dir_exn file2)
               else
                 remove_intermediate_file () );

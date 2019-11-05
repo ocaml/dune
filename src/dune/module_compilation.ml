@@ -20,7 +20,8 @@ let force_read_cmi source_file = [ "-intf-suffix"; Path.extension source_file ]
 let opens modules m =
   match Modules.alias_for modules m with
   | None -> Command.Args.empty
-  | Some (m : Module.t) -> As [ "-open"; Module_name.to_string (Module.name m) ]
+  | Some (m : Module.t) ->
+    As [ "-open"; Module_name.to_string (Module.name m) ]
 
 let other_cm_files ~opaque ~(cm_kind : Cm_kind.t) ~dep_graph ~obj_dir m =
   let open Build.O in

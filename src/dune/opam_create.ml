@@ -134,7 +134,9 @@ let opam_fields project (package : Package.t) =
            | Some (_ :: _ as v) -> Some (k, string_list v))
   in
   let fields =
-    [ ("opam-version", string "2.0"); ("build", default_build_command project) ]
+    [ ("opam-version", string "2.0")
+    ; ("build", default_build_command project)
+    ]
   in
   let fields =
     List.concat [ fields; list_fields; optional_fields; package_fields ]

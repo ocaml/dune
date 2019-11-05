@@ -628,7 +628,8 @@ module Pkg_config = struct
       let run what =
         match
           String.trim
-            (Process.run_capture_exn c ~dir ?env t.pkg_config [ what; package ])
+            (Process.run_capture_exn c ~dir ?env t.pkg_config
+               [ what; package ])
         with
         | "" -> []
         | s -> String.extract_blank_separated_words s

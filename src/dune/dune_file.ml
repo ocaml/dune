@@ -370,7 +370,8 @@ module Lib_deps = struct
         match (kind, kind') with
         | Required, Required ->
           User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
+            [ Pp.textf "library %S is present twice" (Lib_name.to_string name)
+            ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
         | Optional, Required
         | Required, Optional ->
@@ -504,7 +505,8 @@ module Buildable = struct
         >>> repeat (located string) )
     and+ c_flags =
       only_in_library
-        (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
+        (field_o "c_flags"
+           (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
     and+ cxx_flags =
       only_in_library
         (field_o "cxx_flags"
@@ -976,7 +978,8 @@ module Library = struct
              in
              User_error.raise ~loc
                [ Pp.textf
-                   "Only %s are allowed in the 'enabled_if' field of libraries."
+                   "Only %s are allowed in the 'enabled_if' field of \
+                    libraries."
                    (String.enumerate_and var_names)
                ]
            in
@@ -1542,7 +1545,8 @@ module Executables = struct
          and+ project = Dune_project.get_exn () in
          if
            Option.is_none
-             (Dune_project.find_extension_args project bootstrap_info_extension)
+             (Dune_project.find_extension_args project
+                bootstrap_info_extension)
          then
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];

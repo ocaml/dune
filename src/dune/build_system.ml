@@ -641,7 +641,8 @@ let no_rule_found t ~loc fn =
     else
       User_error.raise
         [ Pp.textf
-            "Trying to build %s for install but build context %s doesn't exist."
+            "Trying to build %s for install but build context %s doesn't \
+             exist."
             (Path.Build.to_string_maybe_quoted fn)
             (Context_name.to_string ctx)
         ]

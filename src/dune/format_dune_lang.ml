@@ -43,7 +43,9 @@ let pp_comment loc fmt (comment : Dune_lang.Cst.Comment.t) =
   match comment with
   | Lines ls ->
     Format.fprintf fmt "@[<v 0>%a@]"
-      (Fmt.list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;") pp_comment_line)
+      (Fmt.list
+         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;")
+         pp_comment_line)
       ls
   | Legacy ->
     User_error.raise ~loc
@@ -101,6 +103,6 @@ let format_file ~input =
     match input with
     | Some path ->
       Io.with_file_in path ~f:(fun ic -> Io.copy_channels ic stdout)
-    | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
-    )
+    | None ->
+      User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ] )
   | Sexps sexps -> Format.printf "%a%!" pp_top_sexps sexps

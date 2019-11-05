@@ -208,9 +208,8 @@ val fold_errors :
   -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
   -> ('a, 'b) Result.t t
 
-(** [collect_errors f] is:
-
-    {[ fold_errors f ~init:[] ~on_error:(fun e l -> e :: l) ]} *)
+(** [collect_errors f] is: {[ fold_errors f ~init:[] ~on_error:(fun e l -> e ::
+    l) ]} *)
 val collect_errors :
   (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
 

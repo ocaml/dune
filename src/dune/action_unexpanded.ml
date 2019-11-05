@@ -406,6 +406,7 @@ module Infer = struct
       let { deps; targets } =
         infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
       in
+
       (* A file can be inferred as both a dependency and a target, for
          instance:
 

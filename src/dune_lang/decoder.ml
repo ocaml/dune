@@ -201,7 +201,8 @@ let end_of_list (Values (loc, cstr, _)) =
   | None ->
     let loc = { loc with start = loc.stop } in
     User_error.raise ~loc [ Pp.text "Premature end of list" ]
-  | Some s -> User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
+  | Some s ->
+    User_error.raise ~loc [ Pp.textf "Not enough arguments for %s" s ]
   [@@inline never]
 
 let next f ctx sexps =
@@ -286,7 +287,8 @@ let enter t =
       | List (loc, l) ->
         let ctx = Values (loc, None, uc) in
         result ctx (t ctx l)
-      | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
+      | sexp ->
+        User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
 let if_list ~then_ ~else_ =
   peek_exn
@@ -536,7 +538,8 @@ let fields t (Values (loc, cstr, uc)) sexps =
             User_error.raise ~loc [ Pp.text "Atom expected" ] )
         | _ ->
           User_error.raise ~loc:(Ast.loc sexp)
-            [ Pp.text "S-expression of the form (<name> <values>...) expected" ])
+            [ Pp.text "S-expression of the form (<name> <values>...) expected"
+            ])
   in
   let ctx = Fields (loc, cstr, uc) in
   let x = result ctx (t ctx { Fields.unparsed; known = [] }) in

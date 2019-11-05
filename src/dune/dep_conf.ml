@@ -73,7 +73,9 @@ let encode = function
     List [ Dune_lang.unsafe_atom_of_string "alias"; String_with_vars.encode t ]
   | Alias_rec t ->
     List
-      [ Dune_lang.unsafe_atom_of_string "alias_rec"; String_with_vars.encode t ]
+      [ Dune_lang.unsafe_atom_of_string "alias_rec"
+      ; String_with_vars.encode t
+      ]
   | Glob_files t ->
     List
       [ Dune_lang.unsafe_atom_of_string "glob_files"

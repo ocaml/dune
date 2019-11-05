@@ -1095,7 +1095,8 @@ end = struct
           | Normal -> None
           | Optional ->
             Option.some_if
-              (not (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
+              (not
+                 (Result.is_ok t.requires && Result.is_ok t.ppx_runtime_deps))
               "optional with unavailable dependencies"
           | Disabled_because_of_enabled_if -> Some "unsatisfied 'enabled_if'" )
       in

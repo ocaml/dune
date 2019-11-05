@@ -302,7 +302,8 @@ let install_uninstall ~what =
         & opt (some string) None
         & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
             ~doc:
-              "When passed, this directory is prepended to all installed paths.")
+              "When passed, this directory is prepended to all installed \
+               paths.")
     and+ dry_run =
       Arg.(
         value & flag
@@ -387,7 +388,8 @@ let install_uninstall ~what =
                          User_error.raise
                            [ Pp.textf
                                "The following files which are listed in %s \
-                                cannot be installed because they do not exist:"
+                                cannot be installed because they do not \
+                                exist:"
                                (Path.to_string_maybe_quoted install_file)
                            ; Pp.enumerate missing_files ~f:(fun p ->
                                  Pp.verbatim (Path.to_string_maybe_quoted p))

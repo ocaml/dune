@@ -37,7 +37,8 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
         if by_dir || sexp then
           User_error.raise
             [ Pp.textf
-                "--only-missing cannot be used with --unstable-by-dir or --sexp"
+                "--only-missing cannot be used with --unstable-by-dir or \
+                 --sexp"
             ];
         let context =
           List.find_exn setup.workspace.contexts ~f:(fun c ->

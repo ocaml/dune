@@ -304,7 +304,8 @@ end = struct
     | Result.Ok t -> t
     | Error () ->
       User_error.raise ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
+        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t)
+        ]
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -1051,7 +1052,8 @@ let drop_optional_build_context_src_exn t =
     | Some (_, s) -> s
     | None ->
       Code_error.raise
-        "drop_optional_build_context_src_exn called on a build directory itself"
+        "drop_optional_build_context_src_exn called on a build directory \
+         itself"
         [] )
   | In_source_tree p -> p
 

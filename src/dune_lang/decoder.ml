@@ -366,22 +366,14 @@ let basic desc f =
       User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) -> (
       match f (Atom.to_string s) with
-      | Result.Error () -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
-      | Ok x -> x ))
+      | None -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
+      | Some x -> x ))
 
 let string = plain_string (fun ~loc:_ x -> x)
 
-let int =
-  basic "Integer" (fun s ->
-      match int_of_string s with
-      | x -> Ok x
-      | exception _ -> Result.Error ())
+let int = basic "Integer" Int.of_string
 
-let float =
-  basic "Float" (fun s ->
-      match float_of_string s with
-      | x -> Ok x
-      | exception _ -> Result.Error ())
+let float = basic "Float" Float.of_string
 
 let pair a b = enter (a >>= fun a -> b >>= fun b -> return (a, b))
 

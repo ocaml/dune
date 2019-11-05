@@ -201,8 +201,7 @@ module Cached_value = struct
                not allowed. (in fact this case should be unreachable)"
               []
           | Done t' -> (
-            get_sync t'
-            |> function
+            get_sync t' |> function
             | None -> true
             | Some curr_output -> dep_changed node prev_output curr_output ) )
       in
@@ -261,8 +260,7 @@ module Cached_value = struct
               in
               deps_changed (changed :: acc) deps )
       in
-      deps_changed [] t.deps
-      >>| function
+      deps_changed [] t.deps >>| function
       | true -> None
       | false ->
         t.calculated_at <- Run.current ();
@@ -559,8 +557,7 @@ module Exec_sync = struct
       else
         recompute inp dep_node
     | Done cv -> (
-      Cached_value.get_sync cv
-      |> function
+      Cached_value.get_sync cv |> function
       | Some v -> v
       | None -> recompute inp dep_node )
 
@@ -609,8 +606,7 @@ module Exec_async = struct
       else
         recompute inp dep_node
     | Done cv -> (
-      Cached_value.get_async cv
-      >>= function
+      Cached_value.get_async cv >>= function
       | Some v -> Fiber.return v
       | None -> recompute inp dep_node )
 

@@ -19,8 +19,7 @@ let map_result :
   match mode with
   | Strict -> t >>| fun _ -> f ()
   | Accept _ -> (
-    t
-    >>| function
+    t >>| function
     | 0 -> Ok (f ())
     | n -> Error n )
 

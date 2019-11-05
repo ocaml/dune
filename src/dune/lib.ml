@@ -1292,8 +1292,7 @@ end = struct
     in
     (* Either by variants or by default. *)
     let impl_for vlib =
-      find_implementation_for vlib ~variants
-      >>= function
+      find_implementation_for vlib ~variants >>= function
       | Some (_, impl) -> Ok (Some impl)
       | None -> (
         match vlib.default_implementation with
@@ -1301,8 +1300,7 @@ end = struct
         | Some d -> Result.map ~f:Option.some (Lazy.force d) )
     in
     let impl_different_from_vlib_default vlib (impl : lib) =
-      impl_for vlib
-      >>| function
+      impl_for vlib >>| function
       | None -> true
       | Some lib -> lib <> impl
     in

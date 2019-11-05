@@ -29,8 +29,7 @@ module Version = struct
 
   let decode : t Decoder.t =
     let open Decoder in
-    raw
-    >>| function
+    raw >>| function
     | Atom (loc, A s) -> (
       match Scanf.sscanf s "%u.%u" (fun a b -> (a, b)) with
       | Ok s -> s
@@ -151,8 +150,7 @@ open Decoder
 let set t ver parser = set t.key ver parser
 
 let get_exn t =
-  get t.key
-  >>= function
+  get t.key >>= function
   | Some x -> return x
   | None ->
     let+ context = get_all in
@@ -203,8 +201,7 @@ let since ?(fatal = true) t ver =
   if current_ver >= ver then
     return ()
   else
-    desc ()
-    >>= function
+    desc () >>= function
     | loc, what when fatal -> Error.since loc t ver ~what
     | loc, what ->
       User_warning.emit ~loc [ Pp.text (Error_msg.since t ver ~what) ];

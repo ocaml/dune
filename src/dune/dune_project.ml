@@ -486,8 +486,7 @@ let set t = Dune_lang.Decoder.set key t
 
 let get_exn () =
   let open Dune_lang.Decoder in
-  get key
-  >>| function
+  get key >>| function
   | Some t -> t
   | None -> Code_error.raise "Current project is unset" []
 

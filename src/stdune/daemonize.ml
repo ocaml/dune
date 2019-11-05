@@ -77,8 +77,7 @@ let daemonize ?workdir ?(foreground = false) beacon
     | _ -> path
   in
   let open Result.O in
-  check_beacon path
-  >>= function
+  check_beacon path >>= function
   | None ->
     if foreground then (
       let+ fd = make_beacon beacon in
@@ -140,8 +139,7 @@ let daemonize ?workdir ?(foreground = false) beacon
 
 let stop beacon =
   let open Result.O in
-  check_beacon ~close:false (Path.to_string beacon)
-  >>= function
+  check_beacon ~close:false (Path.to_string beacon) >>= function
   | None -> Result.Error "not running"
   | Some (_, pid, fd) -> (
     let kill signal =

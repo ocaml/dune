@@ -359,8 +359,7 @@ and redirect_out t ~ectx ~eenv outputs fn =
     | Stderr -> (eenv.stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to }
-  >>| fun result ->
+  exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to } >>| fun result ->
   Process.Io.release out;
   result
 
@@ -370,8 +369,7 @@ and redirect_in t ~ectx ~eenv inputs fn =
     match inputs with
     | Stdin -> in_
   in
-  exec t ~ectx ~eenv:{ eenv with stdin_from }
-  >>| fun result ->
+  exec t ~ectx ~eenv:{ eenv with stdin_from } >>| fun result ->
   Process.Io.release in_;
   result
 

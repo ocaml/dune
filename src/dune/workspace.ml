@@ -200,8 +200,8 @@ module Context = struct
       let+ common = Common.t ~profile
       and+ name =
         field_o "name"
-          ( Dune_lang.Syntax.since syntax (1, 10)
-          >>= fun () -> Context_name.decode )
+          ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
+            Context_name.decode )
       in
       let default =
         (* TODO proper error handling with locs *)

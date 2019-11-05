@@ -281,8 +281,7 @@ module Per_module = struct
   include Module_name.Per_item
 
   let decode ~default a =
-    peek_exn
-    >>= function
+    peek_exn >>= function
     | List (loc, Atom (_, A "per_module") :: _) ->
       sum
         [ ( "per_module"
@@ -291,8 +290,7 @@ module Per_module = struct
                 (let+ pp, names = pair a (repeat Module_name.decode) in
                  (names, pp))
             in
-            of_mapping x ~default
-            |> function
+            of_mapping x ~default |> function
             | Ok t -> t
             | Error (name, _, _) ->
               User_error.raise ~loc
@@ -1237,8 +1235,7 @@ module Executables = struct
     let has_public_name t = Option.is_some t.public
 
     let public_name =
-      located string
-      >>| fun (loc, s) ->
+      located string >>| fun (loc, s) ->
       ( loc
       , match s with
         | "-" -> None
@@ -1441,8 +1438,7 @@ module Executables = struct
       include O.Set
 
       let decode =
-        located (repeat decode)
-        >>| fun (loc, l) ->
+        located (repeat decode) >>| fun (loc, l) ->
         match l with
         | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
@@ -1769,8 +1765,7 @@ module Rule = struct
     { targets; deps; action; mode; locks; loc; enabled_if; alias; package }
 
   let decode =
-    peek_exn
-    >>= function
+    peek_exn >>= function
     | List (_, Atom (loc, A s) :: _) -> (
       match String.Map.find atom_table s with
       | None ->
@@ -1804,9 +1799,8 @@ module Rule = struct
                  and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
                  { modules; mode; enabled_if }))
            ~else_:
-             ( repeat string
-             >>| fun modules ->
-             { modules; mode = Standard; enabled_if = Blang.true_ } ))
+             ( repeat string >>| fun modules ->
+               { modules; mode = Standard; enabled_if = Blang.true_ } ))
 
   let ocamlyacc = ocamllex
 

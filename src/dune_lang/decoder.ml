@@ -243,8 +243,7 @@ let keyword kwd =
       User_error.raise ~loc:(Ast.loc sexp) [ Pp.textf "'%s' expected" kwd ])
 
 let match_keyword l ~fallback =
-  peek
-  >>= function
+  peek >>= function
   | Some (Atom (_, A s)) -> (
     match List.assoc l s with
     | Some t -> junk >>> t
@@ -253,8 +252,7 @@ let match_keyword l ~fallback =
 
 let until_keyword kwd ~before ~after =
   let rec loop acc =
-    peek
-    >>= function
+    peek >>= function
     | None -> return (List.rev acc, None)
     | Some (Atom (_, A s)) when s = kwd ->
       junk >>> after >>= fun x -> return (List.rev acc, Some x)
@@ -289,17 +287,17 @@ let enter t =
       | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
 let if_list ~then_ ~else_ =
-  peek_exn
-  >>= function
+  peek_exn >>= function
   | List _ -> then_
   | _ -> else_
 
 let if_paren_colon_form ~then_ ~else_ =
-  peek_exn
-  >>= function
+  peek_exn >>= function
   | List (_, Atom (loc, A s) :: _) when String.is_prefix s ~prefix:":" ->
     let name = String.drop s 1 in
-    enter (junk >>= fun () -> then_ >>| fun f -> f (loc, name))
+    enter
+      ( junk >>= fun () ->
+        then_ >>| fun f -> f (loc, name) )
   | _ -> else_
 
 let fix f =
@@ -375,17 +373,22 @@ let int = basic "Integer" Int.of_string
 
 let float = basic "Float" Float.of_string
 
-let pair a b = enter (a >>= fun a -> b >>= fun b -> return (a, b))
+let pair a b =
+  enter
+    ( a >>= fun a ->
+      b >>= fun b -> return (a, b) )
 
 let triple a b c =
-  enter (a >>= fun a -> b >>= fun b -> c >>= fun c -> return (a, b, c))
+  enter
+    ( a >>= fun a ->
+      b >>= fun b ->
+      c >>= fun c -> return (a, b, c) )
 
 let option t =
   enter
-    ( eos
-    >>= function
-    | true -> return None
-    | false -> t >>| Option.some )
+    (eos >>= function
+     | true -> return None
+     | false -> t >>| Option.some)
 
 let find_cstr cstrs loc name ctx values =
   match List.assoc cstrs name with
@@ -496,8 +499,7 @@ let field_o name ?on_dup t (Fields (_, _, uc)) state =
 let field_b_gen field_gen ?check ?on_dup name =
   field_gen name ?on_dup
     (let* () = Option.value check ~default:(return ()) in
-     eos
-     >>= function
+     eos >>= function
      | true -> return true
      | _ -> bool)
 

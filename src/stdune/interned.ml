@@ -143,8 +143,7 @@ module Make (R : Settings) () = struct
   module Set = struct
     include O.Set
 
-    let make l =
-      List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
+    let make l = List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
 
     let pp fmt (t : t) = Fmt.ocaml_list pp fmt (to_list t)
   end

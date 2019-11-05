@@ -87,9 +87,7 @@ let describe_target fn =
   in
   match analyse_target fn with
   | Alias (ctx, p) ->
-    sprintf "alias %s%s"
-      (Path.Source.to_string_maybe_quoted p)
-      (ctx_suffix ctx)
+    sprintf "alias %s%s" (Path.Source.to_string_maybe_quoted p) (ctx_suffix ctx)
   | Install (ctx, p) ->
     sprintf "install %s%s"
       (Path.Source.to_string_maybe_quoted p)

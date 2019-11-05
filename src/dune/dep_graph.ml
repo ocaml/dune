@@ -17,8 +17,7 @@ let deps_of t (m : Module.t) =
       [ ("dir", Path.Build.to_dyn t.dir)
       ; ( "modules"
         , Dyn.Encoder.(list string)
-            (Module.Obj_map.keys t.per_module |> List.map ~f:Module.obj_name)
-        )
+            (Module.Obj_map.keys t.per_module |> List.map ~f:Module.obj_name) )
       ; ("m", Module.to_dyn m)
       ]
 

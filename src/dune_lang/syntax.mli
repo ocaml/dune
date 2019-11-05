@@ -75,8 +75,7 @@ val greatest_supported_version : t -> Version.t
 
 (** {2 High-level functions} *)
 
-(** Indicate the field/constructor being parsed was deleted in the given
-    version *)
+(** Indicate the field/constructor being parsed was deleted in the given version *)
 val deleted_in :
   ?extra_info:string -> t -> Version.t -> (unit, _) Decoder.parser
 
@@ -85,8 +84,7 @@ val deleted_in :
 val deprecated_in :
   ?extra_info:string -> t -> Version.t -> (unit, _) Decoder.parser
 
-(** Indicate the field/constructor being parsed was renamed in the given
-    version *)
+(** Indicate the field/constructor being parsed was renamed in the given version *)
 val renamed_in : t -> Version.t -> to_:string -> (unit, _) Decoder.parser
 
 (** Indicate the field/constructor being parsed was introduced in the given

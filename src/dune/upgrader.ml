@@ -164,8 +164,7 @@ let upgrade_stanza stanza =
           | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args )
         | [ (Atom (_, A field_name) as field); List (_, args) ]
           when match (field_name, args) with
-               | "rule", Atom (_, A field_name) :: _ ->
-                 is_rule_field field_name
+               | "rule", Atom (_, A field_name) :: _ -> is_rule_field field_name
                | _ -> simplify_field field_name ->
           upgrade field :: List.map args ~f:upgrade
         | _ -> List.map l ~f:upgrade

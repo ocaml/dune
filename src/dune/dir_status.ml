@@ -10,8 +10,8 @@ module T = struct
   type t =
     | Standalone of
         (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
-    (* Directory not part of a multi-directory group. The argument is [None]
-       for directory that are not from the source tree, such as generated ones. *)
+    (* Directory not part of a multi-directory group. The argument is [None] for
+       directory that are not from the source tree, such as generated ones. *)
     | Group_root of
         File_tree.Dir.t
         * Include_subdirs.qualification
@@ -57,8 +57,8 @@ let check_no_module_consumer stanzas =
       | Tests { exes = { buildable; _ }; _ } ->
         User_error.raise ~loc:buildable.loc
           [ Pp.text
-              "This stanza is not allowed in a sub-directory of directory \
-               with (include_subdirs unqualified)."
+              "This stanza is not allowed in a sub-directory of directory with \
+               (include_subdirs unqualified)."
           ]
           ~hints:[ Pp.text "add (include_subdirs no) to this file." ]
       | _ -> ())

@@ -195,8 +195,7 @@ module Preprocess = struct
     sum
       [ ("no_preprocessing", return No_preprocessing)
       ; ( "action"
-        , located Action_dune_lang.decode >>| fun (loc, x) -> Action (loc, x)
-        )
+        , located Action_dune_lang.decode >>| fun (loc, x) -> Action (loc, x) )
       ; ( "pps"
         , let+ loc = loc
           and+ pps, flags = Pps_and_flags.decode in
@@ -251,13 +250,12 @@ module Preprocess = struct
         Action
           ( loc
           , Run
-              ( String_with_vars.make_var loc "bin"
-                  ~payload:"ocaml-syntax-shims"
+              ( String_with_vars.make_var loc "bin" ~payload:"ocaml-syntax-shims"
               , ( match for_ with
                 | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
                 | Merlin ->
-                  (* We generate a text file instead of AST. That gives you
-                     less precise locations, but at least Merlin doesn't fail
+                  (* We generate a text file instead of AST. That gives you less
+                     precise locations, but at least Merlin doesn't fail
                      outright.
 
                      In general this hack should be applied to all -pp commands
@@ -370,8 +368,7 @@ module Lib_deps = struct
         match (kind, kind') with
         | Required, Required ->
           User_error.raise ~loc
-            [ Pp.textf "library %S is present twice" (Lib_name.to_string name)
-            ]
+            [ Pp.textf "library %S is present twice" (Lib_name.to_string name) ]
         | (Optional | Forbidden), (Optional | Forbidden) -> acc
         | Optional, Required
         | Required, Optional ->
@@ -501,12 +498,10 @@ module Buildable = struct
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
     and+ foreign_archives =
       field_o "foreign_archives"
-        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
-        >>> repeat (located string) )
+        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> repeat (located string))
     and+ c_flags =
       only_in_library
-        (field_o "c_flags"
-           (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
+        (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
     and+ cxx_flags =
       only_in_library
         (field_o "cxx_flags"
@@ -811,8 +806,8 @@ module Library = struct
       | Some (loc, _), Some _ ->
         User_error.raise ~loc
           [ Pp.text
-              "Wrapped cannot be set for implementations. It is inherited \
-               from the virtual library."
+              "Wrapped cannot be set for implementations. It is inherited from \
+               the virtual library."
           ]
 
     let field = field_o "wrapped" (located decode)
@@ -930,9 +925,8 @@ module Library = struct
                  [ Pp.textf "Invalid library name."
                  ; Pp.text
                      "Public library names don't have this restriction. You \
-                      can either change this public name to be a valid \
-                      library name or add a \"name\" field with a valid \
-                      library name."
+                      can either change this public name to be a valid library \
+                      name or add a \"name\" field with a valid library name."
                  ]
                  ~hints:[ Lib_name.Local.valid_format_doc ]
            else
@@ -973,13 +967,10 @@ module Library = struct
        Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
            let err () =
              let loc = String_with_vars.Var.loc var in
-             let var_names =
-               List.map ~f:fst Lib_config.allowed_in_enabled_if
-             in
+             let var_names = List.map ~f:fst Lib_config.allowed_in_enabled_if in
              User_error.raise ~loc
                [ Pp.textf
-                   "Only %s are allowed in the 'enabled_if' field of \
-                    libraries."
+                   "Only %s are allowed in the 'enabled_if' field of libraries."
                    (String.enumerate_and var_names)
                ]
            in
@@ -1267,8 +1258,8 @@ module Executables = struct
               Error
                 (User_error.make
                    [ Pp.text
-                       "The list of public names must be of the same length \
-                        as the list of names"
+                       "The list of public names must be of the same length as \
+                        the list of names"
                    ])
           | names, public_names -> Ok (names, public_names))
 
@@ -1545,8 +1536,7 @@ module Executables = struct
          and+ project = Dune_project.get_exn () in
          if
            Option.is_none
-             (Dune_project.find_extension_args project
-                bootstrap_info_extension)
+             (Dune_project.find_extension_args project bootstrap_info_extension)
          then
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
@@ -1826,9 +1816,9 @@ module Rule = struct
         let src = name ^ ".mll" in
         let dst = name ^ ".ml" in
         { targets =
-            (* CR-someday aalekseyev: want to use [multiplicity = One] here,
-               but can't because this is might get parsed with old dune syntax
-               where [multiplicity = One] is not supported. *)
+            (* CR-someday aalekseyev: want to use [multiplicity = One] here, but
+               can't because this is might get parsed with old dune syntax where
+               [multiplicity = One] is not supported. *)
             Static
               { targets = [ S.make_text loc dst ]; multiplicity = Multiple }
         ; deps = Bindings.singleton (Dep_conf.File (S.virt_text __POS__ src))
@@ -1946,8 +1936,8 @@ module Coq = struct
     }
 
   let syntax =
-    Dune_lang.Syntax.create ~name:"coq"
-      ~desc:"the coq extension (experimental)" [ (0, 1) ]
+    Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
+      [ (0, 1) ]
 
   let decode =
     fields
@@ -2011,9 +2001,7 @@ module Alias_conf = struct
        and+ package = field_o "package" Pkg.decode
        and+ action =
          field_o "action"
-           (let extra_info =
-              "Use a rule stanza with the alias field instead"
-            in
+           (let extra_info = "Use a rule stanza with the alias field instead" in
             let* () =
               Dune_lang.Syntax.deleted_in ~extra_info Stanza.syntax (2, 0)
             in
@@ -2022,9 +2010,7 @@ module Alias_conf = struct
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if =
-         field "enabled_if" Blang.decode ~default:Blang.true_
-       in
+       and+ enabled_if = field "enabled_if" Blang.decode ~default:Blang.true_ in
        { name; deps; action; package; locks; enabled_if; loc })
 end
 
@@ -2317,8 +2303,8 @@ module Stanzas = struct
 
   exception Include_loop of Path.Source.t * (Loc.t * Path.Source.t) list
 
-  let rec parse_file_includes ~stanza_parser ~lexer ~current_file
-      ~include_stack sexps =
+  let rec parse_file_includes ~stanza_parser ~lexer ~current_file ~include_stack
+      sexps =
     List.concat_map sexps ~f:(parse stanza_parser)
     |> List.concat_map ~f:(function
          | Include (loc, fn) ->

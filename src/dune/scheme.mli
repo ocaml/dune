@@ -7,13 +7,13 @@ type 'rules t =
   | Union of 'rules t * 'rules t
       (** [Union (a, b)] produces all the rules produced by a and b *)
   | Approximation of Path.Build.w Dir_set.t * 'rules t
-      (** [Approximation (dirs, x)] produces the same rules as [x] in [dirs]
-          and produces no rules outside of [dirs].
+      (** [Approximation (dirs, x)] produces the same rules as [x] in [dirs] and
+          produces no rules outside of [dirs].
 
-          It is an error if [x] produces any rules outside of [dirs]. This
-          error is not always going to be detected, especially if it's hidden
-          by an occurrence of [Thunk]. If the error is undetected, the
-          violating rules are just silently ignored. *)
+          It is an error if [x] produces any rules outside of [dirs]. This error
+          is not always going to be detected, especially if it's hidden by an
+          occurrence of [Thunk]. If the error is undetected, the violating rules
+          are just silently ignored. *)
   | Finite of 'rules Path.Build.Map.t
       (** [Finite rules] just produces a fixed set of rules known in advance.
           The keys in the map are the directory paths. *)
@@ -41,9 +41,8 @@ end
     - Sharing the work of scheme data structure traversal. For example, if a
     scheme consists of a many nested [Union]s, a naive scheme lookup would have
     to look at them all at every [get_rules] query. [evaluate] will collapse
-    them to a directory-keyed trie for faster lookup. - Sharing the work done
-    by user thunks. Every thunk will only be called at most once per
-    [evaluate]. *)
+    them to a directory-keyed trie for faster lookup. - Sharing the work done by
+    user thunks. Every thunk will only be called at most once per [evaluate]. *)
 val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
 
 val all : 'a t list -> 'a t

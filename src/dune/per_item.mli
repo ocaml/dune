@@ -21,8 +21,7 @@ module type S = sig
   val get : 'a t -> key -> 'a
 
   (** Returns [true] if the mapping returns the same value for all keys. Note
-      that the mapping might still be constant if [is_constant] returns
-      [false]. *)
+      that the mapping might still be constant if [is_constant] returns [false]. *)
   val is_constant : _ t -> bool
 
   val map : 'a t -> f:('a -> 'b) -> 'b t

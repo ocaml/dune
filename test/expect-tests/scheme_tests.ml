@@ -62,8 +62,8 @@ module Scheme = struct
      does not check that approximations are correct
 
      If approximations are not correct, it will honor the approximation. So
-     approximations act like views that prevent the rules from being seen
-     rather than from being declared in the first place. *)
+     approximations act like views that prevent the rules from being seen rather
+     than from being declared in the first place. *)
   let collect_rules_simple =
     let rec go (t : _ t) ~dir =
       match t with

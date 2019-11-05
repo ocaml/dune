@@ -1,5 +1,4 @@
-(** Safe version of Scanf from the stdlib. Does not raise parsing errors
-    errors. *)
+(** Safe version of Scanf from the stdlib. Does not raise parsing errors errors. *)
 
 val unescaped : string -> (string, unit) Result.t
 

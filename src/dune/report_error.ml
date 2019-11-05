@@ -75,8 +75,8 @@ let i_must_not_segfault =
               Exceptions are\n\
               the little-death that brings total obliteration.  I will fully \
               express\n\
-              my cases.  Execution will pass over me and through me.  And \
-              when it\n\
+              my cases.  Execution will pass over me and through me.  And when \
+              it\n\
               has gone past, I will unwind the stack along its path.  Where the\n\
               cases are handled there will be nothing.  Only I will remain."))
   in

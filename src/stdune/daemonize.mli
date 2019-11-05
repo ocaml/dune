@@ -13,15 +13,14 @@ type status =
       (** The daemon was started in the background with the given payload and
           pid *)
   | Already_running of string * int
-      (** The daemon is already running in the background with the given
-          payload and pid *)
+      (** The daemon is already running in the background with the given payload
+          and pid *)
   | Finished  (** The daemon was run synchronously and exited. *)
 
 val daemonize :
      ?workdir:Path.t (** The path to chdir to *)
   -> ?foreground:
-       bool
-       (** Whether to fork a daemon or run synchronously (defaults true) *)
+       bool (** Whether to fork a daemon or run synchronously (defaults true) *)
   -> Path.t (** The path of the beacon file *)
   -> ((string -> unit) -> unit) (** The daemon main routine *)
   -> (status, string) Result.t

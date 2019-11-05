@@ -83,8 +83,8 @@ Some [ ("another", "aa"); ("some", "a") ]
 |}]
 
 let%expect_test _ =
-  (* running it on a new input should cause it to recompute the first time it
-     is run *)
+  (* running it on a new input should cause it to recompute the first time it is
+     run *)
   print_endline (run mcomp "hello");
   Format.printf "%d@." !counter;
   print_endline (run mcomp "hello");
@@ -301,8 +301,8 @@ let%expect_test _ =
 |}]
 
 let%expect_test _ =
-  (* Bug: dependency on [lazy] is only registered by one of the dependants.
-     This means we should never use [lazy] together with [Memo]. We can use
+  (* Bug: dependency on [lazy] is only registered by one of the dependants. This
+     means we should never use [lazy] together with [Memo]. We can use
      [Memo.lazy_] though (see below) *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect

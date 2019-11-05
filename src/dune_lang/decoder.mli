@@ -42,9 +42,9 @@ type 'a t = ('a, values) parser
 
 type 'a fields_parser = ('a, fields) parser
 
-(** [parse parser context sexp] parse a S-expression using the following
-    parser. The input consist of a single S-expression. [context] allows to
-    pass extra information such as versions to individual parsers. *)
+(** [parse parser context sexp] parse a S-expression using the following parser.
+    The input consist of a single S-expression. [context] allows to pass extra
+    information such as versions to individual parsers. *)
 val parse : 'a t -> Univ_map.t -> ast -> 'a
 
 val return : 'a -> ('a, _) parser
@@ -92,8 +92,8 @@ val keyword : string -> unit t
 
 (** {[match_keyword [(k1, t1); (k2, t2); ...] ~fallback]} inspects the next
     element of the input sequence. If it is an atom equal to one of [k1], [k2],
-    ... then the corresponding parser is used to parse the rest of the
-    sequence. Other [fallback] is used. *)
+    ... then the corresponding parser is used to parse the rest of the sequence.
+    Other [fallback] is used. *)
 val match_keyword : (string * 'a t) list -> fallback:'a t -> 'a t
 
 (** Use [before] to parse elements until the keyword is reached. Then use
@@ -155,9 +155,8 @@ val junk : unit t
 (** Ignore all the rest of the input *)
 val junk_everything : (unit, _) parser
 
-(** [plain_string f] expects the next element of the input to be a plain
-    string, i.e. either an atom or a quoted string, but not a template nor a
-    list. *)
+(** [plain_string f] expects the next element of the input to be a plain string,
+    i.e. either an atom or a quoted string, but not a template nor a list. *)
 val plain_string : (loc:Loc.t -> string -> 'a) -> 'a t
 
 (** A valid filename, i.e. a string other than "." or ".." *)
@@ -194,8 +193,8 @@ val field_o :
   -> 'a t
   -> 'a option fields_parser
 
-(** Parser for mutually exclusive fields. If [default] is provided, allow
-    fields absence. *)
+(** Parser for mutually exclusive fields. If [default] is provided, allow fields
+    absence. *)
 val fields_mutually_exclusive :
      ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> ?default:'a

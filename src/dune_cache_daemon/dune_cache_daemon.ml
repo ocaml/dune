@@ -30,8 +30,8 @@ let default_port_file () =
     | None ->
       (* The runtime directory is 0700 owned by the user for security reasons.
          Defaulting to a directory in the dune cache root makes sense in that
-         regard, since if someone has access to this directory, it has access
-         to the cache content, and having access to the socket does not make a
+         regard, since if someone has access to this directory, it has access to
+         the cache content, and having access to the socket does not make a
          difference. *)
       Path.relative (Dune_cache.default_root ()) "runtime"
   in
@@ -41,9 +41,7 @@ let max_port_size = 1024
 
 let check_port_file ?(close = true) p =
   let p = Path.to_string p in
-  match
-    Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600)
-  with
+  match Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600) with
   | Result.Ok fd ->
     let f () =
       retry (fun () ->
@@ -317,8 +315,7 @@ module Client = struct
           | Some fd ->
             daemon.socket <- None;
             let clean f = ignore (Clients.iter ~f daemon.clients) in
-            clean (fun (client, _) ->
-                Unix.shutdown client.fd Unix.SHUTDOWN_ALL);
+            clean (fun (client, _) -> Unix.shutdown client.fd Unix.SHUTDOWN_ALL);
             clean (fun (_, tid) -> Thread.join tid);
             clean (fun (client, _) -> Unix.close client.fd);
             Unix.close fd
@@ -347,8 +344,8 @@ module Client = struct
           daemon.clients <-
             ( match Clients.add daemon.clients client.fd (client, tid) with
             | Result.Ok v -> v
-            | Result.Error _ ->
-              User_error.raise [ Pp.textf "duplicate socket" ] )
+            | Result.Error _ -> User_error.raise [ Pp.textf "duplicate socket" ]
+            )
         | Client_left fd ->
           daemon.clients <- Clients.remove daemon.clients fd;
           if daemon.config.exit_no_client && Clients.is_empty daemon.clients
@@ -442,8 +439,7 @@ module Client = struct
 
   let promote client files key metadata ~repository =
     try
-      send client.socket
-        (Messages.Promote { key; files; metadata; repository });
+      send client.socket (Messages.Promote { key; files; metadata; repository });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"

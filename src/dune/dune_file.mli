@@ -49,8 +49,7 @@ module Preprocess_map : sig
 
   val default : t
 
-  (** [find module_name] find the preprocessing specification for a given
-      module *)
+  (** [find module_name] find the preprocessing specification for a given module *)
   val find : Module_name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Lib_name.t) list
@@ -215,8 +214,8 @@ module Library : sig
   (** The names of all foreign archives, including the foreign stubs archive. *)
   val foreign_archive_names : t -> string list
 
-  (** The [lib*.a] files of all foreign archives, including foreign stubs.
-      [dir] is the directory the library is declared in. *)
+  (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
+      is the directory the library is declared in. *)
   val foreign_archives :
     t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
@@ -490,7 +489,7 @@ module Stanzas : sig
       The stanzas are parsed in the context of the dune [project].
 
       The syntax [kind] determines whether the expected syntax is the
-      depreciated jbuilder syntax or the version of Dune syntax specified by
-      the current [project]. *)
+      depreciated jbuilder syntax or the version of Dune syntax specified by the
+      current [project]. *)
   val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end

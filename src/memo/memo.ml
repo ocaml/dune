@@ -15,9 +15,9 @@ module Code_error_with_memo_backtrace = struct
   type t =
     { exn : Code_error.t
     ; reverse_backtrace : frame list
-    ; (* [outer_call_stack] is a trick to capture some of the information
-         that's lost by the async memo error handler. It can be safely ignored
-         by the sync error handler. *)
+    ; (* [outer_call_stack] is a trick to capture some of the information that's
+         lost by the async memo error handler. It can be safely ignored by the
+         sync error handler. *)
       outer_call_stack : Dyn.t
     }
 
@@ -29,8 +29,7 @@ module Code_error_with_memo_backtrace = struct
   let to_dyn { exn; reverse_backtrace; outer_call_stack } =
     Dyn.Record
       [ ("exn", Code_error.to_dyn exn)
-      ; ( "backtrace"
-        , Dyn.Encoder.list frame_to_dyn (List.rev reverse_backtrace) )
+      ; ("backtrace", Dyn.Encoder.list frame_to_dyn (List.rev reverse_backtrace))
       ; ("outer_call_stack", outer_call_stack)
       ]
 
@@ -171,8 +170,8 @@ module Cached_value = struct
 
   let create x ~deps = { deps; data = x; calculated_at = Run.current () }
 
-  let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output
-      curr_output =
+  let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
+      =
     match node.spec.allow_cutoff with
     | Yes equal -> not (equal prev_output curr_output)
     | No -> true
@@ -244,8 +243,8 @@ module Cached_value = struct
           | Done t' ->
             if Run.is_current t'.calculated_at then
               if
-                (* handle common case separately to avoid feeding more fibers
-                   to [parallel_map] *)
+                (* handle common case separately to avoid feeding more fibers to
+                   [parallel_map] *)
                 dep_changed node prev_output t'.data
               then
                 Fiber.return true
@@ -469,9 +468,7 @@ module Exec = struct
       }
     in
     let dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node.T dep_node
-      }
+      { info = Dag.create_node_info global_dep_dag; data = Dep_node.T dep_node }
     in
     dep_node.dag_node <- lazy dag_node;
     dep_node
@@ -553,8 +550,8 @@ module Exec_sync = struct
     | Running_async _ -> assert false
     | Running_sync run ->
       if Run.is_current run then
-        (* hopefully this branch should be unreachable and [add_rev_dep]
-           reports a cycle above instead *)
+        (* hopefully this branch should be unreachable and [add_rev_dep] reports
+           a cycle above instead *)
         Code_error.raise "bug: unreported sync dependency_cycle"
           [ ("stack", Call_stack.get_call_stack_as_dyn ())
           ; ("adding", Stack_frame.to_dyn (T dep_node))

@@ -86,8 +86,7 @@ module Dune_files = struct
             |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
           in
           let longest = String.longest_map vars ~f:fst in
-          List.map vars ~f:(fun (k, v) ->
-              sprintf "%-*S , %S" (longest + 2) k v)
+          List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
           |> String.concat ~sep:"\n      ; "
         in
         Printf.fprintf oc
@@ -210,8 +209,7 @@ let load ~ancestor_vcs () =
       ~traverse:{ data_only = false; vendored = true; normal = true } ~init:[]
       ~f:(fun dir acc ->
         let p = File_tree.Dir.project dir in
-        if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p)
-        then
+        if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
           p :: acc
         else
           acc)
@@ -219,8 +217,7 @@ let load ~ancestor_vcs () =
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
       ~f:(fun acc (p : Dune_project.t) ->
-        Package.Name.Map.merge acc (Dune_project.packages p)
-          ~f:(fun name a b ->
+        Package.Name.Map.merge acc (Dune_project.packages p) ~f:(fun name a b ->
             match (a, b) with
             | None, None -> None
             | None, Some _ -> b

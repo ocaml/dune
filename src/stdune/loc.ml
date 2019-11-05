@@ -33,8 +33,7 @@ let is_none = equal none
 let to_file_colon_line t =
   Printf.sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
 
-let pp_file_colon_line ppf t =
-  Format.pp_print_string ppf (to_file_colon_line t)
+let pp_file_colon_line ppf t = Format.pp_print_string ppf (to_file_colon_line t)
 
 let pp_line padding_width pp (lnum, l) =
   Format.fprintf pp "%*s | %s\n" padding_width lnum l
@@ -70,9 +69,7 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
         Format.fprintf pp "%s\n" line
       in
       let print_lines lines padding_width =
-        List.iter
-          ~f:(fun (lnum, l) -> pp_line padding_width pp (lnum, l))
-          lines
+        List.iter ~f:(fun (lnum, l) -> pp_line padding_width pp (lnum, l)) lines
       in
       let file_lines ~start ~stop =
         Result.try_with (fun () -> Io.String_path.file_lines file ~start ~stop)
@@ -82,12 +79,11 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
         let+ lines = file_lines ~start:start.pos_lnum ~stop:stop.pos_lnum in
         print_lines lines (get_padding lines)
       else
-        (* We need to send the padding width from the last four lines so the
-           two blocks of lines align if they have different number of digits in
+        (* We need to send the padding width from the last four lines so the two
+           blocks of lines align if they have different number of digits in
            their line numbers *)
         let* first_shown_lines =
-          file_lines ~start:start.pos_lnum
-            ~stop:(start.pos_lnum + context_lines)
+          file_lines ~start:start.pos_lnum ~stop:(start.pos_lnum + context_lines)
         in
         let+ last_shown_lines =
           file_lines ~start:(stop.pos_lnum - context_lines) ~stop:stop.pos_lnum
@@ -111,8 +107,8 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
     with
     | Error exn ->
       let backtrace = Printexc.get_backtrace () in
-      Format.eprintf
-        "Raised when trying to print location contents of %s@.%a@." file
+      Format.eprintf "Raised when trying to print location contents of %s@.%a@."
+        file
         (Exn.pp_uncaught ~backtrace)
         exn
     | Ok () -> Format.pp_print_flush pp ()

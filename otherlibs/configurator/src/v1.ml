@@ -57,8 +57,7 @@ module Temp = struct
       let name = gen_name ~temp_dir ~prefix ~suffix in
       match mk name with
       | () -> name
-      | exception Unix.Unix_error _ when counter < 1000 ->
-        try_name (counter + 1)
+      | exception Unix.Unix_error _ when counter < 1000 -> try_name (counter + 1)
     in
     try_name 0
 
@@ -493,8 +492,8 @@ const char *s%i = "BEGIN-%i-false-END";
           | None ->
             let msg =
               sprintf
-                "Unable to read variable %S of type %s. Invalid value %S in \
-                 %s found"
+                "Unable to read variable %S of type %s. Invalid value %S in %s \
+                 found"
                 name (Type.name t) raw_val obj_file
             in
             raise (Fatal_error msg)
@@ -615,8 +614,7 @@ module Pkg_config = struct
           | s -> s ^ ":"
           | exception Not_found -> ""
         in
-        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path
-            new_pkg_config_path
+        [ sprintf "%s=%s%s" _PKG_CONFIG_PATH pkg_config_path new_pkg_config_path
         ]
       | _ -> None
     in
@@ -628,8 +626,7 @@ module Pkg_config = struct
       let run what =
         match
           String.trim
-            (Process.run_capture_exn c ~dir ?env t.pkg_config
-               [ what; package ])
+            (Process.run_capture_exn c ~dir ?env t.pkg_config [ what; package ])
         with
         | "" -> []
         | s -> String.extract_blank_separated_words s

@@ -69,8 +69,7 @@ module Paths = struct
     | Lib lib ->
       let obj_dir = Lib.Local.obj_dir lib in
       Obj_dir.odoc_dir obj_dir
-    | Pkg pkg ->
-      root ctx ++ sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg)
+    | Pkg pkg -> root ctx ++ sprintf "_odoc/pkg/%s" (Package.Name.to_string pkg)
 
   let html_root ctx = root ctx ++ "_html"
 
@@ -249,8 +248,8 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
     |> Option.value_exn
   in
   let local_lib = Lib.Local.of_lib_exn lib in
-  (* Using the proper package name doesn't actually work since odoc assumes
-     that a package contains only 1 library *)
+  (* Using the proper package name doesn't actually work since odoc assumes that
+     a package contains only 1 library *)
   let pkg_or_lnu = pkg_or_lnu lib in
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
@@ -545,14 +544,12 @@ let default_index ~pkg entry_modules =
          Lib_name.compare (name x) (name y))
   |> List.iter ~f:(fun (lib, modules) ->
          let lib = Lib.Local.to_lib lib in
-         Printf.bprintf b "{1 Library %s}\n"
-           (Lib_name.to_string (Lib.name lib));
+         Printf.bprintf b "{1 Library %s}\n" (Lib_name.to_string (Lib.name lib));
          Buffer.add_string b
            ( match modules with
            | [ x ] ->
              sprintf
-               "The entry point of this library is the module:\n\
-                {!module-%s}.\n"
+               "The entry point of this library is the module:\n{!module-%s}.\n"
                (Module_name.to_string (Module.name x))
            | _ ->
              sprintf

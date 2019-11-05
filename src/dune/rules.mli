@@ -59,8 +59,8 @@ module Produce : sig
 
       - [a] and [b] are the same - [gen_rules ~dir:b] calls [load_dir ~dir:a]
 
-      The call to [load_dir ~dir:a] from [gen_rules ~dir:b] declares a
-      directory dependency from [b] to [a]. There must be no cyclic directory
+      The call to [load_dir ~dir:a] from [gen_rules ~dir:b] declares a directory
+      dependency from [b] to [a]. There must be no cyclic directory
       dependencies. *)
   val rule : Rule.t -> unit
 

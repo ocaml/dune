@@ -295,8 +295,8 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-                 "fswatch (or inotifywait) was not found. One of them needs \
-                  to be installed for watch mode to work."
+                 "fswatch (or inotifywait) was not found. One of them needs to \
+                  be installed for watch mode to work."
              ] ))
 
   let buffering_time = 0.5 (* seconds *)
@@ -327,8 +327,8 @@ end = struct
       )
     done;
     buffer.size <- buffer.size - !line_start;
-    Bytes.blit ~src:buffer.data ~src_pos:!line_start ~dst:buffer.data
-      ~dst_pos:0 ~len:buffer.size;
+    Bytes.blit ~src:buffer.data ~src_pos:!line_start ~dst:buffer.data ~dst_pos:0
+      ~len:buffer.size;
     List.rev !lines
 
   let spawn_external_watcher () =
@@ -631,8 +631,8 @@ let kill_and_wait_for_all_processes t () =
 let prepare ?(config = Config.default) () =
   Log.infof "Workspace root: %s"
     (Path.to_absolute_filename Path.root |> String.maybe_quoted);
-  (* The signal watcher must be initialized first so that signals are blocked
-     in all threads. *)
+  (* The signal watcher must be initialized first so that signals are blocked in
+     all threads. *)
   Signal_watcher.init ();
   Process_watcher.init ();
   let cwd = Sys.getcwd () in
@@ -741,8 +741,7 @@ end = struct
       Console.Status_line.set (fun () ->
           Some
             (Pp.seq
-               (Pp.tag ~tag:User_message.Style.Error
-                  (Pp.verbatim "Had errors"))
+               (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
                (Pp.verbatim ", killing current build...")))
     | _ -> () );
     match kill_and_wait_for_all_processes t () with

@@ -8,10 +8,10 @@ module V1 : sig
       the list of dependencies can depend on previous dependencies.
 
       Note: Monadic "bind" is provided, but it can be very costly. It's called
-      [stage] to discourage people from overusing it. When dune decides that
-      the action needs to be re-run, it runs (nontrivial) stages one by one,
-      and starts a process from scratch for every stage. So a linear chain of
-      binds leads to a linear number of program re-runs, and therefore overall
+      [stage] to discourage people from overusing it. When dune decides that the
+      action needs to be re-run, it runs (nontrivial) stages one by one, and
+      starts a process from scratch for every stage. So a linear chain of binds
+      leads to a linear number of program re-runs, and therefore overall
       quadratic time complexity. This also means that using non-deterministic
       mutable state can lead to surprising results. (note that with the current
       implementation, nontrivial stages are those that have some dependencies,
@@ -31,8 +31,7 @@ module V1 : sig
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
   (** If [at] is a computation resulting in [a] and [bt] is computation
-      resulting in [b] then [both at bt] is a computation resulting in [(a,
-      b)]. *)
+      resulting in [b] then [both at bt] is a computation resulting in [(a, b)]. *)
   val both : 'a t -> 'b t -> ('a * 'b) t
 
   (** If [at] is a computation resulting in value of type ['a] and [f] is a
@@ -81,8 +80,8 @@ module V1 : sig
       BUG: [read_directory_with_glob] doesn't work correctly for empty
       directories.
 
-      BUG: the returned listing includes directories even though that
-      dependency is not tracked. *)
+      BUG: the returned listing includes directories even though that dependency
+      is not tracked. *)
   val read_directory_with_glob :
     path:Path.t -> glob:Dune_glob.V1.t -> string list t
 

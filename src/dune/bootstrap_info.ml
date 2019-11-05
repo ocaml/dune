@@ -24,8 +24,7 @@ let rule sctx compile (exes : Dune_file.Executables.t) () =
           ; Pp.nop
           ; def "external_libraries"
               (List
-                 (List.map externals ~f:(fun x ->
-                      Lib.name x |> Lib_name.to_dyn)))
+                 (List.map externals ~f:(fun x -> Lib.name x |> Lib_name.to_dyn)))
           ; Pp.nop
           ; def "local_libraries"
               (List

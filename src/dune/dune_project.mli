@@ -123,8 +123,8 @@ end
     of files in this directory.
 
     If [infer_from_opam_files] is true and the directory contains no
-    [dune-project] file but contains at least one [>package>.opam] files, then
-    a project description is inferred from the opam files. *)
+    [dune-project] file but contains at least one [>package>.opam] files, then a
+    project description is inferred from the opam files. *)
 val load :
      dir:Path.Source.t
   -> files:String.Set.t

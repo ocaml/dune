@@ -111,10 +111,10 @@ let build_info_code cctx ~libs ~api_version =
       let p =
         Option.value
           (Path.as_in_source_tree vcs.root)
-          (* The only VCS root that is potentially not in the source tree is
-             the VCS at the root of the repo. For this VCS, it is enough to use
-             the source tree root in the placeholder given that we take the
-             nearest VCS when performing the actual substitution. *)
+          (* The only VCS root that is potentially not in the source tree is the
+             VCS at the root of the repo. For this VCS, it is enough to use the
+             source tree root in the placeholder given that we take the nearest
+             VCS when performing the actual substitution. *)
           ~default:Path.Source.root
       in
       match Path.Source.Map.find !placeholders p with
@@ -203,8 +203,7 @@ let handle_special_libs cctx =
               ~precompiled_cmi:true
           in
           process_libs libs
-            ~to_link_rev:
-              (LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall
         | Findlib_dynload ->
           (* If findlib.dynload is linked, we stores in the binary the packages
@@ -231,8 +230,7 @@ let handle_special_libs cctx =
               ~requires ~precompiled_cmi:false
           in
           process_libs libs
-            ~to_link_rev:
-              (LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
+            ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
             ~force_linkall:true ) )
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

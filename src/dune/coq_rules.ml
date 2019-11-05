@@ -7,8 +7,8 @@ module SC = Super_context
 
 let coq_debug = false
 
-(* Coqdep / Coq expect the deps to the directory where the plugin cmxs file
-   are. This seems to correspond to src_dir. *)
+(* Coqdep / Coq expect the deps to the directory where the plugin cmxs file are.
+   This seems to correspond to src_dir. *)
 module Util = struct
   let include_paths ts =
     List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
@@ -81,8 +81,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
        :( I wish we had more flexible typing. *)
-    mlpack_rule >>> source_rule
-    >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
+    mlpack_rule >>> source_rule >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
   in
   (* Process coqdep and generate rules *)
   let deps_of : unit Build.t =
@@ -166,17 +165,15 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let wrapper_name = coqlib_wrapper_name s in
   let lib_db = Scope.libs scope in
   let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
-  let file_flags =
-    [ ml_iflags; Command.Args.As [ "-R"; "."; wrapper_name ] ]
-  in
+  let file_flags = [ ml_iflags; Command.Args.As [ "-R"; "."; wrapper_name ] ] in
   List.concat_map
     ~f:
       (setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
          ~mlpack_rule)
     coq_modules
 
-(* This is here for compatibility with Coq < 8.11, which expects plugin files
-   to be in the folder containing the `.vo` files *)
+(* This is here for compatibility with Coq < 8.11, which expects plugin files to
+   be in the folder containing the `.vo` files *)
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
   let lib_db = Scope.libs scope in
   let ml_libs = libs_of_coq_deps ~lib_db s.libraries in

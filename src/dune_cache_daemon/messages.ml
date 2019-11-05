@@ -53,8 +53,7 @@ let sexp_of_message : type a. a message -> Sexp.t =
     cmd "dedup"
       [ Sexp.List
           [ Sexp.Atom
-              (Path.Local.to_string
-                 (Path.Build.local f.in_the_build_directory))
+              (Path.Local.to_string (Path.Build.local f.in_the_build_directory))
           ; Sexp.Atom (Path.to_string f.in_the_cache)
           ; Sexp.Atom (Digest.to_string f.digest)
           ]

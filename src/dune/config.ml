@@ -36,8 +36,8 @@ let show_full_command_on_error () =
 
 open Dune_lang.Decoder
 
-(* the configuration file use the same version numbers as dune-project files
-   for simplicity *)
+(* the configuration file use the same version numbers as dune-project files for
+   simplicity *)
 let syntax = Stanza.syntax
 
 module Terminal_persistence = struct
@@ -120,8 +120,7 @@ module Caching = struct
       | Enabled
       | Check
 
-    let all =
-      [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+    let all = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
 
     let decode = enum all
   end

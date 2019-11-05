@@ -91,8 +91,8 @@ let term =
       value & flag
       & info [ "inline-tests" ] ~docv:"USE_INLINE_TESTS"
           ~doc:
-            "Whether to use inline tests. Only applicable for $(b,library) \
-             and $(b,project) components.")
+            "Whether to use inline tests. Only applicable for $(b,library) and \
+             $(b,project) components.")
   and+ template =
     Arg.(
       value
@@ -100,8 +100,8 @@ let term =
       & info [ "kind" ] ~docv:"PROJECT_KIND"
           ~doc:
             "The kind of project to initialize. Valid options are \
-             $(b,e[xecutable]) or $(b,l[ibrary]). Defaults to \
-             $(b,executable). Only applicable for $(b,project) components.")
+             $(b,e[xecutable]) or $(b,l[ibrary]). Defaults to $(b,executable). \
+             Only applicable for $(b,project) components.")
   and+ pkg =
     Arg.(
       value
@@ -121,9 +121,7 @@ let term =
   let given_pkg = Option.is_some pkg in
   let given_template = Option.is_some template in
   let pkg = Option.value pkg ~default:Options.Project.Pkg.Opam in
-  let template =
-    Option.value template ~default:Options.Project.Template.Exec
-  in
+  let template = Option.value template ~default:Options.Project.Template.Exec in
   (* for the [kind] of initialization *)
   let check_unsupported_options = validate_component_options kind in
   ( match kind with

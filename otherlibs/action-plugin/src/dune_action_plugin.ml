@@ -90,8 +90,7 @@ module V1 = struct
     | Pure a1, _ -> map ~f:(fun a2 -> (a1, a2)) t2
     | _, Pure a2 -> map ~f:(fun a1 -> (a1, a2)) t1
     | Stage at1, Stage at2 ->
-      Stage
-        (Stage.both at1 at2 |> Stage.map ~f:(fun (am1, am2) -> both am1 am2))
+      Stage (Stage.both at1 at2 |> Stage.map ~f:(fun (am1, am2) -> both am1 am2))
 
   let read_file ~path =
     let path = Path.to_string path in

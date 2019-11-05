@@ -2,8 +2,8 @@
 
 type t
 
-(** [create path] creates a mutually exclusive lock file. The lock is held
-    until the lock is released or this process ends. *)
+(** [create path] creates a mutually exclusive lock file. The lock is held until
+    the lock is released or this process ends. *)
 val create : Path.t -> t
 
 (** Same as [create path] expect that [try_create path] returns [None] if the

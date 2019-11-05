@@ -284,8 +284,8 @@ let for_dune_package t ~ppx_runtime_deps ~requires ~foreign_objects ~obj_dir
           match Path.drop_build_context t.src_dir with
           | None -> t.src_dir
           | Some src_dir ->
-            Path.source src_dir |> Path.to_absolute_filename |> Path.of_string
-          ) )
+            Path.source src_dir |> Path.to_absolute_filename |> Path.of_string )
+        )
   in
   { t with
     ppx_runtime_deps
@@ -303,8 +303,8 @@ let user_written_deps t =
     ~f:(fun acc s -> Lib_dep.Direct s :: acc)
 
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
-    ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects
-    ~plugins ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
+    ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
+    ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
     ~dune_version ~virtual_ ~implements ~variant ~known_implementations
     ~default_implementation ~modes ~wrapped ~special_builtin_support

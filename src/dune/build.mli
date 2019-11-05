@@ -34,8 +34,8 @@ val delayed : (unit -> 'a) -> 'a t
 
 (* CR-someday diml: this API is not great, what about:
 
-   {[ module Action_with_deps : sig type t val add_file_dependency : t ->
-   Path.t -> t end
+   {[ module Action_with_deps : sig type t val add_file_dependency : t -> Path.t
+   -> t end
 
    (** Same as [t >>> arr (fun x -> Action_with_deps.add_file_dependency x p)]
    but better as [p] is statically known *) val record_dependency : Path.t ->
@@ -53,8 +53,8 @@ val paths : Path.t list -> unit t
 
 val path_set : Path.Set.t -> unit t
 
-(** Evaluate a predicate against all targets and record all the matched files
-    as dependencies of the action produced by the build description. *)
+(** Evaluate a predicate against all targets and record all the matched files as
+    dependencies of the action produced by the build description. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
 (** [paths_existing paths] will require as dependencies the files that actually
@@ -83,16 +83,16 @@ val dyn_path_set : ('a * Path.Set.t) t -> 'a t
 
 val dyn_path_set_reuse : Path.Set.t t -> Path.Set.t t
 
-(** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is
-    raised during the evaluation of [t]. *)
+(** [catch t ~on_error] evaluates to [on_error exn] if exception [exn] is raised
+    during the evaluation of [t]. *)
 val catch : 'a t -> on_error:(exn -> 'a) -> 'a t
 
-(** [contents path] returns a description that when run will return the
-    contents of the file at [path]. *)
+(** [contents path] returns a description that when run will return the contents
+    of the file at [path]. *)
 val contents : Path.t -> string t
 
-(** [lines_of path] returns a description that when run will return the
-    contents of the file at [path] as a list of lines. *)
+(** [lines_of path] returns a description that when run will return the contents
+    of the file at [path] as a list of lines. *)
 val lines_of : Path.t -> string list t
 
 (** [strings path] is like [lines_of path] except each line is unescaped using
@@ -106,14 +106,14 @@ val read_sexp : Path.t -> Dune_lang.Ast.t t
     target of a rule. *)
 val file_exists : Path.t -> bool t
 
-(** [if_file_exists p ~then ~else] is a description that behaves like [then_]
-    if [file_exists p] evaluates to [true], and [else_] otherwise. *)
+(** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
+    [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** [file_exists_opt p t] is:
 
-    {[ if_file_exists p ~then_:(Build.map t ~f:Option.some)
-    ~else_:(Build.return None) ]} *)
+    {[ if_file_exists p ~then_:(Build.map t ~f:Option.some) ~else_:(Build.return
+    None) ]} *)
 val file_exists_opt : Path.t -> 'a t -> 'a option t
 
 (** Always fail when executed. We pass a function rather than an exception to

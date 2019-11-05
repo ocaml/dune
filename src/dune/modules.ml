@@ -74,8 +74,8 @@ module Stdlib = struct
 
   let lib_interface t = Module_name.Map.find t.modules t.main_module_name
 
-  (* Returns [true] is a special module, i.e. one whose compilation unit name
-     is hard-coded inside the compiler. It is not possible to change the
+  (* Returns [true] is a special module, i.e. one whose compilation unit name is
+     hard-coded inside the compiler. It is not possible to change the
      compilation unit name of such modules, so they cannot be wrapped. *)
   let special_compiler_module (stdlib : Ocaml_stdlib.t) m =
     let name = Module.name m in
@@ -89,8 +89,7 @@ module Stdlib = struct
     let modules =
       Module_name.Map.map modules ~f:(fun m ->
           if
-            Module.name m = main_module_name
-            || special_compiler_module stdlib m
+            Module.name m = main_module_name || special_compiler_module stdlib m
           then
             m
           else

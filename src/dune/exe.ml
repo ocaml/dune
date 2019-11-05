@@ -45,15 +45,14 @@ module Linkage = struct
 
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
 
-  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t)
-      =
+  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
     let link_mode : Link_mode.t =
       match m.mode with
       | Byte ->
         if ctx.disable_dynamically_linked_foreign_archives then
-          (* When [disable_dynamically_linked_foreign_archives] is set to
-             [true] in the workspace, we link in all stub archives statically
-             into the runtime system. *)
+          (* When [disable_dynamically_linked_foreign_archives] is set to [true]
+             in the workspace, we link in all stub archives statically into the
+             runtime system. *)
           Byte_with_stubs_statically_linked_in
         else
           Byte
@@ -115,8 +114,7 @@ module Linkage = struct
           let native_c_libraries =
             Ocaml_config.native_c_libraries ctx.ocaml_config
           in
-          List.concat_map native_c_libraries ~f:(fun flag ->
-              [ "-cclib"; flag ])
+          List.concat_map native_c_libraries ~f:(fun flag -> [ "-cclib"; flag ])
           @ so_flags
         | Byte
         | Byte_with_stubs_statically_linked_in ->
@@ -129,8 +127,8 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
-    ~promote ?(link_args = Build.return Command.Args.empty) ?(o_files = [])
-    cctx =
+    ~promote ?(link_args = Build.return Command.Args.empty) ?(o_files = []) cctx
+    =
   let sctx = CC.super_context cctx in
   let ctx = SC.context sctx in
   let dir = CC.dir cctx in
@@ -206,9 +204,7 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files cctx =
         let ctx = SC.context sctx in
         let obj_dir = CC.obj_dir cctx in
         let top_sorted_modules =
-          let main =
-            Option.value_exn (Modules.find modules main_module_name)
-          in
+          let main = Option.value_exn (Modules.find modules main_module_name) in
           Dep_graph.top_closed_implementations dep_graphs.impl [ main ]
         in
         Cm_files.make ~obj_dir ~modules ~top_sorted_modules

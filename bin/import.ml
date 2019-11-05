@@ -66,8 +66,7 @@ module Main = struct
     let profile = Common.profile common in
     let capture_outputs = Common.capture_outputs common in
     let ancestor_vcs = (Common.root common).ancestor_vcs in
-    scan_workspace ?workspace_file ?x ?profile ~capture_outputs ~ancestor_vcs
-      ()
+    scan_workspace ?workspace_file ?x ?profile ~capture_outputs ~ancestor_vcs ()
 
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in

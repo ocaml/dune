@@ -67,8 +67,7 @@ end = struct
              | Some dir -> sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
-      Dir_contents.modules_of_library dir_contents
-        ~name:(Library.best_name lib)
+      Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
       |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let sources =
@@ -330,8 +329,7 @@ let gen_dune_package sctx pkg =
               Some
                 (Dune_package.Entry.Deprecated_library_name
                    { loc
-                   ; old_public_name =
-                       Dune_file.Public_lib.name old_public_name
+                   ; old_public_name = Dune_file.Public_lib.name old_public_name
                    ; new_public_name
                    })
             | Library lib ->
@@ -446,14 +444,12 @@ let meta_and_dune_package_rules_impl (project, sctx) =
            Package.Name.Map.of_list_multi deprecated_packages
          in
          let meta = Package_paths.meta_file ctx pkg in
-         let meta_template =
-           Path.build (Package_paths.meta_template ctx pkg)
-         in
+         let meta_template = Path.build (Package_paths.meta_template ctx pkg) in
          gen_dune_package sctx pkg;
          let template =
-           (* XXX this should really be lazy as it's only necessary for the
-              then clause. There's no way to express this in the build
-              description however. *)
+           (* XXX this should really be lazy as it's only necessary for the then
+              clause. There's no way to express this in the build description
+              however. *)
            let vlib =
              List.find_map entries ~f:(function
                | Super_context.Lib_entry.Library lib ->
@@ -529,13 +525,11 @@ let meta_and_dune_package_rules_memo =
     ~input:(module Project_and_super_context)
     ~visibility:Hidden
     ~output:(module Unit)
-    ~implicit_output:Rules.implicit_output Sync
-    meta_and_dune_package_rules_impl
+    ~implicit_output:Rules.implicit_output Sync meta_and_dune_package_rules_impl
 
 let meta_and_dune_package_rules sctx ~dir =
   let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
-  Memo.With_implicit_output.exec meta_and_dune_package_rules_memo
-    (project, sctx)
+  Memo.With_implicit_output.exec meta_and_dune_package_rules_memo (project, sctx)
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)
@@ -637,8 +631,8 @@ let install_rules sctx (package : Package.t) =
       ( if promote_install_file ctx then
         Promote { lifetime = Until_clean; into = None; only = None }
       else
-        (* We must ignore the source file since it might be copied to the
-           source tree by another context. *)
+        (* We must ignore the source file since it might be copied to the source
+           tree by another context. *)
         Ignore_source_files )
     action
 
@@ -651,8 +645,7 @@ let install_alias (ctx : Context.t) (package : Package.t) =
     let path = Package_paths.build_dir ctx package in
     let install_alias = Alias.install ~dir:path in
     let install_file = Path.relative (Path.build path) install_fn in
-    Rules.Produce.Alias.add_deps install_alias
-      (Path.Set.singleton install_file)
+    Rules.Produce.Alias.add_deps install_alias (Path.Set.singleton install_file)
 
 module Scheme' = struct
   type t = Rules.Dir_rules.t Scheme.t

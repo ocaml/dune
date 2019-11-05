@@ -28,8 +28,8 @@ module Stack_frame : sig
 
   val input : t -> Dyn.t
 
-  (** Checks if the stack frame is a frame of the given memoized function and
-      if so, returns [Some i] where [i] is the argument of the function. *)
+  (** Checks if the stack frame is a frame of the given memoized function and if
+      so, returns [Some i] where [i] is the argument of the function. *)
   val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
 end
 
@@ -81,8 +81,8 @@ module type Output_allow_cutoff = sig
 end
 
 (** When we recompute the function and find that its output is the same as what
-    we computed before, we can sometimes skip recomputing the values that
-    depend on it.
+    we computed before, we can sometimes skip recomputing the values that depend
+    on it.
 
     [Allow_cutoff] specifies how to compare the output values for that purpose.
 
@@ -144,16 +144,15 @@ val create_with_store :
     second time [exec t x] is called, the previous result is re-used if
     possible.
 
-    [exec t x] tracks what calls to other memoized function [f x] performs.
-    When the result of such dependent call changes, [exec t x] will
-    automatically recompute [f x].
+    [exec t x] tracks what calls to other memoized function [f x] performs. When
+    the result of such dependent call changes, [exec t x] will automatically
+    recompute [f x].
 
     Running the computation may raise [Memo.Cycle_error.E] if a cycle is
     detected.
 
     Both simple functions (synchronous) and functions returning fibers
-    (asynchronous ones) can be memoized, and the flavor is selected by
-    [f_type].
+    (asynchronous ones) can be memoized, and the flavor is selected by [f_type].
 
     [visibility] determines whether the function is user-facing or internal and
     if it's user-facing then how to parse the values written by the user. *)
@@ -190,8 +189,8 @@ val exec : (_, _, 'f) t -> 'f
     Returns [None] if the dependencies were not computed yet. *)
 val get_deps : ('i, _, _) t -> 'i -> (string * Dyn.t) list option
 
-(** Print the memoized call stack during execution. This is useful for
-    debugging purposes. *)
+(** Print the memoized call stack during execution. This is useful for debugging
+    purposes. *)
 val dump_stack : unit -> unit
 
 val pp_stack : unit -> _ Pp.t

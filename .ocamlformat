@@ -1,5 +1,4 @@
 version=0.12
-margin=79
 break-infix-before-func
 break-separators=before
 dock-collection-brackets=false

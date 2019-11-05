@@ -104,8 +104,7 @@ let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
 
 let find_scope_by_project t = Scope.DB.find_by_project t.scopes
 
-let find_project_by_key t =
-  Dune_project.File_key.Map.find_exn t.projects_by_key
+let find_project_by_key t = Dune_project.File_key.Map.find_exn t.projects_by_key
 
 module External_env = Env
 
@@ -177,9 +176,7 @@ end = struct
 
   let local_binaries t ~dir =
     let node = get t ~dir in
-    let expander =
-      expander_for_artifacts ~context_expander:t.expander t ~dir
-    in
+    let expander = expander_for_artifacts ~context_expander:t.expander t ~dir in
     Env_node.local_binaries node ~profile:t.profile ~expander
 
   let inline_tests ({ profile; _ } as t) ~dir =
@@ -187,9 +184,7 @@ end = struct
     Env_node.inline_tests node ~profile
 
   let bin_artifacts t ~dir =
-    let expander =
-      expander_for_artifacts t ~context_expander:t.expander ~dir
-    in
+    let expander = expander_for_artifacts t ~context_expander:t.expander ~dir in
     Env_node.bin_artifacts (get t ~dir) ~profile:t.profile ~expander
       ~default:t.bin_artifacts
 
@@ -204,14 +199,10 @@ end = struct
       bin_artifacts host ~dir
 
   let expander t ~dir =
-    let expander =
-      expander_for_artifacts t ~context_expander:t.expander ~dir
-    in
+    let expander = expander_for_artifacts t ~context_expander:t.expander ~dir in
     let bin_artifacts_host = bin_artifacts_host t ~dir in
     let bindings =
-      let str =
-        inline_tests t ~dir |> Dune_env.Stanza.Inline_tests.to_string
-      in
+      let str = inline_tests t ~dir |> Dune_env.Stanza.Inline_tests.to_string in
       Pform.Map.singleton "inline_tests" (Values [ String str ])
     in
     expander
@@ -378,8 +369,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
               File_binding.Unexpanded.destination_relative_to_install_path fb
                 ~section:Bin
                 ~expand:(expand_str ~dir:d.ctx_dir)
-                ~expand_partial:
-                  (expand_str_partial ~dir:(Path.build d.ctx_dir))
+                ~expand_partial:(expand_str_partial ~dir:(Path.build d.ctx_dir))
             in
             let p = Path.Local.of_string (Install.Dst.to_string p) in
             if Path.Local.is_root (Path.Local.parent_exn p) then
@@ -463,8 +453,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
          ~inherit_from:
            (Some
               ( lazy
-                (make ~inherit_from:None ~config:context.env_nodes.workspace)
-                )))
+                (make ~inherit_from:None ~config:context.env_nodes.workspace) )))
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
@@ -525,8 +514,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
               , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
               :: acc )
           | Dune_file.Deprecated_library_name
-              ({ old_public_name = { public = old_public_name; _ }; _ } as d)
-            ->
+              ({ old_public_name = { public = old_public_name; _ }; _ } as d) ->
             ( (Dune_file.Public_lib.package old_public_name).name
             , Lib_entry.Deprecated_library_name d )
             :: acc
@@ -607,8 +595,7 @@ module Deps = struct
     | Package p ->
       let pkg = Package.Name.of_string (Expander.expand_str expander p) in
       let+ () =
-        Build.alias
-          (Build_system.Alias.package_install ~context:t.context ~pkg)
+        Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
       in
       []
     | Universe ->
@@ -683,8 +670,8 @@ module Action = struct
       | x :: _ ->
         let loc = String_with_vars.loc x in
         User_error.raise ~loc
-          [ Pp.textf "%s must not have targets." (String.capitalize context) ]
-      ) );
+          [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
+    );
     let t, forms =
       partial_expand sctx ~expander ~dep_kind ~targets_written_by_user ~map_exe
         t
@@ -699,9 +686,7 @@ module Action = struct
         let { U.Infer.Outcome.deps; targets } =
           U.Infer.partial t ~all_targets:false
         in
-        { deps
-        ; targets = Path.Build.Set.union targets targets_written_by_user
-        }
+        { deps; targets = Path.Build.Set.union targets targets_written_by_user }
       | Forbidden _ ->
         let { U.Infer.Outcome.deps; targets = _ } =
           U.Infer.partial t ~all_targets:false

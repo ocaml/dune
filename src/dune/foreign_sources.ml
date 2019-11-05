@@ -75,8 +75,8 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
         if name <> basename then
           User_error.raise ~loc
             [ Pp.text
-                "Relative part of stub is not necessary and should be \
-                 removed. To include sources in subdirectories, use the \
+                "Relative part of stub is not necessary and should be removed. \
+                 To include sources in subdirectories, use the \
                  (include_subdirs ...) stanza."
             ];
         let open Option.O in
@@ -113,9 +113,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
-          let all =
-            eval_foreign_stubs d lib.buildable.foreign_stubs ~sources
-          in
+          let all = eval_foreign_stubs d lib.buildable.foreign_stubs ~sources in
           Left (Left (lib, all))
         | Foreign_library library ->
           let all = eval_foreign_stubs d [ library.stubs ] ~sources in
@@ -181,8 +179,8 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
         ]
         ~hints:
           [ Pp.text
-              "You can avoid the name clash by renaming one of the objects, \
-               or by placing it into a different directory."
+              "You can avoid the name clash by renaming one of the objects, or \
+               by placing it into a different directory."
           ]
   in
   { libraries; archives; executables }

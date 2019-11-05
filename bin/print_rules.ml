@@ -106,9 +106,7 @@ let term =
             "Print all rules needed to build the transitive dependencies of \
              the given targets.")
   and+ syntax = Syntax.term
-  and+ targets =
-    Arg.(value & pos_all string [] & Arg.info [] ~docv:"TARGET")
-  in
+  and+ targets = Arg.(value & pos_all string [] & Arg.info [] ~docv:"TARGET") in
   let out = Option.map ~f:Path.of_string out in
   let targets = List.map ~f:Arg.Dep.file targets in
   Common.set_common common ~targets;
@@ -121,8 +119,7 @@ let term =
           Build_system.all_targets ()
           |> Path.Build.Set.fold ~init:[] ~f:(fun p acc -> Path.build p :: acc)
           |> Build.paths
-        | _ ->
-          Target.resolve_targets_exn common setup targets |> Target.request
+        | _ -> Target.resolve_targets_exn common setup targets |> Target.request
       in
       let* rules = Build_system.evaluate_rules ~request ~recursive in
       let print oc =

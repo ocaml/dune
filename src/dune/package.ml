@@ -80,13 +80,7 @@ module Dependency = struct
       | Neq
 
     let map =
-      [ ("=", Eq)
-      ; (">=", Gte)
-      ; ("<=", Lte)
-      ; (">", Gt)
-      ; ("<", Lt)
-      ; ("<>", Neq)
-      ]
+      [ ("=", Eq); (">=", Gte); ("<=", Lte); (">", Gt); ("<", Lt); ("<>", Neq) ]
 
     let to_dyn =
       let open Dyn.Encoder in
@@ -265,8 +259,7 @@ module Source_kind = struct
               | [ user; repo ] -> Github (user, repo)
               | _ ->
                 User_error.raise ~loc
-                  [ Pp.textf "GitHub repository must be of form user/repo" ])
-        )
+                  [ Pp.textf "GitHub repository must be of form user/repo" ]) )
       ; ("uri", string >>| fun s -> Url s)
       ]
 end
@@ -400,9 +393,9 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   }
 
-(* Package name are globally unique, so we can reasonably expect that there
-   will always be only a single value of type [t] with a given name in memory.
-   That's why we only hash the name. *)
+(* Package name are globally unique, so we can reasonably expect that there will
+   always be only a single value of type [t] with a given name in memory. That's
+   why we only hash the name. *)
 let hash t = Name.hash t.name
 
 let decode ~dir =

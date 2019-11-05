@@ -61,9 +61,9 @@ module type Registered_backend = sig
   (** Choose a backend by either using the ones written by the user or by
       scanning the dependencies.
 
-      The returned list is sorted by order of dependencies. It is not allowed
-      to have two different backend that are completely independent, i.e. none
-      of them is in the transitive closure of the other one. *)
+      The returned list is sorted by order of dependencies. It is not allowed to
+      have two different backend that are completely independent, i.e. none of
+      them is in the transitive closure of the other one. *)
   val select_extensible_backends :
        ?written_by_user:t list
     -> extends:(t -> t list Or_exn.t)

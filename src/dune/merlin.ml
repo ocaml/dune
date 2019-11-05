@@ -149,8 +149,8 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
         let targets_dir = Expander.dir expander in
         let targets = Expander.Targets.Forbidden "preprocessing actions" in
         let action = Preprocessing.chdir (Run (exe, args)) in
-        Super_context.Action.run sctx ~loc ~expander ~dep_kind:Optional
-          ~targets ~targets_dir action
+        Super_context.Action.run sctx ~loc ~expander ~dep_kind:Optional ~targets
+          ~targets_dir action
           (Build.return Bindings.empty)
       in
       let pp_of_action exe args =
@@ -169,8 +169,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
         | _ -> None) )
   | _ -> Build.return None
 
-let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t
-    =
+let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t =
   let scope = Expander.scope expander in
   match
     Dune_file.Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -197,10 +196,10 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
   |> Option.iter ~f:(fun remaindir ->
          let merlin_file = Path.Build.relative dir ".merlin" in
 
-         (* We make the compilation of .ml/.mli files depend on the existence
-            of .merlin so that they are always generated, however the command
-            themselves don't read the merlin file, so we don't want to declare
-            a dependency on the contents of the .merlin file.
+         (* We make the compilation of .ml/.mli files depend on the existence of
+            .merlin so that they are always generated, however the command
+            themselves don't read the merlin file, so we don't want to declare a
+            dependency on the contents of the .merlin file.
 
             Currently dune doesn't support declaring a dependency only on the
             existence of a file, so we have to use this trick. *)
@@ -243,8 +242,7 @@ let merge_two ~allow_approx_merlin a b =
       (let+ a = a.flags
        and+ b = b.flags in
        a @ b)
-  ; preprocess =
-      Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
+  ; preprocess = Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
   ; libname =
       ( match a.libname with
       | Some _ as x -> x

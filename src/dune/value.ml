@@ -41,8 +41,7 @@ module L = struct
 
   let compare_vals ~dir = List.compare ~compare:(compare_vals ~dir)
 
-  let concat ts ~dir =
-    List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "
+  let concat ts ~dir = List.map ~f:(to_string ~dir) ts |> String.concat ~sep:" "
 
   let deps_only =
     List.filter_map ~f:(function

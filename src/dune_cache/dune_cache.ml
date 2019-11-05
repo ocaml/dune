@@ -71,9 +71,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
     Path.L.relative root [ short_hash; hash ]
 
   let digest path =
-    match
-      Digest.from_hex (Path.basename (fst (Path.split_extension path)))
-    with
+    match Digest.from_hex (Path.basename (fst (Path.split_extension path))) with
     | Some digest -> digest
     | None ->
       Code_error.raise "strange cached file path (not a valid hash)"
@@ -143,8 +141,7 @@ module Metadata_file = struct
     | _ -> Error "invalid metadata"
 
   let parse path =
-    Io.with_file_in path ~f:(fun input ->
-        Csexp.parse (Stream.of_channel input))
+    Io.with_file_in path ~f:(fun input -> Csexp.parse (Stream.of_channel input))
     >>= of_sexp
 end
 
@@ -288,9 +285,9 @@ module Cache = struct
     (* Touch cache files so they are removed last by LRU trimming *)
     let () =
       let f (file : File.t) =
-        (* There is no point in trying to trim out files that are missing :
-           dune will have to check when hardlinking anyway since they could
-           disappear inbetween. *)
+        (* There is no point in trying to trim out files that are missing : dune
+           will have to check when hardlinking anyway since they could disappear
+           inbetween. *)
         try Path.touch file.in_the_cache
         with Unix.(Unix_error (ENOENT, _, _)) -> ()
       in
@@ -411,8 +408,8 @@ let size cache =
   in
   List.fold_left ~f:(fun acc size -> acc + size) ~init:0 stats
 
-let make_caching (type t) (module Caching : Cache with type t = t) (cache : t)
-    : (module Caching) =
+let make_caching (type t) (module Caching : Cache with type t = t) (cache : t) :
+    (module Caching) =
   ( module struct
     module Cache = Caching
 

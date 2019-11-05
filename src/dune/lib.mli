@@ -8,8 +8,8 @@ type t
 
 val to_dyn : t -> Dyn.t
 
-(** For libraries defined in the workspace, this is the [public_name] if
-    present or the [name] if not. *)
+(** For libraries defined in the workspace, this is the [public_name] if present
+    or the [name] if not. *)
 val name : t -> Lib_name.t
 
 val implements : t -> t Or_exn.t option
@@ -199,8 +199,8 @@ module DB : sig
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
-  (** Resolve libraries written by the user in a [dune] file. The resulting
-      list of libraries is transitively closed and sorted by the order of
+  (** Resolve libraries written by the user in a [dune] file. The resulting list
+      of libraries is transitively closed and sorted by the order of
       dependencies.
 
       This function is for executables stanzas. *)
@@ -217,8 +217,8 @@ module DB : sig
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Or_exn.t
 
-  (** Return the list of all libraries in this database. If [recursive] is
-      true, also include libraries in parent databases recursively. *)
+  (** Return the list of all libraries in this database. If [recursive] is true,
+      also include libraries in parent databases recursively. *)
   val all : ?recursive:bool -> t -> Set.t
 end
 with type lib := t

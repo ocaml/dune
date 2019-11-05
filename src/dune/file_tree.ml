@@ -251,8 +251,7 @@ module Dir0 = struct
         String.Set.add acc s)
 
   let sub_dir_paths t =
-    String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty
-      ~f:(fun s _ acc ->
+    String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty ~f:(fun s _ acc ->
         Path.Source.Set.add acc (Path.Source.relative t.path s))
 end
 
@@ -343,8 +342,8 @@ end = struct
                      | Some first_path ->
                        User_error.raise
                          [ Pp.textf
-                             "Path %s has already been scanned. Cannot scan \
-                              it again through symlink %s"
+                             "Path %s has already been scanned. Cannot scan it \
+                              again through symlink %s"
                              (Path.Source.to_string_maybe_quoted first_path)
                              (Path.Source.to_string_maybe_quoted path)
                          ])

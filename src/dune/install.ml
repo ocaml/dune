@@ -312,9 +312,7 @@ module Entry = struct
 
   let make section ?dst src =
     let dst =
-      adjust_dst
-        ~src:(Expanded (Path.to_string (Path.build src)))
-        ~dst ~section
+      adjust_dst ~src:(Expanded (Path.to_string (Path.build src))) ~dst ~section
     in
     { src; dst; section }
 

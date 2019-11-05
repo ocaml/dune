@@ -2,8 +2,7 @@ open Stdune
 open Import
 
 let doc =
-  "Execute a command in a similar environment as if installation was \
-   performed."
+  "Execute a command in a similar environment as if installation was performed."
 
 let man =
   [ `S "DESCRIPTION"

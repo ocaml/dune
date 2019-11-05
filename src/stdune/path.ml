@@ -231,8 +231,7 @@ end = struct
         String.take t j :: acc
       else
         match t.[i - 1] with
-        | '/' ->
-          loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
+        | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
         | _ -> loop t acc (i - 1) j
     in
     fun t ->
@@ -304,8 +303,7 @@ end = struct
     | Result.Ok t -> t
     | Error () ->
       User_error.raise ?loc:error_loc
-        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t)
-        ]
+        [ Pp.textf "path outside the workspace: %s from %s" path (to_string t) ]
 
   let is_canonicalized =
     let rec before_slash s i =
@@ -1052,8 +1050,7 @@ let drop_optional_build_context_src_exn t =
     | Some (_, s) -> s
     | None ->
       Code_error.raise
-        "drop_optional_build_context_src_exn called on a build directory \
-         itself"
+        "drop_optional_build_context_src_exn called on a build directory itself"
         [] )
   | In_source_tree p -> p
 
@@ -1239,8 +1236,7 @@ let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 let pp_debug ppf = function
   | In_source_tree s ->
     Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
-  | In_build_dir s ->
-    Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
+  | In_build_dir s -> Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
   | External s -> Format.fprintf ppf "(External %S)" (External.to_string s)
 
 module O = Comparable.Make (T)

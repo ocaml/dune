@@ -316,8 +316,7 @@ let cc_of_c_flags t (cc : string list Build.t Foreign.Language.Dict.t) =
 let resolve_binary t ~loc ~prog =
   match Artifacts.Bin.binary ~loc t.bin_artifacts_host prog with
   | Ok path -> Ok path
-  | Error e ->
-    Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
+  | Error e -> Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
 
 let cannot_be_used_here pform =
   Pp.textf "%s cannot be used in this position"
@@ -407,8 +406,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     | Ok path ->
       (* TODO: The [exec = true] case is currently not handled correctly and
          does not match the documentation. *)
-      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
-      then
+      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe" then
         Some (path_exp path)
       else
         let path_exe = Path.extend_basename path ~suffix:".exe" in
@@ -594,8 +592,8 @@ let expand_special_vars ~deps_written_by_user ~var pform =
       [ ("var", String_with_vars.Var.to_dyn var) ]
 
 let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
-    ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var
-    syntax_version =
+    ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var syntax_version
+    =
   let key = String_with_vars.Var.full_name var in
   ( match String.Map.find dynamic_expansions key with
   | Some v -> Some v

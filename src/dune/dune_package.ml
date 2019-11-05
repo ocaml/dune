@@ -136,8 +136,7 @@ module Lib = struct
            m.byte
        and+ native_archives = paths "native_archives"
        and+ jsoo_runtime = paths "jsoo_runtime"
-       and+ requires =
-         field_l "requires" (Lib_dep.decode ~allow_re_export:true)
+       and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
        and+ known_implementations =
@@ -187,8 +186,8 @@ module Lib = struct
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
            ~foreign_archives ~native_archives ~foreign_dll_files:[]
-           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
-           ~dune_version ~virtual_ ~implements ~variant ~known_implementations
+           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
+           ~virtual_ ~implements ~variant ~known_implementations
            ~default_implementation ~modes ~wrapped ~special_builtin_support
            ~exit_module:None
        in

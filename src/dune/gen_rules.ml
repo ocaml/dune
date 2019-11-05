@@ -36,8 +36,7 @@ end = struct
     ; source_dirs : 'source_dirs
     }
 
-  let empty_none =
-    { merlin = None; cctx = None; js = None; source_dirs = None }
+  let empty_none = { merlin = None; cctx = None; js = None; source_dirs = None }
 
   let empty_list = { merlin = []; cctx = []; js = []; source_dirs = [] }
 
@@ -71,8 +70,8 @@ end = struct
       Toplevel_rules.setup ~sctx ~dir ~toplevel;
       empty_none
     | Library lib
-      when Lib.DB.available (Scope.libs scope)
-             (Dune_file.Library.best_name lib) ->
+      when Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+      ->
       let cctx, merlin =
         Lib_rules.rules lib ~sctx ~dir ~scope ~dir_contents ~expander
       in
@@ -264,8 +263,7 @@ let gen_rules sctx dir_contents cctxs
     File_selector.create ~dir:(Path.build ctx_dir) pred
     |> Build.paths_matching ~loc:Loc.none
   in
-  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir:ctx_dir)
-    Path.Set.empty;
+  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir:ctx_dir) Path.Set.empty;
   cctxs
 
 let gen_rules sctx dir_contents cctxs ~dir :
@@ -275,8 +273,8 @@ let gen_rules sctx dir_contents cctxs ~dir :
   | None -> []
   | Some d -> gen_rules sctx dir_contents cctxs d
 
-let gen_rules ~sctx ~dir components :
-    Build_system.extra_sub_directories_to_keep =
+let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
+    =
   Install_rules.meta_and_dune_package_rules sctx ~dir;
   let subdirs_to_keep1 = Install_rules.gen_rules sctx ~dir in
   Opam_create.add_rules sctx ~dir;
@@ -314,8 +312,8 @@ let gen_rules ~sctx ~dir components :
       | _ -> (
         match File_tree.find_dir (Path.Build.drop_build_context_exn dir) with
         | None ->
-          (* We get here when [dir] is a generated directory, such as [.utop]
-             or [.foo.objs]. *)
+          (* We get here when [dir] is a generated directory, such as [.utop] or
+             [.foo.objs]. *)
           if Utop.is_utop_dir dir then
             Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
           else if components <> [] then

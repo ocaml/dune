@@ -32,8 +32,7 @@ module Dependency = struct
     let t_of_sexp : Sexp.t -> _ = function
       | List [ Atom "file"; Atom path ] -> Some (File path)
       | List [ Atom "directory"; Atom path ] -> Some (Directory path)
-      | List [ Atom "glob"; Atom path; Atom glob ] ->
-        Some (Glob { path; glob })
+      | List [ Atom "glob"; Atom path; Atom glob ] -> Some (Glob { path; glob })
       | _ -> None
 
     let compare x y =
@@ -44,8 +43,8 @@ module Dependency = struct
       | Directory x, Directory y -> String.compare x y
       | Directory _, _ -> Lt
       | _, Directory _ -> Gt
-      | ( Glob { path = path1; glob = glob1 }
-        , Glob { path = path2; glob = glob2 } ) -> (
+      | Glob { path = path1; glob = glob1 }, Glob { path = path2; glob = glob2 }
+        -> (
         match String.compare path1 path2 with
         | Eq -> String.compare glob1 glob2
         | not_eq -> not_eq )
@@ -133,8 +132,7 @@ module Response = struct
     let t_of_sexp : Sexp.t -> _ = function
       | List [ Atom "done" ] -> Some Done
       | List [ Atom "need_more_deps"; sexp ] ->
-        Option.O.(
-          Dependency.Set.t_of_sexp sexp >>| fun xs -> Need_more_deps xs)
+        Option.O.(Dependency.Set.t_of_sexp sexp >>| fun xs -> Need_more_deps xs)
       | _ -> None
 
     let version = 0

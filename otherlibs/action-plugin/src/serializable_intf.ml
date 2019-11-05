@@ -39,8 +39,7 @@ module Make (TypeToSerialize : S) : T with type t := TypeToSerialize.t = struct
     let open Result.O in
     let* sexp =
       Csexp.parse_string data
-      |> Result.map_error ~f:(fun _message ->
-             Deserialization_error.Parse_error)
+      |> Result.map_error ~f:(fun _message -> Deserialization_error.Parse_error)
     in
     let* format_version, data =
       match sexp with

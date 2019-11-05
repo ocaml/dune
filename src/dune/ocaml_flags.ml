@@ -106,8 +106,7 @@ let make ~spec ~default ~eval =
   { common = f "common flags" spec.common default.common
   ; specific =
       { byte = f "ocamlc flags" spec.specific.byte default.specific.byte
-      ; native =
-          f "ocamlopt flags" spec.specific.native default.specific.native
+      ; native = f "ocamlopt flags" spec.specific.native default.specific.native
       }
   }
 

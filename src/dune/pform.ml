@@ -163,8 +163,7 @@ module Map = struct
   let macros =
     let macro (x : Macro.t) = No_info x in
     let artifact x =
-      ( String.drop (Artifact.ext x) 1
-      , since ~version:(1, 11) (Macro.Artifact x) )
+      (String.drop (Artifact.ext x) 1, since ~version:(1, 11) (Macro.Artifact x))
     in
     String.Map.of_list_exn
       ( [ ("exe", macro Exe)

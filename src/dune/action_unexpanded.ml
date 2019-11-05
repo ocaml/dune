@@ -77,8 +77,7 @@ module Partial = struct
       expand e ~mode:Single ~l:Fn.id
         ~r:
           (ignore_loc (fun v ~dir ->
-               Value.to_path ?error_loc v ~dir
-               |> as_in_build_dir ~loc:error_loc))
+               Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))
 
     let prog_and_args_of_values ~loc p ~dir =
       match p with
@@ -407,8 +406,7 @@ module Infer = struct
         infer { deps = Sets.Deps.empty; targets = Sets.Targets.empty } t
       in
 
-      (* A file can be inferred as both a dependency and a target, for
-         instance:
+      (* A file can be inferred as both a dependency and a target, for instance:
 
          {[ (progn (copy a b) (copy b c)) ]} *)
       { deps = Sets.Deps.diff deps targets; targets }
@@ -460,8 +458,7 @@ module Infer = struct
 
         let ( +<+ ) acc fn =
           match fn with
-          | Left fn ->
-            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Left fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
           | Right _ -> acc
 
         let ( +<! ) acc fn =
@@ -487,8 +484,7 @@ module Infer = struct
 
         let ( +<+ ) acc fn =
           match fn with
-          | Left fn ->
-            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Left fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
           | Right _ -> acc
 
         let ( +<! ) acc fn =

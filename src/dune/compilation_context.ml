@@ -8,8 +8,7 @@ module Includes = struct
   let make ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
-      Cm_kind.Dict.make_all
-        (Command.Args.Fail { fail = (fun () -> raise exn) })
+      Cm_kind.Dict.make_all (Command.Args.Fail { fail = (fun () -> raise exn) })
     | Ok libs ->
       let iflags = Lib.L.include_flags libs in
       let cmi_includes =
@@ -111,11 +110,10 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
       requires_compile
   in
   let sandbox =
-    (* With sandboxing, there are a few build errors in ocaml platform
-       1162238ae like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1:
-       Error: The implementation ocaml_modules/ocamlgraph/src/pack.ml does not
-       match the interface
-       ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
+    (* With sandboxing, there are a few build errors in ocaml platform 1162238ae
+       like: File "ocaml_modules/ocamlgraph/src/pack.ml", line 1: Error: The
+       implementation ocaml_modules/ocamlgraph/src/pack.ml does not match the
+       interface ocaml_modules/ocamlgraph/src/.graph.objs/byte/graph__Pack.cmi: *)
     Sandbox_config.no_sandboxing
   in
   let modes =

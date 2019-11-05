@@ -348,8 +348,8 @@ let term =
           ~doc:
             (Printf.sprintf
                "Sandboxing mode to use by default. Some actions require a \
-                certain sandboxing mode, so they will ignore this setting. \
-                The allowed values are: %s."
+                certain sandboxing mode, so they will ignore this setting. The \
+                allowed values are: %s."
                (String.concat ~sep:", "
                   (List.map Dune.Sandbox_mode.all
                      ~f:Dune.Sandbox_mode.to_string))))

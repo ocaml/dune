@@ -19,8 +19,8 @@ module Key : sig
     val of_libs : Lib.t list -> t
   end
 
-  (* [decode y] fails if there hasn't been a previous call to [encode] such
-     that [encode x = y]. *)
+  (* [decode y] fails if there hasn't been a previous call to [encode] such that
+     [encode x = y]. *)
   val encode : Decoded.t -> encoded
 
   val decode : encoded -> Decoded.t
@@ -29,8 +29,8 @@ end = struct
 
   module Decoded = struct
     (* Values of type type are preserved in a global table between builds, so
-       they must not embed values that are not safe to keep between builds,
-       such as [Dune_project.t] values *)
+       they must not embed values that are not safe to keep between builds, such
+       as [Dune_project.t] values *)
     type t =
       { pps : Lib_name.t list
       ; project_root : Path.Source.t option
@@ -45,8 +45,7 @@ end = struct
       match project_root with
       | None -> s
       | Some dir ->
-        sprintf "%s (in project: %s)" s
-          (Path.Source.to_string_maybe_quoted dir)
+        sprintf "%s (in project: %s)" s (Path.Source.to_string_maybe_quoted dir)
 
     let of_libs libs =
       let pps =
@@ -134,8 +133,8 @@ module Driver = struct
 
       let loc t = t.loc
 
-      (* The syntax of the driver sub-system is part of the main dune syntax,
-         so we simply don't create a new one.
+      (* The syntax of the driver sub-system is part of the main dune syntax, so
+         we simply don't create a new one.
 
          If we wanted to make the ppx system an extension, then we would create
          a new one. *)
@@ -456,8 +455,7 @@ let ppx_driver_and_flags sctx ~lib_name ~expander ~scope ~loc ~flags pps =
     ppx_driver_and_flags_internal sctx ~loc ~expander ~lib_name ~flags libs
   in
   let+ driver =
-    Lib.closure libs ~linking:true
-    >>= Driver.select ~loc:(User_file (loc, pps))
+    Lib.closure libs ~linking:true >>= Driver.select ~loc:(User_file (loc, pps))
   in
   (exe, driver, flags)
 
@@ -477,9 +475,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   let bindings = Pform.Map.input_file (Path.build src) in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Expander.Targets.Forbidden "preprocessing actions" in
-  let targets_dir =
-    Option.value ~default:src target |> Path.Build.parent_exn
-  in
+  let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
     SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
       (let+ () = Build.path (Path.build src) in
@@ -494,8 +490,8 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   | None -> action
   | Some dst -> Action.with_stdout_to dst action
 
-(* Generate rules for the dialect modules in [modules] and return a a new
-   module with only OCaml sources *)
+(* Generate rules for the dialect modules in [modules] and return a a new module
+   with only OCaml sources *)
 let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
   let ml = Module.ml_source m in
   Module.iter m ~f:(fun ml_kind f ->
@@ -504,8 +500,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
       | Some (loc, action) ->
         let src = Path.as_in_build_dir_exn f.path in
         let dst =
-          Option.value_exn (Module.file ml ~ml_kind)
-          |> Path.as_in_build_dir_exn
+          Option.value_exn (Module.file ml ~ml_kind) |> Path.as_in_build_dir_exn
         in
         SC.add_rule sctx ~dir
           (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src
@@ -638,8 +633,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
             let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
             if lint then lint_module ~ast ~source:m;
             pped_module ast ~f:(fun ml_kind src dst ->
-                SC.add_rule ~sandbox:Sandbox_config.no_special_requirements
-                  sctx ~loc ~dir
+                SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
+                  ~loc ~dir
                   (promote_correction ~suffix:corrected_suffix
                      (Option.value_exn (Module.file m ~ml_kind))
                      ( preprocessor_deps
@@ -660,16 +655,15 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
             Build.of_result
               (let open Result.O in
               let+ exe, driver, flags =
-                ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags
-                  ~lib_name pps
+                ppx_driver_and_flags sctx ~expander ~loc ~scope ~flags ~lib_name
+                  pps
               in
               Build.memoize "ppx command"
                 (let open Build.O in
                 let+ () = Build.path (Path.build exe)
                 and+ () = preprocessor_deps
                 and+ driver_flags =
-                  Expander.expand_and_eval_set expander
-                    driver.info.as_ppx_flags
+                  Expander.expand_and_eval_set expander driver.info.as_ppx_flags
                     ~standard:(Build.return [ "--as-ppx" ])
                 in
                 let command =

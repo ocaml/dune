@@ -1,7 +1,6 @@
 type t = Sexp.t
 
-(** [to_string sexp] converts S-expression [sexp] to a string in canonical
-    form. *)
+(** [to_string sexp] converts S-expression [sexp] to a string in canonical form. *)
 val to_string : t -> string
 
 (** [parse_string string] parses [string] into S-expression *)

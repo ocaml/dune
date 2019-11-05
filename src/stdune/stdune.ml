@@ -60,17 +60,17 @@ module User_warning = User_warning
 module Lexbuf = Lexbuf
 module Scanf = Scanf
 
-(* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are
-   currently compatible with OCaml >= 4.02 so for now we simply disable the
-   deprecation warning. *)
+(* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are currently
+   compatible with OCaml >= 4.02 so for now we simply disable the deprecation
+   warning. *)
 module Pervasives = Pervasives [@@warning "-3"]
 
 external reraise : exn -> _ = "%reraise"
 
 let compare a b = Ordering.of_int (compare a b)
 
-(* The following types are re-exported here so that they are always available
-   in scope *)
+(* The following types are re-exported here so that they are always available in
+   scope *)
 
 type ('a, 'error) result = ('a, 'error) Result.t =
   | Ok of 'a

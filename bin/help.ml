@@ -92,8 +92,7 @@ let man =
       (List.concat_map commands ~f:(fun (s, what) ->
            match what with
            | List_topics -> []
-           | Man ((title, _, _, _, _), _) ->
-             [ `I (sprintf "$(b,%s)" s, title) ]))
+           | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
   ; Common.footer
   ]
 

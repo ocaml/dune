@@ -1,7 +1,6 @@
 open Stdune
 
-val gen_rules :
-  Super_context.t -> dir:Path.Build.t -> Build_system.Subdir_set.t
+val gen_rules : Super_context.t -> dir:Path.Build.t -> Build_system.Subdir_set.t
 
 (** Generate rules for [.dune-package] and [META.<package-name>] files in a
     given super context and directory. Surprisingly, the current implementation
@@ -11,8 +10,8 @@ val gen_rules :
     duplicating work. *)
 val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
 
-(* TODO: A seemingly more sensible approach for [meta_and_dune_package_rules]
-   is to only generate rules for the given directory, or stop taking [dir]
+(* TODO: A seemingly more sensible approach for [meta_and_dune_package_rules] is
+   to only generate rules for the given directory, or stop taking [dir]
    altogether and take [project] instead.
 
    aalekseyev: actually I think we should just remove

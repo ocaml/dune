@@ -163,8 +163,7 @@ let exclusions =
   ; make "reason" ~external_deps:true
   ; make "menhir" ~external_deps:true
   ; make "utop" ~external_deps:true ~enabled:false
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0"
-      ~enabled:false
+  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
   ; make "utop-default-implementation" ~enabled:false ~external_deps:true
       ~skip_ocaml:"<4.05.0"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
@@ -180,8 +179,8 @@ let exclusions =
   ; make "env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ; make "explicit_js_mode" ~external_deps:true ~js:true
-    (* for the following tests sandboxing is disabled because absolute paths
-       end up appearing in the output if we sandbox *)
+    (* for the following tests sandboxing is disabled because absolute paths end
+       up appearing in the output if we sandbox *)
   ; make "env-bins" ~disable_sandboxing:true
   ; make "vlib"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
@@ -209,8 +208,8 @@ let pp_group fmt (name, tests) =
 
 let () =
   let tests = Lazy.force all_tests in
-  (* The runtest target has a "special" definition. It includes all tests
-     except for js, coq, and disabled tests *)
+  (* The runtest target has a "special" definition. It includes all tests except
+     for js, coq, and disabled tests *)
   tests |> List.iter ~f:(fun t -> Format.printf "%a@.@." Test.pp_sexp t);
   [ ("runtest", fun (t : Test.t) -> (not t.js) && (not t.coq) && t.enabled)
   ; ("runtest-no-deps", fun (t : Test.t) -> (not t.external_deps) && t.enabled)

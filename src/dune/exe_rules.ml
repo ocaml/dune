@@ -6,8 +6,8 @@ module Executables = Dune_file.Executables
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     (exes : Dune_file.Executables.t) =
-  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-     library of the same name *)
+  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
+     of the same name *)
   let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
   Check_rules.add_obj_dir sctx ~obj_dir;
   let first_exe = snd (List.hd exes.names) in
@@ -85,10 +85,10 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     >>> Expander.expand_and_eval_set expander exes.link_flags
           ~standard:(Build.return [])
   in
-  (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and
-     the reason is unclear. For example, instead of building an archive for
-     foreign stubs, we link the corresponding object files directly. It would
-     be nice to make the code more uniform. *)
+  (* TODO: Currently [exe_rules] differ from [lib_rules] in some aspects and the
+     reason is unclear. For example, instead of building an archive for foreign
+     stubs, we link the corresponding object files directly. It would be nice to
+     make the code more uniform. *)
   let ext_lib = ctx.lib_config.ext_lib in
   let link_args =
     let+ flags = link_flags in
@@ -139,8 +139,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       in
       if List.mem Exe.Linkage.byte ~set:linkages then
         User_error.raise ~loc:exes.buildable.loc
-          [ Pp.textf "Pure bytecode executables cannot contain foreign %s."
-              what
+          [ Pp.textf "Pure bytecode executables cannot contain foreign %s." what
           ]
           ~hints:
             [ Pp.text

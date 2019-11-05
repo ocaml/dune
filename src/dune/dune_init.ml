@@ -59,8 +59,7 @@ module File = struct
       | None -> Pp.nop
       | Some s -> Dune_lang.pp s
 
-    let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t)
-        =
+    let libraries_conflict (a : Dune_file.Library.t) (b : Dune_file.Library.t) =
       a.name = b.name
 
     let executables_conflict (a : Dune_file.Executables.t)
@@ -316,9 +315,7 @@ module Component = struct
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
         =
-      let public_name =
-        public_name_field ~default:common.name options.public
-      in
+      let public_name = public_name_field ~default:common.name options.public in
       make "executable" { common with name = "main" } public_name
 
     let library (common : Options.Common.t) (options : Options.Library.t) =
@@ -329,9 +326,7 @@ module Component = struct
           let pps = add_to_list_set "ppx_inline_test" common.pps in
           ({ common with pps }, [ Field.inline_tests ])
       in
-      let public_name =
-        public_name_field ~default:common.name options.public
-      in
+      let public_name = public_name_field ~default:common.name options.public in
       make "library" common (public_name @ inline_tests)
 
     let test common (() : Options.Test.t) = make "test" common []
@@ -415,9 +410,7 @@ module Component = struct
         src
           { context = { context with dir = Path.relative dir "lib" }
           ; options =
-              { public = Some common.name
-              ; inline_tests = options.inline_tests
-              }
+              { public = Some common.name; inline_tests = options.inline_tests }
           ; common
           }
       in

@@ -174,8 +174,7 @@ module Map_ast = struct
   let map f ast =
     let ast = f mapper ast in
     let fail _ (loc, _) =
-      Location.raise_errorf ~loc
-        "Invalid use of custom 'let' or 'and' operator"
+      Location.raise_errorf ~loc "Invalid use of custom 'let' or 'and' operator"
     in
     Hashtbl.iter fail custom_operators;
     ast
@@ -195,8 +194,7 @@ let process_file fn ~magic ~parse ~print ~map ~mk_ext =
       match error_of_exn exn with
       | Some error ->
         if !dump_ast then
-          [ mk_ext ?loc:None ?attrs:None (Ast_mapper.extension_of_error error)
-          ]
+          [ mk_ext ?loc:None ?attrs:None (Ast_mapper.extension_of_error error) ]
         else (
           Location.report_error Format.err_formatter error;
           exit 1

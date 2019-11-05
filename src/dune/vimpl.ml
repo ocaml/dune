@@ -40,13 +40,7 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
       |> Module.Obj_map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
              Module_name.Map.add_exn acc (Module.real_unit_name m) m) )
   in
-  { impl
-  ; impl_cm_kind
-  ; vlib
-  ; vlib_modules
-  ; vlib_foreign_objects
-  ; vlib_obj_map
-  }
+  { impl; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects; vlib_obj_map }
 
 let vlib_stubs_o_files = function
   | None -> []

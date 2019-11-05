@@ -12,8 +12,8 @@ module File : sig
 
   (** Register file to promote where the correction file is a dependency of the
       current action (rather than an intermediate file). [correction_file]
-      refers to a path in the build dir, not in the sandbox (it can point to
-      the sandbox, but the sandbox root will be stripped). *)
+      refers to a path in the build dir, not in the sandbox (it can point to the
+      sandbox, but the sandbox root will be stripped). *)
   val register_dep :
     source_file:Path.Source.t -> correction_file:Path.Build.t -> unit
 end

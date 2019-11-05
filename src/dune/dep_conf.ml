@@ -33,8 +33,7 @@ let decode_sandbox_config =
             [ ("none", return Sandbox_config.Partial.no_sandboxing)
             ; ("always", return Sandbox_config.Partial.needs_sandboxing)
             ; ( "preserve_file_kind"
-              , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink)
-              )
+              , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink) )
             ]))
   in
   Sandbox_config.Partial.merge ~loc x
@@ -73,9 +72,7 @@ let encode = function
     List [ Dune_lang.unsafe_atom_of_string "alias"; String_with_vars.encode t ]
   | Alias_rec t ->
     List
-      [ Dune_lang.unsafe_atom_of_string "alias_rec"
-      ; String_with_vars.encode t
-      ]
+      [ Dune_lang.unsafe_atom_of_string "alias_rec"; String_with_vars.encode t ]
   | Glob_files t ->
     List
       [ Dune_lang.unsafe_atom_of_string "glob_files"

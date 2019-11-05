@@ -1,7 +1,6 @@
 module type S = Set_intf.S
 
-module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) =
-struct
+module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
   include Dune_caml.MoreLabels.Set.Make (struct
     type t = Key.t
 

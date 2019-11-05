@@ -1,18 +1,17 @@
 (** Dune sub-systems *)
 
 (** This module allows to define sub-systems. The aim is to define everything
-    related to the sub-system, such as the parser for [dune] files, the
-    metadata attached to libraries and the specific rules in one place.
+    related to the sub-system, such as the parser for [dune] files, the metadata
+    attached to libraries and the specific rules in one place.
 
     A sub-system is generally split into two sub-systems:
 
     - a backend part, which will be used by libraries that provide an
-    implementation of the sub-system - an end point, for users of the
-    sub-system
+    implementation of the sub-system - an end point, for users of the sub-system
 
-    For instance, for inline tests, the backend is what defines the inline
-    tests framework. "ppx_inline_test" and "qtest" are examples of backends. An
-    end point is any library that contains inline tests. *)
+    For instance, for inline tests, the backend is what defines the inline tests
+    framework. "ppx_inline_test" and "qtest" are examples of backends. An end
+    point is any library that contains inline tests. *)
 
 open! Import
 

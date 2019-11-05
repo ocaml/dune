@@ -9,11 +9,10 @@ module Paths = struct
 
   let library_byte_dir ~obj_dir = Path.Build.relative obj_dir "byte"
 
-  let library_public_cmi_dir ~obj_dir =
-    Path.Build.relative obj_dir "public_cmi"
+  let library_public_cmi_dir ~obj_dir = Path.Build.relative obj_dir "public_cmi"
 
-  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a
-     library of the same name *)
+  (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
+     of the same name *)
   let executable_object_directory ~dir name =
     Path.Build.relative dir ("." ^ name ^ ".eobjs")
 end
@@ -137,8 +136,7 @@ module Local = struct
   let make_lib ~dir ~has_private_modules lib_name =
     let obj_dir = Paths.library_object_directory ~dir lib_name in
     let public_cmi_dir =
-      Option.some_if has_private_modules
-        (Paths.library_public_cmi_dir ~obj_dir)
+      Option.some_if has_private_modules (Paths.library_public_cmi_dir ~obj_dir)
     in
     make ~dir ~obj_dir
       ~native_dir:(Paths.library_native_dir ~obj_dir)
@@ -206,8 +204,7 @@ let get_path :
   | Local l' -> l l'
   | Local_as_path l' -> Path.build (l l')
 
-let public_cmi_dir =
-  get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
+let public_cmi_dir = get_path ~l:Local.public_cmi_dir ~e:External.public_cmi_dir
 
 let byte_dir = get_path ~l:Local.byte_dir ~e:External.byte_dir
 

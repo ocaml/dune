@@ -6,11 +6,7 @@ module T2 : sig
   val hash : ('a -> int) -> ('b -> int) -> ('a, 'b) t -> int
 
   val equal :
-       ('a -> 'a -> bool)
-    -> ('b -> 'b -> bool)
-    -> ('a, 'b) t
-    -> ('a, 'b) t
-    -> bool
+    ('a -> 'a -> bool) -> ('b -> 'b -> bool) -> ('a, 'b) t -> ('a, 'b) t -> bool
 
   val compare :
        ('a -> 'a -> Ordering.t)

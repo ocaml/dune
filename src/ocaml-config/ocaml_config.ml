@@ -304,8 +304,7 @@ module Vars = struct
         match s with
         | "true" -> true
         | "false" -> false
-        | s -> fail "Value of %S is neither 'true' neither 'false': %s." var s
-        )
+        | s -> fail "Value of %S is neither 'true' neither 'false': %s." var s )
 
     let get_int_opt t var =
       Option.bind (get_opt t var) ~f:(fun s ->
@@ -377,14 +376,11 @@ let make vars =
     in
     let version_string = get vars "version" in
     let version =
-      match
-        Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> (a, b, c))
-      with
+      match Scanf.sscanf version_string "%u.%u.%u" (fun a b c -> (a, b, c)) with
       | Ok t -> t
       | Error () ->
         User_error.raise
-          [ Pp.textf "Unable to parse ocamlc -config version: %s"
-              version_string
+          [ Pp.textf "Unable to parse ocamlc -config version: %s" version_string
           ]
     in
     let os_type = get vars "os_type" in
@@ -462,9 +458,7 @@ let make vars =
     let module Getters = Vars.Getters (struct
       let origin = Origin.Makefile_config file
     end) in
-    let supports_shared_libraries =
-      get_bool vars "SUPPORTS_SHARED_LIBRARIES"
-    in
+    let supports_shared_libraries = get_bool vars "SUPPORTS_SHARED_LIBRARIES" in
     { version
     ; version_string
     ; standard_library_default
@@ -520,5 +514,4 @@ let make vars =
   | exception Vars.E (origin, msg) -> Error (origin, msg)
 
 let is_dev_version t =
-  Scanf.sscanf t.version_string "%u.%u.%u+dev" (fun _ _ _ -> ())
-  |> Result.is_ok
+  Scanf.sscanf t.version_string "%u.%u.%u+dev" (fun _ _ _ -> ()) |> Result.is_ok

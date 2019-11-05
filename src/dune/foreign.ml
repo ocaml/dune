@@ -87,8 +87,7 @@ let source_extentions =
 
 let has_foreign_extension ~fn =
   let ext = Filename.extension fn in
-  ext = header_extension
-  || String.Map.mem source_extentions (String.drop ext 1)
+  ext = header_extension || String.Map.mem source_extentions (String.drop ext 1)
 
 let drop_source_extension fn ~dune_version =
   let open Option.O in
@@ -152,8 +151,8 @@ module Stubs = struct
       | Some _ ->
         User_error.raise ~loc:loc_archive_name
           [ Pp.textf
-              "The field \"archive_name\" is not allowed in the \
-               (foreign_stubs ...) stanza. For named foreign archives use the \
+              "The field \"archive_name\" is not allowed in the (foreign_stubs \
+               ...) stanza. For named foreign archives use the \
                (foreign_library ...) stanza."
           ]
     in

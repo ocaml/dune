@@ -8,9 +8,9 @@ val produce : 'o t -> 'o -> unit
 
 val produce_opt : 'o t -> 'o option -> unit
 
-(** [collect*] and [forbid*] take a potentially effectful function (one wich
-    may produce some implicit output) and turn it into a pure one (with
-    explicit output if any) *)
+(** [collect*] and [forbid*] take a potentially effectful function (one wich may
+    produce some implicit output) and turn it into a pure one (with explicit
+    output if any) *)
 val collect_async : 'o t -> (unit -> 'a Fiber.t) -> ('a * 'o option) Fiber.t
 
 val collect_sync : 'o t -> (unit -> 'a) -> 'a * 'o option

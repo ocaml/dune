@@ -69,8 +69,7 @@ module Public_libs = struct
       let lib_install_dir =
         match rest with
         | [] -> lib_install_dir
-        | _ ->
-          Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
+        | _ -> Path.Build.relative lib_install_dir (String.concat rest ~sep:"/")
       in
       Path.build (Path.Build.relative lib_install_dir file)
     else

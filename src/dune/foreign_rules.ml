@@ -23,8 +23,8 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
              (* This branch corresponds to an external directory. The current
                 implementation tracks its contents NON-recursively. *)
              (* TODO: Track the contents recursively. One way to implement this
-                is to change [Build_system.Loaded.Non_build] so that it
-                contains not only files but also directories and traverse them
+                is to change [Build_system.Loaded.Non_build] so that it contains
+                not only files but also directories and traverse them
                 recursively in [Build_system.Exported.Pred]. *)
              let () =
                let error msg =
@@ -138,8 +138,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
   let all_dirs = Dir_contents.dirs dir_contents in
   let h_files =
     List.fold_left all_dirs ~init:[] ~f:(fun acc dc ->
-        String.Set.fold (Dir_contents.text_files dc) ~init:acc
-          ~f:(fun fn acc ->
+        String.Set.fold (Dir_contents.text_files dc) ~init:acc ~f:(fun fn acc ->
             if String.is_suffix fn ~suffix:Foreign.header_extension then
               Path.relative (Path.build (Dir_contents.dir dc)) fn :: acc
             else

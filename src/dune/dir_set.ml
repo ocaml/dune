@@ -207,5 +207,4 @@ let toplevel_subdirs t =
       Finite (String.Set.of_list (String.Map.keys t.exceptions))
 
 let of_list paths =
-  union_all
-    (List.map paths ~f:(fun p -> singleton' (Path.Local_gen.explode p)))
+  union_all (List.map paths ~f:(fun p -> singleton' (Path.Local_gen.explode p)))

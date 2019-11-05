@@ -11,8 +11,8 @@ module Language : sig
 
   val to_dyn : t -> Dyn.t
 
-  (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for
-      diagnostic messages. *)
+  (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for diagnostic
+      messages. *)
   val proper_name : t -> string
 
   (** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
@@ -72,8 +72,8 @@ val possible_sources :
 
 (** A type of foreign library "stubs", which includes all fields of the
     [Library.t] type except for the [archive_name] field. The type is parsed as
-    an optional [foreign_stubs] field of the [library] stanza, or as part of
-    the top-level [foreign_library] stanza. *)
+    an optional [foreign_stubs] field of the [library] stanza, or as part of the
+    top-level [foreign_library] stanza. *)
 module Stubs : sig
   (* Foreign sources can depend on a directly specified directory [Dir] or on a
      source directory of a library [Lib]. *)
@@ -158,8 +158,8 @@ module Source : sig
 
   val path : t -> Path.Build.t
 
-  (* The name of the corresponding object file; for example, [name] for a
-     source file [some/path/name.cpp]. *)
+  (* The name of the corresponding object file; for example, [name] for a source
+     file [some/path/name.cpp]. *)
   val object_name : t -> string
 
   val make : stubs:Stubs.t -> path:Path.Build.t -> t

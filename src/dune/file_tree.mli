@@ -37,8 +37,8 @@ module Dir : sig
 
   val sub_dir_names : t -> String.Set.t
 
-  (** Whether this directory is ignored by an [ignored_subdirs] stanza in one
-      of its ancestor directories. *)
+  (** Whether this directory is ignored by an [ignored_subdirs] stanza in one of
+      its ancestor directories. *)
   val ignored : t -> bool
 
   (** Whether this directory is vendored or sits within a vendored directory *)
@@ -62,8 +62,7 @@ end
     default VCS, and if jbuilder project will be recognized. It must be called
     before all other calls to the file tree. All of these settings can only be
     set once per dune process *)
-val init :
-  ancestor_vcs:Vcs.t option -> recognize_jbuilder_projects:bool -> unit
+val init : ancestor_vcs:Vcs.t option -> recognize_jbuilder_projects:bool -> unit
 
 val root : unit -> Dir.t
 

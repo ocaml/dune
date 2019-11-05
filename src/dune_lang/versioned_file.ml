@@ -63,8 +63,7 @@ struct
       | None ->
         User_error.raise ~loc:name_loc
           [ Pp.textf "Unknown language %S." name ]
-          ~hints:
-            (User_message.did_you_mean name ~candidates:(Table.keys langs))
+          ~hints:(User_message.did_you_mean name ~candidates:(Table.keys langs))
       | Some t ->
         Syntax.check_supported t.syntax (ver_loc, ver);
         { syntax = t.syntax; data = t.data; version = ver }

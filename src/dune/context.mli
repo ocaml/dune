@@ -2,8 +2,8 @@
 
 (** Dune supports two different kind of contexts:
 
-    - the default context, which correspond to the environment Dune is run,
-    i.e. it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
+    - the default context, which correspond to the environment Dune is run, i.e.
+    it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
     configuration where it can find it
 
     - opam switch contexts, where one opam switch correspond to one context
@@ -14,10 +14,9 @@
     - _build/default for the default context - _build/<switch> for other
     contexts
 
-    Dune is able to build simultaneously against several contexts. In
-    particular this allow for simple cross-compilation: when an executable
-    running on the host is needed, it is obtained by looking in another
-    context. *)
+    Dune is able to build simultaneously against several contexts. In particular
+    this allow for simple cross-compilation: when an executable running on the
+    host is needed, it is obtained by looking in another context. *)
 
 open! Stdune
 open! Import
@@ -52,10 +51,10 @@ type t = private
             optimization of target path/to/foo.exe *)
   ; fdo_target_exe : Path.t option
         (* By default Dune builds and installs dynamically linked foreign
-           archives (usually named [dll*.so]). It is possible to disable this
-           by adding (disable_dynamically_linked_foreign_archives true) to the
-           workspace file, in which case bytecode executables will be built
-           with all foreign archives statically linked into the runtime system. *)
+           archives (usually named [dll*.so]). It is possible to disable this by
+           adding (disable_dynamically_linked_foreign_archives true) to the
+           workspace file, in which case bytecode executables will be built with
+           all foreign archives statically linked into the runtime system. *)
   ; disable_dynamically_linked_foreign_archives : bool
         (** If this context is a cross-compilation context, you need another
             context for building tools used for the compilation that run on the

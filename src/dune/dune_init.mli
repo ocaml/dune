@@ -25,8 +25,8 @@ module Init_context : sig
   val make : string option -> t
 end
 
-(** A [Component.t] is a set of files that can be built or included as part of
-    a build. *)
+(** A [Component.t] is a set of files that can be built or included as part of a
+    build. *)
 module Component : sig
   (** Options determining the details of a generated component *)
   module Options : sig

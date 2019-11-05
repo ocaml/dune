@@ -85,9 +85,7 @@ let rule_loc ~info ~dir =
   | Source_file_copy ->
     let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
     let file =
-      match
-        Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file
-      with
+      match Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file with
       | Some file -> File_tree.Dune_file.path file
       | None -> Path.Source.relative dir "_unknown_"
     in
@@ -143,8 +141,8 @@ module Internal_rule = struct
   let hash t = Id.hash t.id
 
   let lib_deps t =
-    (* Forcing this lazy ensures that the various globs and [if_file_exists]
-       are resolved inside the [Build.t] value. *)
+    (* Forcing this lazy ensures that the various globs and [if_file_exists] are
+       resolved inside the [Build.t] value. *)
     let+ _ = Fiber.Once.get t.static_deps in
     Build.lib_deps t.build
 
@@ -152,8 +150,7 @@ module Internal_rule = struct
      executed and is only used starting point of all dependency paths. *)
   let root =
     { id = Id.gen ()
-    ; static_deps =
-        Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
+    ; static_deps = Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
     ; targets = Path.Build.Set.empty
     ; context = None
     ; build = Build.return (Action.Progn [])
@@ -512,15 +509,14 @@ let add_spec_exn t fn rule =
   | None -> Path.Build.Table.set t.files fn rule
   | Some _ ->
     Code_error.raise
-      "add_spec_exn called on the same file twice. This should be prevented \
-       by the check in [compile_rules]"
+      "add_spec_exn called on the same file twice. This should be prevented by \
+       the check in [compile_rules]"
       [ ("file", Path.Build.to_dyn fn) ]
 
 let add_rules_exn t rules =
   Path.Build.Map.iteri rules ~f:(fun key data -> add_spec_exn t key data)
 
-let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
-    =
+let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
   let describe (rule : Internal_rule.t) =
     match rule.info with
     | From_dune_file { start; _ } ->
@@ -544,8 +540,8 @@ let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t)
         ]
       | _ -> [] )
 
-(* This contains the targets of the actions that are being executed. On exit,
-   we need to delete them as they might contain garbage *)
+(* This contains the targets of the actions that are being executed. On exit, we
+   need to delete them as they might contain garbage *)
 let pending_targets = ref Path.Build.Set.empty
 
 let () =
@@ -641,8 +637,7 @@ let no_rule_found t ~loc fn =
     else
       User_error.raise
         [ Pp.textf
-            "Trying to build %s for install but build context %s doesn't \
-             exist."
+            "Trying to build %s for install but build context %s doesn't exist."
             (Path.Build.to_string_maybe_quoted fn)
             (Context_name.to_string ctx)
         ]
@@ -704,10 +699,10 @@ end = struct
            let ctx_path = Path.Build.append_source ctx_dir path in
            let build = Build.copy ~src:(Path.source path) ~dst:ctx_path in
            Pre_rule.make
-           (* There's an [assert false] in [prepare_managed_paths] that blows
-              up if we try to sandbox this. *)
-             ~sandbox:Sandbox_config.no_sandboxing build ~context:None
-             ~env:None ~info:Source_file_copy)
+           (* There's an [assert false] in [prepare_managed_paths] that blows up
+              if we try to sandbox this. *)
+             ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
+             ~info:Source_file_copy)
 
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
@@ -758,8 +753,7 @@ end = struct
                 { deps = Path.Set.empty
                 ; dyn_deps =
                     (let+ _ =
-                       Alias0.dep_rec_internal ~name:default_alias ~dir
-                         ~ctx_dir
+                       Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
                      in
                      Path.Set.empty)
                 ; actions = Appendable_list.empty
@@ -827,9 +821,9 @@ end = struct
           true
         | Fallback ->
           let source_files_for_targtes =
-            (* All targets are in [dir] and we know it correspond to a
-               directory of a build context since there are source files to
-               copy, so this call can't fail. *)
+            (* All targets are in [dir] and we know it correspond to a directory
+               of a build context since there are source files to copy, so this
+               call can't fail. *)
             Path.Build.Set.to_list rule.targets
             |> List.map ~f:Path.Build.drop_build_context_exn
             |> Path.Source.Set.of_list
@@ -866,15 +860,15 @@ end = struct
               ; pp_paths (Path.set_of_source_paths absent_targets)
               ])
 
-  (** If both [a] and [a/b] are source directories, we don't allow the rules
-      for [a] to define generated directories under [a/b] (e.g.
+  (** If both [a] and [a/b] are source directories, we don't allow the rules for
+      [a] to define generated directories under [a/b] (e.g.
       [a/b/.generated-by-a]).
 
       The purpose is to avoid dependency cycles when computing the list of
       subdirectories of [b]: you'd need to load rules for [a], for which you
       often need to load rules for [a/b], at which point you need to do stale
-      artifact deletion, so you need to have computed the set of children of
-      [b] already.
+      artifact deletion, so you need to have computed the set of children of [b]
+      already.
 
       One reasonable alternative is to delay stale artifact deletion until it's
       actually necessary and I (aalekseyev) believe it to be a better approach,
@@ -1303,8 +1297,8 @@ end = struct
           else
             User_error.raise ~loc
               [ Pp.text
-                  "This rule requires sandboxing with symlinks, but that \
-                   won't work on Windows."
+                  "This rule requires sandboxing with symlinks, but that won't \
+                   work on Windows."
               ]
         | _ -> Some preference )
     in
@@ -1339,10 +1333,10 @@ end = struct
     let+ () = build_deps action_deps in
     (action, action_deps)
 
-  (* The following function does exactly the same as the function above with
-     the difference that it starts the build of static dependencies before we
-     know the final action and set of dynamic dependencies. We do this to
-     increase opportunities for parallelism. *)
+  (* The following function does exactly the same as the function above with the
+     difference that it starts the build of static dependencies before we know
+     the final action and set of dynamic dependencies. We do this to increase
+     opportunities for parallelism. *)
   let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
     let* static_deps = Fiber.Once.get rule.static_deps in
     let static_action_deps = Static_deps.action_deps static_deps in
@@ -1372,8 +1366,7 @@ end = struct
       | exception Unix.Unix_error (ENOENT, _, _) -> ()
       | () -> () )
 
-  let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode
-      =
+  let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode =
     let targets_as_list = Path.Build.Set.to_list rule.targets in
     let env = Internal_rule.effective_env rule in
     let trace =
@@ -1503,8 +1496,7 @@ end = struct
               None )
         and cache_checking =
           match t.caching with
-          | Some { check_probability; _ } ->
-            Random.float 1. < check_probability
+          | Some { check_probability; _ } -> Random.float 1. < check_probability
           | _ -> false
         in
         let pulled_from_cache =
@@ -1599,8 +1591,7 @@ end = struct
                   Pp.box ~indent:2
                     ( Pp.verbatim x
                     ++ Dyn.pp
-                         (Dyn.Encoder.list Path.Build.to_dyn (List.map l ~f))
-                    )
+                         (Dyn.Encoder.list Path.Build.to_dyn (List.map l ~f)) )
                 in
                 User_warning.emit
                   [ Pp.text "unexpected list of targets in the cache"
@@ -1680,8 +1671,8 @@ end = struct
                 if lifetime = Until_clean then
                   Promoted_to_delete.add in_source_tree;
                 Scheduler.ignore_for_watch in_source_tree;
-                Artifact_substitution.copy_file () ~src:path
-                  ~dst:in_source_tree ~get_vcs:File_tree.nearest_vcs ))
+                Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
+                  ~get_vcs:File_tree.nearest_vcs ))
     in
     t.rule_done <- t.rule_done + 1
 
@@ -1780,8 +1771,7 @@ let build_request ~request =
 let process_memcycle exn =
   let cycle =
     Memo.Cycle_error.get exn
-    |> List.filter_map
-         ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
+    |> List.filter_map ~f:(Memo.Stack_frame.as_instance_of ~of_:build_file_memo)
   in
   match List.last cycle with
   | None ->
@@ -1798,8 +1788,7 @@ let process_memcycle exn =
     in
     User_error.raise
       [ Pp.text "Dependency cycle between the following files:"
-      ; Pp.chain cycle ~f:(fun p ->
-            Pp.verbatim (Path.to_string_maybe_quoted p))
+      ; Pp.chain cycle ~f:(fun p -> Pp.verbatim (Path.to_string_maybe_quoted p))
       ]
 
 module Rule = struct

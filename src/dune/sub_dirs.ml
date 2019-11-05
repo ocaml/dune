@@ -138,9 +138,8 @@ let decode =
     if version >= (1, 6) then
       User_warning.emit ~loc
         [ Pp.text
-            "ignored_subdirs is deprecated in 1.6. Use dirs to specify \
-             visible directories or data_only_dirs for ignoring only dune \
-             files."
+            "ignored_subdirs is deprecated in 1.6. Use dirs to specify visible \
+             directories or data_only_dirs for ignoring only dune files."
         ];
     ignored
   in

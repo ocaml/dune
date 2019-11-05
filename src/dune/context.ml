@@ -209,11 +209,10 @@ let check_fdo_support has_native ocfg ~name =
   if not has_native then err ();
   if Ocaml_config.is_dev_version ocfg then
     ( (* Allows fdo to be invoked with any dev version of the compiler. This is
-         experimental and will be removed when ocamlfdo is fully integrated
-         into the toolchain. When using a dev version of ocamlopt that does not
-         support the required options, fdo builds will fail because the
-         compiler won't recongnize the options. Normals builds won't be
-         affected. *) )
+         experimental and will be removed when ocamlfdo is fully integrated into
+         the toolchain. When using a dev version of ocamlopt that does not
+         support the required options, fdo builds will fail because the compiler
+         won't recongnize the options. Normals builds won't be affected. *) )
   else if not (Ocaml_version.supports_split_at_emit version) then
     if not (Ocaml_version.supports_function_sections version) then
       err ()
@@ -252,8 +251,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           sigh... *)
        ( match Env.get env "OCAMLFIND_CONF" with
        | Some s -> Fiber.return s
-       | None ->
-         Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
+       | None -> Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]
+       )
        >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
@@ -310,8 +309,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         match (kind, findlib_toolchain) with
         | Default, None -> Env.get env var
         | _ -> (
-          (* If we are not in the default context, we can only use the
-             OCAMLPATH variable if it is specific to this build context *)
+          (* If we are not in the default context, we can only use the OCAMLPATH
+             variable if it is specific to this build context *)
           (* CR-someday diml: maybe we should actually clear OCAMLPATH in other
              build contexts *)
           match (Env.get env var, Env.get Env.initial var) with
@@ -633,8 +632,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
   create
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
-    ~host_toolchain ~fdo_target_exe
-    ~disable_dynamically_linked_foreign_archives
+    ~host_toolchain ~fdo_target_exe ~disable_dynamically_linked_foreign_archives
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -779,8 +777,7 @@ let install_ocaml_libdir t =
     match which t "ocamlfind" with
     | Some fn ->
       let+ s =
-        Process.run_capture_line ~env:t.env Strict fn
-          [ "printconf"; "destdir" ]
+        Process.run_capture_line ~env:t.env Strict fn [ "printconf"; "destdir" ]
       in
       Some (Path.of_filename_relative_to_initial_cwd s)
     | None -> Fiber.return None )

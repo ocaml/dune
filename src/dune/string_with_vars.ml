@@ -20,8 +20,7 @@ let make_syntax = (1, 0)
 
 let make template = { template; syntax_version = make_syntax }
 
-let make_text ?(quoted = false) loc s =
-  make { parts = [ Text s ]; quoted; loc }
+let make_text ?(quoted = false) loc s = make { parts = [ Text s ]; quoted; loc }
 
 let make_var ?(quoted = false) loc ?payload name =
   let var = { loc; name; payload; syntax = Percent } in
@@ -232,8 +231,8 @@ end
 open Private
 
 let partial_expand :
-      'a.    t -> mode:'a Mode.t -> dir:Path.t
-      -> f:Value.t list option expander -> 'a Partial.t =
+      'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list option expander
+      -> 'a Partial.t =
  fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
   let commit_text acc_text acc =
     let s = concat_rev acc_text in

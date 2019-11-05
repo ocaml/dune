@@ -1,7 +1,7 @@
 (** Representation of paths for "dune_action_plugin" library. *)
 
-(** We shouldn't use absolute paths when communicating with Dune, so this
-    module allows user to represent only relative paths. *)
+(** We shouldn't use absolute paths when communicating with Dune, so this module
+    allows user to represent only relative paths. *)
 
 type t
 

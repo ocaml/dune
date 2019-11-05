@@ -36,8 +36,8 @@ module Partial = struct
         User_error.raise ~loc
           [ Pp.text
               (sprintf
-                 "Inconsistent sandboxing configuration. Sandboxing mode %s \
-                  is both allowed and disallowed"
+                 "Inconsistent sandboxing configuration. Sandboxing mode %s is \
+                  both allowed and disallowed"
                  (Sandbox_mode.to_string field))
           ]
       | Ok None ->

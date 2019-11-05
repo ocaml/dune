@@ -1,3 +1,7 @@
+  $ cat > config <<EOF
+  > (lang dune 2.0)
+  > (cache enabled)
+  > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.0)
   > EOF
@@ -10,7 +14,7 @@
   $ cat > source <<EOF
   > \_o< COIN
   > EOF
-  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
+  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
   2
   $ ./stat.sh --format=%h _build/default/target
@@ -18,7 +22,7 @@
   $ ls _build/default/beacon
   _build/default/beacon
   $ rm -rf _build/default
-  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
+  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
   2
   $ ./stat.sh --format=%h _build/default/target
@@ -54,7 +58,7 @@
   >   (action (bash "echo running; cat t1 t1 > t2")))
   > EOF
   $ cp dune-v1 dune
-  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build t2
+  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -63,7 +67,7 @@
   v1
   v1
   $ cp dune-v2 dune
-  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build t2
+  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -72,7 +76,7 @@
   v2
   v2
   $ cp dune-v1 dune
-  $ env DUNE_CACHE=1 DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build t2
+  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
   $ cat _build/default/t1
   v1
   $ cat _build/default/t2

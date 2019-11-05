@@ -494,6 +494,20 @@ let term =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
+  and+ cache_mode =
+    let doc = "Activate binary cache" in
+    Arg.(
+      value
+      & opt (some (enum Config.Caching.Mode.all)) None
+      & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
+  and+ cache_transport =
+    let doc = "Binary cache protocol" in
+    Arg.(
+      value
+      & opt (some (enum Config.Caching.Transport.all)) None
+      & info [ "cache-transport" ] ~docs
+          ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
+          ~doc)
   and+ () = build_info in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
@@ -514,6 +528,8 @@ let term =
       ; sandboxing_preference =
           Option.map sandboxing_preference ~f:(fun x -> [ x ])
       ; terminal_persistence
+      ; cache_mode
+      ; cache_transport
       }
   in
   let config =

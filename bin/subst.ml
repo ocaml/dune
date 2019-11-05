@@ -64,6 +64,8 @@ let term =
     ; concurrency = Fixed 1
     ; terminal_persistence = Preserve
     ; sandboxing_preference = []
+    ; cache_mode = Config.Caching.Mode.Disabled
+    ; cache_transport = Config.Caching.Transport.Direct
     }
   in
   Path.set_root (Path.External.cwd ());

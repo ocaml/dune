@@ -163,6 +163,8 @@ let bootstrap () =
         ; concurrency = Fixed 1
         ; terminal_persistence = Preserve
         ; sandboxing_preference = []
+        ; cache_mode = Config.Caching.Mode.Disabled
+        ; cache_transport = Config.Caching.Transport.Direct
         }
       in
       init config;
@@ -209,6 +211,8 @@ let bootstrap () =
         ; concurrency = !concurrency
         ; sandboxing_preference = None
         ; terminal_persistence
+        ; cache_mode = None
+        ; cache_transport = None
         }
     in
     let config =

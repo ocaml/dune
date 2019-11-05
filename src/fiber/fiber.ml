@@ -345,8 +345,7 @@ let wait_errors f k = EC.fork_and_wait_errors f () k
 let fold_errors f ~init ~on_error =
   let acc = ref init in
   let on_error exn = acc := on_error exn !acc in
-  wait_errors (fun () -> with_error_handler ~on_error f)
-  >>| function
+  wait_errors (fun () -> with_error_handler ~on_error f) >>| function
   | Ok _ as ok -> ok
   | Error () -> Error !acc
 

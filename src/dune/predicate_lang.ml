@@ -38,8 +38,7 @@ let rec decode_one f =
     let+ e = f in
     Element e
   in
-  peek_exn
-  >>= function
+  peek_exn >>= function
   | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
   | Atom (_, A "")
   | Quoted_string (_, _)
@@ -74,12 +73,11 @@ let rec decode_one f =
 
 and many f k acc =
   let open Dune_lang.Decoder in
-  peek
-  >>= function
+  peek >>= function
   | None -> return (k (List.rev acc))
   | Some (Atom (_, A "\\")) ->
-    junk >>> many f union []
-    >>| fun to_remove -> diff (k (List.rev acc)) to_remove
+    junk >>> many f union [] >>| fun to_remove ->
+    diff (k (List.rev acc)) to_remove
   | Some _ ->
     let* x = decode_one f in
     many f k (x :: acc)

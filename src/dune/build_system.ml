@@ -1681,8 +1681,7 @@ end = struct
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
-        get_rule t path
-        >>= function
+        get_rule t path >>= function
         | None ->
           (* file already exists *)
           Fiber.return ()

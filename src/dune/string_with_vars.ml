@@ -31,8 +31,7 @@ let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
 let decode =
   let open Dune_lang.Decoder in
   let template_parser =
-    raw
-    >>| function
+    raw >>| function
     | Template t -> t
     | Atom (loc, A s) -> literal ~quoted:false ~loc s
     | Quoted_string (loc, s) -> literal ~quoted:true ~loc s

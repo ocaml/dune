@@ -76,8 +76,7 @@ let run_action (vcs : Vcs.t) action =
       | Hg when not has_hg -> { vcs with kind = Git }
       | _ -> vcs
     in
-    Vcs.describe vcs
-    >>| fun s ->
+    Vcs.describe vcs >>| fun s ->
     let processed =
       String.split s ~on:'-'
       |> List.map ~f:(fun s ->

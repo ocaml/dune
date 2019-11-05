@@ -152,8 +152,7 @@ module Dependency = struct
                 Or x )
             ]
           in
-          peek_exn
-          >>= function
+          peek_exn >>= function
           | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
             let+ () = junk in
             Bvar (Var (String.drop s 1))

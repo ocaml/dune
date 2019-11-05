@@ -151,8 +151,7 @@ module Client = struct
 
   let read input =
     let* sexp = Csexp.parse input in
-    Messages.incoming_message_of_sexp sexp
-    >>| function
+    Messages.incoming_message_of_sexp sexp >>| function
     | Messages.Dedup v -> Dune_cache.Dedup v
 
   let client_handle output = function

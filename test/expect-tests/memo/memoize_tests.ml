@@ -50,8 +50,7 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2
-  >>= fun a ->
+  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 >>= fun a ->
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
 
@@ -121,8 +120,7 @@ let dump_stack v =
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
-    Fiber.return x >>= dump_stack
-    >>= fun x ->
+    Fiber.return x >>= dump_stack >>= fun x ->
     counter := !counter + 1;
     if !counter < 20 then
       (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
@@ -169,7 +167,8 @@ let mfib =
     if x <= 1 then
       Fiber.return x
     else
-      mfib (x - 1) >>= fun r1 -> mfib (x - 2) >>| fun r2 -> r1 + r2
+      mfib (x - 1) >>= fun r1 ->
+      mfib (x - 2) >>| fun r2 -> r1 + r2
   in
   let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
   Fdecl.set mfib fn;

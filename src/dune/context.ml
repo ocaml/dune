@@ -335,8 +335,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let p = Path.relative p "lib" in
         Fiber.return (ocamlpath @ [ p ])
       | Opam1_environment -> (
-        opam_config_var ~env ~cache:opam_var_cache "lib"
-        >>| function
+        opam_config_var ~env ~cache:opam_var_cache "lib" >>| function
         | Some s -> ocamlpath @ [ Path.of_filename_relative_to_initial_cwd s ]
         | None -> Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
@@ -763,8 +762,7 @@ end
 let which t s = which ~cache:t.which_cache ~path:t.path s
 
 let install_prefix t =
-  opam_config_var t "prefix"
-  >>| function
+  opam_config_var t "prefix" >>| function
   | Some x -> Path.of_filename_relative_to_initial_cwd x
   | None -> Path.parent_exn t.ocaml_bin
 

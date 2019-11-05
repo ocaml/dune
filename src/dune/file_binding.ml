@@ -63,8 +63,7 @@ module Unexpanded = struct
       let open Dune_lang.Decoder in
       let decode =
         let+ is_atom =
-          peek_exn
-          >>| function
+          peek_exn >>| function
           | Atom _ -> true
           | _ -> false
         and+ s = String_with_vars.decode
@@ -82,8 +81,7 @@ module Unexpanded = struct
         else
           s
       in
-      peek_exn
-      >>= function
+      peek_exn >>= function
       | Atom _
       | Quoted_string _
       | Template _ ->

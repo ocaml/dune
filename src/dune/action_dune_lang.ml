@@ -95,17 +95,15 @@ open Dune_lang.Decoder
 let decode =
   if_list
     ~then_:
-      ( located decode
-      >>| fun (loc, action) ->
-      validate ~loc action;
-      action )
+      ( located decode >>| fun (loc, action) ->
+        validate ~loc action;
+        action )
     ~else_:
-      ( loc
-      >>| fun loc ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "if you meant for this to be executed with bash, write (bash \
-             \"...\") instead"
-        ] )
+      ( loc >>| fun loc ->
+        User_error.raise ~loc
+          [ Pp.textf
+              "if you meant for this to be executed with bash, write (bash \
+               \"...\") instead"
+          ] )
 
 let to_dyn a = Dune_lang.to_dyn (encode a)

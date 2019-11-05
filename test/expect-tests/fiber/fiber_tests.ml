@@ -97,8 +97,7 @@ let%expect_test _ =
   ( try
       Fiber.run
         (Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors failing_fiber
-             >>= fun _ ->
+             Fiber.collect_errors failing_fiber >>= fun _ ->
              long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
     with Fiber.Never -> never_raised := true );
   [%expect {| |}]
@@ -117,8 +116,7 @@ let%expect_test _ =
   let forking_fiber () =
     let which = Bin.which ~path:(Env.path Env.initial) in
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
-        Fiber.yield ()
-        >>= fun () ->
+        Fiber.yield () >>= fun () ->
         if x mod 2 = 1 then
           Process.run Process.Strict ~env:Env.initial
             (Option.value_exn (which "true"))
@@ -131,8 +129,7 @@ let%expect_test _ =
   ( try
       Fiber.run
         (Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors forking_fiber
-             >>= fun _ ->
+             Fiber.collect_errors forking_fiber >>= fun _ ->
              long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
     with Fiber.Never -> never_raised := true )
   |> unit |> print_dyn;

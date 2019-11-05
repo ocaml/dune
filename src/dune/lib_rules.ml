@@ -16,7 +16,8 @@ let msvc_hack_cclibs =
       Option.value ~default:lib (String.drop_prefix ~prefix:"-l" lib))
 
 (* Build an OCaml library. *)
-let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
+let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
+    ~cm_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
   Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
@@ -74,7 +75,14 @@ let build_lib (lib : Library.t) ~sctx ~expander ~flags ~dir ~mode ~cm_files =
               ; Hidden_targets
                   ( match mode with
                   | Byte -> []
-                  | Native -> [ Library.archive lib ~dir ~ext:ext_lib ] )
+                  | Native ->
+                    if
+                      Lib_archives.has_native_archive lib ctx.lib_config
+                        dir_contents
+                    then
+                      [ Library.archive lib ~dir ~ext:ext_lib ]
+                    else
+                      [] )
               ] ))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
@@ -211,7 +219,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
     ocamlmklib ~archive_name ~loc:lib.buildable.loc ~sctx ~expander ~dir
       ~o_files ~c_library_flags:lib.c_library_flags ~build_targets_together
 
-let build_shared lib ~sctx ~dir ~flags =
+let build_shared lib ~dir_contents ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
   Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
@@ -226,7 +234,6 @@ let build_shared lib ~sctx ~dir ~flags =
       let build =
         Build.paths
           (Library.foreign_archives lib ~dir ~ext_lib |> List.map ~f:Path.build)
-        >>> Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
               [ Command.Args.dyn (Ocaml_flags.get flags Native)
               ; A "-shared"
@@ -238,9 +245,16 @@ let build_shared lib ~sctx ~dir ~flags =
               ; Dep src
               ]
       in
+      let build =
+        if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
+          Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
+          >>> build
+        else
+          build
+      in
       Super_context.add_rule sctx build ~dir)
 
-let setup_build_archives (lib : Dune_file.Library.t) ~cctx
+let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
     ~(dep_graphs : Dep_graph.Ml_kind.t) ~expander =
   let dir = Compilation_context.dir cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -273,7 +287,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
      Cm_files.make ~obj_dir ~ext_obj ~modules ~top_sorted_modules
    in
    Mode.Dict.Set.iter modes ~f:(fun mode ->
-       build_lib lib ~sctx ~expander ~flags ~dir ~mode ~cm_files));
+       build_lib lib ~dir_contents ~sctx ~expander ~flags ~dir ~mode ~cm_files));
   (* Build *.cma.js *)
   if modes.byte then
     Super_context.add_rules sctx ~dir
@@ -287,7 +301,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~cctx
        in
        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
-    build_shared ~sctx lib ~dir ~flags
+    build_shared ~dir_contents ~sctx lib ~dir ~flags
 
 let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~compile_info =
@@ -351,7 +365,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   Module_compilation.build_all cctx ~dep_graphs;
   let expander = Super_context.expander sctx ~dir in
   if not (Library.is_virtual lib) then
-    setup_build_archives lib ~cctx ~dep_graphs ~expander;
+    setup_build_archives lib ~dir_contents ~cctx ~dep_graphs ~expander;
   let () =
     let vlib_stubs_o_files = Vimpl.vlib_stubs_o_files vimpl in
     if Library.has_foreign lib || List.is_non_empty vlib_stubs_o_files then

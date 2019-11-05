@@ -9,6 +9,13 @@ let lib_files t = t.lib_files
 
 let dll_files t = t.dll_files
 
+let has_native_archive lib config contents =
+  Lib_config.linker_can_create_empty_archives config
+  ||
+  let name = Dune_file.Library.best_name lib in
+  let modules = Dir_contents.modules_of_library contents ~name in
+  not (Modules.is_empty modules)
+
 module Library = Dune_file.Library
 
 let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
@@ -41,9 +48,14 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
       ; if_
           (native && not virtual_library)
           (let files =
-             [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
-             ; Library.archive ~dir lib ~ext:ext_lib
-             ]
+             if has_native_archive lib ctx.lib_config dir_contents then
+               [ Library.archive ~dir lib ~ext:ext_lib ]
+             else
+               []
+           in
+           let files =
+             Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Native)
+             :: files
            in
            if
              Dynlink_supported.get lib.dynlink

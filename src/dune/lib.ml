@@ -331,7 +331,10 @@ type db =
 and resolve_result =
   | Not_found
   | Found of Lib_info.external_
-  | Hidden of Lib_info.external_ * string
+  | Hidden of
+      { info : Lib_info.external_
+      ; reason : string
+      }
   | Redirect of db option * (Loc.t * Lib_name.t)
 
 type lib = t
@@ -1134,7 +1137,7 @@ end = struct
       in
       Table.add_exn db.table name res;
       res
-    | Hidden (info, hidden) -> (
+    | Hidden { info; reason = hidden } -> (
       match
         match db.parent with
         | None -> St_not_found
@@ -1539,7 +1542,10 @@ module DB = struct
     type t = resolve_result =
       | Not_found
       | Found of Lib_info.external_
-      | Hidden of Lib_info.external_ * string
+      | Hidden of
+          { info : Lib_info.external_
+          ; reason : string
+          }
       | Redirect of db option * (Loc.t * Lib_name.t)
 
     let to_dyn x =
@@ -1547,8 +1553,8 @@ module DB = struct
       match x with
       | Not_found -> constr "Not_found" []
       | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
-      | Hidden (lib, s) ->
-        constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string s ]
+      | Hidden { info = lib; reason } ->
+        constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string reason ]
       | Redirect (_, (_, name)) -> constr "Redirect" [ Lib_name.to_dyn name ]
   end
 
@@ -1752,7 +1758,10 @@ module DB = struct
             else
               Not_found
           | Hidden pkg ->
-            Hidden (Dune_package.Lib.info pkg, "unsatisfied 'exist_if'") ))
+            Hidden
+              { info = Dune_package.Lib.info pkg
+              ; reason = "unsatisfied 'exist_if'"
+              } ))
       ~all:(fun () ->
         Findlib.all_packages findlib |> List.map ~f:Dune_package.Entry.name)
 

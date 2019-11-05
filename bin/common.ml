@@ -508,6 +508,18 @@ let term =
       & info [ "cache-transport" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
           ~doc)
+  and+ cache_check_probability =
+    let doc =
+      "Probability cached rules are rerun to check for reproducibility"
+    in
+    Arg.(
+      value
+      & opt float Config.default.cache_check_probability
+      & info
+          [ "cache-check-probability" ]
+          ~docs
+          ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
+          ~doc)
   and+ () = build_info in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
@@ -530,6 +542,7 @@ let term =
       ; terminal_persistence
       ; cache_mode
       ; cache_transport
+      ; cache_check_probability = Some cache_check_probability
       }
   in
   let config =

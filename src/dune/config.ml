@@ -146,6 +146,7 @@ module type S = sig
     ; sandboxing_preference : Sandboxing_preference.t field
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
+    ; cache_check_probability : float field
     }
 end
 
@@ -165,6 +166,8 @@ let merge t (partial : Partial.t) =
       field t.sandboxing_preference partial.sandboxing_preference
   ; cache_mode = field t.cache_mode partial.cache_mode
   ; cache_transport = field t.cache_transport partial.cache_transport
+  ; cache_check_probability =
+      field t.cache_check_probability partial.cache_check_probability
   }
 
 let default =
@@ -182,6 +185,7 @@ let default =
   ; sandboxing_preference = []
   ; cache_mode = Disabled
   ; cache_transport = Direct
+  ; cache_check_probability = 0.01
   }
 
 let decode =
@@ -199,6 +203,9 @@ let decode =
   and+ cache_transport =
     field "cache-transport" Caching.Transport.decode
       ~default:default.cache_transport
+  and+ cache_check_probability =
+    field "cache-check-probablity" Dune_lang.Decoder.float
+      ~default:default.cache_check_probability
   and+ () = Dune_lang.Versioned_file.no_more_lang in
   { display
   ; concurrency
@@ -206,6 +213,7 @@ let decode =
   ; sandboxing_preference
   ; cache_mode
   ; cache_transport
+  ; cache_check_probability
   }
 
 let decode = fields decode

@@ -79,8 +79,7 @@ let make ~dirs ~data_only ~ignored_sub_dirs ~vendored_dirs =
 type status_map = Status.t String.Map.t
 
 let eval (t : _ Status.Map.t) ~dirs =
-  (* This function defines the unexpected behavior of:
-     (dirs foo)
+  (* This function defines the unexpected behavior of: (dirs foo)
      (data_only_dirs bar)
 
      In this setup, bar is actually ignored rather than being data only. Because

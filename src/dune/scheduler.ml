@@ -247,7 +247,12 @@ end = struct
          ]
        in
        let path = Path.to_string_maybe_quoted Path.root in
-       match Bin.which ~path:(Env.path Env.initial) "inotifywait" with
+       match
+         if Sys.linux then
+           Bin.which ~path:(Env.path Env.initial) "inotifywait"
+         else
+           None
+       with
        | Some inotifywait ->
          (* On Linux, use inotifywait. *)
          let excludes = String.concat ~sep:"|" excludes in
@@ -288,8 +293,12 @@ end = struct
          | None ->
            User_error.raise
              [ Pp.text
-                 "fswatch (or inotifywait) was not found. One of them needs to \
-                  be installed for watch mode to work."
+                 ( if Sys.linux then
+                   "Please install inotifywait to enable watch mode. If \
+                    inotifywait is unavailable, fswtach may also be used but \
+                    will result in a worse experience."
+                 else
+                   "Please install fswatch to enable watch mode." )
              ] ))
 
   let buffering_time = 0.5 (* seconds *)

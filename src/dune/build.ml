@@ -118,7 +118,19 @@ let contents p = Contents p
 
 let lines_of p = Lines_of p
 
-let strings p = Map ((fun l -> List.map l ~f:Scanf.unescaped), lines_of p)
+let strings p =
+  let f x =
+    match Scanf.unescaped x with
+    | Error () ->
+      User_error.raise
+        [ Pp.textf "Unable to parse %s" (Path.to_string_maybe_quoted p)
+        ; Pp.textf
+            "This file must be a list of lines escaped using OCaml's \
+             conventions"
+        ]
+    | Ok s -> s
+  in
+  Map ((fun l -> List.map l ~f), lines_of p)
 
 let read_sexp p =
   let+ s = contents p in

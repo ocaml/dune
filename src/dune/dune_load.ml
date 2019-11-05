@@ -55,8 +55,8 @@ module Dune_files = struct
   let check_no_requires path str =
     List.iteri (String.split str ~on:'\n') ~f:(fun n line ->
         match Scanf.sscanf line "#require %S" (fun x -> x) with
-        | exception _ -> ()
-        | (_ : string) ->
+        | Error () -> ()
+        | Ok (_ : string) ->
           let loc : Loc.t =
             let start : Lexing.position =
               { pos_fname = Path.to_string path

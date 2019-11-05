@@ -1,50 +1,82 @@
 open Stdune
 
+let install_dir_basename = "install"
+
+let alias_dir_basename = ".aliases"
+
+let install_dir = Path.Build.(relative root) install_dir_basename
+
+let alias_dir = Path.Build.(relative root) alias_dir_basename
+
 type target_kind =
   | Regular of Context_name.t * Path.Source.t
   | Alias of Context_name.t * Path.Source.t
   | Install of Context_name.t * Path.Source.t
   | Other of Path.Build.t
 
-type path_kind =
+module Target_dir = struct
+  type context_related =
+    | Root
+    | With_context of Context_name.t * Path.Source.t
+
+  let build_dir = function
+    | Root -> Path.Build.root
+    | With_context (ctx, s) ->
+      Path.Build.append_source (Context_name.build_dir ctx) s
+
+  type t =
+    | Install of context_related
+    | Alias of context_related
+    | Regular of context_related
+    | Invalid of Path.Build.t
+
+  (* _build/foo or _build/install/foo where foo is invalid *)
+
+  let of_target (fn as original_fn) =
+    match Path.Build.extract_first_component fn with
+    | None -> Regular Root
+    | Some (name, sub) -> (
+      if name = alias_dir_basename then
+        match Path.Local.split_first_component sub with
+        | None -> Alias Root
+        | Some (ctx, fn) ->
+          let ctx = Context_name.of_string ctx in
+          Alias (With_context (ctx, Path.Source.of_local fn))
+      else if name = install_dir_basename then
+        match Path.Local.split_first_component sub with
+        | None -> Install Root
+        | Some (ctx, fn) -> (
+          match Context_name.of_string_opt ctx with
+          | None -> Invalid original_fn
+          | Some ctx -> Install (With_context (ctx, Path.Source.of_local fn)) )
+      else
+        match Context_name.of_string_opt name with
+        | None -> Invalid fn
+        | Some ctx -> Regular (With_context (ctx, Path.Source.of_local sub)) )
+end
+
+type 'build path_kind =
   | Source of Path.Source.t
   | External of Path.External.t
-  | Build of target_kind
+  | Build of 'build
 
 let analyse_target (fn as original_fn) : target_kind =
-  match Path.Build.extract_first_component fn with
-  | Some (".aliases", sub) -> (
-    match Path.Local.split_first_component sub with
-    | None -> Other fn
-    | Some (ctx, fn) ->
-      if Path.Local.is_root fn then
-        Other original_fn
+  match Target_dir.of_target fn with
+  | Invalid _
+  | Alias Root
+  | Install Root
+  | Regular Root ->
+    Other fn
+  | Install (With_context (ctx, src_dir)) -> Install (ctx, src_dir)
+  | Regular (With_context (ctx, src_dir)) -> Regular (ctx, src_dir)
+  | Alias (With_context (ctx, fn)) -> (
+    match String.rsplit2 (Path.Source.basename fn) ~on:'-' with
+    | None -> assert false
+    | Some (basename, digest) ->
+      if String.length digest = 32 then
+        Alias (ctx, Path.Source.relative (Path.Source.parent_exn fn) basename)
       else
-        let basename =
-          match String.rsplit2 (Path.Local.basename fn) ~on:'-' with
-          | None -> assert false
-          | Some (name, digest) ->
-            assert (String.length digest = 32);
-            name
-        in
-        let ctx = Context_name.of_string ctx in
-        Alias
-          ( ctx
-          , Path.Source.relative
-              (Path.Source.of_local (Path.Local.parent_exn fn))
-              basename ) )
-  | Some ("install", sub) -> (
-    match Path.Local.split_first_component sub with
-    | None -> Other original_fn
-    | Some (ctx, fn) -> (
-      match Context_name.of_string_opt ctx with
-      | None -> Other original_fn
-      | Some ctx -> Install (ctx, Path.Source.of_local fn) ) )
-  | Some (ctx, sub) -> (
-    match Context_name.of_string_opt ctx with
-    | None -> Other fn
-    | Some ctx -> Regular (ctx, Path.Source.of_local sub) )
-  | None -> Other fn
+        Other original_fn )
 
 let describe_target fn =
   let ctx_suffix name =
@@ -78,6 +110,12 @@ let analyse_path (fn : Path.t) =
   | In_source_tree src -> Source src
   | External e -> External e
   | In_build_dir build -> Build (analyse_target build)
+
+let analyse_dir (fn : Path.t) =
+  match fn with
+  | In_source_tree src -> Source src
+  | External e -> External e
+  | In_build_dir build -> Build (Target_dir.of_target build)
 
 type t = Path.t
 
@@ -131,4 +169,13 @@ module Build = struct
     Path.Build.(relative root) base
 
   let is_dev_null = Fn.const false
+
+  let install_dir = install_dir
+
+  let alias_dir = alias_dir
+
+  let is_alias_stamp_file =
+    let prefix = Path.Build.basename alias_dir ^ "/" in
+    fun s ->
+      String.is_prefix (Path.Local.to_string (Path.Build.local s)) ~prefix
 end

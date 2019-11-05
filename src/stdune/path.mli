@@ -154,8 +154,6 @@ module Build : sig
       "righter" type. *)
   val extract_first_component : t -> (string * Local.t) option
 
-  val is_alias_stamp_file : t -> bool
-
   module Kind : sig
     type t = private
       | External of External.t

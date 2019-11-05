@@ -81,5 +81,3 @@ val find_dir_specified_on_command_line : dir:Path.Source.t -> File_tree.Dir.t
 val is_standard : Name.t -> bool
 
 val suffix : string
-
-val alias_dir : Path.Build.t

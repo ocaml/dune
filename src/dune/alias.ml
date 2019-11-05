@@ -150,12 +150,9 @@ let name t = t.name
 
 let dir t = t.dir
 
-(* Where we store stamp files for aliases *)
-let alias_dir = Path.Build.(relative root ".aliases")
-
 let stamp_file_dir t =
   let local = Path.Build.local t.dir in
-  Path.Build.append_local alias_dir local
+  Path.Build.append_local Dpath.Build.alias_dir local
 
 let fully_qualified_name t = Path.Build.relative t.dir (Name.to_string t.name)
 

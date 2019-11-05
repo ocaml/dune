@@ -258,27 +258,6 @@ module Install_conf : sig
     }
 end
 
-module Promote : sig
-  module Lifetime : sig
-    type t =
-      | Unlimited  (** The promoted file will be deleted by [dune clean] *)
-      | Until_clean
-  end
-
-  module Into : sig
-    type t =
-      { loc : Loc.t
-      ; dir : string
-      }
-  end
-
-  type t =
-    { lifetime : Lifetime.t
-    ; into : Into.t option
-    ; only : Predicate_lang.Glob.t option
-    }
-end
-
 module Executables : sig
   module Link_mode : sig
     type t =
@@ -319,7 +298,7 @@ module Executables : sig
     ; buildable : Buildable.t
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
-    ; promote : Promote.t option
+    ; promote : Rule.Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -329,6 +308,20 @@ module Executables : sig
   val has_foreign : t -> bool
 
   val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
+end
+
+module Menhir : sig
+  type t =
+    { merge_into : string option
+    ; flags : Ordered_set_lang.Unexpanded.t
+    ; modules : string list
+    ; mode : Rule.Mode.t
+    ; loc : Loc.t
+    ; infer : bool
+    ; enabled_if : Blang.t
+    }
+
+  type Stanza.t += T of t
 end
 
 module Rule : sig
@@ -349,44 +342,17 @@ module Rule : sig
       | Infer
   end
 
-  module Mode : sig
-    type t =
-      | Standard  (** Only use this rule if the source files don't exist. *)
-      | Fallback  (** Silently promote the targets to the source tree. *)
-      | Promote of Promote.t
-          (** Just ignore the source files entirely. This is for cases where
-              the targets are promoted only in a specific context, such as for
-              .install files. *)
-      | Ignore_source_files
-
-    val decode : t Dune_lang.Decoder.t
-  end
-
   type t =
     { targets : Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
-    ; mode : Mode.t
+    ; mode : Rule.Mode.t
     ; locks : String_with_vars.t list
     ; loc : Loc.t
     ; enabled_if : Blang.t
     ; alias : Alias.Name.t option
     ; package : Package.t option
     }
-end
-
-module Menhir : sig
-  type t =
-    { merge_into : string option
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; modules : string list
-    ; mode : Rule.Mode.t
-    ; loc : Loc.t
-    ; infer : bool
-    ; enabled_if : Blang.t
-    }
-
-  type Stanza.t += T of t
 end
 
 module Coq : sig

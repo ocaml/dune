@@ -38,7 +38,7 @@ end
 val build_and_link :
      program:Program.t
   -> linkages:Linkage.t list
-  -> promote:Dune_file.Promote.t option
+  -> promote:Rule.Promote.t option
   -> ?link_args:Command.Args.static Command.Args.t Build.t
   -> ?o_files:Path.t list
   -> Compilation_context.t
@@ -47,7 +47,7 @@ val build_and_link :
 val build_and_link_many :
      programs:Program.t list
   -> linkages:Linkage.t list
-  -> promote:Dune_file.Promote.t option
+  -> promote:Rule.Promote.t option
   -> ?link_args:Command.Args.static Command.Args.t Build.t
   -> ?o_files:Path.t list
   -> Compilation_context.t

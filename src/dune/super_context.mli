@@ -6,7 +6,6 @@
 
 open! Stdune
 open Import
-open Dune_file
 
 type t
 
@@ -23,9 +22,10 @@ val create :
 
 val context : t -> Context.t
 
-val stanzas : t -> Stanzas.t Dir_with_dune.t list
+val stanzas : t -> Dune_file.Stanzas.t Dir_with_dune.t list
 
-val stanzas_in : t -> dir:Path.Build.t -> Stanzas.t Dir_with_dune.t option
+val stanzas_in :
+  t -> dir:Path.Build.t -> Dune_file.Stanzas.t Dir_with_dune.t option
 
 val packages : t -> Package.t Package.Name.Map.t
 
@@ -58,7 +58,8 @@ val internal_lib_names : t -> Lib_name.Set.t
 
 (** Compute the ocaml flags based on the directory environment and a buildable
     stanza *)
-val ocaml_flags : t -> dir:Path.Build.t -> Buildable.t -> Ocaml_flags.t
+val ocaml_flags :
+  t -> dir:Path.Build.t -> Dune_file.Buildable.t -> Ocaml_flags.t
 
 val foreign_flags :
      t
@@ -87,7 +88,7 @@ val dir_is_vendored : Path.Source.t -> bool
 val add_rule :
      t
   -> ?sandbox:Sandbox_config.t
-  -> ?mode:Dune_file.Rule.Mode.t
+  -> ?mode:Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
@@ -97,7 +98,7 @@ val add_rule :
 val add_rule_get_targets :
      t
   -> ?sandbox:Sandbox_config.t
-  -> ?mode:Dune_file.Rule.Mode.t
+  -> ?mode:Rule.Mode.t
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t

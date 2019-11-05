@@ -184,8 +184,7 @@ let add_rule sctx ~project ~pkg =
   in
   let dir = Path.Build.append_source build_dir pkg.path in
   let mode =
-    Dune_file.Rule.Mode.Promote
-      { lifetime = Unlimited; into = None; only = None }
+    Rule.Mode.Promote { lifetime = Unlimited; into = None; only = None }
   in
   Super_context.add_rule sctx ~mode ~dir opam_rule;
   let aliases =

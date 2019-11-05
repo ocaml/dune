@@ -118,7 +118,7 @@ module Internal_rule = struct
       ; targets : Path.Build.Set.t
       ; context : Context.t option
       ; build : Action.t Build.t
-      ; mode : Dune_file.Rule.Mode.t
+      ; mode : Rule.Mode.t
       ; info : Rule.Info.t
       ; dir : Path.Build.t
       ; env : Env.t option

@@ -498,13 +498,13 @@ let term =
     let doc = "Activate binary cache" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.modes)) None
+      & opt (some (enum Config.Caching.Mode.all)) None
       & info [ "cache" ] ~docs ~env:(Arg.env_var ~doc "DUNE_CACHE") ~doc)
   and+ cache_transport =
     let doc = "Binary cache protocol" in
     Arg.(
       value
-      & opt (some (enum Config.Caching.transports)) None
+      & opt (some (enum Config.Caching.Transport.all)) None
       & info [ "cache-transport" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
           ~doc)

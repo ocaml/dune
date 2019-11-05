@@ -114,22 +114,26 @@ module Sandboxing_preference = struct
 end
 
 module Caching = struct
-  type mode =
-    | Disabled
-    | Enabled
-    | Check
+  module Mode = struct
+    type t =
+      | Disabled
+      | Enabled
+      | Check
 
-  let modes = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+    let all = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
 
-  let decode_mode = enum modes
+    let decode = enum all
+  end
 
-  type transport =
-    | Daemon
-    | Direct
+  module Transport = struct
+    type t =
+      | Daemon
+      | Direct
 
-  let transports = [ ("daemon", Daemon); ("direct", Direct) ]
+    let all = [ ("daemon", Daemon); ("direct", Direct) ]
 
-  let decode_transport = enum transports
+    let decode = enum all
+  end
 end
 
 module type S = sig
@@ -140,8 +144,8 @@ module type S = sig
     ; concurrency : Concurrency.t field
     ; terminal_persistence : Terminal_persistence.t field
     ; sandboxing_preference : Sandboxing_preference.t field
-    ; cache_mode : Caching.mode field
-    ; cache_transport : Caching.transport field
+    ; cache_mode : Caching.Mode.t field
+    ; cache_transport : Caching.Transport.t field
     }
 end
 
@@ -191,9 +195,9 @@ let decode =
     field "sandboxing_preference" Sandboxing_preference.decode
       ~default:default.sandboxing_preference
   and+ cache_mode =
-    field "cache" Caching.decode_mode ~default:default.cache_mode
+    field "cache" Caching.Mode.decode ~default:default.cache_mode
   and+ cache_transport =
-    field "cache-transport" Caching.decode_transport
+    field "cache-transport" Caching.Transport.decode
       ~default:default.cache_transport
   and+ () = Dune_lang.Versioned_file.no_more_lang in
   { display

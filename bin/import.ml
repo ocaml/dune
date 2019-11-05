@@ -32,7 +32,7 @@ let make_cache (config : Config.t) =
   let make_cache () =
     let handle (Dune_cache.Dedup file) = Scheduler.send_dedup file in
     match config.cache_transport with
-    | Config.Caching.Direct ->
+    | Config.Caching.Transport.Direct ->
       let cache =
         Result.ok_exn
           (Result.map_error
@@ -40,15 +40,15 @@ let make_cache (config : Config.t) =
              (Dune_cache.Cache.make handle))
       in
       Dune_cache.make_caching (module Dune_cache.Cache) cache
-    | Config.Caching.Daemon ->
+    | Daemon ->
       let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
       Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
   in
   Fiber.return
     ( match config.cache_mode with
-    | Config.Caching.Check -> Build_system.Check (make_cache ())
-    | Config.Caching.Enabled -> Build_system.Enabled (make_cache ())
-    | Config.Caching.Disabled -> Build_system.Disabled )
+    | Config.Caching.Mode.Check -> Build_system.Check (make_cache ())
+    | Enabled -> Build_system.Enabled (make_cache ())
+    | Disabled -> Build_system.Disabled )
 
 module Main = struct
   include Dune.Main

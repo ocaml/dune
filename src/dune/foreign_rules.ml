@@ -118,10 +118,11 @@ let build_cxx_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
          [build_c_file] disabling that here too *)
     ~sandbox:Sandbox_config.no_sandboxing
     (let src = Path.build (Foreign.Source.path src) in
+     let c_compiler = Ocaml_config.c_compiler ctx.ocaml_config in
      Command.run
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *) ~dir:(Path.build dir)
-       (Super_context.resolve_program ~loc:None ~dir sctx ctx.c_compiler)
+       (Super_context.resolve_program ~loc:None ~dir sctx c_compiler)
        ( [ Command.Args.S [ A "-I"; Path ctx.stdlib_dir ]
          ; include_flags
          ; Command.Args.dyn cxx_flags

@@ -200,7 +200,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   let dir = context.build_dir in
   let bindings = Pform.Map.create ~context in
   let env = context.env in
-  let c_compiler = context.c_compiler in
+  let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
   { dir
   ; hidden_env = Env.Var.Set.empty
   ; env

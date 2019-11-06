@@ -42,7 +42,7 @@ module Platform = struct
 end
 
 let alias ?enabled_if ?action name ~deps =
-  let (stanza, alias_or_name) =
+  let stanza, alias_or_name =
     match action with
     | None -> ("alias", "name")
     | Some _ -> ("rule", "alias")

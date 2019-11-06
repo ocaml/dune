@@ -223,10 +223,9 @@ end = struct
       ~expander:(expander t ~dir)
 
   let default_context_flags (ctx : Context.t) =
-    let c = ctx.ocamlc_cflags in
+    let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
     let cxx =
-      List.filter ctx.ocamlc_cflags ~f:(fun s ->
-          not (String.is_prefix s ~prefix:"-std="))
+      List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
     in
     Foreign.Language.Dict.make ~c ~cxx
 

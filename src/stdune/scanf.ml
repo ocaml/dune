@@ -6,6 +6,7 @@ let unescaped x =
   | x -> Ok x
 
 exception E
+
 let sscanf x fmt f =
   match Scanf.ksscanf x (fun _ _ -> raise_notrace E) fmt f with
   | exception E -> Error ()

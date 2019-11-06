@@ -1055,7 +1055,9 @@ The syntax is as follows:
 ``<optional-fields>`` are:
 
 - ``<action>``, an action to run when constructing the alias. See the
-  :ref:`user-actions` section for more details.
+  :ref:`user-actions` section for more details. Note that this is removed in the
+  2.0 version of the dune language. Users should port their code to use the
+  ``rule`` stanza with the ``alias`` field instead.
 
 - ``(package <name>)`` indicates that this alias stanza is part of package
   ``<name>`` and should be filtered out if ``<name>`` is filtered out from the
@@ -1195,8 +1197,8 @@ For instance:
 
     (rule (with-stdout-to dune.inc.gen (run ./gen-dune.exe)))
 
-    (alias
-     (name   runtest)
+    (rule
+     (alias  runtest)
      (action (diff dune.inc dune.inc.gen)))
 
 With this dune file, running dune as follow will replace the

@@ -41,6 +41,7 @@ module Context = struct
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
+      ; build_foreign_dll_files : bool
       }
 
     let fdo_suffix t =
@@ -61,6 +62,9 @@ module Context = struct
       and+ toolchain =
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
+      and+ build_foreign_dll_files =
+        field ~default:true "build_foreign_dll_files"
+          (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in
@@ -112,6 +116,7 @@ module Context = struct
       ; toolchain
       ; paths
       ; fdo_target_exe
+      ; build_foreign_dll_files
       }
   end
 
@@ -209,6 +214,7 @@ module Context = struct
       ; toolchain = None
       ; paths = []
       ; fdo_target_exe = None
+      ; build_foreign_dll_files = true
       }
 end
 

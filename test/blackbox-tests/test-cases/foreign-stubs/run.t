@@ -419,3 +419,118 @@ Testsuite for the (foreign_stubs ...) field.
 
   $ ./sdune clean
   $ ./sdune build
+
+----------------------------------------------------------------------------------
+* Fails to build a pure bytecode executable with a foreign archive
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (modes byte)
+  >  (name main)
+  >  (modules main)
+  >  (foreign_archives time))
+  > (foreign_library
+  >  (archive_name time)
+  >  (language c)
+  >  (names time))
+  > EOF
+
+  $ cat >time.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value current_time(value unit) { return Val_int(1345); }
+  > EOF
+
+  $ cat >main.ml <<EOF
+  > external current_time : unit -> int = "current_time"
+  > let () = Printf.printf "clock = %d" (current_time ())
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune exec ./main.exe
+  File "dune", line 1, characters 0-80:
+  1 | (executable
+  2 |  (modes byte)
+  3 |  (name main)
+  4 |  (modules main)
+  5 |  (foreign_archives time))
+  Error: Pure bytecode executables cannot contain foreign archives.
+  Hint: If you only need to build a native executable use "(modes exe)".
+  [1]
+
+----------------------------------------------------------------------------------
+* Build a bytecode executable by statically linking in a foreign archive when the
+setting [build_foreign_dll_files] is [false] in the workspace
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context
+  >   (default (build_foreign_dll_files false)))
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune exec ./main.exe
+  clock = 1345
+
+----------------------------------------------------------------------------------
+* Fails to install a library with foreign stubs when a [dll*.so] rule is missing
+
+  $ cat >dune-project <<EOF
+  > (lang dune 1.11)
+  > (package
+  >   (name foo))
+  > EOF
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context
+  >   (default (build_foreign_dll_files true)))
+  > EOF
+
+  $ cat >dune <<EOF
+  > (library
+  >  (public_name foo.clock)
+  >  (name clock)
+  >  (modules clock)
+  >  (self_build_stubs_archive (time)))
+  > (rule
+  >  (targets time%{ext_obj})
+  >  (deps time.c)
+  >  (action (run %{ocaml-config:c_compiler} -c -I %{ocaml-config:standard_library} -o %{targets} %{deps})))
+  > (rule
+  >  (targets libtime_stubs.a)
+  >  (deps time%{ext_obj})
+  >  (action (run ar rcs %{targets} %{deps})))
+  > EOF
+
+  $ cat >clock.ml <<EOF
+  > external current_time : unit -> int = "current_time"
+  > let clock = current_time ()
+  > EOF
+
+  $ cat >clock.mli <<EOF
+  > val clock : int
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune build @install
+  File "dune", line 1, characters 0-100:
+  1 | (library
+  2 |  (public_name foo.clock)
+  3 |  (name clock)
+  4 |  (modules clock)
+  5 |  (self_build_stubs_archive (time)))
+  Error: No rule found for dlltime_stubs$ext_dll
+  [1]
+
+----------------------------------------------------------------------------------
+* Succeeds to install a library with foreign stubs when a [dll*.so] rule is missing
+but the setting [build_foreign_dll_files] is [false] in the workspace
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context
+  >   (default (build_foreign_dll_files false)))
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune build @install

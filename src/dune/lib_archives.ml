@@ -72,7 +72,9 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
   in
   let dll_files =
     if_
-      (byte && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries)
+      ( byte
+      && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
+      && ctx.build_foreign_dll_files )
       (Library.foreign_dll_files lib ~dir ~ext_dll)
   in
   { lib_files; dll_files }

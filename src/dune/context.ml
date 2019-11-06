@@ -60,36 +60,9 @@ type t =
   ; arch_sixtyfour : bool
   ; opam_var_cache : (string, string) Table.t
   ; ocaml_config : Ocaml_config.t
-  ; version_string : string
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; ccomp_type : Lib_config.Ccomp_type.t
-  ; c_compiler : string
-  ; ocamlc_cflags : string list
-  ; ocamlopt_cflags : string list
-  ; bytecomp_c_libraries : string list
-  ; native_c_libraries : string list
-  ; cc_profile : string list
-  ; architecture : string
-  ; system : string
-  ; ext_asm : string
-  ; ext_exe : string
-  ; os_type : string
-  ; model : string
-  ; default_executable_name : string
-  ; host : string
-  ; target : string
-  ; flambda : bool
-  ; exec_magic_number : string
-  ; cmi_magic_number : string
-  ; cmo_magic_number : string
-  ; cma_magic_number : string
-  ; cmx_magic_number : string
-  ; cmxa_magic_number : string
-  ; ast_impl_magic_number : string
-  ; ast_intf_magic_number : string
-  ; cmxs_magic_number : string
-  ; cmt_magic_number : string
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which_cache : (string, Path.t option) Table.t
   ; lib_config : Lib_config.t
@@ -454,7 +427,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let stdlib_dir = Path.of_string (Ocaml_config.standard_library ocfg) in
     let natdynlink_supported = Ocaml_config.natdynlink_supported ocfg in
-    let version_string = Ocaml_config.version_string ocfg in
     let version = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let ocamlopt = get_ocaml_tool "ocamlopt" in
@@ -508,35 +480,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; opam_var_cache
       ; stdlib_dir
       ; ocaml_config = ocfg
-      ; version_string
       ; version
       ; ccomp_type
-      ; c_compiler = Ocaml_config.c_compiler ocfg
-      ; ocamlc_cflags = Ocaml_config.ocamlc_cflags ocfg
-      ; ocamlopt_cflags = Ocaml_config.ocamlopt_cflags ocfg
-      ; bytecomp_c_libraries = Ocaml_config.bytecomp_c_libraries ocfg
-      ; native_c_libraries = Ocaml_config.native_c_libraries ocfg
-      ; cc_profile = Ocaml_config.cc_profile ocfg
-      ; architecture = Ocaml_config.architecture ocfg
-      ; system = Ocaml_config.system ocfg
-      ; ext_asm = Ocaml_config.ext_asm ocfg
-      ; ext_exe = Ocaml_config.ext_exe ocfg
-      ; os_type = Ocaml_config.os_type ocfg
-      ; model = Ocaml_config.model ocfg
-      ; default_executable_name = Ocaml_config.default_executable_name ocfg
-      ; host = Ocaml_config.host ocfg
-      ; target = Ocaml_config.target ocfg
-      ; flambda = Ocaml_config.flambda ocfg
-      ; exec_magic_number = Ocaml_config.exec_magic_number ocfg
-      ; cmi_magic_number = Ocaml_config.cmi_magic_number ocfg
-      ; cmo_magic_number = Ocaml_config.cmo_magic_number ocfg
-      ; cma_magic_number = Ocaml_config.cma_magic_number ocfg
-      ; cmx_magic_number = Ocaml_config.cmx_magic_number ocfg
-      ; cmxa_magic_number = Ocaml_config.cmxa_magic_number ocfg
-      ; ast_impl_magic_number = Ocaml_config.ast_impl_magic_number ocfg
-      ; ast_intf_magic_number = Ocaml_config.ast_intf_magic_number ocfg
-      ; cmxs_magic_number = Ocaml_config.cmxs_magic_number ocfg
-      ; cmt_magic_number = Ocaml_config.cmt_magic_number ocfg
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool
             (Ocaml_config.supports_shared_libraries ocfg)

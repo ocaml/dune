@@ -193,20 +193,20 @@ module Map = struct
       | None -> string "make"
       | Some p -> path p
     in
-    let cflags = context.ocamlc_cflags in
+    let cflags = Ocaml_config.ocamlc_cflags context.ocaml_config in
     let cxx_flags =
-      List.filter context.ocamlc_cflags ~f:(fun s ->
-          not (String.is_prefix s ~prefix:"-std="))
+      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
     in
     let strings s = values (Value.L.strings s) in
     let lowercased =
-      [ ("cpp", strings ((context.c_compiler :: cflags) @ [ "-E" ]))
+      let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
+      [ ("cpp", strings ((c_compiler :: cflags) @ [ "-E" ]))
       ; ( "pa_cpp"
         , strings
-            ( (context.c_compiler :: cflags)
+            ( (c_compiler :: cflags)
             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
-      ; ("cc", strings (context.c_compiler :: cflags))
-      ; ("cxx", strings (context.c_compiler :: cxx_flags))
+      ; ("cc", strings (c_compiler :: cflags))
+      ; ("cxx", strings (c_compiler :: cxx_flags))
       ; ("ocaml", path context.ocaml)
       ; ("ocamlc", path context.ocamlc)
       ; ("ocamlopt", path ocamlopt)
@@ -219,28 +219,32 @@ module Map = struct
           (String.uppercase k, renamed_in ~new_name:k ~version:(1, 0)))
     in
     let other =
+      let ext_asm = Ocaml_config.ext_asm context.ocaml_config in
+      let ext_exe = Ocaml_config.ext_exe context.ocaml_config in
+      let os_type = Ocaml_config.os_type context.ocaml_config in
+      let architecture = Ocaml_config.architecture context.ocaml_config in
+      let model = Ocaml_config.model context.ocaml_config in
+      let system = Ocaml_config.system context.ocaml_config in
+      let version_string = Ocaml_config.version_string context.ocaml_config in
       [ ("-verbose", values [])
       ; ("ocaml_bin", values [ Dir context.ocaml_bin ])
-      ; ("ocaml_version", string context.version_string)
+      ; ("ocaml_version", string version_string)
       ; ("ocaml_where", string (Path.to_string context.stdlib_dir))
       ; ("null", string (Path.to_string Config.dev_null))
       ; ("ext_obj", string context.lib_config.ext_obj)
-      ; ("ext_asm", string context.ext_asm)
+      ; ("ext_asm", string ext_asm)
       ; ("ext_lib", string context.lib_config.ext_lib)
       ; ("ext_dll", string context.lib_config.ext_dll)
-      ; ("ext_exe", string context.ext_exe)
+      ; ("ext_exe", string ext_exe)
       ; ("profile", string (Profile.to_string context.profile))
       ; ("workspace_root", values [ Value.Dir (Path.build context.build_dir) ])
       ; ("context_name", string (Context_name.to_string context.name))
       ; ("ROOT", renamed_in ~version:(1, 0) ~new_name:"workspace_root")
-      ; ( "os_type"
-        , since ~version:(1, 10) (Var.Values [ String context.os_type ]) )
+      ; ("os_type", since ~version:(1, 10) (Var.Values [ String os_type ]))
       ; ( "architecture"
-        , since ~version:(1, 10) (Var.Values [ String context.architecture ])
-        )
-      ; ( "system"
-        , since ~version:(1, 10) (Var.Values [ String context.system ]) )
-      ; ("model", since ~version:(1, 10) (Var.Values [ String context.model ]))
+        , since ~version:(1, 10) (Var.Values [ String architecture ]) )
+      ; ("system", since ~version:(1, 10) (Var.Values [ String system ]))
+      ; ("model", since ~version:(1, 10) (Var.Values [ String model ]))
       ; ( "ignoring_promoted_rules"
         , since ~version:(1, 10)
             (Var.Values

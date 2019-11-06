@@ -78,36 +78,9 @@ type t =
   ; arch_sixtyfour : bool
   ; opam_var_cache : (string, string) Table.t
   ; ocaml_config : Ocaml_config.t
-  ; version_string : string
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
   ; ccomp_type : Lib_config.Ccomp_type.t
-  ; c_compiler : string
-  ; ocamlc_cflags : string list
-  ; ocamlopt_cflags : string list
-  ; bytecomp_c_libraries : string list
-  ; native_c_libraries : string list
-  ; cc_profile : string list
-  ; architecture : string
-  ; system : string
-  ; ext_asm : string
-  ; ext_exe : string
-  ; os_type : string
-  ; model : string
-  ; default_executable_name : string
-  ; host : string
-  ; target : string
-  ; flambda : bool
-  ; exec_magic_number : string
-  ; cmi_magic_number : string
-  ; cmo_magic_number : string
-  ; cma_magic_number : string
-  ; cmx_magic_number : string
-  ; cmxa_magic_number : string
-  ; ast_impl_magic_number : string
-  ; ast_intf_magic_number : string
-  ; cmxs_magic_number : string
-  ; cmt_magic_number : string
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which_cache : (string, Path.t option) Table.t
   ; lib_config : Lib_config.t

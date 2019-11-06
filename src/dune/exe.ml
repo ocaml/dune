@@ -95,7 +95,8 @@ module Linkage = struct
       | Object -> o_flags
       | Shared_object -> (
         let so_flags =
-          if String.equal ctx.os_type "Win32" then
+          let os_type = Ocaml_config.os_type ctx.ocaml_config in
+          if String.equal os_type "Win32" then
             so_flags_windows
           else
             so_flags_unix
@@ -104,7 +105,10 @@ module Linkage = struct
         | Native ->
           (* The compiler doesn't pass these flags in native mode. This looks
              like a bug in the compiler. *)
-          List.concat_map ctx.native_c_libraries ~f:(fun flag ->
+          let native_c_libraries =
+            Ocaml_config.native_c_libraries ctx.ocaml_config
+          in
+          List.concat_map native_c_libraries ~f:(fun flag ->
               [ "-cclib"; flag ])
           @ so_flags
         | Byte

@@ -140,7 +140,8 @@ end
 # 1 %S
 %s|}
           (Context_name.to_string context.name)
-          context.version_string ocamlc_config
+          (Ocaml_config.version_string context.ocaml_config)
+          ocamlc_config
           (Path.reach ~from:exec_dir (Path.build target))
           (Path.to_string plugin) plugin_contents);
     check_no_requires plugin plugin_contents

@@ -225,82 +225,81 @@ end = struct
     ; allow_new_public_modules
     }
 
+  let make_lib_modules (d : _ Dir_with_dune.t) ~sctx ~(lib : Library.t)
+      ~modules =
+    let src_dir = d.ctx_dir in
+    let kind, main_module_name, wrapped =
+      match lib.implements with
+      | None ->
+        (* In the two following pattern matching, we can only get [From _] if
+           [lib] is an implementation. Since we know that it is not one because
+           of the above [match lib.implements with ...], we know that we can't
+           get [From _]. That's why we have these [assert false]. *)
+        let main_module_name =
+          match Library.main_module_name lib with
+          | This x -> x
+          | From _ -> assert false
+        in
+        let wrapped =
+          match lib.wrapped with
+          | This x -> x
+          | From _ -> assert false
+        in
+        let kind : Modules_field_evaluator.kind =
+          match lib.virtual_modules with
+          | None -> Exe_or_normal_lib
+          | Some virtual_modules -> Virtual { virtual_modules }
+        in
+        (kind, main_module_name, wrapped)
+      | Some _ ->
+        assert (Option.is_none lib.virtual_modules);
+        let resolved =
+          let name = Library.best_name lib in
+          Lib.DB.find_even_when_hidden (Scope.libs d.scope) name
+          (* can't happen because this library is defined using the current
+             stanza *)
+          |> Option.value_exn
+        in
+        (* diml: this [Result.ok_exn] means that if the user writes an invalid
+           [implements] field, we will get an error immediately even if the
+           library is not built. We should change this to carry the [Or_exn.t]
+           a bit longer. *)
+        let vlib =
+          Result.ok_exn
+            (* This [Option.value_exn] is correct because the above
+               [lib.implements] is [Some _] and this [lib] variable correspond
+               to the same library. *)
+            (Option.value_exn (Lib.implements resolved))
+        in
+        let kind : Modules_field_evaluator.kind =
+          Implementation (virtual_modules sctx vlib)
+        in
+        let main_module_name, wrapped =
+          Result.ok_exn
+            (let open Result.O in
+            let* main_module_name = Lib.main_module_name resolved in
+            let+ wrapped = Lib.wrapped resolved in
+            (main_module_name, Option.value_exn wrapped))
+        in
+        (kind, main_module_name, wrapped)
+    in
+    let modules =
+      Modules_field_evaluator.eval ~modules ~buildable:lib.buildable ~kind
+        ~private_modules:
+          (Option.value ~default:Ordered_set_lang.standard lib.private_modules)
+    in
+    let stdlib = lib.stdlib in
+    let implements = Option.is_some lib.implements in
+    let _loc, lib_name = lib.name in
+    Modules.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
+      ~main_module_name ~wrapped
+
   let libs_and_exes sctx (d : _ Dir_with_dune.t) ~modules =
-    let scope = d.scope in
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
         | Library lib ->
-          let src_dir = d.ctx_dir in
-          let kind, main_module_name, wrapped =
-            match lib.implements with
-            | None ->
-              (* In the two following pattern matching, we can only get [From
-                 _] if [lib] is an implementation. Since we know that it is not
-                 one because of the above [match lib.implements with ...], we
-                 know that we can't get [From _]. That's why we have these
-                 [assert false]. *)
-              let main_module_name =
-                match Library.main_module_name lib with
-                | This x -> x
-                | From _ -> assert false
-              in
-              let wrapped =
-                match lib.wrapped with
-                | This x -> x
-                | From _ -> assert false
-              in
-              let kind : Modules_field_evaluator.kind =
-                match lib.virtual_modules with
-                | None -> Exe_or_normal_lib
-                | Some virtual_modules -> Virtual { virtual_modules }
-              in
-              (kind, main_module_name, wrapped)
-            | Some _ ->
-              assert (Option.is_none lib.virtual_modules);
-              let resolved =
-                let name = Library.best_name lib in
-                Lib.DB.find_even_when_hidden (Scope.libs scope) name
-                (* can't happen because this library is defined using the
-                   current stanza *)
-                |> Option.value_exn
-              in
-              (* diml: this [Result.ok_exn] means that if the user writes an
-                 invalid [implements] field, we will get an error immediately
-                 even if the library is not built. We should change this to
-                 carry the [Or_exn.t] a bit longer. *)
-              let vlib =
-                Result.ok_exn
-                  ((* This [Option.value_exn] is correct because the above
-                      [lib.implements] is [Some _] and this [lib] variable
-                      correspond to the same library. *)
-                   Option.value_exn (Lib.implements resolved))
-              in
-              let kind : Modules_field_evaluator.kind =
-                Implementation (virtual_modules sctx vlib)
-              in
-              let main_module_name, wrapped =
-                Result.ok_exn
-                  (let open Result.O in
-                  let* main_module_name = Lib.main_module_name resolved in
-                  let+ wrapped = Lib.wrapped resolved in
-                  (main_module_name, Option.value_exn wrapped))
-              in
-              (kind, main_module_name, wrapped)
-          in
-          let modules =
-            Modules_field_evaluator.eval ~modules ~buildable:lib.buildable
-              ~kind
-              ~private_modules:
-                (Option.value ~default:Ordered_set_lang.standard
-                   lib.private_modules)
-          in
-          let stdlib = lib.stdlib in
-          let implements = Option.is_some lib.implements in
-          let _loc, lib_name = lib.name in
-          Left
-            ( lib
-            , Modules.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
-                ~main_module_name ~wrapped )
+          let modules = make_lib_modules d ~sctx ~modules ~lib in
+          Left (lib, modules)
         | Executables exes
         | Tests { exes; _ } ->
           let modules =
@@ -309,7 +308,7 @@ end = struct
               ~private_modules:Ordered_set_lang.standard
           in
           let modules =
-            let project = Scope.project scope in
+            let project = Scope.project d.scope in
             if Dune_project.wrapped_executables project then
               Modules.exe_wrapped ~src_dir:d.ctx_dir ~modules
             else

@@ -475,6 +475,8 @@ setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
 * Make sure no rules are generated for foreign dynamically linked archives
 
   $ ./sdune build _build/default/dlltime.so
+  Error: Don't know how to build _build/default/dlltime$ext_dll
+  [1]
 
 ----------------------------------------------------------------------------------
 * Fails to install a library with foreign stubs when a [dll*.so] rule is missing

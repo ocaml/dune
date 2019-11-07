@@ -51,10 +51,11 @@ type t =
         (** [Some path/to/foo.exe] if this contexts is for feedback-directed
             optimization of target path/to/foo.exe *)
   ; fdo_target_exe : Path.t option
-        (* By default Dune builds and installs [dll*.so] archives of foreign
-           stubs. By adding (disable_dynamically_linked_foreign_archives true)
-           to the workspace, we tell Dune to link in all stub archives
-           statically into the runtime system. *)
+        (* By default Dune builds and installs dynamically linked foreign
+           archives (usually named [dll*.so]). It is possible to disable this
+           by adding (disable_dynamically_linked_foreign_archives true) to the
+           workspace file, in which case Dune will produce executables where
+           all foreign archives are statically linked into the runtime system. *)
   ; disable_dynamically_linked_foreign_archives : bool
         (** If this context is a cross-compilation context, you need another
             context for building tools used for the compilation that run on the

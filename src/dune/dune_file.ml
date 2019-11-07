@@ -847,6 +847,7 @@ module Library = struct
   let decode =
     fields
       (let* stanza_loc = loc in
+       let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
        let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
        and+ public = field_o "public_name" (Public_lib.decode ())
@@ -871,8 +872,7 @@ module Library = struct
        and+ no_dynlink = field_b "no_dynlink"
        and+ () =
          let check =
-           let+ loc = loc
-           and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+           let+ loc = loc in
            let is_error = dune_version >= (2, 0) in
            User_warning.emit ~loc ~is_error
              [ Pp.text "no_keep_locs is a no-op. Please delete it." ]
@@ -883,7 +883,6 @@ module Library = struct
          let* () = return () in
          Sub_system_info.record_parser ()
        and+ project = Dune_project.get_exn ()
-       and+ dune_version = Dune_lang.Syntax.get_exn Stanza.syntax
        and+ virtual_modules =
          field_o "virtual_modules"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
@@ -956,63 +955,69 @@ module Library = struct
                 [ Pp.textf "A library cannot be both virtual and implement %s"
                     (Lib_name.to_string impl)
                 ]);
-       match (virtual_modules, default_implementation) with
+       ( match (virtual_modules, default_implementation) with
        | None, Some (loc, _) ->
          User_error.raise ~loc
            [ Pp.text
                "Only virtual libraries can specify a default implementation."
            ]
-       | _ -> (
-         ();
-         match (implements, variant) with
-         | None, Some (loc, _) ->
-           User_error.raise ~loc
-             [ Pp.text "Only implementations can specify a variant." ]
-         | _ ->
-           ();
-           let variant = Option.map variant ~f:(fun (_, v) -> v) in
-           Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
-               match
-                 ( String_with_vars.Var.name var
-                 , String_with_vars.Var.payload var )
-               with
-               | var, None
-                 when List.mem var ~set:Lib_config.allowed_in_enabled_if ->
-                 ()
-               | _ ->
-                 User_error.raise
-                   ~loc:(String_with_vars.Var.loc var)
-                   [ Pp.textf
-                       "Only %s are allowed in the 'enabled_if' field of \
-                        libraries."
-                       (String.enumerate_and Lib_config.allowed_in_enabled_if)
-                   ]);
-           { name
-           ; public
-           ; synopsis
-           ; install_c_headers
-           ; ppx_runtime_libraries
-           ; modes
-           ; kind
-           ; library_flags
-           ; c_library_flags
-           ; virtual_deps
-           ; wrapped
-           ; optional
-           ; buildable
-           ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
-           ; project
-           ; sub_systems
-           ; dune_version
-           ; virtual_modules
-           ; implements
-           ; variant
-           ; default_implementation
-           ; private_modules
-           ; stdlib
-           ; special_builtin_support
-           ; enabled_if
-           } ))
+       | _ -> () );
+       ( match (implements, variant) with
+       | None, Some (loc, _) ->
+         User_error.raise ~loc
+           [ Pp.text "Only implementations can specify a variant." ]
+       | _ -> () );
+       let variant = Option.map variant ~f:(fun (_, v) -> v) in
+       Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
+           let err () =
+             let loc = String_with_vars.Var.loc var in
+             let var_names =
+               List.map ~f:fst Lib_config.allowed_in_enabled_if
+             in
+             User_error.raise ~loc
+               [ Pp.textf
+                   "Only %s are allowed in the 'enabled_if' field of libraries."
+                   (String.enumerate_and var_names)
+               ]
+           in
+           match
+             (String_with_vars.Var.name var, String_with_vars.Var.payload var)
+           with
+           | name, None -> (
+             match List.assoc Lib_config.allowed_in_enabled_if name with
+             | None -> err ()
+             | Some v ->
+               if v > dune_version then
+                 let loc = String_with_vars.Var.loc var in
+                 let what = "This variable" in
+                 Dune_lang.Syntax.Error.since loc Stanza.syntax v ~what )
+           | _ -> err ());
+       { name
+       ; public
+       ; synopsis
+       ; install_c_headers
+       ; ppx_runtime_libraries
+       ; modes
+       ; kind
+       ; library_flags
+       ; c_library_flags
+       ; virtual_deps
+       ; wrapped
+       ; optional
+       ; buildable
+       ; dynlink = Dynlink_supported.of_bool (not no_dynlink)
+       ; project
+       ; sub_systems
+       ; dune_version
+       ; virtual_modules
+       ; implements
+       ; variant
+       ; default_implementation
+       ; private_modules
+       ; stdlib
+       ; special_builtin_support
+       ; enabled_if
+       })
 
   let has_foreign t = Buildable.has_foreign t.buildable
 

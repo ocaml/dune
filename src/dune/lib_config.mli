@@ -24,7 +24,7 @@ type t =
   ; ccomp_type : Ccomp_type.t
   }
 
-val allowed_in_enabled_if : string list
+val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list
 
 val get_for_enabled_if : t -> var:string -> string
 

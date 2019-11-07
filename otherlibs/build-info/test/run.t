@@ -142,3 +142,38 @@ Test substitution when promoting
   lib a: 1.0+a
   lib b: 1.0+b
   lib dune-build-info: XXX
+
+Version is picked from dune-project if available
+------------------------------------------------
+
+  $ echo '(version project-version)' >> c/dune-project
+  $ dune build
+  $ dune install --prefix _install
+  Installing _install/lib/a/META
+  Installing _install/lib/a/a$ext_lib
+  Installing _install/lib/a/a.cma
+  Installing _install/lib/a/a.cmi
+  Installing _install/lib/a/a.cmt
+  Installing _install/lib/a/a.cmx
+  Installing _install/lib/a/a.cmxa
+  Installing _install/lib/a/a.cmxs
+  Installing _install/lib/a/a.ml
+  Installing _install/lib/a/dune-package
+  Installing _install/lib/b/META
+  Installing _install/lib/b/b$ext_lib
+  Installing _install/lib/b/b.cma
+  Installing _install/lib/b/b.cmi
+  Installing _install/lib/b/b.cmt
+  Installing _install/lib/b/b.cmx
+  Installing _install/lib/b/b.cmxa
+  Installing _install/lib/b/b.cmxs
+  Installing _install/lib/b/b.ml
+  Installing _install/lib/b/dune-package
+  Installing _install/lib/c/META
+  Installing _install/lib/c/dune-package
+  Installing _install/bin/c
+  $ _install/bin/c | sed 's/build-info: .*/build-info: XXX/'
+  project-version
+  lib a: 1.0+a
+  lib b: 1.0+b
+  lib dune-build-info: XXX

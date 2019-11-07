@@ -41,7 +41,7 @@ module Context = struct
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-      ; build_foreign_dll_files : bool
+      ; disable_dynamically_linked_foreign_archives : bool
       }
 
     let fdo_suffix t =
@@ -62,8 +62,8 @@ module Context = struct
       and+ toolchain =
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
-      and+ build_foreign_dll_files =
-        field ~default:true "build_foreign_dll_files"
+      and+ disable_dynamically_linked_foreign_archives =
+        field ~default:false "disable_dynamically_linked_foreign_archives"
           (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
       and+ fdo_target_exe =
         let f file =
@@ -116,7 +116,7 @@ module Context = struct
       ; toolchain
       ; paths
       ; fdo_target_exe
-      ; build_foreign_dll_files
+      ; disable_dynamically_linked_foreign_archives
       }
   end
 
@@ -214,7 +214,7 @@ module Context = struct
       ; toolchain = None
       ; paths = []
       ; fdo_target_exe = None
-      ; build_foreign_dll_files = true
+      ; disable_dynamically_linked_foreign_archives = false
       }
 end
 

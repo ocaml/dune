@@ -459,17 +459,22 @@ Testsuite for the (foreign_stubs ...) field.
 
 ----------------------------------------------------------------------------------
 * Build a bytecode executable by statically linking in a foreign archive when the
-setting [build_foreign_dll_files] is [false] in the workspace
+setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
 
   $ cat >dune-workspace <<EOF
   > (lang dune 2.0)
   > (context
-  >   (default (build_foreign_dll_files false)))
+  >   (default (disable_dynamically_linked_foreign_archives true)))
   > EOF
 
   $ ./sdune clean
   $ ./sdune exec ./main.exe
   clock = 1345
+
+----------------------------------------------------------------------------------
+* Make sure no rules are generated for foreign dynamically linked archives
+
+  $ ./sdune build _build/default/dlltime.so
 
 ----------------------------------------------------------------------------------
 * Fails to install a library with foreign stubs when a [dll*.so] rule is missing
@@ -483,7 +488,7 @@ setting [build_foreign_dll_files] is [false] in the workspace
   $ cat >dune-workspace <<EOF
   > (lang dune 2.0)
   > (context
-  >   (default (build_foreign_dll_files true)))
+  >   (default (disable_dynamically_linked_foreign_archives false)))
   > EOF
 
   $ cat >dune <<EOF
@@ -524,12 +529,12 @@ setting [build_foreign_dll_files] is [false] in the workspace
 
 ----------------------------------------------------------------------------------
 * Succeeds to install a library with foreign stubs when a [dll*.so] rule is missing
-but the setting [build_foreign_dll_files] is [false] in the workspace
+but the setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
 
   $ cat >dune-workspace <<EOF
   > (lang dune 2.0)
   > (context
-  >   (default (build_foreign_dll_files false)))
+  >   (default (disable_dynamically_linked_foreign_archives true)))
   > EOF
 
   $ ./sdune clean

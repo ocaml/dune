@@ -50,12 +50,13 @@ module Linkage = struct
     let link_mode : Link_mode.t =
       match m.mode with
       | Byte ->
-        if ctx.build_foreign_dll_files then
-          Byte
-        else
-          (* When [build_foreign_dll_files] is set to [false] in the workspace,
-             we link in all stub archives statically into the runtime system. *)
+        if ctx.disable_dynamically_linked_foreign_archives then
+          (* When [disable_dynamically_linked_foreign_archives] is set to
+             [true] in the workspace, we link in all stub archives statically
+             into the runtime system. *)
           Byte_with_stubs_statically_linked_in
+        else
+          Byte
       | Native -> Native
       | Best ->
         if Option.is_some ctx.ocamlopt then

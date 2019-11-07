@@ -22,10 +22,10 @@ module Context : sig
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
             (* By default Dune builds and installs [dll*.so] archives of
-               foreign stubs. This is disabled when [build_foreign_dll_files]
-               is set to [false], in which case Dune will link in all stub
-               archives statically into the runtime system. *)
-      ; build_foreign_dll_files : bool
+               foreign stubs. If [disable_dynamically_linked_foreign_archives]
+               is set to [true], Dune will link in all stub archives statically
+               into the runtime system. *)
+      ; disable_dynamically_linked_foreign_archives : bool
       }
   end
 

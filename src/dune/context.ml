@@ -41,6 +41,7 @@ type t =
   ; profile : Profile.t
   ; merlin : bool
   ; fdo_target_exe : Path.t option
+  ; disable_dynamically_linked_foreign_archives : bool
   ; for_host : t option
   ; implicit : bool
   ; build_dir : Path.Build.t
@@ -222,7 +223,8 @@ let check_fdo_support has_native ocfg ~name =
         ]
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
-    ~host_context ~host_toolchain ~profile ~fdo_target_exe =
+    ~host_context ~host_toolchain ~profile ~fdo_target_exe
+    ~disable_dynamically_linked_foreign_archives =
   let opam_var_cache = Table.create (module String) 128 in
   ( match kind with
   | Opam { root = Some root; _ } -> Table.set opam_var_cache "root" root
@@ -455,6 +457,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; profile
       ; merlin
       ; fdo_target_exe
+      ; disable_dynamically_linked_foreign_archives
       ; env_nodes
       ; for_host = host
       ; build_dir
@@ -541,9 +544,11 @@ let extend_paths t ~env =
 let opam_config_var t var =
   opam_config_var ~env:t.env ~cache:t.opam_var_cache var
 
-let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe =
+let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
+    ~disable_dynamically_linked_foreign_archives =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
+    ~disable_dynamically_linked_foreign_archives
 
 let opam_version =
   let res = ref None in
@@ -569,7 +574,8 @@ let opam_version =
       Fiber.Future.wait future
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
-    ~merlin ~host_context ~host_toolchain ~fdo_target_exe =
+    ~merlin ~host_context ~host_toolchain ~fdo_target_exe
+    ~disable_dynamically_linked_foreign_archives =
   let opam =
     match Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -620,6 +626,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
     ~host_toolchain ~fdo_target_exe
+    ~disable_dynamically_linked_foreign_archives
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -638,6 +645,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; paths
       ; loc = _
       ; fdo_target_exe
+      ; disable_dynamically_linked_foreign_archives
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -653,6 +661,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain ~fdo_target_exe
+      ~disable_dynamically_linked_foreign_archives
   | Opam
       { base =
           { targets
@@ -664,6 +673,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; paths
           ; loc = _
           ; fdo_target_exe
+          ; disable_dynamically_linked_foreign_archives
           }
       ; switch
       ; root
@@ -672,6 +682,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
+      ~disable_dynamically_linked_foreign_archives
 
 let create ~env (workspace : Workspace.t) =
   let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =

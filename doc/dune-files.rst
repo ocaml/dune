@@ -48,12 +48,12 @@ project:
 
     (implicit_transitive_deps <bool>)
 
-When set to ``false``, all dependencies that are directly used by a library 
+When set to ``false``, all dependencies that are directly used by a library
 or an executable must be directly added in the ``libraries`` field. We
 recommend users to experiment with this mode and report any problems.
 
-Starting from dune 2.0, dune disables implicit discovery of transitive 
-dependencies by default. However, users can still opt in to the old 
+Starting from dune 2.0, dune disables implicit discovery of transitive
+dependencies by default. However, users can still opt in to the old
 behavior using ``(implicit_transitive_deps true)``.
 
 Note that you must use ``threads.posix`` instead of ``threads`` when using this
@@ -1685,6 +1685,13 @@ context or can be the description of an opam switch, as follows:
   that contains execution counters is *src/fdo.exe.fdo-profile*.  This
   feature is **experimental** and no backwards compatibility is
   implied.
+
+- By default Dune builds and installs dynamically linked foreign
+  archives (usually named ``dll*.so``). It is possible to disable
+  this by setting
+  ``(disable_dynamically_linked_foreign_archives true)`` in the
+  workspace file, in which case bytecode executables will be built
+  with all foreign archives statically linked into the runtime system.
 
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to

@@ -457,7 +457,7 @@ end = struct
                 | Direct _ ->
                   []
                 | Select s ->
-                  List.map s.choices ~f:(fun (s : Lib_dep.Select.choice) ->
+                  List.map s.choices ~f:(fun (s : Lib_dep.Select.Choice.t) ->
                       s.file))
           | _ -> [])
       |> String.Set.of_list

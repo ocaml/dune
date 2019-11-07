@@ -593,7 +593,17 @@ end = struct
       in
       let libs_and_exes =
         Memo.lazy_ (fun () ->
-            check_no_qualified Loc.none qualif_mode;
+            let loc =
+              Loc.in_file
+                (Path.source
+                   ( match File_tree.Dir.dune_file ft_dir with
+                   | Some d -> File_tree.Dune_file.path d
+                   | None ->
+                     Path.Source.relative
+                       (File_tree.Dir.path ft_dir)
+                       "_unknown_" ))
+            in
+            check_no_qualified loc qualif_mode;
             let modules =
               let dialects = Dune_project.dialects (Scope.project d.scope) in
               List.fold_left ((dir, [], files) :: subdirs)
@@ -601,16 +611,7 @@ end = struct
                 ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
                   let modules = modules_of_files ~dialects ~dir ~files in
                   Module_name.Map.union acc modules ~f:(fun name x y ->
-                      User_error.raise
-                        ~loc:
-                          (Loc.in_file
-                             (Path.source
-                                ( match File_tree.Dir.dune_file ft_dir with
-                                | None ->
-                                  Path.Source.relative
-                                    (File_tree.Dir.path ft_dir)
-                                    "_unknown_"
-                                | Some d -> File_tree.Dune_file.path d )))
+                      User_error.raise ~loc
                         [ Pp.textf "Module %S appears in several directories:"
                             (Module_name.to_string name)
                         ; Pp.textf "- %s"

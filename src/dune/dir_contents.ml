@@ -49,6 +49,17 @@ and kind =
   | Group_root of t list
   | Group_part
 
+let empty kind ~dir =
+  { kind
+  ; dir
+  ; text_files = String.Set.empty
+  ; modules = Memo.Lazy.of_val Dir_modules.empty
+  ; mlds = Memo.Lazy.of_val []
+  ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
+  ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
+  ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
+  }
+
 type gen_rules_result =
   | Standalone_or_root of t * t list
   | Group_part of Path.Build.t
@@ -544,16 +555,7 @@ end = struct
       | Some (_, None)
       | None ->
         Here
-          { t =
-              { kind = Standalone
-              ; dir
-              ; text_files = String.Set.empty
-              ; modules = Memo.Lazy.of_val Dir_modules.empty
-              ; mlds = Memo.Lazy.of_val []
-              ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
-              ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
-              ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
-              }
+          { t = empty Standalone ~dir
           ; rules = None
           ; subdirs = Path.Build.Map.empty
           } )

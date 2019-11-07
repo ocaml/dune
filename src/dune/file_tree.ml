@@ -35,8 +35,14 @@ module Dune_file = struct
   module Plain = struct
     type t =
       { path : Path.Source.t
+      ; sub_dirs : Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
+
+    let get_sexp_and_destroy t =
+      let sexps = t.sexps in
+      t.sexps <- [];
+      sexps
   end
 
   let fname = "dune"
@@ -47,27 +53,30 @@ module Dune_file = struct
     | Plain of Plain.t
     | Ocaml_script of Path.Source.t
 
+  let sub_dirs = function
+    | Some (Plain p) -> p.sub_dirs
+    | None
+    | Some (Ocaml_script _) ->
+      Sub_dirs.default
+
   let path = function
     | Plain x -> x.path
     | Ocaml_script p -> p
 
   let load file ~project =
     Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
-        let t, sub_dirs =
-          if Dune_lexer.is_script lb then
-            (Ocaml_script file, Sub_dirs.default)
-          else
-            let sexps = Dune_lang.Parser.parse lb ~mode:Many in
-            let decoder =
-              Dune_project.set_parsing_context project Sub_dirs.decode
-            in
-            let sub_dirs, sexps =
-              Dune_lang.Decoder.parse decoder Univ_map.empty
-                (Dune_lang.Ast.List (Loc.none, sexps))
-            in
-            (Plain { path = file; sexps }, sub_dirs)
-        in
-        (t, sub_dirs))
+        if Dune_lexer.is_script lb then
+          Ocaml_script file
+        else
+          let sexps = Dune_lang.Parser.parse lb ~mode:Many in
+          let decoder =
+            Dune_project.set_parsing_context project Sub_dirs.decode
+          in
+          let sub_dirs, sexps =
+            Dune_lang.Decoder.parse decoder Univ_map.empty
+              (Dune_lang.Ast.List (Loc.none, sexps))
+          in
+          Plain { path = file; sexps; sub_dirs })
 end
 
 module Readdir : sig
@@ -265,7 +274,7 @@ let init root ~ancestor_vcs ~recognize_jbuilder_projects =
 
 module rec Memoized : sig
   module Output : sig
-    type t = Dir0.t * Path.Source.t File.Map.t
+    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
   end
 
   val root : unit -> Dir0.t
@@ -278,11 +287,13 @@ end = struct
   open Memoized
 
   module Output = struct
-    type t = Dir0.t * Path.Source.t File.Map.t
+    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
 
     let to_dyn (t : t) =
       let open Dyn.Encoder in
-      pair Dir0.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
+      pair Dir0.to_dyn
+        (String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn))
+        t
   end
 
   let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
@@ -291,8 +302,8 @@ end = struct
       Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
     in
     dirs
-    |> List.fold_left ~init:(dirs_visited, String.Map.empty)
-         ~f:(fun (dirs_visited, subdirs) (fn, path, file) ->
+    |> List.fold_left ~init:(String.Map.empty, String.Map.empty)
+         ~f:(fun (dirs_visited_acc, subdirs) (fn, path, file) ->
            let status =
              if Bootstrap.data_only_path path then
                Sub_dirs.Status.Or_ignored.Ignored
@@ -300,7 +311,7 @@ end = struct
                Sub_dirs.status sub_dirs ~dir:fn
            in
            match status with
-           | Ignored -> (dirs_visited, subdirs)
+           | Ignored -> (dirs_visited_acc, subdirs)
            | Status status ->
              let dir_status : Sub_dirs.Status.t =
                match (dir_status, status) with
@@ -308,23 +319,26 @@ end = struct
                | Vendored, Normal -> Vendored
                | _, _ -> status
              in
-             let dirs_visited =
+             let dirs_visited_acc =
                if Sys.win32 then
-                 dirs_visited
+                 dirs_visited_acc
                else
-                 File.Map.update dirs_visited file ~f:(function
-                   | None -> Some path
-                   | Some first_path ->
-                     User_error.raise
-                       [ Pp.textf
-                           "Path %s has already been scanned. Cannot scan it \
-                            again through symlink %s"
-                           (Path.Source.to_string_maybe_quoted first_path)
-                           (Path.Source.to_string_maybe_quoted path)
-                       ])
+                 let new_dirs_visited =
+                   File.Map.update dirs_visited file ~f:(function
+                     | None -> Some path
+                     | Some first_path ->
+                       User_error.raise
+                         [ Pp.textf
+                             "Path %s has already been scanned. Cannot scan \
+                              it again through symlink %s"
+                             (Path.Source.to_string_maybe_quoted first_path)
+                             (Path.Source.to_string_maybe_quoted path)
+                         ])
+                 in
+                 String.Map.add_exn dirs_visited_acc fn new_dirs_visited
              in
              let subdirs = String.Map.set subdirs fn dir_status in
-             (dirs_visited, subdirs))
+             (dirs_visited_acc, subdirs))
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
@@ -332,9 +346,9 @@ end = struct
       let settings = Settings.get () in
       settings.recognize_jbuilder_projects
     in
-    let dune_file, sub_dirs =
+    let dune_file =
       if dir_status = Data_only then
-        (None, Sub_dirs.default)
+        None
       else if
         (not recognize_jbuilder_projects)
         && String.Set.mem files Dune_file.jbuild_fname
@@ -351,16 +365,16 @@ end = struct
                dune."
           ]
       else if not (String.Set.mem files Dune_file.fname) then
-        (None, Sub_dirs.default)
+        None
       else (
         ignore
           ( Dune_project.ensure_project_file_exists project
             : Dune_project.created_or_already_exist );
         let file = Path.Source.relative path Dune_file.fname in
-        let dune_file, sub_dirs = Dune_file.load file ~project in
-        (Some dune_file, sub_dirs)
+        Some (Dune_file.load file ~project)
       )
     in
+    let sub_dirs = Dune_file.sub_dirs dune_file in
     let dirs_visited, sub_dirs =
       get_sub_dirs ~dirs_visited ~dirs ~sub_dirs ~dir_status
     in
@@ -418,6 +432,10 @@ end = struct
       let* dir_status =
         let basename = Path.Source.basename path in
         String.Map.find parent_dir.contents.sub_dirs basename
+      in
+      let dirs_visited =
+        String.Map.find dirs_visited (Path.Source.basename path)
+        |> Option.value ~default:File.Map.empty
       in
       let settings = Settings.get () in
       let readdir =

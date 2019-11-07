@@ -8,10 +8,9 @@ module Dune_file : sig
     (** [sexps] is mutable as we get rid of the S-expressions once they have
         been parsed, in order to release the memory as soon as we don't need
         them. *)
-    type t =
-      { path : Path.Source.t
-      ; mutable sexps : Dune_lang.Ast.t list
-      }
+    type t
+
+    val get_sexp_and_destroy : t -> Dune_lang.Ast.t list
   end
 
   val jbuild_fname : string

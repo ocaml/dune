@@ -196,14 +196,12 @@ type conf =
   }
 
 let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
+  let file = File_tree.Dune_file.path dune_file in
   match dune_file with
+  | Ocaml_script _ -> Dune_files.Script { dir; project; file }
   | Plain p ->
-    let dune_file =
-      Dune_files.Literal (Dune_file.parse p.sexps ~dir ~file:p.path ~project)
-    in
-    p.sexps <- [];
-    dune_file
-  | Ocaml_script file -> Script { dir; project; file }
+    let sexps = File_tree.Dune_file.Plain.get_sexp_and_destroy p in
+    Literal (Dune_file.parse sexps ~dir ~file ~project)
 
 let load ~ancestor_vcs () =
   File_tree.init Path.Source.root ~ancestor_vcs

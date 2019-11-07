@@ -10,8 +10,8 @@
   $ cd c2/a && ln -s ../b x
   $ cd c2/b && ln -s ../a x
   $ cd c2 && dune build
-  Error: Path b has already been scanned. Cannot scan it again through symlink
-  a/x
+  Error: Path a has already been scanned. Cannot scan it again through symlink
+  a/x/x
   [1]
 
   $ mkdir symlink-outside-root
@@ -27,8 +27,8 @@
   $ cd symlink-outside-root2/other/b && ln -s ../a x
   $ cd symlink-outside-root2/root && ln -s ../other src
   $ cd symlink-outside-root2/root && dune build
-  Error: Path src/b has already been scanned. Cannot scan it again through
-  symlink src/a/x
+  Error: Path src/a has already been scanned. Cannot scan it again through
+  symlink src/a/x/x
   [1]
 
   $ mkdir -p symlink-outside-root3/root

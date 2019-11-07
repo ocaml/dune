@@ -159,6 +159,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias cycle-detection-symlinks-2863)
+ (deps (package dune) (source_tree test-cases/cycle-detection-symlinks-2863))
+ (action
+  (chdir
+   test-cases/cycle-detection-symlinks-2863
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias default-targets)
  (deps (package dune) (source_tree test-cases/default-targets))
  (action
@@ -1924,6 +1932,7 @@
   (alias custom-build-dir)
   (alias custom-cross-compilation)
   (alias cxx-extension)
+  (alias cycle-detection-symlinks-2863)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
@@ -2150,6 +2159,7 @@
   (alias custom-build-dir)
   (alias custom-cross-compilation)
   (alias cxx-extension)
+  (alias cycle-detection-symlinks-2863)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)

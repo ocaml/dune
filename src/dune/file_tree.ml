@@ -35,6 +35,7 @@ module Dune_file = struct
   module Plain = struct
     type t =
       { path : Path.Source.t
+      ; sub_dirs : Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
   end
@@ -47,27 +48,30 @@ module Dune_file = struct
     | Plain of Plain.t
     | Ocaml_script of Path.Source.t
 
+  let sub_dirs = function
+    | Some (Plain p) -> p.sub_dirs
+    | None
+    | Some (Ocaml_script _) ->
+      Sub_dirs.default
+
   let path = function
     | Plain x -> x.path
     | Ocaml_script p -> p
 
   let load file ~project =
     Io.with_lexbuf_from_file (Path.source file) ~f:(fun lb ->
-        let t, sub_dirs =
-          if Dune_lexer.is_script lb then
-            (Ocaml_script file, Sub_dirs.default)
-          else
-            let sexps = Dune_lang.Parser.parse lb ~mode:Many in
-            let decoder =
-              Dune_project.set_parsing_context project Sub_dirs.decode
-            in
-            let sub_dirs, sexps =
-              Dune_lang.Decoder.parse decoder Univ_map.empty
-                (Dune_lang.Ast.List (Loc.none, sexps))
-            in
-            (Plain { path = file; sexps }, sub_dirs)
-        in
-        (t, sub_dirs))
+        if Dune_lexer.is_script lb then
+          Ocaml_script file
+        else
+          let sexps = Dune_lang.Parser.parse lb ~mode:Many in
+          let decoder =
+            Dune_project.set_parsing_context project Sub_dirs.decode
+          in
+          let sub_dirs, sexps =
+            Dune_lang.Decoder.parse decoder Univ_map.empty
+              (Dune_lang.Ast.List (Loc.none, sexps))
+          in
+          Plain { path = file; sexps; sub_dirs })
 end
 
 module Readdir : sig
@@ -332,9 +336,9 @@ end = struct
       let settings = Settings.get () in
       settings.recognize_jbuilder_projects
     in
-    let dune_file, sub_dirs =
+    let dune_file =
       if dir_status = Data_only then
-        (None, Sub_dirs.default)
+        None
       else if
         (not recognize_jbuilder_projects)
         && String.Set.mem files Dune_file.jbuild_fname
@@ -351,16 +355,16 @@ end = struct
                dune."
           ]
       else if not (String.Set.mem files Dune_file.fname) then
-        (None, Sub_dirs.default)
+        None
       else (
         ignore
           ( Dune_project.ensure_project_file_exists project
             : Dune_project.created_or_already_exist );
         let file = Path.Source.relative path Dune_file.fname in
-        let dune_file, sub_dirs = Dune_file.load file ~project in
-        (Some dune_file, sub_dirs)
+        Some (Dune_file.load file ~project)
       )
     in
+    let sub_dirs = Dune_file.sub_dirs dune_file in
     let dirs_visited, sub_dirs =
       get_sub_dirs ~dirs_visited ~dirs ~sub_dirs ~dir_status
     in

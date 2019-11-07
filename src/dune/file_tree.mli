@@ -10,6 +10,7 @@ module Dune_file : sig
         them. *)
     type t =
       { path : Path.Source.t
+      ; sub_dirs : Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
   end

@@ -446,7 +446,7 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune clean
-  $ ./sdune exec ./main.exe
+  $ ./sdune exec ./main.bc
   File "dune", line 1, characters 0-80:
   1 | (executable
   2 |  (modes byte)
@@ -468,7 +468,7 @@ setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
   > EOF
 
   $ ./sdune clean
-  $ ./sdune exec ./main.exe
+  $ ./sdune exec ./main.bc
   clock = 1345
 
 ----------------------------------------------------------------------------------

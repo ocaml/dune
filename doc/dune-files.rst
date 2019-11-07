@@ -1690,8 +1690,8 @@ context or can be the description of an opam switch, as follows:
   archives (usually named ``dll*.so``). It is possible to disable
   this by setting
   ``(disable_dynamically_linked_foreign_archives true)`` in the
-  workspace file, in which case Dune will produce executables where
-  all foreign archives are statically linked into the runtime system.
+  workspace file, in which case bytecode executables will be built
+  with all foreign archives statically linked into the runtime system.
 
 
 Both ``(default ...)`` and ``(opam ...)`` accept a ``targets`` field in order to

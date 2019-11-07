@@ -38,6 +38,11 @@ module Dune_file = struct
       ; sub_dirs : Predicate_lang.Glob.t Sub_dirs.Status.Map.t
       ; mutable sexps : Dune_lang.Ast.t list
       }
+
+    let get_sexp_and_destroy t =
+      let sexps = t.sexps in
+      t.sexps <- [];
+      sexps
   end
 
   let fname = "dune"

@@ -274,7 +274,7 @@ let init root ~ancestor_vcs ~recognize_jbuilder_projects =
 
 module rec Memoized : sig
   module Output : sig
-    type t = Dir0.t * Path.Source.t File.Map.t
+    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
   end
 
   val root : unit -> Dir0.t
@@ -287,11 +287,13 @@ end = struct
   open Memoized
 
   module Output = struct
-    type t = Dir0.t * Path.Source.t File.Map.t
+    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
 
     let to_dyn (t : t) =
       let open Dyn.Encoder in
-      pair Dir0.to_dyn (File.Map.to_dyn Path.Source.to_dyn) t
+      pair Dir0.to_dyn
+        (String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn))
+        t
   end
 
   let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
@@ -300,8 +302,8 @@ end = struct
       Sub_dirs.eval sub_dirs ~dirs:(List.map ~f:(fun (a, _, _) -> a) dirs)
     in
     dirs
-    |> List.fold_left ~init:(dirs_visited, String.Map.empty)
-         ~f:(fun (dirs_visited, subdirs) (fn, path, file) ->
+    |> List.fold_left ~init:(String.Map.empty, String.Map.empty)
+         ~f:(fun (dirs_visited_acc, subdirs) (fn, path, file) ->
            let status =
              if Bootstrap.data_only_path path then
                Sub_dirs.Status.Or_ignored.Ignored
@@ -309,7 +311,7 @@ end = struct
                Sub_dirs.status sub_dirs ~dir:fn
            in
            match status with
-           | Ignored -> (dirs_visited, subdirs)
+           | Ignored -> (dirs_visited_acc, subdirs)
            | Status status ->
              let dir_status : Sub_dirs.Status.t =
                match (dir_status, status) with
@@ -317,23 +319,26 @@ end = struct
                | Vendored, Normal -> Vendored
                | _, _ -> status
              in
-             let dirs_visited =
+             let dirs_visited_acc =
                if Sys.win32 then
-                 dirs_visited
+                 dirs_visited_acc
                else
-                 File.Map.update dirs_visited file ~f:(function
-                   | None -> Some path
-                   | Some first_path ->
-                     User_error.raise
-                       [ Pp.textf
-                           "Path %s has already been scanned. Cannot scan it \
-                            again through symlink %s"
-                           (Path.Source.to_string_maybe_quoted first_path)
-                           (Path.Source.to_string_maybe_quoted path)
-                       ])
+                 let new_dirs_visited =
+                   File.Map.update dirs_visited file ~f:(function
+                     | None -> Some path
+                     | Some first_path ->
+                       User_error.raise
+                         [ Pp.textf
+                             "Path %s has already been scanned. Cannot scan \
+                              it again through symlink %s"
+                             (Path.Source.to_string_maybe_quoted first_path)
+                             (Path.Source.to_string_maybe_quoted path)
+                         ])
+                 in
+                 String.Map.add_exn dirs_visited_acc fn new_dirs_visited
              in
              let subdirs = String.Map.set subdirs fn dir_status in
-             (dirs_visited, subdirs))
+             (dirs_visited_acc, subdirs))
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
@@ -427,6 +432,10 @@ end = struct
       let* dir_status =
         let basename = Path.Source.basename path in
         String.Map.find parent_dir.contents.sub_dirs basename
+      in
+      let dirs_visited =
+        String.Map.find dirs_visited (Path.Source.basename path)
+        |> Option.value ~default:File.Map.empty
       in
       let settings = Settings.get () in
       let readdir =

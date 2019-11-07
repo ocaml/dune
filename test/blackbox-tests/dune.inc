@@ -1567,6 +1567,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias select-2-0-rules)
+ (deps (package dune) (source_tree test-cases/select-2-0-rules))
+ (action
+  (chdir
+   test-cases/select-2-0-rules
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias several-packages)
  (deps (package dune) (source_tree test-cases/several-packages))
  (action
@@ -2100,6 +2108,7 @@
   (alias scope-bug)
   (alias scope-ppx-bug)
   (alias select)
+  (alias select-2-0-rules)
   (alias several-packages)
   (alias shadow-bindings)
   (alias stale-artifact-removal)
@@ -2305,6 +2314,7 @@
   (alias sandboxing)
   (alias scope-bug)
   (alias select)
+  (alias select-2-0-rules)
   (alias several-packages)
   (alias shadow-bindings)
   (alias stale-artifact-removal)

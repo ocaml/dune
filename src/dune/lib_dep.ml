@@ -8,10 +8,11 @@ module Select = struct
       ; file : string
       }
 
-    let decode =
+    let decode ~result_fn =
       let open Dune_lang.Decoder in
       enter
-        (let+ loc = loc
+        (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+         let+ loc = loc
          and+ preds, file =
            until_keyword "->"
              ~before:
@@ -21,13 +22,29 @@ module Select = struct
                 match String.drop_prefix s ~prefix:"!" with
                 | Some s -> Right (Lib_name.of_string_exn ~loc s)
                 | None -> Left (Lib_name.of_string_exn ~loc s))
-             ~after:filename
+             ~after:(located filename)
          in
          match file with
          | None ->
            User_error.raise ~loc
              [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
-         | Some file ->
+         | Some (loc_file, file) ->
+           let () =
+             if dune_version >= (2, 0) then
+               let prefix, suffix =
+                 let name, ext = Filename.split_extension result_fn in
+                 let prefix = name ^ "." in
+                 (prefix, ext)
+               in
+               if not (String.is_prefix file ~prefix && String.is_suffix file ~suffix)
+               then
+                 User_error.raise ~loc:loc_file
+                   [ Pp.textf
+                       "The format for files in this select branch must be \
+                        %s{name}%s"
+                       prefix suffix
+                   ]
+           in
            let rec loop required forbidden = function
              | [] ->
                let common = Lib_name.Set.inter required forbidden in
@@ -68,10 +85,10 @@ module Select = struct
 
   let decode =
     let open Dune_lang.Decoder in
-    let+ result_fn = filename
-    and+ loc = loc
+    let* result_fn = filename in
+    let+ loc = loc
     and+ () = keyword "from"
-    and+ choices = repeat Choice.decode in
+    and+ choices = repeat (Choice.decode ~result_fn) in
     { result_fn; choices; loc }
 end
 

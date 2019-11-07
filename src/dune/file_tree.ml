@@ -226,8 +226,7 @@ end
 
 module Settings : sig
   type t =
-    { root : Path.Source.t
-    ; ancestor_vcs : Vcs.t option
+    { ancestor_vcs : Vcs.t option
     ; recognize_jbuilder_projects : bool
     }
 
@@ -236,21 +235,18 @@ module Settings : sig
   val get : unit -> t
 end = struct
   type t =
-    { root : Path.Source.t
-    ; ancestor_vcs : Vcs.t option
+    { ancestor_vcs : Vcs.t option
     ; recognize_jbuilder_projects : bool
     }
 
-  let equal { root; ancestor_vcs; recognize_jbuilder_projects } y =
-    Path.Source.equal root y.root
-    && Option.equal Vcs.equal ancestor_vcs y.ancestor_vcs
+  let equal { ancestor_vcs; recognize_jbuilder_projects } y =
+    Option.equal Vcs.equal ancestor_vcs y.ancestor_vcs
     && Bool.equal recognize_jbuilder_projects y.recognize_jbuilder_projects
 
-  let to_dyn { root; ancestor_vcs; recognize_jbuilder_projects } =
+  let to_dyn { ancestor_vcs; recognize_jbuilder_projects } =
     let open Dyn.Encoder in
     record
-      [ ("root", Path.Source.to_dyn root)
-      ; ("ancestor_vcs", option Vcs.to_dyn ancestor_vcs)
+      [ ("ancestor_vcs", option Vcs.to_dyn ancestor_vcs)
       ; ("recognize_jbuilder_projects", bool recognize_jbuilder_projects)
       ]
 
@@ -269,8 +265,8 @@ end = struct
     Fdecl.get t
 end
 
-let init root ~ancestor_vcs ~recognize_jbuilder_projects =
-  Settings.set { Settings.root; ancestor_vcs; recognize_jbuilder_projects }
+let init ~ancestor_vcs ~recognize_jbuilder_projects =
+  Settings.set { ancestor_vcs; recognize_jbuilder_projects }
 
 module rec Memoized : sig
   module Output : sig
@@ -382,7 +378,7 @@ end = struct
 
   let root () =
     let settings = Settings.get () in
-    let path = settings.root in
+    let path = Path.Source.root in
     let dir_status : Sub_dirs.Status.t = Normal in
     let readdir =
       match Readdir.of_source_path path with
@@ -422,12 +418,10 @@ end = struct
     | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
   let find_dir_raw_impl path =
-    let settings = Settings.get () in
-    if Path.Source.equal settings.root path then
-      Some (root ())
-    else
+    match Path.Source.parent path with
+    | None -> Some (root ())
+    | Some parent_dir ->
       let open Option.O in
-      let* parent_dir = Path.Source.parent path in
       let* parent_dir, dirs_visited = find_dir_raw parent_dir in
       let* dir_status =
         let basename = Path.Source.basename path in
@@ -480,9 +474,7 @@ end = struct
     let+ dir, _ = find_dir_raw p in
     dir
 
-  let root () =
-    let settings = Settings.get () in
-    Option.value_exn (find_dir settings.root)
+  let root () = Option.value_exn (find_dir Path.Source.root)
 end
 
 let root () = Memoized.root ()

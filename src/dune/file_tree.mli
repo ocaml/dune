@@ -63,10 +63,7 @@ end
     before all other calls to the file tree. All of these settings can only be
     set once per dune process *)
 val init :
-     Path.Source.t
-  -> ancestor_vcs:Vcs.t option
-  -> recognize_jbuilder_projects:bool
-  -> unit
+  ancestor_vcs:Vcs.t option -> recognize_jbuilder_projects:bool -> unit
 
 val root : unit -> Dir.t
 

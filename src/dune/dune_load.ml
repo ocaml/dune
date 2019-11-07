@@ -204,8 +204,7 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     Literal (Dune_file.parse sexps ~dir ~file ~project)
 
 let load ~ancestor_vcs () =
-  File_tree.init Path.Source.root ~ancestor_vcs
-    ~recognize_jbuilder_projects:false;
+  File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
   let projects =
     File_tree.fold_with_progress
       ~traverse:{ data_only = false; vendored = true; normal = true } ~init:[]

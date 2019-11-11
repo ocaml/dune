@@ -194,6 +194,13 @@
   sources must match the prefix and the extension of the resultant filename.
   (#2867, @rgrinberg)
 
+- Add flag `disable_dynamically_linked_foreign_archives` to the workspace file.
+  If the flag is set to `true` then: (i) when installing libraries, we do not
+  install dynamic foreign archives `dll*.so`; (ii) when building executables in
+  the `byte` mode, we statically link in foreign archives into the runtime
+  system; (iii) we do not generate any `dll*.so` rules. (#2864, @snowleopard)
+
+
 1.11.4 (09/10/2019)
 -------------------
 

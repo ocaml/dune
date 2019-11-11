@@ -36,7 +36,10 @@ module Select = struct
                  let prefix = name ^ "." in
                  (prefix, ext)
                in
-               if not (String.is_prefix file ~prefix && String.is_suffix file ~suffix)
+               if
+                 not
+                   ( String.is_prefix file ~prefix
+                   && String.is_suffix file ~suffix )
                then
                  User_error.raise ~loc:loc_file
                    [ Pp.textf

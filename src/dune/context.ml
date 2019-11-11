@@ -551,27 +551,31 @@ let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives
 
 let opam_version =
-  let res = ref None in
-  fun opam env ->
-    match !res with
-    | Some future -> Fiber.Future.wait future
-    | None ->
-      let* future =
-        Fiber.fork (fun () ->
-            let+ version =
-              Process.run_capture_line Strict ~env opam [ "--version" ]
-            in
-            match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
-            | Ok s -> s
-            | Error () ->
-              User_error.raise
-                [ Pp.textf "`%s config --version' returned invalid output:"
-                    (Path.to_string_maybe_quoted opam)
-                ; Pp.verbatim version
-                ])
-      in
-      res := Some future;
-      Fiber.Future.wait future
+  let f opam =
+    let+ version =
+      Process.run_capture_line Strict opam [ "--version"; "--color=never" ]
+    in
+    match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
+    | Ok s -> s
+    | Error () ->
+      User_error.raise
+        [ Pp.textf "`%s config --version' returned invalid output:"
+            (Path.to_string_maybe_quoted opam)
+        ; Pp.verbatim version
+        ]
+  in
+  let module Output = struct
+    type t = int * int * int
+
+    let to_dyn = Tuple.T3.to_dyn Int.to_dyn Int.to_dyn Int.to_dyn
+  end in
+  let memo =
+    Memo.create "opam-version" ~doc:"get opam version"
+      ~input:(module Path)
+      ~output:(Simple (module Output))
+      Async f ~visibility:Memo.Visibility.Hidden
+  in
+  Memo.exec memo
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
@@ -581,7 +585,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     | None -> Utils.program_not_found "opam" ~loc:None
     | Some fn -> fn
   in
-  let* version = opam_version opam env in
+  let* version = opam_version opam in
   let args =
     List.concat
       [ [ "config"; "env" ]

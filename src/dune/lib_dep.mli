@@ -1,15 +1,17 @@
 open Stdune
 
 module Select : sig
-  type choice =
-    { required : Lib_name.Set.t
-    ; forbidden : Lib_name.Set.t
-    ; file : string
-    }
+  module Choice : sig
+    type t =
+      { required : Lib_name.Set.t
+      ; forbidden : Lib_name.Set.t
+      ; file : string
+      }
+  end
 
   type t =
     { result_fn : string
-    ; choices : choice list
+    ; choices : Choice.t list
     ; loc : Loc.t
     }
 

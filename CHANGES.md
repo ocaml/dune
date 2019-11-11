@@ -190,6 +190,10 @@
 - Allow `ccomp_type` as a variable for evaluating `enabled_if`. (#2855, @dra27,
   @rgrinberg)
 
+- Stricter validation of file names in `select`. The file names of conditional
+  sources must match the prefix and the extension of the resultant filename.
+  (#2867, @rgrinberg)
+
 1.11.4 (09/10/2019)
 -------------------
 

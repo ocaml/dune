@@ -4,11 +4,11 @@
   >  (name main)
   >  (libraries
   >   (select bar.ml from
-  >    (unix -> bar_unix.ml)
-  >    (!unix -> bar_no_unix.ml))
+  >    (unix -> bar.unix.ml)
+  >    (!unix -> bar.no_unix.ml))
   >   (select foo.ml from
-  >    (fakefoobar -> foo_fake.ml)
-  >    (!fakefoobar -> foo_no_fake.ml))))
+  >    (fakefoobar -> foo.fake.ml)
+  >    (!fakefoobar -> foo.no_fake.ml))))
   > (alias
   >  (name runtest)
   >  (action (run ./main.exe)))
@@ -35,11 +35,11 @@
   >  (name main)
   >  (libraries
   >   (select bar.ml from
-  >    (unix -> bar_unix.ml)
-  >    (!unix -> bar_no_unix.ml))
+  >    (unix -> bar.unix.ml)
+  >    (!unix -> bar.no_unix.ml))
   >   (select foo.ml from
-  >    (fakefoobar -> foo_fake.ml)
-  >    (!fakefoobar -> foo_no_fake.ml))))
+  >    (fakefoobar -> foo.fake.ml)
+  >    (!fakefoobar -> foo.no_fake.ml))))
   > (rule
   >  (alias runtest)
   >  (action (run ./main.exe)))

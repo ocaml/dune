@@ -397,7 +397,7 @@ module Lib_deps = struct
               add Required s acc
             | Select { choices; _ } ->
               List.fold_left choices ~init:acc
-                ~f:(fun acc (c : Lib_dep.Select.choice) ->
+                ~f:(fun acc (c : Lib_dep.Select.Choice.t) ->
                   let acc =
                     Lib_name.Set.fold c.required ~init:acc ~f:(add Optional)
                   in
@@ -413,7 +413,7 @@ module Lib_deps = struct
       | Lib_dep.Direct (_, s) ->
         [ (s, kind) ]
       | Select { choices; _ } ->
-        List.concat_map choices ~f:(fun (c : Lib_dep.Select.choice) ->
+        List.concat_map choices ~f:(fun (c : Lib_dep.Select.Choice.t) ->
             Lib_name.Set.to_list c.required
             |> List.map ~f:(fun d -> (d, Lib_deps_info.Kind.Optional))))
     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge

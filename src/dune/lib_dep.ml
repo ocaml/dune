@@ -1,23 +1,78 @@
 open Stdune
 
 module Select = struct
-  type choice =
-    { required : Lib_name.Set.t
-    ; forbidden : Lib_name.Set.t
-    ; file : string
-    }
+  module Choice = struct
+    type t =
+      { required : Lib_name.Set.t
+      ; forbidden : Lib_name.Set.t
+      ; file : string
+      }
 
-  let dyn_of_choice { required; forbidden; file } =
-    let open Dyn.Encoder in
-    record
-      [ ("required", Lib_name.Set.to_dyn required)
-      ; ("forbidden", Lib_name.Set.to_dyn forbidden)
-      ; ("file", string file)
-      ]
+    let decode ~result_fn =
+      let open Dune_lang.Decoder in
+      enter
+        (let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+         let+ loc = loc
+         and+ preds, file =
+           until_keyword "->"
+             ~before:
+               (let+ s = string
+                and+ loc = loc in
+                let loc = Some loc in
+                match String.drop_prefix s ~prefix:"!" with
+                | Some s -> Right (Lib_name.of_string_exn ~loc s)
+                | None -> Left (Lib_name.of_string_exn ~loc s))
+             ~after:(located filename)
+         in
+         match file with
+         | None ->
+           User_error.raise ~loc
+             [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
+         | Some (loc_file, file) ->
+           let () =
+             if dune_version >= (2, 0) then
+               let prefix, suffix =
+                 let name, ext = Filename.split_extension result_fn in
+                 let prefix = name ^ "." in
+                 (prefix, ext)
+               in
+               if not (String.is_prefix file ~prefix && String.is_suffix file ~suffix)
+               then
+                 User_error.raise ~loc:loc_file
+                   [ Pp.textf
+                       "The format for files in this select branch must be \
+                        %s{name}%s"
+                       prefix suffix
+                   ]
+           in
+           let rec loop required forbidden = function
+             | [] ->
+               let common = Lib_name.Set.inter required forbidden in
+               Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
+                   User_error.raise ~loc
+                     [ Pp.textf
+                         "library %S is both required and forbidden in this \
+                          clause"
+                         (Lib_name.to_string name)
+                     ]);
+               { required; forbidden; file }
+             | Left s :: l -> loop (Lib_name.Set.add required s) forbidden l
+             | Right s :: l -> loop required (Lib_name.Set.add forbidden s) l
+           in
+           loop Lib_name.Set.empty Lib_name.Set.empty preds)
+
+    let to_dyn { required; forbidden; file } =
+      let open Dyn.Encoder in
+      record
+        [ ("required", Lib_name.Set.to_dyn required)
+        ; ("forbidden", Lib_name.Set.to_dyn forbidden)
+        ; ("file", string file)
+        ]
+  end
 
   type t =
     { result_fn : string
-    ; choices : choice list
+    ; choices : Choice.t list
     ; loc : Loc.t
     }
 
@@ -25,8 +80,16 @@ module Select = struct
     let open Dyn.Encoder in
     record
       [ ("result_fn", string result_fn)
-      ; ("choices", list dyn_of_choice choices)
+      ; ("choices", list Choice.to_dyn choices)
       ]
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let* result_fn = filename in
+    let+ loc = loc
+    and+ () = keyword "from"
+    and+ choices = repeat (Choice.decode ~result_fn) in
+    { result_fn; choices; loc }
 end
 
 type t =
@@ -51,53 +114,16 @@ let to_lib_names = function
     [ s ]
   | Select s ->
     List.fold_left s.choices ~init:Lib_name.Set.empty
-      ~f:(fun acc (x : Select.choice) ->
+      ~f:(fun acc (x : Select.Choice.t) ->
         Lib_name.Set.union acc (Lib_name.Set.union x.required x.forbidden))
     |> Lib_name.Set.to_list
-
-let choice =
-  let open Dune_lang.Decoder in
-  enter
-    (let+ loc = loc
-     and+ preds, file =
-       until_keyword "->"
-         ~before:
-           (let+ s = string
-            and+ loc = loc in
-            let len = String.length s in
-            if len > 0 && s.[0] = '!' then
-              Right (Lib_name.of_string_exn ~loc:(Some loc) (String.drop s 1))
-            else
-              Left (Lib_name.of_string_exn ~loc:(Some loc) s))
-         ~after:filename
-     in
-     match file with
-     | None ->
-       User_error.raise ~loc
-         [ Pp.textf "(<[!]libraries>... -> <file>) expected" ]
-     | Some file ->
-       let rec loop required forbidden = function
-         | [] ->
-           let common = Lib_name.Set.inter required forbidden in
-           Option.iter (Lib_name.Set.choose common) ~f:(fun name ->
-               User_error.raise ~loc
-                 [ Pp.textf
-                     "library %S is both required and forbidden in this clause"
-                     (Lib_name.to_string name)
-                 ]);
-           { Select.required; forbidden; file }
-         | Left s :: l -> loop (Lib_name.Set.add required s) forbidden l
-         | Right s :: l -> loop required (Lib_name.Set.add forbidden s) l
-       in
-       loop Lib_name.Set.empty Lib_name.Set.empty preds)
 
 let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   if_list
     ~then_:
       (enter
-         (let* loc = loc in
-          let* cloc, constr = located string in
+         (let* cloc, constr = located string in
           match constr with
           | "re_export" ->
             if not allow_re_export then
@@ -107,10 +133,8 @@ let decode ~allow_re_export =
             and+ loc, name = located Lib_name.decode in
             Re_export (loc, name)
           | "select" ->
-            let+ result_fn = filename
-            and+ () = keyword "from"
-            and+ choices = repeat choice in
-            Select { result_fn; choices; loc }
+            let+ select = Select.decode in
+            Select select
           | _ -> User_error.raise ~loc:cloc [ Pp.text "invalid constructor" ]))
     ~else_:
       (let+ loc, name = located Lib_name.decode in

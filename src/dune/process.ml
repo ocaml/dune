@@ -458,12 +458,12 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
   let display = Console.display () in
   let dir =
     match dir with
+    | None -> dir
     | Some p ->
       if Path.is_root p then
         None
       else
         Some p
-    | None -> dir
   in
   let id = gen_id () in
   let ok_codes = accepted_codes fail_mode in
@@ -526,9 +526,10 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     let stderr = Io.fd stderr_to in
     let stdin = Io.fd stdin_from in
     fun () ->
-      Spawn.spawn () ~prog:prog_str ~argv
-        ~env:(Spawn.Env.of_array (Env.to_unix env))
-        ~stdout ~stderr ~stdin
+      let env =
+        Option.map env ~f:(fun env -> Spawn.Env.of_array (Env.to_unix env))
+      in
+      Spawn.spawn () ~prog:prog_str ~argv ?env ~stdout ~stderr ~stdin
   in
   let pid =
     match dir with
@@ -566,14 +567,14 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
       ~output ~purpose ~display
 
-let run ?dir ?stdout_to ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
+let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
   map_result fail_mode
     (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose
        fail_mode prog args)
     ~f:ignore
 
-let run_capture_gen ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
+let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
   let fn = Temp.create "dune" ".output" in
   map_result fail_mode
@@ -588,9 +589,9 @@ let run_capture = run_capture_gen ~f:Stdune.Io.read_file
 
 let run_capture_lines = run_capture_gen ~f:Stdune.Io.lines_of_file
 
-let run_capture_line ?dir ?stderr_to ?stdin_from ~env ?(purpose = Internal_job)
+let run_capture_line ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
-  run_capture_gen ?dir ?stderr_to ?stdin_from ~env ~purpose fail_mode prog args
+  run_capture_gen ?dir ?stderr_to ?stdin_from ?env ~purpose fail_mode prog args
     ~f:(fun fn ->
       match Stdune.Io.lines_of_file fn with
       | [ x ] -> x

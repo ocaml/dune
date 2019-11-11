@@ -56,7 +56,7 @@ val run :
   -> ?stdout_to:Io.output Io.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
-  -> env:Env.t
+  -> ?env:Env.t
   -> ?purpose:purpose
   -> (unit, 'a) failure_mode
   -> Path.t
@@ -68,7 +68,7 @@ val run_capture :
      ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
-  -> env:Env.t
+  -> ?env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
   -> Path.t
@@ -79,7 +79,7 @@ val run_capture_line :
      ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
-  -> env:Env.t
+  -> ?env:Env.t
   -> ?purpose:purpose
   -> (string, 'a) failure_mode
   -> Path.t
@@ -90,7 +90,7 @@ val run_capture_lines :
      ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
   -> ?stdin_from:Io.input Io.t
-  -> env:Env.t
+  -> ?env:Env.t
   -> ?purpose:purpose
   -> (string list, 'a) failure_mode
   -> Path.t

@@ -551,19 +551,9 @@ let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives
 
 let opam_version =
-  let module Input = struct
-      type t = Path.t * Env.t
-
-      let to_dyn = Tuple.T2.to_dyn Path.to_dyn Env.to_dyn
-
-      let equal (p1, e1) (p2, e2) = Path.equal p1 p2 && Env.equal e1 e2
-
-      let hash = Tuple.T2.hash Path.hash Env.hash
-    end
-  in
-  let f (opam, env) =
+  let f opam =
     let+ version =
-      Process.run_capture_line Strict ~env opam [ "--version" ]
+      Process.run_capture_line Strict opam [ "--version"; "--color=never" ]
     in
     match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
     | Ok s -> s
@@ -581,10 +571,11 @@ let opam_version =
   end in
   let memo =
     Memo.create "opam-version" ~doc:"get opam version"
-      ~input:(module Input) ~output:(Simple (module Output)) Async f
-      ~visibility:Memo.Visibility.Hidden
+      ~input:(module Path)
+      ~output:(Simple (module Output))
+      Async f ~visibility:Memo.Visibility.Hidden
   in
-  fun opam env -> Memo.exec memo (opam, env)
+  Memo.exec memo
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
@@ -594,7 +585,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     | None -> Utils.program_not_found "opam" ~loc:None
     | Some fn -> fn
   in
-  let* version = opam_version opam env in
+  let* version = opam_version opam in
   let args =
     List.concat
       [ [ "config"; "env" ]

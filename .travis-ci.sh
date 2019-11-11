@@ -92,6 +92,10 @@ case "$TARGET" in
     fi
   ;;
   build)
+    if [ $PERF -eq 1 ] ; then
+       ( exec "./perf.sh" )
+       exit 0;
+    fi
     UPDATE_OPAM=0
     RUNTEST_NO_DEPS=runtest-no-deps.out
     echo -en "travis_fold:start:dune.bootstrap\r"

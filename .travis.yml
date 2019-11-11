@@ -39,3 +39,6 @@ matrix:
   - os: osx
     env: OCAML_VERSION=4.09 OCAML_RELEASE=0 WITH_OPAM=0
     stage: Build_macOS
+  - os: linux
+    env: OCAML_VERSION=4.08 OCAML_RELEASE=1 WITH_OPAM=0 PERF=1
+    stage: Test

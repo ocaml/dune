@@ -23,6 +23,10 @@ type t =
   ; mutable unix : string array option
   }
 
+let equal t { vars; unix = _ } = Map.equal ~equal:String.equal t.vars vars
+
+let hash { vars; unix = _ } = Hashtbl.hash vars
+
 let make vars = { vars; unix = None }
 
 let empty = make Map.empty

@@ -551,27 +551,40 @@ let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives
 
 let opam_version =
-  let res = ref None in
-  fun opam env ->
-    match !res with
-    | Some future -> Fiber.Future.wait future
-    | None ->
-      let* future =
-        Fiber.fork (fun () ->
-            let+ version =
-              Process.run_capture_line Strict ~env opam [ "--version" ]
-            in
-            match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
-            | Ok s -> s
-            | Error () ->
-              User_error.raise
-                [ Pp.textf "`%s config --version' returned invalid output:"
-                    (Path.to_string_maybe_quoted opam)
-                ; Pp.verbatim version
-                ])
-      in
-      res := Some future;
-      Fiber.Future.wait future
+  let module Input = struct
+      type t = Path.t * Env.t
+
+      let to_dyn = Tuple.T2.to_dyn Path.to_dyn Env.to_dyn
+
+      let equal (p1, e1) (p2, e2) = Path.equal p1 p2 && Env.equal e1 e2
+
+      let hash = Tuple.T2.hash Path.hash Env.hash
+    end
+  in
+  let f (opam, env) =
+    let+ version =
+      Process.run_capture_line Strict ~env opam [ "--version" ]
+    in
+    match Scanf.sscanf version "%d.%d.%d" (fun a b c -> (a, b, c)) with
+    | Ok s -> s
+    | Error () ->
+      User_error.raise
+        [ Pp.textf "`%s config --version' returned invalid output:"
+            (Path.to_string_maybe_quoted opam)
+        ; Pp.verbatim version
+        ]
+  in
+  let module Output = struct
+    type t = int * int * int
+
+    let to_dyn = Tuple.T3.to_dyn Int.to_dyn Int.to_dyn Int.to_dyn
+  end in
+  let memo =
+    Memo.create "opam-version" ~doc:"get opam version"
+      ~input:(module Input) ~output:(Simple (module Output)) Async f
+      ~visibility:Memo.Visibility.Hidden
+  in
+  fun opam env -> Memo.exec memo (opam, env)
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe

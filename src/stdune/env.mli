@@ -8,8 +8,6 @@ end
 
 type t
 
-val equal : t -> t -> bool
-
 val hash : t -> int
 
 module Map : Map.S with type key = Var.t

@@ -761,20 +761,43 @@ let create ~env (workspace : Workspace.t) : t list Fiber.t =
   |> Fiber.parallel_map ~f:Fiber.Once.get
   |> Fiber.map ~f:List.concat
 
-let create ~env workspace =
-  match DB.Settings.set ~env workspace with
-  | Already_initialized ->
-    let+ contexts = Fiber.Ivar.read DB.t in
-    Context_name.Map.values contexts
-  | Needs_initialization ->
-    let open Fiber.O in
-    let* contexts = create ~env workspace in
-    let+ () =
-      Fiber.Ivar.fill DB.t
-        (Context_name.Map.of_list_map_exn contexts ~f:(fun ctx ->
-             (ctx.name, ctx)))
-    in
-    contexts
+let create =
+  let module Input = struct
+    type t = Env.t * Workspace.t
+
+    let hash = Tuple.T2.hash Env.hash Workspace.hash
+
+    let equal = Tuple.T2.equal Env.equal Workspace.equal
+
+    let to_dyn = Tuple.T2.to_dyn Env.to_dyn Workspace.to_dyn
+  end in
+  let module Output = struct
+    type nonrec t = t list
+
+    let to_dyn = Dyn.Encoder.list to_dyn
+  end in
+  let f (env, workspace) =
+    match DB.Settings.set ~env workspace with
+    | Already_initialized ->
+      let+ contexts = Fiber.Ivar.read DB.t in
+      Context_name.Map.values contexts
+    | Needs_initialization ->
+      let open Fiber.O in
+      let* contexts = create ~env workspace in
+      let+ () =
+        Fiber.Ivar.fill DB.t
+          (Context_name.Map.of_list_map_exn contexts ~f:(fun ctx ->
+               (ctx.name, ctx)))
+      in
+      contexts
+  in
+  let memo =
+    Memo.create "create-context" ~doc:"create contexts"
+      ~input:(module Input)
+      ~output:(Simple (module Output))
+      ~visibility:Memo.Visibility.Hidden Async f
+  in
+  fun ~env workspace -> Memo.exec memo (env, workspace)
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

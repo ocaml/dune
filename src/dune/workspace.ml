@@ -50,6 +50,8 @@ module Context = struct
       ; disable_dynamically_linked_foreign_archives : bool
       }
 
+    let to_dyn = Dyn.Encoder.opaque
+
     let equal
         { loc = _
         ; profile
@@ -70,7 +72,8 @@ module Context = struct
       && Option.equal Context_name.equal host_context t.host_context
       && List.equal
            (Tuple.T2.equal String.equal Ordered_set_lang.equal)
-              && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
+           paths t.paths
+      && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
       && Bool.equal disable_dynamically_linked_foreign_archives
            t.disable_dynamically_linked_foreign_archives
 
@@ -158,6 +161,15 @@ module Context = struct
       ; merlin : bool
       }
 
+    let to_dyn { base; switch; root; merlin } =
+      let open Dyn.Encoder in
+      record
+        [ ("base", Common.to_dyn base)
+        ; ("switch", Context_name.to_dyn switch)
+        ; ("root", option string root)
+        ; ("merlin", bool merlin)
+        ]
+
     let equal { base; switch; root; merlin } t =
       Common.equal base t.base
       && Context_name.equal switch t.switch
@@ -183,6 +195,8 @@ module Context = struct
   module Default = struct
     type t = Common.t
 
+    let to_dyn = Common.to_dyn
+
     let t ~profile ~x =
       let+ common = Common.t ~profile
       and+ name =
@@ -206,6 +220,14 @@ module Context = struct
   type t =
     | Default of Default.t
     | Opam of Opam.t
+
+  let hash = Hashtbl.hash
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Default d -> constr "Default" [ Default.to_dyn d ]
+    | Opam o -> constr "Opam" [ Opam.to_dyn o ]
 
   let equal x y =
     match (x, y) with
@@ -268,10 +290,24 @@ type t =
   ; env : Dune_env.Stanza.t
   }
 
+let to_dyn { merlin_context; contexts; env } =
+  let open Dyn.Encoder in
+  record
+    [ ("merlin_context", option Context_name.to_dyn merlin_context)
+    ; ("contexts", list Context.to_dyn contexts)
+    ; ("env", Dune_env.Stanza.to_dyn env)
+    ]
+
 let equal { merlin_context; contexts; env } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
   && List.equal Context.equal contexts w.contexts
   && Dune_env.Stanza.equal env w.env
+
+let hash { merlin_context; contexts; env } =
+  Tuple.T3.hash
+    (Option.hash Context_name.hash)
+    (List.hash Context.hash) Dune_env.Stanza.hash
+    (merlin_context, contexts, env)
 
 include Dune_lang.Versioned_file.Make (struct
   type t = unit

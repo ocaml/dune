@@ -19,4 +19,6 @@ module T3 = struct
   type ('a, 'b, 'c) t = 'a * 'b * 'c
 
   let to_dyn = Dyn.Encoder.triple
+
+  let hash f g h (a, b, c) = Hashtbl.hash (f a, g b, h c)
 end

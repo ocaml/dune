@@ -31,6 +31,10 @@ module Stanza : sig
     ; rules : (pattern * config) list
     }
 
+  val hash : t -> int
+
+  val to_dyn : t -> Dyn.t
+
   val equal : t -> t -> bool
 
   val foreign_flags :

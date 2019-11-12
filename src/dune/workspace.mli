@@ -68,6 +68,10 @@ type t = private
 
 val equal : t -> t -> bool
 
+val to_dyn : t -> Dyn.t
+
+val hash : t -> int
+
 val load : ?x:Context_name.t -> ?profile:Profile.t -> Path.t -> t
 
 (** Default name of workspace files *)

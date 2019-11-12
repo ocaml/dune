@@ -1,5 +1,5 @@
-2.0.0 (unreleased)
-------------------
+2.0.0+draft2 (12/11/2019)
+-------------------------
 
 - The `action` field in the `alias` stanza is not available starting `lang dune
   2.0`. The `alias` field in the `rule` stanza is a replacement. (#2846, fixes

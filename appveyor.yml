@@ -6,7 +6,7 @@ install:
 
 build_script:
   - cd "%APPVEYOR_BUILD_FOLDER%"
-  - ocaml bootstrap.mlt
+  - ocaml bootstrap.ml
   - dune.exe build @test\blackbox-tests\windows-diff
 
 artifacts:

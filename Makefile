@@ -9,8 +9,8 @@ BIN := ./dune.exe
 release: $(BIN)
 	$(BIN) build -p dune --profile dune-bootstrap
 
-dune.exe: bootstrap.mlt boot/libs.ml boot/duneboot.ml
-	ocaml bootstrap.mlt
+dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
+	ocaml bootstrap.ml
 
 all: $(BIN)
 	$(BIN) build

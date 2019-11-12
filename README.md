@@ -116,7 +116,7 @@ $ make install
 If you do not have `make`, you can do the following:
 
 ```sh
-$ ocaml bootstrap.mlt
+$ ocaml bootstrap.ml
 $ ./dune.exe build -p dune --profile dune-bootstrap
 $ ./dune.exe install dune --build-dir _boot
 ```

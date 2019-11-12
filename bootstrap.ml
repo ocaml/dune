@@ -23,7 +23,7 @@ let verbose, keep_generated_files, debug =
       , Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
     ]
-    anon "Usage: ocaml bootstrap.mlt <options>\nOptions are:";
+    anon "Usage: ocaml bootstrap.ml <options>\nOptions are:";
   (!verbose, !keep_generated_files, !debug)
 
 let modules = [ "boot/libs"; "boot/duneboot" ]

@@ -17,6 +17,67 @@ module Dir_modules = struct
     ; executables = String.Map.empty
     ; rev_map = Module_name.Map.empty
     }
+
+  let make (libs, exes) =
+    let libraries =
+      match
+        Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
+            (Library.best_name lib, m))
+      with
+      | Ok x -> x
+      | Error (name, _, (lib2, _)) ->
+        User_error.raise ~loc:lib2.buildable.loc
+          [ Pp.textf "Library %S appears for the second time in this directory"
+              (Lib_name.to_string name)
+          ]
+    in
+    let executables =
+      match
+        String.Map.of_list_map exes ~f:(fun (exes, m) ->
+            (snd (List.hd exes.Executables.names), m))
+      with
+      | Ok x -> x
+      | Error (name, _, (exes2, _)) ->
+        User_error.raise ~loc:exes2.buildable.loc
+          [ Pp.textf
+              "Executable %S appears for the second time in this directory"
+              name
+          ]
+    in
+    let rev_map =
+      let rev_modules =
+        let by_name buildable =
+          Modules.fold_user_written ~init:[] ~f:(fun m acc ->
+              (Module.name m, buildable) :: acc)
+        in
+        List.rev_append
+          (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
+          (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
+      in
+      match Module_name.Map.of_list rev_modules with
+      | Ok x -> x
+      | Error (name, _, _) ->
+        let open Module_name.Infix in
+        let locs =
+          List.filter_map rev_modules ~f:(fun (n, b) ->
+              Option.some_if (n = name) b.loc)
+          |> List.sort ~compare
+        in
+        User_error.raise
+          ~loc:(Loc.drop_position (List.hd locs))
+          [ Pp.textf "Module %S is used in several stanzas:"
+              (Module_name.to_string name)
+          ; Pp.enumerate locs ~f:(fun loc ->
+                Pp.verbatim (Loc.to_file_colon_line loc))
+          ; Pp.text
+              "To fix this error, you must specify an explicit \"modules\" \
+               field in every library, executable, and executables stanzas in \
+               this dune file. Note that each module cannot appear in more \
+               than one \"modules\" field - it must belong to a single \
+               library or executable."
+          ]
+    in
+    { libraries; executables; rev_map }
 end
 
 module Dir_artifacts = struct
@@ -28,9 +89,35 @@ module Dir_artifacts = struct
   let empty =
     { libraries = Lib_name.Map.empty; modules = Module_name.Map.empty }
 
-  let lookup_module { modules; _ } = Module_name.Map.find modules
+  let lookup_module { modules; libraries = _ } = Module_name.Map.find modules
 
-  let lookup_library { libraries; _ } = Lib_name.Map.find libraries
+  let lookup_library { libraries; modules = _ } = Lib_name.Map.find libraries
+
+  let make (d : _ Dir_with_dune.t) (libs, exes) =
+    let libraries =
+      List.fold_left
+        ~f:(fun libraries (lib, _) ->
+          let name = Lib_name.of_local lib.Library.name in
+          Lib_name.Map.add_exn libraries name lib)
+        ~init:Lib_name.Map.empty libs
+    in
+    let modules =
+      let by_name modules obj_dir =
+        Modules.fold_user_written ~init:modules ~f:(fun m modules ->
+            Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
+      in
+      let init =
+        List.fold_left ~init:Module_name.Map.empty
+          ~f:(fun modules (e, m) ->
+            by_name modules (Executables.obj_dir ~dir:d.ctx_dir e) m)
+          exes
+      in
+      List.fold_left ~init
+        ~f:(fun modules (l, m) ->
+          by_name modules (Library.obj_dir ~dir:d.ctx_dir l) m)
+        libs
+    in
+    { libraries; modules }
 end
 
 type t =
@@ -131,12 +218,12 @@ let modules_of_files ~dialects ~dir ~files =
            (* we aren't using Filename.extension because we want to handle
               filenames such as foo.cppo.ml *)
            match String.lsplit2 fn ~on:'.' with
+           | None -> Skip
            | Some (s, ext) -> (
              match Dialect.DB.find_by_extension dialects ("." ^ ext) with
              | Some (dialect, Ml_kind.Impl) -> Left (make_module dialect s fn)
              | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
-             | None -> Skip )
-           | None -> Skip)
+             | None -> Skip ))
   in
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with
@@ -328,93 +415,6 @@ end = struct
           Right (exes, modules)
         | _ -> Skip)
 
-  let make_modules (libs, exes) =
-    let libraries =
-      match
-        Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->
-            (Library.best_name lib, m))
-      with
-      | Ok x -> x
-      | Error (name, _, (lib2, _)) ->
-        User_error.raise ~loc:lib2.buildable.loc
-          [ Pp.textf "Library %S appears for the second time in this directory"
-              (Lib_name.to_string name)
-          ]
-    in
-    let executables =
-      match
-        String.Map.of_list_map exes ~f:(fun (exes, m) ->
-            (snd (List.hd exes.Executables.names), m))
-      with
-      | Ok x -> x
-      | Error (name, _, (exes2, _)) ->
-        User_error.raise ~loc:exes2.buildable.loc
-          [ Pp.textf
-              "Executable %S appears for the second time in this directory"
-              name
-          ]
-    in
-    let rev_map =
-      let rev_modules =
-        let by_name buildable =
-          Modules.fold_user_written ~init:[] ~f:(fun m acc ->
-              (Module.name m, buildable) :: acc)
-        in
-        List.rev_append
-          (List.concat_map libs ~f:(fun (l, m) -> by_name l.buildable m))
-          (List.concat_map exes ~f:(fun (e, m) -> by_name e.buildable m))
-      in
-      match Module_name.Map.of_list rev_modules with
-      | Ok x -> x
-      | Error (name, _, _) ->
-        let open Module_name.Infix in
-        let locs =
-          List.filter_map rev_modules ~f:(fun (n, b) ->
-              Option.some_if (n = name) b.loc)
-          |> List.sort ~compare
-        in
-        User_error.raise
-          ~loc:(Loc.drop_position (List.hd locs))
-          [ Pp.textf "Module %S is used in several stanzas:"
-              (Module_name.to_string name)
-          ; Pp.enumerate locs ~f:(fun loc ->
-                Pp.verbatim (Loc.to_file_colon_line loc))
-          ; Pp.text
-              "To fix this error, you must specify an explicit \"modules\" \
-               field in every library, executable, and executables stanzas in \
-               this dune file. Note that each module cannot appear in more \
-               than one \"modules\" field - it must belong to a single \
-               library or executable."
-          ]
-    in
-    { Dir_modules.libraries; executables; rev_map }
-
-  let make_artifacts (d : _ Dir_with_dune.t) (libs, exes) =
-    let libraries =
-      List.fold_left
-        ~f:(fun libraries (lib, _) ->
-          let name = Lib_name.of_local lib.Library.name in
-          Lib_name.Map.add_exn libraries name lib)
-        ~init:Lib_name.Map.empty libs
-    in
-    let modules =
-      let by_name modules obj_dir =
-        Modules.fold_user_written ~init:modules ~f:(fun m modules ->
-            Module_name.Map.add_exn modules (Module.name m) (obj_dir, m))
-      in
-      let init =
-        List.fold_left ~init:Module_name.Map.empty
-          ~f:(fun modules (e, m) ->
-            by_name modules (Executables.obj_dir ~dir:d.ctx_dir e) m)
-          exes
-      in
-      List.fold_left ~init
-        ~f:(fun modules (l, m) ->
-          by_name modules (Library.obj_dir ~dir:d.ctx_dir l) m)
-        libs
-    in
-    { Dir_artifacts.libraries; modules }
-
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
       { Dir_with_dune.ctx_dir = dir
@@ -516,8 +516,17 @@ end = struct
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
     match Dir_status.DB.get dir_status_db ~dir with
+    | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
+      See_above group_root
     | Standalone x -> (
       match x with
+      | Some (_, None)
+      | None ->
+        Here
+          { t = empty Standalone ~dir
+          ; rules = None
+          ; subdirs = Path.Build.Map.empty
+          }
       | Some (ft_dir, Some d) ->
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
@@ -533,7 +542,7 @@ end = struct
               { kind = Standalone
               ; dir
               ; text_files = files
-              ; modules = Memo.Lazy.map ~f:make_modules libs_and_exes
+              ; modules = Memo.Lazy.map ~f:Dir_modules.make libs_and_exes
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
@@ -547,20 +556,12 @@ end = struct
                       build_coq_modules_map d ~dir:d.ctx_dir
                         ~modules:
                           (coq_modules_of_files ~subdirs:[ (dir, [], files) ]))
-              ; artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes
+              ; artifacts =
+                  Memo.Lazy.map ~f:(Dir_artifacts.make d) libs_and_exes
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
-          }
-      | Some (_, None)
-      | None ->
-        Here
-          { t = empty Standalone ~dir
-          ; rules = None
-          ; subdirs = Path.Build.Map.empty
           } )
-    | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
-      See_above group_root
     | Group_root (ft_dir, qualif_mode, d) ->
       let rec walk ft_dir ~dir ~local acc =
         match Dir_status.DB.get dir_status_db ~dir with
@@ -626,8 +627,8 @@ end = struct
             in
             libs_and_exes sctx d ~modules)
       in
-      let modules = Memo.Lazy.map ~f:make_modules libs_and_exes in
-      let artifacts = Memo.Lazy.map ~f:(make_artifacts d) libs_and_exes in
+      let modules = Memo.Lazy.map ~f:Dir_modules.make libs_and_exes in
+      let artifacts = Memo.Lazy.map ~f:(Dir_artifacts.make d) libs_and_exes in
       let foreign_sources =
         Memo.lazy_ (fun () ->
             check_no_qualified Loc.none qualif_mode;

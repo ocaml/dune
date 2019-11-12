@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Run this script simply as ./perf.sh from the root directory.
+
 set -e
 
 # TEST_REPO=https://github.com/avsm/platform

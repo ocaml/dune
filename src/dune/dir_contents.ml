@@ -456,27 +456,7 @@ end = struct
           | _ -> [])
       |> String.Set.of_list
     in
-    let used_in_select =
-      List.concat_map stanzas ~f:(fun stanza ->
-          match (stanza : Stanza.t) with
-          | Library { buildable; _ }
-          | Executables { buildable; _ } ->
-            (* add files used by the (select ...) dependencies *)
-            List.concat_map buildable.libraries ~f:(fun dep ->
-                match (dep : Lib_dep.t) with
-                | Re_export _
-                | Direct _ ->
-                  []
-                | Select s ->
-                  List.map s.choices ~f:(fun (s : Lib_dep.Select.Choice.t) ->
-                      s.file))
-          | _ -> [])
-      |> String.Set.of_list
-    in
-    let files =
-      String.Set.union generated_files (File_tree.Dir.files ft_dir)
-    in
-    String.Set.diff files used_in_select
+    String.Set.union generated_files (File_tree.Dir.files ft_dir)
 
   type result0_here =
     { t : t

@@ -13,7 +13,7 @@ bootstrap.ml @diml
 
 src/ocaml-config/* @diml @rgrinberg @dra27
 
-src/stdune/* @diml @rgrinberg @emillon
+src/stdune/* @diml @rgrinberg
 
 src/which_program/* @diml @rgrinberg
 

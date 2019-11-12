@@ -148,13 +148,7 @@ let decode =
     Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.Glob.decode
   in
   let vendored_dirs =
-    let decode =
-      if Bootstrap.bootstrapping then
-        let pred = Predicate_lang.any in
-        Dune_lang.Decoder.(map ~f:(fun () -> pred) (keyword "*"))
-      else
-        Predicate_lang.Glob.decode
-    in
+    let decode = Predicate_lang.Glob.decode in
     located (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> decode)
   in
   let decode =

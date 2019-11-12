@@ -1,7 +1,7 @@
 open Import
 open! No_io
 
-let rule sctx compile () =
+let rule sctx compile (exes : Dune_file.Executables.t) () =
   let libs = Result.ok_exn (Lazy.force (Lib.Compile.requires_link compile)) in
   let locals, externals =
     List.partition_map libs ~f:(fun lib ->
@@ -16,7 +16,13 @@ let rule sctx compile () =
   Format.asprintf "%a@." Pp.render_ignore_tags
     (Pp.vbox
        (Pp.concat ~sep:Pp.cut
-          [ def "external_libraries"
+          [ def "executables"
+              (List
+                 (* @@DRA Want to be using the public_name here, not the
+                    internal name *)
+                 (List.map ~f:(fun (_, x) -> Dyn.String x) exes.names))
+          ; Pp.nop
+          ; def "external_libraries"
               (List
                  (List.map externals ~f:(fun x ->
                       Lib.name x |> Lib_name.to_dyn)))
@@ -26,6 +32,12 @@ let rule sctx compile () =
                  (List.map locals ~f:(fun x ->
                       let info = Lib.Local.info x in
                       let dir = Lib_info.src_dir info in
+                      let special_builton_support =
+                        match Lib_info.special_builtin_support info with
+                        | Some (Build_info { data_module; _ }) ->
+                          Some data_module
+                        | _ -> None
+                      in
                       Dyn.Tuple
                         [ Path.Source.to_dyn
                             (Path.Build.drop_build_context_exn dir)
@@ -36,8 +48,9 @@ let rule sctx compile () =
                         ; ( match
                               Dir_contents.get sctx ~dir |> Dir_contents.dirs
                             with
-                          | _ :: _ :: _ -> Dyn.Variant ("Unqualified", [])
-                          | _ -> Dyn.Variant ("No", []) )
+                          | _ :: _ :: _ -> Dyn.Bool true
+                          | _ -> Dyn.Bool false )
+                        ; Dyn.Encoder.(option string) special_builton_support
                         ])))
           ]))
 
@@ -46,4 +59,4 @@ let gen_rules sctx (exes : Dune_file.Executables.t) ~dir compile =
       Super_context.add_rule sctx ~loc:exes.buildable.loc ~dir
         (Build.write_file_dyn
            (Path.Build.relative dir fname)
-           (Build.delayed (rule sctx compile))))
+           (Build.delayed (rule sctx compile exes))))

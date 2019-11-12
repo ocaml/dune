@@ -80,10 +80,10 @@ module Pkg_config : sig
     ; cflags : string list
     }
 
-  (** [query t ~package] query pkg-config for the [package]. The package must not
-      contain a version constraint. Multiple, unversioned packages are separated
-      with spaces, for example "gtk+-3.0 gtksourceview-3.0".
-      Returns [None] if [package] is not available *)
+  (** [query t ~package] query pkg-config for the [package]. The package must
+      not contain a version constraint. Multiple, unversioned packages are
+      separated with spaces, for example "gtk+-3.0 gtksourceview-3.0". Returns
+      [None] if [package] is not available *)
   val query : t -> package:string -> package_conf option
 
   val query_expr : t -> package:string -> expr:string -> package_conf option
@@ -91,9 +91,9 @@ module Pkg_config : sig
 
   (** [query_expr_err t ~package ~expr] query pkg-config for the [package].
       [expr] may contain a version constraint, for example "gtk+-3.0 >= 3.18".
-      [package] must be just the name of the package.
-      If [expr] is specified, [package] must be specified as well.
-      Returns [Error error_msg] if [package] is not available *)
+      [package] must be just the name of the package. If [expr] is specified,
+      [package] must be specified as well. Returns [Error error_msg] if
+      [package] is not available *)
   val query_expr_err :
     t -> package:string -> expr:string -> (package_conf, string) result
 end

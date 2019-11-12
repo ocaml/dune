@@ -1,6 +1,6 @@
 src/dag/* @diml
 src/fiber/* @diml
-src/let_syntax/* @diml
+src/ocaml-syntax-shims/* @diml
 src/memo/* @diml
 src/xdg/* @diml
 src/catapult/* @emillon
@@ -15,8 +15,6 @@ src/ocaml-config/* @diml @rgrinberg @dra27
 
 src/stdune/* @diml @rgrinberg
 
-src/which_program/* @diml @rgrinberg
-
 src/dune_lang/* @diml @rgrinberg
 
 src/dune/menhir.* @fpottier
@@ -25,13 +23,13 @@ src/dune/odoc.* @rginberg @antron
 
 src/dune/merlin.* @aalekseyev
 
-src/configurator/* @rgrinberg
+otherlibs/configurator/* @rgrinberg
 
 src/dune/format_rules.* @emillon
 
 src/dune/js_of_ocaml* @hhugo
 
-editor_integration/emacs/* @Chris00
+editor-integration/emacs/* @Chris00
 
 doc/* @emillon @rgrinberg @nojb
 

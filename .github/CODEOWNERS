@@ -1,6 +1,6 @@
 src/dag/* @diml
 src/fiber/* @diml
-src/let_syntax/* @diml
+src/ocaml-syntax-shims/* @diml
 src/memo/* @diml
 src/xdg/* @diml
 src/catapult/* @emillon

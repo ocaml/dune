@@ -23,7 +23,7 @@ src/dune/odoc.* @rginberg @antron
 
 src/dune/merlin.* @aalekseyev
 
-src/configurator/* @rgrinberg
+otherlibs/configurator/* @rgrinberg
 
 src/dune/format_rules.* @emillon
 

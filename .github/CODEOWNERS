@@ -29,7 +29,7 @@ src/dune/format_rules.* @emillon
 
 src/dune/js_of_ocaml* @hhugo
 
-editor_integration/emacs/* @Chris00
+editor-integration/emacs/* @Chris00
 
 doc/* @emillon @rgrinberg @nojb
 

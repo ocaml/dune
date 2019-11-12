@@ -98,7 +98,7 @@ case "$TARGET" in
     if [ $OLD_OCAML -eq 1 ] ; then
       eval $(opam env)
     fi
-    ocaml bootstrap.mlt
+    ocaml bootstrap.ml
     echo -en "travis_fold:end:dune.bootstrap\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"

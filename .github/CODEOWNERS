@@ -15,8 +15,6 @@ src/ocaml-config/* @diml @rgrinberg @dra27
 
 src/stdune/* @diml @rgrinberg
 
-src/which_program/* @diml @rgrinberg
-
 src/dune_lang/* @diml @rgrinberg
 
 src/dune/menhir.* @fpottier

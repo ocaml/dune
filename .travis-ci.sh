@@ -22,6 +22,12 @@ opam_install_test_deps () {
          # coq
 }
 
+if [ ${OCAML_VERSION//./} -lt 406 ] ; then
+  OLD_OCAML=1
+else
+  OLD_OCAML=0
+fi
+
 case "$TARGET" in
   prepare)
     echo -en "travis_fold:start:ocaml\r"
@@ -40,7 +46,7 @@ case "$TARGET" in
       echo "$OCAML_VERSION.$OCAML_RELEASE" > ~/ocaml/cached-version
     fi
     echo -en "travis_fold:end:ocaml\r"
-    if [ $WITH_OPAM -eq 1 ] ; then
+    if [ $WITH_OPAM -eq 1 -o $OLD_OCAML -eq 1 ] ; then
       echo -en "travis_fold:start:opam.init\r"
       if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
         brew update
@@ -65,13 +71,20 @@ case "$TARGET" in
         opam init --disable-sandboxing
         eval $(opam config env)
 
-        _boot/install/default/bin/dune runtest && \
-            opam_install_test_deps
-        opam remove dune jbuilder \
-             `opam list --depends-on jbuilder --installed --short` \
-             `opam list --depends-on dune     --installed --short`
-        if opam info dune &> /dev/null; then
-            opam remove dune `opam list --depends-on dune --installed --short`
+        if [ $OLD_OCAML -eq 1 ] ; then
+          opam remote add secondary 'git+https://github.com/dra27/opam-repository.git#secondary'
+          opam install ocamlfind-secondary
+        fi
+
+        if [ $WITH_OPAM -eq 1 ] ; then
+          ./dune.exe runtest && \
+              opam_install_test_deps
+          opam remove dune jbuilder \
+               `opam list --depends-on jbuilder --installed --short` \
+               `opam list --depends-on dune     --installed --short`
+          if opam info dune &> /dev/null; then
+              opam remove dune `opam list --depends-on dune --installed --short`
+          fi
         fi
       fi
       cp -a ~/.opam ~/.opam-start
@@ -82,15 +95,15 @@ case "$TARGET" in
     UPDATE_OPAM=0
     RUNTEST_NO_DEPS=runtest-no-deps.out
     echo -en "travis_fold:start:dune.bootstrap\r"
-    ocaml bootstrap.ml
+    if [ $OLD_OCAML -eq 1 ] ; then
+      eval $(opam env)
+    fi
+    ocaml bootstrap.mlt
     echo -en "travis_fold:end:dune.bootstrap\r"
-    ./boot.exe --subst
-    echo -en "travis_fold:start:dune.boot\r"
-    ./boot.exe
     if [ $WITH_OPAM -eq 1 ] ; then
       echo -en "travis_fold:start:opam.deps\r"
       DATE=$(date +%Y%m%d)
-      eval $(opam config env)
+      eval $(opam env)
       for pkg in $(opam pin list --short); do
         UPDATE_OPAM=1
         opam pin remove $pkg --no-action
@@ -102,7 +115,7 @@ case "$TARGET" in
         UPDATE_OPAM=1
         opam upgrade
       fi
-      if ! ./_boot/install/default/bin/dune build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
+      if ! ./dune.exe build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
         cat $RUNTEST_NO_DEPS;
         exit 1;
       fi
@@ -114,13 +127,12 @@ case "$TARGET" in
       opam_install_test_deps
       echo -en "travis_fold:end:opam.deps\r"
     fi
-    echo -en "travis_fold:end:dune.boot\r"
     if [ $WITH_OPAM -eq 1 ] ; then
       cat $RUNTEST_NO_DEPS;
-      _boot/install/default/bin/dune runtest && \
-      # _boot/install/default/bin/dune build @test/blackbox-tests/runtest-js && \
-      # _boot/install/default/bin/dune build @test/blackbox-tests/runtest-coq && \
-      ! _boot/install/default/bin/dune build @test/fail-with-background-jobs-running
+      ./dune.exe runtest && \
+      # ./dune.exe build @test/blackbox-tests/runtest-js && \
+      # ./dune.exe build @test/blackbox-tests/runtest-coq && \
+      ! ./dune.exe build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then
         rm -rf ~/.opam

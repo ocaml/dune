@@ -43,8 +43,3 @@ val setup_env : capture_outputs:bool -> Env.t
 
 (** Set the concurrency level according to the user configuration *)
 val set_concurrency : Config.t -> unit Fiber.t
-
-(**/**)
-
-(* This is used to bootstrap dune itself. It is not part of the public API. *)
-val bootstrap : unit -> unit

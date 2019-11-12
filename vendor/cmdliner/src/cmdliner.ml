@@ -3,7 +3,7 @@
   the ISC license, see terms at the end of the file. cmdliner
   v1.0.2-18-gac44bb7
   ---------------------------------------------------------------------------*)
-
+module Pervasives = Pervasives [@@warning "-3"]
 module Manpage = Cmdliner_manpage
 module Arg = Cmdliner_arg
 

@@ -1,11 +1,22 @@
 (executable
  (name main)
- (public_name dune)
- (package dune)
  (libraries memo dune_lang fiber stdune unix dune_cache_daemon dune_cache
    dune cmdliner threads.posix build_info)
  (preprocess future_syntax)
  (bootstrap_info bootstrap-info))
+
+(rule
+ (action (copy main.exe dune.exe))
+ (enabled_if (<> %{profile} dune-bootstrap)))
+
+(rule
+ (action (copy ../dune.exe dune.exe))
+ (enabled_if (= %{profile} dune-bootstrap)))
+
+(install
+ (section bin)
+ (package dune)
+ (files (dune.exe as dune)))
 
 (deprecated_library_name
  (old_public_name dune.configurator)

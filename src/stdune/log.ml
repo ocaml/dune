@@ -32,7 +32,7 @@ let init ?(file = File.Default) () =
         | None -> "unset" ));
   let buf = Buffer.create 1024 in
   let ppf = Format.formatter_of_buffer buf in
-  Fdecl.reset t (Some { oc; buf; ppf })
+  Fdecl.set t (Some { oc; buf; ppf })
 
 let init_disabled () = Fdecl.set t None
 

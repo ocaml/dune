@@ -58,14 +58,11 @@ module Args : sig
   (** Create an empty command line. *)
   val empty : _ t
 
-  (* Like [Expand] but memoized. *)
-  val expand_memo : expand -> _ t
-
-  (* Like [Expand] but with the empty set of dependencies. *)
-  val expand_paths : (dir:Path.t -> string list) -> _ t
-
-  (* Like [Expand] but with the empty set of dependencies and memoized. *)
-  val expand_paths_memo : (dir:Path.t -> string list) -> _ t
+  (** Memoize the computation of command line arguments specified by a given
+      expression. Use this function when the same subexpression appears in
+      multiple [Command.Args.t] expressions to share both the time and memory
+      required for the computation. *)
+  val memo : static t -> 'a t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we

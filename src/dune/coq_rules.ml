@@ -16,8 +16,7 @@ module Util = struct
         let src_dir = Lib_info.src_dir info in
         Path.Set.add acc src_dir)
 
-  let include_flags ts =
-    Command.Args.expand_paths (Lib.L.to_iflags (include_paths ts))
+  let include_flags ts = include_paths ts |> Lib.L.to_iflags
 end
 
 type coq_context =

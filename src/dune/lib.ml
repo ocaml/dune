@@ -431,10 +431,11 @@ let link_flags t (mode : Link_mode.t) (lib_config : Lib_config.t) =
 module L = struct
   type nonrec t = t list
 
-  let to_iflags ~dir paths =
-    Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-        Path.reach ~from:dir path :: "-I" :: acc)
-    |> List.rev
+  let to_iflags dirs =
+    Command.Args.S
+      ( Path.Set.fold dirs ~init:[] ~f:(fun dir acc ->
+            Command.Args.Path dir :: A "-I" :: acc)
+      |> List.rev )
 
   let include_paths ts =
     let dirs =
@@ -461,13 +462,12 @@ module L = struct
     | [] -> dirs
     | x :: _ -> Path.Set.remove dirs x.stdlib_dir
 
-  let c_include_flags ts =
-    Command.Args.expand_paths_memo (to_iflags (c_include_paths ts))
+  let c_include_flags ts = to_iflags (c_include_paths ts)
 
   let compile_and_link_flags ~compile ~link ~mode ~lib_config =
     let dirs = Path.Set.union (include_paths compile) (c_include_paths link) in
     Command.Args.S
-      ( Command.Args.expand_paths_memo (to_iflags dirs)
+      ( to_iflags dirs
       :: List.map link ~f:(fun t -> link_flags t mode lib_config) )
 
   let jsoo_runtime_files ts =

@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 
-module Args = struct
+module Args0 = struct
   type static = Static
 
   type dynamic = Dynamic
@@ -24,28 +24,12 @@ module Args = struct
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
-  (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)
   let dyn args = Dyn (Build.map args ~f:(fun x -> As x))
 
   let empty = S []
-
-  let expand_memo f =
-    let memo =
-      Memo.create_hidden "expand_memo" ~doc:"expand_memo"
-        ~input:(module Path)
-        Sync
-        (fun dir -> f ~dir)
-    in
-    Expand (fun ~dir -> Memo.exec memo dir)
-
-  let expand_paths f = Expand (fun ~dir -> (f ~dir, Dep.Set.empty))
-
-  let expand_paths_memo f =
-    let f ~dir = (f ~dir, Dep.Set.empty) in
-    expand_memo f
 end
 
-open Args
+open Args0
 
 let rec add_targets ts acc =
   List.fold_left ts ~init:acc ~f:(fun acc t ->
@@ -57,38 +41,36 @@ let rec add_targets ts acc =
         add_targets ts acc
       | _ -> acc)
 
-let expand ~dir ts =
-  let run_loop t =
-    let static_deps = ref Dep.Set.empty in
-    let add_dep path =
-      static_deps := Dep.Set.add !static_deps (Dep.file path)
-    in
-    let rec loop_static : static t -> string list = function
-      | A s -> [ s ]
-      | As l -> l
-      | Dep fn ->
-        add_dep fn;
-        [ Path.reach fn ~from:dir ]
-      | Path fn -> [ Path.reach fn ~from:dir ]
-      | Deps fns ->
-        List.map fns ~f:(fun fn ->
-            add_dep fn;
-            Path.reach ~from:dir fn)
-      | Paths fns -> List.map fns ~f:(Path.reach ~from:dir)
-      | S ts -> List.concat_map ts ~f:loop_static
-      | Concat (sep, ts) -> [ String.concat ~sep (loop_static (S ts)) ]
-      | Hidden_deps l ->
-        static_deps := Dep.Set.union !static_deps l;
-        []
-      | Fail f -> f.fail ()
-      | Expand f ->
-        let args, deps = f ~dir in
-        static_deps := Dep.Set.union !static_deps deps;
-        args
-    in
-    let res = loop_static t in
-    (res, !static_deps)
+let expand_static ~dir t =
+  let static_deps = ref Dep.Set.empty in
+  let add_dep path = static_deps := Dep.Set.add !static_deps (Dep.file path) in
+  let rec loop_static : static t -> string list = function
+    | A s -> [ s ]
+    | As l -> l
+    | Dep fn ->
+      add_dep fn;
+      [ Path.reach fn ~from:dir ]
+    | Path fn -> [ Path.reach fn ~from:dir ]
+    | Deps fns ->
+      List.map fns ~f:(fun fn ->
+          add_dep fn;
+          Path.reach ~from:dir fn)
+    | Paths fns -> List.map fns ~f:(Path.reach ~from:dir)
+    | S ts -> List.concat_map ts ~f:loop_static
+    | Concat (sep, ts) -> [ String.concat ~sep (loop_static (S ts)) ]
+    | Hidden_deps l ->
+      static_deps := Dep.Set.union !static_deps l;
+      []
+    | Fail f -> f.fail ()
+    | Expand f ->
+      let args, deps = f ~dir in
+      static_deps := Dep.Set.union !static_deps deps;
+      args
   in
+  let res = loop_static t in
+  (res, !static_deps)
+
+let expand ~dir ts =
   let rec loop = function
     | A s -> Build.return [ s ]
     | As l -> Build.return l
@@ -103,7 +85,7 @@ let expand ~dir ts =
     | Concat (sep, ts) ->
       Build.map (loop (S ts)) ~f:(fun x -> [ String.concat ~sep x ])
     | Target fn -> Build.return [ Path.reach (Path.build fn) ~from:dir ]
-    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:run_loop)
+    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:(expand_static ~dir))
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.map (Build.deps deps) ~f:(fun () -> [])
     | Hidden_targets _ -> Build.return []
@@ -152,6 +134,20 @@ let of_result_map res ~f =
   match res with
   | Ok x -> f x
   | Error e -> fail e
+
+module Args = struct
+  include Args0
+
+  let memo t =
+    let f = expand_static t in
+    let memo =
+      Memo.create_hidden "Command.Args.memo" ~doc:"Command.Args.memo"
+        ~input:(module Path)
+        Sync
+        (fun dir -> f ~dir)
+    in
+    Expand (fun ~dir -> Memo.exec memo dir)
+end
 
 module Ml_kind = struct
   let flag t = Ml_kind.choose ~impl:(Args.A "-impl") ~intf:(A "-intf") t

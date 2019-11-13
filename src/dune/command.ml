@@ -139,12 +139,11 @@ module Args = struct
   include Args0
 
   let memo t =
-    let f = expand_static t in
     let memo =
       Memo.create_hidden "Command.Args.memo" ~doc:"Command.Args.memo"
         ~input:(module Path)
         Sync
-        (fun dir -> f ~dir)
+        (fun dir -> expand_static ~dir t)
     in
     Expand (fun ~dir -> Memo.exec memo dir)
 end

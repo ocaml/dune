@@ -33,7 +33,8 @@ module Args : sig
   (** The type [expand] captures the meaning of static [Command.Args.t]: it is
       a way to construct functions that expand a given directory into a list of
       commmand line arguments of type [string list] and a set of dependencies
-      of type [Dep.Set.t]. *)
+      of type [Dep.Set.t]. You can use the constructor [Expand] to specify the
+      meaning directly, which is sometimes useful, e.g. for memoization. *)
   type expand = dir:Path.t -> string list * Dep.Set.t
 
   type _ t =
@@ -62,7 +63,7 @@ module Args : sig
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
-  val memo : static t -> 'a t
+  val memo : static t -> _ t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we

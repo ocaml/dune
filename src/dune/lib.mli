@@ -56,11 +56,11 @@ module L : sig
 
   type nonrec t = t list
 
-  val to_iflags : Path.Set.t -> 'a Command.Args.t
+  val to_iflags : dir:Path.t -> Path.Set.t -> string list
 
   val include_paths : t -> Path.Set.t
 
-  val include_flags : t -> _ Command.Args.t
+  val include_flags : t -> dir:Path.t -> string list
 
   val c_include_flags : t -> _ Command.Args.t
 

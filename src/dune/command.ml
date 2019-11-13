@@ -6,6 +6,8 @@ module Args = struct
 
   type dynamic = Dynamic
 
+  type expand = dir:Path.t -> string list * Dep.Set.t
+
   type _ t =
     | A : string -> _ t
     | As : string list -> _ t
@@ -20,11 +22,27 @@ module Args = struct
     | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
+    | Expand : expand -> _ t
 
   (* TODO: Shall we simply make the constructor [Dyn] to accept a list? *)
   let dyn args = Dyn (Build.map args ~f:(fun x -> As x))
 
   let empty = S []
+
+  let expand_memo f =
+    let memo =
+      Memo.create_hidden "expand_memo" ~doc:"expand_memo"
+        ~input:(module Path)
+        Sync
+        (fun dir -> f ~dir)
+    in
+    Expand (fun ~dir -> Memo.exec memo dir)
+
+  let expand_paths f = Expand (fun ~dir -> (f ~dir, Dep.Set.empty))
+
+  let expand_paths_memo f =
+    let f ~dir = (f ~dir, Dep.Set.empty) in
+    expand_memo f
 end
 
 open Args
@@ -63,6 +81,10 @@ let expand ~dir ts =
         static_deps := Dep.Set.union !static_deps l;
         []
       | Fail f -> f.fail ()
+      | Expand f ->
+        let args, deps = f ~dir in
+        static_deps := Dep.Set.union !static_deps deps;
+        args
     in
     let res = loop_static t in
     (res, !static_deps)
@@ -85,6 +107,10 @@ let expand ~dir ts =
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.map (Build.deps deps) ~f:(fun () -> [])
     | Hidden_targets _ -> Build.return []
+    | Expand f ->
+      let args, deps = f ~dir in
+      let open Build.O in
+      Build.deps deps >>> Build.return args
   in
   loop (S ts)
 

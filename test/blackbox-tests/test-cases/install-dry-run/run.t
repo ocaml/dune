@@ -11,26 +11,37 @@
   Installing OPAM_PREFIX/lib/mylib/mylib.cmxs
   Installing OPAM_PREFIX/lib/mylib/mylib.ml
   Installing OPAM_PREFIX/lib/mylib/opam
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/META
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/META to OPAM_PREFIX/lib/mylib/META (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/dune-package
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/dune-package to OPAM_PREFIX/lib/mylib/dune-package (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib$ext_lib
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib$ext_lib to OPAM_PREFIX/lib/mylib/mylib$ext_lib (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cma
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cma to OPAM_PREFIX/lib/mylib/mylib.cma (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmi
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmi to OPAM_PREFIX/lib/mylib/mylib.cmi (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmt
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmt to OPAM_PREFIX/lib/mylib/mylib.cmt (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmx
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmx to OPAM_PREFIX/lib/mylib/mylib.cmx (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxa
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmxa to OPAM_PREFIX/lib/mylib/mylib.cmxa (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.cmxs
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.cmxs to OPAM_PREFIX/lib/mylib/mylib.cmxs (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib.ml
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/mylib.ml to OPAM_PREFIX/lib/mylib/mylib.ml (executable: false)
+  Removing (if it exists) OPAM_PREFIX/lib/mylib/opam
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/opam to OPAM_PREFIX/lib/mylib/opam (executable: false)
 

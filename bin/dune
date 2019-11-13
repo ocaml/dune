@@ -23,6 +23,17 @@
  (files
   (dune.exe as dune)))
 
+(install
+ (section lib_root)
+ (package dune)
+ (files
+  (dune.top as ocaml/dune.top)))
+
+(install
+ (section toplevel)
+ (package dune)
+ (files dune.top))
+
 (deprecated_library_name
  (old_public_name dune.configurator)
  (new_public_name dune-configurator))

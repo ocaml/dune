@@ -222,49 +222,6 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
-module DB = struct
-  module Settings = struct
-    let t = Fdecl.create Dyn.Encoder.opaque
-
-    let equal (e1, w1) (e2, w2) = Env.equal e1 e2 && Workspace.equal w1 w2
-
-    type state =
-      | Already_initialized
-      | Needs_initialization
-
-    let set ~env workspace =
-      match Fdecl.peek t with
-      | Some v ->
-        if equal v (env, workspace) then
-          Already_initialized
-        else
-          User_error.raise
-            [ Pp.text "You must restart dune after updating a workspace file" ]
-      | None ->
-        Fdecl.set t (env, workspace);
-        Needs_initialization
-  end
-
-  let t = Fiber.Ivar.create ()
-
-  let get dir =
-    match Fiber.Ivar.peek t with
-    | None ->
-      Code_error.raise "Context.DB.get: called before initialization" []
-    | Some db -> (
-      match Path.Build.extract_build_context dir with
-      | None ->
-        Code_error.raise "Context.DB.get: invalid dir"
-          [ ("dir", Path.Build.to_dyn dir) ]
-      | Some (name, _) -> (
-        let name = Context_name.of_string name in
-        match Context_name.Map.find db name with
-        | Some c -> c
-        | None ->
-          Code_error.raise "Context.DB.get: context does not exist"
-            [ ("name", Context_name.to_dyn name) ] ) )
-end
-
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives =
@@ -731,38 +688,8 @@ let instantiate_context env (workspace : Workspace.t)
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
       ~disable_dynamically_linked_foreign_archives
 
-let create ~env (workspace : Workspace.t) : t list Fiber.t =
-  let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
-    lazy
-      ( List.map workspace.contexts ~f:(fun context ->
-            let contexts =
-              Fiber.Once.create (fun () ->
-                  let* host_context =
-                    match Workspace.Context.host_context context with
-                    | None -> Fiber.return None
-                    | Some context -> (
-                      let+ contexts =
-                        Context_name.Map.find_exn (Lazy.force contexts) context
-                        |> Fiber.Once.get
-                      in
-                      match contexts with
-                      | [ x ] -> Some x
-                      | [] -> assert false (* checked by workspace *)
-                      | _ :: _ -> assert false )
-                    (* target cannot be host *)
-                  in
-                  instantiate_context env workspace ~context ~host_context)
-            in
-            let name = Workspace.Context.name context in
-            (name, contexts))
-      |> Context_name.Map.of_list_exn )
-  in
-  Lazy.force contexts |> Context_name.Map.values
-  |> Fiber.parallel_map ~f:Fiber.Once.get
-  |> Fiber.map ~f:List.concat
-
-let create =
-  let module Input = struct
+module Create = struct
+  module Input = struct
     type t = Env.t * Workspace.t
 
     let hash = Tuple.T2.hash Env.hash Workspace.hash
@@ -770,34 +697,80 @@ let create =
     let equal = Tuple.T2.equal Env.equal Workspace.equal
 
     let to_dyn = Tuple.T2.to_dyn Env.to_dyn Workspace.to_dyn
-  end in
-  let module Output = struct
+  end
+
+  module Output = struct
     type nonrec t = t list
 
     let to_dyn = Dyn.Encoder.list to_dyn
-  end in
-  let f (env, workspace) =
-    match DB.Settings.set ~env workspace with
-    | Already_initialized ->
-      let+ contexts = Fiber.Ivar.read DB.t in
-      Context_name.Map.values contexts
-    | Needs_initialization ->
-      let open Fiber.O in
-      let* contexts = create ~env workspace in
-      let+ () =
-        Fiber.Ivar.fill DB.t
-          (Context_name.Map.of_list_map_exn contexts ~f:(fun ctx ->
-               (ctx.name, ctx)))
-      in
-      contexts
-  in
+  end
+
+  let call (env, workspace) : t list Fiber.t =
+    let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
+      lazy
+        ( List.map workspace.contexts ~f:(fun context ->
+              let contexts =
+                Fiber.Once.create (fun () ->
+                    let* host_context =
+                      match Workspace.Context.host_context context with
+                      | None -> Fiber.return None
+                      | Some context -> (
+                        let+ contexts =
+                          Context_name.Map.find_exn (Lazy.force contexts)
+                            context
+                          |> Fiber.Once.get
+                        in
+                        match contexts with
+                        | [ x ] -> Some x
+                        | [] -> assert false (* checked by workspace *)
+                        | _ :: _ -> assert false
+                        (* target cannot be host *) )
+                    in
+                    instantiate_context env workspace ~context ~host_context)
+              in
+              let name = Workspace.Context.name context in
+              (name, contexts))
+        |> Context_name.Map.of_list_exn )
+    in
+    Lazy.force contexts |> Context_name.Map.values
+    |> Fiber.parallel_map ~f:Fiber.Once.get
+    |> Fiber.map ~f:List.concat
+
   let memo =
     Memo.create "create-context" ~doc:"create contexts"
       ~input:(module Input)
       ~output:(Simple (module Output))
-      ~visibility:Memo.Visibility.Hidden Async f
-  in
-  fun ~env workspace -> Memo.exec memo (env, workspace)
+      ~visibility:Memo.Visibility.Hidden Async call
+end
+
+module DB = struct
+  module Settings = struct
+    let t = ref None
+
+    let set x = t := Some x
+
+    let get () =
+      match !t with
+      | Some t -> t
+      | None -> Code_error.raise "context settings not set yet" []
+  end
+
+  let get dir =
+    match Path.Build.extract_build_context dir with
+    | None ->
+      Code_error.raise "Context.DB.get: invalid dir"
+        [ ("dir", Path.Build.to_dyn dir) ]
+    | Some (name, _) ->
+      let name = Context_name.of_string name in
+      let env, workspace = Settings.get () in
+      let contexts = Memo.peek_exn Create.memo (env, workspace) in
+      List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name)
+end
+
+let create ~env workspace =
+  let input = (env, workspace) in
+  DB.Settings.set input;
+  Memo.exec Create.memo input
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

@@ -76,7 +76,7 @@ run_test current
 echo "Master branch" >> _perf/master
 echo "=============" >> _perf/master
 git checkout master
-echo "Testing master ($CURRENT_BRANCH)"
+echo "Testing master"
 run_test master
 
 git checkout $CURRENT_BRANCH

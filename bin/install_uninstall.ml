@@ -418,6 +418,7 @@ let install_uninstall ~what =
                       in
                       let dir = Path.parent_exn dst in
                       if what = "install" then (
+                        Ops.remove_if_exists dst;
                         Printf.eprintf "Installing %s\n%!"
                           (Path.to_string_maybe_quoted dst);
                         Ops.mkdir_p dir;

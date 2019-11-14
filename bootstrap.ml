@@ -98,7 +98,7 @@ let () =
        ( if v < (4, 10) then
          "-custom"
        else
-         "-output-complete-obj" )
+         "-output-complete-exe" )
        prog
        (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
   let args =

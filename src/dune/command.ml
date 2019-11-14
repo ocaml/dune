@@ -6,8 +6,10 @@ module Args0 = struct
 
   type dynamic = Dynamic
 
-  type expand = dir:Path.t -> string list * Dep.Set.t
+  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
 
+  (* Debugging tip: if you changed this file and Dune got broken in a weird way
+     it's probably because of the [Fail] constructor. *)
   type _ t =
     | A : string -> _ t
     | As : string list -> _ t
@@ -43,6 +45,7 @@ let rec add_targets ts acc =
 
 let expand_static ~dir t =
   let static_deps = ref Dep.Set.empty in
+  let exception Fail of fail in
   let add_dep path = static_deps := Dep.Set.add !static_deps (Dep.file path) in
   let rec loop_static : static t -> string list = function
     | A s -> [ s ]
@@ -61,14 +64,22 @@ let expand_static ~dir t =
     | Hidden_deps l ->
       static_deps := Dep.Set.union !static_deps l;
       []
-    | Fail f -> f.fail ()
-    | Expand f ->
-      let args, deps = f ~dir in
-      static_deps := Dep.Set.union !static_deps deps;
-      args
+    | Fail f -> raise (Fail f)
+    | Expand f -> (
+      match f ~dir with
+      | Error e -> raise (Fail e)
+      | Ok (args, deps) ->
+        static_deps := Dep.Set.union !static_deps deps;
+        args )
   in
-  let res = loop_static t in
-  (res, !static_deps)
+  match loop_static t with
+  | exception Fail fail -> Error fail
+  | res -> Ok (res, !static_deps)
+
+let expand_static_exn ~dir t =
+  match expand_static ~dir t with
+  | Error e -> e.fail ()
+  | Ok res -> res
 
 let expand ~dir ts =
   let rec loop = function
@@ -85,14 +96,16 @@ let expand ~dir ts =
     | Concat (sep, ts) ->
       Build.map (loop (S ts)) ~f:(fun x -> [ String.concat ~sep x ])
     | Target fn -> Build.return [ Path.reach (Path.build fn) ~from:dir ]
-    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:(expand_static ~dir))
+    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:(expand_static_exn ~dir))
     | Fail f -> Build.fail f
     | Hidden_deps deps -> Build.map (Build.deps deps) ~f:(fun () -> [])
     | Hidden_targets _ -> Build.return []
-    | Expand f ->
-      let args, deps = f ~dir in
-      let open Build.O in
-      Build.deps deps >>> Build.return args
+    | Expand f -> (
+      match f ~dir with
+      | Error e -> Build.fail e
+      | Ok (args, deps) ->
+        let open Build.O in
+        Build.deps deps >>> Build.return args )
   in
   loop (S ts)
 

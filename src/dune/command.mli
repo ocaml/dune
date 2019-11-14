@@ -31,11 +31,12 @@ module Args : sig
   type dynamic = Dynamic
 
   (** The type [expand] captures the meaning of static [Command.Args.t]: it is
-      a way to construct functions that expand a given directory into a list of
-      commmand line arguments of type [string list] and a set of dependencies
-      of type [Dep.Set.t]. You can use the constructor [Expand] to specify the
-      meaning directly, which is sometimes useful, e.g. for memoization. *)
-  type expand = dir:Path.t -> string list * Dep.Set.t
+      a way to construct functions that given a current working directory [dir]
+      compute the list of commmand line arguments of type [string list] and a
+      set of dependencies of type [Dep.Set.t], or fail. You can use the
+      constructor [Expand] to specify the meaning directly, which is sometimes
+      useful, e.g. for memoization. *)
+  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
 
   type _ t =
     | A : string -> _ t

@@ -620,7 +620,7 @@ end = struct
     if ocaml_version < (4, 10) then
       "-custom"
     else
-      "-output-complete-obj"
+      "-output-complete-exe"
 end
 
 let insert_header fn ~header =

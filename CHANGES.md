@@ -1,6 +1,9 @@
 2.0.0 (unreleased)
 ------------------
 
+- Remove existing destination files in `install`  before installing the new
+  ones. (#2885, fixes #2883, @bschommer)
+
 - The `action` field in the `alias` stanza is not available starting `lang dune
   2.0`. The `alias` field in the `rule` stanza is a replacement. (#2846, fixes
   2681, @rgrinberg)

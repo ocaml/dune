@@ -30,6 +30,14 @@ module Args : sig
 
   type dynamic = Dynamic
 
+  (** The type [expand] captures the meaning of static [Command.Args.t]: it is
+      a way to construct functions that given a current working directory [dir]
+      compute the list of commmand line arguments of type [string list] and a
+      set of dependencies of type [Dep.Set.t], or fail. You can use the
+      constructor [Expand] to specify the meaning directly, which is sometimes
+      useful, e.g. for memoization. *)
+  type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
+
   type _ t =
     | A : string -> _ t
     | As : string list -> _ t
@@ -44,12 +52,19 @@ module Args : sig
     | Hidden_targets : Path.Build.t list -> dynamic t
     | Dyn : static t Build.t -> dynamic t
     | Fail : fail -> _ t
+    | Expand : expand -> _ t
 
   (** Create dynamic command line arguments. *)
   val dyn : string list Build.t -> dynamic t
 
   (** Create an empty command line. *)
   val empty : _ t
+
+  (** Memoize the computation of command line arguments specified by a given
+      expression. Use this function when the same subexpression appears in
+      multiple [Command.Args.t] expressions to share both the time and memory
+      required for the computation. *)
+  val memo : static t -> _ t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we

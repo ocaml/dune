@@ -255,7 +255,9 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let requires = Compilation_context.requires_compile cctx in
-  let odoc_include_flags = odoc_include_flags ctx (Lib.package lib) requires in
+  let odoc_include_flags =
+    Command.Args.memo (odoc_include_flags ctx (Lib.package lib) requires)
+  in
   let obj_dir = Compilation_context.obj_dir cctx in
   let modules = Compilation_context.modules cctx in
   let includes =

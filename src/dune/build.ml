@@ -65,7 +65,7 @@ open O
 let rec all xs =
   match xs with
   | [] -> return []
-  | x :: xs -> Map2 ((fun x xs -> x :: xs), x, all xs)
+  | x :: xs -> Map2 (List.cons, x, all xs)
 
 let all_unit xs =
   let+ (_ : unit list) = all xs in

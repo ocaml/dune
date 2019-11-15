@@ -414,10 +414,20 @@ let gen_dune_package sctx pkg =
       |> Super_context.add_rule sctx ~dir:ctx.build_dir);
   Super_context.add_rule sctx ~dir:ctx.build_dir action
 
-let init_meta_and_dune_package sctx ~dir =
+module Project_and_super_context = struct
+  type t = Dune_project.t * Super_context.t
+
+  let equal = Tuple.T2.equal Dune_project.equal Super_context.As_memo_key.equal
+
+  let hash = Tuple.T2.hash Dune_project.hash Super_context.As_memo_key.hash
+
+  let to_dyn (p, s) =
+    Dyn.Tuple [ Dune_project.to_dyn p; Super_context.As_memo_key.to_dyn s ]
+end
+
+let meta_and_dune_package_rules_impl (project, sctx) =
   let ctx = Super_context.context sctx in
-  Super_context.find_scope_by_dir sctx dir
-  |> Scope.project |> Dune_project.packages
+  Dune_project.packages project
   |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
          let entries = Super_context.lib_entries_of_package sctx pkg.name in
          let deprecated_packages, entries =
@@ -512,6 +522,20 @@ let init_meta_and_dune_package sctx ~dir =
                   in
                   Format.asprintf "@[<v>%a@,@]" Meta.pp meta.entries)
                |> Build.write_file meta )))
+
+let meta_and_dune_package_rules_memo =
+  Memo.With_implicit_output.create "meta_and_dune_package_rules"
+    ~doc:"meta_and_dune_package_rules"
+    ~input:(module Project_and_super_context)
+    ~visibility:Hidden
+    ~output:(module Unit)
+    ~implicit_output:Rules.implicit_output Sync
+    meta_and_dune_package_rules_impl
+
+let meta_and_dune_package_rules sctx ~dir =
+  let project = Scope.project (Super_context.find_scope_by_dir sctx dir) in
+  Memo.With_implicit_output.exec meta_and_dune_package_rules_memo
+    (project, sctx)
 
 let symlink_installed_artifacts_to_build_install sctx
     (entries : (Loc.t option * Path.Build.t Install.Entry.t) list)

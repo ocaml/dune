@@ -35,77 +35,81 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
-type t =
-  { name : Context_name.t
-  ; kind : Kind.t
-  ; profile : Profile.t
-  ; merlin : bool
-  ; fdo_target_exe : Path.t option
-  ; disable_dynamically_linked_foreign_archives : bool
-  ; for_host : t option
-  ; implicit : bool
-  ; build_dir : Path.Build.t
-  ; env_nodes : Env_nodes.t
-  ; path : Path.t list
-  ; toplevel_path : Path.t option
-  ; ocaml_bin : Path.t
-  ; ocaml : Path.t
-  ; ocamlc : Path.t
-  ; ocamlopt : Path.t option
-  ; ocamldep : Path.t
-  ; ocamlmklib : Path.t
-  ; ocamlobjinfo : Path.t option
-  ; env : Env.t
-  ; findlib : Findlib.t
-  ; findlib_toolchain : Context_name.t option
-  ; arch_sixtyfour : bool
-  ; opam_var_cache : (string, string) Table.t
-  ; ocaml_config : Ocaml_config.t
-  ; version : Ocaml_version.t
-  ; stdlib_dir : Path.t
-  ; ccomp_type : Lib_config.Ccomp_type.t
-  ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-  ; which_cache : (string, Path.t option) Table.t
-  ; lib_config : Lib_config.t
-  }
+module T = struct
+  type t =
+    { name : Context_name.t
+    ; kind : Kind.t
+    ; profile : Profile.t
+    ; merlin : bool
+    ; fdo_target_exe : Path.t option
+    ; disable_dynamically_linked_foreign_archives : bool
+    ; for_host : t option
+    ; implicit : bool
+    ; build_dir : Path.Build.t
+    ; env_nodes : Env_nodes.t
+    ; path : Path.t list
+    ; toplevel_path : Path.t option
+    ; ocaml_bin : Path.t
+    ; ocaml : Path.t
+    ; ocamlc : Path.t
+    ; ocamlopt : Path.t option
+    ; ocamldep : Path.t
+    ; ocamlmklib : Path.t
+    ; ocamlobjinfo : Path.t option
+    ; env : Env.t
+    ; findlib : Findlib.t
+    ; findlib_toolchain : Context_name.t option
+    ; arch_sixtyfour : bool
+    ; opam_var_cache : (string, string) Table.t
+    ; ocaml_config : Ocaml_config.t
+    ; version : Ocaml_version.t
+    ; stdlib_dir : Path.t
+    ; ccomp_type : Lib_config.Ccomp_type.t
+    ; supports_shared_libraries : Dynlink_supported.By_the_os.t
+    ; which_cache : (string, Path.t option) Table.t
+    ; lib_config : Lib_config.t
+    }
 
-let equal x y = Context_name.equal x.name y.name
+  let equal x y = Context_name.equal x.name y.name
 
-let hash t = Context_name.hash t.name
+  let hash t = Context_name.hash t.name
 
-let to_dyn t : Dyn.t =
-  let open Dyn.Encoder in
-  let path = Path.to_dyn in
-  record
-    [ ("name", Context_name.to_dyn t.name)
-    ; ("kind", Kind.to_dyn t.kind)
-    ; ("profile", Profile.to_dyn t.profile)
-    ; ("merlin", Bool t.merlin)
-    ; ( "for_host"
-      , option Context_name.to_dyn (Option.map t.for_host ~f:(fun t -> t.name))
-      )
-    ; ("fdo_target_exe", option path t.fdo_target_exe)
-    ; ("build_dir", Path.Build.to_dyn t.build_dir)
-    ; ("toplevel_path", option path t.toplevel_path)
-    ; ("ocaml_bin", path t.ocaml_bin)
-    ; ("ocaml", path t.ocaml)
-    ; ("ocamlc", path t.ocamlc)
-    ; ("ocamlopt", option path t.ocamlopt)
-    ; ("ocamldep", path t.ocamldep)
-    ; ("ocamlmklib", path t.ocamlmklib)
-    ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
-    ; ("findlib_path", list path (Findlib.paths t.findlib))
-    ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
-    ; ( "natdynlink_supported"
-      , Bool
-          (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
-      )
-    ; ( "supports_shared_libraries"
-      , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
-    ; ("opam_vars", Table.to_dyn string t.opam_var_cache)
-    ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
-    ; ("which", Table.to_dyn (option path) t.which_cache)
-    ]
+  let to_dyn t : Dyn.t =
+    let open Dyn.Encoder in
+    let path = Path.to_dyn in
+    record
+      [ ("name", Context_name.to_dyn t.name)
+      ; ("kind", Kind.to_dyn t.kind)
+      ; ("profile", Profile.to_dyn t.profile)
+      ; ("merlin", Bool t.merlin)
+      ; ( "for_host"
+        , option Context_name.to_dyn
+            (Option.map t.for_host ~f:(fun t -> t.name)) )
+      ; ("fdo_target_exe", option path t.fdo_target_exe)
+      ; ("build_dir", Path.Build.to_dyn t.build_dir)
+      ; ("toplevel_path", option path t.toplevel_path)
+      ; ("ocaml_bin", path t.ocaml_bin)
+      ; ("ocaml", path t.ocaml)
+      ; ("ocamlc", path t.ocamlc)
+      ; ("ocamlopt", option path t.ocamlopt)
+      ; ("ocamldep", path t.ocamldep)
+      ; ("ocamlmklib", path t.ocamlmklib)
+      ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
+      ; ("findlib_path", list path (Findlib.paths t.findlib))
+      ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
+      ; ( "natdynlink_supported"
+        , Bool
+            (Dynlink_supported.By_the_os.get t.lib_config.natdynlink_supported)
+        )
+      ; ( "supports_shared_libraries"
+        , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
+      ; ("opam_vars", Table.to_dyn string t.opam_var_cache)
+      ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
+      ; ("which", Table.to_dyn (option path) t.which_cache)
+      ]
+end
+
+include T
 
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
@@ -755,16 +759,25 @@ module DB = struct
       | None -> Code_error.raise "context settings not set yet" []
   end
 
-  let get dir =
-    match Path.Build.extract_build_context dir with
-    | None ->
-      Code_error.raise "Context.DB.get: invalid dir"
-        [ ("dir", Path.Build.to_dyn dir) ]
-    | Some (name, _) ->
-      let name = Context_name.of_string name in
-      let env, workspace = Settings.get () in
-      let contexts = Memo.peek_exn Create.memo (env, workspace) in
-      List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name)
+  let get =
+    let memo =
+      Memo.create "context-db-get" ~doc:"get context from db"
+        ~input:(module Context_name)
+        ~output:(Simple (module T))
+        ~visibility:Hidden Sync
+        (fun name ->
+          let env, workspace = Settings.get () in
+          let contexts = Memo.peek_exn Create.memo (env, workspace) in
+          List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
+    in
+    fun dir ->
+      match Path.Build.extract_build_context dir with
+      | None ->
+        Code_error.raise "Context.DB.get: invalid dir"
+          [ ("dir", Path.Build.to_dyn dir) ]
+      | Some (name, _) ->
+        let name = Context_name.of_string name in
+        Memo.exec memo name
 end
 
 let create ~env workspace =

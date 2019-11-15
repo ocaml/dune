@@ -67,7 +67,7 @@ val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val hash : ('a -> int) -> 'a list -> int
 
-val cons : 'a t -> 'a -> 'a t
+val cons : 'a -> 'a t -> 'a t
 
 val fold_map : 'a list -> init:'b -> f:('b -> 'a -> 'b * 'c) -> 'b * 'c list
 

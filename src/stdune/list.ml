@@ -172,7 +172,7 @@ let rec equal eq xs ys =
 
 let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)
 
-let cons xs x = x :: xs
+let cons x xs = x :: xs
 
 (* copy&paste from [base] *)
 let fold_map t ~init ~f =

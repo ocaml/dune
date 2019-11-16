@@ -208,6 +208,9 @@
 
 - Allow `.opam.template` files to be generated using rules (#2866, @rgrinberg)
 
+- Modify the root detection algorithm to stop at the first `dune-project` or
+  `dune-workspace` encountered. (#2891, @rgrinberg)
+
 1.11.4 (09/10/2019)
 -------------------
 

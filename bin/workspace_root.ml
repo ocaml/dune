@@ -8,12 +8,6 @@ module Kind = struct
     | Dune_project
     | Cwd
 
-  let priority = function
-    | Explicit -> 0
-    | Dune_workspace -> 1
-    | Dune_project -> 2
-    | Cwd -> 3
-
   let of_dir_contents files =
     if String.Set.mem files Workspace.filename then
       Some Dune_workspace
@@ -49,23 +43,22 @@ let find () =
       candidate
     | files ->
       let files = String.Set.of_list (Array.to_list files) in
-      let new_candidate =
-        match Kind.of_dir_contents files with
-        | Some kind when Kind.priority kind <= Kind.priority candidate.kind ->
-          Some { kind; dir; to_cwd; ancestor_vcs = None }
-        | _ -> None
-      in
       let candidate =
-        match (new_candidate, candidate.ancestor_vcs) with
-        | Some c, _ -> c
-        | None, Some _ -> candidate
-        | None, None -> (
-          match Vcs.Kind.of_dir_contents files with
-          | Some kind ->
-            { candidate with
-              ancestor_vcs = Some { kind; root = Path.of_string dir }
-            }
-          | None -> candidate )
+        match Kind.of_dir_contents files with
+        | Some kind ->
+          { kind; dir; to_cwd; ancestor_vcs = None }
+        | None ->
+          begin match candidate.ancestor_vcs with
+          | Some _ -> candidate
+          | None ->
+            begin match Vcs.Kind.of_dir_contents files with
+            | None -> candidate
+            | Some kind ->
+              { candidate with
+                ancestor_vcs = Some { kind; root = Path.of_string dir }
+              }
+            end
+          end
       in
       cont counter ~candidate dir ~to_cwd
   and cont counter ~candidate ~to_cwd dir =

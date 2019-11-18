@@ -206,6 +206,8 @@
 - Reimplement the bootstrap procedure. The new procedure is faster and
   should no longer stack overflow (#2854, @dra27, @diml)
 
+- Allow `.opam.template` files to be generated using rules (#2866, @rgrinberg)
+
 1.11.4 (09/10/2019)
 -------------------
 

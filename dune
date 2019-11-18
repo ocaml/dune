@@ -6,3 +6,15 @@
   (binaries
    (src/ocaml-syntax-shims/pp.exe as ocaml-syntax-shims)
    test/blackbox-tests/cram.exe)))
+
+(rule
+ (copy dune-private-libs.opam.template dune-configurator.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template dune-glob.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template dune-action-plugin.opam.template))
+
+(rule
+ (copy dune-private-libs.opam.template dune-build-info.opam.template))

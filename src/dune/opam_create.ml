@@ -144,26 +144,20 @@ let opam_fields project (package : Package.t) =
   else
     Opam_file.Create.normalise_field_order fields
 
-let opam_template sctx ~pkg =
+let opam_template ~opam_path =
   let opam_template_path =
-    Package.opam_file pkg |> Path.Source.extend_basename ~suffix:".template"
+    opam_path |> Path.Build.extend_basename ~suffix:".template" |> Path.build
   in
-  if File_tree.file_exists opam_template_path then
-    let build_dir = Super_context.build_dir sctx in
-    Some (Path.Build.append_source build_dir opam_template_path)
-  else
-    None
+  Build.if_file_exists opam_template_path
+    ~then_:(Build.contents opam_template_path)
+    ~else_:(Build.return "")
 
 let add_rule sctx ~project ~pkg =
   let open Build.O in
   let build_dir = Super_context.build_dir sctx in
   let opam_path = Path.Build.append_source build_dir (Package.opam_file pkg) in
   let opam_rule =
-    (let+ template =
-       match opam_template sctx ~pkg with
-       | Some p -> Build.contents (Path.build p)
-       | None -> Build.return ""
-     in
+    (let+ template = opam_template ~opam_path in
      let opam_path = Path.build opam_path in
      let opamfile =
        Opam_file.parse

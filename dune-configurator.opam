@@ -21,6 +21,7 @@ depends: [
   "dune" {>= "2.0"}
   "dune-private-libs" {= version}
 ]
+dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [
   ["dune" "subst"] {pinned}
   [
@@ -31,8 +32,6 @@ build: [
     "-j"
     jobs
     "@install"
-    "@runtest" {with-test}
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/ocaml/dune.git"

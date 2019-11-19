@@ -35,7 +35,7 @@ let%expect_test _ =
    \n1,\
    \ncharacters\
    \n19-20:\
-   \nError: missing duration suffix, specify 's', 'm' or 'h'\
+   \nError: invalid suffix, use one of s, m, h\
    \n") |}]
 
 let%expect_test _ =
@@ -49,7 +49,7 @@ let%expect_test _ =
    \n1,\
    \ncharacters\
    \n19-21:\
-   \nError: invalid duration suffix k\
+   \nError: invalid suffix, use one of s, m, h\
    \n") |}]
 
 let%expect_test _ =
@@ -79,19 +79,5 @@ let%expect_test _ =
    \n1,\
    \ncharacters\
    \n17-19:\
-   \nError: missing suffix\
-   \n") |}]
-
-let%expect_test _ =
-  parse "(cache-trim-size 42kg)";
-  [%expect.unreachable]
-  [@@expect.uncaught_exn
-    {|
-  ( "File\
-   \n\"expect_test\",\
-   \nline\
-   \n1,\
-   \ncharacters\
-   \n17-21:\
-   \nError: invalid suffix kg\
+   \nError: invalid suffix, use one of B, kB, KB, MB, GB\
    \n") |}]

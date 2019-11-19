@@ -386,26 +386,8 @@ let triple a b c =
       b >>= fun b ->
       c >>= fun c -> return (a, b, c) )
 
-let duration =
-  let duration_of_string ~loc s =
-    let l = String.length s in
-    let factor =
-      match s.[l - 1] with
-      | 's' -> 1
-      | 'm' -> 60
-      | 'h' -> 60 * 60
-      | c when Char.code c >= Char.code '0' && Char.code c <= Char.code '9' ->
-        User_error.raise ~loc
-          [ Pp.textf "missing duration suffix, specify 's', 'm' or 'h'" ]
-      | c -> User_error.raise ~loc [ Pp.textf "invalid duration suffix %c" c ]
-    in
-    Option.map ~f:(( * ) factor)
-      (Int.of_string (String.sub s ~pos:0 ~len:(l - 1)))
-  in
-  basic_loc "Duration" duration_of_string
-
-let bytes_unit =
-  let bytes_unit_of_string ~loc s =
+let unit_number name suffixes =
+  let unit_number_of_string ~loc s =
     let l = String.length s in
     let n, suffix =
       let rec suffix_length i =
@@ -421,19 +403,29 @@ let bytes_unit =
       String.split_n s (l - suffix_length 0)
     in
     let factor =
-      match suffix with
-      | "B" -> 1
-      | "kB"
-      | "KB" ->
-        1000
-      | "MB" -> 1000 * 1000
-      | "GB" -> 1000 * 1000 * 1000
-      | "" -> User_error.raise ~loc [ Pp.textf "missing suffix" ]
-      | _ -> User_error.raise ~loc [ Pp.textf "invalid suffix %s" suffix ]
+      match List.assoc suffixes suffix with
+      | Some f -> f
+      | None ->
+        let possible_suffixes =
+          String.concat ~sep:", " (List.map ~f:fst suffixes)
+        in
+        User_error.raise ~loc
+          [ Pp.textf "invalid suffix, use one of %s" possible_suffixes ]
     in
     Option.map ~f:(( * ) factor) (Int.of_string n)
   in
-  basic_loc "Byte amount" bytes_unit_of_string
+  basic_loc name unit_number_of_string
+
+let duration = unit_number "Duration" [ ("s", 1); ("m", 60); ("h", 60 * 60) ]
+
+let bytes_unit =
+  unit_number "Byte amount"
+    [ ("B", 1)
+    ; ("kB", 1000)
+    ; ("KB", 1000)
+    ; ("MB", 1000 * 1000)
+    ; ("GB", 1000 * 1000 * 1000)
+    ]
 
 let option t =
   enter

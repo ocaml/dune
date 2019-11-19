@@ -51,3 +51,47 @@ let%expect_test _ =
    \n19-21:\
    \nError: invalid duration suffix k\
    \n") |}]
+
+let%expect_test _ =
+  parse "(cache-trim-size 2kB)";
+  [%expect
+    {|
+{ display = "quiet"
+; concurrency = "1"
+; terminal_persistence = "preserve"
+; sandboxing_preference = []
+; cache_mode = "disabled"
+; cache_transport = "direct"
+; cache_check_probability = 0.
+; cache_trim_period = 600
+; cache_trim_size = 2000
+}
+ |}]
+
+let%expect_test _ =
+  parse "(cache-trim-size 42)";
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  ( "File\
+   \n\"expect_test\",\
+   \nline\
+   \n1,\
+   \ncharacters\
+   \n17-19:\
+   \nError: missing suffix\
+   \n") |}]
+
+let%expect_test _ =
+  parse "(cache-trim-size 42kg)";
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  ( "File\
+   \n\"expect_test\",\
+   \nline\
+   \n1,\
+   \ncharacters\
+   \n17-21:\
+   \nError: invalid suffix kg\
+   \n") |}]

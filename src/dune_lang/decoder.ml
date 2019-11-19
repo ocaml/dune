@@ -404,6 +404,37 @@ let duration =
   in
   basic_loc "Duration" duration_of_string
 
+let bytes_unit =
+  let bytes_unit_of_string ~loc s =
+    let l = String.length s in
+    let n, suffix =
+      let rec suffix_length i =
+        if i = l then
+          i
+        else
+          let c = s.[l - i - 1] in
+          if Char.code c >= Char.code '0' && Char.code c <= Char.code '9' then
+            i
+          else
+            suffix_length (i + 1)
+      in
+      String.split_n s (l - suffix_length 0)
+    in
+    let factor =
+      match suffix with
+      | "B" -> 1
+      | "kB"
+      | "KB" ->
+        1000
+      | "MB" -> 1000 * 1000
+      | "GB" -> 1000 * 1000 * 1000
+      | "" -> User_error.raise ~loc [ Pp.textf "missing suffix" ]
+      | _ -> User_error.raise ~loc [ Pp.textf "invalid suffix %s" suffix ]
+    in
+    Option.map ~f:(( * ) factor) (Int.of_string n)
+  in
+  basic_loc "Byte amount" bytes_unit_of_string
+
 let option t =
   enter
     (eos >>= function

@@ -76,16 +76,11 @@ Reproducibility check
 
 While default mode of operation of the cache is to speedup build times
 by not re-running some rules, it can also be used to check build
-reproducibility. If `(cache check)` is specified in the configuration
-file instead of `(cache enable)`, dune will systematically run rules
-as if no cache was present, and compare the resulting files against a
-potential cache hit. If the files differ, the rule is not
+reproducibility. If `(cache-check-probability FLOAT)` is specified in
+the configuration file, in case of a cache hit dune will rerun the
+rule anyway with the given probability and compare the resulting files
+against a potential cache hit. If the files differ, the rule is not
 reproducible and a warning will be emitted.
-
-It is also possible to use the cache for speedup, and
-probabilistically rerun some rules to catch reproducibility issues in
-the long term, by specifying `(cache enale)` and
-`(cache-check-probability FLOAT)`.
 
 
 Daemon-less mode

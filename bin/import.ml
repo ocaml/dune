@@ -46,8 +46,6 @@ let make_cache (config : Config.t) =
   in
   Fiber.return
     ( match config.cache_mode with
-    | Config.Caching.Mode.Check ->
-      Some { Build_system.cache = make_cache (); check_probability = 1. }
     | Config.Caching.Mode.Enabled ->
       Some
         { Build_system.cache = make_cache ()

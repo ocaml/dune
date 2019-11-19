@@ -77,7 +77,6 @@ module Caching : sig
     type t =
       | Disabled
       | Enabled
-      | Check
 
     val all : (string * t) list
 

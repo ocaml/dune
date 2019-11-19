@@ -118,9 +118,8 @@ module Caching = struct
     type t =
       | Disabled
       | Enabled
-      | Check
 
-    let all = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+    let all = [ ("disabled", Disabled); ("enabled", Enabled) ]
 
     let decode = enum all
   end
@@ -185,7 +184,7 @@ let default =
   ; sandboxing_preference = []
   ; cache_mode = Disabled
   ; cache_transport = Daemon
-  ; cache_check_probability = 0.01
+  ; cache_check_probability = 0.
   }
 
 let decode =

@@ -140,6 +140,9 @@ val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
 val option : 'a t -> 'a option t
 
+(** Consume the next element as a duration, requiring 's', 'm' or 'h' suffix *)
+val duration : int t
+
 (** Unparsed next element of the input *)
 val raw : ast t
 

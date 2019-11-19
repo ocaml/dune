@@ -212,7 +212,7 @@ let decode =
     field "cache-check-probablity" Dune_lang.Decoder.float
       ~default:default.cache_check_probability
   and+ cache_trim_period =
-    field "cache-trim-period" Dune_lang.Decoder.int
+    field "cache-trim-period" Dune_lang.Decoder.duration
       ~default:default.cache_trim_period
   and+ cache_trim_size =
     field "cache-trim-size" Dune_lang.Decoder.int

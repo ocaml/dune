@@ -356,16 +356,18 @@ let located t ctx state1 =
 
 let raw = next Fn.id
 
-let basic desc f =
+let basic_loc desc f =
   next (function
     | Template { loc; _ }
     | List (loc, _)
     | Quoted_string (loc, _) ->
       User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) -> (
-      match f (Atom.to_string s) with
+      match f ~loc (Atom.to_string s) with
       | None -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
       | Some x -> x ))
+
+let basic desc f = basic_loc desc (fun ~loc:_ -> f)
 
 let string = plain_string (fun ~loc:_ x -> x)
 
@@ -383,6 +385,24 @@ let triple a b c =
     ( a >>= fun a ->
       b >>= fun b ->
       c >>= fun c -> return (a, b, c) )
+
+let duration =
+  let duration_of_string ~loc s =
+    let l = String.length s in
+    let factor =
+      match s.[l - 1] with
+      | 's' -> 1
+      | 'm' -> 60
+      | 'h' -> 60 * 60
+      | c when Char.code c >= Char.code '0' && Char.code c <= Char.code '9' ->
+        User_error.raise ~loc
+          [ Pp.textf "missing duration suffix, specify 's', 'm' or 'h'" ]
+      | c -> User_error.raise ~loc [ Pp.textf "invalid duration suffix %c" c ]
+    in
+    Option.map ~f:(( * ) factor)
+      (Int.of_string (String.sub s ~pos:0 ~len:(l - 1)))
+  in
+  basic_loc "Duration" duration_of_string
 
 let option t =
   enter

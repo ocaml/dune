@@ -12,6 +12,8 @@
 (source (github ocaml/dune))
 (documentation "https://dune.readthedocs.io/")
 
+(implicit_transitive_deps false)
+
 (package
  (name dune)
  (depends

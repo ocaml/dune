@@ -26,9 +26,6 @@
 - Do not put the `<package>.install` files in the source tree unless `-p` or
   `--promote-install-files` is passed on the command line (#2329, @diml)
 
-- Change `implicit_transive_deps` to be false. Implicit transitive deps now must
-  be manually enabled (#2306, @rgrinberg)
-
 - Compilation units of user defined executables are now mangled by default. This
   is done to prevent the accidental collision with library dependencies of the
   executable. (#2364, fixes #2292, @rgrinberg)

@@ -495,8 +495,7 @@ let get_exn () =
 
 let filename = "dune-project"
 
-let implicit_transitive_deps_default ~(lang : Lang.Instance.t) =
-  lang.version < (2, 0)
+let implicit_transitive_deps_default ~lang:_ = true
 
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)

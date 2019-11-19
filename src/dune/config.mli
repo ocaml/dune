@@ -129,3 +129,5 @@ val load_config_file : Path.t -> t
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty and
     we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t
+
+val to_dyn : t -> Dyn.t

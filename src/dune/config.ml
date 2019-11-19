@@ -70,6 +70,12 @@ module Display = struct
   include Stdune.Console.Display
 
   let decode = enum all
+
+  let to_string = function
+    | Progress -> "progress"
+    | Quiet -> "quiet"
+    | Short -> "short"
+    | Verbose -> "verbose"
 end
 
 module Concurrency = struct
@@ -121,6 +127,10 @@ module Caching = struct
 
     let all = [ ("disabled", Disabled); ("enabled", Enabled) ]
 
+    let to_string = function
+      | Enabled -> "enabled"
+      | Disabled -> "disabled"
+
     let decode = enum all
   end
 
@@ -128,6 +138,10 @@ module Caching = struct
     type t =
       | Daemon
       | Direct
+
+    let to_string = function
+      | Daemon -> "daemon"
+      | Direct -> "direct"
 
     let all = [ ("daemon", Daemon); ("direct", Direct) ]
 
@@ -266,3 +280,25 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else
     config
+
+let to_dyn config =
+  Dyn.Encoder.record
+    [ ("display", Dyn.Encoder.string (Display.to_string config.display))
+    ; ( "concurrency"
+      , Dyn.Encoder.string (Concurrency.to_string config.concurrency) )
+    ; ( "terminal_persistence"
+      , Dyn.Encoder.string
+          (Terminal_persistence.to_string config.terminal_persistence) )
+    ; ( "sandboxing_preference"
+      , (Dyn.Encoder.list Dyn.Encoder.string)
+          (List.map ~f:Sandbox_mode.to_string config.sandboxing_preference) )
+    ; ( "cache_mode"
+      , Dyn.Encoder.string (Caching.Mode.to_string config.cache_mode) )
+    ; ( "cache_transport"
+      , Dyn.Encoder.string (Caching.Transport.to_string config.cache_transport)
+      )
+    ; ( "cache_check_probability"
+      , Dyn.Encoder.float config.cache_check_probability )
+    ; ("cache_trim_period", Dyn.Encoder.int config.cache_trim_period)
+    ; ("cache_trim_size", Dyn.Encoder.int config.cache_trim_size)
+    ]

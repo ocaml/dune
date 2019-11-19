@@ -92,5 +92,5 @@ situations direct access can be preferable. This can be the case when
 running in an isolated environment like Docker or OPAM sandboxes,
 where only one instance of dune will ever be running at a time, and
 access to external cache is prohibited. Direct filesystem access can
-be obtained by specifying `(cache-transtport direct)` in the
+be obtained by specifying `(cache-transport direct)` in the
 configuration file.

@@ -93,4 +93,5 @@ running in an isolated environment like Docker or OPAM sandboxes,
 where only one instance of dune will ever be running at a time, and
 access to external cache is prohibited. Direct filesystem access can
 be obtained by specifying `(cache-transport direct)` in the
-configuration file.
+configuration file or passing `--cache-transport=direct` on the
+command line.

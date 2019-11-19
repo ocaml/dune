@@ -146,6 +146,8 @@ module type S = sig
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
     ; cache_check_probability : float field
+    ; cache_trim_period : int field
+    ; cache_trim_size : int field
     }
 end
 
@@ -167,6 +169,8 @@ let merge t (partial : Partial.t) =
   ; cache_transport = field t.cache_transport partial.cache_transport
   ; cache_check_probability =
       field t.cache_check_probability partial.cache_check_probability
+  ; cache_trim_period = field t.cache_trim_period partial.cache_trim_period
+  ; cache_trim_size = field t.cache_trim_size partial.cache_trim_size
   }
 
 let default =
@@ -185,6 +189,8 @@ let default =
   ; cache_mode = Disabled
   ; cache_transport = Daemon
   ; cache_check_probability = 0.
+  ; cache_trim_period = 10 * 60
+  ; cache_trim_size = 10 * 1000 * 1000 * 1000
   }
 
 let decode =
@@ -205,6 +211,12 @@ let decode =
   and+ cache_check_probability =
     field "cache-check-probablity" Dune_lang.Decoder.float
       ~default:default.cache_check_probability
+  and+ cache_trim_period =
+    field "cache-trim-period" Dune_lang.Decoder.int
+      ~default:default.cache_trim_period
+  and+ cache_trim_size =
+    field "cache-trim-size" Dune_lang.Decoder.int
+      ~default:default.cache_trim_size
   and+ () = Dune_lang.Versioned_file.no_more_lang in
   { display
   ; concurrency
@@ -213,6 +225,8 @@ let decode =
   ; cache_mode
   ; cache_transport
   ; cache_check_probability
+  ; cache_trim_period
+  ; cache_trim_size
   }
 
 let decode = fields decode

@@ -61,11 +61,11 @@ cache must be in the same partition as the build directories.
 The cache daemon will perform periodic trimming to limit the overhead.
 Every 10 minutes, it will purge the least recently used files so the
 cache overhead does not exceed 10G. This is configurable through the
-`DUNE_CACHE_TRIM_PERIOD` and `DUNE_CACHE_TRIM_SIZE` environment
-variables - soon to be configurable from the configuration file. Note
-that this operation will only consider the cache overhead, i.e. files
-not currently hard-linked in a build directory, as removing files
-currently used would not free any disk space.
+`(cache-trim-period SECONDS)` and `(cache-trim-size BYTES)`
+configuration entries. Note that this operation will only consider the
+cache overhead, i.e. files not currently hard-linked in a build
+directory, as removing files currently used would not free any disk
+space.
 
 On can run `dune cache trim --size=BYTES` to manually trigger trimming
 in the cache daemon.

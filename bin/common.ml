@@ -553,6 +553,8 @@ let term =
       ; cache_mode
       ; cache_transport
       ; cache_check_probability = Some cache_check_probability
+      ; cache_trim_period = None
+      ; cache_trim_size = None
       }
   in
   let config =

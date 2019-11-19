@@ -1,0 +1,101 @@
+*******
+Caching
+*******
+
+Dune has the ability to cache built files for later retrieval. This
+can greatly speedup subsequent builds when some dependencies are
+rebuilt in different workspaces, switching branches or iterating on
+code back and forth.
+
+
+Configuration
+=============
+
+The cache is, for now, an opt-in feature. Add `(cache enabled)` to
+your dune configuration file (default `~/.config/dune/config`) to
+activate it. When turned on, built files will automatically be
+promoted to the cache, and subsequent builds will automatically check
+the cache for hits.
+
+The cached files are stored inside you `XDG_CACHE_HOME` directory on
+*nix systems, and `"HOME\\Local Settings\\Cache"` on Windows.
+
+
+Daemon
+======
+
+By default, most cache operations go through the dune cache daemon, a
+separate process that dune instances connect to. This enables
+promotions to happen asynchronously and not slow the build
+process. The daemon is automatically started if needed when dune needs
+accessing the cache, and lives on for further use.
+
+Although the daemon concept is totally transparent, one can control it
+via the `dune cache` subcommand.
+
+Starting the daemon
+-------------------
+
+Use `dune cache start` to start the caching daemon if not running and
+print its endpoint, or retrieve the endpoint of the currently running
+daemon otherwise. A notable option is `--foreground` to not detach the
+daemon, which can help inspecting its log output.
+
+Stopping the daemon
+-------------------
+
+Use `dune cache stop` to stop the caching daemon. Although the daemon,
+when idle, should consume zero resources, you may want to get rid of
+the process. Also useful to restart the daemon with `--foreground`.
+
+
+Filesystem implementation and disk size
+=======================================
+
+The cache works by creating hardlinks to built files inside the cache
+directory when promoted, and in other build trees when retrieved. This
+has the great advantage of having zero disk space overhead for files
+still living in a build directory. One small drawback is that the
+cache must be in the same partition as the build directories.
+
+The cache daemon will perform periodic trimming to limit the overhead.
+Every 10 minutes, it will purge the least recently used files so the
+cache overhead does not exceed 10G. This is configurable through the
+`DUNE_CACHE_TRIM_PERIOD` and `DUNE_CACHE_TRIM_SIZE` environment
+variables - soon to be configurable from the configuration file. Note
+that this operation will only consider the cache overhead, i.e. files
+not currently hard-linked in a build directory, as removing files
+currently used would not free any disk space.
+
+On can run `dune cache trim --size=BYTES` to manually trigger trimming
+in the cache daemon.
+
+
+Reproducibility check
+=====================
+
+While default mode of operation of the cache is to speedup build times
+by not re-running some rules, it can also be used to check build
+reproducibility. If `(cache check)` is specified in the configuration
+file instead of `(cache enable)`, dune will systematically run rules
+as if no cache was present, and compare the resulting files against a
+potential cache hit. If the files differ, the rule is not
+reproducible and a warning will be emitted.
+
+It is also possible to use the cache for speedup, and
+probabilistically rerun some rules to catch reproducibility issues in
+the long term, by specifying `(cache enale)` and
+`(cache-check-probability FLOAT)`.
+
+
+Daemon-less mode
+================
+
+While the cache daemon provides asynchronous promotions to speedup
+builds and background trimming amongst other things, in some
+situations direct access can be preferable. This can be the case when
+running in an isolated environment like Docker or OPAM sandboxes,
+where only one instance of dune will ever be running at a time, and
+access to external cache is prohibited. Direct filesystem access can
+be obtained by specifying `(cache-transtport direct)` in the
+configuration file.

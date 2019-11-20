@@ -29,7 +29,11 @@ module Cache : sig
     -> int option
     -> (promotion list, string) Result.t
 
-  val make : ?root:Path.t -> handler -> (t, string) Result.t
+  val make :
+       ?root:Path.t
+    -> ?duplication_mode:duplication_mode
+    -> handler
+    -> (t, string) Result.t
 end
 
 (** The size overhead of cached files. That is, the total size of cached files

@@ -1488,9 +1488,9 @@ end = struct
           | true, _
           | _, None ->
             None
-          | false, Some { cache = (module Caching); _ } -> (
+          | false, Some { cache = (module Caching) as cache; _ } -> (
             match Caching.Cache.search Caching.cache rule_digest with
-            | Ok (_, files) -> Some files
+            | Ok (_, files) -> Some (files, cache)
             | Error msg ->
               Log.infof "cache miss: %s" msg;
               None )
@@ -1501,13 +1501,10 @@ end = struct
         in
         let pulled_from_cache =
           match from_Dune_cache with
-          | Some files when not cache_checking -> (
+          | Some (files, (module Caching)) when not cache_checking -> (
             let retrieve (file : Dune_cache.File.t) =
-              let path = Path.build file.in_the_build_directory in
-              Log.infof "retrieve %s from cache"
-                (Path.to_string_maybe_quoted path);
-              Path.link file.in_the_cache path;
-              Cached_digest.set path file.digest;
+              let retrieved = Caching.Cache.retrieve Caching.cache file in
+              Cached_digest.set retrieved file.digest;
               file.digest
             in
             match
@@ -1573,7 +1570,7 @@ end = struct
                the file list is part of the rule hash this really never should
                happen. *)
             match from_Dune_cache with
-            | Some cached when cache_checking ->
+            | Some (cached, _) when cache_checking ->
               (* This being [false] is unexpected and means we have a hash
                  collision *)
               let data_are_ok =

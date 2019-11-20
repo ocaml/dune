@@ -7,7 +7,10 @@ open Result.O
 
 type version = int * int
 
-type config = { exit_no_client : bool }
+type config =
+  { exit_no_client : bool
+  ; duplication_mode : Dune_cache.duplication_mode option
+  }
 
 type event =
   | Stop
@@ -453,6 +456,8 @@ module Client = struct
     client
 
   let search client key = Dune_cache.Cache.search client.cache key
+
+  let retrieve client key = Dune_cache.Cache.retrieve client.cache key
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

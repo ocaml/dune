@@ -5,7 +5,10 @@ type t
 
 exception Error of string
 
-type config = { exit_no_client : bool }
+type config =
+  { exit_no_client : bool
+  ; duplication_mode : Dune_cache.duplication_mode option
+  }
 
 val make : ?root:Path.t -> config:config -> unit -> t
 

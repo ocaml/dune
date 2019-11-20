@@ -92,6 +92,14 @@ module Caching : sig
 
     val decode : t Dune_lang.Decoder.t
   end
+
+  module Duplication : sig
+    type t = Dune_cache.duplication_mode option
+
+    val all : (string * t) list
+
+    val decode : t Dune_lang.Decoder.t
+  end
 end
 
 module type S = sig
@@ -105,6 +113,7 @@ module type S = sig
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
     ; cache_check_probability : float field
+    ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
     ; cache_trim_size : int field
     }

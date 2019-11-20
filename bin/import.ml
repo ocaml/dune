@@ -37,7 +37,8 @@ let make_cache (config : Config.t) =
         Result.ok_exn
           (Result.map_error
              ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-             (Dune_cache.Cache.make handle))
+             (Dune_cache.Cache.make ?duplication_mode:config.cache_duplication
+                handle))
       in
       Dune_cache.make_caching (module Dune_cache.Cache) cache
     | Daemon ->

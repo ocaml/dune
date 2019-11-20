@@ -151,6 +151,7 @@ module Cache = struct
     ; build_root : Path.t option
     ; repositories : repository list
     ; handler : handler
+    ; duplication_mode : duplication_mode
     }
 
   let path_files cache = Path.relative cache.root "files"
@@ -176,6 +177,17 @@ module Cache = struct
     Collision.search (FSSchemeImpl.path (path_files cache) hash) file
 
   let with_repositories cache repositories = { cache with repositories }
+
+  let duplicate cache =
+    match cache.duplication_mode with
+    | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
+    | Hardlink -> Path.link
+
+  let retrieve cache (file : File.t) =
+    let path = Path.build file.in_the_build_directory in
+    Log.infof "retrieve %s from cache" (Path.to_string_maybe_quoted path);
+    duplicate cache file.in_the_cache path;
+    path
 
   let promote_sync cache paths key metadata repo =
     let open Result.O in
@@ -207,7 +219,7 @@ module Cache = struct
         else
           Result.Ok stat
       in
-      let hardlink path =
+      let prepare path =
         let tmp = path_tmp cache in
         (* dune-cache uses a single writer model, the promoted file name can be
            constant *)
@@ -216,10 +228,10 @@ module Cache = struct
           Path.unlink dest
         else
           Path.mkdir_p tmp;
-        Path.link path dest;
+        duplicate cache path dest;
         dest
       in
-      let tmp = hardlink abs_path in
+      let tmp = prepare abs_path in
       let effective_hash = Digest.file_with_stats tmp (Path.stat tmp) in
       if Digest.compare effective_hash expected_hash != Ordering.Eq then (
         let message =
@@ -299,11 +311,22 @@ module Cache = struct
 
   let teardown _ = ()
 
-  let make ?(root = default_root ()) handler =
+  let detect_duplication_mode _ =
+    (* FIXME: use copy is root is on a different partition *)
+    Hardlink
+
+  let make ?(root = default_root ())
+      ?(duplication_mode = detect_duplication_mode root) handler =
     if Path.basename root <> "v2" then
       Result.Error "unable to read dune-cache"
     else
-      Result.ok { root; build_root = None; repositories = []; handler }
+      Result.ok
+        { root
+        ; build_root = None
+        ; repositories = []
+        ; handler
+        ; duplication_mode
+        }
 end
 
 let trimmable stats = stats.Unix.st_nlink = 1

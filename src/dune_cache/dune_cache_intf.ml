@@ -30,6 +30,10 @@ type command = Dedup of File.t
 
 type handler = command -> unit
 
+type duplication_mode =
+  | Copy
+  | Hardlink
+
 module type Cache = sig
   type t
 
@@ -44,6 +48,8 @@ module type Cache = sig
     -> (unit, string) Result.t
 
   val search : t -> Key.t -> (metadata * File.t list, string) Result.t
+
+  val retrieve : t -> File.t -> Path.t
 
   val set_build_dir : t -> Path.t -> t
 

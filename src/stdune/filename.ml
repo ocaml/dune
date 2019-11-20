@@ -1,58 +1,13 @@
-include Dune_caml.Filename
-
-(* Return the index of the start of the extension, using the same semantic as
-   [Filename.extension] in 4.04 *)
-let extension_start =
-  (* This is from the win32 implementation, but it is acceptable for the usage
-     we make of it in this function and covers all platforms. *)
-  let is_dir_sep = function
-    | '/'
-    | '\\'
-    | ':' ->
-      true
-    | _ -> false
-  in
-  let rec check_at_least_one_non_dot s len candidate i =
-    if i < 0 then
-      len
-    else
-      match s.[i] with
-      | '.' -> check_at_least_one_non_dot s len candidate (i - 1)
-      | c ->
-        if is_dir_sep c then
-          len
-        else
-          candidate
-  in
-  let rec search_dot s len i =
-    if i <= 0 then
-      len
-    else
-      match s.[i] with
-      | '.' -> check_at_least_one_non_dot s len i (i - 1)
-      | c ->
-        if is_dir_sep c then
-          len
-        else
-          search_dot s len (i - 1)
-  in
-  fun s ->
-    let len = String.length s in
-    search_dot s len (len - 1)
+include Stdlib.Filename
 
 let split_extension fn =
-  let i = extension_start fn in
-  String.split_n fn i
+  let ext = extension fn in
+  (String.sub fn ~pos:0 ~len:(String.length fn - String.length ext), ext)
 
 let split_extension_after_dot fn =
-  let i = extension_start fn + 1 in
-  let len = String.length fn in
-  if i > len then
-    (fn, "")
-  else
-    String.split_n fn i
-
-let extension fn = String.drop fn (extension_start fn)
+  match extension fn with
+  | "" -> (fn, "")
+  | s -> String.split_n fn (String.length fn - String.length s + 1)
 
 type program_name_kind =
   | In_path

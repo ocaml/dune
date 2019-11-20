@@ -120,7 +120,7 @@ let stable_sort t ~compare =
   stable_sort t ~cmp:(fun a b -> Ordering.to_int (compare a b))
 
 let sort_uniq t ~compare =
-  Dune_caml.List.sort_uniq (fun a b -> Ordering.to_int (compare a b)) t
+  Stdlib.List.sort_uniq (fun a b -> Ordering.to_int (compare a b)) t
 
 let rec compare a b ~compare:f : Ordering.t =
   match (a, b) with
@@ -149,7 +149,7 @@ let rec nth t i =
   | x :: _, 0 -> Some x
   | _ :: xs, i -> nth xs (i - 1)
 
-let physically_equal = (Pervasives.( == ) [@warning "-3"])
+let physically_equal = Stdlib.( == )
 
 let init =
   let rec loop acc i n f =
@@ -170,7 +170,7 @@ let rec equal eq xs ys =
   | x :: xs, y :: ys -> eq x y && equal eq xs ys
   | _, _ -> false
 
-let hash f xs = Dune_caml.Hashtbl.hash (map ~f xs)
+let hash f xs = Stdlib.Hashtbl.hash (map ~f xs)
 
 let cons x xs = x :: xs
 

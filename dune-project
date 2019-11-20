@@ -19,7 +19,7 @@
  (depends
   ;; Please keep the lower bound in sync with .travis.yml and
   ;; min_ocaml_version in bootstrap.ml
-  (ocaml (>= 4.06))
+  (ocaml (>= 4.07))
   base-unix
   base-threads)
  (conflicts

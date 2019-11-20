@@ -96,5 +96,5 @@ module List = struct
 end
 
 let hash f = function
-  | None -> Dune_caml.Hashtbl.hash None
-  | Some s -> Dune_caml.Hashtbl.hash (f s)
+  | None -> Stdlib.Hashtbl.hash None
+  | Some s -> Stdlib.Hashtbl.hash (f s)

@@ -1,7 +1,7 @@
 module type S = Set_intf.S
 
 module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
-  include Dune_caml.MoreLabels.Set.Make (struct
+  include Stdlib.MoreLabels.Set.Make (struct
     type t = Key.t
 
     let compare x y = Ordering.to_int (Key.compare x y)

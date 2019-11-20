@@ -1,5 +1,5 @@
 (* Because other the syntax s.[x] causes trouble *)
-module String = Dune_caml.String
+module String = Stdlib.String
 include StringLabels
 
 let compare a b = Ordering.of_int (String.compare a b)
@@ -286,6 +286,6 @@ let need_quoting s =
 
 let quote_for_shell s =
   if need_quoting s then
-    Dune_caml.Filename.quote s
+    Stdlib.Filename.quote s
   else
     s

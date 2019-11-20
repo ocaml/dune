@@ -67,7 +67,7 @@ let send output message = send_sexp output (Messages.sexp_of_message message)
 module ClientsKey = struct
   type t = Unix.file_descr
 
-  let compare a b = Ordering.of_int (Pervasives.compare a b)
+  let compare a b = Ordering.of_int (Stdlib.compare a b)
 
   let to_dyn _ = Dyn.Opaque
 end

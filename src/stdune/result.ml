@@ -100,7 +100,7 @@ module List = struct
 end
 
 let hash h1 h2 t =
-  Dune_caml.Hashtbl.hash
+  Stdlib.Hashtbl.hash
     ( match t with
     | Ok s -> h1 s
     | Error e -> h2 e )

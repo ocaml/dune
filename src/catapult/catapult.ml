@@ -40,9 +40,9 @@ let close { print; close; _ } =
   close ()
 
 let make path =
-  let channel = Pervasives.open_out path in
-  let print s = Pervasives.output_string channel s in
-  let close () = Pervasives.close_out channel in
+  let channel = Stdlib.open_out path in
+  let print s = Stdlib.output_string channel s in
+  let close () = Stdlib.close_out channel in
   let get_time () = Unix.gettimeofday () in
   let gc_stat () = Gc.stat () in
   { print; close; get_time; gc_stat; after_first_event = false; next_id = 0 }

@@ -1,5 +1,5 @@
-module List = Dune_caml.ListLabels
-module String = Dune_caml.StringLabels
+module List = Stdlib.ListLabels
+module String = Stdlib.StringLabels
 
 type t = exn
 
@@ -34,25 +34,10 @@ let pp_uncaught ~backtrace fmt exn =
 
 let pp fmt exn = Format.pp_print_string fmt (Printexc.to_string exn)
 
-(* TODO: we should be replace this by [let raise_with_backtrace =
-   Printexc.raise_with_backtrace], however this doesn't work with OCaml 4.06. We
-   should check this again after we drop support for 4.06. *)
-include (
-  struct
-    [@@@warning "-32-3"]
-
-    let raise_with_backtrace exn _ = reraise exn
-
-    include Printexc
-
-    let raise_with_backtrace exn bt = raise_with_backtrace exn bt
-  end :
-    sig
-      val raise_with_backtrace : exn -> Printexc.raw_backtrace -> _
-    end )
+let raise_with_backtrace = Printexc.raise_with_backtrace
 
 let equal = ( = )
 
-let hash = Dune_caml.Hashtbl.hash
+let hash = Stdlib.Hashtbl.hash
 
 let to_dyn exn = Dyn.String (Printexc.to_string exn)

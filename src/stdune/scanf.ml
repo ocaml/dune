@@ -1,4 +1,4 @@
-module Scanf = Dune_caml.Scanf
+module Scanf = Stdlib.Scanf
 
 let unescaped x =
   match Scanf.unescaped x with

@@ -1,6 +1,6 @@
 type t = string
 
-module D = Dune_caml.Digest
+module D = Stdlib.Digest
 module Set = String.Set
 
 let hash = Hashtbl.hash

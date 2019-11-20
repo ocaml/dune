@@ -48,10 +48,10 @@ Interfaces imported:
         0971650cdf1fa8e506e733e9a5da2628        Lexing
         0a88e320f172d3413ba0d5e0f9c70ccd        Hashtbl
         1a17539924469551f027475153d4d3b5        Format
-        a4afff2bf4082efda68a6a65cf31f8e2        Dune_caml__Result_compat
-        de733b926f4af640c957c8129aba4139        Dune_caml__Result
-        ba19641102c1711bdb2476bb8b8dbe32        Dune_caml__
-        7b10d1bd2d88af9c1da841149c988d94        Dune_caml
+        a4afff2bf4082efda68a6a65cf31f8e2        Stdlib__Result_compat
+        de733b926f4af640c957c8129aba4139        Stdlib__Result
+        ba19641102c1711bdb2476bb8b8dbe32        Stdlib__
+        7b10d1bd2d88af9c1da841149c988d94        Stdlib
         cd4856c93f21942683ce190142e88396        Complex
         79ae8c0eb753af6b441fe05456c7970b        CamlinternalFormatBasics
         4ff98b0650eef9c38ee9c9930e0c3e9b        CamlinternalBigarray
@@ -106,10 +106,6 @@ intf =
     ; "CamlinternalBigarray"
     ; "CamlinternalFormatBasics"
     ; "Complex"
-    ; "Dune_caml"
-    ; "Dune_caml__"
-    ; "Dune_caml__Result"
-    ; "Dune_caml__Result_compat"
     ; "Format"
     ; "Hashtbl"
     ; "Lexing"
@@ -120,6 +116,10 @@ intf =
     ; "Printexc"
     ; "Printf"
     ; "Set"
+    ; "Stdlib"
+    ; "Stdlib__"
+    ; "Stdlib__Result"
+    ; "Stdlib__Result_compat"
     ; "Stdune__"
     ; "Stdune__Array"
     ; "Stdune__Bin"

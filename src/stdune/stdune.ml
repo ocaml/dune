@@ -30,7 +30,6 @@ module Comparable = Comparable
 module Comparable_intf = Comparable_intf
 module Staged = Staged
 module String = String
-module Char = Char
 module Bool = Bool
 module Sexp = Sexp
 module Path = Path
@@ -59,11 +58,6 @@ module User_message = User_message
 module User_warning = User_warning
 module Lexbuf = Lexbuf
 module Scanf = Scanf
-
-(* Pervasives is deprecated in 4.08 in favor of Stdlib, however we are currently
-   compatible with OCaml >= 4.02 so for now we simply disable the deprecation
-   warning. *)
-module Pervasives = Pervasives [@@warning "-3"]
 
 external reraise : exn -> _ = "%reraise"
 

@@ -77,7 +77,7 @@ module Spec = struct
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a Type_eq.Id.t
     ; f : ('a, 'b, 'f) Function.t
-    ; doc : string
+    ; doc : string option
     }
 
   type packed = T : (_, _, _) t -> packed [@@unboxed]
@@ -402,7 +402,7 @@ module Output = struct
     | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
 end
 
-let create_with_cache (type i o f) name ~cache ~doc
+let create_with_cache (type i o f) name ~cache ?doc
     ~input:(module Input : Store_intf.Input with type t = i) ~visibility
     ~(output : o Output.t) (typ : (i, o, f) Function.Type.t) (f : f) =
   let name = Function.Name.make name in
@@ -437,18 +437,18 @@ let create_with_cache (type i o f) name ~cache ~doc
   { cache; spec }
 
 let create_with_store (type i) name
-    ~store:(module S : Store_intf.S with type key = i) ~doc ~input ~visibility
+    ~store:(module S : Store_intf.S with type key = i) ?doc ~input ~visibility
     ~output typ f =
   let cache = Store.make (module S) in
-  create_with_cache name ~cache ~doc ~input ~output ~visibility typ f
+  create_with_cache name ~cache ?doc ~input ~output ~visibility typ f
 
-let create (type i) name ~doc ~input:(module Input : Input with type t = i)
+let create (type i) name ?doc ~input:(module Input : Input with type t = i)
     ~visibility ~output typ f =
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
-  create_with_cache name ~cache ~doc ~input ~visibility ~output typ f
+  create_with_cache name ~cache ?doc ~input ~visibility ~output typ f
 
-let create_hidden (type output) name ~doc ~input typ impl =
+let create_hidden (type output) name ?doc ~input typ impl =
   let module O = struct
     type t = output
 
@@ -456,7 +456,7 @@ let create_hidden (type output) name ~doc ~input typ impl =
   end in
   create
     ~output:(Simple (module O))
-    ~visibility:Hidden name ~doc ~input typ impl
+    ~visibility:Hidden name ?doc ~input typ impl
 
 module Exec = struct
   let make_dep_node t ~state ~input =
@@ -705,7 +705,7 @@ end
 let current_run =
   let f () = Run.current () in
   let memo =
-    create "current-run" ~doc:"current run"
+    create "current-run"
       ~input:(module Unit)
       ~output:(Simple (module Run))
       ~visibility:Hidden Sync f
@@ -726,7 +726,6 @@ let lazy_ (type a) f =
   let memo =
     create
       (sprintf "lazy-%d" (Lazy_id.to_int id))
-      ~doc:"a lazy value"
       ~input:(module Unit)
       ~visibility:Hidden
       ~output:(Allow_cutoff (module Output))
@@ -753,7 +752,7 @@ end
 module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
-  let create (type i o f io) name ~doc ~input ~visibility
+  let create (type i o f io) name ?doc ~input ~visibility
       ~output:(module O : Output_simple with type t = o) ~implicit_output
       (typ : (i, o, f) Function.Type.t) (impl : f) =
     let output =
@@ -768,7 +767,7 @@ module With_implicit_output = struct
     match typ with
     | Function.Type.Sync ->
       let memo =
-        create name ~doc ~input ~visibility ~output Sync (fun i ->
+        create name ?doc ~input ~visibility ~output Sync (fun i ->
             Implicit_output.collect_sync implicit_output (fun () -> impl i))
       in
       ( fun input ->
@@ -778,7 +777,7 @@ module With_implicit_output = struct
         : f )
     | Function.Type.Async ->
       let memo =
-        create name ~doc ~input ~visibility ~output Async (fun i ->
+        create name ?doc ~input ~visibility ~output Async (fun i ->
             Implicit_output.collect_async implicit_output (fun () -> impl i))
       in
       ( fun input ->

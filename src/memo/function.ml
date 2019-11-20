@@ -20,7 +20,7 @@ end
 module Info = struct
   type t =
     { name : Name.t
-    ; doc : string
+    ; doc : string option
     }
 end
 

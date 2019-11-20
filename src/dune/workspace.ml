@@ -284,19 +284,23 @@ module Context = struct
       }
 end
 
-type t =
-  { merlin_context : Context_name.t option
-  ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t
-  }
+module T = struct
+  type t =
+    { merlin_context : Context_name.t option
+    ; contexts : Context.t list
+    ; env : Dune_env.Stanza.t
+    }
 
-let to_dyn { merlin_context; contexts; env } =
-  let open Dyn.Encoder in
-  record
-    [ ("merlin_context", option Context_name.to_dyn merlin_context)
-    ; ("contexts", list Context.to_dyn contexts)
-    ; ("env", Dune_env.Stanza.to_dyn env)
-    ]
+  let to_dyn { merlin_context; contexts; env } =
+    let open Dyn.Encoder in
+    record
+      [ ("merlin_context", option Context_name.to_dyn merlin_context)
+      ; ("contexts", list Context.to_dyn contexts)
+      ; ("env", Dune_env.Stanza.to_dyn env)
+      ]
+end
+
+include T
 
 let equal { merlin_context; contexts; env } w =
   Option.equal Context_name.equal merlin_context w.merlin_context
@@ -427,3 +431,54 @@ let default ?x ?profile () =
   default ?x ?profile ()
 
 let filename = "dune-workspace"
+
+module DB = struct
+  module Settings = struct
+    type t =
+      { x : Context_name.t option
+      ; profile : Profile.t option
+      ; path : Path.t option
+      }
+
+    let to_dyn { x; profile; path } =
+      let open Dyn.Encoder in
+      record
+        [ ("x", option Context_name.to_dyn x)
+        ; ("profile", option Profile.to_dyn profile)
+        ; ("path", option Path.to_dyn path)
+        ]
+
+    let hash = Hashtbl.hash
+
+    let equal = ( == )
+
+    let t : t option ref = ref None
+
+    let set x = t := Some x
+
+    let get () =
+      match !t with
+      | Some t -> t
+      | None -> Code_error.raise "workspace settings not set yet" []
+  end
+end
+
+let init ?x ?profile ?path () =
+  DB.Settings.set { DB.Settings.x; profile; path }
+
+let workspace =
+  let module Store = Memo.Store.Cell (DB.Settings) in
+  let f { DB.Settings.path; profile; x } =
+    match path with
+    | None -> default ?x ?profile ()
+    | Some p -> load ?x ?profile p
+  in
+  let memo =
+    Memo.create_with_store "workspaces-db" ~doc:"get all workspaces"
+      ~visibility:Hidden
+      ~store:(module Store)
+      ~input:(module DB.Settings)
+      ~output:(Simple (module T))
+      Sync f
+  in
+  fun () -> Memo.exec memo (DB.Settings.get ())

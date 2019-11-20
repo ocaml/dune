@@ -693,23 +693,15 @@ let instantiate_context env (workspace : Workspace.t)
       ~disable_dynamically_linked_foreign_archives
 
 module Create = struct
-  module Input = struct
-    type t = Env.t * Workspace.t
-
-    let hash = Tuple.T2.hash Env.hash Workspace.hash
-
-    let equal = Tuple.T2.equal Env.equal Workspace.equal
-
-    let to_dyn = Tuple.T2.to_dyn Env.to_dyn Workspace.to_dyn
-  end
-
   module Output = struct
     type nonrec t = t list
 
     let to_dyn = Dyn.Encoder.list to_dyn
   end
 
-  let call (env, workspace) : t list Fiber.t =
+  let call () : t list Fiber.t =
+    let env = Fdecl.get Global.env in
+    let workspace = Workspace.workspace () in
     let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
       lazy
         ( List.map workspace.contexts ~f:(fun context ->
@@ -742,22 +734,13 @@ module Create = struct
 
   let memo =
     Memo.create "create-context" ~doc:"create contexts"
-      ~input:(module Input)
+      ~input:(module Unit)
       ~output:(Simple (module Output))
       ~visibility:Memo.Visibility.Hidden Async call
 end
 
 module DB = struct
-  module Settings = struct
-    let t = ref None
-
-    let set x = t := Some x
-
-    let get () =
-      match !t with
-      | Some t -> t
-      | None -> Code_error.raise "context settings not set yet" []
-  end
+  let all = Memo.exec Create.memo
 
   let get =
     let memo =
@@ -766,8 +749,7 @@ module DB = struct
         ~output:(Simple (module T))
         ~visibility:Hidden Sync
         (fun name ->
-          let env, workspace = Settings.get () in
-          let contexts = Memo.peek_exn Create.memo (env, workspace) in
+          let contexts = Memo.peek_exn Create.memo () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in
     fun dir ->
@@ -779,11 +761,6 @@ module DB = struct
         let name = Context_name.of_string name in
         Memo.exec memo name
 end
-
-let create ~env workspace =
-  let input = (env, workspace) in
-  DB.Settings.set input;
-  Memo.exec Create.memo input
 
 let which t s = which ~cache:t.which_cache ~path:t.path s
 

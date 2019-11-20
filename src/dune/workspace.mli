@@ -72,10 +72,10 @@ val to_dyn : t -> Dyn.t
 
 val hash : t -> int
 
-val load : ?x:Context_name.t -> ?profile:Profile.t -> Path.t -> t
+val init :
+  ?x:Context_name.t -> ?profile:Profile.t -> ?path:Path.t -> unit -> unit
 
 (** Default name of workspace files *)
 val filename : string
 
-(** Default configuration *)
-val default : ?x:Context_name.t -> ?profile:Profile.t -> unit -> t
+val workspace : unit -> t

@@ -15,10 +15,11 @@ let term =
   in
   Common.set_common common ~targets:[];
   let capture_outputs = Common.capture_outputs common in
-  let env = Import.Main.setup_env ~capture_outputs in
+  let _env : Env.t = Import.Main.setup_env ~capture_outputs in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* ctxs = Context.create ~env (Workspace.default ()) in
+      let () = Workspace.init () in
+      let* ctxs = Context.DB.all () in
       let ctx = List.hd ctxs in
       let findlib = ctx.findlib in
       if na then (

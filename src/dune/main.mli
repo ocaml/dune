@@ -18,8 +18,7 @@ val package_install_file :
 
 (** Scan the source tree and discover the overall layout of the workspace. *)
 val scan_workspace :
-     ?workspace:Workspace.t
-  -> ?workspace_file:Path.t
+     ?workspace_file:Path.t
   -> ?x:Context_name.t
   -> ?capture_outputs:bool
   -> ?profile:Profile.t

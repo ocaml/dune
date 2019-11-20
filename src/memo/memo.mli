@@ -107,12 +107,6 @@ module Visibility : sig
 end
 
 module Store : sig
-  module type Input = sig
-    type t
-
-    val to_dyn : t -> Dyn.t
-  end
-
   module type S = sig
     type key
 
@@ -125,6 +119,14 @@ module Store : sig
     val set : 'a t -> key -> 'a -> unit
 
     val find : 'a t -> key -> 'a option
+  end
+
+  module Cell (I : Input) : S with type key = I.t
+
+  module type Input = sig
+    type t
+
+    val to_dyn : t -> Dyn.t
   end
 end
 

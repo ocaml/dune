@@ -5,7 +5,8 @@
   build paths of files in public and private libraries within the same
   project. (#2901, @snowleopard)
 
-2.0.0 (unreleased)
+
+2.0.0 (20/11/2019)
 ------------------
 
 - Remove existing destination files in `install`  before installing the new

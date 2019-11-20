@@ -1,7 +1,7 @@
-module Array = Dune_caml.ArrayLabels
-module List = Dune_caml.ListLabels
-module String = Dune_caml.StringLabels
-module Bytes = Dune_caml.Bytes
+module Array = Stdlib.ArrayLabels
+module List = Stdlib.ListLabels
+module String = Stdlib.StringLabels
+module Bytes = Stdlib.Bytes
 
 type t =
   | Opaque
@@ -160,6 +160,6 @@ let opaque = String "<opaque>"
 
 type dyn = t
 
-let hash = Dune_caml.Hashtbl.hash
+let hash = Stdlib.Hashtbl.hash
 
 let compare x y = Ordering.of_int (compare x y)

@@ -26,7 +26,7 @@ let rec pp ppf = function
     Format.pp_print_string ppf ")";
     Format.pp_close_box ppf ()
 
-let hash = Dune_caml.Hashtbl.hash
+let hash = Stdlib.Hashtbl.hash
 
 let string_equal (x : string) (y : string) = x = y
 

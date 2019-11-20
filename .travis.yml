@@ -18,9 +18,6 @@ matrix:
     env: OCAML_VERSION=4.02 OCAML_RELEASE=3 WITH_OPAM=0
     stage: Build
   - os: linux
-    env: OCAML_VERSION=4.06 OCAML_RELEASE=1 WITH_OPAM=0
-    stage: Build
-  - os: linux
     env: OCAML_VERSION=4.07 OCAML_RELEASE=1 WITH_OPAM=0
     stage: Build
   - os: linux
@@ -30,7 +27,7 @@ matrix:
     env: OCAML_VERSION=4.09 OCAML_RELEASE=0 WITH_OPAM=0
     stage: Build
   - os: linux
-    env: OCAML_VERSION=4.08 OCAML_RELEASE=1 WITH_OPAM=1
+    env: OCAML_VERSION=4.09 OCAML_RELEASE=0 WITH_OPAM=1
     stage: Test
     addons:
       apt:

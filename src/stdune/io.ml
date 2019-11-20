@@ -1,5 +1,3 @@
-module P = Pervasives [@warning "-3"]
-
 let close_in = close_in
 
 let close_out = close_out
@@ -83,16 +81,16 @@ struct
   let open_in ?(binary = true) p =
     let fn = Path.to_string p in
     if binary then
-      P.open_in_bin fn
+      Stdlib.open_in_bin fn
     else
-      P.open_in fn
+      Stdlib.open_in fn
 
   let open_out ?(binary = true) p =
     let fn = Path.to_string p in
     if binary then
-      P.open_out_bin fn
+      Stdlib.open_out_bin fn
     else
-      P.open_out fn
+      Stdlib.open_out fn
 
   let with_file_in ?binary fn ~f =
     Exn.protectx (open_in ?binary fn) ~finally:close_in ~f
@@ -183,7 +181,7 @@ struct
         let perm =
           (Unix.fstat (Unix.descr_of_in_channel ic)).st_perm |> chmod
         in
-        P.open_out_gen
+        Stdlib.open_out_gen
           [ Open_wronly; Open_creat; Open_trunc; Open_binary ]
           perm (Path.to_string dst)
       with exn ->

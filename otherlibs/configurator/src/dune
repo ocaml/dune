@@ -5,7 +5,7 @@
  (public_name dune-configurator)
  (preprocess future_syntax)
  (libraries dune-private-libs.stdune dune-private-libs.ocaml-config
-   dune-private-libs.dune-lang dune-private-libs.caml)
+   dune-private-libs.dune-lang)
  (flags
   (:standard
    -safe-string

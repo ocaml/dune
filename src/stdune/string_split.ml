@@ -1,5 +1,5 @@
-module List = Dune_caml.ListLabels
-module String = Dune_caml.StringLabels
+module List = Stdlib.ListLabels
+module String = Stdlib.StringLabels
 open String
 
 let split s ~on =

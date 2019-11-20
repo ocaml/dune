@@ -369,9 +369,7 @@ let trim cache free =
       Some (path, stats.st_size, stats.st_mtime)
     else
       None
-  and compare (_, _, t1) (_, _, t2) =
-    Ordering.of_int (Pervasives.compare t1 t2)
-  in
+  and compare (_, _, t1) (_, _, t2) = Ordering.of_int (Stdlib.compare t1 t2) in
   let files = List.sort ~compare (List.filter_map ~f files)
   and delete ({ trimmed_files_size = freed; trimmed_files = files; _ } as trim)
       (path, size, _) =

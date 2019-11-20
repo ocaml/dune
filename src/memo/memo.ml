@@ -803,26 +803,6 @@ end
 let cell t inp = dep_node t inp
 
 module Implicit_output = Implicit_output
-
-module Store = struct
-  module Cell (I : Input) = struct
-    type key = I.t
-
-    type 'a t = (I.t * 'a) option ref
-
-    let create () = ref None
-
-    let clear s = s := None
-
-    let set s k v = s := Some (k, v)
-
-    let find s k =
-      let open Option.O in
-      let* k', v = !s in
-      Option.some_if (I.equal k k') v
-  end
-
-  include Store_intf
-end
+module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f

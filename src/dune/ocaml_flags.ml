@@ -62,8 +62,13 @@ type 'a t' =
   ; specific : 'a Mode.Dict.t
   }
 
+let equal f { common; specific } t =
+  f common t.common && Mode.Dict.equal f specific t.specific
+
 module Spec = struct
   type t = Ordered_set_lang.Unexpanded.t t'
+
+  let equal = equal Ordered_set_lang.Unexpanded.equal
 
   let standard =
     { common = Ordered_set_lang.Unexpanded.standard

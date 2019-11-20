@@ -20,6 +20,13 @@ module Stanza = struct
       | Disabled
       | Ignored
 
+    let equal x y =
+      match (x, y) with
+      | Enabled, Enabled -> true
+      | Disabled, Disabled -> true
+      | Ignored, Ignored -> true
+      | _, _ -> false
+
     let decode =
       enum
         [ ("enabled", Enabled); ("disabled", Disabled); ("ignored", Ignored) ]
@@ -38,6 +45,17 @@ module Stanza = struct
     ; inline_tests : Inline_tests.t option
     }
 
+  let equal_config { flags; foreign_flags; env_vars; binaries; inline_tests } t
+      =
+    Ocaml_flags.Spec.equal flags t.flags
+    && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
+         foreign_flags t.foreign_flags
+    && Env.equal env_vars t.env_vars
+    && List.equal File_binding.Unexpanded.equal binaries t.binaries
+    && Option.equal Inline_tests.equal inline_tests t.inline_tests
+
+  let hash_config = Hashtbl.hash
+
   let empty_config =
     { flags = Ocaml_flags.Spec.standard
     ; foreign_flags =
@@ -51,10 +69,26 @@ module Stanza = struct
     | Profile of Profile.t
     | Any
 
+  let equal_pattern x y =
+    match (x, y) with
+    | Profile x, Profile y -> Profile.equal x y
+    | Any, Any -> true
+    | _, _ -> false
+
+  let hash_pattern = Hashtbl.hash
+
   type t =
     { loc : Loc.t
     ; rules : (pattern * config) list
     }
+
+  let hash { loc = _; rules } =
+    List.hash (Tuple.T2.hash hash_pattern hash_config) rules
+
+  let to_dyn = Dyn.Encoder.opaque
+
+  let equal { loc = _; rules } t =
+    List.equal (Tuple.T2.equal equal_pattern equal_config) rules t.rules
 
   let inline_tests_field =
     field_o "inline_tests"

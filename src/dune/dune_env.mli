@@ -31,6 +31,12 @@ module Stanza : sig
     ; rules : (pattern * config) list
     }
 
+  val hash : t -> int
+
+  val to_dyn : t -> Dyn.t
+
+  val equal : t -> t -> bool
+
   val foreign_flags :
        since:Dune_lang.Syntax.Version.t option
     -> Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t

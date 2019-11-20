@@ -7,6 +7,8 @@ type t =
   | Release
   | User_defined of string
 
+val equal : t -> t -> bool
+
 val is_dev : t -> bool
 
 val is_release : t -> bool

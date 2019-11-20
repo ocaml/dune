@@ -25,41 +25,41 @@ let package_install_file w pkg =
 
 let setup_env ~capture_outputs =
   let env =
-    if
-      (not capture_outputs)
-      || not (Lazy.force Ansi_color.stderr_supports_color)
-    then
-      Env.initial
-    else
-      Colors.setup_env_for_colors Env.initial
+    let env =
+      if
+        (not capture_outputs)
+        || not (Lazy.force Ansi_color.stderr_supports_color)
+      then
+        Env.initial
+      else
+        Colors.setup_env_for_colors Env.initial
+    in
+    Env.add env ~var:"INSIDE_DUNE" ~value:"1"
   in
-  Env.add env ~var:"INSIDE_DUNE" ~value:"1"
+  Fdecl.set Global.env env;
+  env
 
-let scan_workspace ?workspace ?workspace_file ?x ?(capture_outputs = true)
-    ?profile ~ancestor_vcs () =
+let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
+    ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs () in
-  let workspace =
-    match workspace with
-    | Some w -> w
-    | None -> (
+  let () =
+    let path : Path.t option =
       match workspace_file with
+      | None ->
+        let p = Path.of_string Workspace.filename in
+        Option.some_if (Path.exists p) p
       | Some p ->
         if not (Path.exists p) then
           User_error.raise
             [ Pp.textf "Workspace file %s does not exist"
                 (Path.to_string_maybe_quoted p)
             ];
-        Workspace.load ?x ?profile p
-      | None -> (
-        match
-          let p = Path.of_string Workspace.filename in
-          Option.some_if (Path.exists p) p
-        with
-        | Some p -> Workspace.load ?x ?profile p
-        | None -> Workspace.default ?x ?profile () ) )
+        Some p
+    in
+    Workspace.init ?x ?profile ?path ()
   in
-  let+ contexts = Context.create ~env workspace in
+  let+ contexts = Context.DB.all () in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
       Log.infof "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
         (Dyn.pp (Context.to_dyn ctx)));

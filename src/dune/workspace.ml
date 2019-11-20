@@ -15,6 +15,12 @@ module Context = struct
       | Native
       | Named of Context_name.t
 
+    let equal x y =
+      match (x, y) with
+      | Native, Native -> true
+      | Named x, Named y -> Context_name.equal x y
+      | _, _ -> false
+
     let t =
       map string ~f:(function
         | "native" -> Native
@@ -43,6 +49,33 @@ module Context = struct
       ; fdo_target_exe : Path.t option
       ; disable_dynamically_linked_foreign_archives : bool
       }
+
+    let to_dyn = Dyn.Encoder.opaque
+
+    let equal
+        { loc = _
+        ; profile
+        ; targets
+        ; env
+        ; toolchain
+        ; name
+        ; host_context
+        ; paths
+        ; fdo_target_exe
+        ; disable_dynamically_linked_foreign_archives
+        } t =
+      Profile.equal profile t.profile
+      && List.equal Target.equal targets t.targets
+      && Dune_env.Stanza.equal env t.env
+      && Option.equal Context_name.equal toolchain t.toolchain
+      && Context_name.equal name t.name
+      && Option.equal Context_name.equal host_context t.host_context
+      && List.equal
+           (Tuple.T2.equal String.equal Ordered_set_lang.equal)
+           paths t.paths
+      && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
+      && Bool.equal disable_dynamically_linked_foreign_archives
+           t.disable_dynamically_linked_foreign_archives
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -128,6 +161,21 @@ module Context = struct
       ; merlin : bool
       }
 
+    let to_dyn { base; switch; root; merlin } =
+      let open Dyn.Encoder in
+      record
+        [ ("base", Common.to_dyn base)
+        ; ("switch", Context_name.to_dyn switch)
+        ; ("root", option string root)
+        ; ("merlin", bool merlin)
+        ]
+
+    let equal { base; switch; root; merlin } t =
+      Common.equal base t.base
+      && Context_name.equal switch t.switch
+      && Option.equal String.equal root t.root
+      && Bool.equal merlin t.merlin
+
     let t ~profile ~x =
       let+ switch = field "switch" Context_name.decode
       and+ name = field_o "name" Context_name.decode
@@ -147,6 +195,8 @@ module Context = struct
   module Default = struct
     type t = Common.t
 
+    let to_dyn = Common.to_dyn
+
     let t ~profile ~x =
       let+ common = Common.t ~profile
       and+ name =
@@ -163,11 +213,27 @@ module Context = struct
       in
       let name = Option.value ~default name in
       { common with targets = Target.add common.targets x; name }
+
+    let equal = Common.equal
   end
 
   type t =
     | Default of Default.t
     | Opam of Opam.t
+
+  let hash = Hashtbl.hash
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Default d -> constr "Default" [ Default.to_dyn d ]
+    | Opam o -> constr "Opam" [ Opam.to_dyn o ]
+
+  let equal x y =
+    match (x, y) with
+    | Default x, Default y -> Default.equal x y
+    | Opam x, Opam y -> Opam.equal x y
+    | _, _ -> false
 
   let loc = function
     | Default x -> x.loc
@@ -218,11 +284,34 @@ module Context = struct
       }
 end
 
-type t =
-  { merlin_context : Context_name.t option
-  ; contexts : Context.t list
-  ; env : Dune_env.Stanza.t
-  }
+module T = struct
+  type t =
+    { merlin_context : Context_name.t option
+    ; contexts : Context.t list
+    ; env : Dune_env.Stanza.t
+    }
+
+  let to_dyn { merlin_context; contexts; env } =
+    let open Dyn.Encoder in
+    record
+      [ ("merlin_context", option Context_name.to_dyn merlin_context)
+      ; ("contexts", list Context.to_dyn contexts)
+      ; ("env", Dune_env.Stanza.to_dyn env)
+      ]
+
+  let equal { merlin_context; contexts; env } w =
+    Option.equal Context_name.equal merlin_context w.merlin_context
+    && List.equal Context.equal contexts w.contexts
+    && Dune_env.Stanza.equal env w.env
+end
+
+include T
+
+let hash { merlin_context; contexts; env } =
+  Tuple.T3.hash
+    (Option.hash Context_name.hash)
+    (List.hash Context.hash) Dune_env.Stanza.hash
+    (merlin_context, contexts, env)
 
 include Dune_lang.Versioned_file.Make (struct
   type t = unit
@@ -342,3 +431,43 @@ let default ?x ?profile () =
   default ?x ?profile ()
 
 let filename = "dune-workspace"
+
+module DB = struct
+  module Settings = struct
+    type t =
+      { x : Context_name.t option
+      ; profile : Profile.t option
+      ; path : Path.t option
+      }
+
+    let to_dyn { x; profile; path } =
+      let open Dyn.Encoder in
+      record
+        [ ("x", option Context_name.to_dyn x)
+        ; ("profile", option Profile.to_dyn profile)
+        ; ("path", option Path.to_dyn path)
+        ]
+
+    let t = Fdecl.create to_dyn
+  end
+end
+
+let init ?x ?profile ?path () =
+  Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
+
+let workspace =
+  let f () =
+    let (_ : Memo.Run.t) = Memo.current_run () in
+    let { DB.Settings. path; profile; x } = Fdecl.get DB.Settings.t in
+    match path with
+    | None -> default ?x ?profile ()
+    | Some p -> load ?x ?profile p
+  in
+  let memo =
+    Memo.create "workspaces-db" ~doc:"get all workspaces"
+      ~visibility:Hidden
+      ~input:(module Unit)
+      ~output:(Allow_cutoff (module T))
+      Sync f
+  in
+  Memo.exec memo

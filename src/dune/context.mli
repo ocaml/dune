@@ -42,7 +42,7 @@ module Env_nodes : sig
     }
 end
 
-type t =
+type t = private
   { name : Context_name.t
   ; kind : Kind.t
   ; profile : Profile.t
@@ -103,8 +103,6 @@ val to_dyn_concise : t -> Dyn.t
 (** Compare the context names *)
 val compare : t -> t -> Ordering.t
 
-val create : env:Env.t -> Workspace.t -> t list Fiber.t
-
 val which : t -> string -> Path.t option
 
 val opam_config_var : t -> string -> string option Fiber.t
@@ -127,3 +125,9 @@ val name : t -> Context_name.t
 val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
+
+module DB : sig
+  val get : Path.Build.t -> t
+
+  val all : unit -> t list Fiber.t
+end

@@ -14,6 +14,8 @@ let compare_no_loc t1 t2 =
   | (Ordering.Lt | Gt) as a -> a
   | Eq -> Dune_lang.Template.compare_no_loc t1.template t2.template
 
+let equal_no_loc t1 t2 = Ordering.is_eq (compare_no_loc t1 t2)
+
 let make_syntax = (1, 0)
 
 let make template = { template; syntax_version = make_syntax }

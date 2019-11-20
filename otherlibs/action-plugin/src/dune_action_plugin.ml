@@ -168,8 +168,7 @@ module V1 = struct
     | Stage at -> run_outside_of_dune (at.action ())
 
   let do_run t =
-    let open Protocol in
-    match Context.create () with
+    match Protocol.Context.create () with
     | Run_outside_of_dune -> run_outside_of_dune t
     | Error message ->
       Execution_error.raise

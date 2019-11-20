@@ -15,6 +15,8 @@ end
 module Unexpanded : sig
   type t
 
+  val equal : t -> t -> bool
+
   val make : src:Loc.t * string -> dst:Loc.t * string -> t
 
   val expand :

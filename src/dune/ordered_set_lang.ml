@@ -15,6 +15,15 @@ module Ast = struct
     | Diff : ('a, 'b) t * ('a, 'b) t -> ('a, 'b) t
     | Include : String_with_vars.t -> ('a, unexpanded) t
 
+  let rec equal f x y =
+    match (x, y) with
+    | Element x, Element y -> f x y
+    | Standard, Standard -> true
+    | Union x, Union y -> List.equal (equal f) x y
+    | Diff (x, x'), Diff (y, y') ->
+      Tuple.T2.equal (equal f) (equal f) (x, x') (y, y')
+    | _, _ -> false
+
   let union = function
     | [ x ] -> x
     | xs -> Union xs
@@ -26,9 +35,14 @@ type 'ast generic =
   ; context : Univ_map.t (* Parsing context for Dune_lang.Decoder.parse *)
   }
 
+let equal_generic f { ast; loc = _; context } t =
+  f ast t.ast && context == t.context
+
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
 
 type t = ast_expanded generic
+
+let equal = equal_generic (Ast.equal (fun (_, x) (_, y) -> String.equal x y))
 
 let loc t = t.loc
 
@@ -208,6 +222,8 @@ module Unexpanded = struct
   type ast = (String_with_vars.t, Ast.unexpanded) Ast.t
 
   type t = ast generic
+
+  let equal x y = equal_generic (Ast.equal String_with_vars.equal_no_loc) x y
 
   let decode : t Dune_lang.Decoder.t =
     let open Dune_lang.Decoder in

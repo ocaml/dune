@@ -32,6 +32,8 @@ module Language : sig
       ; cxx : 'a
       }
 
+    val equal : ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+
     val c : 'a t -> 'a
 
     val cxx : 'a t -> 'a

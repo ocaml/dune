@@ -27,4 +27,6 @@ module T3 : sig
 
   val to_dyn :
     ('a -> Dyn.t) -> ('b -> Dyn.t) -> ('c -> Dyn.t) -> ('a, 'b, 'c) t -> Dyn.t
+
+  val hash : ('a -> int) -> ('b -> int) -> ('c -> int) -> ('a, 'b, 'c) t -> int
 end

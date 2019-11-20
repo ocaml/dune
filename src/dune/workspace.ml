@@ -452,19 +452,12 @@ module DB = struct
 
     let equal = ( == )
 
-    let t : t option ref = ref None
-
-    let set x = t := Some x
-
-    let get () =
-      match !t with
-      | Some t -> t
-      | None -> Code_error.raise "workspace settings not set yet" []
+    let t = Fdecl.create to_dyn
   end
 end
 
 let init ?x ?profile ?path () =
-  DB.Settings.set { DB.Settings.x; profile; path }
+  Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
 
 let workspace =
   let module Store = Memo.Store.Cell (DB.Settings) in
@@ -481,4 +474,4 @@ let workspace =
       ~output:(Simple (module T))
       Sync f
   in
-  fun () -> Memo.exec memo (DB.Settings.get ())
+  fun () -> Memo.exec memo (Fdecl.get DB.Settings.t)

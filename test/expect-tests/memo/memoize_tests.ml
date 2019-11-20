@@ -36,12 +36,12 @@ let compdep x = Fiber.return (x ^ x)
 let mcompdep1 =
   string_fn_create "some"
     ~output:(Allow_cutoff (module String))
-    compdep ~doc:""
+    compdep
 
 let mcompdep2 =
   string_fn_create "another"
     ~output:(Allow_cutoff (module String))
-    compdep ~doc:""
+    compdep
 
 (* compute the dependencies once so they are present in the global hash table *)
 let () =
@@ -60,7 +60,7 @@ let comp x =
   String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
 
 let mcomp =
-  string_fn_create "test" ~output:(Allow_cutoff (module String)) comp ~doc:""
+  string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
 
 (* running it the first time should increase the counter, running it again
    should not, but should still return the same result *)
@@ -137,7 +137,7 @@ let mcompcycle =
   let fn =
     int_fn_create "cycle"
       ~output:(Allow_cutoff (module String))
-      compcycle ~doc:""
+      compcycle
   in
   Fdecl.set mcompcycle fn;
   fn
@@ -179,7 +179,7 @@ let mfib =
       mfib (x - 1) >>= fun r1 -> mfib (x - 2) >>| fun r2 -> r1 + r2
   in
   let fn =
-    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib ~doc:""
+    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib
   in
   Fdecl.set mfib fn;
   fn
@@ -217,7 +217,7 @@ let sync_fib =
   let fn =
     sync_int_fn_create "sync-fib"
       ~output:(Allow_cutoff (module Int))
-      compfib ~doc:""
+      compfib
   in
   Fdecl.set mfib fn;
   fn

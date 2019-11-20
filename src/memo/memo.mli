@@ -61,7 +61,7 @@ module Function : sig
   module Info : sig
     type t =
       { name : Name.t
-      ; doc : string
+      ; doc : string option
       }
   end
 end
@@ -131,7 +131,7 @@ end
 val create_with_store :
      string
   -> store:(module Store.S with type key = 'i)
-  -> doc:string
+  -> ?doc:string
   -> input:(module Store.Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
@@ -159,7 +159,7 @@ val create_with_store :
     if it's user-facing then how to parse the values written by the user. *)
 val create :
      string
-  -> doc:string
+  -> ?doc:string
   -> input:(module Input with type t = 'i)
   -> visibility:'i Visibility.t
   -> output:'o Output.t
@@ -169,7 +169,7 @@ val create :
 
 val create_hidden :
      string
-  -> doc:string
+  -> ?doc:string
   -> input:(module Input with type t = 'i)
   -> ('i, 'o, 'f) Function.Type.t
   -> 'f
@@ -239,7 +239,7 @@ module With_implicit_output : sig
 
   val create :
        string
-    -> doc:string
+    -> ?doc:string
     -> input:(module Input with type t = 'i)
     -> visibility:'i Visibility.t
     -> output:(module Output_simple with type t = 'o)

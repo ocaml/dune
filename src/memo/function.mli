@@ -11,7 +11,7 @@ end
 module Info : sig
   type t =
     { name : Name.t
-    ; doc : string
+    ; doc : string option
     }
 end
 

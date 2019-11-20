@@ -184,7 +184,7 @@ let default =
   ; terminal_persistence = Terminal_persistence.Preserve
   ; sandboxing_preference = []
   ; cache_mode = Disabled
-  ; cache_transport = Direct
+  ; cache_transport = Daemon
   ; cache_check_probability = 0.01
   }
 

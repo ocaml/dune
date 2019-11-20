@@ -298,14 +298,14 @@ module T = struct
       ; ("contexts", list Context.to_dyn contexts)
       ; ("env", Dune_env.Stanza.to_dyn env)
       ]
+
+  let equal { merlin_context; contexts; env } w =
+    Option.equal Context_name.equal merlin_context w.merlin_context
+    && List.equal Context.equal contexts w.contexts
+    && Dune_env.Stanza.equal env w.env
 end
 
 include T
-
-let equal { merlin_context; contexts; env } w =
-  Option.equal Context_name.equal merlin_context w.merlin_context
-  && List.equal Context.equal contexts w.contexts
-  && Dune_env.Stanza.equal env w.env
 
 let hash { merlin_context; contexts; env } =
   Tuple.T3.hash
@@ -448,10 +448,6 @@ module DB = struct
         ; ("path", option Path.to_dyn path)
         ]
 
-    let hash = Hashtbl.hash
-
-    let equal = ( == )
-
     let t = Fdecl.create to_dyn
   end
 end
@@ -460,18 +456,18 @@ let init ?x ?profile ?path () =
   Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
 
 let workspace =
-  let module Store = Memo.Store.Cell (DB.Settings) in
-  let f { DB.Settings.path; profile; x } =
+  let f () =
+    let (_ : Memo.Run.t) = Memo.current_run () in
+    let { DB.Settings. path; profile; x } = Fdecl.get DB.Settings.t in
     match path with
     | None -> default ?x ?profile ()
     | Some p -> load ?x ?profile p
   in
   let memo =
-    Memo.create_with_store "workspaces-db" ~doc:"get all workspaces"
+    Memo.create "workspaces-db" ~doc:"get all workspaces"
       ~visibility:Hidden
-      ~store:(module Store)
-      ~input:(module DB.Settings)
-      ~output:(Simple (module T))
+      ~input:(module Unit)
+      ~output:(Allow_cutoff (module T))
       Sync f
   in
-  fun () -> Memo.exec memo (Fdecl.get DB.Settings.t)
+  Memo.exec memo

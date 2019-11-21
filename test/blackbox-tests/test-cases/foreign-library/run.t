@@ -685,11 +685,42 @@ Testsuite for the (foreign_library ...) stanza.
 * External library directories in (include_dir ...)
 * Using an external directory in (include_dir ...)
 
+  $ mkdir -p external
+  $ cat >external/dune <<EOF
+  > (library
+  >  (name extlib)
+  >  (public_name external_library)
+  >  (install_c_headers correction))
+  > EOF
+
+  $ cat >external/correction.h <<EOF
+  > #define CORRECTION (-21)
+  > EOF
+
+  $ rm -rf _build
+  $ touch external/external_library.opam
+  $ ( cd external && ../sdune build @install && ../sdune install --prefix install)
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.1)
+  | (name external_library)
+  Installing install/lib/external_library/META
+  Installing install/lib/external_library/correction.h
+  Installing install/lib/external_library/dune-package
+  Installing install/lib/external_library/extlib$ext_lib
+  Installing install/lib/external_library/extlib.cma
+  Installing install/lib/external_library/extlib.cmi
+  Installing install/lib/external_library/extlib.cmt
+  Installing install/lib/external_library/extlib.cmx
+  Installing install/lib/external_library/extlib.cmxa
+  Installing install/lib/external_library/extlib.cmxs
+  Installing install/lib/external_library/extlib.ml
+  Installing install/lib/external_library/opam
+
   $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
   >  (language c)
-  >  (include_dirs (lib answer) (lib base))
+  >  (include_dirs (lib answer) (lib external_library))
   >  (names src))
   > (executable
   >  (modes exe)
@@ -701,17 +732,15 @@ Testsuite for the (foreign_library ...) stanza.
   $ cat >some/dir/src.c <<EOF
   > #include <caml/mlvalues.h>
   > #include "header.h"
-  > #include "internalhash.h"
-  > value answer(value unit)
-  > {
-  >   // Base_internalhash_fold_blob is from "internalhash.h" in the base library
-  >   if (&Base_internalhash_fold_blob != 0) return Val_int(ANSWER);
-  >   return Val_int(ANSWER + 1);
-  > }
+  > #include "correction.h"
+  > value answer(value unit) { return Val_int((ANSWER + CORRECTION) * 2); }
   > EOF
 
-  $ rm -rf _build
-  $ ./sdune exec some/dir/main.exe
+  $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
+  Entering directory 'some/dir'
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.1)
+  Entering directory 'some/dir'
   Answer = 42
 
 ----------------------------------------------------------------------------------

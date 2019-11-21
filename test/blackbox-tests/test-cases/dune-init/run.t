@@ -21,7 +21,7 @@ Can build the public library
 
   $ cd _test_lib_dir && touch test_lib.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_lib)
   $ cat ./_test_lib_dir/dune
   (library
@@ -72,7 +72,7 @@ Can build an executable
 
   $ cd _test_bin_dir && touch test_bin.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_bin)
 
 Can run the created executable
@@ -152,7 +152,7 @@ Can build the combo project
 
   $ cd _test_lib_exe_dir && touch test_bin.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_bin)
 
 Can run the combo project
@@ -185,7 +185,7 @@ Can build the multiple library project
 
   $ cd _test_lib && touch test_lib1.opam && dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_lib1)
 
 Clan up the multiple library project
@@ -313,7 +313,7 @@ Can init and build a new executable project
   $ dune exec --root test_exec_proj ./bin/main.exe
   Entering directory 'test_exec_proj'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_exec_proj)
   Entering directory 'test_exec_proj'
   Hello, World!
@@ -341,7 +341,7 @@ Can init and build a new library project
   $ dune build --root test_lib_proj @install --display short
   Entering directory 'test_lib_proj'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   | (name test_lib_proj)
         ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
         ocamlc lib/test_lib_proj.cma

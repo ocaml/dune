@@ -3,5 +3,5 @@ file is present.
 
   $ dune build @install
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   Info: Appending this line to dune-project: (using menhir 2.0)

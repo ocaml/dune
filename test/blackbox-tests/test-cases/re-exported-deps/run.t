@@ -8,7 +8,7 @@ transtive deps expressed in the dune-package
   $ dune build @install --root transitive
   Entering directory 'transitive'
   $ cat transitive/_build/install/default/lib/pkg/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name pkg)
   (library
    (name pkg.aaa)
@@ -44,7 +44,7 @@ Re-exporting deps in executables isn't allowed
   $ dune build --root re-export-exe @all
   Entering directory 're-export-exe'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   File "dune", line 7, characters 13-22:
   7 |  (libraries (re_export foo)))
                    ^^^^^^^^^

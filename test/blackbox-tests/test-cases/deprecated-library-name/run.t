@@ -55,7 +55,7 @@ tests that the "old_public_name" field is evaluated lazily
   requires = "b"
 
   $ cat $PWD/_install/lib/a/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name a)
   (deprecated_library_name (old_public_name a) (new_public_name b))
 
@@ -148,18 +148,18 @@ First the motivating case.
   d/_build/install/default/lib/menhirSdk/dune-package
 
   $ cat d/_build/install/default/lib/dummy/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name dummy)
 
   $ cat d/_build/install/default/lib/menhirLib/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name menhirLib)
   (deprecated_library_name
    (old_public_name menhirLib)
    (new_public_name menhir.lib))
 
   $ cat d/_build/install/default/lib/menhirSdk/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name menhirSdk)
   (deprecated_library_name
    (old_public_name menhirSdk)
@@ -305,7 +305,7 @@ Qualified, deprecated old_public_name:
   d/_build/install/default/lib/q/dune-package
 
   $ cat d/_build/install/default/lib/q/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name q)
   (deprecated_library_name (old_public_name q.foo) (new_public_name p))
 
@@ -349,7 +349,7 @@ Two libraries redirecting to the same library:
   d/_build/install/default/lib/q/dune-package
 
   $ cat d/_build/install/default/lib/q/dune-package
-  (lang dune 2.0)
+  (lang dune 2.1)
   (name q)
   (deprecated_library_name (old_public_name q.bar) (new_public_name p))
   (deprecated_library_name (old_public_name q.foo) (new_public_name p))

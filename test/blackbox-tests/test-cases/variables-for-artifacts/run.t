@@ -62,7 +62,7 @@ The next test tries to build a module that does not exist.
   $ ./sdune build --root ex1 --display short @t
   Entering directory 'ex1'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cmo:foo}))
                ^^^^^^^^
@@ -104,7 +104,7 @@ This test tries to build a non-existant .cma.
   $ ./sdune build --root ex2 --display short @t
   Entering directory 'ex2'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cma:bar}))
                ^^^^^^^^
@@ -206,7 +206,7 @@ subdirectory.
 
   $ cd sub && dune build --display short %{cmx:x}
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
       ocamldep .bar.objs/x.ml.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc .bar.objs/byte/bar__X.{cmi,cmo,cmt}
@@ -244,7 +244,7 @@ field of a (rule).
   $ ./sdune build --root deps-fail --display short t
   Entering directory 'deps-fail'
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   File "dune", line 3, characters 9-16:
   3 |  (deps %{cmo:x2})
                ^^^^^^^

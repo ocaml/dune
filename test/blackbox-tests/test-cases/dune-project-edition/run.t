@@ -4,9 +4,9 @@
   $ echo '(rule (alias runtest) (action (progn)))' >  src/dune
   $ dune build
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.0)
+  | (lang dune 2.1)
   $ cat dune-project
-  (lang dune 2.0)
+  (lang dune 2.1)
 
 Test that using menhir automatically update the dune-project file
 
@@ -14,5 +14,5 @@ Test that using menhir automatically update the dune-project file
   $ dune build @install
   Info: Appending this line to dune-project: (using menhir 2.0)
   $ cat dune-project
-  (lang dune 2.0)
+  (lang dune 2.1)
   (using menhir 2.0)

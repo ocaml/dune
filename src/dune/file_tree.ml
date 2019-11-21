@@ -542,24 +542,20 @@ let dir_is_vendored path =
 module Dir = struct
   include Dir0
 
+  let sub_dir_as_t (s : sub_dir) =
+    (Memo.Cell.get_sync s.sub_dir_as_t |> Option.value_exn).dir
+
   let rec fold t ~traverse ~init:acc ~f =
     let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
-    if must_traverse then
+    match must_traverse with
+    | false -> acc
+    | true ->
       let acc = f t acc in
-      String.Map.foldi (sub_dirs t) ~init:acc ~f:(fun dirname _ acc ->
-          let dir =
-            let subdir = Path.Source.relative t.path dirname in
-            Option.value_exn (Memoized.find_dir subdir)
-          in
+      String.Map.foldi (sub_dirs t) ~init:acc ~f:(fun dirname t acc ->
+          let dir = sub_dir_as_t t in
           fold dir ~traverse ~init:acc ~f)
-    else
-      acc
 
-  let sub_dirs (t : t) =
-    t.contents.sub_dirs
-    |> String.Map.mapi ~f:(fun name _ ->
-           let path = Path.Source.relative t.path name in
-           Option.value_exn (find_dir path))
+  let sub_dirs (t : t) = t.contents.sub_dirs |> String.Map.mapi ~f:sub_dir_as_t
 end
 
 let fold_with_progress ~traverse ~init ~f =

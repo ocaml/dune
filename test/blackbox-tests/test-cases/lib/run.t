@@ -57,8 +57,8 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   File "dune", line 3, characters 18-39:
   3 |  (action (echo "%{lib:private_lib:a.ml}")))
                         ^^^^^^^^^^^^^^^^^^^^^
-  Error: Library "private_lib" is not public. You can use the "lib" variable
-  only with public libraries that are installed.
+  Error: The library "private_lib" is not public. The variable "lib" expands to
+  the file's installation path which is not defined for private libraries.
   [1]
 
 ----------------------------------------------------------------------------------

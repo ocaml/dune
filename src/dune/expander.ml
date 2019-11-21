@@ -409,8 +409,9 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
             raise
               (User_error.raise ~loc
                  [ Pp.textf
-                     "Library %S is not public. You can use the \"lib\" \
-                      variable only with public libraries that are installed."
+                     "The library %S is not public. The variable \"lib\" \
+                      expands to the file's installation path which is not \
+                      defined for private libraries."
                      (Lib_name.to_string lib)
                  ])
           in

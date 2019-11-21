@@ -240,7 +240,6 @@ let load ~ancestor_vcs () =
       dune_files
     else
       let path = File_tree.Dir.path dir in
-      let sub_dirs = File_tree.Dir.sub_dirs dir in
       let project = File_tree.Dir.project dir in
       let dune_files =
         match File_tree.Dir.dune_file dir with
@@ -249,7 +248,8 @@ let load ~ancestor_vcs () =
           let dune_file = interpret ~dir:path ~project ~dune_file in
           dune_file :: dune_files
       in
-      String.Map.fold sub_dirs ~init:dune_files ~f:walk
+      File_tree.Dir.fold_sub_dirs dir ~init:dune_files
+        ~f:(fun _name dir dune_files -> walk dir dune_files)
   in
   let dune_files = walk (File_tree.root ()) [] in
   { dune_files; packages; projects }

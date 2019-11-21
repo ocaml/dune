@@ -555,8 +555,7 @@ end = struct
           walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
         | _ -> acc
       and walk_children ft_dir ~dir ~local acc =
-        String.Map.foldi (File_tree.Dir.sub_dirs ft_dir) ~init:acc
-          ~f:(fun name ft_dir acc ->
+        File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
             let dir = Path.Build.relative dir name in
             let local =
               if qualif_mode = Qualified then

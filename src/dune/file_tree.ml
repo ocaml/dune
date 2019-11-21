@@ -547,17 +547,18 @@ module Dir = struct
   let sub_dir_as_t (s : sub_dir) =
     (Memo.Cell.get_sync s.sub_dir_as_t |> Option.value_exn).dir
 
+  let fold_sub_dirs (t : t) ~init ~f =
+    String.Map.foldi t.contents.sub_dirs ~init ~f:(fun name s acc ->
+        f name (sub_dir_as_t s) acc)
+
   let rec fold t ~traverse ~init:acc ~f =
     let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
     match must_traverse with
     | false -> acc
     | true ->
       let acc = f t acc in
-      String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
-          let dir = sub_dir_as_t t in
-          fold dir ~traverse ~init:acc ~f)
-
-  let sub_dirs (t : t) = t.contents.sub_dirs |> String.Map.map ~f:sub_dir_as_t
+      fold_sub_dirs t ~init:acc ~f:(fun _name t acc ->
+          fold t ~traverse ~init:acc ~f)
 end
 
 let fold_with_progress ~traverse ~init ~f =

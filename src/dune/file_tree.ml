@@ -304,13 +304,16 @@ module rec Memoized : sig
   val root : unit -> Dir0.t
 
   (* Not part of the interface. Only necessary to call recursively *)
-  val find_dir_raw : Path.Source.t -> Dir0.t Output.t option
+  val find_dir_raw :
+       Path.Source.t
+    -> ( Path.Source.t
+       , Dir0.t Output.t option
+       , Path.Source.t -> Dir0.t Output.t option )
+       Memo.Cell.t
 
   val find_dir : Path.Source.t -> Dir0.t option
 end = struct
   open Memoized
-
-  let find_dir_memo = Fdecl.create Dyn.Encoder.opaque
 
   let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
       ~(dir_status : Sub_dirs.Status.t) =
@@ -349,7 +352,7 @@ end = struct
                  String.Map.add_exn dirs_visited_acc fn new_dirs_visited
              in
              let sub_dir =
-               let sub_dir_as_t = Memo.cell (Fdecl.get find_dir_memo) path in
+               let sub_dir_as_t = find_dir_raw path in
                { Dir0.sub_dir_status = dir_status; sub_dir_as_t }
              in
              let subdirs = String.Map.set subdirs fn sub_dir in
@@ -442,7 +445,7 @@ end = struct
     | Some parent_dir ->
       let open Option.O in
       let* { Output.dir = parent_dir; visited = dirs_visited } =
-        find_dir_raw parent_dir
+        Memo.Cell.get_sync (find_dir_raw parent_dir)
       in
       let* dir_status =
         let basename = Path.Source.basename path in
@@ -489,12 +492,11 @@ end = struct
         ~output:(Simple (module Output))
         ~visibility:Memo.Visibility.Hidden Sync find_dir_raw_impl
     in
-    Fdecl.set find_dir_memo memo;
-    Memo.exec memo
+    Memo.cell memo
 
   let find_dir p =
     let open Option.O in
-    let+ { Output.dir; visited = _ } = find_dir_raw p in
+    let+ { Output.dir; visited = _ } = Memo.Cell.get_sync (find_dir_raw p) in
     dir
 
   let root () = Option.value_exn (find_dir Path.Source.root)
@@ -551,11 +553,11 @@ module Dir = struct
     | false -> acc
     | true ->
       let acc = f t acc in
-      String.Map.foldi (sub_dirs t) ~init:acc ~f:(fun dirname t acc ->
+      String.Map.fold (sub_dirs t) ~init:acc ~f:(fun t acc ->
           let dir = sub_dir_as_t t in
           fold dir ~traverse ~init:acc ~f)
 
-  let sub_dirs (t : t) = t.contents.sub_dirs |> String.Map.mapi ~f:sub_dir_as_t
+  let sub_dirs (t : t) = t.contents.sub_dirs |> String.Map.map ~f:sub_dir_as_t
 end
 
 let fold_with_progress ~traverse ~init ~f =

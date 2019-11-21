@@ -197,13 +197,13 @@ In addition, ``(action ...)`` fields support the following special variables:
   %{bin:program} ...)`` and ``(run program ...)`` behave in the same
   way. ``%{bin:...}`` is only necessary when you are using ``(bash
   ...)`` or ``(system ...)``
-- ``lib:<public-library-name>:<file>`` expands to a path to the file ``<file>``
-  of the library ``<public-library-name>``. If ``<public-library-name>`` is
-  available in the current workspace, the local file will be used, otherwise
-  the one from the installed world will be used.
-- ``lib-private:<library-name>:<file>`` expands to a path to the source file
-  ``<file>`` of the library ``<library-name>``. Both public and private library
-  names are allowed.
+- ``lib:<public-library-name>:<file>`` expands to the installation path of
+  the file ``<file>`` in the library ``<public-library-name>``. If
+  ``<public-library-name>`` is available in the current workspace, the local
+  file will be used, otherwise the one from the installed world will be used.
+- ``lib-private:<library-name>:<file>`` expands to the build path of the file
+  ``<file>`` in the library ``<library-name>``. Both public and private library
+  names are allowed as long as they refer to libraries within the same project.
 - ``libexec:<public-library-name>:<file>`` is the same as ``lib:...`` except
   when cross-compiling, in which case it will expand to the file from the host
   build context.

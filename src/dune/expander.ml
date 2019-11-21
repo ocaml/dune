@@ -371,23 +371,44 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     match resolve_binary ~loc:(Some loc) t ~prog:s with
     | Error fail -> add_fail acc fail
     | Ok path -> Some (path_exp path) )
-  | Macro (Lib, s) -> (
-    let lib_dep, file = parse_lib_file ~loc s in
-    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+  | Macro (Lib { lib_exec; lib_private }, s) -> (
+    let lib, file = parse_lib_file ~loc s in
+    Resolved_forms.add_lib_dep acc lib dep_kind;
     match
-      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
+      if lib_private then
+        let open Result.O in
+        let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+        let current_project_name = Scope.name t.scope
+        and referenced_project_name =
+          Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
+        in
+        if
+          Option.equal Dune_project.Name.equal (Some current_project_name)
+            referenced_project_name
+        then
+          Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+        else
+          Error
+            (User_error.E
+               (User_error.make ~loc
+                  [ Pp.textf
+                      "The variable \"lib-private\" can only refer to \
+                       libraries within the same project. The current \
+                       project's name is %S, but the reference is to %s."
+                      (Dune_project.Name.to_string_hum current_project_name)
+                      ( match referenced_project_name with
+                      | Some name ->
+                        "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
+                      | None -> "an external library" )
+                  ]))
+      else
+        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
     with
-    | Ok path -> Some (path_exp path)
-    | Error e -> add_fail acc { fail = (fun () -> raise e) } )
-  | Macro (Libexec, s) -> (
-    let lib_dep, file = parse_lib_file ~loc s in
-    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-    match
-      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
-    with
-    | Error e -> add_fail acc { fail = (fun () -> raise e) }
     | Ok path ->
-      if (not Sys.win32) || Filename.extension s = ".exe" then
+      (* TODO: The [exec = true] case is currently not handled correctly and
+         does not match the documentation. *)
+      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+      then
         Some (path_exp path)
       else
         let path_exe = Path.extend_basename path ~suffix:".exe" in
@@ -400,7 +421,25 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
               (let+ () = Build.path path in
                path_exp path)
         in
-        add_ddep dep )
+        add_ddep dep
+    | Error e -> (
+      match lib_private with
+      | true -> add_fail acc { fail = (fun () -> raise e) }
+      | false ->
+        if Lib.DB.available (Scope.libs t.scope) lib then
+          let fail () =
+            raise
+              (User_error.raise ~loc
+                 [ Pp.textf
+                     "The library %S is not public. The variable \"lib\" \
+                      expands to the file's installation path which is not \
+                      defined for private libraries."
+                     (Lib_name.to_string lib)
+                 ])
+          in
+          add_fail acc { fail }
+        else
+          add_fail acc { fail = (fun () -> raise e) } ) )
   | Macro (Lib_available, s) ->
     let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
     Resolved_forms.add_lib_dep acc lib Optional;

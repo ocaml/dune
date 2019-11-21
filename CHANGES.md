@@ -1,3 +1,10 @@
+2.1.0 (unreleased)
+------------------
+
+- Add variables `%{lib-private...}` and `%{libexec-private...}` for finding
+  build paths of files in public and private libraries within the same
+  project. (#2901, @snowleopard)
+
 2.0.0 (unreleased)
 ------------------
 

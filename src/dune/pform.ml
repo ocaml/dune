@@ -52,8 +52,10 @@ module Macro = struct
     | Exe
     | Dep
     | Bin
-    | Lib
-    | Libexec
+    | Lib of
+        { lib_exec : bool
+        ; lib_private : bool
+        }
     | Lib_available
     | Version
     | Read
@@ -70,8 +72,11 @@ module Macro = struct
     | Exe -> string "Exe"
     | Dep -> string "Dep"
     | Bin -> string "Bin"
-    | Lib -> string "Lib"
-    | Libexec -> string "Libexec"
+    | Lib { lib_private; lib_exec } ->
+      constr "Lib"
+        [ record
+            [ ("lib_exec", bool lib_exec); ("lib_private", bool lib_private) ]
+        ]
     | Lib_available -> string "Lib_available"
     | Version -> string "Version"
     | Read -> string "Read"
@@ -164,8 +169,14 @@ module Map = struct
     String.Map.of_list_exn
       ( [ ("exe", macro Exe)
         ; ("bin", macro Bin)
-        ; ("lib", macro Lib)
-        ; ("libexec", macro Libexec)
+        ; ("lib", macro (Lib { lib_exec = false; lib_private = false }))
+        ; ("libexec", macro (Lib { lib_exec = true; lib_private = false }))
+        ; ( "lib-private"
+          , since ~version:(2, 1)
+              (Macro.Lib { lib_exec = false; lib_private = true }) )
+        ; ( "libexec-private"
+          , since ~version:(2, 1)
+              (Macro.Lib { lib_exec = true; lib_private = true }) )
         ; ("lib-available", macro Lib_available)
         ; ("version", macro Version)
         ; ("read", macro Read)

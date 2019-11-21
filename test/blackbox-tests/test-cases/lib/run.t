@@ -91,6 +91,7 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 * Success when using Dune language 2.1
 
   $ echo "(lang dune 2.1)" > dune-project
+  $ echo "(name test-lib)" >> dune-project
 
   $ ./sdune build @find-a
   src/a.ml
@@ -127,3 +128,29 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   $ ./sdune clean
   $ ./sdune build @find-a
   src/a.ml
+
+----------------------------------------------------------------------------------
+* The %{lib-private:...} variable does not work with external libraries
+
+  $ cat >src/dune <<EOF
+  > (library
+  >  (name private_lib)
+  >  (public_name public_lib)
+  >  (modules a))
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (alias find-a)
+  >  (action (echo "%{lib-private:base:base.ml}")))
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune build @find-a
+  File "dune", line 3, characters 18-43:
+  3 |  (action (echo "%{lib-private:base:base.ml}")))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: The variable "lib-private" can only refer to libraries within the same
+  project. The current project's name is "test-lib", but the reference is to an
+  external library.
+  [1]

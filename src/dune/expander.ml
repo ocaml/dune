@@ -377,8 +377,27 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     match
       if lib_private then
         let open Result.O in
-        let+ lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
-        Path.relative (Lib_info.src_dir (Lib.info lib)) file
+        let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+        let current_project_name = Scope.name t.scope
+        and referenced_project_name =
+          Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
+        in
+        if Some current_project_name = referenced_project_name then
+          Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+        else
+          Error
+            (User_error.E
+               (User_error.make ~loc
+                  [ Pp.textf
+                      "The variable \"lib-private\" can only refer to \
+                       libraries within the same project. The current \
+                       project's name is %S, but the reference is to %s."
+                      (Dune_project.Name.to_string_hum current_project_name)
+                      ( match referenced_project_name with
+                      | Some name ->
+                        "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
+                      | None -> "an external library" )
+                  ]))
       else
         Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
     with

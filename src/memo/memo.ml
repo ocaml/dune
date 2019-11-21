@@ -792,6 +792,8 @@ end
 module Cell = struct
   type ('a, 'b, 'f) t = ('a, 'b, 'f) Dep_node.t
 
+  let input (t : (_, _, _) t) = t.input
+
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
     Exec_sync.exec_dep_node dep_node dep_node.input
 

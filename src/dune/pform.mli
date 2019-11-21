@@ -26,6 +26,8 @@ module Macro : sig
     | Exe
     | Dep
     | Bin
+    (* All four combinations are allowed and correspond to variables [lib],
+       [libexec], [lib-private], and [libexec-private]. *)
     | Lib of
         { lib_exec : bool
         ; lib_private : bool

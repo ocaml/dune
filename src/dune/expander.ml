@@ -382,7 +382,10 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
         and referenced_project_name =
           Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
         in
-        if Some current_project_name = referenced_project_name then
+        if
+          Option.equal Dune_project.Name.equal (Some current_project_name)
+            referenced_project_name
+        then
           Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
         else
           Error

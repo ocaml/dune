@@ -2,7 +2,8 @@
 ------------------
 
 - Add variables `%{lib-private...}` and `%{libexec-private...}` for finding
-  paths to source files of public and private libraries. (#2901, @snowleopard)
+  build paths of files in public and private libraries within the same
+  project. (#2901, @snowleopard)
 
 2.0.0 (unreleased)
 ------------------

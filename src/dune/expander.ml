@@ -371,23 +371,22 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     match resolve_binary ~loc:(Some loc) t ~prog:s with
     | Error fail -> add_fail acc fail
     | Ok path -> Some (path_exp path) )
-  | Macro (Lib, s) -> (
-    let lib_dep, file = parse_lib_file ~loc s in
-    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
+  | Macro (Lib { lib_exec; lib_private }, s) -> (
+    let lib, file = parse_lib_file ~loc s in
+    Resolved_forms.add_lib_dep acc lib dep_kind;
     match
-      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
+      if lib_private then
+        let open Result.O in
+        let+ lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+        Path.relative (Lib_info.src_dir (Lib.info lib)) file
+      else
+        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
     with
-    | Ok path -> Some (path_exp path)
-    | Error e -> add_fail acc { fail = (fun () -> raise e) } )
-  | Macro (Libexec, s) -> (
-    let lib_dep, file = parse_lib_file ~loc s in
-    Resolved_forms.add_lib_dep acc lib_dep dep_kind;
-    match
-      Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib:lib_dep ~file
-    with
-    | Error e -> add_fail acc { fail = (fun () -> raise e) }
     | Ok path ->
-      if (not Sys.win32) || Filename.extension s = ".exe" then
+      (* TODO: The [exec = true] case is currently not handled correctly and
+         does not match the documentation. *)
+      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+      then
         Some (path_exp path)
       else
         let path_exe = Path.extend_basename path ~suffix:".exe" in
@@ -400,7 +399,24 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
               (let+ () = Build.path path in
                path_exp path)
         in
-        add_ddep dep )
+        add_ddep dep
+    | Error e -> (
+      match lib_private with
+      | true -> add_fail acc { fail = (fun () -> raise e) }
+      | false ->
+        if Lib.DB.available (Scope.libs t.scope) lib then
+          let fail () =
+            raise
+              (User_error.raise ~loc
+                 [ Pp.textf
+                     "Library %S is not public. You can use the \"lib\" \
+                      variable only with public libraries that are installed."
+                     (Lib_name.to_string lib)
+                 ])
+          in
+          add_fail acc { fail }
+        else
+          add_fail acc { fail = (fun () -> raise e) } ) )
   | Macro (Lib_available, s) ->
     let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
     Resolved_forms.add_lib_dep acc lib Optional;

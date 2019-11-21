@@ -31,7 +31,7 @@ module Dir : sig
 
   val file_paths : t -> Path.Source.Set.t
 
-  val sub_dirs : t -> t String.Map.t
+  val fold_sub_dirs : t -> init:'a -> f:(string -> t -> 'a -> 'a) -> 'a
 
   val sub_dir_paths : t -> Path.Source.Set.t
 

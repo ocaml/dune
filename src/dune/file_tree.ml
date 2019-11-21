@@ -152,33 +152,74 @@ end = struct
       |> Result.ok
 end
 
+module Output = struct
+  type 'a t =
+    { dir : 'a
+    ; visited : Path.Source.t File.Map.t String.Map.t
+    }
+
+  let to_dyn f { dir; visited } =
+    let open Dyn.Encoder in
+    record
+      [ ("dir", f dir)
+      ; ( "visited"
+        , String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn) visited )
+      ]
+end
+
 module Dir0 = struct
-  module Contents = struct
-    type t =
-      { files : String.Set.t
-      ; sub_dirs : Sub_dirs.Status.t String.Map.t
-      ; dune_file : Dune_file.t option
-      }
-
-    let create ~files ~sub_dirs ~dune_file = { files; sub_dirs; dune_file }
-
-    let to_dyn { files; sub_dirs; dune_file } =
-      let open Dyn.Encoder in
-      record
-        [ ("files", String.Set.to_dyn files)
-        ; ("sub_dirs", String.Map.to_dyn Sub_dirs.Status.to_dyn sub_dirs)
-        ; ("dune_file", Dyn.Encoder.(option opaque dune_file))
-        ; ("project", Dyn.opaque)
-        ]
-  end
-
   type t =
     { path : Path.Source.t
     ; status : Sub_dirs.Status.t
-    ; contents : Contents.t
+    ; contents : contents
     ; project : Dune_project.t
     ; vcs : Vcs.t option
     }
+
+  and contents =
+    { files : String.Set.t
+    ; sub_dirs : sub_dir String.Map.t
+    ; dune_file : Dune_file.t option
+    }
+
+  and sub_dir =
+    { sub_dir_status : Sub_dirs.Status.t
+    ; sub_dir_as_t :
+        ( Path.Source.t
+        , t Output.t option
+        , Path.Source.t -> t Output.t option )
+        Memo.Cell.t
+    }
+
+  let rec to_dyn { path; status; contents; project = _; vcs } =
+    let open Dyn in
+    Record
+      [ ("path", Path.Source.to_dyn path)
+      ; ("status", Sub_dirs.Status.to_dyn status)
+      ; ("contents", dyn_of_contents contents)
+      ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
+      ]
+
+  and dyn_of_sub_dir { sub_dir_status; sub_dir_as_t } =
+    let open Dyn.Encoder in
+    let path = Memo.Cell.input sub_dir_as_t in
+    record
+      [ ("status", Sub_dirs.Status.to_dyn sub_dir_status)
+      ; ("sub_dir_as_t", Path.Source.to_dyn path)
+      ]
+
+  and dyn_of_contents { files; sub_dirs; dune_file } =
+    let open Dyn.Encoder in
+    record
+      [ ("files", String.Set.to_dyn files)
+      ; ("sub_dirs", String.Map.to_dyn dyn_of_sub_dir sub_dirs)
+      ; ("dune_file", Dyn.Encoder.(option opaque dune_file))
+      ; ("project", Dyn.opaque)
+      ]
+
+  module Contents = struct
+    let create ~files ~sub_dirs ~dune_file = { files; sub_dirs; dune_file }
+  end
 
   let create ~project ~path ~status ~contents ~vcs =
     { path; status; contents; project; vcs }
@@ -213,15 +254,6 @@ module Dir0 = struct
     String.Map.foldi (sub_dirs t) ~init:Path.Source.Set.empty
       ~f:(fun s _ acc ->
         Path.Source.Set.add acc (Path.Source.relative t.path s))
-
-  let to_dyn { path; status; contents; project = _; vcs } =
-    let open Dyn in
-    Record
-      [ ("path", Path.Source.to_dyn path)
-      ; ("status", Sub_dirs.Status.to_dyn status)
-      ; ("contents", Contents.to_dyn contents)
-      ; ("vcs", Dyn.Encoder.option Vcs.to_dyn vcs)
-      ]
 end
 
 module Settings : sig
@@ -269,28 +301,19 @@ let init ~ancestor_vcs ~recognize_jbuilder_projects =
   Settings.set { ancestor_vcs; recognize_jbuilder_projects }
 
 module rec Memoized : sig
-  module Output : sig
-    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
-  end
-
   val root : unit -> Dir0.t
 
   (* Not part of the interface. Only necessary to call recursively *)
-  val find_dir_raw : Path.Source.t -> Output.t option
+  val find_dir_raw :
+       Path.Source.t
+    -> ( Path.Source.t
+       , Dir0.t Output.t option
+       , Path.Source.t -> Dir0.t Output.t option )
+       Memo.Cell.t
 
   val find_dir : Path.Source.t -> Dir0.t option
 end = struct
   open Memoized
-
-  module Output = struct
-    type t = Dir0.t * Path.Source.t File.Map.t String.Map.t
-
-    let to_dyn (t : t) =
-      let open Dyn.Encoder in
-      pair Dir0.to_dyn
-        (String.Map.to_dyn (File.Map.to_dyn Path.Source.to_dyn))
-        t
-  end
 
   let get_sub_dirs ~dirs_visited ~dirs ~sub_dirs
       ~(dir_status : Sub_dirs.Status.t) =
@@ -328,7 +351,11 @@ end = struct
                  in
                  String.Map.add_exn dirs_visited_acc fn new_dirs_visited
              in
-             let subdirs = String.Map.set subdirs fn dir_status in
+             let sub_dir =
+               let sub_dir_as_t = find_dir_raw path in
+               { Dir0.sub_dir_status = dir_status; sub_dir_as_t }
+             in
+             let subdirs = String.Map.set subdirs fn sub_dir in
              (dirs_visited_acc, subdirs))
 
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
@@ -399,7 +426,7 @@ end = struct
       contents readdir ~dirs_visited ~project ~path ~dir_status
     in
     let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-    (dir, visited)
+    { Output.dir; visited }
 
   let get_vcs ~default:vcs ~path ~readdir:{ Readdir.files; dirs } =
     match
@@ -412,15 +439,18 @@ end = struct
     | None -> vcs
     | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
-  let find_dir_raw_impl path =
+  let find_dir_raw_impl path : Dir0.t Output.t option =
     match Path.Source.parent path with
     | None -> Some (root ())
     | Some parent_dir ->
       let open Option.O in
-      let* parent_dir, dirs_visited = find_dir_raw parent_dir in
+      let* { Output.dir = parent_dir; visited = dirs_visited } =
+        Memo.Cell.get_sync (find_dir_raw parent_dir)
+      in
       let* dir_status =
         let basename = Path.Source.basename path in
-        String.Map.find parent_dir.contents.sub_dirs basename
+        let+ sub_dir = String.Map.find parent_dir.contents.sub_dirs basename in
+        sub_dir.sub_dir_status
       in
       let dirs_visited =
         String.Map.find dirs_visited (Path.Source.basename path)
@@ -446,15 +476,15 @@ end = struct
         contents readdir ~dirs_visited ~project ~path ~dir_status
       in
       let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
-      Some (dir, visited)
+      Some { Output.dir; visited }
 
   let find_dir_raw =
     let module Output = struct
-      type t = Output.t option
+      type t = Dir0.t Output.t option
 
-      let to_dyn t =
+      let to_dyn =
         let open Dyn.Encoder in
-        option Output.to_dyn t
+        option (Output.to_dyn Dir0.to_dyn)
     end in
     let memo =
       Memo.create "find-dir-raw" ~doc:"get file tree"
@@ -462,11 +492,11 @@ end = struct
         ~output:(Simple (module Output))
         ~visibility:Memo.Visibility.Hidden Sync find_dir_raw_impl
     in
-    Memo.exec memo
+    Memo.cell memo
 
   let find_dir p =
     let open Option.O in
-    let+ dir, _ = find_dir_raw p in
+    let+ { Output.dir; visited = _ } = Memo.Cell.get_sync (find_dir_raw p) in
     dir
 
   let root () = Option.value_exn (find_dir Path.Source.root)
@@ -514,24 +544,21 @@ let dir_is_vendored path =
 module Dir = struct
   include Dir0
 
+  let sub_dir_as_t (s : sub_dir) =
+    (Memo.Cell.get_sync s.sub_dir_as_t |> Option.value_exn).dir
+
+  let fold_sub_dirs (t : t) ~init ~f =
+    String.Map.foldi t.contents.sub_dirs ~init ~f:(fun name s acc ->
+        f name (sub_dir_as_t s) acc)
+
   let rec fold t ~traverse ~init:acc ~f =
     let must_traverse = Sub_dirs.Status.Map.find traverse t.status in
-    if must_traverse then
+    match must_traverse with
+    | false -> acc
+    | true ->
       let acc = f t acc in
-      String.Map.foldi (sub_dirs t) ~init:acc ~f:(fun dirname _ acc ->
-          let dir =
-            let subdir = Path.Source.relative t.path dirname in
-            Option.value_exn (Memoized.find_dir subdir)
-          in
-          fold dir ~traverse ~init:acc ~f)
-    else
-      acc
-
-  let sub_dirs (t : t) =
-    t.contents.sub_dirs
-    |> String.Map.mapi ~f:(fun name _ ->
-           let path = Path.Source.relative t.path name in
-           Option.value_exn (find_dir path))
+      fold_sub_dirs t ~init:acc ~f:(fun _name t acc ->
+          fold t ~traverse ~init:acc ~f)
 end
 
 let fold_with_progress ~traverse ~init ~f =

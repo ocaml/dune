@@ -91,7 +91,6 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 * Success when using Dune language 2.1
 
   $ echo "(lang dune 2.1)" > dune-project
-  $ echo "(name test-lib)" >> dune-project
 
   $ ./sdune build @find-a
   src/a.ml
@@ -132,25 +131,85 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 ----------------------------------------------------------------------------------
 * The %{lib-private:...} variable does not work with external libraries
 
+  $ mkdir -p external
+  $ cat >external/dune <<EOF
+  > (library
+  >  (name extlib)
+  >  (public_name external_library))
+  > EOF
+
+  $ touch external/external_library.opam
+  $ ( cd external && ../sdune build @install && ../sdune install --prefix install)
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.1)
+  | (name external_library)
+  Installing install/lib/external_library/META
+  Installing install/lib/external_library/dune-package
+  Installing install/lib/external_library/extlib$ext_lib
+  Installing install/lib/external_library/extlib.cma
+  Installing install/lib/external_library/extlib.cmi
+  Installing install/lib/external_library/extlib.cmt
+  Installing install/lib/external_library/extlib.cmx
+  Installing install/lib/external_library/extlib.cmxa
+  Installing install/lib/external_library/extlib.cmxs
+  Installing install/lib/external_library/extlib.ml
+  Installing install/lib/external_library/opam
+
   $ cat >src/dune <<EOF
   > (library
   >  (name private_lib)
   >  (public_name public_lib)
   >  (modules a))
-  > EOF
-
-  $ cat >dune <<EOF
   > (rule
   >  (alias find-a)
-  >  (action (echo "%{lib-private:base:base.ml}")))
+  >  (action (echo "%{lib-private:external_library:opam}")))
   > EOF
 
-  $ ./sdune clean
-  $ ./sdune build @find-a
-  File "dune", line 3, characters 18-43:
-  3 |  (action (echo "%{lib-private:base:base.ml}")))
-                        ^^^^^^^^^^^^^^^^^^^^^^^^^
+  $ touch src/public_lib.opam
+  $ echo "(lang dune 2.1)" > src/dune-project
+  $ echo "(name test-lib)" >> src/dune-project
+
+  $ export OCAMLPATH=$PWD/external/install/lib; ./sdune build @find-a --root=src
+  Entering directory 'src'
+  File "dune", line 7, characters 18-52:
+  7 |  (action (echo "%{lib-private:external_library:opam}")))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: The variable "lib-private" can only refer to libraries within the same
   project. The current project's name is "test-lib", but the reference is to an
   external library.
+  [1]
+
+----------------------------------------------------------------------------------
+* The %{lib-private:...} is only allowed within the same project
+
+  $ mkdir -p another
+  $ cat >another/dune <<EOF
+  > (library
+  >  (name anotherlib)
+  >  (public_name another_library))
+  > EOF
+
+  $ cat >src/dune <<EOF
+  > (library
+  >  (name private_lib)
+  >  (public_name public_lib)
+  >  (modules a))
+  > (rule
+  >  (alias find-a)
+  >  (action (echo "%{lib-private:another_library:file}")))
+  > EOF
+
+  $ touch another/another_library.opam
+  $ rm public_lib.opam
+  $ rm dune
+  $ echo "(lang dune 2.1)" > another/dune-project
+  $ echo "(name another-lib)" >> another/dune-project
+
+  $ ./sdune build @find-a
+  File "src/dune", line 7, characters 18-51:
+  7 |  (action (echo "%{lib-private:another_library:file}")))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  Error: The variable "lib-private" can only refer to libraries within the same
+  project. The current project's name is "test-lib", but the reference is to
+  "another-lib".
   [1]

@@ -143,8 +143,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     let need_more_versions =
       try
         let (_ : Dune.Meta.t) =
-          Dune.Meta.add_versions meta ~get_version:(fun _ ->
-              raise_notrace Exit)
+          Dune.Meta.add_versions meta ~get_version:(fun _ -> raise_notrace Exit)
         in
         false
       with Exit -> true

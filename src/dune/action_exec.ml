@@ -61,9 +61,9 @@ end
 
 type done_or_more_deps =
   | Done
-  (* This code assumes that there can be at most one 'dynamic-run' within
-     single action. [DAP.Dependency.t] stores relative paths so name clash
-     would be possible if multiple 'dynamic-run' would be executed in different
+  (* This code assumes that there can be at most one 'dynamic-run' within single
+     action. [DAP.Dependency.t] stores relative paths so name clash would be
+     possible if multiple 'dynamic-run' would be executed in different
      subdirectories that contains targets having the same name. *)
   | Need_more_deps of (DAP.Dependency.Set.t * Dynamic_dep.Set.t)
 
@@ -150,8 +150,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Error _ when String.is_empty response ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared \
-           with 'dynamic-run' tag) failed to respond to dune."
+          "Executable '%s' declared as using dune-action-plugin (declared with \
+           'dynamic-run' tag) failed to respond to dune."
           prog_name
       ; Pp.nop
       ; Pp.text
@@ -162,8 +162,8 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
   | Error Parse_error ->
     User_error.raise ~loc:ectx.rule_loc
       [ Pp.textf
-          "Executable '%s' declared as using dune-action-plugin (declared \
-           with 'dynamic-run' tag) responded with invalid message."
+          "Executable '%s' declared as using dune-action-plugin (declared with \
+           'dynamic-run' tag) responded with invalid message."
           prog_name
       ]
   | Error (Version_mismatch _) ->
@@ -191,8 +191,7 @@ let rec exec t ~ectx ~eenv =
     let eenv = { eenv with exit_codes } in
     exec t ~ectx ~eenv
   | Dynamic_run (Error e, _) -> Action.Prog.Not_found.raise e
-  | Dynamic_run (Ok prog, args) ->
-    exec_run_dynamic_client ~ectx ~eenv prog args
+  | Dynamic_run (Ok prog, args) -> exec_run_dynamic_client ~ectx ~eenv prog args
   | Chdir (dir, t) -> exec t ~ectx ~eenv:{ eenv with working_dir = dir }
   | Setenv (var, value, t) ->
     exec t ~ectx ~eenv:{ eenv with env = Env.add eenv.env ~var ~value }
@@ -281,8 +280,7 @@ let rec exec t ~ectx ~eenv =
   | Digest_files paths ->
     let s =
       let data =
-        List.map paths ~f:(fun fn ->
-            (Path.to_string fn, Cached_digest.file fn))
+        List.map paths ~f:(fun fn -> (Path.to_string fn, Cached_digest.file fn))
       in
       Digest.generic data
     in
@@ -361,8 +359,7 @@ and redirect_out t ~ectx ~eenv outputs fn =
     | Stderr -> (eenv.stdout_to, out)
     | Outputs -> (out, out)
   in
-  exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to }
-  >>| fun result ->
+  exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to } >>| fun result ->
   Process.Io.release out;
   result
 
@@ -372,8 +369,7 @@ and redirect_in t ~ectx ~eenv inputs fn =
     match inputs with
     | Stdin -> in_
   in
-  exec t ~ectx ~eenv:{ eenv with stdin_from }
-  >>| fun result ->
+  exec t ~ectx ~eenv:{ eenv with stdin_from } >>| fun result ->
   Process.Io.release in_;
   result
 

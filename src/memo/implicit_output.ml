@@ -87,8 +87,7 @@ let produce (type o) (type_ : o t) (value : o) =
       [ ("type", String (Witness.get_name type_)) ]
   | Some (module H : Handler) -> (
     match Witness.same type_ H.type_ with
-    | Some Type_eq.T ->
-      produce' ~union:(Witness.get_union type_) H.so_far value
+    | Some Type_eq.T -> produce' ~union:(Witness.get_union type_) H.so_far value
     | None ->
       Code_error.raise
         "Implicit_output.produce called with a handler for a different output"

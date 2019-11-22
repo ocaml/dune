@@ -114,8 +114,7 @@ let find_errors ~modules ~intf_only ~virtual_modules ~private_modules
                   ((not has_impl) && (not !?intf_only) && not !?virtual_)
                   Missing_intf_only
              ++ add_if (impl_vmodule && not has_impl) Vmodule_impl_missing_impl
-             ++ add_if (impl_vmodule && has_intf) Vmodule_impls_with_own_intf
-             )
+             ++ add_if (impl_vmodule && has_intf) Vmodule_impls_with_own_intf )
         @@ acc)
   in
   let unimplemented_virt_modules =
@@ -234,21 +233,21 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       | Some loc ->
         User_error.raise ~loc
           [ Pp.text
-              "The following modules must be listed here as they don't have \
-               an implementation:"
+              "The following modules must be listed here as they don't have an \
+               implementation:"
           ; line_list missing_intf_only
           ; Pp.text "This will become an error in the future."
           ] );
     print
       [ Pp.text
-          "The following modules have an implementation, they cannot be \
-           listed as modules_without_implementation:"
+          "The following modules have an implementation, they cannot be listed \
+           as modules_without_implementation:"
       ]
       spurious_modules_intf [];
     print
       [ Pp.text
-          "The following modules have an implementation, they cannot be \
-           listed as virtual:"
+          "The following modules have an implementation, they cannot be listed \
+           as virtual:"
       ]
       spurious_modules_virtual []
   )
@@ -268,16 +267,14 @@ let eval ~modules:(all_modules : Module.Source.t Module_name.Map.t)
     | Exe_or_normal_lib
     | Virtual _ ->
       true
-    | Implementation { allow_new_public_modules; _ } ->
-      allow_new_public_modules
+    | Implementation { allow_new_public_modules; _ } -> allow_new_public_modules
   in
   let existing_virtual_modules =
     match kind with
     | Exe_or_normal_lib
     | Virtual _ ->
       Module_name.Set.empty
-    | Implementation { existing_virtual_modules; _ } ->
-      existing_virtual_modules
+    | Implementation { existing_virtual_modules; _ } -> existing_virtual_modules
   in
   let virtual_modules =
     match kind with

@@ -112,9 +112,7 @@ let expand_path common ~(setup : Dune.Main.build_system) ctx sv =
   let lookup ~f ~dir name =
     f (Dune.Dir_contents.artifacts (Dune.Dir_contents.get sctx ~dir)) name
   in
-  let lookup_module =
-    lookup ~f:Dune.Dir_contents.Dir_artifacts.lookup_module
-  in
+  let lookup_module = lookup ~f:Dune.Dir_contents.Dir_artifacts.lookup_module in
   let lookup_library =
     lookup ~f:Dune.Dir_contents.Dir_artifacts.lookup_library
   in
@@ -145,9 +143,7 @@ let resolve_target common ~setup = function
   | File sv as dep ->
     let f ctx =
       let path = expand_path common ~setup ctx sv in
-      Result.map_error
-        ~f:(fun hints -> (dep, hints))
-        (resolve_path path ~setup)
+      Result.map_error ~f:(fun hints -> (dep, hints)) (resolve_path path ~setup)
     in
     Result.List.concat_map ~f setup.workspace.contexts
   | dep -> Error (dep, [])

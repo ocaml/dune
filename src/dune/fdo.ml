@@ -32,8 +32,8 @@ let c_flags (ctx : Context.t) =
 
 let cxx_flags = c_flags
 
-(* Location of ocamlfdo binary tool is independent of the module, but may
-   depend on the context. *)
+(* Location of ocamlfdo binary tool is independent of the module, but may depend
+   on the context. *)
 let ocamlfdo_binary sctx dir =
   Super_context.resolve_program sctx ~dir ~loc:None "ocamlfdo"
     ~hint:"try: opam install ocamlfdo"
@@ -82,8 +82,7 @@ module Mode = struct
           [ Pp.textf
               "Failed to parse environment variable: %s=%s\n\
                Permitted values: if-exists always never\n\
-               Default: %s"
-              var v (to_string default)
+               Default: %s" var v (to_string default)
           ] )
 end
 

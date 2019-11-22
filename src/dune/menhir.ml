@@ -16,9 +16,9 @@ module SC = Super_context
    compiler to perform type inference and create an inferred [.mli] file.
    Finally, we let Menhir read this [.mli] file. *)
 
-(* This three-step process described is skipped in some cases where we know
-   that OCaml type inference is not required, e.g., when Menhir is used in
-   certain special modes, such as [--only-tokens]. In those cases, we use a
+(* This three-step process described is skipped in some cases where we know that
+   OCaml type inference is not required, e.g., when Menhir is used in certain
+   special modes, such as [--only-tokens]. In those cases, we use a
    straightforward one-step process. *)
 
 (* -------------------------------------------------------------------------- *)
@@ -53,8 +53,8 @@ end
 module Run (P : PARAMS) : sig end = struct
   open P
 
-  (* [sctx] is the "super context", while [context] is the "context". Both
-     store information about the current build context. *)
+  (* [sctx] is the "super context", while [context] is the "context". Both store
+     information about the current build context. *)
 
   let sctx = Compilation_context.super_context cctx
 
@@ -64,8 +64,8 @@ module Run (P : PARAMS) : sig end = struct
 
   (* Naming conventions. *)
 
-  (* If [m] is a (short) module name, such as "myparser", then [source m] is
-     the corresponding source file, and [targets m] is the list of targets that
+  (* If [m] is a (short) module name, such as "myparser", then [source m] is the
+     corresponding source file, and [targets m] is the list of targets that
      Menhir must build. *)
 
   let source m = Path.relative (Path.build dir) (m ^ ".mly")
@@ -189,16 +189,14 @@ module Run (P : PARAMS) : sig end = struct
     let name = Module_name.of_string (mock base) in
     let mock_module : Module.t =
       let source =
-        let impl =
-          Module.File.make Dialect.ocaml (Path.build (mock_ml base))
-        in
+        let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
         Module.Source.make ~impl name
       in
       Module.of_source ~visibility:Public ~kind:Impl source
     in
     let modules =
-      (* The following incantation allows the mock [.ml] file to be
-         preprocessed by the user-specified [ppx] rewriters. *)
+      (* The following incantation allows the mock [.ml] file to be preprocessed
+         by the user-specified [ppx] rewriters. *)
       let mock_module =
         Preprocessing.pp_module_as
           (Compilation_context.preprocessing cctx)

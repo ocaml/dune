@@ -15,8 +15,7 @@ val scope : t -> Scope.t
 
 val external_ : t -> profile:Profile.t -> default:Env.t -> Env.t
 
-val ocaml_flags :
-  t -> profile:Profile.t -> expander:Expander.t -> Ocaml_flags.t
+val ocaml_flags : t -> profile:Profile.t -> expander:Expander.t -> Ocaml_flags.t
 
 val inline_tests : t -> profile:Profile.t -> Dune_env.Stanza.Inline_tests.t
 

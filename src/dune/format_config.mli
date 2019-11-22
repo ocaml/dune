@@ -18,8 +18,8 @@ val of_config : ext:t option -> dune_lang:t option -> t option
 (** The syntax corresponding to the dune 1.x [(using fmt)] extension. *)
 val syntax : Dune_lang.Syntax.t
 
-(** Where the configuration was defined. Can be [Loc.none] if formatting is
-    done by default. *)
+(** Where the configuration was defined. Can be [Loc.none] if formatting is done
+    by default. *)
 val loc : t -> Loc.t
 
 (** Should we emit formatting rules for a particular [language]? *)

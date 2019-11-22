@@ -5,8 +5,8 @@
 
     https://github.com/janestreet/cinaps
 
-    This module implements the [cinaps] stanza that integrate cinaps nicely
-    with dune. *)
+    This module implements the [cinaps] stanza that integrate cinaps nicely with
+    dune. *)
 
 open Stdune
 

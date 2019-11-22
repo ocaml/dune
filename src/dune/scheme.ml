@@ -48,8 +48,7 @@ end = struct
     { by_child =
         String.Map.union x.by_child y.by_child ~f:(fun _key data1 data2 ->
             Some
-              (Memo.Lazy.map2 data1 data2 ~f:(fun x y ->
-                   union ~union_rules x y)))
+              (Memo.Lazy.map2 data1 data2 ~f:(fun x y -> union ~union_rules x y)))
     ; rules_here =
         Memo.Lazy.map2 x.rules_here y.rules_here
           ~f:(union_option ~f:union_rules)
@@ -64,9 +63,9 @@ end = struct
     ; by_child =
         ( match Dir_set.default dirs with
         | true ->
-          (* This is forcing the lazy potentially too early if the directory
-             the user is interested in is not actually in the set. We're not
-             fully committed to supporting this case though, anyway. *)
+          (* This is forcing the lazy potentially too early if the directory the
+             user is interested in is not actually in the set. We're not fully
+             committed to supporting this case though, anyway. *)
           String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
               Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
         | false ->

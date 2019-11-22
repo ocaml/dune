@@ -1,8 +1,7 @@
 (** An augmented context *)
 
-(** A context augmented with: a lib-db, ...
-
-    Super context are used for generating rules. *)
+(** A context augmented with: a lib-db, ... Super context are used for
+    generating rules. *)
 
 open! Stdune
 open Import
@@ -125,8 +124,8 @@ val add_alias_action :
 val source_files : src_path:Path.Source.t -> String.Set.t
 
 (** [prog_spec t ?hint name] resolve a program. [name] is looked up in the
-    workspace, if it is not found in the tree is is looked up in the PATH. If
-    it is not found at all, the resulting [Prog_spec.t] will either return the
+    workspace, if it is not found in the tree is is looked up in the PATH. If it
+    is not found at all, the resulting [Prog_spec.t] will either return the
     resolved path or a record with details about the error and possibly a hint.
 
     [hint] should tell the user what to install when the program is not found. *)
@@ -140,13 +139,12 @@ val resolve_program :
 
 module Libs : sig
   (** Make sure all rules produces by [f] record the library dependencies for
-      [dune external-lib-deps] and depend on the generation of the .merlin
-      file.
+      [dune external-lib-deps] and depend on the generation of the .merlin file.
 
       /!\ WARNING /!\: make sure the last function call inside [f] is fully
       applied, otherwise the function might end up being executed after this
-      function has returned. Consider adding a type annotation to make sure
-      this doesn't happen by mistake. *)
+      function has returned. Consider adding a type annotation to make sure this
+      doesn't happen by mistake. *)
   val with_lib_deps :
     t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
 

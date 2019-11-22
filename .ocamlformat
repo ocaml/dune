@@ -1,4 +1,6 @@
-version=0.11.0
+version=0.12
+break-separators=before
+dock-collection-brackets=false
 break-sequences=true
 doc-comments=before
 field-space=loose

@@ -100,9 +100,9 @@ end
 with type configurator := t
 
 module Flags : sig
-  (** [write_sexp fname s] writes the list of strings [s] to the file [fname]
-      in an appropriate format so that it can used in [dune] files with
-      [(:include [fname])]. *)
+  (** [write_sexp fname s] writes the list of strings [s] to the file [fname] in
+      an appropriate format so that it can used in [dune] files with [(:include
+      [fname])]. *)
   val write_sexp : string -> string list -> unit
 
   (** [write_lines fname s] writes the list of string [s] to the file [fname]

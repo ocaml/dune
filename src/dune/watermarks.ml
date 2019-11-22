@@ -240,8 +240,8 @@ module Dune_project = struct
                  version after it *)
               loc.stop.pos_cnum
             | None ->
-              (* If all else fails, add the [version] field after the first
-                 line of the file *)
+              (* If all else fails, add the [version] field after the first line
+                 of the file *)
               0 )
         in
         let len = String.length t.contents in
@@ -283,8 +283,8 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
     | Some { name = None; _ } ->
       User_error.raise
         [ Pp.textf
-            "The project name is not defined, please add a (name <name>) \
-             field to your dune-project file."
+            "The project name is not defined, please add a (name <name>) field \
+             to your dune-project file."
         ]
     | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
   in

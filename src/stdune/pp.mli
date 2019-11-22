@@ -1,7 +1,7 @@
 (** Pretty printers *)
 
-(** A document that is not yet rendered. The argument is the type of tags in
-    the document. For instance tags might be used for styles. *)
+(** A document that is not yet rendered. The argument is the type of tags in the
+    document. For instance tags might be used for styles. *)
 type +'tag t
 
 (** {1 Basic combinators} *)
@@ -12,8 +12,8 @@ val nop : _ t
 (** [seq x y] prints [x] and then [y] *)
 val seq : 'a t -> 'a t -> 'a t
 
-(** [concat ?sep l] prints elements in [l] separated by [sep]. [sep] defaults
-    to [nop]. *)
+(** [concat ?sep l] prints elements in [l] separated by [sep]. [sep] defaults to
+    [nop]. *)
 val concat : ?sep:'a t -> 'a t list -> 'a t
 
 (** Convenience function for [List.map] followed by [concat] *)
@@ -38,12 +38,12 @@ val tag : 'a t -> tag:'a -> 'a t
 
 (** {1 Break hints} *)
 
-(** Either a newline or a space, depending on whether the line is broken at
-    this point. *)
+(** Either a newline or a space, depending on whether the line is broken at this
+    point. *)
 val space : _ t
 
-(** Either a newline or nothing, depending on whether the line is broken at
-    this point. *)
+(** Either a newline or nothing, depending on whether the line is broken at this
+    point. *)
 val cut : _ t
 
 (** Either a newline or [nspaces] spaces. If it is a newline, [shift] is added

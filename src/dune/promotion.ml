@@ -115,10 +115,10 @@ let do_promote db files_to_promote =
     match srcs with
     | [] -> assert false
     | (src, staging) :: others ->
-      (* We remove the files from the digest cache to force a rehash on the
-         next run. We do this because on OSX [mtime] is not precise enough and
-         if a file is modified and promoted quickly, it will look like it
-         hasn't changed even though it might have.
+      (* We remove the files from the digest cache to force a rehash on the next
+         run. We do this because on OSX [mtime] is not precise enough and if a
+         file is modified and promoted quickly, it will look like it hasn't
+         changed even though it might have.
 
          aalekseyev: this is probably unnecessary now, depending on when
          [do_promote] runs (before or after [invalidate_cached_timestamps]) *)

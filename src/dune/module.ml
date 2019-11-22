@@ -166,8 +166,7 @@ let has t ~ml_kind =
 
 let source t ~(ml_kind : Ml_kind.t) = Ml_kind.Dict.get t.source.files ml_kind
 
-let file t ~(ml_kind : Ml_kind.t) =
-  source t ~ml_kind |> Option.map ~f:File.path
+let file t ~(ml_kind : Ml_kind.t) = source t ~ml_kind |> Option.map ~f:File.path
 
 let obj_name t = t.obj_name
 
@@ -214,8 +213,8 @@ let wrapped_compat t =
         ; path =
             (* Option.value_exn cannot fail because we disallow wrapped
                compatibility mode for virtual libraries. That means none of the
-               modules are implementing a virtual module, and therefore all
-               have a source dir *)
+               modules are implementing a virtual module, and therefore all have
+               a source dir *)
             Path.L.relative (src_dir t)
               [ ".wrapped_compat"
               ; Module_name.to_string t.source.name ^ ml_gen
@@ -322,8 +321,7 @@ let ml_source =
         let path = Path.extend_basename f.path ~suffix in
         File.make Dialect.ocaml path)
 
-let set_src_dir t ~src_dir =
-  map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
+let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
 let generated ~src_dir name =
   let basename = String.uncapitalize (Module_name.to_string name) in
@@ -351,8 +349,7 @@ module Name_map = struct
     Module_name.Map.of_list_map_exn ~f:(fun m -> (name m, m)) modules
 
   let encode t =
-    Module_name.Map.values t
-    |> List.map ~f:(fun x -> Dune_lang.List (encode x))
+    Module_name.Map.values t |> List.map ~f:(fun x -> Dune_lang.List (encode x))
 
   let singleton m = Module_name.Map.singleton (name m) m
 

@@ -42,8 +42,7 @@ let term =
           match Target.resolve_target common ~setup utop_target with
           | Error _ ->
             User_error.raise
-              [ Pp.textf "no library is defined in %s"
-                  (String.maybe_quoted dir)
+              [ Pp.textf "no library is defined in %s" (String.maybe_quoted dir)
               ]
           | Ok [ File target ] -> target
           | Ok _ -> assert false

@@ -31,5 +31,4 @@ val lock_get :
   -> lock_type
   -> (lock_type * int) option
 
-val unlock :
-  ?whence:whence -> ?start:int -> ?len:int -> Unix.file_descr -> unit
+val unlock : ?whence:whence -> ?start:int -> ?len:int -> Unix.file_descr -> unit

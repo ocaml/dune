@@ -1,7 +1,7 @@
 (** Representation of the object directory for libraries *)
 
-(** Dune store the artifacts of a library or a set of executables in a
-    dedicated dot directory (name starting with a '.').
+(** Dune store the artifacts of a library or a set of executables in a dedicated
+    dot directory (name starting with a '.').
 
     This is mainly for hygiene reasons. Since the compiler might look at any
     artifact in an include directory, it is important that we control precisely
@@ -14,8 +14,8 @@
 
     In the rest of this API, "local" and "external" have their usual Dune
     meaning: "local" is for libraries or executables that are local to the
-    current worksapce and "extenal" for libraries that are part of the
-    installed world.
+    current worksapce and "extenal" for libraries that are part of the installed
+    world.
 
     For local libraries, the path are reported as [Path.Build.t] values given
     that they are all inside the build directory. For external libraries the
@@ -99,8 +99,8 @@ module Module : sig
 
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
-  (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and
-      the module has no implementation.*)
+  (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
+      module has no implementation.*)
   val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path

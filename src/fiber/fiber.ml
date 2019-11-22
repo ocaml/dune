@@ -1,7 +1,7 @@
 open! Stdune
 
-(* Invariant: the execution contxt passed to the continuation is the same as
-   the current one *)
+(* Invariant: the execution contxt passed to the continuation is the same as the
+   current one *)
 type 'a t = ('a -> unit) -> unit
 
 let of_thunk f k = f () k
@@ -326,8 +326,7 @@ module Var = struct
 
   let get_exn var = Univ_map.find_exn (EC.vars ()) var
 
-  let set_sync var x f =
-    EC.set_vars_sync (Univ_map.add (EC.vars ()) var x) f ()
+  let set_sync var x f = EC.set_vars_sync (Univ_map.add (EC.vars ()) var x) f ()
 
   let set var x f k = EC.set_vars (Univ_map.add (EC.vars ()) var x) f () k
 
@@ -346,8 +345,7 @@ let wait_errors f k = EC.fork_and_wait_errors f () k
 let fold_errors f ~init ~on_error =
   let acc = ref init in
   let on_error exn = acc := on_error exn !acc in
-  wait_errors (fun () -> with_error_handler ~on_error f)
-  >>| function
+  wait_errors (fun () -> with_error_handler ~on_error f) >>| function
   | Ok _ as ok -> ok
   | Error () -> Error !acc
 

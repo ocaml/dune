@@ -174,8 +174,7 @@ module Map_ast = struct
   let map f ast =
     let ast = f mapper ast in
     let fail _ (loc, _) =
-      Location.raise_errorf ~loc
-        "Invalid use of custom 'let' or 'and' operator"
+      Location.raise_errorf ~loc "Invalid use of custom 'let' or 'and' operator"
     in
     Hashtbl.iter fail custom_operators;
     ast

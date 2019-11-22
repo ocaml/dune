@@ -128,8 +128,7 @@ module Context = struct
         in
         field "paths" ~default:[]
           ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
-          >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode))
-          )
+          >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
           match targets with
@@ -201,8 +200,8 @@ module Context = struct
       let+ common = Common.t ~profile
       and+ name =
         field_o "name"
-          ( Dune_lang.Syntax.since syntax (1, 10)
-          >>= fun () -> Context_name.decode )
+          ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
+            Context_name.decode )
       in
       let default =
         (* TODO proper error handling with locs *)

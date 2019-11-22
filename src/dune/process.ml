@@ -14,14 +14,12 @@ let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
         (Int.equal i)
 
 let map_result :
-    type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t
-    =
+    type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t =
  fun mode t ~f ->
   match mode with
   | Strict -> t >>| fun _ -> f ()
   | Accept _ -> (
-    t
-    >>| function
+    t >>| function
     | 0 -> Ok (f ())
     | n -> Error n )
 
@@ -252,8 +250,7 @@ module Fancy = struct
       :: Pp.tag
            (Pp.verbatim (String.quote_for_shell fn))
            ~tag:
-             (User_message.Style.Ansi_styles
-                Ansi_color.Style.[ bold; fg_green ])
+             (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
@@ -280,9 +277,7 @@ module Fancy = struct
           in
           match Dpath.analyse_target path with
           | Other path ->
-            split_paths
-              (Path.Build.to_string path :: targets_acc)
-              ctxs_acc rest
+            split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
           | Regular (ctx, filename) ->
             split_paths
               (Path.Source.to_string filename :: targets_acc)
@@ -353,8 +348,8 @@ module Exit_status = struct
         (Pp.map_tags (Ansi_color.parse s) ~f:(fun styles ->
              User_message.Style.Ansi_styles styles))
 
-  (* In this module, we don't need the "Error: " prefix given that it is
-     already included in the error message from the command. *)
+  (* In this module, we don't need the "Error: " prefix given that it is already
+     included in the error message from the command. *)
   let fail paragraphs = raise (User_error.E (User_message.make paragraphs))
 
   let handle_verbose t ~ok_codes ~id ~output ~command_line =
@@ -570,8 +565,8 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
   map_result fail_mode
-    (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose
-       fail_mode prog args)
+    (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose fail_mode
+       prog args)
     ~f:ignore
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)

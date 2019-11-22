@@ -233,8 +233,8 @@ let concurrency =
 module Fiber : sig
   (** Fibers *)
 
-  (** This module is similar to the one in [../src/fiber] except that it is
-      much less optimised and much easier to understand. You should look at the
+  (** This module is similar to the one in [../src/fiber] except that it is much
+      less optimised and much easier to understand. You should look at the
       documentation of the other module to understand the API. *)
 
   type 'a t
@@ -331,8 +331,7 @@ end = struct
     k ivar
 
   let fork_and_join f g =
-    fork f
-    >>= fun a -> fork g >>= fun b -> both (Future.wait a) (Future.wait b)
+    fork f >>= fun a -> fork g >>= fun b -> both (Future.wait a) (Future.wait b)
 
   let fork_and_join_unit f g =
     fork f >>= fun a -> fork g >>= fun b -> Future.wait a >>> Future.wait b
@@ -547,8 +546,7 @@ module Config : sig
 
   val output_complete_obj_arg : string
 end = struct
-  let ocaml_version =
-    Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
+  let ocaml_version = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b))
 
   let prog_not_found prog = fatal "Program %s not found in PATH" prog
 
@@ -1150,9 +1148,7 @@ let build_syntax_shims () =
           close_out (open_out dst)
         else
           copy (cwd ^/ sprintf "%s.%s.ml" name selector) dst);
-    copy_lexer (cwd ^/ "let_trail.mll")
-      (build_dir ^/ "let_trail.ml")
-      ~header:""
+    copy_lexer (cwd ^/ "let_trail.mll") (build_dir ^/ "let_trail.ml") ~header:""
     >>= fun () ->
     copy (cwd ^/ "let_trail.mli") (build_dir ^/ "let_trail.mli");
     Process.run ~cwd:build_dir Config.compiler

@@ -75,8 +75,7 @@ let clear (type input output) ((module T) : (input, output) t) =
 let mem (type input output) ((module T) : (input, output) t) k =
   T.H.mem T.value k
 
-let keys (type input output) ((module T) : (input, output) t) =
-  T.H.keys T.value
+let keys (type input output) ((module T) : (input, output) t) = T.H.keys T.value
 
 let foldi (type input output) ((module T) : (input, output) t) ~init ~f =
   T.H.foldi T.value ~init ~f
@@ -88,8 +87,8 @@ let to_dyn (type input output) (f : output -> Dyn.t)
     ((module T) : (input, output) t) =
   T.H.to_dyn f T.value
 
-let find_or_add (type input output) ((module T) : (input, output) t)
-    (k : input) ~f =
+let find_or_add (type input output) ((module T) : (input, output) t) (k : input)
+    ~f =
   T.H.find_or_add T.value k ~f
 
 let remove (type input output) ((module T) : (input, output) t) k =

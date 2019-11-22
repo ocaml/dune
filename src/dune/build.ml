@@ -170,9 +170,7 @@ let memoize name t = Memo { name; t; state = Unevaluated }
    depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
    directories in directories that contain no file. *)
 let depend_on_dir_without_files =
-  let pred =
-    Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false)
-  in
+  let pred = Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false) in
   fun dir -> Paths_glob (File_selector.create ~dir pred) |> ignore
 
 let source_tree ~dir =
@@ -409,8 +407,7 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
         x
       | Evaluating ->
         User_error.raise
-          [ Pp.textf
-              "Dependency cycle evaluating memoized build description %s"
+          [ Pp.textf "Dependency cycle evaluating memoized build description %s"
               m.name
           ]
       | Unevaluated -> (

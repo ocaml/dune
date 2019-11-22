@@ -17,8 +17,8 @@ val close : t -> unit
 
 type event
 
-(** Prepare data related to the processus. This will capture the current time
-    to compute the start and duration. *)
+(** Prepare data related to the processus. This will capture the current time to
+    compute the start and duration. *)
 val on_process_start : t -> program:string -> args:string list -> event
 
 (** Capture the current time and output a complete event. *)

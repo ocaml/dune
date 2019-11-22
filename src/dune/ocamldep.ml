@@ -109,8 +109,7 @@ let deps_of ~cctx ~ml_kind unit =
        |> interpret_deps cctx ~unit
        |> fun modules ->
        ( build_paths modules
-       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m))
-       ))
+       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) ))
   in
   SC.add_rule sctx ~dir action;
   let all_deps_file = Path.build all_deps_file in
@@ -119,9 +118,7 @@ let deps_of ~cctx ~ml_kind unit =
     (Build.map ~f:(parse_module_names ~unit) (Build.lines_of all_deps_file))
 
 let read_deps_of ~obj_dir ~modules ~ml_kind unit =
-  let all_deps_file =
-    Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind))
-  in
+  let all_deps_file = Obj_dir.Module.dep obj_dir (Transitive (unit, ml_kind)) in
   Build.memoize
     (Path.Build.to_string all_deps_file)
     (Build.map

@@ -43,9 +43,7 @@ let term =
             Dune.Context_name.Map.values setup.scontexts
             |> List.map ~f:(fun sctx ->
                    let dir =
-                     Path.Build.append_source
-                       (Super_context.build_dir sctx)
-                       dir
+                     Path.Build.append_source (Super_context.build_dir sctx) dir
                    in
                    dump sctx ~dir)
           | External _ ->
@@ -55,8 +53,7 @@ let term =
             User_error.raise
               [ Pp.text "Environment is not defined in install dirs" ] )
       in
-      Build_system.do_build ~request
-      >>| function
+      Build_system.do_build ~request >>| function
       | [ (_, env) ] -> Format.printf "%a" pp env
       | l ->
         List.iter l ~f:(fun (name, env) ->

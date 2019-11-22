@@ -36,9 +36,7 @@ val compare : t -> t -> Ordering.t
 
 val make : Name.t -> dir:Path.Build.t -> t
 
-(** The following always holds:
-
-    {[ make (name t) ~dir:(dir t) = t ]} *)
+(** The following always holds: {[ make (name t) ~dir:(dir t) = t ]} *)
 val name : t -> Name.t
 
 val dir : t -> Path.Build.t

@@ -50,8 +50,7 @@ let counter = ref 0
 (* our computation increases the counter, adds the two dependencies, "some" and
    "another" and works by multiplying the input by two *)
 let comp x =
-  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2
-  >>= fun a ->
+  Fiber.return x >>= Memo.exec mcompdep1 >>= Memo.exec mcompdep2 >>= fun a ->
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
 
@@ -83,8 +82,8 @@ Some [ ("another", "aa"); ("some", "a") ]
 |}]
 
 let%expect_test _ =
-  (* running it on a new input should cause it to recompute the first time it
-     is run *)
+  (* running it on a new input should cause it to recompute the first time it is
+     run *)
   print_endline (run mcomp "hello");
   Format.printf "%d@." !counter;
   print_endline (run mcomp "hello");
@@ -121,8 +120,7 @@ let dump_stack v =
 let mcompcycle =
   let mcompcycle = Fdecl.create Dyn.Encoder.opaque in
   let compcycle x =
-    Fiber.return x >>= dump_stack
-    >>= fun x ->
+    Fiber.return x >>= dump_stack >>= fun x ->
     counter := !counter + 1;
     if !counter < 20 then
       (x + 1) mod 3 |> Memo.exec (Fdecl.get mcompcycle)
@@ -169,7 +167,8 @@ let mfib =
     if x <= 1 then
       Fiber.return x
     else
-      mfib (x - 1) >>= fun r1 -> mfib (x - 2) >>| fun r2 -> r1 + r2
+      mfib (x - 1) >>= fun r1 ->
+      mfib (x - 2) >>| fun r2 -> r1 + r2
   in
   let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
   Fdecl.set mfib fn;
@@ -301,8 +300,8 @@ let%expect_test _ =
 |}]
 
 let%expect_test _ =
-  (* Bug: dependency on [lazy] is only registered by one of the dependants.
-     This means we should never use [lazy] together with [Memo]. We can use
+  (* Bug: dependency on [lazy] is only registered by one of the dependants. This
+     means we should never use [lazy] together with [Memo]. We can use
      [Memo.lazy_] though (see below) *)
   Builtin_lazy.deps () |> print_dyn;
   [%expect

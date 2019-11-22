@@ -28,8 +28,8 @@ module Deprecated : sig
   (** Serialize a S-expression using indentation to improve readability *)
   val pp : Format.formatter -> t -> unit
 
-  (** Same as [pp ~syntax:Dune], but split long strings. The formatter must
-      have been prepared with [prepare_formatter]. *)
+  (** Same as [pp ~syntax:Dune], but split long strings. The formatter must have
+      been prepared with [prepare_formatter]. *)
   val pp_split_strings : Format.formatter -> t -> unit
 
   (** Prepare a formatter for [pp_split_strings]. Additionaly the formatter

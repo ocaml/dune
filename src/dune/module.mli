@@ -107,9 +107,7 @@ module Obj_map : sig
   val find_exn : 'a t -> module_ -> 'a
 
   val top_closure :
-       module_ list t
-    -> module_ list
-    -> (module_ list, module_ list) Result.result
+    module_ list t -> module_ list -> (module_ list, module_ list) Result.result
 end
 with type module_ := t
 

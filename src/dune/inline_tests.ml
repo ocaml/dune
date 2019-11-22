@@ -21,8 +21,8 @@ module Backend = struct
 
       let loc t = t.loc
 
-      (* The syntax of the driver sub-system is part of the main dune syntax,
-         so we simply don't create a new one.
+      (* The syntax of the driver sub-system is part of the main dune syntax, so
+         we simply don't create a new one.
 
          If we wanted to make the ppx system an extension, then we would create
          a new one. *)
@@ -196,9 +196,7 @@ include Sub_system.Register_end_point (struct
               and+ flags = Ordered_set_lang.Unexpanded.field "flags"
               and+ backend = field_o "backend" (located Lib_name.decode)
               and+ libraries =
-                field "libraries"
-                  (repeat (located Lib_name.decode))
-                  ~default:[]
+                field "libraries" (repeat (located Lib_name.decode)) ~default:[]
               and+ modes =
                 field "modes"
                   ( Dune_lang.Syntax.since syntax (1, 11)
@@ -324,8 +322,7 @@ include Sub_system.Register_end_point (struct
       let open Build.O in
       let+ l =
         List.map flags
-          ~f:
-            (Expander.expand_and_eval_set expander ~standard:(Build.return []))
+          ~f:(Expander.expand_and_eval_set expander ~standard:(Build.return []))
         |> Build.all
       in
       Command.Args.As (List.concat l)
@@ -364,8 +361,7 @@ include Sub_system.Register_end_point (struct
            and+ () = Build.paths source_files
            and+ action =
              Build.progn
-               ( Command.run exe ~dir:(Path.build dir)
-                   [ runner_args; Dyn flags ]
+               ( Command.run exe ~dir:(Path.build dir) [ runner_args; Dyn flags ]
                :: List.map source_files ~f:(fun fn ->
                       Build.return
                         (Action.diff ~optional:true fn

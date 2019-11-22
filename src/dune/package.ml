@@ -152,8 +152,7 @@ module Dependency = struct
                 Or x )
             ]
           in
-          peek_exn
-          >>= function
+          peek_exn >>= function
           | Atom (_loc, A s) when String.is_prefix s ~prefix:":" ->
             let+ () = junk in
             Bvar (Var (String.drop s 1))
@@ -259,8 +258,7 @@ module Source_kind = struct
               | [ user; repo ] -> Github (user, repo)
               | _ ->
                 User_error.raise ~loc
-                  [ Pp.textf "GitHub repository must be of form user/repo" ])
-        )
+                  [ Pp.textf "GitHub repository must be of form user/repo" ]) )
       ; ("uri", string >>| fun s -> Url s)
       ]
 end
@@ -394,9 +392,9 @@ type t =
   ; deprecated_package_names : Loc.t Name.Map.t
   }
 
-(* Package name are globally unique, so we can reasonably expect that there
-   will always be only a single value of type [t] with a given name in memory.
-   That's why we only hash the name. *)
+(* Package name are globally unique, so we can reasonably expect that there will
+   always be only a single value of type [t] with a given name in memory. That's
+   why we only hash the name. *)
 let hash t = Name.hash t.name
 
 let decode ~dir =

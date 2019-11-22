@@ -33,8 +33,7 @@ let decode_sandbox_config =
             [ ("none", return Sandbox_config.Partial.no_sandboxing)
             ; ("always", return Sandbox_config.Partial.needs_sandboxing)
             ; ( "preserve_file_kind"
-              , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink)
-              )
+              , return (Sandbox_config.Partial.disallow Sandbox_mode.symlink) )
             ]))
   in
   Sandbox_config.Partial.merge ~loc x

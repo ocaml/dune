@@ -22,7 +22,7 @@ val to_string : t -> string
 
 val parse_string_exn : Loc.t * string -> t
 
-val arg_parse : string -> [`Ok of t | `Error of string]
+val arg_parse : string -> [ `Ok of t | `Error of string ]
 
 include Dune_lang.Conv.S with type t := t
 

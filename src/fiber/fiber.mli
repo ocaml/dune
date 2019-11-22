@@ -22,8 +22,8 @@ val of_thunk : (unit -> 'a t) -> 'a t
 val never : 'a t
 
 module O : sig
-  (** [>>>] is a sequencing operator. [a >>> b] is the fiber that first
-      executes [a] and then [b]. *)
+  (** [>>>] is a sequencing operator. [a >>> b] is the fiber that first executes
+      [a] and then [b]. *)
   val ( >>> ) : unit t -> 'a t -> 'a t
 
   (** [>>=] is similar to [>>>] except that the result of the first fiber is
@@ -83,11 +83,11 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Forking + joining} *)
 
-(** The following functions combine forking 2 or more fibers followed by
-    joining the results. For every function, we give an equivalent
-    implementation using the more basic functions as documentation. Note
-    however that these functions are implemented as primitives and so are more
-    efficient that the suggested implementation. *)
+(** The following functions combine forking 2 or more fibers followed by joining
+    the results. For every function, we give an equivalent implementation using
+    the more basic functions as documentation. Note however that these functions
+    are implemented as primitives and so are more efficient that the suggested
+    implementation. *)
 
 (** For two fibers and wait for their results:
 
@@ -122,9 +122,9 @@ module Once : sig
 
   val create : (unit -> 'a fiber) -> 'a t
 
-  (** [get t] returns the value of [t]. If [get] was never called before on
-      this [t], it is executed at this point, otherwise returns a fiber that
-      waits for the fiber from the first call to [get t] to terminate. *)
+  (** [get t] returns the value of [t]. If [get] was never called before on this
+      [t], it is executed at this point, otherwise returns a fiber that waits
+      for the fiber from the first call to [get t] to terminate. *)
   val get : 'a t -> 'a fiber
 
   (** [peek t] returns [Some v] if [get t] has already been called and has
@@ -170,10 +170,10 @@ with type 'a fiber := 'a t
 
 (** {1 Error handling} *)
 
-(** [with_error_handler f ~on_error] calls [on_error] for every exception
-    raised during the execution of [f]. This include exceptions raised when
-    calling [f ()] or during the execution of fibers after [f ()] has returned.
-    Exceptions raised by [on_error] are passed on to the parent error handler.
+(** [with_error_handler f ~on_error] calls [on_error] for every exception raised
+    during the execution of [f]. This include exceptions raised when calling [f
+    ()] or during the execution of fibers after [f ()] has returned. Exceptions
+    raised by [on_error] are passed on to the parent error handler.
 
     It is guaranteed that after the fiber has returned a value, [on_error] will
     never be called. *)
@@ -208,14 +208,13 @@ val fold_errors :
   -> on_error:(Exn_with_backtrace.t -> 'b -> 'b)
   -> ('a, 'b) Result.t t
 
-(** [collect_errors f] is:
-
-    {[ fold_errors f ~init:[] ~on_error:(fun e l -> e :: l) ]} *)
+(** [collect_errors f] is: {[ fold_errors f ~init:[] ~on_error:(fun e l -> e ::
+    l) ]} *)
 val collect_errors :
   (unit -> 'a t) -> ('a, Exn_with_backtrace.t list) Result.t t
 
-(** [finalize f ~finally] runs [finally] after [f ()] has terminated, whether
-    it fails or succeeds. *)
+(** [finalize f ~finally] runs [finally] after [f ()] has terminated, whether it
+    fails or succeeds. *)
 val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
 (** {1 Synchronization} *)
@@ -233,8 +232,8 @@ module Ivar : sig
   (** Read the contents of the ivar. *)
   val read : 'a t -> 'a fiber
 
-  (** Fill the ivar with the following value. This can only be called once for
-      a given ivar. *)
+  (** Fill the ivar with the following value. This can only be called once for a
+      given ivar. *)
   val fill : 'a t -> 'a -> unit fiber
 
   (** Return [Some x] is [fill t x] has been called previously. *)

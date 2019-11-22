@@ -47,8 +47,8 @@ module Source = struct
         (fun fmt p -> Format.fprintf fmt "%S" (Path.to_absolute_filename p))
         fmt
     in
-    Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@."
-      pp_include include_dirs;
+    Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@." pp_include
+      include_dirs;
     Format.fprintf fmt "%s@." t.main
 
   let loc t = t.loc
@@ -124,8 +124,8 @@ module Stanza = struct
     let cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
         ~expander ~modules:(Source.modules source) ~opaque:false
-        ~requires_compile ~requires_link ~flags ~js_of_ocaml:None
-        ~dynlink:false ~package:None
+        ~requires_compile ~requires_link ~flags ~js_of_ocaml:None ~dynlink:false
+        ~package:None
     in
     let resolved = make ~cctx ~source in
     setup_rules resolved

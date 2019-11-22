@@ -23,14 +23,13 @@ module type Uast =
 
 module rec Uast : Uast = Uast
 
-include Action_ast.Make (String_with_vars) (String_with_vars)
-          (String_with_vars)
+include Action_ast.Make (String_with_vars) (String_with_vars) (String_with_vars)
           (String_with_vars)
           (Uast)
 module Mapper = Action_mapper.Make (Uast) (Uast)
 
-(* In [Action_exec] we rely on one-to-one mapping between the cwd-relative
-   paths seen by the action and [Path.t] seen by dune.
+(* In [Action_exec] we rely on one-to-one mapping between the cwd-relative paths
+   seen by the action and [Path.t] seen by dune.
 
    Having more than one dynamic_run with different cwds could break that. Also,
    we didn't really want to think about how multiple dynamic actions would
@@ -96,17 +95,15 @@ open Dune_lang.Decoder
 let decode =
   if_list
     ~then_:
-      ( located decode
-      >>| fun (loc, action) ->
-      validate ~loc action;
-      action )
+      ( located decode >>| fun (loc, action) ->
+        validate ~loc action;
+        action )
     ~else_:
-      ( loc
-      >>| fun loc ->
-      User_error.raise ~loc
-        [ Pp.textf
-            "if you meant for this to be executed with bash, write (bash \
-             \"...\") instead"
-        ] )
+      ( loc >>| fun loc ->
+        User_error.raise ~loc
+          [ Pp.textf
+              "if you meant for this to be executed with bash, write (bash \
+               \"...\") instead"
+          ] )
 
 let to_dyn a = Dune_lang.to_dyn (encode a)

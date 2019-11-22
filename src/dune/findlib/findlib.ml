@@ -235,8 +235,8 @@ module Package = struct
     let archives = archives t in
     let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
     let modes : Mode.Dict.Set.t =
-      (* libraries without archives are compatible with all modes. mainly a
-         hack for compiler-libs which doesn't have any archives *)
+      (* libraries without archives are compatible with all modes. mainly a hack
+         for compiler-libs which doesn't have any archives *)
       let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
       if Mode.Dict.Set.is_empty discovered then
         Mode.Dict.Set.all
@@ -311,8 +311,7 @@ module Package = struct
     let exists =
       match exists_if with
       | _ :: _ ->
-        List.for_all exists_if ~f:(fun fn ->
-            Path.exists (Path.relative dir fn))
+        List.for_all exists_if ~f:(fun fn -> Path.exists (Path.relative dir fn))
       | [] -> (
         if not (Lib_name.Map.mem db.builtins (Lib_name.root_lib name)) then
           true

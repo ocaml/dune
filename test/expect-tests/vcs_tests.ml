@@ -11,8 +11,8 @@ let temp_dir = lazy (Path.of_string "vcs-tests")
 
 let () = at_exit (fun () -> Path.rm_rf (Lazy.force temp_dir))
 
-(* When hg is not available, we test with git twice indeed. This is because
-   many people don't have hg installed. *)
+(* When hg is not available, we test with git twice indeed. This is because many
+   people don't have hg installed. *)
 let has_hg =
   match Lazy.force Vcs.hg with
   | (_ : Path.t) -> true
@@ -76,8 +76,7 @@ let run_action (vcs : Vcs.t) action =
       | Hg when not has_hg -> { vcs with kind = Git }
       | _ -> vcs
     in
-    Vcs.describe vcs
-    >>| fun s ->
+    Vcs.describe vcs >>| fun s ->
     let processed =
       String.split s ~on:'-'
       |> List.map ~f:(fun s ->

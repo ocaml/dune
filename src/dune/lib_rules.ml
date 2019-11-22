@@ -21,9 +21,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
   Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
-      let target =
-        Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode)
-      in
+      let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         List.concat_map (Library.foreign_archive_names lib) ~f:(fun name ->
             let lname = "-l" ^ name in
@@ -115,8 +113,8 @@ let gen_wrapped_compat_modules (lib : Library.t) cctx =
       |> Super_context.add_rule sctx ~loc ~dir:(Compilation_context.dir cctx))
 
 (* Rules for building static and dynamic libraries using [ocamlmklib]. *)
-let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
-    ~archive_name ~build_targets_together =
+let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
+    ~build_targets_together =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
   let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
@@ -151,8 +149,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
          ])
   in
   if build_targets_together then
-    (* Build both the static and dynamic targets in one [ocamlmklib]
-       invocation, unless dynamically linked foreign archives are disabled. *)
+    (* Build both the static and dynamic targets in one [ocamlmklib] invocation,
+       unless dynamically linked foreign archives are disabled. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
       ( if ctx.disable_dynamically_linked_foreign_archives then
         [ static_target ]
@@ -179,8 +177,8 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files
   )
 
 (* Build a static and a dynamic archive for a foreign library. Note that the
-   dynamic archive can't be built on some platforms, in which case the rule
-   that produces it will fail. *)
+   dynamic archive can't be built on some platforms, in which case the rule that
+   produces it will fail. *)
 let foreign_rules (library : Foreign.Library.t) ~sctx ~expander ~dir
     ~dir_contents =
   let archive_name = library.archive_name in
@@ -300,8 +298,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
          Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext Mode.Byte)
        in
        let target =
-         Path.Build.relative (Obj_dir.obj_dir obj_dir)
-           (Path.Build.basename src)
+         Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.Build.basename src)
          |> Path.Build.extend_basename ~suffix:".js"
        in
        Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
@@ -352,8 +349,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     ~compile_info =
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let source_modules =
-    Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc ->
-        m :: acc)
+    Modules.fold_user_written source_modules ~init:[] ~f:(fun m acc -> m :: acc)
   in
   let modules = Compilation_context.modules cctx in
   let obj_dir = Compilation_context.obj_dir cctx in
@@ -399,8 +395,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
   in
   let f () =
     let source_modules =
-      Dir_contents.modules_of_library dir_contents
-        ~name:(Library.best_name lib)
+      Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
     in
     let cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info

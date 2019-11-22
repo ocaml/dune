@@ -45,8 +45,7 @@ let run_action_expect_throws action =
 
 let%expect_test _ =
   let action =
-    read_file ~path:(Path.of_string "file_that_does_not_exist")
-    |> map ~f:ignore
+    read_file ~path:(Path.of_string "file_that_does_not_exist") |> map ~f:ignore
   in
   run_action_expect_throws action;
   [%expect

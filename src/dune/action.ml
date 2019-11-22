@@ -12,8 +12,7 @@ module Prog = struct
       ; loc : Loc.t option
       }
 
-    let create ?hint ~context ~program ~loc () =
-      { hint; context; program; loc }
+    let create ?hint ~context ~program ~loc () = { hint; context; program; loc }
 
     let raise { context; program; hint; loc } =
       let hint =
@@ -94,8 +93,7 @@ let for_shell t =
       let dst = Path.reach ~from:dir (Path.build dst) in
       For_shell.Symlink (src, dst)
     | t ->
-      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path
-        ~f_target
+      Relativise.map_one_step loop t ~dir ~f_program ~f_string ~f_path ~f_target
   in
   loop t ~dir:Path.root
     ~f_string:(fun ~dir:_ x -> x)
@@ -218,8 +216,8 @@ let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
              dir" rules. There is no reason to do that though. *)
           if Path.is_in_source_tree path then
             Code_error.raise
-              "Action depends on source tree. All actions should depend on \
-               the copies in build directory instead"
+              "Action depends on source tree. All actions should depend on the \
+               copies in build directory instead"
               [ ("path", Path.to_dyn path) ];
           acc
         | Some p -> link path (sandboxed p) :: acc)

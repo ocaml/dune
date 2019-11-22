@@ -13,9 +13,7 @@ let fail fmt =
       exit 1)
     fmt
 
-(* {1 encoding/decoding tests}
-
-   Test that encoding and decoding round trip *)
+(* {1 encoding/decoding tests} Test that encoding and decoding round trip *)
 
 let () =
   for n = 0 to 3 do
@@ -163,8 +161,7 @@ let test input =
       "Got invalid result!\n\
        Input:    \"%s\"\n\
        Expected: \"%s\"\n\
-       Result:   \"%s\""
-      (compress_string input) (compress_string expected)
+       Result:   \"%s\"" (compress_string input) (compress_string expected)
       (compress_string result)
 
 (* {2 Test cases} *)

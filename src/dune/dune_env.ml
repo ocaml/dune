@@ -99,11 +99,11 @@ module Stanza = struct
       ( Dune_lang.Syntax.since Stanza.syntax (1, 5)
       >>> located (repeat (pair string string))
       >>| fun (loc, pairs) ->
-      match Env.Map.of_list pairs with
-      | Ok vars -> Env.extend Env.empty ~vars
-      | Error (k, _, _) ->
-        User_error.raise ~loc
-          [ Pp.textf "Variable %s is specified several times" k ] )
+        match Env.Map.of_list pairs with
+        | Ok vars -> Env.extend Env.empty ~vars
+        | Error (k, _, _) ->
+          User_error.raise ~loc
+            [ Pp.textf "Variable %s is specified several times" k ] )
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode

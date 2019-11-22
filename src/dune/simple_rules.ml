@@ -81,9 +81,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     Option.iter rule.alias ~f:(fun name ->
         let alias = Alias.make ~dir name in
         let action = Some (snd rule.action) in
-        let stamp =
-          Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings
-        in
+        let stamp = Alias_rules.stamp ~deps:rule.deps ~action ~extra_bindings in
         Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp);
     Path.Build.Set.empty
   | true -> (
@@ -97,8 +95,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
               ( match multiplicity with
               | One ->
                 [ Expander.expand expander ~mode:Single ~template:target ]
-              | Multiple ->
-                Expander.expand expander ~mode:Many ~template:target )
+              | Multiple -> Expander.expand expander ~mode:Many ~template:target
+              )
               |> List.map ~f:(check_filename ~dir ~error_loc))
         in
         Expander.Targets.Static { multiplicity; targets }

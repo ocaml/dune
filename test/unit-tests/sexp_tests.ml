@@ -15,9 +15,7 @@ let string_of_syntax = function
 
 let () =
   [ (Dune, Dune_lang.Lexer.token, fun s -> Dune_lang.Atom.is_valid s)
-  ; ( Jbuild
-    , Jbuild_support.Lexer.token
-    , fun s -> Jbuild_support.Atom.is_valid s )
+  ; (Jbuild, Jbuild_support.Lexer.token, fun s -> Jbuild_support.Atom.is_valid s)
   ]
   |> List.iter ~f:(fun (syntax, lexer, validator) ->
          for len = 0 to 3 do

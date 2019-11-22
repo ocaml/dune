@@ -6,8 +6,8 @@ let error (loc : Loc.t) message = User_error.raise ~loc [ Pp.text message ]
    only one that work for both.
 
    The natural thing to do would be to have parser that produce [Cst.t] value
-   and drop comment for the [Ast.t] one. However the most used parser is the
-   one producing Ast one, so it is the one we want to go fast. As a result, we
+   and drop comment for the [Ast.t] one. However the most used parser is the one
+   producing Ast one, so it is the one we want to go fast. As a result, we
    encode comment as special [Ast.t] values and decode them for the [Cst.t]
    parser.
 
@@ -49,8 +49,7 @@ module Mode = struct
     | Many -> sexps
     | Many_as_one -> (
       match sexps with
-      | [] ->
-        List (Loc.in_file (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
+      | [] -> List (Loc.in_file (Path.of_string lexbuf.lex_curr_p.pos_fname), [])
       | x :: l ->
         let last = List.fold_left l ~init:x ~f:(fun _ x -> x) in
         let loc = { (Ast.loc x) with stop = (Ast.loc last).stop } in
@@ -121,8 +120,8 @@ let load ?lexer path ~mode =
 
 let insert_comments csts comments =
   (* To insert the comments, we tokenize the csts, reconciliate the token
-     streams and parse the result again. This is not the fastest
-     implementation, but at least it is simple. *)
+     streams and parse the result again. This is not the fastest implementation,
+     but at least it is simple. *)
   let compare (a, _) (b, _) =
     Int.compare a.Loc.start.pos_cnum b.Loc.start.pos_cnum
   in

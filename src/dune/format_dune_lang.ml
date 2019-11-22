@@ -81,8 +81,7 @@ let rec pp_sexp fmt : Dune_lang.Cst.t -> _ = function
       sexps
   | Comment (loc, c) -> pp_comment loc fmt c
 
-and pp_sexp_list fmt =
-  Format.fprintf fmt "(%a)" (pp_list_with_comments pp_sexp)
+and pp_sexp_list fmt = Format.fprintf fmt "(%a)" (pp_list_with_comments pp_sexp)
 
 let pp_top_sexp fmt sexp = Format.fprintf fmt "%a\n" pp_sexp sexp
 

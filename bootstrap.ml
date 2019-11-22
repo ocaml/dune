@@ -100,9 +100,7 @@ let () =
          "-output-complete-exe" )
        prog
        (List.map modules ~f:(fun m -> m ^ ".ml") |> String.concat ~sep:" "));
-  let args =
-    Array.to_list (Array.sub Sys.argv 1 (Array.length Sys.argv - 1))
-  in
+  let args = Array.to_list (Array.sub Sys.argv 1 (Array.length Sys.argv - 1)) in
   let args =
     match which with
     | None -> args

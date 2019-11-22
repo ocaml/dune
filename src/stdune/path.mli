@@ -15,12 +15,12 @@
     if the user has a symlink `src/foo` pointing to `bar`, then `src/foo/x` and
     `bar/x` are seen as two different paths.
 
-    A path in this world is called a local path and is simply a sequence of
-    path components. A path component being a string other than "." or ".." and
-    not containing the path separator character ('/').
+    A path in this world is called a local path and is simply a sequence of path
+    components. A path component being a string other than "." or ".." and not
+    containing the path separator character ('/').
 
-    Such a path can be rooted at the source tree root, the build directory or
-    an unspecified root. All these paths are represented by values of type ['a
+    Such a path can be rooted at the source tree root, the build directory or an
+    unspecified root. All these paths are represented by values of type ['a
     Path.Local_gen.t] where ['a] denotes the root of the path.
 
     {2 External paths}
@@ -38,8 +38,8 @@
 
 (** Relative path relative to the root tracked by the type system.
 
-    Represented as: either the root, or a '/' separated list of components
-    other that ".", ".." and not containing a '/'. *)
+    Represented as: either the root, or a '/' separated list of components other
+    that ".", ".." and not containing a '/'. *)
 module Local_gen : Path_intf.Local_gen
 
 module Unspecified : sig
@@ -219,8 +219,7 @@ val extend_basename : t -> suffix:string -> t
 (** Extract the build context from a path. For instance, representing paths as
     strings:
 
-    {[ extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar")
-    ]}
+    {[ extract_build_context "_build/blah/foo/bar" = Some ("blah", "foo/bar") ]}
 
     It doesn't work correctly (doesn't return a sensible source path) for build
     directories that are not build contexts, e.g. "_build/install" and
@@ -334,9 +333,9 @@ module L : sig
 end
 
 (** Return the "local part" of a path. For local paths (in build directory or
-    source tree), this returns the path itself. For external paths, it returns
-    a path that is relative to the current directory. For example, the local
-    part of [/a/b] is [./a/b]. *)
+    source tree), this returns the path itself. For external paths, it returns a
+    path that is relative to the current directory. For example, the local part
+    of [/a/b] is [./a/b]. *)
 val local_part : t -> Local.t
 
 val stat : t -> Unix.stats

@@ -231,8 +231,7 @@ end = struct
         String.take t j :: acc
       else
         match t.[i - 1] with
-        | '/' ->
-          loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
+        | '/' -> loop t (String.sub t ~pos:i ~len:(j - i) :: acc) (i - 1) (i - 1)
         | _ -> loop t acc (i - 1) j
     in
     fun t ->
@@ -1237,8 +1236,7 @@ let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
 let pp_debug ppf = function
   | In_source_tree s ->
     Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
-  | In_build_dir s ->
-    Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
+  | In_build_dir s -> Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
   | External s -> Format.fprintf ppf "(External %S)" (External.to_string s)
 
 module O = Comparable.Make (T)

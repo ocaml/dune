@@ -92,8 +92,8 @@ module DB = struct
             ] )
     in
     let resolve = resolve t public_libs in
-    Lib.DB.create () ~stdlib_dir ~parent:installed_libs ~resolve
-      ~all:(fun () -> Lib_name.Map.keys public_libs)
+    Lib.DB.create () ~stdlib_dir ~parent:installed_libs ~resolve ~all:(fun () ->
+        Lib_name.Map.keys public_libs)
 
   let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas =
     let build_context_dir = Context_name.build_dir context in
@@ -121,16 +121,15 @@ module DB = struct
           Lib.DB.create_from_stanzas stanzas ~parent:public_libs ~lib_config
         in
         let root =
-          Path.Build.append_source build_context_dir
-            (Dune_project.root project)
+          Path.Build.append_source build_context_dir (Dune_project.root project)
         in
         Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config stanzas =
     let t = Fdecl.create Dyn.Encoder.opaque in
     let public_libs =
-      public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir
-        ~installed_libs stanzas
+      public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir ~installed_libs
+        stanzas
     in
     let by_dir =
       scopes_by_dir context ~projects ~lib_config ~public_libs stanzas

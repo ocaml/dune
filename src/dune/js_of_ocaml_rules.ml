@@ -185,8 +185,7 @@ let setup_separate_compilation_rules sctx components =
                  ~flags:(As (standard sctx))
                  ~spec ~target)) )
 
-let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.t) ~flags ~promote
-    =
+let build_exe cc ~js_of_ocaml ~src ~(cm : Path.t list Build.t) ~flags ~promote =
   let { Dune_file.Js_of_ocaml.javascript_files; _ } = js_of_ocaml in
   let dir = Compilation_context.dir cc in
   let sctx = Compilation_context.super_context cc in

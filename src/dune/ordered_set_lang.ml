@@ -53,8 +53,7 @@ module Parse = struct
   let generic ~inc ~elt =
     let open Dune_lang.Decoder in
     let rec one () =
-      peek_exn
-      >>= function
+      peek_exn >>= function
       | Atom (loc, A "\\") -> User_error.raise ~loc [ Pp.text "unexpected \\" ]
       | Atom (_, A "")
       | Quoted_string (_, _)
@@ -77,14 +76,13 @@ module Parse = struct
         | s when s <> "" && s.[0] <> '-' && s.[0] <> ':' ->
           User_error.raise ~loc
             [ Pp.text
-                "This atom must be quoted because it is the first element of \
-                 a list and doesn't start with - or:"
+                "This atom must be quoted because it is the first element of a \
+                 list and doesn't start with - or:"
             ]
         | _ -> enter (many []) )
       | List _ -> enter (many [])
     and many acc =
-      peek
-      >>= function
+      peek >>= function
       | None -> return (Union (List.rev acc))
       | Some (Atom (_, A "\\")) ->
         let+ to_remove = junk >>> many [] in

@@ -36,22 +36,21 @@ let parse stream =
         read_size ((10 * acc) + idx)
   in
   let rec parse () =
-    peek stream
-    >>= function
+    peek stream >>= function
     | '(' ->
       Stream.junk stream;
       parse_list () >>| fun l -> Sexp.List l
     | _ -> read_size 0 >>= read_string stream >>| fun x -> Sexp.Atom x
   and parse_list () =
-    peek stream
-    >>= function
+    peek stream >>= function
     | ')' ->
       Stream.junk stream;
       ok []
     | ':' -> Error "missing size"
     | _ ->
       let head = parse () in
-      head >>= fun head -> parse_list () >>| fun tail -> head :: tail
+      head >>= fun head ->
+      parse_list () >>| fun tail -> head :: tail
   in
   parse ()
 

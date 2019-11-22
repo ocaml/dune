@@ -37,9 +37,7 @@ module Make (Keys : Keys) (Monad : Monad.S) = struct
       else if not (Keys.mem !visited key) then (
         visited := Keys.add !visited key;
         let temporarily_marked = Keys.add temporarily_marked key in
-        deps elt
-        >>= iter_elts ~temporarily_marked
-        >>= function
+        deps elt >>= iter_elts ~temporarily_marked >>= function
         | Ok () ->
           res := elt :: !res;
           return (Ok ())
@@ -47,17 +45,14 @@ module Make (Keys : Keys) (Monad : Monad.S) = struct
       ) else
         return (Ok ())
     and iter_elts elts ~temporarily_marked =
-      return elts
-      >>= function
+      return elts >>= function
       | [] -> return (Ok ())
       | elt :: elts -> (
-        loop elt ~temporarily_marked
-        >>= function
+        loop elt ~temporarily_marked >>= function
         | Error _ as result -> return result
         | Ok () -> iter_elts elts ~temporarily_marked )
     in
-    iter_elts elements ~temporarily_marked:Keys.empty
-    >>= function
+    iter_elts elements ~temporarily_marked:Keys.empty >>= function
     | Ok () -> return (Ok (List.rev !res))
     | Error elts -> return (Error elts)
 end

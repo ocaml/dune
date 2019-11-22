@@ -136,6 +136,10 @@ let build_info_code cctx ~libs ~api_version =
       let p = Path.Build.drop_build_context_exn (CC.dir cctx) in
       placeholder p
   in
+  let artifact_root =
+    let context = Compilation_context.context cctx in
+    Context.install_prefix context |> Path.to_absolute_filename
+  in
   let libs =
     List.map libs ~f:(fun lib ->
         ( Lib.name lib
@@ -171,6 +175,7 @@ let build_info_code cctx ~libs ~api_version =
         (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
   if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
   pr buf "let version = %s" version;
+  pr buf "let artifact_root = %S" artifact_root;
   pr buf "";
   prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
       pr buf "%S, %s" (Lib_name.to_string name) v);

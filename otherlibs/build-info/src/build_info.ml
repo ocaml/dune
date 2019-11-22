@@ -23,4 +23,32 @@ module V1 = struct
   end
 
   let version () = Build_info_data.version
+
+  module Path = struct
+    type t = string
+
+    let to_string t = t
+
+    let of_string t = t
+
+    let relative = Filename.concat
+  end
+
+  module Location = struct
+    type t =
+      | Etc
+      | Share of { package : string }
+
+    let component = function
+      | Etc -> "etc"
+      | Share { package } -> Printf.sprintf "share/%s" package
+  end
+
+  let registry_root =
+    lazy
+      ( match Sys.getenv_opt "DUNE_REGISTRY_ROOT" with
+      | Some s -> s
+      | None -> Build_info_data.artifact_root )
+
+  let get l = Path.relative (Lazy.force registry_root) (Location.component l)
 end

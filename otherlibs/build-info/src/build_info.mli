@@ -29,4 +29,22 @@ module V1 : sig
 
     val find : name:string -> Statically_linked_library.t option
   end
+
+  module Path : sig
+    type t
+
+    val to_string : t -> string
+
+    val of_string : string -> t
+
+    val relative : t -> string -> t
+  end
+
+  module Location : sig
+    type t =
+      | Etc
+      | Share of { package : string }
+  end
+
+  val get : Location.t -> Path.t
 end

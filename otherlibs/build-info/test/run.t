@@ -85,7 +85,8 @@ Once installed, we have the version information:
 Check what the generated build info module looks like:
 
   $ cat _build/default/c/.c.eobjs/build_info_data.ml-gen \
-  >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/'
+  >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/' \
+  >   | sed 's/let artifact_root = .*/let artifact_root = " .. "/'
   let eval s =
     let len = String.length s in
     if s.[0] = '=' then
@@ -104,6 +105,7 @@ Check what the generated build info module looks like:
   let p0 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%"
   
   let version = p0
+  let artifact_root = " .. "
   
   let statically_linked_libraries =
     [ "a", p1

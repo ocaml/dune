@@ -107,7 +107,7 @@ val which : t -> string -> Path.t option
 
 val opam_config_var : t -> string -> string option Fiber.t
 
-val install_prefix : t -> Path.t Fiber.t
+val install_prefix : t -> Path.t
 
 val install_ocaml_libdir : t -> Path.t option Fiber.t
 

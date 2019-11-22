@@ -765,8 +765,7 @@ end
 let which t s = which ~cache:t.which_cache ~path:t.path s
 
 let install_prefix t =
-  opam_config_var t "prefix"
-  >>| function
+  match Env.get t.env "OPAM_PREFIX" with
   | Some x -> Path.of_filename_relative_to_initial_cwd x
   | None -> Path.parent_exn t.ocaml_bin
 

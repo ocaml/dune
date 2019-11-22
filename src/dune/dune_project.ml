@@ -511,24 +511,19 @@ let format_config t =
   let dune_lang = t.format_config in
   Format_config.of_config ~ext ~dune_lang
 
-let default_name ~dir ~packages =
-  match Package.Name.Map.choose packages with
+let default_name ~dir ~(packages : Package.t Package.Name.Map.t) =
+  match Package.Name.Map.min_binding packages with
   | None -> Name.anonymous dir
-  | Some (_, pkg) -> (
-    let pkg =
-      let open Package.Name.Infix in
-      Package.Name.Map.fold packages ~init:pkg ~f:(fun pkg acc ->
-          if acc.Package.name <= pkg.Package.name then
-            acc
-          else
-            pkg)
-    in
-    let name = Package.Name.to_string pkg.name in
+  | Some (name, pkg) -> (
+    let name = Package.Name.to_string name in
     match Name.named name with
     | Some x -> x
     | None ->
+      (* TODO: This is a strange error: [name] comes from a package but is
+         rejected as a valid Dune project name. It would be better to make the
+         set of allowed package names and the set of project names coincide. *)
       User_error.raise ~loc:pkg.loc
-        [ Pp.textf "%S is not a valid opam package name." name ] )
+        [ Pp.textf "%S is not a valid Dune project name." name ] )
 
 let infer ~dir packages =
   let lang = get_dune_lang () in

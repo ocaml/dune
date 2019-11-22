@@ -5,6 +5,8 @@ open Import
 
 type t
 
+val merlin_filename : string
+
 val make :
      ?requires:Lib.t list Or_exn.t
   -> flags:Ocaml_flags.t

@@ -1214,6 +1214,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias merlin-file-command)
+ (deps (package dune) (source_tree test-cases/merlin-file-command))
+ (action
+  (chdir
+   test-cases/merlin-file-command
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias merlin-tests)
  (deps (package dune) (source_tree test-cases/merlin-tests))
  (action
@@ -2074,6 +2082,7 @@
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
+  (alias merlin-file-command)
   (alias merlin-tests)
   (alias meta-gen)
   (alias misc)
@@ -2292,6 +2301,7 @@
   (alias link-deps)
   (alias loop)
   (alias macro-expand-error)
+  (alias merlin-file-command)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)

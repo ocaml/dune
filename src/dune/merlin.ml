@@ -4,10 +4,12 @@ open Build.O
 open! No_io
 module SC = Super_context
 
+let merlin_filename = ".merlin"
+
 let warn_dropped_pp loc ~allow_approx_merlin ~reason =
   if not allow_approx_merlin then
     User_warning.emit ~loc
-      [ Pp.textf ".merlin generated is inaccurate. %s." reason
+      [ Pp.textf "%s generated is inaccurate. %s." merlin_filename reason
       ; Pp.text
           "Split the stanzas into different directories or silence this \
            warning by adding (allow_approximate_merlin) to your dune-project."
@@ -195,7 +197,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
     =
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
-         let merlin_file = Path.Build.relative dir ".merlin" in
+         let merlin_file = Path.Build.relative dir merlin_filename in
          (* We make the compilation of .ml/.mli files depend on the existence
             of .merlin so that they are always generated, however the command
             themselves don't read the merlin file, so we don't want to declare

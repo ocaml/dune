@@ -99,6 +99,15 @@
  (files   dune-installed-libraries.1))
 
 (rule
+ (with-stdout-to dune-merlin-file.1
+  (run dune merlin-file --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-merlin-file.1))
+
+(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

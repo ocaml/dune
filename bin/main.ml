@@ -154,6 +154,7 @@ let all =
   ; Compute.command
   ; Upgrade.command
   ; Cache_daemon.command
+  ; Merlin_file.command
   ]
 
 let default =

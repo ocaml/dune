@@ -153,7 +153,7 @@ module Args = struct
 
   let memo t =
     let memo =
-      Memo.create_hidden "Command.Args.memo" ~doc:"Command.Args.memo"
+      Memo.create_hidden "Command.Args.memo"
         ~input:(module Path)
         Sync
         (fun dir -> expand_static ~dir t)

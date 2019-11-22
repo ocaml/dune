@@ -521,7 +521,6 @@ let meta_and_dune_package_rules_impl (project, sctx) =
 
 let meta_and_dune_package_rules_memo =
   Memo.With_implicit_output.create "meta_and_dune_package_rules"
-    ~doc:"meta_and_dune_package_rules"
     ~input:(module Project_and_super_context)
     ~visibility:Hidden
     ~output:(module Unit)

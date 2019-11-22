@@ -34,14 +34,10 @@ let compdep x = Fiber.return (x ^ x)
 
 (* our two dependencies are called some and another *)
 let mcompdep1 =
-  string_fn_create "some"
-    ~output:(Allow_cutoff (module String))
-    compdep
+  string_fn_create "some" ~output:(Allow_cutoff (module String)) compdep
 
 let mcompdep2 =
-  string_fn_create "another"
-    ~output:(Allow_cutoff (module String))
-    compdep
+  string_fn_create "another" ~output:(Allow_cutoff (module String)) compdep
 
 (* compute the dependencies once so they are present in the global hash table *)
 let () =
@@ -59,8 +55,7 @@ let comp x =
   counter := !counter + 1;
   String.sub a ~pos:0 ~len:(String.length a |> min 3) |> Fiber.return
 
-let mcomp =
-  string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
+let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
 
 (* running it the first time should increase the counter, running it again
    should not, but should still return the same result *)
@@ -135,9 +130,7 @@ let mcompcycle =
       failwith "cycle"
   in
   let fn =
-    int_fn_create "cycle"
-      ~output:(Allow_cutoff (module String))
-      compcycle
+    int_fn_create "cycle" ~output:(Allow_cutoff (module String)) compcycle
   in
   Fdecl.set mcompcycle fn;
   fn
@@ -178,9 +171,7 @@ let mfib =
     else
       mfib (x - 1) >>= fun r1 -> mfib (x - 2) >>| fun r2 -> r1 + r2
   in
-  let fn =
-    int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib
-  in
+  let fn = int_fn_create "fib" ~output:(Allow_cutoff (module Int)) compfib in
   Fdecl.set mfib fn;
   fn
 
@@ -215,9 +206,7 @@ let sync_fib =
       mfib (x - 1) + mfib (x - 2)
   in
   let fn =
-    sync_int_fn_create "sync-fib"
-      ~output:(Allow_cutoff (module Int))
-      compfib
+    sync_int_fn_create "sync-fib" ~output:(Allow_cutoff (module Int)) compfib
   in
   Fdecl.set mfib fn;
   fn

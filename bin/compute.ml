@@ -67,15 +67,13 @@ let term =
            let name = Memo.Function.Name.to_string name in
            Printf.printf "%-*s" longest name;
            Option.iter doc ~f:(Printf.printf ": %s");
-           Printf.printf "\n";
-         );
+           Printf.printf "\n");
        flush stdout;
        `Ok ()
      | `Show_doc fn ->
        let info = Memo.function_info fn in
        let name = Memo.Function.Name.to_string info.name in
-       Printf.printf "%s\n%s\n" name
-         (String.make (String.length name) '=');
+       Printf.printf "%s\n%s\n" name (String.make (String.length name) '=');
        Option.iter info.doc ~f:(Printf.printf "%s\n");
        `Ok ()
 

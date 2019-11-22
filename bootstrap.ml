@@ -1,5 +1,4 @@
 open StdLabels
-
 open Printf
 
 (* This program performs version checking of the compiler and switches to the

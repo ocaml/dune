@@ -458,14 +458,13 @@ let init ?x ?profile ?path () =
 let workspace =
   let f () =
     let (_ : Memo.Run.t) = Memo.current_run () in
-    let { DB.Settings. path; profile; x } = Fdecl.get DB.Settings.t in
+    let { DB.Settings.path; profile; x } = Fdecl.get DB.Settings.t in
     match path with
     | None -> default ?x ?profile ()
     | Some p -> load ?x ?profile p
   in
   let memo =
-    Memo.create "workspaces-db" ~doc:"get all workspaces"
-      ~visibility:Hidden
+    Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden
       ~input:(module Unit)
       ~output:(Allow_cutoff (module T))
       Sync f

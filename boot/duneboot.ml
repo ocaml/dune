@@ -149,7 +149,12 @@ let copy ?(header = "") a b =
   let oc = open_out_bin b in
   output_string oc header;
   (* MSVC is fussy about #line 1 vs # 1 *)
-  let directive = if Filename.extension b = ".c" then "line" else "" in
+  let directive =
+    if Filename.extension b = ".c" then
+      "line"
+    else
+      ""
+  in
   fprintf oc "#%s 1 %S\n" directive a;
   output_string oc s;
   close_out oc

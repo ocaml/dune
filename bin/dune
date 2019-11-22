@@ -6,17 +6,22 @@
  (bootstrap_info bootstrap-info))
 
 (rule
- (action (copy main.exe dune.exe))
- (enabled_if (<> %{profile} dune-bootstrap)))
+ (action
+  (copy main.exe dune.exe))
+ (enabled_if
+  (<> %{profile} dune-bootstrap)))
 
 (rule
- (action (copy ../dune.exe dune.exe))
- (enabled_if (= %{profile} dune-bootstrap)))
+ (action
+  (copy ../dune.exe dune.exe))
+ (enabled_if
+  (= %{profile} dune-bootstrap)))
 
 (install
  (section bin)
  (package dune)
- (files (dune.exe as dune)))
+ (files
+  (dune.exe as dune)))
 
 (deprecated_library_name
  (old_public_name dune.configurator)

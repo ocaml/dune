@@ -172,7 +172,7 @@ fills it during installation or promotion.
 =================================
 
 *This library is experimental and no backwards compatibility is implied. Use at
- your own risk.*
+your own risk.*
 
 ``Dune-action-plugin`` provides a monadic interface to express program
 dependencies directly inside the source code. Programs using this feature

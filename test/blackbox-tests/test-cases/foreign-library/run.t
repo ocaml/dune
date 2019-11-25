@@ -768,3 +768,70 @@ Testsuite for the (foreign_library ...) stanza.
   Error: Library "unknown_lib" not found.
   Hint: try: dune external-lib-deps --missing some/dir/main.exe
   [1]
+
+----------------------------------------------------------------------------------
+* Error when using path separators in an archive name
+
+  $ mkdir -p github2914/dir
+
+  $ cat >github2914/dir/dune <<EOF
+  > (foreign_library
+  >  (archive_name some/path/id)
+  >  (language c)
+  >  (names src))
+  > EOF
+
+  $ ./sdune build --root=github2914/dir
+  Entering directory 'github2914/dir'
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.1)
+  File "dune", line 2, characters 15-27:
+  2 |  (archive_name some/path/id)
+                     ^^^^^^^^^^^^
+  Error: Path separators are not allowed in archive names.
+  [1]
+
+----------------------------------------------------------------------------------
+* Using (foreign_archives dir/id) in a (library ...), see #2914
+
+  $ mkdir -p github2914/dir
+
+  $ cat >github2914/dir/dune <<EOF
+  > (foreign_library
+  >  (archive_name id)
+  >  (language c)
+  >  (names src))
+  > EOF
+
+  $ cat >github2914/dir/src.c <<EOF
+  > #include <caml/mlvalues.h>
+  > value id(value unit) { return Val_int(2914); }
+  > EOF
+
+  $ cat >github2914/dune <<EOF
+  > (library
+  >  (name bug)
+  >  (foreign_archives dir/id)
+  >  (modules bug))
+  > (executable
+  >  (modes exe)
+  >  (name main)
+  >  (libraries bug)
+  >  (modules main))
+  > EOF
+
+  $ cat >github2914/bug.ml <<EOF
+  > external id : unit -> int = "id"
+  > let fix = Printf.sprintf "Bug #%d has been fixed" (id ())
+  > EOF
+
+  $ cat >github2914/ticket.mli <<EOF
+  > val fix : string
+  > EOF
+
+  $ cat >github2914/main.ml <<EOF
+  > let () = Printf.printf "%s\n" Bug.fix;
+  > EOF
+
+  $ ./sdune exec github2914/main.exe
+  Bug #2914 has been fixed

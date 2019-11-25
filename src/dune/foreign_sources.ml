@@ -6,19 +6,20 @@ module Library = Dune_file.Library
    accessing foreign sources. It's worth checking if it can be simplified away. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
-  ; archives : Foreign.Sources.t String.Map.t
+  ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t
   ; executables : Foreign.Sources.t String.Map.t
   }
 
 let for_lib t ~name = Lib_name.Map.find_exn t.libraries name
 
-let for_archive t ~archive_name = String.Map.find_exn t.archives archive_name
+let for_archive t ~archive_name =
+  Foreign.Archive.Name.Map.find_exn t.archives archive_name
 
 let for_exes t ~first_exe = String.Map.find_exn t.executables first_exe
 
 let empty =
   { libraries = Lib_name.Map.empty
-  ; archives = String.Map.empty
+  ; archives = Foreign.Archive.Name.Map.empty
   ; executables = String.Map.empty
   }
 
@@ -139,16 +140,16 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
         ]
   in
   let archives =
-    String.Map.of_list_reducei foreign_libs
+    Foreign.Archive.Name.Map.of_list_reducei foreign_libs
       ~f:(fun archive_name (loc1, _) (loc2, _) ->
         User_error.raise ~loc:loc2
           [ Pp.textf
               "Multiple foreign libraries with the same archive name %S; the \
                name has already been taken in %s."
-              archive_name
+              (Foreign.Archive.Name.to_string archive_name)
               (Loc.to_file_colon_line loc1)
           ])
-    |> String.Map.map ~f:snd
+    |> Foreign.Archive.Name.Map.map ~f:snd
   in
   (* TODO: Make this more type-safe by switching to non-empty lists. *)
   let executables =

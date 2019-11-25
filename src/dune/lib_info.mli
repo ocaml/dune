@@ -71,14 +71,17 @@ val loc : _ t -> Loc.t
 
 val archives : 'path t -> 'path list Mode.Dict.t
 
-(** All the [.a/.lib/...] files for stubs *)
+(* TODO: Rename [foreign_archives] to [foreign_lib_files] and [native_archives]
+   to [native_lib_files] for consistent naming with [foreign_dll_files]. *)
+
+(** All the [lib*.a] files for stubs *)
 val foreign_archives : 'path t -> 'path list
 
-(** The [.a/.lib/...] files for the OCaml code when compiling to native mode *)
+(** The [lib*.a] files for the OCaml code when compiling to native mode *)
 val native_archives : 'path t -> 'path list
 
-(** [.so/.dll/...] files for stubs. These are read when linking a bytecode
-    executable and are loaded dynamically at runtime by bytecode executables. *)
+(** [dll*.so] files for stubs. These are read when linking a bytecode executable
+    and are loaded dynamically at runtime by bytecode executables. *)
 val foreign_dll_files : 'path t -> 'path list
 
 val foreign_objects : 'path t -> 'path list Source.t

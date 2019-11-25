@@ -30,7 +30,8 @@ val modules_of_library : t -> name:Lib_name.t -> Modules.t
 
 val foreign_sources_of_library : t -> name:Lib_name.t -> Foreign.Sources.t
 
-val foreign_sources_of_archive : t -> archive_name:string -> Foreign.Sources.t
+val foreign_sources_of_archive :
+  t -> archive_name:Foreign.Archive.Name.t -> Foreign.Sources.t
 
 (** Modules attached to a set of executables. *)
 val modules_of_executables :

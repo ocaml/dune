@@ -70,6 +70,49 @@ val possible_sources :
   -> dune_version:Dune_lang.Syntax.Version.t
   -> string list
 
+module Archive : sig
+  module Name : sig
+    type t
+
+    module Map : sig
+      include Map.S with type key = t
+    end
+
+    val to_dyn : t -> Dyn.t
+
+    val to_string : t -> string
+
+    val path : dir:Path.Build.t -> t -> Path.Build.t
+
+    val decode : t Dune_lang.Decoder.t
+
+    val stubs : string -> t
+
+    val lib_file :
+      archive_name:t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
+
+    val dll_file :
+      archive_name:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+  end
+
+  module Dir : sig
+    type t
+  end
+
+  type t =
+    { dir : Dir.t
+    ; name : Name.t
+    }
+
+  val stubs : string -> t
+
+  val decode : t Dune_lang.Decoder.t
+
+  val lib_file : archive:t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
+
+  val dll_file : archive:t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
+end
+
 (** A type of foreign library "stubs", which includes all fields of the
     [Library.t] type except for the [archive_name] field. The type is parsed as
     an optional [foreign_stubs] field of the [library] stanza, or as part of the
@@ -130,19 +173,13 @@ end
     [extra_deps] are tracked as dependencies. *)
 module Library : sig
   type t =
-    { archive_name : string
+    { archive_name : Archive.Name.t
     ; archive_name_loc : Loc.t
     ; stubs : Stubs.t
     }
 
   val decode : t Dune_lang.Decoder.t
 end
-
-val lib_file :
-  archive_name:string -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
-
-val dll_file :
-  archive_name:string -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
 
 (** A foreign source file that has a [path] and all information of the
     corresponnding [Foreign.Stubs.t] declaration. *)

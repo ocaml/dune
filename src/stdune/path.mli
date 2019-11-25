@@ -201,6 +201,9 @@ val of_filename_relative_to_initial_cwd : string -> t
     root has been set. [root] is the root directory of local paths *)
 val to_absolute_filename : t -> string
 
+(** Reach a given path [from] a directory. For example, let [p] be a path to the
+    file [some/dir/file] and [d] be a path to the directory [some/another/dir].
+    Then [reach p ~from:d] evaluates to [../../dir/file]. *)
 val reach : t -> from:t -> string
 
 (** [from] defaults to [Path.root] *)
@@ -288,6 +291,8 @@ val insert_after_build_dir_exn : t -> string -> t
 val exists : t -> bool
 
 val readdir_unsorted : t -> (string list, Unix.error) Result.t
+
+val is_dir_sep : char -> bool
 
 val is_directory : t -> bool
 

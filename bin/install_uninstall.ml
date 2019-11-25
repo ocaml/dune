@@ -402,7 +402,12 @@ let install_uninstall ~what =
         let (module Ops) = file_operations ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let+ () =
-          let mandir = Option.map mandir ~f:Path.of_string in
+          let mandir =
+            Option.map ~f:Path.of_string
+              ( match mandir with
+              | Some _ -> mandir
+              | None -> Dune.Setup.mandir )
+          in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
               let* prefix, libdir =

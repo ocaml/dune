@@ -51,6 +51,8 @@ module type Cache = sig
 
   val retrieve : t -> File.t -> Path.t
 
+  val deduplicate : t -> File.t -> unit
+
   val set_build_dir : t -> Path.t -> t
 
   val teardown : t -> unit
@@ -61,3 +63,5 @@ module type Caching = sig
 
   val cache : Cache.t
 end
+
+type caching = (module Caching)

@@ -30,7 +30,11 @@ include Common.Let_syntax
 
 let make_cache (config : Config.t) =
   let make_cache () =
-    let handle (Dune_cache.Dedup file) = Scheduler.send_dedup file in
+    let handle (Dune_cache.Dedup file) =
+      match Build_system.get_cache () with
+      | None -> Code_error.raise "deduplication message and no caching" []
+      | Some caching -> Scheduler.send_dedup caching.cache file
+    in
     match config.cache_transport with
     | Config.Caching.Transport.Direct ->
       let cache =

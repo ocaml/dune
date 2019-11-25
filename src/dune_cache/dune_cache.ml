@@ -189,6 +189,24 @@ module Cache = struct
     duplicate cache file.in_the_cache path;
     path
 
+  let deduplicate cache (file : File.t) =
+    match cache.duplication_mode with
+    | Copy -> ()
+    | Hardlink -> (
+      let target = Path.Build.to_string file.in_the_build_directory in
+      let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
+      Log.infof "deduplicate %s from %s" target
+        (Path.to_string file.in_the_cache);
+      let rm p = try Unix.unlink p with _ -> () in
+      try
+        rm tmpname;
+        Unix.link (Path.to_string file.in_the_cache) tmpname;
+        Unix.rename tmpname target
+      with Unix.Unix_error (e, syscall, _) ->
+        rm tmpname;
+        Log.infof "error handling dune-cache command: %s: %s" syscall
+          (Unix.error_message e) )
+
   let promote_sync cache paths key metadata repo =
     let open Result.O in
     let* repo =

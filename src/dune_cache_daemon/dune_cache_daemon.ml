@@ -457,7 +457,9 @@ module Client = struct
 
   let search client key = Dune_cache.Cache.search client.cache key
 
-  let retrieve client key = Dune_cache.Cache.retrieve client.cache key
+  let retrieve client file = Dune_cache.Cache.retrieve client.cache file
+
+  let deduplicate client file = Dune_cache.Cache.deduplicate client.cache file
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

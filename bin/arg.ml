@@ -106,6 +106,21 @@ end
 
 let dep = Dep.conv
 
+let bytes =
+  let decode repr =
+    let ast =
+      Dune_lang.Parser.parse_string ~fname:"command line"
+        ~mode:Dune_lang.Parser.Mode.Single repr
+    in
+    match
+      Dune_lang.Decoder.parse Dune_lang.Decoder.bytes_unit Univ_map.empty ast
+    with
+    | x -> Result.Ok x
+    | exception User_error.E msg ->
+      Result.Error (`Msg (User_message.to_string msg))
+  in
+  conv (decode, Format.pp_print_int)
+
 let context_name =
   let printer ppf t = Format.pp_print_string ppf (Context_name.to_string t) in
   (Context_name.arg_parse, printer)

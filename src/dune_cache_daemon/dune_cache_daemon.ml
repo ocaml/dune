@@ -124,21 +124,30 @@ let my_versions : version list = [ { major = 1; minor = 0 } ]
 
 let my_versions_command = Messages.Lang my_versions
 
-let find_highest_common_version a b =
-  let f { major; minor } = (major, minor) in
-  let a = Int.Map.of_list_exn (List.map ~f a)
-  and b = Int.Map.of_list_exn (List.map ~f b) in
-  let common =
-    Int.Map.merge
-      ~f:(fun _ minor_in_a minor_in_b ->
-        match (minor_in_a, minor_in_b) with
-        | Some a, Some b -> Some (min a b)
-        | _ -> None)
-      a b
+let find_highest_common_version versions fd =
+  let find a b =
+    let f { major; minor } = (major, minor) in
+    let a = Int.Map.of_list_exn (List.map ~f a)
+    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let common =
+      Int.Map.merge
+        ~f:(fun _ minor_in_a minor_in_b ->
+          match (minor_in_a, minor_in_b) with
+          | Some a, Some b -> Some (min a b)
+          | _ -> None)
+        a b
+    in
+    Option.map
+      ~f:(fun (major, minor) -> { major; minor })
+      (Int.Map.max_binding common)
   in
-  Option.map
-    ~f:(fun (major, minor) -> { major; minor })
-    (Int.Map.max_binding common)
+  match find my_versions versions with
+  | None ->
+    Unix.close fd;
+    Result.Error "no compatible versions"
+  | Some version ->
+    Log.infof "negotiated version: %a" pp_version version;
+    Result.ok version
 
 let endpoint m = m.endpoint
 
@@ -181,15 +190,9 @@ module Client = struct
           | _ -> Result.Ok ()
         in
         match msg with
-        | Lang versions -> (
-          match find_highest_common_version my_versions versions with
-          | None ->
-            Unix.close client.fd;
-            Result.Error "no compatible versions"
-          | Some v as version ->
-            Log.infof "%s: negotiated version: %a" (peer_name client.peer)
-              pp_version v;
-            Result.ok { client with version } )
+        | Lang versions ->
+          let+ version = find_highest_common_version versions client.fd in
+          { client with version = Some version }
         | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
             Dune_cache.Cache.promote client.cache files key
@@ -440,14 +443,7 @@ module Client = struct
       (let+ version =
          let* sexp = Csexp.parse input in
          Messages.incoming_message_of_sexp sexp >>= function
-         | DaemonLang versions -> (
-           match find_highest_common_version my_versions versions with
-           | None ->
-             Unix.close fd;
-             Result.Error "no compatible versions"
-           | Some version ->
-             Log.infof "negotiated version: %a" pp_version version;
-             Result.ok version )
+         | DaemonLang versions -> find_highest_common_version versions fd
          | _ -> Result.Error "first message was not lang"
        in
        let thread = Thread.create thread input in

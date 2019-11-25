@@ -201,7 +201,8 @@ module Section = struct
       ; man : Path.t
       }
 
-    let make ~package ~destdir ?(libdir = Path.relative destdir "lib") () =
+    let make ~package ~destdir ?(libdir = Path.relative destdir "lib")
+        ?(mandir = Path.relative destdir "man") () =
       let package = Package.Name.to_string package in
       let lib_root = libdir in
       let libexec_root = libdir in
@@ -213,7 +214,7 @@ module Section = struct
       ; share_root
       ; bin = Path.relative destdir "bin"
       ; sbin = Path.relative destdir "sbin"
-      ; man = Path.relative destdir "man"
+      ; man = mandir
       ; toplevel = Path.relative libdir "toplevel"
       ; stublibs = Path.relative libdir "stublibs"
       ; lib = Path.relative lib_root package

@@ -191,11 +191,11 @@ module Client = struct
             Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer)
               major minor;
             Result.ok { client with version = v } )
-        | Promote promotion ->
+        | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
-            Dune_cache.Cache.promote client.cache promotion.files promotion.key
-              (promotion.metadata @ client.common_metadata)
-              ~repository:promotion.repository
+            Dune_cache.Cache.promote client.cache files key
+              (metadata @ client.common_metadata)
+              ~repository ~duplication
           in
           client
         | SetBuildRoot root ->
@@ -388,11 +388,13 @@ module Client = struct
       Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
       exit 1
 
-  let make ?finally handle =
+  let make ?finally ?duplication_mode handle =
     (* This is a bit ugly as it is global, but flushing a closed socket will
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-    let* cache = Result.map_error ~f:err (Dune_cache.Cache.make ignore) in
+    let* cache =
+      Result.map_error ~f:err (Dune_cache.Cache.make ?duplication_mode ignore)
+    in
     let* port =
       let cmd =
         Format.sprintf "%s cache start --display progress --exit-no-client"
@@ -444,9 +446,16 @@ module Client = struct
     send client.socket (Messages.SetRepos repositories);
     client
 
-  let promote client files key metadata ~repository =
+  let promote (client : t) files key metadata ~repository ~duplication =
+    let duplication =
+      Some
+        (Option.value
+           ~default:(Dune_cache.Cache.duplication_mode client.cache)
+           duplication)
+    in
     try
-      send client.socket (Messages.Promote { key; files; metadata; repository });
+      send client.socket
+        (Messages.Promote { key; files; metadata; repository; duplication });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"

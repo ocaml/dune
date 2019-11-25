@@ -26,17 +26,29 @@ let sexp_of_message : type a. a message -> Sexp.t =
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
         ; Sexp.Atom (Digest.to_string digest)
         ]
-    and repo =
+    in
+    let rest = [] in
+    let rest =
+      match promotion.duplication with
+      | Some mode ->
+        Sexp.List
+          [ Sexp.Atom "duplication"
+          ; Sexp.Atom (Dune_cache.Duplication_mode.to_string mode)
+          ]
+        :: rest
+      | None -> rest
+    in
+    let rest =
       match promotion.repository with
       | Some idx ->
-        [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
-      | None -> []
+        Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] :: rest
+      | None -> rest
     in
     cmd "promote"
       ( Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
       :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
       :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
-      :: repo )
+      :: rest )
   | SetBuildRoot root ->
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
@@ -120,19 +132,29 @@ let outgoing_message_of_sexp =
             (Printf.sprintf "invalid file in promotion message: %s"
                (Sexp.to_string sexp))
       in
-      let+ repository =
+      let* repository, rest =
         match rest with
-        | [] -> Result.Ok None
-        | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] ->
-          Result.map ~f:Option.some
+        | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] :: rest ->
+          Result.map
+            ~f:(fun repo -> (Some repo, rest))
             (Utils.int_of_string ~where:"repository index" repo)
+        | _ -> Result.Ok (None, rest)
+      in
+      let+ duplication =
+        match rest with
+        | [ Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ] ->
+          Log.info "YES";
+          Result.map ~f:Option.some (Dune_cache.Duplication_mode.of_string mode)
+        | [] ->
+          Log.info "NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
+          Result.Ok None
         | _ ->
           Result.Error
             (Printf.sprintf "invalid promotion message: %s"
                (Sexp.to_string (Sexp.List cmd)))
       and+ files = Result.List.map ~f:file files
       and+ key = Dune_cache.Key.of_string key in
-      { repository; files; key; metadata }
+      { repository; files; key; metadata; duplication }
     | args -> invalid_args args
   and path_of_sexp = function
     | [ Sexp.Atom dir ] -> Result.ok (Path.of_string dir)

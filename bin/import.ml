@@ -46,7 +46,11 @@ let make_cache (config : Config.t) =
       in
       Dune_cache.make_caching (module Dune_cache.Cache) cache
     | Daemon ->
-      let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
+      let cache =
+        Result.ok_exn
+          (Dune_cache_daemon.Client.make
+             ?duplication_mode:config.cache_duplication handle)
+      in
       Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
   in
   Fiber.return

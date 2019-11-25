@@ -178,8 +178,8 @@ module Cache = struct
 
   let with_repositories cache repositories = { cache with repositories }
 
-  let duplicate cache =
-    match cache.duplication_mode with
+  let duplicate ?(duplication = None) cache =
+    match Option.value ~default:cache.duplication_mode duplication with
     | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
     | Hardlink -> Path.link
 
@@ -207,7 +207,7 @@ module Cache = struct
         Log.infof "error handling dune-cache command: %s: %s" syscall
           (Unix.error_message e) )
 
-  let promote_sync cache paths key metadata repo =
+  let promote_sync cache paths key metadata repo duplication =
     let open Result.O in
     let* repo =
       match repo with
@@ -246,7 +246,7 @@ module Cache = struct
           Path.unlink dest
         else
           Path.mkdir_p tmp;
-        duplicate cache path dest;
+        duplicate ~duplication cache path dest;
         dest
       in
       let tmp = prepare abs_path in
@@ -300,8 +300,9 @@ module Cache = struct
     in
     with_lock cache f
 
-  let promote cache paths key metadata ~repository =
-    Result.map ~f:ignore (promote_sync cache paths key metadata repository)
+  let promote cache paths key metadata ~repository ~duplication =
+    Result.map ~f:ignore
+      (promote_sync cache paths key metadata repository duplication)
 
   let search cache key =
     let path = FSSchemeImpl.path (path_meta cache) key in
@@ -345,6 +346,8 @@ module Cache = struct
         ; handler
         ; duplication_mode
         }
+
+  let duplication_mode cache = cache.duplication_mode
 end
 
 let trimmable stats = stats.Unix.st_nlink = 1

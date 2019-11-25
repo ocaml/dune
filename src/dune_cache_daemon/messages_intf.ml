@@ -10,6 +10,7 @@ type promotion =
   ; files : (Path.Build.t * Digest.t) list
   ; metadata : Sexp.t list
   ; repository : int option
+  ; duplication : Dune_cache.Duplication_mode.t option
   }
 
 type outgoing = Outgoing

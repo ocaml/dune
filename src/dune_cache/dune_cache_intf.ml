@@ -58,6 +58,7 @@ module type Cache = sig
     -> Key.t
     -> metadata
     -> repository:int option
+    -> duplication:Duplication_mode.t option
     -> (unit, string) Result.t
 
   val search : t -> Key.t -> (metadata * File.t list, string) Result.t

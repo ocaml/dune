@@ -1612,7 +1612,7 @@ end = struct
           let f { cache = (module Caching : Dune_cache.Caching); _ } =
             ignore
               (Caching.Cache.promote Caching.cache targets rule_digest []
-                 ~repository:None)
+                 ~repository:None ~duplication:None)
           in
           Option.iter ~f t.caching;
           let dynamic_deps_stages =

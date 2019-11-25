@@ -287,6 +287,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-cache-promote-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache-promote-copy))
+ (action
+  (chdir
+   test-cases/dune-cache-promote-copy
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-cache-promote-direct)
  (deps (package dune) (source_tree test-cases/dune-cache-promote-direct))
  (action
@@ -1988,6 +1996,7 @@
   (alias dune-cache-dedup-direct)
   (alias dune-cache-dedup-direct-copy)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
   (alias dune-cache-promote-direct-copy)
   (alias dune-cache-symlink)
@@ -2220,6 +2229,7 @@
   (alias dune-cache-dedup-direct)
   (alias dune-cache-dedup-direct-copy)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
   (alias dune-cache-promote-direct-copy)
   (alias dune-cache-symlink)

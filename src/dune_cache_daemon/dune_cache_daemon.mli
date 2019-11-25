@@ -31,5 +31,8 @@ module Client : sig
   include Dune_cache.Cache
 
   val make :
-    ?finally:(unit -> unit) -> (Dune_cache.command -> unit) -> (t, exn) Result.t
+       ?finally:(unit -> unit)
+    -> ?duplication_mode:Dune_cache.Duplication_mode.t
+    -> (Dune_cache.command -> unit)
+    -> (t, exn) Result.t
 end

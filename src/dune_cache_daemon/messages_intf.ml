@@ -24,3 +24,4 @@ type _ message =
   | SetCommonMetadata : Sexp.t list -> outgoing message
   | SetRepos : Dune_cache.repository list -> outgoing message
   | Dedup : Dune_cache.File.t -> incoming message
+  | DaemonLang : version list -> incoming message

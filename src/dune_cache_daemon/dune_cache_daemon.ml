@@ -5,7 +5,9 @@ open Utils
 open Messages
 open Result.O
 
-type version = int * int
+type version = Messages.version
+
+let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
 
 type config =
   { exit_no_client : bool
@@ -118,16 +120,14 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let my_versions : version list = [ (1, 0) ]
+let my_versions : version list = [ { major = 1; minor = 0 } ]
 
-let my_versions_command =
-  Messages.Lang
-    (List.map ~f:(fun (major, minor) -> { Messages.major; minor }) my_versions)
+let my_versions_command = Messages.Lang my_versions
 
-let find_highest_common_version (a : version list) (b : version list) :
-    version option =
-  let a = Int.Map.of_list_exn a
-  and b = Int.Map.of_list_exn b in
+let find_highest_common_version a b =
+  let f { major; minor } = (major, minor) in
+  let a = Int.Map.of_list_exn (List.map ~f a)
+  and b = Int.Map.of_list_exn (List.map ~f b) in
   let common =
     Int.Map.merge
       ~f:(fun _ minor_in_a minor_in_b ->
@@ -136,7 +136,9 @@ let find_highest_common_version (a : version list) (b : version list) :
         | _ -> None)
       a b
   in
-  Int.Map.max_binding common
+  Option.map
+    ~f:(fun (major, minor) -> { major; minor })
+    (Int.Map.max_binding common)
 
 let endpoint m = m.endpoint
 
@@ -152,12 +154,14 @@ module Client = struct
     ; cache : Dune_cache.Cache.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
+    ; version : version option
     }
 
   let read input =
     let* sexp = Csexp.parse input in
-    Messages.incoming_message_of_sexp sexp >>| function
-    | Messages.Dedup v -> Dune_cache.Dedup v
+    Messages.incoming_message_of_sexp sexp >>= function
+    | Messages.Dedup v -> Result.Ok (Dune_cache.Dedup v)
+    | Messages.DaemonLang _ -> Result.Error "unexpected lang command"
 
   let client_handle output = function
     | Dune_cache.Dedup f -> send output (Messages.Dedup f)
@@ -166,7 +170,7 @@ module Client = struct
 
   let client_thread (events, (client : client)) =
     try
-      let handle_cmd client sexp =
+      let handle_cmd (client : client) sexp =
         let* msg = Messages.outgoing_message_of_sexp sexp in
         let* () =
           match msg with
@@ -178,19 +182,14 @@ module Client = struct
         in
         match msg with
         | Lang versions -> (
-          match
-            find_highest_common_version my_versions
-              (List.map
-                 ~f:(fun (v : Messages.version) -> (v.major, v.minor))
-                 versions)
-          with
+          match find_highest_common_version my_versions versions with
           | None ->
             Unix.close client.fd;
             Result.Error "no compatible versions"
-          | Some (major, minor) as v ->
-            Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer)
-              major minor;
-            Result.ok { client with version = v } )
+          | Some v as version ->
+            Log.infof "%s: negotiated version: %a" (peer_name client.peer)
+              pp_version v;
+            Result.ok { client with version } )
         | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
             Dune_cache.Cache.promote client.cache files key
@@ -437,10 +436,22 @@ module Client = struct
       | Result.Ok () -> (thread [@tailcall]) input
     in
     send socket my_versions_command;
-    (* FIXME: find highest common version *)
-    ignore (read input);
-    let thread = Thread.create thread input in
-    Result.Ok { socket; fd; input; cache; thread; finally }
+    Result.map_error ~f:err
+      (let+ version =
+         let* sexp = Csexp.parse input in
+         Messages.incoming_message_of_sexp sexp >>= function
+         | DaemonLang versions -> (
+           match find_highest_common_version my_versions versions with
+           | None ->
+             Unix.close fd;
+             Result.Error "no compatible versions"
+           | Some version ->
+             Log.infof "negotiated version: %a" pp_version version;
+             Result.ok version )
+         | _ -> Result.Error "first message was not lang"
+       in
+       let thread = Thread.create thread input in
+       { socket; fd; input; cache; thread; finally; version = Some version })
 
   let with_repositories client repositories =
     send client.socket (Messages.SetRepos repositories);

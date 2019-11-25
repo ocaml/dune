@@ -10,7 +10,8 @@ let invalid_args args =
 let sexp_of_message : type a. a message -> Sexp.t =
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
-  | Lang versions ->
+  | Lang versions
+  | DaemonLang versions ->
     cmd "lang"
       ( Sexp.Atom "dune-cache-protocol"
       :: (List.map ~f:(fun { major; minor } ->
@@ -71,7 +72,25 @@ let sexp_of_message : type a. a message -> Sexp.t =
           ]
       ]
 
+let lang_of_sexp = function
+  | Sexp.Atom "dune-cache-protocol" :: versions ->
+    let decode_version = function
+      | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
+        let+ major = Utils.int_of_string ~where:"lang command version" major
+        and+ minor = Utils.int_of_string ~where:"lang command version" minor in
+        { major; minor }
+      | v ->
+        Result.Error
+          (Printf.sprintf "invalid version in lang command: %s"
+             (Sexp.to_string v))
+    in
+    Result.List.map ~f:decode_version versions
+  | args -> invalid_args args
+
 let incoming_message_of_sexp = function
+  | Sexp.List (Sexp.Atom "lang" :: args) ->
+    let+ versions = lang_of_sexp args in
+    DaemonLang versions
   | Sexp.List
       [ Sexp.Atom "dedup"
       ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
@@ -89,23 +108,7 @@ let incoming_message_of_sexp = function
     Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
 let outgoing_message_of_sexp =
-  let lang_of_sexp = function
-    | Sexp.Atom "dune-cache-protocol" :: versions ->
-      let decode_version = function
-        | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
-          let+ major = Utils.int_of_string ~where:"lang command version" major
-          and+ minor =
-            Utils.int_of_string ~where:"lang command version" minor
-          in
-          { major; minor }
-        | v ->
-          Result.Error
-            (Printf.sprintf "invalid version in lang command: %s"
-               (Sexp.to_string v))
-      in
-      Result.List.map ~f:decode_version versions
-    | args -> invalid_args args
-  and repos_of_sexp args =
+  let repos_of_sexp args =
     let convert = function
       | Sexp.List
           [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]

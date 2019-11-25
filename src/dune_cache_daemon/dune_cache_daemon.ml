@@ -163,7 +163,7 @@ module Client = struct
     ; cache : Dune_cache.Cache.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
-    ; version : version option
+    ; version : version
     }
 
   let read input =
@@ -447,7 +447,7 @@ module Client = struct
          | _ -> Result.Error "first message was not lang"
        in
        let thread = Thread.create thread input in
-       { socket; fd; input; cache; thread; finally; version = Some version })
+       { socket; fd; input; cache; thread; finally; version })
 
   let with_repositories client repositories =
     send client.socket (Messages.SetRepos repositories);

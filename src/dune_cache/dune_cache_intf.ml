@@ -30,9 +30,22 @@ type command = Dedup of File.t
 
 type handler = command -> unit
 
-type duplication_mode =
-  | Copy
-  | Hardlink
+module Duplication_mode = struct
+  type t =
+    | Copy
+    | Hardlink
+
+  let all = [ ("copy", Copy); ("hardlink", Hardlink) ]
+
+  let of_string repr =
+    match List.assoc all repr with
+    | Some mode -> Result.Ok mode
+    | None -> Result.Error (Format.sprintf "invalid duplication mode: %s" repr)
+
+  let to_string = function
+    | Copy -> "copy"
+    | Hardlink -> "hardlink"
+end
 
 module type Cache = sig
   type t

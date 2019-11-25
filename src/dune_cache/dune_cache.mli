@@ -31,7 +31,7 @@ module Cache : sig
 
   val make :
        ?root:Path.t
-    -> ?duplication_mode:duplication_mode
+    -> ?duplication_mode:Duplication_mode.t
     -> handler
     -> (t, string) Result.t
 end

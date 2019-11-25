@@ -9,7 +9,7 @@ type version = int * int
 
 type config =
   { exit_no_client : bool
-  ; duplication_mode : Dune_cache.duplication_mode option
+  ; duplication_mode : Dune_cache.Duplication_mode.t option
   }
 
 type event =

@@ -151,7 +151,7 @@ module Cache = struct
     ; build_root : Path.t option
     ; repositories : repository list
     ; handler : handler
-    ; duplication_mode : duplication_mode
+    ; duplication_mode : Duplication_mode.t
     }
 
   let path_files cache = Path.relative cache.root "files"
@@ -331,7 +331,7 @@ module Cache = struct
 
   let detect_duplication_mode _ =
     (* FIXME: use copy is root is on a different partition *)
-    Hardlink
+    Duplication_mode.Hardlink
 
   let make ?(root = default_root ())
       ?(duplication_mode = detect_duplication_mode root) handler =

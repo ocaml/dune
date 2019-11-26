@@ -302,6 +302,11 @@ let install_uninstall ~what =
         & info [ "destdir" ] ~env:(env_var "DESTDIR") ~docv:"PATH"
             ~doc:
               "When passed, this directory is prepended to all installed paths.")
+    and+ mandir =
+      let doc =
+        "When passed, manually override the directory to install man pages"
+      in
+      Arg.(value & opt (some string) None & info [ "mandir" ] ~docv:"PATH" ~doc)
     and+ dry_run =
       Arg.(
         value & flag
@@ -397,6 +402,12 @@ let install_uninstall ~what =
         let (module Ops) = file_operations ~dry_run ~workspace in
         let files_deleted_in = ref Path.Set.empty in
         let+ () =
+          let mandir =
+            Option.map ~f:Path.of_string
+              ( match mandir with
+              | Some _ -> mandir
+              | None -> Dune.Setup.mandir )
+          in
           Fiber.sequential_iter install_files_by_context
             ~f:(fun (context, entries_per_package) ->
               let* prefix, libdir =
@@ -407,7 +418,7 @@ let install_uninstall ~what =
                 ~f:(fun (package, entries) ->
                   let paths =
                     Install.Section.Paths.make ~package ~destdir:prefix ?libdir
-                      ()
+                      ?mandir ()
                   in
                   Fiber.sequential_iter entries ~f:(fun entry ->
                       let special_file = Special_file.of_entry entry in

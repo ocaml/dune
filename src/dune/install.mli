@@ -45,7 +45,12 @@ module Section : sig
     type t
 
     val make :
-      package:Package.Name.t -> destdir:Path.t -> ?libdir:Path.t -> unit -> t
+         package:Package.Name.t
+      -> destdir:Path.t
+      -> ?libdir:Path.t
+      -> ?mandir:Path.t
+      -> unit
+      -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
   end

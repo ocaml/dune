@@ -1083,6 +1083,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias install-mandir)
+ (deps (package dune) (source_tree test-cases/install-mandir))
+ (action
+  (chdir
+   test-cases/install-mandir
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias install-multiple-contexts)
  (deps (package dune) (source_tree test-cases/install-multiple-contexts))
  (action
@@ -2059,6 +2067,7 @@
   (alias inline_tests)
   (alias install-dry-run)
   (alias install-libdir)
+  (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)
@@ -2279,6 +2288,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
   (alias install-rule-order)

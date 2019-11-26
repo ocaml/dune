@@ -9,3 +9,6 @@ val library_path : string list option
 
 (** Where to install libraries for the default context. *)
 val library_destdir : string option
+
+(** Where to install manpages for the default context. *)
+val mandir : string option

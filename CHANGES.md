@@ -5,6 +5,8 @@
   build paths of files in public and private libraries within the same
   project. (#2901, @snowleopard)
 
+- Add `--mandir` option to `$ dune install`. This option allows to override the
+  installation directory for man pages. (#2915, fixes #2670, @rgrinberg)
 
 2.0.0 (20/11/2019)
 ------------------

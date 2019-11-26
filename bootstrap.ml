@@ -12,14 +12,14 @@ let verbose, keep_generated_files, debug =
   let keep_generated_files = ref false in
   let debug = ref false in
   Arg.parse
-    [ ("-j", Int ignore, "JOBS Concurrency")
-    ; ("--verbose", Set verbose, " Set the display mode")
+    [ ("-j", Arg.Int ignore, "JOBS Concurrency")
+    ; ("--verbose", Arg.Set verbose, " Set the display mode")
     ; ( "--keep-generated-files"
-      , Set keep_generated_files
+      , Arg.Set keep_generated_files
       , " Keep generated files" )
-    ; ("--debug", Set debug, " Enable various debugging options")
+    ; ("--debug", Arg.Set debug, " Enable various debugging options")
     ; ( "--force-byte-compilation"
-      , Unit ignore
+      , Arg.Unit ignore
       , " Force bytecode compilation even if ocamlopt is available" )
     ]
     anon "Usage: ocaml bootstrap.ml <options>\nOptions are:";

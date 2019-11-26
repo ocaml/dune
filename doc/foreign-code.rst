@@ -104,7 +104,13 @@ writing the following code ``src/dune``:
           (rule
            (deps (source_tree libfoo))
            (targets libfoo.a dllfoo.so)
-           (action (chdir libfoo (run make))))
+           (action (progn
+                    (chdir libfoo (run make))
+                    (copy libfoo/libfoo.a libfoo.a)
+                    (copy libfoo/libfoo.so dllfoo.so))))
+
+We copy the resulting archive files to the top directory where they can be
+declared as ``targets``.
 
 The last step is to attach these archives to an OCaml library as
 follows:
@@ -113,7 +119,7 @@ follows:
 
           (library
            (name bar)
-           (foreign_archives libfoo/foo))
+           (foreign_archives foo))
 
 Then, whenever you use the ``bar`` library, you will also be able to
 use C functions from ``libfoo``.

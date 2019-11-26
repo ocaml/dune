@@ -814,8 +814,8 @@ Testsuite for the (foreign_library ...) stanza.
   >  (foreign_archives dir/id)
   >  (modules bug))
   > (executable
-  >  (modes exe)
   >  (name main)
+  >  (modes byte exe)
   >  (libraries bug)
   >  (modules main))
   > EOF
@@ -834,4 +834,8 @@ Testsuite for the (foreign_library ...) stanza.
   > EOF
 
   $ ./sdune exec github2914/main.exe
+  Bug #2914 has been fixed
+
+  $ ./sdune build @github2914/all
+  $ (cd _build/default/github2914 && ocamlrun -I dir main.bc)
   Bug #2914 has been fixed

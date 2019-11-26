@@ -149,6 +149,8 @@ module Archive = struct
     ; name : Name.t
     }
 
+  let dir_path ~dir t = Path.Build.relative dir t.dir
+
   let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
 
   let decode =
@@ -157,11 +159,11 @@ module Archive = struct
     { dir = Filename.dirname s; name = Filename.basename s }
 
   let lib_file ~archive ~dir ~ext_lib =
-    let dir = Path.Build.relative dir archive.dir in
+    let dir = dir_path ~dir archive in
     Name.lib_file ~archive_name:archive.name ~dir ~ext_lib
 
   let dll_file ~archive ~dir ~ext_dll =
-    let dir = Path.Build.relative dir archive.dir in
+    let dir = dir_path ~dir archive in
     Name.dll_file ~archive_name:archive.name ~dir ~ext_dll
 end
 

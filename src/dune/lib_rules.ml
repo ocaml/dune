@@ -239,6 +239,12 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
         let ext = Mode.plugin_ext Native in
         Library.archive lib ~dir ~ext
       in
+      let include_flags_for_relative_foreign_archives =
+        Command.Args.S
+          (List.map lib.buildable.foreign_archives ~f:(fun (_loc, archive) ->
+               let dir = Foreign.Archive.dir_path ~dir archive in
+               Command.Args.S [ A "-I"; Path (Path.build dir) ]))
+      in
       let build =
         Build.paths
           (Library.foreign_lib_files lib ~dir ~ext_lib |> List.map ~f:Path.build)
@@ -248,6 +254,7 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
               ; A "-linkall"
               ; A "-I"
               ; Path (Path.build dir)
+              ; include_flags_for_relative_foreign_archives
               ; A "-o"
               ; Target dst
               ; Dep src

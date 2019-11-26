@@ -104,6 +104,8 @@ module Archive : sig
     ; name : Name.t
     }
 
+  val dir_path : dir:Path.Build.t -> t -> Path.Build.t
+
   val stubs : string -> t
 
   val decode : t Dune_lang.Decoder.t

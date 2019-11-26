@@ -106,7 +106,15 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                      directories except for the root will have parents too. *)
                   | None -> Command.Args.empty
                   | Some dir ->
-                    Command.Args.S [ A "-ccopt"; A "-L"; A "-ccopt"; Path dir ]))))
+                    (* TODO: We should do -L or -I conditionally on linkage. *)
+                    Command.Args.S
+                      [ A "-ccopt"
+                      ; A "-L"
+                      ; A "-ccopt"
+                      ; Path dir
+                      ; A "-I"
+                      ; Path dir
+                      ]))))
   in
   let link_args =
     let+ flags = link_flags in

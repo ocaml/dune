@@ -131,6 +131,10 @@ module Archive = struct
       Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
   end
 
+  (** Archive directories can appear as part of the [(foreign_archives ...)]
+      fields. For example, in [(foreign_archives some/dir/lib1 lib2)], the
+      archive [some/dir/lib1] has the directory [some/dir], whereas the archive
+      [lib2] does not specify the directory and is assumed to be located in [.]. *)
   module Dir = struct
     type t = string
   end

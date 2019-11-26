@@ -98,14 +98,6 @@ module Archive : sig
     val dll_file : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t
   end
 
-  (** Archive directories can appear as part of the [(foreign_archives ...)]
-      fields. For example, in [(foreign_archives some/dir/lib1 lib2)], the
-      archive [some/dir/lib1] has the directory [some/dir], whereas the archive
-      [lib2] does not specify the directory and is assumed to be located in [.]. *)
-  module Dir : sig
-    type t
-  end
-
   type t
 
   val dir_path : dir:Path.Build.t -> t -> Path.Build.t

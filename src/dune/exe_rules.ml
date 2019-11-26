@@ -100,33 +100,29 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  let lib_files = Lib_info.foreign_archives (Lib.info lib)
                  and dll_files = Lib_info.foreign_dll_files (Lib.info lib) in
                  Command.Args.S
-                   ( List.map lib_files ~f:(fun path ->
-                         match Path.parent path with
+                   ( List.concat_map lib_files ~f:(fun path ->
                          (* TODO: Make the [None] case impossible by separating
                             files and directories at the type level. Then every
                             file will necessarily have the parent directory,
                             possibly ".". All directories except for the root
                             will have parents too. Same in the [dll_files] case. *)
-                         | None -> Command.Args.empty
-                         | Some dir ->
-                           (* TODO: Should be conditional on linkage. *)
-                           Command.Args.S
-                             [ A "-ccopt"
-                             ; A "-L"
-                             ; A "-ccopt"
-                             ; Path dir
-                             ; Hidden_deps (Dep.Set.singleton (Dep.file path))
-                             ])
-                   @ List.map dll_files ~f:(fun path ->
-                         match Path.parent path with
-                         | None -> Command.Args.empty
-                         | Some dir ->
-                           (* TODO: Should be conditional on linkage. *)
-                           Command.Args.S
-                             [ A "-I"
-                             ; Path dir
-                             ; Hidden_deps (Dep.Set.singleton (Dep.file path))
-                             ]) ))))
+                         let dir = Path.parent_exn path in
+                         (* TODO: Make these flags conditional on linkage. *)
+                         Command.Args.
+                           [ A "-ccopt"
+                           ; A "-L"
+                           ; A "-ccopt"
+                           ; Path dir
+                           ; Hidden_deps (Dep.Set.singleton (Dep.file path))
+                           ])
+                   @ List.concat_map dll_files ~f:(fun path ->
+                         let dir = Path.parent_exn path in
+                         (* TODO: Make these flags conditional on linkage. *)
+                         Command.Args.
+                           [ A "-I"
+                           ; Path dir
+                           ; Hidden_deps (Dep.Set.singleton (Dep.file path))
+                           ]) ))))
     in
     let+ flags = link_flags in
     Command.Args.S

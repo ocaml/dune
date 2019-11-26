@@ -104,16 +104,7 @@ let possible_sources ~language obj ~dune_version =
 
 module Archive = struct
   module Name = struct
-    module T = struct
-      type t = string
-
-      let compare = String.compare
-
-      let to_dyn = String.to_dyn
-    end
-
-    include T
-    include Comparable.Make (T)
+    include String
 
     let to_string t = t
 
@@ -133,10 +124,10 @@ module Archive = struct
 
     let stubs archive_name = archive_name ^ "_stubs"
 
-    let lib_file ~archive_name ~dir ~ext_lib =
+    let lib_file archive_name ~dir ~ext_lib =
       Path.Build.relative dir (sprintf "lib%s%s" archive_name ext_lib)
 
-    let dll_file ~archive_name ~dir ~ext_dll =
+    let dll_file archive_name ~dir ~ext_dll =
       Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
   end
 
@@ -151,6 +142,8 @@ module Archive = struct
 
   let dir_path ~dir t = Path.Build.relative dir t.dir
 
+  let name t = t.name
+
   let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
 
   let decode =
@@ -160,11 +153,11 @@ module Archive = struct
 
   let lib_file ~archive ~dir ~ext_lib =
     let dir = dir_path ~dir archive in
-    Name.lib_file ~archive_name:archive.name ~dir ~ext_lib
+    Name.lib_file archive.name ~dir ~ext_lib
 
   let dll_file ~archive ~dir ~ext_dll =
     let dir = dir_path ~dir archive in
-    Name.dll_file ~archive_name:archive.name ~dir ~ext_dll
+    Name.dll_file archive.name ~dir ~ext_dll
 end
 
 module Stubs = struct

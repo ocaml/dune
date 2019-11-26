@@ -24,7 +24,9 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         List.concat_map (Library.foreign_archives lib) ~f:(fun archive ->
-            let lname = "-l" ^ Foreign.Archive.Name.to_string archive.name in
+            let lname =
+              "-l" ^ Foreign.Archive.(name archive |> Name.to_string)
+            in
             let cclib = [ "-cclib"; lname ] in
             let dllib = [ "-dllib"; lname ] in
             match mode with
@@ -118,10 +120,10 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
   let static_target =
-    Foreign.Archive.Name.lib_file ~archive_name ~dir ~ext_lib
+    Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
   let dynamic_target =
-    Foreign.Archive.Name.dll_file ~archive_name ~dir ~ext_dll
+    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
   in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~sandbox ~dir ~loc

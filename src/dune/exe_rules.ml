@@ -90,33 +90,44 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
      stubs, we link the corresponding object files directly. It would be nice to
      make the code more uniform. *)
   let ext_lib = ctx.lib_config.ext_lib in
-  let link_flags_for_relative_foreign_archives () =
-    Command.Args.S
-      (let libs =
-         Result.ok_exn (Lazy.force (Lib.Compile.requires_link compile_info))
-       in
-       List.map libs ~f:(fun lib ->
-           let archive_paths = Lib_info.foreign_archives (Lib.info lib) in
-           Command.Args.S
-             (List.map archive_paths ~f:(fun path ->
-                  match Path.parent path with
-                  (* TODO: Make the [None] case impossible by separating files
-                     and directories at the type level. Then every file will
-                     necessarily have the parent directory, possibly ".". All
-                     directories except for the root will have parents too. *)
-                  | None -> Command.Args.empty
-                  | Some dir ->
-                    (* TODO: We should do -L or -I conditionally on linkage. *)
-                    Command.Args.S
-                      [ A "-ccopt"
-                      ; A "-L"
-                      ; A "-ccopt"
-                      ; Path dir
-                      ; A "-I"
-                      ; Path dir
-                      ]))))
-  in
   let link_args =
+    let paths_to_relative_foreign_archives () =
+      Command.of_result_map
+        (Lazy.force (Lib.Compile.requires_link compile_info))
+        ~f:(fun libs ->
+          Command.Args.S
+            (List.map libs ~f:(fun lib ->
+                 let lib_files = Lib_info.foreign_archives (Lib.info lib)
+                 and dll_files = Lib_info.foreign_dll_files (Lib.info lib) in
+                 Command.Args.S
+                   ( List.map lib_files ~f:(fun path ->
+                         match Path.parent path with
+                         (* TODO: Make the [None] case impossible by separating
+                            files and directories at the type level. Then every
+                            file will necessarily have the parent directory,
+                            possibly ".". All directories except for the root
+                            will have parents too. Same in the [dll_files] case. *)
+                         | None -> Command.Args.empty
+                         | Some dir ->
+                           (* TODO: Should be conditional on linkage. *)
+                           Command.Args.S
+                             [ A "-ccopt"
+                             ; A "-L"
+                             ; A "-ccopt"
+                             ; Path dir
+                             ; Hidden_deps (Dep.Set.singleton (Dep.file path))
+                             ])
+                   @ List.map dll_files ~f:(fun path ->
+                         match Path.parent path with
+                         | None -> Command.Args.empty
+                         | Some dir ->
+                           (* TODO: Should be conditional on linkage. *)
+                           Command.Args.S
+                             [ A "-I"
+                             ; Path dir
+                             ; Hidden_deps (Dep.Set.singleton (Dep.file path))
+                             ]) ))))
+    in
     let+ flags = link_flags in
     Command.Args.S
       [ Command.Args.As flags
@@ -124,7 +135,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           (List.map foreign_archives ~f:(fun archive ->
                let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
                Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-      ; link_flags_for_relative_foreign_archives ()
+      ; paths_to_relative_foreign_archives ()
       ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in

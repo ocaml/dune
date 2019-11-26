@@ -295,7 +295,9 @@ end = struct
 
   open O
 
-  let both a b = a >>= fun a -> b >>= fun b -> return (a, b)
+  let both a b =
+    a >>= fun a ->
+    b >>= fun b -> return (a, b)
 
   module Ivar = struct
     type 'a state =
@@ -331,26 +333,27 @@ end = struct
     k ivar
 
   let fork_and_join f g =
-    fork f >>= fun a -> fork g >>= fun b -> both (Future.wait a) (Future.wait b)
+    fork f >>= fun a ->
+    fork g >>= fun b -> both (Future.wait a) (Future.wait b)
 
   let fork_and_join_unit f g =
-    fork f >>= fun a -> fork g >>= fun b -> Future.wait a >>> Future.wait b
+    fork f >>= fun a ->
+    fork g >>= fun b -> Future.wait a >>> Future.wait b
 
   let rec parallel_map l ~f =
     match l with
     | [] -> return []
     | x :: l ->
-      fork (fun () -> f x)
-      >>= fun future ->
-      parallel_map l ~f
-      >>= fun l -> Future.wait future >>= fun x -> return (x :: l)
+      fork (fun () -> f x) >>= fun future ->
+      parallel_map l ~f >>= fun l ->
+      Future.wait future >>= fun x -> return (x :: l)
 
   let rec parallel_iter l ~f =
     match l with
     | [] -> return ()
     | x :: l ->
-      fork (fun () -> f x)
-      >>= fun future -> parallel_iter l ~f >>= fun () -> Future.wait future
+      fork (fun () -> f x) >>= fun future ->
+      parallel_iter l ~f >>= fun () -> Future.wait future
 
   module Temp = struct
     module Files = Set.Make (String)
@@ -428,8 +431,7 @@ end = struct
     let initial_cwd = Sys.getcwd ()
 
     let run_process ?cwd prog args ~split =
-      throttle ()
-      >>= fun () ->
+      throttle () >>= fun () ->
       let stdout_fn, stdout_fd = open_temp_file () in
       let stderr_fn, stderr_fd =
         if split then
@@ -452,8 +454,7 @@ end = struct
       if split then Unix.close stderr_fd;
       let ivar = Ivar.create () in
       Hashtbl.add running ~key:pid ~data:ivar;
-      Ivar.read ivar
-      >>= fun (status : Unix.process_status) ->
+      Ivar.read ivar >>= fun (status : Unix.process_status) ->
       let stdout_s = read_temp stdout_fn in
       let stderr_s =
         if split then
@@ -479,20 +480,17 @@ end = struct
       | WSTOPPED _ -> assert false
 
     let run ?cwd prog args =
-      run_process ?cwd prog args ~split:false
-      >>| function
+      run_process ?cwd prog args ~split:false >>| function
       | Ok _ -> ()
       | Error n -> exit n
 
     let run_and_capture ?cwd prog args =
-      run_process ?cwd prog args ~split:true
-      >>| function
+      run_process ?cwd prog args ~split:true >>| function
       | Ok x -> x
       | Error n -> exit n
 
     let try_run_and_capture ?cwd prog args =
-      run_process ?cwd prog args ~split:true
-      >>| function
+      run_process ?cwd prog args ~split:true >>| function
       | Ok x -> Some x
       | Error _ -> None
   end
@@ -610,8 +608,7 @@ end = struct
     | false, Some path -> (path, Mode.Native, ".cmxa")
 
   let ocaml_config () =
-    Process.run_and_capture ocamlc [ "-config" ]
-    >>| fun s ->
+    Process.run_and_capture ocamlc [ "-config" ] >>| fun s ->
     List.fold_left (split_lines s) ~init:StringMap.empty ~f:(fun acc line ->
         match Scanf.sscanf line "%[^:]: %s" (fun k v -> (k, v)) with
         | k, v -> StringMap.add k v acc
@@ -638,13 +635,12 @@ let insert_header fn ~header =
 
 let copy_lexer ~header src dst =
   let dst = Filename.remove_extension dst ^ ".ml" in
-  Process.run Config.ocamllex [ "-q"; "-o"; dst; src ]
-  >>| fun () -> insert_header dst ~header
+  Process.run Config.ocamllex [ "-q"; "-o"; dst; src ] >>| fun () ->
+  insert_header dst ~header
 
 let copy_parser ~header src dst =
   let dst = Filename.remove_extension dst in
-  Process.run Config.ocamlyacc [ "-b"; dst; src ]
-  >>| fun () ->
+  Process.run Config.ocamlyacc [ "-b"; dst; src ] >>| fun () ->
   insert_header (dst ^ ".ml") ~header;
   insert_header (dst ^ ".mli") ~header
 
@@ -688,8 +684,7 @@ module Build_info = struct
             f x);
         pr "  ]\n"
     in
-    get_version ()
-    >>| fun version ->
+    get_version () >>| fun version ->
     pr "let version = %s\n"
       ( match version with
       | None -> "None"
@@ -868,8 +863,7 @@ module Library = struct
           let fn = String.uncapitalize_ascii m ^ ".ml" in
           let mangled = Wrapper.mangle_filename wrapper fn Ml in
           let oc = open_out (build_dir ^/ mangled) in
-          Build_info.gen_data_module oc
-          >>| fun () ->
+          Build_info.gen_data_module oc >>| fun () ->
           close_out oc;
           Some mangled)
     >>| fun (files, build_info_file) ->
@@ -1041,8 +1035,7 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
     match Hashtbl.find table m with
     | Not_started f ->
       Hashtbl.replace table m Initializing;
-      Fiber.fork f
-      >>= fun fut ->
+      Fiber.fork f >>= fun fut ->
       Hashtbl.replace table m (Started fut);
       Fiber.Future.wait fut
     | Initializing -> fatal "dependency cycle!"
@@ -1053,8 +1046,7 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
       Hashtbl.add table file
         (Not_started
            (fun () ->
-             Fiber.parallel_iter deps ~f:build
-             >>= fun () ->
+             Fiber.parallel_iter deps ~f:build >>= fun () ->
              Process.run ~cwd:build_dir Config.compiler
                (List.concat
                   [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49" ]
@@ -1168,17 +1160,13 @@ let build_syntax_shims () =
 let main () =
   rm_rf build_dir;
   Unix.mkdir build_dir 0o777;
-  Config.ocaml_config ()
-  >>= fun ocaml_config ->
-  build_syntax_shims ()
-  >>= fun pp ->
-  assemble_libraries task
-  >>= fun libraries ->
+  Config.ocaml_config () >>= fun ocaml_config ->
+  build_syntax_shims () >>= fun pp ->
+  assemble_libraries task >>= fun libraries ->
   let c_files =
     List.map ~f:(fun (_, _, c_files) -> c_files) libraries |> List.concat
   in
-  get_dependencies ~pp libraries
-  >>= fun dependencies ->
+  get_dependencies ~pp libraries >>= fun dependencies ->
   let build =
     if concurrency = 1 || Sys.win32 then
       build_with_single_command

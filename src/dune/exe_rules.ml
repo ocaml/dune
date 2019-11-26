@@ -91,7 +91,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
      make the code more uniform. *)
   let ext_lib = ctx.lib_config.ext_lib in
   let link_args =
-    let paths_to_relative_foreign_archives () =
+    let paths_to_transitive_foreign_archives () =
       Command.of_result_map
         (Lazy.force (Lib.Compile.requires_link compile_info))
         ~f:(fun libs ->
@@ -131,7 +131,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           (List.map foreign_archives ~f:(fun archive ->
                let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
                Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-      ; paths_to_relative_foreign_archives ()
+      ; paths_to_transitive_foreign_archives ()
       ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in

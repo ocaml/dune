@@ -160,9 +160,6 @@ generated META and opam files.
   $ dune build --root version foo.opam META.foo
   Entering directory 'version'
 
-The following behavior is wrong, the version should be set in stone
-after running `dune subst`:
-
   $ grep ^version version/foo.opam
   version: "1.0"
 

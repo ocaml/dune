@@ -839,3 +839,28 @@ Testsuite for the (foreign_library ...) stanza.
   $ ./sdune build @github2914/all
   $ (cd _build/default/github2914 && ocamlrun -I dir main.bc)
   Bug #2914 has been fixed
+
+----------------------------------------------------------------------------------
+* Make sure the [Byte_with_stubs_statically_linked_in] mode works too
+
+  $ cat >dune-workspace <<EOF
+  > (lang dune 2.0)
+  > (context
+  >   (default (disable_dynamically_linked_foreign_archives true)))
+  > EOF
+
+  $ cat >github2914/dune <<EOF
+  > (library
+  >  (name bug)
+  >  (foreign_archives dir/id)
+  >  (modules bug))
+  > (executable
+  >  (name main)
+  >  (modes byte)
+  >  (libraries bug)
+  >  (modules main))
+  > EOF
+
+  $ ./sdune clean
+  $ ./sdune exec github2914/main.exe
+  Bug #2914 has been fixed

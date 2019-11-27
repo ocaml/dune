@@ -69,6 +69,10 @@ val name : _ t -> Lib_name.t
 
 val loc : _ t -> Loc.t
 
+(** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
+    will always have zero or one element in the list (zero if they are not
+    buildable in the corresponding mode). External libraries, however, can have
+    more than one element in the list, because the format allows for that. *)
 val archives : 'path t -> 'path list Mode.Dict.t
 
 (* TODO: Rename [foreign_archives] to [foreign_lib_files] and [native_archives]

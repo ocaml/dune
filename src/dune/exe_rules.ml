@@ -91,39 +91,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
      make the code more uniform. *)
   let ext_lib = ctx.lib_config.ext_lib in
   let link_args =
-    let paths_to_transitive_foreign_archives () =
-      Command.of_result_map
-        (Lazy.force (Lib.Compile.requires_link compile_info))
-        ~f:(fun libs ->
-          Command.Args.S
-            (List.map libs ~f:(fun lib ->
-                 let lib_files = Lib_info.foreign_archives (Lib.info lib)
-                 and dll_files = Lib_info.foreign_dll_files (Lib.info lib) in
-                 Command.Args.S
-                   ( List.concat_map lib_files ~f:(fun path ->
-                         (* TODO: Make the [None] case impossible by separating
-                            files and directories at the type level. Then every
-                            file will necessarily have the parent directory,
-                            possibly ".". All directories except for the root
-                            will have parents too. Same in the [dll_files] case. *)
-                         let dir = Path.parent_exn path in
-                         (* TODO: Make these flags conditional on linkage. *)
-                         Command.Args.
-                           [ A "-ccopt"
-                           ; A "-L"
-                           ; A "-ccopt"
-                           ; Path dir
-                           ; Hidden_deps (Dep.Set.singleton (Dep.file path))
-                           ])
-                   @ List.concat_map dll_files ~f:(fun path ->
-                         let dir = Path.parent_exn path in
-                         (* TODO: Make these flags conditional on linkage. *)
-                         Command.Args.
-                           [ A "-I"
-                           ; Path dir
-                           ; Hidden_deps (Dep.Set.singleton (Dep.file path))
-                           ]) ))))
-    in
     let+ flags = link_flags in
     Command.Args.S
       [ Command.Args.As flags
@@ -131,7 +98,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           (List.map foreign_archives ~f:(fun archive ->
                let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
                Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
-      ; paths_to_transitive_foreign_archives ()
       ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in

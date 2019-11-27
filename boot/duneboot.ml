@@ -656,7 +656,7 @@ module Build_info = struct
         let rec loop = function
           | [] -> None
           | line :: lines -> (
-            match Scanf.sscanf line "(version %s)" (fun v -> v) with
+            match Scanf.sscanf line "(version %[^)])" (fun v -> v) with
             | exception _ -> loop lines
             | v -> Some v )
         in
@@ -665,10 +665,13 @@ module Build_info = struct
     match from_dune_project with
     | Some _ -> Fiber.return from_dune_project
     | None -> (
-      Process.try_run_and_capture "git" [ "describe"; "--always"; "--dirty" ]
-      >>| function
-      | Some s -> Some (String.trim s)
-      | None -> None )
+      if not (Sys.file_exists ".git") then
+        Fiber.return None
+      else
+        Process.try_run_and_capture "git" [ "describe"; "--always"; "--dirty" ]
+        >>| function
+        | Some s -> Some (String.trim s)
+        | None -> None )
 
   let gen_data_module oc =
     let pr fmt = fprintf oc fmt in

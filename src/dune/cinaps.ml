@@ -16,6 +16,8 @@ type Stanza.t += T of t
 let syntax =
   Dune_lang.Syntax.create ~name:"cinaps" ~desc:"the cinaps extension" [ (1, 0) ]
 
+let alias = Alias.(make (Name.of_string "cinaps"))
+
 let decode =
   let open Dune_lang.Decoder in
   fields
@@ -99,9 +101,8 @@ let gen_rules sctx t ~dir ~scope =
     ~program:{ name; main_module_name; loc }
     ~linkages:[ Exe.Linkage.native_or_custom (Super_context.context sctx) ]
     ~promote:None;
-  Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
-    (Alias.runtest ~dir)
-    (let module A = Action in
+  let action =
+    let module A = Action in
     let cinaps_exe = Path.build cinaps_exe in
     let+ () = Build.path cinaps_exe in
     A.chdir (Path.build dir)
@@ -110,4 +111,12 @@ let gen_rules sctx t ~dir ~scope =
          :: List.map cinapsed_files ~f:(fun fn ->
                 let fn = Path.build fn in
                 A.diff ~optional:true fn
-                  (Path.extend_basename fn ~suffix:".cinaps-corrected")) )))
+                  (Path.extend_basename fn ~suffix:".cinaps-corrected")) ))
+  in
+  let cinaps_alias = alias ~dir in
+  Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
+    cinaps_alias action;
+  let stamp_file =
+    Alias.stamp_file cinaps_alias |> Path.build |> Path.Set.singleton
+  in
+  Rules.Produce.Alias.add_deps (Alias.runtest ~dir) stamp_file

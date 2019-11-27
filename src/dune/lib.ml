@@ -398,52 +398,60 @@ let hash t = Id.hash (to_id t)
 include Comparable.Make (T)
 
 let link_flags t (mode : Link_mode.t) (lib_config : Lib_config.t) =
-  let archives = Lib_info.archives t.info
-  and lib_files = Lib_info.foreign_archives t.info
-  and dll_files = Lib_info.foreign_dll_files t.info in
-  let hidden =
-    match mode with
-    | Byte -> dll_files
-    | Byte_with_stubs_statically_linked_in -> lib_files
-    | Native -> List.rev_append (Lib_info.native_archives t.info) lib_files
+  let archive_deps_and_flags =
+    let lib_files = Lib_info.foreign_archives t.info
+    and dll_files = Lib_info.foreign_dll_files t.info in
+    [ (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
+         command line. *)
+      Command.Args.Deps
+        (Mode.Dict.get (Lib_info.archives t.info) (Link_mode.mode mode))
+      (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a]
+         are declared as hidden dependencies, and appropriate [-I] flags are
+         provided separately to help the linker locate them. *)
+    ; Hidden_deps
+        (Dep.Set.of_files
+           ( match mode with
+           | Byte -> dll_files
+           | Byte_with_stubs_statically_linked_in -> lib_files
+           | Native ->
+             List.rev_append (Lib_info.native_archives t.info) lib_files ))
+    ; S
+        (let dirs files =
+           List.sort_uniq ~compare:Path.compare
+             (List.map files ~f:Path.parent_exn)
+           (* TODO: Remove the above unsafe call to [parent_exn] by separating
+              files and directories at the type level. Then any file will have a
+              well-defined parent directory, possibly ".". *)
+         in
+         match mode with
+         | Byte ->
+           List.concat_map (dirs dll_files) ~f:(fun dir ->
+               Command.Args.[ A "-I"; Path dir ])
+         | Byte_with_stubs_statically_linked_in
+         | Native ->
+           List.concat_map (dirs lib_files) ~f:(fun dir ->
+               Command.Args.[ A "-I"; Path dir ]))
+    ]
   in
-  let hidden =
+  let exit_module_deps =
     match Lib_info.exit_module t.info with
-    | None -> hidden
-    | Some m -> (
+    | None -> Dep.Set.empty
+    | Some m ->
       let obj_name =
         Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
       in
-      match mode with
-      | Byte
-      | Byte_with_stubs_statically_linked_in ->
-        Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden
-      | Native ->
-        Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-        :: Path.extend_basename obj_name ~suffix:lib_config.ext_obj
-        :: hidden )
-  in
-  let transitive_foreign_archive_args =
-    (* TODO: Remove the unsafe call to [parent_exn] by separating files and
-       directories at the type level. Then any file will have a well-defined
-       parent directory, possibly ".". *)
-    let dirs files =
-      List.sort_uniq ~compare:Path.compare (List.map files ~f:Path.parent_exn)
-    in
-    match mode with
-    | Byte ->
-      List.concat_map (dirs dll_files) ~f:(fun dir ->
-          Command.Args.[ A "-I"; Path dir ])
-    | Byte_with_stubs_statically_linked_in
-    | Native ->
-      List.concat_map (dirs lib_files) ~f:(fun dir ->
-          Command.Args.[ A "-ccopt"; A "-L"; A "-ccopt"; Path dir ])
+      Dep.Set.of_files
+        ( match mode with
+        | Byte
+        | Byte_with_stubs_statically_linked_in ->
+          [ Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ]
+        | Native ->
+          [ Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+          ; Path.extend_basename obj_name ~suffix:lib_config.ext_obj
+          ] )
   in
   Command.Args.S
-    [ Deps (Mode.Dict.get archives (Link_mode.mode mode))
-    ; Hidden_deps (Dep.Set.of_files hidden)
-    ; S transitive_foreign_archive_args
-    ]
+    [ Command.Args.S archive_deps_and_flags; Hidden_deps exit_module_deps ]
 
 module L = struct
   type nonrec t = t list

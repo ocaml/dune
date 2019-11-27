@@ -8,6 +8,9 @@
 - Add `--mandir` option to `$ dune install`. This option allows to override the
   installation directory for man pages. (#2915, fixes #2670, @rgrinberg)
 
+- Fix `dune --version`. The bootstrap didn't compute the version
+  correctly. (#2929, fixes #2911, @diml)
+
 2.0.0 (20/11/2019)
 ------------------
 

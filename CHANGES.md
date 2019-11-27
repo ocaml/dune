@@ -1,6 +1,9 @@
 2.1.0 (unreleased)
 ------------------
 
+- Attach cinaps stanza actions to both `@runtest` and `@cinaps` aliases
+  (#2831, @NathanReb)
+
 - Add variables `%{lib-private...}` and `%{libexec-private...}` for finding
   build paths of files in public and private libraries within the same
   project. (#2901, @snowleopard)

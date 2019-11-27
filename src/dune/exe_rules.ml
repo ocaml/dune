@@ -79,7 +79,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
   let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
-  let archive_names = exes.buildable.foreign_archives |> List.map ~f:snd in
+  let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
   let link_flags =
     link_deps
     >>> Expander.expand_and_eval_set expander exes.link_flags
@@ -95,14 +95,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Command.Args.S
       [ Command.Args.As flags
       ; Command.Args.S
-          (List.map archive_names ~f:(fun archive_name ->
-               let dir, archive_name =
-                 ( Path.Build.relative dir (Filename.dirname archive_name)
-                 , Filename.basename archive_name )
-               in
-               let lib = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-               Command.Args.S
-                 [ Command.Args.A "-cclib"; Command.Args.Dep (Path.build lib) ]))
+          (List.map foreign_archives ~f:(fun archive ->
+               let lib = Foreign.Archive.lib_file ~archive ~dir ~ext_lib in
+               Command.Args.S [ A "-cclib"; Dep (Path.build lib) ]))
       ]
   in
   let requires_compile = Lib.Compile.direct_requires compile_info in

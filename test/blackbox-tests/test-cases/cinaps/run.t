@@ -14,13 +14,34 @@ Test of cinaps integration
   > (*$*)
   > let x = 1
   > "EOF"
-  sh: line 4: warning: here-document at line 0 delimited by end-of-file (wanted `EOF')
+
+The cinaps actions should be attached to the runtest alias:
+
+  $ dune runtest --diff-command diff
+            sh (internal) (exit 1)
+  (cd _build/default && /usr/bin/sh -c 'diff test.ml test.ml.cinaps-corrected')
+  1a2
+  > hello
+  [1]
+
+but also to the cinaps alias:
+
+  $ dune build @cinaps --diff-command diff
+            sh (internal) (exit 1)
+  (cd _build/default && /usr/bin/sh -c 'diff test.ml test.ml.cinaps-corrected')
+  1a2
+  > hello
+  [1]
+
+The cinaps stanza offers a promotion workflow:
 
   $ dune runtest --auto-promote
   File "test.ml", line 1, characters 0-0:
-  Files _build/default/test.ml and _build/default/test.ml.cinaps-corrected differ.
+  Error: Files _build/default/test.ml and
+  _build/default/test.ml.cinaps-corrected differ.
   Promoting _build/default/test.ml.cinaps-corrected to test.ml.
   [1]
+
   $ cat test.ml
   (*$ print_endline "\nhello" *)
   hello

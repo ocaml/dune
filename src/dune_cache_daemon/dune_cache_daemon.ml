@@ -68,7 +68,8 @@ let send_sexp output sexp =
   output_string output (Csexp.to_string sexp);
   flush output
 
-let send output message = send_sexp output (Messages.sexp_of_message message)
+let send version output message =
+  send_sexp output (Messages.sexp_of_message version message)
 
 module ClientsKey = struct
   type t = Unix.file_descr
@@ -155,7 +156,7 @@ let err msg = User_error.E (User_error.make [ Pp.text msg ])
 let errf msg = User_error.E (User_error.make msg)
 
 let negotiate_version fd input output =
-  send output my_versions_command;
+  send { major = 1; minor = 0 } output my_versions_command;
   let f msg =
     Unix.close fd;
     msg
@@ -176,18 +177,18 @@ module Client = struct
     ; version : version
     }
 
-  let read input =
+  let read version input =
     let* sexp = Csexp.parse input in
-    let+ (Messages.Dedup v) = Messages.incoming_message_of_sexp sexp in
+    let+ (Messages.Dedup v) = Messages.incoming_message_of_sexp version sexp in
     Dune_cache.Dedup v
 
-  let client_handle output = function
-    | Dune_cache.Dedup f -> send output (Messages.Dedup f)
+  let client_handle version output = function
+    | Dune_cache.Dedup f -> send version output (Messages.Dedup f)
 
   let client_thread (events, (client : client)) =
     try
       let handle_cmd (client : client) sexp =
-        let* msg = Messages.outgoing_message_of_sexp sexp in
+        let* msg = Messages.outgoing_message_of_sexp client.version sexp in
         match msg with
         | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
@@ -339,7 +340,7 @@ module Client = struct
               ; cache =
                   ( match
                       Dune_cache.Cache.make ?root:daemon.root
-                        (client_handle output)
+                        (client_handle version output)
                     with
                   | Result.Ok m -> m
                   | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
@@ -429,9 +430,12 @@ module Client = struct
     in
     let socket = Unix.out_channel_of_descr fd in
     let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+    let+ version =
+      Result.map_error ~f:err (negotiate_version fd input socket)
+    in
     let rec thread input =
       match
-        let+ command = read input in
+        let+ command = read version input in
         Log.infof "dune-cache command: %a" Pp.render_ignore_tags
           (Dyn.pp (Dune_cache.command_to_dyn command));
         handle command
@@ -441,13 +445,11 @@ module Client = struct
         Option.iter ~f:(fun f -> f ()) finally
       | Result.Ok () -> (thread [@tailcall]) input
     in
-    Result.map_error ~f:err
-      (let+ version = negotiate_version fd input socket in
-       let thread = Thread.create thread input in
-       { socket; fd; input; cache; thread; finally; version })
+    let thread = Thread.create thread input in
+    { socket; fd; input; cache; thread; finally; version }
 
   let with_repositories client repositories =
-    send client.socket (Messages.SetRepos repositories);
+    send client.version client.socket (Messages.SetRepos repositories);
     client
 
   let promote (client : t) files key metadata ~repository ~duplication =
@@ -458,14 +460,14 @@ module Client = struct
            duplication)
     in
     try
-      send client.socket
+      send client.version client.socket
         (Messages.Promote { key; files; metadata; repository; duplication });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
-    send client.socket (Messages.SetBuildRoot path);
+    send client.version client.socket (Messages.SetBuildRoot path);
     client
 
   let search client key = Dune_cache.Cache.search client.cache key

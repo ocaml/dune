@@ -7,7 +7,8 @@ let invalid_args args =
     (Printf.sprintf "invalid arguments:%s"
        (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
-let sexp_of_message : type a. a message -> Sexp.t =
+let sexp_of_message : type a. version -> a message -> Sexp.t =
+ fun _ ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
   | Lang versions ->
@@ -94,7 +95,7 @@ let initial_message_of_sexp = function
     Result.Error
       (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
 
-let incoming_message_of_sexp = function
+let incoming_message_of_sexp _ = function
   | Sexp.List
       [ Sexp.Atom "dedup"
       ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
@@ -111,7 +112,7 @@ let incoming_message_of_sexp = function
   | exp ->
     Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
-let outgoing_message_of_sexp =
+let outgoing_message_of_sexp _ =
   let repos_of_sexp args =
     let convert = function
       | Sexp.List

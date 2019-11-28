@@ -37,6 +37,7 @@ let make_cache (config : Config.t) =
     in
     match config.cache_transport with
     | Config.Caching.Transport.Direct ->
+      Log.info "enable binary cache in direct access mode";
       let cache =
         Result.ok_exn
           (Result.map_error
@@ -46,6 +47,7 @@ let make_cache (config : Config.t) =
       in
       Dune_cache.make_caching (module Dune_cache.Cache) cache
     | Daemon ->
+      Log.info "enable binary cache in daemon mode";
       let cache =
         Result.ok_exn
           (Dune_cache_daemon.Client.make
@@ -60,7 +62,9 @@ let make_cache (config : Config.t) =
         { Build_system.cache = make_cache ()
         ; check_probability = config.cache_check_probability
         }
-    | Config.Caching.Mode.Disabled -> None )
+    | Config.Caching.Mode.Disabled ->
+      Log.info "disable binary cache";
+      None )
 
 module Main = struct
   include Dune.Main

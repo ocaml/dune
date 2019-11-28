@@ -10,8 +10,7 @@ let invalid_args args =
 let sexp_of_message : type a. a message -> Sexp.t =
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
-  | Lang versions
-  | DaemonLang versions ->
+  | Lang versions ->
     cmd "lang"
       ( Sexp.Atom "dune-cache-protocol"
       :: (List.map ~f:(fun { major; minor } ->
@@ -87,10 +86,15 @@ let lang_of_sexp = function
     Result.List.map ~f:decode_version versions
   | args -> invalid_args args
 
-let incoming_message_of_sexp = function
+let initial_message_of_sexp = function
   | Sexp.List (Sexp.Atom "lang" :: args) ->
     let+ versions = lang_of_sexp args in
-    DaemonLang versions
+    Lang versions
+  | exp ->
+    Result.Error
+      (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
+
+let incoming_message_of_sexp = function
   | Sexp.List
       [ Sexp.Atom "dedup"
       ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
@@ -146,11 +150,8 @@ let outgoing_message_of_sexp =
       let+ duplication =
         match rest with
         | [ Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ] ->
-          Log.info "YES";
           Result.map ~f:Option.some (Dune_cache.Duplication_mode.of_string mode)
-        | [] ->
-          Log.info "NOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO";
-          Result.Ok None
+        | [] -> Result.Ok None
         | _ ->
           Result.Error
             (Printf.sprintf "invalid promotion message: %s"
@@ -168,9 +169,6 @@ let outgoing_message_of_sexp =
     Result.map_error
       ~f:(fun s -> cmd ^ ": " ^ s)
       ( match cmd with
-      | "lang" ->
-        let+ versions = lang_of_sexp args in
-        Lang versions
       | "promote" ->
         let+ promotions = promote_of_sexp args in
         Promote promotions

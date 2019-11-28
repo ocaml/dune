@@ -13,15 +13,16 @@ type promotion =
   ; duplication : Dune_cache.Duplication_mode.t option
   }
 
+type initial = Initial
+
 type outgoing = Outgoing
 
 type incoming = Incoming
 
 type _ message =
-  | Lang : version list -> outgoing message
+  | Lang : version list -> initial message
   | Promote : promotion -> outgoing message
   | SetBuildRoot : Path.t -> outgoing message
   | SetCommonMetadata : Sexp.t list -> outgoing message
   | SetRepos : Dune_cache.repository list -> outgoing message
   | Dedup : Dune_cache.File.t -> incoming message
-  | DaemonLang : version list -> incoming message

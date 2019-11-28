@@ -49,14 +49,32 @@ when idle, should consume zero resources, you may want to get rid of
 the process. Also useful to restart the daemon with `--foreground`.
 
 
-Filesystem implementation and disk size
+Filesystem implementation
 =======================================
 
-The cache works by creating hardlinks to built files inside the cache
-directory when promoted, and in other build trees when retrieved. This
-has the great advantage of having zero disk space overhead for files
-still living in a build directory. One small drawback is that the
-cache must be in the same partition as the build directories.
+Hardlink mode
+-------------
+
+By default the cache works by creating hardlinks to built files inside
+the cache directory when promoted, and in other build trees when
+retrieved. This has the great advantage of having zero disk space
+overhead for files still living in a build directory. This has two
+main constraints:
+
+* The cache root must be on the same partition as the build tree.
+* Produced files will be stripped from write permissions, as they are
+  shared between build trees. Note that modifying built files is most
+  likely bad practice in any case.
+
+Copy mode
+---------
+
+If one specifies `(cache-duplication copy)` in the configuration file,
+dune will copy files to and from the cache instead of using hardlinks.
+This can be useful if the build cache is on a different partition.
+
+On-disk size
+============
 
 The cache daemon will perform periodic trimming to limit the overhead.
 Every 10 minutes, it will purge the least recently used files so the

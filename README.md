@@ -118,7 +118,7 @@ If you do not have `make`, you can do the following:
 ```sh
 $ ocaml bootstrap.ml
 $ ./dune.exe build -p dune --profile dune-bootstrap
-$ ./dune.exe install dune --build-dir _boot
+$ ./dune.exe install dune
 ```
 
 The first command builds the `dune.exe` binary. The second builds the

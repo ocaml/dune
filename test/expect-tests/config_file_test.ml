@@ -35,7 +35,7 @@ let%expect_test _ =
    \n1,\
    \ncharacters\
    \n19-20:\
-   \nError: invalid suffix, use one of s, m, h\
+   \nError: missing suffix, use one of s, m, h\
    \n") |}]
 
 let%expect_test _ =
@@ -79,5 +79,5 @@ let%expect_test _ =
    \n1,\
    \ncharacters\
    \n17-19:\
-   \nError: invalid suffix, use one of B, kB, KB, MB, GB\
+   \nError: missing suffix, use one of B, kB, KB, MB, GB\
    \n") |}]

@@ -388,29 +388,25 @@ let triple a b c =
 
 let unit_number name suffixes =
   let unit_number_of_string ~loc s =
-    let l = String.length s in
+    let possible_suffixes () =
+      String.concat ~sep:", " (List.map ~f:fst suffixes)
+    in
     let n, suffix =
-      let rec suffix_length i =
-        if i = l then
-          i
-        else
-          let c = s.[l - i - 1] in
-          if Char.code c >= Char.code '0' && Char.code c <= Char.code '9' then
-            i
-          else
-            suffix_length (i + 1)
+      let f c =
+        not (Char.code c >= Char.code '0' && Char.code c <= Char.code '9')
       in
-      String.split_n s (l - suffix_length 0)
+      match String.findi s ~f with
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
+      | Some i -> String.split_n s i
     in
     let factor =
       match List.assoc suffixes suffix with
       | Some f -> f
       | None ->
-        let possible_suffixes =
-          String.concat ~sep:", " (List.map ~f:fst suffixes)
-        in
         User_error.raise ~loc
-          [ Pp.textf "invalid suffix, use one of %s" possible_suffixes ]
+          [ Pp.textf "invalid suffix, use one of %s" (possible_suffixes ()) ]
     in
     Option.map ~f:(( * ) factor) (Int.of_string n)
   in

@@ -262,6 +262,17 @@ let findi =
   in
   fun s ~f -> loop s (String.length s) ~f 0
 
+let rfindi =
+  let rec loop s ~f i =
+    if i < 0 then
+      None
+    else if f (String.unsafe_get s i) then
+      Some i
+    else
+      loop s ~f (i - 1)
+  in
+  fun s ~f -> loop s ~f (String.length s - 1)
+
 let need_quoting s =
   let len = String.length s in
   len = 0

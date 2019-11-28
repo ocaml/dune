@@ -99,6 +99,9 @@ val enumerate_one_of : t list -> t
 (** Find index of first character satisfying [f] *)
 val findi : string -> f:(char -> bool) -> int option
 
+(** Find index of last character satisfying [f] *)
+val rfindi : string -> f:(char -> bool) -> int option
+
 module Set : sig
   include Set.S with type elt = t
 

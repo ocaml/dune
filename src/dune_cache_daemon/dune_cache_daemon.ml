@@ -122,7 +122,7 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let my_versions : version list = [ { major = 1; minor = 0 } ]
+let my_versions : version list = [ { major = 1; minor = 1 } ]
 
 let my_versions_command = Messages.Lang my_versions
 

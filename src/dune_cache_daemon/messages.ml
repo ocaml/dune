@@ -8,7 +8,7 @@ let invalid_args args =
        (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
 let sexp_of_message : type a. version -> a message -> Sexp.t =
- fun _ ->
+ fun version ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
   | Lang versions ->
@@ -31,6 +31,12 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
     let rest = [] in
     let rest =
       match promotion.duplication with
+      | Some mode
+        when version = { major = 1; minor = 0 }
+             && mode = Dune_cache.Duplication_mode.Copy ->
+        User_error.raise
+          [ Pp.textf "cache daemon v1.0 does not support copy duplication mode"
+          ]
       | Some mode ->
         Sexp.List
           [ Sexp.Atom "duplication"

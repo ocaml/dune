@@ -34,6 +34,43 @@ module Dune_file = struct
     | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
 end
 
+module Jbuild_plugin = struct
+  let replace_in_template =
+    let template = lazy (Ml_template.of_string Assets.jbuild_plugin) in
+    fun vars ->
+    Ml_template.substitute_all (Lazy.force template) ~f:(function
+        | "V1.Vars" -> vars
+        | v -> Code_error.raise "unknown var"
+                 ["v", Dyn.Encoder.string v])
+
+  let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents =
+    let ocamlc_config =
+      let vars =
+        Ocaml_config.to_list context.ocaml_config
+        |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
+      in
+      let longest = String.longest_map vars ~f:fst in
+      List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
+      |> String.concat ~sep:"\n      ; "
+    in
+    let vars =
+      Printf.sprintf
+        {|let context = %S
+        let ocaml_version = %S
+        let send_target = %S
+        let ocaml_config = [ %s ]
+        |}
+        (Context_name.to_string context.name)
+        (Ocaml_config.version_string context.ocaml_config)
+        (Path.reach ~from:exec_dir (Path.build target))
+        ocamlc_config
+    in
+    Printf.fprintf oc "module Jbuild_plugin = struct\n%s\nend\n# 1 %S\n%s"
+    (replace_in_template vars)
+    (Path.to_string plugin)
+    plugin_contents
+end
+
 module Dune_files = struct
   type script =
     { dir : Path.Source.t
@@ -80,69 +117,8 @@ module Dune_files = struct
       ~target =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-        let ocamlc_config =
-          let vars =
-            Ocaml_config.to_list context.ocaml_config
-            |> List.map ~f:(fun (k, v) -> (k, Ocaml_config.Value.to_string v))
-          in
-          let longest = String.longest_map vars ~f:fst in
-          List.map vars ~f:(fun (k, v) -> sprintf "%-*S , %S" (longest + 2) k v)
-          |> String.concat ~sep:"\n      ; "
-        in
-        Printf.fprintf oc
-          {|
-let () =
-  Hashtbl.add Toploop.directive_table "require" (Toploop.Directive_string ignore);
-  Hashtbl.add Toploop.directive_table "use" (Toploop.Directive_string (fun _ ->
-    failwith "#use is not allowed inside a dune file in OCaml syntax"));
-  Hashtbl.add Toploop.directive_table "use_mod" (Toploop.Directive_string (fun _ ->
-    failwith "#use is not allowed inside a dune file in OCaml syntax"))
-
-module Jbuild_plugin = struct
-  module V1 = struct
-    let context       = %S
-    let ocaml_version = %S
-
-    let ocamlc_config =
-      [ %s
-      ]
-
-    let send s =
-      let oc = open_out_bin %S in
-      output_string oc s;
-      close_out oc
-
-    let run_and_read_lines cmd =
-      let tmp_fname = Filename.temp_file "dune" ".output" in
-      at_exit (fun () -> Sys.remove tmp_fname);
-      let n =
-        Printf.ksprintf Sys.command "%%s > %%s" cmd (Filename.quote tmp_fname)
-      in
-      let rec loop ic acc =
-        match input_line ic with
-        | exception End_of_file -> close_in ic; List.rev acc
-        | line -> loop ic (line :: acc)
-      in
-      let output = loop (open_in tmp_fname) [] in
-      if n = 0 then
-        output
-      else begin
-        Printf.ksprintf failwith
-          "Command failed: %%s\n\
-           Exit code: %%d\n\
-           Output:\n\
-           %%s"
-          cmd n (String.concat "\n" output)
-      end
-  end
-end
-# 1 %S
-%s|}
-          (Context_name.to_string context.name)
-          (Ocaml_config.version_string context.ocaml_config)
-          ocamlc_config
-          (Path.reach ~from:exec_dir (Path.build target))
-          (Path.to_string plugin) plugin_contents);
+        Jbuild_plugin.write oc ~context ~target ~exec_dir ~plugin ~plugin_contents
+          );
     check_no_requires plugin plugin_contents
 
   let eval dune_files ~(context : Context.t) =

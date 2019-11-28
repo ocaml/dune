@@ -397,61 +397,63 @@ let hash t = Id.hash (to_id t)
 
 include Comparable.Make (T)
 
-let link_flags t (mode : Link_mode.t) (lib_config : Lib_config.t) =
-  let archive_deps_and_flags =
+module Link_params = struct
+  type t =
+    { include_dirs : Path.t list
+    ; deps : Path.t list
+    ; hidden_deps : Path.t list
+    }
+
+  let get t (mode : Link_mode.t) (lib_config : Lib_config.t) =
     let lib_files = Lib_info.foreign_archives t.info
     and dll_files = Lib_info.foreign_dll_files t.info in
-    [ (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
-         command line. *)
-      Command.Args.Deps
-        (Mode.Dict.get (Lib_info.archives t.info) (Link_mode.mode mode))
-      (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a]
-         are declared as hidden dependencies, and appropriate [-I] flags are
-         provided separately to help the linker locate them. *)
-    ; Hidden_deps
-        (Dep.Set.of_files
-           ( match mode with
-           | Byte -> dll_files
-           | Byte_with_stubs_statically_linked_in -> lib_files
-           | Native ->
-             List.rev_append (Lib_info.native_archives t.info) lib_files ))
-    ; S
-        (let dirs files =
-           List.sort_uniq ~compare:Path.compare
-             (List.map files ~f:Path.parent_exn)
-           (* TODO: Remove the above unsafe call to [parent_exn] by separating
-              files and directories at the type level. Then any file will have a
-              well-defined parent directory, possibly ".". *)
-         in
-         match mode with
-         | Byte ->
-           List.concat_map (dirs dll_files) ~f:(fun dir ->
-               Command.Args.[ A "-I"; Path dir ])
-         | Byte_with_stubs_statically_linked_in
-         | Native ->
-           List.concat_map (dirs lib_files) ~f:(fun dir ->
-               Command.Args.[ A "-I"; Path dir ]))
-    ]
-  in
-  let exit_module_deps =
-    match Lib_info.exit_module t.info with
-    | None -> Dep.Set.empty
-    | Some m ->
-      let obj_name =
-        Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
+    (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
+       command line. *)
+    let deps = Mode.Dict.get (Lib_info.archives t.info) (Link_mode.mode mode) in
+    (* Foreign archives [lib*.a] and [dll*.so] and native archives [lib*.a] are
+       declared as hidden dependencies, and appropriate [-I] flags are provided
+       separately to help the linker locate them. *)
+    let hidden_deps =
+      match mode with
+      | Byte -> dll_files
+      | Byte_with_stubs_statically_linked_in -> lib_files
+      | Native -> List.rev_append (Lib_info.native_archives t.info) lib_files
+    in
+    let include_dirs =
+      let dirs files =
+        List.sort_uniq ~compare:Path.compare (List.map files ~f:Path.parent_exn)
+        (* TODO: Remove the above unsafe call to [parent_exn] by separating
+           files and directories at the type level. Then any file will have a
+           well-defined parent directory, possibly ".". *)
       in
-      Dep.Set.of_files
-        ( match mode with
+      match mode with
+      | Byte -> dirs dll_files
+      | Byte_with_stubs_statically_linked_in
+      | Native ->
+        dirs lib_files
+    in
+    let hidden_deps =
+      match Lib_info.exit_module t.info with
+      | None -> hidden_deps
+      | Some m -> (
+        let obj_name =
+          Path.relative (Lib_info.src_dir t.info) (Module_name.uncapitalize m)
+        in
+        match mode with
         | Byte
         | Byte_with_stubs_statically_linked_in ->
-          [ Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) ]
+          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
         | Native ->
-          [ Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          ; Path.extend_basename obj_name ~suffix:lib_config.ext_obj
-          ] )
-  in
-  Command.Args.S
-    [ Command.Args.S archive_deps_and_flags; Hidden_deps exit_module_deps ]
+          Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
+          :: Path.extend_basename obj_name ~suffix:lib_config.ext_obj
+          :: hidden_deps )
+    in
+    { deps; hidden_deps; include_dirs }
+end
+
+let link_deps t mode lib_config =
+  let x = Link_params.get t mode lib_config in
+  List.rev_append x.hidden_deps x.deps
 
 module L = struct
   type nonrec t = t list
@@ -490,10 +492,21 @@ module L = struct
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
   let compile_and_link_flags ~compile ~link ~mode ~lib_config =
-    let dirs = Path.Set.union (include_paths compile) (c_include_paths link) in
+    let params =
+      List.map link ~f:(fun t -> Link_params.get t mode lib_config)
+    in
+    let dirs =
+      let dirs =
+        Path.Set.union (include_paths compile) (c_include_paths link)
+      in
+      List.fold_left params ~init:dirs ~f:(fun acc (p : Link_params.t) ->
+          List.fold_left p.include_dirs ~init:acc ~f:Path.Set.add)
+    in
     Command.Args.S
       ( to_iflags dirs
-      :: List.map link ~f:(fun t -> link_flags t mode lib_config) )
+      :: List.map params ~f:(fun (p : Link_params.t) ->
+             Command.Args.S
+               [ Deps p.deps; Hidden_deps (Dep.Set.of_files p.hidden_deps) ]) )
 
   let jsoo_runtime_files ts =
     List.concat_map ts ~f:(fun t -> Lib_info.jsoo_runtime t.info)
@@ -525,7 +538,13 @@ module Lib_and_module = struct
     let link_flags ts ~(lib_config : Lib_config.t) ~mode =
       Command.Args.S
         (List.map ts ~f:(function
-          | Lib t -> link_flags t mode lib_config
+          | Lib t ->
+            let p = Link_params.get t mode lib_config in
+            Command.Args.S
+              ( Deps p.deps
+              :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
+              :: List.map p.include_dirs ~f:(fun dir ->
+                     Command.Args.S [ A "-I"; Path dir ]) )
           | Module (obj_dir, m) ->
             Command.Args.S
               ( Dep

@@ -161,7 +161,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            ; A "-o"
            ; Target exe
            ; As linkage.flags
-           ; Command.Args.Dyn link_args
+           ; Dyn link_args
            ; Command.of_result_map link_time_code_gen
                ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                  S

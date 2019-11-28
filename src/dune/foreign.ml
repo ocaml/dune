@@ -102,6 +102,68 @@ let possible_sources ~language obj ~dune_version =
         (Language.equal lang language && dune_version >= version)
         (obj ^ "." ^ ext))
 
+module Archive = struct
+  module Name = struct
+    include String
+
+    let to_string t = t
+
+    let path ~dir t = Path.Build.relative dir t
+
+    let decode =
+      Dune_lang.Decoder.plain_string (fun ~loc s ->
+          match s with
+          | "."
+          | ".." ->
+            User_error.raise ~loc
+              [ Pp.textf "%S is not a valid archive name." s ]
+          | fn when String.exists fn ~f:Path.is_dir_sep ->
+            User_error.raise ~loc
+              [ Pp.textf "Path separators are not allowed in archive names." ]
+          | fn -> fn)
+
+    let stubs archive_name = archive_name ^ "_stubs"
+
+    let lib_file archive_name ~dir ~ext_lib =
+      Path.Build.relative dir (sprintf "lib%s%s" archive_name ext_lib)
+
+    let dll_file archive_name ~dir ~ext_dll =
+      Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
+  end
+
+  (** Archive directories can appear as part of the [(foreign_archives ...)]
+      fields. For example, in [(foreign_archives some/dir/lib1 lib2)], the
+      archive [some/dir/lib1] has the directory [some/dir], whereas the archive
+      [lib2] does not specify the directory and is assumed to be located in [.]. *)
+  module Dir = struct
+    type t = string
+  end
+
+  type t =
+    { dir : Dir.t
+    ; name : Name.t
+    }
+
+  let dir_path ~dir t = Path.Build.relative dir t.dir
+
+  let name t = t.name
+
+  let stubs archive_name = { dir = "."; name = Name.stubs archive_name }
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let+ s = string in
+    { dir = Filename.dirname s; name = Filename.basename s }
+
+  let lib_file ~archive ~dir ~ext_lib =
+    let dir = dir_path ~dir archive in
+    Name.lib_file archive.name ~dir ~ext_lib
+
+  let dll_file ~archive ~dir ~ext_dll =
+    let dir = dir_path ~dir archive in
+    Name.dll_file archive.name ~dir ~ext_dll
+end
+
 module Stubs = struct
   module Include_dir = struct
     type t =
@@ -163,7 +225,7 @@ end
 
 module Library = struct
   type t =
-    { archive_name : string
+    { archive_name : Archive.Name.t
     ; archive_name_loc : Loc.t
     ; stubs : Stubs.t
     }
@@ -172,16 +234,10 @@ module Library = struct
     let open Dune_lang.Decoder in
     fields
       (let+ archive_name_loc, archive_name =
-         located (field "archive_name" string)
+         located (field "archive_name" Archive.Name.decode)
        and+ stubs = Stubs.decode_stubs in
        { archive_name; archive_name_loc; stubs })
 end
-
-let lib_file ~archive_name ~dir ~ext_lib =
-  Path.Build.relative dir (sprintf "lib%s%s" archive_name ext_lib)
-
-let dll_file ~archive_name ~dir ~ext_dll =
-  Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)
 
 module Source = struct
   (* we store the entire [stubs] record even though [t] only describes an

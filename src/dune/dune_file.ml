@@ -457,7 +457,7 @@ module Buildable = struct
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
-    ; foreign_archives : (Loc.t * string) list
+    ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
@@ -496,7 +496,8 @@ module Buildable = struct
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Foreign.Stubs.decode)
     and+ foreign_archives =
       field_o "foreign_archives"
-        (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> repeat (located string))
+        ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+        >>> repeat (located Foreign.Archive.decode) )
     and+ c_flags =
       only_in_library
         (field_o "c_flags" (use_foreign >>> Ordered_set_lang.Unexpanded.decode))
@@ -559,7 +560,7 @@ module Buildable = struct
            used this naming convention; [foreign_archives] does not use it and
            allows users to name archives as they like (they still need to add
            the "lib" prefix, however, since standard linkers require it). *)
-        | Some name -> (loc, name ^ "_stubs") :: foreign_archives
+        | Some name -> (loc, Foreign.Archive.stubs name) :: foreign_archives
     in
     { loc
     ; preprocess
@@ -1013,22 +1014,20 @@ module Library = struct
 
   let has_foreign t = Buildable.has_foreign t.buildable
 
-  let stubs_archive_name t = Lib_name.Local.to_string (snd t.name) ^ "_stubs"
-
-  let foreign_archive_names t =
+  let foreign_archives t =
     ( if List.is_empty t.buildable.foreign_stubs then
       []
     else
-      [ stubs_archive_name t ] )
+      [ Foreign.Archive.stubs (Lib_name.Local.to_string (snd t.name)) ] )
     @ List.map ~f:snd t.buildable.foreign_archives
 
-  let foreign_archives t ~dir ~ext_lib =
-    List.map (foreign_archive_names t) ~f:(fun archive_name ->
-        Foreign.lib_file ~archive_name ~dir ~ext_lib)
+  let foreign_lib_files t ~dir ~ext_lib =
+    List.map (foreign_archives t) ~f:(fun archive ->
+        Foreign.Archive.lib_file ~archive ~dir ~ext_lib)
 
   let foreign_dll_files t ~dir ~ext_dll =
-    List.map (foreign_archive_names t) ~f:(fun archive_name ->
-        Foreign.dll_file ~archive_name ~dir ~ext_dll)
+    List.map (foreign_archives t) ~f:(fun archive ->
+        Foreign.Archive.dll_file ~archive ~dir ~ext_dll)
 
   let archive t ~dir ~ext =
     Path.Build.relative dir (Lib_name.Local.to_string (snd t.name) ^ ext)
@@ -1079,7 +1078,7 @@ module Library = struct
       | Some p -> Public (Dune_project.name conf.project, p.package)
     in
     let virtual_library = is_virtual conf in
-    let foreign_archives = foreign_archives conf ~dir ~ext_lib in
+    let foreign_archives = foreign_lib_files conf ~dir ~ext_lib in
     let native_archives =
       [ Path.Build.relative dir (Lib_name.Local.to_string lib_name ^ ext_lib) ]
     in

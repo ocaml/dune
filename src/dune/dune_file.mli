@@ -90,7 +90,7 @@ module Buildable : sig
     ; modules : Ordered_set_lang.t
     ; modules_without_implementation : Ordered_set_lang.t
     ; libraries : Lib_dep.t list
-    ; foreign_archives : (Loc.t * string) list
+    ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
     ; preprocess : Preprocess_map.t
     ; preprocessor_deps : Dep_conf.t list
@@ -208,15 +208,12 @@ module Library : sig
   (** Check if the library has any foreign stubs or archives. *)
   val has_foreign : t -> bool
 
-  (** The name of the automatically built foreign stubs archive. *)
-  val stubs_archive_name : t -> string
-
-  (** The names of all foreign archives, including the foreign stubs archive. *)
-  val foreign_archive_names : t -> string list
+  (** The list of all foreign archives, including the foreign stubs archive. *)
+  val foreign_archives : t -> Foreign.Archive.t list
 
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
       is the directory the library is declared in. *)
-  val foreign_archives :
+  val foreign_lib_files :
     t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
   (** The [dll*.so] files of all foreign archives, including foreign stubs.

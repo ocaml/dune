@@ -44,7 +44,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           in
           Foreign.Sources.object_files files ~dir ~ext_obj
         else
-          Library.foreign_archives lib ~dir ~ext_lib )
+          Library.foreign_lib_files lib ~dir ~ext_lib )
       ; if_
           (native && not virtual_library)
           (let files =

@@ -23,8 +23,10 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
   Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
-        List.concat_map (Library.foreign_archive_names lib) ~f:(fun name ->
-            let lname = "-l" ^ name in
+        List.concat_map (Library.foreign_archives lib) ~f:(fun archive ->
+            let lname =
+              "-l" ^ Foreign.Archive.(name archive |> Name.to_string)
+            in
             let cclib = [ "-cclib"; lname ] in
             let dllib = [ "-dllib"; lname ] in
             match mode with
@@ -117,8 +119,12 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     ~build_targets_together =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; ext_dll; _ } = ctx.lib_config in
-  let static_target = Foreign.lib_file ~archive_name ~dir ~ext_lib in
-  let dynamic_target = Foreign.dll_file ~archive_name ~dir ~ext_dll in
+  let static_target =
+    Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
+  in
+  let dynamic_target =
+    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
+  in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
@@ -133,7 +139,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
            else
              Command.Args.empty )
          ; A "-o"
-         ; Path (Path.build (Path.Build.relative dir archive_name))
+         ; Path (Path.build (Foreign.Archive.Name.path ~dir archive_name))
          ; Deps o_files
          ; Dyn
              (* The [c_library_flags] is needed only for the [dynamic_target]
@@ -213,7 +219,8 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
   | [] -> ()
   | o_files ->
     let ctx = Super_context.context sctx in
-    let archive_name = Library.stubs_archive_name lib in
+    let lib_name = Lib_name.Local.to_string (snd lib.name) in
+    let archive_name = Foreign.Archive.Name.stubs lib_name in
     let modes = Compilation_context.modes cctx in
     let build_targets_together =
       modes.native && modes.byte
@@ -234,15 +241,22 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
         let ext = Mode.plugin_ext Native in
         Library.archive lib ~dir ~ext
       in
+      let include_flags_for_relative_foreign_archives =
+        Command.Args.S
+          (List.map lib.buildable.foreign_archives ~f:(fun (_loc, archive) ->
+               let dir = Foreign.Archive.dir_path ~dir archive in
+               Command.Args.S [ A "-I"; Path (Path.build dir) ]))
+      in
       let build =
         Build.paths
-          (Library.foreign_archives lib ~dir ~ext_lib |> List.map ~f:Path.build)
+          (Library.foreign_lib_files lib ~dir ~ext_lib |> List.map ~f:Path.build)
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
               [ Command.Args.dyn (Ocaml_flags.get flags Native)
               ; A "-shared"
               ; A "-linkall"
               ; A "-I"
               ; Path (Path.build dir)
+              ; include_flags_for_relative_foreign_archives
               ; A "-o"
               ; Target dst
               ; Dep src

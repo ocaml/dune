@@ -53,7 +53,7 @@ to build dune and packages using dune is OCaml. You don't need
 `make` or `bash` as long as the packages themselves don't use `bash`
 explicitly.
 
-Especially, one can install OCaml on Windows with a binary installer
+In particular, one can install OCaml on Windows with a binary installer
 and then use only the Windows Console to build dune and packages
 using dune.
 
@@ -118,15 +118,15 @@ If you do not have `make`, you can do the following:
 ```sh
 $ ocaml bootstrap.ml
 $ ./dune.exe build -p dune --profile dune-bootstrap
-$ ./dune.exe install dune --build-dir _boot
+$ ./dune.exe install dune
 ```
 
-The first command build the `dune.exe` binary. The second builds the
-additional files that are installed by dune, such as the man pages and
+The first command builds the `dune.exe` binary. The second builds the
+additional files that are installed by dune, such as the man pages, and
 the last simply installs all of that on the system.
 
 Note that unless you ran the optional `./configure` script, you can
-simply copy `dune.exe` anywhere and it will just works. `dune` is
+simply copy `dune.exe` anywhere and it will just work. `dune` is
 fully relocatable and discovers its environment at runtime rather than
 hard-coding it at compilation time.
 

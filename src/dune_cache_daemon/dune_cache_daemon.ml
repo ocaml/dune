@@ -139,6 +139,8 @@ let endpoint m = m.endpoint
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
+let errf msg = User_error.E (User_error.make msg)
+
 module Client = struct
   type t =
     { socket : out_channel
@@ -389,24 +391,27 @@ module Client = struct
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let* cache = Result.map_error ~f:err (Dune_cache.Cache.make ignore) in
     let* port =
-      let root = Dune_cache.default_root () in
-      Daemonize.daemonize ~workdir:root (default_port_file ())
-        (daemon ~root ~config:{ exit_no_client = true })
-      >>| (function
-            | Started (ep, _)
-            | Already_running (ep, _) ->
-              ep
-            | Finished ->
-              Code_error.raise "dune-cache was run in the foreground" [])
-      |> Result.map_error ~f:err
+      let cmd =
+        Format.sprintf "%s cache start --display progress --exit-no-client"
+          Sys.executable_name
+      and f stdout =
+        match Io.input_lines stdout with
+        | [] -> Result.Error (err "empty output starting cache")
+        | [ line ] -> Result.Ok line
+        | _ -> Result.Error (err "unrecognized output starting cache")
+      and finally stdout = ignore (Unix.close_process_in stdout) (* FIXME *) in
+      Exn.protectx (Unix.open_process_in cmd) ~finally ~f
     in
     let* addr, port =
       match String.split_on_char ~sep:':' port with
       | [ addr; port ] -> (
         match Int.of_string port with
-        | Some i -> Result.Ok (Unix.inet_addr_of_string addr, i)
-        | None -> Result.Error (err (Printf.sprintf "invalid port: %s" port)) )
-      | _ -> Result.Error (err (Printf.sprintf "invalid endpoint: %s" port))
+        | Some i -> (
+          try Result.Ok (Unix.inet_addr_of_string addr, i)
+          with Failure _ ->
+            Result.Error (errf [ Pp.textf "invalid address: %s" addr ]) )
+        | None -> Result.Error (errf [ Pp.textf "invalid port: %s" port ]) )
+      | _ -> Result.Error (errf [ Pp.textf "invalid endpoint: %s" port ])
     in
     let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     let* _ =

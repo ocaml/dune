@@ -25,8 +25,10 @@ let doc = "Manage the shared artifacts cache"
 
 let info = Term.info name ~doc ~man
 
-let start ~exit_no_client ~foreground ~port_path ~root =
-  let show_endpoint ep = Printf.eprintf "listening on %s\n%!" ep in
+let start ~exit_no_client ~foreground ~port_path ~root ~display =
+  let show_endpoint ep =
+    if display <> Some Config.Display.Quiet then Printf.printf "%s\n%!" ep
+  in
   let config = { Dune_cache_daemon.exit_no_client } in
   let f started =
     let started content =
@@ -123,9 +125,10 @@ let term =
          value
          & opt (some int) None
          & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
-     in
+     and+ display = Common.display_term in
      match mode with
-     | Some Start -> `Ok (start ~exit_no_client ~foreground ~port_path ~root)
+     | Some Start ->
+       `Ok (start ~exit_no_client ~foreground ~port_path ~root ~display)
      | Some Stop -> `Ok (stop ~port_path)
      | Some Trim -> `Ok (trim ~trimmed_size ~size)
      | None -> `Help (`Pager, Some name)

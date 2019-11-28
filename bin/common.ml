@@ -312,6 +312,23 @@ module Options_implied_by_dash_p = struct
     | Some _ -> { t with profile }
 end
 
+let display_term =
+  one_of
+    (let+ verbose =
+       Arg.(
+         value & flag
+         & info [ "verbose" ] ~docs:copts_sect
+             ~doc:"Same as $(b,--display verbose)")
+     in
+     Option.some_if verbose Config.Display.Verbose)
+    Arg.(
+      value
+      & opt (some (enum Config.Display.all)) None
+      & info [ "display" ] ~docs:copts_sect ~docv:"MODE"
+          ~doc:
+            {|Control the display mode of Dune.
+         See $(b,dune-config\(5\)) for more details.|})
+
 let term =
   let docs = copts_sect in
   let+ concurrency =
@@ -381,21 +398,7 @@ let term =
             {|
          Changes how the log of build results are displayed to the
          console between rebuilds while in --watch mode. |})
-  and+ display =
-    one_of
-      (let+ verbose =
-         Arg.(
-           value & flag
-           & info [ "verbose" ] ~docs ~doc:"Same as $(b,--display verbose)")
-       in
-       Option.some_if verbose Config.Display.Verbose)
-      Arg.(
-        value
-        & opt (some (enum Config.Display.all)) None
-        & info [ "display" ] ~docs ~docv:"MODE"
-            ~doc:
-              {|Control the display mode of Dune.
-                      See $(b,dune-config\(5\)) for more details.|})
+  and+ display = display_term
   and+ no_buffer =
     let doc =
       {|Do not buffer the output of commands executed by dune. By default dune

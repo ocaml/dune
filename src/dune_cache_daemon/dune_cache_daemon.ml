@@ -392,7 +392,7 @@ module Client = struct
     let* cache = Result.map_error ~f:err (Dune_cache.Cache.make ignore) in
     let* port =
       let cmd =
-        Format.sprintf "%s cache start --quiet --exit-no-client"
+        Format.sprintf "%s cache start --display progress --exit-no-client"
           Sys.executable_name
       and f stdout =
         match Io.input_lines stdout with

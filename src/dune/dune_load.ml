@@ -38,12 +38,12 @@ module Jbuild_plugin = struct
   let replace_in_template =
     let template = lazy (Ml_template.of_string Assets.jbuild_plugin_ml) in
     fun vars ->
-    Ml_template.substitute_all (Lazy.force template) ~f:(function
+      Ml_template.substitute_all (Lazy.force template) ~f:(function
         | "V1.Vars" -> vars
-        | v -> Code_error.raise "unknown var"
-                 ["v", Dyn.Encoder.string v])
+        | v -> Code_error.raise "unknown var" [ ("v", Dyn.Encoder.string v) ])
 
-  let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents =
+  let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents
+      =
     let ocamlc_config =
       let vars =
         Ocaml_config.to_list context.ocaml_config
@@ -58,18 +58,17 @@ module Jbuild_plugin = struct
         {|let context = %S
         let ocaml_version = %S
         let send_target = %S
-        let ocaml_config = [ %s ]
+        let ocamlc_config = [ %s ]
         |}
         (Context_name.to_string context.name)
         (Ocaml_config.version_string context.ocaml_config)
         (Path.reach ~from:exec_dir (Path.build target))
         ocamlc_config
     in
-    Printf.fprintf oc "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
-    Assets.jbuild_plugin_mli
-    (replace_in_template vars)
-    (Path.to_string plugin)
-    plugin_contents
+    Printf.fprintf oc
+      "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
+      Assets.jbuild_plugin_mli (replace_in_template vars)
+      (Path.to_string plugin) plugin_contents
 end
 
 module Dune_files = struct
@@ -118,8 +117,8 @@ module Dune_files = struct
       ~target =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-        Jbuild_plugin.write oc ~context ~target ~exec_dir ~plugin ~plugin_contents
-          );
+        Jbuild_plugin.write oc ~context ~target ~exec_dir ~plugin
+          ~plugin_contents);
     check_no_requires plugin plugin_contents
 
   let eval dune_files ~(context : Context.t) =

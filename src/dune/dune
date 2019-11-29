@@ -11,15 +11,18 @@
 (ocamllex dune_lexer ocamlobjinfo ml_template)
 
 (rule
- (with-stdout-to
-   assets.ml
-  (progn
-   (echo "let jbuild_plugin_ml = {jbp|")
-   (cat %{workspace_root}/plugin/jbuild_plugin.ml)
-   (echo "|jbp}\n\n")
-   (echo "let jbuild_plugin_mli = {jbp|")
-   (cat %{workspace_root}/plugin/jbuild_plugin.mli)
-   (echo "|jbp}"))))
+ (mode promote)
+ (target assets.ml)
+ (action
+  (with-stdout-to
+   %{target}
+   (progn
+    (echo "let jbuild_plugin_ml = {jbp|")
+    (cat %{workspace_root}/plugin/jbuild_plugin.ml)
+    (echo "|jbp}\n\n")
+    (echo "let jbuild_plugin_mli = {jbp|")
+    (cat %{workspace_root}/plugin/jbuild_plugin.mli)
+    (echo "|jbp}")))))
 
 (rule
  (targets setup.ml)

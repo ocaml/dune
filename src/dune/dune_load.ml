@@ -36,7 +36,7 @@ end
 
 module Jbuild_plugin = struct
   let replace_in_template =
-    let template = lazy (Ml_template.of_string Assets.jbuild_plugin) in
+    let template = lazy (Ml_template.of_string Assets.jbuild_plugin_ml) in
     fun vars ->
     Ml_template.substitute_all (Lazy.force template) ~f:(function
         | "V1.Vars" -> vars
@@ -65,7 +65,8 @@ module Jbuild_plugin = struct
         (Path.reach ~from:exec_dir (Path.build target))
         ocamlc_config
     in
-    Printf.fprintf oc "module Jbuild_plugin = struct\n%s\nend\n# 1 %S\n%s"
+    Printf.fprintf oc "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
+    Assets.jbuild_plugin_mli
     (replace_in_template vars)
     (Path.to_string plugin)
     plugin_contents

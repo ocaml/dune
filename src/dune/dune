@@ -12,10 +12,13 @@
 
 (rule
  (with-stdout-to
-  assets.ml
+   assets.ml
   (progn
-   (echo "let jbuild_plugin = {jbp|")
+   (echo "let jbuild_plugin_ml = {jbp|")
    (cat %{workspace_root}/plugin/jbuild_plugin.ml)
+   (echo "|jbp}\n\n")
+   (echo "let jbuild_plugin_mli = {jbp|")
+   (cat %{workspace_root}/plugin/jbuild_plugin.mli)
    (echo "|jbp}"))))
 
 (rule

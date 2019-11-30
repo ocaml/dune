@@ -1,6 +1,68 @@
 open! Stdune
 open Result.O
 
+module Id : sig
+  type t
+
+  val path : t -> Path.t
+
+  val name : t -> Lib_name.t
+
+  val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
+
+  val hash : t -> int
+
+  val compare : t -> t -> Ordering.t
+
+  include Comparator.OPS with type t := t
+
+  val make : path:Path.t -> name:Lib_name.t -> t
+
+  module Set : Set.S with type elt = t
+
+  module Map : Map.S with type key = t
+
+  module Top_closure :
+    Top_closure.S with type key := t and type 'a monad := 'a Monad.Id.t
+end = struct
+  module T = struct
+    type t =
+      { unique_id : int
+      ; path : Path.t
+      ; name : Lib_name.t
+      }
+
+    let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
+
+    let to_dyn _ = Dyn.opaque
+  end
+
+  include T
+
+  let name t = t.name
+
+  let path t = t.path
+
+  let to_dep_path_lib { path; name; unique_id = _ } =
+    { Dep_path.Entry.Lib.path; name }
+
+  include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
+
+  let gen_unique_id =
+    let next = ref 0 in
+    fun () ->
+      let n = !next in
+      next := n + 1;
+      n
+
+  let hash t = t.unique_id
+
+  let make ~path ~name = { unique_id = gen_unique_id (); path; name }
+
+  include Comparable.Make (T)
+  module Top_closure = Top_closure.Make (Set) (Monad.Id)
+end
+
 (* Errors *)
 
 (* The current module never raises. It returns all errors as [Result.Error
@@ -132,14 +194,6 @@ module Error = struct
           (Lib_name.to_string (Lib_info.name vlib))
       ]
 
-  let dependency_cycle cycle =
-    make
-      [ Pp.text "Dependency cycle detected between the following libraries:"
-      ; Pp.chain cycle ~f:(fun (dir, name) ->
-            Pp.textf "%S in %s" (Lib_name.to_string name)
-              (Path.to_string_maybe_quoted dir))
-      ]
-
   let private_deps_not_allowed ~loc private_dep =
     let name = Lib_info.name private_dep in
     make ~loc
@@ -218,64 +272,6 @@ module Sub_system0 = struct
   module Instance = struct
     type t = T : 'a s * 'a -> t
   end
-end
-
-module Id : sig
-  type t =
-    { unique_id : int
-    ; path : Path.t
-    ; name : Lib_name.t
-    }
-
-  val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
-
-  val hash : t -> int
-
-  val compare : t -> t -> Ordering.t
-
-  include Comparator.OPS with type t := t
-
-  val make : path:Path.t -> name:Lib_name.t -> t
-
-  module Set : Set.S with type elt = t
-
-  module Map : Map.S with type key = t
-
-  module Top_closure :
-    Top_closure.S with type key := t and type 'a monad := 'a Monad.Id.t
-end = struct
-  module T = struct
-    type t =
-      { unique_id : int
-      ; path : Path.t
-      ; name : Lib_name.t
-      }
-
-    let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
-
-    let to_dyn _ = Dyn.opaque
-  end
-
-  include T
-
-  let to_dep_path_lib { path; name; unique_id = _ } =
-    { Dep_path.Entry.Lib.path; name }
-
-  include (Comparator.Operators (T) : Comparator.OPS with type t := T.t)
-
-  let gen_unique_id =
-    let next = ref 0 in
-    fun () ->
-      let n = !next in
-      next := n + 1;
-      n
-
-  let hash t = t.unique_id
-
-  let make ~path ~name = { unique_id = gen_unique_id (); path; name }
-
-  include Comparable.Make (T)
-  module Top_closure = Top_closure.Make (Set) (Monad.Id)
 end
 
 module T = struct
@@ -656,17 +652,32 @@ module Dep_stack = struct
       else
         match l with
         | [] -> assert false
-        | ({ Id.path; name; _ } as id) :: l ->
+        | id :: l ->
           let implements_via =
             let open Option.O in
             let+ via = Id.Map.find t.implements_via id in
             Implements_via.to_dep_path_implements_via via
           in
+          let path = Id.path id in
+          let name = Id.name id in
           loop
             (Dep_path.Entry.Library ({ path; name }, implements_via) :: acc)
             l
     in
     loop [] t.stack
+
+  let dependency_cycle cycle =
+    Error
+      (User_error.E
+         (User_error.make
+            [ Pp.text
+                "Dependency cycle detected between the following libraries:"
+            ; Pp.chain cycle ~f:(fun id ->
+                  let name = Id.name id in
+                  let dir = Id.path id in
+                  Pp.textf "%S in %s" (Lib_name.to_string name)
+                    (Path.to_string_maybe_quoted dir))
+            ]))
 
   let dependency_cycle t (last : Id.t) =
     assert (Id.Set.mem t.seen last);
@@ -674,14 +685,14 @@ module Dep_stack = struct
       match stack with
       | [] -> assert false
       | (x : Id.t) :: stack ->
-        let acc = (x.path, x.name) :: acc in
+        let acc = x :: acc in
         if Id.equal x last then
           acc
         else
           build_loop acc stack
     in
-    let loop = build_loop [ (last.path, last.name) ] t.stack in
-    Error.dependency_cycle loop
+    let loop = build_loop [ last ] t.stack in
+    dependency_cycle loop
 
   let create_and_push t name path =
     let init = Id.make ~path ~name in
@@ -715,7 +726,9 @@ let already_in_table info name x =
   let dyn =
     let open Dyn.Encoder in
     match x with
-    | St_initializing x -> constr "St_initializing" [ Path.to_dyn x.path ]
+    | St_initializing x ->
+      let path = Id.path x in
+      constr "St_initializing" [ Path.to_dyn path ]
     | St_found t ->
       let src_dir = Lib_info.src_dir t.info in
       constr "St_found" [ Path.to_dyn src_dir ]

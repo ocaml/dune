@@ -57,7 +57,23 @@ end = struct
 
   let hash t = t.unique_id
 
-  let make ~path ~name = { unique_id = gen_unique_id (); path; name }
+  let make =
+    let module Input = struct
+      type t = Path.t * Lib_name.t
+
+      let equal = Tuple.T2.equal Path.equal Lib_name.equal
+
+      let hash = Tuple.T2.hash Path.hash Lib_name.hash
+
+      let to_dyn = Tuple.T2.to_dyn Path.to_dyn Lib_name.to_dyn
+    end in
+    let memo =
+      Memo.create_hidden "Lib.Id.make"
+        ~input:(module Input)
+        Sync
+        (fun (path, name) -> { unique_id = gen_unique_id (); path; name })
+    in
+    fun ~path ~name -> Memo.exec memo (path, name)
 
   include Comparable.Make (T)
   module Top_closure = Top_closure.Make (Set) (Monad.Id)

@@ -447,17 +447,17 @@ module DB = struct
         ; ("path", option Path.to_dyn path)
         ]
 
-    let t = Fdecl.create to_dyn
+    let t = Memo.Run.Fdecl.create to_dyn
   end
 end
 
 let init ?x ?profile ?path () =
-  Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
+  Memo.Run.Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
 
 let workspace =
   let f () =
     let (_ : Memo.Run.t) = Memo.current_run () in
-    let { DB.Settings.path; profile; x } = Fdecl.get DB.Settings.t in
+    let { DB.Settings.path; profile; x } = Memo.Run.Fdecl.get DB.Settings.t in
     match path with
     | None -> default ?x ?profile ()
     | Some p -> load ?x ?profile p

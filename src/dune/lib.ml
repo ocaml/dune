@@ -325,7 +325,6 @@ include T
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
 type status =
-  | St_initializing of Id.t (* To detect cycles *)
   | St_found of t
   | St_not_found
   | St_hidden of t * Path.t * string
@@ -710,8 +709,15 @@ module Dep_stack = struct
     let loop = build_loop [ last ] t.stack in
     dependency_cycle loop
 
+  let check_cycle t x =
+    if Id.Set.mem t.seen x then
+      dependency_cycle t x
+    else
+      Ok ()
+
   let create_and_push t name path =
     let init = Id.make ~path ~name in
+    let+ () = check_cycle t init in
     ( init
     , { stack = init :: t.stack
       ; seen = Id.Set.add t.seen init
@@ -719,15 +725,13 @@ module Dep_stack = struct
       } )
 
   let push (t : t) ~implements_via (x : Id.t) : (_, _) result =
-    if Id.Set.mem t.seen x then
-      dependency_cycle t x
-    else
-      let implements_via =
-        match implements_via with
-        | None -> t.implements_via
-        | Some via -> Id.Map.add_exn t.implements_via x via
-      in
-      Ok { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via }
+    let* () = check_cycle t x in
+    let implements_via =
+      match implements_via with
+      | None -> t.implements_via
+      | Some via -> Id.Map.add_exn t.implements_via x via
+    in
+    Ok { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via }
 end
 
 let check_private_deps lib ~loc ~allow_private_deps =
@@ -742,9 +746,6 @@ let already_in_table info name x =
   let dyn =
     let open Dyn.Encoder in
     match x with
-    | St_initializing x ->
-      let path = Id.path x in
-      constr "St_initializing" [ Path.to_dyn path ]
     | St_found t ->
       let src_dir = Lib_info.src_dir t.info in
       constr "St_found" [ Path.to_dyn src_dir ]
@@ -1018,12 +1019,11 @@ end = struct
   let instantiate db name info ~stack ~hidden =
     let unique_id, stack =
       let src_dir = Lib_info.src_dir info in
-      Dep_stack.create_and_push stack name src_dir
+      Dep_stack.create_and_push stack name src_dir |> Result.ok_exn
     in
     Option.iter (Table.find db.table name) ~f:(fun x ->
         already_in_table info name x);
     (* Add [id] to the table, to detect loops *)
-    Table.add_exn db.table name (St_initializing unique_id);
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
     let resolve (loc, name) =
@@ -1161,7 +1161,6 @@ end = struct
   let resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack :
       t Or_exn.t =
     match find_internal db name ~stack with
-    | St_initializing id -> Dep_stack.dependency_cycle stack id
     | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
     | St_not_found -> Error.not_found ~loc ~name
     | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
@@ -1171,7 +1170,6 @@ end = struct
     | Redirect (db', (_, name')) -> (
       let db' = Option.value db' ~default:db in
       match find_internal db' name' ~stack with
-      | St_initializing _ as x -> x
       | x ->
         Table.add_exn db.table name x;
         x )
@@ -1807,7 +1805,6 @@ module DB = struct
 
   let find t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
     | St_found t -> Some t
     | St_not_found
     | St_hidden _ ->
@@ -1815,7 +1812,6 @@ module DB = struct
 
   let find_even_when_hidden t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
     | St_found t
     | St_hidden (t, _, _) ->
       Some t
@@ -1823,7 +1819,6 @@ module DB = struct
 
   let resolve t (loc, name) =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
     | St_found t -> Ok t
     | St_not_found -> Error.not_found ~loc ~name
     | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason

@@ -64,8 +64,6 @@ Handling ppx_runtime_libraries dependencies correctly
   -> "b" in _build/default
   -> "c" in _build/default
   -> "a" in _build/default
-  -> required by library "c" in _build/default
-  -> required by executable main in bin/dune:2
   [1]
 
 ----------------------------------------------------------------------------------
@@ -151,6 +149,4 @@ Note that pps dependencies are separated by a runtime dependency.
   -> "ppx" in _build/default
   -> "c" in _build/default
   -> "gen_c" in _build/default
-  -> required by library "c" in _build/default
-  -> required by executable main in bin/dune:2
   [1]

@@ -26,7 +26,7 @@ world and there will be no overlap between the various scopes.
 Ordered set language
 ====================
 
-A few fields takes as argument an ordered set and can be specified using a small
+A few fields take as argument an ordered set and can be specified using a small
 DSL.
 
 This DSL is interpreted by dune into an ordered set of strings using the

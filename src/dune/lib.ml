@@ -401,7 +401,11 @@ module Link_params = struct
   type t =
     { include_dirs : Path.t list
     ; deps : Path.t list
+          (* List of files that will be read by the compiler at link time and
+             appear directly on the command line *)
     ; hidden_deps : Path.t list
+          (* List of files that will be read by the compiler at link time but do
+             not appear on the command line *)
     }
 
   let get t (mode : Link_mode.t) (lib_config : Lib_config.t) =

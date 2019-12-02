@@ -1169,10 +1169,8 @@ end = struct
     match db.resolve name with
     | Redirect (db', (_, name')) -> (
       let db' = Option.value db' ~default:db in
-      match find_internal db' name' ~stack with
-      | x ->
-        Table.add_exn db.table name x;
-        x )
+      find_internal db' name' ~stack
+      |> Table.add_exn db.table name)
     | Found info -> instantiate db name info ~stack ~hidden:None
     | Not_found ->
       let res =

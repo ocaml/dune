@@ -50,6 +50,10 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
+(** The list of files that will be read by the compiler when linking an
+    executable against this library *)
+val link_deps : t -> Link_mode.t -> Lib_config.t -> Path.t list
+
 (** Operations on list of libraries *)
 module L : sig
   type lib

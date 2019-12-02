@@ -1,3 +1,3 @@
 open Stdune
 
-let env = Fdecl.create Env.to_dyn
+let env = Memo.Run.Fdecl.create Env.to_dyn

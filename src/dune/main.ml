@@ -36,7 +36,7 @@ let setup_env ~capture_outputs =
     in
     Env.add env ~var:"INSIDE_DUNE" ~value:"1"
   in
-  Fdecl.set Global.env env;
+  Memo.Run.Fdecl.set Global.env env;
   env
 
 let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile

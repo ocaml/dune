@@ -1,6 +1,6 @@
-type 'a t = 'a list
-
 include module type of struct include ListLabels end
+
+type 'a t = 'a list
 
 val is_empty : _ t -> bool
 

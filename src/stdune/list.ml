@@ -1,6 +1,6 @@
-type 'a t = 'a list
-
 include ListLabels
+
+type 'a t = 'a list
 
 let is_empty = function
   | [] -> true

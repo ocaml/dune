@@ -697,7 +697,7 @@ module Create = struct
   end
 
   let call () : t list Fiber.t =
-    let env = Fdecl.get Global.env in
+    let env = Memo.Run.Fdecl.get Global.env in
     let workspace = Workspace.workspace () in
     let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
       lazy

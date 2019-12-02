@@ -1,3 +1,3 @@
 open Stdune
 
-val env : Env.t Fdecl.t
+val env : Env.t Memo.Run.Fdecl.t

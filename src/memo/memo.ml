@@ -1,6 +1,5 @@
 open! Stdune
 open Fiber.O
-module Run = Run
 module Function = Function
 
 let on_already_reported = ref Exn_with_backtrace.reraise
@@ -800,3 +799,22 @@ module Implicit_output = Implicit_output
 module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f
+
+module Run = struct
+  module Fdecl = struct
+    type nonrec 'a t = 'a Fdecl.t Lazy.t
+
+    let create to_dyn =
+      Lazy.create (fun () ->
+          let (_ : Run.t) = current_run () in
+          Fdecl.create to_dyn)
+
+    let set t x = Fdecl.set (Lazy.force t) x
+
+    let get t = Fdecl.get (Lazy.force t)
+
+    let peek t = Fdecl.peek (Lazy.force t)
+  end
+
+  include Run
+end

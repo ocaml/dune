@@ -11,12 +11,16 @@ let jbuild_plugin_ml = {jbp|let () =
          failwith "#use is not allowed inside a dune file in OCaml syntax"))
 
 module V1 = struct
-  (*$ V1.Vars $*)
-  let context = "%{context}"
-  let ocaml_version = "%{version}"
+  (*$ begin_vars $*)
+  let context = "dummy_context"
+
+  let ocaml_version = "dummy_version"
+
   let ocamlc_config = []
-  let send_target = "%{send_target}"
-  (*$ end $*)
+
+  let send_target = "dummy_send_target"
+
+  (*$ end_vars $*)
 
   let send s =
     let oc = open_out_bin send_target in

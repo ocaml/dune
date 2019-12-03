@@ -8,7 +8,7 @@
  (synopsis "Internal Dune library, do not use!")
  (preprocess future_syntax))
 
-(ocamllex dune_lexer ocamlobjinfo ml_template)
+(ocamllex dune_lexer ocamlobjinfo)
 
 (rule
  (mode promote)

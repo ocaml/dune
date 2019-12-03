@@ -36,11 +36,42 @@ end
 
 module Jbuild_plugin = struct
   let replace_in_template =
-    let template = lazy (Ml_template.of_string Assets.jbuild_plugin_ml) in
-    fun vars ->
-      Ml_template.substitute_all (Lazy.force template) ~f:(function
-        | "V1.Vars" -> vars
-        | v -> Code_error.raise "unknown var" [ ("v", Dyn.Encoder.string v) ])
+    let template =
+      lazy
+        (let marker name =
+           let open Re in
+           [ str "(*$"; rep space; str name; rep space; str "$*)" ]
+           |> seq |> Re.mark
+         in
+         let mark_start, marker_start = marker "begin_vars" in
+         let mark_end, marker_end = marker "end_vars" in
+         let markers = Re.alt [ marker_start; marker_end ] in
+         let invalid_template stage =
+           Code_error.raise
+             "Jbuild_plugin.replace_in_template: invalid template"
+             [ ("stage", Dyn.Encoder.string stage) ]
+         in
+         let rec parse1 = function
+           | `Text s :: xs -> parse2 s xs
+           | xs -> parse2 "" xs
+         and parse2 prefix = function
+           | `Delim ds :: `Text _ :: `Delim de :: xs
+             when Re.Mark.test ds mark_start && Re.Mark.test de mark_end ->
+             parse3 prefix xs
+           | _ -> invalid_template "parse2"
+         and parse3 prefix = function
+           | [] -> (prefix, "")
+           | [ `Text suffix ] -> (prefix, suffix)
+           | _ -> invalid_template "parse3"
+         in
+         let tokens =
+           Re.split_full (Re.compile markers) Assets.jbuild_plugin_ml
+         in
+         parse1 tokens)
+    in
+    fun t ->
+      let prefix, suffix = Lazy.force template in
+      sprintf "%s%s%s" prefix t suffix
 
   let write oc ~(context : Context.t) ~target ~exec_dir ~plugin ~plugin_contents
       =

@@ -717,9 +717,9 @@ module Dep_stack = struct
 
   let create_and_push t name path =
     let init = Id.make ~path ~name in
-    let+ () = check_cycle t init in
     ( init
-    , { stack = init :: t.stack
+    , let+ () = check_cycle t init in
+      { stack = init :: t.stack
       ; seen = Id.Set.add t.seen init
       ; implements_via = Id.Map.empty
       } )
@@ -1019,7 +1019,7 @@ end = struct
   let instantiate db name info ~stack ~hidden =
     let unique_id, stack =
       let src_dir = Lib_info.src_dir info in
-      Dep_stack.create_and_push stack name src_dir |> Result.ok_exn
+      Dep_stack.create_and_push stack name src_dir
     in
     Option.iter (Table.find db.table name) ~f:(fun x ->
         already_in_table info name x);
@@ -1027,6 +1027,7 @@ end = struct
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
     let resolve (loc, name) =
+      let* stack = stack in
       resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack
     in
     let implements =
@@ -1087,9 +1088,12 @@ end = struct
                |> Variant.Map.map ~f:resolve_impl ))
     in
     let requires, pps, resolved_selects, re_exports =
-      let pps = Lib_info.pps info in
-      Lib_info.requires info
-      |> resolve_user_deps db ~allow_private_deps ~pps ~stack
+      match stack with
+      | Error e -> (Error e, Error e, [], Error e)
+      | Ok stack ->
+        let pps = Lib_info.pps info in
+        Lib_info.requires info
+        |> resolve_user_deps db ~allow_private_deps ~pps ~stack
     in
     let requires =
       match implements with
@@ -1100,6 +1104,7 @@ end = struct
         impl :: requires
     in
     let ppx_runtime_deps =
+      let* stack = stack in
       Lib_info.ppx_runtime_deps info
       |> resolve_simple_deps db ~allow_private_deps ~stack
     in
@@ -1167,10 +1172,11 @@ end = struct
 
   let resolve_name db name ~stack =
     match db.resolve name with
-    | Redirect (db', (_, name')) -> (
+    | Redirect (db', (_, name')) ->
       let db' = Option.value db' ~default:db in
-      find_internal db' name' ~stack
-      |> Table.add_exn db.table name)
+      let res = find_internal db' name' ~stack in
+      Table.add_exn db.table name res;
+      res
     | Found info -> instantiate db name info ~stack ~hidden:None
     | Not_found ->
       let res =

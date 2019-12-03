@@ -28,6 +28,8 @@ Cycle detection
   -> "b" in _build/default
   -> "c" in _build/default
   -> "a" in _build/default
+  -> required by library "c" in _build/default
+  -> required by executable cycle in dune:14
   [1]
 
 Select with no solution

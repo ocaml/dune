@@ -66,6 +66,18 @@ module type Input = sig
   include Table.Key with type t := t
 end
 
+module Output = struct
+  type 'o t =
+    | Simple of (module Output_simple with type t = 'o)
+    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
+end
+
+module Visibility = struct
+  type 'i t =
+    | Hidden
+    | Public of 'i Dune_lang.Decoder.t
+end
+
 module Spec = struct
   type ('a, 'b, 'f) t =
     { name : Function.Name.t
@@ -89,6 +101,31 @@ module Spec = struct
     | Some _ ->
       Code_error.raise "[Spec.register] called twice on the same function" []
     | None -> Function.Name.Table.set by_name ~key:t.name ~data:(Some (T t))
+
+  let create (type o) name ~input ~visibility ~(output : o Output.t) ~f ~doc =
+    let name = Function.Name.make name in
+    let (output : (module Output_simple with type t = o)), allow_cutoff =
+      match output with
+      | Simple (module Output) -> ((module Output), Allow_cutoff.No)
+      | Allow_cutoff (module Output) -> ((module Output), Yes Output.equal)
+    in
+    let decode =
+      match visibility with
+      | Visibility.Public decode -> decode
+      | Hidden ->
+        let open Dune_lang.Decoder in
+        let+ loc = loc in
+        User_error.raise ~loc [ Pp.text "<not-implemented>" ]
+    in
+    { name
+    ; input
+    ; output
+    ; allow_cutoff
+    ; decode
+    ; witness = Type_eq.Id.create ()
+    ; f
+    ; doc
+    }
 end
 
 module Id = Id.Make ()
@@ -386,46 +423,10 @@ module Stack_frame = struct
     | None -> None
 end
 
-module Visibility = struct
-  type 'i t =
-    | Hidden
-    | Public of 'i Dune_lang.Decoder.t
-end
-
-module Output = struct
-  type 'o t =
-    | Simple of (module Output_simple with type t = 'o)
-    | Allow_cutoff of (module Output_allow_cutoff with type t = 'o)
-end
-
-let create_with_cache (type i o f) name ~cache ?doc
-    ~input:(module Input : Store_intf.Input with type t = i) ~visibility
-    ~(output : o Output.t) (typ : (i, o, f) Function.Type.t) (f : f) =
-  let name = Function.Name.make name in
-  let decode : i Dune_lang.Decoder.t =
-    match visibility with
-    | Visibility.Hidden ->
-      let open Dune_lang.Decoder in
-      let+ loc = loc in
-      User_error.raise ~loc [ Pp.text "<not-implemented>" ]
-    | Public decode -> decode
-  in
-  let (output : (module Output_simple with type t = o)), allow_cutoff =
-    match output with
-    | Simple (module Output) -> ((module Output), Allow_cutoff.No)
-    | Allow_cutoff (module Output) -> ((module Output), Yes Output.equal)
-  in
-  let spec =
-    { Spec.name
-    ; input = (module Input)
-    ; output
-    ; allow_cutoff
-    ; decode
-    ; witness = Type_eq.Id.create ()
-    ; f = Function.of_type typ f
-    ; doc
-    }
-  in
+let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
+    (typ : (i, o, f) Function.Type.t) (f : f) =
+  let f = Function.of_type typ f in
+  let spec = Spec.create name ~input ~output ~visibility ~doc ~f in
   ( match visibility with
   | Public _ -> Spec.register spec
   | Hidden -> () );
@@ -455,14 +456,9 @@ let create_hidden (type output) name ?doc ~input typ impl =
     ~visibility:Hidden name ?doc ~input typ impl
 
 module Exec = struct
-  let make_dep_node t ~state ~input =
+  let make_dep_node ~spec ~state ~input =
     let dep_node : _ Dep_node.t =
-      { id = Id.gen ()
-      ; input
-      ; spec = t.spec
-      ; dag_node = lazy (assert false)
-      ; state
-      }
+      { id = Id.gen (); input; spec; dag_node = lazy (assert false); state }
     in
     let dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag; data = Dep_node.T dep_node }
@@ -475,7 +471,7 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | Some dep_node -> dep_node
   | None ->
-    let dep_node = Exec.make_dep_node t ~input:inp ~state:Init in
+    let dep_node = Exec.make_dep_node ~spec:t.spec ~input:inp ~state:Init in
     Store.set t.cache inp dep_node;
     dep_node
 
@@ -774,15 +770,16 @@ let lazy_ (type a) f =
     let equal = ( == )
   end in
   let id = Lazy_id.gen () in
-  let memo =
-    create
-      (sprintf "lazy-%d" (Lazy_id.to_int id))
+  let name = sprintf "lazy-%d" (Lazy_id.to_int id) in
+  let visibility = Visibility.Hidden in
+  let f = Function.of_type Function.Type.Sync f in
+  let spec =
+    Spec.create name
       ~input:(module Unit)
-      ~visibility:Hidden
       ~output:(Allow_cutoff (module Output))
-      Sync f
+      ~visibility ~f ~doc:None
   in
-  let cell = cell memo () in
+  let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
 
 module Lazy = struct

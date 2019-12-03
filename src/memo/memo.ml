@@ -706,41 +706,6 @@ let current_run =
 
 module Lazy_id = Stdune.Id.Make ()
 
-let lazy_ (type a) f =
-  let module Output = struct
-    type t = a
-
-    let to_dyn _ = Dyn.Opaque
-
-    let equal = ( == )
-  end in
-  let id = Lazy_id.gen () in
-  let memo =
-    create
-      (sprintf "lazy-%d" (Lazy_id.to_int id))
-      ~input:(module Unit)
-      ~visibility:Hidden
-      ~output:(Allow_cutoff (module Output))
-      Sync f
-  in
-  fun () -> exec memo ()
-
-module Lazy = struct
-  type 'a t = unit -> 'a
-
-  let of_val x () = x
-
-  let create f = lazy_ f
-
-  let force f = f ()
-
-  let map x ~f = create (fun () -> f (force x))
-
-  let map2 x y ~f = create (fun () -> f (x ()) (y ()))
-
-  let bind x ~f = create (fun () -> force (f (force x)))
-end
-
 module With_implicit_output = struct
   type ('i, 'o, 'f) t = 'f
 
@@ -799,6 +764,42 @@ module Implicit_output = Implicit_output
 module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f
+
+let lazy_ (type a) f =
+  let module Output = struct
+    type t = a
+
+    let to_dyn _ = Dyn.Opaque
+
+    let equal = ( == )
+  end in
+  let id = Lazy_id.gen () in
+  let memo =
+    create
+      (sprintf "lazy-%d" (Lazy_id.to_int id))
+      ~input:(module Unit)
+      ~visibility:Hidden
+      ~output:(Allow_cutoff (module Output))
+      Sync f
+  in
+  let cell = cell memo () in
+  fun () -> Cell.get_sync cell
+
+module Lazy = struct
+  type 'a t = unit -> 'a
+
+  let of_val x () = x
+
+  let create f = lazy_ f
+
+  let force f = f ()
+
+  let map x ~f = create (fun () -> f (force x))
+
+  let map2 x y ~f = create (fun () -> f (x ()) (y ()))
+
+  let bind x ~f = create (fun () -> force (f (force x)))
+end
 
 module Run = struct
   module Fdecl = struct

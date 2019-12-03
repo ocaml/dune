@@ -1023,7 +1023,6 @@ end = struct
     in
     Option.iter (Table.find db.table name) ~f:(fun x ->
         already_in_table info name x);
-    (* Add [id] to the table, to detect loops *)
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
     let resolve (loc, name) =
@@ -1155,7 +1154,7 @@ end = struct
       | None -> St_found t
       | Some reason -> St_hidden (t, src_dir, reason)
     in
-    Table.set db.table name res;
+    Table.add_exn db.table name res;
     res
 
   let find_internal db (name : Lib_name.t) ~stack : status =

@@ -48,3 +48,19 @@ Select with no solution
   Error: No solution found for this select form.
   [1]
 
+It's possible that a library with a cycle will be ignored if it's optional. It
+would be better if this was an error:
+
+  $ touch bar.opam
+  $ cat >dune <<EOF
+  > (library
+  >  (name foo)
+  >  (libraries bar)
+  >  (modules))
+  > (library
+  >  (optional)
+  >  (modules)
+  >  (name bar)
+  >  (public_name bar)
+  >  (libraries foo))
+  $ dune build @install --display short

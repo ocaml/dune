@@ -292,7 +292,8 @@ module Cache = struct
       Io.write_file metadata_path
         (Csexp.to_string (Metadata_file.to_sexp metadata_file));
       let f = function
-        | Already_promoted file -> cache.handler (Dedup file)
+        | Already_promoted file when cache.duplication_mode <> Copy ->
+          cache.handler (Dedup file)
         | _ -> ()
       in
       List.iter ~f promoted;

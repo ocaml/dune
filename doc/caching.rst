@@ -63,8 +63,8 @@ main constraints:
 
 * The cache root must be on the same partition as the build tree.
 * Produced files will be stripped from write permissions, as they are
-  shared between build trees. Note that modifying built files is most
-  likely bad practice in any case.
+  shared between build trees. Note that modifying built files is bad
+  practice in any case.
 
 Copy mode
 ---------

@@ -1,9 +1,9 @@
   $ cat > config <<EOF
-  > (lang dune 2.0)
+  > (lang dune 2.1)
   > (cache enabled)
   > EOF
   $ cat > dune-project <<EOF
-  > (lang dune 2.0)
+  > (lang dune 2.1)
   > EOF
   $ cat > dune <<EOF
   > (rule
@@ -37,7 +37,7 @@
 
 
   $ cat > dune-project <<EOF
-  > (lang dune 2.0)
+  > (lang dune 2.1)
   > EOF
   $ cat > dune-v1 <<EOF
   > (rule

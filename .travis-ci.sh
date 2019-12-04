@@ -72,7 +72,6 @@ case "$TARGET" in
         eval $(opam config env)
 
         if [ $OLD_OCAML -eq 1 ] ; then
-          opam remote add secondary 'git+https://github.com/dra27/opam-repository.git#secondary'
           opam install ocamlfind-secondary
         fi
 

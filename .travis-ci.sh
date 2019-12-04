@@ -6,7 +6,7 @@ OPAMYES="true"; export OPAMYES
 OPAM_VERSION="2.0.5"
 
 # This allows a specific version of odoc to be selected if necessary
-ODOC="odoc"
+ODOC="odoc>=1.4.2"
 
 TARGET="$1"; shift
 
@@ -15,7 +15,7 @@ opam_install_test_deps () {
          ocamlfind \
          ppxlib \
          ppx_expect \
-         $ODOC \
+         "$ODOC" \
          menhir \
          ocaml-migrate-parsetree
          # js_of_ocaml-ppx \

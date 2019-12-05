@@ -29,7 +29,7 @@ With the following dune file:
 
 .. code:: scheme
 
-  (executable (name foo))
+  (executable (name foo) (modes js))
 
 And then request the ``.js`` target:
 

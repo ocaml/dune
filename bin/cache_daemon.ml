@@ -117,13 +117,13 @@ let term =
      and+ trimmed_size =
        Arg.(
          value
-         & opt (some int) None
+         & opt (some bytes) None
          & info ~docv:"BYTES" [ "trimmed-size" ]
              ~doc:"size to trim from the cache")
      and+ size =
        Arg.(
          value
-         & opt (some int) None
+         & opt (some bytes) None
          & info ~docv:"BYTES" [ "size" ] ~doc:"size to trim the cache to")
      and+ display = Common.display_term in
      match mode with

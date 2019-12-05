@@ -28,3 +28,4 @@ Welcome to dune's documentation!
    faq
    known-issues
    migration
+   caching

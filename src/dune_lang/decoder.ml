@@ -356,16 +356,18 @@ let located t ctx state1 =
 
 let raw = next Fn.id
 
-let basic desc f =
+let basic_loc desc f =
   next (function
     | Template { loc; _ }
     | List (loc, _)
     | Quoted_string (loc, _) ->
       User_error.raise ~loc [ Pp.textf "%s expected" desc ]
     | Atom (loc, s) -> (
-      match f (Atom.to_string s) with
+      match f ~loc (Atom.to_string s) with
       | None -> User_error.raise ~loc [ Pp.textf "%s expected" desc ]
       | Some x -> x ))
+
+let basic desc f = basic_loc desc (fun ~loc:_ -> f)
 
 let string = plain_string (fun ~loc:_ x -> x)
 
@@ -383,6 +385,43 @@ let triple a b c =
     ( a >>= fun a ->
       b >>= fun b ->
       c >>= fun c -> return (a, b, c) )
+
+let unit_number name suffixes =
+  let unit_number_of_string ~loc s =
+    let possible_suffixes () =
+      String.concat ~sep:", " (List.map ~f:fst suffixes)
+    in
+    let n, suffix =
+      let f c =
+        not (Char.code c >= Char.code '0' && Char.code c <= Char.code '9')
+      in
+      match String.findi s ~f with
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "missing suffix, use one of %s" (possible_suffixes ()) ]
+      | Some i -> String.split_n s i
+    in
+    let factor =
+      match List.assoc suffixes suffix with
+      | Some f -> f
+      | None ->
+        User_error.raise ~loc
+          [ Pp.textf "invalid suffix, use one of %s" (possible_suffixes ()) ]
+    in
+    Option.map ~f:(( * ) factor) (Int.of_string n)
+  in
+  basic_loc name unit_number_of_string
+
+let duration = unit_number "Duration" [ ("s", 1); ("m", 60); ("h", 60 * 60) ]
+
+let bytes_unit =
+  unit_number "Byte amount"
+    [ ("B", 1)
+    ; ("kB", 1000)
+    ; ("KB", 1000)
+    ; ("MB", 1000 * 1000)
+    ; ("GB", 1000 * 1000 * 1000)
+    ]
 
 let option t =
   enter

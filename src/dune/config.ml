@@ -70,6 +70,12 @@ module Display = struct
   include Stdune.Console.Display
 
   let decode = enum all
+
+  let to_string = function
+    | Progress -> "progress"
+    | Quiet -> "quiet"
+    | Short -> "short"
+    | Verbose -> "verbose"
 end
 
 module Concurrency = struct
@@ -118,9 +124,12 @@ module Caching = struct
     type t =
       | Disabled
       | Enabled
-      | Check
 
-    let all = [ ("check", Check); ("disabled", Disabled); ("enabled", Enabled) ]
+    let all = [ ("disabled", Disabled); ("enabled", Enabled) ]
+
+    let to_string = function
+      | Enabled -> "enabled"
+      | Disabled -> "disabled"
 
     let decode = enum all
   end
@@ -129,6 +138,10 @@ module Caching = struct
     type t =
       | Daemon
       | Direct
+
+    let to_string = function
+      | Daemon -> "daemon"
+      | Direct -> "direct"
 
     let all = [ ("daemon", Daemon); ("direct", Direct) ]
 
@@ -147,6 +160,8 @@ module type S = sig
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
     ; cache_check_probability : float field
+    ; cache_trim_period : int field
+    ; cache_trim_size : int field
     }
 end
 
@@ -168,6 +183,8 @@ let merge t (partial : Partial.t) =
   ; cache_transport = field t.cache_transport partial.cache_transport
   ; cache_check_probability =
       field t.cache_check_probability partial.cache_check_probability
+  ; cache_trim_period = field t.cache_trim_period partial.cache_trim_period
+  ; cache_trim_size = field t.cache_trim_size partial.cache_trim_size
   }
 
 let default =
@@ -185,7 +202,9 @@ let default =
   ; sandboxing_preference = []
   ; cache_mode = Disabled
   ; cache_transport = Daemon
-  ; cache_check_probability = 0.01
+  ; cache_check_probability = 0.
+  ; cache_trim_period = 10 * 60
+  ; cache_trim_size = 10 * 1000 * 1000 * 1000
   }
 
 let decode =
@@ -206,6 +225,12 @@ let decode =
   and+ cache_check_probability =
     field "cache-check-probablity" Dune_lang.Decoder.float
       ~default:default.cache_check_probability
+  and+ cache_trim_period =
+    field "cache-trim-period" Dune_lang.Decoder.duration
+      ~default:default.cache_trim_period
+  and+ cache_trim_size =
+    field "cache-trim-size" Dune_lang.Decoder.bytes_unit
+      ~default:default.cache_trim_size
   and+ () = Dune_lang.Versioned_file.no_more_lang in
   { display
   ; concurrency
@@ -214,6 +239,8 @@ let decode =
   ; cache_mode
   ; cache_transport
   ; cache_check_probability
+  ; cache_trim_period
+  ; cache_trim_size
   }
 
 let decode = fields decode
@@ -253,3 +280,25 @@ let adapt_display config ~output_is_a_tty =
     { config with terminal_persistence = Terminal_persistence.Preserve }
   else
     config
+
+let to_dyn config =
+  Dyn.Encoder.record
+    [ ("display", Dyn.Encoder.string (Display.to_string config.display))
+    ; ( "concurrency"
+      , Dyn.Encoder.string (Concurrency.to_string config.concurrency) )
+    ; ( "terminal_persistence"
+      , Dyn.Encoder.string
+          (Terminal_persistence.to_string config.terminal_persistence) )
+    ; ( "sandboxing_preference"
+      , (Dyn.Encoder.list Dyn.Encoder.string)
+          (List.map ~f:Sandbox_mode.to_string config.sandboxing_preference) )
+    ; ( "cache_mode"
+      , Dyn.Encoder.string (Caching.Mode.to_string config.cache_mode) )
+    ; ( "cache_transport"
+      , Dyn.Encoder.string (Caching.Transport.to_string config.cache_transport)
+      )
+    ; ( "cache_check_probability"
+      , Dyn.Encoder.float config.cache_check_probability )
+    ; ("cache_trim_period", Dyn.Encoder.int config.cache_trim_period)
+    ; ("cache_trim_size", Dyn.Encoder.int config.cache_trim_size)
+    ]

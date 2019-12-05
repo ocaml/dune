@@ -77,7 +77,6 @@ module Caching : sig
     type t =
       | Disabled
       | Enabled
-      | Check
 
     val all : (string * t) list
 
@@ -106,6 +105,8 @@ module type S = sig
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
     ; cache_check_probability : float field
+    ; cache_trim_period : int field
+    ; cache_trim_size : int field
     }
 end
 
@@ -128,3 +129,5 @@ val load_config_file : Path.t -> t
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty and
     we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t
+
+val to_dyn : t -> Dyn.t

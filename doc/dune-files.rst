@@ -687,8 +687,8 @@ code executables and native shared objects:
 .. code:: scheme
 
           (executables
-           ((names (a b c))
-            (modes ((byte exe) (native shared_object)))))
+            (names a b c)
+            (modes (byte exe) (native shared_object)))
 
 Additionally, you can use the following short-hands:
 

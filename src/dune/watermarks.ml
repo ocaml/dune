@@ -21,7 +21,7 @@ let is_a_source_file path =
   | _ -> true )
   && Path.is_file path
 
-let make_watermark_map ~name ~version ~commit =
+let make_watermark_map_from_opam_file ~name ~version ~commit =
   let dir, name =
     let path = Path.in_source (Package.Name.to_string name) in
     (Path.parent_exn path, name)
@@ -173,7 +173,7 @@ let subst_file path ~map =
 
 (* Minimal API for dune-project files that makes as little assumption about the
    contents as possible and keeps enough info for editing the file. *)
-module Dune_project = struct
+module Dune_project_mini = struct
   type 'a simple_field =
     { loc : Loc.t
     ; loc_of_arg : Loc.t
@@ -258,7 +258,7 @@ module Dune_project = struct
     if s <> t.contents then Io.write_file file s
 end
 
-let get_name ~files ~(dune_project : Dune_project.t option) () =
+let get_name ~files ~(dune_project : Dune_project_mini.t option) () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
         match Path.parent fn with
@@ -301,6 +301,42 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
         ] );
   name
 
+let make_watermark_map_from_dune_project ~commit ~version ~dune_project =
+  let version_num =
+    Option.value ~default:version (String.drop_prefix version ~prefix:"v")
+  in
+  let info = Dune_project.info dune_project in
+  let make_value name = function
+    | None -> Error (sprintf "variable %S not found in dune-project file" name)
+    | Some value -> Ok value
+  in
+  let make_separated name sep = function
+    | None -> Error (sprintf "variable %S not found in dune-project file" name)
+    | Some value -> Ok (String.concat ~sep value)
+  in
+  let make_dev_repo_value = function
+    | Some (Package.Source_kind.Github (user, repo)) ->
+      Ok (sprintf "https://github.com/%s/%s" user repo)
+    | Some (Package.Source_kind.Url url) -> Ok url
+    | None -> Error (sprintf "variable dev-repo not found in dune-project file")
+  in
+  String.Map.of_list_exn
+    [ ( "NAME"
+      , Ok (Dune_project.name dune_project |> Dune_project.Name.to_string_hum)
+      )
+    ; ("VERSION", Ok version)
+    ; ("VERSION_NUM", Ok version_num)
+    ; ("VCS_COMMIT_ID", Ok commit)
+    ; ( "PKG_MAINTAINER"
+      , make_separated "maintainer" ", " @@ Package.Info.maintainers info )
+    ; ("PKG_AUTHORS", make_separated "authors" ", " @@ Package.Info.authors info)
+    ; ("PKG_HOMEPAGE", make_value "homepage" @@ Package.Info.homepage info)
+    ; ("PKG_ISSUES", make_value "bug-reports" @@ Package.Info.bug_reports info)
+    ; ("PKG_DOC", make_value "doc" @@ Package.Info.documentation info)
+    ; ("PKG_LICENSE", make_value "license" @@ Package.Info.license info)
+    ; ("PKG_REPO", make_dev_repo_value @@ Package.Info.source info)
+    ]
+
 let subst vcs =
   let+ (version, commit), files =
     Fiber.fork_and_join
@@ -310,17 +346,27 @@ let subst vcs =
           (fun () -> Vcs.commit_id vcs))
       (fun () -> Vcs.files vcs)
   in
+  let files_ = String.Set.of_list (List.map ~f:Path.to_string files) in
   let dune_project =
-    if List.exists files ~f:(Path.equal Dune_project.file) then
-      Some (Dune_project.load Dune_project.file)
-    else
-      None
+    Dune_project.load ~dir:Path.Source.root ~files:files_
+      ~infer_from_opam_files:true
   in
-  let name = get_name ~files ~dune_project () in
-  let watermarks = make_watermark_map ~name ~version ~commit in
-  Option.iter dune_project ~f:(Dune_project.subst ~map:watermarks ~version);
+  let watermarks =
+    match dune_project with
+    | Some dune_project ->
+      let mini_dune_project = Dune_project_mini.load Dune_project_mini.file in
+      let watermarks =
+        make_watermark_map_from_dune_project ~commit ~version ~dune_project
+      in
+      Dune_project_mini.subst ~map:watermarks ~version mini_dune_project;
+      watermarks
+    | None ->
+      let name = get_name ~files ~dune_project:None () in
+      make_watermark_map_from_opam_file ~name ~version ~commit
+  in
   List.iter files ~f:(fun path ->
-      if is_a_source_file path && not (Path.equal path Dune_project.file) then
+      if is_a_source_file path && not (Path.equal path Dune_project_mini.file)
+      then
         subst_file path ~map:watermarks)
 
 let subst () =

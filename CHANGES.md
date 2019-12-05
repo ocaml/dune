@@ -1,7 +1,13 @@
+1.0+beta20.2 (05/12/2019)
+-------------------------
+
+- Do not install empty .dune files to reduce the amount of warning
+  when jbuilder and dune >= 2.0.0 are co-installed (@diml)
+
 1.0+beta20.1 (02/12/2019)
 -------------------------
 
-- Fix compat with OCaml >= 4.08
+- Fix compat with OCaml >= 4.08 (@diml)
 
 1.0+beta20 (10/04/2018)
 -----------------------

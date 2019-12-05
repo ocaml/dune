@@ -330,6 +330,8 @@ module Sub_system : sig
     val get : lib -> M.t option
   end
 
+  val requires_installed_dune_file : Sub_system_name.t -> bool
+
   val dump_config : lib -> (Syntax.Version.t * Sexp.t) Sub_system_name.Map.t
 end with type lib := t
 

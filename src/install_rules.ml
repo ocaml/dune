@@ -37,12 +37,14 @@ module Gen(P : Install_params) = struct
     Path.relative dir (name ^ ".dune")
 
   let gen_lib_dune_file lib =
-    SC.add_rule sctx
-      (Build.arr (fun () ->
-         Format.asprintf "%a@." Sexp.pp
-           (Lib.Sub_system.dump_config lib |> Installed_dune_file.gen))
-       >>> Build.write_file_dyn
-             (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
+    let config = Lib.Sub_system.dump_config lib in
+    if not (Sub_system_name.Map.is_empty config) then
+      SC.add_rule sctx
+        (Build.arr (fun () ->
+           Format.asprintf "%a@." Sexp.pp
+             (Lib.Sub_system.dump_config lib |> Installed_dune_file.gen))
+         >>> Build.write_file_dyn
+               (lib_dune_file ~dir:(Lib.src_dir lib) ~name:(Lib.name lib)))
 
   let init_meta () =
     SC.libs_by_package sctx
@@ -188,11 +190,18 @@ module Gen(P : Install_params) = struct
         let ppx_exe = Preprocessing.get_ppx_driver sctx ~scope pps in
         [ppx_exe]
     in
+    let requires_installed_dune_file =
+      Sub_system_name.Map.existsi lib.sub_systems ~f:(fun name _ ->
+        Lib.Sub_system.requires_installed_dune_file name)
+    in
     List.concat
       [ List.map files ~f:(make_entry Lib    )
       ; List.map execs ~f:(make_entry Libexec)
       ; List.map dlls  ~f:(Install.Entry.make Stublibs)
-      ; [make_entry Lib (lib_dune_file ~dir ~name)]
+      ; (if requires_installed_dune_file then
+           [make_entry Lib (lib_dune_file ~dir ~name)]
+         else
+           [])
       ]
 
   let is_odig_doc_file fn =

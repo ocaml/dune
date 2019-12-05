@@ -491,6 +491,12 @@ module Sub_system = struct
         ~data:(Some (module M : S'))
   end
 
+  let requires_installed_dune_file name =
+    match Sub_system_name.Table.get all name with
+    | None -> false
+    | Some (module M : S') ->
+      Option.is_some M.to_sexp
+
   let instantiate name info lib ~resolve =
     let impl = Option.value_exn (Sub_system_name.Table.get all name) in
     let (module M : S') = impl in

@@ -3,7 +3,7 @@
         ocamlc ppx/.fooppx.objs/byte/fooppx.{cmi,cmo,cmt}
       ocamlopt ppx/.fooppx.objs/native/fooppx.{cmx,o}
       ocamlopt ppx/fooppx.{a,cmxa}
-      ocamlopt .ppx/a0597253d899c1b15660d5431f244d21/ppx.exe
+      ocamlopt .ppx/7adb2b9c99ee32a09b9cc720f236f209/ppx.exe
            ppx w_omp_driver.pp.ml
   -arg: omp
       ocamldep .w_omp_driver.eobjs/w_omp_driver.pp.ml.d

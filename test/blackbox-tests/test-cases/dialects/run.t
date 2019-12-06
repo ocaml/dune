@@ -14,8 +14,8 @@ Test the (dialect ...) stanza inside the dune-project file.
 
   $ dune build --root good --display short @fmt
   Entering directory 'good'
-           fmt .formatted/main.mfi
            fmt .formatted/main.mf
+           fmt .formatted/main.mfi
 
   $ dune build --root bad1
   Entering directory 'bad1'

@@ -26,7 +26,13 @@ let string = D.string
 
 let to_string_raw s = s
 
-let generic a = string (Marshal.to_string a [])
+(* We use [No_sharing] to avoid generating different digests for inputs that
+   differ only in how they share internal values. For example, if a command line
+   contains duplicate flags, such as multiple occurrences of the flag [-I], then
+   [Marshal.to_string] will produce different digests depending on whether the
+   corresponding strings ["-I"] point to the same memory location or to
+   different memory locations. *)
+let generic a = string (Marshal.to_string a [ No_sharing ])
 
 let file_with_stats p (stats : Unix.stats) =
   match stats.st_kind with

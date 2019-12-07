@@ -1,3 +1,8 @@
+Test that with the cache in copy mode:
+- the cache is still used, i.e. dune skip executions of rules that are
+  present in the cache
+- files are copied rather than hardlinked
+
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (cache enabled)
@@ -16,6 +21,9 @@
   $ cat > source <<EOF
   > \_o< COIN
   > EOF
+
+Initial build
+
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
   1
@@ -23,6 +31,10 @@
   1
   $ ls _build/default/beacon
   _build/default/beacon
+
+Clean + rebuild (we expect dune to reuse things from the cache without
+hardlinking them)
+
   $ rm -rf _build/default
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
@@ -37,6 +49,11 @@
   \_o< COIN
   \_o< COIN
 
+
+------------------
+
+Check that thins are still rebuild during incremental compilation with
+the cache in copy mode
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

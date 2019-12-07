@@ -1,3 +1,6 @@
+Same as ../dune-cache-promote-copy but using the direct transport
+rather than the daemon
+
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (cache enabled)
@@ -36,7 +39,6 @@
   $ cat _build/default/target
   \_o< COIN
   \_o< COIN
-
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)

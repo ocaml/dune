@@ -205,7 +205,7 @@ end = struct
     Mutex.unlock mutex
 
   (* FIXME: this is really not ideal, but we pack the Caching in the event all
-     the way through since Scheduler cannot read it directly from the file
+     the way through since Scheduler cannot read it directly from the build
      system because of circular dependencies. *)
   let send_dedup caching file =
     Mutex.lock mutex;

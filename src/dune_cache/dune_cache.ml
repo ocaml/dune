@@ -332,7 +332,7 @@ module Cache = struct
   let teardown _ = ()
 
   let detect_duplication_mode _ =
-    (* FIXME: use copy is root is on a different partition *)
+    (* FIXME: use copy if root is on a different partition *)
     Duplication_mode.Hardlink
 
   let make ?(root = default_root ())

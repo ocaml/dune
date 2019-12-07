@@ -271,6 +271,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-cache-dedup-direct-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache-dedup-direct-copy))
+ (action
+  (chdir
+   test-cases/dune-cache-dedup-direct-copy
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-cache-promote)
  (deps (package dune) (source_tree test-cases/dune-cache-promote))
  (action
@@ -279,11 +287,27 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-cache-promote-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache-promote-copy))
+ (action
+  (chdir
+   test-cases/dune-cache-promote-copy
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-cache-promote-direct)
  (deps (package dune) (source_tree test-cases/dune-cache-promote-direct))
  (action
   (chdir
    test-cases/dune-cache-promote-direct
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias dune-cache-promote-direct-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache-promote-direct-copy))
+ (action
+  (chdir
+   test-cases/dune-cache-promote-direct-copy
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1970,8 +1994,11 @@
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
   (alias dune-cache-dedup-direct)
+  (alias dune-cache-dedup-direct-copy)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
+  (alias dune-cache-promote-direct-copy)
   (alias dune-cache-symlink)
   (alias dune-cache-symlink-direct)
   (alias dune-cache-trim)
@@ -2200,8 +2227,11 @@
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
   (alias dune-cache-dedup-direct)
+  (alias dune-cache-dedup-direct-copy)
   (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
+  (alias dune-cache-promote-direct-copy)
   (alias dune-cache-symlink)
   (alias dune-cache-symlink-direct)
   (alias dune-cache-trim)

@@ -7,7 +7,8 @@ let invalid_args args =
     (Printf.sprintf "invalid arguments:%s"
        (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
-let sexp_of_message : type a. a message -> Sexp.t =
+let sexp_of_message : type a. version -> a message -> Sexp.t =
+ fun version ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
   | Lang versions ->
@@ -26,17 +27,35 @@ let sexp_of_message : type a. a message -> Sexp.t =
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
         ; Sexp.Atom (Digest.to_string digest)
         ]
-    and repo =
+    in
+    let rest = [] in
+    let rest =
+      match promotion.duplication with
+      | Some mode
+        when version = { major = 1; minor = 0 }
+             && mode = Dune_cache.Duplication_mode.Copy ->
+        User_error.raise
+          [ Pp.textf "cache daemon v1.0 does not support copy duplication mode"
+          ]
+      | Some mode ->
+        Sexp.List
+          [ Sexp.Atom "duplication"
+          ; Sexp.Atom (Dune_cache.Duplication_mode.to_string mode)
+          ]
+        :: rest
+      | None -> rest
+    in
+    let rest =
       match promotion.repository with
       | Some idx ->
-        [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] ]
-      | None -> []
+        Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] :: rest
+      | None -> rest
     in
     cmd "promote"
       ( Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
       :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
       :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
-      :: repo )
+      :: rest )
   | SetBuildRoot root ->
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
@@ -59,7 +78,30 @@ let sexp_of_message : type a. a message -> Sexp.t =
           ]
       ]
 
-let incoming_message_of_sexp = function
+let lang_of_sexp = function
+  | Sexp.Atom "dune-cache-protocol" :: versions ->
+    let decode_version = function
+      | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
+        let+ major = Utils.int_of_string ~where:"lang command version" major
+        and+ minor = Utils.int_of_string ~where:"lang command version" minor in
+        { major; minor }
+      | v ->
+        Result.Error
+          (Printf.sprintf "invalid version in lang command: %s"
+             (Sexp.to_string v))
+    in
+    Result.List.map ~f:decode_version versions
+  | args -> invalid_args args
+
+let initial_message_of_sexp = function
+  | Sexp.List (Sexp.Atom "lang" :: args) ->
+    let+ versions = lang_of_sexp args in
+    Lang versions
+  | exp ->
+    Result.Error
+      (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
+
+let incoming_message_of_sexp _ = function
   | Sexp.List
       [ Sexp.Atom "dedup"
       ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
@@ -76,24 +118,8 @@ let incoming_message_of_sexp = function
   | exp ->
     Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
 
-let outgoing_message_of_sexp =
-  let lang_of_sexp = function
-    | Sexp.Atom "dune-cache-protocol" :: versions ->
-      let decode_version = function
-        | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
-          let+ major = Utils.int_of_string ~where:"lang command version" major
-          and+ minor =
-            Utils.int_of_string ~where:"lang command version" minor
-          in
-          { major; minor }
-        | v ->
-          Result.Error
-            (Printf.sprintf "invalid version in lang command: %s"
-               (Sexp.to_string v))
-      in
-      Result.List.map ~f:decode_version versions
-    | args -> invalid_args args
-  and repos_of_sexp args =
+let outgoing_message_of_sexp _ =
+  let repos_of_sexp args =
     let convert = function
       | Sexp.List
           [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
@@ -120,19 +146,26 @@ let outgoing_message_of_sexp =
             (Printf.sprintf "invalid file in promotion message: %s"
                (Sexp.to_string sexp))
       in
-      let+ repository =
+      let* repository, rest =
         match rest with
-        | [] -> Result.Ok None
-        | [ Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ] ->
-          Result.map ~f:Option.some
+        | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] :: rest ->
+          Result.map
+            ~f:(fun repo -> (Some repo, rest))
             (Utils.int_of_string ~where:"repository index" repo)
+        | _ -> Result.Ok (None, rest)
+      in
+      let+ duplication =
+        match rest with
+        | [ Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ] ->
+          Result.map ~f:Option.some (Dune_cache.Duplication_mode.of_string mode)
+        | [] -> Result.Ok None
         | _ ->
           Result.Error
             (Printf.sprintf "invalid promotion message: %s"
                (Sexp.to_string (Sexp.List cmd)))
       and+ files = Result.List.map ~f:file files
       and+ key = Dune_cache.Key.of_string key in
-      { repository; files; key; metadata }
+      { repository; files; key; metadata; duplication }
     | args -> invalid_args args
   and path_of_sexp = function
     | [ Sexp.Atom dir ] -> Result.ok (Path.of_string dir)
@@ -143,9 +176,6 @@ let outgoing_message_of_sexp =
     Result.map_error
       ~f:(fun s -> cmd ^ ": " ^ s)
       ( match cmd with
-      | "lang" ->
-        let+ versions = lang_of_sexp args in
-        Lang versions
       | "promote" ->
         let+ promotions = promote_of_sexp args in
         Promote promotions

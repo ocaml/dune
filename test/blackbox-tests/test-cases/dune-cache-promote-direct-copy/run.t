@@ -1,6 +1,11 @@
+Same as ../dune-cache-promote-copy but using the direct transport
+rather than the daemon
+
   $ cat > config <<EOF
   > (lang dune 2.1)
   > (cache enabled)
+  > (cache-duplication copy)
+  > (cache-transport direct)
   > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
@@ -14,19 +19,19 @@
   $ cat > source <<EOF
   > \_o< COIN
   > EOF
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
-  2
+  1
   $ ./stat.sh --format=%h _build/default/target
-  2
+  1
   $ ls _build/default/beacon
   _build/default/beacon
   $ rm -rf _build/default
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
   $ ./stat.sh --format=%h _build/default/source
-  2
+  1
   $ ./stat.sh --format=%h _build/default/target
-  2
+  1
   $ test -e _build/default/beacon
   [1]
   $ cat _build/default/source
@@ -34,7 +39,6 @@
   $ cat _build/default/target
   \_o< COIN
   \_o< COIN
-
 
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
@@ -58,7 +62,7 @@
   >   (action (bash "echo running; cat t1 t1 > t2")))
   > EOF
   $ cp dune-v1 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -67,7 +71,7 @@
   v1
   v1
   $ cp dune-v2 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
           bash t1
   running
           bash t2
@@ -76,7 +80,7 @@
   v2
   v2
   $ cp dune-v1 dune
-  $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config t2
   $ cat _build/default/t1
   v1
   $ cat _build/default/t2

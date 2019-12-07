@@ -25,11 +25,10 @@ let doc = "Manage the shared artifacts cache"
 
 let info = Term.info name ~doc ~man
 
-let start ~exit_no_client ~foreground ~port_path ~root ~display =
+let start ~config ~foreground ~port_path ~root ~display =
   let show_endpoint ep =
     if display <> Some Config.Display.Quiet then Printf.printf "%s\n%!" ep
   in
-  let config = { Dune_cache_daemon.exit_no_client } in
   let f started =
     let started content =
       if foreground then show_endpoint content;
@@ -84,7 +83,8 @@ let path_conv = ((fun s -> `Ok (Path.of_string s)), Path.pp)
 
 let term =
   Term.ret
-  @@ let+ mode =
+  @@ let+ config = Common.config_term
+     and+ mode =
        Arg.(
          value
          & pos 0 (some (enum modes)) None
@@ -128,7 +128,12 @@ let term =
      and+ display = Common.display_term in
      match mode with
      | Some Start ->
-       `Ok (start ~exit_no_client ~foreground ~port_path ~root ~display)
+       let config =
+         { Dune_cache_daemon.exit_no_client
+         ; duplication_mode = config.cache_duplication
+         }
+       in
+       `Ok (start ~config ~foreground ~port_path ~root ~display)
      | Some Stop -> `Ok (stop ~port_path)
      | Some Trim -> `Ok (trim ~trimmed_size ~size)
      | None -> `Help (`Pager, Some name)

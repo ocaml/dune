@@ -1,6 +1,6 @@
 Test that with the cache in copy mode:
 - the cache is still used, i.e. dune skip executions of rules that are
-  present in the cache
+. present in the cache
 - files are copied rather than hardlinked
 
   $ cat > config <<EOF

@@ -176,6 +176,27 @@ module Options_implied_by_dash_p = struct
 
   let docs = copts_sect
 
+  let config_file_term =
+    let+ x =
+      one_of
+        (let+ fn =
+           Arg.(
+             value
+             & opt (some path) None
+             & info [ "config-file" ] ~docs ~docv:"FILE"
+                 ~doc:"Load this configuration file instead of the default one.")
+         in
+         Option.map fn ~f:(fun fn -> This (Arg.Path.path fn)))
+        (let+ x =
+           Arg.(
+             value & flag
+             & info [ "no-config" ] ~docs
+                 ~doc:"Do not load the configuration file")
+         in
+         Option.some_if x No_config)
+    in
+    Option.value x ~default:Default
+
   let options =
     let+ root =
       Arg.(
@@ -212,27 +233,7 @@ module Options_implied_by_dash_p = struct
               \                     %{ignoring_promoted_rules} in dune files \
                reflects\n\
               \                     whether this option was passed or not.")
-    and+ config_file =
-      let+ x =
-        one_of
-          (let+ fn =
-             Arg.(
-               value
-               & opt (some path) None
-               & info [ "config-file" ] ~docs ~docv:"FILE"
-                   ~doc:
-                     "Load this configuration file instead of the default one.")
-           in
-           Option.map fn ~f:(fun fn -> This (Arg.Path.path fn)))
-          (let+ x =
-             Arg.(
-               value & flag
-               & info [ "no-config" ] ~docs
-                   ~doc:"Do not load the configuration file")
-           in
-           Option.some_if x No_config)
-      in
-      Option.value x ~default:Default
+    and+ config_file = config_file_term
     and+ default_target =
       Arg.(
         value
@@ -328,6 +329,15 @@ let display_term =
           ~doc:
             {|Control the display mode of Dune.
          See $(b,dune-config\(5\)) for more details.|})
+
+let config_of_file = function
+  | No_config -> Config.default
+  | This fname -> Config.load_config_file fname
+  | Default ->
+    if Config.inside_dune then
+      Config.default
+    else
+      Config.load_user_config_file ()
 
 let term =
   let docs = copts_sect in
@@ -518,6 +528,14 @@ let term =
       & info [ "cache-transport" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_TRANSPORT")
           ~doc)
+  and+ cache_duplication =
+    let doc = "Binary cache duplication mode" in
+    Arg.(
+      value
+      & opt (some (enum Config.Caching.Duplication.all)) None
+      & info [ "cache-duplication" ] ~docs
+          ~env:(Arg.env_var ~doc "DUNE_CACHE_DUPLICATION")
+          ~doc)
   and+ cache_check_probability =
     let doc =
       "Probability cached rules are rerun to check for reproducibility"
@@ -533,16 +551,7 @@ let term =
   and+ () = build_info in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
-  let config =
-    match config_file with
-    | No_config -> Config.default
-    | This fname -> Config.load_config_file fname
-    | Default ->
-      if Config.inside_dune then
-        Config.default
-      else
-        Config.load_user_config_file ()
-  in
+  let config = config_of_file config_file in
   let config =
     Config.merge config
       { display
@@ -553,6 +562,7 @@ let term =
       ; cache_mode
       ; cache_transport
       ; cache_check_probability = Some cache_check_probability
+      ; cache_duplication
       ; cache_trim_period = None
       ; cache_trim_size = None
       }
@@ -594,6 +604,10 @@ let term =
 let term =
   let+ t, orig_args = Term.with_used_args term in
   { t with orig_args }
+
+let config_term =
+  let+ config_file = Options_implied_by_dash_p.config_file_term in
+  config_of_file config_file
 
 let context_arg ~doc =
   Arg.(

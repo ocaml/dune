@@ -147,6 +147,18 @@ module Caching = struct
 
     let decode = enum all
   end
+
+  module Duplication = struct
+    type t = Dune_cache.Duplication_mode.t option
+
+    let all =
+      ("auto", None)
+      :: List.map
+           ~f:(fun (name, mode) -> (name, Some mode))
+           Dune_cache.Duplication_mode.all
+
+    let decode = enum all
+  end
 end
 
 module type S = sig
@@ -160,6 +172,7 @@ module type S = sig
     ; cache_mode : Caching.Mode.t field
     ; cache_transport : Caching.Transport.t field
     ; cache_check_probability : float field
+    ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
     ; cache_trim_size : int field
     }
@@ -183,6 +196,7 @@ let merge t (partial : Partial.t) =
   ; cache_transport = field t.cache_transport partial.cache_transport
   ; cache_check_probability =
       field t.cache_check_probability partial.cache_check_probability
+  ; cache_duplication = field t.cache_duplication partial.cache_duplication
   ; cache_trim_period = field t.cache_trim_period partial.cache_trim_period
   ; cache_trim_size = field t.cache_trim_size partial.cache_trim_size
   }
@@ -205,6 +219,7 @@ let default =
   ; cache_check_probability = 0.
   ; cache_trim_period = 10 * 60
   ; cache_trim_size = 10 * 1000 * 1000 * 1000
+  ; cache_duplication = None
   }
 
 let decode =
@@ -218,13 +233,22 @@ let decode =
     field "sandboxing_preference" Sandboxing_preference.decode
       ~default:default.sandboxing_preference
   and+ cache_mode =
-    field "cache" Caching.Mode.decode ~default:default.cache_mode
+    field "cache"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Caching.Mode.decode)
+      ~default:default.cache_mode
   and+ cache_transport =
-    field "cache-transport" Caching.Transport.decode
+    field "cache-transport"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Caching.Transport.decode)
       ~default:default.cache_transport
   and+ cache_check_probability =
-    field "cache-check-probablity" Dune_lang.Decoder.float
+    field "cache-check-probablity"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Dune_lang.Decoder.float)
       ~default:default.cache_check_probability
+  and+ cache_duplication =
+    field "cache-duplication"
+      ( Dune_lang.Syntax.since Stanza.syntax (2, 1)
+      >>> Caching.Duplication.decode )
+      ~default:default.cache_duplication
   and+ cache_trim_period =
     field "cache-trim-period" Dune_lang.Decoder.duration
       ~default:default.cache_trim_period
@@ -239,6 +263,7 @@ let decode =
   ; cache_mode
   ; cache_transport
   ; cache_check_probability
+  ; cache_duplication
   ; cache_trim_period
   ; cache_trim_size
   }

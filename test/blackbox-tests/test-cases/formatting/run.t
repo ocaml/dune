@@ -36,10 +36,10 @@ Formatting can be checked using the @fmt target:
         ocamlc fake-tools/.ocamlformat.eobjs/byte/ocamlformat.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/ocamlformat.{cmx,o}
       ocamlopt fake-tools/ocamlformat.exe
-   ocamlformat enabled/.formatted/ocaml_file.ml
-  File "enabled/ocaml_file.ml", line 1, characters 0-0:
-  Error: Files _build/default/enabled/ocaml_file.ml and
-  _build/default/enabled/.formatted/ocaml_file.ml differ.
+   ocamlformat enabled/.formatted/ocaml_file.mli
+  File "enabled/ocaml_file.mli", line 1, characters 0-0:
+  Error: Files _build/default/enabled/ocaml_file.mli and
+  _build/default/enabled/.formatted/ocaml_file.mli differ.
           dune enabled/.formatted/dune
   File "enabled/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/dune and
@@ -75,10 +75,10 @@ Formatting can be checked using the @fmt target:
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
-   ocamlformat enabled/.formatted/ocaml_file.mli
-  File "enabled/ocaml_file.mli", line 1, characters 0-0:
-  Error: Files _build/default/enabled/ocaml_file.mli and
-  _build/default/enabled/.formatted/ocaml_file.mli differ.
+   ocamlformat enabled/.formatted/ocaml_file.ml
+  File "enabled/ocaml_file.ml", line 1, characters 0-0:
+  Error: Files _build/default/enabled/ocaml_file.ml and
+  _build/default/enabled/.formatted/ocaml_file.ml differ.
          refmt enabled/.formatted/reason_file.re
   File "enabled/reason_file.re", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.re and
@@ -113,14 +113,14 @@ Configuration files are taken into account for this action:
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
-   ocamlformat enabled/.formatted/ocaml_file.mli
-  File "enabled/ocaml_file.mli", line 1, characters 0-0:
-  Error: Files _build/default/enabled/ocaml_file.mli and
-  _build/default/enabled/.formatted/ocaml_file.mli differ.
    ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.ml and
   _build/default/enabled/.formatted/ocaml_file.ml differ.
+   ocamlformat enabled/.formatted/ocaml_file.mli
+  File "enabled/ocaml_file.mli", line 1, characters 0-0:
+  Error: Files _build/default/enabled/ocaml_file.mli and
+  _build/default/enabled/.formatted/ocaml_file.mli differ.
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
@@ -157,11 +157,11 @@ All .ocamlformat files are considered dependencies:
   Error: Files _build/default/lang2/default/dune and
   _build/default/lang2/default/.formatted/dune differ.
          refmt enabled/.formatted/reason_file.re
+   ocamlformat enabled/.formatted/ocaml_file.ml
    ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-   ocamlformat enabled/.formatted/ocaml_file.ml
           dune enabled/.formatted/dune
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:

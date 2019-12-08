@@ -5,9 +5,14 @@ open Utils
 open Messages
 open Result.O
 
-type version = int * int
+type version = Messages.version
 
-type config = { exit_no_client : bool }
+let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
+
+type config =
+  { exit_no_client : bool
+  ; duplication_mode : Dune_cache.Duplication_mode.t option
+  }
 
 type event =
   | Stop
@@ -17,10 +22,11 @@ type event =
 type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
+  ; input : char Stream.t
   ; output : out_channel
   ; common_metadata : Sexp.t list
   ; cache : Dune_cache.Cache.t
-  ; version : version option
+  ; version : version
   }
 
 let default_port_file () =
@@ -62,7 +68,8 @@ let send_sexp output sexp =
   output_string output (Csexp.to_string sexp);
   flush output
 
-let send output message = send_sexp output (Messages.sexp_of_message message)
+let send version output message =
+  send_sexp output (Messages.sexp_of_message version message)
 
 module ClientsKey = struct
   type t = Unix.file_descr
@@ -115,31 +122,49 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let my_versions : version list = [ (1, 0) ]
+let my_versions : version list = [ { major = 1; minor = 1 } ]
 
-let my_versions_command =
-  Messages.Lang
-    (List.map ~f:(fun (major, minor) -> { Messages.major; minor }) my_versions)
+let my_versions_command = Messages.Lang my_versions
 
-let find_highest_common_version (a : version list) (b : version list) :
-    version option =
-  let a = Int.Map.of_list_exn a
-  and b = Int.Map.of_list_exn b in
-  let common =
-    Int.Map.merge
-      ~f:(fun _ minor_in_a minor_in_b ->
-        match (minor_in_a, minor_in_b) with
-        | Some a, Some b -> Some (min a b)
-        | _ -> None)
-      a b
+let find_highest_common_version versions =
+  let find a b =
+    let f { major; minor } = (major, minor) in
+    let a = Int.Map.of_list_exn (List.map ~f a)
+    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let common =
+      Int.Map.merge
+        ~f:(fun _ minor_in_a minor_in_b ->
+          match (minor_in_a, minor_in_b) with
+          | Some a, Some b -> Some (min a b)
+          | _ -> None)
+        a b
+    in
+    Option.map
+      ~f:(fun (major, minor) -> { major; minor })
+      (Int.Map.max_binding common)
   in
-  Int.Map.max_binding common
+  match find my_versions versions with
+  | None -> Result.Error "no compatible versions"
+  | Some version ->
+    Log.infof "negotiated version: %a" pp_version version;
+    Result.ok version
 
 let endpoint m = m.endpoint
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
 let errf msg = User_error.E (User_error.make msg)
+
+let negotiate_version fd input output =
+  send { major = 1; minor = 0 } output my_versions_command;
+  let f msg =
+    Unix.close fd;
+    msg
+  in
+  Result.map_error ~f
+    (let* sexp = Csexp.parse input in
+     let* (Lang versions) = Messages.initial_message_of_sexp sexp in
+     find_highest_common_version versions)
 
 module Client = struct
   type t =
@@ -149,50 +174,27 @@ module Client = struct
     ; cache : Dune_cache.Cache.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
+    ; version : version
     }
 
-  let read input =
+  let read version input =
     let* sexp = Csexp.parse input in
-    Messages.incoming_message_of_sexp sexp >>| function
-    | Messages.Dedup v -> Dune_cache.Dedup v
+    let+ (Messages.Dedup v) = Messages.incoming_message_of_sexp version sexp in
+    Dune_cache.Dedup v
 
-  let client_handle output = function
-    | Dune_cache.Dedup f -> send output (Messages.Dedup f)
-
-  (* FIXME *)
+  let client_handle version output = function
+    | Dune_cache.Dedup f -> send version output (Messages.Dedup f)
 
   let client_thread (events, (client : client)) =
     try
-      let handle_cmd client sexp =
-        let* msg = Messages.outgoing_message_of_sexp sexp in
-        let* () =
-          match msg with
-          | Lang _ -> Result.Ok ()
-          | _ when Option.is_none client.version ->
-            Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-            Result.Error "version was not negotiated"
-          | _ -> Result.Ok ()
-        in
+      let handle_cmd (client : client) sexp =
+        let* msg = Messages.outgoing_message_of_sexp client.version sexp in
         match msg with
-        | Lang versions -> (
-          match
-            find_highest_common_version my_versions
-              (List.map
-                 ~f:(fun (v : Messages.version) -> (v.major, v.minor))
-                 versions)
-          with
-          | None ->
-            Unix.close client.fd;
-            Result.Error "no compatible versions"
-          | Some (major, minor) as v ->
-            Log.infof "%s: negotiated version: %i.%i" (peer_name client.peer)
-              major minor;
-            Result.ok { client with version = v } )
-        | Promote promotion ->
+        | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
-            Dune_cache.Cache.promote client.cache promotion.files promotion.key
-              (promotion.metadata @ client.common_metadata)
-              ~repository:promotion.repository
+            Dune_cache.Cache.promote client.cache files key
+              (metadata @ client.common_metadata)
+              ~repository ~duplication
           in
           client
         | SetBuildRoot root ->
@@ -208,9 +210,8 @@ module Client = struct
           in
           Result.Ok { client with cache }
       in
-      let input = Stream.of_channel (Unix.in_channel_of_descr client.fd) in
+      let input = client.input in
       let f () =
-        send client.output my_versions_command;
         Log.infof "accept client: %s" (peer_name client.peer);
         let rec handle client =
           match Stream.peek input with
@@ -324,29 +325,37 @@ module Client = struct
         in
         ( match Evt.sync (Evt.receive daemon.events) with
         | Stop -> stop ()
-        | New_client (fd, peer) ->
-          let output = Unix.out_channel_of_descr fd in
-          let client =
-            { fd
-            ; peer
-            ; output
-            ; version = None
-            ; common_metadata = []
-            ; cache =
-                ( match
-                    Dune_cache.Cache.make ?root:daemon.root
-                      (client_handle output)
-                  with
-                | Result.Ok m -> m
-                | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
-            }
-          in
-          let tid = Thread.create client_thread (daemon.events, client) in
-          daemon.clients <-
-            ( match Clients.add daemon.clients client.fd (client, tid) with
-            | Result.Ok v -> v
-            | Result.Error _ -> User_error.raise [ Pp.textf "duplicate socket" ]
-            )
+        | New_client (fd, peer) -> (
+          let output = Unix.out_channel_of_descr fd
+          and input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+          match
+            let* version = negotiate_version fd input output in
+            let client =
+              { fd
+              ; peer
+              ; input
+              ; output
+              ; version
+              ; common_metadata = []
+              ; cache =
+                  ( match
+                      Dune_cache.Cache.make ?root:daemon.root
+                        (client_handle version output)
+                    with
+                  | Result.Ok m -> m
+                  | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )
+              }
+            in
+            let tid = Thread.create client_thread (daemon.events, client) in
+            let+ clients =
+              Result.map_error
+                ~f:(fun _ -> "duplicate socket")
+                (Clients.add daemon.clients client.fd (client, tid))
+            in
+            daemon.clients <- clients
+          with
+          | Result.Ok () -> ()
+          | Result.Error msg -> Log.infof "reject client: %s" msg )
         | Client_left fd ->
           daemon.clients <- Clients.remove daemon.clients fd;
           if daemon.config.exit_no_client && Clients.is_empty daemon.clients
@@ -385,11 +394,13 @@ module Client = struct
       Printf.fprintf stderr "%s: fatal error: %s\n%!" Sys.argv.(0) s;
       exit 1
 
-  let make ?finally handle =
+  let make ?finally ?duplication_mode handle =
     (* This is a bit ugly as it is global, but flushing a closed socket will
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-    let* cache = Result.map_error ~f:err (Dune_cache.Cache.make ignore) in
+    let* cache =
+      Result.map_error ~f:err (Dune_cache.Cache.make ?duplication_mode ignore)
+    in
     let* port =
       let cmd =
         Format.sprintf "%s cache start --display progress --exit-no-client"
@@ -419,9 +430,12 @@ module Client = struct
     in
     let socket = Unix.out_channel_of_descr fd in
     let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+    let+ version =
+      Result.map_error ~f:err (negotiate_version fd input socket)
+    in
     let rec thread input =
       match
-        let+ command = read input in
+        let+ command = read version input in
         Log.infof "dune-cache command: %a" Pp.render_ignore_tags
           (Dyn.pp (Dune_cache.command_to_dyn command));
         handle command
@@ -431,28 +445,36 @@ module Client = struct
         Option.iter ~f:(fun f -> f ()) finally
       | Result.Ok () -> (thread [@tailcall]) input
     in
-    send socket my_versions_command;
-    (* FIXME: find highest common version *)
-    ignore (read input);
     let thread = Thread.create thread input in
-    Result.Ok { socket; fd; input; cache; thread; finally }
+    { socket; fd; input; cache; thread; finally; version }
 
   let with_repositories client repositories =
-    send client.socket (Messages.SetRepos repositories);
+    send client.version client.socket (Messages.SetRepos repositories);
     client
 
-  let promote client files key metadata ~repository =
+  let promote (client : t) files key metadata ~repository ~duplication =
+    let duplication =
+      Some
+        (Option.value
+           ~default:(Dune_cache.Cache.duplication_mode client.cache)
+           duplication)
+    in
     try
-      send client.socket (Messages.Promote { key; files; metadata; repository });
+      send client.version client.socket
+        (Messages.Promote { key; files; metadata; repository; duplication });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
-    send client.socket (Messages.SetBuildRoot path);
+    send client.version client.socket (Messages.SetBuildRoot path);
     client
 
   let search client key = Dune_cache.Cache.search client.cache key
+
+  let retrieve client file = Dune_cache.Cache.retrieve client.cache file
+
+  let deduplicate client file = Dune_cache.Cache.deduplicate client.cache file
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

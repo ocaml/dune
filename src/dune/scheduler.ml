@@ -87,7 +87,7 @@ module Event : sig
 
   val send_signal : Signal.t -> unit
 
-  val send_dedup : Dune_cache.File.t -> unit
+  val send_dedup : Dune_cache.caching -> Dune_cache.File.t -> unit
 end = struct
   type t =
     | Files_changed
@@ -129,25 +129,15 @@ end = struct
     if Queue.is_empty dedup_pending then
       false
     else
-      let { Dune_cache.File.in_the_cache; in_the_build_directory; digest } =
+      let (module Caching : Dune_cache.Caching), (file : Dune_cache.File.t) =
         Queue.pop dedup_pending
       in
-      ( match Cached_digest.peek_file (Path.build in_the_build_directory) with
+      ( match
+          Cached_digest.peek_file (Path.build file.in_the_build_directory)
+        with
       | None -> ()
-      | Some d when not (Digest.equal d digest) -> ()
-      | _ -> (
-        let target = Path.Build.to_string in_the_build_directory in
-        let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-        Log.infof "deduplicate %s from %s" target (Path.to_string in_the_cache);
-        let rm p = try Unix.unlink p with _ -> () in
-        try
-          rm tmpname;
-          Unix.link (Path.to_string in_the_cache) tmpname;
-          Unix.rename tmpname target
-        with Unix.Unix_error (e, syscall, _) ->
-          rm tmpname;
-          Log.infof "error handling dune-cache command: %s: %s" syscall
-            (Unix.error_message e) ) );
+      | Some d when not (Digest.equal d file.digest) -> ()
+      | _ -> Caching.Cache.deduplicate Caching.cache file );
       true
 
   let rec flush_dedup () = if dedup () then flush_dedup ()
@@ -214,10 +204,13 @@ end = struct
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
-  let send_dedup file =
+  (* FIXME: this is really not ideal, but we pack the Caching in the event all
+     the way through since Scheduler cannot read it directly from the build
+     system because of circular dependencies. *)
+  let send_dedup caching file =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push file dedup_pending;
+    Queue.push (caching, file) dedup_pending;
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 

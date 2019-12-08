@@ -1,3 +1,9 @@
+  $ cat > config <<EOF
+  > (lang dune 2.1)
+  > (cache enabled)
+  > (cache-duplication copy)
+  > (cache-transport direct)
+  > EOF
   $ cat > dune-project <<EOF
   > (lang dune 2.1)
   > EOF
@@ -19,8 +25,8 @@ deduplication message. Upon reception dune should replace "target"
 with a hardlink to the cache (and thus also "source"), upping the
 hardlink counts to 3 and 3.
 
-  $ env DUNE_CACHE=enabled DUNE_CACHE_TRANSPORT=direct DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
+  $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file config target
   $ ./stat.sh --format=%h _build/default/source
-  3
+  1
   $ ./stat.sh --format=%h _build/default/target
-  3
+  1

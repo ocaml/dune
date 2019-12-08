@@ -151,6 +151,7 @@ module Cache = struct
     ; build_root : Path.t option
     ; repositories : repository list
     ; handler : handler
+    ; duplication_mode : Duplication_mode.t
     }
 
   let path_files cache = Path.relative cache.root "files"
@@ -177,7 +178,36 @@ module Cache = struct
 
   let with_repositories cache repositories = { cache with repositories }
 
-  let promote_sync cache paths key metadata repo =
+  let duplicate ?(duplication = None) cache =
+    match Option.value ~default:cache.duplication_mode duplication with
+    | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
+    | Hardlink -> Path.link
+
+  let retrieve cache (file : File.t) =
+    let path = Path.build file.in_the_build_directory in
+    Log.infof "retrieve %s from cache" (Path.to_string_maybe_quoted path);
+    duplicate cache file.in_the_cache path;
+    path
+
+  let deduplicate cache (file : File.t) =
+    match cache.duplication_mode with
+    | Copy -> ()
+    | Hardlink -> (
+      let target = Path.Build.to_string file.in_the_build_directory in
+      let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
+      Log.infof "deduplicate %s from %s" target
+        (Path.to_string file.in_the_cache);
+      let rm p = try Unix.unlink p with _ -> () in
+      try
+        rm tmpname;
+        Unix.link (Path.to_string file.in_the_cache) tmpname;
+        Unix.rename tmpname target
+      with Unix.Unix_error (e, syscall, _) ->
+        rm tmpname;
+        Log.infof "error handling dune-cache command: %s: %s" syscall
+          (Unix.error_message e) )
+
+  let promote_sync cache paths key metadata repo duplication =
     let open Result.O in
     let* repo =
       match repo with
@@ -207,7 +237,7 @@ module Cache = struct
         else
           Result.Ok stat
       in
-      let hardlink path =
+      let prepare path =
         let tmp = path_tmp cache in
         (* dune-cache uses a single writer model, the promoted file name can be
            constant *)
@@ -216,10 +246,10 @@ module Cache = struct
           Path.unlink dest
         else
           Path.mkdir_p tmp;
-        Path.link path dest;
+        duplicate ~duplication cache path dest;
         dest
       in
-      let tmp = hardlink abs_path in
+      let tmp = prepare abs_path in
       let effective_hash = Digest.file_with_stats tmp (Path.stat tmp) in
       if Digest.compare effective_hash expected_hash != Ordering.Eq then (
         let message =
@@ -262,7 +292,8 @@ module Cache = struct
       Io.write_file metadata_path
         (Csexp.to_string (Metadata_file.to_sexp metadata_file));
       let f = function
-        | Already_promoted file -> cache.handler (Dedup file)
+        | Already_promoted file when cache.duplication_mode <> Copy ->
+          cache.handler (Dedup file)
         | _ -> ()
       in
       List.iter ~f promoted;
@@ -270,8 +301,9 @@ module Cache = struct
     in
     with_lock cache f
 
-  let promote cache paths key metadata ~repository =
-    Result.map ~f:ignore (promote_sync cache paths key metadata repository)
+  let promote cache paths key metadata ~repository ~duplication =
+    Result.map ~f:ignore
+      (promote_sync cache paths key metadata repository duplication)
 
   let search cache key =
     let path = FSSchemeImpl.path (path_meta cache) key in
@@ -299,11 +331,24 @@ module Cache = struct
 
   let teardown _ = ()
 
-  let make ?(root = default_root ()) handler =
+  let detect_duplication_mode _ =
+    (* FIXME: use copy if root is on a different partition *)
+    Duplication_mode.Hardlink
+
+  let make ?(root = default_root ())
+      ?(duplication_mode = detect_duplication_mode root) handler =
     if Path.basename root <> "v2" then
       Result.Error "unable to read dune-cache"
     else
-      Result.ok { root; build_root = None; repositories = []; handler }
+      Result.ok
+        { root
+        ; build_root = None
+        ; repositories = []
+        ; handler
+        ; duplication_mode
+        }
+
+  let duplication_mode cache = cache.duplication_mode
 end
 
 let trimmable stats = stats.Unix.st_nlink = 1

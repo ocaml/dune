@@ -59,7 +59,7 @@ Test the argument syntax
   $ dune build --root driver-tests test_ppx_args.cma
   Entering directory 'driver-tests'
            ppx test_ppx_args.pp.ml
-  .ppx/a45c15d61f473f6a301551552d3f7586/ppx.exe
+  .ppx/454728df5270ab91f8a5af6b5e860eb0/ppx.exe
   -arg1
   -arg2
   -arg3=Oreo
@@ -102,7 +102,7 @@ Test using installed drivers
   $ OCAMLPATH=driver/_build/install/default/lib dune build --root use-external-driver driveruser.cma
   Entering directory 'use-external-driver'
            ppx driveruser.pp.ml
-  .ppx/631757a4a4789e0bd29628f7a73480f7/ppx.exe
+  .ppx/35d69311d5da258d073875db2b34f33b/ppx.exe
   -arg1
   -arg2
   -foo
@@ -125,7 +125,7 @@ Test using installed drivers
   Entering directory 'replaces'
            ppx driveruser.pp.ml
   replacesdriver
-  .ppx/97c3bec0ca445d915914eed462990a46/ppx.exe
+  .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
   -arg1
   -arg2
   -foo
@@ -150,7 +150,7 @@ Test using installed drivers
   Entering directory 'replaces-external'
            ppx driveruser.pp.ml
   replacesdriver
-  .ppx/97c3bec0ca445d915914eed462990a46/ppx.exe
+  .ppx/886937db0da323b743b4366c6d3a795f/ppx.exe
   -arg1
   -arg2
   -foo

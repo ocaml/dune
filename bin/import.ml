@@ -30,18 +30,29 @@ include Common.Let_syntax
 
 let make_cache (config : Config.t) =
   let make_cache () =
-    let handle (Dune_cache.Dedup file) = Scheduler.send_dedup file in
+    let handle (Dune_cache.Dedup file) =
+      match Build_system.get_cache () with
+      | None -> Code_error.raise "deduplication message and no caching" []
+      | Some caching -> Scheduler.send_dedup caching.cache file
+    in
     match config.cache_transport with
     | Config.Caching.Transport.Direct ->
+      Log.info "enable binary cache in direct access mode";
       let cache =
         Result.ok_exn
           (Result.map_error
              ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-             (Dune_cache.Cache.make handle))
+             (Dune_cache.Cache.make ?duplication_mode:config.cache_duplication
+                handle))
       in
       Dune_cache.make_caching (module Dune_cache.Cache) cache
     | Daemon ->
-      let cache = Result.ok_exn (Dune_cache_daemon.Client.make handle) in
+      Log.info "enable binary cache in daemon mode";
+      let cache =
+        Result.ok_exn
+          (Dune_cache_daemon.Client.make
+             ?duplication_mode:config.cache_duplication handle)
+      in
       Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
   in
   Fiber.return
@@ -51,7 +62,9 @@ let make_cache (config : Config.t) =
         { Build_system.cache = make_cache ()
         ; check_probability = config.cache_check_probability
         }
-    | Config.Caching.Mode.Disabled -> None )
+    | Config.Caching.Mode.Disabled ->
+      Log.info "disable binary cache";
+      None )
 
 module Main = struct
   include Dune.Main

@@ -171,9 +171,10 @@ let subst_file path ~map =
   | None -> ()
   | Some s -> Io.write_file path s
 
-(* Minimal API for dune-project files that makes as little assumption about the
-   contents as possible and keeps enough info for editing the file. *)
-module Dune_project_mini = struct
+(* Extending the Dune_project APIs, but adding capability to modify *)
+module Dune_project = struct
+  include Dune_project
+
   type 'a simple_field =
     { loc : Loc.t
     ; loc_of_arg : Loc.t
@@ -184,30 +185,39 @@ module Dune_project_mini = struct
     { contents : string
     ; name : Package.Name.t simple_field option
     ; version : string simple_field option
+    ; project : Dune_project.t
     }
 
-  let file = Path.in_source Dune_project.filename
+  let filename = Path.in_source Dune_project.filename
 
-  let load file =
-    let s = Io.read_file file in
-    let lb = Lexbuf.from_string s ~fname:(Path.to_string file) in
-    let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
-    let parser =
-      let open Dune_lang.Decoder in
-      let simple_field name arg =
-        let+ loc, x = located (field_o name (located arg)) in
-        match x with
-        | Some (loc_of_arg, arg) -> Some { loc; loc_of_arg; arg }
-        | None -> None
+  let load ~dir ~files ~infer_from_opam_files =
+    let project = Dune_project.load ~dir ~files ~infer_from_opam_files in
+    match project with
+    | Some project ->
+      let file = Dune_project.file project in
+      let file = Path.in_source (Path.Source.to_string file) in
+      let s = Io.read_file file in
+      let lb = Lexbuf.from_string s ~fname:(Path.to_string file) in
+      let sexp = Dune_lang.Parser.parse lb ~mode:Many_as_one in
+      let parser =
+        let open Dune_lang.Decoder in
+        let simple_field name arg =
+          let+ loc, x = located (field_o name (located arg)) in
+          match x with
+          | Some (loc_of_arg, arg) -> Some { loc; loc_of_arg; arg }
+          | None -> None
+        in
+        enter
+          (fields
+             (let+ name = simple_field "name" Package.Name.decode
+              and+ version = simple_field "version" string
+              and+ () = junk_everything in
+              Some { contents = s; name; version; project }))
       in
-      enter
-        (fields
-           (let+ name = simple_field "name" Package.Name.decode
-            and+ version = simple_field "version" string
-            and+ () = junk_everything in
-            { contents = s; name; version }))
-    in
-    Dune_lang.Decoder.parse parser Univ_map.empty sexp
+      Dune_lang.Decoder.parse parser Univ_map.empty sexp
+    | None -> None
+
+  let project t = t.project
 
   let subst t ~map ~version =
     let s =
@@ -254,11 +264,11 @@ module Dune_project_mini = struct
         ) else
           replace_text !ofs !ofs ("\n" ^ version_field)
     in
-    let s = Option.value (subst_string s ~map file) ~default:s in
-    if s <> t.contents then Io.write_file file s
+    let s = Option.value (subst_string s ~map filename) ~default:s in
+    if s <> t.contents then Io.write_file filename s
 end
 
-let get_name ~files ~(dune_project : Dune_project_mini.t option) () =
+let get_name ~files ~(dune_project : Dune_project.t option) () =
   let package_names =
     List.filter_map files ~f:(fun fn ->
         match Path.parent fn with
@@ -301,7 +311,9 @@ let get_name ~files ~(dune_project : Dune_project_mini.t option) () =
         ] );
   name
 
-let make_watermark_map_from_dune_project ~commit ~version ~dune_project =
+let make_watermark_map_from_dune_project ~commit ~version
+    ~(dune_project : Dune_project.t) =
+  let dune_project = Dune_project.project dune_project in
   let version_num =
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
@@ -346,26 +358,24 @@ let subst vcs =
           (fun () -> Vcs.commit_id vcs))
       (fun () -> Vcs.files vcs)
   in
-  let files_ = String.Set.of_list (List.map ~f:Path.to_string files) in
   let dune_project =
-    Dune_project.load ~dir:Path.Source.root ~files:files_
-      ~infer_from_opam_files:true
+    let files = String.Set.of_list (List.map ~f:Path.to_string files) in
+    Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
   in
   let watermarks =
     match dune_project with
     | Some dune_project ->
-      let mini_dune_project = Dune_project_mini.load Dune_project_mini.file in
       let watermarks =
         make_watermark_map_from_dune_project ~commit ~version ~dune_project
       in
-      Dune_project_mini.subst ~map:watermarks ~version mini_dune_project;
+      Dune_project.subst ~map:watermarks ~version dune_project;
       watermarks
     | None ->
       let name = get_name ~files ~dune_project:None () in
       make_watermark_map_from_opam_file ~name ~version ~commit
   in
   List.iter files ~f:(fun path ->
-      if is_a_source_file path && not (Path.equal path Dune_project_mini.file)
+      if is_a_source_file path && not (Path.equal path Dune_project.filename)
       then
         subst_file path ~map:watermarks)
 

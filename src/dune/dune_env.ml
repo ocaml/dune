@@ -20,7 +20,7 @@ module Stanza = struct
         Dune_lang.Syntax.since Stanza.syntax since)
     in
     let+ menhir_flags = Ordered_set_lang.Unexpanded.field "menhir_flags" ?check in
-    Some (menhir_flags)
+    (menhir_flags)
 
   module Inline_tests = struct
     type t =
@@ -51,7 +51,7 @@ module Stanza = struct
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
-    ; menhir_flags : Ordered_set_lang.Unexpanded.t option
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t
     }
 
   let equal_config { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags } t
@@ -62,7 +62,7 @@ module Stanza = struct
     && Env.equal env_vars t.env_vars
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
-    && Option.equal Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
+    && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
 
   let hash_config = Hashtbl.hash
 
@@ -73,7 +73,7 @@ module Stanza = struct
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None
-    ; menhir_flags = None
+    ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     }
 
   type pattern =

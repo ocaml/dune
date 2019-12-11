@@ -17,6 +17,10 @@
 - Do not open the log file in `dune clean`. (#2965, fixes #2964 and
   #2921, @diml)
 
+- Support passing two arguments to `=`, `<>`, ... operators in package
+  dependencies so that we can have things such as `(<> :os win32)`
+  (#2965, @diml)
+
 2.0.0 (20/11/2019)
 ------------------
 

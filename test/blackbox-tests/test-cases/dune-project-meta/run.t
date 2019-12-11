@@ -299,3 +299,44 @@ sorted in a way that pleases "opam lint".
   Entering directory 'template'
   $ tail -n 1 template/foo.opam
   depends: [ "overridden" ]
+
+Using binary operators for dependencies
+---------------------------------------
+
+  $ mkdir binops
+
+Not supported before 2.1:
+
+  $ cat > binops/dune-project <<EOF
+  > (lang dune 2.0)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (depends (conf-libX11 (<> :os win32))))
+  > EOF
+
+  $ dune build @install --root binops
+  Entering directory 'binops'
+  File "dune-project", line 6, characters 23-37:
+  6 |  (depends (conf-libX11 (<> :os win32))))
+                             ^^^^^^^^^^^^^^
+  Error: Passing two arguments to <> is only available since version 2.1 of the
+  dune language. Please update your dune-project file to have (lang 2.1).
+  [1]
+
+Supported since 2.1:
+
+  $ cat > binops/dune-project <<EOF
+  > (lang dune 2.1)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package
+  >  (name foo)
+  >  (depends (conf-libX11 (<> :os win32))))
+  > EOF
+
+  $ dune build @install --root binops
+  Entering directory 'binops'
+  $ grep conf-libX11 binops/foo.opam
+    "conf-libX11" {os != "win32"}

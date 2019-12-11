@@ -120,11 +120,16 @@ module Dependency = struct
         function
         | QVar x -> String (nopos, x)
         | Var x -> Ident (nopos, x)
+
+      let to_dyn = function
+        | QVar v -> Dyn.String v
+        | Var v -> Dyn.String (":" ^ v)
     end
 
     type t =
       | Bvar of Var.t
       | Uop of Op.t * Var.t
+      | Bop of Op.t * Var.t * Var.t
       | And of t list
       | Or of t list
 
@@ -133,8 +138,21 @@ module Dependency = struct
       let ops =
         List.map Op.map ~f:(fun (name, op) ->
             ( name
-            , let+ x = Var.decode in
-              Uop (op, x) ))
+            , let+ x = Var.decode
+              and+ y =
+                if_eos ~then_:(return None)
+                  ~else_:
+                    (let+ v = Var.decode in
+                     Some v)
+              and+ loc = loc
+              and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+              match y with
+              | None -> Uop (op, x)
+              | Some y ->
+                if version < (2, 1) then
+                  Dune_lang.Syntax.Error.since loc Stanza.syntax (2, 1)
+                    ~what:(sprintf "Passing two arguments to %s" name);
+                Bop (op, x, y) ))
       in
       let ops =
         ( "!="
@@ -161,10 +179,10 @@ module Dependency = struct
     let rec to_dyn =
       let open Dyn.Encoder in
       function
-      | Bvar (QVar v) -> constr "Bvar" [ Dyn.String v ]
-      | Bvar (Var v) -> constr "Bvar" [ Dyn.String (":" ^ v) ]
-      | Uop (b, QVar v) -> constr "Uop" [ Op.to_dyn b; Dyn.String v ]
-      | Uop (b, Var v) -> constr "Uop" [ Op.to_dyn b; Dyn.String (":" ^ v) ]
+      | Bvar v -> constr "Bvar" [ Var.to_dyn v ]
+      | Uop (b, x) -> constr "Uop" [ Op.to_dyn b; Var.to_dyn x ]
+      | Bop (b, x, y) ->
+        constr "Bop" [ Op.to_dyn b; Var.to_dyn x; Var.to_dyn y ]
       | And t -> constr "And" (List.map ~f:to_dyn t)
       | Or t -> constr "Or" (List.map ~f:to_dyn t)
   end
@@ -190,8 +208,14 @@ module Dependency = struct
     let nopos = Opam_file.nopos in
     function
     | Bvar v -> Constraint.Var.to_opam v
-    | Uop (op, v) ->
-      Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam v)
+    | Uop (op, x) ->
+      Prefix_relop (nopos, Op.to_relop op, Constraint.Var.to_opam x)
+    | Bop (op, x, y) ->
+      Relop
+        ( nopos
+        , Op.to_relop op
+        , Constraint.Var.to_opam x
+        , Constraint.Var.to_opam y )
     | And [ c ] -> opam_constraint c
     | And (c :: cs) ->
       Logop (nopos, `And, opam_constraint c, opam_constraint (And cs))

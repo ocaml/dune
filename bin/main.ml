@@ -89,7 +89,12 @@ let clean =
   in
   let term =
     let+ common = Common.term in
-    Common.set_common common ~targets:[];
+    (* Pass [No_log_file] to prevent the log file from being created. Indeed, we
+       are going to delete the whole build directory right after and that
+       includes deleting the log file. Not only creating the log file would be
+       useless but with some FS this also causes [dune clean] to fail (cf
+       https://github.com/ocaml/dune/issues/2964). *)
+    Common.set_common common ~targets:[] ~log_file:No_log_file;
     Build_system.files_in_source_tree_to_delete ()
     |> Path.Set.iter ~f:Path.unlink_no_err;
     Path.rm_rf Path.build_dir

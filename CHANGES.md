@@ -14,6 +14,9 @@
 - Fix `dune --version`. The bootstrap didn't compute the version
   correctly. (#2929, fixes #2911, @diml)
 
+- Do not open the log file in `dune clean`. (#2965, fixes #2964 and
+  #2921, @diml)
+
 2.0.0 (20/11/2019)
 ------------------
 

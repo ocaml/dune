@@ -170,8 +170,10 @@ this ``dune`` file:
      (name            mylib)
      (public_name     mylib)
      (libraries       re lwt)
-     (c_names         mystubs)
-     (c_flags         (-I/blah/include))
+     (foreign_stubs
+      (language c)
+      (names mystubs)
+      (flags -I/blah/include))
      (c_library_flags (-lblah)))
 
 Defining a library with C stubs using pkg-config
@@ -186,8 +188,10 @@ compilation and link flags. Write this ``dune`` file:
      (name            mylib)
      (public_name     mylib)
      (libraries       re lwt)
-     (c_names         mystubs)
-     (c_flags         (:include c_flags.sexp))
+     (foreign_stubs
+      (language c)
+      (names mystubs)
+      (flags (:include c_flags.sexp)))
      (c_library_flags (:include c_library_flags.sexp)))
 
     (rule

@@ -68,9 +68,9 @@ let set_dirs c =
   Path.set_root (Path.External.cwd ());
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
-let set_common_other c ~targets =
+let set_common_other ?log_file c ~targets =
   Console.init c.config.display;
-  Log.init ();
+  Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;
@@ -92,9 +92,9 @@ let set_common_other c ~targets =
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
-let set_common c ~targets =
+let set_common ?log_file c ~targets =
   set_dirs c;
-  set_common_other c ~targets
+  set_common_other ?log_file c ~targets
 
 let footer =
   `Blocks

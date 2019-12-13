@@ -1,4 +1,4 @@
-2.1.0 (unreleased)
+2.1.0 (13/12/2019)
 ------------------
 
 - Attach cinaps stanza actions to both `@runtest` and `@cinaps` aliases

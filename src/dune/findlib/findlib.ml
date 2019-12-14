@@ -159,7 +159,7 @@ module Unavailable_reason = struct
     function
     | Not_found -> constr "Not_found" []
     | Invalid_dune_package why ->
-      constr "Invalid_dune_package" [Exn.to_dyn why]
+      constr "Invalid_dune_package" [ Exn.to_dyn why ]
     | Hidden lib ->
       let info = Dune_package.Lib.info lib in
       let obj_dir = Lib_info.obj_dir info in
@@ -451,7 +451,8 @@ end
    parse it and add its contents to [t.packages] *)
 let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : (Discovered_package.t, [`Invalid_dune_package of exn]) Result.t option =
+  let rec loop dirs :
+      (Discovered_package.t, [ `Invalid_dune_package of exn ]) Result.t option =
     match dirs with
     | [] -> (
       match Lib_name.to_string root_name with

@@ -18,13 +18,9 @@ module type S = sig
     val get_exn : string -> Instance.t
   end
 
-  type ast
+  val load_exn : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 
-  val load_ast : Path.t -> ast Or_exn.t
-
-  val parse_ast : ast -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
-
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a Or_exn.t
 
   val parse_contents :
     Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
@@ -82,18 +78,12 @@ struct
       }
   end
 
-  type ast = Lang.Instance.t * Ast.t
-
   let parse_lang_exn lb =
     let first_line = First_line.lex lb in
     let lang = Lang.parse first_line in
     (lang, Parser.parse lb ~mode:Many_as_one)
 
-  let parse_lang lb = Result.try_with (fun () -> parse_lang_exn lb)
-
-  let load_ast : Path.t -> ast Or_exn.t = Io.with_lexbuf_from_file ~f:parse_lang
-
-  let parse_ast ((lang, ast) : ast) ~f =
+  let parse_ast ((lang : Lang.Instance.t), ast) ~f =
     let parsing_context =
       Univ_map.singleton (Syntax.key lang.syntax) lang.version
     in
@@ -103,7 +93,11 @@ struct
     let ast = parse_lang_exn lb in
     parse_ast ast ~f
 
-  let load fn ~f = Io.with_lexbuf_from_file fn ~f:(parse_contents ~f)
+  let load fn ~f =
+    Io.with_lexbuf_from_file fn ~f:(fun lb ->
+        Result.try_with (fun () -> parse_contents lb ~f))
+
+  let load_exn fn ~f = Result.ok_exn (load fn ~f)
 end
 
 let no_more_lang =

@@ -35,7 +35,7 @@ module type S = sig
   (** Parse the contents of a versioned file after the first line has been
       read. *)
   val parse_contents :
-    Lexing.lexbuf -> First_line.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+    Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 end
 
 module Make (Data : sig

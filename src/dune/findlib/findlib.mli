@@ -24,6 +24,7 @@ module Unavailable_reason : sig
         (** The package is hidden because it contains an unsatisfied 'exist_if'
             clause *)
     | Hidden of Dune_package.Lib.t
+    | Invalid_dune_package
 
   val to_string : t -> string
 

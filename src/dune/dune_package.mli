@@ -67,7 +67,7 @@ module Or_meta : sig
   val pp :
     dune_version:Dune_lang.Syntax.Version.t -> Format.formatter -> t -> unit
 
-  val load : Dpath.t -> t
+  val load : Dpath.t -> (t, [`Invalid_dune_package]) Result.t
 
   val to_dyn : t Dyn.Encoder.t
 end

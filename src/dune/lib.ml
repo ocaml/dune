@@ -699,7 +699,7 @@ let already_in_table info name x =
   let dyn =
     let open Dyn.Encoder in
     match x with
-    | St_invalid e -> constr "St_invalid" [Exn.to_dyn e]
+    | St_invalid e -> constr "St_invalid" [ Exn.to_dyn e ]
     | St_initializing x -> constr "St_initializing" [ Path.to_dyn x.path ]
     | St_found t ->
       let src_dir = Lib_info.src_dir t.info in
@@ -1558,7 +1558,7 @@ module DB = struct
       let open Dyn.Encoder in
       match x with
       | Not_found -> constr "Not_found" []
-      | Invalid e -> constr "Invalid" [Exn.to_dyn e]
+      | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
       | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden { info = lib; reason } ->
         constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string reason ]
@@ -1790,7 +1790,8 @@ module DB = struct
     | St_hidden (t, _, _) ->
       Some t
     | St_invalid _
-    | St_not_found -> None
+    | St_not_found ->
+      None
 
   let resolve t (loc, name) =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with

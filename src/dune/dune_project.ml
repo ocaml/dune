@@ -732,7 +732,7 @@ let parse ~dir ~lang ~opam_packages ~file =
 
 let load_dune_project ~dir opam_packages =
   let file = Path.Source.relative dir filename in
-  load (Path.source file) ~f:(fun lang ->
+  load_exn (Path.source file) ~f:(fun lang ->
       parse ~dir ~lang ~opam_packages ~file)
 
 let load ~dir ~files ~infer_from_opam_files =

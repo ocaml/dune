@@ -18,6 +18,7 @@ doc: "https://dune.readthedocs.io/"
 bug-reports: "https://github.com/ocaml/dune/issues"
 depends: [
   "dune" {>= "2.0"}
+  "ocaml" {>= "4.07"}
 ]
 dev-repo: "git+https://github.com/ocaml/dune.git"
 build: [

@@ -363,7 +363,7 @@ module Or_meta = struct
 
   let load p =
     match Vfile.load_ast p with
-    | Error _ -> Error `Invalid_dune_package
+    | Error e -> Error (`Invalid_dune_package e)
     | Ok ast ->
       let dir = Path.parent_exn p in
       Ok (Vfile.parse_ast ast ~f:(fun lang -> decode ~lang ~dir))

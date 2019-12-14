@@ -157,6 +157,7 @@ module DB : sig
           { info : Lib_info.external_
           ; reason : string
           }
+      | Invalid of exn
       | Redirect of t option * (Loc.t * Lib_name.t)
 
     val to_dyn : t Dyn.Encoder.t

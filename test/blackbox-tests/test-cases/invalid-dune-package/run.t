@@ -15,9 +15,6 @@ Now we attempt to use an invalid dune-package library:
   > (executable (name foo) (libraries baz))
   > EOF
   $ OCAMLPATH=$PWD/findlib dune exec ./foo.exe
-  File "dune", line 1, characters 34-37:
-  1 | (executable (name foo) (libraries baz))
-                                        ^^^
-  Error: Library "baz" not found.
-  Hint: try: dune external-lib-deps --missing ./foo.exe
+  File "$TESTCASE_ROOT/findlib/baz/dune-package", line 1, characters 0-0:
+  Error: Invalid first line, expected: (lang <lang> <version>)
   [1]

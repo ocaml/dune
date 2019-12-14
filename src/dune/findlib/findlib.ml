@@ -142,10 +142,10 @@ module Unavailable_reason = struct
   type t =
     | Not_found
     | Hidden of Dune_package.Lib.t
-    | Invalid_dune_package
+    | Invalid_dune_package of exn
 
   let to_string = function
-    | Invalid_dune_package -> "invalid dune package"
+    | Invalid_dune_package _ -> "invalid dune package"
     | Not_found -> "not found"
     | Hidden pkg ->
       let info = Dune_package.Lib.info pkg in
@@ -158,7 +158,8 @@ module Unavailable_reason = struct
     let open Dyn.Encoder in
     function
     | Not_found -> constr "Not_found" []
-    | Invalid_dune_package -> constr "Invalid_dune_package" []
+    | Invalid_dune_package why ->
+      constr "Invalid_dune_package" [Exn.to_dyn why]
     | Hidden lib ->
       let info = Dune_package.Lib.info lib in
       let obj_dir = Lib_info.obj_dir info in
@@ -451,7 +452,7 @@ end
    parse it and add its contents to [t.packages] *)
 let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : (Discovered_package.t, [`Invalid_dune_package]) Result.t option =
+  let rec loop dirs : (Discovered_package.t, [`Invalid_dune_package of exn]) Result.t option =
     match dirs with
     | [] -> (
       match Lib_name.to_string root_name with
@@ -469,7 +470,7 @@ let find_and_acknowledge_package t ~fq_name =
         else
           Ok Dune_package.Or_meta.Use_meta
       with
-      | Error `Invalid_dune_package -> Some (Error `Invalid_dune_package)
+      | Error e -> Some (Error e)
       | Ok (Dune_package p) -> Some (Ok (Dune p))
       | Ok Use_meta -> (
         match Meta_source.discover ~dir ~name:root_name with
@@ -478,8 +479,8 @@ let find_and_acknowledge_package t ~fq_name =
   in
   match loop t.paths with
   | None -> Table.set t.packages root_name (Error Not_found)
-  | Some (Error `Invalid_dune_package) ->
-    Table.set t.packages root_name (Error Invalid_dune_package)
+  | Some (Error (`Invalid_dune_package e)) ->
+    Table.set t.packages root_name (Error (Invalid_dune_package e))
   | Some (Ok (Findlib findlib_package)) ->
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Ok (Dune pkg)) ->

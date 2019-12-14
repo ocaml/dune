@@ -8,6 +8,4 @@ This test demonstrates the handling of invalid dune-package files
   > (library (name bar) (libraries baz) (modules))
   > EOF
   $ OCAMLPATH=$PWD/findlib dune exec ./foo.exe
-  File "$TESTCASE_ROOT/findlib/baz/dune-package", line 1, characters 0-0:
-  Error: Invalid first line, expected: (lang <lang> <version>)
-  [1]
+  foo

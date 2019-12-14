@@ -1751,6 +1751,7 @@ module DB = struct
           Redirect (None, (Loc.none, d.new_public_name))
         | Error e -> (
           match e with
+          | Invalid_dune_package
           | Not_found ->
             if external_lib_deps_mode then
               let pkg = Findlib.dummy_package findlib ~name in

@@ -27,6 +27,12 @@ module type S = sig
     val get_exn : string -> Instance.t
   end
 
+  type ast
+
+  val load_ast : Path.t -> ast Or_exn.t
+
+  val parse_ast : ast -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+
   (** [load fn ~f] loads a versioned file. It parses the first line, looks up
       the language, checks that the version is supported and parses the rest of
       the file with [f]. *)

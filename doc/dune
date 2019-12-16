@@ -21,15 +21,11 @@
 (include dune.inc)
 
 (rule
- (targets dune.inc.gen)
+ (alias runtest)
+ (mode promote)
  (deps
   (package dune))
  (action
   (with-stdout-to
-   %{targets}
+   dune.inc
    (run bash %{dep:update-jbuild.sh}))))
-
-(rule
- (alias runtest)
- (action
-  (diff dune.inc dune.inc.gen)))

@@ -1,4 +1,11 @@
-2.0.0 (unreleased)
+2.0.1 (17/12/2019)
+------------------
+
+- Delay errors raised by invalid `dune-package` files. The error is now raised
+  only if the invalid package is treated as a library and used to build
+  something. (#2972, @rgrinberg)
+
+2.0.0 (20/11/2019)
 ------------------
 
 - Remove existing destination files in `install`  before installing the new

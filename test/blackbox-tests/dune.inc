@@ -1171,6 +1171,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias invalid-dune-package)
+ (deps (package dune) (source_tree test-cases/invalid-dune-package))
+ (action
+  (chdir
+   test-cases/invalid-dune-package
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias js_of_ocaml)
  (deps (package dune) (source_tree test-cases/js_of_ocaml))
  (action
@@ -2102,6 +2110,7 @@
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
+  (alias invalid-dune-package)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -2326,6 +2335,7 @@
   (alias install-with-var)
   (alias installable-dup-private-libs)
   (alias intf-only)
+  (alias invalid-dune-package)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)

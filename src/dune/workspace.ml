@@ -422,8 +422,7 @@ let load ?x ?profile p =
       if Dune_lexer.eof_reached lb then
         default ?x ?profile ()
       else
-        let first_line = Dune_lang.Versioned_file.First_line.lex lb in
-        parse_contents lb first_line ~f:(fun _lang -> t ?x ?profile ()))
+        parse_contents lb ~f:(fun _lang -> t ?x ?profile ()))
 
 let default ?x ?profile () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in

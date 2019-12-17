@@ -317,6 +317,7 @@ type status =
   | St_found of t
   | St_not_found
   | St_hidden of t * Path.t * string
+  | St_invalid of exn
 
 (* reason *)
 
@@ -335,6 +336,7 @@ and resolve_result =
       { info : Lib_info.external_
       ; reason : string
       }
+  | Invalid of exn
   | Redirect of db option * (Loc.t * Lib_name.t)
 
 type lib = t
@@ -738,6 +740,7 @@ let already_in_table info name x =
   let dyn =
     let open Dyn.Encoder in
     match x with
+    | St_invalid e -> constr "St_invalid" [ Exn.to_dyn e ]
     | St_initializing x -> constr "St_initializing" [ Path.to_dyn x.path ]
     | St_found t ->
       let src_dir = Lib_info.src_dir t.info in
@@ -1158,6 +1161,7 @@ end = struct
     | St_initializing id -> Dep_stack.dependency_cycle stack id
     | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
     | St_not_found -> Error.not_found ~loc ~name
+    | St_invalid why -> Error why
     | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
 
   let resolve_name db name ~stack =
@@ -1170,6 +1174,7 @@ end = struct
         Table.add_exn db.table name x;
         x )
     | Found info -> instantiate db name info ~stack ~hidden:None
+    | Invalid e -> St_invalid e
     | Not_found ->
       let res =
         match db.parent with
@@ -1582,12 +1587,14 @@ module DB = struct
           { info : Lib_info.external_
           ; reason : string
           }
+      | Invalid of exn
       | Redirect of db option * (Loc.t * Lib_name.t)
 
     let to_dyn x =
       let open Dyn.Encoder in
       match x with
       | Not_found -> constr "Not_found" []
+      | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
       | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
       | Hidden { info = lib; reason } ->
         constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string reason ]
@@ -1626,6 +1633,7 @@ module DB = struct
                    name)] where [name] is in [libmap] for sure and maps to
                    [Found _]. *)
                 match res with
+                | Invalid _
                 | Not_found
                 | Hidden _ ->
                   assert false
@@ -1785,6 +1793,7 @@ module DB = struct
           Redirect (None, (Loc.none, d.new_public_name))
         | Error e -> (
           match e with
+          | Invalid_dune_package why -> Invalid why
           | Not_found ->
             if external_lib_deps_mode then
               let pkg = Findlib.dummy_package findlib ~name in
@@ -1804,6 +1813,7 @@ module DB = struct
     | St_initializing _ -> assert false
     | St_found t -> Some t
     | St_not_found
+    | St_invalid _
     | St_hidden _ ->
       None
 
@@ -1813,12 +1823,15 @@ module DB = struct
     | St_found t
     | St_hidden (t, _, _) ->
       Some t
-    | St_not_found -> None
+    | St_invalid _
+    | St_not_found ->
+      None
 
   let resolve t (loc, name) =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | St_initializing _ -> assert false
     | St_found t -> Ok t
+    | St_invalid w -> Error w
     | St_not_found -> Error.not_found ~loc ~name
     | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
 

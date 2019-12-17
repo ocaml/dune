@@ -142,8 +142,10 @@ module Unavailable_reason = struct
   type t =
     | Not_found
     | Hidden of Dune_package.Lib.t
+    | Invalid_dune_package of exn
 
   let to_string = function
+    | Invalid_dune_package _ -> "invalid dune package"
     | Not_found -> "not found"
     | Hidden pkg ->
       let info = Dune_package.Lib.info pkg in
@@ -156,6 +158,8 @@ module Unavailable_reason = struct
     let open Dyn.Encoder in
     function
     | Not_found -> constr "Not_found" []
+    | Invalid_dune_package why ->
+      constr "Invalid_dune_package" [ Exn.to_dyn why ]
     | Hidden lib ->
       let info = Dune_package.Lib.info lib in
       let obj_dir = Lib_info.obj_dir info in
@@ -447,15 +451,15 @@ end
    parse it and add its contents to [t.packages] *)
 let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : Discovered_package.t option =
+  let rec loop dirs : Discovered_package.t Or_exn.t option =
     match dirs with
     | [] -> (
       match Lib_name.to_string root_name with
-      | "dune" -> Some Discovered_package.builtin_for_dune
+      | "dune" -> Some (Ok Discovered_package.builtin_for_dune)
       | _ ->
         Lib_name.Map.find t.builtins root_name
         |> Option.map ~f:(fun meta ->
-               Discovered_package.Findlib (Meta_source.internal t ~meta)) )
+               Ok (Discovered_package.Findlib (Meta_source.internal t ~meta))) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
       let dune = Path.relative dir Dune_package.fn in
@@ -463,19 +467,22 @@ let find_and_acknowledge_package t ~fq_name =
         if Path.exists dune then
           Dune_package.Or_meta.load dune
         else
-          Dune_package.Or_meta.Use_meta
+          Ok Dune_package.Or_meta.Use_meta
       with
-      | Dune_package p -> Some (Dune p)
-      | Use_meta -> (
+      | Error e -> Some (Error e)
+      | Ok (Dune_package p) -> Some (Ok (Dune p))
+      | Ok Use_meta -> (
         match Meta_source.discover ~dir ~name:root_name with
         | None -> loop dirs
-        | Some meta_source -> Some (Findlib meta_source) ) )
+        | Some meta_source -> Some (Ok (Findlib meta_source)) ) )
   in
   match loop t.paths with
   | None -> Table.set t.packages root_name (Error Not_found)
-  | Some (Findlib findlib_package) ->
+  | Some (Error e) ->
+    Table.set t.packages root_name (Error (Invalid_dune_package e))
+  | Some (Ok (Findlib findlib_package)) ->
     Meta_source.parse_and_acknowledge findlib_package t
-  | Some (Dune pkg) ->
+  | Some (Ok (Dune pkg)) ->
     List.iter pkg.entries ~f:(fun entry ->
         let name = Dune_package.Entry.name entry in
         Table.set t.packages name (Ok entry))

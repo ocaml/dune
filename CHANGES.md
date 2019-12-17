@@ -1,4 +1,4 @@
-2.1.0 (13/12/2019)
+2.1.0 (unreleased)
 ------------------
 
 - Attach cinaps stanza actions to both `@runtest` and `@cinaps` aliases
@@ -20,6 +20,13 @@
 - Support passing two arguments to `=`, `<>`, ... operators in package
   dependencies so that we can have things such as `(<> :os win32)`
   (#2965, @diml)
+
+2.0.1 (17/12/2019)
+------------------
+
+- Delay errors raised by invalid `dune-package` files. The error is now raised
+  only if the invalid package is treated as a library and used to build
+  something. (#2972, @rgrinberg)
 
 2.0.0 (20/11/2019)
 ------------------

@@ -281,7 +281,7 @@ end)
 
 let () = Lang.register syntax ()
 
-let load_config_file p = load p ~f:(fun _lang -> decode)
+let load_config_file p = load_exn p ~f:(fun _lang -> decode)
 
 let load_user_config_file () =
   if Path.exists user_config_file then

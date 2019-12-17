@@ -27,14 +27,16 @@ module type S = sig
     val get_exn : string -> Instance.t
   end
 
-  (** [load fn ~f] loads a versioned file. It parses the first line, looks up
-      the language, checks that the version is supported and parses the rest of
-      the file with [f]. *)
-  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+  (** [load_exn fn ~f] loads a versioned file. It parses the first line, looks
+      up the language, checks that the version is supported and parses the rest
+      of the file with [f]. *)
+  val load_exn : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+
+  val load : Path.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a Or_exn.t
 
   (** Parse the contents of a versioned file after the first line has been read. *)
   val parse_contents :
-    Lexing.lexbuf -> First_line.t -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
+    Lexing.lexbuf -> f:(Lang.Instance.t -> 'a Decoder.t) -> 'a
 end
 
 module Make (Data : sig

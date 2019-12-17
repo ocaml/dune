@@ -452,8 +452,7 @@ end
    parse it and add its contents to [t.packages] *)
 let find_and_acknowledge_package t ~fq_name =
   let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs :
-      (Discovered_package.t, [ `Invalid_dune_package of exn ]) Result.t option =
+  let rec loop dirs : Discovered_package.t Or_exn.t option =
     match dirs with
     | [] -> (
       match Lib_name.to_string root_name with
@@ -480,7 +479,7 @@ let find_and_acknowledge_package t ~fq_name =
   in
   match loop t.paths with
   | None -> Table.set t.packages root_name (Error Not_found)
-  | Some (Error (`Invalid_dune_package e)) ->
+  | Some (Error e) ->
     Table.set t.packages root_name (Error (Invalid_dune_package e))
   | Some (Ok (Findlib findlib_package)) ->
     Meta_source.parse_and_acknowledge findlib_package t

@@ -364,9 +364,7 @@ module Or_meta = struct
 
   let load p =
     let dir = Path.parent_exn p in
-    match Vfile.load p ~f:(fun lang -> decode ~lang ~dir) with
-    | Ok s -> Ok s
-    | Error e -> Error (`Invalid_dune_package e)
+    Vfile.load p ~f:(fun lang -> decode ~lang ~dir)
 
   let pp ~dune_version ppf t =
     let t = encode ~dune_version t in

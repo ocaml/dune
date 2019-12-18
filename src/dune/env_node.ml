@@ -158,12 +158,12 @@ let rec menhir_flags t ~profile ~expander =
     let default =
       match t.inherit_from with
       | None -> Build.return []
-      | Some (lazy t) ->
-        menhir_flags t ~profile ~expander
+      | Some (lazy t) -> menhir_flags t ~profile ~expander
     in
     let flags =
       let cfg = find_config t ~profile in
       let expander = Expander.set_dir expander ~dir:t.dir in
-      Expander.expand_and_eval_set expander cfg.menhir_flags ~standard:default in
+      Expander.expand_and_eval_set expander cfg.menhir_flags ~standard:default
+    in
     t.menhir_flags <- Some flags;
     flags

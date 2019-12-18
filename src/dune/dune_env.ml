@@ -17,10 +17,12 @@ module Stanza = struct
   let menhir_flags ~since =
     let check =
       Option.map since ~f:(fun since ->
-        Dune_lang.Syntax.since Stanza.syntax since)
+          Dune_lang.Syntax.since Stanza.syntax since)
     in
-    let+ menhir_flags = Ordered_set_lang.Unexpanded.field "menhir_flags" ?check in
-    (menhir_flags)
+    let+ menhir_flags =
+      Ordered_set_lang.Unexpanded.field "menhir_flags" ?check
+    in
+    menhir_flags
 
   module Inline_tests = struct
     type t =
@@ -54,7 +56,8 @@ module Stanza = struct
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     }
 
-  let equal_config { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags } t
+  let equal_config
+      { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags } t
       =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -125,7 +128,7 @@ module Stanza = struct
         ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
         >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field
-    and+ menhir_flags = menhir_flags ~since:(Some (2,1)) in
+    and+ menhir_flags = menhir_flags ~since:(Some (2, 1)) in
     { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags }
 
   let rule =

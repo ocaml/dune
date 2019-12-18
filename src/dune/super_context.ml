@@ -116,8 +116,7 @@ module Env : sig
   val foreign_flags :
     t -> dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t
 
-  val menhir_flags :
-    t -> dir:Path.Build.t -> string list Build.t
+  val menhir_flags : t -> dir:Path.Build.t -> string list Build.t
 
   val external_ : t -> dir:Path.Build.t -> External_env.t
 
@@ -231,7 +230,6 @@ end = struct
   let menhir_flags t ~dir =
     Env_node.menhir_flags (get t ~dir) ~profile:t.profile
       ~expander:(expander t ~dir)
-
 end
 
 let expander t ~dir = Env.expander t.env_context ~dir
@@ -321,7 +319,7 @@ let foreign_flags t ~dir ~expander ~flags ~language =
 let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_context in
   let default = Env.menhir_flags t ~dir in
-  Build.memoize ("menhir flags")
+  Build.memoize "menhir flags"
     (let m = Expander.expand_and_eval_set expander flags ~standard:default in
      let open Build.O in
      let+ l = m in

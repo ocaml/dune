@@ -117,8 +117,7 @@ module Run (P : PARAMS) : sig end = struct
   let rule ?(mode = stanza.mode) : Action.t Build.t -> unit =
     SC.add_rule sctx ~dir ~mode ~loc:stanza.loc
 
-  let expand_flags flags =
-    Super_context.menhir_flags sctx ~dir ~expander ~flags
+  let expand_flags flags = Super_context.menhir_flags sctx ~dir ~expander ~flags
 
   (* ------------------------------------------------------------------------ *)
 

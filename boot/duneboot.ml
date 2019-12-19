@@ -191,13 +191,13 @@ let exe =
 
 let concurrency =
   let try_run_and_capture_line cmd =
-    let ic = Unix.open_process_in cmd in
+    let ic,oc,ec = Unix.open_process_full cmd [||] in
     let line =
       match input_line ic with
       | s -> Some s
       | exception _ -> None
     in
-    match (Unix.close_process_in ic, line) with
+    match (Unix.close_process_full (ic,oc,ec), line) with
     | WEXITED 0, Some s -> Some s
     | _ -> None
   in

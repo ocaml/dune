@@ -452,12 +452,18 @@ to use the :ref:`include_subdirs` stanza.
   however they are commonly used. Such modules must only define
   types. Since it is not reasonably possible for dune to check
   that this is the case, dune requires the user to explicitly list
-  such modules to avoid surprises. ``<modules>`` must be a subset of
-  the modules listed in the ``(modules ...)`` field.
+  such modules to avoid surprises.  Note that the
+  ``modules_without_implementation`` field is not merged in ``modules``, which
+  represents the total set of modules in a library. If a directory has more
+  than one stanza and thus a ``modules`` field must be specified, ``<modules>``
+  still need to be added in ``modules``.
 
 - ``(private_modules <modules>)`` specifies a list of modules that will be
   marked as private. Private modules are inaccessible from outside the libraries
-  they are defined in.
+  they are defined in. Note that the ``private_modules`` field is not merged in
+  ``modules``, which represents the total set of modules in a library. If a
+  directory has more than one stanza and thus a ``modules`` field must be
+  specified, ``<modules>`` still need to be added in ``modules``.
 
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace

@@ -39,6 +39,11 @@ and may use all the other fields. A virtual library may include other modules
 (with or without implementations), which is why it's not a pure "interface"
 library.
 
+Note: the ``virtual_modules`` field is not merged in ``modules``, which
+represents the total set of modules in a library. If a directory has more than
+one stanza and thus a ``modules`` field must be specified, virtual modules
+still need to be added in ``modules``.
+
 Implementation
 ===============
 

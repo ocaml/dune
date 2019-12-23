@@ -59,8 +59,10 @@ let alias ?enabled_if ?action name ~deps =
        | Some e -> [ ("enabled_if", [ e ]) ] ))
 
 module Test = struct
+  let root_dir = "test-cases"
+
   type t =
-    { name : string
+    { path : string
     ; env : (string * Dune_lang.t) option
     ; skip_ocaml : string option
     ; skip_platforms : Platform.t list
@@ -72,11 +74,34 @@ module Test = struct
     ; additional_deps : Dune_lang.t list
     }
 
+  let alias_name t =
+    match String.split t.path ~on:'/' with
+    | [] -> assert false
+    | dir :: dirs ->
+      assert (dir = root_dir);
+      let rec loop acc = function
+        | [] -> List.rev acc
+        | [x] ->
+          let acc =
+            if x = "run.t" then
+              acc
+            else
+              Filename.chop_suffix x ".t" :: acc
+          in
+          loop acc []
+        | x :: xs -> loop (x :: acc) xs
+      in
+      String.concat ~sep:"-" (loop [] dirs)
+
+  let filename t = Filename.basename t.path
+
+  let dir t = Filename.dirname t.path
+
   let make ?env ?skip_ocaml ?(skip_platforms = []) ?(enabled = true)
       ?(js = false) ?(coq = false) ?(external_deps = false)
-      ?(disable_sandboxing = false) ?(additional_deps = []) name =
+      ?(disable_sandboxing = false) ?(additional_deps = []) path =
     let external_deps = external_deps || coq in
-    { name
+    { path
     ; env
     ; skip_ocaml
     ; skip_platforms
@@ -88,6 +113,13 @@ module Test = struct
     ; additional_deps
     }
 
+  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled
+        ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
+        path =
+    make ?env ?skip_ocaml ?skip_platforms ?enabled
+      ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
+      (Filename.concat root_dir (Filename.concat path "run.t"))
+
   let pp_sexp fmt t =
     let open Dune_lang in
     let skip_version =
@@ -96,17 +128,19 @@ module Test = struct
       | Some s -> [ "-skip-versions"; s ]
     in
     let enabled_if = Platform.enabled_if t.skip_platforms in
+    let dir = dir t in
+    let filename = filename t in
     let action =
       List
         [ atom "chdir"
-        ; atom (sprintf "test-cases/%s" t.name)
+        ; atom dir
         ; List
             [ atom "progn"
             ; Dune_lang.List
                 ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
                 @ List.map ~f:Dune_lang.atom_or_quoted_string
-                    (skip_version @ [ "-test"; "run.t" ]) )
-            ; Sexp.strings [ "diff?"; "run.t"; "run.t.corrected" ]
+                    (skip_version @ [ "-test"; filename]) )
+            ; Sexp.strings [ "diff?"; filename ; filename ^ ".corrected" ]
             ]
         ]
     in
@@ -116,11 +150,11 @@ module Test = struct
       | Some (k, v) ->
         List [ atom "setenv"; atom_or_quoted_string k; v; action ]
     in
-    alias t.name ?enabled_if
+    alias (alias_name t) ?enabled_if
       ~deps:
         (List.concat
            [ Sexp.strings [ "package"; "dune" ]
-             :: Sexp.strings [ "source_tree"; sprintf "test-cases/%s" t.name ]
+             :: Sexp.strings [ "source_tree"; dir ]
              :: t.additional_deps
            ; ( if t.disable_sandboxing then
                [ Sexp.strings [ "sandbox"; "none" ] ]
@@ -132,13 +166,20 @@ module Test = struct
 end
 
 let exclusions =
-  let open Test in
-  let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
+  let make = Test.make_run_t in
+  let odoc name =
+    let name = Filename.concat "odoc" name in
+    make ~external_deps:true ~skip_ocaml:"4.02.3" name
+  in
+  let utop name =
+    let name = Filename.concat "utop" name in
+    make ~external_deps:true ~skip_ocaml:"<4.05.0" name
+  in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
-  ; odoc "odoc"
+  ; odoc "odoc-simple"
   ; odoc "odoc-package-mld-link"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
@@ -162,10 +203,9 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
   ; make "menhir" ~external_deps:true
-  ; make "utop" ~external_deps:true ~enabled:false
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
-  ; make "utop-default-implementation" ~enabled:false ~external_deps:true
-      ~skip_ocaml:"<4.05.0"
+  ; utop "utop-simple"
+  ; utop "utop-default"
+  ; utop "utop-default-implementation"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[ Win ]
   ; make "github764" ~skip_platforms:[ Win ]
@@ -188,22 +228,41 @@ let exclusions =
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ]
 
+let fold_find path ~init ~f =
+  let rec dir path acc =
+    Sys.readdir path
+    |> Array.fold_left ~init:acc ~f:(fun acc file ->
+      let path = Filename.concat path file in
+      if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK
+      then
+        dir path acc
+      else
+        f acc path)
+  in
+  dir path init
+
 let all_tests =
   lazy
-    ( Sys.readdir "test-cases" |> Array.to_list
-    |> List.filter ~f:(fun s -> not (String.contains s '.'))
-    |> List.sort ~compare:String.compare
-    |> List.map ~f:(fun name ->
-           match
-             List.find exclusions ~f:(fun (t : Test.t) -> t.name = name)
-           with
-           | None -> Test.make name
-           | Some t -> t) )
+    ( fold_find Test.root_dir ~init:[] ~f:(fun acc p ->
+        if Filename.extension p = ".t" then
+          p :: acc
+        else
+          acc)
+      |> List.map ~f:(fun path ->
+        match
+          List.find exclusions ~f:(fun (t : Test.t) -> t.path = path)
+        with
+        | None -> Test.make path
+        | Some t -> t)
+      |> List.sort ~compare:(fun t1 t2 ->
+        String.compare (Test.alias_name t1) (Test.alias_name t2)))
 
 let pp_group fmt (name, tests) =
   alias name
     ~deps:
-      (List.map tests ~f:(fun (t : Test.t) -> Sexp.strings [ "alias"; t.name ]))
+      (List.map tests ~f:(fun (t : Test.t) ->
+         let name = Test.alias_name t in
+         Sexp.strings [ "alias"; name ]))
   |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 
 let () =

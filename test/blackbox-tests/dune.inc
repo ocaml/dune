@@ -964,16 +964,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias github717-odoc-index)
- (deps (package dune) (source_tree test-cases/github717-odoc-index))
- (action
-  (chdir
-   test-cases/github717-odoc-index
-   (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
-
-(rule
  (alias github734)
  (deps (package dune) (source_tree test-cases/github734))
  (action
@@ -1297,9 +1287,7 @@
  (action
   (chdir
    test-cases/multiple-private-libs
-   (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias multiple-targets)
@@ -1374,31 +1362,41 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias odoc)
- (deps (package dune) (source_tree test-cases/odoc))
+ (alias odoc-github717-odoc-index)
+ (deps (package dune) (source_tree test-cases/odoc/github717-odoc-index))
  (action
   (chdir
-   test-cases/odoc
+   test-cases/odoc/github717-odoc-index
    (progn
     (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
     (diff? run.t run.t.corrected)))))
 
 (rule
- (alias odoc-package-mld-link)
- (deps (package dune) (source_tree test-cases/odoc-package-mld-link))
+ (alias odoc-odoc-package-mld-link)
+ (deps (package dune) (source_tree test-cases/odoc/odoc-package-mld-link))
  (action
   (chdir
-   test-cases/odoc-package-mld-link
+   test-cases/odoc/odoc-package-mld-link
    (progn
     (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
     (diff? run.t run.t.corrected)))))
 
 (rule
- (alias odoc-unique-mlds)
- (deps (package dune) (source_tree test-cases/odoc-unique-mlds))
+ (alias odoc-odoc-simple)
+ (deps (package dune) (source_tree test-cases/odoc/odoc-simple))
  (action
   (chdir
-   test-cases/odoc-unique-mlds
+   test-cases/odoc/odoc-simple
+   (progn
+    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
+    (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias odoc-odoc-unique-mlds)
+ (deps (package dune) (source_tree test-cases/odoc/odoc-unique-mlds))
+ (action
+  (chdir
+   test-cases/odoc/odoc-unique-mlds
    (progn
     (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
     (diff? run.t run.t.corrected)))))
@@ -2084,7 +2082,6 @@
   (alias github597)
   (alias github644)
   (alias github660)
-  (alias github717-odoc-index)
   (alias github734)
   (alias github759)
   (alias github761)
@@ -2133,9 +2130,10 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias odig-files-workspace)
-  (alias odoc)
-  (alias odoc-package-mld-link)
-  (alias odoc-unique-mlds)
+  (alias odoc-github717-odoc-index)
+  (alias odoc-odoc-package-mld-link)
+  (alias odoc-odoc-simple)
+  (alias odoc-odoc-unique-mlds)
   (alias old-dune-subsystem)
   (alias optional)
   (alias optional-executable)
@@ -2347,6 +2345,7 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
+  (alias multiple-private-libs)
   (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)

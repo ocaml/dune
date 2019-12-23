@@ -167,12 +167,15 @@ end
 
 let exclusions =
   let make = Test.make_run_t in
-  let odoc = make ~external_deps:true ~skip_ocaml:"4.02.3" in
+  let odoc name =
+    let name = Filename.concat "odoc" name in
+    make ~external_deps:true ~skip_ocaml:"4.02.3" name
+  in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
-  ; odoc "odoc"
+  ; odoc "odoc-simple"
   ; odoc "odoc-package-mld-link"
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"

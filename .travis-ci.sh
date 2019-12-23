@@ -17,7 +17,8 @@ opam_install_test_deps () {
          ppx_expect \
          "$ODOC" \
          menhir \
-         ocaml-migrate-parsetree
+         ocaml-migrate-parsetree \
+         utop.2.4.2
          # js_of_ocaml-ppx \
          # js_of_ocaml-compiler \
          # coq

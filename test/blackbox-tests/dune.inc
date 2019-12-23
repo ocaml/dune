@@ -1294,14 +1294,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias multiple-private-libs)
- (deps (package dune) (source_tree test-cases/multiple-private-libs))
- (action
-  (chdir
-   test-cases/multiple-private-libs
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias multiple-targets)
  (deps (package dune) (source_tree test-cases/multiple-targets))
  (action
@@ -1379,6 +1371,16 @@
  (action
   (chdir
    test-cases/odoc/github717-odoc-index
+   (progn
+    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
+    (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias odoc-multiple-private-libs)
+ (deps (package dune) (source_tree test-cases/odoc/multiple-private-libs))
+ (action
+  (chdir
+   test-cases/odoc/multiple-private-libs
    (progn
     (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
     (diff? run.t run.t.corrected)))))
@@ -2140,7 +2142,6 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
-  (alias multiple-private-libs)
   (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)
@@ -2151,6 +2152,7 @@
   (alias ocamldep-multi-stanzas)
   (alias odig-files-workspace)
   (alias odoc-github717-odoc-index)
+  (alias odoc-multiple-private-libs)
   (alias odoc-odoc-package-mld-link)
   (alias odoc-odoc-simple)
   (alias odoc-odoc-unique-mlds)
@@ -2368,7 +2370,6 @@
   (alias misc)
   (alias missing-loc-run)
   (alias multi-dir)
-  (alias multiple-private-libs)
   (alias multiple-targets)
   (alias name-field-validation)
   (alias no-installable-mode)

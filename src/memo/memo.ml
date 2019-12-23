@@ -800,6 +800,7 @@ end
 
 module Run = struct
   module Fdecl = struct
+    (* [Lazy.t] is the simplest way to create a node in the memoization dag. *)
     type nonrec 'a t = 'a Fdecl.t Lazy.t
 
     let create to_dyn =

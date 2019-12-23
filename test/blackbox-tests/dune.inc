@@ -455,87 +455,83 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env)
- (deps (package dune) (source_tree test-cases/env))
+ (alias env-env-and-flags-include)
+ (deps (package dune) (source_tree test-cases/env/env-and-flags-include))
  (action
   (chdir
-   test-cases/env
-   (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
-
-(rule
- (alias env-and-flags-include)
- (deps (package dune) (source_tree test-cases/env-and-flags-include))
- (action
-  (chdir
-   test-cases/env-and-flags-include
+   test-cases/env/env-and-flags-include
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-bin-pform)
- (deps (package dune) (source_tree test-cases/env-bin-pform))
+ (alias env-env-bin-pform)
+ (deps (package dune) (source_tree test-cases/env/env-bin-pform))
  (action
   (chdir
-   test-cases/env-bin-pform
+   test-cases/env/env-bin-pform
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-bins)
- (deps (package dune) (source_tree test-cases/env-bins) (sandbox none))
+ (alias env-env-bins)
+ (deps (package dune) (source_tree test-cases/env/env-bins))
  (action
   (chdir
-   test-cases/env-bins
+   test-cases/env/env-bins
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-cflags)
- (deps (package dune) (source_tree test-cases/env-cflags))
+ (alias env-env-cflags)
+ (deps (package dune) (source_tree test-cases/env/env-cflags))
  (action
   (chdir
-   test-cases/env-cflags
-   (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
-
-(rule
- (alias env-dune-file)
- (deps (package dune) (source_tree test-cases/env-dune-file))
- (action
-  (chdir
-   test-cases/env-dune-file
+   test-cases/env/env-cflags
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-tracking)
- (deps (package dune) (source_tree test-cases/env-tracking))
+ (alias env-env-dune-file)
+ (deps (package dune) (source_tree test-cases/env/env-dune-file))
  (action
   (chdir
-   test-cases/env-tracking
+   test-cases/env/env-dune-file
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-var-expansion)
- (deps (package dune) (source_tree test-cases/env-var-expansion))
+ (alias env-env-simple)
+ (deps (package dune) (source_tree test-cases/env/env-simple))
  (action
   (chdir
-   test-cases/env-var-expansion
+   test-cases/env/env-simple
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias env-variables)
- (deps (package dune) (source_tree test-cases/env-variables))
+ (alias env-env-tracking)
+ (deps (package dune) (source_tree test-cases/env/env-tracking))
  (action
   (chdir
-   test-cases/env-variables
+   test-cases/env/env-tracking
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias envs-and-contexts)
- (deps (package dune) (source_tree test-cases/envs-and-contexts))
+ (alias env-env-var-expansion)
+ (deps (package dune) (source_tree test-cases/env/env-var-expansion))
  (action
   (chdir
-   test-cases/envs-and-contexts
+   test-cases/env/env-var-expansion
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias env-env-variables)
+ (deps (package dune) (source_tree test-cases/env/env-variables))
+ (action
+  (chdir
+   test-cases/env/env-variables
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias env-envs-and-contexts)
+ (deps (package dune) (source_tree test-cases/env/envs-and-contexts))
+ (action
+  (chdir
+   test-cases/env/envs-and-contexts
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2025,15 +2021,16 @@
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
-  (alias env)
-  (alias env-and-flags-include)
-  (alias env-bin-pform)
-  (alias env-bins)
-  (alias env-cflags)
-  (alias env-dune-file)
-  (alias env-tracking)
-  (alias env-var-expansion)
-  (alias env-variables)
+  (alias env-env-and-flags-include)
+  (alias env-env-bin-pform)
+  (alias env-env-bins)
+  (alias env-env-cflags)
+  (alias env-env-dune-file)
+  (alias env-env-simple)
+  (alias env-env-tracking)
+  (alias env-env-var-expansion)
+  (alias env-env-variables)
+  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2258,15 +2255,16 @@
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
-  (alias env)
-  (alias env-and-flags-include)
-  (alias env-bin-pform)
-  (alias env-bins)
-  (alias env-cflags)
-  (alias env-dune-file)
-  (alias env-tracking)
-  (alias env-var-expansion)
-  (alias env-variables)
+  (alias env-env-and-flags-include)
+  (alias env-env-bin-pform)
+  (alias env-env-bins)
+  (alias env-env-cflags)
+  (alias env-env-dune-file)
+  (alias env-env-simple)
+  (alias env-env-tracking)
+  (alias env-env-var-expansion)
+  (alias env-env-variables)
+  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2417,7 +2415,6 @@
  (name runtest-disabled)
  (deps
   (alias cinaps)
-  (alias envs-and-contexts)
   (alias fdo)
   (alias utop)
   (alias utop-default)

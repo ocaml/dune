@@ -1901,30 +1901,31 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias vlib)
+ (alias virtual-libraries-vlib)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/vlib))
+ (action
+  (chdir
+   test-cases/virtual-libraries/vlib
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-vlib-default-impl)
  (deps
   (package dune)
-  (source_tree test-cases/vlib)
-  (package dune-configurator))
+  (source_tree test-cases/virtual-libraries/vlib-default-impl))
  (action
   (chdir
-   test-cases/vlib
+   test-cases/virtual-libraries/vlib-default-impl
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias vlib-default-impl)
- (deps (package dune) (source_tree test-cases/vlib-default-impl))
+ (alias virtual-libraries-vlib-wrong-default-impl)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/vlib-wrong-default-impl))
  (action
   (chdir
-   test-cases/vlib-default-impl
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias vlib-wrong-default-impl)
- (deps (package dune) (source_tree test-cases/vlib-wrong-default-impl))
- (action
-  (chdir
-   test-cases/vlib-wrong-default-impl
+   test-cases/virtual-libraries/vlib-wrong-default-impl
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2213,9 +2214,9 @@
   (alias variants-variants-rogue-impl)
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
-  (alias vlib)
-  (alias vlib-default-impl)
-  (alias vlib-wrong-default-impl)
+  (alias virtual-libraries-vlib)
+  (alias virtual-libraries-vlib-default-impl)
+  (alias virtual-libraries-vlib-wrong-default-impl)
   (alias windows-diff)
   (alias with-exit-codes)
   (alias with-stdin-from)
@@ -2426,9 +2427,9 @@
   (alias variants-variants-rogue-impl)
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
-  (alias vlib)
-  (alias vlib-default-impl)
-  (alias vlib-wrong-default-impl)
+  (alias virtual-libraries-vlib)
+  (alias virtual-libraries-vlib-default-impl)
+  (alias virtual-libraries-vlib-wrong-default-impl)
   (alias windows-diff)
   (alias with-exit-codes)
   (alias with-stdin-from)

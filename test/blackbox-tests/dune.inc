@@ -23,14 +23,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias allow_approximate_merlin)
- (deps (package dune) (source_tree test-cases/allow_approximate_merlin))
- (action
-  (chdir
-   test-cases/allow_approximate_merlin
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias bad-alias-error)
  (deps (package dune) (source_tree test-cases/bad-alias-error))
  (action
@@ -1250,11 +1242,21 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias merlin-tests)
- (deps (package dune) (source_tree test-cases/merlin-tests))
+ (alias merlin-allow_approximate_merlin)
+ (deps
+  (package dune)
+  (source_tree test-cases/merlin/allow_approximate_merlin))
  (action
   (chdir
-   test-cases/merlin-tests
+   test-cases/merlin/allow_approximate_merlin
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias merlin-merlin-tests)
+ (deps (package dune) (source_tree test-cases/merlin/merlin-tests))
+ (action
+  (chdir
+   test-cases/merlin/merlin-tests
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1969,7 +1971,6 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
-  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -2116,7 +2117,8 @@
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
-  (alias merlin-tests)
+  (alias merlin-allow_approximate_merlin)
+  (alias merlin-merlin-tests)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -2205,7 +2207,6 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
-  (alias allow_approximate_merlin)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -2340,6 +2341,8 @@
   (alias link-deps)
   (alias loop)
   (alias macro-expand-error)
+  (alias merlin-allow_approximate_merlin)
+  (alias merlin-merlin-tests)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)

@@ -1819,14 +1819,6 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variant-dep-stack)
- (deps (package dune) (source_tree test-cases/variant-dep-stack))
- (action
-  (chdir
-   test-cases/variant-dep-stack
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias variants)
  (deps (package dune) (source_tree test-cases/variants))
  (action
@@ -1835,55 +1827,67 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variants-external-declaration)
- (deps (package dune) (source_tree test-cases/variants-external-declaration))
+ (alias variants-variant-dep-stack)
+ (deps (package dune) (source_tree test-cases/variants/variant-dep-stack))
  (action
   (chdir
-   test-cases/variants-external-declaration
+   test-cases/variants/variant-dep-stack
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variants-external-declaration-conflict)
+ (alias variants-variants-external-declaration)
  (deps
   (package dune)
-  (source_tree test-cases/variants-external-declaration-conflict))
+  (source_tree test-cases/variants/variants-external-declaration))
  (action
   (chdir
-   test-cases/variants-external-declaration-conflict
+   test-cases/variants/variants-external-declaration
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variants-multi-project)
- (deps (package dune) (source_tree test-cases/variants-multi-project))
- (action
-  (chdir
-   test-cases/variants-multi-project
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-only-package)
- (deps (package dune) (source_tree test-cases/variants-only-package))
- (action
-  (chdir
-   test-cases/variants-only-package
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-rogue-impl)
- (deps (package dune) (source_tree test-cases/variants-rogue-impl))
- (action
-  (chdir
-   test-cases/variants-rogue-impl
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-wrong-external-declaration)
+ (alias variants-variants-external-declaration-conflict)
  (deps
   (package dune)
-  (source_tree test-cases/variants-wrong-external-declaration))
+  (source_tree test-cases/variants/variants-external-declaration-conflict))
  (action
   (chdir
-   test-cases/variants-wrong-external-declaration
+   test-cases/variants/variants-external-declaration-conflict
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias variants-variants-multi-project)
+ (deps
+  (package dune)
+  (source_tree test-cases/variants/variants-multi-project))
+ (action
+  (chdir
+   test-cases/variants/variants-multi-project
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias variants-variants-only-package)
+ (deps (package dune) (source_tree test-cases/variants/variants-only-package))
+ (action
+  (chdir
+   test-cases/variants/variants-only-package
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias variants-variants-rogue-impl)
+ (deps (package dune) (source_tree test-cases/variants/variants-rogue-impl))
+ (action
+  (chdir
+   test-cases/variants/variants-rogue-impl
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias variants-variants-wrong-external-declaration)
+ (deps
+  (package dune)
+  (source_tree test-cases/variants/variants-wrong-external-declaration))
+ (action
+  (chdir
+   test-cases/variants/variants-wrong-external-declaration
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2198,14 +2202,14 @@
   (alias utop-utop-default-implementation)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
-  (alias variant-dep-stack)
   (alias variants)
-  (alias variants-external-declaration)
-  (alias variants-external-declaration-conflict)
-  (alias variants-multi-project)
-  (alias variants-only-package)
-  (alias variants-rogue-impl)
-  (alias variants-wrong-external-declaration)
+  (alias variants-variant-dep-stack)
+  (alias variants-variants-external-declaration)
+  (alias variants-variants-external-declaration-conflict)
+  (alias variants-variants-multi-project)
+  (alias variants-variants-only-package)
+  (alias variants-variants-rogue-impl)
+  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)
@@ -2412,14 +2416,14 @@
   (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
-  (alias variant-dep-stack)
   (alias variants)
-  (alias variants-external-declaration)
-  (alias variants-external-declaration-conflict)
-  (alias variants-multi-project)
-  (alias variants-only-package)
-  (alias variants-rogue-impl)
-  (alias variants-wrong-external-declaration)
+  (alias variants-variant-dep-stack)
+  (alias variants-variants-external-declaration)
+  (alias variants-variants-external-declaration-conflict)
+  (alias variants-variants-multi-project)
+  (alias variants-variants-only-package)
+  (alias variants-variants-rogue-impl)
+  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vlib)
   (alias vlib-default-impl)

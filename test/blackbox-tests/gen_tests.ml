@@ -171,6 +171,10 @@ let exclusions =
     let name = Filename.concat "odoc" name in
     make ~external_deps:true ~skip_ocaml:"4.02.3" name
   in
+  let utop name =
+    let name = Filename.concat "utop" name in
+    make ~external_deps:true ~skip_ocaml:"<4.05.0" name
+  in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
@@ -199,10 +203,9 @@ let exclusions =
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
   ; make "menhir" ~external_deps:true
-  ; make "utop" ~external_deps:true ~enabled:false
-  ; make "utop-default" ~external_deps:true ~skip_ocaml:"<4.05.0" ~enabled:false
-  ; make "utop-default-implementation" ~enabled:false ~external_deps:true
-      ~skip_ocaml:"<4.05.0"
+  ; utop "utop-simple"
+  ; utop "utop-default"
+  ; utop "utop-default-implementation"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
   ; make "configurator" ~skip_platforms:[ Win ]
   ; make "github764" ~skip_platforms:[ Win ]

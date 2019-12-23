@@ -1779,29 +1779,33 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias utop)
- (deps (package dune) (source_tree test-cases/utop))
+ (alias utop-utop-default)
+ (deps (package dune) (source_tree test-cases/utop/utop-default))
  (action
   (chdir
-   test-cases/utop
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias utop-default)
- (deps (package dune) (source_tree test-cases/utop-default))
- (action
-  (chdir
-   test-cases/utop-default
+   test-cases/utop/utop-default
    (progn
     (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
     (diff? run.t run.t.corrected)))))
 
 (rule
- (alias utop-default-implementation)
- (deps (package dune) (source_tree test-cases/utop-default-implementation))
+ (alias utop-utop-default-implementation)
+ (deps
+  (package dune)
+  (source_tree test-cases/utop/utop-default-implementation))
  (action
   (chdir
-   test-cases/utop-default-implementation
+   test-cases/utop/utop-default-implementation
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias utop-utop-simple)
+ (deps (package dune) (source_tree test-cases/utop/utop-simple))
+ (action
+  (chdir
+   test-cases/utop/utop-simple
    (progn
     (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
     (diff? run.t run.t.corrected)))))
@@ -2190,6 +2194,9 @@
   (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias use-meta)
+  (alias utop-utop-default)
+  (alias utop-utop-default-implementation)
+  (alias utop-utop-simple)
   (alias variables-for-artifacts)
   (alias variant-dep-stack)
   (alias variants)
@@ -2425,14 +2432,7 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias
- (name runtest-disabled)
- (deps
-  (alias cinaps)
-  (alias fdo)
-  (alias utop)
-  (alias utop-default)
-  (alias utop-default-implementation)))
+(alias (name runtest-disabled) (deps (alias cinaps) (alias fdo)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

@@ -199,8 +199,7 @@ module M = struct
       { spec : ('a, 'b, 'f) Spec.t
       ; input : 'a
       ; id : Id.t
-      ; (* CR-soon amokhov: Simplify to [dag_node : Dag.node]. *)
-        mutable dag_node : Dag.node Lazy.t
+      ; dag_node : Dag.node
       ; mutable state : 'b State.t
       }
 
@@ -349,7 +348,7 @@ let ser_input (type a) (node : (a, _, _) Dep_node.t) =
   let (module Input : Store_intf.Input with type t = a) = node.spec.input in
   Input.to_dyn node.input
 
-let dag_node (dep_node : _ Dep_node.t) = Lazy.force dep_node.dag_node
+let dag_node (dep_node : _ Dep_node.t) = dep_node.dag_node
 
 module Stack_frame0 = struct
   open Dep_node
@@ -506,13 +505,11 @@ let create_hidden (type output) name ?doc ~input typ impl =
 
 module Exec = struct
   let make_dep_node ~spec ~state ~input =
-    let dep_node : _ Dep_node.t =
-      { id = Id.gen (); input; spec; dag_node = lazy (assert false); state }
-    in
-    let dag_node : Dag.node =
+    let rec dep_node : _ Dep_node.t =
+      { id = Id.gen (); input; spec; dag_node; state }
+    and dag_node : Dag.node =
       { info = Dag.create_node_info global_dep_dag; data = Dep_node.T dep_node }
     in
-    dep_node.dag_node <- lazy dag_node;
     dep_node
 end
 

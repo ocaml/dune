@@ -283,6 +283,7 @@ end = struct
 
   let t = Fdecl.create to_dyn
 
+  (* CR-soon amokhov: Move this to [Fdecl.set_idempotent] and drop [Fdecl.peek]. *)
   let set x =
     match Fdecl.peek t with
     | None -> Fdecl.set t x

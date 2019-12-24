@@ -348,8 +348,6 @@ let ser_input (type a) (node : (a, _, _) Dep_node.t) =
   let (module Input : Store_intf.Input with type t = a) = node.spec.input in
   Input.to_dyn node.input
 
-let dag_node (dep_node : _ Dep_node.t) = dep_node.dag_node
-
 module Stack_frame0 = struct
   open Dep_node
 
@@ -429,7 +427,7 @@ let add_rev_dep dep_node =
   | None -> ()
   | Some (Dep_node.T rev_dep) -> (
     (* if the caller doesn't already contain this as a dependent *)
-    let rev_dep = dag_node rev_dep in
+    let rev_dep = rev_dep.dag_node in
     try
       if Dag.is_child rev_dep dep_node |> not then
         Dag.add global_dep_dag rev_dep dep_node
@@ -443,8 +441,8 @@ let add_rev_dep dep_node =
 (* CR-soon amokhov: The order of dependencies in the resulting list seems to be
    wrong: [Dag.children] returns children in the reverse order compared to the
    order in which they were added. See the comment for [deps : Last_dep.t list]. *)
-let get_deps_from_graph_exn dep_node =
-  Dag.children (dag_node dep_node)
+let get_deps_from_graph_exn (dep_node : _ Dep_node.t) =
+  Dag.children dep_node.dag_node
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
          match node.state with
          | Init
@@ -577,8 +575,8 @@ module Exec_sync = struct
     dep_node.state <- Running_sync run;
     compute run inp dep_node
 
-  let exec_dep_node dep_node inp =
-    add_rev_dep (dag_node dep_node);
+  let exec_dep_node (dep_node : _ Dep_node.t) inp =
+    add_rev_dep dep_node.dag_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -632,8 +630,8 @@ module Exec_async = struct
     dep_node.state <- Running_async (Run.current (), ivar);
     compute inp ivar dep_node
 
-  let exec_dep_node dep_node inp =
-    add_rev_dep (dag_node dep_node);
+  let exec_dep_node (dep_node : _ Dep_node.t) inp =
+    add_rev_dep dep_node.dag_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -668,7 +666,7 @@ let peek t inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
-    add_rev_dep (dag_node dep_node);
+    add_rev_dep dep_node.dag_node;
     match dep_node.state with
     | Init
     | Running_sync _ ->

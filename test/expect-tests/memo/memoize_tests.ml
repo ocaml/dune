@@ -326,7 +326,7 @@ let%expect_test _ =
 Some [ ("lazy-0", ()); ("lazy_memo", "foo") ])
 |}]
 
-(* Tests for depending on the current run*)
+(* Tests for depending on the current run *)
 
 let depends_on_run =
   Memo.create "foobar" ~doc:"foo123"

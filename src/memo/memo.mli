@@ -45,8 +45,9 @@ module Cycle_error : sig
   val stack : t -> Stack_frame.t list
 end
 
-(** Restart the system. Cached values with a [Current_run] lifetime are
-    forgotten, pending computations are cancelled. *)
+(** Notify the memoization system that the build system has restarted. This
+    removes the values that depend on the [current_run] from the memoization
+    cache, and cancels all pending computations. *)
 val reset : unit -> unit
 
 module Function : sig
@@ -202,21 +203,22 @@ val get_call_stack : unit -> Stack_frame.t list
 val call : string -> Dune_lang.Ast.t -> Dyn.t Fiber.t
 
 module Run : sig
-  (** A single build run *)
+  (** A single build run. *)
   type t
 
-  (** A forward declaration that is reset after every run*)
+  (** A forward declaration that is reset after every run. *)
   module Fdecl : sig
     type 'a t
 
-    (** [create ()] creates a forward declaration. *)
+    (** [create to_dyn] creates a forward declaration. The [to_dyn] parameter is
+        used for reporting errors in [set] and [get]. *)
     val create : ('a -> Dyn.t) -> 'a t
 
-    (** [set t x] set's the value that is returned by [get t] to [x]. Raise if
-        [set] was already called *)
+    (** [set t x] sets the value that is returned by [get t] to [x]. Raises if
+        [set] was already called. *)
     val set : 'a t -> 'a -> unit
 
-    (** [get t] returns the [x] if [set comp x] was called. Raise if [set] has
+    (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
         not been called yet. *)
     val get : 'a t -> 'a
 
@@ -224,7 +226,7 @@ module Run : sig
   end
 end
 
-(** Introduces a dependency on the current build run *)
+(** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t
 
 (** Return the list of registered functions *)

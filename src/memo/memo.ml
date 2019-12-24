@@ -150,9 +150,31 @@ module M = struct
   module rec Cached_value : sig
     type 'a t =
       { data : 'a
-      ; (* When was the value computed *)
+      ; (* When was the value calculated. *)
         mutable calculated_at : Run.t
-      ; deps : Last_dep.t list
+      ; (* The values stored in [deps] must have been calculated at
+           [calculated_at] too.
+
+           Note that [deps] should ideally be listed in the order in which they
+           were depended on to avoid recomputations of the dependencies that are
+           no longer relevant (see an example below). [Async] functions induce a
+           partial (rather than a total) order on dependencies, and so [deps]
+           should ideally be a linearisation of this partial order. It is also
+           worth noting that the problem only occurs with dynamic dependencies,
+           because static dependencies can never become irrelevant.
+
+           As an example, consider the function [let f x = let y = g x in h y].
+           The correct order of dependencies of [f 0] is [g 0] and then [h y1],
+           where [y1] is the result of computing [g 0] in the first build run.
+           Now consider the situation where (i) [h y1] is incorrectly listed
+           first in [deps], and (ii) both [g] and [h] have changed in the second
+           build run (e.g. because they read modified files). To determine that
+           [f] needs to be recomputed, we start by recomputing [h y1], which is
+           likely to be a waste because now we are really interested in [h y2],
+           where [y2] is the result of computing [g 0] in the second run. Had we
+           listed [g 0] first, we would recompute it and the work wouldn't be
+           wasted since [f 0] does depend on it. *)
+        deps : Last_dep.t list
       }
   end =
     Cached_value
@@ -177,7 +199,8 @@ module M = struct
       { spec : ('a, 'b, 'f) Spec.t
       ; input : 'a
       ; id : Id.t
-      ; mutable dag_node : Dag.node Lazy.t
+      ; (* CR-soon amokhov: Simplify to [dag_node : Dag.node]. *)
+        mutable dag_node : Dag.node Lazy.t
       ; mutable state : 'b State.t
       }
 
@@ -185,6 +208,7 @@ module M = struct
   end =
     Dep_node
 
+  (* We store the last value ['b] we depended on to support early cutoff. *)
   and Last_dep : sig
     type t = T : ('a, 'b, 'f) Dep_node.t * 'b -> t
   end =
@@ -212,6 +236,7 @@ module Cached_value = struct
     | Yes equal -> not (equal prev_output curr_output)
     | No -> true
 
+  (* Check if a cached value is up to date. If yes, return it. *)
   let rec get_sync : type a. a t -> a option =
    fun t ->
     if Run.is_current t.calculated_at then
@@ -228,16 +253,19 @@ module Cached_value = struct
               true
           | Running_sync run ->
             if Run.is_current run then
-              Code_error.raise "dependency_cycle 1" []
+              Code_error.raise
+                "Unreported dependency cycle in [Cached_value.get_sync] (this \
+                 case should be unreachable)."
+                []
             else
               true
           | Running_async _ ->
             Code_error.raise
-              "Synchronous function depends on an asynchronous one. That is \
-               not allowed. (in fact this case should be unreachable)"
+              "Synchronous function depends on an asynchronous one. This is \
+               not allowed (in fact this case should be unreachable)."
               []
           | Done t' -> (
-            get_sync t' |> function
+            match get_sync t' with
             | None -> true
             | Some curr_output -> dep_changed node prev_output curr_output ) )
       in
@@ -247,14 +275,28 @@ module Cached_value = struct
         t.calculated_at <- Run.current ();
         Some t.data
 
-  (* Check if a cached value is up to date. If yes, return it *)
+  (* Check if a cached value is up to date. If yes, return it. *)
   let rec get_async : type a. a t -> a option Fiber.t =
    fun t ->
     if Run.is_current t.calculated_at then
       Fiber.return (Some t.data)
     else
       let rec deps_changed acc = function
-        | [] -> Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
+        | [] ->
+          (* Here is an interesting trade-off!
+
+             Currently we run all jobs in [acc] in parallel, via [parallel_map],
+             which may be wasteful in the case of dynamic dependencies -- see
+             the comment in [deps : Last_dep.t list].
+
+             A simple alternative is to run all jobs in sequence, respecting the
+             dependency order. This never wastes any work but is slow.
+
+             Finally, we could implement a speculative computation primitive
+             [parallel_or] that would run all jobs in parallel and terminate as
+             soon as any of them evaluates to [true]. This is somewhere in
+             between the above alternatives but is more complex. *)
+          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
           | Init -> Fiber.return true
@@ -379,6 +421,10 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
+(* Add a dependency on [dep_node] from the caller, if there is one.
+
+   CR-someday amokhov: In principle, it's best to always have a caller, perhaps
+   a dummy one, to catch potential errors that result in the empty stack. *)
 let add_rev_dep dep_node =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
@@ -395,15 +441,18 @@ let add_rev_dep dep_node =
            ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
            }) )
 
+(* CR-soon amokhov: The order of dependencies in the resulting list seems to be
+   wrong: [Dag.children] returns children in the reverse order compared to the
+   order in which they were added. See the comment for [deps : Last_dep.t list]. *)
 let get_deps_from_graph_exn dep_node =
   Dag.children (dag_node dep_node)
   |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
          match node.state with
          | Init
-         | Failed _ ->
+         | Failed _
+         | Running_sync _
+         | Running_async _ ->
            assert false
-         | Running_sync _ -> assert false
-         | Running_async _ -> assert false
          | Done res -> Last_dep.T (node, res.data))
 
 type ('input, 'output, 'f) t =
@@ -550,9 +599,10 @@ module Exec_sync = struct
           ; ("adding", Stack_frame.to_dyn (T dep_node))
           ]
       else
+        (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
         recompute inp dep_node
     | Done cv -> (
-      Cached_value.get_sync cv |> function
+      match Cached_value.get_sync cv with
       | Some v -> v
       | None -> recompute inp dep_node )
 
@@ -595,10 +645,14 @@ module Exec_async = struct
       else
         recompute inp dep_node
     | Running_sync _ -> assert false
-    | Running_async (run, fut) ->
+    | Running_async (run, ivar) ->
       if Run.is_current run then
-        Fiber.Ivar.read fut
+        Fiber.Ivar.read ivar
       else
+        (* In this case we know that: (i) the [ivar] will never be filled
+           because the computation was cancelled in the previous run, and
+           furthermore (ii) even if [ivar] was still running, we couldn't use
+           its result because it would have been out of date. *)
         recompute inp dep_node
     | Done cv -> (
       Cached_value.get_async cv >>= function
@@ -800,6 +854,7 @@ end
 
 module Run = struct
   module Fdecl = struct
+    (* [Lazy.t] is the simplest way to create a node in the memoization dag. *)
     type nonrec 'a t = 'a Fdecl.t Lazy.t
 
     let create to_dyn =
@@ -811,6 +866,7 @@ module Run = struct
 
     let get t = Fdecl.get (Lazy.force t)
 
+    (* CR-soon amokhov: Remove this unused function. *)
     let peek t = Fdecl.peek (Lazy.force t)
   end
 

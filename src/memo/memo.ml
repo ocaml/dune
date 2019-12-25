@@ -860,9 +860,6 @@ module Run = struct
     let set t x = Fdecl.set (Lazy.force t) x
 
     let get t = Fdecl.get (Lazy.force t)
-
-    (* CR-soon amokhov: Remove this unused function. *)
-    let peek t = Fdecl.peek (Lazy.force t)
   end
 
   include Run

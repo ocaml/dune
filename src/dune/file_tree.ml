@@ -283,14 +283,7 @@ end = struct
 
   let t = Fdecl.create to_dyn
 
-  (* CR-soon amokhov: Move this to [Fdecl.set_idempotent] and drop [Fdecl.peek]. *)
-  let set x =
-    match Fdecl.peek t with
-    | None -> Fdecl.set t x
-    | Some x' ->
-      if not (equal x x') then
-        (* The next call will fail, but will give a good error message *)
-        Fdecl.set t x
+  let set x = Fdecl.set_idempotent ~equal t x
 
   let get () =
     let (_ : Memo.Run.t) = Memo.current_run () in

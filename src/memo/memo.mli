@@ -221,8 +221,6 @@ module Run : sig
     (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
         not been called yet. *)
     val get : 'a t -> 'a
-
-    val peek : 'a t -> 'a option
   end
 end
 

@@ -175,33 +175,38 @@ end
 module Alias0 = struct
   include Alias
 
-  let dep t = Build.path (Path.build (stamp_file t))
+  let dep t = Path.build (stamp_file t)
 
   let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (find_dir_specified_on_command_line ~dir);
-    let context_to_stamp_file ctx =
-      let ctx_dir = Context_name.build_dir ctx in
-      let dir = Path.Build.(append_source ctx_dir dir) in
-      Path.build (stamp_file (make ~dir name))
-    in
-    Build.paths (List.map contexts ~f:context_to_stamp_file)
-
-  open Build.O
+    ignore (find_dir_specified_on_command_line ~dir : File_tree.Dir.t);
+    List.map contexts ~f:(fun ctx ->
+        let ctx_dir = Context_name.build_dir ctx in
+        let dir = Path.Build.(append_source ctx_dir dir) in
+        dep (make ~dir name))
 
   let dep_rec_internal ~name ~dir ~ctx_dir =
-    let f dir acc =
-      let path = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
-      let fn = stamp_file (make ~dir:path name) in
-      let fn = Path.build fn in
-      Build.map2 ~f:( && ) acc
-        (Build.if_file_exists fn
-           ~then_:(Build.path fn >>> Build.return false)
-           ~else_:(Build.return true))
-    in
-    Build.lazy_no_targets
-      ( lazy
-        (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-           ~init:(Build.return true) ~f) )
+    File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only ~init:[]
+      ~f:(fun dir acc ->
+        let dir = Path.Build.append_source ctx_dir (File_tree.Dir.path dir) in
+        dep (make ~dir name) :: acc)
+
+  let check_empty_alias ~deps ~loc ~name ~src_dir =
+    if List.is_empty deps && not (is_standard name) then
+      User_error.raise ~loc
+        [ Pp.text "This alias is empty."
+        ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
+            (Alias.Name.to_string name)
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ]
+
+  let check_empty_alias_cmd ~deps ~name ~src_dir =
+    if List.is_empty deps && not (is_standard name) then
+      User_error.raise
+        [ Pp.textf "Alias %S specified on the command line is empty."
+            (Alias.Name.to_string name)
+        ; Pp.textf "It is not defined in %s or any of its descendants."
+            (Path.Source.to_string_maybe_quoted src_dir)
+        ]
 
   let dep_rec t ~loc =
     let ctx_dir, src_dir =
@@ -209,7 +214,7 @@ module Alias0 = struct
     in
     match File_tree.find_dir src_dir with
     | None ->
-      Build.fail
+      Error
         { fail =
             (fun () ->
               User_error.raise ~loc
@@ -219,32 +224,13 @@ module Alias0 = struct
         }
     | Some dir ->
       let name = Alias.name t in
-      let+ is_empty = dep_rec_internal ~name ~dir ~ctx_dir in
-      if is_empty && not (is_standard name) then
-        User_error.raise ~loc
-          [ Pp.text "This alias is empty."
-          ; Pp.textf "Alias %S is not defined in %s or any of its descendants."
-              (Alias.Name.to_string name)
-              (Path.Source.to_string_maybe_quoted src_dir)
-          ]
+      Ok (dep_rec_internal ~name ~dir ~ctx_dir)
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
-    let open Build.O in
     let dir = find_dir_specified_on_command_line ~dir:src_dir in
-    let+ is_empty_list =
-      Build.all
-        (List.map contexts ~f:(fun ctx ->
-             let ctx_dir = Context_name.build_dir ctx in
-             dep_rec_internal ~name ~dir ~ctx_dir))
-    in
-    let is_empty = List.for_all is_empty_list ~f:Fn.id in
-    if is_empty && not (is_standard name) then
-      User_error.raise
-        [ Pp.textf "Alias %S specified on the command line is empty."
-            (Alias.Name.to_string name)
-        ; Pp.textf "It is not defined in %s or any of its descendants."
-            (Path.Source.to_string_maybe_quoted src_dir)
-        ]
+    List.concat_map contexts ~f:(fun ctx ->
+        let ctx_dir = Context_name.build_dir ctx in
+        dep_rec_internal ~name ~dir ~ctx_dir)
 
   let package_install ~(context : Context.t) ~pkg =
     make
@@ -752,8 +738,10 @@ end = struct
               Alias.Name.Map.set aliases Alias.Name.default
                 { deps = Path.Set.empty
                 ; dyn_deps =
-                    (let+ _ =
-                       Alias0.dep_rec_internal ~name:default_alias ~dir ~ctx_dir
+                    (let+ () =
+                       Build.paths_existing_lazy
+                         (Alias0.dep_rec_internal ~name:default_alias ~dir
+                            ~ctx_dir)
                      in
                      Path.Set.empty)
                 ; actions = Appendable_list.empty
@@ -1153,9 +1141,7 @@ end = struct
   let load_dir =
     let load_dir_impl dir = load_dir_impl (t ()) ~dir in
     let memo =
-      Memo.create_hidden "load-dir" ~doc:"load dir"
-        ~input:(module Path)
-        Sync load_dir_impl
+      Memo.create_hidden "load-dir" ~input:(module Path) Sync load_dir_impl
     in
     fun ~dir -> Memo.exec memo dir
 end
@@ -1326,7 +1312,7 @@ end = struct
 
   (* Same as the function just bellow, but with less opportunity for
      parallelism. We keep this dead code here for documentation purposes as it
-     is easier to read the one bellow. The reader only has to check that both
+     is easier to read the one below. The reader only has to check that both
      function do the same thing. *)
   let _evaluate_rule_and_wait_for_dependencies rule =
     let* action, action_deps = evaluate_rule rule in

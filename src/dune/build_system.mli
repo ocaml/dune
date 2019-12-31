@@ -104,24 +104,24 @@ module Alias : sig
   val package_install : context:Context.t -> pkg:Package.Name.t -> t
 
   (** [dep t = Build.path (stamp_file t)] *)
-  val dep : t -> unit Build.t
+  val dep : t -> Path.t
 
   (** Implements [@@alias] on the command line *)
   val dep_multi_contexts :
        dir:Path.Source.t
     -> name:Alias.Name.t
     -> contexts:Context_name.t list
-    -> unit Build.t
+    -> Path.t list
 
   (** Implements [(alias_rec ...)] in dependency specification *)
-  val dep_rec : t -> loc:Loc.t -> unit Build.t
+  val dep_rec : t -> loc:Loc.t -> (Path.t list, fail) result
 
   (** Implements [@alias] on the command line *)
   val dep_rec_multi_contexts :
        dir:Path.Source.t
     -> name:Alias.Name.t
     -> contexts:Context_name.t list
-    -> unit Build.t
+    -> Path.t list
 end
 
 (** {1 Building} *)

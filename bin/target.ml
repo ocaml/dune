@@ -12,12 +12,11 @@ type resolve_input =
   | Dep of Arg.Dep.t
 
 let request targets =
-  List.fold_left targets ~init:(Build.return ()) ~f:(fun acc target ->
-      let open Build.O in
+  List.fold_left targets ~init:[] ~f:(fun acc target ->
       acc
-      >>>
+      @
       match target with
-      | File path -> Build.path path
+      | File path -> [ path ]
       | Alias { Alias.name; recursive; dir; contexts } ->
         let contexts = List.map ~f:Dune.Context.name contexts in
         ( if recursive then

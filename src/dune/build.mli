@@ -25,10 +25,6 @@ val all : 'a t list -> 'a list t
 
 val all_unit : unit t list -> unit t
 
-(** Optimization to avoiding eagerly computing a [Build.t] value, assume it
-    contains no targets. *)
-val lazy_no_targets : 'a t Lazy.t -> 'a t
-
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 
@@ -57,9 +53,19 @@ val path_set : Path.Set.t -> unit t
     dependencies of the action produced by the build description. *)
 val paths_matching : loc:Loc.t -> File_selector.t -> Path.Set.t t
 
+(* CR amokhov: Do we need both [paths_existing] and [paths_existing_lazy]?
+   Inuitively, we always want to use [paths_existing_lazy] since it can save
+   some unnecessary file-system checks. *)
+
 (** [paths_existing paths] will require as dependencies the files that actually
     exist. *)
 val paths_existing : Path.t list -> unit t
+
+(** Like [path_existing] but lazy. Specifically, it is guaranteed that calling
+    [targets] on the resulting expression does not cause any file-system checks,
+    because we statically know that expressions built with [paths_existing_lazy]
+    do not declare any targets. *)
+val paths_existing_lazy : Path.t list -> unit t
 
 (** [env_var v] records [v] as an environment variable that is read by the
     action produced by the build description. *)

@@ -188,7 +188,7 @@ let private_doc = make_standard (Name.of_string "doc-private")
 
 let lint = make_standard (Name.of_string "lint")
 
-let all = make_standard (Name.of_string "all")
+let all = make_standard Name.all
 
 let check = make_standard (Name.of_string "check")
 

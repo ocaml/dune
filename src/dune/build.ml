@@ -73,8 +73,6 @@ let all_unit xs =
 
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
 
-let lazy_no_targets t = Lazy_no_targets t
-
 let deps d = Deps d
 
 let dep d = Deps (Dep.Set.singleton d)
@@ -149,6 +147,8 @@ let paths_existing paths =
   all_unit
     (List.map paths ~f:(fun file ->
          if_file_exists file ~then_:(path file) ~else_:(return ())))
+
+let paths_existing_lazy paths = Lazy_no_targets (lazy (paths_existing paths))
 
 let fail ?targets x =
   match targets with

@@ -23,6 +23,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias all-promotions)
+ (deps (package dune) (source_tree test-cases/all-promotions))
+ (action
+  (chdir
+   test-cases/all-promotions
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias bad-alias-error)
  (deps (package dune) (source_tree test-cases/bad-alias-error))
  (action
@@ -2004,6 +2012,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
@@ -2244,6 +2253,7 @@
   (alias action-modifying-a-dependency)
   (alias aliases)
   (alias all-alias)
+  (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)

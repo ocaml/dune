@@ -1,0 +1,9 @@
+(alias
+ (name runtest)
+ (locks l)
+ (action (diff a.expected a)))
+
+(alias
+ (name runtest)
+ (locks l)
+ (action (diff b.expected b)))

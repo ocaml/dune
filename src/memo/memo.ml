@@ -428,7 +428,8 @@ let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
    CR-someday amokhov: In principle, it's best to always have a caller, perhaps
    a dummy one, to catch potential errors that result in the empty stack. *)
-let add_rev_dep (type i o f) (dep_node : (i, o, f) Dep_node.t) =
+let add_rev_dep (type i o f) ?(called_from_peek = false)
+    (dep_node : (i, o, f) Dep_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
   | Some (Dep_node.T rev_dep) -> (
@@ -438,10 +439,13 @@ let add_rev_dep (type i o f) (dep_node : (i, o, f) Dep_node.t) =
       | Async _, Sync _ -> ()
       | Sync _, Sync _ -> ()
       | Sync _, Async _ ->
-        Code_error.raise
-          "[Memo.add_rev_dep] Synchronous functions are not allowed to depend \
-           on asynchronous ones."
-          []
+        if not called_from_peek then
+          Code_error.raise
+            "[Memo.add_rev_dep ~called_from_peek:false] Synchronous functions \
+             are not allowed to depend on asynchronous ones."
+            [ ("stack", Call_stack.get_call_stack_as_dyn ())
+            ; ("adding", Stack_frame.to_dyn (T dep_node))
+            ]
     in
     let dag_node = dep_node.dag_node in
     let rev_dep = rev_dep.dag_node in
@@ -681,7 +685,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
-    add_rev_dep dep_node;
+    add_rev_dep ~called_from_peek:true dep_node;
     match dep_node.state with
     | Init -> None
     | Running_sync _ -> None

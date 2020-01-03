@@ -208,8 +208,6 @@ module M = struct
     Dep_node
 
   (* We store the last value ['b] we depended on to support early cutoff. *)
-  (* CR-someday amokhov: expose the synchronicity type parameter to make it
-     impossible for a synchronous function to depend on an asynchronous one. *)
   and Last_dep : sig
     type t = T : ('a, 'b, 'f) Dep_node.t * 'b -> t
   end =
@@ -428,8 +426,8 @@ let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
    CR-someday amokhov: In principle, it's best to always have a caller, perhaps
    a dummy one, to catch potential errors that result in the empty stack. *)
-let add_rev_dep (type i o f) ?(called_from_peek = false)
-    (dep_node : (i, o, f) Dep_node.t) =
+let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
+    =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
   | Some (Dep_node.T rev_dep) -> (
@@ -597,7 +595,7 @@ module Exec_sync = struct
     compute run inp dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep dep_node;
+    add_rev_dep ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -651,7 +649,7 @@ module Exec_async = struct
     compute inp ivar dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep dep_node;
+    add_rev_dep ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->

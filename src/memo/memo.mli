@@ -177,8 +177,8 @@ val create_hidden :
 
 (** The call [peek_exn t i] registers a dependency on [t i] and returns its
     value, failing if the value has not yet been computed. We do not expose
-    [peek] because the [None] case will necessarily trigger an internal error in
-    the memoization framework. *)
+    [peek] because the [None] case is hard to reason about, and currently there
+    are no use-cases for it. *)
 val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 
 (** Execute a memoized function *)

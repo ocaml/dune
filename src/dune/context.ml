@@ -746,6 +746,10 @@ module DB = struct
         ~output:(Simple (module T))
         ~visibility:Hidden Sync
         (fun name ->
+          (* CR-someday amokhov: Here we assume that [get] is called after the
+             asynchronously running function [Create.memo] has completed. It
+             would be better to statically guarantee the completion, e.g. by
+             moving this code into a fiber. *)
           let contexts = Memo.peek_exn Create.memo () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in

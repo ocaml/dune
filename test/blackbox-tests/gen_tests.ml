@@ -81,7 +81,7 @@ module Test = struct
       assert (dir = root_dir);
       let rec loop acc = function
         | [] -> List.rev acc
-        | [x] ->
+        | [ x ] ->
           let acc =
             if x = "run.t" then
               acc
@@ -113,11 +113,10 @@ module Test = struct
     ; additional_deps
     }
 
-  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled
-        ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
-        path =
-    make ?env ?skip_ocaml ?skip_platforms ?enabled
-      ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
+  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq
+      ?external_deps ?disable_sandboxing ?additional_deps path =
+    make ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
+      ?disable_sandboxing ?additional_deps
       (Filename.concat root_dir (Filename.concat path "run.t"))
 
   let pp_sexp fmt t =
@@ -139,8 +138,8 @@ module Test = struct
             ; Dune_lang.List
                 ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
                 @ List.map ~f:Dune_lang.atom_or_quoted_string
-                    (skip_version @ [ "-test"; filename]) )
-            ; Sexp.strings [ "diff?"; filename ; filename ^ ".corrected" ]
+                    (skip_version @ [ "-test"; filename ]) )
+            ; Sexp.strings [ "diff?"; filename; filename ^ ".corrected" ]
             ]
         ]
     in
@@ -232,37 +231,36 @@ let fold_find path ~init ~f =
   let rec dir path acc =
     Sys.readdir path
     |> Array.fold_left ~init:acc ~f:(fun acc file ->
-      let path = Filename.concat path file in
-      if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK
-      then
-        dir path acc
-      else
-        f acc path)
+           let path = Filename.concat path file in
+           if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK then
+             dir path acc
+           else
+             f acc path)
   in
   dir path init
 
 let all_tests =
   lazy
     ( fold_find Test.root_dir ~init:[] ~f:(fun acc p ->
-        if Filename.extension p = ".t" then
-          p :: acc
-        else
-          acc)
-      |> List.map ~f:(fun path ->
-        match
-          List.find exclusions ~f:(fun (t : Test.t) -> t.path = path)
-        with
-        | None -> Test.make path
-        | Some t -> t)
-      |> List.sort ~compare:(fun t1 t2 ->
-        String.compare (Test.alias_name t1) (Test.alias_name t2)))
+          if Filename.extension p = ".t" then
+            p :: acc
+          else
+            acc)
+    |> List.map ~f:(fun path ->
+           match
+             List.find exclusions ~f:(fun (t : Test.t) -> t.path = path)
+           with
+           | None -> Test.make path
+           | Some t -> t)
+    |> List.sort ~compare:(fun t1 t2 ->
+           String.compare (Test.alias_name t1) (Test.alias_name t2)) )
 
 let pp_group fmt (name, tests) =
   alias name
     ~deps:
       (List.map tests ~f:(fun (t : Test.t) ->
-         let name = Test.alias_name t in
-         Sexp.strings [ "alias"; name ]))
+           let name = Test.alias_name t in
+           Sexp.strings [ "alias"; name ]))
   |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 
 let () =

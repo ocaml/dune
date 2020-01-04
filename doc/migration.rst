@@ -191,7 +191,7 @@ Removed variables
 A named dependency should be used instead of ``${<}``. For instance
 the following jbuild file:
 
-.. code:: scheme
+.. code:: lisp
 
           (alias
            ((name   runtest)
@@ -200,7 +200,7 @@ the following jbuild file:
 
 should be rewritten to the following dune file:
 
-.. code:: scheme
+.. code:: lisp
 
           (rule
            (alias  runtest)

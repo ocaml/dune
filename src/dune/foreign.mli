@@ -93,6 +93,8 @@ module Archive : sig
 
     val stubs : string -> t
 
+    val lib_file_prefix : string
+
     val lib_file : t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t
 
     val dll_file : t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t

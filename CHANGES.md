@@ -1,3 +1,9 @@
+2.1.1 (unreleased)
+------------------
+
+- Guess foreign archives & native archives for libraries defined using the
+  `META` format. (#2994, @rgrinberg, @anmonteiro)
+
 2.1.0 (21/12/2019)
 ------------------
 

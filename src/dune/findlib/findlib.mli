@@ -9,7 +9,11 @@ type t
 val meta_fn : string
 
 val create :
-  stdlib_dir:Path.t -> paths:Path.t list -> version:Ocaml_version.t -> t
+     stdlib_dir:Path.t
+  -> paths:Path.t list
+  -> version:Ocaml_version.t
+  -> lib_config:Lib_config.t
+  -> t
 
 (** The search path for this DB *)
 val paths : t -> Path.t list
@@ -44,7 +48,8 @@ val all_packages : t -> Dune_package.Entry.t list
 val all_unavailable_packages : t -> (Lib_name.t * Unavailable_reason.t) list
 
 (** A dummy package. This is used to implement [external-lib-deps] *)
-val dummy_package : t -> name:Lib_name.t -> Dune_package.Lib.t
+val dummy_package :
+  t -> name:Lib_name.t -> lib_config:Lib_config.t -> Dune_package.Lib.t
 
 module Config : sig
   type t

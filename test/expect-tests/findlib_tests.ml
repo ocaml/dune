@@ -14,8 +14,23 @@ let print_pkg ppf pkg =
 
 let findlib =
   let cwd = Path.of_filename_relative_to_initial_cwd (Sys.getcwd ()) in
+  let lib_config : Lib_config.t =
+    { has_native = true
+    ; ext_lib = ".a"
+    ; ext_obj = ".o"
+    ; os_type = ""
+    ; architecture = ""
+    ; system = ""
+    ; model = ""
+    ; natdynlink_supported = Dynlink_supported.By_the_os.of_bool true
+    ; ext_dll = ".so"
+    ; stdlib_dir = Path.root
+    ; ccomp_type = Other "gcc"
+    }
+  in
   Findlib.create ~stdlib_dir:cwd ~paths:[ db_path ]
     ~version:(Ocaml_version.make (4, 02, 3))
+    ~lib_config
 
 let%expect_test _ =
   let pkg =

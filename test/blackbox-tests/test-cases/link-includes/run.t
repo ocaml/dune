@@ -35,11 +35,5 @@ Then we make sure that it works fine.
   $ env OCAMLPATH=lib1/_build/install/default/lib: dune exec --root exe ./bar.exe
   Entering directory 'exe'
   Entering directory 'exe'
-      ocamlopt bar.exe (exit 2)
-  (cd _build/default && /Users/rgrinberg/.opam/4.09.0/bin/ocamlopt.opt -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -o bar.exe $TESTCASE_ROOT/lib1/_build/install/default/lib/dunetestlib1/lib1.cmxa .bar.eobjs/native/dune__exe__Bar.cmx)
-  ld: library not found for -llib1_stubs
-  clang: error: linker command failed with exit code 1 (use -v to see invocation)
-  File "caml_startup", line 1:
-  Error: Error during linking
-  [1]
+  lib1: 42
 

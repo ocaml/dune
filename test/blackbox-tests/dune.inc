@@ -465,7 +465,7 @@
 
 (rule
  (alias env-env-bins)
- (deps (package dune) (source_tree test-cases/env/env-bins))
+ (deps (package dune) (source_tree test-cases/env/env-bins) (sandbox none))
  (action
   (chdir
    test-cases/env/env-bins
@@ -477,7 +477,9 @@
  (action
   (chdir
    test-cases/env/env-cflags
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-dune-file)
@@ -493,7 +495,9 @@
  (action
   (chdir
    test-cases/env/env-simple
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-tracking)
@@ -1891,7 +1895,10 @@
 
 (rule
  (alias virtual-libraries-vlib)
- (deps (package dune) (source_tree test-cases/virtual-libraries/vlib))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/vlib)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/virtual-libraries/vlib
@@ -2041,7 +2048,6 @@
   (alias env-env-tracking)
   (alias env-env-var-expansion)
   (alias env-env-variables)
-  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2278,7 +2284,6 @@
   (alias env-env-tracking)
   (alias env-env-var-expansion)
   (alias env-env-variables)
-  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2355,7 +2360,6 @@
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-allow_approximate_merlin)
-  (alias merlin-merlin-tests)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -2427,7 +2431,9 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias cinaps) (alias fdo)))
+(alias
+ (name runtest-disabled)
+ (deps (alias cinaps) (alias env-envs-and-contexts) (alias fdo)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

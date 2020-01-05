@@ -215,7 +215,7 @@ Below is an example where we build ``my.cmxs`` containing ``foo.cmxa`` and
 ``d.cmx``. Note how we use a :ref:`library` stanza to set up the compilation of
 ``d.cmx``.
 
-.. code:: scheme
+.. code:: lisp
 
     (library
      (name foo)

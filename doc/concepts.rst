@@ -83,7 +83,7 @@ error.
 Here's a simple example of a condition that expresses running on OSX and having
 an flambda compiler with the help of variable expansion:
 
-.. code:: scheme
+.. code:: lisp
 
    (and %{ocamlc-config:flambda} (= %{ocamlc-config:system} macosx))
 
@@ -247,7 +247,7 @@ Forms that expands to list of items, such as ``%{cc}``, ``%{deps}``,
 ``%{targets}`` or ``%{read-lines:...}``, are suitable to be used in, say,
 ``(run <prog> <arguments>)``.  For instance in:
 
-.. code:: scheme
+.. code:: lisp
 
     (run foo %{deps})
 
@@ -275,7 +275,7 @@ which is equivalent to the following shell command:
 Note that, since ``%{deps}`` is a list of items, the first one may be
 used as a program name, for instance:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (targets result.txt)
@@ -284,7 +284,7 @@ used as a program name, for instance:
 
 Here is another example:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (target foo.exe)
@@ -400,7 +400,7 @@ be an action that reads the file given as only dependency named
 More precisely, ``(preprocess (action <action>))`` acts as if
 you had setup a rule for every file of the form:
 
-   .. code:: scheme
+   .. code:: lisp
 
        (rule
         (target file.pp.ml)
@@ -456,7 +456,7 @@ names.
 
 For instance:
 
- .. code:: scheme
+ .. code:: lisp
 
     (preprocess (per_module
                  (((action (run ./pp.sh X=1 %{input-file})) foo bar))
@@ -537,7 +537,7 @@ in actions (like the ``%{deps}``, ``%{target}`` and ``%{targets}`` built in vari
 One instance where this is useful is for naming globs. Here's an
 example of an imaginary bundle command:
 
-.. code:: scheme
+.. code:: lisp
 
    (rule
     (target archive.tar)
@@ -696,7 +696,7 @@ Note: expansion of the special ``%{<kind>:...}`` is done relative to the current
 working directory of the part of the DSL being executed. So for instance if you
 have this action in a ``src/foo/dune``:
 
-.. code:: scheme
+.. code:: lisp
 
     (action (chdir ../../.. (echo %{path:dune})))
 
@@ -831,7 +831,7 @@ complicated tests. In order to prevent dune from running the
 actions at the same time, you can specify that both actions take the
 same lock:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (alias  runtest)
@@ -857,7 +857,7 @@ contexts setup, the same rule might still be executed concurrently between the
 two build contexts. If you want a lock that is global to all build contexts,
 simply use an absolute filename:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (alias   runtest)
@@ -957,7 +957,7 @@ Declaring a package
 To declare a package, simply add a ``package`` stanza to your
 ``dune-project`` file:
 
-.. code:: scheme
+.. code:: lisp
 
           (package
            (name mypackage)

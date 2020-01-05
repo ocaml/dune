@@ -134,7 +134,7 @@ Using cppo
 
 Add this field to your ``library`` or ``executable`` stanzas:
 
-.. code:: scheme
+.. code:: lisp
 
     (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{input-file})))
 
@@ -150,7 +150,7 @@ Using the .cppo.ml style like the ocamlbuild plugin
 
 Write this in your ``dune`` file:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (targets foo.ml)
@@ -182,7 +182,7 @@ Defining a library with C stubs using pkg-config
 Same context as before, but using ``pkg-config`` to query the
 compilation and link flags. Write this ``dune`` file:
 
-.. code:: scheme
+.. code:: lisp
 
     (library
      (name            mylib)
@@ -239,7 +239,7 @@ Using a custom code generator
 
 To generate a file ``foo.ml`` using a program from another directory:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (targets foo.ml)

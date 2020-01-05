@@ -357,7 +357,7 @@ In this example, we put tests in comments of the form:
 
 The backend for such a framework looks like this:
 
-.. code:: scheme
+.. code:: lisp
 
           (library
            (name simple_tests)

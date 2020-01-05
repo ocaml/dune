@@ -277,7 +277,7 @@ The syntax of ``dune`` files is described in :ref:`metadata-format` section.
 ``dune`` files are composed of stanzas. For instance a typical
 ``dune`` looks like:
 
-.. code:: scheme
+.. code:: lisp
 
     (library
      (name mylib)
@@ -871,7 +871,7 @@ time obvious what are the dependencies and targets.
 
 For instance:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (target b)
@@ -897,7 +897,7 @@ Note that in dune, targets must always be known
 statically. For instance, this ``(rule ...)``
 stanza is rejected by dune:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule (copy a b.%{read:file}))
 
@@ -906,7 +906,7 @@ ocamllex
 
 ``(ocamllex <names>)`` is essentially a shorthand for:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (target <name>.ml)
@@ -929,7 +929,7 @@ ocamlyacc
 
 ``(ocamlyacc <names>)`` is essentially a shorthand for:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (targets <name>.ml <name>.mli)
@@ -1074,7 +1074,7 @@ The syntax is as follows:
 
 The typical use of the ``alias`` stanza is to define tests:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (alias   runtest)
@@ -1240,7 +1240,7 @@ be used to override the test binary invocation, for example if you're using
 alcotest and wish to see all the test failures on the standard output when
 running dune runtest you can use the following stanza:
 
-.. code:: scheme
+.. code:: lisp
 
    (tests
     (names mytest)
@@ -1324,7 +1324,7 @@ the user the following operations:
 
 Examples:
 
-.. code:: scheme
+.. code:: lisp
 
    (dirs *) ;; include all directories
    (dirs :standard \ ocaml) ;; include all directories except ocaml
@@ -1374,7 +1374,7 @@ All of the specified ``<sub-dirn>`` will be ignored by dune. Note that users
 should rely on the ``dirs`` stanza along with the appropriate set operations
 instead of this stanza. For example:
 
-.. code:: scheme
+.. code:: lisp
 
   (dirs :standard \ <sub-dir1> <sub-dir2> ...)
 
@@ -1559,7 +1559,7 @@ writers avoid boilerplate we provide a `(coqpp ...)` stanza:
 
 which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
 
-.. code:: scheme
+.. code:: lisp
 
     (rule
      (targets g_mod.ml)

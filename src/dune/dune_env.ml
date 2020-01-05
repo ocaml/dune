@@ -125,7 +125,7 @@ module Stanza = struct
         ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
         >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field
-    and+ menhir_flags = menhir_flags ~since:(Some (2, 1)) in
+    and+ menhir_flags = menhir_flags ~since:(Some (2, 2)) in
     { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags }
 
   let rule =

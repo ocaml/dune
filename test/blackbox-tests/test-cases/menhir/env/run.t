@@ -1,4 +1,4 @@
-  $ echo "(lang dune 2.1)" > dune-project
+  $ echo "(lang dune 2.2)" > dune-project
   $ cat >dune <<EOF
   > (env (_ (menhir_flags :standard "--comment")))
   > (menhir

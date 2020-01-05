@@ -320,10 +320,7 @@ let menhir_flags t ~dir ~expander ~flags =
   let t = t.env_context in
   let default = Env.menhir_flags t ~dir in
   Build.memoize "menhir flags"
-    (let m = Expander.expand_and_eval_set expander flags ~standard:default in
-     let open Build.O in
-     let+ l = m in
-     l)
+    (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 

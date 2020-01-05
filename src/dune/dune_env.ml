@@ -19,10 +19,7 @@ module Stanza = struct
       Option.map since ~f:(fun since ->
           Dune_lang.Syntax.since Stanza.syntax since)
     in
-    let+ menhir_flags =
-      Ordered_set_lang.Unexpanded.field "menhir_flags" ?check
-    in
-    menhir_flags
+    Ordered_set_lang.Unexpanded.field "menhir_flags" ?check
 
   module Inline_tests = struct
     type t =

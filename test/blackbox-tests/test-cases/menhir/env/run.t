@@ -17,5 +17,6 @@
     (c_flags
      ($flags))
     (cxx_flags
-     ($flags)))
+     ($flags))
+    (menhir_flags (--comment)))
   

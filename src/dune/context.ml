@@ -748,8 +748,11 @@ module DB = struct
         (fun name ->
           (* CR-someday amokhov: Here we assume that [get] is called after the
              asynchronously running function [Create.memo] has completed. It
-             would be better to statically guarantee the completion, e.g. by
-             moving this code into a fiber. *)
+             would be better to statically guarantee the completion. Note that
+             moving this code into a fiber was ruled out because it would
+             require any functions that need the context to go inside the fiber
+             too. @rgrinberg and @diml decided that it would be too large and
+             possibly undesirable refactoring. Any other options? *)
           let contexts = Memo.peek_exn Create.memo () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in

@@ -18,7 +18,7 @@ promoted to the cache, and subsequent builds will automatically check
 the cache for hits.
 
 The cached files are stored inside you `XDG_CACHE_HOME` directory on
-*nix systems, and `"HOME\\Local Settings\\Cache"` on Windows.
+\*nix systems, and `"HOME\\Local Settings\\Cache"` on Windows.
 
 
 Daemon

@@ -176,6 +176,10 @@ let exclusions =
     let name = Filename.concat "utop" name in
     make ~external_deps:true ~skip_ocaml:"<4.05.0" name
   in
+  let menhir name =
+    let name = Filename.concat "menhir" name in
+    make ~external_deps:true name
+  in
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
@@ -204,7 +208,10 @@ let exclusions =
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
-  ; make "menhir" ~external_deps:true
+  ; menhir "cmly"
+  ; menhir "general"
+  ; menhir "general-2.0"
+  ; menhir "promote"
   ; utop "utop-simple"
   ; utop "utop-default"
   ; utop "utop-default-implementation"

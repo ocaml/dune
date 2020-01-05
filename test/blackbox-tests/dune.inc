@@ -1261,6 +1261,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias menhir-env)
+ (deps (package dune) (source_tree test-cases/menhir/env))
+ (action
+  (chdir
+   test-cases/menhir/env
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias menhir-general)
  (deps (package dune) (source_tree test-cases/menhir/general))
  (action
@@ -2191,6 +2199,7 @@
   (alias loop)
   (alias macro-expand-error)
   (alias menhir-cmly)
+  (alias menhir-env)
   (alias menhir-general)
   (alias menhir-general-2.0)
   (alias menhir-promote)
@@ -2425,6 +2434,7 @@
   (alias link-includes)
   (alias loop)
   (alias macro-expand-error)
+  (alias menhir-env)
   (alias merlin-allow_approximate_merlin)
   (alias merlin-src-dirs-of-deps)
   (alias meta-gen)

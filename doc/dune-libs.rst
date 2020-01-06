@@ -155,7 +155,7 @@ repositories:
 which produces a human readable version string of the form
 ``<version>-<commits-since-version>-<hash>[-dirty]``.
 
-Note that in the case where the version string is ontained from the
+Note that in the case where the version string is obtained from the
 the version control system, the version string will only be written in
 the binary once it is installed or promoted to the source tree. In
 particular, if you evalute this expression as part of the build of

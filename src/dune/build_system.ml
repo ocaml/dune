@@ -1610,9 +1610,19 @@ end = struct
             | _ -> ()
           in
           let f { cache = (module Caching : Dune_cache.Caching); _ } =
-            ignore
-              (Caching.Cache.promote Caching.cache targets rule_digest []
-                 ~repository:None ~duplication:None)
+            match
+              Caching.Cache.promote Caching.cache targets rule_digest []
+                ~repository:None ~duplication:None
+            with
+            | Result.Error msg ->
+              let targets =
+                Path.Build.Set.to_list rule.targets
+                |> List.map ~f:Path.Build.to_string
+                |> String.concat ~sep:", "
+              in
+              Log.info
+                (Format.sprintf "promotion failed for %s: %s" targets msg)
+            | Result.Ok () -> ()
           in
           Option.iter ~f t.caching;
           let dynamic_deps_stages =

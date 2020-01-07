@@ -331,9 +331,27 @@ module Cache = struct
 
   let teardown _ = ()
 
-  let detect_duplication_mode _ =
-    (* FIXME: use copy if root is on a different partition *)
-    Duplication_mode.Hardlink
+  let detect_duplication_mode root =
+    if not (Path.Build.build_dir_set ()) then
+      (* We are in the daemon, use hardlink as the default *)
+      Duplication_mode.Hardlink
+    else
+      let () = Path.mkdir_p root in
+      let beacon = Path.relative root "beacon"
+      and target =
+        Path.build (Path.Build.of_local (Path.Local.of_string ".cache-beacon"))
+      in
+      let () = Path.touch beacon in
+      let rec test () =
+        match Path.link beacon target with
+        | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
+          ( try Path.unlink target
+            with Unix.Unix_error (Unix.ENOENT, _, _) -> () );
+          test ()
+        | exception Unix.Unix_error _ -> Duplication_mode.Copy
+        | () -> Duplication_mode.Hardlink
+      in
+      test ()
 
   let make ?(root = default_root ())
       ?(duplication_mode = detect_duplication_mode root) handler =

@@ -479,7 +479,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
       ; ocamlobjinfo = which "ocamlobjinfo"
       ; env
-      ; findlib = Findlib.create ~stdlib_dir ~paths:findlib_paths ~version
+      ; findlib =
+          Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
       ; findlib_toolchain
       ; arch_sixtyfour
       ; opam_var_cache

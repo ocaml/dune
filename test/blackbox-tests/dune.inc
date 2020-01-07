@@ -1205,6 +1205,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias link-includes)
+ (deps (package dune) (source_tree test-cases/link-includes))
+ (action
+  (chdir
+   test-cases/link-includes
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias lint)
  (deps (package dune) (source_tree test-cases/lint))
  (action
@@ -2128,6 +2136,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias link-includes)
   (alias lint)
   (alias loop)
   (alias macro-expand-error)
@@ -2357,6 +2366,7 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias link-includes)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-allow_approximate_merlin)

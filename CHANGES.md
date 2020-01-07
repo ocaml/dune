@@ -7,6 +7,9 @@
 - Fix generation of `.merlin` files when depending on local libraries with more
   than one source directory. (#2983, @rgrinberg)
 
+- Fix a bug in the `Fiber.finalize` function of the concurrency monad
+  of Dune, causing a race condition at the user level (#...., fix #2958)
+
 2.1.0 (21/12/2019)
 ------------------
 

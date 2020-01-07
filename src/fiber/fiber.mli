@@ -180,23 +180,6 @@ with type 'a fiber := 'a t
 val with_error_handler :
   (unit -> 'a t) -> on_error:(Exn_with_backtrace.t -> unit) -> 'a t
 
-(** If [f ()] completes without raising, then [wait_errors f] is the same as [f
-    () >>| fun x -> Ok x]. However, if the execution of [f ()] is aborted by an
-    exception, then [wait_errors f] will complete and yield [Error ()].
-
-    Note that [wait_errors] only completes after all sub-fibers have completed.
-    For instance, in the following code [wait_errors] will only complete after
-    3s:
-
-    {[ wait_errors (fun () -> fork_and_join (fun () -> sleep 1 >>| fun () ->
-    raise Exit) (fun () -> sleep 3)) ]}
-
-    same for this code:
-
-    {[ wait_errors (fun () -> fork (fun () -> sleep 3) >>= fun _ -> raise Exit)
-    ]} *)
-val wait_errors : (unit -> 'a t) -> ('a, unit) Result.t t
-
 (** [fold_errors f ~init ~on_error] calls [on_error] for every exception raised
     during the execution of [f]. This include exceptions raised when calling [f
     ()] or during the execution of fibers after [f ()] has returned.

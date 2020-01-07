@@ -1287,3 +1287,12 @@ let set_of_source_paths set =
 
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
+
+let string_of_file_kind = function
+  | Unix.S_REG -> "regular file"
+  | Unix.S_DIR -> "directory"
+  | Unix.S_CHR -> "character device"
+  | Unix.S_BLK -> "block device"
+  | Unix.S_LNK -> "symbolic link"
+  | Unix.S_FIFO -> "named pipe"
+  | Unix.S_SOCK -> "socket"

@@ -21,7 +21,7 @@ assignees: ''
 
 - PR with a reproducing test: 
 
-<!-- Otherwise, please detail how to the behavior can be reproduced -->
+<!-- Otherwise, please detail how the behavior can be reproduced -->
 
 1.
 1.

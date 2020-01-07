@@ -36,4 +36,4 @@ assignees: ''
 <!-- remove the following if not used -->
 ## Additional information 
 
-- Link to gist with verbose output (run with `--verbose` flag):
+- Link to gist with verbose output (run `dune` with the `--verbose` flag):

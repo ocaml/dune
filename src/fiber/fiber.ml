@@ -349,14 +349,28 @@ let fold_errors f ~init ~on_error =
   | Ok _ as ok -> ok
   | Error () -> Error !acc
 
-let collect_errors f = fold_errors f ~init:[] ~on_error:(fun e l -> e :: l)
+let collect_errors f =
+  let+ res = fold_errors f ~init:[] ~on_error:(fun e l -> e :: l) in
+  match res with
+  | Ok x -> Ok x
+  | Error l -> Error (List.rev l)
 
 let finalize f ~finally =
-  let* res = wait_errors f in
-  let* () = finally () in
+  let* res1 = collect_errors f in
+  let* res2 = collect_errors finally in
+  let res =
+    match (res1, res2) with
+    | Ok x, Ok () -> Ok x
+    | Error l, Ok _
+    | Ok _, Error l ->
+      Error l
+    | Error l1, Error l2 -> Error (l1 @ l2)
+  in
   match res with
   | Ok x -> return x
-  | Error () -> never
+  | Error l ->
+    let+ () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
+    assert false
 
 module Ivar = struct
   type 'a state =

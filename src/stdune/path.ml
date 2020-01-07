@@ -1196,7 +1196,8 @@ let touch p =
     | In_build_dir k ->
       Kind.to_string (Kind.append_local (Fdecl.get Build.build_dir) k)
   in
-  Unix.utimes p 0.0 0.0
+  try Unix.utimes p 0.0 0.0
+  with Unix.Unix_error (Unix.ENOENT, _, _) -> close_out (open_out p)
 
 let compare x y =
   match (x, y) with

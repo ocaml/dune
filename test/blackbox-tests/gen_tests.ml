@@ -81,7 +81,7 @@ module Test = struct
       assert (dir = root_dir);
       let rec loop acc = function
         | [] -> List.rev acc
-        | [x] ->
+        | [ x ] ->
           let acc =
             if x = "run.t" then
               acc
@@ -113,11 +113,10 @@ module Test = struct
     ; additional_deps
     }
 
-  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled
-        ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
-        path =
-    make ?env ?skip_ocaml ?skip_platforms ?enabled
-      ?js ?coq ?external_deps ?disable_sandboxing ?additional_deps
+  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq
+      ?external_deps ?disable_sandboxing ?additional_deps path =
+    make ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
+      ?disable_sandboxing ?additional_deps
       (Filename.concat root_dir (Filename.concat path "run.t"))
 
   let pp_sexp fmt t =
@@ -139,8 +138,8 @@ module Test = struct
             ; Dune_lang.List
                 ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
                 @ List.map ~f:Dune_lang.atom_or_quoted_string
-                    (skip_version @ [ "-test"; filename]) )
-            ; Sexp.strings [ "diff?"; filename ; filename ^ ".corrected" ]
+                    (skip_version @ [ "-test"; filename ]) )
+            ; Sexp.strings [ "diff?"; filename; filename ^ ".corrected" ]
             ]
         ]
     in
@@ -164,6 +163,8 @@ module Test = struct
       ~action
     |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 end
+
+module String_map = Map.Make (String)
 
 let exclusions =
   let make = Test.make_run_t in
@@ -196,9 +197,10 @@ let exclusions =
   ; make "ppx-runtime-dependencies" ~external_deps:true
   ; make "foreign-library" ~external_deps:true
   ; make "package-dep" ~external_deps:true
-  ; make "merlin-tests" ~external_deps:true
+  ; make "merlin/merlin-tests" ~external_deps:true
   ; make "use-meta" ~external_deps:true
   ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~skip_ocaml:"<4.06.0"
+  ; make "dune-cache/trim" ~skip_platforms:[ Mac ]
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true
@@ -207,62 +209,70 @@ let exclusions =
   ; utop "utop-default"
   ; utop "utop-default-implementation"
   ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
-  ; make "configurator" ~skip_platforms:[ Win ]
   ; make "github764" ~skip_platforms:[ Win ]
   ; make "gen-opam-install-file" ~external_deps:true
   ; make "scope-ppx-bug" ~external_deps:true
   ; make "findlib-dynload" ~external_deps:true
     (* The next test is disabled as it relies on configured opam swtiches and
        it's hard to get that working properly *)
-  ; make "envs-and-contexts" ~external_deps:true ~enabled:false
-  ; make "env" ~skip_ocaml:"<4.06.0"
-  ; make "env-cflags" ~skip_ocaml:"<4.06.0"
+  ; make "env/envs-and-contexts" ~external_deps:true ~enabled:false
+  ; make "env/env-simple" ~skip_ocaml:"<4.06.0"
+  ; make "env/env-cflags" ~skip_ocaml:"<4.06.0"
   ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
   ; make "explicit_js_mode" ~external_deps:true ~js:true
     (* for the following tests sandboxing is disabled because absolute paths end
        up appearing in the output if we sandbox *)
-  ; make "env-bins" ~disable_sandboxing:true
-  ; make "vlib"
+  ; make "env/env-bins" ~disable_sandboxing:true
+  ; make "virtual-libraries/vlib"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ; make "pkg-config-quoting"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ]
+  |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 
 let fold_find path ~init ~f =
   let rec dir path acc =
     Sys.readdir path
     |> Array.fold_left ~init:acc ~f:(fun acc file ->
-      let path = Filename.concat path file in
-      if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK
-      then
-        dir path acc
-      else
-        f acc path)
+           let path = Filename.concat path file in
+           if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK then
+             dir path acc
+           else
+             f acc path)
   in
   dir path init
 
 let all_tests =
   lazy
-    ( fold_find Test.root_dir ~init:[] ~f:(fun acc p ->
-        if Filename.extension p = ".t" then
-          p :: acc
-        else
-          acc)
-      |> List.map ~f:(fun path ->
-        match
-          List.find exclusions ~f:(fun (t : Test.t) -> t.path = path)
-        with
-        | None -> Test.make path
-        | Some t -> t)
-      |> List.sort ~compare:(fun t1 t2 ->
-        String.compare (Test.alias_name t1) (Test.alias_name t2)))
+    (let exclusions, tests =
+       fold_find Test.root_dir ~init:[] ~f:(fun acc p ->
+           if Filename.extension p = ".t" then
+             p :: acc
+           else
+             acc)
+       |> List.fold_left ~init:(exclusions, [])
+            ~f:(fun (exclusions, tests) path ->
+              match String_map.find exclusions path with
+              | None -> (exclusions, Test.make path :: tests)
+              | Some t -> (String_map.remove exclusions path, t :: tests))
+     in
+     ( match String_map.values exclusions with
+     | [] -> ()
+     | not_found_tests ->
+       Format.eprintf
+         "Failed to discover .t files for the following tests:@.@[<v>%a@]@."
+         (Format.pp_print_list (fun fmt (t : Test.t) ->
+              Format.fprintf fmt "- %s" t.path))
+         not_found_tests );
+     List.sort tests ~compare:(fun t1 t2 ->
+         String.compare (Test.alias_name t1) (Test.alias_name t2)))
 
 let pp_group fmt (name, tests) =
   alias name
     ~deps:
       (List.map tests ~f:(fun (t : Test.t) ->
-         let name = Test.alias_name t in
-         Sexp.strings [ "alias"; name ]))
+           let name = Test.alias_name t in
+           Sexp.strings [ "alias"; name ]))
   |> Dune_lang.pp |> Pp.render_ignore_tags fmt
 
 let () =

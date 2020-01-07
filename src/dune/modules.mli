@@ -97,3 +97,5 @@ val exit_module : t -> Module.t option
 val relocate_alias_module : t -> src_dir:Path.t -> t
 
 val is_empty : t -> bool
+
+val source_dirs : t -> Path.Set.t

@@ -400,10 +400,11 @@ let get_installed_binaries stanzas ~(context : Context.t) =
 
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     ~external_lib_deps_mode =
+  let lib_config = Context.lib_config context in
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
     Lib.DB.create_from_findlib context.findlib ~stdlib_dir
-      ~external_lib_deps_mode
+      ~external_lib_deps_mode ~lib_config
   in
   let scopes, public_libs =
     let stanzas =
@@ -420,7 +421,6 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
             Deprecated_library_name d :: acc
           | _ -> acc)
     in
-    let lib_config = Context.lib_config context in
     Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
       stanzas
   in

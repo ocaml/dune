@@ -175,9 +175,10 @@ val create_hidden :
   -> 'f
   -> ('i, 'o, 'f) t
 
-(** Check whether we already have a value for the given call *)
-val peek : ('i, 'o, _) t -> 'i -> 'o option
-
+(** The call [peek_exn t i] registers a dependency on [t i] and returns its
+    value, failing if the value has not yet been computed. We do not expose
+    [peek] because the [None] case is hard to reason about, and currently there
+    are no use-cases for it. *)
 val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 
 (** Execute a memoized function *)

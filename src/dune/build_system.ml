@@ -1841,6 +1841,9 @@ let package_deps pkg files =
            been filled so the following calls to [X.peek_exn] cannot raise. *)
         let static_deps = Fiber.Once.peek_exn ir.static_deps in
         let static_action_deps = Static_deps.action_deps static_deps in
+        (* CR-someday amokhov: It would be nice to statically rule out such
+           potential race conditions between [Sync] and [Async] functions, e.g.
+           by moving this code into a fiber. *)
         let _act, dynamic_action_deps =
           Memo.peek_exn evaluate_action_and_dynamic_deps_memo ir
         in

@@ -761,3 +761,9 @@ let is_empty = function
     false
   | Unwrapped w -> Module_name.Map.is_empty w
   | Wrapped w -> Wrapped.empty w
+
+let source_dirs =
+  fold_user_written ~init:Path.Set.empty ~f:(fun m acc ->
+      Module.sources m
+      |> List.fold_left ~init:acc ~f:(fun acc f ->
+             Path.Set.add acc (Path.parent_exn f)))

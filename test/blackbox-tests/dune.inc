@@ -255,96 +255,85 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-dedup)
- (deps (package dune) (source_tree test-cases/dune-cache/dune-cache-dedup))
+ (alias dune-cache-dedup)
+ (deps (package dune) (source_tree test-cases/dune-cache/dedup))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-dedup
+   test-cases/dune-cache/dedup
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-dedup-direct)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-dedup-direct))
+ (alias dune-cache-dedup-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache/dedup-direct))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-dedup-direct
+   test-cases/dune-cache/dedup-direct
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-dedup-direct-copy)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-dedup-direct-copy))
+ (alias dune-cache-dedup-direct-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache/dedup-direct-copy))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-dedup-direct-copy
+   test-cases/dune-cache/dedup-direct-copy
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-promote)
- (deps (package dune) (source_tree test-cases/dune-cache/dune-cache-promote))
+ (alias dune-cache-promote)
+ (deps (package dune) (source_tree test-cases/dune-cache/promote))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-promote
+   test-cases/dune-cache/promote
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-promote-copy)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-promote-copy))
+ (alias dune-cache-promote-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache/promote-copy))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-promote-copy
+   test-cases/dune-cache/promote-copy
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-promote-direct)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-promote-direct))
+ (alias dune-cache-promote-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache/promote-direct))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-promote-direct
+   test-cases/dune-cache/promote-direct
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-promote-direct-copy)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-promote-direct-copy))
+ (alias dune-cache-promote-direct-copy)
+ (deps (package dune) (source_tree test-cases/dune-cache/promote-direct-copy))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-promote-direct-copy
+   test-cases/dune-cache/promote-direct-copy
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-symlink)
- (deps (package dune) (source_tree test-cases/dune-cache/dune-cache-symlink))
+ (alias dune-cache-symlink)
+ (deps (package dune) (source_tree test-cases/dune-cache/symlink))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-symlink
+   test-cases/dune-cache/symlink
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-symlink-direct)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-cache/dune-cache-symlink-direct))
+ (alias dune-cache-symlink-direct)
+ (deps (package dune) (source_tree test-cases/dune-cache/symlink-direct))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-symlink-direct
+   test-cases/dune-cache/symlink-direct
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-cache-dune-cache-trim)
- (deps (package dune) (source_tree test-cases/dune-cache/dune-cache-trim))
+ (alias dune-cache-trim)
+ (deps (package dune) (source_tree test-cases/dune-cache/trim))
  (action
   (chdir
-   test-cases/dune-cache/dune-cache-trim
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   test-cases/dune-cache/trim
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml-config:system} macosx)))
 
 (rule
  (alias dune-init)
@@ -484,7 +473,7 @@
 
 (rule
  (alias env-env-bins)
- (deps (package dune) (source_tree test-cases/env/env-bins))
+ (deps (package dune) (source_tree test-cases/env/env-bins) (sandbox none))
  (action
   (chdir
    test-cases/env/env-bins
@@ -496,7 +485,9 @@
  (action
   (chdir
    test-cases/env/env-cflags
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-dune-file)
@@ -512,7 +503,9 @@
  (action
   (chdir
    test-cases/env/env-simple
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-tracking)
@@ -1220,6 +1213,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias link-includes)
+ (deps (package dune) (source_tree test-cases/link-includes))
+ (action
+  (chdir
+   test-cases/link-includes
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias lint)
  (deps (package dune) (source_tree test-cases/lint))
  (action
@@ -1267,6 +1268,14 @@
  (action
   (chdir
    test-cases/merlin/merlin-tests
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias merlin-src-dirs-of-deps)
+ (deps (package dune) (source_tree test-cases/merlin/src-dirs-of-deps))
+ (action
+  (chdir
+   test-cases/merlin/src-dirs-of-deps
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1910,7 +1919,10 @@
 
 (rule
  (alias virtual-libraries-vlib)
- (deps (package dune) (source_tree test-cases/virtual-libraries/vlib))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/vlib)
+  (package dune-configurator))
  (action
   (chdir
    test-cases/virtual-libraries/vlib
@@ -2027,16 +2039,16 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
-  (alias dune-cache-dune-cache-dedup)
-  (alias dune-cache-dune-cache-dedup-direct)
-  (alias dune-cache-dune-cache-dedup-direct-copy)
-  (alias dune-cache-dune-cache-promote)
-  (alias dune-cache-dune-cache-promote-copy)
-  (alias dune-cache-dune-cache-promote-direct)
-  (alias dune-cache-dune-cache-promote-direct-copy)
-  (alias dune-cache-dune-cache-symlink)
-  (alias dune-cache-dune-cache-symlink-direct)
-  (alias dune-cache-dune-cache-trim)
+  (alias dune-cache-dedup)
+  (alias dune-cache-dedup-direct)
+  (alias dune-cache-dedup-direct-copy)
+  (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
+  (alias dune-cache-promote-direct)
+  (alias dune-cache-promote-direct-copy)
+  (alias dune-cache-symlink)
+  (alias dune-cache-symlink-direct)
+  (alias dune-cache-trim)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2061,7 +2073,6 @@
   (alias env-env-tracking)
   (alias env-env-var-expansion)
   (alias env-env-variables)
-  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2142,12 +2153,14 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias link-includes)
   (alias lint)
   (alias loop)
   (alias macro-expand-error)
   (alias menhir)
   (alias merlin-allow_approximate_merlin)
   (alias merlin-merlin-tests)
+  (alias merlin-src-dirs-of-deps)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -2266,16 +2279,16 @@
   (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
-  (alias dune-cache-dune-cache-dedup)
-  (alias dune-cache-dune-cache-dedup-direct)
-  (alias dune-cache-dune-cache-dedup-direct-copy)
-  (alias dune-cache-dune-cache-promote)
-  (alias dune-cache-dune-cache-promote-copy)
-  (alias dune-cache-dune-cache-promote-direct)
-  (alias dune-cache-dune-cache-promote-direct-copy)
-  (alias dune-cache-dune-cache-symlink)
-  (alias dune-cache-dune-cache-symlink-direct)
-  (alias dune-cache-dune-cache-trim)
+  (alias dune-cache-dedup)
+  (alias dune-cache-dedup-direct)
+  (alias dune-cache-dedup-direct-copy)
+  (alias dune-cache-promote)
+  (alias dune-cache-promote-copy)
+  (alias dune-cache-promote-direct)
+  (alias dune-cache-promote-direct-copy)
+  (alias dune-cache-symlink)
+  (alias dune-cache-symlink-direct)
+  (alias dune-cache-trim)
   (alias dune-init)
   (alias dune-jbuild-var-case)
   (alias dune-package)
@@ -2299,7 +2312,6 @@
   (alias env-env-tracking)
   (alias env-env-var-expansion)
   (alias env-env-variables)
-  (alias env-envs-and-contexts)
   (alias exclude-missing-module)
   (alias exe-name-mangle)
   (alias exec-cmd)
@@ -2373,10 +2385,11 @@
   (alias lib-available)
   (alias lib-errors)
   (alias link-deps)
+  (alias link-includes)
   (alias loop)
   (alias macro-expand-error)
   (alias merlin-allow_approximate_merlin)
-  (alias merlin-merlin-tests)
+  (alias merlin-src-dirs-of-deps)
   (alias meta-gen)
   (alias misc)
   (alias missing-loc-run)
@@ -2448,7 +2461,9 @@
   (alias wrapped-false-main-module-name)
   (alias wrapped-transition)))
 
-(alias (name runtest-disabled) (deps (alias cinaps) (alias fdo)))
+(alias
+ (name runtest-disabled)
+ (deps (alias cinaps) (alias env-envs-and-contexts) (alias fdo)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

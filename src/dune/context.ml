@@ -479,7 +479,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
       ; ocamlobjinfo = which "ocamlobjinfo"
       ; env
-      ; findlib = Findlib.create ~stdlib_dir ~paths:findlib_paths ~version
+      ; findlib =
+          Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
       ; findlib_toolchain
       ; arch_sixtyfour
       ; opam_var_cache
@@ -746,6 +747,13 @@ module DB = struct
         ~output:(Simple (module T))
         ~visibility:Hidden Sync
         (fun name ->
+          (* CR-someday amokhov: Here we assume that [get] is called after the
+             asynchronously running function [Create.memo] has completed. It
+             would be better to statically guarantee the completion. Note that
+             moving this code into a fiber was ruled out because it would
+             require any functions that need the context to go inside the fiber
+             too. @rgrinberg and @diml decided that it would be too large and
+             possibly undesirable refactoring. Any other options? *)
           let contexts = Memo.peek_exn Create.memo () in
           List.find_exn contexts ~f:(fun c -> Context_name.equal name c.name))
     in

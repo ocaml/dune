@@ -306,7 +306,11 @@ module Cached_value = struct
               Fiber.return true
           | Running_sync _ ->
             Code_error.raise
-              "Synchronous function called [Cached_value.get_async]" []
+              "[Running_sync] encountered in [Cached_value.get_async]: this \
+               means a synchronous computation is still running and it somehow \
+               managed to call an asynchronous one which depended on its \
+               results in a cyclic manner."
+              []
           | Running_async (run, ivar) ->
             if not (Run.is_current run) then
               Fiber.return true
@@ -422,15 +426,31 @@ let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
    CR-someday amokhov: In principle, it's best to always have a caller, perhaps
    a dummy one, to catch potential errors that result in the empty stack. *)
-let add_rev_dep dep_node =
+let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
+    =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
   | Some (Dep_node.T rev_dep) -> (
-    (* if the caller doesn't already contain this as a dependent *)
+    let () =
+      match (rev_dep.spec.f, dep_node.spec.f) with
+      | Async _, Async _ -> ()
+      | Async _, Sync _ -> ()
+      | Sync _, Sync _ -> ()
+      | Sync _, Async _ ->
+        if not called_from_peek then
+          Code_error.raise
+            "[Memo.add_rev_dep ~called_from_peek:false] Synchronous functions \
+             are not allowed to depend on asynchronous ones."
+            [ ("stack", Call_stack.get_call_stack_as_dyn ())
+            ; ("adding", Stack_frame.to_dyn (T dep_node))
+            ]
+    in
+    let dag_node = dep_node.dag_node in
     let rev_dep = rev_dep.dag_node in
     try
-      if Dag.is_child rev_dep dep_node |> not then
-        Dag.add global_dep_dag rev_dep dep_node
+      (* if the caller doesn't already contain this as a dependent *)
+      if Dag.is_child rev_dep dag_node |> not then
+        Dag.add global_dep_dag rev_dep dag_node
     with Dag.Cycle cycle ->
       raise
         (Cycle_error.E
@@ -575,7 +595,7 @@ module Exec_sync = struct
     compute run inp dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep dep_node.dag_node;
+    add_rev_dep ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -629,7 +649,7 @@ module Exec_async = struct
     compute inp ivar dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep dep_node.dag_node;
+    add_rev_dep ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -663,7 +683,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
-    add_rev_dep dep_node.dag_node;
+    add_rev_dep ~called_from_peek:true dep_node;
     match dep_node.state with
     | Init -> None
     | Running_sync _ -> None

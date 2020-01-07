@@ -1783,8 +1783,8 @@ module DB = struct
         Lib_name.Map.find map name |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode = false) ~stdlib_dir findlib
-      =
+  let create_from_findlib ?(external_lib_deps_mode = false) ~stdlib_dir
+      ~lib_config findlib =
     create () ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
@@ -1796,7 +1796,7 @@ module DB = struct
           | Invalid_dune_package why -> Invalid why
           | Not_found ->
             if external_lib_deps_mode then
-              let pkg = Findlib.dummy_package findlib ~name in
+              let pkg = Findlib.dummy_package findlib ~name ~lib_config in
               Found (Dune_package.Lib.info pkg)
             else
               Not_found

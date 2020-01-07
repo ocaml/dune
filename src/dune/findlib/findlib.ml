@@ -173,6 +173,7 @@ type t =
   ; builtins : Meta.Simplified.t Lib_name.Map.t
   ; packages :
       (Lib_name.t, (Dune_package.Entry.t, Unavailable_reason.t) result) Table.t
+  ; lib_config : Lib_config.t
   }
 
 module Package = struct
@@ -223,7 +224,7 @@ module Package = struct
     in
     Option.some_if (Path.exists fn) fn
 
-  let to_dune t =
+  let to_dune t ~(lib_config : Lib_config.t) =
     let loc = loc t in
     let add_loc x = (loc, x) in
     let () =
@@ -282,14 +283,50 @@ module Package = struct
       let known_implementations = P.Map.empty in
       let default_implementation = None in
       let wrapped = None in
+      let foreign_archives, native_archives =
+        (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
+           be foreign archives, and all other files with the extension [ext_lib]
+           to be native archives. The resulting lists of archives will be used
+           to compute appropriate flags for linking dependant executables. *)
+        match Path.readdir_unsorted t.dir with
+        | Error _ ->
+          (* Raising an error is not an option here as we systematically delay
+             all library loading errors until the libraries are actually used in
+             rules.
+
+             We could add a warning like this:
+
+             User_warning.emit ~loc:(Loc.in_dir t.dir) [ Pp.text "Unable to read
+             directory" ];
+
+             But it seems to be too invasive *)
+          ([], [])
+        | Ok res ->
+          let foreign_archives, native_archives =
+            List.rev_filter_partition_map res ~f:(fun f ->
+                let ext = Filename.extension f in
+                if ext = lib_config.ext_lib then
+                  let file = Path.relative t.dir f in
+                  if
+                    String.is_prefix f
+                      ~prefix:Foreign.Archive.Name.lib_file_prefix
+                  then
+                    Left file
+                  else
+                    Right file
+                else
+                  Skip)
+          in
+          let sort = List.sort ~compare:Path.compare in
+          (sort foreign_archives, sort native_archives)
+      in
       Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
         ~version ~synopsis ~main_module_name ~sub_systems ~requires
-        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
-        ~foreign_archives:[] ~native_archives:[] ~foreign_dll_files:[]
-        ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-        ~virtual_ ~implements ~variant ~known_implementations
-        ~default_implementation ~modes ~wrapped ~special_builtin_support
-        ~exit_module:None
+        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
+        ~native_archives ~foreign_dll_files:[] ~jsoo_runtime ~jsoo_archive ~pps
+        ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
+        ~known_implementations ~default_implementation ~modes ~wrapped
+        ~special_builtin_support ~exit_module:None
     in
     Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
 
@@ -340,7 +377,7 @@ end
 
 let paths t = t.paths
 
-let dummy_package t ~name =
+let dummy_package t ~name ~lib_config =
   let dir =
     match t.paths with
     | [] -> t.stdlib_dir
@@ -353,7 +390,7 @@ let dummy_package t ~name =
   ; dir
   ; vars = String.Map.empty
   }
-  |> Package.to_dune
+  |> Package.to_dune ~lib_config
 
 type db = t
 
@@ -401,10 +438,10 @@ end = struct
 
   (* Parse a single package from a META file *)
   let parse_package t ~meta_file ~name ~parent_dir ~vars =
+    let to_dune = Package.to_dune ~lib_config:t.lib_config in
     match Package.parse t ~meta_file ~name ~parent_dir ~vars with
-    | Ok pkg -> (pkg.dir, Ok (Dune_package.Entry.Library (Package.to_dune pkg)))
-    | Error pkg ->
-      (pkg.dir, Error (Unavailable_reason.Hidden (Package.to_dune pkg)))
+    | Ok pkg -> (pkg.dir, Ok (Dune_package.Entry.Library (to_dune pkg)))
+    | Error pkg -> (pkg.dir, Error (Unavailable_reason.Hidden (to_dune pkg)))
 
   (* Parse all the packages defined in a META file and add them to [t.packages] *)
   let parse_and_acknowledge { dir; meta_file; meta } db =
@@ -538,11 +575,12 @@ let all_packages t =
            (Dune_package.Entry.name a)
            (Dune_package.Entry.name b))
 
-let create ~stdlib_dir ~paths ~version =
+let create ~stdlib_dir ~paths ~version ~lib_config =
   { stdlib_dir
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version
   ; packages = Table.create (module Lib_name) 1024
+  ; lib_config
   }
 
 let all_unavailable_packages t =

@@ -124,8 +124,11 @@ module Archive = struct
 
     let stubs archive_name = archive_name ^ "_stubs"
 
+    let lib_file_prefix = "lib"
+
     let lib_file archive_name ~dir ~ext_lib =
-      Path.Build.relative dir (sprintf "lib%s%s" archive_name ext_lib)
+      Path.Build.relative dir
+        (sprintf "%s%s%s" lib_file_prefix archive_name ext_lib)
 
     let dll_file archive_name ~dir ~ext_dll =
       Path.Build.relative dir (sprintf "dll%s%s" archive_name ext_dll)

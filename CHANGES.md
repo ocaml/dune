@@ -1,3 +1,12 @@
+2.1.1 (unreleased)
+------------------
+
+- Guess foreign archives & native archives for libraries defined using the
+  `META` format. (#2994, @rgrinberg, @anmonteiro)
+
+- Fix generation of `.merlin` files when depending on local libraries with more
+  than one source directory. (#2983, @rgrinberg)
+
 2.1.0 (21/12/2019)
 ------------------
 

@@ -152,6 +152,16 @@ let gen_format_rules sctx ~expander ~output_dir =
   with_format sctx ~dir:output_dir
     ~f:(Format_rules.gen_rules_output sctx ~dialects ~expander ~output_dir)
 
+(* This is used to determine the list of source directories to give to Merlin.
+   This serves the same purpose as [Merlin.lib_src_dirs] and has a similar
+   implementation, but this definition is used for the current library, while
+   [Merlin.lib_src_dirs] is used for the dependencies. It would be nice to unify
+   them at some point. *)
+let lib_src_dirs ~dir_contents =
+  Dir_contents.dirs dir_contents
+  |> List.map ~f:(fun dc ->
+         Path.Build.drop_build_context_exn (Dir_contents.dir dc))
+
 (* Stanza *)
 
 let gen_rules sctx dir_contents cctxs
@@ -196,10 +206,7 @@ let gen_rules sctx dir_contents cctxs
   in
   Option.iter (Merlin.merge_all ~allow_approx_merlin merlins) ~f:(fun m ->
       let more_src_dirs =
-        Dir_contents.dirs dir_contents
-        |> List.map ~f:(fun dc ->
-               Path.Build.drop_build_context_exn (Dir_contents.dir dc))
-        |> List.rev_append source_dirs
+        lib_src_dirs ~dir_contents |> List.rev_append source_dirs
       in
       Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
         (Merlin.add_source_dir m src_dir));

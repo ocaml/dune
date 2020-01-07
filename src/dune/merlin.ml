@@ -190,6 +190,23 @@ let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t =
     pp_flag_of_action sctx ~expander ~loc ~action
   | No_preprocessing -> Build.return None
 
+(* This is used to determine the list of source directories to give to Merlin.
+   This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies
+   instead of the library itself. It would be nice to unify these some day. *)
+let lib_src_dirs ~sctx lib =
+  match Lib.Local.of_lib lib with
+  | None ->
+    let info = Lib.info lib in
+    Path.Set.singleton (Lib_info.best_src_dir info)
+  | Some info ->
+    let info = Lib.Local.info info in
+    let dir = Lib_info.src_dir info in
+    let dir_contents = Dir_contents.get sctx ~dir in
+    let name = Lib_info.name info in
+    let modules = Dir_contents.modules_of_library dir_contents ~name in
+    Path.Set.map ~f:Path.drop_optional_build_context
+      (Modules.source_dirs modules)
+
 let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
     =
   Path.Build.drop_build_context dir
@@ -217,10 +234,8 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
                 Lib.Set.fold requires
                   ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
                   ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-                    let info = Lib.info lib in
-                    let best_src_dir = Lib_info.best_src_dir info in
-                    ( Path.Set.add src_dirs
-                        (Path.drop_optional_build_context best_src_dir)
+                    let more_src_dirs = lib_src_dirs ~sctx lib in
+                    ( Path.Set.union src_dirs more_src_dirs
                     , let public_cmi_dir =
                         Obj_dir.public_cmi_dir (Lib.obj_dir lib)
                       in

@@ -24,7 +24,12 @@ let set_idempotent ~equal t new_ =
       Code_error.raise "Fdecl.set_idempotent: already set to a different value"
         [ ("old", t.to_dyn old); ("new_", t.to_dyn new_) ]
 
-let get t =
+let peek t =
   match t.state with
-  | Unset -> Code_error.raise "Fdecl.get: not set" []
-  | Set x -> x
+  | Unset -> None
+  | Set x -> Some x
+
+let get t =
+  match peek t with
+  | None -> Code_error.raise "Fdecl.get: not set" []
+  | Some x -> x

@@ -1612,22 +1612,25 @@ end = struct
                         ])
             | _ -> ()
           in
-          let f { cache = (module Caching : Dune_cache.Caching); _ } =
-            match
+          let () =
+            (* Promote *)
+            match t.caching with
+            | Some { cache = (module Caching : Dune_cache.Caching); _ }
+              when not do_not_memoize ->
+              let report msg =
+                let targets =
+                  Path.Build.Set.to_list rule.targets
+                  |> List.map ~f:Path.Build.to_string
+                  |> String.concat ~sep:", "
+                in
+                Log.info
+                  (Format.sprintf "promotion failed for %s: %s" targets msg)
+              in
               Caching.Cache.promote Caching.cache targets rule_digest []
                 ~repository:None ~duplication:None
-            with
-            | Result.Error msg ->
-              let targets =
-                Path.Build.Set.to_list rule.targets
-                |> List.map ~f:Path.Build.to_string
-                |> String.concat ~sep:", "
-              in
-              Log.info
-                (Format.sprintf "promotion failed for %s: %s" targets msg)
-            | Result.Ok () -> ()
+              |> Result.map_error ~f:report |> ignore
+            | _ -> ()
           in
-          Option.iter ~f t.caching;
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps

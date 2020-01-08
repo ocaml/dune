@@ -1,14 +1,17 @@
-2.1.1 (07/1/2020)
------------------
+2.1.2 (08/01/2020)
+------------------
+
+- Fix a bug in the `Fiber.finalize` function of the concurrency monad of Dune,
+  causing a race condition at the user level (#3009, fix #2958, @diml)
+
+2.1.1 (07/01/2020)
+------------------
 
 - Guess foreign archives & native archives for libraries defined using the
   `META` format. (#2994, @rgrinberg, @anmonteiro)
 
 - Fix generation of `.merlin` files when depending on local libraries with more
   than one source directory. (#2983, @rgrinberg)
-
-- Fix a bug in the `Fiber.finalize` function of the concurrency monad
-  of Dune, causing a race condition at the user level (#...., fix #2958)
 
 2.1.0 (21/12/2019)
 ------------------

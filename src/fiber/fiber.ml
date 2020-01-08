@@ -24,6 +24,9 @@ module Execution_context : sig
      current execution context. [apply] is guaranteed to not raise. *)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 
+  (* Similar to, but more efficient: {[ apply Exn_with_backtrace.reraise exn ]} *)
+  val reraise : Exn_with_backtrace.t -> unit
+
   (* Add [n] references to the current execution context *)
   val add_refs : int -> unit
 
@@ -178,6 +181,12 @@ end = struct
       deref t;
       current := t
 
+  let reraise exn =
+    let t = !current in
+    forward_error t exn;
+    deref t;
+    current := t
+
   let deref () = deref !current
 end
 
@@ -319,6 +328,13 @@ let parallel_iter l ~f k =
     in
     List.iter l ~f:(fun x -> EC.apply f x k)
 
+(* Same as [parallel_iter l ~f:Exn_with_backtrace.reraise] but more efficient *)
+let parallel_reraise l _k =
+  let n = List.length l in
+  if n = 0 then invalid_arg "Fiber.parallel_reraise";
+  EC.add_refs (n - 1);
+  List.iter l ~f:EC.reraise
+
 module Var = struct
   include Univ_map.Key
 
@@ -368,9 +384,7 @@ let finalize f ~finally =
   in
   match res with
   | Ok x -> return x
-  | Error l ->
-    let+ () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
-    assert false
+  | Error l -> parallel_reraise l
 
 module Ivar = struct
   type 'a state =

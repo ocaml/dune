@@ -113,6 +113,10 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
     (List.map futures ~f:Future.wait) ]} *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
+(** Same as [parallel_iter l ~f:Exn_with_backtrace.reriase] but more efficient.
+    [l] must not be empty. *)
+val parallel_reraise : Exn_with_backtrace.t list -> _ t
+
 (** {1 Execute once fibers} *)
 
 module Once : sig

@@ -1433,6 +1433,14 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias odoc-warn-error)
+ (deps (package dune) (source_tree test-cases/odoc/warn-error))
+ (action
+  (chdir
+   test-cases/odoc/warn-error
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias old-dune-subsystem)
  (deps (package dune) (source_tree test-cases/old-dune-subsystem))
  (action
@@ -2179,6 +2187,7 @@
   (alias odoc-odoc-package-mld-link)
   (alias odoc-odoc-simple)
   (alias odoc-odoc-unique-mlds)
+  (alias odoc-warn-error)
   (alias old-dune-subsystem)
   (alias optional)
   (alias optional-executable)
@@ -2403,6 +2412,7 @@
   (alias ocaml-syntax)
   (alias ocamldep-multi-stanzas)
   (alias odig-files-workspace)
+  (alias odoc-warn-error)
   (alias old-dune-subsystem)
   (alias optional)
   (alias optional-executable)

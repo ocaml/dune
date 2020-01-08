@@ -608,22 +608,25 @@ let setup_package_odoc_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Package.Name.t
+    type t = Super_context.t * Package.Name.t * Odoc_config.t
 
-    let hash (sctx, p) =
-      Hashtbl.hash (Super_context.hash sctx, Package.Name.hash p)
+    let hash (sctx, p, c) =
+      Hashtbl.hash
+        (Super_context.hash sctx, Package.Name.hash p, Odoc_config.hash c)
 
-    let equal (s1, x1) (s2, x2) =
+    let equal (s1, x1, c1) (s2, x2, c2) =
       Super_context.equal s1 s2 && Package.Name.equal x1 x2
+      && Odoc_config.equal c1 c2
 
-    let to_dyn (_, name) = Dyn.Tuple [ Package.Name.to_dyn name ]
+    let to_dyn (_, name, config) =
+      Dyn.Tuple [ Package.Name.to_dyn name; Odoc_config.to_dyn config ]
   end in
   Memo.With_implicit_output.create "setup-package-odoc-rules"
     ~output:(module Unit)
     ~implicit_output:Rules.implicit_output ~doc:"setup odoc package rules"
     ~input:(module Input)
     ~visibility:Hidden Sync
-    (fun (sctx, pkg) ->
+    (fun (sctx, pkg, config) ->
       let mlds = Packages.mlds sctx pkg in
       let mlds = check_mlds_no_dupes ~pkg ~mlds in
       let ctx = Super_context.context sctx in
@@ -638,7 +641,7 @@ let setup_package_odoc_rules_def =
             (Build.write_file gen_mld (default_index ~pkg entry_modules));
           String.Map.set mlds "index" gen_mld
       in
-      let warn_error = false (* TODO *) in
+      let warn_error = config.Odoc_config.warn_error in
       let odocs =
         List.map (String.Map.values mlds) ~f:(fun mld ->
             compile_mld sctx ~warn_error (Mld.create mld) ~pkg
@@ -647,8 +650,8 @@ let setup_package_odoc_rules_def =
       in
       Dep.setup_deps ctx (Pkg pkg) (Path.set_of_build_paths_list odocs))
 
-let setup_package_odoc_rules sctx ~pkg =
-  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg)
+let setup_package_odoc_rules sctx ~config ~pkg =
+  Memo.With_implicit_output.exec setup_package_odoc_rules_def (sctx, pkg, config)
 
 let init sctx =
   let stanzas = SC.stanzas sctx in
@@ -675,6 +678,11 @@ let init sctx =
            Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build)
     |> Path.Set.of_list )
 
+let config_of_dir sctx dir =
+  let scope = Super_context.find_scope_by_dir sctx dir in
+  let project = Scope.project scope in
+  Odoc_config.of_project project
+
 let gen_rules sctx ~dir rest =
   match rest with
   | [ "_html" ] ->
@@ -682,10 +690,11 @@ let gen_rules sctx ~dir rest =
     setup_toplevel_index_rule sctx
   | "_mlds" :: pkg :: _
   | "_odoc" :: "pkg" :: pkg :: _ ->
+    let config = config_of_dir sctx dir in
     let pkg = Package.Name.of_string pkg in
     let packages = Super_context.packages sctx in
     Package.Name.Map.find packages pkg
-    |> Option.iter ~f:(fun _ -> setup_package_odoc_rules sctx ~pkg)
+    |> Option.iter ~f:(fun _ -> setup_package_odoc_rules sctx ~config ~pkg)
   | "_odoc" :: "lib" :: lib :: _ ->
     let lib, lib_db = Scope_key.of_string sctx lib in
     (* diml: why isn't [None] some kind of error here? *)
@@ -699,11 +708,7 @@ let gen_rules sctx ~dir rest =
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
     let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
-    let config =
-      let scope = Super_context.find_scope_by_dir sctx dir in
-      let project = Scope.project scope in
-      Odoc_config.of_project project
-    in
+    let config = config_of_dir sctx dir in
     let setup_pkg_html_rules pkg =
       setup_pkg_html_rules sctx ~config ~pkg
         ~libs:(load_all_odoc_rules_pkg sctx ~pkg)

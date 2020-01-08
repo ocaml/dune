@@ -7,8 +7,8 @@ transtive deps expressed in the dune-package
 
   $ dune build @install --root transitive
   Entering directory 'transitive'
-  $ cat transitive/_build/install/default/lib/pkg/dune-package
-  (lang dune 2.1)
+  $ cat transitive/_build/install/default/lib/pkg/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name pkg)
   (library
    (name pkg.aaa)

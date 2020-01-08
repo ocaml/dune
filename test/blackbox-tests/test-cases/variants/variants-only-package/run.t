@@ -3,8 +3,8 @@ known_implementations implementations when using -p
 
   $ cd project && dune build -p vlibfoo
 
-  $ cat project/_build/install/default/lib/vlibfoo/dune-package
-  (lang dune 2.1)
+  $ cat project/_build/install/default/lib/vlibfoo/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name vlibfoo)
   (library
    (name vlibfoo)

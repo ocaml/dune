@@ -1,7 +1,7 @@
 Reproduction case for #1529: using an extension when no dune-project
 file is present.
 
-  $ dune build @install
+  $ dune build @install 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
   Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
+  | (lang dune <version>)
   Info: Appending this line to dune-project: (using menhir 2.0)

@@ -54,8 +54,8 @@ tests that the "old_public_name" field is evaluated lazily
   $ cat $PWD/_install/lib/a/META
   requires = "b"
 
-  $ cat $PWD/_install/lib/a/dune-package
-  (lang dune 2.1)
+  $ cat $PWD/_install/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name a)
   (deprecated_library_name (old_public_name a) (new_public_name b))
 
@@ -147,19 +147,19 @@ First the motivating case.
   d/_build/install/default/lib/menhirLib/dune-package
   d/_build/install/default/lib/menhirSdk/dune-package
 
-  $ cat d/_build/install/default/lib/dummy/dune-package
-  (lang dune 2.1)
+  $ cat d/_build/install/default/lib/dummy/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name dummy)
 
-  $ cat d/_build/install/default/lib/menhirLib/dune-package
-  (lang dune 2.1)
+  $ cat d/_build/install/default/lib/menhirLib/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name menhirLib)
   (deprecated_library_name
    (old_public_name menhirLib)
    (new_public_name menhir.lib))
 
-  $ cat d/_build/install/default/lib/menhirSdk/dune-package
-  (lang dune 2.1)
+  $ cat d/_build/install/default/lib/menhirSdk/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name menhirSdk)
   (deprecated_library_name
    (old_public_name menhirSdk)
@@ -304,8 +304,8 @@ Qualified, deprecated old_public_name:
   d/_build/install/default/lib/p/dune-package
   d/_build/install/default/lib/q/dune-package
 
-  $ cat d/_build/install/default/lib/q/dune-package
-  (lang dune 2.1)
+  $ cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name q)
   (deprecated_library_name (old_public_name q.foo) (new_public_name p))
 
@@ -348,8 +348,8 @@ Two libraries redirecting to the same library:
   d/_build/install/default/lib/p/dune-package
   d/_build/install/default/lib/q/dune-package
 
-  $ cat d/_build/install/default/lib/q/dune-package
-  (lang dune 2.1)
+  $ cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name q)
   (deprecated_library_name (old_public_name q.bar) (new_public_name p))
   (deprecated_library_name (old_public_name q.foo) (new_public_name p))

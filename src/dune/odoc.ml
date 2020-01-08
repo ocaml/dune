@@ -9,8 +9,9 @@ let ( ++ ) = Path.Build.relative
 module Odoc_config = struct
   type t = { warn_error : bool }
 
-  let of_project project =
-    let warn_error = Dune_project.odoc_warn_error project in
+  let v sctx project =
+    let is_dev = Profile.is_dev (Super_context.profile sctx) in
+    let warn_error = Dune_project.odoc_warn_error project && is_dev in
     { warn_error }
 
   let equal a b = Bool.equal a.warn_error b.warn_error
@@ -272,7 +273,6 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
     |> Lib.DB.find_even_when_hidden (Scope.libs scope)
     |> Option.value_exn
   in
-  let config = Odoc_config.of_project (Scope.project scope) in
   let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes that
      a package contains only 1 library *)
@@ -288,6 +288,7 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let includes =
     (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags)
   in
+  let config = Odoc_config.v sctx (Scope.project scope) in
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
         let compiled =
@@ -673,7 +674,7 @@ let init sctx =
 let config_of_dir sctx dir =
   let scope = Super_context.find_scope_by_dir sctx dir in
   let project = Scope.project scope in
-  Odoc_config.of_project project
+  Odoc_config.v sctx project
 
 let gen_rules sctx ~dir rest =
   match rest with

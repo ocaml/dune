@@ -18,3 +18,14 @@ All calls to `odoc compile` and `odoc html` should have the `--warn-error` optio
   Running[7]: (cd _build/default && %OPAM_PREFIX%/bin/odoc support-files -o _doc/_html)
   Running[8]: (cd _build/default/_doc/_html && %OPAM_PREFIX%/bin/odoc html --warn-error -I ../_odoc/pkg/foo -I ../../lib/.foo.objs/byte -o . ../_odoc/pkg/foo/page-index.odoc)
   Running[9]: (cd _build/default/_doc/_html && %OPAM_PREFIX%/bin/odoc html --warn-error -I ../_odoc/pkg/foo -I ../../lib/.foo.objs/byte -o . ../../lib/.foo.objs/byte/foo.odoc)
+
+Should not be passed in release mode.
+
+  $ . ./dune_verbose.sh build -p foo @doc
+  Running[1]: (cd _build/default && %OPAM_PREFIX%/bin/ocamlc.opt -w -40 -g -bin-annot -I lib/.foo.objs/byte -no-alias-deps -opaque -o lib/.foo.objs/byte/foo.cmi -c -intf lib/foo.mli)
+  Running[2]: (cd _build/default/_doc/_odoc/pkg/foo && %OPAM_PREFIX%/bin/odoc compile --pkg foo -o page-foo.odoc ../../../../doc/foo.mld)
+  Running[3]: (cd _build/default/_doc/_odoc/pkg/foo && %OPAM_PREFIX%/bin/odoc compile --pkg foo -o page-index.odoc ../../../_mlds/foo/index.mld)
+  Running[4]: (cd _build/default/lib/.foo.objs/byte && %OPAM_PREFIX%/bin/odoc compile -I . -I ../../../_doc/_odoc/pkg/foo --pkg foo -o foo.odoc foo.cmti)
+  Running[5]: (cd _build/default/_doc/_html && %OPAM_PREFIX%/bin/odoc html -I ../_odoc/pkg/foo -I ../../lib/.foo.objs/byte -o . ../_odoc/pkg/foo/page-foo.odoc)
+  Running[6]: (cd _build/default/_doc/_html && %OPAM_PREFIX%/bin/odoc html -I ../_odoc/pkg/foo -I ../../lib/.foo.objs/byte -o . ../_odoc/pkg/foo/page-index.odoc)
+  Running[7]: (cd _build/default/_doc/_html && %OPAM_PREFIX%/bin/odoc html -I ../_odoc/pkg/foo -I ../../lib/.foo.objs/byte -o . ../../lib/.foo.objs/byte/foo.odoc)

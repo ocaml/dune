@@ -166,6 +166,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
+  ; odoc_warn_error : bool
   }
 
 let equal = ( == )
@@ -198,6 +199,8 @@ let dialects t = t.dialects
 
 let explicit_js_mode t = t.explicit_js_mode
 
+let odoc_warn_error t = t.odoc_warn_error
+
 let to_dyn
     { name
     ; root
@@ -217,6 +220,7 @@ let to_dyn
     ; dialects
     ; explicit_js_mode
     ; format_config
+    ; odoc_warn_error
     } =
   let open Dyn.Encoder in
   record
@@ -237,6 +241,7 @@ let to_dyn
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
     ; ("format_config", (option Format_config.to_dyn) format_config)
+    ; ("odoc_warn_error", bool odoc_warn_error)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -557,6 +562,7 @@ let infer ~dir packages =
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
   ; format_config = None
+  ; odoc_warn_error = false
   }
 
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
@@ -596,7 +602,11 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ format_config = Format_config.field in
+     and+ format_config = Format_config.field
+     and+ odoc_warn_error =
+       field_o_b "odoc_warn_error"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
+     in
      let packages =
        if List.is_empty packages then
          Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)
@@ -702,6 +712,7 @@ let parse ~dir ~lang ~opam_packages ~file =
            Dialect.DB.add dialects ~loc dialect)
          ~init:Dialect.DB.builtin dialects
      in
+     let odoc_warn_error = Option.value ~default:false odoc_warn_error in
      { name
      ; file_key
      ; root
@@ -720,6 +731,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; dialects
      ; explicit_js_mode
      ; format_config
+     ; odoc_warn_error
      })
 
 let load_dune_project ~dir opam_packages =

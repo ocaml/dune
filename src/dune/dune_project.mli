@@ -75,6 +75,8 @@ val explicit_js_mode : t -> bool
 
 val format_config : t -> Format_config.t option
 
+val odoc_warn_error : t -> bool
+
 val equal : t -> t -> bool
 
 val hash : t -> int

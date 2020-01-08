@@ -59,7 +59,10 @@ let trim ~trimmed_size ~size =
   Log.init_disabled ();
   let open Result.O in
   match
-    let* cache = Dune_cache.Cache.make (fun _ -> ()) in
+    let* cache =
+      Dune_cache.Cache.make
+        ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
+    in
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size

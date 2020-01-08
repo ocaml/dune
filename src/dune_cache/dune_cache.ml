@@ -345,8 +345,7 @@ module Cache = struct
       let rec test () =
         match Path.link beacon target with
         | exception Unix.Unix_error (Unix.EEXIST, _, _) ->
-          ( try Path.unlink target
-            with Unix.Unix_error (Unix.ENOENT, _, _) -> () );
+          Path.unlink_no_err target;
           test ()
         | exception Unix.Unix_error _ -> Duplication_mode.Copy
         | () -> Duplication_mode.Hardlink

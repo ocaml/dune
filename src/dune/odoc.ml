@@ -6,6 +6,22 @@ module SC = Super_context
 
 let ( ++ ) = Path.Build.relative
 
+module Odoc_config = struct
+  type t = { warn_error : bool }
+
+  let of_project project =
+    let warn_error = Dune_project.odoc_warn_error project in
+    { warn_error }
+
+  let equal a b = Bool.equal a.warn_error b.warn_error
+
+  let hash t = Hashtbl.hash t.warn_error
+
+  let to_dyn t =
+    let open Dyn in
+    Record [ ("warn_error", Bool t.warn_error) ]
+end
+
 module Scope_key : sig
   val of_string : Super_context.t -> string -> Lib_name.t * Lib.DB.t
 
@@ -437,23 +453,25 @@ let setup_lib_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Lib.Local.t * Lib.t list Or_exn.t
+    type t = Super_context.t * Lib.Local.t * Lib.t list Or_exn.t * Odoc_config.t
 
-    let equal (sc1, l1, r1) (sc2, l2, r2) =
+    let equal (sc1, l1, r1, c1) (sc2, l2, r2, c2) =
       Super_context.equal sc1 sc2
       && Lib.Local.equal l1 l2
       && Or_exn.equal (List.equal Lib.equal) r1 r2
+      && Odoc_config.equal c1 c2
 
-    let hash (sc, l, r) =
+    let hash (sc, l, r, c) =
       Hashtbl.hash
         ( Super_context.hash sc
         , Lib.Local.hash l
-        , Or_exn.hash (List.hash Lib.hash) r )
+        , Or_exn.hash (List.hash Lib.hash) r
+        , Odoc_config.hash c )
 
     let to_dyn _ = Dyn.Opaque
   end in
-  let f (sctx, lib, requires) =
-    let warn_error = false (* TODO *) in
+  let f (sctx, lib, requires, config) =
+    let warn_error = config.Odoc_config.warn_error in
     let ctx = Super_context.context sctx in
     let odocs = odocs sctx (Lib lib) in
     let pkg = Lib.package (Lib.Local.to_lib lib) in
@@ -470,31 +488,34 @@ let setup_lib_html_rules_def =
     ~output:(module Unit)
     ~visibility:Hidden Sync f
 
-let setup_lib_html_rules sctx lib ~requires =
-  Memo.With_implicit_output.exec setup_lib_html_rules_def (sctx, lib, requires)
+let setup_lib_html_rules sctx ~config lib ~requires =
+  Memo.With_implicit_output.exec setup_lib_html_rules_def
+    (sctx, lib, requires, config)
 
 let setup_pkg_html_rules_def =
   let module Input = struct
     module Super_context = Super_context.As_memo_key
 
-    type t = Super_context.t * Package.Name.t * Lib.Local.t list
+    type t = Super_context.t * Package.Name.t * Lib.Local.t list * Odoc_config.t
 
-    let equal (s1, p1, l1) (s2, p2, l2) =
+    let equal (s1, p1, l1, c1) (s2, p2, l2, c2) =
       Package.Name.equal p1 p2
       && List.equal Lib.Local.equal l1 l2
-      && Super_context.equal s1 s2
+      && Super_context.equal s1 s2 && Odoc_config.equal c1 c2
 
-    let hash (sctx, p, ls) =
+    let hash (sctx, p, ls, c) =
       Hashtbl.hash
         ( Super_context.hash sctx
         , Package.Name.hash p
-        , List.hash Lib.Local.hash ls )
+        , List.hash Lib.Local.hash ls
+        , Odoc_config.hash c )
 
-    let to_dyn (_, package, libs) =
+    let to_dyn (_, package, libs, config) =
       let open Dyn in
       Tuple
         [ Package.Name.to_dyn package
         ; List (List.map ~f:Lib.Local.to_dyn libs)
+        ; Odoc_config.to_dyn config
         ]
   end in
   Memo.With_implicit_output.create "setup-package-html-rules"
@@ -502,17 +523,17 @@ let setup_pkg_html_rules_def =
     ~implicit_output:Rules.implicit_output ~doc:"setup odoc package html rules"
     ~input:(module Input)
     ~visibility:Hidden Sync
-    (fun (sctx, pkg, (libs : Lib.Local.t list)) ->
+    (fun (sctx, pkg, (libs : Lib.Local.t list), config) ->
       let requires =
         let libs = (libs :> Lib.t list) in
         Lib.closure libs ~linking:false
       in
       let ctx = Super_context.context sctx in
-      List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
+      List.iter libs ~f:(setup_lib_html_rules sctx ~config ~requires);
       let pkg_odocs = odocs sctx (Pkg pkg) in
       List.iter pkg_odocs
         ~f:
-          (let warn_error = false (* TODO *) in
+          (let warn_error = config.Odoc_config.warn_error in
            setup_html sctx ~warn_error ~pkg:(Some pkg) ~requires);
       let odocs =
         List.concat
@@ -524,8 +545,9 @@ let setup_pkg_html_rules_def =
         (Dep.html_alias ctx (Pkg pkg))
         (Path.Set.of_list (List.rev_append static_html html_files)))
 
-let setup_pkg_html_rules sctx ~pkg ~libs =
-  Memo.With_implicit_output.exec setup_pkg_html_rules_def (sctx, pkg, libs)
+let setup_pkg_html_rules sctx ~config ~pkg ~libs =
+  Memo.With_implicit_output.exec setup_pkg_html_rules_def
+    (sctx, pkg, libs, config)
 
 let setup_package_aliases sctx (pkg : Package.t) =
   let ctx = Super_context.context sctx in
@@ -653,7 +675,7 @@ let init sctx =
            Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build)
     |> Path.Set.of_list )
 
-let gen_rules sctx ~dir:_ rest =
+let gen_rules sctx ~dir rest =
   match rest with
   | [ "_html" ] ->
     setup_css_rule sctx;
@@ -677,8 +699,14 @@ let gen_rules sctx ~dir:_ rest =
     (* TODO we can be a better with the error handling in the case where
        lib_unique_name_or_pkg is neither a valid pkg or lnu *)
     let lib, lib_db = Scope_key.of_string sctx lib_unique_name_or_pkg in
+    let config =
+      let scope = Super_context.find_scope_by_dir sctx dir in
+      let project = Scope.project scope in
+      Odoc_config.of_project project
+    in
     let setup_pkg_html_rules pkg =
-      setup_pkg_html_rules sctx ~pkg ~libs:(load_all_odoc_rules_pkg sctx ~pkg)
+      setup_pkg_html_rules sctx ~config ~pkg
+        ~libs:(load_all_odoc_rules_pkg sctx ~pkg)
     in
     (* diml: why isn't [None] some kind of error here? *)
     let lib =
@@ -689,7 +717,7 @@ let gen_rules sctx ~dir:_ rest =
     Option.iter lib ~f:(fun lib ->
         match Lib.package (Lib.Local.to_lib lib) with
         | None ->
-          setup_lib_html_rules sctx lib
+          setup_lib_html_rules sctx ~config lib
             ~requires:(Lib.closure ~linking:false [ Lib.Local.to_lib lib ])
         | Some pkg -> setup_pkg_html_rules pkg);
     Option.iter

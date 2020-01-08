@@ -6,6 +6,7 @@ library also has more than one src dir.
   $ cat >lib1/dune <<EOF
   > (include_subdirs unqualified)
   > (library (name lib1))
+  > EOF
   $ touch lib1/sub/foo.ml
   $ touch lib1/bar.ml
   $ mkdir lib2

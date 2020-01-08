@@ -1,10 +1,11 @@
 Show commands run by Dune.
 All calls to `odoc compile` and `odoc html` should have the `--warn-error` option.
 
-  $ dune build @doc --display verbose 2>&1 | sed "s#$(opam var prefix)/#%OPAM_PREFIX%/#"
+  $ dune build @doc --display verbose 2>&1 | \
+  >  sed "s#$(opam var prefix)/#%OPAM_PREFIX%/#" | \
+  >  grep -v "Running\[.*\]: .*/ocamlc.opt -config > /tmp/dune.*\.output"
   # Workspace root: $TESTCASE_ROOT
   # disable binary cache
-  Running[0]: %OPAM_PREFIX%/bin/ocamlc.opt -config > /tmp/duneca4167.output
   # Dune context:
   #  { name = "default"
   #  ; kind = "default"

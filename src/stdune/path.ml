@@ -690,8 +690,6 @@ module Build = struct
 
   let build_dir = Fdecl.create Kind.to_dyn
 
-  let build_dir_set () = Option.is_some (Fdecl.peek build_dir)
-
   let build_dir_prefix = Fdecl.create Dyn.Encoder.opaque
 
   let set_build_dir (new_build_dir : Kind.t) =

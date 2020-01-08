@@ -166,9 +166,6 @@ module Build : sig
       paths are converted to strings elsewhere. *)
   val set_build_dir : Kind.t -> unit
 
-  (** Whether the build dir has been set *)
-  val build_dir_set : unit -> bool
-
   val split_sandbox_root : t -> t option * t
 
   val of_local : Local.t -> t

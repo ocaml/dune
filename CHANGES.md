@@ -3,6 +3,9 @@
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
 
+- Allow to make Odoc warnings fatal. This is configured from the `(env ...)`
+  stanza. (#3029, @Julow)
+
 - Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
 
 2.3.1 (20/02/2020)

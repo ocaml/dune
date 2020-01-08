@@ -146,6 +146,12 @@ let odoc sctx =
     ~dir:(Super_context.build_dir sctx)
     "odoc" ~loc:None ~hint:"try: opam install odoc"
 
+let odoc_base_flags ~warn_error =
+  if warn_error then
+    Command.Args.A "--warn-error"
+  else
+    S []
+
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Build.dyn_paths_unit
     (let+ deps =
@@ -157,8 +163,8 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
      in
      List.map deps ~f:(fun m -> Path.build (Obj_dir.Module.odoc obj_dir m)))
 
-let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
-    ~dep_graphs ~pkg_or_lnu =
+let compile_module sctx ~warn_error ~obj_dir (m : Module.t)
+    ~includes:(file_deps, iflags) ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   add_rule sctx
     ( file_deps
@@ -167,6 +173,7 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
       [ A "compile"
+      ; odoc_base_flags ~warn_error
       ; A "-I"
       ; Path doc_dir
       ; iflags
@@ -177,11 +184,12 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
       ] );
   (m, odoc_file)
 
-let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
+let compile_mld sctx ~warn_error (m : Mld.t) ~includes ~doc_dir ~pkg =
   let odoc_file = Mld.odoc_file m ~doc_dir in
   add_rule sctx
     (Command.run ~dir:(Path.build doc_dir) (odoc sctx)
        [ A "compile"
+       ; odoc_base_flags ~warn_error
        ; Command.Args.dyn includes
        ; As [ "--pkg"; Package.Name.to_string pkg ]
        ; A "-o"
@@ -211,7 +219,7 @@ let odoc_include_flags ctx pkg requires =
         (List.concat_map (Path.Set.to_list paths) ~f:(fun dir ->
              [ Command.Args.A "-I"; Path dir ])))
 
-let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
+let setup_html sctx ~warn_error (odoc_file : odoc) ~pkg ~requires =
   let ctx = Super_context.context sctx in
   let deps = Dep.deps ctx pkg requires in
   let to_remove, dune_keep =
@@ -232,6 +240,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                ~dir:(Path.build (Paths.html_root ctx))
                (odoc sctx)
                [ A "html"
+               ; odoc_base_flags ~warn_error
                ; odoc_include_flags ctx pkg requires
                ; A "-o"
                ; Path (Path.build (Paths.html_root ctx))
@@ -241,11 +250,15 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
           :: dune_keep ) )
 
 let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
+  let scope = Compilation_context.scope cctx in
   let lib =
-    let scope = Compilation_context.scope cctx in
     Library.best_name library
     |> Lib.DB.find_even_when_hidden (Scope.libs scope)
     |> Option.value_exn
+  in
+  let warn_error =
+    let project = Scope.project scope in
+    Dune_project.odoc_warn_error project
   in
   let local_lib = Lib.Local.of_lib_exn lib in
   (* Using the proper package name doesn't actually work since odoc assumes that
@@ -265,7 +278,8 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
         let compiled =
-          compile_module sctx ~includes ~dep_graphs ~obj_dir ~pkg_or_lnu m
+          compile_module sctx ~warn_error ~includes ~dep_graphs ~obj_dir
+            ~pkg_or_lnu m
         in
         compiled :: acc)
   in
@@ -439,10 +453,11 @@ let setup_lib_html_rules_def =
     let to_dyn _ = Dyn.Opaque
   end in
   let f (sctx, lib, requires) =
+    let warn_error = false (* TODO *) in
     let ctx = Super_context.context sctx in
     let odocs = odocs sctx (Lib lib) in
     let pkg = Lib.package (Lib.Local.to_lib lib) in
-    List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
+    List.iter odocs ~f:(setup_html sctx ~warn_error ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
     Rules.Produce.Alias.add_deps
@@ -495,7 +510,10 @@ let setup_pkg_html_rules_def =
       let ctx = Super_context.context sctx in
       List.iter libs ~f:(setup_lib_html_rules sctx ~requires);
       let pkg_odocs = odocs sctx (Pkg pkg) in
-      List.iter pkg_odocs ~f:(setup_html sctx ~pkg:(Some pkg) ~requires);
+      List.iter pkg_odocs
+        ~f:
+          (let warn_error = false (* TODO *) in
+           setup_html sctx ~warn_error ~pkg:(Some pkg) ~requires);
       let odocs =
         List.concat
           (pkg_odocs :: List.map libs ~f:(fun lib -> odocs sctx (Lib lib)))
@@ -598,9 +616,10 @@ let setup_package_odoc_rules_def =
             (Build.write_file gen_mld (default_index ~pkg entry_modules));
           String.Map.set mlds "index" gen_mld
       in
+      let warn_error = false (* TODO *) in
       let odocs =
         List.map (String.Map.values mlds) ~f:(fun mld ->
-            compile_mld sctx (Mld.create mld) ~pkg
+            compile_mld sctx ~warn_error (Mld.create mld) ~pkg
               ~doc_dir:(Paths.odocs ctx (Pkg pkg))
               ~includes:(Build.return []))
       in

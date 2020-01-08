@@ -686,6 +686,12 @@ Testsuite for the (foreign_library ...) stanza.
 * Using an external directory in (include_dir ...)
 
   $ mkdir -p external
+
+  $ cat >external/dune-project <<EOF
+  > (lang dune 2.1)
+  > (name external_library)
+  > EOF
+
   $ cat >external/dune <<EOF
   > (library
   >  (name extlib)
@@ -700,9 +706,6 @@ Testsuite for the (foreign_library ...) stanza.
   $ rm -rf _build
   $ touch external/external_library.opam
   $ ( cd external && ../sdune build @install && ../sdune install --prefix install)
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
-  | (name external_library)
   Installing install/lib/external_library/META
   Installing install/lib/external_library/correction.h
   Installing install/lib/external_library/dune-package
@@ -716,6 +719,7 @@ Testsuite for the (foreign_library ...) stanza.
   Installing install/lib/external_library/extlib.ml
   Installing install/lib/external_library/opam
 
+  $ echo "(lang dune 2.1)" > some/dir/dune-project
   $ cat >some/dir/dune <<EOF
   > (foreign_library
   >  (archive_name clib)
@@ -738,8 +742,6 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ export OCAMLPATH=$PWD/external/install/lib; ./sdune exec ./main.exe --root=some/dir
   Entering directory 'some/dir'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   Entering directory 'some/dir'
   Answer = 42
 
@@ -773,7 +775,7 @@ Testsuite for the (foreign_library ...) stanza.
 * Error when using path separators in an archive name
 
   $ mkdir -p github2914/dir
-
+  $ echo "(lang dune 2.1)" > github2914/dir/dune-project
   $ cat >github2914/dir/dune <<EOF
   > (foreign_library
   >  (archive_name some/path/id)
@@ -783,8 +785,6 @@ Testsuite for the (foreign_library ...) stanza.
 
   $ ./sdune build --root=github2914/dir
   Entering directory 'github2914/dir'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   File "dune", line 2, characters 15-27:
   2 |  (archive_name some/path/id)
                      ^^^^^^^^^^^^

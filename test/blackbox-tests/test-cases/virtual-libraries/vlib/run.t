@@ -317,9 +317,9 @@ Implement external virtual libraries with private modules
   Name: implement virtual module. Magic number: 42
 
 Include variants and implementation information in dune-package
-  $ dune build --root dune-package-info
+  $ dune build --root dune-package-info | sed "s/(lang dune .*)/(lang dune <version>)/"
   Entering directory 'dune-package-info'
-  (lang dune 2.1)
+  (lang dune <version>)
   (name foo)
   (library
    (name foo.impl)

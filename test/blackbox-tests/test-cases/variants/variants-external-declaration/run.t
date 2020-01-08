@@ -5,8 +5,8 @@ declared in the virtual library definition.
 
   $ dune build -p vlibfoo-ext
 
-  $ cat _build/install/default/lib/vlibfoo-ext/dune-package
-  (lang dune 2.1)
+  $ cat _build/install/default/lib/vlibfoo-ext/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name vlibfoo-ext)
   (library
    (name vlibfoo-ext)

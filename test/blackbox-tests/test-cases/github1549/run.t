@@ -3,8 +3,8 @@ Reproduction case for #1549: too many parentheses in installed .dune files
   $ dune build @install --root backend
   Entering directory 'backend'
 
-  $ cat backend/_build/install/default/lib/dune_inline_tests/dune-package
-  (lang dune 2.1)
+  $ cat backend/_build/install/default/lib/dune_inline_tests/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  (lang dune <version>)
   (name dune_inline_tests)
   (library
    (name dune_inline_tests)

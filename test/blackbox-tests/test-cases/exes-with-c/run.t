@@ -18,6 +18,7 @@
   B
 
   $ mkdir err
+  $ echo "(lang dune 2.1)" > err/dune-project
   $ touch err/foo.ml err/stubs.c
   $ cat > err/dune << EOF
   > (executable
@@ -27,8 +28,6 @@
   > EOF
   $ dune build --root err @all
   Entering directory 'err'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   File "dune", line 1, characters 0-86:
   1 | (executable
   2 |  (name foo)

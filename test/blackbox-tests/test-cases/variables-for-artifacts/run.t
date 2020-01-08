@@ -54,6 +54,7 @@ Command line version.
 The next test tries to build a module that does not exist.
 
   $ mkdir ex1
+  $ echo "(lang dune 2.1)" > ex1/dune-project
   $ cat > ex1/dune << EOF
   > (alias
   >  (name t)
@@ -61,8 +62,6 @@ The next test tries to build a module that does not exist.
   > EOF
   $ ./sdune build --root ex1 --display short @t
   Entering directory 'ex1'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cmo:foo}))
                ^^^^^^^^
@@ -96,6 +95,7 @@ Command line version.
 This test tries to build a non-existant .cma.
 
   $ mkdir ex2
+  $ echo "(lang dune 2.1)" > ex2/dune-project
   $ cat > ex2/dune << EOF
   > (alias
   >  (name t)
@@ -103,8 +103,6 @@ This test tries to build a non-existant .cma.
   > EOF
   $ ./sdune build --root ex2 --display short @t
   Entering directory 'ex2'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cma:bar}))
                ^^^^^^^^
@@ -205,8 +203,6 @@ This test checks that everything still works if we invoke dune from a
 subdirectory.
 
   $ cd sub && dune build --display short %{cmx:x}
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
       ocamldep .bar.objs/x.ml.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc .bar.objs/byte/bar__X.{cmi,cmo,cmt}
@@ -235,6 +231,7 @@ The following (failing) test shows that the variables cannot yet be used in the 
 field of a (rule).
 
   $ mkdir deps-fail
+  $ echo "(lang dune 2.1)" > deps-fail/dune-project
   $ cat > deps-fail/dune << EOF
   > (rule
   >  (target t)
@@ -243,8 +240,6 @@ field of a (rule).
   > EOF
   $ ./sdune build --root deps-fail --display short t
   Entering directory 'deps-fail'
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
   File "dune", line 3, characters 9-16:
   3 |  (deps %{cmo:x2})
                ^^^^^^^

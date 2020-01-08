@@ -132,6 +132,9 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 * The %{lib-private:...} variable does not work with external libraries
 
   $ mkdir -p external
+  $ cat >external/dune-project <<EOF
+  > (lang dune 2.1)
+  > (name external_library)
   $ cat >external/dune <<EOF
   > (library
   >  (name extlib)
@@ -140,9 +143,6 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
 
   $ touch external/external_library.opam
   $ ( cd external && ../sdune build @install && ../sdune install --prefix install)
-  Info: Creating file dune-project with this contents:
-  | (lang dune 2.1)
-  | (name external_library)
   Installing install/lib/external_library/META
   Installing install/lib/external_library/dune-package
   Installing install/lib/external_library/extlib$ext_lib

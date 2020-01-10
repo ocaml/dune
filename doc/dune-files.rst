@@ -984,7 +984,7 @@ The basic form for defining menhir-git_ parsers (analogous to :ref:`ocamlyacc`) 
   inference. This option is enabled by default with Menhir language 2.0.
 
 Menhir supports writing the grammar and automaton to ``.cmly`` file. Therefore,
-if this is flag is passed to menhir, dune will know to introduce a ``.cmly``
+if this flag is passed to menhir, dune will know to introduce a ``.cmly``
 target for the module.
 
 .. _menhir-git: https://gitlab.inria.fr/fpottier/menhir
@@ -1008,7 +1008,7 @@ comments.
 
 .. code-block:: scheme
 
-  (documentation (<optional-fields>)))
+  (documentation (<optional-fields>))
 
 Where ``<optional-fields>`` are:
 

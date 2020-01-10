@@ -12,7 +12,11 @@
   @fangyi-zhou and @diml)
 
 - Hint when trying to execute an executable defined in the current directory
-  without using the `./` prefix (#3041).
+  without using the `./` prefix (#3041, fixes #1094, @voodoos).
+
+- Extend the list of modifiers that can be nested under
+  `with-accepted-exit-codes` with `chdir`,  `setenv`, `ignore-<outputs>`,
+  `with-stdin-from` and `with-<outputs>-to` (#3027, fixes #3014, @voodoos)
 
 - It is now an error to have a preprocessing dependency on a ppx rewriter
   library that is not marked as `(kind ppx_rewriter)` (#3039, @snowleopard).

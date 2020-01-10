@@ -651,8 +651,10 @@ The following constructions are available:
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
-  values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` must be
-  one of ``run``, ``bash`` or ``system``. This action is available since dune 2.0.
+  values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` can only
+  contain nested occurences of ``run``, ``bash``, ``system``, ``chdir``,
+  ``setenv``, ``ignore-<outputs>``, ``with-stdin-from`` and
+  ``with-<outputs>-to``. This action is available since dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
 - ``(echo <string>)`` to output a string on stdout
 - ``(write-file <file> <string>)`` writes ``<string>`` to ``<file>``

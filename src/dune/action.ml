@@ -263,7 +263,7 @@ let is_useful_to memoize =
     match t with
     | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
-    | Redirect_out (_, _, t) -> loop t
+    | Redirect_out (_, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t) ->

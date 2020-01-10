@@ -1,5 +1,7 @@
+_opam
 _build
 /_boot
+/boot.exe
 _perf
 *.install
 .merlin

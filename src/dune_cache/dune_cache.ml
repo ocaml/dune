@@ -324,7 +324,7 @@ module Cache = struct
 
   let set_build_dir cache p = { cache with build_root = Some p }
 
-  let teardown cache = Path.rm_rf cache.temp_dir
+  let teardown cache = Path.rm_rf ~allow_external:true cache.temp_dir
 
   let detect_duplication_mode root =
     let () = Path.mkdir_p root in

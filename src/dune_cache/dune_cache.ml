@@ -275,7 +275,7 @@ module Cache = struct
     in
     let+ promoted = Result.List.map ~f:promote paths in
     let metadata_path = FSSchemeImpl.path (path_meta cache) key
-    and metadata_tmp_path = Path.relative cache.temp_dir "promoting-metadata"
+    and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
     and files = List.map ~f:file_of_promotion promoted in
     let metadata_file : Metadata_file.t = { metadata; files } in
     let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in

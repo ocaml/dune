@@ -96,7 +96,10 @@ type t =
 exception Error of string
 
 let make ?root ~config () : t =
-  match Dune_cache.Cache.make ?root (fun _ -> ()) with
+  match
+    Dune_cache.Cache.make ?root
+      ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
+  with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok cache ->
     { root
@@ -340,6 +343,7 @@ module Client = struct
               ; cache =
                   ( match
                       Dune_cache.Cache.make ?root:daemon.root
+                        ~duplication_mode:Dune_cache.Duplication_mode.Hardlink
                         (client_handle version output)
                     with
                   | Result.Ok m -> m

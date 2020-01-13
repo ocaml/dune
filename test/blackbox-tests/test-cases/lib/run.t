@@ -135,6 +135,7 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   $ cat >external/dune-project <<EOF
   > (lang dune 2.1)
   > (name external_library)
+  > EOF
   $ cat >external/dune <<EOF
   > (library
   >  (name extlib)

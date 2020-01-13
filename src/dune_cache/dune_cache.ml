@@ -152,6 +152,7 @@ module Cache = struct
     ; repositories : repository list
     ; handler : handler
     ; duplication_mode : Duplication_mode.t
+    ; temp_dir : Path.t
     }
 
   let path_files cache = Path.relative cache.root "files"
@@ -331,7 +332,7 @@ module Cache = struct
 
   let set_build_dir cache p = { cache with build_root = Some p }
 
-  let teardown _ = ()
+  let teardown cache = Path.rm_rf cache.temp_dir
 
   let detect_duplication_mode root =
     let () = Path.mkdir_p root in
@@ -361,6 +362,9 @@ module Cache = struct
         ; repositories = []
         ; handler
         ; duplication_mode
+        ; temp_dir =
+            Path.temp_dir ~temp_dir:root "promoting"
+              (string_of_int (Unix.getpid ()))
         }
 
   let duplication_mode cache = cache.duplication_mode

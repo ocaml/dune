@@ -23,6 +23,10 @@ uninstall:
 
 reinstall: uninstall install
 
+dev-switch:
+	opam switch create -y . --deps-only --with-test
+	opam install -y ./dune-dev-deps.opam --deps-only --with-test
+
 test: $(BIN)
 	$(BIN) runtest
 
@@ -77,7 +81,7 @@ endif
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
-.PHONY: default install uninstall reinstall clean test doc
+.PHONY: default install uninstall reinstall clean test doc dev-switch
 .PHONY: promote accept-corrections opam-release dune check fmt
 
 opam-release:

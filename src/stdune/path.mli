@@ -362,3 +362,9 @@ val string_of_file_kind : Unix.file_kind -> string
     different from any other directory that existed when temp_dir was called.
     Raise Sys_error if the file could not be created. *)
 val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
+
+(** Rename a file. rename oldpath newpath renames the file called oldpath,
+    giving it newpath as its new name, moving it between directories if needed.
+    If newpath already exists, its contents will be replaced with those of
+    oldpath. *)
+val rename : t -> t -> unit

@@ -1325,3 +1325,6 @@ let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
           [ ("error", String (Unix.error_message e)) ]
   in
   loop 0
+
+let rename old_path new_path =
+  Sys.rename (to_string old_path) (to_string new_path)

@@ -281,11 +281,21 @@ module Cache = struct
     let f () =
       let+ promoted = Result.List.map ~f:promote paths in
       let metadata_path = FSSchemeImpl.path (path_meta cache) key
+      and metadata_tmp_path = Path.relative cache.temp_dir "promoting-metadata"
       and files = List.map ~f:file_of_promotion promoted in
       let metadata_file : Metadata_file.t = { metadata; files } in
-      Path.mkdir_p (Path.parent_exn metadata_path);
-      Io.write_file metadata_path
-        (Csexp.to_string (Metadata_file.to_sexp metadata_file));
+      let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in
+      Io.write_file metadata_tmp_path metadata;
+      let () =
+        try
+          if Io.read_file metadata_path <> metadata then
+            User_warning.emit
+              [ Pp.textf "non reproductible collision on rule %s"
+                  (Digest.to_string key)
+              ]
+        with Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
+      in
+      Path.rename metadata_tmp_path metadata_path;
       let f = function
         | Already_promoted file when cache.duplication_mode <> Copy ->
           cache.handler (Dedup file)

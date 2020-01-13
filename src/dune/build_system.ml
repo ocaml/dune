@@ -1431,7 +1431,10 @@ end = struct
       force_rerun || depends_on_universe
     in
     let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
-    let do_not_memoize = always_rerun || is_action_dynamic in
+    let do_not_memoize =
+      always_rerun || is_action_dynamic
+      || Action.is_useful_to_memoize action = Clearly_not
+    in
     (* Here we determine if we need to rerun the action based on information
        stored in Trace_db. *)
     let* rule_need_rerun =
@@ -1609,12 +1612,25 @@ end = struct
                         ])
             | _ -> ()
           in
-          let f { cache = (module Caching : Dune_cache.Caching); _ } =
-            ignore
-              (Caching.Cache.promote Caching.cache targets rule_digest []
-                 ~repository:None ~duplication:None)
+          let () =
+            (* Promote *)
+            match t.caching with
+            | Some { cache = (module Caching : Dune_cache.Caching); _ }
+              when not do_not_memoize ->
+              let report msg =
+                let targets =
+                  Path.Build.Set.to_list rule.targets
+                  |> List.map ~f:Path.Build.to_string
+                  |> String.concat ~sep:", "
+                in
+                Log.info
+                  (Format.sprintf "promotion failed for %s: %s" targets msg)
+              in
+              Caching.Cache.promote Caching.cache targets rule_digest []
+                ~repository:None ~duplication:None
+              |> Result.map_error ~f:report |> ignore
+            | _ -> ()
           in
-          Option.iter ~f t.caching;
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps

@@ -233,7 +233,9 @@ module Cache = struct
       let stat = Unix.lstat (Path.to_string abs_path) in
       let* stat =
         if stat.st_kind != S_REG then
-          Result.Error "invalid file type"
+          Result.Error
+            (Format.sprintf "invalid file type: %s"
+               (Path.string_of_file_kind stat.st_kind))
         else
           Result.Ok stat
       in

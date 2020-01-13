@@ -1296,3 +1296,32 @@ let string_of_file_kind = function
   | Unix.S_LNK -> "symbolic link"
   | Unix.S_FIFO -> "named pipe"
   | Unix.S_SOCK -> "socket"
+
+let rand_digits () =
+  let rand = Random.State.(bits (make_self_init ()) land 0xFFFFFF) in
+  Printf.sprintf "%06x" rand
+
+let get_temp_dir_name () = of_string (Filename.get_temp_dir_name ())
+
+let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
+  let attempts = 512 in
+  let rec loop count =
+    if Stdlib.( >= ) count attempts then
+      Code_error.raise "mk_temp_dir: too many failing attemps"
+        [ ("attempts", Int attempts) ]
+    else
+      let dir =
+        relative temp_dir
+          (String.concat ~sep:"" [ prefix; rand_digits (); suffix ])
+      in
+      try
+        mkdir_p ~perms:mode dir;
+        dir
+      with
+      | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
+      | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
+      | Unix.Unix_error (e, _, _) ->
+        Code_error.raise "mk_temp_dir: system error"
+          [ ("error", String (Unix.error_message e)) ]
+  in
+  loop 0

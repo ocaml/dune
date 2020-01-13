@@ -352,3 +352,13 @@ val set_of_source_paths : Source.Set.t -> Set.t
 val set_of_build_paths_list : Build.t list -> Set.t
 
 val string_of_file_kind : Unix.file_kind -> string
+
+(** temp_dir prefix suffix returns the name of a fresh temporary directory in
+    the temporary directory. The base name of the temporary directory is formed
+    by concatenating prefix, then a suitably chosen integer number, then suffix.
+    The optional argument temp_dir indicates the temporary directory to use,
+    defaulting to the current result of Filename.get_temp_dir_name. The
+    temporary directory with permissions 0700. The directory is guaranteed to be
+    different from any other directory that existed when temp_dir was called.
+    Raise Sys_error if the file could not be created. *)
+val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t

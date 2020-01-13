@@ -159,8 +159,6 @@ module Cache = struct
 
   let path_meta cache = Path.relative cache.root "meta"
 
-  let path_tmp cache = Path.relative cache.root "temp"
-
   let with_lock cache f =
     let lock = Lock_file.create (Path.relative cache.root ".lock") in
     let finally () = Lock_file.unlock lock in
@@ -241,14 +239,8 @@ module Cache = struct
           Result.Ok stat
       in
       let prepare path =
-        let tmp = path_tmp cache in
-        (* dune-cache uses a single writer model, the promoted file name can be
-           constant *)
-        let dest = Path.relative tmp "promoting" in
-        if Path.exists dest then
-          Path.unlink dest
-        else
-          Path.mkdir_p tmp;
+        let dest = Path.relative cache.temp_dir "data" in
+        if Path.exists dest then Path.unlink dest;
         duplicate ~duplication cache path dest;
         dest
       in

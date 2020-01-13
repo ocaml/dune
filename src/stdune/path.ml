@@ -1172,8 +1172,8 @@ let rm_rf =
         | _ -> unlink_operation fn);
     Unix.rmdir dir
   in
-  fun t ->
-    if not (is_managed t) then
+  fun ?(allow_external = false) t ->
+    if (not allow_external) && not (is_managed t) then
       Code_error.raise "Path.rm_rf called on external dir" [ ("t", to_dyn t) ];
     let fn = to_string t in
     match Unix.lstat fn with

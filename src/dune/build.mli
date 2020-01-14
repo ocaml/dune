@@ -106,15 +106,11 @@ val read_sexp : Path.t -> Dune_lang.Ast.t t
     target of a rule. *)
 val file_exists : Path.t -> bool t
 
+(* CR-soon amokhov: change [Path.t] to [Path.Build.t] in [if_file_exists]. *)
+
 (** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
-
-(** [file_exists_opt p t] is:
-
-    {[ if_file_exists p ~then_:(Build.map t ~f:Option.some) ~else_:(Build.return
-    None) ]} *)
-val file_exists_opt : Path.t -> 'a t -> 'a option t
 
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
@@ -158,20 +154,26 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 
 (** {1 Analysis} *)
 
-(** Must be called first before [lib_deps] and [targets] as it updates some of
-    the internal references in the build description. *)
-val static_deps :
-  _ t -> list_targets:(dir:Path.t -> Path.Set.t) -> Static_deps.t
+(** Compute static dependencies of a build description, given a function to
+    resolve file-existence queries. *)
+val static_deps : _ t -> file_exists:(Path.t -> bool) -> Static_deps.t
 
-val lib_deps : _ t -> Lib_deps_info.t
+(** Compute static library dependencies of a build description, given a function
+    to resolve file-existence queries. *)
+val lib_deps : _ t -> file_exists:(Path.t -> bool) -> Lib_deps_info.t
 
 val targets : _ t -> Path.Build.Set.t
 
 (** {1 Execution} *)
 
-(** Executes a build description. Returns the result and the set of dynamic
+(** Execute a build description, given functions to resolve file-existence
+    queries and file selectors. Returns the result and the set of dynamic
     dependencies discovered during execution. *)
-val exec : eval_pred:Dep.eval_pred -> 'a t -> 'a * Dep.Set.t
+val exec :
+     'a t
+  -> file_exists:(Path.t -> bool)
+  -> eval_pred:Dep.eval_pred
+  -> 'a * Dep.Set.t
 
 (**/**)
 

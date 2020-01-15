@@ -1,3 +1,9 @@
+2.1.3 (unreleased)
+------------------
+
+- Fix building the OCaml compiler with Dune (#3038, fixes #2974,
+  @diml)
+
 2.1.2 (08/01/2020)
 ------------------
 

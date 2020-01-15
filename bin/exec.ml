@@ -93,10 +93,26 @@ let term =
         let prog = Path.extend_basename prog ~suffix:Bin.exe in
         Option.some_if (Path.exists prog) prog
   in
+  (* Good candidates for the "./x.exe" vs "x.exe" error are executables present
+     at the root of the dir *)
+  let hints =
+    lazy
+      (let candidates =
+         Path.Build.Set.to_list (Build_system.all_targets ())
+         |> List.map ~f:Path.Build.drop_build_context_exn
+         |> List.filter ~f:(fun p ->
+                Path.Source.extension p = ".exe"
+                && List.length (Path.Source.explode p) = 1)
+         |> List.map ~f:(fun p -> "./" ^ Path.Source.to_string p)
+       in
+       User_message.did_you_mean prog ~candidates)
+  in
   match (real_prog, no_rebuild) with
   | None, true -> (
     match Lazy.force targets with
-    | [] -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
+    | [] ->
+      let hints = Lazy.force hints in
+      User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
     | _ :: _ ->
       User_error.raise
         [ Pp.textf
@@ -104,7 +120,9 @@ let term =
              the --no-build option."
             prog
         ] )
-  | None, false -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
+  | None, false ->
+    let hints = Lazy.force hints in
+    User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog in
     let argv = prog :: args in

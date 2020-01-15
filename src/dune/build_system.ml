@@ -104,8 +104,8 @@ module Internal_rule = struct
       ; targets : Path.Build.Set.t
       ; context : Context.t option
       ; build : Action.t Build.t
-      ; (* Here we cache the result of [Build.static_deps t.build ~file_exists]
-           in [t.static_deps]. We do this lazily, because to compute it we need
+      ; (* We cache the result of [Build.static_deps t.build ~file_exists] in
+           [t.static_deps]. We do this lazily, because [Build.static_deps] needs
            the [file_exists] predicate which in turn depends on the [t.targets]
            field, thus causing a cyclic dependency. *)
         static_deps : Static_deps.t Memo.Lazy.t
@@ -133,8 +133,8 @@ module Internal_rule = struct
 
   let hash t = Id.hash t.id
 
-  (* Represent the build goal given by the user. This rule is never actually
-     executed and is only used starting point of all dependency paths. *)
+  (* Represents the build goal given by the user. This rule is never actually
+     executed and is only used as a starting point of all dependency paths. *)
   let root =
     { id = Id.gen ()
     ; targets = Path.Build.Set.empty
@@ -699,7 +699,13 @@ end = struct
             (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
-  (* CR amokhov: Is it worth memoizing this? *)
+  (* Here we are doing a O(log |S|) lookup in a set S of files in the build
+     directory [dir]. We could memoize these lookups, but it doesn't seem to be
+     worth it, since we're unlikely to perform exactly the same lookup many
+     times. As far as I can tell, each lookup will be done twice: when computing
+     static dependencies of a [Build.t] with [Build.static_deps] and when
+     executing the very same [Build.t] with [Build.exec] -- the results of both
+     [Build.static_deps] and [Build.exec] are cached. *)
   let file_exists fn =
     let dir = Path.parent_exn fn in
     Path.Set.mem (targets_of ~dir) fn
@@ -1266,7 +1272,7 @@ end = struct
       ~output:(Simple (module Action_and_deps))
       ~doc:
         "Evaluate the build description of a rule and return the action and \
-         dynamic dependency of the rule."
+         dynamic dependencies of the rule."
       ~input:(module Internal_rule)
       ~visibility:Hidden Async f
 
@@ -1852,7 +1858,7 @@ let package_deps pkg files =
           Static_deps.action_deps (Memo.Lazy.force ir.static_deps)
         in
         (* We know that at this point of execution, all the relevant ivars have
-           been filled so the following calls to [X.peek_exn] cannot raise. *)
+           been filled so the following call to [Memo.peek_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
@@ -1925,7 +1931,6 @@ let all_targets () =
 
 let targets_of ~dir = entry_point_sync ~f:(fun () -> targets_of ~dir)
 
-(* CR-soon amokhov: shall this be replaced with [file_exists]? *)
 let is_target file = Path.Set.mem (targets_of ~dir:(Path.parent_exn file)) file
 
 module Print_rules : sig

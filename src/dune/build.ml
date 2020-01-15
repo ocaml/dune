@@ -130,12 +130,6 @@ let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
 
-let if_ ~file_exists p ~then_ ~else_ =
-  if file_exists p then
-    then_
-  else
-    else_
-
 let paths_existing paths =
   all_unit
     (List.map paths ~f:(fun file ->
@@ -266,7 +260,10 @@ let static_deps t ~file_exists =
     | Paths_for_rule fns -> Static_deps.add_rule_paths acc fns
     | Paths_glob g -> Static_deps.add_action_dep acc (Dep.file_selector g)
     | If_file_exists (p, then_, else_) ->
-      loop (if_ ~file_exists p ~then_ ~else_) acc targets_allowed
+      if file_exists p then
+        loop then_ acc targets_allowed
+      else
+        loop else_ acc targets_allowed
     | Dyn_paths t -> loop t acc targets_allowed
     | Dyn_deps t -> loop t acc targets_allowed
     | Contents p -> Static_deps.add_rule_path acc p
@@ -299,7 +296,10 @@ let lib_deps t ~file_exists =
     | Record_lib_deps deps -> Lib_deps_info.merge deps acc
     | Fail _ -> acc
     | If_file_exists (p, then_, else_) ->
-      loop (if_ ~file_exists p ~then_ ~else_) acc
+      if file_exists p then
+        loop then_ acc
+      else
+        loop else_ acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets t -> loop (Lazy.force t) acc
@@ -373,7 +373,10 @@ let exec t ~file_exists ~eval_pred =
     | Record_lib_deps _ -> ()
     | Fail { fail } -> fail ()
     | If_file_exists (p, then_, else_) ->
-      exec dyn_deps (if_ ~file_exists p ~then_ ~else_)
+      if file_exists p then
+        exec dyn_deps then_
+      else
+        exec dyn_deps else_
     | Catch (t, on_error) -> ( try exec dyn_deps t with exn -> on_error exn )
     | Lazy_no_targets t -> exec dyn_deps (Lazy.force t)
     | Memo m -> (

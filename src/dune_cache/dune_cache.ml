@@ -152,18 +152,12 @@ module Cache = struct
     ; repositories : repository list
     ; handler : handler
     ; duplication_mode : Duplication_mode.t
+    ; temp_dir : Path.t
     }
 
   let path_files cache = Path.relative cache.root "files"
 
   let path_meta cache = Path.relative cache.root "meta"
-
-  let path_tmp cache = Path.relative cache.root "temp"
-
-  let with_lock cache f =
-    let lock = Lock_file.create (Path.relative cache.root ".lock") in
-    let finally () = Lock_file.unlock lock in
-    Exn.protect ~f ~finally
 
   let make_path cache path =
     match cache.build_root with
@@ -240,14 +234,8 @@ module Cache = struct
           Result.Ok stat
       in
       let prepare path =
-        let tmp = path_tmp cache in
-        (* dune-cache uses a single writer model, the promoted file name can be
-           constant *)
-        let dest = Path.relative tmp "promoting" in
-        if Path.exists dest then
-          Path.unlink dest
-        else
-          Path.mkdir_p tmp;
+        let dest = Path.relative cache.temp_dir "data" in
+        if Path.exists dest then Path.unlink dest;
         duplicate ~duplication cache path dest;
         dest
       in
@@ -285,23 +273,30 @@ module Cache = struct
                ; digest = effective_hash
                })
     in
-    let f () =
-      let+ promoted = Result.List.map ~f:promote paths in
-      let metadata_path = FSSchemeImpl.path (path_meta cache) key
-      and files = List.map ~f:file_of_promotion promoted in
-      let metadata_file : Metadata_file.t = { metadata; files } in
-      Path.mkdir_p (Path.parent_exn metadata_path);
-      Io.write_file metadata_path
-        (Csexp.to_string (Metadata_file.to_sexp metadata_file));
-      let f = function
-        | Already_promoted file when cache.duplication_mode <> Copy ->
-          cache.handler (Dedup file)
-        | _ -> ()
-      in
-      List.iter ~f promoted;
-      promoted
+    let+ promoted = Result.List.map ~f:promote paths in
+    let metadata_path = FSSchemeImpl.path (path_meta cache) key
+    and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
+    and files = List.map ~f:file_of_promotion promoted in
+    let metadata_file : Metadata_file.t = { metadata; files } in
+    let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in
+    Io.write_file metadata_tmp_path metadata;
+    let () =
+      match Io.read_file metadata_path with
+        | contents -> if contents <> metadata then
+                        User_warning.emit
+                          [ Pp.textf "non reproductible collision on rule %s"
+                              (Digest.to_string key)
+                          ]
+        | exception Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
     in
-    with_lock cache f
+    Path.rename metadata_tmp_path metadata_path;
+    let f = function
+      | Already_promoted file when cache.duplication_mode <> Copy ->
+        cache.handler (Dedup file)
+      | _ -> ()
+    in
+    List.iter ~f promoted;
+    promoted
 
   let promote cache paths key metadata ~repository ~duplication =
     Result.map ~f:ignore
@@ -331,7 +326,7 @@ module Cache = struct
 
   let set_build_dir cache p = { cache with build_root = Some p }
 
-  let teardown _ = ()
+  let teardown cache = Path.rm_rf ~allow_external:true cache.temp_dir
 
   let detect_duplication_mode root =
     let () = Path.mkdir_p root in
@@ -361,6 +356,9 @@ module Cache = struct
         ; repositories = []
         ; handler
         ; duplication_mode
+        ; temp_dir =
+            Path.temp_dir ~temp_dir:root "promoting"
+              (string_of_int (Unix.getpid ()))
         }
 
   let duplication_mode cache = cache.duplication_mode
@@ -378,10 +376,9 @@ let _garbage_collect default_trim cache =
   in
   let f default_trim = function
     | p, Result.Error msg ->
-      Cache.with_lock cache (fun () ->
-          Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
-          Path.unlink_no_err p;
-          { default_trim with trimmed_metafiles = [ p ] })
+      Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
+      Path.unlink_no_err p;
+      { default_trim with trimmed_metafiles = [ p ] }
     | p, Result.Ok { Metadata_file.files; _ } ->
       if
         List.for_all
@@ -389,32 +386,31 @@ let _garbage_collect default_trim cache =
           files
       then
         default_trim
-      else
-        Cache.with_lock cache (fun () ->
-            Log.infof
-              "remove metadata file %a as some produced files are missing"
-              Path.pp p;
-            let res =
-              List.fold_left ~init:default_trim
-                ~f:
-                  (fun ( { trimmed_files_size = size; trimmed_files = files; _ }
-                       as trim ) f ->
-                  let p = f.File.in_the_cache in
-                  try
-                    let stats = Path.stat p in
-                    if trimmable stats then (
-                      Path.unlink_no_err p;
-                      { trim with
-                        trimmed_files_size = size + stats.st_size
-                      ; trimmed_files = p :: files
-                      }
-                    ) else
-                      trim
-                  with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
-                files
-            in
-            Path.unlink_no_err p;
-            res)
+      else (
+        Log.infof "remove metadata file %a as some produced files are missing"
+          Path.pp p;
+        let res =
+          List.fold_left ~init:default_trim
+            ~f:
+              (fun ( { trimmed_files_size = size; trimmed_files = files; _ } as
+                   trim ) f ->
+              let p = f.File.in_the_cache in
+              try
+                let stats = Path.stat p in
+                if trimmable stats then (
+                  Path.unlink_no_err p;
+                  { trim with
+                    trimmed_files_size = size + stats.st_size
+                  ; trimmed_files = p :: files
+                  }
+                ) else
+                  trim
+              with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
+            files
+        in
+        Path.unlink_no_err p;
+        res
+      )
   in
   List.fold_left ~init:default_trim ~f metas
 
@@ -443,10 +439,7 @@ let trim cache free =
       }
     )
   in
-  let trim =
-    Cache.with_lock cache (fun () ->
-        List.fold_left ~init:default_trim ~f:delete files)
-  in
+  let trim = List.fold_left ~init:default_trim ~f:delete files in
   _garbage_collect trim cache
 
 let size cache =

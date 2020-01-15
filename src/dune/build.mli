@@ -106,8 +106,6 @@ val read_sexp : Path.t -> Dune_lang.Ast.t t
     target of a rule. *)
 val file_exists : Path.t -> bool t
 
-(* CR-soon amokhov: change [Path.t] to [Path.Build.t] in [if_file_exists]. *)
-
 (** [if_file_exists p ~then ~else] is a description that behaves like [then_] if
     [file_exists p] evaluates to [true], and [else_] otherwise. *)
 val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t

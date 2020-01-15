@@ -1863,7 +1863,7 @@ module Menhir = struct
 
   let syntax =
     Dune_lang.Syntax.create ~name:"menhir" ~desc:"the menhir extension"
-      [ (1, 1); (2, 0) ]
+      [ (1, 1); (2, 0); (2, 1) ]
 
   let decode =
     fields

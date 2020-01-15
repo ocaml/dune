@@ -68,6 +68,9 @@ val for_shell : t -> For_shell.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
+(** The empty action that does nothing. *)
+val empty : t
+
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 

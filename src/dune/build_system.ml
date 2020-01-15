@@ -139,7 +139,7 @@ module Internal_rule = struct
     { id = Id.gen ()
     ; targets = Path.Build.Set.empty
     ; context = None
-    ; build = Build.return (Action.Progn [])
+    ; build = Build.return Action.empty
     ; static_deps = Memo.Lazy.of_val Static_deps.empty
     ; mode = Standard
     ; info = Internal
@@ -1765,7 +1765,7 @@ let shim_of_build_goal request =
   let request =
     let open Build.O in
     let+ () = request in
-    Action.Progn []
+    Action.empty
   in
   Internal_rule.shim_of_build_goal ~build:request
     ~static_deps:(Build.static_deps request ~file_exists)

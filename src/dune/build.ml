@@ -212,7 +212,7 @@ let symlink ~src ~dst =
   path src >>> action ~targets:[ dst ] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[ fn ] (Redirect_out (Stdout, fn, Progn []))
+  action ~targets:[ fn ] (Redirect_out (Stdout, fn, Action.empty))
 
 let remove_tree dir = return (Action.Remove_tree dir)
 

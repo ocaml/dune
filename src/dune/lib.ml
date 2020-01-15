@@ -426,17 +426,26 @@ module Link_params = struct
       | Native -> List.rev_append (Lib_info.native_archives t.info) lib_files
     in
     let include_dirs =
-      let dirs files =
-        List.sort_uniq ~compare:Path.compare (List.map files ~f:Path.parent_exn)
-        (* TODO: Remove the above unsafe call to [parent_exn] by separating
-           files and directories at the type level. Then any file will have a
-           well-defined parent directory, possibly ".". *)
+      let files =
+        match mode with
+        | Byte -> dll_files
+        | Byte_with_stubs_statically_linked_in
+        | Native ->
+          lib_files
       in
-      match mode with
-      | Byte -> dirs dll_files
-      | Byte_with_stubs_statically_linked_in
-      | Native ->
-        dirs lib_files
+      let files =
+        match Lib_info.exit_module t.info with
+        | None -> files
+        | Some _ ->
+          (* The exit module is copied next to the archive, so we add the
+             archive here so that its directory ends up in [include_dirs]. *)
+          files @ deps
+      in
+      (* TODO: Remove the below unsafe call to [parent_exn] by separating files
+         and directories at the type level. Then any file will have a
+         well-defined parent directory, possibly ".". *)
+      let dirs = List.map files ~f:Path.parent_exn in
+      List.sort_uniq dirs ~compare:Path.compare
     in
     let hidden_deps =
       match Lib_info.exit_module t.info with

@@ -21,7 +21,7 @@ parts of a multi-component project.
 Initializing a project
 ----------------------
 
-To initialize a new ``dune`` project that uses the ``base`` and ``cmdliner``,
+To initialize a new ``dune`` project that uses the ``base`` and ``cmdliner``
 libraries and supports inline tests, you can run
 
 .. code:: bash
@@ -58,7 +58,7 @@ This will add the following stanza to the ``dune`` file:
 Initializing a library
 ----------------------
 
-To create a new directory ``src``, initialized as a library, can run:
+To create a new directory ``src``, initialized as a library, you can run:
 
 .. code:: bash
 
@@ -113,7 +113,7 @@ The first entry to match in this list will determine the root. In
 practice this means that if you nest your workspaces, dune will
 always use the outermost one.
 
-In addition to determining the root, ``dune`` will read this file as
+In addition to determining the root, ``dune`` will read this file
 to setup the configuration of the workspace unless the ``--workspace``
 command line option is used. See the section :ref:`dune-workspace`
 for the syntax of this file.

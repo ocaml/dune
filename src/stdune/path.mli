@@ -358,9 +358,9 @@ val string_of_file_kind : Unix.file_kind -> string
     by concatenating prefix, then a suitably chosen integer number, then suffix.
     The optional argument temp_dir indicates the temporary directory to use,
     defaulting to the current result of Filename.get_temp_dir_name. The
-    temporary directory with permissions 0700. The directory is guaranteed to be
-    different from any other directory that existed when temp_dir was called.
-    Raise Sys_error if the file could not be created. *)
+    temporary directory is created with permissions [mode], defaulting to 0700.
+    The directory is guaranteed to be different from any other directory that
+    existed when temp_dir was called. *)
 val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
 
 (** Rename a file. rename oldpath newpath renames the file called oldpath,

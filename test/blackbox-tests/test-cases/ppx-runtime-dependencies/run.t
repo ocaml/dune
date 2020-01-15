@@ -69,10 +69,8 @@ Handling ppx_runtime_libraries dependencies correctly
   [1]
 
 ----------------------------------------------------------------------------------
-* Ppx rewriters (and their ppx_runtime_libraries information) are collected recursively
-In this case we have the following dependency graph:
-main --[pps]--> b ---> ppx --[runtime]--> c ---> a
-Note the direct dependency b ---> ppx that separates pps and runtime dependencies.
+* It is not allowed to have a pps dependency on a library that has not been marked
+with (kind ppx_rewriter).
 
   $ cat >dune <<EOF
   > (library
@@ -97,6 +95,41 @@ Note the direct dependency b ---> ppx that separates pps and runtime dependencie
 
   $ cat >a.ml <<EOF
   > let a = 2 - 1
+  > EOF
+
+  $ ./sdune exec bin/main.exe
+  File "bin/dune", line 3, characters 18-19:
+  3 |  (preprocess (pps b))
+                        ^
+  Error: Ppx dependency on a non-ppx library "b".
+  [1]
+
+----------------------------------------------------------------------------------
+* Ppx rewriters (and their ppx_runtime_libraries information) are collected recursively
+In this case we have the following dependency graph:
+main --[pps]--> b ---> ppx --[runtime]--> c ---> a
+Note the direct dependency b ---> ppx that separates pps and runtime dependencies.
+
+  $ cat >dune <<EOF
+  > (library
+  >  (name a)
+  >  (modules a))
+  > (library
+  >  (name b)
+  >  (kind ppx_rewriter)
+  >  (modules b)
+  >  (libraries ppx))
+  > (library
+  >  (name ppx)
+  >  (modules ppx)
+  >  (kind ppx_rewriter)
+  >  (libraries ppxlib)
+  >  (ppx_runtime_libraries c)
+  >  )
+  > (library
+  >  (name c)
+  >  (modules c)
+  >  (libraries a))
   > EOF
 
   $ ./sdune exec bin/main.exe

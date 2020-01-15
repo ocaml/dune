@@ -55,6 +55,12 @@ type t =
   | Ppx_deriver of Ppx_args.t
   | Ppx_rewriter of Ppx_args.t
 
+let is_normal = function
+  | Normal -> true
+  | Ppx_deriver _
+  | Ppx_rewriter _ ->
+    false
+
 let to_dyn x =
   let open Dyn.Encoder in
   match x with

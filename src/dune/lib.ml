@@ -149,6 +149,13 @@ module Error = struct
           (Lib_name.to_string name) (Lib_name.to_string name)
       ]
 
+  let ppx_dependency_on_non_ppx_library ~loc dep =
+    let name = Lib_info.name dep in
+    make ~loc
+      [ Pp.textf "Ppx dependency on a non-ppx library %S."
+          (Lib_name.to_string name)
+      ]
+
   let not_virtual_lib ~loc ~impl ~not_vlib =
     let impl = Lib_info.name impl in
     let not_vlib = Lib_info.name not_vlib in
@@ -1211,6 +1218,14 @@ end = struct
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
 
+  let resolve_pps_deps db names ~stack =
+    Result.List.map names ~f:(fun (loc, name) ->
+        let* lib = resolve_dep db name ~allow_private_deps:true ~loc ~stack in
+        if Lib_kind.is_normal (Lib_info.kind lib.info) then
+          Error.ppx_dependency_on_non_ppx_library ~loc lib.info
+        else
+          Ok lib)
+
   let re_exports_closure ts =
     let visited = ref Set.empty in
     let res = ref [] in
@@ -1306,9 +1321,7 @@ end = struct
           { (fst first) with stop = last.stop }
         in
         let pps =
-          let* pps =
-            resolve_simple_deps db pps ~allow_private_deps:true ~stack
-          in
+          let* pps = resolve_pps_deps db pps ~stack in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in

@@ -1307,7 +1307,7 @@ let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
   let attempts = 512 in
   let rec loop count =
     if Stdlib.( >= ) count attempts then
-      Code_error.raise "mk_temp_dir: too many failing attemps"
+      Code_error.raise "Path.temp_dir: too many failing attemps"
         [ ("attempts", Int attempts) ]
     else
       let dir =
@@ -1320,9 +1320,6 @@ let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
       with
       | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
       | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
-      | Unix.Unix_error (e, _, _) ->
-        Code_error.raise "mk_temp_dir: system error"
-          [ ("error", String (Unix.error_message e)) ]
   in
   loop 0
 

@@ -281,13 +281,13 @@ module Cache = struct
     let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in
     Io.write_file metadata_tmp_path metadata;
     let () =
-      try
-        if Io.read_file metadata_path <> metadata then
-          User_warning.emit
-            [ Pp.textf "non reproductible collision on rule %s"
-                (Digest.to_string key)
-            ]
-      with Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
+      match Io.read_file metadata_path with
+        | contents -> if contents <> metadata then
+                        User_warning.emit
+                          [ Pp.textf "non reproductible collision on rule %s"
+                              (Digest.to_string key)
+                          ]
+        | exception Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
     in
     Path.rename metadata_tmp_path metadata_path;
     let f = function

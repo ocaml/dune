@@ -114,23 +114,3 @@ execution of the action.
  (description "\
 dune-glob provides a parser and interpreter for globs as \
 understood by dune language."))
-
-(package
- (name dune-dev-deps)
- (depends
-  ;; Development
-  odoc
-  merlin
-  utop
-  ocamlformat
-  ;; Testing
-  menhir
-  ppx_expect
-  ppx_inline_test
-  ppxlib
-  core_bench)
- (synopsis "[internal] A dependency-only package for development on dune")
- (description "\
-This package collects the dependencies needed for hacking on dune. These
-dependencies cannot be included in the usual way, since it leads to
-circularity."))

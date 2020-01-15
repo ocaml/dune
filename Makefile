@@ -4,6 +4,18 @@ DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./dune.exe
 
+# Dependencies used for developing and testing dune
+DEV_DEPS := \
+core_bench \
+menhir \
+merlin \
+ocamlformat \
+odoc \
+ppx_expect \
+ppx_inline_test \
+ppxlib \
+utop
+
 -include Makefile.dev
 
 release: $(BIN)
@@ -25,7 +37,7 @@ reinstall: uninstall install
 
 dev-switch:
 	opam switch create -y . --deps-only --with-test
-	opam install -y ./dune-dev-deps.opam --deps-only --with-test
+	opam install -y $(DEV_DEPS)
 
 test: $(BIN)
 	$(BIN) runtest

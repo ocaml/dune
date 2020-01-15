@@ -261,9 +261,9 @@ let static_deps t ~file_exists =
     | Paths_glob g -> Static_deps.add_action_dep acc (Dep.file_selector g)
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
-        loop then_ acc targets_allowed
+        loop then_ acc false
       else
-        loop else_ acc targets_allowed
+        loop else_ acc false
     | Dyn_paths t -> loop t acc targets_allowed
     | Dyn_deps t -> loop t acc targets_allowed
     | Contents p -> Static_deps.add_rule_path acc p

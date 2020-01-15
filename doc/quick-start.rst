@@ -108,6 +108,36 @@ Outside of the library, module ``Foo`` will be accessible as
 You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
+Building a hello world program in byte-code
+============================================
+
+In a directory of your choice, write this ``dune`` file:
+
+.. code:: scheme
+
+    ;; This declares the hello_world executable implemented by hello_world.ml
+    ;; to be build as native (.exe) or byte-code (.bc) version.
+    (executable
+     (name hello_world)
+     (modes byte exe))
+
+This ``hello_world.ml`` file:
+
+.. code:: ocaml
+
+    print_endline "Hello, world!"
+
+And build it with:
+
+.. code:: bash
+
+    dune build hello_world.bc
+
+The executable will be built as ``_build/default/hello_world.bc``.
+The executable can be built and run in a single
+step with ``dune exec ./hello_world.bc``. This byte-code version allows the usage of 
+``ocamldebug``.
+
 Setting the OCaml compilation flags globally
 ============================================
 

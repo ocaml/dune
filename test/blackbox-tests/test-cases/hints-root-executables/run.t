@@ -1,4 +1,5 @@
-when user tries to execute a root-defined executable without './' we suggest it
+when user tries to execute a current-dir-defined
+executable without './' we suggest it
 
   $ dune exec foo.exe --no-build
   Error: Program "foo.exe" not found!
@@ -11,4 +12,17 @@ when user tries to execute a root-defined executable without './' we suggest it
   [1]
 
   $ dune exec ./foo.exe
-  bar
+  foo
+
+  $  cd foo && dune exec bar.exe --no-build
+  Error: Program "bar.exe" not found!
+  Hint: did you mean ./bar.exe?
+  [1]
+
+  $ cd foo && dune exec bar.exe
+  Error: Program "bar.exe" not found!
+  Hint: did you mean ./bar.exe?
+  [1]
+
+  $ cd foo && dune exec ./bar.exe
+  foo/bar

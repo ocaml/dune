@@ -1,1 +1,1 @@
-print_string "bar"
+print_string "foo"

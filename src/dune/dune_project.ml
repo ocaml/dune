@@ -644,7 +644,7 @@ let parse ~dir ~lang ~opam_packages ~file =
              ~f:(fun _name dune opam ->
                match (dune, opam) with
                | _, None -> dune
-               | Some p, _ -> Some { p with kind = Dune (Option.is_some opam) }
+               | Some p, Some _ -> Some { p with has_opam_file = true }
                | None, Some (loc, _) ->
                  User_error.raise ~loc
                    [ Pp.text
@@ -769,7 +769,7 @@ let load ~dir ~files ~infer_from_opam_files =
                ; info = Package.Info.empty
                ; synopsis = None
                ; description = None
-               ; kind = Opam
+               ; has_opam_file = true
                ; tags = []
                ; deprecated_package_names = Package.Name.Map.empty
                })

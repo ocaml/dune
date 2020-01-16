@@ -62,14 +62,6 @@ module Dependency : sig
   val decode : t Dune_lang.Decoder.t
 end
 
-module Kind : sig
-  type has_opam = bool
-
-  type t =
-    | Dune of has_opam
-    | Opam
-end
-
 module Source_kind : sig
   type t =
     | Github of string * string
@@ -122,7 +114,7 @@ type t =
   ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
-  ; kind : Kind.t
+  ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   }

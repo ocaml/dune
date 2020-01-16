@@ -64,8 +64,6 @@ virtual libraries may not implement their virtual modules
   You need to add the following field to this stanza:
   
     (modules_without_implementation m)
-  
-  This will become an error in the future.
   -------------------------
   impl: true. modules_without_implementation: true. virtual_modules: true. private_modules: false
   File "dune", line 4, characters 18-19:
@@ -115,8 +113,6 @@ virtual libraries may not implement their virtual modules
   You need to add the following field to this stanza:
   
     (modules_without_implementation m)
-  
-  This will become an error in the future.
   -------------------------
 
 Implementations cannot introduce new modules to the library's interface

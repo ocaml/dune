@@ -41,13 +41,16 @@ let term =
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
   let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
   let context = Import.Main.find_context_exn setup.workspace ~name:context in
+  let path_relative_to_build_root p =
+    Common.prefix_target common p
+    |> Path.Build.relative context.build_dir
+    |> Path.build
+  in
   let prog_where =
     match Filename.analyze_program_name prog with
     | Absolute -> `This_abs (Path.of_string prog)
     | In_path -> `Search prog
-    | Relative_to_current_dir ->
-      let prog = Common.prefix_target common prog in
-      `This_rel (Path.build (Path.Build.relative context.build_dir prog))
+    | Relative_to_current_dir -> `This_rel (path_relative_to_build_root prog)
   in
   let targets =
     lazy
@@ -95,23 +98,22 @@ let term =
   in
   (* Good candidates for the "./x.exe" instead of "x.exe" error are executables
      present at the root of the build dir *)
-  let hints =
-    lazy
-      (let candidates =
-         Path.Build.Set.to_list (Build_system.all_targets ())
-         |> List.map ~f:Path.Build.drop_build_context_exn
-         |> List.filter ~f:(fun p ->
-                Path.Source.extension p = ".exe"
-                && List.length (Path.Source.explode p) = 1)
-         |> List.map ~f:(fun p -> "./" ^ Path.Source.to_string p)
-       in
-       User_message.did_you_mean prog ~candidates)
+  let hints () =
+    let candidates =
+      let path = path_relative_to_build_root "" in
+      let open List in
+      Path.Set.to_list (Build_system.targets_of ~dir:path)
+      |> map ~f:Path.drop_optional_build_context
+      |> filter ~f:(fun p -> Path.extension p = ".exe")
+      |> map ~f:(fun p -> "./" ^ Path.basename p)
+    in
+    User_message.did_you_mean prog ~candidates
   in
   match (real_prog, no_rebuild) with
   | None, true -> (
     match Lazy.force targets with
     | [] ->
-      let hints = Lazy.force hints in
+      let hints = hints () in
       User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
     | _ :: _ ->
       User_error.raise
@@ -121,7 +123,7 @@ let term =
             prog
         ] )
   | None, false ->
-    let hints = Lazy.force hints in
+    let hints = hints () in
     User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog in

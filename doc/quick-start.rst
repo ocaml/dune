@@ -152,7 +152,7 @@ Write this ``dune`` file at the root of your project:
       (flags (:standard -O3))))
 
 `dev` and `release` correspond to build profiles. The build profile
-can be selected from the command line with `--profile foo` or from a
+can be selected from the command line with ``--profile foo`` or from a
 `dune-workspace` file by writing:
 
 .. code:: scheme
@@ -168,7 +168,7 @@ Add this field to your ``library`` or ``executable`` stanzas:
 
     (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{input-file})))
 
-Additionally, if you are include a ``config.h`` file, you need to
+Additionally, if you want to include a ``config.h`` file, you need to
 declare the dependency to this file via:
 
 .. code:: scheme

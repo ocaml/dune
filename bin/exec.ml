@@ -103,7 +103,6 @@ let term =
       let path = path_relative_to_build_root "" in
       let open List in
       Path.Set.to_list (Build_system.targets_of ~dir:path)
-      |> map ~f:Path.drop_optional_build_context
       |> filter ~f:(fun p -> Path.extension p = ".exe")
       |> map ~f:(fun p -> "./" ^ Path.basename p)
     in

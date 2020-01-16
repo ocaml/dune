@@ -274,7 +274,7 @@ let get_name ~files ~(dune_project : Dune_project.t option) () =
         match Path.parent fn with
         | Some p when Path.is_root p ->
           let fn = Path.basename fn in
-          Package.Name.of_basename fn
+          Package.Name.of_opam_file_basename fn
         | _ -> None)
   in
   if package_names = [] then

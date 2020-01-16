@@ -93,8 +93,8 @@ let term =
         let prog = Path.extend_basename prog ~suffix:Bin.exe in
         Option.some_if (Path.exists prog) prog
   in
-  (* Good candidates for the "./x.exe" vs "x.exe" error are executables present
-     at the root of the dir *)
+  (* Good candidates for the "./x.exe" instead of "x.exe" error are executables
+     present at the root of the build dir *)
   let hints =
     lazy
       (let candidates =

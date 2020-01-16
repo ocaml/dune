@@ -1,3 +1,10 @@
+2.2.0 (unreleased)
+------------------
+
+- By default, do not show the full command line of commands executed
+  by `dune` when `dune` is executed inside `dune`. This is to make
+  integration tests more reproducible (#3042, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

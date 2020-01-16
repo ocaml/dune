@@ -176,8 +176,6 @@ let packages t = t.packages
 
 let version t = t.version
 
-let info t = t.info
-
 let name t = t.name
 
 let root t = t.root
@@ -657,13 +655,14 @@ let parse ~dir ~lang ~opam_packages ~file =
        )
      in
      let packages =
-       match version with
-       | None -> packages
-       | Some _ ->
-         Package.Name.Map.map packages ~f:(fun p ->
+       Package.Name.Map.map packages ~f:(fun p ->
+           let info = Package.Info.superpose info p.info in
+           let version =
              match p.version with
-             | Some _ -> p
-             | None -> { p with version })
+             | Some _ as v -> v
+             | None -> version
+           in
+           { p with version; info })
      in
      let name =
        match name with

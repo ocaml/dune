@@ -69,7 +69,7 @@ module Source_kind : sig
 
   val to_dyn : t Dyn.Encoder.t
 
-  val pp : Format.formatter -> t -> unit
+  val to_string : t -> string
 
   val decode : t Dune_lang.Decoder.t
 end

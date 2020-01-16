@@ -21,52 +21,6 @@ let is_a_source_file path =
   | _ -> true )
   && Path.is_file path
 
-let make_watermark_map_from_opam_file ~name ~version ~commit =
-  let dir, name =
-    let path = Path.in_source (Package.Name.to_string name) in
-    (Path.parent_exn path, name)
-  in
-  let opam_file = Opam_file.load (Package.file ~dir ~name) in
-  let version_num =
-    Option.value ~default:version (String.drop_prefix version ~prefix:"v")
-  in
-  let opam_var name sep =
-    match Opam_file.get_field opam_file name with
-    | None -> Error (sprintf "variable %S not found in opam file" name)
-    | Some value -> (
-      let err () =
-        Error (sprintf "invalid value for variable %S in opam file" name)
-      in
-      match value with
-      | String (_, s) -> Ok s
-      | List (_, l) -> (
-        match
-          List.fold_left l ~init:(Ok []) ~f:(fun acc v ->
-              match acc with
-              | Error _ -> acc
-              | Ok l -> (
-                match v with
-                | OpamParserTypes.String (_, s) -> Ok (s :: l)
-                | _ -> err () ))
-        with
-        | Error _ as e -> e
-        | Ok l -> Ok (String.concat ~sep (List.rev l)) )
-      | _ -> err () )
-  in
-  String.Map.of_list_exn
-    [ ("NAME", Ok (Package.Name.to_string name))
-    ; ("VERSION", Ok version)
-    ; ("VERSION_NUM", Ok version_num)
-    ; ("VCS_COMMIT_ID", Ok commit)
-    ; ("PKG_MAINTAINER", opam_var "maintainer" ", ")
-    ; ("PKG_AUTHORS", opam_var "authors" ", ")
-    ; ("PKG_HOMEPAGE", opam_var "homepage" " ")
-    ; ("PKG_ISSUES", opam_var "bug-reports" " ")
-    ; ("PKG_DOC", opam_var "doc" " ")
-    ; ("PKG_LICENSE", opam_var "license" ", ")
-    ; ("PKG_REPO", opam_var "dev-repo" " ")
-    ]
-
 let subst_string s path ~map =
   let len = String.length s in
   let longest_var = String.longest (String.Map.keys map) in
@@ -268,67 +222,13 @@ module Dune_project = struct
     if s <> t.contents then Io.write_file filename s
 end
 
-let get_name ~files ~(dune_project : Dune_project.t option) () =
-  let package_names =
-    List.filter_map files ~f:(fun fn ->
-        match Path.parent fn with
-        | Some p when Path.is_root p ->
-          let fn = Path.basename fn in
-          Package.Name.of_opam_file_basename fn
-        | _ -> None)
-  in
-  if package_names = [] then
-    User_error.raise [ Pp.textf "No <package>.opam files found." ];
-  let loc, name =
-    match dune_project with
-    | None ->
-      User_error.raise
-        [ Pp.text
-            "There is no dune-project file in the current directory, please \
-             add one with a (name <name>) field in it."
-        ]
-        ~hints:
-          [ Pp.text "dune subst must be executed from the root of the project."
-          ]
-    | Some { name = None; _ } ->
-      User_error.raise
-        [ Pp.textf
-            "The project name is not defined, please add a (name <name>) field \
-             to your dune-project file."
-        ]
-    | Some { name = Some n; _ } -> (n.loc_of_arg, n.arg)
-  in
-  ( if not (List.mem name ~set:package_names) then
-    let name = Package.Name.to_string name in
-    if Loc.is_none loc then
-      User_error.raise [ Pp.textf "File %s.opam doesn't exist." name ]
-    else
-      User_error.raise ~loc
-        [ Pp.textf
-            "File %s.opam doesn't exist. It is inferred from the name in the \
-             dune-project file"
-            name
-        ] );
-  name
-
-let make_watermark_map_from_dune_project ~commit ~version
-    ~(dune_project : Dune_project.t) =
+let make_watermark_map ~commit ~version ~dune_project ~package =
   let dune_project = Dune_project.project dune_project in
   let version_num =
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
   let name = Dune_project.name dune_project in
-  let info = Dune_project.info dune_project in
-  let main_package =
-    let name = Dune_project.Name.to_encoded_string name in
-    let name = Package.Name.of_string name in
-    Package.Name.Map.find (Dune_project.packages dune_project) name
-  in
-  let info =
-    match main_package with
-    | Some package -> Package.Info.superpose info package.info
-    | None -> info
-  in
+  let info = package.Package.info in
   let make_value name = function
     | None -> Error (sprintf "variable %S not found in dune-project file" name)
     | Some value -> Ok value
@@ -368,45 +268,47 @@ let subst vcs =
       (fun () -> Vcs.files vcs)
   in
   let dune_project =
-    let files = String.Set.of_list (List.map ~f:Path.to_string files) in
-    Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
-  in
-  let watermarks =
-    match dune_project with
-    | Some dune_project ->
-      let watermarks_from_dune_project =
-        make_watermark_map_from_dune_project ~commit ~version ~dune_project
-      in
-      let name = Dune_project.name dune_project.project in
-      let name = Dune_project.Name.to_encoded_string name in
-      let name = Package.Name.of_string name in
-      let watermarks_from_opam_opt =
-        Option.try_with (fun () ->
-            make_watermark_map_from_opam_file ~name ~version ~commit)
-      in
-      let superpose =
-        String.Map.merge ~f:(fun _ x y ->
-            match (x, y) with
-            | None, _ -> assert false
-            | _, None -> assert false
-            | Some x, Some y -> (
-              match (x, y) with
-              | Ok a, _ -> Some (Ok a)
-              | Error _, Ok b -> Some (Ok b)
-              | Error a, Error _ -> Some (Error a) ))
-      in
-      let watermarks =
-        match watermarks_from_opam_opt with
-        | Some watermarks_from_opam ->
-          superpose watermarks_from_dune_project watermarks_from_opam
-        | None -> watermarks_from_dune_project
-      in
-      Dune_project.subst ~map:watermarks ~version dune_project;
-      watermarks
+    match
+      let files = String.Set.of_list (List.map ~f:Path.to_string files) in
+      Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
+    with
+    | Some dune_project -> dune_project
     | None ->
-      let name = get_name ~files ~dune_project:None () in
-      make_watermark_map_from_opam_file ~name ~version ~commit
+      User_error.raise
+        [ Pp.text
+            "There is no dune-project file in the current directory, please \
+             add one with a (name <name>) field in it."
+        ]
+        ~hints:
+          [ Pp.text "dune subst must be executed from the root of the project."
+          ]
   in
+  let package =
+    let loc, name =
+      match dune_project.name with
+      | None ->
+        User_error.raise
+          [ Pp.textf
+              "The project name is not defined, please add a (name <name>) \
+               field to your dune-project file."
+          ]
+      | Some n -> (n.loc_of_arg, n.arg)
+    in
+    match
+      Package.Name.Map.find (Dune_project.packages dune_project.project) name
+    with
+    | Some pkg -> pkg
+    | None ->
+      User_error.raise ~loc
+        [ Pp.textf
+            "Package %s doesn't exist. Please add a (package (name %s) ...) \
+             stanza to your dune-project file."
+            (Package.Name.to_string name)
+            (Package.Name.to_string name)
+        ]
+  in
+  let watermarks = make_watermark_map ~commit ~version ~dune_project ~package in
+  Dune_project.subst ~map:watermarks ~version dune_project;
   List.iter files ~f:(fun path ->
       if is_a_source_file path && not (Path.equal path Dune_project.filename)
       then

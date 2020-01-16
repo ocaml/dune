@@ -254,10 +254,10 @@ module Source_kind = struct
     | Github (user, repo) -> constr "Github" [ string user; string repo ]
     | Url url -> constr "Url" [ string url ]
 
-  let pp fmt = function
+  let to_string = function
     | Github (user, repo) ->
-      Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
-    | Url u -> Format.pp_print_string fmt u
+      sprintf "git+https://github.com/%s/%s.git" user repo
+    | Url u -> u
 
   let decode =
     let open Dune_lang.Decoder in

@@ -105,9 +105,7 @@ let opam_fields project (package : Package.t) =
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in
-  let info =
-    Package.Info.superpose (Dune_project.info project) package.Package.info
-  in
+  let info = package.Package.info in
   let optional_fields =
     [ ("bug-reports", Package.Info.bug_reports info)
     ; ("homepage", Package.Info.homepage info)
@@ -115,9 +113,8 @@ let opam_fields project (package : Package.t) =
     ; ("license", Package.Info.license info)
     ; ("version", Dune_project.version project)
     ; ( "dev-repo"
-      , Option.map
-          ~f:(Format.asprintf "%a" Package.Source_kind.pp)
-          (Package.Info.source info) )
+      , Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
+      )
     ]
     |> List.filter_map ~f:(fun (k, v) ->
            Option.map v ~f:(fun v -> (k, string v)))

@@ -317,7 +317,18 @@ let make_watermark_map_from_dune_project ~commit ~version
   let version_num =
     Option.value ~default:version (String.drop_prefix version ~prefix:"v")
   in
+  let name = Dune_project.name dune_project in
   let info = Dune_project.info dune_project in
+  let main_package =
+    let name = Dune_project.Name.to_encoded_string name in
+    let name = Package.Name.of_string name in
+    Package.Name.Map.find (Dune_project.packages dune_project) name
+  in
+  let info =
+    match main_package with
+    | Some package -> Package.Info.superpose info package.info
+    | None -> info
+  in
   let make_value name = function
     | None -> Error (sprintf "variable %S not found in dune-project file" name)
     | Some value -> Ok value
@@ -333,9 +344,7 @@ let make_watermark_map_from_dune_project ~commit ~version
     | None -> Error (sprintf "variable dev-repo not found in dune-project file")
   in
   String.Map.of_list_exn
-    [ ( "NAME"
-      , Ok (Dune_project.name dune_project |> Dune_project.Name.to_string_hum)
-      )
+    [ ("NAME", Ok (Dune_project.Name.to_string_hum name))
     ; ("VERSION", Ok version)
     ; ("VERSION_NUM", Ok version_num)
     ; ("VCS_COMMIT_ID", Ok commit)
@@ -365,8 +374,32 @@ let subst vcs =
   let watermarks =
     match dune_project with
     | Some dune_project ->
-      let watermarks =
+      let watermarks_from_dune_project =
         make_watermark_map_from_dune_project ~commit ~version ~dune_project
+      in
+      let name = Dune_project.name dune_project.project in
+      let name = Dune_project.Name.to_encoded_string name in
+      let name = Package.Name.of_string name in
+      let watermarks_from_opam_opt =
+        Option.try_with (fun () ->
+            make_watermark_map_from_opam_file ~name ~version ~commit)
+      in
+      let superpose =
+        String.Map.merge ~f:(fun _ x y ->
+            match (x, y) with
+            | None, _ -> assert false
+            | _, None -> assert false
+            | Some x, Some y -> (
+              match (x, y) with
+              | Ok a, _ -> Some (Ok a)
+              | Error _, Ok b -> Some (Ok b)
+              | Error a, Error _ -> Some (Error a) ))
+      in
+      let watermarks =
+        match watermarks_from_opam_opt with
+        | Some watermarks_from_opam ->
+          superpose watermarks_from_dune_project watermarks_from_opam
+        | None -> watermarks_from_dune_project
       in
       Dune_project.subst ~map:watermarks ~version dune_project;
       watermarks

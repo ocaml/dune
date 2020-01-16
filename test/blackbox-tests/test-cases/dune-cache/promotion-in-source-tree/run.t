@@ -44,5 +44,3 @@ into the file after the second run.
   Hello, world!
 
   $ echo plop > file
-  sh: file: Permission denied
-  [1]

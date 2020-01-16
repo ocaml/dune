@@ -243,20 +243,6 @@ module Dependency = struct
       ]
 end
 
-module Kind = struct
-  type has_opam = bool
-
-  type t =
-    | Dune of has_opam
-    | Opam
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Dune b -> constr "Dune" [ bool b ]
-    | Opam -> constr "Opam" []
-end
-
 module Source_kind = struct
   type t =
     | Github of string * string
@@ -411,7 +397,7 @@ type t =
   ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
-  ; kind : Kind.t
+  ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   }
@@ -462,7 +448,7 @@ let decode ~dir =
      ; info
      ; path = dir
      ; version = None
-     ; kind = Dune false
+     ; has_opam_file = false
      ; tags
      ; deprecated_package_names
      }
@@ -477,7 +463,7 @@ let to_dyn
     ; conflicts
     ; depopts
     ; info
-    ; kind
+    ; has_opam_file
     ; tags
     ; loc = _
     ; deprecated_package_names
@@ -492,7 +478,7 @@ let to_dyn
     ; ("conflicts", list Dependency.to_dyn conflicts)
     ; ("depopts", list Dependency.to_dyn depopts)
     ; ("info", Info.to_dyn info)
-    ; ("kind", Kind.to_dyn kind)
+    ; ("has_opam_file", Bool has_opam_file)
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"

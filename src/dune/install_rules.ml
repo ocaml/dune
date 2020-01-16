@@ -204,10 +204,9 @@ end = struct
                   , Install.Entry.make Lib dune_package_file
                       ~dst:Dune_package.fn )
                ::
-               ( match pkg.kind with
-               | Dune false -> deprecated_meta_and_dune_files
-               | Dune true
-               | Opam ->
+               ( if not pkg.has_opam_file then
+                 deprecated_meta_and_dune_files
+               else
                  let opam_file = Package_paths.opam_file ctx pkg in
                  (None, Install.Entry.make Lib opam_file ~dst:"opam")
                  :: deprecated_meta_and_dune_files )

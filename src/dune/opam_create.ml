@@ -45,7 +45,7 @@ let package_fields
     ; name = _
     ; path = _
     ; version = _
-    ; kind = _
+    ; has_opam_file = _
     ; tags
     ; loc = _
     ; deprecated_package_names = _
@@ -195,6 +195,4 @@ let add_rules sctx ~dir =
   if Dune_project.generate_opam_files project then
     Dune_project.packages project
     |> Package.Name.Map.iter ~f:(fun (pkg : Package.t) ->
-           match pkg.kind with
-           | Dune _ -> add_rule sctx ~project ~pkg
-           | Opam -> ())
+           add_rule sctx ~project ~pkg)

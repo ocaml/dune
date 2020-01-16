@@ -21,7 +21,7 @@ module Name : sig
 
   val to_dyn : t -> Dyn.t
 
-  val of_basename : string -> t option
+  val of_opam_file_basename : string -> t option
 end
 
 module Dependency : sig
@@ -134,3 +134,6 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 
 val is_opam_file : Path.t -> bool
+
+(** Construct a package description from an opam file. *)
+val load_opam_file : Path.Source.t -> Name.t -> t

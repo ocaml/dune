@@ -17,6 +17,10 @@
 - It is now an error to have a preprocessing dependency on a ppx rewriter
   library that is not marked as `(kind ppx_rewriter)` (#3039, @snowleopard).
 
+- Fix permissions of files promoted to the source tree when using the
+  shared cache. In particular, make them writable by the user (#3043,
+  fixes #3026, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

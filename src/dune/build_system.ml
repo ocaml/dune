@@ -1685,8 +1685,13 @@ end = struct
                 if lifetime = Until_clean then
                   Promoted_to_delete.add in_source_tree;
                 Scheduler.ignore_for_watch in_source_tree;
+                (* The file in the build directory might be read-only if it
+                   comes from the shared cache. However, we want the file in the
+                   source tree to be writable by the user, so we explicitly set
+                   the user writable bit. *)
+                let chmod n = n lor 0o200 in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~get_vcs:File_tree.nearest_vcs ))
+                  ~get_vcs:File_tree.nearest_vcs ~chmod ))
     in
     t.rule_done <- t.rule_done + 1
 

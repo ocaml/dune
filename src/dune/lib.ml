@@ -1223,20 +1223,6 @@ end = struct
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
 
-  let resolve_pps_deps db ~pps ~dune_version ~stack =
-    let open Dune_lang.Syntax.Version.Infix in
-    let check_ppx_kind =
-      match dune_version with
-      | None -> true
-      | Some version -> version >= (2, 2)
-    in
-    Result.List.map pps ~f:(fun (loc, name) ->
-        let* lib = resolve_dep db name ~allow_private_deps:true ~loc ~stack in
-        if check_ppx_kind && Lib_kind.is_normal (Lib_info.kind lib.info) then
-          Error.ppx_dependency_on_non_ppx_library ~loc lib.info
-        else
-          Ok lib)
-
   let re_exports_closure ts =
     let visited = ref Set.empty in
     let res = ref [] in
@@ -1323,7 +1309,7 @@ end = struct
     let deps, pps =
       match pps with
       | [] -> (deps, Ok [])
-      | first :: others as pps ->
+      | first :: others ->
         (* Location of the list of ppx rewriters *)
         let loc : Loc.t =
           let (last, _) : Loc.t * _ =
@@ -1331,8 +1317,20 @@ end = struct
           in
           { (fst first) with stop = last.stop }
         in
+        let check_ppx_kind =
+          match dune_version with
+          | None -> true
+          | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
+        in
+        let resolve_pps_deps (loc, name) =
+          let* lib = resolve_dep db name ~allow_private_deps:true ~loc ~stack in
+          if check_ppx_kind && Lib_kind.is_normal (Lib_info.kind lib.info) then
+            Error.ppx_dependency_on_non_ppx_library ~loc lib.info
+          else
+            Ok lib
+        in
         let pps =
-          let* pps = resolve_pps_deps db ~pps ~dune_version ~stack in
+          let* pps = Result.List.map pps ~f:resolve_pps_deps in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in

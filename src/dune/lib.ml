@@ -149,7 +149,7 @@ module Error = struct
           (Lib_name.to_string name) (Lib_name.to_string name)
       ]
 
-  let ppx_dependency_on_non_ppx_library ~loc dep =
+  let only_ppx_deps_allowed ~loc dep =
     let name = Lib_info.name dep in
     make ~loc
       [ Pp.textf
@@ -1005,6 +1005,7 @@ module rec Resolve : sig
   val resolve_simple_deps :
        db
     -> (Loc.t * Lib_name.t) list
+    -> allow_only_ppx_deps:bool
     -> allow_private_deps:bool
     -> stack:Dep_stack.t
     -> (t list, exn) Result.t
@@ -1119,7 +1120,8 @@ end = struct
     in
     let ppx_runtime_deps =
       Lib_info.ppx_runtime_deps info
-      |> resolve_simple_deps db ~allow_private_deps ~stack
+      |> resolve_simple_deps db ~allow_only_ppx_deps:false ~allow_private_deps
+           ~stack
     in
     let src_dir = Lib_info.src_dir info in
     let map_error x =
@@ -1219,9 +1221,16 @@ end = struct
     resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
     |> Result.is_ok
 
-  let resolve_simple_deps db names ~allow_private_deps ~stack =
+  (* CR amokhov: Switch to a single mechanism for checking allowed dependencies. *)
+  let resolve_simple_deps db names ~allow_only_ppx_deps ~allow_private_deps
+      ~stack =
     Result.List.map names ~f:(fun (loc, name) ->
-        resolve_dep db name ~allow_private_deps ~loc ~stack)
+        let* lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
+        if allow_only_ppx_deps && Lib_kind.is_normal (Lib_info.kind lib.info)
+        then
+          Error.only_ppx_deps_allowed ~loc lib.info
+        else
+          Ok lib)
 
   let re_exports_closure ts =
     let visited = ref Set.empty in
@@ -1253,7 +1262,8 @@ end = struct
                     Lib_name.Set.fold required ~init:[] ~f:(fun x acc ->
                         (loc, x) :: acc)
                   in
-                  resolve_simple_deps ~allow_private_deps db deps ~stack
+                  resolve_simple_deps ~allow_only_ppx_deps:false
+                    ~allow_private_deps db deps ~stack
                 with
                 | Ok ts -> Some (ts, file)
                 | Error _ -> None)
@@ -1317,20 +1327,17 @@ end = struct
           in
           { (fst first) with stop = last.stop }
         in
-        let check_ppx_kind =
+        let allow_only_ppx_deps =
           match dune_version with
           | None -> true
           | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
         in
-        let resolve_pps_deps (loc, name) =
-          let* lib = resolve_dep db name ~allow_private_deps:true ~loc ~stack in
-          if check_ppx_kind && Lib_kind.is_normal (Lib_info.kind lib.info) then
-            Error.ppx_dependency_on_non_ppx_library ~loc lib.info
-          else
-            Ok lib
-        in
+
         let pps =
-          let* pps = Result.List.map pps ~f:resolve_pps_deps in
+          let* pps =
+            resolve_simple_deps db pps ~allow_only_ppx_deps
+              ~allow_private_deps:true ~stack
+          in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in
@@ -1924,8 +1931,8 @@ module DB = struct
     }
 
   let resolve_pps t pps =
-    Resolve.resolve_simple_deps t ~allow_private_deps:true pps
-      ~stack:Dep_stack.empty
+    Resolve.resolve_simple_deps t ~allow_only_ppx_deps:false
+      ~allow_private_deps:true pps ~stack:Dep_stack.empty
 
   let rec all ?(recursive = false) t =
     let l =

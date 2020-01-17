@@ -8,6 +8,9 @@
 - `dune subst` now works even without opam files (#2955, fixes #2910,
   @fangyi-zhou and @diml)
 
+- Hint when trying to execute an executable defined in the current directory
+  without using the `./` prefix (#3041).
+
 2.1.3 (16/01/2020)
 ------------------
 

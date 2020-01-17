@@ -99,6 +99,7 @@ module Stanza = struct
     let source = Source.of_stanza ~dir ~toplevel in
     let expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in
+    let dune_version = Scope.project scope |> Dune_project.dune_version in
     let compile_info =
       let compiler_libs =
         Lib_name.of_string_exn ~loc:(Some source.loc) "compiler-libs.toplevel"
@@ -107,15 +108,13 @@ module Stanza = struct
         [ (source.loc, source.name) ]
         ( Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
-        ~pps:[] ~allow_overlaps:false ~variants:toplevel.variants
+        ~pps:[] ~dune_version ~allow_overlaps:false ~variants:toplevel.variants
         ~optional:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
     let obj_dir = Source.obj_dir source in
     let flags =
-      let project = Scope.project scope in
-      let dune_version = Dune_project.dune_version project in
       let profile = Super_context.profile sctx in
       Ocaml_flags.append_common
         (Ocaml_flags.default ~dune_version ~profile)

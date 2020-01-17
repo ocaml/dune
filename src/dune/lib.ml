@@ -1014,6 +1014,7 @@ module rec Resolve : sig
     -> Lib_dep.t list
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
+    -> dune_version:Dune_lang.Syntax.Version.t option
     -> stack:Dep_stack.t
     -> lib list Or_exn.t
        * lib list Or_exn.t
@@ -1104,8 +1105,9 @@ end = struct
     in
     let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
+      let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_user_deps db ~allow_private_deps ~pps ~stack
+      |> resolve_user_deps db ~allow_private_deps ~pps ~dune_version ~stack
     in
     let requires =
       match implements with
@@ -1221,10 +1223,16 @@ end = struct
     Result.List.map names ~f:(fun (loc, name) ->
         resolve_dep db name ~allow_private_deps ~loc ~stack)
 
-  let resolve_pps_deps db names ~stack =
-    Result.List.map names ~f:(fun (loc, name) ->
+  let resolve_pps_deps db ~pps ~dune_version ~stack =
+    let open Dune_lang.Syntax.Version.Infix in
+    let check_ppx_kind =
+      match dune_version with
+      | None -> true
+      | Some version -> version >= (2, 2)
+    in
+    Result.List.map pps ~f:(fun (loc, name) ->
         let* lib = resolve_dep db name ~allow_private_deps:true ~loc ~stack in
-        if Lib_kind.is_normal (Lib_info.kind lib.info) then
+        if check_ppx_kind && Lib_kind.is_normal (Lib_info.kind lib.info) then
           Error.ppx_dependency_on_non_ppx_library ~loc lib.info
         else
           Ok lib)
@@ -1308,7 +1316,7 @@ end = struct
     let re_exports = Result.map ~f:List.rev re_exports in
     (res, resolved_selects, re_exports)
 
-  let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
+  let resolve_user_deps db deps ~allow_private_deps ~pps ~dune_version ~stack =
     let deps, resolved_selects, re_exports =
       resolve_complex_deps db deps ~allow_private_deps ~stack
     in
@@ -1324,7 +1332,7 @@ end = struct
           { (fst first) with stop = last.stop }
         in
         let pps =
-          let* pps = resolve_pps_deps db pps ~stack in
+          let* pps = resolve_pps_deps db ~pps ~dune_version ~stack in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in
@@ -1873,7 +1881,7 @@ module DB = struct
       Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~variants ~optional =
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~variants ~optional =
     let lib_deps_info =
       Compile.make_lib_deps_info ~user_written_deps:deps ~pps
         ~kind:
@@ -1882,8 +1890,9 @@ module DB = struct
           else
             Required )
     in
+    let dune_version = Option.some dune_version in
     let res, pps, resolved_selects, _re_exports =
-      Resolve.resolve_user_deps t deps ~pps ~stack:Dep_stack.empty
+      Resolve.resolve_user_deps t deps ~pps ~dune_version ~stack:Dep_stack.empty
         ~allow_private_deps:true
     in
     let requires_link =

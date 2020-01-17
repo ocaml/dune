@@ -206,6 +206,8 @@ let name t = t.name
 
 let version t = t.version
 
+let dune_version t = t.dune_version
+
 let loc t = t.loc
 
 let requires t = t.requires

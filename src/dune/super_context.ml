@@ -399,9 +399,13 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | Dune_file.Executables
           ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
         let compile_info =
+          let dune_version =
+            Scope.project d.scope |> Dune_project.dune_version
+          in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries
             ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+            ~dune_version
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             ~variants:exes.variants ~optional:exes.optional
         in

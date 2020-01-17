@@ -101,7 +101,8 @@ with (kind ppx_rewriter).
   File "bin/dune", line 3, characters 18-19:
   3 |  (preprocess (pps b))
                         ^
-  Error: Ppx dependency on a non-ppx library "b".
+  Error: Ppx dependency on a non-ppx library "b". If "b" is in fact a ppx
+  rewriter library, it should have (kind ppx_rewriter) in its dune file.
   [1]
 
 ----------------------------------------------------------------------------------

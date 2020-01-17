@@ -152,8 +152,11 @@ module Error = struct
   let ppx_dependency_on_non_ppx_library ~loc dep =
     let name = Lib_info.name dep in
     make ~loc
-      [ Pp.textf "Ppx dependency on a non-ppx library %S."
-          (Lib_name.to_string name)
+      [ Pp.textf
+          "Ppx dependency on a non-ppx library %S. If %S is in fact a ppx \
+           rewriter library, it should have (kind ppx_rewriter) in its dune \
+           file."
+          (Lib_name.to_string name) (Lib_name.to_string name)
       ]
 
   let not_virtual_lib ~loc ~impl ~not_vlib =

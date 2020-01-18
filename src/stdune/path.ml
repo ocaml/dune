@@ -1172,8 +1172,8 @@ let rm_rf =
         | _ -> unlink_operation fn);
     Unix.rmdir dir
   in
-  fun t ->
-    if not (is_managed t) then
+  fun ?(allow_external = false) t ->
+    if (not allow_external) && not (is_managed t) then
       Code_error.raise "Path.rm_rf called on external dir" [ ("t", to_dyn t) ];
     let fn = to_string t in
     match Unix.lstat fn with
@@ -1287,3 +1287,41 @@ let set_of_source_paths set =
 
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))
+
+let string_of_file_kind = function
+  | Unix.S_REG -> "regular file"
+  | Unix.S_DIR -> "directory"
+  | Unix.S_CHR -> "character device"
+  | Unix.S_BLK -> "block device"
+  | Unix.S_LNK -> "symbolic link"
+  | Unix.S_FIFO -> "named pipe"
+  | Unix.S_SOCK -> "socket"
+
+let rand_digits () =
+  let rand = Random.State.(bits (make_self_init ()) land 0xFFFFFF) in
+  Printf.sprintf "%06x" rand
+
+let get_temp_dir_name () = of_string (Filename.get_temp_dir_name ())
+
+let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
+  let attempts = 512 in
+  let rec loop count =
+    if Stdlib.( >= ) count attempts then
+      Code_error.raise "Path.temp_dir: too many failing attemps"
+        [ ("attempts", Int attempts) ]
+    else
+      let dir =
+        relative temp_dir
+          (String.concat ~sep:"" [ prefix; rand_digits (); suffix ])
+      in
+      try
+        mkdir_p ~perms:mode dir;
+        dir
+      with
+      | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
+      | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
+  in
+  loop 0
+
+let rename old_path new_path =
+  Sys.rename (to_string old_path) (to_string new_path)

@@ -32,7 +32,11 @@ let inside_dune = Option.is_some (Env.get Env.initial "INSIDE_DUNE")
 let inside_ci = Option.is_some (Env.get Env.initial "CI")
 
 let show_full_command_on_error () =
-  inside_dune || inside_ci || !Clflags.always_show_command_line
+  !Clflags.always_show_command_line
+  || (* We want to show command lines in the CI, but not when running inside
+        dune. Otherwise tests would yield different result whether they are
+        executed locally or in the CI. *)
+  (inside_ci && not inside_dune)
 
 open Dune_lang.Decoder
 

@@ -45,7 +45,7 @@ module Name = struct
     | Ok s -> s
     | Error err -> raise (User_error.E err)
 
-  let of_basename basename =
+  let of_opam_file_basename basename =
     let open Option.O in
     let* name = String.drop_suffix basename ~suffix:opam_ext in
     of_string_opt name
@@ -243,20 +243,6 @@ module Dependency = struct
       ]
 end
 
-module Kind = struct
-  type has_opam = bool
-
-  type t =
-    | Dune of has_opam
-    | Opam
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Dune b -> constr "Dune" [ bool b ]
-    | Opam -> constr "Opam" []
-end
-
 module Source_kind = struct
   type t =
     | Github of string * string
@@ -268,10 +254,10 @@ module Source_kind = struct
     | Github (user, repo) -> constr "Github" [ string user; string repo ]
     | Url url -> constr "Url" [ string url ]
 
-  let pp fmt = function
+  let to_string = function
     | Github (user, repo) ->
-      Format.fprintf fmt "git+https://github.com/%s/%s.git" user repo
-    | Url u -> Format.pp_print_string fmt u
+      sprintf "git+https://github.com/%s/%s.git" user repo
+    | Url u -> u
 
   let decode =
     let open Dune_lang.Decoder in
@@ -411,7 +397,7 @@ type t =
   ; info : Info.t
   ; path : Path.Source.t
   ; version : string option
-  ; kind : Kind.t
+  ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
   }
@@ -462,7 +448,7 @@ let decode ~dir =
      ; info
      ; path = dir
      ; version = None
-     ; kind = Dune false
+     ; has_opam_file = false
      ; tags
      ; deprecated_package_names
      }
@@ -477,7 +463,7 @@ let to_dyn
     ; conflicts
     ; depopts
     ; info
-    ; kind
+    ; has_opam_file
     ; tags
     ; loc = _
     ; deprecated_package_names
@@ -492,7 +478,7 @@ let to_dyn
     ; ("conflicts", list Dependency.to_dyn conflicts)
     ; ("depopts", list Dependency.to_dyn depopts)
     ; ("info", Info.to_dyn info)
-    ; ("kind", Kind.to_dyn kind)
+    ; ("has_opam_file", Bool has_opam_file)
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
@@ -507,3 +493,66 @@ let file ~dir ~name = Path.relative dir (Name.to_string name ^ opam_ext)
 
 let deprecated_meta_file t name =
   Path.Source.relative t.path (Name.meta_fn name)
+
+let load_opam_file file name =
+  let open Option.O in
+  let loc = Loc.in_file (Path.source file) in
+  let opam =
+    match Opam_file.load (Path.source file) with
+    | s -> Some s
+    | exception exn ->
+      User_warning.emit ~loc
+        [ Pp.text
+            "Unable to read opam file. Some information about this package \
+             such as its version will be ignored."
+        ; Pp.textf "Reason: %s" (Printexc.to_string exn)
+        ];
+      None
+  in
+  let get_one name =
+    let* opam = opam in
+    let* value = Opam_file.get_field opam name in
+    match value with
+    | String (_, s) -> Some s
+    | _ -> None
+  in
+  let get_many name =
+    let* opam = opam in
+    let* value = Opam_file.get_field opam name in
+    match value with
+    | String (_, s) -> Some [ s ]
+    | List (_, l) ->
+      let+ l =
+        List.fold_left l ~init:(Some []) ~f:(fun acc v ->
+            let* acc = acc in
+            match v with
+            | OpamParserTypes.String (_, s) -> Some (s :: acc)
+            | _ -> None)
+      in
+      List.rev l
+    | _ -> None
+  in
+  { name
+  ; loc
+  ; path = Path.Source.parent_exn file
+  ; version = get_one "version"
+  ; conflicts = []
+  ; depends = []
+  ; depopts = []
+  ; info =
+      { maintainers = get_many "maintainer"
+      ; authors = get_many "authors"
+      ; homepage = get_one "homepage"
+      ; bug_reports = get_one "bug-reports"
+      ; documentation = get_one "doc"
+      ; license = get_one "license"
+      ; source =
+          (let+ url = get_one "dev-repo" in
+           Source_kind.Url url)
+      }
+  ; synopsis = get_one "synopsis"
+  ; description = get_one "description"
+  ; has_opam_file = true
+  ; tags = Option.value (get_many "tags") ~default:[]
+  ; deprecated_package_names = Name.Map.empty
+  }

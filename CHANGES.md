@@ -1,3 +1,19 @@
+2.2.0 (unreleased)
+------------------
+
+- By default, do not show the full command line of commands executed
+  by `dune` when `dune` is executed inside `dune`. This is to make
+  integration tests more reproducible (#3042, @diml)
+
+- `dune subst` now works even without opam files (#2955, fixes #2910,
+  @fangyi-zhou and @diml)
+
+2.1.3 (16/01/2020)
+------------------
+
+- Fix building the OCaml compiler with Dune (#3038, fixes #2974,
+  @diml)
+
 2.1.2 (08/01/2020)
 ------------------
 

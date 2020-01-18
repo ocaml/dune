@@ -180,6 +180,8 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
+let empty = Progn []
+
 let rec is_dynamic = function
   | Dynamic_run _ -> true
   | Chdir (_, t)
@@ -254,33 +256,33 @@ let sandbox t ~sandboxed ~mode ~deps ~eval_pred : t =
         ~f_program:(fun ~dir:_ -> Result.map ~f:(maybe_sandbox_path sandboxed))
     ]
 
-type is_useful_to_sandbox =
+type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to_sandbox =
+let is_useful_to memoize =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
     | Setenv (_, _, t) -> loop t
-    | Redirect_out (_, _, t) -> loop t
+    | Redirect_out (_, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
     | With_accepted_exit_codes (_, t) ->
       loop t
     | Progn l -> List.exists l ~f:loop
     | Echo _ -> false
-    | Cat _ -> false
-    | Copy _ -> false
+    | Cat _ -> memoize
+    | Copy _ -> memoize
     | Symlink _ -> false
-    | Copy_and_add_line_directive _ -> false
-    | Write_file _ -> false
-    | Rename _ -> false
+    | Copy_and_add_line_directive _ -> memoize
+    | Write_file _ -> memoize
+    | Rename _ -> memoize
     | Remove_tree _ -> false
-    | Diff _ -> false
+    | Diff _ -> memoize
     | Mkdir _ -> false
-    | Digest_files _ -> false
-    | Merge_files_into _ -> false
+    | Digest_files _ -> memoize
+    | Merge_files_into _ -> memoize
     | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true
@@ -290,3 +292,7 @@ let is_useful_to_sandbox =
     match loop t with
     | true -> Maybe
     | false -> Clearly_not
+
+let is_useful_to_sandbox = is_useful_to false
+
+let is_useful_to_memoize = is_useful_to true

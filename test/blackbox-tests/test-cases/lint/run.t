@@ -4,7 +4,6 @@ The lint alias will run preprocessing actions listed under (lint):
   > let () = Printf.printf "%d\n" @@ 1 + 2
   > EOF
   $ dune build @detect/lint
-           ppx alias detect/lint
   File "detect/add.ml", line 1, characters 33-38:
   This addition can be done statically.
 

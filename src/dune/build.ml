@@ -8,8 +8,7 @@ type 'a t =
   | Targets : Path.Build.Set.t -> unit t
   | Paths_for_rule : Path.Set.t -> unit t
   | Paths_glob : File_selector.t -> Path.Set.t t
-  (* The reference gets decided in Build_interpret.deps *)
-  | If_file_exists : Path.t * 'a if_file_exists_state ref -> 'a t
+  | If_file_exists : Path.t * 'a t * 'a t -> 'a t
   | Contents : Path.t -> string t
   | Lines_of : Path.t -> string list t
   | Dyn_paths : ('a * Path.Set.t) t -> 'a t
@@ -31,16 +30,6 @@ and 'a memo_state =
   | Unevaluated
   | Evaluating
   | Evaluated of 'a * Dep.Set.t
-
-and 'a if_file_exists_state =
-  | Undecided of 'a t * 'a t
-  | Decided of bool * 'a t
-
-let get_if_file_exists_exn state =
-  match !state with
-  | Decided (_, t) -> t
-  | Undecided _ ->
-    Code_error.raise "Build.get_if_file_exists_exn: got undecided" []
 
 let return x = Pure x
 
@@ -137,13 +126,9 @@ let read_sexp p =
   Dune_lang.Parser.parse_string s ~lexer:Dune_lang.Lexer.token
     ~fname:(Path.to_string p) ~mode:Single
 
-let if_file_exists p ~then_ ~else_ =
-  If_file_exists (p, ref (Undecided (then_, else_)))
+let if_file_exists p ~then_ ~else_ = If_file_exists (p, then_, else_)
 
 let file_exists p = if_file_exists p ~then_:(return true) ~else_:(return false)
-
-let file_exists_opt p t =
-  if_file_exists p ~then_:(map ~f:Option.some t) ~else_:(return None)
 
 let paths_existing paths =
   all_unit
@@ -227,7 +212,7 @@ let symlink ~src ~dst =
   path src >>> action ~targets:[ dst ] (Symlink (src, dst))
 
 let create_file fn =
-  action ~targets:[ fn ] (Redirect_out (Stdout, fn, Progn []))
+  action ~targets:[ fn ] (Redirect_out (Stdout, fn, Action.empty))
 
 let remove_tree dir = return (Action.Remove_tree dir)
 
@@ -259,7 +244,7 @@ let no_targets_allowed () =
     []
   [@@inline never]
 
-let static_deps t ~list_targets =
+let static_deps t ~file_exists =
   let rec loop : type a. a t -> Static_deps.t -> bool -> Static_deps.t =
    fun t acc targets_allowed ->
     match t with
@@ -274,19 +259,11 @@ let static_deps t ~list_targets =
     | Deps deps -> Static_deps.add_action_deps acc deps
     | Paths_for_rule fns -> Static_deps.add_rule_paths acc fns
     | Paths_glob g -> Static_deps.add_action_dep acc (Dep.file_selector g)
-    | If_file_exists (p, state) -> (
-      match !state with
-      | Decided (_, t) -> loop t acc false
-      | Undecided (then_, else_) ->
-        let dir = Path.parent_exn p in
-        let targets = list_targets ~dir in
-        if Path.Set.mem targets p then (
-          state := Decided (true, then_);
-          loop then_ acc false
-        ) else (
-          state := Decided (false, else_);
-          loop else_ acc false
-        ) )
+    | If_file_exists (p, then_, else_) ->
+      if file_exists p then
+        loop then_ acc false
+      else
+        loop else_ acc false
     | Dyn_paths t -> loop t acc targets_allowed
     | Dyn_deps t -> loop t acc targets_allowed
     | Contents p -> Static_deps.add_rule_path acc p
@@ -299,7 +276,7 @@ let static_deps t ~list_targets =
   in
   loop t Static_deps.empty true
 
-let lib_deps =
+let lib_deps t ~file_exists =
   let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
    fun t acc ->
     match t with
@@ -318,14 +295,18 @@ let lib_deps =
     | Lines_of _ -> acc
     | Record_lib_deps deps -> Lib_deps_info.merge deps acc
     | Fail _ -> acc
-    | If_file_exists (_, state) -> loop (get_if_file_exists_exn state) acc
+    | If_file_exists (p, then_, else_) ->
+      if file_exists p then
+        loop then_ acc
+      else
+        loop else_ acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets t -> loop (Lazy.force t) acc
   in
-  fun t -> loop t Lib_name.Map.empty
+  loop t Lib_name.Map.empty
 
-let targets =
+let targets t =
   let rec loop : type a. a t -> Path.Build.Set.t -> Path.Build.Set.t =
    fun t acc ->
     match t with
@@ -344,32 +325,26 @@ let targets =
     | Lines_of _ -> acc
     | Record_lib_deps _ -> acc
     | Fail _ -> acc
-    | If_file_exists (_, state) -> (
-      match !state with
-      | Decided (v, _) ->
-        Code_error.raise "Build_interpret.targets got decided if_file_exists"
-          [ ("exists", Dyn.Encoder.bool v) ]
-      | Undecided (a, b) ->
-        let a = loop a Path.Build.Set.empty in
-        let b = loop b Path.Build.Set.empty in
-        if Path.Build.Set.is_empty a && Path.Build.Set.is_empty b then
-          acc
-        else
-          Code_error.raise
-            "Build_interpret.targets: cannot have targets under a \
-             [if_file_exists]"
-            [ ("targets-a", Path.Build.Set.to_dyn a)
-            ; ("targets-b", Path.Build.Set.to_dyn b)
-            ] )
+    | If_file_exists (_, then_, else_) ->
+      let then_ = loop then_ Path.Build.Set.empty in
+      let else_ = loop else_ Path.Build.Set.empty in
+      if Path.Build.Set.is_empty then_ && Path.Build.Set.is_empty else_ then
+        acc
+      else
+        Code_error.raise
+          "Build.targets: cannot have targets under [if_file_exists]"
+          [ ("targets-then", Path.Build.Set.to_dyn then_)
+          ; ("targets-else", Path.Build.Set.to_dyn else_)
+          ]
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Lazy_no_targets _ -> acc
   in
-  fun t -> loop t Path.Build.Set.empty
+  loop t Path.Build.Set.empty
 
 (* Execution *)
 
-let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
+let exec t ~file_exists ~eval_pred =
   let rec exec : type a. Dep.Set.t ref -> a t -> a =
    fun dyn_deps t ->
     match t with
@@ -384,7 +359,7 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
     | Targets _ -> ()
     | Deps _ -> ()
     | Paths_for_rule _ -> ()
-    | Paths_glob g -> eval_pred g
+    | Paths_glob g -> (eval_pred g : Path.Set.t)
     | Contents p -> Io.read_file p
     | Lines_of p -> Io.lines_of_file p
     | Dyn_paths t ->
@@ -397,7 +372,11 @@ let exec ~(eval_pred : Dep.eval_pred) (t : 'a t) : 'a * Dep.Set.t =
       x
     | Record_lib_deps _ -> ()
     | Fail { fail } -> fail ()
-    | If_file_exists (_, state) -> exec dyn_deps (get_if_file_exists_exn state)
+    | If_file_exists (p, then_, else_) ->
+      if file_exists p then
+        exec dyn_deps then_
+      else
+        exec dyn_deps else_
     | Catch (t, on_error) -> ( try exec dyn_deps t with exn -> on_error exn )
     | Lazy_no_targets t -> exec dyn_deps (Lazy.force t)
     | Memo m -> (

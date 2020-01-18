@@ -30,8 +30,6 @@ Errors:
   You need to add the following field to this stanza:
   
     (modules_without_implementation x y)
-  
-  This will become an error in the future.
   [1]
   $ dune build --display short --root b foo.cma
   Entering directory 'b'
@@ -41,7 +39,6 @@ Errors:
   Error: The following modules must be listed here as they don't have an
   implementation:
   - Y
-  This will become an error in the future.
   [1]
   $ dune build --display short --root c foo.cma
   Entering directory 'c'

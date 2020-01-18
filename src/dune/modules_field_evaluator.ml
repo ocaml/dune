@@ -216,10 +216,9 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
       | None ->
         User_error.raise ~loc:buildable.loc
           [ Pp.text "Some modules don't have an implementation."
-          ; Pp.textf
-              "You need to add the following field to this stanza:\n\n\
-              \  %s\n\n\
-               This will become an error in the future."
+          ; Pp.text "You need to add the following field to this stanza:"
+          ; Pp.nop
+          ; Pp.textf "  %s"
               (let tag =
                  Dune_lang.unsafe_atom_of_string
                    "modules_without_implementation"
@@ -236,7 +235,6 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
               "The following modules must be listed here as they don't have an \
                implementation:"
           ; line_list missing_intf_only
-          ; Pp.text "This will become an error in the future."
           ] );
     print
       [ Pp.text

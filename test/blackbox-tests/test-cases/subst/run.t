@@ -33,16 +33,16 @@ Project with opam files
 
   $ rm -rf .git
 
-Project with only package stanza
---------------------------------
-Repro for #2910.
+Read from dune-project package stanza
+-------------------------------------
+And without an opam file preset.
 
   $ rm -f foo.opam
 
   $ cat > dune-project <<EOF
-  > (lang dune 1.0)
+  > (lang dune 2.0)
   > (name foo)
-  > (package (name foo))
+  > (package (name foo) (authors "John Doe <john@doe.com>"))
   > EOF
 
   $ X=%%; cat > file.ml <<EOF
@@ -57,17 +57,16 @@ Repro for #2910.
   $ git tag -a 1.0 -m 1.0
 
   $ dune subst
-  Error: No <package>.opam files found.
-  [1]
 
   $ cat file.ml
-  let name = "%%NAME%%"
-  let authors = "%%PKG_AUTHORS%%"
-  let version = "%%VERSION%%"
+  let name = "foo"
+  let authors = "John Doe <john@doe.com>"
+  let version = "1.0"
 
   $ cat dune-project
-  (lang dune 1.0)
+  (lang dune 2.0)
   (name foo)
-  (package (name foo))
+  (version 1.0)
+  (package (name foo) (authors "John Doe <john@doe.com>"))
 
   $ rm -rf .git

@@ -68,6 +68,9 @@ val for_shell : t -> For_shell.t
 (** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
 
+(** The empty action that does nothing. *)
+val empty : t
+
 (** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
 
@@ -105,8 +108,10 @@ val sandbox :
   -> eval_pred:Dep.eval_pred
   -> t
 
-type is_useful_to_sandbox =
+type is_useful =
   | Clearly_not
   | Maybe
 
-val is_useful_to_sandbox : t -> is_useful_to_sandbox
+val is_useful_to_sandbox : t -> is_useful
+
+val is_useful_to_memoize : t -> is_useful

@@ -23,6 +23,7 @@ let s_name = "NAME"
 let s_synopsis = "SYNOPSIS"
 let s_description = "DESCRIPTION"
 let s_commands = "COMMANDS"
+let s_command_aliases = "COMMAND ALIASES"
 let s_arguments = "ARGUMENTS"
 let s_options = "OPTIONS"
 let s_common_options = "COMMON OPTIONS"
@@ -45,7 +46,7 @@ let s_see_also = "SEE ALSO"
 let s_created = ""
 let order =
   [| s_name; s_synopsis; s_description; s_created; s_commands;
-     s_arguments; s_options; s_common_options; s_exit_status;
+     s_command_aliases; s_arguments; s_options; s_common_options; s_exit_status;
      s_environment; s_files; s_examples; s_bugs; s_authors; s_see_also; |]
 
 let order_synopsis = 1

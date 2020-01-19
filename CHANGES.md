@@ -1,6 +1,9 @@
 2.2.0 (unreleased)
 ------------------
 
+- `dune test` is now a command alias for `dune runtest`. This is to make the CLI
+  less idiosyncratic (#3006, @shonfeder)
+
 - Allow to set menhir flags in the `env` stanza using the `menhir_flags` field.
   (#2960, fix #2924, @bschommer)
 

@@ -163,6 +163,7 @@ let all =
   ; External_lib_deps.command
   ; build_targets
   ; runtest
+  ; command_alias runtest "test"
   ; clean
   ; Install_uninstall.install
   ; Install_uninstall.uninstall

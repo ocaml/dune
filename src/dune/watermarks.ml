@@ -277,7 +277,14 @@ let subst vcs =
   in
   let dune_project =
     match
-      let files = String.Set.of_list (List.map ~f:Path.to_string files) in
+      let files =
+        (* Filter-out files form sub-directories *)
+        List.fold_left files ~init:String.Set.empty ~f:(fun acc fn ->
+            if Path.is_root (Path.parent_exn fn) then
+              String.Set.add acc (Path.to_string fn)
+            else
+              acc)
+      in
       Dune_project.load ~dir:Path.Source.root ~files ~infer_from_opam_files:true
     with
     | Some dune_project -> dune_project

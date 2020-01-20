@@ -336,12 +336,11 @@ let dump_env t ~dir =
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
   and+ menhir_dump =
-    let+ flags = Env.menhir_flags t ~ dir in
-    [ "menhir_flags", flags]
-    |> List.map
-         ~f:Dune_lang.Encoder.(pair string (list string))
+    let+ flags = Env.menhir_flags t ~dir in
+    [ ("menhir_flags", flags) ]
+    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   in
-  List.concat [o_dump ; c_dump ; menhir_dump]
+  List.concat [ o_dump; c_dump; menhir_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_context in

@@ -101,10 +101,9 @@ let term =
   let hints () =
     let candidates =
       let path = path_relative_to_build_root "" in
-      let open List in
       Path.Set.to_list (Build_system.targets_of ~dir:path)
-      |> filter ~f:(fun p -> Path.extension p = ".exe")
-      |> map ~f:(fun p -> "./" ^ Path.basename p)
+      |> List.filter ~f:(fun p -> Path.extension p = ".exe")
+      |> List.map ~f:(fun p -> "./" ^ Path.basename p)
     in
     User_message.did_you_mean prog ~candidates
   in

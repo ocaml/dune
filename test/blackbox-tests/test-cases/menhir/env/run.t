@@ -6,8 +6,8 @@
   >  (mode promote))
   > (library (name test))
   > EOF
-  $ dune printenv
-  Info: Appending this line to dune-project: (using menhir 2.0)
+  $ dune printenv 2>&1 | sed "s/(using menhir .*)/(using menhir <version>)/"
+  Info: Appending this line to dune-project: (using menhir <version>)
   
    ((flags
      (-w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence

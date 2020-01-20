@@ -41,13 +41,16 @@ let term =
   Common.set_common common ~targets:[ Arg.Dep.file prog ];
   let setup = Scheduler.go ~common (fun () -> Import.Main.setup common) in
   let context = Import.Main.find_context_exn setup.workspace ~name:context in
+  let path_relative_to_build_root p =
+    Common.prefix_target common p
+    |> Path.Build.relative context.build_dir
+    |> Path.build
+  in
   let prog_where =
     match Filename.analyze_program_name prog with
     | Absolute -> `This_abs (Path.of_string prog)
     | In_path -> `Search prog
-    | Relative_to_current_dir ->
-      let prog = Common.prefix_target common prog in
-      `This_rel (Path.build (Path.Build.relative context.build_dir prog))
+    | Relative_to_current_dir -> `This_rel (path_relative_to_build_root prog)
   in
   let targets =
     lazy
@@ -93,10 +96,23 @@ let term =
         let prog = Path.extend_basename prog ~suffix:Bin.exe in
         Option.some_if (Path.exists prog) prog
   in
+  (* Good candidates for the "./x.exe" instead of "x.exe" error are executables
+     present in the current directory *)
+  let hints () =
+    let candidates =
+      let path = path_relative_to_build_root "" in
+      Path.Set.to_list (Build_system.targets_of ~dir:path)
+      |> List.filter ~f:(fun p -> Path.extension p = ".exe")
+      |> List.map ~f:(fun p -> "./" ^ Path.basename p)
+    in
+    User_message.did_you_mean prog ~candidates
+  in
   match (real_prog, no_rebuild) with
   | None, true -> (
     match Lazy.force targets with
-    | [] -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
+    | [] ->
+      let hints = hints () in
+      User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
     | _ :: _ ->
       User_error.raise
         [ Pp.textf
@@ -104,7 +120,9 @@ let term =
              the --no-build option."
             prog
         ] )
-  | None, false -> User_error.raise [ Pp.textf "Program %S not found!" prog ]
+  | None, false ->
+    let hints = hints () in
+    User_error.raise ~hints [ Pp.textf "Program %S not found!" prog ]
   | Some real_prog, _ ->
     let real_prog = Path.to_string real_prog in
     let argv = prog :: args in

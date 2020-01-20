@@ -1042,6 +1042,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias hints-root-executables)
+ (deps (package dune) (source_tree test-cases/hints-root-executables))
+ (action
+  (chdir
+   test-cases/hints-root-executables
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias ignored_subdirs)
  (deps (package dune) (source_tree test-cases/ignored_subdirs))
  (action
@@ -2133,6 +2141,7 @@
   (alias github992)
   (alias glob-deps)
   (alias glob-deps-change)
+  (alias hints-root-executables)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
@@ -2367,6 +2376,7 @@
   (alias github992)
   (alias glob-deps)
   (alias glob-deps-change)
+  (alias hints-root-executables)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)

@@ -97,7 +97,7 @@ let term =
         Option.some_if (Path.exists prog) prog
   in
   (* Good candidates for the "./x.exe" instead of "x.exe" error are executables
-     present at the root of the build dir *)
+     present in the current directory *)
   let hints () =
     let candidates =
       let path = path_relative_to_build_root "" in

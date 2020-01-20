@@ -1327,27 +1327,26 @@ end = struct
                 let* lib =
                   resolve_dep db name ~allow_private_deps:true ~loc ~stack
                 in
-                if
+                match
                   allow_only_ppx_deps
                   && Lib_kind.is_normal (Lib_info.kind lib.info)
-                then
-                  Error.only_ppx_deps_allowed ~loc lib.info
-                else
-                  Ok lib)
+                with
+                | true -> Error.only_ppx_deps_allowed ~loc lib.info
+                | false -> Ok lib)
           in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in
         let deps =
-          let* init = deps in
-          pps
-          >>= Result.List.fold_left ~init ~f:(fun init pp ->
-                  pp.ppx_runtime_deps
-                  >>= Result.List.fold_left ~init ~f:(fun acc rt ->
-                          let+ rt =
-                            check_private_deps rt ~loc ~allow_private_deps
-                          in
-                          rt :: acc))
+          let* deps = deps
+          and+ pps = pps in
+          let+ pps_deps =
+            Result.List.concat_map pps ~f:(fun pp ->
+                let* ppx_runtime_deps = pp.ppx_runtime_deps in
+                Result.List.map ppx_runtime_deps
+                  ~f:(check_private_deps ~loc ~allow_private_deps))
+          in
+          deps @ pps_deps
         in
         (deps, pps)
     in

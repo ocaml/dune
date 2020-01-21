@@ -1335,12 +1335,9 @@ end = struct
                 let* lib =
                   resolve_dep db name ~allow_private_deps:true ~loc ~stack
                 in
-                match
-                  allow_only_ppx_deps
-                  && Lib_kind.is_normal (Lib_info.kind lib.info)
-                with
-                | true -> Error.only_ppx_deps_allowed ~loc lib.info
-                | false -> Ok lib)
+                match (allow_only_ppx_deps, Lib_info.kind lib.info) with
+                | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+                | _ -> Ok lib)
           in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty

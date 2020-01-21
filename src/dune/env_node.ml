@@ -11,6 +11,7 @@ type t =
   ; mutable external_ : Env.t option
   ; mutable bin_artifacts : Artifacts.Bin.t option
   ; mutable inline_tests : Dune_env.Stanza.Inline_tests.t option
+  ; mutable menhir_flags : string list Build.t option
   }
 
 let scope t = t.scope
@@ -26,6 +27,7 @@ let make ~dir ~inherit_from ~scope ~config =
   ; bin_artifacts = None
   ; local_binaries = None
   ; inline_tests = None
+  ; menhir_flags = None
   }
 
 let find_config t ~profile = Dune_env.Stanza.find t.config ~profile
@@ -147,4 +149,21 @@ let rec foreign_flags t ~profile ~expander ~default_context_flags =
           Expander.expand_and_eval_set expander f ~standard:default)
     in
     t.foreign_flags <- Some flags;
+    flags
+
+let rec menhir_flags t ~profile ~expander =
+  match t.menhir_flags with
+  | Some x -> x
+  | None ->
+    let default =
+      match t.inherit_from with
+      | None -> Build.return []
+      | Some (lazy t) -> menhir_flags t ~profile ~expander
+    in
+    let flags =
+      let cfg = find_config t ~profile in
+      let expander = Expander.set_dir expander ~dir:t.dir in
+      Expander.expand_and_eval_set expander cfg.menhir_flags ~standard:default
+    in
+    t.menhir_flags <- Some flags;
     flags

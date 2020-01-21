@@ -49,5 +49,6 @@ Workspaces also allow you to set the env for a context:
      (-g -verbose))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   

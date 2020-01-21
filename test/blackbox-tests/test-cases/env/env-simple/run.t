@@ -5,7 +5,8 @@
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
   $ dune printenv --profile default src
   
@@ -14,7 +15,8 @@
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
   $ dune printenv --profile default bin
   
@@ -22,7 +24,8 @@
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
   $ dune printenv --profile default vendor
   
@@ -31,14 +34,15 @@
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
 
 Vendored project without env customization, the global default should
 apply:
 
   $ dune printenv --profile default vendor/without-env-customization | tr -s "\n" " "
-   ((flags (-w -40)) (ocamlc_flags (-g)) (ocamlopt_flags (-g)) (c_flags ($flags)) (cxx_flags ($flags))) 
+   ((flags (-w -40)) (ocamlc_flags (-g)) (ocamlopt_flags (-g)) (c_flags ($flags)) (cxx_flags ($flags)) (menhir_flags ())) 
 
 Vendored project with env customization, the global default +
 customization of vendored project should apply:
@@ -50,7 +54,8 @@ customization of vendored project should apply:
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
   $ dune printenv --profile default vendor/with-env-customization/src
   
@@ -58,6 +63,7 @@ customization of vendored project should apply:
     (ocamlc_flags (-g))
     (ocamlopt_flags (-g))
     (c_flags ())
-    (cxx_flags ()))
+    (cxx_flags ())
+    (menhir_flags ()))
   
 

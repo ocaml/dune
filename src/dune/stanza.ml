@@ -6,7 +6,7 @@ module Parser = struct
   type nonrec t = string * t list Dune_lang.Decoder.t
 end
 
-let latest_version = (2, 1)
+let latest_version = (2, 2)
 
 let syntax =
   Dune_lang.Syntax.create ~name:"dune" ~desc:"the dune language"

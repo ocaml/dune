@@ -68,6 +68,13 @@ val foreign_flags :
   -> language:Foreign.Language.t
   -> string list Build.t
 
+val menhir_flags :
+     t
+  -> dir:Path.Build.t
+  -> expander:Expander.t
+  -> flags:Ordered_set_lang.Unexpanded.t
+  -> string list Build.t
+
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
 val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list

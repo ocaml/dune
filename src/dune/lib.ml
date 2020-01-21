@@ -1933,10 +1933,8 @@ module DB = struct
     ; sub_systems = Sub_system_name.Map.empty
     }
 
-  (* Here different [pps] dependencies could come from Dune projects with
-     different language versions. We therefore omit dependency checks that are
-     conditional on the Dune version, such as [only_ppx_deps_allowed]. By the
-     time we reach this point, these check should have been done already. *)
+  (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
+     this point, all preprocess dependencies should have been checked already. *)
   let resolve_pps t pps =
     Resolve.resolve_simple_deps t ~allow_private_deps:true pps
       ~stack:Dep_stack.empty

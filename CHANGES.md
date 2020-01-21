@@ -1,10 +1,9 @@
 2.2.0 (unreleased)
 ------------------
 
-
 - Allow to set menhir flags in the `env` stanza using the `menhir_flags` field.
   (#2960, fix #2924, @bschommer)
-  
+
 - By default, do not show the full command line of commands executed
   by `dune` when `dune` is executed inside `dune`. This is to make
   integration tests more reproducible (#3042, @diml)

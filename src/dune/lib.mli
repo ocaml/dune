@@ -220,6 +220,7 @@ module DB : sig
     -> ?forbidden_libraries:(Loc.t * Lib_name.t) list
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
+    -> dune_version:Dune_lang.Syntax.Version.t
     -> variants:(Loc.t * Variant.Set.t) option
     -> optional:bool
     -> Compile.t

@@ -149,6 +149,16 @@ module Error = struct
           (Lib_name.to_string name) (Lib_name.to_string name)
       ]
 
+  let only_ppx_deps_allowed ~loc dep =
+    let name = Lib_info.name dep in
+    make ~loc
+      [ Pp.textf
+          "Ppx dependency on a non-ppx library %S. If %S is in fact a ppx \
+           rewriter library, it should have (kind ppx_rewriter) in its dune \
+           file."
+          (Lib_name.to_string name) (Lib_name.to_string name)
+      ]
+
   let not_virtual_lib ~loc ~impl ~not_vlib =
     let impl = Lib_info.name impl in
     let not_vlib = Lib_info.name not_vlib in
@@ -1004,6 +1014,7 @@ module rec Resolve : sig
     -> Lib_dep.t list
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
+    -> dune_version:Dune_lang.Syntax.Version.t option
     -> stack:Dep_stack.t
     -> lib list Or_exn.t
        * lib list Or_exn.t
@@ -1094,8 +1105,9 @@ end = struct
     in
     let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
+      let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_user_deps db ~allow_private_deps ~pps ~stack
+      |> resolve_user_deps db ~allow_private_deps ~dune_version ~pps ~stack
     in
     let requires =
       match implements with
@@ -1290,14 +1302,26 @@ end = struct
     let re_exports = Result.map ~f:List.rev re_exports in
     (res, resolved_selects, re_exports)
 
-  let resolve_user_deps db deps ~allow_private_deps ~pps ~stack =
+  let resolve_user_deps db deps ~allow_private_deps ~pps ~dune_version ~stack =
+    let allow_only_ppx_deps =
+      match dune_version with
+      | None ->
+        if List.is_non_empty pps then
+          (* See note {!Lib_info_invariants}. *)
+          Code_error.raise
+            "Lib.resolve_user_deps: non-empty set of preprocessors but the \
+             Dune language version not set. This should be impossible."
+            [];
+        true
+      | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
+    in
     let deps, resolved_selects, re_exports =
       resolve_complex_deps db deps ~allow_private_deps ~stack
     in
     let deps, pps =
       match pps with
       | [] -> (deps, Ok [])
-      | first :: others as pps ->
+      | first :: others ->
         (* Location of the list of ppx rewriters *)
         let loc : Loc.t =
           let (last, _) : Loc.t * _ =
@@ -1307,21 +1331,27 @@ end = struct
         in
         let pps =
           let* pps =
-            resolve_simple_deps db pps ~allow_private_deps:true ~stack
+            Result.List.map pps ~f:(fun (loc, name) ->
+                let* lib =
+                  resolve_dep db name ~allow_private_deps:true ~loc ~stack
+                in
+                match (allow_only_ppx_deps, Lib_info.kind lib.info) with
+                | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+                | _ -> Ok lib)
           in
           closure_with_overlap_checks None pps ~stack ~linking:true
             ~variants:None ~forbidden_libraries:Map.empty
         in
         let deps =
-          let* init = deps in
-          pps
-          >>= Result.List.fold_left ~init ~f:(fun init pp ->
-                  pp.ppx_runtime_deps
-                  >>= Result.List.fold_left ~init ~f:(fun acc rt ->
-                          let+ rt =
-                            check_private_deps rt ~loc ~allow_private_deps
-                          in
-                          rt :: acc))
+          let* deps = deps
+          and+ pps = pps in
+          let+ pps_deps =
+            Result.List.concat_map pps ~f:(fun pp ->
+                let* ppx_runtime_deps = pp.ppx_runtime_deps in
+                Result.List.map ppx_runtime_deps
+                  ~f:(check_private_deps ~loc ~allow_private_deps))
+          in
+          deps @ pps_deps
         in
         (deps, pps)
     in
@@ -1857,7 +1887,7 @@ module DB = struct
       Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~variants ~optional =
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~variants ~optional =
     let lib_deps_info =
       Compile.make_lib_deps_info ~user_written_deps:deps ~pps
         ~kind:
@@ -1867,8 +1897,8 @@ module DB = struct
             Required )
     in
     let res, pps, resolved_selects, _re_exports =
-      Resolve.resolve_user_deps t deps ~pps ~stack:Dep_stack.empty
-        ~allow_private_deps:true
+      Resolve.resolve_user_deps t deps ~pps ~dune_version:(Some dune_version)
+        ~stack:Dep_stack.empty ~allow_private_deps:true
     in
     let requires_link =
       lazy
@@ -1900,6 +1930,8 @@ module DB = struct
     ; sub_systems = Sub_system_name.Map.empty
     }
 
+  (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
+     this point, all preprocess dependencies should have been checked already. *)
   let resolve_pps t pps =
     Resolve.resolve_simple_deps t ~allow_private_deps:true pps
       ~stack:Dep_stack.empty

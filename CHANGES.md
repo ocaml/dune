@@ -14,6 +14,9 @@
 - Hint when trying to execute an executable defined in the current directory
   without using the `./` prefix (#3041).
 
+- It is now an error to have a preprocessing dependency on a ppx rewriter
+  library that is not marked as `(kind ppx_rewriter)` (#3039, @snowleopard).
+
 2.1.3 (16/01/2020)
 ------------------
 

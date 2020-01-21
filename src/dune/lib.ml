@@ -1105,8 +1105,9 @@ end = struct
     in
     let requires, pps, resolved_selects, re_exports =
       let pps = Lib_info.pps info in
+      let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_user_deps db ~allow_private_deps ~dune_version:None ~pps ~stack
+      |> resolve_user_deps db ~allow_private_deps ~dune_version ~pps ~stack
     in
     let requires =
       match implements with
@@ -1304,7 +1305,14 @@ end = struct
   let resolve_user_deps db deps ~allow_private_deps ~pps ~dune_version ~stack =
     let allow_only_ppx_deps =
       match dune_version with
-      | None -> false
+      | None ->
+        if List.is_non_empty pps then
+          (* See note {!Lib_info_invariants}. *)
+          Code_error.raise
+            "Lib.resolve_user_deps: non-empty set of preprocessors but the \
+             Dune language version not set. This should be impossible."
+            [];
+        true
       | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
     in
     let deps, resolved_selects, re_exports =
@@ -1925,6 +1933,10 @@ module DB = struct
     ; sub_systems = Sub_system_name.Map.empty
     }
 
+  (* Here different [pps] dependencies could come from Dune projects with
+     different language versions. We therefore omit dependency checks that are
+     conditional on the Dune version, such as [only_ppx_deps_allowed]. By the
+     time we reach this point, these check should have been done already. *)
   let resolve_pps t pps =
     Resolve.resolve_simple_deps t ~allow_private_deps:true pps
       ~stack:Dep_stack.empty

@@ -51,7 +51,7 @@ val action_for_pp :
   -> action:Action_unexpanded.t
   -> src:Path.Build.t
   -> target:Path.Build.t option
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
 
 val ppx_exe :
   Super_context.t -> scope:Scope.t -> Lib_name.t -> Path.Build.t Or_exn.t

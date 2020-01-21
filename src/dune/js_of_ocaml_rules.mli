@@ -8,7 +8,7 @@ val build_cm :
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t
   -> src:Path.Build.t
   -> target:Path.Build.t
-  -> Action.t Build.t list
+  -> Action.t Build.With_targets.t list
 
 val build_exe :
      Compilation_context.t

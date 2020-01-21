@@ -16,7 +16,7 @@ module Alias_rules = struct
     SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
   let add_empty sctx ~loc ~alias ~stamp =
-    let action = Build.return Action.empty in
+    let action = Build.With_targets.return Action.empty in
     add sctx ~loc ~alias ~stamp action
 end
 
@@ -56,11 +56,11 @@ type rule_kind =
   | Alias_with_targets of Alias.Name.t * Path.Build.t
   | No_alias
 
-let rule_kind ~(rule : Rule.t) ~action =
+let rule_kind ~(rule : Rule.t) ~(action : Action.t Build.With_targets.t) =
   match rule.alias with
   | None -> No_alias
   | Some alias -> (
-    match Build.targets action |> Path.Build.Set.choose with
+    match action.targets |> Path.Build.Set.choose with
     | None -> Alias_only alias
     | Some target -> Alias_with_targets (alias, target) )
 
@@ -189,9 +189,10 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       match alias_conf.action with
       | None ->
         fun x ->
-          let open Build.O in
-          let+ (_ : Path.t Bindings.t) = x in
-          Action.empty
+          Build.no_targets
+            (let open Build.O in
+            let+ (_ : Path.t Bindings.t) = x in
+            Action.empty)
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in

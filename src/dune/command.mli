@@ -74,7 +74,7 @@ val run :
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.dynamic Args.t list
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t

@@ -228,7 +228,7 @@ let gen_rules sctx dir_contents cctxs
             List.map (Menhir_rules.targets m) ~f:(Path.Build.relative ctx_dir)
           in
           Super_context.add_rule sctx ~dir:ctx_dir
-            (Build.fail ~targets
+            (Build.With_targets.fail ~targets
                { fail =
                    (fun () ->
                      User_error.raise ~loc:m.loc

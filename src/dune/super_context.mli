@@ -98,7 +98,7 @@ val add_rule :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
   -> unit
 
 val add_rule_get_targets :
@@ -108,14 +108,14 @@ val add_rule_get_targets :
   -> ?locks:Path.t list
   -> ?loc:Loc.t
   -> dir:Path.Build.t
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
   -> Path.Build.Set.t
 
 val add_rules :
      t
   -> ?sandbox:Sandbox_config.t
   -> dir:Path.Build.t
-  -> Action.t Build.t list
+  -> Action.t Build.With_targets.t list
   -> unit
 
 val add_alias_action :
@@ -125,7 +125,7 @@ val add_alias_action :
   -> loc:Loc.t option
   -> ?locks:Path.t list
   -> stamp:_
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
   -> unit
 
 val source_files : src_path:Path.Source.t -> String.Set.t
@@ -190,7 +190,7 @@ module Action : sig
     -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
     -> Path.t Bindings.t Build.t
-    -> Action.t Build.t
+    -> Action.t Build.With_targets.t
 
   val map_exe : t -> Path.t -> Path.t
 end

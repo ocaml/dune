@@ -103,7 +103,7 @@ module Internal_rule = struct
       { id : Id.t
       ; targets : Path.Build.Set.t
       ; context : Context.t option
-      ; build : Action.t Build.t
+      ; build : Action.t Build.With_targets.t
       ; (* We cache the result of [Build.static_deps t.build ~file_exists] in
            [t.static_deps]. We do this lazily, because [Build.static_deps] needs
            the [file_exists] predicate which in turn depends on the [t.targets]
@@ -139,7 +139,7 @@ module Internal_rule = struct
     { id = Id.gen ()
     ; targets = Path.Build.Set.empty
     ; context = None
-    ; build = Build.return Action.empty
+    ; build = Build.With_targets.return Action.empty
     ; static_deps = Memo.Lazy.of_val Static_deps.empty
     ; mode = Standard
     ; info = Internal
@@ -669,7 +669,7 @@ end = struct
       ; targets
       ; build
       ; static_deps =
-          Memo.lazy_ (fun () -> Build.static_deps build ~file_exists)
+          Memo.lazy_ (fun () -> Build.static_deps build.build ~file_exists)
       ; context
       ; env
       ; locks
@@ -801,7 +801,7 @@ end = struct
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in
-             Build.action_dyn ~targets:[ path ] action)
+             Build.action_dyn ~targets:[ path ] (Build.no_targets action))
           :: rules)
     in
     fun ~subdirs_to_keep ->
@@ -1266,7 +1266,7 @@ end = struct
         Static_deps.rule_deps (Memo.Lazy.force rule.static_deps)
       in
       let+ () = build_deps rule_deps in
-      Build.exec rule.build ~file_exists ~eval_pred
+      Build.exec rule.build.build ~file_exists ~eval_pred
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
@@ -1772,7 +1772,7 @@ let shim_of_build_goal request =
     let+ () = request in
     Action.empty
   in
-  Internal_rule.shim_of_build_goal ~build:request
+  Internal_rule.shim_of_build_goal ~build:(Build.no_targets request)
     ~static_deps:(Build.static_deps request ~file_exists)
 
 let build_request ~request =
@@ -1887,13 +1887,13 @@ let package_deps pkg files =
       | None -> acc
       | Some fn -> loop_deps fn acc)
 
-let prefix_rules prefix ~f =
-  let targets = Build.targets prefix in
+let prefix_rules (prefix : _ Build.With_targets.t) ~f =
+  let targets = prefix.targets in
   if not (Path.Build.Set.is_empty targets) then
     Code_error.raise "Build_system.prefix_rules' prefix contains targets"
       [ ("targets", Path.Build.Set.to_dyn targets) ];
   let res, rules = Rules.collect f in
-  let open Build.O in
+  let open Build.With_targets.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
          { rule with build = prefix >>> rule.build }));
@@ -2048,7 +2048,9 @@ end = struct
     let rules = rules_for_targets targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
-          let deps = Build.lib_deps rule.Internal_rule.build ~file_exists in
+          let deps =
+            Build.lib_deps rule.Internal_rule.build.build ~file_exists
+          in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->

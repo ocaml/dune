@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Build.O
 open! No_io
 module Buildable = Dune_file.Buildable
 module Library = Dune_file.Library
@@ -52,7 +51,8 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
           ~standard:(Build.return [])
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
-        ( obj_deps
+        (let open Build.With_targets.O in
+        Build.no_targets obj_deps
         >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
@@ -83,7 +83,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
                       [ Library.archive lib ~dir ~ext:ext_lib ]
                     else
                       [] )
-              ] ))
+              ]))
 
 let gen_wrapped_compat_modules (lib : Library.t) cctx =
   let modules = Compilation_context.modules cctx in
@@ -247,9 +247,12 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
                let dir = Foreign.Archive.dir_path ~dir archive in
                Command.Args.S [ A "-I"; Path (Path.build dir) ]))
       in
+      let open Build.With_targets.O in
       let build =
-        Build.paths
-          (Library.foreign_lib_files lib ~dir ~ext_lib |> List.map ~f:Path.build)
+        Build.no_targets
+          (Build.paths
+             ( Library.foreign_lib_files lib ~dir ~ext_lib
+             |> List.map ~f:Path.build ))
         >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok ocamlopt)
               [ Command.Args.dyn (Ocaml_flags.get flags Native)
               ; A "-shared"
@@ -264,7 +267,8 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
       in
       let build =
         if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
-          Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib))
+          Build.no_targets
+            (Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib)))
           >>> build
         else
           build

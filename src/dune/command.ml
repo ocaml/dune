@@ -33,16 +33,6 @@ end
 
 open Args0
 
-let rec add_targets ts acc =
-  List.fold_left ts ~init:acc ~f:(fun acc t ->
-      match t with
-      | Target fn -> fn :: acc
-      | Hidden_targets fns -> List.rev_append fns acc
-      | S ts
-      | Concat (_, ts) ->
-        add_targets ts acc
-      | _ -> acc)
-
 let expand_static ~dir t =
   let static_deps = ref Dep.Set.empty in
   let exception Fail of fail in
@@ -82,30 +72,43 @@ let expand_static_exn ~dir t =
   | Ok res -> res
 
 let expand ~dir ts =
-  let rec loop = function
-    | A s -> Build.return [ s ]
-    | As l -> Build.return l
+  let rec loop : _ -> _ Build.With_targets.t = function
+    | A s -> Build.With_targets.return [ s ]
+    | As l -> Build.With_targets.return l
     | Dep fn ->
-      Build.map (Build.path fn) ~f:(fun () -> [ Path.reach fn ~from:dir ])
-    | Path fn -> Build.return [ Path.reach fn ~from:dir ]
+      Build.no_targets
+        (Build.map (Build.path fn) ~f:(fun () -> [ Path.reach fn ~from:dir ]))
+    | Path fn -> Build.With_targets.return [ Path.reach fn ~from:dir ]
     | Deps fns ->
-      Build.map (Build.paths fns) ~f:(fun () ->
-          List.map fns ~f:(Path.reach ~from:dir))
-    | Paths fns -> Build.return (List.map fns ~f:(Path.reach ~from:dir))
-    | S ts -> Build.map (Build.all (List.map ts ~f:loop)) ~f:List.concat
+      Build.no_targets
+        (Build.map (Build.paths fns) ~f:(fun () ->
+             List.map fns ~f:(Path.reach ~from:dir)))
+    | Paths fns ->
+      Build.With_targets.return (List.map fns ~f:(Path.reach ~from:dir))
+    | S ts ->
+      Build.With_targets.map
+        (Build.With_targets.all (List.map ts ~f:loop))
+        ~f:List.concat
     | Concat (sep, ts) ->
-      Build.map (loop (S ts)) ~f:(fun x -> [ String.concat ~sep x ])
-    | Target fn -> Build.return [ Path.reach (Path.build fn) ~from:dir ]
-    | Dyn dyn -> Build.dyn_deps (Build.map dyn ~f:(expand_static_exn ~dir))
-    | Fail f -> Build.fail f
-    | Hidden_deps deps -> Build.map (Build.deps deps) ~f:(fun () -> [])
-    | Hidden_targets _ -> Build.return []
-    | Expand f -> (
-      match f ~dir with
-      | Error e -> Build.fail e
-      | Ok (args, deps) ->
-        let open Build.O in
-        Build.deps deps >>> Build.return args )
+      Build.With_targets.map (loop (S ts)) ~f:(fun x ->
+          [ String.concat ~sep x ])
+    | Target fn ->
+      Build.with_targets ~targets:[ fn ]
+        (Build.return [ Path.reach (Path.build fn) ~from:dir ])
+    | Dyn dyn ->
+      Build.no_targets
+        (Build.dyn_deps (Build.map dyn ~f:(expand_static_exn ~dir)))
+    | Fail f -> Build.no_targets (Build.fail f)
+    | Hidden_deps deps ->
+      Build.no_targets (Build.map (Build.deps deps) ~f:(fun () -> []))
+    | Hidden_targets fns -> Build.with_targets ~targets:fns (Build.return [])
+    | Expand f ->
+      Build.no_targets
+        ( match f ~dir with
+        | Error e -> Build.fail e
+        | Ok (args, deps) ->
+          let open Build.O in
+          Build.deps deps >>> Build.return args )
   in
   loop (S ts)
 
@@ -114,14 +117,15 @@ let dep_prog = function
   | Error _ -> Build.return ()
 
 let prog_and_args ?(dir = Path.root) prog args =
-  let open Build.O in
-  dep_prog prog >>> Build.map (expand ~dir args) ~f:(fun args -> (prog, args))
+  let open Build.With_targets.O in
+  Build.no_targets (dep_prog prog)
+  >>> Build.With_targets.map (expand ~dir args) ~f:(fun args -> (prog, args))
 
 let run ~dir ?stdout_to prog args =
-  let open Build.O in
-  let targets = add_targets args (Option.to_list stdout_to) in
-  Build.declare_targets (Path.Build.Set.of_list targets)
-  >>> Build.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
+  let open Build.With_targets.O in
+  Build.With_targets.of_list (Option.to_list stdout_to)
+  >>> Build.With_targets.map (prog_and_args ~dir prog args)
+        ~f:(fun (prog, args) ->
           let action : Action.t = Run (prog, args) in
           let action =
             match stdout_to with

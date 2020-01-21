@@ -12,7 +12,7 @@ module Dir_rules : sig
 
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.t
+    ; action : Action.t Build.With_targets.t
     ; locks : Path.t list
     ; context : Context.t
     ; env : Env.t option
@@ -81,7 +81,7 @@ module Produce : sig
       -> loc:Loc.t option
       -> ?locks:Path.t list
       -> stamp:_
-      -> Action.t Build.t
+      -> Action.t Build.With_targets.t
       -> unit
   end
 end

@@ -5,7 +5,7 @@ module Id = Id.Make ()
 module Dir_rules = struct
   type alias_action =
     { stamp : Digest.t
-    ; action : Action.t Build.t
+    ; action : Action.t Build.With_targets.t
     ; locks : Path.t list
     ; context : Context.t
     ; env : Env.t option
@@ -27,11 +27,7 @@ module Dir_rules = struct
 
     let union x y =
       { deps = Path.Set.union x.deps y.deps
-      ; dyn_deps =
-          (let open Build.O in
-          let+ x = x.dyn_deps
-          and+ y = y.dyn_deps in
-          Path.Set.union x y)
+      ; dyn_deps = Build.map2 x.dyn_deps y.dyn_deps ~f:Path.Set.union
       ; actions = Appendable_list.( @ ) x.actions y.actions
       }
   end

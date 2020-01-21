@@ -66,7 +66,7 @@ let parse_coqdep ~coq_module (lines : string list) =
 
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     ~mlpack_rule coq_module =
-  let open Build.O in
+  let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
@@ -81,7 +81,9 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
        :( I wish we had more flexible typing. *)
-    mlpack_rule >>> source_rule >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
+    Build.no_targets mlpack_rule
+    >>> Build.no_targets source_rule
+    >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
   in
   (* Process coqdep and generate rules *)
   let deps_of : unit Build.t =
@@ -94,7 +96,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
   [ coqdep_rule
-  ; ( deps_of
+  ; ( Build.no_targets deps_of
     >>>
     let coq_flags =
       Expander.expand_and_eval_set expander coq_flags

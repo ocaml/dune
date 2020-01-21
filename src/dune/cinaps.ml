@@ -116,7 +116,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let cinaps_alias = alias ~dir in
   Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
-    cinaps_alias action;
+    cinaps_alias (Build.no_targets action);
   let stamp_file =
     Alias.stamp_file cinaps_alias |> Path.build |> Path.Set.singleton
   in

@@ -1,11 +1,11 @@
 open Import
 
 let add_diff sctx loc alias ~dir ~input ~output =
-  let open Build.O in
+  let open Build.With_targets.O in
   let action = Action.diff input output in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
     ~stamp:input
-    ( Build.paths [ input; output ]
+    ( Build.no_targets (Build.paths [ input; output ])
     >>> Build.action ~dir:(Path.build dir) ~targets:[] action )
 
 let rec subdirs_until_root dir =
@@ -66,8 +66,8 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
           | [] -> Build.return ()
           | extra_deps -> depend_on_files extra_deps
         in
-        let open Build.O in
-        extra_deps
+        let open Build.With_targets.O in
+        Build.no_targets extra_deps
         >>> Preprocessing.action_for_pp sctx
               ~dep_kind:Lib_deps_info.Kind.Required ~loc ~expander ~action ~src
               ~target:(Some output)

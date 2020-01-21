@@ -131,7 +131,8 @@ let make ?(requires = Ok []) ~flags
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
-let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
+let pp_flag_of_action sctx ~expander ~loc ~action :
+    string option Build.With_targets.t =
   match (action : Action_dune_lang.t) with
   | Run (exe, args) -> (
     let args =
@@ -143,7 +144,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
         None
     in
     match args with
-    | None -> Build.return None
+    | None -> Build.With_targets.return None
     | Some args ->
       let action =
         let targets_dir = Expander.dir expander in
@@ -162,14 +163,15 @@ let pp_flag_of_action sctx ~expander ~loc ~action : string option Build.t =
           |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -pp %s"
           |> Option.some
       in
-      Build.map action ~f:(function
+      Build.With_targets.map action ~f:(function
         | Run (exe, args) -> pp_of_action exe args
         | Chdir (_, Run (exe, args)) -> pp_of_action exe args
         | Chdir (_, Chdir (_, Run (exe, args))) -> pp_of_action exe args
         | _ -> None) )
-  | _ -> Build.return None
+  | _ -> Build.With_targets.return None
 
-let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t =
+let pp_flags sctx ~expander { preprocess; libname; _ } :
+    string option Build.With_targets.t =
   let scope = Expander.scope expander in
   match
     Dune_file.Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -180,15 +182,15 @@ let pp_flags sctx ~expander { preprocess; libname; _ } : string option Build.t =
       Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:libname ~flags
         ~scope pps
     with
-    | Error _exn -> Build.return None
+    | Error _exn -> Build.With_targets.return None
     | Ok (exe, flags) ->
       Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
       |> List.map ~f:quote_for_merlin
       |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -ppx %s"
-      |> Option.some |> Build.return )
+      |> Option.some |> Build.With_targets.return )
   | Action (loc, (action : Action_dune_lang.t)) ->
     pp_flag_of_action sctx ~expander ~loc ~action
-  | No_preprocessing -> Build.return None
+  | No_preprocessing -> Build.With_targets.return None
 
 (* This is used to determine the list of source directories to give to Merlin.
    This is similar to [Gen_rules.lib_src_dirs], but it's used for dependencies
@@ -221,31 +223,33 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
             Currently dune doesn't support declaring a dependency only on the
             existence of a file, so we have to use this trick. *)
          SC.add_rule sctx ~dir
-           ( Build.path (Path.build merlin_file)
-           >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
+           (let open Build.With_targets.O in
+           Build.no_targets (Build.path (Path.build merlin_file))
+           >>> Build.create_file (Path.Build.relative dir ".merlin-exists"));
          Path.Set.singleton (Path.build merlin_file)
          |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
          let pp_flags = pp_flags sctx ~expander t in
          let action =
-           Build.write_file_dyn merlin_file
-             (let+ flags = flags
-              and+ pp = pp_flags in
-              let src_dirs, obj_dirs =
-                Lib.Set.fold requires
-                  ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-                  ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-                    let more_src_dirs = lib_src_dirs ~sctx lib in
-                    ( Path.Set.union src_dirs more_src_dirs
-                    , let public_cmi_dir =
-                        Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                      in
-                      Path.Set.add obj_dirs public_cmi_dir ))
-              in
-              let src_dirs =
-                Path.Set.union src_dirs
-                  (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
-              in
-              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
+           Build.With_targets.write_file_dyn merlin_file
+             (let open Build.With_targets.O in
+             let+ flags = Build.no_targets flags
+             and+ pp = pp_flags in
+             let src_dirs, obj_dirs =
+               Lib.Set.fold requires
+                 ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
+                 ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+                   let more_src_dirs = lib_src_dirs ~sctx lib in
+                   ( Path.Set.union src_dirs more_src_dirs
+                   , let public_cmi_dir =
+                       Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                     in
+                     Path.Set.add obj_dirs public_cmi_dir ))
+             in
+             let src_dirs =
+               Path.Set.union src_dirs
+                 (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+             in
+             Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
          in
          SC.add_rule sctx ~dir
            ~mode:(Promote { lifetime = Until_clean; into = None; only = None })

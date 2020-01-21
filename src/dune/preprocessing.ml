@@ -324,13 +324,15 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
   let dir = Path.Build.parent_exn target in
   let ml = Path.Build.relative dir "_ppx.ml" in
   let add_rule ~sandbox = SC.add_rule ~sandbox sctx ~dir in
+  let open Build.With_targets.O in
   add_rule ~sandbox:Sandbox_config.default
     ( Build.of_result_map driver_and_libs ~f:(fun (driver, _) ->
           Build.return (sprintf "let () = %s ()\n" driver.info.main))
     |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
-    ( Build.record_lib_deps
-        (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names))
+    ( Build.no_targets
+        (Build.record_lib_deps
+           (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names)))
     >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
           [ A "-o"
           ; Target target
@@ -464,8 +466,9 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 let promote_correction fn build ~suffix =
   Build.progn
     [ build
-    ; Build.return
-        (Action.diff ~optional:true fn (Path.extend_basename fn ~suffix))
+    ; Build.no_targets
+        (Build.return
+           (Action.diff ~optional:true fn (Path.extend_basename fn ~suffix)))
     ]
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
@@ -481,14 +484,12 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
       (let+ () = Build.path (Path.build src) in
        Bindings.empty)
   in
-  let+ action =
-    match target with
-    | None -> action
-    | Some dst -> Build.action_dyn ~targets:[ dst ] action
-  in
   match target with
   | None -> action
-  | Some dst -> Action.with_stdout_to dst action
+  | Some dst ->
+    Build.With_targets.map
+      ~f:(Action.with_stdout_to dst)
+      (Build.action_dyn ~targets:[ dst ] action)
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)
@@ -555,8 +556,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
                  add_alias src.path ~loc:None
                    (promote_correction ~suffix:corrected_suffix
                       (Option.value_exn (Module.file source ~ml_kind))
-                      (Build.of_result_map driver_and_flags
-                         ~f:(fun (exe, flags, args) ->
+                      (Build.With_targets.of_result_map ~targets:[]
+                         driver_and_flags ~f:(fun (exe, flags, args) ->
                            Command.run
                              ~dir:(Path.build (SC.build_dir sctx))
                              (Ok (Path.build exe))
@@ -603,7 +604,9 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src
                     ~target:(Some dst)
                 in
-                SC.add_rule sctx ~loc ~dir (preprocessor_deps >>> action))
+                let open Build.With_targets.O in
+                SC.add_rule sctx ~loc ~dir
+                  (Build.no_targets preprocessor_deps >>> action))
             |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
           in
           if lint then lint_module ~ast ~source:m;
@@ -630,6 +633,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
             , args )
           in
           fun m ~lint ->
+            let open Build.With_targets.O in
             let ast = setup_dialect_rules sctx ~dir ~dep_kind ~expander m in
             if lint then lint_module ~ast ~source:m;
             pped_module ast ~f:(fun ml_kind src dst ->
@@ -637,9 +641,9 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   ~loc ~dir
                   (promote_correction ~suffix:corrected_suffix
                      (Option.value_exn (Module.file m ~ml_kind))
-                     ( preprocessor_deps
-                     >>> Build.of_result_map driver_and_flags ~targets:[ dst ]
-                           ~f:(fun (exe, flags, args) ->
+                     ( Build.no_targets preprocessor_deps
+                     >>> Build.With_targets.of_result_map driver_and_flags
+                           ~targets:[ dst ] ~f:(fun (exe, flags, args) ->
                              Command.run
                                ~dir:(Path.build (SC.build_dir sctx))
                                (Ok (Path.build exe))

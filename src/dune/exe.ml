@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Build.O
 module CC = Compilation_context
 module SC = Super_context
 
@@ -155,7 +154,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          Cm_files.top_sorted_objects_and_cms cm_files ~mode
          |> Build.dyn_paths_unit
      in
-     prefix
+     let open Build.With_targets.O in
+     Build.no_targets prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
            [ Command.Args.dyn ocaml_flags
            ; A "-o"

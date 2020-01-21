@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Build.O
 open! No_io
 module SC = Super_context
 
@@ -272,8 +271,9 @@ include Sub_system.Register_end_point (struct
        in
        let expander = Expander.add_bindings expander ~bindings in
        let action =
+         let open Build.With_targets.O in
          let+ actions =
-           Build.all
+           Build.With_targets.all
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
@@ -347,27 +347,30 @@ include Sub_system.Register_end_point (struct
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
           ~stamp:("ppx-runner", name)
-          (let exe =
-             Path.build (Path.Build.relative inline_test_dir (name ^ ext))
-           in
-           let exe, runner_args =
-             match custom_runner with
-             | None -> (Ok exe, Command.Args.empty)
-             | Some runner ->
-               ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
-               , Dep exe )
-           in
-           let+ () = Super_context.Deps.interpret sctx info.deps ~expander
-           and+ () = Build.paths source_files
-           and+ action =
-             Build.progn
-               ( Command.run exe ~dir:(Path.build dir) [ runner_args; Dyn flags ]
-               :: List.map source_files ~f:(fun fn ->
-                      Build.return
-                        (Action.diff ~optional:true fn
-                           (Path.extend_basename fn ~suffix:".corrected"))) )
-           in
-           action))
+          (let open Build.With_targets.O in
+          let exe =
+            Path.build (Path.Build.relative inline_test_dir (name ^ ext))
+          in
+          let exe, runner_args =
+            match custom_runner with
+            | None -> (Ok exe, Command.Args.empty)
+            | Some runner ->
+              ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
+              , Dep exe )
+          in
+          let+ () =
+            Build.no_targets
+              (Super_context.Deps.interpret sctx info.deps ~expander)
+          and+ () = Build.no_targets (Build.paths source_files)
+          and+ action =
+            Build.progn
+              ( Command.run exe ~dir:(Path.build dir) [ runner_args; Dyn flags ]
+              :: List.map source_files ~f:(fun fn ->
+                     Build.With_targets.return
+                       (Action.diff ~optional:true fn
+                          (Path.extend_basename fn ~suffix:".corrected"))) )
+          in
+          action))
 end)
 
 let linkme = ()

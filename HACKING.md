@@ -2,6 +2,15 @@
 
 This section is for people who want to work on Dune itself.
 
+## Create an Opam switch with the required dependencies
+
+From the project root, execute
+
+```sh
+$ make dev-switch
+# This takes some time
+```
+
 ## Bootstrap
 
 In order to build itself, Dune uses an OCaml script

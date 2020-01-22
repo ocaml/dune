@@ -4,6 +4,18 @@ DESTDIR_ARG := $(if $(DESTDIR),--destdir $(DESTDIR),)
 INSTALL_ARGS := $(PREFIX_ARG) $(LIBDIR_ARG) $(DESTDIR_ARG)
 BIN := ./dune.exe
 
+# Dependencies used for developing and testing dune
+DEV_DEPS := \
+core_bench \
+menhir \
+merlin \
+ocamlformat \
+odoc \
+ppx_expect \
+ppx_inline_test \
+ppxlib \
+utop
+
 -include Makefile.dev
 
 release: $(BIN)
@@ -22,6 +34,10 @@ uninstall:
 	$(BIN) uninstall $(INSTALL_ARGS) dune
 
 reinstall: uninstall install
+
+dev-switch:
+	opam switch create -y . --deps-only --with-test
+	opam install -y $(DEV_DEPS)
 
 test: $(BIN)
 	$(BIN) runtest
@@ -77,7 +93,7 @@ endif
 dune: $(BIN)
 	$(BIN) $(RUN_ARGS)
 
-.PHONY: default install uninstall reinstall clean test doc
+.PHONY: default install uninstall reinstall clean test doc dev-switch
 .PHONY: promote accept-corrections opam-release dune check fmt
 
 opam-release:

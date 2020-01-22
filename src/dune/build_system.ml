@@ -95,27 +95,20 @@ module Internal_rule = struct
   module Id = struct
     include Id.Make ()
 
-    module Top_closure_f =
-      Top_closure.Make
-        (Set)
-        (struct
-          type 'a t = 'a Fiber.t
-
-          let return = Fiber.return
-
-          let ( >>= ) = Fiber.O.( >>= )
-        end)
-
     module Top_closure = Top_closure.Make (Set) (Monad.Id)
   end
 
   module T = struct
     type t =
       { id : Id.t
-      ; static_deps : Static_deps.t Fiber.Once.t
       ; targets : Path.Build.Set.t
       ; context : Context.t option
       ; build : Action.t Build.t
+      ; (* We cache the result of [Build.static_deps t.build ~file_exists] in
+           [t.static_deps]. We do this lazily, because [Build.static_deps] needs
+           the [file_exists] predicate which in turn depends on the [t.targets]
+           field, thus causing a cyclic dependency. *)
+        static_deps : Static_deps.t Memo.Lazy.t
       ; mode : Rule.Mode.t
       ; info : Rule.Info.t
       ; dir : Path.Build.t
@@ -140,20 +133,14 @@ module Internal_rule = struct
 
   let hash t = Id.hash t.id
 
-  let lib_deps t =
-    (* Forcing this lazy ensures that the various globs and [if_file_exists] are
-       resolved inside the [Build.t] value. *)
-    let+ _ = Fiber.Once.get t.static_deps in
-    Build.lib_deps t.build
-
-  (* Represent the build goal given by the user. This rule is never actually
-     executed and is only used starting point of all dependency paths. *)
+  (* Represents the build goal given by the user. This rule is never actually
+     executed and is only used as a starting point of all dependency paths. *)
   let root =
     { id = Id.gen ()
-    ; static_deps = Fiber.Once.create (fun () -> Fiber.return Static_deps.empty)
     ; targets = Path.Build.Set.empty
     ; context = None
-    ; build = Build.return (Action.Progn [])
+    ; build = Build.return Action.empty
+    ; static_deps = Memo.Lazy.of_val Static_deps.empty
     ; mode = Standard
     ; info = Internal
     ; dir = Path.Build.root
@@ -163,7 +150,11 @@ module Internal_rule = struct
 
   (* Create a shim for the main build goal *)
   let shim_of_build_goal ~build ~static_deps =
-    { root with id = Id.gen (); static_deps; build }
+    { root with
+      id = Id.gen ()
+    ; build
+    ; static_deps = Memo.Lazy.of_val static_deps
+    }
 
   let effective_env rule =
     match (rule.env, rule.context) with
@@ -662,7 +653,7 @@ let no_rule_found t ~loc fn =
 module rec Load_rules : sig
   val load_dir : dir:Path.t -> Loaded.t
 
-  val static_deps : Action.t Build.t -> Static_deps.t Fiber.Once.t
+  val file_exists : Path.t -> bool
 
   val targets_of : dir:Path.t -> Path.Set.t
 end = struct
@@ -672,13 +663,13 @@ end = struct
     let { Pre_rule.context; env; build; targets; mode; locks; info; dir } =
       pre_rule
     in
-    let static_deps = static_deps build in
     let rule =
       let id = Internal_rule.Id.gen () in
       { Internal_rule.id
-      ; static_deps
       ; targets
       ; build
+      ; static_deps =
+          Memo.lazy_ (fun () -> Build.static_deps build ~file_exists)
       ; context
       ; env
       ; locks
@@ -688,10 +679,6 @@ end = struct
       }
     in
     (targets, rule)
-
-  let static_deps build =
-    Fiber.Once.create (fun () ->
-        Fiber.return (Build.static_deps build ~list_targets:targets_of))
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -711,6 +698,17 @@ end = struct
         List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
             (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
+
+  (* Here we are doing a O(log |S|) lookup in a set S of files in the build
+     directory [dir]. We could memoize these lookups, but it doesn't seem to be
+     worth it, since we're unlikely to perform exactly the same lookup many
+     times. As far as I can tell, each lookup will be done twice: when computing
+     static dependencies of a [Build.t] with [Build.static_deps] and when
+     executing the very same [Build.t] with [Build.exec] -- the results of both
+     [Build.static_deps] and [Build.exec] are cached. *)
+  let file_exists fn =
+    let dir = Path.parent_exn fn in
+    Path.Set.mem (targets_of ~dir) fn
 
   let targets_of ~dir =
     match load_dir ~dir with
@@ -1264,16 +1262,17 @@ end = struct
   (* Evaluate a rule and return the action and set of dynamic dependencies *)
   let evaluate_action_and_dynamic_deps_memo =
     let f (rule : Internal_rule.t) =
-      let* static_deps = Fiber.Once.get rule.static_deps in
-      let rule_deps = Static_deps.rule_deps static_deps in
+      let rule_deps =
+        Static_deps.rule_deps (Memo.Lazy.force rule.static_deps)
+      in
       let+ () = build_deps rule_deps in
-      Build.exec ~eval_pred rule.build
+      Build.exec rule.build ~file_exists ~eval_pred
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
       ~doc:
         "Evaluate the build description of a rule and return the action and \
-         dynamic dependency of the rule."
+         dynamic dependencies of the rule."
       ~input:(module Internal_rule)
       ~visibility:Hidden Async f
 
@@ -1318,9 +1317,10 @@ end = struct
         ]
 
   let evaluate_rule (rule : Internal_rule.t) =
-    let* static_deps = Fiber.Once.get rule.static_deps in
     let+ action, dynamic_action_deps = evaluate_action_and_dynamic_deps rule in
-    let static_action_deps = Static_deps.action_deps static_deps in
+    let static_action_deps =
+      Static_deps.action_deps (Memo.Lazy.force rule.static_deps)
+    in
     let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
     (action, action_deps)
 
@@ -1338,8 +1338,9 @@ end = struct
      the final action and set of dynamic dependencies. We do this to increase
      opportunities for parallelism. *)
   let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
-    let* static_deps = Fiber.Once.get rule.static_deps in
-    let static_action_deps = Static_deps.action_deps static_deps in
+    let static_action_deps =
+      Static_deps.action_deps (Memo.Lazy.force rule.static_deps)
+    in
     (* Build the static dependencies in parallel with evaluation the action and
        dynamic dependencies *)
     let* action, dynamic_action_deps =
@@ -1684,8 +1685,13 @@ end = struct
                 if lifetime = Until_clean then
                   Promoted_to_delete.add in_source_tree;
                 Scheduler.ignore_for_watch in_source_tree;
+                (* The file in the build directory might be read-only if it
+                   comes from the shared cache. However, we want the file in the
+                   source tree to be writable by the user, so we explicitly set
+                   the user writable bit. *)
+                let chmod n = n lor 0o200 in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~get_vcs:File_tree.nearest_vcs ))
+                  ~get_vcs:File_tree.nearest_vcs ~chmod ))
     in
     t.rule_done <- t.rule_done + 1
 
@@ -1764,10 +1770,10 @@ let shim_of_build_goal request =
   let request =
     let open Build.O in
     let+ () = request in
-    Action.Progn []
+    Action.empty
   in
   Internal_rule.shim_of_build_goal ~build:request
-    ~static_deps:(static_deps request)
+    ~static_deps:(Build.static_deps request ~file_exists)
 
 let build_request ~request =
   let result = Fdecl.create Dyn.Encoder.opaque in
@@ -1853,10 +1859,11 @@ let package_deps pkg files =
         acc
       else (
         rules_seen := Internal_rule.Set.add !rules_seen ir;
+        let static_action_deps =
+          Static_deps.action_deps (Memo.Lazy.force ir.static_deps)
+        in
         (* We know that at this point of execution, all the relevant ivars have
-           been filled so the following calls to [X.peek_exn] cannot raise. *)
-        let static_deps = Fiber.Once.peek_exn ir.static_deps in
-        let static_action_deps = Static_deps.action_deps static_deps in
+           been filled so the following call to [Memo.peek_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
@@ -2004,11 +2011,10 @@ include Print_rules
 
 module All_lib_deps : sig
   val all_lib_deps :
-       request:unit Build.t
-    -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t Fiber.t
+    request:unit Build.t -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t
 end = struct
   let static_deps_of_request request =
-    Static_deps.paths @@ Build.static_deps request ~list_targets:targets_of
+    Static_deps.paths @@ Build.static_deps request ~file_exists
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -2018,13 +2024,13 @@ end = struct
     |> Internal_rule.Set.of_list |> Internal_rule.Set.to_list
 
   let rules_for_targets targets =
-    Internal_rule.Id.Top_closure_f.top_closure (rules_for_files targets)
+    Internal_rule.Id.Top_closure.top_closure (rules_for_files targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
-        Fiber.Once.get r.static_deps
-        >>| Static_deps.paths ~eval_pred
-        >>| rules_for_files)
-    >>| function
+        Memo.Lazy.force r.static_deps
+        |> Static_deps.paths ~eval_pred
+        |> rules_for_files)
+    |> function
     | Ok l -> l
     | Error cycle ->
       User_error.raise
@@ -2039,10 +2045,10 @@ end = struct
   let all_lib_deps ~request =
     let t = t () in
     let targets = static_deps_of_request request ~eval_pred in
-    let* rules = rules_for_targets targets in
-    let+ lib_deps =
-      Fiber.parallel_map rules ~f:(fun rule ->
-          let+ deps = Internal_rule.lib_deps rule in
+    let rules = rules_for_targets targets in
+    let lib_deps =
+      List.map rules ~f:(fun rule ->
+          let deps = Build.lib_deps rule.Internal_rule.build ~file_exists in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->

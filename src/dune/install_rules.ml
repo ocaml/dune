@@ -147,9 +147,11 @@ end = struct
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
         let compile_info =
+          let dune_version = Scope.project scope |> Dune_project.dune_version in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
             exes.names exes.buildable.libraries
             ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+            ~dune_version
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             ~variants:exes.variants ~optional:exes.optional
         in
@@ -204,10 +206,9 @@ end = struct
                   , Install.Entry.make Lib dune_package_file
                       ~dst:Dune_package.fn )
                ::
-               ( match pkg.kind with
-               | Dune false -> deprecated_meta_and_dune_files
-               | Dune true
-               | Opam ->
+               ( if not pkg.has_opam_file then
+                 deprecated_meta_and_dune_files
+               else
                  let opam_file = Package_paths.opam_file ctx pkg in
                  (None, Install.Entry.make Lib opam_file ~dst:"opam")
                  :: deprecated_meta_and_dune_files )

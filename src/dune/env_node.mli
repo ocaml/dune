@@ -35,3 +35,6 @@ val bin_artifacts :
   -> default:Artifacts.Bin.t
   -> expander:Expander.t
   -> Artifacts.Bin.t
+
+val menhir_flags :
+  t -> profile:Profile.t -> expander:Expander.t -> string list Build.t

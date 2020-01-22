@@ -20,6 +20,7 @@ module Stanza : sig
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t
     }
 
   type pattern =

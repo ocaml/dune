@@ -103,6 +103,23 @@ Note the direct dependency b ---> ppx that separates pps and runtime dependencie
   Should print 3: 3
 
 ----------------------------------------------------------------------------------
+* Since Dune 2.2, it is not allowed to have a pps dependency on a library that has
+not been marked with (kind ppx_rewriter).
+
+  $ cat >dune-project <<EOF
+  > (lang dune 2.2)
+  > (implicit_transitive_deps true)
+  > EOF
+
+  $ ./sdune exec bin/main.exe
+  File "bin/dune", line 3, characters 18-19:
+  3 |  (preprocess (pps b))
+                        ^
+  Error: Ppx dependency on a non-ppx library "b". If "b" is in fact a ppx
+  rewriter library, it should have (kind ppx_rewriter) in its dune file.
+  [1]
+
+----------------------------------------------------------------------------------
 * Dependency cycle between ppx rewriters created via [ppx_runtime_libraries]
 In this case we have the following dependency graph:
 gen_c --[pps]--> ppx --[runtime]--> c --[pps]--> gen_c

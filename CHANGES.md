@@ -1,3 +1,32 @@
+2.2.0 (unreleased)
+------------------
+
+- Allow to set menhir flags in the `env` stanza using the `menhir_flags` field.
+  (#2960, fix #2924, @bschommer)
+
+- By default, do not show the full command line of commands executed
+  by `dune` when `dune` is executed inside `dune`. This is to make
+  integration tests more reproducible (#3042, @diml)
+
+- `dune subst` now works even without opam files (#2955, fixes #2910,
+  @fangyi-zhou and @diml)
+
+- Hint when trying to execute an executable defined in the current directory
+  without using the `./` prefix (#3041).
+
+- It is now an error to have a preprocessing dependency on a ppx rewriter
+  library that is not marked as `(kind ppx_rewriter)` (#3039, @snowleopard).
+
+- Fix permissions of files promoted to the source tree when using the
+  shared cache. In particular, make them writable by the user (#3043,
+  fixes #3026, @diml)
+
+2.1.3 (16/01/2020)
+------------------
+
+- Fix building the OCaml compiler with Dune (#3038, fixes #2974,
+  @diml)
+
 2.1.2 (08/01/2020)
 ------------------
 

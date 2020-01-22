@@ -9,7 +9,8 @@ Regression test for https://github.com/ocaml/dune/issues/1016#issuecomment-41139
       (c_flags
        ($flags))
       (cxx_flags
-       ($flags)))
+       ($flags))
+      (menhir_flags ()))
   
     
   Environment for context release:
@@ -20,6 +21,7 @@ Regression test for https://github.com/ocaml/dune/issues/1016#issuecomment-41139
       (c_flags
        ($flags))
       (cxx_flags
-       ($flags)))
+       ($flags))
+      (menhir_flags ()))
   
     

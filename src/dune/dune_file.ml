@@ -1728,31 +1728,20 @@ module Rule = struct
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
-    and+ mode =
-      (* DUNE2: forbid (fallback) *)
-      map_validate
-        (let+ fallback =
-           field_b
-             ~check:
-               (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
-                  ~to_:"(mode fallback)")
-             "fallback"
-         and+ mode = field_o "mode" Mode.decode in
-         (fallback, mode))
-        ~f:(function
-          | true, Some _ ->
-            Error
-              (User_error.make
-                 [ Pp.text
-                     "Cannot use both (fallback) and (mode ...) at the same \
-                      time."
-                 ; Pp.text
-                     "(fallback) is the same as (mode fallback), please use \
-                      the latter in new code."
-                 ])
-          | false, Some mode -> Ok mode
-          | true, None -> Ok Fallback
-          | false, None -> Ok Standard)
+    and+ () =
+      let+ fallback =
+        field_b
+          ~check:
+            (Dune_lang.Syntax.renamed_in Stanza.syntax (1, 0)
+               ~to_:"(mode fallback)")
+          "fallback"
+      in
+      (* The "fallback" field was only allowed in jbuild file, which we don't
+         support anymore. So this cannot be [true]. We just keep the parser to
+         provide a nice error message for people switching from jbuilder to
+         dune. *)
+      assert (not fallback)
+    and+ mode = field "mode" Mode.decode ~default:Mode.Standard
     and+ enabled_if = enabled_if ~since:(Some (1, 4))
     and+ package =
       field_o "package"
@@ -1872,10 +1861,6 @@ module Menhir = struct
     ; enabled_if : Blang.t
     }
 
-  let syntax =
-    Dune_lang.Syntax.create ~name:"menhir" ~desc:"the menhir extension"
-      [ (1, 1); (2, 0) ]
-
   let decode =
     fields
       (let+ merge_into = field_o "merge_into" string
@@ -1883,8 +1868,9 @@ module Menhir = struct
        and+ modules = field "modules" (repeat string)
        and+ mode = Rule.Mode.field
        and+ infer =
-         field_o_b "infer" ~check:(Dune_lang.Syntax.since syntax (2, 0))
-       and+ menhir_syntax = Dune_lang.Syntax.get_exn syntax
+         field_o_b "infer"
+           ~check:(Dune_lang.Syntax.since Menhir_stanza.syntax (2, 0))
+       and+ menhir_syntax = Dune_lang.Syntax.get_exn Menhir_stanza.syntax
        and+ enabled_if = enabled_if ~since:(Some (1, 4))
        and+ loc = loc in
        let infer =
@@ -1897,7 +1883,7 @@ module Menhir = struct
   type Stanza.t += T of t
 
   let () =
-    Dune_project.Extension.register_simple syntax
+    Dune_project.Extension.register_simple Menhir_stanza.syntax
       (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
 end
 

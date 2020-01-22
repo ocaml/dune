@@ -1293,6 +1293,7 @@ Fields supported in ``<settings>`` are:
   corresponding variables to the environment in which the build commands are
   executed, and under which ``dune exec`` runs.
 
+- ``(menhir_flags <flags>))`` to specify flags for menhir stanzas.
 
 - ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
   ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will

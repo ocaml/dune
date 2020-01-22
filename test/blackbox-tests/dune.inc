@@ -311,6 +311,16 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-cache-promotion-in-source-tree)
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/promotion-in-source-tree))
+ (action
+  (chdir
+   test-cases/dune-cache/promotion-in-source-tree
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-cache-symlink)
  (deps (package dune) (source_tree test-cases/dune-cache/symlink))
  (action
@@ -1042,6 +1052,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias hints-root-executables)
+ (deps (package dune) (source_tree test-cases/hints-root-executables))
+ (action
+  (chdir
+   test-cases/hints-root-executables
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias ignored_subdirs)
  (deps (package dune) (source_tree test-cases/ignored_subdirs))
  (action
@@ -1245,11 +1263,43 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias menhir)
- (deps (package dune) (source_tree test-cases/menhir))
+ (alias menhir-cmly)
+ (deps (package dune) (source_tree test-cases/menhir/cmly))
  (action
   (chdir
-   test-cases/menhir
+   test-cases/menhir/cmly
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias menhir-env)
+ (deps (package dune) (source_tree test-cases/menhir/env))
+ (action
+  (chdir
+   test-cases/menhir/env
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias menhir-general)
+ (deps (package dune) (source_tree test-cases/menhir/general))
+ (action
+  (chdir
+   test-cases/menhir/general
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias menhir-general-2.0)
+ (deps (package dune) (source_tree test-cases/menhir/general-2.0))
+ (action
+  (chdir
+   test-cases/menhir/general-2.0
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias menhir-promote)
+ (deps (package dune) (source_tree test-cases/menhir/promote))
+ (action
+  (chdir
+   test-cases/menhir/promote
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2046,6 +2096,7 @@
   (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
   (alias dune-cache-promote-direct-copy)
+  (alias dune-cache-promotion-in-source-tree)
   (alias dune-cache-symlink)
   (alias dune-cache-symlink-direct)
   (alias dune-cache-trim)
@@ -2133,6 +2184,7 @@
   (alias github992)
   (alias glob-deps)
   (alias glob-deps-change)
+  (alias hints-root-executables)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
@@ -2157,7 +2209,11 @@
   (alias lint)
   (alias loop)
   (alias macro-expand-error)
-  (alias menhir)
+  (alias menhir-cmly)
+  (alias menhir-env)
+  (alias menhir-general)
+  (alias menhir-general-2.0)
+  (alias menhir-promote)
   (alias merlin-allow_approximate_merlin)
   (alias merlin-merlin-tests)
   (alias merlin-src-dirs-of-deps)
@@ -2286,6 +2342,7 @@
   (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
   (alias dune-cache-promote-direct-copy)
+  (alias dune-cache-promotion-in-source-tree)
   (alias dune-cache-symlink)
   (alias dune-cache-symlink-direct)
   (alias dune-cache-trim)
@@ -2367,6 +2424,7 @@
   (alias github992)
   (alias glob-deps)
   (alias glob-deps-change)
+  (alias hints-root-executables)
   (alias ignored_subdirs)
   (alias include-loop)
   (alias include-qualified)
@@ -2388,6 +2446,7 @@
   (alias link-includes)
   (alias loop)
   (alias macro-expand-error)
+  (alias menhir-env)
   (alias merlin-allow_approximate_merlin)
   (alias merlin-src-dirs-of-deps)
   (alias meta-gen)

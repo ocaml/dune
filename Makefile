@@ -98,6 +98,7 @@ dune: $(BIN)
 
 opam-release:
 	dune-release distrib --skip-build --skip-lint --skip-tests -n dune
-	dune-release publish distrib --verbose -n dune
+	# See https://github.com/ocamllabs/dune-release/issues/206
+	DUNE_RELEASE_DELEGATE=github-dune-release-delegate dune-release publish distrib --verbose -n dune
 	dune-release opam pkg -n dune
 	dune-release opam submit -n dune

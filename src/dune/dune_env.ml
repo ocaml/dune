@@ -14,6 +14,13 @@ module Stanza = struct
     and+ cxx = Ordered_set_lang.Unexpanded.field "cxx_flags" ?check in
     Foreign.Language.Dict.make ~c ~cxx
 
+  let menhir_flags ~since =
+    let check =
+      Option.map since ~f:(fun since ->
+          Dune_lang.Syntax.since Menhir_stanza.syntax since)
+    in
+    Ordered_set_lang.Unexpanded.field "menhir_flags" ?check
+
   module Inline_tests = struct
     type t =
       | Enabled
@@ -43,9 +50,11 @@ module Stanza = struct
     ; env_vars : Env.t
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
+    ; menhir_flags : Ordered_set_lang.Unexpanded.t
     }
 
-  let equal_config { flags; foreign_flags; env_vars; binaries; inline_tests } t
+  let equal_config
+      { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags } t
       =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -53,6 +62,7 @@ module Stanza = struct
     && Env.equal env_vars t.env_vars
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
+    && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
 
   let hash_config = Hashtbl.hash
 
@@ -63,6 +73,7 @@ module Stanza = struct
     ; env_vars = Env.empty
     ; binaries = []
     ; inline_tests = None
+    ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     }
 
   type pattern =
@@ -113,8 +124,9 @@ module Stanza = struct
       field ~default:[] "binaries"
         ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
         >>> File_binding.Unexpanded.L.decode )
-    and+ inline_tests = inline_tests_field in
-    { flags; foreign_flags; env_vars; binaries; inline_tests }
+    and+ inline_tests = inline_tests_field
+    and+ menhir_flags = menhir_flags ~since:(Some (2, 1)) in
+    { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags }
 
   let rule =
     enter

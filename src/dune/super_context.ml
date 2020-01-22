@@ -116,6 +116,8 @@ module Env : sig
   val foreign_flags :
     t -> dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t
 
+  val menhir_flags : t -> dir:Path.Build.t -> string list Build.t
+
   val external_ : t -> dir:Path.Build.t -> External_env.t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t
@@ -224,6 +226,10 @@ end = struct
     let default_context_flags = default_context_flags t.context in
     Env_node.foreign_flags (get t ~dir) ~profile:t.profile
       ~expander:(expander t ~dir) ~default_context_flags
+
+  let menhir_flags t ~dir =
+    Env_node.menhir_flags (get t ~dir) ~profile:t.profile
+      ~expander:(expander t ~dir)
 end
 
 let expander t ~dir = Env.expander t.env_context ~dir
@@ -310,6 +316,12 @@ let foreign_flags t ~dir ~expander ~flags ~language =
      let+ l = c in
      l @ ccg)
 
+let menhir_flags t ~dir ~expander ~flags =
+  let t = t.env_context in
+  let default = Env.menhir_flags t ~dir in
+  Build.memoize "menhir flags"
+    (Expander.expand_and_eval_set expander flags ~standard:default)
+
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
 
 let dump_env t ~dir =
@@ -323,8 +335,12 @@ let dump_env t ~dir =
     List.map
       ~f:Dune_lang.Encoder.(pair string (list string))
       [ ("c_flags", c_flags); ("cxx_flags", cxx_flags) ]
+  and+ menhir_dump =
+    let+ flags = Env.menhir_flags t ~dir in
+    [ ("menhir_flags", flags) ]
+    |> List.map ~f:Dune_lang.Encoder.(pair string (list string))
   in
-  o_dump @ c_dump
+  List.concat [ o_dump; c_dump; menhir_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
   let t = t.env_context in
@@ -383,9 +399,13 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | Dune_file.Executables
           ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
         let compile_info =
+          let dune_version =
+            Scope.project d.scope |> Dune_project.dune_version
+          in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries
             ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+            ~dune_version
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             ~variants:exes.variants ~optional:exes.optional
         in

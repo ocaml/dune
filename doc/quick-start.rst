@@ -108,6 +108,36 @@ Outside of the library, module ``Foo`` will be accessible as
 You can then use this library in any other directory by adding ``mylib``
 to the ``(libraries ...)`` field.
 
+Building a hello world program in byte-code
+============================================
+
+In a directory of your choice, write this ``dune`` file:
+
+.. code:: scheme
+
+    ;; This declares the hello_world executable implemented by hello_world.ml
+    ;; to be build as native (.exe) or byte-code (.bc) version.
+    (executable
+     (name hello_world)
+     (modes byte exe))
+
+This ``hello_world.ml`` file:
+
+.. code:: ocaml
+
+    print_endline "Hello, world!"
+
+And build it with:
+
+.. code:: bash
+
+    dune build hello_world.bc
+
+The executable will be built as ``_build/default/hello_world.bc``.
+The executable can be built and run in a single
+step with ``dune exec ./hello_world.bc``. This byte-code version allows the usage of 
+``ocamldebug``.
+
 Setting the OCaml compilation flags globally
 ============================================
 
@@ -122,7 +152,7 @@ Write this ``dune`` file at the root of your project:
       (flags (:standard -O3))))
 
 `dev` and `release` correspond to build profiles. The build profile
-can be selected from the command line with `--profile foo` or from a
+can be selected from the command line with ``--profile foo`` or from a
 `dune-workspace` file by writing:
 
 .. code:: scheme
@@ -138,7 +168,7 @@ Add this field to your ``library`` or ``executable`` stanzas:
 
     (preprocess (action (run %{bin:cppo} -V OCAML:%{ocaml_version} %{input-file})))
 
-Additionally, if you are include a ``config.h`` file, you need to
+Additionally, if you want to include a ``config.h`` file, you need to
 declare the dependency to this file via:
 
 .. code:: scheme

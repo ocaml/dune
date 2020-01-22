@@ -61,8 +61,6 @@ val name : t -> Name.t
 
 val root : t -> Path.Source.t
 
-val info : t -> Package.Info.t
-
 val stanza_parser : t -> Stanza.t list Dune_lang.Decoder.t
 
 val allow_approx_merlin : t -> bool

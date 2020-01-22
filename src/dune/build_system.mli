@@ -139,8 +139,7 @@ val is_target : Path.t -> bool
 (** Return all the library dependencies (as written by the user) needed to build
     this request, by context name *)
 val all_lib_deps :
-     request:unit Build.t
-  -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t Fiber.t
+  request:unit Build.t -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t
 
 (** List of all buildable targets *)
 val all_targets : unit -> Path.Build.Set.t

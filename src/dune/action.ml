@@ -180,6 +180,8 @@ let chdirs =
   in
   fun t -> loop Path.Set.empty t
 
+let empty = Progn []
+
 let rec is_dynamic = function
   | Dynamic_run _ -> true
   | Chdir (_, t)

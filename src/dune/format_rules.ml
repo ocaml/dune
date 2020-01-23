@@ -5,9 +5,7 @@ let add_diff sctx loc alias ~dir ~input ~output =
   let action = Action.Chdir (Path.build dir, Action.diff input output) in
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
     ~stamp:input
-    (Build.no_targets
-       (let+ () = Build.paths [ input; output ] in
-        action))
+    (Build.no_targets (Build.paths [ input; output ] >>> Build.return action))
 
 let rec subdirs_until_root dir =
   match Path.parent dir with

@@ -181,6 +181,9 @@ let source_tree ~dir =
   dirs_without_files >>> path_set paths >>> return paths
 
 module With_targets = struct
+  (* CR-soon amokhov: It seems to me that we can switch from [Path.Build.Set.t]
+     to [Path.Build.t list] since we should never have repeated targets. Or we
+     could use [union_exn] to check that targets are never repeated. *)
   type nonrec 'a t =
     { build : 'a t
     ; targets : Path.Build.Set.t

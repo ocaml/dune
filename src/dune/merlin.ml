@@ -213,6 +213,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
     =
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
+         let open Build.With_targets.O in
          let merlin_file = Path.Build.relative dir ".merlin" in
 
          (* We make the compilation of .ml/.mli files depend on the existence of
@@ -223,33 +224,31 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
             Currently dune doesn't support declaring a dependency only on the
             existence of a file, so we have to use this trick. *)
          SC.add_rule sctx ~dir
-           (let open Build.With_targets.O in
-           Build.no_targets (Build.path (Path.build merlin_file))
-           >>> Build.create_file (Path.Build.relative dir ".merlin-exists"));
+           ( Build.no_targets (Build.path (Path.build merlin_file))
+           >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
          Path.Set.singleton (Path.build merlin_file)
          |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
          let pp_flags = pp_flags sctx ~expander t in
          let action =
            Build.With_targets.write_file_dyn merlin_file
-             (let open Build.With_targets.O in
-             let+ flags = Build.no_targets flags
-             and+ pp = pp_flags in
-             let src_dirs, obj_dirs =
-               Lib.Set.fold requires
-                 ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-                 ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-                   let more_src_dirs = lib_src_dirs ~sctx lib in
-                   ( Path.Set.union src_dirs more_src_dirs
-                   , let public_cmi_dir =
-                       Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                     in
-                     Path.Set.add obj_dirs public_cmi_dir ))
-             in
-             let src_dirs =
-               Path.Set.union src_dirs
-                 (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
-             in
-             Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
+             (let+ flags = Build.no_targets flags
+              and+ pp = pp_flags in
+              let src_dirs, obj_dirs =
+                Lib.Set.fold requires
+                  ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
+                  ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+                    let more_src_dirs = lib_src_dirs ~sctx lib in
+                    ( Path.Set.union src_dirs more_src_dirs
+                    , let public_cmi_dir =
+                        Obj_dir.public_cmi_dir (Lib.obj_dir lib)
+                      in
+                      Path.Set.add obj_dirs public_cmi_dir ))
+              in
+              let src_dirs =
+                Path.Set.union src_dirs
+                  (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+              in
+              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
          in
          SC.add_rule sctx ~dir
            ~mode:(Promote { lifetime = Until_clean; into = None; only = None })

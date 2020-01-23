@@ -11,11 +11,9 @@ module With_targets : sig
     ; targets : Path.Build.Set.t
     }
 
-  val add : 'a t -> targets:Path.Build.t list -> 'a t
-
   val return : 'a -> 'a t
 
-  val of_list : Path.Build.t list -> unit t
+  val add : 'a t -> targets:Path.Build.t list -> 'a t
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 
@@ -24,10 +22,6 @@ module With_targets : sig
   val write_file_dyn : Path.Build.t -> string t -> Action.t t
 
   val all : 'a t list -> 'a list t
-
-  (** Always fail when executed. We pass a function rather than an exception to
-      get a proper backtrace *)
-  val fail : targets:Path.Build.t list -> fail -> _ t
 
   val of_result_map :
     'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t

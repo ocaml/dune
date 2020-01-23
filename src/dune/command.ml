@@ -122,17 +122,15 @@ let prog_and_args ?(dir = Path.root) prog args =
   >>> Build.With_targets.map (expand ~dir args) ~f:(fun args -> (prog, args))
 
 let run ~dir ?stdout_to prog args =
-  let open Build.With_targets.O in
-  Build.With_targets.of_list (Option.to_list stdout_to)
-  >>> Build.With_targets.map (prog_and_args ~dir prog args)
-        ~f:(fun (prog, args) ->
-          let action : Action.t = Run (prog, args) in
-          let action =
-            match stdout_to with
-            | None -> action
-            | Some path -> Redirect_out (Stdout, path, action)
-          in
-          Action.Chdir (dir, action))
+  Build.With_targets.map (prog_and_args ~dir prog args) ~f:(fun (prog, args) ->
+      let action : Action.t = Run (prog, args) in
+      let action =
+        match stdout_to with
+        | None -> action
+        | Some path -> Redirect_out (Stdout, path, action)
+      in
+      Action.Chdir (dir, action))
+  |> Build.With_targets.add ~targets:(Option.to_list stdout_to)
 
 let quote_args =
   let rec loop quote = function

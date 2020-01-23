@@ -564,8 +564,8 @@ module Libs = struct
             let src = Path.build (Path.Build.relative dir src_fn) in
             Build.copy_and_add_line_directive ~src ~dst
           | Error e ->
-            Build.With_targets.fail ~targets:[ dst ]
-              { fail = (fun () -> raise e) } ))
+            Build.fail { fail = (fun () -> raise e) }
+            |> Build.add ~targets:[ dst ] ))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
@@ -723,45 +723,40 @@ module Action = struct
             ; Pp.enumerate targets ~f:(fun target ->
                   Pp.text (Dpath.describe_path (Path.build target)))
             ]);
-    let open Build.With_targets.O in
+    let open Build.O in
     let build =
-      Build.no_targets
-        (Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms))
-      >>> Build.no_targets
-            (Build.path_set
-               (Path.Set.union deps (Expander.Resolved_forms.sdeps forms)))
+      Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
+      >>> Build.path_set
+            (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>
       let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
-      let action =
-        Build.dyn_path_set
-          (let open Build.O in
-          let+ action =
-            let+ vals = Build.all (List.map ddeps ~f:snd)
-            and+ deps_written_by_user = bindings in
-            let dynamic_expansions =
-              List.fold_left2 ddeps vals ~init:String.Map.empty
-                ~f:(fun acc (var, _) value -> String.Map.set acc var value)
-            in
-            let unresolved =
-              let expander =
-                Expander.add_ddeps_and_bindings expander ~dynamic_expansions
-                  ~deps_written_by_user
-              in
-              U.Partial.expand t ~expander ~map_exe
-            in
-            Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-                match Expander.resolve_binary ~loc expander ~prog with
-                | Ok path -> path
-                | Error { fail } -> fail ())
-          in
-          let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-          (Action.Chdir (Path.build dir, action), deps))
-      in
-      Build.add ~targets action
+      Build.dyn_path_set
+        (let+ action =
+           let+ vals = Build.all (List.map ddeps ~f:snd)
+           and+ deps_written_by_user = bindings in
+           let dynamic_expansions =
+             List.fold_left2 ddeps vals ~init:String.Map.empty
+               ~f:(fun acc (var, _) value -> String.Map.set acc var value)
+           in
+           let unresolved =
+             let expander =
+               Expander.add_ddeps_and_bindings expander ~dynamic_expansions
+                 ~deps_written_by_user
+             in
+             U.Partial.expand t ~expander ~map_exe
+           in
+           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+               match Expander.resolve_binary ~loc expander ~prog with
+               | Ok path -> path
+               | Error { fail } -> fail ())
+         in
+         let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
+         (Action.Chdir (Path.build dir, action), deps))
     in
-    match Expander.Resolved_forms.failures forms with
-    | [] -> build
-    | fail :: _ -> Build.With_targets.fail ~targets:[] fail >>> build
+    Build.add ~targets
+      ( match Expander.Resolved_forms.failures forms with
+      | [] -> build
+      | fail :: _ -> Build.fail fail >>> build )
 end
 
 let opaque t =

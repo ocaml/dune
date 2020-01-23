@@ -228,15 +228,16 @@ let gen_rules sctx dir_contents cctxs
             List.map (Menhir_rules.targets m) ~f:(Path.Build.relative ctx_dir)
           in
           Super_context.add_rule sctx ~dir:ctx_dir
-            (Build.With_targets.fail ~targets
-               { fail =
-                   (fun () ->
-                     User_error.raise ~loc:m.loc
-                       [ Pp.text
-                           "I can't determine what library/executable the \
-                            files produced by this stanza are part of."
-                       ])
-               })
+            ( Build.fail
+                { fail =
+                    (fun () ->
+                      User_error.raise ~loc:m.loc
+                        [ Pp.text
+                            "I can't determine what library/executable the \
+                             files produced by this stanza are part of."
+                        ])
+                }
+            |> Build.add ~targets )
         | Some cctx -> Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir )
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m

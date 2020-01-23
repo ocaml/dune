@@ -153,7 +153,8 @@ module Register_end_point (M : End_point) = struct
     match fail with
     | None -> M.gen_rules c ~info ~backends
     | Some fail ->
-      Build_system.prefix_rules (Build.With_targets.fail ~targets:[] fail)
+      Build_system.prefix_rules
+        (Build.no_targets (Build.fail fail))
         ~f:(fun () -> M.gen_rules c ~info ~backends)
 
   include Lib.Sub_system.Register (struct

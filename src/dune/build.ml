@@ -186,14 +186,12 @@ module With_targets = struct
     ; targets : Path.Build.Set.t
     }
 
+  let return x = { build = Pure x; targets = Path.Build.Set.empty }
+
   let add t ~targets =
     { build = t.build
     ; targets = Path.Build.Set.union t.targets (Path.Build.Set.of_list targets)
     }
-
-  let return x = { build = Pure x; targets = Path.Build.Set.empty }
-
-  let of_list l = { build = Pure (); targets = Path.Build.Set.of_list l }
 
   let map { build; targets } ~f = { build = map build ~f; targets }
 
@@ -222,9 +220,6 @@ module With_targets = struct
       (let+ s = s in
        Action.Write_file (fn, s))
 
-  let fail ~targets x =
-    { build = Fail x; targets = Path.Build.Set.of_list targets }
-
   let of_result_map res ~f ~targets =
     match res with
     | Ok x ->
@@ -233,7 +228,10 @@ module With_targets = struct
       ; targets =
           Path.Build.Set.union t.targets (Path.Build.Set.of_list targets)
       }
-    | Error e -> fail ~targets { fail = (fun () -> raise e) }
+    | Error e ->
+      { build = Fail { fail = (fun () -> raise e) }
+      ; targets = Path.Build.Set.of_list targets
+      }
 end
 
 let add build ~targets : _ With_targets.t =
@@ -250,14 +248,14 @@ let write_file_dyn fn s =
      Action.Write_file (fn, s))
 
 let copy ~src ~dst =
-  add ~targets:[ dst ] (path src >>> Pure (Action.Copy (src, dst)))
+  add ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
 
 let copy_and_add_line_directive ~src ~dst =
   add ~targets:[ dst ]
-    (path src >>> Pure (Action.Copy_and_add_line_directive (src, dst)))
+    (path src >>> return (Action.Copy_and_add_line_directive (src, dst)))
 
 let symlink ~src ~dst =
-  add ~targets:[ dst ] (path src >>> Pure (Action.Symlink (src, dst)))
+  add ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
 
 let create_file fn =
   add ~targets:[ fn ] (return (Action.Redirect_out (Stdout, fn, Action.empty)))
@@ -276,15 +274,13 @@ let progn ts =
   Action.Progn actions
 
 let merge_files_dyn ~target paths =
-  let action =
-    let+ sources, extras =
-      dyn_paths
-        (let+ sources, extras = paths in
-         ((sources, extras), sources))
-    in
-    Action.Merge_files_into (sources, extras, target)
-  in
-  add ~targets:[ target ] action
+  add ~targets:[ target ]
+    (let+ sources, extras =
+       dyn_paths
+         (let+ sources, extras = paths in
+          ((sources, extras), sources))
+     in
+     Action.Merge_files_into (sources, extras, target))
 
 (* Analysis *)
 

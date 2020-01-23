@@ -102,14 +102,22 @@ let deps_of ~cctx ~ml_kind unit =
     List.filter_map dependencies ~f:dependency_file_path
   in
   let action =
-    Build.merge_files_dyn ~target:all_deps_file
-      (let+ lines = Build.lines_of (Path.build ocamldep_output) in
-       lines
-       |> parse_deps_exn ~file:(Module.File.path source)
-       |> interpret_deps cctx ~unit
-       |> fun modules ->
-       ( build_paths modules
-       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) ))
+    let paths =
+      let+ lines = Build.lines_of (Path.build ocamldep_output) in
+      lines
+      |> parse_deps_exn ~file:(Module.File.path source)
+      |> interpret_deps cctx ~unit
+      |> fun modules ->
+      ( build_paths modules
+      , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
+    in
+    Build.add ~targets:[ all_deps_file ]
+      (let+ sources, extras =
+         Build.dyn_paths
+           (let+ sources, extras = paths in
+            ((sources, extras), sources))
+       in
+       Action.Merge_files_into (sources, extras, all_deps_file))
   in
   SC.add_rule sctx ~dir action;
   let all_deps_file = Path.build all_deps_file in

@@ -261,15 +261,6 @@ let progn ts =
   let+ actions = With_targets.all ts in
   Action.Progn actions
 
-let merge_files_dyn ~target paths =
-  add ~targets:[ target ]
-    (let+ sources, extras =
-       dyn_paths
-         (let+ sources, extras = paths in
-          ((sources, extras), sources))
-     in
-     Action.Merge_files_into (sources, extras, target))
-
 (* Analysis *)
 
 (* CR-soon amokhov: We do no memoization here and so we enter the very same

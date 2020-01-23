@@ -201,9 +201,3 @@ val exec :
 (**/**)
 
 val paths_for_rule : Path.Set.t -> unit t
-
-(* TODO: Document this and a few other non-obvious functions. *)
-val merge_files_dyn :
-     target:Path.Build.t
-  -> (Path.t list * string list) t
-  -> Action.t With_targets.t

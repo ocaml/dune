@@ -578,7 +578,7 @@ module Libs = struct
       else
         prefix
     in
-    Build_system.prefix_rules (Build.no_targets prefix) ~f
+    Build_system.prefix_rules prefix ~f
 end
 
 module Deps = struct

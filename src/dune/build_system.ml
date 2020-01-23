@@ -1880,16 +1880,12 @@ let package_deps pkg files =
       | None -> acc
       | Some fn -> loop_deps fn acc)
 
-let prefix_rules (prefix : _ Build.With_targets.t) ~f =
-  let targets = prefix.targets in
-  if not (Path.Build.Set.is_empty targets) then
-    Code_error.raise "Build_system.prefix_rules' prefix contains targets"
-      [ ("targets", Path.Build.Set.to_dyn targets) ];
+let prefix_rules (prefix : _ Build.t) ~f =
   let res, rules = Rules.collect f in
   let open Build.With_targets.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with action = prefix >>> rule.action }));
+         { rule with action = Build.no_targets prefix >>> rule.action }));
   res
 
 module Alias = Alias0

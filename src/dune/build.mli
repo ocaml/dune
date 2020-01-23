@@ -172,11 +172,7 @@ val symlink : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
 val create_file : Path.Build.t -> Action.t With_targets.t
 
-val remove_tree : Path.Build.t -> Action.t With_targets.t
-
-val mkdir : Path.Build.t -> Action.t With_targets.t
-
-(** Merge a list of actions *)
+(** Merge a list of actions accumulating the sets of their targets. *)
 val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
 val record_lib_deps : Lib_deps_info.t -> unit t

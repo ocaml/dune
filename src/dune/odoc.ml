@@ -228,8 +228,17 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   add_rule sctx
     ( Build.no_targets deps
     >>> Build.progn
-          ( Build.remove_tree to_remove
-          :: Build.mkdir odoc_file.html_dir
+          ( Build.no_targets
+              (Build.return
+                 (* Note that we declare no targets apart from [dune_keep]. This
+                    means Dune doesn't know how to build specific documentation
+                    files and that we can't run this rule in a sandbox. To
+                    properly declare targets we would need to support some form
+                    of "dynamic targets" or "target directories". *)
+                 (Action.Progn
+                    [ Action.Remove_tree to_remove
+                    ; Action.Mkdir (Path.build odoc_file.html_dir)
+                    ]))
           :: Command.run
                ~dir:(Path.build (Paths.html_root ctx))
                (odoc sctx)

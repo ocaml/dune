@@ -221,17 +221,13 @@ module With_targets = struct
        Action.Write_file (fn, s))
 
   let of_result_map res ~f ~targets =
-    match res with
-    | Ok x ->
-      let t = f x in
-      { build = t.build
-      ; targets =
-          Path.Build.Set.union t.targets (Path.Build.Set.of_list targets)
-      }
-    | Error e ->
-      { build = Fail { fail = (fun () -> raise e) }
-      ; targets = Path.Build.Set.of_list targets
-      }
+    add ~targets
+      ( match res with
+      | Ok x -> f x
+      | Error e ->
+        { build = Fail { fail = (fun () -> raise e) }
+        ; targets = Path.Build.Set.empty
+        } )
 end
 
 let add build ~targets : _ With_targets.t =
@@ -259,14 +255,6 @@ let symlink ~src ~dst =
 
 let create_file fn =
   add ~targets:[ fn ] (return (Action.Redirect_out (Stdout, fn, Action.empty)))
-
-(* CR amokhov: Should we add the contents of [dir] to targets? *)
-let remove_tree dir = With_targets.return (Action.Remove_tree dir)
-
-(* CR amokhov: Should we add [dir] to targets? *)
-let mkdir dir =
-  let dir = Path.build dir in
-  With_targets.return (Action.Mkdir dir)
 
 let progn ts =
   let open With_targets.O in

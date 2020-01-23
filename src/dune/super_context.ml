@@ -253,7 +253,7 @@ let add_rule t ?sandbox ?mode ?locks ?loc ~dir build =
 let add_rule_get_targets t ?sandbox ?mode ?locks ?loc ~dir build =
   let rule = make_rule t ?sandbox ?mode ?locks ?loc ~dir build in
   Rules.Produce.rule rule;
-  rule.targets
+  rule.action.targets
 
 let add_rules t ?sandbox ~dir builds =
   List.iter builds ~f:(add_rule t ?sandbox ~dir)

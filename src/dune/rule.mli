@@ -49,8 +49,7 @@ end
 type t =
   { context : Context.t option
   ; env : Env.t option
-  ; build : Action.t Build.With_targets.t
-  ; targets : Path.Build.Set.t
+  ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t  (** Directory where all the targets are produced *)

@@ -801,7 +801,7 @@ end = struct
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in
-             Build.action_dyn ~targets:[ path ] (Build.no_targets action))
+             Build.add ~targets:[ path ] action)
           :: rules)
     in
     fun ~subdirs_to_keep ->

@@ -489,7 +489,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   | Some dst ->
     Build.With_targets.map
       ~f:(Action.with_stdout_to dst)
-      (Build.action_dyn ~targets:[ dst ] action)
+      (Build.With_targets.add ~targets:[ dst ] action)
 
 (* Generate rules for the dialect modules in [modules] and return a a new module
    with only OCaml sources *)

@@ -22,6 +22,7 @@ type 'a t =
   | Lazy_no_targets : 'a t Lazy.t -> 'a t
   | Deps : Dep.Set.t -> unit t
 
+(* CR-soon amokhov: Reimplement this ad-hoc memoization using [Memo]. *)
 and 'a memo =
   { name : string
   ; t : 'a t
@@ -185,8 +186,10 @@ module With_targets = struct
     ; targets : Path.Build.Set.t
     }
 
-  let add_targets ts { build; targets } =
-    { build; targets = Path.Build.Set.union targets ts }
+  let add t ~targets =
+    { build = t.build
+    ; targets = Path.Build.Set.union t.targets (Path.Build.Set.of_list targets)
+    }
 
   let return x = { build = Pure x; targets = Path.Build.Set.empty }
 
@@ -215,8 +218,7 @@ module With_targets = struct
     | x :: xs -> map2 ~f:List.cons x (all xs)
 
   let write_file_dyn fn s =
-    add_targets
-      (Path.Build.Set.singleton fn)
+    add ~targets:[ fn ]
       (let+ s = s in
        Action.Write_file (fn, s))
 
@@ -234,49 +236,31 @@ module With_targets = struct
     | Error e -> fail ~targets { fail = (fun () -> raise e) }
 end
 
-let with_targets build ~targets : _ With_targets.t =
+let add build ~targets : _ With_targets.t =
   { build; targets = Path.Build.Set.of_list targets }
 
 let no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
-let action ?dir ~targets action =
-  with_targets ~targets
-    (Pure
-       ( match dir with
-       | None -> action
-       | Some dir -> Action.Chdir (dir, action) ))
-
-let action_dyn ?dir ~targets (action : Action.t With_targets.t) :
-    Action.t With_targets.t =
-  { build =
-      ( match dir with
-      | None -> action.build
-      | Some dir ->
-        map action.build ~f:(fun action -> Action.Chdir (dir, action)) )
-  ; targets =
-      Path.Build.Set.union (Path.Build.Set.of_list targets) action.targets
-  }
-
-let write_file fn s = action ~targets:[ fn ] (Write_file (fn, s))
+let write_file fn s = add ~targets:[ fn ] (return (Action.Write_file (fn, s)))
 
 let write_file_dyn fn s =
-  with_targets ~targets:[ fn ]
+  add ~targets:[ fn ]
     (let+ s = s in
      Action.Write_file (fn, s))
 
 let copy ~src ~dst =
-  with_targets ~targets:[ dst ] (path src >>> Pure (Action.Copy (src, dst)))
+  add ~targets:[ dst ] (path src >>> Pure (Action.Copy (src, dst)))
 
 let copy_and_add_line_directive ~src ~dst =
-  with_targets ~targets:[ dst ]
+  add ~targets:[ dst ]
     (path src >>> Pure (Action.Copy_and_add_line_directive (src, dst)))
 
 let symlink ~src ~dst =
-  with_targets ~targets:[ dst ] (path src >>> Pure (Action.Symlink (src, dst)))
+  add ~targets:[ dst ] (path src >>> Pure (Action.Symlink (src, dst)))
 
 let create_file fn =
-  action ~targets:[ fn ] (Redirect_out (Stdout, fn, Action.empty))
+  add ~targets:[ fn ] (return (Action.Redirect_out (Stdout, fn, Action.empty)))
 
 (* CR amokhov: Should we add the contents of [dir] to targets? *)
 let remove_tree dir = With_targets.return (Action.Remove_tree dir)
@@ -300,7 +284,7 @@ let merge_files_dyn ~target paths =
     in
     Action.Merge_files_into (sources, extras, target)
   in
-  with_targets ~targets:[ target ] action
+  add ~targets:[ target ] action
 
 (* Analysis *)
 

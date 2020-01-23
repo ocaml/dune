@@ -93,7 +93,7 @@ let expand ~dir ts =
       Build.With_targets.map (loop (S ts)) ~f:(fun x ->
           [ String.concat ~sep x ])
     | Target fn ->
-      Build.with_targets ~targets:[ fn ]
+      Build.add ~targets:[ fn ]
         (Build.return [ Path.reach (Path.build fn) ~from:dir ])
     | Dyn dyn ->
       Build.no_targets
@@ -101,7 +101,7 @@ let expand ~dir ts =
     | Fail f -> Build.no_targets (Build.fail f)
     | Hidden_deps deps ->
       Build.no_targets (Build.map (Build.deps deps) ~f:(fun () -> []))
-    | Hidden_targets fns -> Build.with_targets ~targets:fns (Build.return [])
+    | Hidden_targets fns -> Build.add ~targets:fns (Build.return [])
     | Expand f ->
       Build.no_targets
         ( match f ~dir with

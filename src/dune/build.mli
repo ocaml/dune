@@ -11,6 +11,8 @@ module With_targets : sig
     ; targets : Path.Build.Set.t
     }
 
+  val add : 'a t -> targets:Path.Build.t list -> 'a t
+
   val return : 'a -> 'a t
 
   val of_list : Path.Build.t list -> unit t
@@ -39,8 +41,9 @@ module With_targets : sig
   end
 end
 
-(** Record the set of targets of a build description. *)
-val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
+(** Add a set of targets to a build description, turning a target-less [Build.t]
+    into [Build.With_targets.t]. *)
+val add : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
 (** Create a value of [With_targets.t] with the empty set of targets. *)
 val no_targets : 'a t -> 'a With_targets.t
@@ -160,18 +163,6 @@ val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 (** [memoize name t] is a build description that behaves like [t] except that
     its result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
-
-val action :
-     ?dir:Path.t
-  -> targets:Path.Build.t list
-  -> Action.t
-  -> Action.t With_targets.t
-
-val action_dyn :
-     ?dir:Path.t
-  -> targets:Path.Build.t list
-  -> Action.t With_targets.t
-  -> Action.t With_targets.t
 
 (** Create a file with the given contents. *)
 val write_file : Path.Build.t -> string -> Action.t With_targets.t

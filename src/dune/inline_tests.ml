@@ -285,7 +285,7 @@ include Sub_system.Register_end_point (struct
          in
          Action.with_stdout_to target (Action.progn actions)
        in
-       Build.action_dyn ~targets:[ target ] action);
+       Build.With_targets.add ~targets:[ target ] action);
     let cctx =
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:false ~requires_compile:runner_libs

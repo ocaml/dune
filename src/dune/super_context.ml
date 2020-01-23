@@ -755,9 +755,9 @@ module Action = struct
                 | Error { fail } -> fail ())
           in
           let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-          (action, deps))
+          (Action.Chdir (Path.build dir, action), deps))
       in
-      Build.action_dyn ~dir:(Path.build dir) ~targets (Build.no_targets action)
+      Build.add ~targets action
     in
     match Expander.Resolved_forms.failures forms with
     | [] -> build

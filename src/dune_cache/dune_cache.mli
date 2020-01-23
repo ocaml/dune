@@ -43,11 +43,19 @@ end
     that are not linked in a build directory. *)
 val size : Cache.t -> int
 
+module Trimming_result : sig
+  type t =
+    { trimmed_files_size : int
+    ; trimmed_files : Path.t list
+    ; trimmed_metafiles : Path.t list
+    }
+end
+
 (** [trim cache size] removes files from [cache], starting with the least
     recently used one, until [size] bytes have been freed. *)
-val trim : Cache.t -> int -> trimming_result
+val trim : Cache.t -> int -> Trimming_result.t
 
 (** Purge invalid or incomplete cached rules. *)
-val garbage_collect : Cache.t -> trimming_result
+val garbage_collect : Cache.t -> Trimming_result.t
 
 val make_caching : (module Cache with type t = 'a) -> 'a -> (module Caching)

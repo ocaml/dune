@@ -3,6 +3,23 @@ module Key = Key
 include Dune_cache_intf
 open Result.O
 
+module Trimming_result = struct
+  type t =
+    { trimmed_files_size : int
+    ; trimmed_files : Path.t list
+    ; trimmed_metafiles : Path.t list
+    }
+
+  let empty =
+    { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }
+
+  let add t ~size ~file =
+    { t with
+      trimmed_files = file :: t.trimmed_files
+    ; trimmed_files_size = size + t.trimmed_files_size
+    }
+end
+
 type 'a result = ('a, string) Result.t
 
 let default_root () =
@@ -226,12 +243,12 @@ module Cache = struct
       Log.infof "promote %s" (Path.to_string abs_path);
       let stat = Unix.lstat (Path.to_string abs_path) in
       let* stat =
-        if stat.st_kind != S_REG then
+        if stat.st_kind = S_REG then
+          Result.Ok stat
+        else
           Result.Error
             (Format.sprintf "invalid file type: %s"
                (Path.string_of_file_kind stat.st_kind))
-        else
-          Result.Ok stat
       in
       let prepare path =
         let dest = Path.relative cache.temp_dir "data" in
@@ -282,12 +299,13 @@ module Cache = struct
     Io.write_file metadata_tmp_path metadata;
     let () =
       match Io.read_file metadata_path with
-        | contents -> if contents <> metadata then
-                        User_warning.emit
-                          [ Pp.textf "non reproductible collision on rule %s"
-                              (Digest.to_string key)
-                          ]
-        | exception Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
+      | contents ->
+        if contents <> metadata then
+          User_warning.emit
+            [ Pp.textf "non reproductible collision on rule %s"
+                (Digest.to_string key)
+            ]
+      | exception Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
     in
     Path.rename metadata_tmp_path metadata_path;
     let f = function
@@ -331,9 +349,7 @@ module Cache = struct
   let detect_duplication_mode root =
     let () = Path.mkdir_p root in
     let beacon = Path.relative root "beacon"
-    and target =
-      Path.build (Path.Build.of_local (Path.Local.of_string ".cache-beacon"))
-    in
+    and target = Path.relative Path.build_dir ".cache-beacon" in
     let () = Path.touch beacon in
     let rec test () =
       match Path.link beacon target with
@@ -366,9 +382,6 @@ end
 
 let trimmable stats = stats.Unix.st_nlink = 1
 
-let default_trim : trimming_result =
-  { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }
-
 let _garbage_collect default_trim cache =
   let path = Cache.path_meta cache in
   let metas =
@@ -378,7 +391,7 @@ let _garbage_collect default_trim cache =
     | p, Result.Error msg ->
       Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
       Path.unlink_no_err p;
-      { default_trim with trimmed_metafiles = [ p ] }
+      { default_trim with Trimming_result.trimmed_metafiles = [ p ] }
     | p, Result.Ok { Metadata_file.files; _ } ->
       if
         List.for_all
@@ -391,18 +404,13 @@ let _garbage_collect default_trim cache =
           Path.pp p;
         let res =
           List.fold_left ~init:default_trim
-            ~f:
-              (fun ( { trimmed_files_size = size; trimmed_files = files; _ } as
-                   trim ) f ->
+            ~f:(fun trim f ->
               let p = f.File.in_the_cache in
               try
                 let stats = Path.stat p in
                 if trimmable stats then (
                   Path.unlink_no_err p;
-                  { trim with
-                    trimmed_files_size = size + stats.st_size
-                  ; trimmed_files = p :: files
-                  }
+                  Trimming_result.add trim ~file:p ~size:stats.st_size
                 ) else
                   trim
               with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
@@ -414,7 +422,7 @@ let _garbage_collect default_trim cache =
   in
   List.fold_left ~init:default_trim ~f metas
 
-let garbage_collect = _garbage_collect default_trim
+let garbage_collect = _garbage_collect Trimming_result.empty
 
 let trim cache free =
   let path = Cache.path_files cache in
@@ -427,19 +435,15 @@ let trim cache free =
       None
   and compare (_, _, t1) (_, _, t2) = Ordering.of_int (Stdlib.compare t1 t2) in
   let files = List.sort ~compare (List.filter_map ~f files)
-  and delete ({ trimmed_files_size = freed; trimmed_files = files; _ } as trim)
-      (path, size, _) =
-    if freed >= free then
+  and delete (trim : Trimming_result.t) (path, size, _) =
+    if trim.trimmed_files_size >= free then
       trim
     else (
       Path.unlink path;
-      { trim with
-        trimmed_files_size = freed + size
-      ; trimmed_files = path :: files
-      }
+      Trimming_result.add trim ~size ~file:path
     )
   in
-  let trim = List.fold_left ~init:default_trim ~f:delete files in
+  let trim = List.fold_left ~init:Trimming_result.empty ~f:delete files in
   _garbage_collect trim cache
 
 let size cache =

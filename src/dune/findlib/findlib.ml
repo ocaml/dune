@@ -211,6 +211,24 @@ module Package = struct
     Vars.get_words t.vars "ppx_runtime_deps" preds
     |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
 
+  (* We need a way to figure out if a library is a ppx rewriter. To do that, we
+     currently rely on the presence of [ppx_driver] predicates which Dune uses
+     when the library's kind is not [Normal]. A cleaner way would be to add a
+     new variable to the generated META file, e.g. called [library_kind], but
+     this seems like an overkill given that we plan to stop supporting generated
+     META files soon. *)
+  let kind t =
+    match String.Map.find t.vars "requires" with
+    | None -> Lib_kind.Normal
+    | Some ({ set_rules; add_rules } : Rules.t) ->
+      if
+        List.exists (set_rules @ add_rules) ~f:(fun (rule : Rule.t) ->
+            Ps.mem rule.preds_required P.ppx_driver)
+      then
+        Ppx_rewriter Lib_kind.Ppx_args.empty
+      else
+        Lib_kind.Normal
+
   let archives t = make_archives t "archive" preds
 
   let plugins t =
@@ -250,7 +268,7 @@ module Package = struct
     in
     let info : Path.t Lib_info.t =
       let name = name t in
-      let kind = Lib_kind.Normal in
+      let kind = kind t in
       let sub_systems = Sub_system_name.Map.empty in
       let synopsis = description t in
       let status = Lib_info.Status.Installed in

@@ -33,6 +33,8 @@ module Ppx_args = struct
 
   type t = { cookies : Cookie.t list }
 
+  let empty = { cookies = [] }
+
   let to_dyn { cookies } =
     let open Dyn.Encoder in
     record [ ("cookies", list Cookie.to_dyn cookies) ]

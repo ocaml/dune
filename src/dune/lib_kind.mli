@@ -7,6 +7,8 @@ module Ppx_args : sig
   end
 
   type t = { cookies : Cookie.t list }
+
+  val empty : t
 end
 
 type t =

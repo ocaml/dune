@@ -1765,7 +1765,8 @@ let shim_of_build_goal request =
     let+ () = request in
     Action.empty
   in
-  Internal_rule.shim_of_build_goal ~action:(Build.no_targets request)
+  Internal_rule.shim_of_build_goal
+    ~action:(Build.with_no_targets request)
     ~static_deps:(Build.static_deps request ~file_exists)
 
 let build_request ~request =
@@ -1885,7 +1886,7 @@ let prefix_rules (prefix : _ Build.t) ~f =
   let open Build.With_targets.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with action = Build.no_targets prefix >>> rule.action }));
+         { rule with action = Build.with_no_targets prefix >>> rule.action }));
   res
 
 module Alias = Alias0

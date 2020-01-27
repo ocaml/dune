@@ -155,7 +155,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          |> Build.dyn_paths_unit
      in
      let open Build.With_targets.O in
-     Build.no_targets prefix
+     Build.with_no_targets prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
            [ Command.Args.dyn ocaml_flags
            ; A "-o"

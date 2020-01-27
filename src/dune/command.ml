@@ -76,11 +76,11 @@ let expand ~dir ts =
     | A s -> Build.With_targets.return [ s ]
     | As l -> Build.With_targets.return l
     | Dep fn ->
-      Build.no_targets
+      Build.with_no_targets
         (Build.map (Build.path fn) ~f:(fun () -> [ Path.reach fn ~from:dir ]))
     | Path fn -> Build.With_targets.return [ Path.reach fn ~from:dir ]
     | Deps fns ->
-      Build.no_targets
+      Build.with_no_targets
         (Build.map (Build.paths fns) ~f:(fun () ->
              List.map fns ~f:(Path.reach ~from:dir)))
     | Paths fns ->
@@ -96,14 +96,14 @@ let expand ~dir ts =
       Build.with_targets ~targets:[ fn ]
         (Build.return [ Path.reach (Path.build fn) ~from:dir ])
     | Dyn dyn ->
-      Build.no_targets
+      Build.with_no_targets
         (Build.dyn_deps (Build.map dyn ~f:(expand_static_exn ~dir)))
-    | Fail f -> Build.no_targets (Build.fail f)
+    | Fail f -> Build.with_no_targets (Build.fail f)
     | Hidden_deps deps ->
-      Build.no_targets (Build.map (Build.deps deps) ~f:(fun () -> []))
+      Build.with_no_targets (Build.map (Build.deps deps) ~f:(fun () -> []))
     | Hidden_targets fns -> Build.with_targets ~targets:fns (Build.return [])
     | Expand f ->
-      Build.no_targets
+      Build.with_no_targets
         ( match f ~dir with
         | Error e -> Build.fail e
         | Ok (args, deps) ->
@@ -118,7 +118,7 @@ let dep_prog = function
 
 let prog_and_args ?(dir = Path.root) prog args =
   let open Build.With_targets.O in
-  Build.no_targets (dep_prog prog)
+  Build.with_no_targets (dep_prog prog)
   >>> Build.With_targets.map (expand ~dir args) ~f:(fun args -> (prog, args))
 
 let run ~dir ?stdout_to prog args =

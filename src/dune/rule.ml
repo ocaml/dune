@@ -61,7 +61,7 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ~env ?(locks = []) ?(info = Info.Internal) action =
   let open Build.With_targets.O in
   let action =
-    Build.no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action
+    Build.with_no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action
   in
   let targets = action.targets in
   let dir =

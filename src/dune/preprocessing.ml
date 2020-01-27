@@ -330,7 +330,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
           Build.return (sprintf "let () = %s ()\n" driver.info.main))
     |> Build.write_file_dyn ml );
   add_rule ~sandbox:Sandbox_config.no_special_requirements
-    ( Build.no_targets
+    ( Build.with_no_targets
         (Build.record_lib_deps
            (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names)))
     >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
@@ -466,7 +466,7 @@ let workspace_root_var = String_with_vars.virt_var __POS__ "workspace_root"
 let promote_correction fn build ~suffix =
   Build.progn
     [ build
-    ; Build.no_targets
+    ; Build.with_no_targets
         (Build.return
            (Action.diff ~optional:true fn (Path.extend_basename fn ~suffix)))
     ]
@@ -606,7 +606,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                 in
                 let open Build.With_targets.O in
                 SC.add_rule sctx ~loc ~dir
-                  (Build.no_targets preprocessor_deps >>> action))
+                  (Build.with_no_targets preprocessor_deps >>> action))
             |> setup_dialect_rules sctx ~dir ~dep_kind ~expander
           in
           if lint then lint_module ~ast ~source:m;
@@ -641,7 +641,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                   ~loc ~dir
                   (promote_correction ~suffix:corrected_suffix
                      (Option.value_exn (Module.file m ~ml_kind))
-                     ( Build.no_targets preprocessor_deps
+                     ( Build.with_no_targets preprocessor_deps
                      >>> Build.With_targets.of_result_map driver_and_flags
                            ~targets:[ dst ] ~f:(fun (exe, flags, args) ->
                              Command.run

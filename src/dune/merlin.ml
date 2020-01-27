@@ -224,14 +224,14 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
             Currently dune doesn't support declaring a dependency only on the
             existence of a file, so we have to use this trick. *)
          SC.add_rule sctx ~dir
-           ( Build.no_targets (Build.path (Path.build merlin_file))
+           ( Build.with_no_targets (Build.path (Path.build merlin_file))
            >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
          Path.Set.singleton (Path.build merlin_file)
          |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
          let pp_flags = pp_flags sctx ~expander t in
          let action =
            Build.With_targets.write_file_dyn merlin_file
-             (let+ flags = Build.no_targets flags
+             (let+ flags = Build.with_no_targets flags
               and+ pp = pp_flags in
               let src_dirs, obj_dirs =
                 Lib.Set.fold requires

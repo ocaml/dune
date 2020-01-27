@@ -81,8 +81,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
        :( I wish we had more flexible typing. *)
-    Build.no_targets mlpack_rule
-    >>> Build.no_targets source_rule
+    Build.with_no_targets mlpack_rule
+    >>> Build.with_no_targets source_rule
     >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
   in
   (* Process coqdep and generate rules *)
@@ -96,7 +96,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
   [ coqdep_rule
-  ; ( Build.no_targets deps_of
+  ; ( Build.with_no_targets deps_of
     >>>
     let coq_flags =
       Expander.expand_and_eval_set expander coq_flags

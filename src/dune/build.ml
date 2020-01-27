@@ -236,7 +236,7 @@ end
 let with_targets build ~targets : _ With_targets.t =
   { build; targets = Path.Build.Set.of_list targets }
 
-let no_targets build : _ With_targets.t =
+let with_no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
 let write_file fn s =

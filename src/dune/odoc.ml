@@ -162,8 +162,8 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
   let open Build.With_targets.O in
   add_rule sctx
-    ( Build.no_targets file_deps
-    >>> Build.no_targets (module_deps m ~obj_dir ~dep_graphs)
+    ( Build.with_no_targets file_deps
+    >>> Build.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
     >>>
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
@@ -226,9 +226,9 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
   in
   let open Build.With_targets.O in
   add_rule sctx
-    ( Build.no_targets deps
+    ( Build.with_no_targets deps
     >>> Build.progn
-          ( Build.no_targets
+          ( Build.with_no_targets
               (Build.return
                  (* Note that we declare no targets apart from [dune_keep]. This
                     means Dune doesn't know how to build specific documentation

@@ -52,7 +52,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
       in
       Super_context.add_rule ~dir sctx ~loc:lib.buildable.loc
         (let open Build.With_targets.O in
-        Build.no_targets obj_deps
+        Build.with_no_targets obj_deps
         >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
               [ Command.Args.dyn ocaml_flags
               ; A "-a"
@@ -249,7 +249,7 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
       in
       let open Build.With_targets.O in
       let build =
-        Build.no_targets
+        Build.with_no_targets
           (Build.paths
              ( Library.foreign_lib_files lib ~dir ~ext_lib
              |> List.map ~f:Path.build ))
@@ -267,7 +267,7 @@ let build_shared lib ~dir_contents ~sctx ~dir ~flags =
       in
       let build =
         if Lib_archives.has_native_archive lib ctx.lib_config dir_contents then
-          Build.no_targets
+          Build.with_no_targets
             (Build.path (Path.build (Library.archive lib ~dir ~ext:ext_lib)))
           >>> build
         else

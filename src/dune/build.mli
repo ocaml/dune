@@ -40,7 +40,7 @@ end
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
 (** Create a value of [With_targets.t] with the empty set of targets. *)
-val no_targets : 'a t -> 'a With_targets.t
+val with_no_targets : 'a t -> 'a With_targets.t
 
 val return : 'a -> 'a t
 

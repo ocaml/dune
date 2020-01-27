@@ -189,7 +189,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       match alias_conf.action with
       | None ->
         fun x ->
-          Build.no_targets
+          Build.with_no_targets
             (let open Build.O in
             let+ (_ : Path.t Bindings.t) = x in
             Action.empty)

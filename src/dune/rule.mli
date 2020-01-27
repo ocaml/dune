@@ -49,8 +49,7 @@ end
 type t =
   { context : Context.t option
   ; env : Env.t option
-  ; build : Action.t Build.t
-  ; targets : Path.Build.Set.t
+  ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t  (** Directory where all the targets are produced *)
@@ -64,5 +63,5 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
   -> t

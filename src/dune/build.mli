@@ -5,6 +5,43 @@ open! Import
 
 type 'a t
 
+module With_targets : sig
+  type nonrec 'a t =
+    { build : 'a t
+    ; targets : Path.Build.Set.t
+    }
+
+  val return : 'a -> 'a t
+
+  val add : 'a t -> targets:Path.Build.t list -> 'a t
+
+  val map : 'a t -> f:('a -> 'b) -> 'b t
+
+  val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
+
+  val write_file_dyn : Path.Build.t -> string t -> Action.t t
+
+  val all : 'a t list -> 'a list t
+
+  val of_result_map :
+    'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
+
+  module O : sig
+    val ( >>> ) : unit t -> 'a t -> 'a t
+
+    val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+
+    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
+  end
+end
+
+(** Add a set of targets to a build description, turning a target-less [Build.t]
+    into [Build.With_targets.t]. *)
+val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
+
+(** Create a value of [With_targets.t] with the empty set of targets. *)
+val with_no_targets : 'a t -> 'a With_targets.t
+
 val return : 'a -> 'a t
 
 val map : 'a t -> f:('a -> 'b) -> 'b t
@@ -49,6 +86,8 @@ val dep : Dep.t -> unit t
 
 val deps : Dep.Set.t -> unit t
 
+val dyn_deps : ('a * Dep.Set.t) t -> 'a t
+
 val paths : Path.t list -> unit t
 
 val path_set : Path.Set.t -> unit t
@@ -66,9 +105,6 @@ val paths_existing : Path.t list -> unit t
 val env_var : string -> unit t
 
 val alias : Alias.t -> unit t
-
-(** Record a set of targets of the action produced by the build description. *)
-val declare_targets : Path.Build.Set.t -> unit t
 
 (** Compute the set of source of all files present in the sub-tree starting at
     [dir] and record them as dependencies. *)
@@ -112,41 +148,32 @@ val if_file_exists : Path.t -> then_:'a t -> else_:'a t -> 'a t
 
 (** Always fail when executed. We pass a function rather than an exception to
     get a proper backtrace *)
-val fail : ?targets:Path.Build.t list -> fail -> _ t
+val fail : fail -> _ t
 
-val of_result : ?targets:Path.Build.t list -> 'a t Or_exn.t -> 'a t
+val of_result : 'a t Or_exn.t -> 'a t
 
-val of_result_map :
-  ?targets:Path.Build.t list -> 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
+val of_result_map : 'a Or_exn.t -> f:('a -> 'b t) -> 'b t
 
 (** [memoize name t] is a build description that behaves like [t] except that
     its result is computed only once. *)
 val memoize : string -> 'a t -> 'a t
 
-val action : ?dir:Path.t -> targets:Path.Build.t list -> Action.t -> Action.t t
-
-val action_dyn :
-  ?dir:Path.t -> targets:Path.Build.t list -> Action.t t -> Action.t t
-
 (** Create a file with the given contents. *)
-val write_file : Path.Build.t -> string -> Action.t t
+val write_file : Path.Build.t -> string -> Action.t With_targets.t
 
-val write_file_dyn : Path.Build.t -> string t -> Action.t t
+val write_file_dyn : Path.Build.t -> string t -> Action.t With_targets.t
 
-val copy : src:Path.t -> dst:Path.Build.t -> Action.t t
+val copy : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
-val copy_and_add_line_directive : src:Path.t -> dst:Path.Build.t -> Action.t t
+val copy_and_add_line_directive :
+  src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
-val symlink : src:Path.t -> dst:Path.Build.t -> Action.t t
+val symlink : src:Path.t -> dst:Path.Build.t -> Action.t With_targets.t
 
-val create_file : Path.Build.t -> Action.t t
+val create_file : Path.Build.t -> Action.t With_targets.t
 
-val remove_tree : Path.Build.t -> Action.t t
-
-val mkdir : Path.Build.t -> Action.t t
-
-(** Merge a list of actions *)
-val progn : Action.t t list -> Action.t t
+(** Merge a list of actions accumulating the sets of their targets. *)
+val progn : Action.t With_targets.t list -> Action.t With_targets.t
 
 val record_lib_deps : Lib_deps_info.t -> unit t
 
@@ -159,8 +186,6 @@ val static_deps : _ t -> file_exists:(Path.t -> bool) -> Static_deps.t
 (** Compute static library dependencies of a build description, given a function
     to resolve file-existence queries. *)
 val lib_deps : _ t -> file_exists:(Path.t -> bool) -> Lib_deps_info.t
-
-val targets : _ t -> Path.Build.Set.t
 
 (** {1 Execution} *)
 
@@ -176,9 +201,3 @@ val exec :
 (**/**)
 
 val paths_for_rule : Path.Set.t -> unit t
-
-(* TODO: Document this and a few other non-obvious functions. *)
-val merge_files_dyn :
-  target:Path.Build.t -> (Path.t list * string list) t -> Action.t t
-
-val dyn_deps : ('a * Dep.Set.t) t -> 'a t

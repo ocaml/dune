@@ -160,9 +160,10 @@ let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
 let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     ~dep_graphs ~pkg_or_lnu =
   let odoc_file = Obj_dir.Module.odoc obj_dir m in
+  let open Build.With_targets.O in
   add_rule sctx
-    ( file_deps
-    >>> module_deps m ~obj_dir ~dep_graphs
+    ( Build.with_no_targets file_deps
+    >>> Build.with_no_targets (module_deps m ~obj_dir ~dep_graphs)
     >>>
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
@@ -223,11 +224,21 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
       in
       (odoc_file.html_dir, [ dune_keep ])
   in
+  let open Build.With_targets.O in
   add_rule sctx
-    ( deps
+    ( Build.with_no_targets deps
     >>> Build.progn
-          ( Build.remove_tree to_remove
-          :: Build.mkdir odoc_file.html_dir
+          ( Build.with_no_targets
+              (Build.return
+                 (* Note that we declare no targets apart from [dune_keep]. This
+                    means Dune doesn't know how to build specific documentation
+                    files and that we can't run this rule in a sandbox. To
+                    properly declare targets we would need to support some form
+                    of "dynamic targets" or "target directories". *)
+                 (Action.Progn
+                    [ Action.Remove_tree to_remove
+                    ; Action.Mkdir (Path.build odoc_file.html_dir)
+                    ]))
           :: Command.run
                ~dir:(Path.build (Paths.html_root ctx))
                (odoc sctx)

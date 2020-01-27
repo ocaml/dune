@@ -1,6 +1,5 @@
 open! Stdune
 open Import
-open Build.O
 open! No_io
 module SC = Super_context
 
@@ -272,8 +271,9 @@ include Sub_system.Register_end_point (struct
        in
        let expander = Expander.add_bindings expander ~bindings in
        let action =
+         let open Build.With_targets.O in
          let+ actions =
-           Build.all
+           Build.With_targets.all
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
@@ -285,7 +285,7 @@ include Sub_system.Register_end_point (struct
          in
          Action.with_stdout_to target (Action.progn actions)
        in
-       Build.action_dyn ~targets:[ target ] action);
+       Build.With_targets.add ~targets:[ target ] action);
     let cctx =
       Compilation_context.create () ~super_context:sctx ~expander ~scope
         ~obj_dir ~modules ~opaque:false ~requires_compile:runner_libs
@@ -357,17 +357,17 @@ include Sub_system.Register_end_point (struct
                ( Super_context.resolve_program ~dir sctx ~loc:(Some loc) runner
                , Dep exe )
            in
-           let+ () = Super_context.Deps.interpret sctx info.deps ~expander
-           and+ () = Build.paths source_files
-           and+ action =
-             Build.progn
-               ( Command.run exe ~dir:(Path.build dir) [ runner_args; Dyn flags ]
-               :: List.map source_files ~f:(fun fn ->
-                      Build.return
-                        (Action.diff ~optional:true fn
-                           (Path.extend_basename fn ~suffix:".corrected"))) )
-           in
-           action))
+           let open Build.With_targets.O in
+           Build.with_no_targets
+             (Super_context.Deps.interpret sctx info.deps ~expander)
+           >>> Build.with_no_targets (Build.paths source_files)
+           >>> Build.progn
+                 ( Command.run exe ~dir:(Path.build dir)
+                     [ runner_args; Dyn flags ]
+                 :: List.map source_files ~f:(fun fn ->
+                        Build.With_targets.return
+                          (Action.diff ~optional:true fn
+                             (Path.extend_basename fn ~suffix:".corrected"))) )))
 end)
 
 let linkme = ()

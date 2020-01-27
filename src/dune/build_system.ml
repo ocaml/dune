@@ -101,9 +101,8 @@ module Internal_rule = struct
   module T = struct
     type t =
       { id : Id.t
-      ; targets : Path.Build.Set.t
       ; context : Context.t option
-      ; build : Action.t Build.t
+      ; action : Action.t Build.With_targets.t
       ; (* We cache the result of [Build.static_deps t.build ~file_exists] in
            [t.static_deps]. We do this lazily, because [Build.static_deps] needs
            the [file_exists] predicate which in turn depends on the [t.targets]
@@ -137,9 +136,8 @@ module Internal_rule = struct
      executed and is only used as a starting point of all dependency paths. *)
   let root =
     { id = Id.gen ()
-    ; targets = Path.Build.Set.empty
     ; context = None
-    ; build = Build.return Action.empty
+    ; action = Build.With_targets.return Action.empty
     ; static_deps = Memo.Lazy.of_val Static_deps.empty
     ; mode = Standard
     ; info = Internal
@@ -149,10 +147,10 @@ module Internal_rule = struct
     }
 
   (* Create a shim for the main build goal *)
-  let shim_of_build_goal ~build ~static_deps =
+  let shim_of_build_goal ~action ~static_deps =
     { root with
       id = Id.gen ()
-    ; build
+    ; action
     ; static_deps = Memo.Lazy.of_val static_deps
     }
 
@@ -660,25 +658,19 @@ end = struct
   open Load_rules
 
   let compile_rule pre_rule =
-    let { Pre_rule.context; env; build; targets; mode; locks; info; dir } =
-      pre_rule
-    in
-    let rule =
-      let id = Internal_rule.Id.gen () in
-      { Internal_rule.id
-      ; targets
-      ; build
-      ; static_deps =
-          Memo.lazy_ (fun () -> Build.static_deps build ~file_exists)
-      ; context
-      ; env
-      ; locks
-      ; mode
-      ; info
-      ; dir
-      }
-    in
-    (targets, rule)
+    let { Pre_rule.context; env; action; mode; locks; info; dir } = pre_rule in
+    let id = Internal_rule.Id.gen () in
+    { Internal_rule.id
+    ; action
+    ; static_deps =
+        Memo.lazy_ (fun () -> Build.static_deps action.build ~file_exists)
+    ; context
+    ; env
+    ; locks
+    ; mode
+    ; info
+    ; dir
+    }
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -693,9 +685,9 @@ end = struct
 
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
-        let targets, rule = compile_rule rule in
+        let rule = compile_rule rule in
         assert (Path.Build.( = ) dir rule.Internal_rule.dir);
-        List.map (Path.Build.Set.to_list targets) ~f:(fun target ->
+        List.map (Path.Build.Set.to_list rule.action.targets) ~f:(fun target ->
             (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
@@ -801,7 +793,7 @@ end = struct
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in
-             Build.action_dyn ~targets:[ path ] action)
+             Build.with_targets ~targets:[ path ] action)
           :: rules)
     in
     fun ~subdirs_to_keep ->
@@ -822,7 +814,7 @@ end = struct
             (* All targets are in [dir] and we know it correspond to a directory
                of a build context since there are source files to copy, so this
                call can't fail. *)
-            Path.Build.Set.to_list rule.targets
+            Path.Build.Set.to_list rule.action.targets
             |> List.map ~f:Path.Build.drop_build_context_exn
             |> Path.Source.Set.of_list
           in
@@ -993,7 +985,8 @@ end = struct
        copied *)
     let source_files_to_ignore =
       List.fold_left rules ~init:Path.Build.Set.empty
-        ~f:(fun acc_ignored { Pre_rule.targets; mode; _ } ->
+        ~f:(fun acc_ignored { Pre_rule.action; mode; _ } ->
+          let targets = action.targets in
           match mode with
           | Promote { only = None; _ }
           | Ignore_source_files ->
@@ -1266,7 +1259,7 @@ end = struct
         Static_deps.rule_deps (Memo.Lazy.force rule.static_deps)
       in
       let+ () = build_deps rule_deps in
-      Build.exec rule.build ~file_exists ~eval_pred
+      Build.exec rule.action.build ~file_exists ~eval_pred
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
@@ -1368,7 +1361,7 @@ end = struct
       | () -> () )
 
   let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode =
-    let targets_as_list = Path.Build.Set.to_list rule.targets in
+    let targets_as_list = Path.Build.Set.to_list rule.action.targets in
     let env = Internal_rule.effective_env rule in
     let trace =
       ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
@@ -1385,24 +1378,24 @@ end = struct
   let execute_rule_impl rule =
     let t = t () in
     let { Internal_rule.dir
-        ; targets
         ; env = _
         ; context
         ; mode
         ; locks
         ; id = _
         ; static_deps = _
-        ; build = _
+        ; action
         ; info
         } =
       rule
     in
     start_rule t rule;
+    let targets = action.targets in
+    let targets_as_list = Path.Build.Set.to_list targets in
+    let head_target = List.hd targets_as_list in
     let* action, deps = evaluate_rule_and_wait_for_dependencies rule in
     Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
-    let targets_as_list = Path.Build.Set.to_list targets in
-    let head_target = List.hd targets_as_list in
     let env = Internal_rule.effective_env rule in
     let rule_loc = rule_loc ~info ~dir in
     let is_action_dynamic = Action.is_dynamic action in
@@ -1620,7 +1613,7 @@ end = struct
               when not do_not_memoize ->
               let report msg =
                 let targets =
-                  Path.Build.Set.to_list rule.targets
+                  Path.Build.Set.to_list rule.action.targets
                   |> List.map ~f:Path.Build.to_string
                   |> String.concat ~sep:", "
                 in
@@ -1772,7 +1765,8 @@ let shim_of_build_goal request =
     let+ () = request in
     Action.empty
   in
-  Internal_rule.shim_of_build_goal ~build:request
+  Internal_rule.shim_of_build_goal
+    ~action:(Build.with_no_targets request)
     ~static_deps:(Build.static_deps request ~file_exists)
 
 let build_request ~request =
@@ -1887,16 +1881,12 @@ let package_deps pkg files =
       | None -> acc
       | Some fn -> loop_deps fn acc)
 
-let prefix_rules prefix ~f =
-  let targets = Build.targets prefix in
-  if not (Path.Build.Set.is_empty targets) then
-    Code_error.raise "Build_system.prefix_rules' prefix contains targets"
-      [ ("targets", Path.Build.Set.to_dyn targets) ];
+let prefix_rules (prefix : _ Build.t) ~f =
   let res, rules = Rules.collect f in
-  let open Build.O in
+  let open Build.With_targets.O in
   Rules.produce
     (Rules.map_rules rules ~f:(fun rule ->
-         { rule with build = prefix >>> rule.build }));
+         { rule with action = Build.with_no_targets prefix >>> rule.action }));
   res
 
 module Alias = Alias0
@@ -1965,7 +1955,7 @@ end = struct
               { Rule.id = rule.id
               ; dir = rule.dir
               ; deps
-              ; targets = rule.targets
+              ; targets = rule.action.targets
               ; context = rule.context
               ; action
               }
@@ -2038,8 +2028,7 @@ end = struct
         ; Pp.chain cycle ~f:(fun rule ->
               Pp.verbatim
                 (Path.to_string_maybe_quoted
-                   (Path.build
-                      (Path.Build.Set.choose_exn rule.Internal_rule.targets))))
+                   (Path.build (Path.Build.Set.choose_exn rule.action.targets))))
         ]
 
   let all_lib_deps ~request =
@@ -2048,7 +2037,9 @@ end = struct
     let rules = rules_for_targets targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
-          let deps = Build.lib_deps rule.Internal_rule.build ~file_exists in
+          let deps =
+            Build.lib_deps rule.Internal_rule.action.build ~file_exists
+          in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->

@@ -159,8 +159,9 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    (let open Build.O in
-    Build.paths extra_deps >>> other_cm_files
+    (let open Build.With_targets.O in
+    Build.with_no_targets (Build.paths extra_deps)
+    >>> Build.with_no_targets other_cm_files
     >>> Command.run ~dir:(Path.build dir) (Ok compiler)
           [ Command.Args.dyn flags
           ; cmt_args
@@ -243,10 +244,10 @@ let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let ocaml_flags = Ocaml_flags.get (CC.flags cctx) Mode.Byte in
   let modules = Compilation_context.modules cctx in
   SC.add_rule sctx ~sandbox ~dir
-    (Build.action_dyn ~targets:[ output ]
-       (let open Build.O in
-       cm_deps
-       >>> Build.map
+    (Build.With_targets.add ~targets:[ output ]
+       (let open Build.With_targets.O in
+       Build.with_no_targets cm_deps
+       >>> Build.With_targets.map
              ~f:(Action.with_stdout_to output)
              (Command.run (Ok ctx.ocamlc) ~dir:(Path.build ctx.build_dir)
                 [ Command.Args.dyn ocaml_flags

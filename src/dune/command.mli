@@ -30,12 +30,12 @@ module Args : sig
 
   type dynamic = Dynamic
 
-  (** The type [expand] captures the meaning of static [Command.Args.t]: it is a
-      way to construct functions that given a current working directory [dir]
-      compute the list of commmand line arguments of type [string list] and a
-      set of dependencies of type [Dep.Set.t], or fail. You can use the
-      constructor [Expand] to specify the meaning directly, which is sometimes
-      useful, e.g. for memoization. *)
+  (** The type [expand] captures the meaning of a static [Command.Args.t] that
+      has no target declarations: it is a way to construct functions that given
+      a current working directory [dir] compute the list of commmand line
+      arguments of type [string list] and a set of dependencies of type
+      [Dep.Set.t], or fail. You can use the constructor [Expand] to specify the
+      meaning directly, which is sometimes useful, e.g. for memoization. *)
   type expand = dir:Path.t -> (string list * Dep.Set.t, fail) result
 
   type _ t =
@@ -74,7 +74,7 @@ val run :
   -> ?stdout_to:Path.Build.t
   -> Action.Prog.t
   -> Args.dynamic Args.t list
-  -> Action.t Build.t
+  -> Action.t Build.With_targets.t
 
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
 val quote_args : string -> string list -> _ Args.t

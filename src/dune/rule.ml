@@ -50,8 +50,7 @@ end
 type t =
   { context : Context.t option
   ; env : Env.t option
-  ; build : Action.t Build.t
-  ; targets : Path.Build.Set.t
+  ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
   ; info : Info.t
@@ -59,10 +58,12 @@ type t =
   }
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
-    ~env ?(locks = []) ?(info = Info.Internal) build =
-  let open Build.O in
-  let build = Build.dep (Dep.sandbox_config sandbox) >>> build in
-  let targets = Build.targets build in
+    ~env ?(locks = []) ?(info = Info.Internal) action =
+  let open Build.With_targets.O in
+  let action =
+    Build.with_no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action
+  in
+  let targets = action.targets in
   let dir =
     match Path.Build.Set.choose targets with
     | None -> (
@@ -89,4 +90,4 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
             ] );
       dir
   in
-  { context; env; build; targets; mode; locks; info; dir }
+  { context; env; action; mode; locks; info; dir }

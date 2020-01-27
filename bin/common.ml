@@ -151,7 +151,7 @@ let build_info =
       |> List.map ~f:(fun lib ->
              ( B.Statically_linked_library.name lib
              , ver_string (B.Statically_linked_library.version lib) ))
-      |> List.sort ~compare
+      |> List.sort ~compare:Poly.compare
     in
     ( match libs with
     | [] -> ()

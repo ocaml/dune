@@ -327,7 +327,7 @@ let upgrade_opam_file todo fn =
     | Variable (_, _, v) -> scan v
   in
   List.iter t.file_contents ~f:scan_item;
-  let substs = List.sort !substs ~compare in
+  let substs = List.sort !substs ~compare:Poly.compare in
   if List.is_non_empty substs then (
     let buf = Buffer.create (String.length s + 128) in
     let ofs =

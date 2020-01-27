@@ -640,7 +640,7 @@ module Mode_conf = struct
       | Native
       | Best
 
-    let compare (a : t) b = compare a b
+    let compare (a : t) b = Poly.compare a b
   end
 
   include T
@@ -1360,8 +1360,8 @@ module Executables = struct
         }
 
       let compare a b =
-        match compare a.mode b.mode with
-        | Eq -> compare a.kind b.kind
+        match Poly.compare a.mode b.mode with
+        | Eq -> Poly.compare a.kind b.kind
         | ne -> ne
 
       let to_dyn _ = Dyn.opaque

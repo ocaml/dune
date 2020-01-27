@@ -88,7 +88,7 @@ let remove_locs =
   let f_string ~dir:_ = String_with_vars.remove_locs in
   Mapper.map ~dir ~f_program ~f_path ~f_target ~f_string
 
-let compare_no_locs t1 t2 = compare (remove_locs t1) (remove_locs t2)
+let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
 
 open Dune_lang.Decoder
 

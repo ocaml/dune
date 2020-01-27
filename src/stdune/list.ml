@@ -15,11 +15,10 @@ let is_non_empty = function
 let filter_map l ~f =
   let rec loop acc = function
     | [] -> rev acc
-    | x :: xs ->
-      begin match f x with
+    | x :: xs -> (
+      match f x with
       | None -> loop acc xs
-      | Some x -> loop (x :: acc) xs
-      end
+      | Some x -> loop (x :: acc) xs )
   in
   loop [] l
 

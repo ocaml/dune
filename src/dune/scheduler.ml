@@ -13,7 +13,7 @@ module Signal = struct
     | Quit
     | Term
 
-  let compare : t -> t -> Ordering.t = compare
+  let compare : t -> t -> Ordering.t = Poly.compare
 
   include Comparable.Make (struct
     type nonrec t = t

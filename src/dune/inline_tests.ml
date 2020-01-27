@@ -129,7 +129,7 @@ include Sub_system.Register_end_point (struct
         | Native
         | Best
 
-      let compare (a : t) b = compare a b
+      let compare (a : t) b = Poly.compare a b
 
       let to_dyn _ = Dyn.opaque
     end

@@ -169,7 +169,7 @@ let gen ~package ~version ?(add_directory_entry = true) entries =
         | [] -> assert false
         | _package :: path -> (path, meta))
   in
-  let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> compare a b) in
+  let pkgs = List.sort pkgs ~compare:(fun (a, _) (b, _) -> Poly.compare a b) in
   let rec loop name pkgs =
     let entries, sub_pkgs =
       List.partition_map pkgs ~f:(function

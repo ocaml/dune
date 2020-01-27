@@ -37,7 +37,7 @@ end
 
 (** Add a set of targets to a build description, turning a target-less [Build.t]
     into [Build.With_targets.t]. *)
-val add : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
+val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
 
 (** Create a value of [With_targets.t] with the empty set of targets. *)
 val no_targets : 'a t -> 'a With_targets.t

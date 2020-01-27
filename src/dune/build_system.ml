@@ -793,7 +793,7 @@ end = struct
                Action.with_stdout_to path
                  (Action.digest_files (Path.Set.to_list deps))
              in
-             Build.add ~targets:[ path ] action)
+             Build.with_targets ~targets:[ path ] action)
           :: rules)
     in
     fun ~subdirs_to_keep ->

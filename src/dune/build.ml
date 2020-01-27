@@ -233,31 +233,33 @@ module With_targets = struct
         } )
 end
 
-let add build ~targets : _ With_targets.t =
+let with_targets build ~targets : _ With_targets.t =
   { build; targets = Path.Build.Set.of_list targets }
 
 let no_targets build : _ With_targets.t =
   { build; targets = Path.Build.Set.empty }
 
-let write_file fn s = add ~targets:[ fn ] (return (Action.Write_file (fn, s)))
+let write_file fn s =
+  with_targets ~targets:[ fn ] (return (Action.Write_file (fn, s)))
 
 let write_file_dyn fn s =
-  add ~targets:[ fn ]
+  with_targets ~targets:[ fn ]
     (let+ s = s in
      Action.Write_file (fn, s))
 
 let copy ~src ~dst =
-  add ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
+  with_targets ~targets:[ dst ] (path src >>> return (Action.Copy (src, dst)))
 
 let copy_and_add_line_directive ~src ~dst =
-  add ~targets:[ dst ]
+  with_targets ~targets:[ dst ]
     (path src >>> return (Action.Copy_and_add_line_directive (src, dst)))
 
 let symlink ~src ~dst =
-  add ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
+  with_targets ~targets:[ dst ] (path src >>> return (Action.Symlink (src, dst)))
 
 let create_file fn =
-  add ~targets:[ fn ] (return (Action.Redirect_out (Stdout, fn, Action.empty)))
+  with_targets ~targets:[ fn ]
+    (return (Action.Redirect_out (Stdout, fn, Action.empty)))
 
 let progn ts =
   let open With_targets.O in

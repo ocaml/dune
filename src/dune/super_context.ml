@@ -565,7 +565,7 @@ module Libs = struct
             Build.copy_and_add_line_directive ~src ~dst
           | Error e ->
             Build.fail { fail = (fun () -> raise e) }
-            |> Build.add ~targets:[ dst ] ))
+            |> Build.with_targets ~targets:[ dst ] ))
 
   let with_lib_deps t compile_info ~dir ~f =
     let prefix =
@@ -753,7 +753,7 @@ module Action = struct
          let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
          (Action.Chdir (Path.build dir, action), deps))
     in
-    Build.add ~targets
+    Build.with_targets ~targets
       ( match Expander.Resolved_forms.failures forms with
       | [] -> build
       | fail :: _ -> Build.fail fail >>> build )

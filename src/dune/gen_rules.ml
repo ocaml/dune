@@ -237,7 +237,7 @@ let gen_rules sctx dir_contents cctxs
                              files produced by this stanza are part of."
                         ])
                 }
-            |> Build.add ~targets )
+            |> Build.with_targets ~targets )
         | Some cctx -> Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir )
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m

@@ -111,7 +111,7 @@ let deps_of ~cctx ~ml_kind unit =
       ( build_paths modules
       , List.map modules ~f:(fun m -> Module_name.to_string (Module.name m)) )
     in
-    Build.add ~targets:[ all_deps_file ]
+    Build.with_targets ~targets:[ all_deps_file ]
       (let+ sources, extras =
          Build.dyn_paths
            (let+ sources, extras = paths in

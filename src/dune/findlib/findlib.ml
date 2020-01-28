@@ -211,6 +211,13 @@ module Package = struct
     Vars.get_words t.vars "ppx_runtime_deps" preds
     |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
 
+  let kind t =
+    match Vars.get t.vars "library_kind" Ps.empty with
+    | None -> Lib_kind.Normal
+    | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
+    | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
+    | Some _other_string -> Lib_kind.Normal
+
   let archives t = make_archives t "archive" preds
 
   let plugins t =
@@ -250,7 +257,7 @@ module Package = struct
     in
     let info : Path.t Lib_info.t =
       let name = name t in
-      let kind = Lib_kind.Normal in
+      let kind = kind t in
       let sub_systems = Sub_system_name.Map.empty in
       let synopsis = description t in
       let status = Lib_info.Status.Installed in

@@ -38,6 +38,7 @@
     # and normal dependencies
     requires(-ppx_driver) = "foobar.baz foobar.runtime-lib2"
     ppx(-ppx_driver,-custom_ppx) = "./ppx.exe --as-ppx"
+    library_kind = "ppx_rewriter"
   )
   package "rewriter2" (
     directory = "rewriter2"

@@ -120,6 +120,7 @@ let gen_lib pub_name lib ~version =
               [ rule "ppx"
                   [ no_ppx_driver; no_custom_ppx ]
                   Set "./ppx.exe --as-ppx"
+              ; rule "library_kind" [] Set "ppx_rewriter"
               ]
             | Ppx_deriver _ ->
               [ rule "requires"
@@ -129,6 +130,7 @@ let gen_lib pub_name lib ~version =
                   [ no_ppx_driver; no_custom_ppx ]
                   Set
                   ("ppx_deriving,package:" ^ Pub_name.to_string pub_name)
+              ; rule "library_kind" [] Set "ppx_deriver"
               ] )
           ] )
     ; ( match Lib_info.jsoo_runtime info with

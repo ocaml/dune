@@ -187,10 +187,8 @@ module Alias0 = struct
            ~then_:(Build.path fn >>> Build.return false)
            ~else_:(Build.return true))
     in
-    Build.lazy_no_targets
-      ( lazy
-        (File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
-           ~init:(Build.return true) ~f) )
+    File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.normal_only
+      ~init:(Build.return true) ~f
 
   let dep_rec t ~loc =
     let ctx_dir, src_dir =

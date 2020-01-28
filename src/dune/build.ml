@@ -16,10 +16,6 @@ type 'a t =
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
-  (* CR-soon amokhov: We do not take advantage of laziness here and we already
-     know there are no targets anywhere in [t], so we should remove this
-     constructor. *)
-  | Lazy_no_targets : 'a t Lazy.t -> 'a t
   | Deps : Dep.Set.t -> unit t
 
 (* CR-soon amokhov: Reimplement this ad-hoc memoization using [Memo]. *)
@@ -64,8 +60,6 @@ let all_unit xs =
   ()
 
 let record_lib_deps lib_deps = Record_lib_deps lib_deps
-
-let lazy_no_targets t = Lazy_no_targets t
 
 let deps d = Deps d
 
@@ -297,7 +291,6 @@ let static_deps t ~file_exists =
     | Fail _ -> acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
-    | Lazy_no_targets t -> loop (Lazy.force t) acc
   in
   loop t Static_deps.empty
 
@@ -326,7 +319,6 @@ let lib_deps t ~file_exists =
         loop else_ acc
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
-    | Lazy_no_targets t -> loop (Lazy.force t) acc
   in
   loop t Lib_name.Map.empty
 
@@ -365,7 +357,6 @@ let exec t ~file_exists ~eval_pred =
       else
         exec dyn_deps else_
     | Catch (t, on_error) -> ( try exec dyn_deps t with exn -> on_error exn )
-    | Lazy_no_targets t -> exec dyn_deps (Lazy.force t)
     | Memo m -> (
       match m.state with
       | Evaluated (x, deps) ->

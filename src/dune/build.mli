@@ -62,10 +62,6 @@ val all : 'a t list -> 'a list t
 
 val all_unit : unit t list -> unit t
 
-(** Optimization to avoiding eagerly computing a [Build.t] value, assume it
-    contains no targets. *)
-val lazy_no_targets : 'a t Lazy.t -> 'a t
-
 (** Delay a static computation until the description is evaluated *)
 val delayed : (unit -> 'a) -> 'a t
 

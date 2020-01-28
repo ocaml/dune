@@ -100,7 +100,7 @@ let gen_lib pub_name lib ~version =
         ; ppx_runtime_deps ppx_rt_deps
         ] )
     ; ( match kind with
-      | Normal -> [ rule "library_kind" [] Set "normal" ]
+      | Normal -> []
       | Ppx_rewriter _
       | Ppx_deriver _ ->
         (* Deprecated ppx method support *)

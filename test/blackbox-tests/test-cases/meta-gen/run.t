@@ -5,7 +5,6 @@
   archive(native) = "foobar.cmxa"
   plugin(byte) = "foobar.cma"
   plugin(native) = "foobar.cmxs"
-  library_kind = "normal"
   package "baz" (
     directory = "baz"
     description = "sub library with modes set to byte"
@@ -14,7 +13,6 @@
     archive(native) = "foobar_baz.cmxa"
     plugin(byte) = "foobar_baz.cma"
     plugin(native) = "foobar_baz.cmxs"
-    library_kind = "normal"
   )
   package "ppd" (
     directory = "ppd"
@@ -24,7 +22,6 @@
     archive(native) = "foobar_ppd.cmxa"
     plugin(byte) = "foobar_ppd.cma"
     plugin(native) = "foobar_ppd.cmxs"
-    library_kind = "normal"
   )
   package "rewriter" (
     directory = "rewriter"
@@ -54,7 +51,6 @@
     # This is what dune uses to find out the runtime dependencies of
     # a preprocessor
     ppx_runtime_deps = "foobar.runtime-lib2"
-    library_kind = "normal"
   )
   package "runtime-lib2" (
     directory = "runtime-lib2"
@@ -64,7 +60,6 @@
     archive(native) = "foobar_runtime_lib2.cmxa"
     plugin(byte) = "foobar_runtime_lib2.cma"
     plugin(native) = "foobar_runtime_lib2.cmxs"
-    library_kind = "normal"
     linkopts(javascript) = "+foobar/foobar_runtime.js
                             +foobar/foobar_runtime2.js"
     jsoo_runtime = "foobar_runtime.js foobar_runtime2.js"
@@ -77,5 +72,4 @@
     archive(native) = "foobar_sub.cmxa"
     plugin(byte) = "foobar_sub.cma"
     plugin(native) = "foobar_sub.cmxs"
-    library_kind = "normal"
   )

@@ -3,7 +3,7 @@ open Stdune
 module T = struct
   type t = string
 
-  let compare = compare
+  let compare = Poly.compare
 
   let to_dyn = Dyn.Encoder.string
 end

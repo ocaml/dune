@@ -82,7 +82,7 @@ module Rules = struct
     let set_rules =
       List.map rules.set_rules ~f:Rule.make
       |> List.stable_sort ~compare:(fun a b ->
-             compare
+             Poly.compare
                (Rule.formal_predicates_count b)
                (Rule.formal_predicates_count a))
     in

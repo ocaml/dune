@@ -18,7 +18,7 @@ module Section0 = struct
     | Man
     | Misc
 
-  let compare : t -> t -> Ordering.t = compare
+  let compare : t -> t -> Ordering.t = Poly.compare
 
   let to_dyn _ = Dyn.opaque
 end
@@ -48,7 +48,7 @@ end = struct
 
   let explicit t = t
 
-  let compare = compare
+  let compare = Poly.compare
 
   let man_subdir s =
     let s =

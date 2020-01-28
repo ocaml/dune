@@ -61,7 +61,7 @@ module Scanf = Scanf
 
 external reraise : exn -> _ = "%reraise"
 
-let compare a b = Ordering.of_int (compare a b)
+let compare _ _ = `Use_Poly_compare
 
 (* The following types are re-exported here so that they are always available in
    scope *)

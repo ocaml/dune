@@ -60,7 +60,7 @@ module Dir_modules = struct
         let locs =
           List.filter_map rev_modules ~f:(fun (n, b) ->
               Option.some_if (n = name) b.loc)
-          |> List.sort ~compare
+          |> List.sort ~compare:Poly.compare
         in
         User_error.raise
           ~loc:(Loc.drop_position (List.hd locs))

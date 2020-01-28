@@ -1008,7 +1008,7 @@ comments.
 
 .. code-block:: scheme
 
-  (documentation (<optional-fields>)))
+  (documentation (<optional-fields>))
 
 Where ``<optional-fields>`` are:
 

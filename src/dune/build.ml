@@ -174,10 +174,15 @@ let source_tree ~dir =
   in
   dirs_without_files >>> path_set paths >>> return paths
 
+(* CR-someday amokhov: The set of targets is accumulated using information from
+   multiple sources by calling [Path.Build.Set.union] and hence occasionally
+   duplicate declarations of the very same target go unnoticed. I think such
+   redeclarations are not erroneous but are merely redundant; it seems that it
+   would be better to rule them out completely.
+
+   Another improvement is to cache [Path.Build.Set.to_list targets] which is
+   currently performed multiple times on the very same [Build.With_targets.t]. *)
 module With_targets = struct
-  (* CR-soon amokhov: It seems to me that we can switch from [Path.Build.Set.t]
-     to [Path.Build.t list] since we should never have repeated targets. Or we
-     could use [union_exn] to check that targets are never repeated. *)
   type nonrec 'a t =
     { build : 'a t
     ; targets : Path.Build.Set.t

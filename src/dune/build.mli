@@ -35,6 +35,14 @@ module With_targets : sig
   end
 end
 
+(** This function should be called before analysing build expressions using
+    [static_deps], [lib_deps] or [exec], which all require some file system
+    information. *)
+val set_file_system_accessors :
+     file_exists:(Path.t -> bool)
+  -> eval_pred:(File_selector.t -> Path.Set.t)
+  -> unit
+
 (** Add a set of targets to a build description, turning a target-less [Build.t]
     into [Build.With_targets.t]. *)
 val with_targets : 'a t -> targets:Path.Build.t list -> 'a With_targets.t
@@ -175,24 +183,17 @@ val record_lib_deps : Lib_deps_info.t -> unit t
 
 (** {1 Analysis} *)
 
-(** Compute static dependencies of a build description, given a function to
-    resolve file-existence queries. *)
-val static_deps : _ t -> file_exists:(Path.t -> bool) -> Static_deps.t
+(** Compute static dependencies of a build description. *)
+val static_deps : _ t -> Static_deps.t
 
-(** Compute static library dependencies of a build description, given a function
-    to resolve file-existence queries. *)
-val lib_deps : _ t -> file_exists:(Path.t -> bool) -> Lib_deps_info.t
+(** Compute static library dependencies of a build description. *)
+val lib_deps : _ t -> Lib_deps_info.t
 
 (** {1 Execution} *)
 
-(** Execute a build description, given functions to resolve file-existence
-    queries and file selectors. Returns the result and the set of dynamic
+(** Execute a build description. Returns the result and the set of dynamic
     dependencies discovered during execution. *)
-val exec :
-     'a t
-  -> file_exists:(Path.t -> bool)
-  -> eval_pred:Dep.eval_pred
-  -> 'a * Dep.Set.t
+val exec : 'a t -> 'a * Dep.Set.t
 
 (**/**)
 

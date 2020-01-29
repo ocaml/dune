@@ -347,7 +347,7 @@ end = struct
 
     let id m = m.id
 
-    let to_dyn m = Dyn.Encoder.string m.name
+    let to_dyn m = Dyn.String m.name
 
     let eval m = Exec.exec m.t
   end

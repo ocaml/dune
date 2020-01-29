@@ -880,6 +880,9 @@ module Run = struct
   include Run
 end
 
+(** Memoization of polymorphic functions of type ['a input -> 'a output]. The
+    supplied [id] function must be a bijection, i.e. there must be a one-to-one
+    correspondence between [input]s and their [id]s. *)
 module Poly (Function : sig
   type 'a input
 
@@ -920,6 +923,10 @@ struct
     match exec memo (Key.T x) with
     | Value.T (id, res) -> (
       match Type_eq.Id.same id (Function.id x) with
-      | None -> assert false
+      | None ->
+        Code_error.raise
+          "Type_eq.Id.t mismatch in Memo.Poly: the most likely reason is that \
+           the provided Function.id returns different ids for the same input."
+          [ ("Function.name", Dyn.String Function.name) ]
       | Some Type_eq.T -> res )
 end

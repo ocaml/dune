@@ -15,6 +15,13 @@ module Id = struct
 
   type 'a t = (module T with type a = 'a)
 
+  let hash (type a) ((module T) : a t) = Poly.hash T.W
+
+  let equal (type a b) ((module M1) : a t) ((module M2) : b t) =
+    match M1.W with
+    | M2.W -> true
+    | _ -> false
+
   let create (type a) () =
     ( ( module struct
         type nonrec a = a

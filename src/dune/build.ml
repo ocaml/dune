@@ -18,17 +18,11 @@ type 'a t =
   | Catch : 'a t * (exn -> 'a) -> 'a t
   | Deps : Dep.Set.t -> unit t
 
-(* CR-soon amokhov: Reimplement this ad-hoc memoization using [Memo]. *)
 and 'a memo =
   { name : string
+  ; id : 'a Type_eq.Id.t
   ; t : 'a t
-  ; mutable state : 'a memo_state
   }
-
-and 'a memo_state =
-  | Unevaluated
-  | Evaluating
-  | Evaluated of 'a * Dep.Set.t
 
 (* We use forward declarations to pass top-level [file_exists] and [eval_pred]
    functions to avoid cyclic dependencies between modules. *)
@@ -153,7 +147,7 @@ let of_result_map res ~f =
   | Ok x -> f x
   | Error e -> fail { fail = (fun () -> raise e) }
 
-let memoize name t = Memo { name; t; state = Unevaluated }
+let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
 (* This is to force the rules to be loaded for directories without files when
    depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
@@ -341,63 +335,62 @@ let lib_deps t =
 
 (* Execution *)
 
-let exec t =
-  let file_exists = Fdecl.get file_exists_fdecl in
-  let eval_pred = Fdecl.get eval_pred_fdecl in
-  let rec exec : type a. Dep.Set.t ref -> a t -> a =
-   fun dyn_deps t ->
-    match t with
-    | Pure x -> x
-    | Map (f, a) ->
-      let a = exec dyn_deps a in
-      f a
-    | Map2 (f, a, b) ->
-      let a = exec dyn_deps a in
-      let b = exec dyn_deps b in
-      f a b
-    | Deps _ -> ()
-    | Paths_for_rule _ -> ()
-    | Paths_glob g -> (eval_pred g : Path.Set.t)
-    | Contents p -> Io.read_file p
-    | Lines_of p -> Io.lines_of_file p
-    | Dyn_paths t ->
-      let x, fns = exec dyn_deps t in
-      dyn_deps := Dep.Set.add_paths !dyn_deps fns;
-      x
-    | Dyn_deps t ->
-      let x, fns = exec dyn_deps t in
-      dyn_deps := Dep.Set.union !dyn_deps fns;
-      x
-    | Record_lib_deps _ -> ()
-    | Fail { fail } -> fail ()
-    | If_file_exists (p, then_, else_) ->
-      if file_exists p then
-        exec dyn_deps then_
-      else
-        exec dyn_deps else_
-    | Catch (t, on_error) -> ( try exec dyn_deps t with exn -> on_error exn )
-    | Memo m -> (
-      match m.state with
-      | Evaluated (x, deps) ->
-        dyn_deps := Dep.Set.union !dyn_deps deps;
-        x
-      | Evaluating ->
-        User_error.raise
-          [ Pp.textf "Dependency cycle evaluating memoized build description %s"
-              m.name
-          ]
-      | Unevaluated -> (
-        m.state <- Evaluating;
-        let dyn_deps' = ref Dep.Set.empty in
-        match exec dyn_deps' m.t with
-        | x ->
-          m.state <- Evaluated (x, !dyn_deps');
-          dyn_deps := Dep.Set.union !dyn_deps !dyn_deps';
-          x
-        | exception exn ->
-          m.state <- Unevaluated;
-          reraise exn ) )
-  in
-  let dyn_deps = ref Dep.Set.empty in
-  let result = exec dyn_deps t in
-  (result, !dyn_deps)
+module rec Exec : sig
+  val exec : 'a t -> 'a * Dep.Set.t
+end = struct
+  module Function = struct
+    type 'a input = 'a memo
+
+    type 'a output = 'a * Dep.Set.t
+
+    let name = "exec-memo"
+
+    let id m = m.id
+
+    let to_dyn m = Dyn.Encoder.string m.name
+
+    let eval m = Exec.exec m.t
+  end
+
+  module Memo = Memo.Poly (Function)
+
+  let exec t =
+    let file_exists = Fdecl.get file_exists_fdecl in
+    let eval_pred = Fdecl.get eval_pred_fdecl in
+    let rec go : type a. a t -> a * Dep.Set.t =
+     fun t ->
+      match t with
+      | Pure x -> (x, Dep.Set.empty)
+      | Map (f, a) ->
+        let a, dyn_deps_a = go a in
+        (f a, dyn_deps_a)
+      | Map2 (f, a, b) ->
+        let a, dyn_deps_a = go a in
+        let b, dyn_deps_b = go b in
+        (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
+      | Deps _ -> ((), Dep.Set.empty)
+      | Paths_for_rule _ -> ((), Dep.Set.empty)
+      | Paths_glob g -> ((eval_pred g : Path.Set.t), Dep.Set.empty)
+      | Contents p -> (Io.read_file p, Dep.Set.empty)
+      | Lines_of p -> (Io.lines_of_file p, Dep.Set.empty)
+      | Dyn_paths t ->
+        let (x, paths), dyn_deps = go t in
+        (x, Dep.Set.add_paths dyn_deps paths)
+      | Dyn_deps t ->
+        let (x, dyn_deps), dyn_deps_x = go t in
+        (x, Dep.Set.union dyn_deps dyn_deps_x)
+      | Record_lib_deps _ -> ((), Dep.Set.empty)
+      | Fail { fail } -> fail ()
+      | If_file_exists (p, then_, else_) ->
+        if file_exists p then
+          go then_
+        else
+          go else_
+      | Catch (t, on_error) -> (
+        try go t with exn -> (on_error exn, Dep.Set.empty) )
+      | Memo m -> Memo.eval m
+    in
+    go t
+end
+
+let exec = Exec.exec

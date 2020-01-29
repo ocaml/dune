@@ -660,8 +660,7 @@ end = struct
     let id = Internal_rule.Id.gen () in
     { Internal_rule.id
     ; action
-    ; static_deps =
-        Memo.lazy_ (fun () -> Build.static_deps action.build ~file_exists)
+    ; static_deps = Memo.lazy_ (fun () -> Build.static_deps action.build)
     ; context
     ; env
     ; locks
@@ -1250,6 +1249,8 @@ end = struct
 
   let eval_pred = Pred.eval
 
+  let () = Build.set_file_system_accessors ~file_exists ~eval_pred
+
   (* Evaluate a rule and return the action and set of dynamic dependencies *)
   let evaluate_action_and_dynamic_deps_memo =
     let f (rule : Internal_rule.t) =
@@ -1257,7 +1258,7 @@ end = struct
         Static_deps.rule_deps (Memo.Lazy.force rule.static_deps)
       in
       let+ () = build_deps rule_deps in
-      Build.exec rule.action.build ~file_exists ~eval_pred
+      Build.exec rule.action.build
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
@@ -1765,7 +1766,7 @@ let shim_of_build_goal request =
   in
   Internal_rule.shim_of_build_goal
     ~action:(Build.with_no_targets request)
-    ~static_deps:(Build.static_deps request ~file_exists)
+    ~static_deps:(Build.static_deps request)
 
 let build_request ~request =
   let result = Fdecl.create Dyn.Encoder.opaque in
@@ -2002,7 +2003,7 @@ module All_lib_deps : sig
     request:unit Build.t -> Lib_deps_info.t Path.Source.Map.t Context_name.Map.t
 end = struct
   let static_deps_of_request request =
-    Static_deps.paths @@ Build.static_deps request ~file_exists
+    Static_deps.paths @@ Build.static_deps request
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
@@ -2035,9 +2036,7 @@ end = struct
     let rules = rules_for_targets targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
-          let deps =
-            Build.lib_deps rule.Internal_rule.action.build ~file_exists
-          in
+          let deps = Build.lib_deps rule.Internal_rule.action.build in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->

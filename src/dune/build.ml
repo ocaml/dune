@@ -30,6 +30,16 @@ and 'a memo_state =
   | Evaluating
   | Evaluated of 'a * Dep.Set.t
 
+(* We use forward declarations to pass top-level [file_exists] and [eval_pred]
+   functions to avoid cyclic dependencies between modules. *)
+let file_exists_fdecl = Fdecl.create Dyn.Encoder.opaque
+
+let eval_pred_fdecl = Fdecl.create Dyn.Encoder.opaque
+
+let set_file_system_accessors ~file_exists ~eval_pred =
+  Fdecl.set file_exists_fdecl file_exists;
+  Fdecl.set eval_pred_fdecl eval_pred
+
 let return x = Pure x
 
 let ignore x = Map (Fn.const (), x)
@@ -271,7 +281,8 @@ let progn ts =
    [Memo] node multiple times. For example, when building Dune, we enter [Memo]
    around 16000 times, whereas [exec] that does proper memoization does this
    only ~1000 times. *)
-let static_deps t ~file_exists =
+let static_deps t =
+  let file_exists = Fdecl.get file_exists_fdecl in
   let rec loop : type a. a t -> Static_deps.t -> Static_deps.t =
    fun t acc ->
     match t with
@@ -299,7 +310,8 @@ let static_deps t ~file_exists =
   in
   loop t Static_deps.empty
 
-let lib_deps t ~file_exists =
+let lib_deps t =
+  let file_exists = Fdecl.get file_exists_fdecl in
   let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
    fun t acc ->
     match t with
@@ -329,7 +341,9 @@ let lib_deps t ~file_exists =
 
 (* Execution *)
 
-let exec t ~file_exists ~eval_pred =
+let exec t =
+  let file_exists = Fdecl.get file_exists_fdecl in
+  let eval_pred = Fdecl.get eval_pred_fdecl in
   let rec exec : type a. Dep.Set.t ref -> a t -> a =
    fun dyn_deps t ->
     match t with

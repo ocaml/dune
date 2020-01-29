@@ -1249,8 +1249,6 @@ end = struct
 
   let eval_pred = Pred.eval
 
-  (* CR-soon amokhov: Memoize file system accessors to make sure the changes are
-     properly tracked between builds when using the file-watching build mode. *)
   let () = Build.set_file_system_accessors ~file_exists ~eval_pred
 
   (* Evaluate a rule and return the action and set of dynamic dependencies *)

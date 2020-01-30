@@ -1,0 +1,7 @@
+(library
+ (name dune_tui)
+ (libraries stdune notty threads.posix)
+ (foreign_stubs
+  (language c)
+  (names term_size))
+ (preprocess future_syntax))

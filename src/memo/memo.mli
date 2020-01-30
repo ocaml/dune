@@ -282,3 +282,19 @@ end
 val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
 
 module Implicit_output = Implicit_output
+
+module Poly (Function : sig
+  type 'a input
+
+  type 'a output
+
+  val name : string
+
+  val eval : 'a input -> 'a output
+
+  val to_dyn : _ input -> Dyn.t
+
+  val id : 'a input -> 'a Type_eq.Id.t
+end) : sig
+  val eval : 'a Function.input -> 'a Function.output
+end

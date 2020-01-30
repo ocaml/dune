@@ -879,3 +879,54 @@ module Run = struct
 
   include Run
 end
+
+(** Memoization of polymorphic functions of type ['a input -> 'a output]. The
+    supplied [id] function must be injective, i.e. there must be a one-to-one
+    correspondence between [input]s and their [id]s. *)
+module Poly (Function : sig
+  type 'a input
+
+  type 'a output
+
+  val name : string
+
+  val eval : 'a input -> 'a output
+
+  val to_dyn : _ input -> Dyn.t
+
+  val id : 'a input -> 'a Type_eq.Id.t
+end) =
+struct
+  open Function
+
+  module Key = struct
+    type t = T : 'a input -> t
+
+    let to_dyn (T t) = to_dyn t
+
+    let hash (T t) = Type_eq.Id.hash (id t)
+
+    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
+  end
+
+  module Value = struct
+    type t = T : ('a Type_eq.Id.t * 'a output) -> t
+  end
+
+  let impl (key : Key.t) : Value.t =
+    match key with
+    | Key.T input -> Value.T (id input, eval input)
+
+  let memo = create_hidden name ~input:(module Key) Sync impl
+
+  let eval (type a) (x : a input) : a output =
+    match exec memo (Key.T x) with
+    | Value.T (id, res) -> (
+      match Type_eq.Id.same id (Function.id x) with
+      | None ->
+        Code_error.raise
+          "Type_eq.Id.t mismatch in Memo.Poly: the most likely reason is that \
+           the provided Function.id returns different ids for the same input."
+          [ ("Function.name", Dyn.String Function.name) ]
+      | Some Type_eq.T -> res )
+end

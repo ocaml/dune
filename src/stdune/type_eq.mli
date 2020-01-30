@@ -14,6 +14,10 @@ module Id : sig
 
   val create : unit -> 'a t
 
+  val hash : _ t -> int
+
+  val equal : _ t -> _ t -> bool
+
   val same : 'a t -> 'b t -> ('a, 'b) eq option
 end
 with type ('a, 'b) eq := ('a, 'b) t

@@ -26,6 +26,10 @@ module With_targets : sig
   val of_result_map :
     'a Or_exn.t -> f:('a -> 'b t) -> targets:Path.Build.t list -> 'b t
 
+  (** [memoize name t] is a build description that behaves like [t] except that
+      its result is computed only once. *)
+  val memoize : string -> 'a t -> 'a t
+
   module O : sig
     val ( >>> ) : unit t -> 'a t -> 'a t
 

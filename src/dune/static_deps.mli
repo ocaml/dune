@@ -15,6 +15,9 @@ val to_dyn : t -> Dyn.t
 (** No dependencies. *)
 val empty : t
 
+(** Union of dependencies. *)
+val union : t -> t -> t
+
 (** Add a path as a rule dep. *)
 val add_rule_path : t -> Path.t -> t
 

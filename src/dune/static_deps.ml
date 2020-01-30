@@ -18,6 +18,11 @@ let rule_deps t = t.rule_deps
 
 let empty = { rule_deps = Dep.Set.empty; action_deps = Dep.Set.empty }
 
+let union x y =
+  { rule_deps = Dep.Set.union x.rule_deps y.rule_deps
+  ; action_deps = Dep.Set.union x.action_deps y.action_deps
+  }
+
 let add_rule_paths t fns =
   { t with rule_deps = Dep.Set.add_paths t.rule_deps fns }
 

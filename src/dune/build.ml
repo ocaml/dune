@@ -234,6 +234,8 @@ module With_targets = struct
         { build = Fail { fail = (fun () -> raise e) }
         ; targets = Path.Build.Set.empty
         } )
+
+  let memoize name t = { build = memoize name t.build; targets = t.targets }
 end
 
 let with_targets build ~targets : _ With_targets.t =
@@ -271,39 +273,55 @@ let progn ts =
 
 (* Analysis *)
 
-(* CR-soon amokhov: We do no memoization here and so we enter the very same
-   [Memo] node multiple times. For example, when building Dune, we enter [Memo]
-   around 16000 times, whereas [exec] that does proper memoization does this
-   only ~1000 times. *)
-let static_deps t =
-  let file_exists = Fdecl.get file_exists_fdecl in
-  let rec loop : type a. a t -> Static_deps.t -> Static_deps.t =
-   fun t acc ->
+module rec Analysis : sig
+  val static_deps : _ t -> Static_deps.t
+end = struct
+  module Input = struct
+    type t = T : _ memo -> t
+
+    let equal (T x) (T y) = Type_eq.Id.equal x.id y.id
+
+    let hash (T m) = Type_eq.Id.hash m.id
+
+    let to_dyn (T m) = Dyn.String m.name
+  end
+
+  let memo =
+    Memo.create_hidden "Build.static_deps"
+      ~input:(module Input)
+      Sync
+      (fun (T m) -> Analysis.static_deps m.t)
+
+  let rec static_deps : type a. a t -> Static_deps.t =
+   fun t ->
+    let file_exists = Fdecl.get file_exists_fdecl in
     match t with
-    | Pure _ -> acc
-    | Map (_, a) -> loop a acc
-    | Map2 (_, a, b) ->
-      let acc = loop a acc in
-      loop b acc
-    | Deps deps -> Static_deps.add_action_deps acc deps
-    | Paths_for_rule fns -> Static_deps.add_rule_paths acc fns
-    | Paths_glob g -> Static_deps.add_action_dep acc (Dep.file_selector g)
+    | Pure _ -> Static_deps.empty
+    | Map (_, t) -> static_deps t
+    | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
+    | Deps deps -> Static_deps.add_action_deps Static_deps.empty deps
+    | Paths_for_rule fns -> Static_deps.add_rule_paths Static_deps.empty fns
+    | Paths_glob g ->
+      Static_deps.add_action_dep Static_deps.empty (Dep.file_selector g)
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
-        loop then_ acc
+        static_deps then_
       else
-        loop else_ acc
-    | Dyn_paths t -> loop t acc
-    | Dyn_deps t -> loop t acc
-    | Contents p -> Static_deps.add_rule_path acc p
-    | Lines_of p -> Static_deps.add_rule_path acc p
-    | Record_lib_deps _ -> acc
-    | Fail _ -> acc
-    | Memo m -> loop m.t acc
-    | Catch (t, _) -> loop t acc
-  in
-  loop t Static_deps.empty
+        static_deps else_
+    | Dyn_paths t -> static_deps t
+    | Dyn_deps t -> static_deps t
+    | Contents p -> Static_deps.add_rule_path Static_deps.empty p
+    | Lines_of p -> Static_deps.add_rule_path Static_deps.empty p
+    | Record_lib_deps _ -> Static_deps.empty
+    | Fail _ -> Static_deps.empty
+    | Memo m -> Memo.exec memo (Input.T m)
+    | Catch (t, _) -> static_deps t
+end
 
+let static_deps = Analysis.static_deps
+
+(* We do no memoization in this function because it is currently used only to
+   support the [external-lib-deps] command and so it's not on the critical path. *)
 let lib_deps t =
   let file_exists = Fdecl.get file_exists_fdecl in
   let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
@@ -335,7 +353,7 @@ let lib_deps t =
 
 (* Execution *)
 
-module rec Exec : sig
+module rec Execution : sig
   val exec : 'a t -> 'a * Dep.Set.t
 end = struct
   module Function = struct
@@ -349,7 +367,7 @@ end = struct
 
     let to_dyn m = Dyn.String m.name
 
-    let eval m = Exec.exec m.t
+    let eval m = Execution.exec m.t
   end
 
   module Memo = Memo.Poly (Function)
@@ -393,4 +411,4 @@ end = struct
     go t
 end
 
-let exec = Exec.exec
+let exec = Execution.exec

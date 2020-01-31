@@ -1,45 +1,23 @@
 open! Import
 
 (** A simple wrapper around [Deps.t], where some dependencies are recorded as
-    "rule deps" and other as "action deps". Action Dependencies are dependencies
-    the external commands are expected to access while rule dependencies are
-    dependencies needed in order to compute the action to execute and its
-    dependencies *)
+    [rule_deps] and other as [action_deps]. Action dependencies are dependencies
+    the external commands are expected to access, and rule dependencies are
+    dependencies needed in order to compute the action to execute as well as its
+    dependencies. *)
 
-type t
+type t =
+  { rule_deps : Dep.Set.t
+  ; action_deps : Dep.Set.t
+  }
 
 val to_dyn : t -> Dyn.t
-
-(** {1} Constructors *)
 
 (** No dependencies. *)
 val empty : t
 
-(** Add a path as a rule dep. *)
-val add_rule_path : t -> Path.t -> t
+(** Union of dependencies. *)
+val union : t -> t -> t
 
-(** Add a set of paths as rule deps. *)
-val add_rule_paths : t -> Path.Set.t -> t
-
-(** Add a set of paths as action deps. *)
-val add_action_paths : t -> Path.Set.t -> t
-
-(** Add an environment variable as an action dep. *)
-val add_action_env_var : t -> string -> t
-
-(** Add a dependency to action deps. *)
-val add_action_dep : t -> Dep.t -> t
-
-(** Add dependencies to action deps. *)
-val add_action_deps : t -> Dep.Set.t -> t
-
-(** {1} Deconstructors *)
-
-(** Return the rule deps. *)
-val rule_deps : t -> Dep.Set.t
-
-(** Return the action deps. *)
-val action_deps : t -> Dep.Set.t
-
-(** Return the paths deps, both for the rule deps and the action deps. *)
+(** The paths to both rule and action dependencies. *)
 val paths : t -> eval_pred:Dep.eval_pred -> Path.Set.t

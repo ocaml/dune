@@ -98,21 +98,52 @@ module Internal_rule = struct
     module Top_closure = Top_closure.Make (Set) (Monad.Id)
   end
 
-  module T = struct
-    type t =
+  module T : sig
+    type t = private
       { id : Id.t
       ; context : Context.t option
       ; action : Action.t Build.With_targets.t
-      ; (* We cache the result of [Build.static_deps t.build ~file_exists] in
-           [t.static_deps]. We do this lazily, because [Build.static_deps] needs
-           the [file_exists] predicate which in turn depends on the [t.targets]
-           field, thus causing a cyclic dependency. *)
-        static_deps : Static_deps.t Memo.Lazy.t
       ; mode : Rule.Mode.t
       ; info : Rule.Info.t
       ; dir : Path.Build.t
       ; env : Env.t option
       ; locks : Path.t list
+      }
+
+    val create :
+         context:Context.t option
+      -> action:Action.t Build.With_targets.t
+      -> mode:Rule.Mode.t
+      -> info:Rule.Info.t
+      -> dir:Path.Build.t
+      -> env:Env.t option
+      -> locks:Path.t list
+      -> t
+
+    val compare : t -> t -> Ordering.t
+
+    val to_dyn : t -> Dyn.t
+  end = struct
+    type t =
+      { id : Id.t
+      ; context : Context.t option
+      ; action : Action.t Build.With_targets.t
+      ; mode : Rule.Mode.t
+      ; info : Rule.Info.t
+      ; dir : Path.Build.t
+      ; env : Env.t option
+      ; locks : Path.t list
+      }
+
+    let create ~context ~action ~mode ~info ~dir ~env ~locks =
+      { id = Id.gen ()
+      ; context
+      ; action = Build.With_targets.memoize "Internal_rule.create" action
+      ; mode
+      ; info
+      ; dir
+      ; env
+      ; locks
       }
 
     let compare a b = Id.compare a.id b.id
@@ -132,27 +163,10 @@ module Internal_rule = struct
 
   let hash t = Id.hash t.id
 
-  (* Represents the build goal given by the user. This rule is never actually
-     executed and is only used as a starting point of all dependency paths. *)
-  let root =
-    { id = Id.gen ()
-    ; context = None
-    ; action = Build.With_targets.return Action.empty
-    ; static_deps = Memo.Lazy.of_val Static_deps.empty
-    ; mode = Standard
-    ; info = Internal
-    ; dir = Path.Build.root
-    ; env = None
-    ; locks = []
-    }
-
   (* Create a shim for the main build goal *)
-  let shim_of_build_goal ~action ~static_deps =
-    { root with
-      id = Id.gen ()
-    ; action
-    ; static_deps = Memo.Lazy.of_val static_deps
-    }
+  let shim_of_build_goal ~action =
+    create ~context:None ~action ~mode:Standard ~info:Internal
+      ~dir:Path.Build.root ~env:None ~locks:[]
 
   let effective_env rule =
     match (rule.env, rule.context) with
@@ -160,6 +174,12 @@ module Internal_rule = struct
     | Some e, _ -> e
     | None, Some c -> c.env
 end
+
+let rule_deps (t : Internal_rule.t) =
+  (Build.static_deps t.action.build).rule_deps
+
+let static_action_deps (t : Internal_rule.t) =
+  (Build.static_deps t.action.build).action_deps
 
 module Alias0 = struct
   include Alias
@@ -657,17 +677,7 @@ end = struct
 
   let compile_rule pre_rule =
     let { Pre_rule.context; env; action; mode; locks; info; dir } = pre_rule in
-    let id = Internal_rule.Id.gen () in
-    { Internal_rule.id
-    ; action
-    ; static_deps = Memo.lazy_ (fun () -> Build.static_deps action.build)
-    ; context
-    ; env
-    ; locks
-    ; mode
-    ; info
-    ; dir
-    }
+    Internal_rule.create ~action ~context ~env ~locks ~mode ~info ~dir
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -1254,10 +1264,7 @@ end = struct
   (* Evaluate a rule and return the action and set of dynamic dependencies *)
   let evaluate_action_and_dynamic_deps_memo =
     let f (rule : Internal_rule.t) =
-      let rule_deps =
-        Static_deps.rule_deps (Memo.Lazy.force rule.static_deps)
-      in
-      let+ () = build_deps rule_deps in
+      let+ () = build_deps (rule_deps rule) in
       Build.exec rule.action.build
     in
     Memo.create "evaluate-action-and-dynamic-deps"
@@ -1310,9 +1317,7 @@ end = struct
 
   let evaluate_rule (rule : Internal_rule.t) =
     let+ action, dynamic_action_deps = evaluate_action_and_dynamic_deps rule in
-    let static_action_deps =
-      Static_deps.action_deps (Memo.Lazy.force rule.static_deps)
-    in
+    let static_action_deps = static_action_deps rule in
     let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
     (action, action_deps)
 
@@ -1330,9 +1335,7 @@ end = struct
      the final action and set of dynamic dependencies. We do this to increase
      opportunities for parallelism. *)
   let evaluate_rule_and_wait_for_dependencies (rule : Internal_rule.t) =
-    let static_action_deps =
-      Static_deps.action_deps (Memo.Lazy.force rule.static_deps)
-    in
+    let static_action_deps = static_action_deps rule in
     (* Build the static dependencies in parallel with evaluation the action and
        dynamic dependencies *)
     let* action, dynamic_action_deps =
@@ -1382,7 +1385,6 @@ end = struct
         ; mode
         ; locks
         ; id = _
-        ; static_deps = _
         ; action
         ; info
         } =
@@ -1764,9 +1766,7 @@ let shim_of_build_goal request =
     let+ () = request in
     Action.empty
   in
-  Internal_rule.shim_of_build_goal
-    ~action:(Build.with_no_targets request)
-    ~static_deps:(Build.static_deps request)
+  Internal_rule.shim_of_build_goal ~action:(Build.with_no_targets request)
 
 let build_request ~request =
   let result = Fdecl.create Dyn.Encoder.opaque in
@@ -1852,9 +1852,7 @@ let package_deps pkg files =
         acc
       else (
         rules_seen := Internal_rule.Set.add !rules_seen ir;
-        let static_action_deps =
-          Static_deps.action_deps (Memo.Lazy.force ir.static_deps)
-        in
+        let static_action_deps = static_action_deps ir in
         (* We know that at this point of execution, all the relevant ivars have
            been filled so the following call to [Memo.peek_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
@@ -2016,7 +2014,7 @@ end = struct
     Internal_rule.Id.Top_closure.top_closure (rules_for_files targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
-        Memo.Lazy.force r.static_deps
+        Build.static_deps r.action.build
         |> Static_deps.paths ~eval_pred
         |> rules_for_files)
     |> function

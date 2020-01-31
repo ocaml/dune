@@ -564,10 +564,11 @@ executable. There can be additional modules in the current directory,
 you only need to specify the entry point. Given an ``executable``
 stanza with ``(name <name>)``, dune will know how to build
 ``<name>.exe``. If requested, it will also know how to build
-``<name>.bc`` and ``<name>.bc.js``. ``<name>.exe`` is a native code
-executable, ``<name>.bc`` is a bytecode executable which requires
-``ocamlrun`` to run and ``<name>.bc.js`` is a JavaScript generated
-using js_of_ocaml.
+``<name>.bc`` and ``<name>.bc.js`` (dune 2.0 and up also need specific
+configuration, see the ``modes`` optional field below). ``<name>.exe``
+is a native code executable, ``<name>.bc`` is a bytecode executable
+which requires ``ocamlrun`` to run and ``<name>.bc.js`` is a JavaScript
+generated using js_of_ocaml.
 
 Note that in case native compilation is not available, ``<name>.exe``
 will in fact be a custom byte-code executable. Custom in the sense of

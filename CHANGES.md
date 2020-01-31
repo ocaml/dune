@@ -21,6 +21,9 @@
   shared cache. In particular, make them writable by the user (#3043,
   fixes #3026, @diml)
 
+- Only detect internal OCaml tools with `.opt` extensions. Previously, this
+  detection applied to other binaries as well (@kit-ty-kate, @rgrinberg, #3051).
+
 2.1.3 (16/01/2020)
 ------------------
 

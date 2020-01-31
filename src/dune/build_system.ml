@@ -176,10 +176,10 @@ module Internal_rule = struct
 end
 
 let rule_deps (t : Internal_rule.t) =
-  Static_deps.rule_deps (Build.static_deps t.action.build)
+  (Build.static_deps t.action.build).rule_deps
 
 let static_action_deps (t : Internal_rule.t) =
-  Static_deps.action_deps (Build.static_deps t.action.build)
+  (Build.static_deps t.action.build).action_deps
 
 module Alias0 = struct
   include Alias

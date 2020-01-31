@@ -299,10 +299,13 @@ end = struct
     | Pure _ -> Static_deps.empty
     | Map (_, t) -> static_deps t
     | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
-    | Deps deps -> Static_deps.add_action_deps Static_deps.empty deps
-    | Paths_for_rule fns -> Static_deps.add_rule_paths Static_deps.empty fns
+    | Deps deps -> { Static_deps.empty with action_deps = deps }
+    | Paths_for_rule fns ->
+      { Static_deps.empty with rule_deps = Dep.Set.of_files_set fns }
     | Paths_glob g ->
-      Static_deps.add_action_dep Static_deps.empty (Dep.file_selector g)
+      { Static_deps.empty with
+        action_deps = Dep.Set.singleton (Dep.file_selector g)
+      }
     | If_file_exists (p, then_, else_) ->
       if file_exists p then
         static_deps then_
@@ -310,8 +313,10 @@ end = struct
         static_deps else_
     | Dyn_paths t -> static_deps t
     | Dyn_deps t -> static_deps t
-    | Contents p -> Static_deps.add_rule_path Static_deps.empty p
-    | Lines_of p -> Static_deps.add_rule_path Static_deps.empty p
+    | Contents p ->
+      { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
+    | Lines_of p ->
+      { Static_deps.empty with rule_deps = Dep.Set.of_files [ p ] }
     | Record_lib_deps _ -> Static_deps.empty
     | Fail _ -> Static_deps.empty
     | Memo m -> Memo.exec memo (Input.T m)

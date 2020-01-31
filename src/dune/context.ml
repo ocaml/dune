@@ -134,19 +134,19 @@ let opam_config_var ~env ~cache var =
       | Error _ -> None ) )
 
 let best_prog dir prog =
+  let fn = Path.relative dir (prog ^ Bin.exe) in
+  Option.some_if (Bin.exists fn) fn
+
+let best_prog_opt_ext dir prog =
   let fn = Path.relative dir (prog ^ ".opt" ^ Bin.exe) in
   if Bin.exists fn then
     Some fn
   else
-    let fn = Path.relative dir (prog ^ Bin.exe) in
-    if Bin.exists fn then
-      Some fn
-    else
-      None
+    best_prog dir prog
 
-let which ~path prog = List.find_map path ~f:(fun dir -> best_prog dir prog)
-
-let which ~cache ~path x = Table.find_or_add cache x ~f:(which ~path)
+let which ~cache ~path ~best_prog prog =
+  let which prog = List.find_map path ~f:(fun dir -> best_prog dir prog) in
+  Table.find_or_add cache prog ~f:which
 
 let ocamlpath_sep =
   if Sys.cygwin then
@@ -236,7 +236,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     Utils.program_not_found prog ~context:name ~loc:None
   in
   let which_cache = Table.create (module String) 128 in
-  let which x = which ~cache:which_cache ~path x in
+  let best_prog = best_prog_opt_ext in
+  let which x = which ~best_prog ~cache:which_cache ~path x in
   let which_exn x =
     match which x with
     | None -> prog_not_found_in_path x
@@ -767,7 +768,7 @@ module DB = struct
         Memo.exec memo name
 end
 
-let which t s = which ~cache:t.which_cache ~path:t.path s
+let which t s = which ~cache:t.which_cache ~path:t.path ~best_prog s
 
 let install_prefix t =
   opam_config_var t "prefix" >>| function

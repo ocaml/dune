@@ -247,7 +247,10 @@ It contains the following fields:
   <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
   the corresponding global fields. These fields are available since Dune 2.0.
 
-The list of dependencies ``<dep-specification>`` is modelled after opam's own
+Adding libraries to different packages is done via  ``public_name`` field. See 
+:ref:`library` section for details.
+
+The list of dependencies ``<dep-specification>`` is modeled after opam's own
 language: The syntax is as a list of the following elements:
 
 .. code::

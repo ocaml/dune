@@ -1669,6 +1669,25 @@ end = struct
                     (Path.Source.basename in_source_tree)
               in
               let path = Path.build path in
+              let () =
+                let dir = Path.Source.parent_exn in_source_tree in
+                match File_tree.find_dir dir with
+                | Some _ -> ()
+                | None ->
+                  let loc =
+                    match into with
+                    | Some into -> into.loc
+                    | None ->
+                      Code_error.raise
+                        "promoting into directory that does not exist"
+                        [ ("in_source_tree", Path.Source.to_dyn in_source_tree)
+                        ]
+                  in
+                  User_error.raise ~loc
+                    [ Pp.textf "directory %S does not exist"
+                        (Path.Source.to_string_maybe_quoted dir)
+                    ]
+              in
               let in_source_tree = Path.source in_source_tree in
               match
                 Path.exists in_source_tree

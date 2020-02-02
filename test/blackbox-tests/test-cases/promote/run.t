@@ -126,23 +126,8 @@ Reproduction case for #3069
   >  (mode (promote (into does-not-exist))))
   > EOF
   $ dune build ./x
-  Error: exception Sys_error("does-not-exist/x: No such file or directory")
-  Backtrace:
-  Raised by primitive operation at file "stdlib.ml", line 324, characters 29-55
-  Called from file "src/stdune/io.ml", line 184, characters 8-126
-  Re-raised at file "src/stdune/io.ml", line 189, characters 8-23
-  Called from file "src/dune/artifact_substitution.ml", line 383, characters 15-48
-  Called from file "src/fiber/fiber.ml", line 229, characters 16-19
-  Called from file "src/dune/build_system.ml", line 1648, characters 8-1023
-  Called from file "src/fiber/fiber.ml", line 114, characters 10-15
-  Re-raised at file "src/stdune/exn.ml", line 37, characters 27-56
-  Called from file "src/fiber/fiber.ml", line 85, characters 10-17
-  Re-raised at file "src/stdune/exn.ml", line 37, characters 27-56
-  Called from file "src/fiber/fiber.ml", line 85, characters 10-17
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.
+  File "dune", line 3, characters 22-36:
+  3 |  (mode (promote (into does-not-exist))))
+                            ^^^^^^^^^^^^^^
+  Error: directory "does-not-exist" does not exist
   [1]

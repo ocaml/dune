@@ -1968,6 +1968,16 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias vendor-dash-p-and-vendored-packages)
+ (deps
+  (package dune)
+  (source_tree test-cases/vendor/dash-p-and-vendored-packages))
+ (action
+  (chdir
+   test-cases/vendor/dash-p-and-vendored-packages
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias virtual-libraries-vlib)
  (deps
   (package dune)
@@ -2292,6 +2302,7 @@
   (alias variants-variants-rogue-impl)
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
+  (alias vendor-dash-p-and-vendored-packages)
   (alias virtual-libraries-vlib)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)
@@ -2509,6 +2520,7 @@
   (alias variants-variants-rogue-impl)
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
+  (alias vendor-dash-p-and-vendored-packages)
   (alias virtual-libraries-vlib)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)

@@ -67,21 +67,6 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
 
 let init_build_system ?only_packages ?external_lib_deps_mode
     ~sandboxing_preference ?caching w =
-  Option.iter only_packages ~f:(fun set ->
-      Package.Name.Set.iter set ~f:(fun pkg ->
-          if not (Package.Name.Map.mem w.conf.packages pkg) then
-            let pkg_name = Package.Name.to_string pkg in
-            User_error.raise
-              [ Pp.textf
-                  "I don't know about package %s (passed through \
-                   --only-packages/--release)"
-                  pkg_name
-              ]
-              ~hints:
-                (User_message.did_you_mean pkg_name
-                   ~candidates:
-                     ( Package.Name.Map.keys w.conf.packages
-                     |> List.map ~f:Package.Name.to_string ))));
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts ?caching;
   let+ scontexts =

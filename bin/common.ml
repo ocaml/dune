@@ -15,6 +15,13 @@ end
 
 open Let_syntax
 
+module Only_packages = struct
+  type t =
+    { names : Dune.Package.Name.Set.t
+    ; command_line_option : string
+    }
+end
+
 type t =
   { debug_dep_path : bool
   ; debug_findlib : bool
@@ -23,7 +30,7 @@ type t =
   ; workspace_file : Arg.Path.t option
   ; root : Workspace_root.t
   ; target_prefix : string
-  ; only_packages : Dune.Package.Name.Set.t option
+  ; only_packages : Only_packages.t option
   ; capture_outputs : bool
   ; x : Dune.Context_name.t option
   ; diff_command : string option
@@ -165,7 +172,7 @@ let build_info =
 module Options_implied_by_dash_p = struct
   type t =
     { root : string option
-    ; only_packages : string option
+    ; only_packages : Only_packages.t option
     ; ignore_promoted_rules : bool
     ; config_file : config_file
     ; profile : Profile.t option
@@ -197,6 +204,19 @@ module Options_implied_by_dash_p = struct
     in
     Option.value x ~default:Default
 
+  let packages =
+    let parser s =
+      Ok
+        (Package.Name.Set.of_list
+           (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
+    in
+    let printer ppf set =
+      Format.pp_print_string ppf
+        (String.concat ~sep:","
+           (Package.Name.Set.to_list set |> List.map ~f:Package.Name.to_string))
+    in
+    Arg.conv ~docv:"PACKAGES" (parser, printer)
+
   let options =
     let+ root =
       Arg.(
@@ -209,18 +229,22 @@ module Options_implied_by_dash_p = struct
                       the interpretation of targets given on the command
                       line. It is only intended for scripts.|})
     and+ only_packages =
-      Arg.(
-        value
-        & opt (some string) None
-        & info [ "only-packages" ] ~docs ~docv:"PACKAGES"
-            ~doc:
-              {|Ignore stanzas referring to a package that is not in
+      let+ names =
+        Arg.(
+          value
+          & opt (some packages) None
+          & info [ "only-packages" ] ~docs ~docv:"PACKAGES"
+              ~doc:
+                {|Ignore stanzas referring to a package that is not in
                       $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
                       of package names. Note that this has the same effect
                       as deleting the relevant stanzas from dune files.
                       It is mostly meant for releases. During development,
                       it is likely that what you want instead is to
                       build a particular $(b,<package>.install) target.|})
+      in
+      Option.map names ~f:(fun names ->
+          { Only_packages.names; command_line_option = "only-packages" })
     and+ ignore_promoted_rules =
       Arg.(
         value & flag
@@ -267,13 +291,14 @@ module Options_implied_by_dash_p = struct
   let for_release = "for-release-of-packages"
 
   let dash_p =
-    let+ pkgs =
-      Arg.(
-        value
-        & opt (some string) None
-        & info [ "p"; for_release ] ~docs ~docv:"PACKAGES"
-            ~doc:
-              {|Shorthand for $(b,--root . --only-packages PACKAGE
+    let+ pkgs, args =
+      Term.with_used_args
+        Arg.(
+          value
+          & opt (some packages) None
+          & info [ "p"; for_release ] ~docs ~docv:"PACKAGES"
+              ~doc:
+                {|Shorthand for $(b,--root . --only-packages PACKAGE
                       --ignore-promoted-rules --no-config --profile release).
                       You must use this option in your $(i,<package>.opam)
                       files, in order to build only what's necessary when
@@ -281,7 +306,9 @@ module Options_implied_by_dash_p = struct
                       getting reproducible builds.|})
     in
     { root = Some "."
-    ; only_packages = pkgs
+    ; only_packages =
+        Option.map pkgs ~f:(fun names ->
+            { Only_packages.names; command_line_option = List.hd args })
     ; ignore_promoted_rules = true
     ; config_file = No_config
     ; profile = Some Profile.Release
@@ -585,10 +612,7 @@ let term =
   ; promote
   ; force
   ; ignore_promoted_rules
-  ; only_packages =
-      Option.map only_packages ~f:(fun s ->
-          Package.Name.Set.of_list
-            (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
+  ; only_packages
   ; x
   ; config
   ; build_dir

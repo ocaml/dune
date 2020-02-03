@@ -353,7 +353,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
       match Dune_file.stanza_package stanza with
       | None -> Some stanza
       | Some package -> (
-        if Package.Name.Set.mem visible_pkgs package.name then
+        if Package.Name.Map.mem visible_pkgs package.name then
           Some stanza
         else
           (* If the stanza is a hidden public implementation of a visible
@@ -369,7 +369,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
               ; buildable = { loc; _ }
               ; _
               }
-            when Package.Name.Set.mem visible_pkgs
+            when Package.Name.Map.mem visible_pkgs
                    (Lib_name.package_name (snd virtual_lib)) ->
             Some
               (External_variant
@@ -379,13 +379,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects } = conf in
-  let packages =
-    match only_packages with
-    | None -> packages
-    | Some pkgs ->
-      Package.Name.Map.filter packages ~f:(fun { Package.name; _ } ->
-          Package.Name.Set.mem pkgs name)
-  in
+  let packages = Option.value only_packages ~default:packages in
   let sctxs = Table.create (module Context_name) 4 in
   List.iter contexts ~f:(fun c ->
       Table.add_exn sctxs c.Context.name (Fiber.Ivar.create ()));

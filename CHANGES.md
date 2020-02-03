@@ -24,6 +24,9 @@
 - Only detect internal OCaml tools with `.opt` extensions. Previously, this
   detection applied to other binaries as well (@kit-ty-kate, @rgrinberg, #3051).
 
+- Give the user a proper error message when they try to promote into a source
+  directory that doesn't exist. (#3073, fix #3069, @rgrinberg)
+
 2.1.3 (16/01/2020)
 ------------------
 

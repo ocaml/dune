@@ -114,3 +114,20 @@ Test for (promote (into ...)) + (enabled_if %{ignoring_promoted_rules}
   $ dune build into+ignoring
   $ dune clean
   $ dune build into+ignoring --ignore-promoted-rules
+
+Reproduction case for #3069
+---------------------------
+
+  $ mkdir 3069 && cd 3069
+  $ echo "(lang dune 2.0)" > dune-project
+  $ cat >dune <<EOF
+  > (rule
+  >  (action (with-stdout-to x (echo bar)))
+  >  (mode (promote (into does-not-exist))))
+  > EOF
+  $ dune build ./x
+  File "dune", line 3, characters 22-36:
+  3 |  (mode (promote (into does-not-exist))))
+                            ^^^^^^^^^^^^^^
+  Error: directory "does-not-exist" does not exist
+  [1]

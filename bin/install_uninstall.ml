@@ -269,6 +269,10 @@ let file_operations ~dry_run ~workspace : (module File_operations) =
       let workspace = workspace
     end) )
 
+let package_is_vendored (pkg : Dune.Package.t) =
+  Dune.File_tree.find_dir pkg.path
+  |> Option.value_exn |> Dune.File_tree.Dir.vendored
+
 let install_uninstall ~what =
   let doc = sprintf "%s packages." (String.capitalize what) in
   let name_ = Arg.info [] ~docv:"PACKAGE" in
@@ -333,7 +337,14 @@ let install_uninstall ~what =
         in
         let pkgs =
           match pkgs with
-          | [] -> Package.Name.Map.keys workspace.conf.packages
+          | [] ->
+            Package.Name.Map.fold workspace.conf.packages ~init:[]
+              ~f:(fun pkg acc ->
+                if package_is_vendored pkg then
+                  acc
+                else
+                  pkg.name :: acc)
+            |> List.rev
           | l -> l
         in
         let install_files, missing_install_files =

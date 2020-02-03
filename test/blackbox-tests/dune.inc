@@ -1978,6 +1978,16 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias vendor-do-not-install-vendored-packages)
+ (deps
+  (package dune)
+  (source_tree test-cases/vendor/do-not-install-vendored-packages))
+ (action
+  (chdir
+   test-cases/vendor/do-not-install-vendored-packages
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias virtual-libraries-vlib)
  (deps
   (package dune)
@@ -2303,6 +2313,7 @@
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
+  (alias vendor-do-not-install-vendored-packages)
   (alias virtual-libraries-vlib)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)
@@ -2521,6 +2532,7 @@
   (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
+  (alias vendor-do-not-install-vendored-packages)
   (alias virtual-libraries-vlib)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)

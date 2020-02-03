@@ -30,6 +30,8 @@
 - Correctly build vendored packages in `-p` mode. These packages were
   incorrectly filtered out before. (#3705, @diml)
 
+- Do not install vendored packages (#3704, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

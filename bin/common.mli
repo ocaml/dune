@@ -14,7 +14,15 @@ val root : t -> Workspace_root.t
 
 val config : t -> Dune.Config.t
 
-val only_packages : t -> Dune.Package.Name.Set.t option
+module Only_packages : sig
+  type t =
+    { names : Dune.Package.Name.Set.t
+    ; command_line_option : string
+          (** Which of [-p], [--only-packages], ... was passed *)
+    }
+end
+
+val only_packages : t -> Only_packages.t option
 
 val watch : t -> bool
 

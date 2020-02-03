@@ -81,9 +81,40 @@ module Main = struct
 
   let setup ?external_lib_deps_mode common =
     let open Fiber.O in
-    let only_packages = Common.only_packages common in
     let* caching = make_cache (Common.config common) in
     let* workspace = scan_workspace common in
+    let only_packages =
+      Option.map (Common.only_packages common)
+        ~f:(fun { Common.Only_packages.names; command_line_option } ->
+          Package.Name.Set.iter names ~f:(fun pkg_name ->
+              if not (Package.Name.Map.mem workspace.conf.packages pkg_name)
+              then
+                let pkg_name = Package.Name.to_string pkg_name in
+                User_error.raise
+                  [ Pp.textf "I don't know about package %s (passed through %s)"
+                      pkg_name command_line_option
+                  ]
+                  ~hints:
+                    (User_message.did_you_mean pkg_name
+                       ~candidates:
+                         ( Package.Name.Map.keys workspace.conf.packages
+                         |> List.map ~f:Package.Name.to_string )));
+          Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
+              let vendored =
+                Dune.File_tree.find_dir pkg.path
+                |> Option.value_exn |> Dune.File_tree.Dir.vendored
+              in
+              let included = Package.Name.Set.mem names pkg.name in
+              if vendored && included then
+                User_error.raise
+                  [ Pp.textf
+                      "Package %s is vendored and so will never be masked. It \
+                       makes no sense to pass it to -p, --only-packages or \
+                       --for-release-of-packages."
+                      (Package.Name.to_string pkg.name)
+                  ];
+              vendored || included))
+    in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
       ?caching ?external_lib_deps_mode ?only_packages

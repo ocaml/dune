@@ -5,6 +5,6 @@ open! Import
 val gen :
      contexts:Context.t list
   -> ?external_lib_deps_mode:bool (* default: false *)
-  -> ?only_packages:Package.Name.Set.t
+  -> ?only_packages:Package.t Package.Name.Map.t
   -> Dune_load.conf
   -> Super_context.t Context_name.Map.t Fiber.t

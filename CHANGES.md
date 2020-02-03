@@ -27,6 +27,9 @@
 - Give the user a proper error message when they try to promote into a source
   directory that doesn't exist. (#3073, fix #3069, @rgrinberg)
 
+- Correctly build vendored packages in `-p` mode. These packages were
+  incorrectly filtered out before. (#3705, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

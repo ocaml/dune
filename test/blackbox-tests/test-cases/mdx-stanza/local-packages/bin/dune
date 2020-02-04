@@ -1,0 +1,4 @@
+(executable
+ (name public_bin)
+ (public_name public-bin)
+ (modules public_bin))

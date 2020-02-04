@@ -108,6 +108,7 @@ end
 type t =
   { loc : Loc.t
   ; files : Predicate_lang.Glob.t
+  ; packages : Package.Name.t list
   }
 
 type Stanza.t += T of t
@@ -129,8 +130,9 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:default_files
-     in
-     { loc; files })
+     and+ packages = field_o "packages" (repeat Package.Name.decode) in
+     let packages = Option.value ~default:[] packages in
+     { loc; files; packages })
 
 let () =
   let open Dune_lang.Decoder in
@@ -169,7 +171,13 @@ let gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza src =
     let open Build.With_targets.O in
     let deps = Build.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
     let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
-    Build.with_no_targets (Build.dyn_deps dyn_deps)
+    let pkg_deps =
+      let context = Super_context.context sctx in
+      List.map stanza.packages ~f:(fun pkg ->
+          Build.alias (Build_system.Alias.package_install ~context ~pkg))
+    in
+    Build.(with_no_targets (all_unit pkg_deps))
+    >>> Build.with_no_targets (Build.dyn_deps dyn_deps)
     >>> Command.run ~dir:(Path.build dir) mdx_prog
           [ A "test"
           ; A "-o"

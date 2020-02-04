@@ -30,3 +30,9 @@ or mli to-be-mdxed file depends upon
 
   $ dune runtest --root mdx-deps/
   Entering directory 'mdx-deps'
+
+You can make local packages available to mdx by using the `packages` field of
+the stanza
+
+  $ dune runtest --root local-packages
+  Entering directory 'local-packages'

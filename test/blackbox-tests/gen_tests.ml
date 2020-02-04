@@ -74,12 +74,13 @@ module Test = struct
     ; additional_deps : Dune_lang.t list
     }
 
-  let alias_name t =
-    (* Make sure we can split Windows paths. *)
+  let path_separator =
     let dir_sep = Filename.dir_sep in
     assert (String.length dir_sep == 1);
-    let dir_sep = dir_sep.[0] in
-    match String.split t.path ~on:dir_sep with
+    dir_sep.[0]
+
+  let alias_name t =
+    match String.split t.path ~on:path_separator with
     | [] -> assert false
     | dir :: dirs ->
       assert (dir = root_dir);
@@ -133,12 +134,9 @@ module Test = struct
     let enabled_if = Platform.enabled_if t.skip_platforms in
     let dir = dir t in
     (* Make sure we generate paths with forward slashes even on Windows. *)
-    let dir_sep = Filename.dir_sep in
-    assert (String.length dir_sep == 1);
-    let dir_sep = dir_sep.[0] in
     let dir =
       String.map dir ~f:(fun c ->
-          if c == dir_sep then
+          if c == path_separator then
             '/'
           else
             c)

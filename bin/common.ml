@@ -542,7 +542,11 @@ let term =
           ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
   and+ cache_mode =
-    let doc = "Activate binary cache" in
+    let doc =
+      Printf.sprintf "Activate binary cache (%s). Default is `%s'."
+        (Arg.doc_alts_enum Config.Caching.Mode.all)
+        (Config.Caching.Mode.to_string Config.default.cache_mode)
+    in
     Arg.(
       value
       & opt (some (enum Config.Caching.Mode.all)) None

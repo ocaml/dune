@@ -8,10 +8,10 @@ set -e
 # TEST_COMMIT=01a6b7e01d0082c44553692648aad3d81820dfa2
 
 TEST_REPO=https://github.com/ocaml/dune
-TEST_COMMIT=67f55ad882dc349c248d1962b0f6c8c354f1183f
+TEST_COMMIT=79a27e50dbd440ce0348d24174fb3cb8a0492ec3
 
 dune() {
-  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" --root=. > /dev/null
+  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/dune.exe "$@" --root=. > /dev/null
 }
 
 setup_test() {
@@ -44,7 +44,7 @@ run_test() {
   dune build @install 2>> $1
 
   echo "Computing rules..."
-  dune rules -r _build/default/bin/main.exe 2>> $1
+  dune rules -r _build/default/bin/dune.exe 2>> $1
 
   cd ..
 }

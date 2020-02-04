@@ -152,6 +152,12 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     User_error.raise ~loc
       [ Pp.textf "Cannot find directory: %s" (Path.Source.to_string src_in_src)
       ];
+  if Path.Source.equal src_in_src src_dir then
+    User_error.raise ~loc
+      [ Pp.textf
+          "Cannot copy files onto themselves. The format is <dir>/<glob> where \
+           <dir> is not the current directory."
+      ];
   (* add rules *)
   let src_in_build =
     let context = Context.DB.get dir in

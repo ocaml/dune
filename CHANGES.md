@@ -1,3 +1,10 @@
+2.3.0 (unreleased)
+------------------
+
+- Avoid linear walk to detect children, this should greatly improve
+  performance when a target has a large number of dependencies (#2959,
+  @ejgallego, @aalekseyev, @Armael)
+
 2.2.0 (06/02/2020)
 ------------------
 

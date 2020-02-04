@@ -948,10 +948,10 @@
 
 (rule
  (alias github2848)
- (deps (package dune) (source_tree test-cases\github2848))
+ (deps (package dune) (source_tree test-cases/github2848))
  (action
   (chdir
-   test-cases\github2848
+   test-cases/github2848
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule

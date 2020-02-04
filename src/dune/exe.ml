@@ -44,7 +44,8 @@ module Linkage = struct
 
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
 
-  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
+  let of_user_config (ctx : Context.t) ~loc
+      (m : Dune_file.Executables.Link_mode.t) =
     let link_mode : Link_mode.t =
       match m.mode with
       | Byte ->
@@ -75,7 +76,7 @@ module Linkage = struct
       match (same_as_mode, m.kind) with
       | Byte, C -> ".bc.c"
       | Native, C ->
-        User_error.raise ~loc:m.loc
+        User_error.raise ~loc
           [ Pp.text "C file generation only supports bytecode!" ]
       | Byte, Exe -> ".bc"
       | Native, Exe -> ".exe"
@@ -85,7 +86,7 @@ module Linkage = struct
       | Native, Shared_object -> ctx.lib_config.ext_dll
       | Byte, Js -> ".bc.js"
       | Native, Js ->
-        User_error.raise ~loc:m.loc
+        User_error.raise ~loc
           [ Pp.text "Javascript generation only supports bytecode!" ]
     in
     let flags =

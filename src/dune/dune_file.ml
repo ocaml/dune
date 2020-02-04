@@ -1356,7 +1356,6 @@ module Executables = struct
       type t =
         { mode : Mode_conf.t
         ; kind : Binary_kind.t
-        ; loc : Loc.t
         }
 
       let compare a b =
@@ -1369,7 +1368,7 @@ module Executables = struct
 
     include T
 
-    let make mode kind = { mode; kind; loc = Loc.none }
+    let make mode kind = { mode; kind }
 
     let exe = make Best Exe
 
@@ -1409,9 +1408,8 @@ module Executables = struct
         ~then_:
           (enter
              (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode
-              and+ loc = loc in
-              { mode; kind; loc }))
+              and+ kind = Binary_kind.decode in
+              { mode; kind }))
         ~else_:simple
 
     let simple_encode link_mode =
@@ -1423,25 +1421,28 @@ module Executables = struct
       match simple_encode link_mode with
       | Some s -> s
       | None ->
-        let { mode; kind; loc = _ } = link_mode in
+        let { mode; kind } = link_mode in
         Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
 
-    let to_dyn { mode; kind; loc = _ } =
+    let to_dyn { mode; kind } =
       let open Dyn.Encoder in
       record
         [ ("mode", Mode_conf.to_dyn mode); ("kind", Binary_kind.to_dyn kind) ]
 
     module O = Comparable.Make (T)
 
-    module Set = struct
-      include O.Set
+    module Map = struct
+      include O.Map
 
       let decode =
-        located (repeat decode) >>| fun (loc, l) ->
+        located (repeat (located decode)) >>| fun (loc, l) ->
         match l with
         | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
-          let t = of_list l in
+          let t =
+            List.fold_left l ~init:empty ~f:(fun acc (loc, link_mode) ->
+                set acc link_mode loc)
+          in
           if
             (mem t native_exe && mem t exe)
             || (mem t native_object && mem t object_)
@@ -1455,13 +1456,15 @@ module Executables = struct
           else
             t
 
+      let byte_and_exe = of_list_exn [ (byte, Loc.none); (exe, Loc.none) ]
+
       let default_for_exes ~version =
         if version < (2, 0) then
-          of_list [ byte; exe ]
+          byte_and_exe
         else
-          singleton exe
+          singleton exe Loc.none
 
-      let default_for_tests = of_list [ byte; exe ]
+      let default_for_tests = byte_and_exe
 
       let best_install_mode t = List.find ~f:(mem t) installable_modes
     end
@@ -1471,7 +1474,7 @@ module Executables = struct
     { names : (Loc.t * string) list
     ; link_flags : Ordered_set_lang.Unexpanded.t
     ; link_deps : Dep_conf.t list
-    ; modes : Link_mode.Set.t
+    ; modes : Loc.t Link_mode.Map.t
     ; optional : bool
     ; buildable : Buildable.t
     ; variants : (Loc.t * Variant.Set.t) option
@@ -1498,8 +1501,8 @@ module Executables = struct
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
     and+ modes =
-      field "modes" Link_mode.Set.decode
-        ~default:(Link_mode.Set.default_for_exes ~version:dune_version)
+      field "modes" Link_mode.Map.decode
+        ~default:(Link_mode.Map.default_for_exes ~version:dune_version)
     and+ optional =
       field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
@@ -1541,7 +1544,7 @@ module Executables = struct
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in
       let install_conf =
-        match Link_mode.Set.best_install_mode modes with
+        match Link_mode.Map.best_install_mode modes with
         | None when has_public_name ->
           User_error.raise ~loc:buildable.loc
             [ Pp.textf "No installable mode found for %s."
@@ -2013,8 +2016,8 @@ module Tests = struct
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ modes =
-         field "modes" Executables.Link_mode.Set.decode
-           ~default:Executables.Link_mode.Set.default_for_tests
+         field "modes" Executables.Link_mode.Map.decode
+           ~default:Executables.Link_mode.Map.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = enabled_if ~since:(Some (1, 4))

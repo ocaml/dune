@@ -50,28 +50,32 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let l =
       let has_native = Option.is_some ctx.ocamlopt in
       let modes =
-        let f = function
-          | { L.kind = Js; _ } -> true
-          | _ -> false
+        let add_if_not_already_present modes mode loc =
+          match L.Map.add exes.modes mode loc with
+          | Ok modes -> modes
+          | Error _ -> modes
         in
-        if L.Set.exists exes.modes ~f then
-          L.Set.add exes.modes L.byte_exe
-        else if (not explicit_js_mode) && L.Set.mem exes.modes L.byte_exe then
-          L.Set.add exes.modes L.js
-        else
-          exes.modes
+        match L.Map.find exes.modes L.js with
+        | Some loc -> add_if_not_already_present exes.modes L.byte_exe loc
+        | None ->
+          if not explicit_js_mode then
+            match L.Map.find exes.modes L.byte_exe with
+            | Some loc -> add_if_not_already_present exes.modes L.js loc
+            | None -> exes.modes
+          else
+            exes.modes
       in
-      List.filter_map (L.Set.to_list modes) ~f:(fun (mode : L.t) ->
+      List.filter_map (L.Map.to_list modes) ~f:(fun ((mode : L.t), loc) ->
           match (has_native, mode.mode) with
           | false, Native -> None
-          | _ -> Some (Exe.Linkage.of_user_config ctx mode))
+          | _ -> Some (Exe.Linkage.of_user_config ctx ~loc mode))
     in
     (* If bytecode was requested but not native or best version, add custom
        linking *)
     if
-      L.Set.mem exes.modes L.byte
-      && (not (L.Set.mem exes.modes L.native))
-      && not (L.Set.mem exes.modes L.exe)
+      L.Map.mem exes.modes L.byte
+      && (not (L.Map.mem exes.modes L.native))
+      && not (L.Map.mem exes.modes L.exe)
     then
       Exe.Linkage.custom ctx :: l
     else
@@ -113,7 +117,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let dynlink =
       (* See https://github.com/ocaml/dune/issues/2527 *)
       true
-      || Dune_file.Executables.Link_mode.Set.exists exes.modes ~f:(fun mode ->
+      || Dune_file.Executables.Link_mode.Map.existsi exes.modes
+           ~f:(fun mode _loc ->
              match mode.kind with
              | Shared_object -> true
              | _ -> false)

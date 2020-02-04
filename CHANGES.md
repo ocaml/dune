@@ -32,6 +32,9 @@
 
 - Do not install vendored packages (#3704, @diml)
 
+- `make` now prints a message explaining the main targets available
+  (#3085, fix #3078, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

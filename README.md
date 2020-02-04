@@ -110,7 +110,7 @@ $ opam install dune
 You can also build it manually with:
 
 ```sh
-$ make
+$ make release
 $ make install
 ```
 

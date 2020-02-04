@@ -165,6 +165,30 @@ module Set = struct
         | Env _ ->
           acc
         | Sandbox_config _ -> acc)
+
+  (* This is to force the rules to be loaded for directories without files when
+     depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
+     directories in directories that contain no file. *)
+  let dir_without_files_dep dir =
+    file_selector (File_selector.create ~dir Predicate.false_)
+
+  let source_tree dir =
+    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
+    match File_tree.find_dir dir with
+    | None -> empty
+    | Some dir ->
+      File_tree.Dir.fold dir ~init:empty ~traverse:Sub_dirs.Status.Set.all
+        ~f:(fun dir acc ->
+          let files = File_tree.Dir.files dir in
+          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
+          match String.Set.is_empty files with
+          | true -> add acc (dir_without_files_dep path)
+          | false ->
+            let paths =
+              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
+                  Path.Set.add acc (Path.relative path fn))
+            in
+            add_paths acc paths)
 end
 
 type eval_pred = File_selector.t -> Path.Set.t

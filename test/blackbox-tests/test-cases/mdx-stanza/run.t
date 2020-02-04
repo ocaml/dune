@@ -24,3 +24,9 @@ You can use the mdx stanza to check your documentation in markdown and mli files
   Error: Files _build/default/README.md and _build/default/README.md.corrected
   differ.
   [1]
+
+Dune should invoke `ocaml-mdx deps` to figure out the files and directories a markdown
+or mli to-be-mdxed file depends upon
+
+  $ dune runtest --root mdx-deps/
+  Entering directory 'mdx-deps'

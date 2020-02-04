@@ -56,18 +56,18 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
           | Error _ -> modes
         in
         match L.Map.find exes.modes L.js with
-        | Some loc -> add_if_not_already_present exes.modes L.byte_exe loc
+        | Some loc -> add_if_not_already_present exes.modes L.byte loc
         | None ->
           if not explicit_js_mode then
-            match L.Map.find exes.modes L.byte_exe with
+            match L.Map.find exes.modes L.byte with
             | Some loc -> add_if_not_already_present exes.modes L.js loc
             | None -> exes.modes
           else
             exes.modes
       in
       List.filter_map (L.Map.to_list modes) ~f:(fun ((mode : L.t), loc) ->
-          match (has_native, mode.mode) with
-          | false, Native -> None
+          match (has_native, mode) with
+          | false, Other { mode = Native; _ } -> None
           | _ -> Some (Exe.Linkage.of_user_config ctx ~loc mode))
     in
     (* If bytecode was requested but not native or best version, add custom
@@ -119,8 +119,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       true
       || Dune_file.Executables.Link_mode.Map.existsi exes.modes
            ~f:(fun mode _loc ->
-             match mode.kind with
-             | Shared_object -> true
+             match mode with
+             | Other { kind = Shared_object; _ } -> true
              | _ -> false)
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir

@@ -18,8 +18,7 @@ module Linkage : sig
   (** Native compilation, extension [.exe] *)
   val native : t
 
-  (** Byte compilation, link with [-custom] or [-output-complete-exe], extension
-      [.exe] *)
+  (** Byte compilation with stubs statically linked in, extension [.exe] *)
   val custom : Context.t -> t
 
   (** [native] if supported, [custom] if not *)

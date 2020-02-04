@@ -1354,21 +1354,28 @@ module Executables = struct
   module Link_mode = struct
     module T = struct
       type t =
-        { mode : Mode_conf.t
-        ; kind : Binary_kind.t
-        }
+        | Byte_complete
+        | Other of
+            { mode : Mode_conf.t
+            ; kind : Binary_kind.t
+            }
 
       let compare a b =
-        match Poly.compare a.mode b.mode with
-        | Eq -> Poly.compare a.kind b.kind
-        | ne -> ne
+        match (a, b) with
+        | Byte_complete, Byte_complete -> Eq
+        | Byte_complete, _ -> Lt
+        | _, Byte_complete -> Gt
+        | Other a, Other b -> (
+          match Poly.compare a.mode b.mode with
+          | Eq -> Poly.compare a.kind b.kind
+          | ne -> ne )
 
       let to_dyn _ = Dyn.opaque
     end
 
     include T
 
-    let make mode kind = { mode; kind }
+    let make mode kind = Other { mode; kind }
 
     let exe = make Best Exe
 
@@ -1376,17 +1383,9 @@ module Executables = struct
 
     let shared_object = make Best Shared_object
 
-    let byte_exe = make Byte Exe
+    let byte = make Byte Exe
 
-    let native_exe = make Native Exe
-
-    let native_object = make Native Object
-
-    let native_shared_object = make Native Shared_object
-
-    let byte = byte_exe
-
-    let native = native_exe
+    let native = make Native Exe
 
     let js = make Byte Js
 
@@ -1399,6 +1398,7 @@ module Executables = struct
       ; ("byte", byte)
       ; ("native", native)
       ; ("js", js)
+      ; ("byte_complete", Byte_complete)
       ]
 
     let simple = Dune_lang.Decoder.enum simple_representations
@@ -1409,7 +1409,7 @@ module Executables = struct
           (enter
              (let+ mode = Mode_conf.decode
               and+ kind = Binary_kind.decode in
-              { mode; kind }))
+              make mode kind))
         ~else_:simple
 
     let simple_encode link_mode =
@@ -1420,14 +1420,54 @@ module Executables = struct
     let encode link_mode =
       match simple_encode link_mode with
       | Some s -> s
-      | None ->
-        let { mode; kind } = link_mode in
-        Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
+      | None -> (
+        match link_mode with
+        | Byte_complete -> assert false
+        | Other { mode; kind } ->
+          Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
+        )
 
-    let to_dyn { mode; kind } =
-      let open Dyn.Encoder in
-      record
-        [ ("mode", Mode_conf.to_dyn mode); ("kind", Binary_kind.to_dyn kind) ]
+    let to_dyn t =
+      match t with
+      | Byte_complete -> Dyn.Variant ("Byte_complete", [])
+      | Other { mode; kind } ->
+        let open Dyn.Encoder in
+        Variant
+          ( "Other"
+          , [ record
+                [ ("mode", Mode_conf.to_dyn mode)
+                ; ("kind", Binary_kind.to_dyn kind)
+                ]
+            ] )
+
+    let extension t ~loc ~ext_obj ~ext_dll =
+      match t with
+      | Byte_complete -> ".bc.exe"
+      | Other { mode; kind } -> (
+        let same_as_mode : Mode.t =
+          match mode with
+          | Byte -> Byte
+          | Native
+          | Best ->
+            (* From the point of view of the extension, [native] and [best] are
+               the same *)
+            Native
+        in
+        match (same_as_mode, kind) with
+        | Byte, C -> ".bc.c"
+        | Native, C ->
+          User_error.raise ~loc
+            [ Pp.text "C file generation only supports bytecode!" ]
+        | Byte, Exe -> ".bc"
+        | Native, Exe -> ".exe"
+        | Byte, Object -> ".bc" ^ ext_obj
+        | Native, Object -> ".exe" ^ ext_obj
+        | Byte, Shared_object -> ".bc" ^ ext_dll
+        | Native, Shared_object -> ext_dll
+        | Byte, Js -> ".bc.js"
+        | Native, Js ->
+          User_error.raise ~loc
+            [ Pp.text "Javascript generation only supports bytecode!" ] )
 
     module O = Comparable.Make (T)
 
@@ -1443,18 +1483,20 @@ module Executables = struct
             List.fold_left l ~init:empty ~f:(fun acc (loc, link_mode) ->
                 set acc link_mode loc)
           in
-          if
-            (mem t native_exe && mem t exe)
-            || (mem t native_object && mem t object_)
-            || (mem t native_shared_object && mem t shared_object)
-          then
+          ( match
+              String.Map.of_list_map (to_list t) ~f:(fun (lm, loc) ->
+                  (extension lm ~loc ~ext_obj:".OBJ" ~ext_dll:".DLL", lm))
+            with
+          | Ok _ -> ()
+          | Error (_ext, (lm1, _), (lm2, _)) ->
             User_error.raise ~loc
               [ Pp.textf
-                  "It is not allowed use both native and best for the same \
-                   binary kind."
-              ]
-          else
-            t
+                  "It is not allowed use both %s and %s together as they use \
+                   the same file extension."
+                  (Dune_lang.to_string (encode lm1))
+                  (Dune_lang.to_string (encode lm2))
+              ] );
+          t
 
       let byte_and_exe = of_list_exn [ (byte, Loc.none); (exe, Loc.none) ]
 
@@ -1559,11 +1601,11 @@ module Executables = struct
         | None -> None
         | Some mode ->
           let ext =
-            match mode.mode with
-            | Native
-            | Best ->
-              ".exe"
-            | Byte -> ".bc"
+            match mode with
+            | Byte_complete
+            | Other { mode = Byte; _ } ->
+              ".bc"
+            | Other { mode = Native | Best; _ } -> ".exe"
           in
           Names.install_conf names ~ext
       in

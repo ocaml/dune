@@ -35,6 +35,10 @@
 - `make` now prints a message explaining the main targets available
   (#3085, fix #3078, @diml)
 
+- Add a `byte_complete` executable mode to build programs as
+  self-contained bytecode programs
+  (#3076, fixes #1519, @diml)
+
 2.1.3 (16/01/2020)
 ------------------
 

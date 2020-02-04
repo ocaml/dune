@@ -254,9 +254,11 @@ end
 module Executables : sig
   module Link_mode : sig
     type t =
-      { mode : Mode_conf.t
-      ; kind : Binary_kind.t
-      }
+      | Byte_complete
+      | Other of
+          { mode : Mode_conf.t
+          ; kind : Binary_kind.t
+          }
 
     include Dune_lang.Conv.S with type t := t
 
@@ -270,13 +272,13 @@ module Executables : sig
 
     val native : t
 
-    val byte_exe : t
-
     val js : t
 
     val compare : t -> t -> Ordering.t
 
     val to_dyn : t -> Dyn.t
+
+    val extension : t -> loc:Loc.t -> ext_obj:string -> ext_dll:string -> string
 
     module Map : Map.S with type key = t
   end

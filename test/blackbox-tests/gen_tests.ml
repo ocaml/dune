@@ -75,7 +75,11 @@ module Test = struct
     }
 
   let alias_name t =
-    match String.split t.path ~on:'/' with
+    (* Make sure we can split Windows paths. *)
+    let dir_sep = Filename.dir_sep in
+    assert (String.length dir_sep == 1);
+    let dir_sep = dir_sep.[0] in
+    match String.split t.path ~on:dir_sep with
     | [] -> assert false
     | dir :: dirs ->
       assert (dir = root_dir);
@@ -128,6 +132,17 @@ module Test = struct
     in
     let enabled_if = Platform.enabled_if t.skip_platforms in
     let dir = dir t in
+    (* Make sure we generate paths with forward slashes even on Windows. *)
+    let dir_sep = Filename.dir_sep in
+    assert (String.length dir_sep == 1);
+    let dir_sep = dir_sep.[0] in
+    let dir =
+      String.map dir ~f:(fun c ->
+          if c == dir_sep then
+            '/'
+          else
+            c)
+    in
     let filename = filename t in
     let action =
       List

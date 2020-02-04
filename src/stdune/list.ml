@@ -181,6 +181,15 @@ let fold_map t ~init ~f =
   in
   (!acc, result)
 
+  let rec interruptible_fold l ~init ~f =
+    match l with
+    | [] -> Ok init
+    | x :: xs -> (
+      let res = f x init in
+      match res with
+      | Ok acc -> interruptible_fold xs ~f ~init:acc
+      | Error _ -> res )
+
 let unzip l =
   fold_right ~init:([], []) ~f:(fun (x, y) (xs, ys) -> (x :: xs, y :: ys)) l
 

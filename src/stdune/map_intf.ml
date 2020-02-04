@@ -49,6 +49,12 @@ module type S = sig
 
   val foldi : 'a t -> init:'b -> f:(key -> 'a -> 'b -> 'b) -> 'b
 
+  val interruptible_fold
+    : 'a t
+    -> init:'b
+    -> f:('a -> 'b -> ('b, 'c) Result.t)
+    -> ('b, 'c) Result.t
+
   val for_all : 'a t -> f:('a -> bool) -> bool
 
   val for_alli : 'a t -> f:(key -> 'a -> bool) -> bool

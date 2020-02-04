@@ -71,6 +71,12 @@ val cons : 'a -> 'a t -> 'a t
 
 val fold_map : 'a list -> init:'b -> f:('b -> 'a -> 'b * 'c) -> 'b * 'c list
 
+val interruptible_fold
+    : 'a list
+    -> init:'b
+    -> f:('a -> 'b -> ('b, 'c) Result.t)
+    -> ('b, 'c) Result.t
+
 val unzip : ('a * 'b) t -> 'a t * 'b t
 
 val for_all2 :

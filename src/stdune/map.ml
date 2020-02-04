@@ -58,6 +58,22 @@ module Make (Key : Key) : S with type key = Key.t = struct
 
   let fold t ~init ~f = foldi t ~init ~f:(fun _ x acc -> f x acc)
 
+  let interruptible_fold t ~init ~f =
+    let exception Break_fold in
+    let break_data = ref None in
+    let f data acc =
+      match f data acc with
+      | Ok acc -> acc
+      | Error res ->
+        break_data := Some res;
+        raise Break_fold
+    in
+    try
+      Ok (fold t ~init ~f)
+    with
+    | Break_fold ->
+      Error (Option.value_exn !break_data)
+
   let for_alli t ~f = for_all t ~f
 
   let for_all t ~f = for_alli t ~f:(fun _ x -> f x)

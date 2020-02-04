@@ -25,7 +25,17 @@ type coq_context =
   ; coqpp : Action.program
   }
 
-let parse_coqdep ~coq_module (lines : string list) =
+(* the internal boot flag determines if the Coq "standard library" is
+   being built, in case we need to explictly tell Coq where the build
+   artifacts are and add `Init.Prelude.vo` as a dependency; there is a
+   further special case when compiling the prelude, in this case we
+   also need to tell Coq not to try to load the prelude. *)
+type coq_bootstrap_type =
+  | No_boot
+  | Bootstrap
+  | Bootstrap_prelude
+
+let parse_coqdep ~boot_type ~coq_module (lines : string list) =
   if coq_debug then Format.eprintf "Parsing coqdep @\n%!";
   let source = Coq_module.source coq_module in
   let invalid p =
@@ -60,12 +70,34 @@ let parse_coqdep ~coq_module (lines : string list) =
     let deps = String.extract_blank_separated_words deps in
     if coq_debug then
       Format.eprintf "deps for %a: %a@\n%!" Path.Build.pp source
-        Fmt.(list text)
-        deps;
-    deps
+        Fmt.(list text) deps;
+    (* Add prelude deps for when stdlib is in scope and we are not
+       actually compiling the prelude *)
+    match boot_type with
+    | No_boot | Bootstrap_prelude ->
+      deps
+    | Bootstrap ->
+      "Init/Prelude.vo" :: deps
+
+let get_bootstrap_type ~boot coq_module =
+  match boot with
+  | false -> No_boot
+  | true ->
+    (* This is inside as an optimization, TODO; replace with per_file flags *)
+    let init = Option.equal String.equal (List.nth_opt (Coq_module.prefix coq_module) 0) (Some "Init") in
+    match init with
+    | false -> Bootstrap
+    | true -> Bootstrap_prelude
+
+let flags_of_bootstrap_type ~boot_type ~obj_dir =
+  let open Command in
+  match boot_type with
+  | No_boot -> []
+  | Bootstrap -> [Args.A "-coqlib"; Args.Path (Path.build obj_dir)]
+  | Bootstrap_prelude -> [Args.A "-coqlib"; Args.Path (Path.build obj_dir); Args.A "-noinit"]
 
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
-    ~mlpack_rule coq_module =
+    ~mlpack_rule ~boot coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
@@ -77,6 +109,8 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   let dir = Path.build dir in
   let file_flags = file_flags @ [ Command.Args.Dep (Path.build source) ] in
   let cd_arg = Command.Args.As [ "-dyndep"; "opt" ] :: file_flags in
+  let cd_arg = if boot then Command.Args.As ["-boot"] :: cd_arg else cd_arg in
+
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let coqdep_rule =
     (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
@@ -85,14 +119,20 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     >>> Build.with_no_targets source_rule
     >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
   in
+
+  let boot_type = get_bootstrap_type ~boot coq_module in
+
   (* Process coqdep and generate rules *)
   let deps_of : unit Build.t =
     Build.dyn_paths_unit
       (Build.map
          (Build.lines_of (Path.build stdout_to))
          ~f:(fun x ->
-           List.map ~f:(Path.relative dir) (parse_coqdep ~coq_module x)))
+           List.map ~f:(Path.relative dir) (parse_coqdep ~boot_type ~coq_module x)))
   in
+
+  let file_flags = flags_of_bootstrap_type ~boot_type ~obj_dir @ file_flags in
+
   let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
   [ coqdep_rule
@@ -168,10 +208,11 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let lib_db = Scope.libs scope in
   let ml_iflags, mlpack_rule = setup_ml_deps ~lib_db s.libraries in
   let file_flags = [ ml_iflags; Command.Args.As [ "-R"; "."; wrapper_name ] ] in
+  let boot = s.boot in
   List.concat_map
     ~f:
       (setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
-         ~mlpack_rule)
+         ~mlpack_rule ~boot)
     coq_modules
 
 (* This is here for compatibility with Coq < 8.11, which expects plugin files to

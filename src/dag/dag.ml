@@ -29,6 +29,11 @@ module Make (Value : Value) : S with type value := Value.t = struct
 
     type vertex = node
 
+    module Vertex_set = struct
+      type t = vertex list
+      let interruptible_fold = List.interruptible_fold
+    end
+
     let new_mark g =
       let m = g.fresh_mark in
       g.fresh_mark <- g.fresh_mark + 1;

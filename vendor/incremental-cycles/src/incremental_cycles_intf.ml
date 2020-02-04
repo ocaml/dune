@@ -7,6 +7,16 @@ module type Raw_graph = sig
   (** The type of vertices of the graph. *)
   type vertex
 
+  module Vertex_set : sig
+    type t
+
+    val interruptible_fold
+      : t
+      -> init:'b
+      -> f:(vertex -> 'b -> ('b, 'c) result)
+      -> ('b, 'c) result
+  end
+
   (** The type of marks (each vertex has an associated mark). *)
   type mark
 
@@ -22,7 +32,7 @@ module type Raw_graph = sig
   val vertex_eq : vertex -> vertex -> bool
 
   (** [get_outgoing g v] returns the list of successors of [v] in the graph. *)
-  val get_outgoing : graph -> vertex -> vertex list
+  val get_outgoing : graph -> vertex -> Vertex_set.t
 
   (** [raw_add_edge g v w] inserts a new (directed) arc between vertices [v] and
      [w].
@@ -75,7 +85,7 @@ module type Raw_graph = sig
       It corresponds to either the default value for a newly created vertex
      (i.e. the empty list, see [raw_add_vertex]), or the result of previous
      calls to [clear_incoming] and [add_incoming]. *)
-  val get_incoming : graph -> vertex -> vertex list
+  val get_incoming : graph -> vertex -> Vertex_set.t
 
   (** [clear_incoming g v] sets the list of "incoming" vertices of [v] to be the
      empty list. *)

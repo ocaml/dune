@@ -18,11 +18,17 @@ utop
 
 -include Makefile.dev
 
+help:
+	@cat doc/make-help.txt
+
 release: $(BIN)
 	$(BIN) build -p dune --profile dune-bootstrap
 
 dune.exe: bootstrap.ml boot/libs.ml boot/duneboot.ml
 	ocaml bootstrap.ml
+
+dev: $(BIN)
+	$(BIN) build @install
 
 all: $(BIN)
 	$(BIN) build

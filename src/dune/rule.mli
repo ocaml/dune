@@ -69,13 +69,11 @@ type t = private
   ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
-  ; info : Info.t  (** Directory where all the targets are produced *)
-  ; dir : Path.Build.t
+  ; info : Info.t
+  ; (* Directory where all the targets are produced. *) dir : Path.Build.t
   }
 
 module Set : Set.S with type elt = t
-
-val compare : t -> t -> Ordering.t
 
 val equal : t -> t -> bool
 

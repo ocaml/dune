@@ -1843,7 +1843,7 @@ module Evaluated_rule = struct
   module Set = O.Set
   include T
 
-  let rules_for_deps rules deps : t list =
+  let rules_for_deps rules deps =
     Dep.Set.paths deps ~eval_pred
     |> Path.Set.fold ~init:Set.empty ~f:(fun path acc ->
            match
@@ -1874,25 +1874,25 @@ let evaluate_rules ~recursive ~request =
           in
           rules := Rule.Id.Map.set !rules rule.id rule;
           if recursive then
-            Dep.Set.parallel_iter_files deps ~f:proc_rule ~eval_pred
+            Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred
           else
             Fiber.return ()
-      and proc_rule dep =
+      and run_dep dep =
         match get_rule_other dep with
         | None -> Fiber.return () (* external files *)
         | Some rule -> run_rule rule
       in
       let rule_shim = shim_of_build_goal request in
-      let* _act, goal = evaluate_rule rule_shim in
-      let+ () = Dep.Set.parallel_iter_files goal ~f:proc_rule ~eval_pred in
+      let* (_ : Action.t), deps = evaluate_rule rule_shim in
+      let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred in
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->
             Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-                Path.Build.Map.set acc fn r))
+                Path.Build.Map.add_exn acc fn r))
       in
       match
         Rule.Id.Top_closure.top_closure
-          (Evaluated_rule.rules_for_deps rules goal)
+          (Evaluated_rule.rules_for_deps rules deps)
           ~key:(fun r -> r.Evaluated_rule.id)
           ~deps:(fun r -> Evaluated_rule.rules_for_deps rules r.deps)
       with
@@ -1922,8 +1922,8 @@ end = struct
 
   let rules_for_targets targets =
     Rule.Id.Top_closure.top_closure (rules_for_deps targets)
-      ~key:(fun (r : Rule.t) -> r.id)
-      ~deps:(fun (r : Rule.t) ->
+      ~key:(fun r -> r.Rule.id)
+      ~deps:(fun r ->
         Build.static_deps r.action.build
         |> Static_deps.paths ~eval_pred
         |> rules_for_deps)

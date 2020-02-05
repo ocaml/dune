@@ -14,6 +14,7 @@ mkdir -p cmdliner/src
     cd $TMP
     git clone https://github.com/dbuenzli/cmdliner.git
     cd cmdliner
+    git checkout $version
     dune subst
     cd src
 )

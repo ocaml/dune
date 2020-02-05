@@ -60,9 +60,7 @@ module Make (Value : Value) : S with type value := Value.t = struct
     let set_parent _ v p = v.info.parent <- Some p
 
     let raw_add_edge _ v w =
-      v.info.deps <- w :: v.info.deps;
-      if v.info.level = w.info.level then
-        w.info.rev_deps <- v :: w.info.rev_deps
+      v.info.deps <- w :: v.info.deps
 
     let raw_add_vertex _ _ = ()
   end

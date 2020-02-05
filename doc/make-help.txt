@@ -1,0 +1,35 @@
+Welcome to Dune!
+================
+
+For users
+---------
+
+To build dune in release mode, please run:
+
+  $ make release
+
+You can then install dune on your system by typing:
+
+  $ make install
+
+You can pass PREFIX=<dir> to "make install" in order to install Dune
+in a specific directory.
+
+Note that "make release" won't rebuild Dune if you modify it. Use
+"make dev" if you want to modify it.
+
+For developers
+--------------
+
+All the following commands build Dune in development mode, i.e. with
+more warnings enabled. You should build Dune this way if you intend to
+work on Dune.
+
+Here are the following commads you can use:
+
+- make dev       to build the dune binary
+- make test      to build and run the testsuite
+- make doc       to build the Dune manual (requires sphinx)
+- make livedoc   to build the Dune manual and serve it
+
+You can customize the default target by writing a Makefile.dev file.

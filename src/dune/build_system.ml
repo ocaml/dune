@@ -101,24 +101,10 @@ module Internal_rule = struct
   module T : sig
     type t = private
       { id : Id.t
-      ; context : Context.t option
-      ; action : Action.t Build.With_targets.t
-      ; mode : Rule.Mode.t
-      ; info : Rule.Info.t
-      ; dir : Path.Build.t
-      ; env : Env.t option
-      ; locks : Path.t list
+      ; rule : Pre_rule.t
       }
 
-    val create :
-         context:Context.t option
-      -> action:Action.t Build.With_targets.t
-      -> mode:Rule.Mode.t
-      -> info:Rule.Info.t
-      -> dir:Path.Build.t
-      -> env:Env.t option
-      -> locks:Path.t list
-      -> t
+    val create : Pre_rule.t -> t
 
     val compare : t -> t -> Ordering.t
 
@@ -126,32 +112,23 @@ module Internal_rule = struct
   end = struct
     type t =
       { id : Id.t
-      ; context : Context.t option
-      ; action : Action.t Build.With_targets.t
-      ; mode : Rule.Mode.t
-      ; info : Rule.Info.t
-      ; dir : Path.Build.t
-      ; env : Env.t option
-      ; locks : Path.t list
+      ; rule : Pre_rule.t
       }
 
-    let create ~context ~action ~mode ~info ~dir ~env ~locks =
-      { id = Id.gen ()
-      ; context
-      ; action = Build.With_targets.memoize "Internal_rule.create" action
-      ; mode
-      ; info
-      ; dir
-      ; env
-      ; locks
-      }
+    let create (rule : Pre_rule.t) =
+      let rule =
+        { rule with
+          action = Build.With_targets.memoize "Internal_rule.create" rule.action
+        }
+      in
+      { id = Id.gen (); rule }
 
     let compare a b = Id.compare a.id b.id
 
     let to_dyn t : Dyn.t =
       Record
         [ ("id", Id.to_dyn t.id)
-        ; ("loc", Dyn.Encoder.option Loc.to_dyn (Rule.Info.loc t.info))
+        ; ("loc", Dyn.Encoder.option Loc.to_dyn (Rule.Info.loc t.rule.info))
         ]
   end
 
@@ -165,21 +142,28 @@ module Internal_rule = struct
 
   (* Create a shim for the main build goal *)
   let shim_of_build_goal ~action =
-    create ~context:None ~action ~mode:Standard ~info:Internal
-      ~dir:Path.Build.root ~env:None ~locks:[]
+    create
+      { Pre_rule.context = None
+      ; action
+      ; mode = Standard
+      ; info = Internal
+      ; dir = Path.Build.root
+      ; env = None
+      ; locks = []
+      }
 
   let effective_env rule =
-    match (rule.env, rule.context) with
+    match (rule.rule.env, rule.rule.context) with
     | None, None -> Env.initial
     | Some e, _ -> e
     | None, Some c -> c.env
 end
 
 let rule_deps (t : Internal_rule.t) =
-  (Build.static_deps t.action.build).rule_deps
+  (Build.static_deps t.rule.action.build).rule_deps
 
 let static_action_deps (t : Internal_rule.t) =
-  (Build.static_deps t.action.build).action_deps
+  (Build.static_deps t.rule.action.build).action_deps
 
 module Alias0 = struct
   include Alias
@@ -525,7 +509,7 @@ let add_rules_exn t rules =
 
 let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
   let describe (rule : Internal_rule.t) =
-    match rule.info with
+    match rule.rule.info with
     | From_dune_file { start; _ } ->
       start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
     | Internal -> "<internal location>"
@@ -539,7 +523,7 @@ let report_rule_conflict fn (rule' : Internal_rule.t) (rule : Internal_rule.t) =
     ; Pp.textf "- %s" (describe rule)
     ]
     ~hints:
-      ( match (rule.info, rule'.info) with
+      ( match (rule.rule.info, rule'.rule.info) with
       | Source_file_copy, _
       | _, Source_file_copy ->
         [ Pp.textf "rm -f %s"
@@ -675,9 +659,7 @@ module rec Load_rules : sig
 end = struct
   open Load_rules
 
-  let compile_rule pre_rule =
-    let { Pre_rule.context; env; action; mode; locks; info; dir } = pre_rule in
-    Internal_rule.create ~action ~context ~env ~locks ~mode ~info ~dir
+  let compile_rule = Internal_rule.create
 
   let create_copy_rules ~ctx_dir ~non_target_source_files =
     Path.Source.Set.to_list non_target_source_files
@@ -693,9 +675,9 @@ end = struct
   let compile_rules ~dir rules =
     List.concat_map rules ~f:(fun rule ->
         let rule = compile_rule rule in
-        assert (Path.Build.( = ) dir rule.Internal_rule.dir);
-        List.map (Path.Build.Set.to_list rule.action.targets) ~f:(fun target ->
-            (target, rule)))
+        assert (Path.Build.( = ) dir rule.Internal_rule.rule.dir);
+        List.map (Path.Build.Set.to_list rule.rule.action.targets)
+          ~f:(fun target -> (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
   (* Here we are doing a O(log |S|) lookup in a set S of files in the build
@@ -1265,7 +1247,7 @@ end = struct
   let evaluate_action_and_dynamic_deps_memo =
     let f (rule : Internal_rule.t) =
       let+ () = build_deps (rule_deps rule) in
-      Build.exec rule.action.build
+      Build.exec rule.rule.action.build
     in
     Memo.create "evaluate-action-and-dynamic-deps"
       ~output:(Simple (module Action_and_deps))
@@ -1363,12 +1345,12 @@ end = struct
       | () -> () )
 
   let compute_rule_digest (rule : Internal_rule.t) ~deps ~action ~sandbox_mode =
-    let targets_as_list = Path.Build.Set.to_list rule.action.targets in
+    let targets_as_list = Path.Build.Set.to_list rule.rule.action.targets in
     let env = Internal_rule.effective_env rule in
     let trace =
       ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
-      , Option.map rule.context ~f:(fun c -> c.name)
+      , Option.map rule.rule.context ~f:(fun c -> c.name)
       , Action.for_shell action )
     in
     Digest.generic trace
@@ -1379,14 +1361,9 @@ end = struct
 
   let execute_rule_impl rule =
     let t = t () in
-    let { Internal_rule.dir
-        ; env = _
-        ; context
-        ; mode
-        ; locks
+    let { Internal_rule.rule =
+            { Pre_rule.dir; env = _; context; mode; locks; action; info }
         ; id = _
-        ; action
-        ; info
         } =
       rule
     in
@@ -1614,7 +1591,7 @@ end = struct
               when not do_not_memoize ->
               let report msg =
                 let targets =
-                  Path.Build.Set.to_list rule.action.targets
+                  Path.Build.Set.to_list rule.rule.action.targets
                   |> List.map ~f:Path.Build.to_string
                   |> String.concat ~sep:", "
                 in
@@ -1772,7 +1749,7 @@ end = struct
               Memo.Stack_frame.as_instance_of frame
                 ~of_:evaluate_action_and_dynamic_deps_memo)
         |> Option.bind ~f:(fun (rule : Internal_rule.t) ->
-               Rule.Info.loc rule.info))
+               Rule.Info.loc rule.rule.info))
 end
 
 open Exported
@@ -1969,10 +1946,10 @@ end = struct
             let* action, deps = evaluate_rule rule in
             let rule =
               { Rule.id = rule.id
-              ; dir = rule.dir
+              ; dir = rule.rule.dir
               ; deps
-              ; targets = rule.action.targets
-              ; context = rule.context
+              ; targets = rule.rule.action.targets
+              ; context = rule.rule.context
               ; action
               }
             in
@@ -2033,7 +2010,7 @@ end = struct
     Internal_rule.Id.Top_closure.top_closure (rules_for_files targets)
       ~key:(fun (r : Internal_rule.t) -> r.id)
       ~deps:(fun (r : Internal_rule.t) ->
-        Build.static_deps r.action.build
+        Build.static_deps r.rule.action.build
         |> Static_deps.paths ~eval_pred
         |> rules_for_files)
     |> function
@@ -2044,7 +2021,8 @@ end = struct
         ; Pp.chain cycle ~f:(fun rule ->
               Pp.verbatim
                 (Path.to_string_maybe_quoted
-                   (Path.build (Path.Build.Set.choose_exn rule.action.targets))))
+                   (Path.build
+                      (Path.Build.Set.choose_exn rule.rule.action.targets))))
         ]
 
   let all_lib_deps ~request =
@@ -2053,14 +2031,16 @@ end = struct
     let rules = rules_for_targets targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
-          let deps = Build.lib_deps rule.Internal_rule.action.build in
+          let deps = Build.lib_deps rule.Internal_rule.rule.action.build in
           (rule, deps))
     in
     List.fold_left lib_deps ~init:[] ~f:(fun acc (rule, deps) ->
         if Lib_name.Map.is_empty deps then
           acc
         else
-          match Path.Build.extract_build_context rule.Internal_rule.dir with
+          match
+            Path.Build.extract_build_context rule.Internal_rule.rule.dir
+          with
           | None -> acc
           | Some (context, p) ->
             let context = Context_name.of_string context in

@@ -77,16 +77,6 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 
-(* Create a shim for the main build goal. *)
-let shim_of_build_goal request =
-  let request =
-    let open Build.O in
-    let+ () = request in
-    Action.empty
-  in
-  Rule.make ~context:None ~env:None ~dir:Path.Build.root
-    (Build.with_no_targets request)
-
 module Alias0 = struct
   include Alias
 
@@ -1674,7 +1664,7 @@ let build_request ~request =
     let+ res = request in
     Fdecl.set result res
   in
-  let rule = shim_of_build_goal request in
+  let rule = Rule.shim_of_build_goal request in
   let+ _act, _deps = evaluate_rule_and_wait_for_dependencies rule in
   Fdecl.get result
 
@@ -1859,7 +1849,7 @@ let evaluate_rules ~recursive ~request =
         | None -> Fiber.return () (* external files *)
         | Some rule -> run_rule rule
       in
-      let rule_shim = shim_of_build_goal request in
+      let rule_shim = Rule.shim_of_build_goal request in
       let* (_ : Action.t), deps = evaluate_rule rule_shim in
       let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred in
       let rules =

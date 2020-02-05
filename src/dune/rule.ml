@@ -79,7 +79,7 @@ module O = Comparable.Make (T)
 module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
-    ~env ?(locks = []) ?(info = Info.Internal) ?dir action =
+    ~env ?(locks = []) ?(info = Info.Internal) action =
   let open Build.With_targets.O in
   let action =
     Build.With_targets.memoize "Rule.make"
@@ -87,33 +87,30 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
   in
   let targets = action.targets in
   let dir =
-    match dir with
-    | Some dir -> dir
+    match Path.Build.Set.choose targets with
     | None -> (
-      match Path.Build.Set.choose targets with
-      | None -> (
+      match info with
+      | From_dune_file loc ->
+        User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
+      | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [] )
+    | Some x ->
+      let dir = Path.Build.parent_exn x in
+      ( if
+        Path.Build.Set.exists targets ~f:(fun path ->
+            Path.Build.( <> ) (Path.Build.parent_exn path) dir)
+      then
         match info with
+        | Internal
+        | Source_file_copy ->
+          Code_error.raise "rule has targets in different directories"
+            [ ("targets", Path.Build.Set.to_dyn targets) ]
         | From_dune_file loc ->
-          User_error.raise ~loc [ Pp.text "Rule has no targets specified" ]
-        | _ -> Code_error.raise "Build_interpret.Rule.make: no targets" [] )
-      | Some x ->
-        let dir = Path.Build.parent_exn x in
-        ( if
-          Path.Build.Set.exists targets ~f:(fun path ->
-              Path.Build.( <> ) (Path.Build.parent_exn path) dir)
-        then
-          match info with
-          | Internal
-          | Source_file_copy ->
-            Code_error.raise "rule has targets in different directories"
-              [ ("targets", Path.Build.Set.to_dyn targets) ]
-          | From_dune_file loc ->
-            User_error.raise ~loc
-              [ Pp.text "Rule has targets in different directories.\nTargets:"
-              ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
-                    Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
-              ] );
-        dir )
+          User_error.raise ~loc
+            [ Pp.text "Rule has targets in different directories.\nTargets:"
+            ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun p ->
+                  Pp.verbatim (Path.to_string_maybe_quoted (Path.build p)))
+            ] );
+      dir
   in
   { id = Id.gen (); context; env; action; mode; locks; info; dir }
 
@@ -147,3 +144,22 @@ let effective_env t =
 let rule_deps t = (Build.static_deps t.action.build).rule_deps
 
 let static_action_deps t = (Build.static_deps t.action.build).action_deps
+
+(* CR-soon amokhov: Build [request] directly instead of going via a fake rule. *)
+let shim_of_build_goal request =
+  let request =
+    let open Build.O in
+    let+ () = request in
+    Action.empty
+  in
+  { id = Id.gen ()
+  ; context = None
+  ; dir = Path.Build.root
+  ; env = None
+  ; action =
+      Build.With_targets.memoize "Rule.shim_of_build_goal"
+        (Build.with_no_targets request)
+  ; mode = Mode.Standard
+  ; locks = []
+  ; info = Info.Internal
+  }

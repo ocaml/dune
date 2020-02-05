@@ -82,7 +82,6 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
-  -> ?dir:Path.Build.t
   -> Action.t Build.With_targets.t
   -> t
 
@@ -95,3 +94,6 @@ val effective_env : t -> Env.t
 val rule_deps : t -> Dep.Set.t
 
 val static_action_deps : t -> Dep.Set.t
+
+(** Create a shim for the main build goal. *)
+val shim_of_build_goal : unit Build.t -> t

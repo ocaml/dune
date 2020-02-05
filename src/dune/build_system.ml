@@ -77,20 +77,7 @@ end
 
 let files_in_source_tree_to_delete () = Promoted_to_delete.load ()
 
-let rule_loc ~info ~dir =
-  match (info : Rule.Info.t) with
-  | From_dune_file loc -> loc
-  | Internal
-  | Source_file_copy ->
-    let dir = Path.drop_optional_build_context_src_exn (Path.build dir) in
-    let file =
-      match Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file with
-      | Some file -> File_tree.Dune_file.path file
-      | None -> Path.Source.relative dir "_unknown_"
-    in
-    Loc.in_file (Path.source file)
-
-(* Create a shim for the main build goal *)
+(* Create a shim for the main build goal. *)
 let shim_of_build_goal request =
   let request =
     let open Build.O in
@@ -99,17 +86,6 @@ let shim_of_build_goal request =
   in
   Rule.make ~context:None ~env:None ~dir:Path.Build.root
     (Build.with_no_targets request)
-
-let effective_env (rule : Rule.t) =
-  match (rule.env, rule.context) with
-  | None, None -> Env.initial
-  | Some e, _ -> e
-  | None, Some c -> c.env
-
-let rule_deps (t : Rule.t) = (Build.static_deps t.action.build).rule_deps
-
-let static_action_deps (t : Rule.t) =
-  (Build.static_deps t.action.build).action_deps
 
 module Alias0 = struct
   include Alias
@@ -734,7 +710,7 @@ end = struct
       remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
       compiled
 
-  let filter_out_fallback_rules ~to_copy ~dir rules =
+  let filter_out_fallback_rules ~to_copy rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
         match rule.mode with
         | Standard
@@ -767,8 +743,7 @@ end = struct
             let present_targets =
               Path.Source.Set.diff source_files_for_targtes absent_targets
             in
-            User_error.raise
-              ~loc:(rule_loc ~info:rule.info ~dir)
+            User_error.raise ~loc:(Rule.loc rule)
               [ Pp.text
                   "Some of the targets of this fallback rule are present in \
                    the source tree, and some are not. This is not allowed. \
@@ -970,7 +945,7 @@ end = struct
         (* If there are no source files to copy, fallback rules are
            automatically kept *)
         rules
-      | Some (_, to_copy) -> filter_out_fallback_rules ~to_copy ~dir rules
+      | Some (_, to_copy) -> filter_out_fallback_rules ~to_copy rules
     in
     (* Compile the rules and cleanup stale artifacts *)
     let rules =
@@ -1186,7 +1161,7 @@ end = struct
   (* Evaluate a rule and return the action and set of dynamic dependencies *)
   let evaluate_action_and_dynamic_deps_memo =
     let f (rule : Rule.t) =
-      let+ () = build_deps (rule_deps rule) in
+      let+ () = build_deps (Rule.rule_deps rule) in
       Build.exec rule.action.build
     in
     Memo.create "evaluate-action-and-dynamic-deps"
@@ -1239,7 +1214,7 @@ end = struct
 
   let evaluate_rule (rule : Rule.t) =
     let+ action, dynamic_action_deps = evaluate_action_and_dynamic_deps rule in
-    let static_action_deps = static_action_deps rule in
+    let static_action_deps = Rule.static_action_deps rule in
     let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
     (action, action_deps)
 
@@ -1257,7 +1232,7 @@ end = struct
      the final action and set of dynamic dependencies. We do this to increase
      opportunities for parallelism. *)
   let evaluate_rule_and_wait_for_dependencies (rule : Rule.t) =
-    let static_action_deps = static_action_deps rule in
+    let static_action_deps = Rule.static_action_deps rule in
     (* Build the static dependencies in parallel with evaluation the action and
        dynamic dependencies *)
     let* action, dynamic_action_deps =
@@ -1286,7 +1261,7 @@ end = struct
 
   let compute_rule_digest (rule : Rule.t) ~deps ~action ~sandbox_mode =
     let targets_as_list = Path.Build.Set.to_list rule.action.targets in
-    let env = effective_env rule in
+    let env = Rule.effective_env rule in
     let trace =
       ( Dep.Set.trace deps ~sandbox_mode ~env ~eval_pred
       , List.map targets_as_list ~f:(fun p -> Path.to_string (Path.build p))
@@ -1311,8 +1286,8 @@ end = struct
     let* action, deps = evaluate_rule_and_wait_for_dependencies rule in
     Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
-    let env = effective_env rule in
-    let rule_loc = rule_loc ~info ~dir in
+    let env = Rule.effective_env rule in
+    let rule_loc = Rule.loc rule in
     let is_action_dynamic = Action.is_dynamic action in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
@@ -1753,7 +1728,7 @@ let package_deps pkg files =
         acc
       else (
         rules_seen := Rule.Set.add !rules_seen ir;
-        let static_action_deps = static_action_deps ir in
+        let static_action_deps = Rule.static_action_deps ir in
         (* We know that at this point of execution, all the relevant ivars have
            been filled so the following call to [Memo.peek_exn] cannot raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
@@ -1855,6 +1830,8 @@ module Evaluated_rule = struct
     |> Set.to_list
 end
 
+module Rule_top_closure = Top_closure.Make (Rule.Id.Set) (Monad.Id)
+
 let evaluate_rules ~recursive ~request =
   entry_point_sync ~f:(fun () ->
       let rules = ref Rule.Id.Map.empty in
@@ -1888,10 +1865,10 @@ let evaluate_rules ~recursive ~request =
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->
             Path.Build.Set.fold r.targets ~init:acc ~f:(fun fn acc ->
-                Path.Build.Map.add_exn acc fn r))
+                Path.Build.Map.set acc fn r))
       in
       match
-        Rule.Id.Top_closure.top_closure
+        Rule_top_closure.top_closure
           (Evaluated_rule.rules_for_deps rules deps)
           ~key:(fun r -> r.Evaluated_rule.id)
           ~deps:(fun r -> Evaluated_rule.rules_for_deps rules r.deps)
@@ -1913,20 +1890,20 @@ end = struct
   let static_deps_of_request request =
     Static_deps.paths @@ Build.static_deps request
 
-  let rules_for_deps paths =
+  let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
         match get_rule_other path with
         | None -> acc
         | Some rule -> rule :: acc)
     |> Rule.Set.of_list |> Rule.Set.to_list
 
-  let rules_for_targets targets =
-    Rule.Id.Top_closure.top_closure (rules_for_deps targets)
+  let rules_for_transitive_closure targets =
+    Rule_top_closure.top_closure (rules_for_files targets)
       ~key:(fun r -> r.Rule.id)
       ~deps:(fun r ->
         Build.static_deps r.action.build
         |> Static_deps.paths ~eval_pred
-        |> rules_for_deps)
+        |> rules_for_files)
     |> function
     | Ok l -> l
     | Error cycle ->
@@ -1941,7 +1918,7 @@ end = struct
   let all_lib_deps ~request =
     let t = t () in
     let targets = static_deps_of_request request ~eval_pred in
-    let rules = rules_for_targets targets in
+    let rules = rules_for_transitive_closure targets in
     let lib_deps =
       List.map rules ~f:(fun rule ->
           let deps = Build.lib_deps rule.Rule.action.build in

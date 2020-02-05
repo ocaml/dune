@@ -47,11 +47,7 @@ module Mode = struct
     | Ignore_source_files
 end
 
-module Id = struct
-  include Id.Make ()
-
-  module Top_closure = Top_closure.Make (Set) (Monad.Id)
-end
+module Id = Id.Make ()
 
 module T = struct
   type t =
@@ -128,3 +124,26 @@ let with_prefix t ~build =
       Build.With_targets.memoize "Rule.with_prefix"
         (Build.with_no_targets build >>> t.action))
   }
+
+let loc t =
+  match (t.info : Info.t) with
+  | From_dune_file loc -> loc
+  | Internal
+  | Source_file_copy ->
+    let dir = Path.drop_optional_build_context_src_exn (Path.build t.dir) in
+    let file =
+      match Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file with
+      | Some file -> File_tree.Dune_file.path file
+      | None -> Path.Source.relative dir "_unknown_"
+    in
+    Loc.in_file (Path.source file)
+
+let effective_env t =
+  match (t.env, t.context) with
+  | None, None -> Env.initial
+  | Some e, _ -> e
+  | None, Some c -> c.env
+
+let rule_deps t = (Build.static_deps t.action.build).rule_deps
+
+let static_action_deps t = (Build.static_deps t.action.build).action_deps

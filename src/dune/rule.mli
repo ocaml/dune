@@ -53,13 +53,7 @@ module Id : sig
 
   module Map : Map.S with type key = t
 
-  module Top_closure : sig
-    val top_closure :
-         key:('a -> t)
-      -> deps:('a -> 'a list)
-      -> 'a list
-      -> ('a list, 'a list) Stdune.result
-  end
+  module Set : Set.S with type elt = t
 end
 
 type t = private
@@ -93,3 +87,11 @@ val make :
   -> t
 
 val with_prefix : t -> build:unit Build.t -> t
+
+val loc : t -> Loc.t
+
+val effective_env : t -> Env.t
+
+val rule_deps : t -> Dep.Set.t
+
+val static_action_deps : t -> Dep.Set.t

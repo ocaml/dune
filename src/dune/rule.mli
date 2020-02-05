@@ -46,15 +46,34 @@ module Mode : sig
     | Ignore_source_files
 end
 
-type t =
-  { context : Context.t option
+module Id : sig
+  type t
+
+  val compare : t -> t -> Ordering.t
+
+  module Map : Map.S with type key = t
+
+  module Set : Set.S with type elt = t
+end
+
+type t = private
+  { id : Id.t
+  ; context : Context.t option
   ; env : Env.t option
   ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
   ; locks : Path.t list
-  ; info : Info.t  (** Directory where all the targets are produced *)
-  ; dir : Path.Build.t
+  ; info : Info.t
+  ; (* Directory where all the targets are produced. *) dir : Path.Build.t
   }
+
+module Set : Set.S with type elt = t
+
+val equal : t -> t -> bool
+
+val hash : t -> int
+
+val to_dyn : t -> Dyn.t
 
 val make :
      ?sandbox:Sandbox_config.t
@@ -65,3 +84,16 @@ val make :
   -> ?info:Info.t
   -> Action.t Build.With_targets.t
   -> t
+
+val with_prefix : t -> build:unit Build.t -> t
+
+val loc : t -> Loc.t
+
+val effective_env : t -> Env.t
+
+val rule_deps : t -> Dep.Set.t
+
+val static_action_deps : t -> Dep.Set.t
+
+(** Create a shim for the main build goal. *)
+val shim_of_build_goal : unit Build.t -> t

@@ -27,7 +27,7 @@ let man =
 
 let info = Term.info "rules" ~doc ~man
 
-let print_rule_makefile ppf (rule : Build_system.Rule.t) =
+let print_rule_makefile ppf (rule : Build_system.Evaluated_rule.t) =
   let action =
     Action.For_shell.Progn
       [ Mkdir (Path.to_string (Path.build rule.dir))
@@ -45,7 +45,7 @@ let print_rule_makefile ppf (rule : Build_system.Rule.t) =
           Format.fprintf ppf "@ %s" (Path.to_string dep)))
     Pp.render_ignore_tags (Action_to_sh.pp action)
 
-let print_rule_sexp ppf (rule : Build_system.Rule.t) =
+let print_rule_sexp ppf (rule : Build_system.Evaluated_rule.t) =
   let sexp_of_action action =
     Action.for_shell action |> Action.For_shell.encode
   in

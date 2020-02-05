@@ -43,9 +43,9 @@ Test that deprecated library names can be installed
 Note that at this point the library "b" does not exist, so this also
 tests that the "old_public_name" field is evaluated lazily
 
-  $ cd a
+  $ (cd a
   > dune build @install --root .
-  > dune install --prefix $PWD/../_install
+  > dune install --prefix $PWD/../_install)
   Installing $TESTCASE_ROOT/a/../_install/lib/a/META
   Installing $TESTCASE_ROOT/a/../_install/lib/a/dune-package
 
@@ -62,9 +62,9 @@ tests that the "old_public_name" field is evaluated lazily
 Now we install "b". We do need to install it as an installed
 deprecated library will be resolved in the installed world only.
 
-  $ cd b
+  $ (cd b
   > dune build @install --root .
-  > dune install --prefix $PWD/../_install
+  > dune install --prefix $PWD/../_install)
   Installing $TESTCASE_ROOT/b/../_install/lib/b/META
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b$ext_lib
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cma
@@ -125,7 +125,7 @@ First the motivating case.
   >  (new_public_name menhir.sdk))
   > EOF
 
-  $ cd d && dune build --root . @install
+  $ (cd d && dune build --root . @install)
 
   $ find d/_build/install/default -name 'META' | sort
   d/_build/install/default/lib/dummy/META
@@ -177,7 +177,7 @@ Check that we can use the short name in library dependencies.
   >  (modules use))
   > EOF
 
-  $ cd d && dune build --root . @all
+  $ (cd d && dune build --root . @all)
 
 Checks that we can migrate top-level libraries across packages.
 
@@ -198,7 +198,7 @@ Checks that we can migrate top-level libraries across packages.
   >  (new_public_name q.bar))
   > EOF
 
-  $ cd d && dune build --root . @install
+  $ (cd d && dune build --root . @install)
 
   $ cat d/_build/install/default/lib/top1/META
   requires = "q.bar"
@@ -217,7 +217,7 @@ old public name:
   >  (new_public_name q.top2))
   > EOF
 
-  $ cd d && dune build --root . @all
+  $ (cd d && dune build --root . @all)
 
   $ cat d/_build/install/default/lib/top2/META
   requires = "q.top2"
@@ -240,7 +240,7 @@ We check that there is an error when there is an actual ambiguity:
   >  (new_public_name q.top3))
   > EOF
 
-  $ cd d && dune build --root . @all
+  $ (cd d && dune build --root . @all)
   Error: Library top2 is defined twice:
   - dune:13
   - dune:5
@@ -265,7 +265,7 @@ Another case of ambiguity:
   >  (new_public_name p))
   > EOF
 
-  $ cd d && dune build --root . --display=short @all
+  $ (cd d && dune build --root . --display=short @all)
   Error: Package name p is defined twice:
   - dune-project:3
   - dune-project:2
@@ -289,7 +289,7 @@ Qualified, deprecated old_public_name:
   >  (new_public_name p))
   > EOF
 
-  $ cd d && dune build --root . @all
+  $ (cd d && dune build --root . @all)
 
   $ find d/_build/install/default -name 'META' | sort
   d/_build/install/default/lib/p/META
@@ -330,7 +330,7 @@ Two libraries redirecting to the same library:
   >  (new_public_name p))
   > EOF
 
-  $ cd d && dune build --root . @all
+  $ (cd d && dune build --root . @all)
 
   $ find d/_build/install/default -name 'META' | sort
   d/_build/install/default/lib/p/META
@@ -392,4 +392,4 @@ across projects.
   >  (libraries aa.foo))
   > EOF
 
-  $ cd d/p && dune build --root . @all
+  $ (cd d/p && dune build --root . @all)

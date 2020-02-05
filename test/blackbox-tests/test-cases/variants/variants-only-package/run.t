@@ -1,7 +1,7 @@
 Check that local variant implementations are correctly exported in the list of
 known_implementations implementations when using -p
 
-  $ cd project && dune build -p vlibfoo
+  $ (cd project && dune build -p vlibfoo)
 
   $ cat project/_build/install/default/lib/vlibfoo/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
@@ -26,11 +26,11 @@ Also check that the implementation correctly builds while using -p when part of 
 
   $ cp -r project/_build/ opam
 
-  $ cd project && env OCAMLPATH=../opam/install/default/lib dune build -p implfoo
+  $ (cd project && env OCAMLPATH=../opam/install/default/lib dune build -p implfoo)
 
 And fail if it's not part of the same project.
 
-  $ cd project-2 && env OCAMLPATH=../opam/install/default/lib dune build -p impl2foo
+  $ (cd project-2 && env OCAMLPATH=../opam/install/default/lib dune build -p impl2foo)
   File "impl2foo/dune", line 4, characters 13-20:
   4 |  (implements vlibfoo)
                    ^^^^^^^

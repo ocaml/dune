@@ -46,8 +46,25 @@ module Mode : sig
     | Ignore_source_files
 end
 
-type t =
-  { context : Context.t option
+module Id : sig
+  type t
+
+  val compare : t -> t -> Ordering.t
+
+  module Map : Map.S with type key = t
+
+  module Top_closure : sig
+    val top_closure :
+         key:('a -> t)
+      -> deps:('a -> 'a list)
+      -> 'a list
+      -> ('a list, 'a list) Stdune.result
+  end
+end
+
+type t = private
+  { id : Id.t
+  ; context : Context.t option
   ; env : Env.t option
   ; action : Action.t Build.With_targets.t
   ; mode : Mode.t
@@ -56,6 +73,16 @@ type t =
   ; dir : Path.Build.t
   }
 
+module Set : Set.S with type elt = t
+
+val compare : t -> t -> Ordering.t
+
+val equal : t -> t -> bool
+
+val hash : t -> int
+
+val to_dyn : t -> Dyn.t
+
 val make :
      ?sandbox:Sandbox_config.t
   -> ?mode:Mode.t
@@ -63,5 +90,8 @@ val make :
   -> env:Env.t option
   -> ?locks:Path.t list
   -> ?info:Info.t
+  -> ?dir:Path.Build.t
   -> Action.t Build.With_targets.t
   -> t
+
+val with_prefix : t -> build:unit Build.t -> t

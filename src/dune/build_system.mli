@@ -150,18 +150,10 @@ val files_in_source_tree_to_delete : unit -> Path.Set.t
 
 (** {2 Build rules} *)
 
-(** A fully built rule *)
-module Rule : sig
-  module Id : sig
-    type t
-
-    val to_int : t -> int
-
-    val compare : t -> t -> Ordering.t
-  end
-
+(** A fully evaluated rule. *)
+module Evaluated_rule : sig
   type t =
-    { id : Id.t
+    { id : Rule.Id.t
     ; dir : Path.Build.t
     ; deps : Dep.Set.t
     ; targets : Path.Build.Set.t
@@ -170,10 +162,10 @@ module Rule : sig
     }
 end
 
-(** Return the list of rules used to build the given targets. If [recursive] is
-    [true], return all the rules needed to build the given targets and their
-    transitive dependencies. *)
+(** Return the list of fully evaluated rules used to build the given targets. If
+    [recursive] is [true], also include the rules needed to build the transitive
+    dependencies of the targets. *)
 val evaluate_rules :
-  recursive:bool -> request:unit Build.t -> Rule.t list Fiber.t
+  recursive:bool -> request:unit Build.t -> Evaluated_rule.t list Fiber.t
 
 val get_cache : unit -> caching option

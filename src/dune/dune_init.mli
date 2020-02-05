@@ -32,19 +32,25 @@ module Component : sig
   module Options : sig
     module Common : sig
       type t =
-        { name : string
-        ; libraries : string list
-        ; pps : string list
+        { name : Dune_lang.Atom.t
+        ; libraries : Dune_lang.Atom.t list
+        ; pps : Dune_lang.Atom.t list
         }
     end
 
+    type public_name =
+      | Use_name
+      | Public_name of Dune_lang.Atom.t
+
+    val public_name_to_string : public_name -> string
+
     module Executable : sig
-      type t = { public : string option }
+      type t = { public : public_name option}
     end
 
     module Library : sig
       type t =
-        { public : string option
+        { public : public_name option
         ; inline_tests : bool
         }
     end
@@ -99,7 +105,3 @@ module Component : sig
       ['options] is *)
   val init : 'options t -> unit
 end
-
-val validate_component_name : string -> unit
-
-val print_completion : Kind.t -> string -> unit

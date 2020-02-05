@@ -2,17 +2,79 @@ open Stdune
 open Import
 open Dune.Dune_init
 
+(** {1 Helper functions} *)
+
+(** {2 Validation} *)
+
 (* TODO(shonfeder): Remove when nested subcommands are available *)
 let validate_component_options kind unsupported_options =
   let report_invalid_option = function
     | _, false -> () (* The option wasn't supplied *)
     | option_name, true ->
       User_error.raise
-        [ Pp.textf "The %s component does not support the %s option"
+        [ Pp.textf "The `%s' component does not support the `--%s' option"
             (Kind.to_string kind) option_name
         ]
   in
   List.iter ~f:report_invalid_option unsupported_options
+
+(** {2 Cmdliner Argument Converts }*)
+
+let atom_parser s =
+  match Dune_lang.Atom.of_valid_string s with
+  | Some s -> Ok s
+  | None -> Error (`Msg "expected a valid dune atom")
+
+let component_name_parser s =
+  let err_msg () =
+    User_error.make
+      [ Pp.textf "invalid component name `%s'" s ]
+      ~hints:[ Lib_name.Local.valid_format_doc ]
+    |> User_message.to_string
+    |> fun m -> `Msg m
+  in
+  let open Result.O in
+  let* atom = atom_parser s in
+  let* _ = Lib_name.Local.of_string s |> Result.map_error ~f:err_msg in
+  Ok atom
+
+let atom_conv =
+  let printer ppf atom =
+    Format.pp_print_string ppf (Dune_lang.Atom.to_string atom)
+  in
+  Arg.conv (atom_parser, printer)
+
+let component_name_conv =
+  let printer ppf atom =
+    Format.pp_print_string ppf (Dune_lang.Atom.to_string atom)
+  in
+  Arg.conv (component_name_parser, printer)
+
+let public_name_conv =
+  let open Component.Options in
+  let parser = function
+    | "" -> Ok Use_name
+    | s -> component_name_parser s |> Result.map ~f:(fun a -> Public_name a)
+  in
+  let printer ppf public_name =
+    Format.pp_print_string ppf (public_name_to_string public_name)
+  in
+  Arg.conv (parser, printer)
+
+(** {2 Status reporting} *)
+
+let print_completion kind name =
+  let open Pp.O in
+  Console.print_user_message
+    (User_message.make
+       [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
+         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
+         ++ Pp.tag
+              (Pp.verbatim (Dune_lang.Atom.to_string name))
+              ~tag:User_message.Style.Kwd
+       ])
+
+(** {1 CLI} *)
 
 let doc = "Initialize dune components"
 
@@ -61,25 +123,29 @@ let term =
       required
       & pos 0 (some (enum Kind.commands)) None
       & info [] ~docv:"INIT_KIND")
-  and+ name = Arg.(required & pos 1 (some string) None & info [] ~docv:"NAME")
+  and+ name =
+    Arg.(
+      required & pos 1 (some component_name_conv) None & info [] ~docv:"NAME")
   and+ path = Arg.(value & pos 2 (some string) None & info [] ~docv:"PATH")
   and+ libraries =
     Arg.(
       value
-      & opt (list string) []
+      & opt (list component_name_conv) []
       & info [ "libs" ] ~docv:"LIBRARIES"
-          ~doc:"Libraries on which the component depends")
+          ~doc:
+            "A comma separated list of libraries on which the component depends")
   and+ pps =
     Arg.(
       value
-      & opt (list string) []
+      & opt (list atom_conv) []
       & info [ "ppx" ] ~docv:"PREPROCESSORS"
-          ~doc:"ppx preprocessors used by the component")
+          ~doc:
+            "A comma separated list of ppx preprocessors used by the component")
   and+ public =
     (* TODO(shonfeder): Move to subcommands {lib, exe} once implemented *)
     Arg.(
       value
-      & opt ~vopt:(Some "") (some string) None
+      & opt ~vopt:(Some Component.Options.Use_name) (some public_name_conv) None
       & info [ "public" ] ~docv:"PUBLIC_NAME"
           ~doc:
             "If called with an argument, make the component public under the \
@@ -111,7 +177,6 @@ let term =
              $(b,e[sy]). Defaults to $(b,opam). Only applicable for \
              $(b,project) components.")
   in
-  validate_component_name name;
   Common.set_common common_term ~targets:[];
   let open Component in
   let context = Init_context.make path in

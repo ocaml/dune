@@ -193,19 +193,27 @@ module Component = struct
   module Options = struct
     module Common = struct
       type t =
-        { name : string
-        ; libraries : string list
-        ; pps : string list
+        { name : Dune_lang.Atom.t
+        ; libraries : Dune_lang.Atom.t list
+        ; pps : Dune_lang.Atom.t list
         }
     end
 
+    type public_name =
+      | Use_name
+      | Public_name of Dune_lang.Atom.t
+
+    let public_name_to_string = function
+      | Use_name -> "<default>"
+      | Public_name p -> Dune_lang.Atom.to_string p
+
     module Executable = struct
-      type t = { public : string option }
+      type t = { public : public_name option }
     end
 
     module Library = struct
       type t =
-        { public : string option
+        { public : public_name option
         ; inline_tests : bool
         }
     end
@@ -271,11 +279,12 @@ module Component = struct
     open Dune_lang
 
     module Field = struct
-      let atoms = List.map ~f:atom
+      let atoms : Atom.t list -> Dune_lang.t list =
+        List.map ~f:(fun x -> Atom x)
 
-      let public_name name = List [ atom "public_name"; atom name ]
+      let public_name name = List [ atom "public_name"; Atom name ]
 
-      let name name = List [ atom "name"; atom name ]
+      let name name = List [ atom "name"; Atom name ]
 
       let inline_tests = List [ atom "inline_tests" ]
 
@@ -288,11 +297,9 @@ module Component = struct
         | args -> [ f args ]
 
       let common (options : Options.Common.t) =
-        let optional_fields =
-          optional_field ~f:libraries options.libraries
-          @ optional_field ~f:pps options.pps
-        in
-        name options.name :: optional_fields
+        name options.name
+        :: ( optional_field ~f:libraries options.libraries
+           @ optional_field ~f:pps options.pps )
     end
 
     let make kind common_options fields =
@@ -309,21 +316,25 @@ module Component = struct
         elem :: set
 
     let public_name_field ~default = function
-      | None -> []
-      | Some "" -> [ Field.public_name default ]
-      | Some n -> [ Field.public_name n ]
+      | (None : Options.public_name option) -> []
+      | Some Use_name -> [ Field.public_name default ]
+      | Some (Public_name name) -> [ Field.public_name name ]
 
     let executable (common : Options.Common.t) (options : Options.Executable.t)
         =
       let public_name = public_name_field ~default:common.name options.public in
-      make "executable" { common with name = "main" } public_name
+      make "executable" common public_name
 
     let library (common : Options.Common.t) (options : Options.Library.t) =
       let common, inline_tests =
         if not options.inline_tests then
           (common, [])
         else
-          let pps = add_to_list_set "ppx_inline_test" common.pps in
+          let pps =
+            add_to_list_set
+              (Dune_lang.Atom.of_string "ppx_inline_test")
+              common.pps
+          in
           ({ common with pps }, [ Field.inline_tests ])
       in
       let public_name = public_name_field ~default:common.name options.public in
@@ -344,7 +355,7 @@ module Component = struct
         |> add_stanza_to_dune_file ~project:context.project ~dir
       in
       let bin_ml =
-        let name = "main.ml" in
+        let name = sprintf "%s.ml" (Dune_lang.Atom.to_string common.name) in
         let content = sprintf "let () = print_endline \"Hello, World!\"\n" in
         File.make_text dir name content
       in
@@ -368,7 +379,7 @@ module Component = struct
         |> add_stanza_to_dune_file ~project:context.project ~dir
       in
       let test_ml =
-        let name = sprintf "%s.ml" common.name in
+        let name = sprintf "%s.ml" (Dune_lang.Atom.to_string common.name) in
         let content = "" in
         File.make_text dir name content
       in
@@ -398,8 +409,9 @@ module Component = struct
         in
         bin
           { context = { context with dir = Path.relative dir "bin" }
-          ; options = { public = Some common.name }
-          ; common = { common with libraries }
+          ; options = { public = Some (Options.Public_name common.name) }
+          ; common =
+              { common with libraries; name = Dune_lang.Atom.of_string "main" }
           }
       in
       bin_target @ lib_target @ test_target
@@ -410,7 +422,9 @@ module Component = struct
         src
           { context = { context with dir = Path.relative dir "lib" }
           ; options =
-              { public = Some common.name; inline_tests = options.inline_tests }
+              { public = Some (Options.Public_name common.name)
+              ; inline_tests = options.inline_tests
+              }
           ; common
           }
       in
@@ -426,8 +440,13 @@ module Component = struct
     let proj
         ({ context; common; options } as opts : Options.Project.t Options.t) =
       let ({ template; pkg; _ } : Options.Project.t) = options in
-      let dir = Path.relative context.dir common.name in
-      let name = Package.Name.parse_string_exn (Loc.none, common.name) in
+      let dir =
+        Path.relative context.dir (Dune_lang.Atom.to_string common.name)
+      in
+      let name =
+        Package.Name.parse_string_exn
+          (Loc.none, Dune_lang.Atom.to_string common.name)
+      in
       let proj_target =
         let files =
           match (pkg : Options.Project.Pkg.t) with
@@ -475,24 +494,3 @@ module Component = struct
     in
     List.concat_map ~f:create target |> List.iter ~f:report_uncreated_file
 end
-
-let validate_component_name name =
-  match Lib_name.Local.of_string name with
-  | Ok _ -> ()
-  | _ ->
-    User_error.raise
-      [ Pp.textf
-          "A component named '%s' cannot be created because it is an invalid \
-           library name."
-          name
-      ]
-      ~hints:[ Lib_name.Local.valid_format_doc ]
-
-let print_completion kind name =
-  let open Pp.O in
-  Console.print_user_message
-    (User_message.make
-       [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
-         ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
-         ++ Pp.tag (Pp.verbatim name) ~tag:User_message.Style.Kwd
-       ])

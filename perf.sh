@@ -11,7 +11,7 @@ TEST_REPO=https://github.com/ocaml/dune
 TEST_COMMIT=79a27e50dbd440ce0348d24174fb3cb8a0492ec3
 
 dune() {
-  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/dune.exe "$@" --root=. > /dev/null
+  TIMEFORMAT=$'real %Rs\nuser %Us\nsys  %Ss\n'; time ../_build/default/bin/main.exe "$@" --root=. > /dev/null
 }
 
 setup_test() {
@@ -32,7 +32,11 @@ pad () {
 
 run_test() {
   echo "Building Dune..."
-  make > /dev/null
+  # [make release] is used for bootstrapping, but the real binary to benchmark is
+  # then produced by a separate dune invocation.
+  # This is done mainly because [make release] won't rebuild dune if it's stale.
+  make release > /dev/null
+  ./dune.exe build _build/default/bin/main.exe
 
   cd _perf
   rm -rf _build
@@ -42,9 +46,6 @@ run_test() {
 
   echo "Running zero build..."
   dune build @install 2>> $1
-
-  echo "Computing rules..."
-  dune rules -r _build/default/bin/dune.exe 2>> $1
 
   cd ..
 }
@@ -62,10 +63,6 @@ echo "           |" >> _perf/rows
 echo "            " >> _perf/rows
 echo "           |" >> _perf/rows
 echo "Zero build |" >> _perf/rows
-echo "           |" >> _perf/rows
-echo "            " >> _perf/rows
-echo "           |" >> _perf/rows
-echo "Find rules |" >> _perf/rows
 echo "           |" >> _perf/rows
 
 echo "Current branch" >> _perf/current

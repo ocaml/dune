@@ -23,6 +23,11 @@ let man =
           working directory (or the value of $(b,--root) when ran outside of
           the project root)|}
   ; `Blocks Common.help_secs
+  ; Common.examples
+      [ ("Run the executable named `my_exec'", "dune exec my_exec")
+      ; ( "Run the executable defined in `foo.ml' with the argument `arg'"
+        , "dune exec ./foo.exe -- arg" )
+      ]
   ]
 
 let info = Term.info "exec" ~doc ~man

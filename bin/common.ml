@@ -111,6 +111,24 @@ let footer =
 
 let copts_sect = "COMMON OPTIONS"
 
+let examples =
+  let block_of_example index (intro, ex) =
+    let prose = `I (string_of_int (index + 1) ^ ".", String.trim intro ^ ":")
+    and code_lines =
+      ex |> String.trim |> String.split_lines
+      |> List.map ~f:(fun codeline -> [ `Noblank; `Pre ("      " ^ codeline) ])
+      |> List.flatten
+      (* suppress initial blank *)
+      |> List.tl
+    in
+    `Blocks (prose :: code_lines)
+  in
+  function
+  | _ :: _ as examples ->
+    let example_blocks = examples |> List.mapi ~f:block_of_example in
+    `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
+  | [] -> `Blocks []
+
 let help_secs =
   [ `S copts_sect
   ; `P "These options are common to all commands."

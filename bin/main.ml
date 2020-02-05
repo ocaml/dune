@@ -32,6 +32,15 @@ let build_targets =
     [ `S "DESCRIPTION"
     ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}
     ; `Blocks Common.help_secs
+    ; Common.examples
+        [ ("Build all targets in the current source tree", "dune build")
+        ; ("Build targets in the `./foo/bar' directory", "dune build ./foo/bar")
+        ; ( "Build the minimal set of targets required for tooling such as \
+             Merlin (useful for quickly detecting errors)"
+          , "dune build @check" )
+        ; ( "Run all code formatting tools in-place"
+          , "dune build --auto-promote @fmt" )
+        ]
     ]
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
@@ -56,6 +65,13 @@ let runtest =
     ; `P {|This is a short-hand for calling:|}
     ; `Pre {|  dune build @runtest|}
     ; `Blocks Common.help_secs
+    ; Common.examples
+        [ ( "Run all tests in the current source tree (including those that \
+             passed on the last run)"
+          , "dune runtest --force" )
+        ; ( "Run tests sequentially without output buffering"
+          , "dune runtest --no-buffer -j 1" )
+        ]
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
@@ -190,6 +206,14 @@ let default =
               that it is highly tested and productive.
             |}
         ; `Blocks Common.help_secs
+        ; Common.examples
+            [ ("Initialise a new project named `foo'", "dune init project foo")
+            ; ("Build all targets in the current source tree", "dune build")
+            ; ("Run the executable named `bar'", "dune exec bar")
+            ; ("Run all tests in the current source tree", "dune runtest")
+            ; ("Install all components defined in the project", "dune install")
+            ; ("Remove all build artefacts", "dune clean")
+            ]
         ] )
 
 let () =

@@ -402,7 +402,10 @@ and postprocess_ext tbl b = parse
         let output = Io.String_path.read_file output_file in
         if n <> 0 then begin
           Printf.eprintf "Generated cram script exited with code %d!\n" n;
-          Printf.eprintf "Script output:";
+          Printf.eprintf "Script:\n";
+          let script = Io.String_path.read_file script in
+          List.iter (String.split_lines script) ~f:(Printf.eprintf "| %s\n");
+          Printf.eprintf "Script output:\n";
           List.iter (String.split_lines output) ~f:(Printf.eprintf "| %s\n");
           exit 1
         end;

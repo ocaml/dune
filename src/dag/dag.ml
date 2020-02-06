@@ -112,4 +112,12 @@ module Make (Value : Value) : S with type value := Value.t = struct
   let pp_node pp_value fmt n = pp_depth 0 pp_value fmt n
 
   let is_child v w = Node_map.mem v.info.deps_set w.info.id
+
+  let add_idempotent g v w =
+    (* if the edge doesn't already exist, we
+       add it to the graph; note that the complexity guarantees for
+       `Dag.add` don't hold if the edge is already in the graph,
+       hence the check , see #2959 for more details and the
+       README of the vendored library *)
+    if is_child v w then () else add g v w
 end

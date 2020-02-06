@@ -448,13 +448,7 @@ let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
     let dag_node = dep_node.dag_node in
     let rev_dep = rev_dep.dag_node in
     try
-      (* if the caller doesn't already contain this as a dependent, we
-         add it to the graph; note that the complexity guarantees for
-         `Dag.add` don't hold if the edge is already in the graph,
-         hence the check , see #2959 for more details and the
-         README of the vendored library *)
-      if Dag.is_child rev_dep dag_node |> not then
-        Dag.add global_dep_dag rev_dep dag_node
+      Dag.add_idempotent global_dep_dag rev_dep dag_node
     with Dag.Cycle cycle ->
       raise
         (Cycle_error.E

@@ -31,24 +31,23 @@ let man =
   ; `P
       {|The command can be used to add stanzas to existing dune files as
          well as for creating new dune files and basic component templates.|}
-  ; `S "EXAMPLES"
-  ; `Pre
-      {|
-Define an executable component named 'myexe' in a dune file in the
-current directory:
-
-          dune init exe myexe
-
-Define a library component named 'mylib' in a dune file in the ./src
-directory depending on the core and cmdliner libraries, the ppx_let
-and ppx_inline_test preprocessors, and declared as using inline tests:
-
-          dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests
-
-Define a library component named mytest in a dune file in the ./test
-directory that depends on mylib:
-
-        dune init test myexe test --libs mylib|}
+  ; Common.examples
+      [ ( {|Define an executable component named `myexe' in a dune file in the
+            current directory
+           |}
+        , {|dune init exe myexe|} )
+      ; ( {|Define a library component named `mylib' in a dune file in the ./src
+            directory depending on the core and cmdliner libraries, the ppx_let
+            and ppx_inline_test preprocessors, and declared as using inline
+            tests"
+           |}
+        , {|dune init lib mylib src --libs core,cmdliner --ppx ppx_let,ppx_inline_test --inline-tests"|}
+        )
+      ; ( {|Define a library component named `mytest' in a dune file in the
+            ./test directory that depends on `mylib'"
+           |}
+        , {|dune init test myexe test --libs mylib|} )
+      ]
   ]
 
 let info = Term.info "init" ~doc ~man

@@ -9,7 +9,7 @@ Scopes
 
 Any directory containing at least one ``<package>.opam`` file defines
 a scope. This scope is the sub-tree starting from this directory,
-excluding any other scopes rooted in sub-direcotries.
+excluding any other scopes rooted in sub-directories.
 
 Typically, any given project will define a single scope. Libraries and
 executables that are not meant to be installed will be visible inside
@@ -116,7 +116,7 @@ Variables
 =========
 
 Some fields can contains variables that are expanded by dune.
-The syntax of variables is as follow:
+The syntax of variables is as follows:
 
 .. code::
 
@@ -166,13 +166,13 @@ Dune supports the following variables:
 - ``profile`` the profile selected via ``--profile``
 - ``context_name`` the name of the context (``default`` or defined in the
   workspace file)
-- ``os_type`` is the type of the OS the build is targetting. This is
+- ``os_type`` is the type of the OS the build is targeting. This is
   the same as ``ocaml-config:os_type``
-- ``architecture`` is the type of the architecture the build is targetting. This
+- ``architecture`` is the type of the architecture the build is targeting. This
   is the same as ``ocaml-config:architecture``
-- ``model`` is the type of the cpu the build is targetting. This is
+- ``model`` is the type of the CPU the build is targeting. This is
   the same as ``ocaml-config:model``
-- ``system`` is the name of the OS the build is targetting. This is the same as
+- ``system`` is the name of the OS the build is targeting. This is the same as
   ``ocaml-config:system``
 - ``ignoring_promoted_rule`` is ``true`` if
   ``--ignore-promoted-rules`` was passed on the command line and
@@ -212,7 +212,7 @@ In addition, ``(action ...)`` fields support the following special variables:
   host build context.
 - ``lib-available:<library-name>`` expands to ``true`` or ``false`` depending on
   whether the library is available or not. A library is available iff at least
-  one of the following condition holds:
+  one of the following conditions holds:
 
   -  it is part the installed worlds
   -  it is available locally and is not optional
@@ -564,7 +564,7 @@ You can use globs to declare dependencies on a set of files. Note that globs
 will match files that exist in the source tree as well as buildable targets, so
 for instance you can depend on ``*.cmi``.
 
-Currently dune only support globbing files in a single directory. And in
+Currently dune only supports globbing files in a single directory. And in
 particular the glob is interpreted as follows:
 
 - anything before the last ``/`` is taken as a literal path
@@ -638,7 +638,7 @@ The following constructions are available:
 - ``(run <prog> <args>)`` to execute a program. ``<prog>`` is resolved
   locally if it is available in the current workspace, otherwise it is
   resolved using the ``PATH``
-- ``(dynamic-run <prog> <args>)`` to execute a program that was linkied
+- ``(dynamic-run <prog> <args>)`` to execute a program that was linked
   against ``dune-action-plugin`` library. ``<prog>`` is resolved in
   the same way as in ``run``
 - ``(chdir <dir> <DSL>)`` to change the current directory
@@ -783,7 +783,7 @@ certain limitations:
 - Performance impact is usually small, but it can get noticeable for
   fast actions with very large sets of dependencies.
 
-Per-action sandboxing confuguration
+Per-action sandboxing configuration
 -----------------------------------
 
 Some actions may rely on sandboxing to work correctly.
@@ -824,7 +824,7 @@ Locks
 Given two rules that are independent, dune will assume that there
 associated action can be run concurrently. Two rules are considered
 independent if none of them depend on the other, either directly or
-through a chain of dependencies. This basic assumption allows to
+through a chain of dependencies. This basic assumption allows dune to
 parallelize the build.
 
 However, it is sometimes the case that two independent rules cannot be
@@ -892,7 +892,7 @@ However, it is different for the following reason:
 - on Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize the end of
   lines before comparing the files
 
-- since ``(diff a b)`` is a builtin action, dune knowns that ``a``
+- since ``(diff a b)`` is a builtin action, dune knows that ``a``
   and ``b`` are needed and so you don't need to specify them
   explicitly as dependencies
 

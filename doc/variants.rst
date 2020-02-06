@@ -117,7 +117,7 @@ implementation would have the following configuration:
 
 The list of available variants is computed while building the virtual library.
 This means only variant implementations that are part of the same project are
-implicitely taken into account. It's possible to declare an external
+implicitly taken into account. It's possible to declare an external
 implementation by using the `external_variant` stanza in the virtual library
 scope.
 

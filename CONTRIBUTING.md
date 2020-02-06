@@ -3,7 +3,7 @@ developed at [Jane Street][js] and is now maintained by Jane Street,
 [OCamlLabs][ocl] as well as several developers from the OCaml
 community.
 
-Contributions to Dune are welcome and should be submitted via github
+Contributions to Dune are welcome and should be submitted via GitHub
 pull requests against the `master` branch. Dune is distributed under
 the MIT license and contributors are required to sign their work in
 order to certify that they have the right to submit it under this

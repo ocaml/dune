@@ -35,7 +35,28 @@ module Unavailable_reason : sig
   val to_dyn : t -> Dyn.t
 end
 
+module Meta_source : sig
+  type t = private
+    { dir : Path.t
+    ; meta_file : Path.t
+    ; meta : Meta.Simplified.t
+    }
+end
+
+module Root_package : sig
+  type t =
+  | Dune of Dune_package.t
+  | Findlib of Meta_source.t
+
+  type unavailable_reason =
+  | Not_found
+  | Invalid_dune_package of exn
+end
+
 (** Lookup a package in the given database *)
+val find_root_package:
+  t -> root_name:Lib_name.t -> (Root_package.t, Root_package.unavailable_reason) result
+
 val find :
   t -> Lib_name.t -> (Dune_package.Entry.t, Unavailable_reason.t) result
 

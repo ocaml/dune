@@ -47,21 +47,43 @@ module Mode = struct
     | Ignore_source_files
 end
 
-type t =
-  { context : Context.t option
-  ; env : Env.t option
-  ; action : Action.t Build.With_targets.t
-  ; mode : Mode.t
-  ; locks : Path.t list
-  ; info : Info.t
-  ; dir : Path.Build.t
-  }
+module Id = Id.Make ()
+
+module T = struct
+  type t =
+    { id : Id.t
+    ; context : Context.t option
+    ; env : Env.t option
+    ; action : Action.t Build.With_targets.t
+    ; mode : Mode.t
+    ; locks : Path.t list
+    ; info : Info.t
+    ; dir : Path.Build.t
+    }
+
+  let compare a b = Id.compare a.id b.id
+
+  let equal a b = Id.equal a.id b.id
+
+  let hash t = Id.hash t.id
+
+  let to_dyn t : Dyn.t =
+    Record
+      [ ("id", Id.to_dyn t.id)
+      ; ("loc", Dyn.Encoder.option Loc.to_dyn (Info.loc t.info))
+      ]
+end
+
+include T
+module O = Comparable.Make (T)
+module Set = O.Set
 
 let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
     ~env ?(locks = []) ?(info = Info.Internal) action =
   let open Build.With_targets.O in
   let action =
-    Build.with_no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action
+    Build.With_targets.memoize "Rule.make"
+      (Build.with_no_targets (Build.dep (Dep.sandbox_config sandbox)) >>> action)
   in
   let targets = action.targets in
   let dir =
@@ -90,4 +112,54 @@ let make ?(sandbox = Sandbox_config.default) ?(mode = Mode.Standard) ~context
             ] );
       dir
   in
-  { context; env; action; mode; locks; info; dir }
+  { id = Id.gen (); context; env; action; mode; locks; info; dir }
+
+let with_prefix t ~build =
+  { t with
+    action =
+      (let open Build.With_targets.O in
+      Build.With_targets.memoize "Rule.with_prefix"
+        (Build.with_no_targets build >>> t.action))
+  }
+
+let loc t =
+  match (t.info : Info.t) with
+  | From_dune_file loc -> loc
+  | Internal
+  | Source_file_copy ->
+    let dir = Path.drop_optional_build_context_src_exn (Path.build t.dir) in
+    let file =
+      match Option.bind (File_tree.find_dir dir) ~f:File_tree.Dir.dune_file with
+      | Some file -> File_tree.Dune_file.path file
+      | None -> Path.Source.relative dir "_unknown_"
+    in
+    Loc.in_file (Path.source file)
+
+let effective_env t =
+  match (t.env, t.context) with
+  | None, None -> Env.initial
+  | Some e, _ -> e
+  | None, Some c -> c.env
+
+let rule_deps t = (Build.static_deps t.action.build).rule_deps
+
+let static_action_deps t = (Build.static_deps t.action.build).action_deps
+
+(* CR-soon amokhov: Build [request] directly instead of going via a fake rule. *)
+let shim_of_build_goal request =
+  let request =
+    let open Build.O in
+    let+ () = request in
+    Action.empty
+  in
+  { id = Id.gen ()
+  ; context = None
+  ; dir = Path.Build.root
+  ; env = None
+  ; action =
+      Build.With_targets.memoize "Rule.shim_of_build_goal"
+        (Build.with_no_targets request)
+  ; mode = Mode.Standard
+  ; locks = []
+  ; info = Info.Internal
+  }

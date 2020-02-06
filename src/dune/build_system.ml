@@ -1517,6 +1517,16 @@ end = struct
               |> Result.map_error ~f:report |> ignore
             | _ -> ()
           in
+          let () =
+            (* Remove write permissions on targets. A first theoretical reason
+               is that the build process should be a computational graph and
+               targets should not change state once built. A very practical
+               reason is that enabling the cache will remove write permission
+               because of hardlink sharing anyway, so always removing them
+               enables to catch mistakes earlier. *)
+            let f (path, _) = Path.Build.chmod ~mode:0x222 ~op:`Remove path in
+            List.iter ~f targets
+          in
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->
                 ( deps

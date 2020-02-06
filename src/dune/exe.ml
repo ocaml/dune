@@ -44,80 +44,67 @@ module Linkage = struct
 
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
 
-  let of_user_config (ctx : Context.t) (m : Dune_file.Executables.Link_mode.t) =
+  let of_user_config (ctx : Context.t) ~loc
+      (m : Dune_file.Executables.Link_mode.t) =
     let link_mode : Link_mode.t =
-      match m.mode with
-      | Byte ->
-        if ctx.disable_dynamically_linked_foreign_archives then
-          (* When [disable_dynamically_linked_foreign_archives] is set to [true]
-             in the workspace, we link in all stub archives statically into the
-             runtime system. *)
-          Byte_with_stubs_statically_linked_in
-        else
-          Byte
-      | Native -> Native
-      | Best ->
-        if Option.is_some ctx.ocamlopt then
-          Native
-        else
-          Byte_with_stubs_statically_linked_in
+      match m with
+      | Byte_complete -> Byte_with_stubs_statically_linked_in
+      | Other { mode; _ } -> (
+        match mode with
+        | Byte ->
+          if ctx.disable_dynamically_linked_foreign_archives then
+            (* When [disable_dynamically_linked_foreign_archives] is set to
+               [true] in the workspace, we link in all stub archives statically
+               into the runtime system. *)
+            Byte_with_stubs_statically_linked_in
+          else
+            Byte
+        | Native -> Native
+        | Best ->
+          if Option.is_some ctx.ocamlopt then
+            Native
+          else
+            Byte_with_stubs_statically_linked_in )
     in
     let ext =
-      let same_as_mode : Mode.t =
-        match m.mode with
-        | Byte -> Byte
-        | Native
-        | Best ->
-          (* From the point of view of the extension, [native] and [best] are
-             the same *)
-          Native
-      in
-      match (same_as_mode, m.kind) with
-      | Byte, C -> ".bc.c"
-      | Native, C ->
-        User_error.raise ~loc:m.loc
-          [ Pp.text "C file generation only supports bytecode!" ]
-      | Byte, Exe -> ".bc"
-      | Native, Exe -> ".exe"
-      | Byte, Object -> ".bc" ^ ctx.lib_config.ext_obj
-      | Native, Object -> ".exe" ^ ctx.lib_config.ext_obj
-      | Byte, Shared_object -> ".bc" ^ ctx.lib_config.ext_dll
-      | Native, Shared_object -> ctx.lib_config.ext_dll
-      | Byte, Js -> ".bc.js"
-      | Native, Js ->
-        User_error.raise ~loc:m.loc
-          [ Pp.text "Javascript generation only supports bytecode!" ]
+      Dune_file.Executables.Link_mode.extension m ~loc
+        ~ext_obj:ctx.lib_config.ext_obj ~ext_dll:ctx.lib_config.ext_dll
     in
     let flags =
-      match m.kind with
-      | C -> c_flags
-      | Js -> []
-      | Exe -> (
-        match link_mode with
-        | Byte_with_stubs_statically_linked_in ->
-          [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
-        | _ -> [] )
-      | Object -> o_flags
-      | Shared_object -> (
-        let so_flags =
-          let os_type = Ocaml_config.os_type ctx.ocaml_config in
-          if String.equal os_type "Win32" then
-            so_flags_windows
-          else
-            so_flags_unix
-        in
-        match link_mode with
-        | Native ->
-          (* The compiler doesn't pass these flags in native mode. This looks
-             like a bug in the compiler. *)
-          let native_c_libraries =
-            Ocaml_config.native_c_libraries ctx.ocaml_config
+      match m with
+      | Byte_complete ->
+        [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+      | Other { kind; _ } -> (
+        match kind with
+        | C -> c_flags
+        | Js -> []
+        | Exe -> (
+          match link_mode with
+          | Byte_with_stubs_statically_linked_in ->
+            [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
+          | _ -> [] )
+        | Object -> o_flags
+        | Shared_object -> (
+          let so_flags =
+            let os_type = Ocaml_config.os_type ctx.ocaml_config in
+            if String.equal os_type "Win32" then
+              so_flags_windows
+            else
+              so_flags_unix
           in
-          List.concat_map native_c_libraries ~f:(fun flag -> [ "-cclib"; flag ])
-          @ so_flags
-        | Byte
-        | Byte_with_stubs_statically_linked_in ->
-          so_flags )
+          match link_mode with
+          | Native ->
+            (* The compiler doesn't pass these flags in native mode. This looks
+               like a bug in the compiler. *)
+            let native_c_libraries =
+              Ocaml_config.native_c_libraries ctx.ocaml_config
+            in
+            List.concat_map native_c_libraries ~f:(fun flag ->
+                [ "-cclib"; flag ])
+            @ so_flags
+          | Byte
+          | Byte_with_stubs_statically_linked_in ->
+            so_flags ) )
     in
     { ext; mode = link_mode; flags }
 end

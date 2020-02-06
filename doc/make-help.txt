@@ -25,7 +25,7 @@ All the following commands build Dune in development mode, i.e. with
 more warnings enabled. You should build Dune this way if you intend to
 work on Dune.
 
-Here are the following commads you can use:
+Here are the following commands you can use:
 
 - make dev       to build the dune binary
 - make test      to build and run the testsuite

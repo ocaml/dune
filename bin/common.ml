@@ -111,6 +111,23 @@ let footer =
 
 let copts_sect = "COMMON OPTIONS"
 
+let examples = function
+  | [] -> `Blocks []
+  | _ :: _ as examples ->
+    let block_of_example index (intro, ex) =
+      let prose = `I (Int.to_string (index + 1) ^ ".", String.trim intro ^ ":")
+      and code_lines =
+        ex |> String.trim |> String.split_lines
+        |> List.concat_map ~f:(fun codeline ->
+               [ `Noblank; `Pre ("      " ^ codeline) ])
+        (* suppress initial blank *)
+        |> List.tl
+      in
+      `Blocks (prose :: code_lines)
+    in
+    let example_blocks = examples |> List.mapi ~f:block_of_example in
+    `Blocks (`S Cmdliner.Manpage.s_examples :: example_blocks)
+
 let help_secs =
   [ `S copts_sect
   ; `P "These options are common to all commands."
@@ -331,8 +348,8 @@ module Options_implied_by_dash_p = struct
             ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:
               (Printf.sprintf
-                 "Select the build profile, for instance $(b,dev) \
-                  or$(b,release). The default is $(b,%s)."
+                 "Select the build profile, for instance $(b,dev) or \
+                  $(b,release). The default is $(b,%s)."
                  (Profile.to_string Dune.Profile.default)))
     in
     match profile with
@@ -542,7 +559,11 @@ let term =
           ~env:(Arg.env_var ~doc "DUNE_STORE_ORIG_SOURCE_DIR")
           ~doc)
   and+ cache_mode =
-    let doc = "Activate binary cache" in
+    let doc =
+      Printf.sprintf "Activate binary cache (%s). Default is `%s'."
+        (Arg.doc_alts_enum Config.Caching.Mode.all)
+        (Config.Caching.Mode.to_string Config.default.cache_mode)
+    in
     Arg.(
       value
       & opt (some (enum Config.Caching.Mode.all)) None

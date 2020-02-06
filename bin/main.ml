@@ -32,6 +32,15 @@ let build_targets =
     [ `S "DESCRIPTION"
     ; `P {|Targets starting with a $(b,@) are interpreted as aliases.|}
     ; `Blocks Common.help_secs
+    ; Common.examples
+        [ ("Build all targets in the current source tree", "dune build")
+        ; ("Build targets in the `./foo/bar' directory", "dune build ./foo/bar")
+        ; ( "Build the minimal set of targets required for tooling such as \
+             Merlin (useful for quickly detecting errors)"
+          , "dune build @check" )
+        ; ( "Run all code formatting tools in-place"
+          , "dune build --auto-promote @fmt" )
+        ]
     ]
   in
   let name_ = Arg.info [] ~docv:"TARGET" in
@@ -56,6 +65,13 @@ let runtest =
     ; `P {|This is a short-hand for calling:|}
     ; `Pre {|  dune build @runtest|}
     ; `Blocks Common.help_secs
+    ; Common.examples
+        [ ( "Run all tests in the current source tree (including those that \
+             passed on the last run)"
+          , "dune runtest --force" )
+        ; ( "Run tests sequentially without output buffering"
+          , "dune runtest --no-buffer -j 1" )
+        ]
     ]
   in
   let name_ = Arg.info [] ~docv:"DIR" in
@@ -139,11 +155,31 @@ let promote =
   in
   (term, Term.info "promote" ~doc ~man)
 
+(* Adapted from https://github.com/ocaml/opam/blob/fbbe93c3f67034da62d28c8666ec6b05e0a9b17c/src/client/opamArg.ml#L759 *)
+let command_alias cmd name =
+  let (term, info) = cmd in
+  let orig = Term.name info in
+  let doc = Printf.sprintf "An alias for $(b,%s)." orig in
+  let man =
+    [ `S "DESCRIPTION"
+    ; `P (Printf.sprintf "$(mname)$(b, %s) is an alias for $(mname)$(b, %s)."
+            name orig)
+    ; `P (Printf.sprintf "See $(mname)$(b, %s --help) for details."
+            orig)
+    ; `Blocks Common.help_secs
+    ]
+  in
+  term,
+  Term.info name
+    ~docs:"COMMAND ALIASES"
+    ~doc ~man
+
 let all =
   [ Installed_libraries.command
   ; External_lib_deps.command
   ; build_targets
   ; runtest
+  ; command_alias runtest "test"
   ; clean
   ; Install_uninstall.install
   ; Install_uninstall.uninstall
@@ -190,6 +226,14 @@ let default =
               that it is highly tested and productive.
             |}
         ; `Blocks Common.help_secs
+        ; Common.examples
+            [ ("Initialise a new project named `foo'", "dune init project foo")
+            ; ("Build all targets in the current source tree", "dune build")
+            ; ("Run the executable named `bar'", "dune exec bar")
+            ; ("Run all tests in the current source tree", "dune runtest")
+            ; ("Install all components defined in the project", "dune install")
+            ; ("Remove all build artefacts", "dune clean")
+            ]
         ] )
 
 let () =

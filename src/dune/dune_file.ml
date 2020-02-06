@@ -1354,22 +1354,28 @@ module Executables = struct
   module Link_mode = struct
     module T = struct
       type t =
-        { mode : Mode_conf.t
-        ; kind : Binary_kind.t
-        ; loc : Loc.t
-        }
+        | Byte_complete
+        | Other of
+            { mode : Mode_conf.t
+            ; kind : Binary_kind.t
+            }
 
       let compare a b =
-        match Poly.compare a.mode b.mode with
-        | Eq -> Poly.compare a.kind b.kind
-        | ne -> ne
+        match (a, b) with
+        | Byte_complete, Byte_complete -> Eq
+        | Byte_complete, _ -> Lt
+        | _, Byte_complete -> Gt
+        | Other a, Other b -> (
+          match Poly.compare a.mode b.mode with
+          | Eq -> Poly.compare a.kind b.kind
+          | ne -> ne )
 
       let to_dyn _ = Dyn.opaque
     end
 
     include T
 
-    let make mode kind = { mode; kind; loc = Loc.none }
+    let make mode kind = Other { mode; kind }
 
     let exe = make Best Exe
 
@@ -1377,17 +1383,9 @@ module Executables = struct
 
     let shared_object = make Best Shared_object
 
-    let byte_exe = make Byte Exe
+    let byte = make Byte Exe
 
-    let native_exe = make Native Exe
-
-    let native_object = make Native Object
-
-    let native_shared_object = make Native Shared_object
-
-    let byte = byte_exe
-
-    let native = native_exe
+    let native = make Native Exe
 
     let js = make Byte Js
 
@@ -1400,6 +1398,7 @@ module Executables = struct
       ; ("byte", byte)
       ; ("native", native)
       ; ("js", js)
+      ; ("byte_complete", Byte_complete)
       ]
 
     let simple = Dune_lang.Decoder.enum simple_representations
@@ -1409,9 +1408,8 @@ module Executables = struct
         ~then_:
           (enter
              (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode
-              and+ loc = loc in
-              { mode; kind; loc }))
+              and+ kind = Binary_kind.decode in
+              make mode kind))
         ~else_:simple
 
     let simple_encode link_mode =
@@ -1422,46 +1420,93 @@ module Executables = struct
     let encode link_mode =
       match simple_encode link_mode with
       | Some s -> s
-      | None ->
-        let { mode; kind; loc = _ } = link_mode in
-        Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
+      | None -> (
+        match link_mode with
+        | Byte_complete -> assert false
+        | Other { mode; kind } ->
+          Dune_lang.Encoder.pair Mode_conf.encode Binary_kind.encode (mode, kind)
+        )
 
-    let to_dyn { mode; kind; loc = _ } =
-      let open Dyn.Encoder in
-      record
-        [ ("mode", Mode_conf.to_dyn mode); ("kind", Binary_kind.to_dyn kind) ]
+    let to_dyn t =
+      match t with
+      | Byte_complete -> Dyn.Variant ("Byte_complete", [])
+      | Other { mode; kind } ->
+        let open Dyn.Encoder in
+        Variant
+          ( "Other"
+          , [ record
+                [ ("mode", Mode_conf.to_dyn mode)
+                ; ("kind", Binary_kind.to_dyn kind)
+                ]
+            ] )
+
+    let extension t ~loc ~ext_obj ~ext_dll =
+      match t with
+      | Byte_complete -> ".bc.exe"
+      | Other { mode; kind } -> (
+        let same_as_mode : Mode.t =
+          match mode with
+          | Byte -> Byte
+          | Native
+          | Best ->
+            (* From the point of view of the extension, [native] and [best] are
+               the same *)
+            Native
+        in
+        match (same_as_mode, kind) with
+        | Byte, C -> ".bc.c"
+        | Native, C ->
+          User_error.raise ~loc
+            [ Pp.text "C file generation only supports bytecode!" ]
+        | Byte, Exe -> ".bc"
+        | Native, Exe -> ".exe"
+        | Byte, Object -> ".bc" ^ ext_obj
+        | Native, Object -> ".exe" ^ ext_obj
+        | Byte, Shared_object -> ".bc" ^ ext_dll
+        | Native, Shared_object -> ext_dll
+        | Byte, Js -> ".bc.js"
+        | Native, Js ->
+          User_error.raise ~loc
+            [ Pp.text "Javascript generation only supports bytecode!" ] )
 
     module O = Comparable.Make (T)
 
-    module Set = struct
-      include O.Set
+    module Map = struct
+      include O.Map
 
       let decode =
-        located (repeat decode) >>| fun (loc, l) ->
+        located (repeat (located decode)) >>| fun (loc, l) ->
         match l with
         | [] -> User_error.raise ~loc [ Pp.textf "No linking mode defined" ]
         | l ->
-          let t = of_list l in
-          if
-            (mem t native_exe && mem t exe)
-            || (mem t native_object && mem t object_)
-            || (mem t native_shared_object && mem t shared_object)
-          then
+          let t =
+            List.fold_left l ~init:empty ~f:(fun acc (loc, link_mode) ->
+                set acc link_mode loc)
+          in
+          ( match
+              String.Map.of_list_map (to_list t) ~f:(fun (lm, loc) ->
+                  (extension lm ~loc ~ext_obj:".OBJ" ~ext_dll:".DLL", lm))
+            with
+          | Ok _ -> ()
+          | Error (_ext, (lm1, _), (lm2, _)) ->
             User_error.raise ~loc
               [ Pp.textf
-                  "It is not allowed use both native and best for the same \
-                   binary kind."
-              ]
-          else
-            t
+                  "It is not allowed use both %s and %s together as they use \
+                   the same file extension."
+                  (Dune_lang.to_string (encode lm1))
+                  (Dune_lang.to_string (encode lm2))
+              ] );
+          t
+
+      let byte_and_exe = of_list_exn [ (byte, Loc.none); (exe, Loc.none) ]
 
       let default_for_exes ~version =
         if version < (2, 0) then
-          of_list [ byte; exe ]
+          byte_and_exe
         else
-          singleton exe
+          singleton exe Loc.none
 
-      let default_for_tests = of_list [ byte; exe ]
+      let default_for_tests = byte_and_exe
 
       let best_install_mode t = List.find ~f:(mem t) installable_modes
     end
@@ -1471,7 +1516,7 @@ module Executables = struct
     { names : (Loc.t * string) list
     ; link_flags : Ordered_set_lang.Unexpanded.t
     ; link_deps : Dep_conf.t list
-    ; modes : Link_mode.Set.t
+    ; modes : Loc.t Link_mode.Map.t
     ; optional : bool
     ; buildable : Buildable.t
     ; variants : (Loc.t * Variant.Set.t) option
@@ -1498,8 +1543,8 @@ module Executables = struct
     and+ link_deps = field "link_deps" (repeat Dep_conf.decode) ~default:[]
     and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
     and+ modes =
-      field "modes" Link_mode.Set.decode
-        ~default:(Link_mode.Set.default_for_exes ~version:dune_version)
+      field "modes" Link_mode.Map.decode
+        ~default:(Link_mode.Map.default_for_exes ~version:dune_version)
     and+ optional =
       field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
     and+ variants = variants_field
@@ -1541,7 +1586,7 @@ module Executables = struct
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in
       let install_conf =
-        match Link_mode.Set.best_install_mode modes with
+        match Link_mode.Map.best_install_mode modes with
         | None when has_public_name ->
           User_error.raise ~loc:buildable.loc
             [ Pp.textf "No installable mode found for %s."
@@ -1556,11 +1601,11 @@ module Executables = struct
         | None -> None
         | Some mode ->
           let ext =
-            match mode.mode with
-            | Native
-            | Best ->
-              ".exe"
-            | Byte -> ".bc"
+            match mode with
+            | Byte_complete
+            | Other { mode = Byte; _ } ->
+              ".bc"
+            | Other { mode = Native | Best; _ } -> ".exe"
           in
           Names.install_conf names ~ext
       in
@@ -2013,8 +2058,8 @@ module Tests = struct
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
        and+ modes =
-         field "modes" Executables.Link_mode.Set.decode
-           ~default:Executables.Link_mode.Set.default_for_tests
+         field "modes" Executables.Link_mode.Map.decode
+           ~default:Executables.Link_mode.Map.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
        and+ enabled_if = enabled_if ~since:(Some (1, 4))

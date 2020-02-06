@@ -273,7 +273,7 @@ Variables for artifacts
 -----------------------
 
 It is possible to build specific artifacts by using the corresponding variable
-on the command line, eg:
+on the command line, e.g.:
 
 .. code::
 
@@ -290,7 +290,7 @@ up in the installed world, and expect it to be already compiled.
 
 It looks up external libraries using a specific list of search paths. A
 list of search paths is specific to a given build context and is
-determined as follow:
+determined as follows:
 
 #. if the ``ocamlfind`` is present in the ``PATH`` of the context, use each line
    in the output of ``ocamlfind printconf path`` as a search path
@@ -308,14 +308,14 @@ Running tests
 There are two ways to run tests:
 
 -  ``dune build @runtest``
--  ``dune runtest``
+-  ``dune test`` (or the more explicit ``dune runtest``)
 
 The two commands are equivalent. They will run all the tests defined in the
 current directory and its children recursively. You can also run the tests in a
 specific sub-directory and its children by using:
 
 -  ``dune build @foo/bar/runtest``
--  ``dune runtest foo/bar``
+-  ``dune test foo/bar`` (or ``dune runtest foo/bar``)
 
 Watch mode
 ==========

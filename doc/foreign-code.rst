@@ -2,7 +2,7 @@
 Dealing with foreign libraries
 ******************************
 
-The OCaml programming language allows to interface libraries written
+The OCaml programming language can interface with libraries written
 in foreign languages such as C. This section explains how to do this
 with Dune. Note that it does not cover how to write the C stubs
 themselves, this is covered by the
@@ -17,7 +17,7 @@ Note that in general Dune has limited support for building source
 files written in foreign languages. This support is suitable for most
 OCaml projects containing C stubs, but is too limited for building
 complex libraries written in C or other languages. For such cases,
-Dune allows to integrate a foreign build system into a normal Dune
+Dune can integrate a foreign build system into a normal Dune
 build.
 
 Adding C/C++ stubs to an OCaml library

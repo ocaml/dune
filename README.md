@@ -135,7 +135,7 @@ Support
 -------
 
 If you have questions about dune, you can send an email to
-ocaml-core@googlegroups.com or [open a ticket on github][issues].
+ocaml-core@googlegroups.com or [open a ticket on GitHub][issues].
 
 
 Migration from jbuilder

@@ -1,5 +1,8 @@
-2.2.0 (unreleased)
+2.2.0 (06/02/2020)
 ------------------
+
+- `dune test` is now a command alias for `dune runtest`. This is to make the CLI
+  less idiosyncratic (#3006, @shonfeder)
 
 - Allow to set menhir flags in the `env` stanza using the `menhir_flags` field.
   (#2960, fix #2924, @bschommer)
@@ -12,7 +15,11 @@
   @fangyi-zhou and @diml)
 
 - Hint when trying to execute an executable defined in the current directory
-  without using the `./` prefix (#3041).
+  without using the `./` prefix (#3041, fixes #1094, @voodoos).
+
+- Extend the list of modifiers that can be nested under
+  `with-accepted-exit-codes` with `chdir`,  `setenv`, `ignore-<outputs>`,
+  `with-stdin-from` and `with-<outputs>-to` (#3027, fixes #3014, @voodoos)
 
 - It is now an error to have a preprocessing dependency on a ppx rewriter
   library that is not marked as `(kind ppx_rewriter)` (#3039, @snowleopard).
@@ -34,6 +41,10 @@
 
 - `make` now prints a message explaining the main targets available
   (#3085, fix #3078, @diml)
+
+- Add a `byte_complete` executable mode to build programs as
+  self-contained bytecode programs
+  (#3076, fixes #1519, @diml)
 
 2.1.3 (16/01/2020)
 ------------------

@@ -46,6 +46,8 @@ val set_common_other :
     the root the current working directory *)
 val set_dirs : t -> unit
 
+val examples : (string * string) list -> Cmdliner.Manpage.block
+
 val help_secs : Cmdliner.Manpage.block list
 
 val footer : Cmdliner.Manpage.block

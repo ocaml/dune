@@ -1,4 +1,4 @@
-2.2.0 (unreleased)
+2.2.0 (06/02/2020)
 ------------------
 
 - `dune test` is now a command alias for `dune runtest`. This is to make the CLI

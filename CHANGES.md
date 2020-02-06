@@ -1,8 +1,11 @@
 Unreleased
 ----------
 
-- Ignore special files (BLK, CHR, FIFO, SOCKET) , fixes #3124, #3546
-  (#3570, @ejgallego)
+- Ignore special files (BLK, CHR, FIFO, SOCKET), (#3570, fixes #3124, #3546,
+  @ejgallego)
+
+- Experimental: Introduce specific installation sites. Allow to define plugins
+  to be installed in these sites. (#3104, fixes #1185, @bobot)
 
 2.7.1 (2/09/2020)
 -----------------

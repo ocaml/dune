@@ -1048,6 +1048,19 @@ the installation directory is either guessed or can be manually
 specified by the user.  This is described more in detail in the last
 section of this page.
 
+.. _sites:
+
+Sites of a package
+------------------
+
+When packages need additional resources outside their binary, their location
+could be hard to find. Moreover some packages could add resources to another
+package, for example in the case of plugins. These location are called sites in
+dune. One package can define them. During execution one site corresponds to a
+list of directories. They are like layers, the first directories have an higher
+priority.
+
+
 Libraries
 ^^^^^^^^^
 
@@ -1062,9 +1075,9 @@ For instance:
 
 .. code:: scheme
 
-          (library
-           (name mylib)
-           (public_name mypackage.mylib))
+   (library
+    (name mylib)
+    (public_name mypackage.mylib))
 
 After you have added a public name to a library, Dune will know to
 install it as part of the package it is attached to.  Dune installs

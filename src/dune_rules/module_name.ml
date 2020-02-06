@@ -1,64 +1,18 @@
 open! Dune_engine
 open Stdune
 
-let valid_format_doc =
-  Pp.text
-    "Module names must be non-empty and composed only of the following \
-     characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'."
+let valid_format_doc = Section.valid_format_doc
 
-include Stringlike.Make (struct
+include Section.Modulelike (struct
   type t = string
-
-  let valid_char = function
-    | 'A' .. 'Z'
-    | 'a' .. 'z'
-    | '0' .. '9'
-    | '\''
-    | '_' ->
-      true
-    | _ -> false
-
-  let to_string s = s
 
   let description = "module name"
 
   let module_ = "Module_name"
 
-  let description_of_valid_string = Some valid_format_doc
+  let to_string s = s
 
-  let hint_valid =
-    Some
-      (fun name ->
-        String.filter_map name ~f:(fun c ->
-            if valid_char c then
-              Some c
-            else
-              match c with
-              | '.'
-              | '-' ->
-                Some '_'
-              | _ -> None))
-
-  let is_valid_module_name name =
-    match name with
-    | "" -> false
-    | s -> (
-      try
-        ( match s.[0] with
-        | 'A' .. 'Z'
-        | 'a' .. 'z' ->
-          ()
-        | _ -> raise_notrace Exit );
-        String.iter s ~f:(fun c ->
-            if not (valid_char c) then raise_notrace Exit);
-        true
-      with Exit -> false )
-
-  let of_string_opt s =
-    if is_valid_module_name s then
-      Some (String.capitalize s)
-    else
-      None
+  let make s = String.capitalize s
 end)
 
 let compare = String.compare

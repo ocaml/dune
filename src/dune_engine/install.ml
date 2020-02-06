@@ -1,28 +1,6 @@
-open! Dune_engine
 open! Stdune
 open Import
-
-module Section0 = struct
-  type t =
-    | Lib
-    | Lib_root
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Stublibs
-    | Man
-    | Misc
-
-  let compare : t -> t -> Ordering.t = Poly.compare
-
-  let to_dyn _ = Dyn.opaque
-end
+module Dune_section = Section
 
 (* The path after the man section mangling done by opam-installer. This roughly
    follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
@@ -31,21 +9,25 @@ module Dst : sig
 
   val to_string : t -> string
 
+  val add_prefix : string -> t -> t
+
   val to_install_file :
-    t -> src_basename:string -> section:Section0.t -> string option
+    t -> src_basename:string -> section:Section.t -> string option
 
   val of_install_file :
-    string option -> src_basename:string -> section:Section0.t -> t
+    string option -> src_basename:string -> section:Section.t -> t
 
   val explicit : string -> t
 
   val compare : t -> t -> Ordering.t
 
-  val infer : src_basename:string -> Section0.t -> t
+  val infer : src_basename:string -> Section.t -> t
 end = struct
   type t = string
 
   let to_string t = t
+
+  let add_prefix p t = Filename.concat p t
 
   let explicit t = t
 
@@ -67,7 +49,7 @@ end = struct
 
   let infer ~src_basename:p section =
     match section with
-    | Section0.Man -> (
+    | Section.Man -> (
       match man_subdir p with
       | Some subdir -> Filename.concat subdir p
       | None -> p )
@@ -88,102 +70,56 @@ end = struct
         Some s
 end
 
-module Section = struct
-  include Section0
-  include Comparable.Make (Section0)
+module Section_with_site = struct
+  type t =
+    | Section of Section.t
+    | Site of
+        { pkg : Package.Name.t
+        ; site : Section.Site.t
+        }
 
-  let all =
-    Set.of_list
-      [ Lib
-      ; Lib_root
-      ; Libexec
-      ; Libexec_root
-      ; Bin
-      ; Sbin
-      ; Toplevel
-      ; Share
-      ; Share_root
-      ; Etc
-      ; Doc
-      ; Stublibs
-      ; Man
-      ; Misc
-      ]
+  (* let compare : t -> t -> Ordering.t = Poly.compare *)
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Section s -> constr "Section" [ Section.to_dyn s ]
+    | Site { pkg; site } ->
+      constr "Section" [ Package.Name.to_dyn pkg; Section.Site.to_dyn site ]
 
   let to_string = function
-    | Lib -> "lib"
-    | Lib_root -> "lib_root"
-    | Libexec -> "libexec"
-    | Libexec_root -> "libexec_root"
-    | Bin -> "bin"
-    | Sbin -> "sbin"
-    | Toplevel -> "toplevel"
-    | Share -> "share"
-    | Share_root -> "share_root"
-    | Etc -> "etc"
-    | Doc -> "doc"
-    | Stublibs -> "stublibs"
-    | Man -> "man"
-    | Misc -> "misc"
-
-  let of_string = function
-    | "lib" -> Some Lib
-    | "lib_root" -> Some Lib_root
-    | "libexec" -> Some Libexec
-    | "libexec_root" -> Some Libexec_root
-    | "bin" -> Some Bin
-    | "sbin" -> Some Sbin
-    | "toplevel" -> Some Toplevel
-    | "share" -> Some Share
-    | "share_root" -> Some Share_root
-    | "etc" -> Some Etc
-    | "doc" -> Some Doc
-    | "stublibs" -> Some Stublibs
-    | "man" -> Some Man
-    | "misc" -> Some Misc
-    | _ -> None
-
-  let parse_string s =
-    match of_string s with
-    | Some s -> Ok s
-    | None -> Error (sprintf "invalid section: %s" s)
+    | Section s -> Section.to_string s
+    | Site { pkg; site } ->
+      sprintf "(site %s %s)"
+        (Package.Name.to_string pkg)
+        (Section.Site.to_string site)
 
   let decode =
     let open Dune_lang.Decoder in
-    enum
-      [ ("lib", Lib)
-      ; ("lib_root", Lib_root)
-      ; ("libexec", Libexec)
-      ; ("libexec_root", Libexec_root)
-      ; ("bin", Bin)
-      ; ("sbin", Sbin)
-      ; ("toplevel", Toplevel)
-      ; ("share", Share)
-      ; ("share_root", Share_root)
-      ; ("etc", Etc)
-      ; ("doc", Doc)
-      ; ("stublibs", Stublibs)
-      ; ("man", Man)
-      ; ("misc", Misc)
+    sum
+      [ ("lib", return (Section Lib))
+      ; ("lib_root", return (Section Lib_root))
+      ; ("libexec", return (Section Libexec))
+      ; ("libexec_root", return (Section Libexec_root))
+      ; ("bin", return (Section Bin))
+      ; ("sbin", return (Section Sbin))
+      ; ("toplevel", return (Section Toplevel))
+      ; ("share", return (Section Share))
+      ; ("share_root", return (Section Share_root))
+      ; ("etc", return (Section Etc))
+      ; ("doc", return (Section Doc))
+      ; ("stublibs", return (Section Stublibs))
+      ; ("man", return (Section Man))
+      ; ("misc", return (Section Misc))
+      ; ( "site"
+        , Dune_lang.Syntax.since Section.dune_site_syntax (0, 1)
+          >>> pair Package.Name.decode Section.Site.decode
+          >>| fun (pkg, site) -> Site { pkg; site } )
       ]
+end
 
-  let should_set_executable_bit = function
-    | Lib
-    | Lib_root
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Man
-    | Misc ->
-      false
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Stublibs ->
-      true
+module Section = struct
+  include Section
 
   module Paths = struct
     type t =
@@ -241,6 +177,13 @@ module Section = struct
       | Stublibs -> t.stublibs
       | Man -> t.man
       | Misc -> Code_error.raise "Install.Paths.get" []
+
+    let get_local_location context section package_name =
+      (* check that we get the good path *)
+      let install_dir = Config.local_install_dir ~context in
+      let install_dir = Path.build install_dir in
+      let paths = make ~package:package_name ~destdir:install_dir () in
+      get paths section
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
@@ -318,6 +261,42 @@ module Entry = struct
     in
     { src; dst; section }
 
+  let make_with_site section ?dst get_section src =
+    match section with
+    | Section_with_site.Section section -> make section ?dst src
+    | Site { pkg; site } ->
+      let section = get_section ~pkg ~site in
+      let dst =
+        adjust_dst
+          ~src:(Expanded (Path.to_string (Path.build src)))
+          ~dst ~section
+      in
+      let dst = Dst.add_prefix (Section.Site.to_string site) dst in
+      let dst_with_pkg_prefix =
+        Dst.add_prefix (Package.Name.to_string pkg) dst
+      in
+      let (section : Section.t), dst =
+        match section with
+        | Lib -> (Lib_root, dst_with_pkg_prefix)
+        | Libexec -> (Libexec_root, dst_with_pkg_prefix)
+        | Share -> (Share_root, dst_with_pkg_prefix)
+        | Etc
+        | Doc ->
+          User_error.raise
+            [ Pp.textf "Can't have site in etc and doc for opam" ]
+        | Lib_root
+        | Libexec_root
+        | Bin
+        | Sbin
+        | Toplevel
+        | Share_root
+        | Stublibs
+        | Man
+        | Misc ->
+          (section, dst)
+      in
+      { src; dst; section }
+
   let set_src t src = { t with src }
 
   let relative_installed_path t ~paths =
@@ -339,6 +318,14 @@ module Entry = struct
     { src
     ; section
     ; dst = Dst.of_install_file ~section ~src_basename:(Path.basename src) dst
+    }
+end
+
+module Entry_with_site = struct
+  type 'src t =
+    { src : 'src
+    ; dst : Dst.t
+    ; section : Section_with_site.t
     }
 end
 

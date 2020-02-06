@@ -139,3 +139,10 @@ let find_context_exn t ~name =
   | None ->
     User_error.raise
       [ Pp.textf "Context %S not found!" (Context_name.to_string name) ]
+
+let find_scontext_exn t ~name =
+  match Context_name.Map.find t.scontexts name with
+  | Some ctx -> ctx
+  | None ->
+    User_error.raise
+      [ Pp.textf "Context %S not found!" (Context_name.to_string name) ]

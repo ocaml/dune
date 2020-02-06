@@ -866,7 +866,8 @@ let wrapped_executables t = t.wrapped_executables
 
 let () =
   let open Dune_lang.Decoder in
-  Extension.register_simple Action_plugin.syntax (return [])
+  Extension.register_simple Action_plugin.syntax (return []);
+  Extension.register_simple Section.dune_site_syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
 

@@ -61,21 +61,24 @@ let prlist buf name l ~f =
         f x);
     pr buf "  ]"
 
+let prvariants buf name preds =
+  prlist buf name (Variant.Set.to_list preds) ~f:(fun v ->
+      pr buf "%S" (Variant.to_string v))
+
+let public_libs libs =
+  List.filter
+    ~f:(fun lib ->
+      let info = Lib.info lib in
+      let status = Lib_info.status info in
+      not (Lib_info.Status.is_private status))
+    libs
+
 let findlib_init_code ~preds ~libs =
-  let public_libs =
-    List.filter
-      ~f:(fun lib ->
-        let info = Lib.info lib in
-        let status = Lib_info.status info in
-        not (Lib_info.Status.is_private status))
-      libs
-  in
   let buf = Buffer.create 1024 in
-  List.iter public_libs ~f:(fun lib ->
+  List.iter (public_libs libs) ~f:(fun lib ->
       pr buf "Findlib.record_package Findlib.Record_core %S;;"
         (Lib_name.to_string (Lib.name lib)));
-  prlist buf "preds" (Variant.Set.to_list preds) ~f:(fun v ->
-      pr buf "%S" (Variant.to_string v));
+  prvariants buf "preds" preds;
   pr buf "in";
   pr buf "let preds =";
   pr buf "  (if Dynlink.is_native then \"native\" else \"byte\") :: preds";
@@ -178,11 +181,50 @@ let build_info_code cctx ~libs ~api_version =
       pr buf "%S, %s" (Lib_name.to_string name) v);
   Buffer.contents buf
 
+let dune_site_code () =
+  let buf = Buffer.create 5000 in
+  pr buf "let hardcoded_ocamlpath = (Sys.opaque_identity %S)"
+    (Artifact_substitution.encode ~min_len:4096 Hardcoded_ocaml_path);
+  pr buf "let stdlib_dir = (Sys.opaque_identity %S)"
+    (Artifact_substitution.encode ~min_len:4096 (Configpath Stdlib));
+  Buffer.contents buf
+
+let dune_site_plugins_code ~libs ~builtins =
+  let buf = Buffer.create 5000 in
+  pr buf "let findlib_predicates_set_by_dune pred =";
+  pr buf "   match Sys.backend_type, pred with";
+  pr buf "   | Sys.Native, \"native\" -> true";
+  pr buf "   | Sys.Bytecode, \"byte\" -> true";
+  Variant.Set.iter Findlib.findlib_predicates_set_by_dune ~f:(fun variant ->
+      pr buf "   | _, %S -> true" (Variant.to_string variant));
+  pr buf "   | _, _ -> false";
+  prlist buf "already_linked_libraries" (public_libs libs) ~f:(fun lib ->
+      pr buf "%S" (Lib_name.to_string (Lib.name lib)));
+  pr buf "open Dune_site_plugins.Private_.Meta_parser";
+  prlist buf "builtin_library" (Package.Name.Map.to_list builtins)
+    ~f:(fun (name, meta) ->
+      let meta = Meta.complexify meta in
+      let meta =
+        Meta.filter_variable
+          ~f:(function
+            | "plugin"
+            | "directory"
+            | "requires" ->
+              true
+            | _ -> false)
+          meta
+      in
+      pr buf "(%S,%s)"
+        (Package.Name.to_string name)
+        (Dyn.to_string (Meta.to_dyn meta)));
+  Buffer.contents buf
+
 let handle_special_libs cctx =
   let open Result.O in
   let+ all_libs = CC.requires_link cctx in
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let sctx = CC.super_context cctx in
+  let ctx = Super_context.context sctx in
   let module LM = Lib.Lib_and_module in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
@@ -238,6 +280,23 @@ let handle_special_libs cctx =
         | Configurator _ ->
           process_libs libs
             ~to_link_rev:(LM.Lib lib :: to_link_rev)
+            ~force_linkall
+        | Dune_site { data_module; plugins } ->
+          let module_ =
+            let code =
+              if plugins then
+                Build.return
+                  (dune_site_plugins_code ~libs:all_libs
+                     ~builtins:(Findlib.builtins ctx.Context.findlib))
+              else
+                Build.return (dune_site_code ())
+            in
+            generate_and_compile_module cctx ~name:data_module ~lib ~code
+              ~requires:(Ok [ lib ])
+              ~precompiled_cmi:true
+          in
+          process_libs libs
+            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
             ~force_linkall ) )
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

@@ -26,13 +26,14 @@ let term =
       [ Pp.textf "cannot find directory: %s" (String.maybe_quoted dir) ];
   let utop_target = Arg.Dep.file (Filename.concat dir Utop.utop_exe) in
   Common.set_common_other common ~targets:[ utop_target ];
-  let context, utop_path =
+  let sctx, utop_path =
     Scheduler.go ~common (fun () ->
         let open Fiber.O in
         let* setup = Import.Main.setup common in
         let context =
           Import.Main.find_context_exn setup.workspace ~name:ctx_name
         in
+        let sctx = Import.Main.find_scontext_exn setup ~name:ctx_name in
         let setup =
           { setup with
             workspace = { setup.workspace with contexts = [ context ] }
@@ -48,9 +49,10 @@ let term =
           | Ok _ -> assert false
         in
         let+ () = do_build [ File target ] in
-        (context, Path.to_string target))
+        (sctx, Path.to_string target))
   in
   Hooks.End_of_build.run ();
-  restore_cwd_and_execve common utop_path (utop_path :: args) context.env
+  restore_cwd_and_execve common utop_path (utop_path :: args)
+    (Super_context.context_env sctx)
 
 let command = (term, info)

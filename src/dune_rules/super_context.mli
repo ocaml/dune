@@ -21,6 +21,9 @@ val create :
 
 val context : t -> Context.t
 
+(** Context env with additional variables computed from packages *)
+val context_env : t -> Env.t
+
 val stanzas : t -> Dune_file.Stanzas.t Dir_with_dune.t list
 
 val stanzas_in :
@@ -29,6 +32,9 @@ val stanzas_in :
 val packages : t -> Package.t Package.Name.Map.t
 
 val host : t -> t
+
+val get_site_of_packages :
+  t -> pkg:Package.Name.t -> site:Section.Site.t -> Section.t
 
 module Lib_entry : sig
   type t =

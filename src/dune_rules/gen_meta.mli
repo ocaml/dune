@@ -3,6 +3,7 @@ open! Dune_engine
 
 open! Import
 
+(** Generate the meta for a package containing some libraries *)
 val gen :
      package:Package.t
   -> add_directory_entry:bool

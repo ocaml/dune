@@ -1055,25 +1055,29 @@ let load_dir_and_get_buildable_targets ~dir =
   | Non_build _ -> Path.Build.Map.empty
   | Build { rules_here; _ } -> rules_here
 
-let get_rule_other fn =
+let get_rule fn =
   Option.bind (Path.as_in_build_dir fn) ~f:(fun fn ->
       let dir = Path.Build.parent_exn fn in
       match load_dir ~dir:(Path.build dir) with
       | Non_build _ -> assert false
       | Build { rules_here; _ } -> Path.Build.Map.find rules_here fn)
 
-and get_rule t path =
+type rule_or_source =
+  | Source
+  | Rule of Rule.t
+
+let get_rule_or_source t path =
   let dir = Path.parent_exn path in
   if Path.is_strict_descendant_of_build_dir dir then
     let rules = load_dir_and_get_buildable_targets ~dir in
     let path = Path.as_in_build_dir_exn path in
     match Path.Build.Map.find rules path with
-    | Some _ as some -> Fiber.return some
+    | Some rule -> Fiber.return (Rule rule)
     | None ->
       let loc = Rule_fn.loc () in
       no_rule_found t ~loc path
   else if Path.exists path then
-    Fiber.return None
+    Fiber.return Source
   else
     let loc = Rule_fn.loc () in
     User_error.raise ?loc
@@ -1591,11 +1595,9 @@ end = struct
     let t = t () in
     let on_error exn = Dep_path.reraise exn (Path path) in
     Fiber.with_error_handler ~on_error (fun () ->
-        get_rule t path >>= function
-        | None ->
-          (* file already exists *)
-          Fiber.return ()
-        | Some rule -> execute_rule rule)
+        get_rule_or_source t path >>= function
+        | Source -> Fiber.return ()
+        | Rule rule -> execute_rule rule)
 
   module Pred = struct
     let build_impl g =
@@ -1844,7 +1846,7 @@ let evaluate_rules ~recursive ~request =
           else
             Fiber.return ()
       and run_dep dep =
-        match get_rule_other dep with
+        match get_rule dep with
         | None -> Fiber.return () (* external files *)
         | Some rule -> run_rule rule
       in
@@ -1881,7 +1883,7 @@ end = struct
 
   let rules_for_files paths =
     Path.Set.fold paths ~init:[] ~f:(fun path acc ->
-        match get_rule_other path with
+        match get_rule path with
         | None -> acc
         | Some rule -> rule :: acc)
     |> Rule.Set.of_list |> Rule.Set.to_list

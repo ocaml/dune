@@ -488,14 +488,14 @@ let rec with_locks mutexes ~f =
       (Table.find_or_add locks m ~f:(fun _ -> Fiber.Mutex.create ()))
       (fun () -> with_locks mutexes ~f)
 
-let remove_old_artifacts t ~dir ~(subdirs_to_keep : Subdir_set.t) =
+let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
   match Path.readdir_unsorted (Path.build dir) with
   | exception _ -> ()
   | Error _ -> ()
   | Ok files ->
     List.iter files ~f:(fun fn ->
         let path = Path.Build.relative dir fn in
-        let path_is_a_target = Path.Build.Table.mem t.files path in
+        let path_is_a_target = Path.Build.Map.mem rules_here path in
         if path_is_a_target then
           ()
         else
@@ -607,7 +607,7 @@ end = struct
       Path.Build.Map.keys rules_here
       |> List.map ~f:Path.build |> Path.Set.of_list
 
-  let compute_alias_rules t ~context_name ~(collected : Rules.Dir_rules.ready)
+  let compute_alias_rules ~context_name ~(collected : Rules.Dir_rules.ready)
       ~dir ~sub_dir =
     let alias_dir =
       let context_name = Context_name.to_string context_name in
@@ -696,8 +696,7 @@ end = struct
     in
     fun ~subdirs_to_keep ->
       let rules_here = compile_rules ~dir:alias_dir alias_rules in
-      add_rules_exn t rules_here;
-      remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
+      remove_old_artifacts ~rules_here ~dir:alias_dir ~subdirs_to_keep;
       rules_here
 
   let filter_out_fallback_rules ~to_copy rules =
@@ -870,7 +869,7 @@ end = struct
     let alias_rules =
       match context_name with
       | Context context_name ->
-        Some (compute_alias_rules t ~context_name ~collected ~dir ~sub_dir)
+        Some (compute_alias_rules ~context_name ~collected ~dir ~sub_dir)
       | Install _ -> None
     in
     let file_tree_dir =
@@ -1004,7 +1003,7 @@ end = struct
               (Path.Build.Map.to_list violations) )
         ];
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
-    remove_old_artifacts t ~dir ~subdirs_to_keep;
+    remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
     let alias_targets =
       Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules
     in

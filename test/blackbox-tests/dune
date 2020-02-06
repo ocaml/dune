@@ -3,7 +3,7 @@
 (executable
  (name cram)
  (modules cram)
- (libraries stdune dune_re test_common dune configurator))
+ (libraries stdune dune_re dune configurator))
 
 (ocamllex cram)
 

@@ -4,43 +4,109 @@
 open Dune
 open Import
 
-type item =
-  | Output  of string
+type dot_t_block =
   | Command of string list
-  | Comment of string
+  | Comment of string list
 
-let cwd = Sys.getcwd ()
+let cwd = ref (Sys.getcwd ())
+
+(* Translate a path for [sh]. On Windows, [sh] will come from Cygwin
+   so if we are a real windows program we need to pass the path
+   through [cygpath] *)
+let translate_path_for_sh =
+  if not Sys.win32 then
+    fun _ fn -> fn
+  else
+    fun cfg fn ->
+      Configurator.V1.Process.run_capture_exn cfg "cygpath" [fn]
+      |> String.split_lines
+      |> List.hd_opt
+      |> Option.value ~default:""
+
+(* Quote a filename for sh, independently of whether we are on Windows
+   or Unix. On Windows, we still generate a [sh] script so we need to
+   quote using Unix conventions. *)
+let quote_for_sh fn =
+  let buf = Buffer.create (String.length fn + 2) in
+  Buffer.add_char buf '\'';
+  String.iter fn ~f:(function
+    | '\'' -> Buffer.add_string buf "'\\''"
+    | c -> Buffer.add_char buf c);
+  Buffer.add_char buf '\'';
+  Buffer.contents buf
 }
 
 let eol = '\n' | eof
+
+let blank = [' ' '\t' '\r' '\012']
 
 let ext = '.' ['a'-'z' 'A'-'Z' '0'-'9']+
 
 let abs_path = '/' ['a'-'z' 'A'-'Z' '0'-'9' '.' '-' '_' '/']+
 
-rule file = parse
- | eof { [] }
- | "  $ " { command [] lexbuf }
- | "  " { output lexbuf }
- | "" { comment lexbuf }
+rule dot_t_block = parse
+  | eof { None }
+  | "  $ " ([^'\n']* as str) eol
+    { Some (command_cont [str] lexbuf) }
+  | "  " [^'\n']* eol
+    { output [] lexbuf }
+  | ' '? as str eol
+    { comment [str] lexbuf }
+  | ' '? [^' ' '\n'] [^'\n']* as str eol
+    { comment [str] lexbuf }
 
-and comment = parse
- | [^'\n']* as str eol { Comment str :: file lexbuf }
+and comment acc = parse
+  | eof
+    { match acc with
+    | [] -> None
+    | _ -> Some (Comment (List.rev acc))
+    }
+  | ' '? as str eol
+    { comment (str :: acc) lexbuf }
+  | ' '? [^' ' '\n'] [^'\n']* as str eol
+    { comment (str :: acc) lexbuf }
+  | ""
+    { Some (Comment (List.rev acc)) }
 
-and output = parse
-  | [^'\n']* as str eol { Output str :: file lexbuf }
+and output maybe_comment = parse
+  | eof
+    { match maybe_comment with
+    | [] -> None
+    | l -> Some (Comment (List.rev l))
+    }
+  | ' ' eof
+    { Some (Comment (List.rev (" " :: maybe_comment))) }
+  | "  "? eof
+    { None }
+  | "  " eol
+    { output [] lexbuf }
+  | ' '? as s eol
+    { output (s :: maybe_comment) lexbuf }
+  | "  $" eol
+    { output [] lexbuf }
+  | "  " '$' [^' ' '\n'] [^'\n']* eol
+    { output [] lexbuf }
+  | "  " [^'$' '\n'] [^'\n']* eol
+    { output [] lexbuf }
+  | ""
+    { match maybe_comment with
+    | [] -> dot_t_block lexbuf
+    | l -> comment l lexbuf
+    }
 
-and command acc = parse
- | ([^'\n']* as str) "\n  > "
-    { command (str :: acc) lexbuf }
- | ([^'\n']* as str) eol
-    { Command (List.rev (str :: acc)) :: file lexbuf }
+and command_cont acc = parse
+  | "  > " ([^'\n']* as str) eol
+    { command_cont (str :: acc) lexbuf }
+  | "  >" eol
+    { command_cont ("" :: acc) lexbuf }
+  | ""
+    { Command (List.rev acc)  }
 
 and postprocess_cwd b = parse
   | eof { Buffer.contents b }
   | (abs_path as path) {
       let path =
-        match String.drop_prefix path ~prefix:cwd with
+        match String.drop_prefix path ~prefix:!cwd with
         | None -> path
         | Some path -> "$TESTCASE_ROOT" ^ path
       in
@@ -173,18 +239,69 @@ and postprocess_ext tbl b = parse
            Option.map (String.drop_prefix x ~prefix)
              ~f:(fun x -> (test, parse_version x)))))
 
+  let run_expect_test file ~f =
+    let file_contents = Io.String_path.read_file file in
+    let lexbuf = Lexbuf.from_string file_contents ~fname:file in
+    let expected = f lexbuf in
+    let corrected_file = file ^ ".corrected" in
+    if file_contents <> expected then
+      Io.String_path.write_file corrected_file expected
+    else (
+      if Sys.file_exists corrected_file then Sys.remove corrected_file;
+      exit 0
+    )
+
+  let temp_file suffix =
+    let fn = Filename.temp_file "dune-test" suffix in
+    at_exit (fun () -> try Sys.remove fn with _ -> ());
+    fn
+
+  let open_temp_file suffix =
+    let fn, oc =
+      Filename.open_temp_file "dune-test" suffix
+        ~mode:[Open_binary]
+    in
+    at_exit (fun () -> try Sys.remove fn with _ -> ());
+    fn, oc
+
   let () =
     let skip_versions = ref [] in
     let expect_test = ref None in
+    let exit_code = ref 0 in
+    let sanitize = ref None in
     let args =
       [ "-skip-versions"
       , Arg.String (fun s -> skip_versions := parse_skip_versions s)
-      , "Comma separated versions of ocaml where to skip test"
+      , "VERSION Comma separated versions of ocaml where to skip test"
       ; "-test"
       , Arg.String (fun s -> expect_test := Some s)
-      , "expect test file"
-      ] in
+      , "FILE expect test file"
+      ; "-sanitize"
+      , Arg.String (fun s -> sanitize := Some s)
+      , "FILE Sanitize the command output contained in this file"
+      ; "-exit-code"
+      , Arg.Set_int exit_code
+      , "NUMBER Exit code of the command for which we are sanitizing the output"
+      ; "-cwd"
+      , Arg.Set_string cwd
+      , "DIR Set the cwd for sanitizing the command output"
+      ]
+    in
     Configurator.main ~args ~name:"cram" (fun configurator ->
+      Option.iter !sanitize ~f:(fun fn ->
+        let sanitize_line =
+          let ext_replace = make_ext_replace configurator in
+          fun line ->
+            line
+            |> Ansi_color.strip
+            |> ext_replace
+            |> cwd_replace
+            |> config_var_replace configurator
+        in
+        List.iter (Io.String_path.lines_of_file fn) ~f:(fun line ->
+          Printf.printf "  %s\n" (sanitize_line line));
+        if !exit_code <> 0 then Printf.printf "  [%d]\n" !exit_code;
+        exit 0);
       let expect_test =
         match !expect_test with
         | None -> raise (Arg.Bad "expect test file must be passed")
@@ -197,45 +314,99 @@ and postprocess_ext tbl b = parse
           test op ocaml_version v') then
           exit 0;
       end;
-      let env =
-        Env.add Env.initial ~var:"LC_ALL" ~value:"C"
-        |> Env.to_unix
-      in
-      Test_common.run_expect_test expect_test ~f:(fun file_contents lexbuf ->
-        let items = file lexbuf in
-        let temp_file = Filename.temp_file "dune-test" ".output" in
-        at_exit (fun () -> Sys.remove temp_file);
-        let buf = Buffer.create (String.length file_contents + 1024) in
-        List.iter items ~f:(function
-          | Output _ -> ()
-          | Comment s -> Buffer.add_string buf s; Buffer.add_char buf '\n'
-          | Command l ->
-            Printf.bprintf buf "  $ %s\n" (String.concat l ~sep:"\n  > ");
-            let s = String.concat l ~sep:"\n" in
-            let fd = Unix.openfile temp_file [O_WRONLY; O_TRUNC] 0 in
-            let pid =
-              Unix.create_process_env "sh" [|"sh"; "-c"; s|]
-                env Unix.stdin fd fd
-            in
-            Unix.close fd;
-            let n =
-              match snd (Unix.waitpid [] pid) with
-              | WEXITED n -> n
-              | _ -> 255
-            in
-            let ext_replace = make_ext_replace configurator in
-            Path.of_filename_relative_to_initial_cwd temp_file
-            |> Io.lines_of_file
-            |> List.iter ~f:(fun line ->
-              let line =
-                line
-                |> Ansi_color.strip
-                |> ext_replace
-                |> cwd_replace
-                |> config_var_replace configurator
-              in
-              Printf.bprintf buf "  %s\n" line);
-            if n <> 0 then Printf.bprintf buf "  [%d]\n" n);
-        Buffer.contents buf)
-    )
+      Unix.putenv "LC_ALL" "C";
+      run_expect_test expect_test ~f:(fun lexbuf ->
+        let script, oc = open_temp_file ".sh" in
+        let prln fmt = Printf.fprintf oc (fmt ^^ "\n") in
+        (* Shell code written by the user might not be properly
+           terminated. For instance the user might forgot to write
+           [EOF] after a [cat <<EOF]. If we wrote this shell code
+           directly in the main script, it would hide the rest of the
+           script. So instead, we dump each user written shell phrase
+           into a file and then source it in the main script. *)
+        let user_shell_code_file = temp_file ".sh" in
+        let user_shell_code_file_sh_path =
+          translate_path_for_sh configurator user_shell_code_file
+        in
+        (* Where we store the output of shell code written by the user *)
+        let user_shell_code_output_file = temp_file ".output" in
+        let user_shell_code_output_file_sh_path =
+          translate_path_for_sh configurator user_shell_code_output_file
+        in
+        let executable_name_sh_path =
+          translate_path_for_sh configurator Sys.executable_name
+        in
+        (* Produce the following shell code:
+
+           {v
+             cat <<"EOF_<n>"
+             <data>
+             EOF_<n>
+           v}
+
+           choosing [<n>] such that [CRAM_EOF_<n>] doesn't appear in
+           [<data>]. *)
+        let cat_eof ?dest lines =
+          let rec loop n =
+            let sentinel = if n = 0 then "EOF" else sprintf "EOF%d" n in
+            if List.mem sentinel ~set:lines then
+              loop (n + 1)
+            else
+              sentinel
+          in
+          let sentinel = loop 0 in
+          (match dest with
+           | None -> prln "cat <<%S" sentinel
+           | Some fn -> prln "cat >%s <<%S" (quote_for_sh fn) sentinel);
+          List.iter lines ~f:(prln "%s");
+          prln "%s" sentinel
+        in
+        let rec loop () =
+          match dot_t_block lexbuf with
+          | None -> close_out oc
+          | Some block ->
+            match block with
+            | Comment lines ->
+              cat_eof lines;
+              loop ()
+            | Command lines ->
+              cat_eof (List.mapi lines ~f:(fun i line ->
+                if i = 0 then
+                  "  $ " ^ line
+                else
+                  "  > " ^ line));
+              cat_eof lines ~dest:user_shell_code_file;
+              prln ". %s > %s 2>&1"
+                (quote_for_sh user_shell_code_file_sh_path)
+                (quote_for_sh user_shell_code_output_file_sh_path);
+              prln {|%s -cwd %s -exit-code $? -sanitize %s|}
+                (quote_for_sh executable_name_sh_path)
+                (quote_for_sh !cwd)
+                (quote_for_sh user_shell_code_output_file);
+              loop ()
+        in
+        loop ();
+        let output_file = temp_file ".output" in
+        let fd = Unix.openfile output_file [O_WRONLY; O_TRUNC] 0 in
+        let pid =
+          Unix.create_process "sh" [|"sh"; script|]
+            Unix.stdin fd fd
+        in
+        Unix.close fd;
+        let n =
+          match snd (Unix.waitpid [] pid) with
+          | WEXITED n -> n
+          | _ -> 255
+        in
+        let output = Io.String_path.read_file output_file in
+        if n <> 0 then begin
+          Printf.eprintf "Generated cram script exited with code %d!\n" n;
+          Printf.eprintf "Script:\n";
+          let script = Io.String_path.read_file script in
+          List.iter (String.split_lines script) ~f:(Printf.eprintf "| %s\n");
+          Printf.eprintf "Script output:\n";
+          List.iter (String.split_lines output) ~f:(Printf.eprintf "| %s\n");
+          exit 1
+        end;
+        output))
 }

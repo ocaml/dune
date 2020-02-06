@@ -1,3 +1,6 @@
+  $ opam_prefix="$(opam config var prefix)"
+  $ alias sed_opam_prefix="sed \"s#$opam_prefix#OPAM_VAR_PREFIX#\""
+
 `dune install` should handle destination directories that don't exist
 
   $ dune build @install
@@ -85,7 +88,9 @@ If prefix is passed, the default for libdir is `$prefix/lib`:
 If prefix is not passed, libdir defaults to the output of `ocamlfind printconf
 destdir`:
 
-  $ export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR; dune install --dry-run 2>&1 | sed "s#$(opam config var prefix)#OPAM_VAR_PREFIX#" ; dune uninstall --dry-run 2>&1 | sed "s#$(opam config var prefix)#OPAM_VAR_PREFIX#"
+  $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
+  >  dune install --dry-run
+  >  dune uninstall --dry-run) 2>&1 | sed_opam_prefix
   Installing /OCAMLFIND_DESTDIR/foo/META
   Installing /OCAMLFIND_DESTDIR/foo/dune-package
   Installing /OCAMLFIND_DESTDIR/foo/foo$ext_lib
@@ -170,7 +175,8 @@ destdir`:
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
 
-  $ dune install --libdir /LIBDIR --dry-run 2>&1 | sed "s#$(opam config var prefix)#OPAM_VAR_PREFIX#" ; dune uninstall --libdir /LIBDIR --dry-run 2>&1 | sed "s#$(opam config var prefix)#OPAM_VAR_PREFIX#"
+  $ dune install --libdir /LIBDIR --dry-run 2>&1 | sed_opam_prefix
+  > dune uninstall --libdir /LIBDIR --dry-run 2>&1 | sed_opam_prefix
   Installing /LIBDIR/foo/META
   Installing /LIBDIR/foo/dune-package
   Installing /LIBDIR/foo/foo$ext_lib
@@ -255,7 +261,8 @@ in libdir:
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
 
-  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | sed "s#$(opam config var prefix)#/OPAM_VAR_PREFIX#"
+  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | \
+  >   sed "s#$opam_prefix#/OPAM_VAR_PREFIX#"
   Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/META
   Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/dune-package
   Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib

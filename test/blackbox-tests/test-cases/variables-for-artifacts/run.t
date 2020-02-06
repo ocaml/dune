@@ -202,7 +202,7 @@ This test checks error handling.
 This test checks that everything still works if we invoke dune from a
 subdirectory.
 
-  $ cd sub && dune build --display short %{cmx:x}
+  $ (cd sub && dune build --display short %{cmx:x})
       ocamldep .bar.objs/x.ml.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
         ocamlc .bar.objs/byte/bar__X.{cmi,cmo,cmt}

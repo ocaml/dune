@@ -17,7 +17,7 @@ altering the complexity guarantees.
 The complexity and correctness of the implementation of
 `incremental_cycles` has been mechanically-verified using the Coq
 theorem prover. Note however, that for the main theorem to hold there
-are a few requirements that cannot be capture by ML-level interfaces;
+are a few requirements that cannot be captured by ML-level interfaces;
 more concretely:
 
 - the current specification for the algorithm requires the
@@ -42,7 +42,7 @@ Dune performs the following modifications to `dag.ml`:
 - we modify `raw_add_edge` so it updates this set, and `is_child` so
   it uses the efficient membership set
 
-The rationale for add a duplicate children field is to actually
+The rationale for adding a duplicate children field is to actually
 preserve the order the edges were added, this could be important in
 other parts of the algo, see comment on `is_child` use at `memo.ml`.
 

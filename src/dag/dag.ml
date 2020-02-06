@@ -2,6 +2,10 @@ open! Stdune
 include Dag_intf
 
 module Make (Value : Value) : S with type value := Value.t = struct
+
+  (* Raw_graph here should have the same complexity than the assumed
+     interface on the incremental_cycles proofs, in particular
+     [get_outgoing] should run in constant time. *)
   module Raw_graph = struct
     type mark = int
 

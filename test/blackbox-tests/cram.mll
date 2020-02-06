@@ -18,8 +18,7 @@ let translate_path_for_sh =
     fun _ fn -> fn
   else
     fun cfg fn ->
-      Configurator.V1.Process.run_capture_exn cfg
-        "cygpath" ["cygpath"; fn]
+      Configurator.V1.Process.run_capture_exn cfg "cygpath" [fn]
       |> String.split_lines
       |> List.hd_opt
       |> Option.value ~default:""

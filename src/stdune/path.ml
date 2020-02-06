@@ -630,6 +630,20 @@ module Kind = struct
     | External x -> External (External.relative x (Local.to_string y))
 end
 
+let _chmod ~mode ?(op = `Set) path =
+  let mode =
+    match op with
+    | `Set -> mode
+    | `Add
+    | `Remove ->
+      let stat = Unix.stat path in
+      if op = `Add then
+        stat.st_perm lor mode
+      else
+        stat.st_perm land lnot mode
+  in
+  Unix.chmod path mode
+
 module Build = struct
   include Local
 
@@ -724,6 +738,8 @@ module Build = struct
         Filename.concat (External.to_string b) (Local.to_string p)
 
   let of_local t = t
+
+  let chmod ~mode ?(op = `Set) path = _chmod ~mode ~op (to_string path)
 
   module Kind = Kind
 end
@@ -1327,3 +1343,16 @@ let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
 
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
+
+let chmod ~mode ?(op = `Set) path =
+  let mode =
+    match op with
+    | `Set -> mode
+    | `Add ->
+      let stat = stat path in
+      stat.st_perm lor mode
+    | `Remove ->
+      let stat = stat path in
+      stat.st_perm land lnot mode
+  in
+  Unix.chmod (to_string path) mode

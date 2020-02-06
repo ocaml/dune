@@ -55,6 +55,14 @@
    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias byte_complete)
+ (deps (package dune) (source_tree test-cases/byte_complete))
+ (action
+  (chdir
+   test-cases/byte_complete
+   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias c-stubs)
  (deps (package dune) (source_tree test-cases/c-stubs))
  (action
@@ -2094,6 +2102,7 @@
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
+  (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)
@@ -2344,6 +2353,7 @@
   (alias bad-alias-error)
   (alias block-strings)
   (alias byte-code-only)
+  (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
   (alias cmdliner-dep-conf)

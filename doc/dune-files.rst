@@ -716,20 +716,27 @@ For instance the following ``modes`` fields are all equivalent:
                   (best object)
                   (best shared_object)))
 
+And finally, you can use the special mode ``byte_complete`` for
+building a bytecode executable as a native self-contained
+executable. I.e. an executable that does not require the ``ocamlrun``
+program to run and does not requires the C stubs to be installed as
+shared object files.
+
 The extensions for the various linking modes are chosen as follows:
 
-================ ============= =================
-compilation mode binary kind   extensions
----------------- ------------- -----------------
-byte             exe           .bc and .bc.js
-native/best      exe           .exe
-byte             object        .bc%{ext_obj}
-native/best      object        .exe%{ext_obj}
-byte             shared_object .bc%{ext_dll}
-native/best      shared_object %{ext_dll}
-byte             c             .bc.c
-byte             js            .bc.js
-================ ============= =================
+=========================== =================
+linking mode                extensions
+--------------------------- -----------------
+byte                        .bc
+native/best                 .exe
+byte_complete               .bc.exe
+(byte object)               .bc%{ext_obj}
+(native/best object)        .exe%{ext_obj}
+(byte shared_object)        .bc%{ext_dll}
+(native/best shared_object) %{ext_dll}
+c                           .bc.c
+js                          .bc.js
+=========================== =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object
 and shared object files. Their value depends on the OS, for instance
@@ -737,15 +744,16 @@ on Unix ``%{ext_obj}`` is usually ``.o`` and ``%{ext_dll}`` is usually
 ``.so`` while on Windows ``%{ext_obj}`` is ``.obj`` and ``%{ext_dll}``
 is ``.dll``.
 
-Note that when ``(byte exe)`` is specified but neither ``(best exe)``
-nor ``(native exe)`` are specified, Dune still knows how to build
-an executable with the extension ``.exe``. In such case, the ``.exe``
-version is the same as the ``.bc`` one except that it is linked with
-the ``-custom`` option of the compiler. You should always use the
-``.exe`` rather that the ``.bc`` inside build rules.
+Up to version 3.0 of the dune language, when ``byte`` is specified but
+none of ``native``, ``exe`` or ``byte_complete`` are specified Dune
+implicitely adds a linking mode that is the same as ``byte_complete``
+but using the extension ``.exe``. ``.bc`` files require additional
+files at runtime that are not currently tracked by Dune, so you should
+not run ``.bc`` files during the build. Run the ``.bc.exe`` or
+``.exe`` ones instead as these are self-contained.
 
-Lastly, note that ``.bc`` executables cannot contain C stubs. If your executable
-contains C stubs you may want to use ``(modes exe)``.
+Lastly, note that ``.bc`` executables cannot contain C stubs. If your
+executable contains C stubs you may want to use ``(modes exe)``.
 
 executables
 -----------

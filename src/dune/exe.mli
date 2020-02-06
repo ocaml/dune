@@ -18,8 +18,7 @@ module Linkage : sig
   (** Native compilation, extension [.exe] *)
   val native : t
 
-  (** Byte compilation, link with [-custom] or [-output-complete-exe], extension
-      [.exe] *)
+  (** Byte compilation with stubs statically linked in, extension [.exe] *)
   val custom : Context.t -> t
 
   (** [native] if supported, [custom] if not *)
@@ -28,7 +27,8 @@ module Linkage : sig
   (** Javascript compilation, extension [.bc.js] *)
   val js : t
 
-  val of_user_config : Context.t -> Dune_file.Executables.Link_mode.t -> t
+  val of_user_config :
+    Context.t -> loc:Loc.t -> Dune_file.Executables.Link_mode.t -> t
 end
 
 (** {1 High-level functions} *)

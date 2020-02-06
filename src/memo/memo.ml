@@ -447,10 +447,7 @@ let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
     in
     let dag_node = dep_node.dag_node in
     let rev_dep = rev_dep.dag_node in
-    try
-      (* if the caller doesn't already contain this as a dependent *)
-      if Dag.is_child rev_dep dag_node |> not then
-        Dag.add global_dep_dag rev_dep dag_node
+    try Dag.add_idempotent global_dep_dag rev_dep dag_node
     with Dag.Cycle cycle ->
       raise
         (Cycle_error.E
@@ -459,7 +456,7 @@ let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
            }) )
 
 (* CR-soon amokhov: The order of dependencies in the resulting list seems to be
-   wrong: [Dag.children] returns children in the reverse order compared to the
+   wrong: [Dag.children] returns children in the reverse order instead of the
    order in which they were added. See the comment for [deps : Last_dep.t list]. *)
 let get_deps_from_graph_exn (dep_node : _ Dep_node.t) =
   Dag.children dep_node.dag_node

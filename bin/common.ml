@@ -348,8 +348,8 @@ module Options_implied_by_dash_p = struct
             ~env:(Arg.env_var ~doc "DUNE_PROFILE")
             ~doc:
               (Printf.sprintf
-                 "Select the build profile, for instance $(b,dev) \
-                  or$(b,release). The default is $(b,%s)."
+                 "Select the build profile, for instance $(b,dev) or \
+                  $(b,release). The default is $(b,%s)."
                  (Profile.to_string Dune.Profile.default)))
     in
     match profile with

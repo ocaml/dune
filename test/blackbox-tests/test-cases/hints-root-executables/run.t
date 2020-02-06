@@ -14,15 +14,15 @@ executable without './' we suggest it
   $ dune exec ./foo.exe
   foo
 
-  $  cd foo && dune exec bar.exe --no-build
+  $ (cd foo && dune exec bar.exe --no-build)
   Error: Program "bar.exe" not found!
   Hint: did you mean ./bar.exe?
   [1]
 
-  $ cd foo && dune exec bar.exe
+  $ (cd foo && dune exec bar.exe)
   Error: Program "bar.exe" not found!
   Hint: did you mean ./bar.exe?
   [1]
 
-  $ cd foo && dune exec ./bar.exe
+  $ (cd foo && dune exec ./bar.exe)
   foo/bar

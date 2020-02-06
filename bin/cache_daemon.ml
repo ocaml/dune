@@ -6,7 +6,7 @@ let name = "cache"
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      {|Dune allows to share build artifacts between workspaces.
+      {|Dune is able to share build artifacts between workspaces.
         $(b,dune cache-daemon) is a daemon that runs in the background
         and manages this shared cache. For instance, it makes sure that it
         does not grow too big and try to maximise sharing between the various

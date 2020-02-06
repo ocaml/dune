@@ -61,8 +61,8 @@ Dynamic loading of packages
 ===========================
 
 Dune supports the ``findlib.dynload`` package from `findlib
-<http://projects.camlcity.org/projects/findlib.html>`_ that allows to
-dynamically load packages and their dependencies (using OCaml Dynlink module).
+<http://projects.camlcity.org/projects/findlib.html>`_ that enables
+dynamically loading packages and their dependencies (using the OCaml Dynlink module).
 So adding the ability for an application to have plugins just requires to add
 ``findlib.dynload`` to the set of library dependencies:
 
@@ -198,7 +198,7 @@ interpreted relative to the current directory:
   ``library`` stanza (*not* its public name).
 
 In each case, the expansion of the variable is a path pointing inside the build
-context (ie ``_build/<context>``).
+context (i.e. ``_build/<context>``).
 
 Building an ad-hoc ``.cmxs``
 ----------------------------

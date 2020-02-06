@@ -63,8 +63,8 @@ ppx_inline_test_ and qtest_. We will use ppx_inline_test_ as an
 example as at the time of writing this document it has the necessary
 setup to be used with dune out of the box.
 
-ppx_inline_test_ allows to write tests directly inside ml files as
-follow:
+ppx_inline_test_ allows one to write tests directly inside ml files as
+follows:
 
 .. code:: ocaml
 
@@ -156,7 +156,7 @@ expectation tests is always as follows:
   file if you are happy with it
 
 Dune makes this workflow very easy, simply add ``ppx_expect`` to
-your list of ppx rewriters as follow:
+your list of ppx rewriters as follows:
 
 .. code:: scheme
 
@@ -211,7 +211,7 @@ You may also run a group of tests located under a directory with:
 
 The above command will run all tests defined in tests and its sub-directories.
 
-Running tests in bytecode or javascript
+Running tests in bytecode or JavaScript
 ---------------------------------------
 
 By default Dune run inline tests in native mode, except if native
@@ -225,7 +225,7 @@ field.  Available modes are:
 - ``native`` for running tests in native mode
 - ``best`` for running tests in native mode with fallback to byte code
   if native compilation is not available
-- ``js`` for running tests in javascript using nodejs
+- ``js`` for running tests in JavaScript using Node.js
 
 For instance:
 

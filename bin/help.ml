@@ -57,7 +57,7 @@ let config =
            looking at the environment variable $(b,INSIDE_EMACS) that is set by
            Emacs. If you want the same behavior with another editor, you can set
            this variable. If your editor already sets another variable,
-           please open a ticket on the ocaml/dune github project so that we can
+           please open a ticket on the ocaml/dune GitHub project so that we can
            add support for it.|}
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
@@ -68,7 +68,7 @@ let config =
     ; `S "SANDBOXING"
     ; `P {|Syntax: $(b,\(sandboxing_preference MODE ...\))|}
     ; `P
-        {|Controls the sandboxing mode perference order used by dune. Dune will
+        {|Controls the sandboxing mode preference order used by dune. Dune will
 use the earliest item from this list that's allowed by the action dependency
 specification, or fall back on the hard-coded default. See $(b,man dune-build)
  for the description of individual modes.|}

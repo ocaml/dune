@@ -10,7 +10,7 @@ virtual libraries may not implement their virtual modules
   - Foo
   [1]
 
-  $ cd module-fields && ocaml test.ml
+  $ (cd module-fields && ocaml test.ml)
   impl: true. modules_without_implementation: true. virtual_modules: true. private_modules: true
   File "dune", line 4, characters 18-19:
   4 |  (virtual_modules m)

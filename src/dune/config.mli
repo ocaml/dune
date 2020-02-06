@@ -81,6 +81,8 @@ module Caching : sig
     val all : (string * t) list
 
     val decode : t Dune_lang.Decoder.t
+
+    val to_string : t -> string
   end
 
   module Transport : sig

@@ -167,12 +167,28 @@ module Unavailable_reason = struct
       constr "Hidden" [ Path.to_dyn dir ]
 end
 
-type t =
+type meta_source =
+  { dir : Path.t
+  ; meta_file : Path.t
+  ; meta : Meta.Simplified.t
+  }
+
+type root_package =
+  | Dune of Dune_package.t
+  | Findlib of meta_source
+
+type root_package_unavaible_reason =
+  | Not_found
+  | Invalid_dune_package of exn
+
+type db =
   { stdlib_dir : Path.t
   ; paths : Path.t list
   ; builtins : Meta.Simplified.t Lib_name.Map.t
   ; packages :
       (Lib_name.t, (Dune_package.Entry.t, Unavailable_reason.t) result) Table.t
+  ; root_packages :
+      (Lib_name.t, (root_package, root_package_unavaible_reason) result) Table.t
   ; lib_config : Lib_config.t
   }
 
@@ -399,10 +415,8 @@ let dummy_package t ~name ~lib_config =
   }
   |> Package.to_dune ~lib_config
 
-type db = t
-
 module Meta_source : sig
-  type t = private
+  type t = meta_source =
     { dir : Path.t
     ; meta_file : Path.t
     ; meta : Meta.Simplified.t
@@ -414,7 +428,7 @@ module Meta_source : sig
 
   val discover : dir:Path.t -> name:Lib_name.t -> t option
 end = struct
-  type t =
+  type t = meta_source =
     { dir : Path.t
     ; meta_file : Path.t
     ; meta : Meta.Simplified.t
@@ -469,10 +483,14 @@ end = struct
     loop ~dir ~full_name:(Option.value_exn meta.name) meta
 end
 
-module Discovered_package = struct
-  type t =
+module Root_package = struct
+  type t = root_package =
     | Dune of Dune_package.t
-    | Findlib of Meta_source.t
+    | Findlib of meta_source
+
+  type unavailable_reason = root_package_unavaible_reason =
+    | Not_found
+    | Invalid_dune_package of exn
 
   let builtin_for_dune =
     let entry =
@@ -490,19 +508,22 @@ module Discovered_package = struct
       }
 end
 
+type t = db
+
 (* Search for a <package>/{META,dune-package} file in the findlib search path,
-   parse it and add its contents to [t.packages] *)
-let find_and_acknowledge_package t ~fq_name =
-  let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : Discovered_package.t Or_exn.t option =
+   parse it and add its contents to [t.dune_packages] *)
+let find_root_package t ~root_name =
+  let rec loop dirs : (Root_package.t, Root_package.unavailable_reason) Result.t
+      =
     match dirs with
     | [] -> (
       match Lib_name.to_string root_name with
-      | "dune" -> Some (Ok Discovered_package.builtin_for_dune)
-      | _ ->
-        Lib_name.Map.find t.builtins root_name
-        |> Option.map ~f:(fun meta ->
-               Ok (Discovered_package.Findlib (Meta_source.internal t ~meta))) )
+      | "dune" -> Ok Root_package.builtin_for_dune
+      | _ -> (
+        Lib_name.Map.find t.builtins root_name |> function
+        | None -> Error Root_package.Not_found
+        | Some meta -> Ok (Root_package.Findlib (Meta_source.internal t ~meta))
+        ) )
     | dir :: dirs -> (
       let dir = Path.relative dir (Lib_name.to_string root_name) in
       let dune = Path.relative dir Dune_package.fn in
@@ -512,29 +533,36 @@ let find_and_acknowledge_package t ~fq_name =
         else
           Ok Dune_package.Or_meta.Use_meta
       with
-      | Error e -> Some (Error e)
-      | Ok (Dune_package p) -> Some (Ok (Dune p))
+      | Error e -> Error (Root_package.Invalid_dune_package e)
+      | Ok (Dune_package p) -> Ok (Root_package.Dune p)
       | Ok Use_meta -> (
         match Meta_source.discover ~dir ~name:root_name with
         | None -> loop dirs
-        | Some meta_source -> Some (Ok (Findlib meta_source)) ) )
+        | Some meta_source -> Ok (Root_package.Findlib meta_source) ) )
   in
-  match loop t.paths with
-  | None -> Table.set t.packages root_name (Error Not_found)
-  | Some (Error e) ->
-    Table.set t.packages root_name (Error (Invalid_dune_package e))
-  | Some (Ok (Findlib findlib_package)) ->
-    Meta_source.parse_and_acknowledge findlib_package t
-  | Some (Ok (Dune pkg)) ->
-    Lib_name.Map.iter pkg.entries ~f:(fun entry ->
-        let name = Dune_package.Entry.name entry in
-        Table.set t.packages name (Ok entry))
+  match Table.find t.root_packages root_name with
+  | Some x -> x
+  | None ->
+    let package = loop t.paths in
+    Table.set t.root_packages root_name package;
+    ( match package with
+    | Error Not_found -> Table.set t.packages root_name (Error Not_found)
+    | Error (Invalid_dune_package e) ->
+      Table.set t.packages root_name (Error (Invalid_dune_package e))
+    | Ok (Findlib findlib_package) ->
+      Meta_source.parse_and_acknowledge findlib_package t
+    | Ok (Dune pkg) ->
+      Lib_name.Map.iter pkg.entries ~f:(fun entry ->
+          let name = Dune_package.Entry.name entry in
+          Table.set t.packages name (Ok entry)) );
+    package
 
 let find t name =
   match Table.find t.packages name with
   | Some x -> x
   | None -> (
-    find_and_acknowledge_package t ~fq_name:name;
+    let root_name = Lib_name.root_lib name in
+    ignore (find_root_package t ~root_name);
     match Table.find t.packages name with
     | Some x -> x
     | None ->
@@ -567,8 +595,8 @@ let root_packages t =
   Lib_name.Set.union pkgs builtins
 
 let load_all_packages t =
-  Lib_name.Set.iter (root_packages t) ~f:(fun pkg ->
-      find_and_acknowledge_package t ~fq_name:pkg)
+  Lib_name.Set.iter (root_packages t) ~f:(fun root_name ->
+      ignore (find_root_package t ~root_name))
 
 let all_packages t =
   load_all_packages t;
@@ -586,6 +614,7 @@ let create ~stdlib_dir ~paths ~version ~lib_config =
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version
   ; packages = Table.create (module Lib_name) 1024
+  ; root_packages = Table.create (module Lib_name) 1024
   ; lib_config
   }
 

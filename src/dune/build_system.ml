@@ -159,8 +159,8 @@ module Loaded = struct
   type build =
     { allowed_subdirs : Path.Unspecified.w Dir_set.t
     ; rules_produced : Rules.t
-    ; targets_here : Rule.t Path.Build.Map.t
-    ; targets_of_alias_dir : Rule.t Path.Build.Map.t
+    ; rules_here : Rule.t Path.Build.Map.t
+    ; rules_of_alias_dir : Rule.t Path.Build.Map.t
     }
 
   type t =
@@ -171,8 +171,8 @@ module Loaded = struct
     Build
       { allowed_subdirs
       ; rules_produced = Rules.empty
-      ; targets_here = Path.Build.Map.empty
-      ; targets_of_alias_dir = Path.Build.Map.empty
+      ; rules_here = Path.Build.Map.empty
+      ; rules_of_alias_dir = Path.Build.Map.empty
       }
 end
 
@@ -603,8 +603,8 @@ end = struct
   let targets_of ~dir =
     match load_dir ~dir with
     | Non_build targets -> targets
-    | Build { targets_here; _ } ->
-      Path.Build.Map.keys targets_here
+    | Build { rules_here; _ } ->
+      Path.Build.Map.keys rules_here
       |> List.map ~f:Path.build |> Path.Set.of_list
 
   let compute_alias_rules t ~context_name ~(collected : Rules.Dir_rules.ready)
@@ -695,10 +695,10 @@ end = struct
           :: rules)
     in
     fun ~subdirs_to_keep ->
-      let compiled = compile_rules ~dir:alias_dir alias_rules in
-      add_rules_exn t compiled;
+      let rules_here = compile_rules ~dir:alias_dir alias_rules in
+      add_rules_exn t rules_here;
       remove_old_artifacts t ~dir:alias_dir ~subdirs_to_keep;
-      compiled
+      rules_here
 
   let filter_out_fallback_rules ~to_copy rules =
     List.filter rules ~f:(fun (rule : Rule.t) ->
@@ -945,8 +945,8 @@ end = struct
         create_copy_rules ~ctx_dir ~non_target_source_files:source_files )
       @ rules
     in
-    let targets_here = compile_rules ~dir rules in
-    add_rules_exn t targets_here;
+    let rules_here = compile_rules ~dir rules in
+    add_rules_exn t rules_here;
     let allowed_by_parent =
       Generated_directory_restrictions.allowed_by_parent ~dir
     in
@@ -1008,14 +1008,14 @@ end = struct
     let alias_targets =
       Option.map ~f:(fun f -> f ~subdirs_to_keep) alias_rules
     in
-    let targets_of_alias_dir =
+    let rules_of_alias_dir =
       Option.value ~default:Path.Build.Map.empty alias_targets
     in
     Loaded.Build
       { allowed_subdirs = descendants_to_keep
       ; rules_produced
-      ; targets_here
-      ; targets_of_alias_dir
+      ; rules_here
+      ; rules_of_alias_dir
       }
 
   let load_dir_impl t ~dir : Loaded.t =
@@ -1025,14 +1025,14 @@ end = struct
       match load_dir ~dir:(Path.build dir') with
       | Non_build _ -> Code_error.raise "Can only forward to a build dir" []
       | Build
-          { targets_here = _
-          ; targets_of_alias_dir
+          { rules_here = _
+          ; rules_of_alias_dir
           ; rules_produced
           ; allowed_subdirs
           } ->
         Loaded.Build
-          { targets_here = targets_of_alias_dir
-          ; targets_of_alias_dir = Path.Build.Map.empty
+          { rules_here = rules_of_alias_dir
+          ; rules_of_alias_dir = Path.Build.Map.empty
           ; rules_produced
           ; allowed_subdirs
           } )
@@ -1054,14 +1054,14 @@ let load_dir_and_get_buildable_targets ~dir =
   let loaded = load_dir ~dir in
   match loaded with
   | Non_build _ -> Path.Build.Map.empty
-  | Build { targets_here; _ } -> targets_here
+  | Build { rules_here; _ } -> rules_here
 
 let get_rule_other fn =
   Option.bind (Path.as_in_build_dir fn) ~f:(fun fn ->
       let dir = Path.Build.parent_exn fn in
       match load_dir ~dir:(Path.build dir) with
       | Non_build _ -> assert false
-      | Build { targets_here; _ } -> Path.Build.Map.find targets_here fn)
+      | Build { rules_here; _ } -> Path.Build.Map.find rules_here fn)
 
 and get_rule t path =
   let dir = Path.parent_exn path in
@@ -1094,10 +1094,10 @@ let all_targets t =
                          (File_tree.Dir.path dir)))
              with
              | Non_build _ -> acc
-             | Build { targets_here; targets_of_alias_dir; _ } ->
+             | Build { rules_here; rules_of_alias_dir; _ } ->
                List.fold_left ~init:acc ~f:Path.Build.Set.add
-                 ( Path.Build.Map.keys targets_of_alias_dir
-                 @ Path.Build.Map.keys targets_here )))
+                 ( Path.Build.Map.keys rules_of_alias_dir
+                 @ Path.Build.Map.keys rules_here )))
 
 module type Rec = sig
   val build_file : Path.t -> unit Fiber.t

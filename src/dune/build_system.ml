@@ -315,9 +315,7 @@ type caching =
   }
 
 type t =
-  { (* File specification by targets *)
-    files : Rule.t Path.Build.Table.t
-  ; contexts : Context.t Context_name.Map.t
+  { contexts : Context.t Context_name.Map.t
   ; init_rules : Rules.t Fdecl.t
   ; gen_rules :
       (   Context_or_install.t
@@ -406,18 +404,6 @@ let get_dir_triage t ~dir =
   | Build (Install (With_context _))
   | Build (Regular (With_context _)) ->
     Need_step2
-
-let add_spec_exn t fn rule =
-  match Path.Build.Table.find t.files fn with
-  | None -> Path.Build.Table.set t.files fn rule
-  | Some _ ->
-    Code_error.raise
-      "add_spec_exn called on the same file twice. This should be prevented by \
-       the check in [compile_rules]"
-      [ ("file", Path.Build.to_dyn fn) ]
-
-let add_rules_exn t rules =
-  Path.Build.Map.iteri rules ~f:(fun key data -> add_spec_exn t key data)
 
 let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   let describe (rule : Rule.t) =
@@ -945,7 +931,6 @@ end = struct
       @ rules
     in
     let rules_here = compile_rules ~dir rules in
-    add_rules_exn t rules_here;
     let allowed_by_parent =
       Generated_directory_restrictions.allowed_by_parent ~dir
     in
@@ -1712,7 +1697,7 @@ let package_deps pkg files =
       else
         Package.Name.Set.union acc pkgs
   and loop_deps fn acc =
-    match Path.Build.Table.find t.files fn with
+    match get_rule (Path.build fn) with
     | None -> acc
     | Some ir ->
       if Rule.Set.mem !rules_seen ir then
@@ -1961,7 +1946,6 @@ let init ~contexts ?caching ~sandboxing_preference =
   in
   let t =
     { contexts
-    ; files = Path.Build.Table.create 1024
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque

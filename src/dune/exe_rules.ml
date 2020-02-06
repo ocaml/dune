@@ -58,12 +58,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
         match L.Map.find exes.modes L.js with
         | Some loc -> add_if_not_already_present exes.modes L.byte loc
         | None ->
-          if not explicit_js_mode then
+          if explicit_js_mode then
+            exes.modes
+          else
             match L.Map.find exes.modes L.byte with
             | Some loc -> add_if_not_already_present exes.modes L.js loc
             | None -> exes.modes
-          else
-            exes.modes
       in
       List.filter_map (L.Map.to_list modes) ~f:(fun ((mode : L.t), loc) ->
           match (has_native, mode) with

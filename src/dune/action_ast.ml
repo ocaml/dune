@@ -58,17 +58,60 @@ struct
               and+ args = repeat String.decode in
               Run (prog, args) )
           ; ( "with-accepted-exit-codes"
-            , Dune_lang.Syntax.since Stanza.syntax (2, 0)
+            , let open Dune_lang in
+              Syntax.since Stanza.syntax (2, 0)
               >>> let+ codes = Predicate_lang.decode_one Dune_lang.Decoder.int
-                  and+ t = located t in
-                  match t with
-                  | _, ((Run _ | Bash _ | System _) as t) ->
-                    With_accepted_exit_codes (codes, t)
-                  | loc, _ ->
+                  and+ version = Syntax.get_exn Stanza.syntax
+                  and+ loc, t = located t in
+                  let nesting_support_version = (2, 2) in
+                  let nesting_support =
+                    Syntax.Version.Infix.(version >= nesting_support_version)
+                  in
+                  let rec is_ok = function
+                    | Run _
+                    | Bash _
+                    | System _ ->
+                      true
+                    | Chdir (_, t)
+                    | Setenv (_, _, t)
+                    | Ignore (_, t)
+                    | Redirect_in (_, _, t)
+                    | Redirect_out (_, _, t) ->
+                      if nesting_support then
+                        is_ok t
+                      else
+                        Syntax.Error.since loc Stanza.syntax
+                          nesting_support_version
+                          ~what:
+                            "nesting modifiers under 'with-accepted-exit-codes'"
+                    | _ -> false
+                  in
+                  let quote = List.map ~f:(Printf.sprintf "\"%s\"") in
+                  match (is_ok t, nesting_support) with
+                  | true, _ -> With_accepted_exit_codes (codes, t)
+                  | false, true ->
                     User_error.raise ~loc
                       [ Pp.textf
-                          "with-accepted-exit-codes can only be used with \
-                           \"run\", \"bash\" or \"system\""
+                          "Only %s can be nested under \
+                           \"with-accepted-exit-codes\""
+                          (Stdune.String.enumerate_and
+                             (quote
+                                [ "run"
+                                ; "bash"
+                                ; "system"
+                                ; "chdir"
+                                ; "setenv"
+                                ; "ignore-<outputs>"
+                                ; "with-stdin-from"
+                                ; "with-<outputs>-to"
+                                ]))
+                      ]
+                  | false, false ->
+                    User_error.raise ~loc
+                      [ Pp.textf
+                          "with-accepted-exit-codes can only be used with %s"
+                          (Stdune.String.enumerate_or
+                             (quote [ "run"; "bash"; "system" ]))
                       ] )
           ; ( "dynamic-run"
             , Dune_lang.Syntax.since Action_plugin.syntax (0, 1)

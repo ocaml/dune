@@ -30,10 +30,10 @@ let node21 = Dag.node dag { name = "child 2 1" }
 let node31 = Dag.node dag { name = "child 3 1" }
 
 let () =
-  Dag.add dag node node11;
-  Dag.add dag node node12;
-  Dag.add dag node12 node21;
-  Dag.add dag node21 node31
+  Dag.add_idempotent dag node node11;
+  Dag.add_idempotent dag node node12;
+  Dag.add_idempotent dag node12 node21;
+  Dag.add_idempotent dag node21 node31
 
 let pp_mynode fmt n = Format.fprintf fmt "%s" n.name
 
@@ -42,11 +42,11 @@ let dag_pp_mynode = Dag.pp_node pp_mynode
 let%expect_test _ =
   Format.printf "%a@." dag_pp_mynode node;
   let node41 = Dag.node dag { name = "child 4 1" } in
-  Dag.add dag node31 node41;
+  Dag.add_idempotent dag node31 node41;
   Format.printf "%a@." dag_pp_mynode node;
   let name node = node.data.name in
   try
-    Dag.add dag node41 node;
+    Dag.add_idempotent dag node41 node;
     print_endline "no cycle"
   with Dag.Cycle cycle ->
     let cycle = List.map cycle ~f:name in
@@ -80,7 +80,7 @@ let cycle_test variant =
   let edges = ref [] in
   let add d n1 n2 =
     edges := (n1.data, n2.data) :: !edges;
-    add d n1 n2
+    add_idempotent d n1 n2
   in
   let d = Dag.create () in
   let _n1 = node d 1 in

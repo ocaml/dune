@@ -92,7 +92,10 @@ module Make (Value : Value) : S with type value := Value.t = struct
     ; parent = None
     }
 
-  let add g v w =
+  (* [add_assuming_missing dag v w] creates an arc going from [v] to [w]. @raise Cycle if
+      creating the arc would create a cycle. This assumes that the arc does not
+      already exist. *)
+  let add_assuming_missing g v w =
     match IC.add_edge_or_detect_cycle g v w with
     | IC.EdgeAdded -> ()
     | IC.EdgeCreatesCycle compute_cycle ->
@@ -127,5 +130,5 @@ module Make (Value : Value) : S with type value := Value.t = struct
     if is_child v w then
       ()
     else
-      add g v w
+      add_assuming_missing g v w
 end

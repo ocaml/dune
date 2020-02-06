@@ -22,8 +22,9 @@ Running tests
 =============
 
 Whatever the tests of a project are, the usual way to run tests with dune is to
-call ``dune runtest`` from the shell. This will run all the tests defined in the
-current directory and any sub-directory recursively.
+call ``dune runtest`` from the shell (or the command alias ``dune test``). This
+will run all the tests defined in the current directory and any sub-directory
+recursively.
 
 Note that in any case, ``dune runtest`` is simply a short-hand for building the
 ``runtest`` alias, so you can always ask dune to run the tests in conjunction

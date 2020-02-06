@@ -308,14 +308,14 @@ Running tests
 There are two ways to run tests:
 
 -  ``dune build @runtest``
--  ``dune runtest``
+-  ``dune test`` (or the more explicit ``dune runtest``)
 
 The two commands are equivalent. They will run all the tests defined in the
 current directory and its children recursively. You can also run the tests in a
 specific sub-directory and its children by using:
 
 -  ``dune build @foo/bar/runtest``
--  ``dune runtest foo/bar``
+-  ``dune test foo/bar`` (or ``dune runtest foo/bar``)
 
 Watch mode
 ==========

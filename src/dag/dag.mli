@@ -9,9 +9,8 @@ open! Stdune
     ACM Trans. Algorithms 12, 2, Article 14 (December 2015), 22 pages. DOI:
     https://doi.org/10.1145/2756553 *)
 
-(** Note that this file uses [vendor/incremental-cycles] and has to
-   meet some invariants, for more information see incremental-cycles'
-   README *)
+(** Note that this file uses [vendor/incremental-cycles] and has to meet some
+    invariants, for more information see incremental-cycles' README *)
 
 module type Value = Dag_intf.Value
 

@@ -447,8 +447,7 @@ let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
     in
     let dag_node = dep_node.dag_node in
     let rev_dep = rev_dep.dag_node in
-    try
-      Dag.add_idempotent global_dep_dag rev_dep dag_node
+    try Dag.add_idempotent global_dep_dag rev_dep dag_node
     with Dag.Cycle cycle ->
       raise
         (Cycle_error.E

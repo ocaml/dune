@@ -1,7 +1,7 @@
 .. _jsoo:
 
 **********************
-Javascript compilation
+JavaScript compilation
 **********************
 
 js_of_ocaml_ is a compiler from OCaml to JavaScript. The compiler works by

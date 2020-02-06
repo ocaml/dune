@@ -83,7 +83,7 @@ false)``
 explicit_js_mode
 ----------------
 
-Traditionally, Javascript targets were defined for every bytecode executable.
+Traditionally, JavaScript targets were defined for every bytecode executable.
 This was not very precise and did not interact well with the ``@all`` alias.
 
 You can opt out of this behaviour by using:
@@ -93,7 +93,7 @@ You can opt out of this behaviour by using:
     (explicit_js_mode)
 
 When this mode is enabled, an explicit ``js`` mode needs to be added to the
-``(modes ...)`` field of executables in order to trigger Javascript
+``(modes ...)`` field of executables in order to trigger JavaScript
 compilation. Explicit JS targets declared like this will be attached to the
 ``@all`` alias.
 
@@ -212,7 +212,7 @@ With this fields in, every time dune is called to execute some rules (either via
 ``dune build``, ``dune runtest`` or something else), the opam files get
 generated.
 
-Some or all of these fields may be overriden for each package of the project, see
+Some or all of these fields may be overridden for each package of the project, see
 :ref:`package`.
 
 .. _package:
@@ -247,7 +247,7 @@ It contains the following fields:
   <url>)``, ``(documentation <url>)`` are the same (and take precedence over)
   the corresponding global fields. These fields are available since Dune 2.0.
 
-The list of dependencies ``<dep-specification>`` is modeled after opam's own
+The list of dependencies ``<dep-specification>`` is modelled after opam's own
 language: The syntax is as a list of the following elements:
 
 .. code::
@@ -428,7 +428,7 @@ to use the :ref:`include_subdirs` stanza.
   dependencies here. You don't need to do so unless you use dune to
   synthesize the ``depends`` and ``depopts`` sections of your opam file
 
-- ``js_of_ocaml`` sets options for Javascript compilation, see :ref:`jsoo-field`
+- ``js_of_ocaml`` sets options for JavaScript compilation, see :ref:`jsoo-field`
 
 - ``flags``, ``ocamlc_flags`` and ``ocamlopt_flags``. See the section about
   :ref:`ocaml-flags`
@@ -472,7 +472,7 @@ to use the :ref:`include_subdirs` stanza.
   we were waiting for proper support for virtual libraries. Do not use
   in new code, it will be deleted in dune 2.0
 
-- ``(enabled_if <blang expression>)`` allows to conditionally disable
+- ``(enabled_if <blang expression>)`` conditionally disables
   a library. A disabled library cannot be built and will not be
   installed. The condition is specified using the :ref:`blang`, and the
   field allows for the ``%{os_type}`` variable, which is expanded to
@@ -525,9 +525,9 @@ See :ref:`jsoo` for more information.
 deprecated_library_name
 -----------------------
 
-The ``deprecated_library_name`` stanza allows to redirect an old
+The ``deprecated_library_name`` stanza enables redirecting an old
 deprecated name after a library has been renamed. It's syntax is as
-follow:
+follows:
 
 .. code:: scheme
 
@@ -642,7 +642,7 @@ Executables can also be linked as object or shared object files. See
 
 - ``(optional)`` is the same as the corresponding field of `library`_
 
-- ``(promote <options>)`` allows to promote the linked executables to
+- ``(promote <options>)`` allows promoting the linked executables to
   the source tree. The options are the same as for the :ref:`rule
   promote mode <promote>`. Adding ``(promote (until-clean))`` to an
   ``executable`` stanza will cause Dune to copy the ``.exe`` files to
@@ -661,12 +661,12 @@ Executables can also be linked as object or shared object files. See
   being pulled in, either through a direct or transitive dependency,
   Dune fails with an error message explaining how the library was
   pulled in. This field is available since the 2.0 version of the dune
-  languge.
+  language.
 
 Linking modes
 ~~~~~~~~~~~~~
 
-The ``modes`` field allows to select what linking modes should be used
+The ``modes`` field allows selecting what linking modes should be used
 to link executables. Each mode is a pair ``(<compilation-mode>
 <binary-kind>)`` where ``<compilation-mode>`` describes whether the
 byte code or native code backend of the OCaml compiler should be used
@@ -685,7 +685,7 @@ compilation is not available.
 - ``shared_object`` for producing object files that can be dynamically
   loaded into an application. This mode can be used to write a plugin
   in OCaml for a non-OCaml application.
-- ``js`` for producing Javascript from bytecode executables, see
+- ``js`` for producing JavaScript from bytecode executables, see
   :ref:`explicit-js-mode`.
 
 For instance the following ``executables`` stanza will produce byte
@@ -860,7 +860,7 @@ field. The following modes are available:
 The ``(promote <options>)`` form is only available since Dune
 1.10. Before Dune 1.10, you need to use one of the ``promote-...``
 forms. The ``promote-...`` forms should disappear in Dune 2.0, so
-using the more generic ``(promote <options>)`` form should be prefered
+using the more generic ``(promote <options>)`` form should be preferred
 in new projects.
 
 There are two use cases for promote rules. The first one is when the
@@ -1103,7 +1103,7 @@ install
 
 Dune supports installing packages on the system, i.e. copying freshly built
 artifacts from the workspace to the system. The ``install`` stanza takes three
-informations:
+pieces of information:
 
 - the list of files the install
 - the package to attach these files to. This field is optional if your
@@ -1120,7 +1120,7 @@ For instance:
     (package mypackage))
 
 Indicate that the file ``hello.txt`` in the current directory is to be
-installed in ``<prefix>/share/mypacakge``.
+installed in ``<prefix>/share/mypackage``.
 
 The following sections are available:
 
@@ -1195,7 +1195,7 @@ as the difference between the ``copy`` and ``copy#`` action. See the
 include
 -------
 
-The ``include`` stanza allows to include the contents of another file into the
+The ``include`` stanza allows including the contents of another file in the
 current dune file. Currently, the included file cannot be generated and must be
 present in the source tree. This feature is intended to be used in conjunction
 with promotion, when parts of a dune file are to be generated.
@@ -1212,7 +1212,7 @@ For instance:
      (alias  runtest)
      (action (diff dune.inc dune.inc.gen)))
 
-With this dune file, running dune as follow will replace the
+With this dune file, running dune as follows will replace the
 ``dune.inc`` file in the source tree by the generated one:
 
 .. code:: shell
@@ -1275,7 +1275,7 @@ where the ``name`` field is singular. The same optional fields are supported.
 env
 ---
 
-The ``env`` stanza allows to modify the environment. The syntax is as
+The ``env`` stanza allows one to modify the environment. The syntax is as
 follow:
 
 .. code:: scheme
@@ -1320,7 +1320,7 @@ Fields supported in ``<settings>`` are:
 dirs (since 1.6)
 -------------------
 
-The ``dirs`` stanza allows to tell specify the sub-directories dune will
+The ``dirs`` stanza allows specifying the sub-directories dune will
 include in a build. The syntax is based on dune's :ref:`predicate-lang` and allows
 the user the following operations:
 
@@ -1418,7 +1418,7 @@ include_subdirs
 ---------------
 
 The ``include_subdirs`` stanza is used to control how dune considers
-sub-directories of the current directory. The syntax is as follow:
+sub-directories of the current directory. The syntax is as follows:
 
 .. code:: scheme
 
@@ -1521,7 +1521,7 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
 The stanza will build all `.v` files on the given directory. The semantics of fields is:
 
 - ``<module_prefix>`` will be used as the default Coq library prefix ``-R``,
-- the ``modules`` field allows to constrain the set of modules
+- the ``modules`` field enables constraining the set of modules
   included in the library, similarly to its OCaml counterpart,
 - ``public_name`` will make Dune generate install rules for the `.vo`
   files; files will be installed in
@@ -1652,29 +1652,29 @@ context or can be the description of an opam switch, as follows:
 ``<optional-fields>`` are:
 
 -  ``(name <name>)`` is the name of the subdirectory of ``_build``
-   where the artifacts for this build context will be stored
+   where the artifacts for this build context will be stored.
 
 -  ``(root <opam-root>)`` is the opam root. By default it will take
    the opam root defined by the environment in which ``dune`` is
-   run which is usually ``~/.opam``
+   run which is usually ``~/.opam``.
 
 - ``(merlin)`` instructs dune to use this build context for
-  merlin
+  merlin.
 
 - ``(profile <profile>)`` to set a different profile for a build
   context. This has precedence over the command line option
-  ``--profile``
+  ``--profile``.
 
 - ``(env <env>)`` to set the environment for a particular context. This is of
   higher precedence than the root ``env`` stanza in the workspace file. This
   field the same options as the :ref:`dune-env` stanza.
 
-- ``(toolchain <findlib_coolchain>)`` set findlib toolchain for the context.
+- ``(toolchain <findlib_toolchain>)`` set findlib toolchain for the context.
 
 - ``(host <host_context>)`` choose a different context to build binaries that
   are meant to be executed on the host machine, such as preprocessors.
 
-- ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows to set the value of any
+- ``(paths (<var1> <val1>) .. (<varN> <valN>))`` allows setting the value of any
   ``PATH``-like variables in this context. If ``PATH`` itself is modified in
   this way, its value will be used to resolve binaries in the workspace,
   including finding the compiler and related tools. These variables will also be
@@ -1693,7 +1693,7 @@ context or can be the description of an opam switch, as follows:
   automatically from the default name and ``<target-exe>``, unless
   explicitly specified using ``(name ...)`` field.  For example, if
   ``<target_exe>`` is *src/foo.exe* in a default context, then the
-  name of the cotext is *default-fdo-foo* and the name of the file
+  name of the context is *default-fdo-foo* and the name of the file
   that contains execution counters is *src/fdo.exe.fdo-profile*.  This
   feature is **experimental** and no backwards compatibility is
   implied.

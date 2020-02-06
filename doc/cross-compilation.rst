@@ -17,7 +17,7 @@ to the definition of a build context.
 
 Note that at the moment, there is no official support for
 cross-compilation in OCaml. Dune supports the opam-cross-x
-repositories from the `ocaml-cross organization on github
+repositories from the `ocaml-cross organization on GitHub
 <https://github.com/ocaml-cross/>`_, such as:
 
 - `opam-cross-windows <https://github.com/ocaml-cross/opam-cross-windows>`_

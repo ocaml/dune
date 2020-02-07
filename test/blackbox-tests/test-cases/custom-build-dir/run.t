@@ -23,13 +23,14 @@
 
 Maybe this case should be supported?
 
-  $ cd project && dune build foo --build-dir ../build
+  $ (cd project && dune build foo --build-dir ../build)
   Error: path outside the workspace: ../build from .
   [1]
 
 Test with build directory being an absolute path
 
-  $ X=$PWD/build; cd project && dune build foo --build-dir $X
+  $ X=$PWD/build
+  $ (cd project && dune build foo --build-dir $X)
   $ find build | grep -v '/[.]' | LANG=C sort
   build
   build/default

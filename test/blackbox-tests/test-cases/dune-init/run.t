@@ -19,7 +19,7 @@ Can init a public library
 
 Can build the public library
 
-  $ cd _test_lib_dir && touch test_lib.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ (cd _test_lib_dir && touch test_lib.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_lib)
@@ -70,14 +70,14 @@ Can init a public executable
 
 Can build an executable
 
-  $ cd _test_bin_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ (cd _test_bin_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_bin)
 
 Can run the created executable
 
-  $ cd _test_bin_dir && dune exec test_bin
+  $ (cd _test_bin_dir && dune exec test_bin)
   Hello, World!
 
 Clean up the executable tests
@@ -150,14 +150,14 @@ Can init a library and dependent executable in a combo project
 
 Can build the combo project
 
-  $ cd _test_lib_exe_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ (cd _test_lib_exe_dir && touch test_bin.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_bin)
 
 Can run the combo project
 
-  $ cd _test_lib_exe_dir && dune exec test_bin
+  $ (cd _test_lib_exe_dir && dune exec test_bin)
   Hello, World!
 
 Clean up the combo project
@@ -183,7 +183,7 @@ Can add multiple libraries in the same directory
 
 Can build the multiple library project
 
-  $ cd _test_lib && touch test_lib1.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ (cd _test_lib && touch test_lib1.opam && dune build 2>&1 | sed "s/(lang dune .*)/(lang dune <version>)/")
   Info: Creating file dune-project with this contents:
   | (lang dune <version>)
   | (name test_lib1)

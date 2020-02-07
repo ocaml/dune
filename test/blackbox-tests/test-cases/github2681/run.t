@@ -12,7 +12,7 @@ dependency of the alias.
   $ dune build @bar --display short
   $ cat _build/default/foo
   hello world
-  $ cd ..
+  $ (cd ..)
 
 A rule may now have an empty set of targets if it has an alias field
   $ mkdir no-targets && cd no-targets

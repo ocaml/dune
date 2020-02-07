@@ -255,10 +255,12 @@ let fold_find path ~init ~f =
     Sys.readdir path
     |> Array.fold_left ~init:acc ~f:(fun acc file ->
            let path = Filename.concat path file in
-           if Sys.is_directory path && (Unix.lstat path).st_kind <> S_LNK then
-             dir path acc
-           else
-             f acc path)
+           let recurse =
+             Sys.is_directory path
+             && (Unix.lstat path).st_kind <> S_LNK
+             && (Filename.basename path <> "_build")
+           in
+           if recurse then dir path acc else f acc path)
   in
   dir path init
 

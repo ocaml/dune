@@ -424,7 +424,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
     Lib.DB.create_from_findlib context.findlib ~stdlib_dir
-      ~external_lib_deps_mode ~lib_config
+      ~external_lib_deps_mode
   in
   let scopes, public_libs =
     let stanzas =

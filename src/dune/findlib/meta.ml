@@ -216,6 +216,7 @@ let rec simplify t =
 let parse_entries lb = Parse.entries lb 0 []
 
 let load p ~name =
+  let name = Option.map name ~f:Lib_name.of_package_name in
   { name; entries = Io.with_lexbuf_from_file p ~f:parse_entries } |> simplify
 
 let rule var predicates action value = Rule { var; predicates; action; value }
@@ -353,8 +354,9 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       base
   in
   List.filter_map libs ~f:(fun t ->
-      Option.map t.name ~f:(fun name -> (name, simplify t)))
-  |> Lib_name.Map.of_list_exn
+      Option.map t.name ~f:(fun name ->
+          (Lib_name.package_name name, simplify t)))
+  |> Package.Name.Map.of_list_exn
 
 let string_of_action = function
   | Set -> "="

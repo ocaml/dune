@@ -283,6 +283,9 @@ val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
 
 module Implicit_output = Implicit_output
 
+(** Memoization of polymorphic functions of type ['a input -> 'a output]. The
+    supplied [id] function must be injective, i.e. there must be a one-to-one
+    correspondence between [input]s and their [id]s. *)
 module Poly (Function : sig
   type 'a input
 

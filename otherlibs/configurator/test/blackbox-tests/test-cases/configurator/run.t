@@ -1,6 +1,7 @@
 Show that config values are present
   $ dune exec config/run.exe
-  DUNE_CONFIGURATOR is present
+  INSIDE_DUNE is present
+  .dune/configurator file present
   version is present
 
 We're able to compile C program successfully

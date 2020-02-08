@@ -9,7 +9,7 @@
   (chdir
    sample-projects/hello_world
    (progn
-    (run %{exe:../test/blackbox-tests/cram.exe} -test run.t)
+    (run cram -sanitizer %{bin:sanitizer} run.t)
     (diff? run.t run.t.corrected)))))
 
 (rule
@@ -21,5 +21,5 @@
   (chdir
    sample-projects/with-configure-step
    (progn
-    (run %{exe:../test/blackbox-tests/cram.exe} -test run.t)
+    (run cram -sanitizer %{bin:sanitizer} run.t)
     (diff? run.t run.t.corrected)))))

@@ -19,6 +19,23 @@ module Main_module_name = struct
 end
 
 module Special_builtin_support = struct
+  let api_version_field supported_api_versions =
+    let open Dune_lang.Decoder in
+    field "api_version"
+      (let+ loc = loc
+       and+ ver = int in
+       match List.assoc supported_api_versions ver with
+       | Some x -> x
+       | None ->
+         User_error.raise ~loc
+           [ Pp.textf
+               "API version %d is not supported. Only the following versions \
+                are currently supported:"
+               ver
+           ; Pp.enumerate supported_api_versions ~f:(fun (n, _) ->
+                 Pp.textf "%d" n)
+           ])
+
   module Build_info = struct
     type api_version = V1
 
@@ -43,22 +60,7 @@ module Special_builtin_support = struct
       let open Dune_lang.Decoder in
       fields
         (let+ data_module = field "data_module" string
-         and+ api_version =
-           field "api_version"
-             (let+ loc = loc
-              and+ ver = int in
-              match List.assoc supported_api_versions ver with
-              | Some x -> x
-              | None ->
-                User_error.raise ~loc
-                  [ Pp.textf
-                      "API version %d is not supported. Only the following \
-                       versions are currently supported:"
-                      ver
-                  ; Pp.enumerate supported_api_versions ~f:(fun (n, _) ->
-                        Pp.textf "%d" n)
-                  ])
-         in
+         and+ api_version = api_version_field supported_api_versions in
          { data_module; api_version })
 
     let encode { data_module; api_version } =
@@ -71,15 +73,46 @@ module Special_builtin_support = struct
         ]
   end
 
+  module Configurator = struct
+    type api_version = V1
+
+    let api_version_to_dyn = function
+      | V1 -> Dyn.Encoder.constr "V1" []
+
+    let supported_api_versions = [ (1, V1) ]
+
+    type t = { api_version : api_version }
+
+    let to_dyn { api_version } =
+      let open Dyn.Encoder in
+      record [ ("api_version", api_version_to_dyn api_version) ]
+
+    let decode =
+      let open Dune_lang.Decoder in
+      fields
+        (let+ api_version = api_version_field supported_api_versions in
+         { api_version })
+
+    let encode { api_version } =
+      let open Dune_lang.Encoder in
+      record_fields
+        [ field "api_version" int
+            ( match api_version with
+            | V1 -> 1 )
+        ]
+  end
+
   type t =
     | Findlib_dynload
     | Build_info of Build_info.t
+    | Configurator of Configurator.t
 
   let to_dyn x =
     let open Dyn.Encoder in
     match x with
     | Findlib_dynload -> constr "Findlib_dynload" []
     | Build_info info -> constr "Build_info" [ Build_info.to_dyn info ]
+    | Configurator info -> constr "Configurator" [ Configurator.to_dyn info ]
 
   let decode =
     let open Dune_lang.Decoder in
@@ -89,6 +122,10 @@ module Special_builtin_support = struct
         , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
           and+ info = Build_info.decode in
           Build_info info )
+      ; ( "configurator"
+        , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 3)
+          and+ info = Configurator.decode in
+          Configurator info )
       ]
 
   let encode t =
@@ -96,6 +133,8 @@ module Special_builtin_support = struct
     | Findlib_dynload -> Dune_lang.atom "findlib_dynload"
     | Build_info x ->
       Dune_lang.List (Dune_lang.atom "build_info" :: Build_info.encode x)
+    | Configurator x ->
+      Dune_lang.List (Dune_lang.atom "configurator" :: Configurator.encode x)
 end
 
 module Status = struct

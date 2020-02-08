@@ -3,7 +3,12 @@
 (executable
  (name cram)
  (modules cram)
- (libraries stdune dune_re dune configurator))
+ (libraries stdune dune))
+
+(executable
+ (name sanitizer)
+ (modules sanitizer)
+ (libraries stdune dune_re configurator))
 
 (ocamllex cram)
 

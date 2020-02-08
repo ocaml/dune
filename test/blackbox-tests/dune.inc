@@ -4,7 +4,9 @@
  (action
   (chdir
    test-cases/action-modifying-a-dependency
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias aliases)
@@ -12,7 +14,9 @@
  (action
   (chdir
    test-cases/aliases
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias all-alias)
@@ -20,7 +24,9 @@
  (action
   (chdir
    test-cases/all-alias
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias all-promotions)
@@ -28,7 +34,9 @@
  (action
   (chdir
    test-cases/all-promotions
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias bad-alias-error)
@@ -36,7 +44,9 @@
  (action
   (chdir
    test-cases/bad-alias-error
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias block-strings)
@@ -44,7 +54,9 @@
  (action
   (chdir
    test-cases/block-strings
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias byte-code-only)
@@ -52,7 +64,9 @@
  (action
   (chdir
    test-cases/byte-code-only
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias byte_complete)
@@ -60,7 +74,9 @@
  (action
   (chdir
    test-cases/byte_complete
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias c-stubs)
@@ -68,7 +84,9 @@
  (action
   (chdir
    test-cases/c-stubs
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias check-alias)
@@ -76,7 +94,9 @@
  (action
   (chdir
    test-cases/check-alias
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cinaps)
@@ -84,7 +104,9 @@
  (action
   (chdir
    test-cases/cinaps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cmdliner-dep-conf)
@@ -92,7 +114,9 @@
  (action
   (chdir
    test-cases/cmdliner-dep-conf
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias contents-depends-on-glob)
@@ -100,7 +124,9 @@
  (action
   (chdir
    test-cases/contents-depends-on-glob
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias copy-files-non-sub-dir-error)
@@ -108,7 +134,9 @@
  (action
   (chdir
    test-cases/copy-files-non-sub-dir-error
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias copy_files)
@@ -116,7 +144,9 @@
  (action
   (chdir
    test-cases/copy_files
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias coq)
@@ -124,7 +154,9 @@
  (action
   (chdir
    test-cases/coq
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias corrections)
@@ -132,7 +164,9 @@
  (action
   (chdir
    test-cases/corrections
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cram)
@@ -140,7 +174,9 @@
  (action
   (chdir
    test-cases/cram
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cross-compilation)
@@ -148,7 +184,9 @@
  (action
   (chdir
    test-cases/cross-compilation
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias custom-build-dir)
@@ -156,7 +194,9 @@
  (action
   (chdir
    test-cases/custom-build-dir
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias custom-cross-compilation)
@@ -164,7 +204,9 @@
  (action
   (chdir
    test-cases/custom-cross-compilation
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cxx-extension)
@@ -172,7 +214,9 @@
  (action
   (chdir
    test-cases/cxx-extension
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cycle-detection-symlinks-2863)
@@ -180,7 +224,9 @@
  (action
   (chdir
    test-cases/cycle-detection-symlinks-2863
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias default-targets)
@@ -188,7 +234,9 @@
  (action
   (chdir
    test-cases/default-targets
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dep-on-dir-that-does-not-exist)
@@ -196,7 +244,9 @@
  (action
   (chdir
    test-cases/dep-on-dir-that-does-not-exist
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dep-vars)
@@ -204,7 +254,9 @@
  (action
   (chdir
    test-cases/dep-vars
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias depend-on-the-universe)
@@ -212,7 +264,9 @@
  (action
   (chdir
    test-cases/depend-on-the-universe
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias deprecated-library-name)
@@ -220,7 +274,9 @@
  (action
   (chdir
    test-cases/deprecated-library-name
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias deps-conf-vars)
@@ -228,7 +284,9 @@
  (action
   (chdir
    test-cases/deps-conf-vars
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dialects)
@@ -236,7 +294,9 @@
  (action
   (chdir
    test-cases/dialects
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dir-target-dep)
@@ -244,7 +304,9 @@
  (action
   (chdir
    test-cases/dir-target-dep
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias disable-promotion)
@@ -252,7 +314,9 @@
  (action
   (chdir
    test-cases/disable-promotion
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias double-echo)
@@ -260,7 +324,9 @@
  (action
   (chdir
    test-cases/double-echo
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-build-dir-exec-1101)
@@ -268,7 +334,9 @@
  (action
   (chdir
    test-cases/dune-build-dir-exec-1101
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup)
@@ -276,7 +344,9 @@
  (action
   (chdir
    test-cases/dune-cache/dedup
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup-direct)
@@ -284,7 +354,9 @@
  (action
   (chdir
    test-cases/dune-cache/dedup-direct
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup-direct-copy)
@@ -292,7 +364,9 @@
  (action
   (chdir
    test-cases/dune-cache/dedup-direct-copy
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote)
@@ -300,7 +374,9 @@
  (action
   (chdir
    test-cases/dune-cache/promote
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-copy)
@@ -308,7 +384,9 @@
  (action
   (chdir
    test-cases/dune-cache/promote-copy
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-direct)
@@ -316,7 +394,9 @@
  (action
   (chdir
    test-cases/dune-cache/promote-direct
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-direct-copy)
@@ -324,7 +404,9 @@
  (action
   (chdir
    test-cases/dune-cache/promote-direct-copy
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promotion-in-source-tree)
@@ -334,7 +416,9 @@
  (action
   (chdir
    test-cases/dune-cache/promotion-in-source-tree
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-symlink)
@@ -342,7 +426,9 @@
  (action
   (chdir
    test-cases/dune-cache/symlink
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-symlink-direct)
@@ -350,7 +436,9 @@
  (action
   (chdir
    test-cases/dune-cache/symlink-direct
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-trim)
@@ -358,7 +446,9 @@
  (action
   (chdir
    test-cases/dune-cache/trim
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml-config:system} macosx)))
 
 (rule
@@ -367,7 +457,9 @@
  (action
   (chdir
    test-cases/dune-init
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-jbuild-var-case)
@@ -375,7 +467,9 @@
  (action
   (chdir
    test-cases/dune-jbuild-var-case
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-package)
@@ -383,7 +477,9 @@
  (action
   (chdir
    test-cases/dune-package
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-ppx-driver-system)
@@ -391,7 +487,9 @@
  (action
   (chdir
    test-cases/dune-ppx-driver-system
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-project-edition)
@@ -399,7 +497,9 @@
  (action
   (chdir
    test-cases/dune-project-edition
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-project-meta)
@@ -407,7 +507,9 @@
  (action
   (chdir
    test-cases/dune-project-meta
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-project-no-opam)
@@ -415,7 +517,9 @@
  (action
   (chdir
    test-cases/dune-project-no-opam
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune_memory-and-the-universe)
@@ -423,7 +527,9 @@
  (action
   (chdir
    test-cases/dune_memory-and-the-universe
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dup-fields)
@@ -431,7 +537,9 @@
  (action
   (chdir
    test-cases/dup-fields
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-c-cxx)
@@ -439,7 +547,9 @@
  (action
   (chdir
    test-cases/duplicate-c-cxx
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-c-cxx-obj)
@@ -447,7 +557,9 @@
  (action
   (chdir
    test-cases/duplicate-c-cxx-obj
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-project-names)
@@ -455,7 +567,9 @@
  (action
   (chdir
    test-cases/duplicate-project-names
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-target-no-loc)
@@ -463,7 +577,9 @@
  (action
   (chdir
    test-cases/duplicate-target-no-loc
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias embed-jbuild)
@@ -471,7 +587,9 @@
  (action
   (chdir
    test-cases/embed-jbuild
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias enabled_if)
@@ -479,7 +597,9 @@
  (action
   (chdir
    test-cases/enabled_if
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-and-flags-include)
@@ -487,7 +607,9 @@
  (action
   (chdir
    test-cases/env/env-and-flags-include
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-bin-pform)
@@ -495,7 +617,9 @@
  (action
   (chdir
    test-cases/env/env-bin-pform
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-bins)
@@ -503,7 +627,9 @@
  (action
   (chdir
    test-cases/env/env-bins
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-cflags)
@@ -512,8 +638,9 @@
   (chdir
    test-cases/env/env-cflags
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.06.0)))
 
 (rule
  (alias env-env-dune-file)
@@ -521,7 +648,9 @@
  (action
   (chdir
    test-cases/env/env-dune-file
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-simple)
@@ -530,8 +659,9 @@
   (chdir
    test-cases/env/env-simple
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.06.0)))
 
 (rule
  (alias env-env-tracking)
@@ -539,7 +669,9 @@
  (action
   (chdir
    test-cases/env/env-tracking
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-var-expansion)
@@ -547,7 +679,9 @@
  (action
   (chdir
    test-cases/env/env-var-expansion
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-variables)
@@ -555,7 +689,9 @@
  (action
   (chdir
    test-cases/env/env-variables
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-envs-and-contexts)
@@ -563,7 +699,9 @@
  (action
   (chdir
    test-cases/env/envs-and-contexts
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exclude-missing-module)
@@ -571,7 +709,9 @@
  (action
   (chdir
    test-cases/exclude-missing-module
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exe-name-mangle)
@@ -579,7 +719,9 @@
  (action
   (chdir
    test-cases/exe-name-mangle
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exec-cmd)
@@ -587,7 +729,9 @@
  (action
   (chdir
    test-cases/exec-cmd
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exec-missing)
@@ -595,7 +739,9 @@
  (action
   (chdir
    test-cases/exec-missing
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exes-with-c)
@@ -603,7 +749,9 @@
  (action
   (chdir
    test-cases/exes-with-c
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias explicit_js_mode)
@@ -611,7 +759,9 @@
  (action
   (chdir
    test-cases/explicit_js_mode
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias external-lib-deps)
@@ -619,7 +769,9 @@
  (action
   (chdir
    test-cases/external-lib-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias extra-lang-line)
@@ -627,7 +779,9 @@
  (action
   (chdir
    test-cases/extra-lang-line
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias fallback-dune)
@@ -635,7 +789,9 @@
  (action
   (chdir
    test-cases/fallback-dune
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias fdo)
@@ -644,8 +800,9 @@
   (chdir
    test-cases/fdo
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.11.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.11.0)))
 
 (rule
  (alias findlib)
@@ -653,7 +810,9 @@
  (action
   (chdir
    test-cases/findlib
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias findlib-dynload)
@@ -661,7 +820,9 @@
  (action
   (chdir
    test-cases/findlib-dynload
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias findlib-error)
@@ -669,7 +830,9 @@
  (action
   (chdir
    test-cases/findlib-error
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias forbidden_libraries)
@@ -677,7 +840,9 @@
  (action
   (chdir
    test-cases/forbidden_libraries
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias force-test)
@@ -685,7 +850,9 @@
  (action
   (chdir
    test-cases/force-test
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias foreign-library)
@@ -693,7 +860,9 @@
  (action
   (chdir
    test-cases/foreign-library
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias foreign-stubs)
@@ -701,7 +870,9 @@
  (action
   (chdir
    test-cases/foreign-stubs
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias format-dune-file)
@@ -709,7 +880,9 @@
  (action
   (chdir
    test-cases/format-dune-file
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias formatting)
@@ -717,7 +890,9 @@
  (action
   (chdir
    test-cases/formatting
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias gen-opam-install-file)
@@ -725,7 +900,9 @@
  (action
   (chdir
    test-cases/gen-opam-install-file
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1019)
@@ -733,7 +910,9 @@
  (action
   (chdir
    test-cases/github1019
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1099)
@@ -741,7 +920,9 @@
  (action
   (chdir
    test-cases/github1099
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1231)
@@ -749,7 +930,9 @@
  (action
   (chdir
    test-cases/github1231
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1342)
@@ -757,7 +940,9 @@
  (action
   (chdir
    test-cases/github1342
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1372)
@@ -765,7 +950,9 @@
  (action
   (chdir
    test-cases/github1372
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1395)
@@ -773,7 +960,9 @@
  (action
   (chdir
    test-cases/github1395
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1426)
@@ -781,7 +970,9 @@
  (action
   (chdir
    test-cases/github1426
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1529)
@@ -789,7 +980,9 @@
  (action
   (chdir
    test-cases/github1529
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1541)
@@ -797,7 +990,9 @@
  (action
   (chdir
    test-cases/github1541
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1549)
@@ -805,7 +1000,9 @@
  (action
   (chdir
    test-cases/github1549
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1560)
@@ -813,7 +1010,9 @@
  (action
   (chdir
    test-cases/github1560
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1616)
@@ -821,7 +1020,9 @@
  (action
   (chdir
    test-cases/github1616
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1811)
@@ -829,7 +1030,9 @@
  (action
   (chdir
    test-cases/github1811
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1855)
@@ -837,7 +1040,9 @@
  (action
   (chdir
    test-cases/github1855
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1856)
@@ -845,7 +1050,9 @@
  (action
   (chdir
    test-cases/github1856
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1946)
@@ -853,7 +1060,9 @@
  (action
   (chdir
    test-cases/github1946
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github20)
@@ -861,7 +1070,9 @@
  (action
   (chdir
    test-cases/github20
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2033)
@@ -869,7 +1080,9 @@
  (action
   (chdir
    test-cases/github2033
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2061)
@@ -877,7 +1090,9 @@
  (action
   (chdir
    test-cases/github2061
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2123)
@@ -885,7 +1100,9 @@
  (action
   (chdir
    test-cases/github2123
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2206)
@@ -893,7 +1110,9 @@
  (action
   (chdir
    test-cases/github2206
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2228)
@@ -901,7 +1120,9 @@
  (action
   (chdir
    test-cases/github2228
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2272)
@@ -909,7 +1130,9 @@
  (action
   (chdir
    test-cases/github2272
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github24)
@@ -917,7 +1140,9 @@
  (action
   (chdir
    test-cases/github24
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2499)
@@ -925,7 +1150,9 @@
  (action
   (chdir
    test-cases/github2499
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github25)
@@ -936,7 +1163,9 @@
    ./findlib-packages
    (chdir
     test-cases/github25
-    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+    (progn
+     (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+     (diff? run.t run.t.corrected))))))
 
 (rule
  (alias github2584)
@@ -944,7 +1173,9 @@
  (action
   (chdir
    test-cases/github2584
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2629)
@@ -952,7 +1183,9 @@
  (action
   (chdir
    test-cases/github2629
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2681)
@@ -960,7 +1193,9 @@
  (action
   (chdir
    test-cases/github2681
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2848)
@@ -968,7 +1203,9 @@
  (action
   (chdir
    test-cases/github2848
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3046)
@@ -984,7 +1221,9 @@
  (action
   (chdir
    test-cases/github534
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github568)
@@ -992,7 +1231,9 @@
  (action
   (chdir
    test-cases/github568
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github597)
@@ -1000,7 +1241,9 @@
  (action
   (chdir
    test-cases/github597
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github644)
@@ -1008,7 +1251,9 @@
  (action
   (chdir
    test-cases/github644
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github660)
@@ -1016,7 +1261,9 @@
  (action
   (chdir
    test-cases/github660
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github734)
@@ -1024,7 +1271,9 @@
  (action
   (chdir
    test-cases/github734
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github759)
@@ -1032,7 +1281,9 @@
  (action
   (chdir
    test-cases/github759
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github761)
@@ -1040,7 +1291,9 @@
  (action
   (chdir
    test-cases/github761
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github764)
@@ -1048,7 +1301,9 @@
  (action
   (chdir
    test-cases/github764
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml-config:system} win)))
 
 (rule
@@ -1057,7 +1312,9 @@
  (action
   (chdir
    test-cases/github784
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github992)
@@ -1065,7 +1322,9 @@
  (action
   (chdir
    test-cases/github992
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias glob-deps)
@@ -1073,7 +1332,9 @@
  (action
   (chdir
    test-cases/glob-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias glob-deps-change)
@@ -1081,7 +1342,9 @@
  (action
   (chdir
    test-cases/glob-deps-change
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias hints-root-executables)
@@ -1089,7 +1352,9 @@
  (action
   (chdir
    test-cases/hints-root-executables
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ignored_subdirs)
@@ -1097,7 +1362,9 @@
  (action
   (chdir
    test-cases/ignored_subdirs
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias include-loop)
@@ -1105,7 +1372,9 @@
  (action
   (chdir
    test-cases/include-loop
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias include-qualified)
@@ -1113,7 +1382,9 @@
  (action
   (chdir
    test-cases/include-qualified
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias incremental-rebuilds)
@@ -1121,7 +1392,9 @@
  (action
   (chdir
    test-cases/incremental-rebuilds
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias inline_tests)
@@ -1129,7 +1402,9 @@
  (action
   (chdir
    test-cases/inline_tests
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-dry-run)
@@ -1137,7 +1412,9 @@
  (action
   (chdir
    test-cases/install-dry-run
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-libdir)
@@ -1145,7 +1422,9 @@
  (action
   (chdir
    test-cases/install-libdir
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-mandir)
@@ -1153,7 +1432,9 @@
  (action
   (chdir
    test-cases/install-mandir
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-multiple-contexts)
@@ -1161,7 +1442,9 @@
  (action
   (chdir
    test-cases/install-multiple-contexts
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-partial-package)
@@ -1169,7 +1452,9 @@
  (action
   (chdir
    test-cases/install-partial-package
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-rule-order)
@@ -1177,7 +1462,9 @@
  (action
   (chdir
    test-cases/install-rule-order
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-single-section)
@@ -1185,7 +1472,9 @@
  (action
   (chdir
    test-cases/install-single-section
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-with-var)
@@ -1193,7 +1482,9 @@
  (action
   (chdir
    test-cases/install-with-var
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias installable-dup-private-libs)
@@ -1201,7 +1492,9 @@
  (action
   (chdir
    test-cases/installable-dup-private-libs
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias intf-only)
@@ -1209,7 +1502,9 @@
  (action
   (chdir
    test-cases/intf-only
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias invalid-dune-package)
@@ -1217,7 +1512,9 @@
  (action
   (chdir
    test-cases/invalid-dune-package
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias js_of_ocaml)
@@ -1228,7 +1525,9 @@
    %{bin:node}
    (chdir
     test-cases/js_of_ocaml
-    (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected))))))
+    (progn
+     (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+     (diff? run.t run.t.corrected))))))
 
 (rule
  (alias lib)
@@ -1236,7 +1535,9 @@
  (action
   (chdir
    test-cases/lib
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib-available)
@@ -1244,7 +1545,9 @@
  (action
   (chdir
    test-cases/lib-available
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib-errors)
@@ -1252,7 +1555,9 @@
  (action
   (chdir
    test-cases/lib-errors
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias link-deps)
@@ -1260,7 +1565,9 @@
  (action
   (chdir
    test-cases/link-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias link-includes)
@@ -1268,7 +1575,9 @@
  (action
   (chdir
    test-cases/link-includes
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lint)
@@ -1276,7 +1585,9 @@
  (action
   (chdir
    test-cases/lint
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias loop)
@@ -1284,7 +1595,9 @@
  (action
   (chdir
    test-cases/loop
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias macro-expand-error)
@@ -1292,7 +1605,9 @@
  (action
   (chdir
    test-cases/macro-expand-error
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-cmly)
@@ -1300,7 +1615,9 @@
  (action
   (chdir
    test-cases/menhir/cmly
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-env)
@@ -1308,7 +1625,9 @@
  (action
   (chdir
    test-cases/menhir/env
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-general)
@@ -1316,7 +1635,9 @@
  (action
   (chdir
    test-cases/menhir/general
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-general-2.0)
@@ -1324,7 +1645,9 @@
  (action
   (chdir
    test-cases/menhir/general-2.0
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-promote)
@@ -1332,7 +1655,9 @@
  (action
   (chdir
    test-cases/menhir/promote
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-allow_approximate_merlin)
@@ -1342,7 +1667,9 @@
  (action
   (chdir
    test-cases/merlin/allow_approximate_merlin
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-merlin-tests)
@@ -1350,7 +1677,9 @@
  (action
   (chdir
    test-cases/merlin/merlin-tests
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-src-dirs-of-deps)
@@ -1358,7 +1687,9 @@
  (action
   (chdir
    test-cases/merlin/src-dirs-of-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias meta-gen)
@@ -1366,7 +1697,9 @@
  (action
   (chdir
    test-cases/meta-gen
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias misc)
@@ -1374,7 +1707,9 @@
  (action
   (chdir
    test-cases/misc
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias missing-loc-run)
@@ -1382,7 +1717,9 @@
  (action
   (chdir
    test-cases/missing-loc-run
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias multi-dir)
@@ -1390,7 +1727,9 @@
  (action
   (chdir
    test-cases/multi-dir
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias multiple-targets)
@@ -1398,7 +1737,9 @@
  (action
   (chdir
    test-cases/multiple-targets
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias name-field-validation)
@@ -1406,7 +1747,9 @@
  (action
   (chdir
    test-cases/name-field-validation
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias no-installable-mode)
@@ -1414,7 +1757,9 @@
  (action
   (chdir
    test-cases/no-installable-mode
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias no-name-field)
@@ -1422,7 +1767,9 @@
  (action
   (chdir
    test-cases/no-name-field
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias null-dep)
@@ -1430,7 +1777,9 @@
  (action
   (chdir
    test-cases/null-dep
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocaml-config-macro)
@@ -1438,7 +1787,9 @@
  (action
   (chdir
    test-cases/ocaml-config-macro
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocaml-syntax)
@@ -1446,7 +1797,9 @@
  (action
   (chdir
    test-cases/ocaml-syntax
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocamldep-multi-stanzas)
@@ -1454,7 +1807,9 @@
  (action
   (chdir
    test-cases/ocamldep-multi-stanzas
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias odig-files-workspace)
@@ -1462,7 +1817,9 @@
  (action
   (chdir
    test-cases/odig-files-workspace
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias odoc-github717-odoc-index)
@@ -1471,8 +1828,9 @@
   (chdir
    test-cases/odoc/github717-odoc-index
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias odoc-multiple-private-libs)
@@ -1481,8 +1839,9 @@
   (chdir
    test-cases/odoc/multiple-private-libs
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias odoc-odoc-package-mld-link)
@@ -1491,8 +1850,9 @@
   (chdir
    test-cases/odoc/odoc-package-mld-link
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias odoc-odoc-simple)
@@ -1501,8 +1861,9 @@
   (chdir
    test-cases/odoc/odoc-simple
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias odoc-odoc-unique-mlds)
@@ -1511,8 +1872,9 @@
   (chdir
    test-cases/odoc/odoc-unique-mlds
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias old-dune-subsystem)
@@ -1520,7 +1882,9 @@
  (action
   (chdir
    test-cases/old-dune-subsystem
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias optional)
@@ -1528,7 +1892,9 @@
  (action
   (chdir
    test-cases/optional
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias optional-executable)
@@ -1536,7 +1902,9 @@
  (action
   (chdir
    test-cases/optional-executable
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias output-obj)
@@ -1545,10 +1913,12 @@
   (chdir
    test-cases/output-obj
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
     (diff? run.t run.t.corrected))))
  (enabled_if
-  (and (<> %{ocaml-config:system} macosx) (<> %{ocaml-config:system} win))))
+  (and
+   (and (<> %{ocaml-config:system} macosx) (<> %{ocaml-config:system} win))
+   (>= %{ocaml_version} 4.06.0))))
 
 (rule
  (alias package-dep)
@@ -1556,7 +1926,9 @@
  (action
   (chdir
    test-cases/package-dep
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias path-variables)
@@ -1564,7 +1936,9 @@
  (action
   (chdir
    test-cases/path-variables
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias pkg-config-quoting)
@@ -1575,7 +1949,9 @@
  (action
   (chdir
    test-cases/pkg-config-quoting
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ppx-rewriter)
@@ -1584,8 +1960,9 @@
   (chdir
    test-cases/ppx-rewriter
    (progn
-    (run %{exe:cram.exe} -skip-versions 4.02.3 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
  (alias ppx-runtime-dependencies)
@@ -1593,7 +1970,9 @@
  (action
   (chdir
    test-cases/ppx-runtime-dependencies
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias preprocess-with-action)
@@ -1601,7 +1980,9 @@
  (action
   (chdir
    test-cases/preprocess-with-action
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias private-modules)
@@ -1609,7 +1990,9 @@
  (action
   (chdir
    test-cases/private-modules
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias private-public-overlap)
@@ -1617,7 +2000,9 @@
  (action
   (chdir
    test-cases/private-public-overlap
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias project-root)
@@ -1625,7 +2010,9 @@
  (action
   (chdir
    test-cases/project-root
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias promote)
@@ -1633,7 +2020,9 @@
  (action
   (chdir
    test-cases/promote
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias quoting)
@@ -1641,7 +2030,9 @@
  (action
   (chdir
    test-cases/quoting
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias re-exported-deps)
@@ -1649,7 +2040,9 @@
  (action
   (chdir
    test-cases/re-exported-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias reason)
@@ -1657,7 +2050,9 @@
  (action
   (chdir
    test-cases/reason
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias redirections)
@@ -1665,7 +2060,9 @@
  (action
   (chdir
    test-cases/redirections
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias reporting-of-cycles)
@@ -1673,7 +2070,9 @@
  (action
   (chdir
    test-cases/reporting-of-cycles
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias rule-target-external)
@@ -1681,7 +2080,9 @@
  (action
   (chdir
    test-cases/rule-target-external
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias rule-target-inferrence)
@@ -1689,7 +2090,9 @@
  (action
   (chdir
    test-cases/rule-target-inferrence
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias sandboxing)
@@ -1697,7 +2100,9 @@
  (action
   (chdir
    test-cases/sandboxing
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias scope-bug)
@@ -1705,7 +2110,9 @@
  (action
   (chdir
    test-cases/scope-bug
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias scope-ppx-bug)
@@ -1713,7 +2120,9 @@
  (action
   (chdir
    test-cases/scope-ppx-bug
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias select)
@@ -1721,7 +2130,9 @@
  (action
   (chdir
    test-cases/select
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias select-2-0-rules)
@@ -1729,7 +2140,9 @@
  (action
   (chdir
    test-cases/select-2-0-rules
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias several-packages)
@@ -1737,7 +2150,9 @@
  (action
   (chdir
    test-cases/several-packages
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias shadow-bindings)
@@ -1745,7 +2160,9 @@
  (action
   (chdir
    test-cases/shadow-bindings
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias stale-artifact-removal)
@@ -1753,7 +2170,9 @@
  (action
   (chdir
    test-cases/stale-artifact-removal
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias stdlib-compilation)
@@ -1761,7 +2180,9 @@
  (action
   (chdir
    test-cases/stdlib-compilation
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias subst)
@@ -1769,7 +2190,9 @@
  (action
   (chdir
    test-cases/subst
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias syntax-versioning)
@@ -1777,7 +2200,9 @@
  (action
   (chdir
    test-cases/syntax-versioning
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias target-dir-alias)
@@ -1785,7 +2210,9 @@
  (action
   (chdir
    test-cases/target-dir-alias
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias targets-with-vars)
@@ -1793,7 +2220,9 @@
  (action
   (chdir
    test-cases/targets-with-vars
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza)
@@ -1801,7 +2230,9 @@
  (action
   (chdir
    test-cases/tests-stanza
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza-action)
@@ -1809,7 +2240,9 @@
  (action
   (chdir
    test-cases/tests-stanza-action
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza-action-syntax-version)
@@ -1819,7 +2252,9 @@
  (action
   (chdir
    test-cases/tests-stanza-action-syntax-version
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias toplevel-stanza)
@@ -1828,8 +2263,9 @@
   (chdir
    test-cases/toplevel-stanza
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias trace-file)
@@ -1837,7 +2273,9 @@
  (action
   (chdir
    test-cases/trace-file
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias transitive-deps-mode)
@@ -1845,7 +2283,9 @@
  (action
   (chdir
    test-cases/transitive-deps-mode
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias unreadable-src)
@@ -1853,7 +2293,9 @@
  (action
   (chdir
    test-cases/unreadable-src
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias unused-preprocessor-deps)
@@ -1861,7 +2303,9 @@
  (action
   (chdir
    test-cases/unused-preprocessor-deps
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias upgrader)
@@ -1869,7 +2313,9 @@
  (action
   (chdir
    test-cases/upgrader
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias use-meta)
@@ -1877,7 +2323,9 @@
  (action
   (chdir
    test-cases/use-meta
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias utop-utop-default)
@@ -1886,8 +2334,9 @@
   (chdir
    test-cases/utop/utop-default
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias utop-utop-default-implementation)
@@ -1898,8 +2347,9 @@
   (chdir
    test-cases/utop/utop-default-implementation
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias utop-utop-simple)
@@ -1908,8 +2358,9 @@
   (chdir
    test-cases/utop/utop-simple
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.05.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias variables-for-artifacts)
@@ -1917,7 +2368,9 @@
  (action
   (chdir
    test-cases/variables-for-artifacts
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants)
@@ -1925,7 +2378,9 @@
  (action
   (chdir
    test-cases/variants
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variant-dep-stack)
@@ -1933,7 +2388,9 @@
  (action
   (chdir
    test-cases/variants/variant-dep-stack
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-external-declaration)
@@ -1943,7 +2400,9 @@
  (action
   (chdir
    test-cases/variants/variants-external-declaration
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-external-declaration-conflict)
@@ -1953,7 +2412,9 @@
  (action
   (chdir
    test-cases/variants/variants-external-declaration-conflict
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-multi-project)
@@ -1963,7 +2424,9 @@
  (action
   (chdir
    test-cases/variants/variants-multi-project
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-only-package)
@@ -1971,7 +2434,9 @@
  (action
   (chdir
    test-cases/variants/variants-only-package
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-rogue-impl)
@@ -1979,7 +2444,9 @@
  (action
   (chdir
    test-cases/variants/variants-rogue-impl
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias variants-variants-wrong-external-declaration)
@@ -1989,7 +2456,9 @@
  (action
   (chdir
    test-cases/variants/variants-wrong-external-declaration
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias vendor)
@@ -1997,7 +2466,9 @@
  (action
   (chdir
    test-cases/vendor
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias vendor-dash-p-and-vendored-packages)
@@ -2007,7 +2478,9 @@
  (action
   (chdir
    test-cases/vendor/dash-p-and-vendored-packages
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias vendor-do-not-install-vendored-packages)
@@ -2017,7 +2490,9 @@
  (action
   (chdir
    test-cases/vendor/do-not-install-vendored-packages
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias virtual-libraries-vlib)
@@ -2028,7 +2503,9 @@
  (action
   (chdir
    test-cases/virtual-libraries/vlib
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias virtual-libraries-vlib-default-impl)
@@ -2038,7 +2515,9 @@
  (action
   (chdir
    test-cases/virtual-libraries/vlib-default-impl
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias virtual-libraries-vlib-wrong-default-impl)
@@ -2048,7 +2527,9 @@
  (action
   (chdir
    test-cases/virtual-libraries/vlib-wrong-default-impl
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias windows-diff)
@@ -2056,7 +2537,9 @@
  (action
   (chdir
    test-cases/windows-diff
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-exit-codes)
@@ -2064,7 +2547,9 @@
  (action
   (chdir
    test-cases/with-exit-codes
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-nested-exit-codes)
@@ -2072,7 +2557,9 @@
  (action
   (chdir
    test-cases/with-nested-exit-codes
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-stdin-from)
@@ -2080,7 +2567,9 @@
  (action
   (chdir
    test-cases/with-stdin-from
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-unsupported-nested-exit-codes)
@@ -2090,7 +2579,9 @@
  (action
   (chdir
    test-cases/with-unsupported-nested-exit-codes
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias workspace-paths)
@@ -2098,7 +2589,9 @@
  (action
   (chdir
    test-cases/workspace-paths
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias workspaces)
@@ -2106,7 +2599,9 @@
  (action
   (chdir
    test-cases/workspaces
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias wrapped-false-main-module-name)
@@ -2114,7 +2609,9 @@
  (action
   (chdir
    test-cases/wrapped-false-main-module-name
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias wrapped-transition)
@@ -2123,8 +2620,9 @@
   (chdir
    test-cases/wrapped-transition
    (progn
-    (run %{exe:cram.exe} -skip-versions <4.06.0 -test run.t)
-    (diff? run.t run.t.corrected)))))
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.06.0)))
 
 (alias
  (name runtest)

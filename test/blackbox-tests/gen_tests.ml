@@ -64,7 +64,7 @@ module Test = struct
   type t =
     { path : string
     ; env : (string * Dune_lang.t) option
-    ; skip_ocaml : string option
+    ; only_ocaml : (string * string) option
     ; skip_platforms : Platform.t list
     ; enabled : bool
     ; js : bool
@@ -102,13 +102,13 @@ module Test = struct
 
   let dir t = Filename.dirname t.path
 
-  let make ?env ?skip_ocaml ?(skip_platforms = []) ?(enabled = true)
+  let make ?env ?only_ocaml ?(skip_platforms = []) ?(enabled = true)
       ?(js = false) ?(coq = false) ?(external_deps = false)
       ?(disable_sandboxing = false) ?(additional_deps = []) path =
     let external_deps = external_deps || coq in
     { path
     ; env
-    ; skip_ocaml
+    ; only_ocaml
     ; skip_platforms
     ; external_deps
     ; enabled
@@ -118,19 +118,14 @@ module Test = struct
     ; additional_deps
     }
 
-  let make_run_t ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq
+  let make_run_t ?env ?only_ocaml ?skip_platforms ?enabled ?js ?coq
       ?external_deps ?disable_sandboxing ?additional_deps path =
-    make ?env ?skip_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
+    make ?env ?only_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
       ?disable_sandboxing ?additional_deps
       (Filename.concat root_dir (Filename.concat path "run.t"))
 
   let pp_sexp fmt t =
     let open Dune_lang in
-    let skip_version =
-      match t.skip_ocaml with
-      | None -> []
-      | Some s -> [ "-skip-versions"; s ]
-    in
     let enabled_if = Platform.enabled_if t.skip_platforms in
     let dir = dir t in
     (* Make sure we generate paths with forward slashes even on Windows. *)
@@ -149,9 +144,12 @@ module Test = struct
         ; List
             [ atom "progn"
             ; Dune_lang.List
-                ( [ atom "run"; Sexp.parse "%{exe:cram.exe}" ]
-                @ List.map ~f:Dune_lang.atom_or_quoted_string
-                    (skip_version @ [ "-test"; filename ]) )
+                [ atom "run"
+                ; Sexp.parse "%{exe:cram.exe}"
+                ; atom filename
+                ; atom "-sanitizer"
+                ; Sexp.parse "%{bin:sanitizer}"
+                ]
             ; Sexp.strings [ "diff?"; filename; filename ^ ".corrected" ]
             ]
         ]
@@ -161,6 +159,16 @@ module Test = struct
       | None -> action
       | Some (k, v) ->
         List [ atom "setenv"; atom_or_quoted_string k; v; action ]
+    in
+    let enabled_if =
+      match t.only_ocaml with
+      | None -> enabled_if
+      | Some (op, v) ->
+        let e = List [ atom op; Sexp.parse "%{ocaml_version}"; atom v ] in
+        Some
+          ( match enabled_if with
+          | None -> e
+          | Some e' -> List [ atom "and"; e'; e ] )
     in
     alias (alias_name t) ?enabled_if
       ~deps:
@@ -183,11 +191,11 @@ let exclusions =
   let make = Test.make_run_t in
   let odoc name =
     let name = Filename.concat "odoc" name in
-    make ~external_deps:true ~skip_ocaml:"4.02.3" name
+    make ~external_deps:true ~only_ocaml:("<>", "4.02.3") name
   in
   let utop name =
     let name = Filename.concat "utop" name in
-    make ~external_deps:true ~skip_ocaml:"<4.05.0" name
+    make ~external_deps:true ~only_ocaml:(">=", "4.05.0") name
   in
   let menhir name =
     let name = Filename.concat "menhir" name in
@@ -203,8 +211,8 @@ let exclusions =
   ; odoc "github717-odoc-index"
   ; odoc "multiple-private-libs"
   ; make "cinaps" ~external_deps:true ~enabled:false
-  ; make "fdo" ~external_deps:true ~enabled:false ~skip_ocaml:"<4.11.0"
-  ; make "ppx-rewriter" ~skip_ocaml:"4.02.3" ~external_deps:true
+  ; make "fdo" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
+  ; make "ppx-rewriter" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
   ; make "cross-compilation" ~external_deps:true
   ; make "dune-ppx-driver-system" ~external_deps:true
   ; make "github1372" ~external_deps:true
@@ -216,7 +224,7 @@ let exclusions =
   ; make "package-dep" ~external_deps:true
   ; make "merlin/merlin-tests" ~external_deps:true
   ; make "use-meta" ~external_deps:true
-  ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~skip_ocaml:"<4.06.0"
+  ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~only_ocaml:(">=", "4.06.0")
   ; make "dune-cache/trim" ~skip_platforms:[ Mac ]
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
@@ -228,7 +236,7 @@ let exclusions =
   ; utop "utop-simple"
   ; utop "utop-default"
   ; utop "utop-default-implementation"
-  ; make "toplevel-stanza" ~skip_ocaml:"<4.05.0"
+  ; make "toplevel-stanza" ~only_ocaml:(">=", "4.05.0")
   ; make "github764" ~skip_platforms:[ Win ]
   ; make "gen-opam-install-file" ~external_deps:true
   ; make "scope-ppx-bug" ~external_deps:true
@@ -236,9 +244,9 @@ let exclusions =
     (* The next test is disabled as it relies on configured opam swtiches and
        it's hard to get that working properly *)
   ; make "env/envs-and-contexts" ~external_deps:true ~enabled:false
-  ; make "env/env-simple" ~skip_ocaml:"<4.06.0"
-  ; make "env/env-cflags" ~skip_ocaml:"<4.06.0"
-  ; make "wrapped-transition" ~skip_ocaml:"<4.06.0"
+  ; make "env/env-simple" ~only_ocaml:(">=", "4.06.0")
+  ; make "env/env-cflags" ~only_ocaml:(">=", "4.06.0")
+  ; make "wrapped-transition" ~only_ocaml:(">=", "4.06.0")
   ; make "explicit_js_mode" ~external_deps:true ~js:true
     (* for the following tests sandboxing is disabled because absolute paths end
        up appearing in the output if we sandbox *)
@@ -258,9 +266,12 @@ let fold_find path ~init ~f =
            let recurse =
              Sys.is_directory path
              && (Unix.lstat path).st_kind <> S_LNK
-             && (Filename.basename path <> "_build")
+             && Filename.basename path <> "_build"
            in
-           if recurse then dir path acc else f acc path)
+           if recurse then
+             dir path acc
+           else
+             f acc path)
   in
   dir path init
 

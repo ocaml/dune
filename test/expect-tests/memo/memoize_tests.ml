@@ -22,12 +22,14 @@ let run f v =
   try
     Fiber.run
       (Fiber.with_error_handler
-         (fun () -> Memo.exec f v)
+         (fun () -> f v)
          ~on_error:(fun e -> exn := Some e))
   with Fiber.Never -> (
     match !exn with
     | Some exn -> Exn_with_backtrace.reraise exn
     | None -> raise Fiber.Never )
+
+let run_memo f v = run (Memo.exec f) v
 
 (* the trivial dependencies are simply the identity function *)
 let compdep x = Fiber.return (x ^ x)
@@ -41,8 +43,8 @@ let mcompdep2 =
 
 (* compute the dependencies once so they are present in the global hash table *)
 let () =
-  ignore (run mcompdep1 "a");
-  ignore (run mcompdep2 "a")
+  ignore (run_memo mcompdep1 "a");
+  ignore (run_memo mcompdep2 "a")
 
 (* define a counter so we can track how often our computation has been run *)
 let counter = ref 0
@@ -60,9 +62,9 @@ let mcomp = string_fn_create "test" ~output:(Allow_cutoff (module String)) comp
    should not, but should still return the same result *)
 let%expect_test _ =
   Format.printf "%d@." !counter;
-  print_endline (run mcomp "a");
+  print_endline (run_memo mcomp "a");
   Format.printf "%d@." !counter;
-  print_endline (run mcomp "a");
+  print_endline (run_memo mcomp "a");
   Format.printf "%d@." !counter;
   [%expect {|
 0
@@ -84,9 +86,9 @@ Some [ ("another", "aa"); ("some", "a") ]
 let%expect_test _ =
   (* running it on a new input should cause it to recompute the first time it is
      run *)
-  print_endline (run mcomp "hello");
+  print_endline (run_memo mcomp "hello");
   Format.printf "%d@." !counter;
-  print_endline (run mcomp "hello");
+  print_endline (run_memo mcomp "hello");
   Format.printf "%d@." !counter;
   [%expect {|
 hel
@@ -97,10 +99,10 @@ hel
 
 let%expect_test _ =
   (* updating the first dependency should require recomputation of mcomp 7 *)
-  print_endline (run mcompdep1 "testtest");
-  print_endline (run mcomp "hello");
+  print_endline (run_memo mcompdep1 "testtest");
+  print_endline (run_memo mcomp "hello");
   Format.printf "%d@." !counter;
-  print_endline (run mcomp "hello");
+  print_endline (run_memo mcomp "hello");
   Format.printf "%d@." !counter;
   [%expect {|
 testtesttesttest
@@ -135,7 +137,7 @@ let mcompcycle =
 
 let%expect_test _ =
   counter := 0;
-  try run mcompcycle 5 |> ignore
+  try run_memo mcompcycle 5 |> ignore
   with Cycle_error.E err ->
     let cycle =
       Cycle_error.get err
@@ -176,9 +178,9 @@ let mfib =
 
 let%expect_test _ =
   counter := 0;
-  Format.printf "%d@." (run mfib 2000);
+  Format.printf "%d@." (run_memo mfib 2000);
   Format.printf "%d@." !counter;
-  Format.printf "%d@." (run mfib 1800);
+  Format.printf "%d@." (run_memo mfib 1800);
   Format.printf "%d@." !counter;
   [%expect {|
 2406280077793834213
@@ -424,3 +426,78 @@ let%expect_test "fib linked list" =
     7th: 13
     prev: 8
     prev: 5 |}]
+
+module Function = struct
+  type 'a input =
+    | I : int Type_eq.Id.t * int -> int input
+    | S : string Type_eq.Id.t * string -> string input
+
+  type 'a output = 'a list
+
+  let name = "memo-poly-async"
+
+  let id (type a) (x : a input) : a Type_eq.Id.t =
+    match x with
+    | I (id, _) -> id
+    | S (id, _) -> id
+
+  let to_dyn _ = Dyn.Opaque
+
+  let eval (type a) (x : a input) : a output Fiber.t =
+    match x with
+    | I (_, i) ->
+      Fiber.return () >>= fun () ->
+      Printf.printf "Evaluating %d\n" i;
+      Fiber.return (List.init i ~f:(fun i -> i + 1))
+    | S (_, s) ->
+      Fiber.return () >>= fun () ->
+      Printf.printf "Evaluating %S\n" s;
+      Fiber.return [ s ]
+
+  let get (type a) (x : a input) : a =
+    match x with
+    | I (_, x) -> x
+    | S (_, x) -> x
+end
+
+let%expect_test "Memo.Poly.Async" =
+  let module M = Memo.Poly.Async (Function) in
+  let (i1 : int Function.input) = I (Type_eq.Id.create (), 1) in
+  let (i2 : int Function.input) = I (Type_eq.Id.create (), 2) in
+  let (s1 : string Function.input) = S (Type_eq.Id.create (), "hi") in
+  let (s2 : string Function.input) = S (Type_eq.Id.create (), "hi again") in
+  let run_int i =
+    let res = run M.eval i in
+    Dyn.to_string (Dyn.List (List.map res ~f:Int.to_dyn))
+  in
+  let run_string s =
+    let res = run M.eval s in
+    Dyn.to_string (Dyn.List (List.map res ~f:String.to_dyn))
+  in
+  printf "----- First-time calls -----\n";
+  printf "%d -> %s\n" (Function.get i1) (run_int i1);
+  printf "%S -> %s\n" (Function.get s1) (run_string s1);
+  printf "%d -> %s\n" (Function.get i2) (run_int i2);
+  printf "%S -> %s\n" (Function.get s2) (run_string s2);
+  printf "----- Repeated calls (memoized) -----\n";
+  printf "%d -> %s\n" (Function.get i1) (run_int i1);
+  printf "%S -> %s\n" (Function.get s1) (run_string s1);
+  printf "%d -> %s\n" (Function.get i2) (run_int i2);
+  printf "%S -> %s\n" (Function.get s2) (run_string s2);
+  [%expect
+    {|
+    ----- First-time calls -----
+    Evaluating 1
+    1 -> [ 1 ]
+    Evaluating "hi"
+    "hi" -> [ "hi" ]
+    Evaluating 2
+    2 -> [ 1; 2 ]
+    Evaluating "hi again"
+    "hi again" -> [ "hi again" ]
+    ----- Repeated calls (memoized) -----
+    1 -> [ 1 ]
+    "hi" -> [ "hi" ]
+    2 -> [ 1; 2 ]
+    "hi again" -> [ "hi again" ]
+    |}]

@@ -597,7 +597,7 @@ module Exec_sync = struct
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
-        Nothing.unreachable_code (!on_already_reported exn)
+        already_reported exn
       else
         recompute inp dep_node
     | Running_sync run ->
@@ -843,6 +843,27 @@ let lazy_ (type a) f =
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
 
+let lazy_async (type a) f =
+  let module Output = struct
+    type t = a
+
+    let to_dyn _ = Dyn.Opaque
+
+    let equal = ( == )
+  end in
+  let id = Lazy_id.gen () in
+  let name = sprintf "lazy-async-%d" (Lazy_id.to_int id) in
+  let visibility = Visibility.Hidden in
+  let f = Function.of_type Function.Type.Async f in
+  let spec =
+    Spec.create name
+      ~input:(module Unit)
+      ~output:(Allow_cutoff (module Output))
+      ~visibility ~f ~doc:None
+  in
+  let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
+  fun () -> Cell.get_async cell
+
 module Lazy = struct
   type 'a t = unit -> 'a
 
@@ -857,6 +878,18 @@ module Lazy = struct
   let map2 x y ~f = create (fun () -> f (x ()) (y ()))
 
   let bind x ~f = create (fun () -> force (f (force x)))
+
+  module Async = struct
+    type 'a t = unit -> 'a Fiber.t
+
+    let of_val a () = Fiber.return a
+
+    let create f = lazy_async f
+
+    let force f = f ()
+
+    let map t ~f = create (fun () -> Fiber.map ~f (t ()))
+  end
 end
 
 module Run = struct
@@ -877,50 +910,81 @@ module Run = struct
   include Run
 end
 
-module Poly (Function : sig
-  type 'a input
+module Poly = struct
+  module type Function_interface = sig
+    type 'a input
 
-  type 'a output
+    type 'a output
 
-  val name : string
+    val name : string
 
-  val eval : 'a input -> 'a output
+    val id : 'a input -> 'a Type_eq.Id.t
 
-  val to_dyn : _ input -> Dyn.t
-
-  val id : 'a input -> 'a Type_eq.Id.t
-end) =
-struct
-  open Function
-
-  module Key = struct
-    type t = T : 'a input -> t
-
-    let to_dyn (T t) = to_dyn t
-
-    let hash (T t) = Type_eq.Id.hash (id t)
-
-    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
+    val to_dyn : _ input -> Dyn.t
   end
 
-  module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
+  module Mono (F : Function_interface) = struct
+    open F
+
+    type key = K : 'a input -> key
+
+    module Key = struct
+      type t = key
+
+      let to_dyn (K t) = to_dyn t
+
+      let hash (K t) = Type_eq.Id.hash (id t)
+
+      let equal (K x) (K y) = Type_eq.Id.equal (id x) (id y)
+    end
+
+    type value = V : ('a Type_eq.Id.t * 'a output) -> value
+
+    let get (type a) ~value ~(input_with_matching_id : a input) : a output =
+      match value with
+      | V (id_v, res) -> (
+        match Type_eq.Id.same id_v (id input_with_matching_id) with
+        | None ->
+          Code_error.raise
+            "Type_eq.Id.t mismatch in Memo.Poly: the likely reason is that the \
+             provided Function.id returns different ids for the same input."
+            [ ("Function.name", Dyn.String name) ]
+        | Some Type_eq.T -> res )
   end
 
-  let impl (key : Key.t) : Value.t =
-    match key with
-    | Key.T input -> Value.T (id input, eval input)
+  module Sync (Function : sig
+    include Function_interface
 
-  let memo = create_hidden name ~input:(module Key) Sync impl
+    val eval : 'a input -> 'a output
+  end) =
+  struct
+    open Function
+    include Mono (Function)
 
-  let eval (type a) (x : a input) : a output =
-    match exec memo (Key.T x) with
-    | Value.T (id, res) -> (
-      match Type_eq.Id.same id (Function.id x) with
-      | None ->
-        Code_error.raise
-          "Type_eq.Id.t mismatch in Memo.Poly: the most likely reason is that \
-           the provided Function.id returns different ids for the same input."
-          [ ("Function.name", Dyn.String Function.name) ]
-      | Some Type_eq.T -> res )
+    let impl = function
+      | K input -> V (id input, eval input)
+
+    let memo = create_hidden name ~input:(module Key) Sync impl
+
+    let eval x = get ~value:(exec memo (K x)) ~input_with_matching_id:x
+  end
+
+  module Async (Function : sig
+    include Function_interface
+
+    val eval : 'a input -> 'a output Fiber.t
+  end) =
+  struct
+    open Function
+    include Mono (Function)
+
+    let impl = function
+      | K input -> Fiber.map (eval input) ~f:(fun v -> V (id input, v))
+
+    let memo = create_hidden name ~input:(module Key) Async impl
+
+    let eval x =
+      Fiber.map (exec memo (K x)) ~f:(fun value ->
+          get ~value ~input_with_matching_id:x)
+  end
 end

@@ -46,9 +46,16 @@ module Special_builtin_support : sig
       }
   end
 
+  module Configurator : sig
+    type api_version = V1
+
+    type t = { api_version : api_version }
+  end
+
   type t =
     | Findlib_dynload
     | Build_info of Build_info.t
+    | Configurator of Configurator.t
 
   include Dune_lang.Conv.S with type t := t
 end

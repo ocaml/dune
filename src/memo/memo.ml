@@ -910,50 +910,81 @@ module Run = struct
   include Run
 end
 
-module Poly (Function : sig
-  type 'a input
+module Poly = struct
+  module type Function_interface = sig
+    type 'a input
 
-  type 'a output
+    type 'a output
 
-  val name : string
+    val name : string
 
-  val eval : 'a input -> 'a output
+    val id : 'a input -> 'a Type_eq.Id.t
 
-  val to_dyn : _ input -> Dyn.t
-
-  val id : 'a input -> 'a Type_eq.Id.t
-end) =
-struct
-  open Function
-
-  module Key = struct
-    type t = T : 'a input -> t
-
-    let to_dyn (T t) = to_dyn t
-
-    let hash (T t) = Type_eq.Id.hash (id t)
-
-    let equal (T x) (T y) = Type_eq.Id.equal (id x) (id y)
+    val to_dyn : _ input -> Dyn.t
   end
 
-  module Value = struct
-    type t = T : ('a Type_eq.Id.t * 'a output) -> t
+  module Mono (F : Function_interface) = struct
+    open F
+
+    type key = K : 'a input -> key
+
+    module Key = struct
+      type t = key
+
+      let to_dyn (K t) = to_dyn t
+
+      let hash (K t) = Type_eq.Id.hash (id t)
+
+      let equal (K x) (K y) = Type_eq.Id.equal (id x) (id y)
+    end
+
+    type value = V : ('a Type_eq.Id.t * 'a output) -> value
+
+    let get (type a) ~value ~(input_with_matching_id : a input) : a output =
+      match value with
+      | V (id_v, res) -> (
+        match Type_eq.Id.same id_v (id input_with_matching_id) with
+        | None ->
+          Code_error.raise
+            "Type_eq.Id.t mismatch in Memo.Poly: the likely reason is that the \
+             provided Function.id returns different ids for the same input."
+            [ ("Function.name", Dyn.String name) ]
+        | Some Type_eq.T -> res )
   end
 
-  let impl (key : Key.t) : Value.t =
-    match key with
-    | Key.T input -> Value.T (id input, eval input)
+  module Sync (Function : sig
+    include Function_interface
 
-  let memo = create_hidden name ~input:(module Key) Sync impl
+    val eval : 'a input -> 'a output
+  end) =
+  struct
+    open Function
+    include Mono (Function)
 
-  let eval (type a) (x : a input) : a output =
-    match exec memo (Key.T x) with
-    | Value.T (id, res) -> (
-      match Type_eq.Id.same id (Function.id x) with
-      | None ->
-        Code_error.raise
-          "Type_eq.Id.t mismatch in Memo.Poly: the most likely reason is that \
-           the provided Function.id returns different ids for the same input."
-          [ ("Function.name", Dyn.String Function.name) ]
-      | Some Type_eq.T -> res )
+    let impl = function
+      | K input -> V (id input, eval input)
+
+    let memo = create_hidden name ~input:(module Key) Sync impl
+
+    let eval x = get ~value:(exec memo (K x)) ~input_with_matching_id:x
+  end
+
+  module Async (Function : sig
+    include Function_interface
+
+    val eval : 'a input -> 'a output Fiber.t
+  end) =
+  struct
+    open Function
+    include Mono (Function)
+
+    let impl = function
+      | K input -> Fiber.map (eval input) ~f:(fun v -> V (id input, v))
+
+    let memo = create_hidden name ~input:(module Key) Async impl
+
+    let eval x =
+      Fiber.map (exec memo (K x)) ~f:(fun value ->
+          get ~value ~input_with_matching_id:x)
+  end
 end

@@ -21,13 +21,6 @@ The environment is preserved accross phrases
   $TESTCASE_ROOT/toto
   $ cd ..
 
-Broken phrases don't break the system
-
-  $ cat <<EOF
-  > Hello, world!
-  > EOF
-  Hello, world!
-
 Printing stuff with backslashes
 
   $ cat <<EOF

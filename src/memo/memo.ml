@@ -597,7 +597,7 @@ module Exec_sync = struct
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
       if Run.is_current run then
-        Nothing.unreachable_code (!on_already_reported exn)
+        already_reported exn
       else
         recompute inp dep_node
     | Running_sync run ->
@@ -843,6 +843,27 @@ let lazy_ (type a) f =
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
 
+let lazy_async (type a) f =
+  let module Output = struct
+    type t = a
+
+    let to_dyn _ = Dyn.Opaque
+
+    let equal = ( == )
+  end in
+  let id = Lazy_id.gen () in
+  let name = sprintf "lazy-async-%d" (Lazy_id.to_int id) in
+  let visibility = Visibility.Hidden in
+  let f = Function.of_type Function.Type.Async f in
+  let spec =
+    Spec.create name
+      ~input:(module Unit)
+      ~output:(Allow_cutoff (module Output))
+      ~visibility ~f ~doc:None
+  in
+  let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
+  fun () -> Cell.get_async cell
+
 module Lazy = struct
   type 'a t = unit -> 'a
 
@@ -857,6 +878,18 @@ module Lazy = struct
   let map2 x y ~f = create (fun () -> f (x ()) (y ()))
 
   let bind x ~f = create (fun () -> force (f (force x)))
+
+  module Async = struct
+    type 'a t = unit -> 'a Fiber.t
+
+    let of_val a () = Fiber.return a
+
+    let create f = lazy_async f
+
+    let force f = f ()
+
+    let map t ~f = create (fun () -> Fiber.map ~f (t ()))
+  end
 end
 
 module Run = struct

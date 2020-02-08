@@ -9,9 +9,9 @@ module Fs : sig
 
   (** Creates directory if inside build path, otherwise asserts that directory
       exists. *)
-  val mkdir_p_or_check_exists : loc:Loc.t option -> Path.t -> unit
+  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
 
-  val assert_exists : loc:Loc.t option -> Path.t -> unit
+  val assert_exists : loc:Loc.t -> Path.t -> unit
 end = struct
   let mkdir_p_def =
     Memo.create "mkdir_p" ~doc:"mkdir_p"
@@ -30,7 +30,7 @@ end = struct
 
   let assert_exists ~loc path =
     if not (Memo.exec assert_exists_def path) then
-      User_error.raise ?loc
+      User_error.raise ~loc
         [ Pp.textf "%S does not exist" (Path.to_string_maybe_quoted path) ]
 
   let mkdir_p_or_check_exists ~loc path =
@@ -446,7 +446,7 @@ let compute_targets_digest targets =
   | l -> Some (Digest.generic l)
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
-let compute_targets_digest_or_raise_error ~info targets =
+let compute_targets_digest_or_raise_error ~loc targets =
   let good, bad =
     List.partition_map targets ~f:(fun target ->
         let fn = Path.build target in
@@ -457,7 +457,7 @@ let compute_targets_digest_or_raise_error ~info targets =
   match bad with
   | [] -> (good, Digest.generic (List.map ~f:snd good))
   | missing ->
-    User_error.raise ?loc:(Rule.Info.loc info)
+    User_error.raise ~loc
       [ Pp.textf "Rule failed to generate the following targets:"
       ; pp_paths (Path.Set.of_list missing)
       ]
@@ -1254,7 +1254,7 @@ end = struct
 
   let execute_rule_impl rule =
     let t = t () in
-    let { Rule.id = _; dir; env = _; context; mode; locks; action; info } =
+    let { Rule.id = _; dir; env = _; context; mode; locks; action; info = _ } =
       rule
     in
     start_rule t rule;
@@ -1265,7 +1265,7 @@ end = struct
     Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
     let env = Rule.effective_env rule in
-    let rule_loc = Rule.loc rule in
+    let loc = Rule.loc rule in
     let is_action_dynamic = Action.is_dynamic action in
     let sandbox_mode =
       match Action.is_useful_to_sandbox action with
@@ -1274,14 +1274,14 @@ end = struct
         if Sandbox_config.mem config Sandbox_mode.none then
           Sandbox_mode.none
         else
-          User_error.raise ~loc:rule_loc
+          User_error.raise ~loc
             [ Pp.text
                 "Rule dependencies are configured to require sandboxing, but \
                  the rule has no actions that could potentially require \
                  sandboxing."
             ]
       | Maybe ->
-        select_sandbox_mode ~loc:rule_loc
+        select_sandbox_mode ~loc
           (Dep.Set.sandbox_config deps)
           ~sandboxing_preference:t.sandboxing_preference
     in
@@ -1390,7 +1390,6 @@ end = struct
           Fiber.return ()
         else (
           pending_targets := Path.Build.Set.union targets !pending_targets;
-          let loc = Rule.Info.loc info in
           let sandboxed, action =
             match sandbox with
             | None -> (None, action)
@@ -1418,8 +1417,8 @@ end = struct
                       rename_optional_file ~src:(sandboxed target) ~dst:target)
                 in
                 let+ exec_result =
-                  Action_exec.exec ~context ~env ~targets ~rule_loc ~build_deps
-                    action
+                  Action_exec.exec ~context ~env ~targets ~rule_loc:loc
+                    ~build_deps action
                 in
                 Option.iter sandboxed ~f:copy_files_from_sandbox;
                 exec_result)
@@ -1428,7 +1427,7 @@ end = struct
           (* All went well, these targets are no longer pending *)
           pending_targets := Path.Build.Set.diff !pending_targets targets;
           let targets, targets_digest =
-            compute_targets_digest_or_raise_error ~info targets_as_list
+            compute_targets_digest_or_raise_error ~loc targets_as_list
           in
           let () =
             (* Check cache. We don't check for missing file in the cache, since
@@ -1636,7 +1635,7 @@ end = struct
             | None ->
               Memo.Stack_frame.as_instance_of frame
                 ~of_:evaluate_action_and_dynamic_deps_memo)
-        |> Option.bind ~f:(fun (rule : Rule.t) -> Rule.Info.loc rule.info))
+        |> Option.map ~f:Rule.loc)
 end
 
 open Exported

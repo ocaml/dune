@@ -26,7 +26,7 @@ type client =
   ; input : char Stream.t
   ; output : out_channel
   ; common_metadata : Sexp.t list
-  ; cache : Dune_cache.Cache.t
+  ; cache : Dune_cache.Local.t
   ; version : version
   }
 
@@ -40,7 +40,7 @@ let default_port_file () =
          regard, since if someone has access to this directory, it has access to
          the cache content, and having access to the socket does not make a
          difference. *)
-      Path.relative (Dune_cache.default_root ()) "runtime"
+      Path.relative (Dune_cache.Local.default_root ()) "runtime"
   in
   Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
@@ -91,14 +91,14 @@ type t =
   ; mutable trim_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
-  ; cache : Dune_cache.Cache.t
+  ; cache : Dune_cache.Local.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
   match
-    Dune_cache.Cache.make ?root
+    Dune_cache.Local.make ?root
       ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
   with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
@@ -175,7 +175,7 @@ module Client = struct
     { socket : out_channel
     ; fd : Unix.file_descr
     ; input : char Stream.t
-    ; cache : Dune_cache.Cache.t
+    ; cache : Dune_cache.Local.t
     ; thread : Thread.t
     ; finally : (unit -> unit) option
     ; version : version
@@ -196,7 +196,7 @@ module Client = struct
         match msg with
         | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
-            Dune_cache.Cache.promote client.cache files key
+            Dune_cache.Local.promote client.cache files key
               (metadata @ client.common_metadata)
               ~repository ~duplication
           in
@@ -204,13 +204,13 @@ module Client = struct
         | SetBuildRoot root ->
           Result.Ok
             { client with
-              cache = Dune_cache.Cache.set_build_dir client.cache root
+              cache = Dune_cache.Local.set_build_dir client.cache root
             }
         | SetCommonMetadata metadata ->
           Result.ok { client with common_metadata = metadata }
         | SetRepos repositories ->
           let cache =
-            Dune_cache.Cache.with_repositories client.cache repositories
+            Dune_cache.Local.with_repositories client.cache repositories
           in
           Result.Ok { client with cache }
       in
@@ -264,10 +264,10 @@ module Client = struct
         Unix.sleep period;
         let () =
           match
-            let size = Dune_cache.size cache in
+            let size = Dune_cache.Local.size cache in
             if size > max_size then (
               Log.infof "trimming %i bytes" (size - max_size);
-              Some (Dune_cache.trim cache (size - max_size))
+              Some (Dune_cache.Local.trim cache (size - max_size))
             ) else
               None
           with
@@ -343,7 +343,7 @@ module Client = struct
               ; common_metadata = []
               ; cache =
                   ( match
-                      Dune_cache.Cache.make ?root:daemon.root
+                      Dune_cache.Local.make ?root:daemon.root
                         ~duplication_mode:Dune_cache.Duplication_mode.Hardlink
                         (client_handle version output)
                     with
@@ -404,7 +404,7 @@ module Client = struct
        nuke the program if we don't. *)
     let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
     let* cache =
-      Result.map_error ~f:err (Dune_cache.Cache.make ?duplication_mode ignore)
+      Result.map_error ~f:err (Dune_cache.Local.make ?duplication_mode ignore)
     in
     let* port =
       let cmd =
@@ -461,7 +461,7 @@ module Client = struct
     let duplication =
       Some
         (Option.value
-           ~default:(Dune_cache.Cache.duplication_mode client.cache)
+           ~default:(Dune_cache.Local.duplication_mode client.cache)
            duplication)
     in
     try
@@ -475,11 +475,11 @@ module Client = struct
     send client.version client.socket (Messages.SetBuildRoot path);
     client
 
-  let search client key = Dune_cache.Cache.search client.cache key
+  let search client key = Dune_cache.Local.search client.cache key
 
-  let retrieve client file = Dune_cache.Cache.retrieve client.cache file
+  let retrieve client file = Dune_cache.Local.retrieve client.cache file
 
-  let deduplicate client file = Dune_cache.Cache.deduplicate client.cache file
+  let deduplicate client file = Dune_cache.Local.deduplicate client.cache file
 
   let teardown client =
     ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND

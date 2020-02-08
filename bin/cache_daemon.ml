@@ -61,16 +61,16 @@ let trim ~trimmed_size ~size =
   let open Result.O in
   match
     let* cache =
-      Dune_cache.Cache.make
+      Dune_cache.Local.make
         ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
     in
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size -> Result.Ok (Dune_cache.size cache - size)
+      | None, Some size -> Result.Ok (Dune_cache.Local.size cache - size)
       | _ -> Result.Error "specify either --size either --trimmed-size"
     in
-    Dune_cache.trim cache trimmed_size
+    Dune_cache.Local.trim cache trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_files_size = size; _ } ->
@@ -116,7 +116,7 @@ let term =
      and+ root =
        Arg.(
          value
-         & opt path_conv (Dune_cache.default_root ())
+         & opt path_conv (Dune_cache.Local.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      and+ trimmed_size =
        Arg.(

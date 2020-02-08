@@ -21,7 +21,7 @@ let validate_component_options kind unsupported_options =
 (** {2 Cmdliner Argument Converters }*)
 
 let atom_parser s =
-  match Dune_lang.Atom.of_valid_string s with
+  match Dune_lang.Atom.parse s with
   | Some s -> Ok s
   | None -> Error (`Msg "expected a valid dune atom")
 

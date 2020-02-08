@@ -10,7 +10,9 @@ val of_string : string -> t
 
 val to_string : t -> string
 
-val of_valid_string : string -> t option
+(** [parse s] is [Some (a:t)] if [s] can be a valid atom according to [is_valid]
+    otherwise it is [None] *)
+val parse : string -> t option
 
 val print : t -> string
 

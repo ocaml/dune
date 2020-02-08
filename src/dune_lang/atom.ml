@@ -45,7 +45,7 @@ let of_string s = A s
 
 let to_string (A s) = s
 
-let of_valid_string s =
+let parse s =
   if is_valid s then
     Some (A s)
   else

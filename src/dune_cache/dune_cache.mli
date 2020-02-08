@@ -14,9 +14,8 @@ end
 
 val promotion_to_string : promotion -> string
 
-val command_to_dyn : command -> Dyn.t
-
 val make_caching : (module Cache with type t = 'a) -> 'a -> (module Caching)
 
+module Client = Client
 module Local = Local
 module Messages = Messages

@@ -51,10 +51,10 @@ let make_cache (config : Config.t) =
       Log.info "enable binary cache in daemon mode";
       let cache =
         Result.ok_exn
-          (Dune_cache_daemon.Client.make
-             ?duplication_mode:config.cache_duplication handle)
+          (Dune_cache.Client.make ?duplication_mode:config.cache_duplication
+             handle)
       in
-      Dune_cache.make_caching (module Dune_cache_daemon.Client) cache
+      Dune_cache.make_caching (module Dune_cache.Client) cache
   in
   Fiber.return
     ( match config.cache_mode with

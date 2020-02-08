@@ -202,3 +202,46 @@ let outgoing_message_of_sexp _ =
   | cmd ->
     Result.Error
       (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
+
+let send_sexp output sexp =
+  output_string output (Csexp.to_string sexp);
+  flush output
+
+let send version output message =
+  send_sexp output (sexp_of_message version message)
+
+let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
+
+let find_highest_common_version my_versions versions =
+  let find a b =
+    let f { major; minor } = (major, minor) in
+    let a = Int.Map.of_list_exn (List.map ~f a)
+    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let common =
+      Int.Map.merge
+        ~f:(fun _ minor_in_a minor_in_b ->
+          match (minor_in_a, minor_in_b) with
+          | Some a, Some b -> Some (min a b)
+          | _ -> None)
+        a b
+    in
+    Option.map
+      ~f:(fun (major, minor) -> { major; minor })
+      (Int.Map.max_binding common)
+  in
+  match find my_versions versions with
+  | None -> Result.Error "no compatible versions"
+  | Some version ->
+    Log.infof "negotiated version: %a" pp_version version;
+    Result.ok version
+
+let negotiate_version my_versions fd input output =
+  send { major = 1; minor = 0 } output (Lang my_versions);
+  let f msg =
+    Unix.close fd;
+    msg
+  in
+  Result.map_error ~f
+    (let* sexp = Csexp.parse input in
+     let* (Lang versions) = initial_message_of_sexp sexp in
+     find_highest_common_version my_versions versions)

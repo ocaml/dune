@@ -15,15 +15,6 @@ let promotion_to_string = function
       (Path.Local.to_string (Path.Build.local in_the_build_directory))
       (Path.to_string in_the_cache)
 
-let command_to_dyn = function
-  | Dedup { in_the_build_directory; in_the_cache; digest } ->
-    let open Dyn.Encoder in
-    record
-      [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
-      ; ("in_the_cache", Path.to_dyn in_the_cache)
-      ; ("digest", Digest.to_dyn digest)
-      ]
-
 let make_caching (type t) (module Caching : Cache with type t = t) (cache : t) :
     (module Caching) =
   ( module struct
@@ -32,5 +23,6 @@ let make_caching (type t) (module Caching : Cache with type t = t) (cache : t) :
     let cache = cache
   end )
 
+module Client = Client
 module Local = Local
 module Messages = Messages

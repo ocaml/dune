@@ -10,6 +10,8 @@ val of_string : string -> t
 
 val to_string : t -> string
 
+val of_valid_string : string -> t option
+
 val print : t -> string
 
 val of_int : int -> t

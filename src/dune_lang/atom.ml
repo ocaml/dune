@@ -45,6 +45,12 @@ let of_string s = A s
 
 let to_string (A s) = s
 
+let of_valid_string s =
+  if is_valid s then
+    Some (A s)
+  else
+    None
+
 let print (A s) =
   if is_valid s then
     s

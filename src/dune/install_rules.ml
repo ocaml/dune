@@ -606,10 +606,34 @@ let install_rules sctx (package : Package.t) =
   let target_alias =
     Build_system.Alias.package_install ~context:ctx ~pkg:package.name
   in
+  let strict_package_deps =
+    let scope = Super_context.find_scope_by_dir sctx pkg_build_dir in
+    let dune_project = Scope.project scope in
+    Dune_project.strict_package_deps dune_project
+  in
+  let packages =
+    let+ packages = Build_system.package_deps package.name files in
+    match strict_package_deps with
+    | false -> packages
+    | true ->
+      let missing_deps =
+        Package.missing_deps package ~effective_deps:packages
+      in
+      if Package.Name.Set.is_empty missing_deps then
+        packages
+      else
+        User_error.raise
+          [ Pp.textf "Package %s is missing the following package dependencies"
+              (Package.Name.to_string package.name)
+          ; Package.Name.Set.to_list missing_deps
+            |> Pp.enumerate ~f:(fun name ->
+                   Pp.text (Package.Name.to_string name))
+          ]
+  in
   let () =
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
-        (let+ packages = Build_system.package_deps package.name files in
+        (let+ packages = packages in
          Package.Name.Set.to_list packages
          |> List.map ~f:(fun pkg ->
                 Build_system.Alias.package_install ~context:ctx ~pkg
@@ -618,7 +642,13 @@ let install_rules sctx (package : Package.t) =
   in
   let action =
     Build.write_file_dyn install_file
-      (let+ () = Build.path_set files in
+      (let+ () = Build.path_set files
+       and+ () =
+         if strict_package_deps then
+           Build.map packages ~f:(fun (_ : Package.Name.Set.t) -> ())
+         else
+           Build.return ()
+       in
        let entries =
          match ctx.findlib_toolchain with
          | None -> entries

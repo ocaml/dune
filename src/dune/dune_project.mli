@@ -170,3 +170,5 @@ val implicit_transitive_deps : t -> bool
 val dune_version : t -> Dune_lang.Syntax.Version.t
 
 val wrapped_executables : t -> bool
+
+val strict_package_deps : t -> bool

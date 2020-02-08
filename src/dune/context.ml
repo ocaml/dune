@@ -225,6 +225,25 @@ let check_fdo_support has_native ocfg ~name =
             version_string
         ]
 
+(* We store this so that library such as dune-configurator can read things
+   runtime. Ideally, this should be created on-demand if we run a program linked
+   against configurator, however we currently don't support this kind of
+   "runtime dependencies" so we just do it eagerly. *)
+let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
+  let open Dune_lang.Encoder in
+  let dir = Path.build (Path.Build.relative build_dir ".dune") in
+  Path.rm_rf dir;
+  Path.mkdir_p dir;
+  Io.write_file (Path.relative dir Config.dune_keep_fname) "";
+  Io.write_lines
+    (Path.relative dir "configurator")
+    (List.map ~f:Dune_lang.to_string
+       (record_fields
+          [ field "ocamlc" string (Path.to_absolute_filename ocamlc)
+          ; field_l "ocaml_config_vars" (pair string string)
+              (String.Map.to_list ocaml_config_vars)
+          ]))
+
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives =
@@ -365,7 +384,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           in
           ocaml_config_ok_exn
             ( match Ocaml_config.Vars.of_lines lines with
-            | Ok vars -> Ocaml_config.make vars
+            | Ok vars ->
+              write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars:vars;
+              Ocaml_config.make vars
             | Error msg -> Error (Ocamlc_config, msg) ))
     in
     let version = Ocaml_version.of_ocaml_config ocfg in
@@ -412,7 +433,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             local_lib_path
         ; extend_var "MANPATH"
             (Path.build (Config.local_install_man_dir ~context:name))
-        ; ("DUNE_CONFIGURATOR", Path.to_string ocamlc)
+        ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
         ]
       in
       Env.extend env ~vars:(Env.Map.of_list_exn vars)

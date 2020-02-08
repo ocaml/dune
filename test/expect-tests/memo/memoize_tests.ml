@@ -448,38 +448,45 @@ module Function = struct
     | I (_, i) ->
       Fiber.return () >>= fun () ->
       Printf.printf "Evaluating %d\n" i;
-      Fiber.return (List.init i ~f:Fun.id)
+      Fiber.return (List.init i ~f:(fun i -> i + 1))
     | S (_, s) ->
       Fiber.return () >>= fun () ->
       Printf.printf "Evaluating %S\n" s;
       Fiber.return [ s ]
+
+  let get (type a) (x : a input) : a =
+    match x with
+    | I (_, x) -> x
+    | S (_, x) -> x
 end
 
 let%expect_test "Memo.Poly.Async" =
   let module M = Memo.Poly.Async (Function) in
-  let eval_int i = M.eval (I (Type_eq.Id.create (), i)) in
-  let eval_string s = M.eval (S (Type_eq.Id.create (), s)) in
+  let (i1 : int Function.input) = I (Type_eq.Id.create (), 1) in
+  let (i2 : int Function.input) = I (Type_eq.Id.create (), 2) in
+  let (s1 : string Function.input) = S (Type_eq.Id.create (), "hi") in
+  let (s2 : string Function.input) = S (Type_eq.Id.create (), "hi again") in
   let run_int i =
-    let res = run eval_int i in
+    let res = run M.eval i in
     Dyn.to_string (Dyn.List (List.map res ~f:Int.to_dyn))
   in
   let run_string s =
-    let res = run eval_string s in
+    let res = run M.eval s in
     Dyn.to_string (Dyn.List (List.map res ~f:String.to_dyn))
   in
   printf "----- First-time calls -----\n";
-  printf "%d -> %s\n" 1 (run_int 1);
-  printf "%S -> %s\n" "hi" (run_string "hi");
-  printf "%d -> %s\n" 2 (run_int 2);
-  printf "%S -> %s\n" "hi again" (run_string "hi again");
+  printf "%d -> %s\n" (Function.get i1) (run_int i1);
+  printf "%S -> %s\n" (Function.get s1) (run_string s1);
+  printf "%d -> %s\n" (Function.get i2) (run_int i2);
+  printf "%S -> %s\n" (Function.get s2) (run_string s2);
   printf "----- Repeated calls (memoized) -----\n";
-  printf "%d -> %s\n" 1 (run_int 1);
-  printf "%S -> %s\n" "hi" (run_string "hi");
-  printf "%d -> %s\n" 2 (run_int 2);
-  printf "%S -> %s\n" "hi again" (run_string "hi again");
+  printf "%d -> %s\n" (Function.get i1) (run_int i1);
+  printf "%S -> %s\n" (Function.get s1) (run_string s1);
+  printf "%d -> %s\n" (Function.get i2) (run_int i2);
+  printf "%S -> %s\n" (Function.get s2) (run_string s2);
   [%expect
     {|
-    "----- First-time calls -----
+    ----- First-time calls -----
     Evaluating 1
     1 -> [ 1 ]
     Evaluating "hi"

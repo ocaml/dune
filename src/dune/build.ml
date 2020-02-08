@@ -375,7 +375,7 @@ end = struct
     let eval m = Execution.exec m.t
   end
 
-  module Memo = Memo.Poly (Function)
+  module Memo = Memo.Poly.Sync (Function)
 
   let exec t =
     let file_exists = Fdecl.get file_exists_fdecl in

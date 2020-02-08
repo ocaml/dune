@@ -295,21 +295,41 @@ val cell : ('a, 'b, 'f) t -> 'a -> ('a, 'b, 'f) Cell.t
 
 module Implicit_output = Implicit_output
 
-(** Memoization of polymorphic functions of type ['a input -> 'a output]. The
-    supplied [id] function must be injective, i.e. there must be a one-to-one
-    correspondence between [input]s and their [id]s. *)
-module Poly (Function : sig
-  type 'a input
+(** Memoization of polymorphic functions. When using both [Sync] and [Async]
+    modules, the provided [id] function must be injective, i.e. there must be a
+    one-to-one correspondence between [input]s and their [id]s. *)
+module Poly : sig
+  (** Memoization of functions of type ['a input -> 'a output]. *)
+  module Sync (Function : sig
+    type 'a input
 
-  type 'a output
+    type 'a output
 
-  val name : string
+    val name : string
 
-  val eval : 'a input -> 'a output
+    val eval : 'a input -> 'a output
 
-  val to_dyn : _ input -> Dyn.t
+    val to_dyn : _ input -> Dyn.t
 
-  val id : 'a input -> 'a Type_eq.Id.t
-end) : sig
-  val eval : 'a Function.input -> 'a Function.output
+    val id : 'a input -> 'a Type_eq.Id.t
+  end) : sig
+    val eval : 'a Function.input -> 'a Function.output
+  end
+
+  (** Memoization of functions of type ['a input -> 'a output Fiber.t]. *)
+  module Async (Function : sig
+    type 'a input
+
+    type 'a output
+
+    val name : string
+
+    val eval : 'a input -> 'a output Fiber.t
+
+    val to_dyn : _ input -> Dyn.t
+
+    val id : 'a input -> 'a Type_eq.Id.t
+  end) : sig
+    val eval : 'a Function.input -> 'a Function.output Fiber.t
+  end
 end

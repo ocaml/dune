@@ -266,17 +266,75 @@ module Process = struct
     run_command_ok t ?dir ?env (command_line prog args)
 end
 
-let get_ocaml_config_var_exn ~ocamlc_config_cmd map var =
-  match String.Map.find map var with
-  | None ->
-    die "variable %S not found in the output of `%s`" var ocamlc_config_cmd
-  | Some s -> s
-
 let ocaml_config_var t var = String.Map.find t.ocamlc_config var
 
 let ocaml_config_var_exn t var =
-  get_ocaml_config_var_exn t.ocamlc_config var
-    ~ocamlc_config_cmd:t.ocamlc_config_cmd
+  match String.Map.find t.ocamlc_config var with
+  | None ->
+    die "variable %S not found in the output of `%s`" var t.ocamlc_config_cmd
+  | Some s -> s
+
+let read_dot_dune_configurator_file ~build_dir =
+  let file =
+    Stdune.Path.relative
+      (Stdune.Path.of_filename_relative_to_initial_cwd build_dir)
+      ".dune/configurator"
+  in
+  if not (Stdune.Path.exists file) then
+    die "Cannot find special file produced by dune.";
+  let sexps = Dune_lang.Parser.load file ~mode:Many_as_one in
+  let decode =
+    let open Dune_lang.Decoder in
+    enter
+      (fields
+         (let+ ocamlc = field "ocamlc" string
+          and+ ocaml_config_vars =
+            field "ocaml_config_vars" (repeat (pair string string))
+          and+ _ =
+            (* So that we can add more fields in the future with minimal hassle *)
+            leftover_fields
+          in
+          (* We assume that dune already checked for duplicates *)
+          let ocaml_config_vars = String.Map.of_list_exn ocaml_config_vars in
+          (ocamlc, ocaml_config_vars)))
+  in
+  Dune_lang.Decoder.parse decode Univ_map.empty sexps
+
+let fill_in_fields_that_depends_on_ocamlc_config t =
+  let get = ocaml_config_var_exn t in
+  let c_compiler =
+    match String.Map.find t.ocamlc_config "c_compiler" with
+    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
+    | None -> get "bytecomp_c_compiler"
+  in
+  { t with
+    ext_obj = get "ext_obj"
+  ; c_compiler
+  ; stdlib_dir = get "standard_library"
+  ; ccomp_type = get "ccomp_type"
+  }
+
+let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
+  let dest_dir =
+    match dest_dir with
+    | Some dir -> dir
+    | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
+  in
+  let ocamlc, ocamlc_config = read_dot_dune_configurator_file ~build_dir in
+  let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
+  fill_in_fields_that_depends_on_ocamlc_config
+    { name
+    ; ocamlc
+    ; log
+    ; dest_dir
+    ; counter = 0
+    ; ocamlc_config
+    ; ocamlc_config_cmd
+    ; ext_obj = ""
+    ; c_compiler = ""
+    ; stdlib_dir = ""
+    ; ccomp_type = ""
+    }
 
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
   let dest_dir =
@@ -314,19 +372,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
     | Error msg ->
       die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
   in
-  let get = get_ocaml_config_var_exn ocamlc_config ~ocamlc_config_cmd in
-  let c_compiler =
-    match String.Map.find ocamlc_config "c_compiler" with
-    | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
-    | None -> get "bytecomp_c_compiler"
-  in
-  { t with
-    ocamlc_config
-  ; ext_obj = get "ext_obj"
-  ; c_compiler
-  ; stdlib_dir = get "standard_library"
-  ; ccomp_type = get "ccomp_type"
-  }
+  fill_in_fields_that_depends_on_ocamlc_config { t with ocamlc_config }
 
 let need_to_compile_and_link_separately t =
   (* Vague memory from writing the discover.ml script for Lwt... *)
@@ -644,14 +690,17 @@ module Pkg_config = struct
 end
 
 let main ?(args = []) ~name f =
-  let ocamlc =
-    ref
-      ( match Sys.getenv "DUNE_CONFIGURATOR" with
-      | s -> Some s
-      | exception Not_found ->
-        die
-          "Configurator scripts must be run with Dune. To manually run a \
-           script, use $ dune exec." )
+  let build_dir =
+    match Sys.getenv "INSIDE_DUNE" with
+    | exception Not_found ->
+      die
+        "Configurator scripts must be run with Dune. To manually run a script, \
+         use $ dune exec."
+    | "1" ->
+      die
+        "You seem to be running Dune < 2.3. This version of dune-configurator \
+         requres at lest dune 2.3."
+    | s -> s
   in
   let verbose = ref false in
   let dest_dir = ref None in
@@ -670,13 +719,13 @@ let main ?(args = []) ~name f =
   let log_db = ref [] in
   let log s = log_db := s :: !log_db in
   let t =
-    create ?dest_dir:!dest_dir ?ocamlc:!ocamlc
+    create_from_inside_dune ~dest_dir:!dest_dir
       ~log:
         ( if !verbose then
           prerr_endline
         else
           log )
-      name
+      ~build_dir ~name
   in
   try f t
   with exn -> (

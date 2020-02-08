@@ -231,6 +231,10 @@ let handle_special_libs cctx =
           in
           process_libs libs
             ~to_link_rev:(LM.Module (obj_dir, module_) :: Lib lib :: to_link_rev)
-            ~force_linkall:true ) )
+            ~force_linkall:true
+        | Configurator _ ->
+          process_libs libs
+            ~to_link_rev:(LM.Lib lib :: to_link_rev)
+            ~force_linkall ) )
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

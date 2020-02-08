@@ -288,6 +288,12 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
   Opam_create.add_rules sctx ~dir;
   let subdirs_to_keep2 : Build_system.extra_sub_directories_to_keep =
     match components with
+    | ".dune" :: _ ->
+      (* Dummy rule to prevent dune from deleting this file. See comment
+         attached to [write_dot_dune_dir] in context.ml *)
+      Super_context.add_rule sctx ~dir
+        (Build.write_file (Path.Build.relative dir "configurator") "");
+      These String.Set.empty
     | ".js" :: rest -> (
       Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
       match rest with
@@ -342,7 +348,7 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
     match components with
     | [] ->
       Build_system.Subdir_set.These
-        (String.Set.of_list [ ".js"; "_doc"; ".ppx" ])
+        (String.Set.of_list [ ".js"; "_doc"; ".ppx"; ".dune" ])
     | _ -> These String.Set.empty
   in
   Build_system.Subdir_set.union_all

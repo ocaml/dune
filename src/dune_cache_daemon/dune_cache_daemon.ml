@@ -3,10 +3,8 @@ module Utils = Utils
 module Log = Dune_util.Log
 open Stdune
 open Utils
-open Messages
+open Dune_cache.Messages
 open Result.O
-
-type version = Messages.version
 
 let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
 
@@ -70,7 +68,7 @@ let send_sexp output sexp =
   flush output
 
 let send version output message =
-  send_sexp output (Messages.sexp_of_message version message)
+  send_sexp output (sexp_of_message version message)
 
 module ClientsKey = struct
   type t = Unix.file_descr
@@ -128,7 +126,7 @@ let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
 let my_versions : version list = [ { major = 1; minor = 1 } ]
 
-let my_versions_command = Messages.Lang my_versions
+let my_versions_command = Lang my_versions
 
 let find_highest_common_version versions =
   let find a b =
@@ -167,7 +165,7 @@ let negotiate_version fd input output =
   in
   Result.map_error ~f
     (let* sexp = Csexp.parse input in
-     let* (Lang versions) = Messages.initial_message_of_sexp sexp in
+     let* (Lang versions) = initial_message_of_sexp sexp in
      find_highest_common_version versions)
 
 module Client = struct
@@ -183,16 +181,16 @@ module Client = struct
 
   let read version input =
     let* sexp = Csexp.parse input in
-    let+ (Messages.Dedup v) = Messages.incoming_message_of_sexp version sexp in
+    let+ (Dedup v) = incoming_message_of_sexp version sexp in
     Dune_cache.Dedup v
 
   let client_handle version output = function
-    | Dune_cache.Dedup f -> send version output (Messages.Dedup f)
+    | Dune_cache.Dedup f -> send version output (Dedup f)
 
   let client_thread (events, (client : client)) =
     try
       let handle_cmd (client : client) sexp =
-        let* msg = Messages.outgoing_message_of_sexp client.version sexp in
+        let* msg = outgoing_message_of_sexp client.version sexp in
         match msg with
         | Promote { duplication; repository; files; key; metadata } ->
           let+ () =
@@ -454,7 +452,7 @@ module Client = struct
     { socket; fd; input; cache; thread; finally; version }
 
   let with_repositories client repositories =
-    send client.version client.socket (Messages.SetRepos repositories);
+    send client.version client.socket (SetRepos repositories);
     client
 
   let promote (client : t) files key metadata ~repository ~duplication =
@@ -466,13 +464,13 @@ module Client = struct
     in
     try
       send client.version client.socket
-        (Messages.Promote { key; files; metadata; repository; duplication });
+        (Promote { key; files; metadata; repository; duplication });
       Result.Ok ()
     with Sys_error (* "Broken_pipe" *) _ ->
       Result.Error "lost connection to cache daemon"
 
   let set_build_dir client path =
-    send client.version client.socket (Messages.SetBuildRoot path);
+    send client.version client.socket (SetBuildRoot path);
     client
 
   let search client key = Dune_cache.Local.search client.cache key

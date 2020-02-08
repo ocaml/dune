@@ -33,3 +33,4 @@ let make_caching (type t) (module Caching : Cache with type t = t) (cache : t) :
   end )
 
 module Local = Local
+module Messages = Messages

@@ -258,9 +258,12 @@ let fold_find path ~init ~f =
            let recurse =
              Sys.is_directory path
              && (Unix.lstat path).st_kind <> S_LNK
-             && (Filename.basename path <> "_build")
+             && Filename.basename path <> "_build"
            in
-           if recurse then dir path acc else f acc path)
+           if recurse then
+             dir path acc
+           else
+             f acc path)
   in
   dir path init
 

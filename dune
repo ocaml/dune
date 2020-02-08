@@ -5,7 +5,8 @@
  (_
   (binaries
    (src/ocaml-syntax-shims/pp.exe as ocaml-syntax-shims)
-   test/blackbox-tests/cram.exe)))
+    test/blackbox-tests/cram.exe
+    test/blackbox-tests/sanitizer.exe)))
 
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))

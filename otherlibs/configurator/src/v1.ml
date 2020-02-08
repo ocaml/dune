@@ -337,42 +337,46 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     }
 
 let create ?dest_dir ?ocamlc ?(log = ignore) name =
-  let dest_dir =
-    match dest_dir with
-    | Some dir -> dir
-    | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
-  in
-  let ocamlc =
-    match ocamlc with
-    | Some fn -> fn
-    | None -> Find_in_path.find_ocaml_prog "ocamlc"
-  in
-  let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
-  let t =
-    { name
-    ; ocamlc
-    ; log
-    ; dest_dir
-    ; counter = 0
-    ; ext_obj = ""
-    ; c_compiler = ""
-    ; stdlib_dir = ""
-    ; ccomp_type = ""
-    ; ocamlc_config = String.Map.empty
-    ; ocamlc_config_cmd
-    }
-  in
-  let ocamlc_config =
-    let ocamlc_config_output =
-      Process.run_command_capture_exn t ~dir:dest_dir ocamlc_config_cmd
-      |> String.split_lines
+  match (ocamlc, Option.try_with (fun () -> Sys.getenv "INSIDE_DUNE")) with
+  | None, Some build_dir when build_dir <> "1" ->
+    create_from_inside_dune ~dest_dir ~log ~build_dir ~name
+  | _ ->
+    let dest_dir =
+      match dest_dir with
+      | Some dir -> dir
+      | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
     in
-    match Ocaml_config.Vars.of_lines ocamlc_config_output with
-    | Ok x -> x
-    | Error msg ->
-      die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
-  in
-  fill_in_fields_that_depends_on_ocamlc_config { t with ocamlc_config }
+    let ocamlc =
+      match ocamlc with
+      | Some fn -> fn
+      | None -> Find_in_path.find_ocaml_prog "ocamlc"
+    in
+    let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
+    let t =
+      { name
+      ; ocamlc
+      ; log
+      ; dest_dir
+      ; counter = 0
+      ; ext_obj = ""
+      ; c_compiler = ""
+      ; stdlib_dir = ""
+      ; ccomp_type = ""
+      ; ocamlc_config = String.Map.empty
+      ; ocamlc_config_cmd
+      }
+    in
+    let ocamlc_config =
+      let ocamlc_config_output =
+        Process.run_command_capture_exn t ~dir:dest_dir ocamlc_config_cmd
+        |> String.split_lines
+      in
+      match Ocaml_config.Vars.of_lines ocamlc_config_output with
+      | Ok x -> x
+      | Error msg ->
+        die "Failed to parse the output of '%s':@\n%s" ocamlc_config_cmd msg
+    in
+    fill_in_fields_that_depends_on_ocamlc_config { t with ocamlc_config }
 
 let need_to_compile_and_link_separately t =
   (* Vague memory from writing the discover.ml script for Lwt... *)

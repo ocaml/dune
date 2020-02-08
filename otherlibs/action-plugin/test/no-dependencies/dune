@@ -10,7 +10,7 @@
   (chdir
    test
    (progn
-    (run %{bin:cram} -test run.t)
+    (run cram -sanitizer %{bin:sanitizer} run.t)
     (diff? run.t run.t.corrected)))))
 
 (alias

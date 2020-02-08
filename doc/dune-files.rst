@@ -327,6 +327,12 @@ OCaml/Reason modules only consume modules from the directory where the
 stanza appear. In order to declare a multi-directory library, you need
 to use the :ref:`include_subdirs` stanza.
 
+Note also that a nested library in a project is not automatically namespaced
+under its parent library. E.g. if you have a public library ``foo`` which nests
+another public library ``bar``, it will not be exposed as ``Foo.Bar`` outside
+the project, but as ``Bar``. Take care to give unique names to nested libraries
+to avoid conflicts. E.g., ``foo__Bar``.
+
 ``<optional-fields>`` are:
 
 - ``(public_name <name>)`` this is the name under which the library can be

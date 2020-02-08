@@ -248,6 +248,18 @@ module Lazy : sig
   val of_val : 'a -> 'a t
 
   val force : 'a t -> 'a
+
+  module Async : sig
+    type 'a t
+
+    val of_val : 'a -> 'a t
+
+    val create : (unit -> 'a Fiber.t) -> 'a t
+
+    val force : 'a t -> 'a Fiber.t
+
+    val map : 'a t -> f:('a -> 'b) -> 'b t
+  end
 end
 
 val lazy_ : (unit -> 'a) -> 'a Lazy.t

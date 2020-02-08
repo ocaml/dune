@@ -1213,7 +1213,9 @@
  (action
   (chdir
    test-cases/github3046
-   (progn (run %{exe:cram.exe} -test run.t) (diff? run.t run.t.corrected)))))
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github534)

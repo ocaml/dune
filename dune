@@ -4,9 +4,8 @@
 (env
  (_
   (binaries
-   (src/ocaml-syntax-shims/pp.exe as ocaml-syntax-shims)
-   test/blackbox-tests/cram.exe
-   test/blackbox-tests/sanitizer.exe)))
+   (otherlibs/cram/bin/dune_cram.exe as dune-cram)
+   (src/ocaml-syntax-shims/pp.exe as ocaml-syntax-shims))))
 
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))

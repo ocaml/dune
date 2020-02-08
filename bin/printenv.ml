@@ -16,15 +16,32 @@ let dump sctx ~dir =
   let+ env = Super_context.dump_env sctx ~dir in
   ((Super_context.context sctx).name, env)
 
-let pp ppf sexps =
-  Dune_lang.List sexps
-  |> Dune_lang.Ast.add_loc ~loc:Loc.none
-  |> Dune_lang.Cst.concrete |> List.singleton
-  |> Format.fprintf ppf "@[<v1>@,%a@]@," Dune.Format_dune_lang.pp_top_sexps
+let pp ppf ~fields sexps =
+  let fields = String.Set.of_list fields in
+  List.iter sexps ~f:(fun sexp ->
+      let do_print =
+        String.Set.is_empty fields
+        ||
+        match sexp with
+        | Dune_lang.List (Atom (A name) :: _) -> String.Set.mem fields name
+        | _ -> false
+      in
+      if do_print then
+        Dune_lang.Ast.add_loc sexp ~loc:Loc.none
+        |> Dune_lang.Cst.concrete |> List.singleton
+        |> Format.fprintf ppf "%a@?" Dune.Format_dune_lang.pp_top_sexps)
 
 let term =
   let+ common = Common.term
-  and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH") in
+  and+ dir = Arg.(value & pos 0 dir "" & info [] ~docv:"PATH")
+  and+ fields =
+    Arg.(
+      value & opt_all string []
+      & info [ "field" ] ~docv:"FIELD"
+          ~doc:
+            "Only print this field. This option can be repeated multiple times \
+             to print multiple fields.")
+  in
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
@@ -54,11 +71,11 @@ let term =
               [ Pp.text "Environment is not defined in install dirs" ] )
       in
       Build_system.do_build ~request >>| function
-      | [ (_, env) ] -> Format.printf "%a" pp env
+      | [ (_, env) ] -> Format.printf "%a" (pp ~fields) env
       | l ->
         List.iter l ~f:(fun (name, env) ->
             Format.printf "@[<v2>Environment for context %s:@,%a@]@."
               (Dune.Context_name.to_string name)
-              pp env))
+              (pp ~fields) env))
 
 let command = (term, info)

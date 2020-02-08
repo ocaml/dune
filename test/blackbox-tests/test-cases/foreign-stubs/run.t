@@ -117,6 +117,7 @@ Testsuite for the (foreign_stubs ...) field.
   > EOF
 
   $ ./sdune build
+  File "dune", line 1, characters 0-0:
   Error: No rule found for libbar$ext_lib
   [1]
 

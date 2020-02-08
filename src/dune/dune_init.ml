@@ -199,6 +199,8 @@ module Component = struct
         }
     end
 
+    (** TODO(shonfeder): Use separate types for executables and libs (which
+        would use Lib_name.t) *)
     type public_name =
       | Use_name
       | Public_name of Dune_lang.Atom.t

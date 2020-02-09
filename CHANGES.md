@@ -1,6 +1,12 @@
 2.3.0 (unreleased)
 ------------------
 
+- Improve validation and error handling of arguments to `dune init` (#3103, fixes
+  #3046, @shonfeder)
+
+- `dune init exec NAME` now uses the `NAME` argument for private modules (#3103,
+  fixes #3088, @shonfeder)
+
 - Avoid linear walk to detect children, this should greatly improve
   performance when a target has a large number of dependencies (#2959,
   @ejgallego, @aalekseyev, @Armael)

@@ -475,17 +475,16 @@ module Discovered_package = struct
     | Findlib of Meta_source.t
 
   let builtin_for_dune =
+    let entry =
+      Dune_package.Entry.Deprecated_library_name
+        { loc = Loc.of_pos __POS__
+        ; old_public_name = Lib_name.of_string_exn "dune.configurator" ~loc:None
+        ; new_public_name = Lib_name.of_string_exn "dune-configurator" ~loc:None
+        }
+    in
     Dune
       { name = Opam_package.Name.of_string "dune"
-      ; entries =
-          [ Deprecated_library_name
-              { loc = Loc.of_pos __POS__
-              ; old_public_name =
-                  Lib_name.of_string_exn "dune.configurator" ~loc:None
-              ; new_public_name =
-                  Lib_name.of_string_exn "dune-configurator" ~loc:None
-              }
-          ]
+      ; entries = Lib_name.Map.singleton (Dune_package.Entry.name entry) entry
       ; version = None
       ; dir = Path.root
       }
@@ -527,7 +526,7 @@ let find_and_acknowledge_package t ~fq_name =
   | Some (Ok (Findlib findlib_package)) ->
     Meta_source.parse_and_acknowledge findlib_package t
   | Some (Ok (Dune pkg)) ->
-    List.iter pkg.entries ~f:(fun entry ->
+    Lib_name.Map.iter pkg.entries ~f:(fun entry ->
         let name = Dune_package.Entry.name entry in
         Table.set t.packages name (Ok entry))
 

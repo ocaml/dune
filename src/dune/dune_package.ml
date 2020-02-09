@@ -254,6 +254,10 @@ module Entry = struct
     | Library lib -> Lib_info.version (Lib.info lib)
     | Deprecated_library_name _ -> None
 
+  let loc = function
+    | Library lib -> Lib_info.loc (Lib.info lib)
+    | Deprecated_library_name d -> d.loc
+
   let cstrs ~lang ~dir =
     let open Dune_lang.Decoder in
     [ ( "library"
@@ -274,7 +278,7 @@ end
 
 type t =
   { name : Package.Name.t
-  ; entries : Entry.t list
+  ; entries : Entry.t Lib_name.Map.t
   ; version : string option
   ; dir : Path.t
   }
@@ -286,11 +290,22 @@ let decode ~lang ~dir =
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
-        match (e : Entry.t) with
-        | Library lib ->
-          let info = Lib_info.set_version lib.info version in
-          Entry.Library { lib with info }
-        | _ -> e)
+        let e =
+          match (e : Entry.t) with
+          | Library lib ->
+            let info = Lib_info.set_version lib.info version in
+            Entry.Library { lib with info }
+          | _ -> e
+        in
+        (Entry.name e, e))
+    |> Lib_name.Map.of_list
+    |> function
+    | Ok x -> x
+    | Error (name, _e1, e2) ->
+      User_error.raise ~loc:(Entry.loc e2)
+        [ Pp.textf "Library %s is defined for the second time."
+            (Lib_name.to_string name)
+        ]
   in
   { name; version; entries; dir }
 
@@ -322,20 +337,23 @@ let encode ~dune_version { entries; name; version; dir } =
         ]
   in
   let entries =
-    List.map entries ~f:(function
-      | Entry.Library lib ->
-        list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
-      | Deprecated_library_name d ->
-        list
-          ( Dune_lang.atom "deprecated_library_name"
-          :: Deprecated_library_name.encode d ))
+    Lib_name.Map.to_list entries
+    |> List.map ~f:(fun (_name, e) ->
+           match e with
+           | Entry.Library lib ->
+             list (Dune_lang.atom "library" :: Lib.encode lib ~package_root:dir)
+           | Deprecated_library_name d ->
+             list
+               ( Dune_lang.atom "deprecated_library_name"
+               :: Deprecated_library_name.encode d ))
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
 let to_dyn { entries; name; version; dir } =
   let open Dyn.Encoder in
   record
-    [ ("entries", list Entry.to_dyn entries)
+    [ ( "entries"
+      , list Entry.to_dyn (Lib_name.Map.to_list entries |> List.map ~f:snd) )
     ; ("name", Package.Name.to_dyn name)
     ; ("version", option string version)
     ; ("dir", Path.to_dyn dir)

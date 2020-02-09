@@ -316,48 +316,50 @@ let gen_dune_package sctx pkg =
           Path.Build.L.relative pkg_root subdir
         in
         let entries =
-          List.filter_map lib_entries ~f:(function
-            | Super_context.Lib_entry.Deprecated_library_name
-                { old_public_name = { deprecated = true; _ }; _ } ->
-              None
-            | Super_context.Lib_entry.Deprecated_library_name
-                { old_public_name =
-                    { public = old_public_name; deprecated = false }
-                ; new_public_name = _, new_public_name
-                ; loc
-                ; _
-                } ->
-              Some
-                (Dune_package.Entry.Deprecated_library_name
-                   { loc
-                   ; old_public_name = Dune_file.Public_lib.name old_public_name
-                   ; new_public_name
-                   })
-            | Library lib ->
-              let dir_contents =
-                let info = Lib.Local.info lib in
-                let dir = Lib_info.src_dir info in
-                Dir_contents.get sctx ~dir
-              in
-              let obj_dir = Lib.Local.obj_dir lib in
-              let lib = Lib.Local.to_lib lib in
-              let name = Lib.name lib in
-              let foreign_objects =
-                let dir = Obj_dir.obj_dir obj_dir in
-                Dir_contents.foreign_sources_of_library dir_contents ~name
-                |> Foreign.Sources.object_files ~dir
-                     ~ext_obj:ctx.lib_config.ext_obj
-                |> List.map ~f:Path.build
-              in
-              let modules =
-                Dir_contents.modules_of_library dir_contents ~name
-              in
-              Some
-                (Library
-                   (Result.ok_exn
-                      (Lib.to_dune_lib lib
-                         ~dir:(Path.build (lib_root lib))
-                         ~modules ~foreign_objects))))
+          List.fold_left lib_entries ~init:Lib_name.Map.empty
+            ~f:(fun acc stanza ->
+              match stanza with
+              | Super_context.Lib_entry.Deprecated_library_name
+                  { old_public_name = { deprecated = true; _ }; _ } ->
+                acc
+              | Super_context.Lib_entry.Deprecated_library_name
+                  { old_public_name =
+                      { public = old_public_name; deprecated = false }
+                  ; new_public_name = _, new_public_name
+                  ; loc
+                  ; _
+                  } ->
+                let old_public_name =
+                  Dune_file.Public_lib.name old_public_name
+                in
+                Lib_name.Map.add_exn acc old_public_name
+                  (Dune_package.Entry.Deprecated_library_name
+                     { loc; old_public_name; new_public_name })
+              | Library lib ->
+                let dir_contents =
+                  let info = Lib.Local.info lib in
+                  let dir = Lib_info.src_dir info in
+                  Dir_contents.get sctx ~dir
+                in
+                let obj_dir = Lib.Local.obj_dir lib in
+                let lib = Lib.Local.to_lib lib in
+                let name = Lib.name lib in
+                let foreign_objects =
+                  let dir = Obj_dir.obj_dir obj_dir in
+                  Dir_contents.foreign_sources_of_library dir_contents ~name
+                  |> Foreign.Sources.object_files ~dir
+                       ~ext_obj:ctx.lib_config.ext_obj
+                  |> List.map ~f:Path.build
+                in
+                let modules =
+                  Dir_contents.modules_of_library dir_contents ~name
+                in
+                Lib_name.Map.add_exn acc name
+                  (Library
+                     (Result.ok_exn
+                        (Lib.to_dune_lib lib
+                           ~dir:(Path.build (lib_root lib))
+                           ~modules ~foreign_objects))))
         in
         Dune_package.Or_meta.Dune_package
           { Dune_package.version = pkg.version
@@ -380,10 +382,11 @@ let gen_dune_package sctx pkg =
       let dune_pkg =
         let entries =
           match Package.Name.Map.find deprecated_dune_packages name with
-          | None -> []
+          | None -> Lib_name.Map.empty
           | Some entries ->
-            List.map entries
-              ~f:(fun { Dune_file.Deprecated_library_name.old_public_name =
+            List.fold_left entries ~init:Lib_name.Map.empty
+              ~f:(fun acc
+                      { Dune_file.Deprecated_library_name.old_public_name =
                           { public = old_public_name; _ }
                       ; new_public_name = _, new_public_name
                       ; loc
@@ -393,8 +396,9 @@ let gen_dune_package sctx pkg =
                 let old_public_name =
                   Dune_file.Public_lib.name old_public_name
                 in
-                Dune_package.Entry.Deprecated_library_name
-                  { loc; old_public_name; new_public_name })
+                Lib_name.Map.add_exn acc old_public_name
+                  (Dune_package.Entry.Deprecated_library_name
+                     { loc; old_public_name; new_public_name }))
         in
         { Dune_package.version = pkg.version
         ; name

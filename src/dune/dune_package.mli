@@ -45,12 +45,14 @@ module Entry : sig
 
   val version : t -> string option
 
+  val loc : t -> Loc.t
+
   val to_dyn : t Dyn.Encoder.t
 end
 
 type t =
   { name : Package.Name.t
-  ; entries : Entry.t list
+  ; entries : Entry.t Lib_name.Map.t
   ; version : string option
   ; dir : Path.t
   }

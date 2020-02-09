@@ -138,6 +138,10 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
   [ coqdep_rule
   ; ( Build.with_no_targets deps_of
     >>>
+    (* The way we handle the transitive dependencies of .vo files is not
+       safe for sandboxing *)
+    Build.with_no_targets (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
+    >>>
     let coq_flags =
       Expander.expand_and_eval_set expander coq_flags
         ~standard:(Build.return [])

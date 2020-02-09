@@ -1954,6 +1954,7 @@ module Coq = struct
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
+    ; boot : bool
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
     ; loc : Loc.t
     ; enabled_if : Blang.t
@@ -1970,6 +1971,8 @@ module Coq = struct
        and+ public = field_o "public_name" (Public_lib.decode ())
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+       and+ boot = field_b "boot"
+                     ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
@@ -1978,7 +1981,7 @@ module Coq = struct
          let loc, res = name in
          (loc, Lib_name.Local.validate (loc, res))
        in
-       { name; public; synopsis; modules; flags; libraries; loc; enabled_if })
+       { name; public; synopsis; modules; flags; boot; libraries; loc; enabled_if })
 
   let best_name t =
     match t.public with

@@ -11,6 +11,11 @@
   performance when a target has a large number of dependencies (#2959,
   @ejgallego, @aalekseyev, @Armael)
 
+- [coq] Add `(boot)` option to `(coq.theories)` to enable bootstrap of
+  Coq's stdlib (#3096, @ejgallego)
+
+- [coq] Deprecate `public_name` field in favour of `package` (#2087, @ejgallego)
+
 2.2.0 (06/02/2020)
 ------------------
 

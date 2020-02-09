@@ -156,7 +156,7 @@ end = struct
             ~variants:exes.variants ~optional:exes.optional
         in
         Result.is_ok (Lib.Compile.direct_requires compile_info)
-      | Dune_file.Coq.T d -> Option.is_some d.public
+      | Dune_file.Coq.T d -> Option.is_some d.package
       | _ -> false )
       stanza
 

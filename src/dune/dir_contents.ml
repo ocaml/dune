@@ -126,7 +126,7 @@ type t =
   ; modules : Dir_modules.t Memo.Lazy.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
-  ; coq_modules : Coq_module.t list Lib_name.Map.t Memo.Lazy.t
+  ; coq_modules : Coq_module.t list Coq_lib_name.Map.t Memo.Lazy.t
   ; artifacts : Dir_artifacts.t Memo.Lazy.t
   }
 
@@ -142,7 +142,7 @@ let empty kind ~dir =
   ; modules = Memo.Lazy.of_val Dir_modules.empty
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
-  ; coq_modules = Memo.Lazy.of_val Lib_name.Map.empty
+  ; coq_modules = Memo.Lazy.of_val Coq_lib_name.Map.empty
   ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
   }
 
@@ -203,7 +203,14 @@ let mlds t (doc : Documentation.t) =
 
 let coq_modules_of_library t ~name =
   let map = Memo.Lazy.force t.coq_modules in
-  Lib_name.Map.find_exn map name
+  match Coq_lib_name.Map.find map name with
+  | Some x -> x
+  | None ->
+    Code_error.raise "Dir_contents.coq_modules_of_library"
+      [ "name", Coq_lib_name.to_dyn name
+      ; "available", Dyn.Encoder.(list Coq_lib_name.to_dyn)
+                       (Coq_lib_name.Map.keys map)
+      ]
 
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
@@ -291,12 +298,12 @@ let coq_modules_of_files ~subdirs =
  * In Coq all libs are "wrapped" so including a module twice is not so bad.
  *)
 let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
-  List.fold_left d.data ~init:Lib_name.Map.empty ~f:(fun map ->
-    function
-    | Coq.T coq ->
-      let modules = Coq_module.eval coq.modules ~dir ~standard:modules in
-      Lib_name.Map.set map (Dune_file.Coq.best_name coq) modules
-    | _ -> map)
+  List.fold_left d.data ~init:Coq_lib_name.Map.empty
+    ~f:(fun map -> function
+      | Coq.T coq ->
+        let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
+        Coq_lib_name.Map.add_exn map (snd coq.name) modules
+      | _ -> map)
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t

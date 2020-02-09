@@ -1506,32 +1506,54 @@ This will enable support for the ``coq.theory`` stanza in the current project. I
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
+The only version supported is ``0.1`` and it doesn't provide any kind
+of guarantees with respect to stability, however, as implementation of
+features progresses, we hope to bump ``0.1`` to ``1.0`` soon. The 1.0
+version will commit to a stable set of functionality; features marked
+``1.0`` below are expected to reach 1.0 unchanged.
+
 The basic form for defining Coq libraries is very similar to the OCaml form:
 
 .. code:: scheme
 
     (coq.theory
      (name <module_prefix>)
-     (public_name <package.lib_name>)
+     (package <package>)
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
      (flags <coq_flags>))
 
-The stanza will build all `.v` files on the given directory. The semantics of fields is:
+The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
 
-- ``<module_prefix>`` will be used as the default Coq library prefix ``-R``,
+- ``<module_prefix>`` is a dot-separated list of valid Coq module
+  names and determines the module scope under which the theory is
+  compiled [``-R`` option]. For example, if ``<module_prefix>`` is
+  ``foo.Bar``, the theory modules will be named as
+  ``foo.Bar.module1``, ``foo.Bar.module2``, etc... Note that modules
+  in the same theory don't see the ``foo.Bar`` prefix, in the same
+  way that OCaml ``wrapped`` libraries do. For compatibility reasons,
+  the 1.0 version of the Coq language installs a theory named
+  ``foo.Bar`` under ``foo/Bar``. Also note that Coq supports composing
+  a module path from different theories, thus you can name a theory
+  ``foo.Bar`` and a second one ``foo.Baz`` and things will work
+  properly,
 - the ``modules`` field enables constraining the set of modules
-  included in the library, similarly to its OCaml counterpart,
-- ``public_name`` will make Dune generate install rules for the `.vo`
-  files; files will be installed in
-  ``lib/coq/user-contrib/<module_prefix>``, as customary in the
-  make-based Coq package eco-system. For compatibility, we also install the `.cmxs`
-  files appearing in `<ocaml-libraries>` under the `user-contrib` prefix.
-- ``<coq_flags>`` will be passed to ``coqc``,
-- the path to install locations of ``<ocaml_libraries>`` will be passed to
-  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows a Coq
-  library to depend on an ML plugin.
+  included in the theory, similarly to its OCaml counterpart. Modules
+  are specified in Coq notation, that is to say ``A/b.v`` is written
+  ``A.b`` in this field,
+- if ``package``is present, Dune will generate install rules for the
+  ``.vo`` files on the theory. ``pkg_name`` must be a valid package
+  name. Note that the 1.0 version of the language uses the Coq legacy
+  install setup, where all packages share a common root namespace and
+  install directory, ``lib/coq/user-contrib/<module_prefix>``, as
+  customary in the make-based Coq package ecosystem. For
+  compatibility, we also install under the ``user-contrib`` prefix the
+  ``.cmxs`` files appearing in ``<ocaml_libraries>``,
+- ``<coq_flags>`` will be passed to ``coqc`` as command-line options,
+- the path to installed locations of ``<ocaml_libraries>`` will be passed to
+  ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
+  theory to depend on a ML plugin,
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

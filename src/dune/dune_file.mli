@@ -351,8 +351,8 @@ end
 
 module Coq : sig
   type t =
-    { name : Loc.t * Lib_name.Local.t
-    ; public : Public_lib.t option
+    { name : Loc.t * Coq_lib_name.t
+    ; package : Package.t option
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
@@ -361,8 +361,6 @@ module Coq : sig
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }
-
-  val best_name : t -> Lib_name.t
 
   type Stanza.t += T of t
 end

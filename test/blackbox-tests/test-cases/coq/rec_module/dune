@@ -1,6 +1,6 @@
 (coq.theory
  (name rec_module)
- (public_name rec.module)
+ (package rec)
  (modules :standard)
  (synopsis "Test Coq library"))
 

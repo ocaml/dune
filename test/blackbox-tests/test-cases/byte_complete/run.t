@@ -24,6 +24,7 @@ Test the `byte_complete` executable mode
   > CAMLprim value foo() {
   >   return caml_copy_string("OCaml, plus fort que le segfault!");
   > }
+  > EOF
 
   $ echo 'external foo : unit -> string = "foo"' > foo.ml
   $ echo 'print_endline (Foo.foo ())' > prog.ml

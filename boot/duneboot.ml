@@ -81,6 +81,33 @@ let fatal fmt =
       exit 2)
     fmt
 
+module Status_line = struct
+  let num_jobs = ref 0
+
+  let num_jobs_finished = ref 0
+
+  let displayed = ref ""
+
+  let display_status_line =
+    Unix.(isatty stdout)
+    ||
+    match Sys.getenv "INSIDE_EMACS" with
+    | (_ : string) -> true
+    | exception Not_found -> false
+
+  let update jobs =
+    if display_status_line && !num_jobs > 0 then (
+      let new_displayed =
+        sprintf "Done: %d/%d (jobs: %d)" !num_jobs_finished !num_jobs jobs
+      in
+      Printf.printf "\r%*s\r%s%!" (String.length !displayed) "" new_displayed;
+      displayed := new_displayed
+    )
+
+  let () =
+    at_exit (fun () -> Printf.printf "\r%*s\r" (String.length !displayed) "")
+end
+
 (* Return list of entries in [path] as [path/entry] *)
 let readdir path =
   Array.fold_right
@@ -500,6 +527,7 @@ end = struct
     t (fun x -> result := Some x);
     let rec loop () =
       if Hashtbl.length Process.running > 0 then (
+        Status_line.update (Hashtbl.length Process.running);
         let pid, status = Process.wait () in
         let ivar = Hashtbl.find Process.running pid in
         Hashtbl.remove Process.running pid;
@@ -1033,14 +1061,16 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
   let external_libraries, external_includes =
     resolve_externals external_libraries
   in
-  let table = Hashtbl.create (List.length dependencies) in
+  let num_dependencies = List.length dependencies in
+  let table = Hashtbl.create num_dependencies in
+  Status_line.num_jobs := num_dependencies;
   let build m =
     match Hashtbl.find table m with
     | Not_started f ->
       Hashtbl.replace table m Initializing;
       Fiber.fork f >>= fun fut ->
       Hashtbl.replace table m (Started fut);
-      Fiber.Future.wait fut
+      Fiber.Future.wait fut >>| fun () -> incr Status_line.num_jobs_finished
     | Initializing -> fatal "dependency cycle!"
     | Started fut -> Fiber.Future.wait fut
     | exception Not_found -> fatal "file not found: %s" m

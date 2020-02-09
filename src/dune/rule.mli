@@ -10,8 +10,6 @@ module Info : sig
     | Source_file_copy
 
   val of_loc_opt : Loc.t option -> t
-
-  val loc : t -> Loc.t option
 end
 
 module Promote : sig

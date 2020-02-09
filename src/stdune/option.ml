@@ -62,6 +62,10 @@ let both x y =
   | Some x, Some y -> Some (x, y)
   | _ -> None
 
+let split = function
+  | Some (x, y) -> Some x, Some y
+  | None -> None, None
+
 let to_list = function
   | None -> []
   | Some x -> [ x ]

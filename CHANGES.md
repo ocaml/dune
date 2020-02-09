@@ -16,6 +16,10 @@
 
 - [coq] Deprecate `public_name` field in favour of `package` (#2087, @ejgallego)
 
+- Better error reporting for "data only" and "vendored" dirs. Using these with
+  anything else than a strict subdirectory or `*` will raise an error. The
+  previous behavior was to just do nothing  (#3056, fixes #3019, @voodoos)
+
 2.2.0 (06/02/2020)
 ------------------
 

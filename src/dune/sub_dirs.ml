@@ -109,29 +109,36 @@ let eval (t : _ Status.Map.t) ~dirs =
 
 let decode =
   let open Dune_lang.Decoder in
+  let strict_subdir field_name =
+    plain_string (fun ~loc dn ->
+        let msg = [ Pp.textf "invalid sub-directory name %S" dn ] in
+        if Filename.dirname dn <> Filename.current_dir_name then
+          let msg =
+            [ Pp.textf "only immediate sub-directories may be specified." ]
+          in
+          let hints =
+            [ Pp.textf "to ignore %s, write \"(%s %s)\" in %s/dune" dn
+                field_name (Filename.basename dn) (Filename.dirname dn)
+            ]
+          in
+          User_error.raise ~loc ~hints msg
+        else if
+          match dn with
+          | ""
+          | "." ->
+            let hints = [ Pp.textf "did you mean (%s *)?" field_name ] in
+            User_error.raise ~loc ~hints msg
+          | ".." -> true
+          | _ -> false
+        then
+          User_error.raise ~loc msg
+        else
+          (loc, dn))
+  in
   let ignored_sub_dirs =
-    let open Dune_lang.Decoder in
     let ignored =
-      let+ l =
-        enter
-          (repeat
-             (plain_string (fun ~loc dn ->
-                  if
-                    Filename.dirname dn <> Filename.current_dir_name
-                    ||
-                    match dn with
-                    | ""
-                    | "."
-                    | ".." ->
-                      true
-                    | _ -> false
-                  then
-                    User_error.raise ~loc
-                      [ Pp.textf "Invalid sub-directory name %S" dn ]
-                  else
-                    dn)))
-      in
-      Predicate_lang.Glob.of_string_set (String.Set.of_list l)
+      let+ l = enter (repeat (strict_subdir "ignored_sub_dirs")) in
+      Predicate_lang.Glob.of_string_set (String.Set.of_list (List.map ~f:snd l))
     in
     let+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc, ignored = located ignored in
@@ -143,16 +150,29 @@ let decode =
         ];
     ignored
   in
-  let plang =
-    Dune_lang.Syntax.since Stanza.syntax (1, 6) >>> Predicate_lang.Glob.decode
+  let strict_subdir_glob field_name =
+    let+ loc, l = strict_subdir field_name in
+    Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l)
+  in
+  let dirs =
+    located
+      ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
+      >>> Predicate_lang.Glob.decode )
+  in
+  let data_only_dirs =
+    located
+      ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
+      >>> strict_subdir_glob "data_only" )
   in
   let vendored_dirs =
-    let decode = Predicate_lang.Glob.decode in
-    located (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> decode)
+    (* let decode = Predicate_lang.Glob.decode in *)
+    located
+      ( Dune_lang.Syntax.since Stanza.syntax (1, 11)
+      >>> strict_subdir_glob "vendored_dirs" )
   in
   let decode =
-    let+ dirs = field_o "dirs" (located plang)
-    and+ data_only = field_o "data_only_dirs" (located plang)
+    let+ dirs = field_o "dirs" dirs
+    and+ data_only = field_o "data_only_dirs" data_only_dirs
     and+ ignored_sub_dirs = multi_field "ignored_subdirs" ignored_sub_dirs
     and+ vendored_dirs = field_o "vendored_dirs" vendored_dirs
     and+ rest = leftover_fields in

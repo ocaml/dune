@@ -10,8 +10,8 @@ type t =
   | List of t list
   | Template of Template.t
 
-(** [atom s] convert the string [s] to an Atom. @raise Exn.Code_error if [s]
-    does not satisfy [Atom.is_valid s]. *)
+(** [atom s] convert the string [s] to an Atom.
+    NOTE No validity check is performed. *)
 val atom : string -> t
 
 val atom_or_quoted_string : string -> t

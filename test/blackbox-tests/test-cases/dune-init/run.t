@@ -215,10 +215,10 @@ Safety and Validation
 
 Will not overwrite existing files
 
-  $ dune init exe test_bin ./existing_project/bin
+  $ dune init exe main ./existing_project/bin
   Warning: File existing_project/bin/main.ml was not created because it already
   exists
-  Success: initialized executable component named test_bin
+  Success: initialized executable component named main
   $ cat ./existing_project/bin/main.ml
   () = print_endline "Goodbye"
 
@@ -239,10 +239,12 @@ Comments in dune files are preserved
 Will not create components with invalid names
 
   $ dune init lib invalid-component-name ./_test_lib
-  Error: A component named 'invalid-component-name' cannot be created because
-  it is an invalid library name.
-  Hint: library names must be non-empty and composed only of the following
-  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
+  dune: NAME argument: invalid component name `invalid-component-name'
+        Hint: library names must be non-empty and composed only of the
+        following
+        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
+  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  Try `dune init --help' or `dune --help' for more information.
   [1]
   $ test -f ./_test_lib
   [1]
@@ -259,10 +261,11 @@ Will fail and inform user when invalid component command is given
 Will fail and inform user when an invalid option is given to a component
 
   $ dune init test test_foo --public
-  Error: The test component does not support the public option
+  Error: The `test' component does not support the `--public' option
   [1]
   $ dune init exe test_exe --inline-tests
-  Error: The executable component does not support the inline-tests option
+  Error: The `executable' component does not support the `--inline-tests'
+  option
   [1]
 
 Adding fields to existing stanzas
@@ -278,14 +281,14 @@ Adding fields to existing stanzas is currently not supported
   A preexisting dune stanza conflicts with a generated stanza:
   
   Generated stanza:
-  (executable (name main) (libraries test_lib2))
+  (executable (name test_bin) (libraries test_lib2))
   
   Pre-existing stanza:
-  (executable (name main) (libraries test_lib1))
+  (executable (name test_bin) (libraries test_lib1))
   [1]
   $ cat ./_test_bin/dune
   (executable
-   (name main)
+   (name test_bin)
    (libraries test_lib1))
 
 Creating projects

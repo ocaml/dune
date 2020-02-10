@@ -83,12 +83,22 @@ files are ignored.
 Generating opam files
 =====================
 
-Here's a complete example of a dune file with opam metadata specification:
+dune will generate ``.opam`` files if the ``dune-project`` file
+
+- sets ``(generate_opam_files true)``, and
+- declares one or more packages as per, :ref:`declaring-a-package`.
+
+Here's a complete example of a ``dune-project`` file with opam metadata. This
+configuration will tell ``dune`` to generate two opam files: ``cohttp.opam`` and
+``cohttp-async.opam``. (See )
 
 .. code:: scheme
 
-   (lang dune 1.10)
+   (lang dune 2.1)
    (name cohttp)
+
+   (generate_opam_files true)
+
    (source (github mirage/ocaml-cohttp))
    (license ISC)
    (authors "Anil Madhavapeddy" "Rudi Grinberg")

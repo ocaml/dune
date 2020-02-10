@@ -105,10 +105,43 @@ module Deps = struct
         Dep.Set.union acc (source_tree_dep_set dir))
 end
 
+module Prelude = struct
+  type t =
+    | Default of Path.Local.t
+    | Env of
+        { env : string
+        ; file : Path.Local.t
+        }
+
+  let decode =
+    let open Dune_lang.Decoder in
+    let path = string >>| Path.Local.of_string in
+    let decode_env =
+      let+ () = keyword "env"
+      and+ env = string
+      and+ file = path in
+      Env { env; file }
+    in
+    let decode_default =
+      let+ file = path in
+      Default file
+    in
+    if_list ~then_:(enter decode_env) ~else_:decode_default
+
+  let to_args ~dir t : _ Command.Args.t list =
+    let bpath p = Path.build (Path.Build.append_local dir p) in
+    match t with
+    | Default file -> [ A "--prelude"; Dep (bpath file) ]
+    | Env { env; file } ->
+      let arg = Printf.sprintf "%s:%s" env (Path.Local.to_string file) in
+      [ A "--prelude"; A arg; Hidden_deps (Dep.Set.of_files [ bpath file ]) ]
+end
+
 type t =
   { loc : Loc.t
   ; files : Predicate_lang.Glob.t
   ; packages : Package.Name.t list
+  ; preludes : Prelude.t list
   }
 
 type Stanza.t += T of t
@@ -130,9 +163,11 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:default_files
-     and+ packages = field_o "packages" (repeat Package.Name.decode) in
+     and+ packages = field_o "packages" (repeat Package.Name.decode)
+     and+ preludes = field_o "preludes" (repeat Prelude.decode) in
      let packages = Option.value ~default:[] packages in
-     { loc; files; packages })
+     let preludes = Option.value ~default:[] preludes in
+     { loc; files; packages; preludes })
 
 let () =
   let open Dune_lang.Decoder in
@@ -176,14 +211,14 @@ let gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza src =
       List.map stanza.packages ~f:(fun pkg ->
           Build.alias (Build_system.Alias.package_install ~context ~pkg))
     in
+    let prelude_args =
+      List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
+    in
     Build.(with_no_targets (all_unit pkg_deps))
     >>> Build.with_no_targets (Build.dyn_deps dyn_deps)
     >>> Command.run ~dir:(Path.build dir) mdx_prog
-          [ A "test"
-          ; A "-o"
-          ; Target files.corrected
-          ; Dep (Path.build files.src)
-          ]
+          ( [ Command.Args.A "test" ] @ prelude_args
+          @ [ A "-o"; Target files.corrected; Dep (Path.build files.src) ] )
   in
   Super_context.add_rule sctx ~loc ~dir mdx_action;
   (* Attach the diff action to the @runtest for the src and corrected files *)

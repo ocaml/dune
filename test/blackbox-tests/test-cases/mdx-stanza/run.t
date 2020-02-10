@@ -36,3 +36,8 @@ the stanza
 
   $ dune runtest --root local-packages
   Entering directory 'local-packages'
+
+You can set MDX preludes using the preludes field of the stanza
+
+  $ dune runtest --root preludes
+  Entering directory 'preludes'

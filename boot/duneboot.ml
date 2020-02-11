@@ -1131,6 +1131,9 @@ let build_with_single_command ~ocaml_config:_ ~pp ~dependencies ~c_files
        [ [ "-o"
          ; Filename.concat ".." (name ^ ".exe")
          ; "-g"
+         ; ( match Config.mode with
+             | Byte -> [ Config.output_complete_obj_arg ]
+             | Native -> [] )
          ; "-no-alias-deps"
          ; "-w"
          ; "-49"

@@ -16,12 +16,7 @@
 
 (package
  (name dune)
- (depends
-  ;; Please keep the lower bound in sync with .travis.yml and
-  ;; min_ocaml_version in bootstrap.ml
-  (ocaml (>= 4.07))
-  base-unix
-  base-threads)
+ ; The "depends" and "build" field are written in dune.opam.template
  (conflicts
   (odoc (< 1.3.0))
   (dune-release (< 1.3.0))

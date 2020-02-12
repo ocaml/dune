@@ -196,9 +196,25 @@ module Dependency = struct
   let decode =
     let open Dune_lang.Decoder in
     let constrained =
-      let+ name = Name.decode
-      and+ expr = Constraint.decode in
-      { name; constraint_ = Some expr; bundle = false }
+      let* name = Name.decode
+      and+ bundle =
+        let* ast = peek in
+        match ast with
+        | Some (Atom (_loc, A ":bundle")) ->
+          let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 3)
+          and+ () = junk in
+          true
+        | _ -> return false
+      in
+      let+ constraint_ =
+        let* ast = peek in
+        match ast with
+        | None -> return None
+        | Some _ ->
+          let+ constraint_ = Constraint.decode in
+          Some constraint_
+      in
+      { name; constraint_; bundle }
     in
     if_list ~then_:(enter constrained)
       ~else_:

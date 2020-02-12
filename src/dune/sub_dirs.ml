@@ -151,14 +151,12 @@ let decode =
     ignored
   in
   let strict_subdir_glob field_name =
-    let+ sdirs = repeat (strict_subdir field_name) in
-    let l =
-      List.map
-        ~f:(fun (loc, l) ->
-          Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l))
-        sdirs
+    let+ globs =
+      repeat
+        (let+ loc, l = strict_subdir field_name in
+         Predicate_lang.Glob.of_glob (Glob.of_string_exn loc l))
     in
-    Predicate_lang.union l
+    Predicate_lang.union globs
   in
   let dirs =
     located

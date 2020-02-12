@@ -93,7 +93,10 @@ let opam_fields project (package : Package.t) =
         let constraint_ : Package.Dependency.Constraint.t =
           Uop (Gte, QVar dune_version)
         in
-        { Package.Dependency.name = dune_name; constraint_ = Some constraint_ }
+        { Package.Dependency.name = dune_name
+        ; constraint_ = Some constraint_
+        ; bundle = false
+        }
       in
       let is_dune_depend (pkg : Package.Dependency.t) =
         Package.Name.equal pkg.name dune_dep.name

@@ -53,6 +53,7 @@ module Dependency : sig
   type t =
     { name : Name.t
     ; constraint_ : Constraint.t option
+    ; bundle : bool
     }
 
   val opam_depend : t -> OpamParserTypes.value
@@ -139,3 +140,5 @@ val is_opam_file : Path.t -> bool
 val load_opam_file : Path.Source.t -> Name.t -> t
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
+
+val bundles : t -> name:Name.t -> bool

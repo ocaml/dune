@@ -190,6 +190,7 @@ module Dependency = struct
   type t =
     { name : Name.t
     ; constraint_ : Constraint.t option
+    ; bundle : bool
     }
 
   let decode =
@@ -197,12 +198,12 @@ module Dependency = struct
     let constrained =
       let+ name = Name.decode
       and+ expr = Constraint.decode in
-      { name; constraint_ = Some expr }
+      { name; constraint_ = Some expr; bundle = false }
     in
     if_list ~then_:(enter constrained)
       ~else_:
         (let+ name = Name.decode in
-         { name; constraint_ = None })
+         { name; constraint_ = None; bundle = false })
 
   let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -228,18 +229,19 @@ module Dependency = struct
 
   let opam_depend : t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
-    fun { name; constraint_ } ->
+    fun { name; constraint_; bundle = _ } ->
       let constraint_ = Option.map ~f:opam_constraint constraint_ in
       let pkg : OpamParserTypes.value = String (nopos, Name.to_string name) in
       match constraint_ with
       | None -> pkg
       | Some c -> Option (nopos, pkg, [ c ])
 
-  let to_dyn { name; constraint_ } =
+  let to_dyn { name; constraint_; bundle } =
     let open Dyn.Encoder in
     record
       [ ("name", Name.to_dyn name)
       ; ("constr", Dyn.Option (Option.map ~f:Constraint.to_dyn constraint_))
+      ; ("bundle", bool bundle)
       ]
 end
 
@@ -557,9 +559,14 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   }
 
+
 let missing_deps (t : t) ~effective_deps =
   let specified_deps =
     List.map t.depends ~f:(fun (dep : Dependency.t) -> dep.name)
     |> Name.Set.of_list
   in
   Name.Set.diff effective_deps specified_deps
+
+let bundles t ~name =
+  List.exists t.depends ~f:(fun (dep : Dependency.t) ->
+      dep.bundle && Name.equal dep.name name)

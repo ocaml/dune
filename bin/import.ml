@@ -86,19 +86,26 @@ module Main = struct
     let only_packages =
       Option.map (Common.only_packages common)
         ~f:(fun { Common.Only_packages.names; command_line_option } ->
-          Package.Name.Set.iter names ~f:(fun pkg_name ->
-              if not (Package.Name.Map.mem workspace.conf.packages pkg_name)
-              then
-                let pkg_name = Package.Name.to_string pkg_name in
-                User_error.raise
-                  [ Pp.textf "I don't know about package %s (passed through %s)"
-                      pkg_name command_line_option
-                  ]
-                  ~hints:
-                    (User_message.did_you_mean pkg_name
-                       ~candidates:
-                         ( Package.Name.Map.keys workspace.conf.packages
-                         |> List.map ~f:Package.Name.to_string )));
+          let only_packages =
+            Package.Name.Set.to_list names
+            |> List.filter_map ~f:(fun pkg_name ->
+                   match
+                     Package.Name.Map.find workspace.conf.packages pkg_name
+                   with
+                   | Some p -> Some p
+                   | None ->
+                     let pkg_name = Package.Name.to_string pkg_name in
+                     User_error.raise
+                       [ Pp.textf
+                           "I don't know about package %s (passed through %s)"
+                           pkg_name command_line_option
+                       ]
+                       ~hints:
+                         (User_message.did_you_mean pkg_name
+                            ~candidates:
+                              ( Package.Name.Map.keys workspace.conf.packages
+                              |> List.map ~f:Package.Name.to_string )))
+          in
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
                 Dune.File_tree.find_dir pkg.path
@@ -113,7 +120,10 @@ module Main = struct
                        --for-release-of-packages."
                       (Package.Name.to_string pkg.name)
                   ];
-              vendored || included))
+              let bundled =
+                List.exists only_packages ~f:(Package.bundles ~name:pkg.name)
+              in
+              vendored || included || bundled))
     in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference

@@ -59,6 +59,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bundle-gen-opam)
+ (deps (package dune) (source_tree test-cases/bundle/gen-opam))
+ (action
+  (chdir
+   test-cases/bundle/gen-opam
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias bundle-only-packages)
  (deps (package dune) (source_tree test-cases/bundle/only-packages))
  (action
@@ -2685,6 +2695,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias bundle-gen-opam)
   (alias bundle-only-packages)
   (alias byte-code-only)
   (alias byte_complete)
@@ -2945,6 +2956,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias bundle-gen-opam)
   (alias bundle-only-packages)
   (alias byte-code-only)
   (alias byte_complete)

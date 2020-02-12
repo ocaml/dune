@@ -43,8 +43,7 @@ module C_define : sig
       ["ARCH_SIXTYFOUR", Switch true] ]} *)
   val import :
        t
-    -> ?prelude:
-         string
+    -> ?prelude:string
          (** Define extra code be used with extracting values below. Note that
              the compiled code is never executed. *)
     -> ?c_flags:string list

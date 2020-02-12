@@ -59,6 +59,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bundle-only-packages)
+ (deps (package dune) (source_tree test-cases/bundle/only-packages))
+ (action
+  (chdir
+   test-cases/bundle/only-packages
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias byte-code-only)
  (deps (package dune) (source_tree test-cases/byte-code-only))
  (action
@@ -2675,6 +2685,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias bundle-only-packages)
   (alias byte-code-only)
   (alias byte_complete)
   (alias c-stubs)
@@ -2934,6 +2945,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias block-strings)
+  (alias bundle-only-packages)
   (alias byte-code-only)
   (alias byte_complete)
   (alias c-stubs)

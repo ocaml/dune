@@ -18,8 +18,7 @@ type t
 
 (** A Coq module [a.b.foo] defined in file [a/b/foo.v] *)
 val make :
-     source:
-       Path.Build.t
+     source:Path.Build.t
        (** file = .v source file; module name has to be the same so far *)
   -> prefix:string list (** Library-local qualified prefix *)
   -> name:Name.t (** Name of the module *)

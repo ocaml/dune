@@ -19,8 +19,8 @@ type status =
 
 val daemonize :
      ?workdir:Path.t (** The path to chdir to *)
-  -> ?foreground:
-       bool (** Whether to fork a daemon or run synchronously (defaults true) *)
+  -> ?foreground:bool
+       (** Whether to fork a daemon or run synchronously (defaults true) *)
   -> Path.t (** The path of the beacon file *)
   -> ((string -> unit) -> unit) (** The daemon main routine *)
   -> (status, string) Result.t

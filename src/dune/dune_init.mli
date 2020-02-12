@@ -45,7 +45,7 @@ module Component : sig
     val public_name_to_string : public_name -> string
 
     module Executable : sig
-      type t = { public : public_name option}
+      type t = { public : public_name option }
     end
 
     module Library : sig

@@ -207,9 +207,9 @@ let coq_modules_of_library t ~name =
   | Some x -> x
   | None ->
     Code_error.raise "Dir_contents.coq_modules_of_library"
-      [ "name", Coq_lib_name.to_dyn name
-      ; "available", Dyn.Encoder.(list Coq_lib_name.to_dyn)
-                       (Coq_lib_name.Map.keys map)
+      [ ("name", Coq_lib_name.to_dyn name)
+      ; ( "available"
+        , Dyn.Encoder.(list Coq_lib_name.to_dyn) (Coq_lib_name.Map.keys map) )
       ]
 
 let modules_of_files ~dialects ~dir ~files =
@@ -298,12 +298,12 @@ let coq_modules_of_files ~subdirs =
  * In Coq all libs are "wrapped" so including a module twice is not so bad.
  *)
 let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
-  List.fold_left d.data ~init:Coq_lib_name.Map.empty
-    ~f:(fun map -> function
-      | Coq.T coq ->
-        let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
-        Coq_lib_name.Map.add_exn map (snd coq.name) modules
-      | _ -> map)
+  List.fold_left d.data ~init:Coq_lib_name.Map.empty ~f:(fun map ->
+    function
+    | Coq.T coq ->
+      let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
+      Coq_lib_name.Map.add_exn map (snd coq.name) modules
+    | _ -> map)
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t

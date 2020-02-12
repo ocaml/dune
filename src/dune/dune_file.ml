@@ -1969,7 +1969,8 @@ module Coq = struct
       (let+ project = Dune_project.get_exn ()
        and+ loc_name =
          field_o "public_name"
-           (Dune_lang.Decoder.plain_string (fun ~loc s -> loc,s)) in
+           (Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, s)))
+       in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
         match loc_name with
@@ -1980,24 +1981,25 @@ module Coq = struct
             | None -> Package.Name.of_string name
             | Some (pkg, _) -> Package.Name.of_string pkg
           in
-          Pkg.resolve project pkg
-          |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
+          Pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
 
   let select_deprecation ~package ~public =
-    match package, public with
+    match (package, public) with
     | p, None -> p
-    | None, Some (loc,pkg) ->
+    | None, Some (loc, pkg) ->
       User_warning.emit ~loc
-        [Pp.text
-           "(public_name ...) is deprecated and will be removed in the Coq \
-            language version 1.0, please use (package ...) instead"];
+        [ Pp.text
+            "(public_name ...) is deprecated and will be removed in the Coq \
+             language version 1.0, please use (package ...) instead"
+        ];
       Some pkg
-    | Some _, Some (loc,_) ->
+    | Some _, Some (loc, _) ->
       User_error.raise ~loc
-        [Pp.text
-           "Cannot both use (package ...) and (public_name ...), please \
-            remove the latter as it is deprecated and will be removed in the 1.0 \
-            version of the Coq language"]
+        [ Pp.text
+            "Cannot both use (package ...) and (public_name ...), please \
+             remove the latter as it is deprecated and will be removed in the \
+             1.0 version of the Coq language"
+        ]
 
   let decode =
     fields
@@ -2007,14 +2009,23 @@ module Coq = struct
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ boot = field_b "boot"
-                     ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+       and+ boot =
+         field_b "boot" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
-       { name; package; synopsis; modules; flags; boot; libraries; loc; enabled_if })
+       { name
+       ; package
+       ; synopsis
+       ; modules
+       ; flags
+       ; boot
+       ; libraries
+       ; loc
+       ; enabled_if
+       })
 
   type Stanza.t += T of t
 

@@ -376,11 +376,52 @@ let upgrade_dir todo dir =
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
+let fold_on_project_roots ~f ~init =
+  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only ~init
+    ~f
+
+type project_version =
+  | Jbuild_project
+  | Dune2_project
+  | Dune1_project
+
+let detect_project_version project dir =
+  (* TODO is it useful or can we use dune_version directly *)
+  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
+  then
+    Jbuild_project
+  else
+    let project_dune_version = Dune_project.dune_version project in
+    let open Dune_lang.Syntax.Version.Infix in
+    if project_dune_version >= (2, 0) then
+      Dune2_project
+    else
+      Dune1_project
+
+let detect_and_add_project_version dir acc =
+  let project = File_tree.Dir.project dir in
+  let detected_version = detect_project_version project dir in
+  (dir, detected_version) :: acc
+
 let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_edit = [] } in
-  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only
-    ~init:() ~f:(fun dir () -> upgrade_dir todo dir);
+  let current_versions =
+    fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
+  in
+  List.iter current_versions ~f:(fun (dir, version) ->
+      match version with
+      | Jbuild_project -> upgrade_dir todo dir
+      | Dune1_project ->
+        Console.print
+          [ Pp.textf "TODO: upgrade v1 -> v2: %s"
+              (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))
+          ]
+      | Dune2_project ->
+        Console.print
+          [ Pp.textf "TODO: already upgraded at v2: %s"
+              (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))
+          ]);
   List.iter todo.to_edit ~f:(fun (fn, s) ->
       Console.print
         [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];

@@ -22,7 +22,6 @@ Bundled dependencies should be excluded from opam files
   opam-version: "2.0"
   depends: [
     "dune" {>= "2.3"}
-    "bundledlib"
   ]
   build: [
     ["dune" "subst"] {pinned}

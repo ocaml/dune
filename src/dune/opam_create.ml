@@ -101,10 +101,11 @@ let opam_fields project (package : Package.t) =
       let is_dune_depend (pkg : Package.Dependency.t) =
         Package.Name.equal pkg.name dune_dep.name
       in
-      if List.exists package.depends ~f:is_dune_depend then
+      let depends = Package.opam_depends package in
+      if List.exists depends ~f:is_dune_depend then
         package
       else
-        { package with depends = dune_dep :: package.depends }
+        { package with depends = dune_dep :: depends }
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

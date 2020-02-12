@@ -575,13 +575,15 @@ let load_opam_file file name =
   ; deprecated_package_names = Name.Map.empty
   }
 
-
 let missing_deps (t : t) ~effective_deps =
   let specified_deps =
     List.map t.depends ~f:(fun (dep : Dependency.t) -> dep.name)
     |> Name.Set.of_list
   in
   Name.Set.diff effective_deps specified_deps
+
+let opam_depends (t : t) =
+  List.filter t.depends ~f:(fun (dep : Dependency.t) -> not dep.bundle)
 
 let bundles t ~name =
   List.exists t.depends ~f:(fun (dep : Dependency.t) ->

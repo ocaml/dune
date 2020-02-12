@@ -225,7 +225,8 @@ let handle_special_libs cctx =
             generate_and_compile_module cctx ~lib ~name:"findlib_initl"
               ~code:
                 (Build.return
-                   (findlib_init_code ~preds:Findlib.Package.preds
+                   (findlib_init_code
+                      ~preds:Findlib.findlib_predicates_set_by_dune
                       ~libs:all_libs))
               ~requires ~precompiled_cmi:false
           in

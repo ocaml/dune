@@ -52,11 +52,13 @@ module Simplified : sig
   val to_dyn : t -> Dyn.t
 end
 
-val load : Path.t -> name:Lib_name.t option -> Simplified.t
+val load : Path.t -> name:Package.Name.t option -> Simplified.t
 
 (** Builtin META files for libraries distributed with the compiler. For when
     ocamlfind is not installed. *)
 val builtins :
-  stdlib_dir:Path.t -> version:Ocaml_version.t -> Simplified.t Lib_name.Map.t
+     stdlib_dir:Path.t
+  -> version:Ocaml_version.t
+  -> Simplified.t Package.Name.Map.t
 
 val pp : Format.formatter -> entry list -> unit

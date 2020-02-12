@@ -50,7 +50,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   Path.relative db_path "foo/META"
-  |> Meta.load ~name:(Some (Lib_name.of_string_exn ~loc:None "foo"))
+  |> Meta.load ~name:(Some (Package.Name.of_string "foo"))
   |> Meta.Simplified.to_dyn |> print_dyn;
   [%expect
     {|

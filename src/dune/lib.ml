@@ -1822,28 +1822,28 @@ module DB = struct
         Lib_name.Map.find map name |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode = false) ~stdlib_dir
-      ~lib_config findlib =
+  let create_from_findlib ?(external_lib_deps_mode = false) ~stdlib_dir findlib
+      =
     create () ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
         | Ok (Deprecated_library_name d) ->
           Redirect (None, (Loc.none, d.new_public_name))
+        | Ok (Hidden_library pkg) ->
+          Hidden
+            { info = Dune_package.Lib.info pkg
+            ; reason = "unsatisfied 'exist_if'"
+            }
         | Error e -> (
           match e with
           | Invalid_dune_package why -> Invalid why
           | Not_found ->
             if external_lib_deps_mode then
-              let pkg = Findlib.dummy_package findlib ~name ~lib_config in
+              let pkg = Findlib.dummy_package findlib ~name in
               Found (Dune_package.Lib.info pkg)
             else
-              Not_found
-          | Hidden pkg ->
-            Hidden
-              { info = Dune_package.Lib.info pkg
-              ; reason = "unsatisfied 'exist_if'"
-              } ))
+              Not_found ))
       ~all:(fun () ->
         Findlib.all_packages findlib |> List.map ~f:Dune_package.Entry.name)
 

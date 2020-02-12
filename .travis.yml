@@ -10,7 +10,7 @@ install: bash -ex .travis-ci.sh prepare
 script: bash -ex .travis-ci.sh build
 
 # Please keep the list in sync with the minimal version of OCaml in
-# dune-project and bootstrap.ml
+# dune-project, dune.opam.template and bootstrap.ml
 
 matrix:
   include:

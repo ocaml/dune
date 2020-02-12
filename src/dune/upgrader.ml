@@ -46,7 +46,6 @@ type rename_and_edit =
 
 type todo =
   { mutable to_rename_and_edit : rename_and_edit list
-  ; mutable to_add : Path.Source.t list
   ; mutable to_edit : (Path.Source.t * string) list
   }
 
@@ -351,14 +350,13 @@ let upgrade_opam_file todo fn =
 let upgrade_dir todo dir =
   let project = File_tree.Dir.project dir in
   let project_root = Dune_project.root project in
-  if project_root = File_tree.Dir.path dir then (
-    ( match Dune_project.ensure_project_file_exists project with
-    | Already_exist -> ()
-    | Created -> todo.to_add <- Dune_project.file project :: todo.to_add );
+  ( if project_root = File_tree.Dir.path dir then
+    let (_ : Dune_project.created_or_already_exist) =
+      Dune_project.ensure_project_file_exists project
+    in
     Package.Name.Map.iter (Dune_project.packages project) ~f:(fun pkg ->
         let fn = Package.opam_file pkg in
-        if Path.exists (Path.source fn) then upgrade_opam_file todo fn)
-  );
+        if Path.exists (Path.source fn) then upgrade_opam_file todo fn) );
   if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
   then
     let fn =
@@ -380,7 +378,7 @@ let upgrade_dir todo dir =
 
 let upgrade () =
   Dune_project.default_dune_language_version := (1, 0);
-  let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
+  let todo = { to_rename_and_edit = []; to_edit = [] } in
   File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only
     ~init:() ~f:(fun dir () -> upgrade_dir todo dir);
   List.iter todo.to_edit ~f:(fun (fn, s) ->

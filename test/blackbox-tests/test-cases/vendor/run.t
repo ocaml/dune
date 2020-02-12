@@ -14,7 +14,7 @@ When compiling vendored code, all warnings should be disabled
 
   $ dune build --root warnings @no-warnings-please
   Entering directory 'warnings'
-  There should be no OCaml warning above!
+  There should be no OCaml warning!
 
 Dune will not warn about generating inaccurate .merlin files within vendored directories
 
@@ -84,3 +84,9 @@ Only direct subdirectories can be marked as data-only
   Error: only immediate sub-directories may be specified.
   Hint: to ignore a/b/c, write "(data_only c)" in a/b/dune
   [1]
+
+Multiple direct subdirectories can be marked as data-only or vendored
+
+  $ dune build --root multiple-dirs
+  Entering directory 'multiple-dirs'
+

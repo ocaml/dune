@@ -90,6 +90,8 @@ let of_string_exn ~loc:_ s = s
 
 let of_local (_loc, t) = t
 
+let of_package_name p = Package.Name.to_string p
+
 type t = string
 
 let hash = String.hash
@@ -113,11 +115,10 @@ module Set = struct
   let to_string_list = to_list
 end
 
-let root_lib t =
-  match String.lsplit2 t ~on:'.' with
-  | None -> t
-  | Some (p, _) -> p
-
-let package_name t = Package.Name.of_string (root_lib t)
+let package_name t =
+  Package.Name.of_string
+    ( match String.lsplit2 t ~on:'.' with
+    | None -> t
+    | Some (p, _) -> p )
 
 let nest x y = sprintf "%s.%s" x y

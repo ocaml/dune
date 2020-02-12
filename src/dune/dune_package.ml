@@ -245,17 +245,24 @@ module Entry = struct
   type t =
     | Library of Lib.t
     | Deprecated_library_name of Deprecated_library_name.t
+    | Hidden_library of Lib.t
 
   let name = function
-    | Library lib -> Lib_info.name (Lib.info lib)
+    | Library lib
+    | Hidden_library lib ->
+      Lib_info.name (Lib.info lib)
     | Deprecated_library_name d -> d.old_public_name
 
   let version = function
-    | Library lib -> Lib_info.version (Lib.info lib)
+    | Library lib
+    | Hidden_library lib ->
+      Lib_info.version (Lib.info lib)
     | Deprecated_library_name _ -> None
 
   let loc = function
-    | Library lib -> Lib_info.loc (Lib.info lib)
+    | Library lib
+    | Hidden_library lib ->
+      Lib_info.loc (Lib.info lib)
     | Deprecated_library_name d -> d.loc
 
   let cstrs ~lang ~dir =
@@ -274,6 +281,7 @@ module Entry = struct
     | Library lib -> constr "Library" [ Lib.to_dyn lib ]
     | Deprecated_library_name lib ->
       constr "Deprecated_library_name" [ Deprecated_library_name.to_dyn lib ]
+    | Hidden_library lib -> constr "Hidden_library" [ Lib.to_dyn lib ]
 end
 
 type t =
@@ -345,7 +353,10 @@ let encode ~dune_version { entries; name; version; dir } =
            | Deprecated_library_name d ->
              list
                ( Dune_lang.atom "deprecated_library_name"
-               :: Deprecated_library_name.encode d ))
+               :: Deprecated_library_name.encode d )
+           | Hidden_library lib ->
+             Code_error.raise "Dune_package.encode got Hidden_library"
+               [ ("lib", Lib.to_dyn lib) ])
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 

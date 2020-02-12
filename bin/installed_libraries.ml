@@ -23,18 +23,36 @@ let term =
       let ctx = List.hd ctxs in
       let findlib = ctx.findlib in
       if na then (
-        let pkgs = Findlib.all_unavailable_packages findlib in
+        let broken =
+          List.map (Findlib.all_broken_packages findlib) ~f:(fun (name, _) ->
+              (Lib_name.of_package_name name, "invalid dune file"))
+        in
+        let hidden =
+          List.filter_map (Findlib.all_packages findlib) ~f:(function
+            | Hidden_library lib ->
+              Some
+                ( Dune_package.Lib.info lib |> Dune.Lib_info.name
+                , "unsatisfied 'exist_if'" )
+            | _ -> None)
+        in
+        let all =
+          List.sort (broken @ hidden) ~compare:(fun (a, _) (b, _) ->
+              Lib_name.compare a b)
+        in
         let longest =
-          String.longest_map pkgs ~f:(fun (n, _) -> Lib_name.to_string n)
+          String.longest_map all ~f:(fun (n, _) -> Lib_name.to_string n)
         in
         let ppf = Format.std_formatter in
-        List.iter pkgs ~f:(fun (n, r) ->
-            Format.fprintf ppf "%-*s -> %s@\n" longest (Lib_name.to_string n)
-              (Findlib.Unavailable_reason.to_string r));
+        List.iter all ~f:(fun (n, r) ->
+            Format.fprintf ppf "%-*s -> %s@\n" longest (Lib_name.to_string n) r);
         Format.pp_print_flush ppf ();
         Fiber.return ()
       ) else
-        let pkgs = Findlib.all_packages findlib in
+        let pkgs =
+          List.filter (Findlib.all_packages findlib) ~f:(function
+            | Dune_package.Entry.Hidden_library _ -> false
+            | _ -> true)
+        in
         let max_len =
           String.longest_map pkgs ~f:(fun e ->
               Lib_name.to_string (Dune_package.Entry.name e))

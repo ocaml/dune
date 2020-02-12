@@ -141,18 +141,7 @@ end
 module Unavailable_reason = struct
   type t =
     | Not_found
-    | Hidden of Dune_package.Lib.t
     | Invalid_dune_package of exn
-
-  let to_string = function
-    | Invalid_dune_package _ -> "invalid dune package"
-    | Not_found -> "not found"
-    | Hidden pkg ->
-      let info = Dune_package.Lib.info pkg in
-      let obj_dir = Lib_info.obj_dir info in
-      let dir = Obj_dir.dir obj_dir in
-      sprintf "in %s is hidden (unsatisfied 'exist_if')"
-        (Path.to_string_maybe_quoted dir)
 
   let to_dyn =
     let open Dyn.Encoder in
@@ -160,387 +149,370 @@ module Unavailable_reason = struct
     | Not_found -> constr "Not_found" []
     | Invalid_dune_package why ->
       constr "Invalid_dune_package" [ Exn.to_dyn why ]
-    | Hidden lib ->
-      let info = Dune_package.Lib.info lib in
-      let obj_dir = Lib_info.obj_dir info in
-      let dir = Obj_dir.dir obj_dir in
-      constr "Hidden" [ Path.to_dyn dir ]
 end
 
-type t =
+let builtin_for_dune : Dune_package.t =
+  let entry =
+    Dune_package.Entry.Deprecated_library_name
+      { loc = Loc.of_pos __POS__
+      ; old_public_name = Lib_name.of_string_exn "dune.configurator" ~loc:None
+      ; new_public_name = Lib_name.of_string_exn "dune-configurator" ~loc:None
+      }
+  in
+  { name = Opam_package.Name.of_string "dune"
+  ; entries = Lib_name.Map.singleton (Dune_package.Entry.name entry) entry
+  ; version = None
+  ; dir = Path.root
+  }
+
+type db =
   { stdlib_dir : Path.t
   ; paths : Path.t list
-  ; builtins : Meta.Simplified.t Lib_name.Map.t
-  ; packages :
-      (Lib_name.t, (Dune_package.Entry.t, Unavailable_reason.t) result) Table.t
+  ; builtins : Meta.Simplified.t Package.Name.Map.t
+  ; root_packages :
+      (Package.Name.t, (Dune_package.t, Unavailable_reason.t) result) Table.t
   ; lib_config : Lib_config.t
   }
 
-module Package = struct
-  type t =
-    { meta_file : Path.t
-    ; name : Lib_name.t
-    ; dir : Path.t
-    ; vars : Vars.t
-    }
-
-  let loc t = Loc.in_dir t.meta_file
-
-  let name t = t.name
-
-  let preds = Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
-
-  let get_paths t var preds =
-    List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
-
-  let make_archives t var preds =
-    Mode.Dict.of_func (fun ~mode ->
-        get_paths t var (Ps.add preds (Mode.variant mode)))
-
-  let version t = Vars.get t.vars "version" Ps.empty
-
-  let description t = Vars.get t.vars "description" Ps.empty
-
-  let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
-
-  let requires t =
-    Vars.get_words t.vars "requires" preds
-    |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
-
-  let ppx_runtime_deps t =
-    Vars.get_words t.vars "ppx_runtime_deps" preds
-    |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
-
-  let kind t =
-    match Vars.get t.vars "library_kind" Ps.empty with
-    | None -> Lib_kind.Normal
-    | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
-    | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
-    | Some _other_string -> Lib_kind.Normal
-
-  let archives t = make_archives t "archive" preds
-
-  let plugins t =
-    Mode.Dict.map2 ~f:( @ )
-      (make_archives t "archive" (Ps.add preds Variant.plugin))
-      (make_archives t "plugin" preds)
-
-  let dune_file t =
-    let fn =
-      Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
-    in
-    Option.some_if (Path.exists fn) fn
-
-  let to_dune t ~(lib_config : Lib_config.t) =
-    let loc = loc t in
-    let add_loc x = (loc, x) in
-    let () =
-      dune_file t
-      |> Option.iter ~f:(fun p ->
-             User_warning.emit ~loc:(Loc.in_file p)
-               [ Pp.text
-                   ".dune files are ignored since 2.0. Reinstall the library \
-                    with dune >= 2.0 to get rid of this warning and enable \
-                    support for the subsystem this library provides."
-               ])
-    in
-    let archives = archives t in
-    let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
-    let modes : Mode.Dict.Set.t =
-      (* libraries without archives are compatible with all modes. mainly a hack
-         for compiler-libs which doesn't have any archives *)
-      let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
-      if Mode.Dict.Set.is_empty discovered then
-        Mode.Dict.Set.all
-      else
-        discovered
-    in
-    let info : Path.t Lib_info.t =
-      let name = name t in
-      let kind = kind t in
-      let sub_systems = Sub_system_name.Map.empty in
-      let synopsis = description t in
-      let status = Lib_info.Status.Installed in
-      let src_dir = Obj_dir.dir obj_dir in
-      let version = version t in
-      let dune_version = None in
-      let virtual_deps = [] in
-      let implements = None in
-      let orig_src_dir = None in
-      let main_module_name : Lib_info.Main_module_name.t = This None in
-      let enabled = Lib_info.Enabled_status.Normal in
-      let requires =
-        requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
-      in
-      let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
-      let special_builtin_support : Lib_info.Special_builtin_support.t option =
-        (* findlib has been around for much longer than dune, so it is
-           acceptable to have a special case in dune for findlib. *)
-        match Lib_name.to_string t.name with
-        | "findlib.dynload" -> Some Findlib_dynload
-        | _ -> None
-      in
-      let foreign_objects = Lib_info.Source.External [] in
-      let plugins = plugins t in
-      let jsoo_runtime = jsoo_runtime t in
-      let jsoo_archive = None in
-      let pps = [] in
-      let virtual_ = None in
-      let variant = None in
-      let known_implementations = P.Map.empty in
-      let default_implementation = None in
-      let wrapped = None in
-      let foreign_archives, native_archives =
-        (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
-           be foreign archives, and all other files with the extension [ext_lib]
-           to be native archives. The resulting lists of archives will be used
-           to compute appropriate flags for linking dependant executables. *)
-        match Path.readdir_unsorted t.dir with
-        | Error _ ->
-          (* Raising an error is not an option here as we systematically delay
-             all library loading errors until the libraries are actually used in
-             rules.
-
-             We could add a warning like this:
-
-             User_warning.emit ~loc:(Loc.in_dir t.dir) [ Pp.text "Unable to read
-             directory" ];
-
-             But it seems to be too invasive *)
-          ([], [])
-        | Ok res ->
-          let foreign_archives, native_archives =
-            List.rev_filter_partition_map res ~f:(fun f ->
-                let ext = Filename.extension f in
-                if ext = lib_config.ext_lib then
-                  let file = Path.relative t.dir f in
-                  if
-                    String.is_prefix f
-                      ~prefix:Foreign.Archive.Name.lib_file_prefix
-                  then
-                    Left file
-                  else
-                    Right file
-                else
-                  Skip)
-          in
-          let sort = List.sort ~compare:Path.compare in
-          (sort foreign_archives, sort native_archives)
-      in
-      Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
-        ~version ~synopsis ~main_module_name ~sub_systems ~requires
-        ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-        ~native_archives ~foreign_dll_files:[] ~jsoo_runtime ~jsoo_archive ~pps
-        ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
-        ~known_implementations ~default_implementation ~modes ~wrapped
-        ~special_builtin_support ~exit_module:None
-    in
-    Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
-
-  (* XXX remove *)
-
-  let parse db ~meta_file ~name ~parent_dir ~vars =
-    let pkg_dir = Vars.get vars "directory" Ps.empty in
-    let dir =
-      match pkg_dir with
-      | None
-      | Some "" ->
-        parent_dir
-      | Some pkg_dir ->
-        if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
-          Path.relative db.stdlib_dir (String.drop pkg_dir 1)
-        else if Filename.is_relative pkg_dir then
-          Path.relative parent_dir pkg_dir
-        else
-          Path.of_filename_relative_to_initial_cwd pkg_dir
-    in
-    let pkg = { meta_file; name; dir; vars } in
-    let exists_if = Vars.get_words vars "exists_if" Ps.empty in
-    let exists =
-      match exists_if with
-      | _ :: _ ->
-        List.for_all exists_if ~f:(fun fn -> Path.exists (Path.relative dir fn))
-      | [] -> (
-        if not (Lib_name.Map.mem db.builtins (Lib_name.root_lib name)) then
-          true
-        else
-          (* The META files for installed packages are sometimes broken, i.e.
-             META files for libraries that were not installed by the compiler
-             are still present:
-
-             https://github.com/ocaml/dune/issues/563
-
-             To workaround this problem, for builtin packages we check that at
-             least one of the archive is present. *)
-          match archives pkg with
-          | { byte = []; native = [] } -> true
-          | { byte; native } -> List.exists (byte @ native) ~f:Path.exists )
-    in
-    if exists then
-      Ok pkg
-    else
-      Error pkg
-end
-
 let paths t = t.paths
 
-let dummy_package t ~name ~lib_config =
-  let dir =
-    match t.paths with
-    | [] -> t.stdlib_dir
-    | dir :: _ ->
-      Lib_name.package_name name |> Opam_package.Name.to_string
-      |> Path.relative dir
-  in
-  { Package.meta_file = Path.relative dir meta_fn
-  ; name
-  ; dir
-  ; vars = String.Map.empty
-  }
-  |> Package.to_dune ~lib_config
+let findlib_predicates_set_by_dune =
+  Ps.of_list [ P.ppx_driver; P.mt; P.mt_posix ]
 
-type db = t
+module Loader : sig
+  (* Search for a <package>/{META,dune-package} file in the findlib search path *)
+  val lookup_and_load :
+    db -> Package.Name.t -> (Dune_package.t, Unavailable_reason.t) result
 
-module Meta_source : sig
-  type t = private
-    { dir : Path.t
-    ; meta_file : Path.t
-    ; meta : Meta.Simplified.t
-    }
-
-  val internal : db -> meta:Meta.Simplified.t -> t
-
-  val parse_and_acknowledge : t -> db -> unit
-
-  val discover : dir:Path.t -> name:Lib_name.t -> t option
+  val dummy_package : db -> Package.Name.t -> Dune_package.t
 end = struct
-  type t =
-    { dir : Path.t
-    ; meta_file : Path.t
-    ; meta : Meta.Simplified.t
-    }
+  module Findlib_package : sig
+    type t =
+      { meta_file : Path.t
+      ; name : Lib_name.t
+      ; dir : Path.t
+      ; vars : Vars.t
+      }
 
-  let create ~dir ~meta_file ~name =
-    let meta = Meta.load meta_file ~name:(Some name) in
-    { dir; meta; meta_file }
+    val to_dune_library : t -> lib_config:Lib_config.t -> Dune_package.Lib.t
 
-  let internal db ~meta =
-    { dir = db.stdlib_dir; meta_file = Path.of_string "<internal>"; meta }
+    val exists : t -> is_builtin:bool -> bool
+  end = struct
+    type t =
+      { meta_file : Path.t
+      ; name : Lib_name.t
+      ; dir : Path.t
+      ; vars : Vars.t
+      }
 
-  let discover ~dir ~name =
-    let meta_file = Path.relative dir meta_fn in
-    if Path.exists meta_file then
-      Some (create ~dir ~meta_file ~name)
-    else
-      (* Alternative layout *)
-      let open Option.O in
-      let* dir = Path.parent dir in
-      let meta_file =
-        Path.relative dir (meta_fn ^ "." ^ Lib_name.to_string name)
+    let preds = findlib_predicates_set_by_dune
+
+    let get_paths t var preds =
+      List.map (Vars.get_words t.vars var preds) ~f:(Path.relative t.dir)
+
+    let make_archives t var preds =
+      Mode.Dict.of_func (fun ~mode ->
+          get_paths t var (Ps.add preds (Mode.variant mode)))
+
+    let version t = Vars.get t.vars "version" Ps.empty
+
+    let description t = Vars.get t.vars "description" Ps.empty
+
+    let jsoo_runtime t = get_paths t "jsoo_runtime" Ps.empty
+
+    let requires t =
+      Vars.get_words t.vars "requires" preds
+      |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
+
+    let ppx_runtime_deps t =
+      Vars.get_words t.vars "ppx_runtime_deps" preds
+      |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
+
+    let kind t =
+      match Vars.get t.vars "library_kind" Ps.empty with
+      | None -> Lib_kind.Normal
+      | Some "ppx_rewriter" -> Ppx_rewriter Lib_kind.Ppx_args.empty
+      | Some "ppx_deriver" -> Ppx_deriver Lib_kind.Ppx_args.empty
+      | Some _other_string -> Lib_kind.Normal
+
+    let archives t = make_archives t "archive" preds
+
+    let plugins t =
+      Mode.Dict.map2 ~f:( @ )
+        (make_archives t "archive" (Ps.add preds Variant.plugin))
+        (make_archives t "plugin" preds)
+
+    let exists t ~is_builtin =
+      let exists_if = Vars.get_words t.vars "exists_if" Ps.empty in
+      match exists_if with
+      | _ :: _ ->
+        List.for_all exists_if ~f:(fun fn ->
+            Path.exists (Path.relative t.dir fn))
+      | [] -> (
+        (not is_builtin)
+        ||
+        (* The META files for installed packages are sometimes broken, i.e. META
+           files for libraries that were not installed by the compiler are still
+           present:
+
+           https://github.com/ocaml/dune/issues/563
+
+           To workaround this problem, for builtin packages we check that at
+           least one of the archive is present. *)
+        match archives t with
+        | { byte = []; native = [] } -> true
+        | { byte; native } -> List.exists (byte @ native) ~f:Path.exists )
+
+    let to_dune_library t ~(lib_config : Lib_config.t) =
+      let loc = Loc.in_file t.meta_file in
+      let add_loc x = (loc, x) in
+      let dot_dune_file =
+        Path.relative t.dir (sprintf "%s.dune" (Lib_name.to_string t.name))
       in
-      if Path.exists meta_file then
-        Some (create ~dir ~meta_file ~name)
-      else
-        None
+      if Path.exists dot_dune_file then
+        User_warning.emit
+          ~loc:(Loc.in_file dot_dune_file)
+          [ Pp.text
+              ".dune files are ignored since 2.0. Reinstall the library with \
+               dune >= 2.0 to get rid of this warning and enable support for \
+               the subsystem this library provides."
+          ];
+      let archives = archives t in
+      let obj_dir = Obj_dir.make_external_no_private ~dir:t.dir in
+      let modes : Mode.Dict.Set.t =
+        (* libraries without archives are compatible with all modes. mainly a
+           hack for compiler-libs which doesn't have any archives *)
+        let discovered = Mode.Dict.map ~f:List.is_non_empty archives in
+        if Mode.Dict.Set.is_empty discovered then
+          Mode.Dict.Set.all
+        else
+          discovered
+      in
+      let info : Path.t Lib_info.t =
+        let kind = kind t in
+        let sub_systems = Sub_system_name.Map.empty in
+        let synopsis = description t in
+        let status = Lib_info.Status.Installed in
+        let src_dir = Obj_dir.dir obj_dir in
+        let version = version t in
+        let dune_version = None in
+        let virtual_deps = [] in
+        let implements = None in
+        let orig_src_dir = None in
+        let main_module_name : Lib_info.Main_module_name.t = This None in
+        let enabled = Lib_info.Enabled_status.Normal in
+        let requires =
+          requires t |> List.map ~f:(fun name -> Lib_dep.direct (add_loc name))
+        in
+        let ppx_runtime_deps = List.map ~f:add_loc (ppx_runtime_deps t) in
+        let special_builtin_support : Lib_info.Special_builtin_support.t option
+            =
+          (* findlib has been around for much longer than dune, so it is
+             acceptable to have a special case in dune for findlib. *)
+          match Lib_name.to_string t.name with
+          | "findlib.dynload" -> Some Findlib_dynload
+          | _ -> None
+        in
+        let foreign_objects = Lib_info.Source.External [] in
+        let plugins = plugins t in
+        let jsoo_runtime = jsoo_runtime t in
+        let jsoo_archive = None in
+        let pps = [] in
+        let virtual_ = None in
+        let variant = None in
+        let known_implementations = P.Map.empty in
+        let default_implementation = None in
+        let wrapped = None in
+        let foreign_archives, native_archives =
+          (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
+             be foreign archives, and all other files with the extension
+             [ext_lib] to be native archives. The resulting lists of archives
+             will be used to compute appropriate flags for linking dependant
+             executables. *)
+          match Path.readdir_unsorted t.dir with
+          | Error _ ->
+            (* Raising an error is not an option here as we systematically delay
+               all library loading errors until the libraries are actually used
+               in rules.
 
-  (* Parse a single package from a META file *)
-  let parse_package t ~meta_file ~name ~parent_dir ~vars =
-    let to_dune = Package.to_dune ~lib_config:t.lib_config in
-    match Package.parse t ~meta_file ~name ~parent_dir ~vars with
-    | Ok pkg -> (pkg.dir, Ok (Dune_package.Entry.Library (to_dune pkg)))
-    | Error pkg -> (pkg.dir, Error (Unavailable_reason.Hidden (to_dune pkg)))
+               We could add a warning like this:
 
-  (* Parse all the packages defined in a META file and add them to [t.packages] *)
-  let parse_and_acknowledge { dir; meta_file; meta } db =
-    let rec loop ~dir ~full_name (meta : Meta.Simplified.t) =
+               User_warning.emit ~loc:(Loc.in_dir t.dir) [ Pp.text "Unable to
+               read directory" ];
+
+               But it seems to be too invasive *)
+            ([], [])
+          | Ok res ->
+            let foreign_archives, native_archives =
+              List.rev_filter_partition_map res ~f:(fun f ->
+                  let ext = Filename.extension f in
+                  if ext = lib_config.ext_lib then
+                    let file = Path.relative t.dir f in
+                    if
+                      String.is_prefix f
+                        ~prefix:Foreign.Archive.Name.lib_file_prefix
+                    then
+                      Left file
+                    else
+                      Right file
+                  else
+                    Skip)
+            in
+            let sort = List.sort ~compare:Path.compare in
+            (sort foreign_archives, sort native_archives)
+        in
+        Lib_info.create ~loc ~name:t.name ~kind ~status ~src_dir ~orig_src_dir
+          ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
+          ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
+          ~foreign_archives ~native_archives ~foreign_dll_files:[] ~jsoo_runtime
+          ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
+          ~implements ~variant ~known_implementations ~default_implementation
+          ~modes ~wrapped ~special_builtin_support ~exit_module:None
+      in
+      Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
+  end
+
+  (* Parse all the packages defined in a META file *)
+  let dune_package_of_meta db ~dir ~meta_file ~(meta : Meta.Simplified.t) =
+    let rec loop ~dir ~full_name (meta : Meta.Simplified.t) acc =
       let vars = String.Map.map meta.vars ~f:Rules.of_meta_rules in
-      let dir, res =
-        parse_package db ~meta_file ~name:full_name ~parent_dir:dir ~vars
+      let pkg_dir = Vars.get vars "directory" Ps.empty in
+      let dir =
+        match pkg_dir with
+        | None
+        | Some "" ->
+          dir
+        | Some pkg_dir ->
+          if pkg_dir.[0] = '+' || pkg_dir.[0] = '^' then
+            Path.relative db.stdlib_dir (String.drop pkg_dir 1)
+          else if Filename.is_relative pkg_dir then
+            Path.relative dir pkg_dir
+          else
+            Path.of_filename_relative_to_initial_cwd pkg_dir
       in
-      Table.set db.packages full_name res;
-      List.iter meta.subs ~f:(fun (meta : Meta.Simplified.t) ->
+      let pkg : Findlib_package.t =
+        { meta_file; name = full_name; dir; vars }
+      in
+      let lib = Findlib_package.to_dune_library pkg ~lib_config:db.lib_config in
+      let entry : Dune_package.Entry.t =
+        if
+          Findlib_package.exists pkg
+            ~is_builtin:
+              (Package.Name.Map.mem db.builtins
+                 (Lib_name.package_name pkg.name))
+        then
+          Library lib
+        else
+          Hidden_library lib
+      in
+      let acc =
+        Lib_name.Map.add_exn acc (Dune_package.Entry.name entry) entry
+      in
+      List.fold_left meta.subs ~init:acc
+        ~f:(fun acc (meta : Meta.Simplified.t) ->
           let full_name =
             match meta.name with
             | None -> full_name
             | Some name -> Lib_name.nest full_name name
           in
-          loop ~dir ~full_name meta)
+          loop ~dir ~full_name meta acc)
     in
-    loop ~dir ~full_name:(Option.value_exn meta.name) meta
-end
-
-module Discovered_package = struct
-  type t =
-    | Dune of Dune_package.t
-    | Findlib of Meta_source.t
-
-  let builtin_for_dune =
-    let entry =
-      Dune_package.Entry.Deprecated_library_name
-        { loc = Loc.of_pos __POS__
-        ; old_public_name = Lib_name.of_string_exn "dune.configurator" ~loc:None
-        ; new_public_name = Lib_name.of_string_exn "dune-configurator" ~loc:None
-        }
+    let name = Option.value_exn meta.name in
+    let entries =
+      loop ~dir ~full_name:(Option.value_exn meta.name) meta Lib_name.Map.empty
     in
-    Dune
-      { name = Opam_package.Name.of_string "dune"
-      ; entries = Lib_name.Map.singleton (Dune_package.Entry.name entry) entry
-      ; version = None
-      ; dir = Path.root
+    { Dune_package.name = Lib_name.package_name name
+    ; version =
+        (let open Option.O in
+        let* e = Lib_name.Map.find entries name in
+        Dune_package.Entry.version e)
+    ; entries
+    ; dir
+    }
+
+  let load_and_convert db ~dir ~meta_file ~name =
+    let meta = Meta.load meta_file ~name:(Some name) in
+    dune_package_of_meta db ~dir ~meta_file ~meta
+
+  let load_builtin db meta =
+    dune_package_of_meta db ~dir:db.stdlib_dir
+      ~meta_file:(Path.of_string "<internal>")
+      ~meta
+
+  let dummy_package db name =
+    load_builtin db
+      { name = Some (Lib_name.of_package_name name)
+      ; vars = String.Map.empty
+      ; subs = []
       }
+
+  let lookup_and_load_one_dir db ~dir ~name =
+    let meta_file = Path.relative dir meta_fn in
+    if Path.exists meta_file then
+      Some (load_and_convert db ~dir ~meta_file ~name)
+    else
+      (* Alternative layout *)
+      let open Option.O in
+      let* dir = Path.parent dir in
+      let meta_file =
+        Path.relative dir (meta_fn ^ "." ^ Package.Name.to_string name)
+      in
+      if Path.exists meta_file then
+        Some (load_and_convert db ~dir ~meta_file ~name)
+      else
+        None
+
+  let lookup_and_load db name =
+    let rec loop dirs : (Dune_package.t, Unavailable_reason.t) Result.t =
+      match dirs with
+      | [] -> (
+        match Package.Name.to_string name with
+        | "dune" -> Ok builtin_for_dune
+        | _ -> (
+          Package.Name.Map.find db.builtins name |> function
+          | None -> Error Unavailable_reason.Not_found
+          | Some meta -> Ok (load_builtin db meta) ) )
+      | dir :: dirs -> (
+        let dir = Path.relative dir (Package.Name.to_string name) in
+        let dune = Path.relative dir Dune_package.fn in
+        match
+          if Path.exists dune then
+            Dune_package.Or_meta.load dune
+          else
+            Ok Dune_package.Or_meta.Use_meta
+        with
+        | Error e -> Error (Unavailable_reason.Invalid_dune_package e)
+        | Ok (Dune_package p) -> Ok p
+        | Ok Use_meta -> (
+          match lookup_and_load_one_dir db ~dir ~name with
+          | None -> loop dirs
+          | Some p -> Ok p ) )
+    in
+    loop db.paths
 end
 
-(* Search for a <package>/{META,dune-package} file in the findlib search path,
-   parse it and add its contents to [t.packages] *)
-let find_and_acknowledge_package t ~fq_name =
-  let root_name = Lib_name.root_lib fq_name in
-  let rec loop dirs : Discovered_package.t Or_exn.t option =
-    match dirs with
-    | [] -> (
-      match Lib_name.to_string root_name with
-      | "dune" -> Some (Ok Discovered_package.builtin_for_dune)
-      | _ ->
-        Lib_name.Map.find t.builtins root_name
-        |> Option.map ~f:(fun meta ->
-               Ok (Discovered_package.Findlib (Meta_source.internal t ~meta))) )
-    | dir :: dirs -> (
-      let dir = Path.relative dir (Lib_name.to_string root_name) in
-      let dune = Path.relative dir Dune_package.fn in
-      match
-        if Path.exists dune then
-          Dune_package.Or_meta.load dune
-        else
-          Ok Dune_package.Or_meta.Use_meta
-      with
-      | Error e -> Some (Error e)
-      | Ok (Dune_package p) -> Some (Ok (Dune p))
-      | Ok Use_meta -> (
-        match Meta_source.discover ~dir ~name:root_name with
-        | None -> loop dirs
-        | Some meta_source -> Some (Ok (Findlib meta_source)) ) )
-  in
-  match loop t.paths with
-  | None -> Table.set t.packages root_name (Error Not_found)
-  | Some (Error e) ->
-    Table.set t.packages root_name (Error (Invalid_dune_package e))
-  | Some (Ok (Findlib findlib_package)) ->
-    Meta_source.parse_and_acknowledge findlib_package t
-  | Some (Ok (Dune pkg)) ->
-    Lib_name.Map.iter pkg.entries ~f:(fun entry ->
-        let name = Dune_package.Entry.name entry in
-        Table.set t.packages name (Ok entry))
+type t = db
+
+let dummy_package t ~name =
+  let p = Loader.dummy_package t (Lib_name.package_name name) in
+  match Lib_name.Map.find_exn p.entries name with
+  | Library lib -> lib
+  | _ -> assert false
+
+let find_root_package t name =
+  match Table.find t.root_packages name with
+  | Some x -> x
+  | None ->
+    let res = Loader.lookup_and_load t name in
+    Table.set t.root_packages name res;
+    res
 
 let find t name =
-  match Table.find t.packages name with
-  | Some x -> x
-  | None -> (
-    find_and_acknowledge_package t ~fq_name:name;
-    match Table.find t.packages name with
-    | Some x -> x
-    | None ->
-      let res = Error Unavailable_reason.Not_found in
-      Table.set t.packages name res;
-      res )
+  let open Result.O in
+  let* p = find_root_package t (Lib_name.package_name name) in
+  match Lib_name.Map.find p.entries name with
+  | Some x -> Ok x
+  | None -> Error Unavailable_reason.Not_found
 
 let available t name = Result.is_ok (find t name)
 
@@ -558,23 +530,23 @@ let root_packages t =
         | Ok listing ->
           List.filter_map listing ~f:(fun name ->
               if Path.exists (Path.relative dir (name ^ "/" ^ meta_fn)) then
-                Some (Lib_name.of_string_exn ~loc:None name)
+                Some (Package.Name.of_string name)
               else
                 None))
-    |> Lib_name.Set.of_list
+    |> Package.Name.Set.of_list
   in
-  let builtins = Lib_name.Set.of_list (Lib_name.Map.keys t.builtins) in
-  Lib_name.Set.union pkgs builtins
+  let builtins = Package.Name.Set.of_list (Package.Name.Map.keys t.builtins) in
+  Package.Name.Set.union pkgs builtins
 
 let load_all_packages t =
-  Lib_name.Set.iter (root_packages t) ~f:(fun pkg ->
-      find_and_acknowledge_package t ~fq_name:pkg)
+  Package.Name.Set.iter (root_packages t) ~f:(fun name ->
+      ignore (find_root_package t name))
 
 let all_packages t =
   load_all_packages t;
-  Table.fold t.packages ~init:[] ~f:(fun x acc ->
+  Table.fold t.root_packages ~init:[] ~f:(fun x acc ->
       match x with
-      | Ok p -> p :: acc
+      | Ok p -> Lib_name.Map.fold p.entries ~init:acc ~f:(fun x acc -> x :: acc)
       | Error _ -> acc)
   |> List.sort ~compare:(fun a b ->
          Lib_name.compare
@@ -585,14 +557,16 @@ let create ~stdlib_dir ~paths ~version ~lib_config =
   { stdlib_dir
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version
-  ; packages = Table.create (module Lib_name) 1024
+  ; root_packages = Table.create (module Package.Name) 1024
   ; lib_config
   }
 
-let all_unavailable_packages t =
+let all_broken_packages t =
   load_all_packages t;
-  Table.foldi t.packages ~init:[] ~f:(fun name x acc ->
+  Table.foldi t.root_packages ~init:[] ~f:(fun name x acc ->
       match x with
-      | Ok _ -> acc
-      | Error e -> (name, e) :: acc)
-  |> List.sort ~compare:(fun (a, _) (b, _) -> Lib_name.compare a b)
+      | Ok _
+      | Error Not_found ->
+        acc
+      | Error (Invalid_dune_package exn) -> (name, exn) :: acc)
+  |> List.sort ~compare:(fun (a, _) (b, _) -> Package.Name.compare a b)

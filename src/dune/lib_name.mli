@@ -49,7 +49,7 @@ val split : t -> Package.Name.t * string list
 
 val package_name : t -> Package.Name.t
 
-val root_lib : t -> t
+val of_package_name : Package.Name.t -> t
 
 module Map : Map.S with type key = t
 

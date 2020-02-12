@@ -953,6 +953,8 @@ In this section, we will describe how to define a package, how to
 "attach" various elements to it and how to proceed with installing it
 on the system.
 
+.. _declaring-a-package:
+
 Declaring a package
 -------------------
 
@@ -978,11 +980,14 @@ release two packages with the same name.
 
 .. TODO: describe this more in details
 
-In older projects using Dune, packages were defined by the presence of
-a file called ``<package-name>.opam`` at the root of the project.
-However, it is not recommended to use this method in new projects as
-we expect to deprecate it in the future.  The right way to define a
-package is with a ``package`` stanza in the ``dune-project`` file.
+In older projects using Dune, packages were defined by manually writing a file
+called ``<package-name>.opam`` at the root of the project. However, it is not
+recommended to use this method in new projects as we expect to deprecate it in
+the future. The right way to define a package is with a ``package`` stanza in
+the ``dune-project`` file.
+
+See :ref:`opam-generation` for intructions on configuring dune to automatically
+generate ``.opam`` files based on the ``package`` stanzas.
 
 Attaching elements to a package
 -------------------------------

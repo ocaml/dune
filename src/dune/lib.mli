@@ -30,6 +30,9 @@ val wrapped : t -> Wrapped.t option Or_exn.t
     virtual library *)
 val is_impl : t -> bool
 
+(** Direct library dependencies of this library *)
+val requires : t -> t list Or_exn.t
+
 (** A unique integer identifier. It is only unique for the duration of the
     process *)
 module Id : sig

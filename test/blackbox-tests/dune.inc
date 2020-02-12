@@ -289,6 +289,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias describe)
+ (deps (package dune) (source_tree test-cases/describe))
+ (action
+  (chdir
+   test-cases/describe
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dialects)
  (deps (package dune) (source_tree test-cases/dialects))
  (action
@@ -2726,6 +2736,7 @@
   (alias depend-on-the-universe)
   (alias deprecated-library-name)
   (alias deps-conf-vars)
+  (alias describe)
   (alias dialects)
   (alias dir-target-dep)
   (alias disable-promotion)
@@ -2987,6 +2998,7 @@
   (alias depend-on-the-universe)
   (alias deprecated-library-name)
   (alias deps-conf-vars)
+  (alias describe)
   (alias dialects)
   (alias dir-target-dep)
   (alias disable-promotion)

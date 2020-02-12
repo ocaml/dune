@@ -363,6 +363,8 @@ let unique_id t = t.unique_id
 
 let is_impl t = Option.is_some t.implements
 
+let requires t = t.requires
+
 let obj_dir t = Lib_info.obj_dir t.info
 
 let is_local t =

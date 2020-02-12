@@ -5,6 +5,9 @@
 
 - Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
 
+- Add a `dune describe` command to obtain the topology of a dune
+  workspace, for projects such as ROTOR. (#3128, @diml)
+
 2.3.1 (20/02/2020)
 ------------------
 

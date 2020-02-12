@@ -62,17 +62,30 @@ let to_buffer ~buf sexp =
       Buffer.add_string buf (string_of_int (String.length str));
       Buffer.add_string buf ":";
       Buffer.add_string buf str
-    | Sexp.List (e : t list) ->
+    | Sexp.List e ->
       Buffer.add_char buf '(';
-      ignore (List.map ~f:loop e);
+      List.iter e ~f:loop;
       Buffer.add_char buf ')'
   in
-  ignore (loop sexp)
+  loop sexp
 
 let to_string sexp =
   let buf = buffer () in
   to_buffer sexp ~buf;
   Buffer.contents buf
+
+let to_channel oc sexp =
+  let rec loop = function
+    | Sexp.Atom str ->
+      output_string oc (string_of_int (String.length str));
+      output_char oc ':';
+      output_string oc str
+    | Sexp.List e ->
+      output_char oc '(';
+      List.iter e ~f:loop;
+      output_char oc ')'
+  in
+  loop sexp
 
 let parse_string string =
   let open Result.O in

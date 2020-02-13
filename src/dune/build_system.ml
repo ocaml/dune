@@ -1116,9 +1116,15 @@ and Exported : sig
     val memo :
       (Rule.t, Action_and_deps.t, Rule.t -> Action_and_deps.t Fiber.t) Memo.t
 
+    (* Evaluate a build request and return its static and dynamic dependencies.
+       Note that the evaluation forces building of the static dependencies. *)
     val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-    val evaluate_and_wait_for_dependencies : 'a t -> ('a * Dep.Set.t) Fiber.t
+    (* Evaluate a build request and return its static and dynamic dependencies.
+       Unlike [evaluate], this function also forces building of the dynamic
+       dependencies. *)
+    val evaluate_and_wait_for_dynamic_dependencies :
+      'a t -> ('a * Dep.Set.t) Fiber.t
   end
 
   (* Exported to inspect memoization cycles. *)
@@ -1177,7 +1183,7 @@ end = struct
     (* Same as the function just below, but with less parallelism. We keep this
        here only for documentation purposes as it is easier to read than the one
        below. The reader only has to check that the functions do the same thing. *)
-    let _evaluate_and_wait_for_dependencies t =
+    let _evaluate_and_wait_for_dynamic_dependencies t =
       let* result, deps = evaluate t in
       let+ () = build_deps deps in
       (result, deps)
@@ -1185,7 +1191,7 @@ end = struct
     (* This function is equivalent to the function above but it starts building
        static dependencies before we know the final result and the dynamic
        dependencies. We do this to increase parallelism. *)
-    let evaluate_and_wait_for_dependencies (type a) (t : a t) =
+    let evaluate_and_wait_for_dynamic_dependencies (type a) (t : a t) =
       let static_deps = static_deps t in
       (* Build the static dependencies in parallel with evaluation of the result
          and dynamic dependencies. *)
@@ -1274,7 +1280,7 @@ end = struct
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
     let* action, deps =
-      Build_request.evaluate_and_wait_for_dependencies (Memoized rule)
+      Build_request.evaluate_and_wait_for_dynamic_dependencies (Memoized rule)
     in
     Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
@@ -1765,7 +1771,8 @@ let do_build ~request =
   Hooks.End_of_build.once Promotion.finalize;
   entry_point_async ~f:(fun () ->
       let+ result, (_ : Dep.Set.t) =
-        Build_request.evaluate_and_wait_for_dependencies (Non_memoized request)
+        Build_request.evaluate_and_wait_for_dynamic_dependencies
+          (Non_memoized request)
       in
       result)
 

@@ -88,10 +88,3 @@ val with_prefix : t -> build:unit Build.t -> t
 val loc : t -> Loc.t
 
 val effective_env : t -> Env.t
-
-val rule_deps : t -> Dep.Set.t
-
-val static_action_deps : t -> Dep.Set.t
-
-(** Create a shim for the main build goal. *)
-val shim_of_build_goal : unit Build.t -> t

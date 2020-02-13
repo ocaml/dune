@@ -1055,12 +1055,10 @@ let sort_files dependencies ~main =
 
 let common_build_args name ~pp ~external_includes ~external_libraries =
   List.concat
-    [ ["-o"
-      ; Filename.concat ".." (name ^ ".exe")
-      ; "-g"]
+    [ [ "-o"; Filename.concat ".." (name ^ ".exe"); "-g" ]
     ; ( match Config.mode with
-        | Byte -> [ Config.output_complete_obj_arg ]
-        | Native -> [] )
+      | Byte -> [ Config.output_complete_obj_arg ]
+      | Native -> [] )
     ; pp
     ; external_includes
     ; external_libraries
@@ -1136,10 +1134,7 @@ let build_with_single_command ~ocaml_config:_ ~pp ~dependencies ~c_files
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
        [ common_build_args name ~pp ~external_includes ~external_libraries
-       ; [ "-no-alias-deps"
-         ; "-w"
-         ; "-49"
-         ]
+       ; [ "-no-alias-deps"; "-w"; "-49" ]
        ; c_files
        ; [ "-args"; "mods_list" ]
        ])

@@ -585,6 +585,4 @@ let missing_deps (t : t) ~effective_deps =
 let opam_depends (t : t) =
   List.filter t.depends ~f:(fun (dep : Dependency.t) -> not dep.bundle)
 
-let bundles t ~name =
-  List.exists t.depends ~f:(fun (dep : Dependency.t) ->
-      dep.bundle && Name.equal dep.name name)
+let dependencies t = t.depends

@@ -143,4 +143,4 @@ val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t
 
 val opam_depends : t -> Dependency.t list
 
-val bundles : t -> name:Name.t -> bool
+val dependencies : t -> Dependency.t list

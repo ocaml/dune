@@ -106,6 +106,16 @@ module Main = struct
                               ( Package.Name.Map.keys workspace.conf.packages
                               |> List.map ~f:Package.Name.to_string )))
           in
+          let bundled_packages =
+            List.fold_left only_packages ~init:Package.Name.Set.empty
+              ~f:(fun acc p ->
+                List.fold_left (Package.dependencies p) ~init:acc
+                  ~f:(fun acc (dep : Package.Dependency.t) ->
+                    if dep.bundle then
+                      Package.Name.Set.add acc dep.name
+                    else
+                      acc))
+          in
           Package.Name.Map.filter workspace.conf.packages ~f:(fun pkg ->
               let vendored =
                 Dune.File_tree.find_dir pkg.path
@@ -120,10 +130,8 @@ module Main = struct
                        --for-release-of-packages."
                       (Package.Name.to_string pkg.name)
                   ];
-              let bundled =
-                List.exists only_packages ~f:(Package.bundles ~name:pkg.name)
-              in
-              vendored || included || bundled))
+              vendored || included
+              || Package.Name.Set.mem bundled_packages pkg.name))
     in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference

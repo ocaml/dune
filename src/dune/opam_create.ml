@@ -101,7 +101,10 @@ let opam_fields project (package : Package.t) =
       let is_dune_depend (pkg : Package.Dependency.t) =
         Package.Name.equal pkg.name dune_dep.name
       in
-      let depends = Package.opam_depends package in
+      let depends =
+        List.filter (Package.dependencies package)
+          ~f:(fun (dep : Package.Dependency.t) -> not dep.bundle)
+      in
       if List.exists depends ~f:is_dune_depend then
         package
       else

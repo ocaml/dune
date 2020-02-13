@@ -81,6 +81,8 @@ val sequential_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
 val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 
+val fold : 'a list -> f:('a -> 'acc -> 'acc t) -> init:'acc -> 'acc t
+
 (** {1 Forking + joining} *)
 
 (** The following functions combine forking 2 or more fibers followed by joining

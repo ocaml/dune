@@ -1168,8 +1168,7 @@ and Exported : sig
         Note that the evaluation forces building of the static dependencies. *)
     val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-    (** A hack exported because [package_deps] is not in a fiber. *)
-    val peek_deps_exn : Rule.t -> Dep.Set.t
+    val deps : Rule.t -> Dep.Set.t Fiber.t
 
     (** Evaluate a build request and return its static and dynamic dependencies.
         Unlike [evaluate], this function also forces building of the dynamic
@@ -1210,7 +1209,7 @@ end = struct
     let static_deps (type a) (t : a t) = Build.static_deps (build t)
 
     let evaluate_and_discover_dynamic_deps_unmemoized t =
-      let+ () = build_deps (static_deps t).rule_deps in
+      let* () = build_deps (static_deps t).rule_deps in
       Build.exec (build t)
 
     let memo =
@@ -1233,8 +1232,9 @@ end = struct
       let+ result, dynamic_deps = evaluate_and_discover_dynamic_deps t in
       (result, Dep.Set.union (static_deps t).action_deps dynamic_deps)
 
-    let peek_deps_exn rule =
-      let (_ : Action.t), dynamic_deps = Memo.peek_exn memo rule in
+    let deps rule =
+      let open Fiber.O in
+      let+ (_ : Action.t), dynamic_deps = Memo.exec memo rule in
       Dep.Set.union (static_deps (Memoized rule)).action_deps dynamic_deps
 
     (* Same as the function just below, but with less parallelism. We keep this
@@ -1749,42 +1749,37 @@ let package_deps pkg files =
     | None ->
       (* if this file isn't in the build dir, it doesnt belong to any packages
          and it doesn't have dependencies that do *)
-      acc
+      Fiber.return acc
     | Some fn ->
       let pkgs = Fdecl.get t.packages fn in
       if Package.Name.Set.is_empty pkgs || Package.Name.Set.mem pkgs pkg then
         loop_deps fn acc
       else
-        Package.Name.Set.union acc pkgs
+        Fiber.return (Package.Name.Set.union acc pkgs)
   and loop_deps fn acc =
     match get_rule (Path.build fn) with
-    | None -> acc
+    | None -> Fiber.return acc
     | Some ir ->
       if Rule.Set.mem !rules_seen ir then
-        acc
+        Fiber.return acc
       else (
         rules_seen := Rule.Set.add !rules_seen ir;
-        (* We know that at this point of execution, all the action deps have
-           been computed and memoized (see the call to [Build.paths_for_rule]
-           below), so the following call to [Build_request.peek_deps_exn] cannot
-           raise. *)
-        (* CR-someday amokhov: It would be nice to statically rule out such
-           potential race conditions between [Sync] and [Async] functions, e.g.
-           by moving this code into a fiber. *)
-        let action_deps = Build_request.peek_deps_exn ir in
+        let* action_deps = Build_request.deps ir in
         let action_deps = Dep.Set.paths action_deps ~eval_pred in
-        Path.Set.fold action_deps ~init:acc ~f:loop
+        Path.Set.to_list action_deps |> Fiber.fold ~init:acc ~f:loop
       )
   in
   let open Build.O in
-  let+ () = Build.paths_for_rule files in
-  (* We know that after [Build.paths_for_rule], all transitive dependencies of
-     [files] are computed and memoized and so the above call to
-     [Build_request.peek_deps_exn] is safe. *)
-  Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
-      match Path.as_in_build_dir fn with
-      | None -> acc
-      | Some fn -> loop_deps fn acc)
+  let+ () = Build.paths_for_rule files
+  and+ x =
+    Path.Set.to_list files
+    |> Fiber.fold ~init:Package.Name.Set.empty ~f:(fun fn acc ->
+           match Path.as_in_build_dir fn with
+           | None -> Fiber.return acc
+           | Some fn -> loop_deps fn acc)
+    |> Build.fiber
+  in
+  x
 
 let prefix_rules (prefix : unit Build.t) ~f =
   let res, rules = Rules.collect f in

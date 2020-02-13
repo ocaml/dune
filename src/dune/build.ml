@@ -17,6 +17,7 @@ type 'a t =
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
   | Fiber : 'a Fiber.t -> 'a t
+  | Dyn_fiber : 'a Fiber.t t -> 'a t
   | Deps : Dep.Set.t -> unit t
 
 and 'a memo =
@@ -145,6 +146,8 @@ let paths_existing paths =
 let fail x = Fail x
 
 let fiber x = Fiber x
+
+let dyn_fiber x = Dyn_fiber x
 
 let of_result = function
   | Ok x -> x
@@ -282,6 +285,7 @@ end = struct
    fun t ->
     let file_exists = Fdecl.get file_exists_fdecl in
     match t with
+    | Dyn_fiber _ -> Static_deps.empty
     | Fiber _ -> Static_deps.empty
     | Pure _ -> Static_deps.empty
     | Map (_, t) -> static_deps t
@@ -319,6 +323,7 @@ let lib_deps t =
   let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
    fun t acc ->
     match t with
+    | Dyn_fiber _ -> acc
     | Fiber _ -> acc
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
@@ -408,6 +413,11 @@ end = struct
         let open Fiber.O in
         let+ f = f in
         (f, Dep.Set.empty)
+      | Dyn_fiber (t : a Fiber.t t) ->
+        let open Fiber.O in
+        let* x, dyn_deps_x = go t in
+        let+ x = x in
+        (x, dyn_deps_x)
     in
     go t
 end

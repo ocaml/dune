@@ -194,6 +194,8 @@ val lib_deps : _ t -> Lib_deps_info.t
 
 val fiber : 'a Fiber.t -> 'a t
 
+val dyn_fiber : 'a Fiber.t t -> 'a t
+
 (** {1 Execution} *)
 
 (** Execute a build description. Returns the result and the set of dynamic

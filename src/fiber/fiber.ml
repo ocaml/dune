@@ -231,6 +231,15 @@ let sequential_iter l ~f =
   in
   loop l
 
+let fold l ~f =
+  let rec loop acc = function
+    | [] -> return acc
+    | x :: l ->
+      let* acc = f x acc in
+      loop acc l
+  in
+  fun ~init -> loop init l
+
 type ('a, 'b) fork_and_join_state =
   | Nothing_yet
   | Got_a of 'a

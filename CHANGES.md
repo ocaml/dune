@@ -20,6 +20,9 @@
   anything else than a strict subdirectory or `*` will raise an error. The
   previous behavior was to just do nothing  (#3056, fixes #3019, @voodoos)
 
+- Fix bootstrap on bytecode only switches on windows or where `-j1` is set.
+  (#3112, @xclerc, @rgrinberg)
+
 2.2.0 (06/02/2020)
 ------------------
 

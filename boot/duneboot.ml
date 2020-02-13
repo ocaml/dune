@@ -1053,6 +1053,19 @@ let sort_files dependencies ~main =
   loop (Filename.basename main);
   List.rev !res
 
+let common_build_args name ~pp ~external_includes ~external_libraries =
+  List.concat
+    [ ["-o"
+      ; Filename.concat ".." (name ^ ".exe")
+      ; "-g"]
+    ; ( match Config.mode with
+        | Byte -> [ Config.output_complete_obj_arg ]
+        | Native -> [] )
+    ; pp
+    ; external_includes
+    ; external_libraries
+    ]
+
 let build ~ocaml_config ~pp ~dependencies ~c_files
     { target = name, main; external_libraries; _ } =
   let ext_obj =
@@ -1109,13 +1122,7 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
   write_args "compiled_ml_files" compiled_ml_files;
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
-       [ [ "-o"; Filename.concat ".." (name ^ ".exe"); "-g" ]
-       ; ( match Config.mode with
-         | Byte -> [ Config.output_complete_obj_arg ]
-         | Native -> [] )
-       ; pp
-       ; external_includes
-       ; external_libraries
+       [ common_build_args name ~pp ~external_includes ~external_libraries
        ; obj_files
        ; [ "-args"; "compiled_ml_files" ]
        ])
@@ -1128,16 +1135,11 @@ let build_with_single_command ~ocaml_config:_ ~pp ~dependencies ~c_files
   write_args "mods_list" (sort_files dependencies ~main);
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
-       [ [ "-o"
-         ; Filename.concat ".." (name ^ ".exe")
-         ; "-g"
-         ; "-no-alias-deps"
+       [ common_build_args name ~pp ~external_includes ~external_libraries
+       ; [ "-no-alias-deps"
          ; "-w"
          ; "-49"
          ]
-       ; pp
-       ; external_includes
-       ; external_libraries
        ; c_files
        ; [ "-args"; "mods_list" ]
        ])

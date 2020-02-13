@@ -26,7 +26,7 @@ type 'a t =
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
   | Deps : Dep.Set.t -> unit t
-  | Fiber : 'a t Fiber.t -> 'a t
+  | Fiber : 'a Fiber.t -> 'a t
   | Build : 'a t t -> 'a t
 
 and 'a memo =
@@ -451,8 +451,8 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
             )
           | Memo m -> Memo.eval m
           | Fiber f ->
-            let* b = f in
-            go_deps b
+            let+ f = f in
+            (f, Dep.Set.empty)
           | Build b ->
             let* b, deps0 = go b in
             let+ r, deps1 = go_deps b in

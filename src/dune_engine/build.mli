@@ -216,7 +216,7 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
   val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end
 
-val do_not_use_stage_fiber: 'a t Fiber.t -> 'a t
+val do_not_use_stage_fiber: 'a Fiber.t -> 'a t
 val do_not_use_stage_build: 'a t t -> 'a t
 
 

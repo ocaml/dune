@@ -133,7 +133,3 @@ let effective_env t =
   | None, None -> Env.initial
   | Some e, _ -> e
   | None, Some c -> c.env
-
-let rule_deps t = (Build.static_deps t.action.build).rule_deps
-
-let static_action_deps t = (Build.static_deps t.action.build).action_deps

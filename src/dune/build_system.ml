@@ -1113,18 +1113,17 @@ and Exported : sig
       | Memoized : Rule.t -> Action.t t
 
     (** Evaluate a build request and return its static and dynamic dependencies.
-       Note that the evaluation forces building of the static dependencies. *)
+        Note that the evaluation forces building of the static dependencies. *)
     val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
 
     (** A hack exported because [package_deps] is not in a fiber. *)
     val peek_deps_exn : Rule.t -> Dep.Set.t
 
     (** Evaluate a build request and return its static and dynamic dependencies.
-       Unlike [evaluate], this function also forces building of the dynamic
-       dependencies. *)
+        Unlike [evaluate], this function also forces building of the dynamic
+        dependencies. *)
     val evaluate_and_wait_for_dynamic_dependencies :
       'a t -> ('a * Dep.Set.t) Fiber.t
-
   end
 
   (** Exported to inspect memoization cycles. *)
@@ -1151,38 +1150,40 @@ end = struct
       | Non_memoized : 'a Build.t -> 'a t
       | Memoized : Rule.t -> Action.t t
 
-    let static_deps (type a) (t : a t) =
+    let build (type a) (t : a t) =
       match t with
-      | Non_memoized build -> (Build.static_deps build).action_deps
-      | Memoized rule -> Rule.static_action_deps rule
+      | Non_memoized build -> build
+      | Memoized rule -> rule.action.build
+
+    let static_deps (type a) (t : a t) = Build.static_deps (build t)
+
+    let evaluate_and_discover_dynamic_deps_unmemoized t =
+      let+ () = build_deps (static_deps t).rule_deps in
+      Build.exec (build t)
 
     let memo =
-      let f rule =
-        let+ () = build_deps (Rule.rule_deps rule) in
-        Build.exec rule.action.build
-      in
       Memo.create "evaluate-rule-and-discover-dynamic-deps"
         ~output:(Simple (module Action_and_deps))
         ~doc:
           "Evaluate the build description of a rule and return the action and \
            dynamic dependencies of the rule."
         ~input:(module Rule)
-        ~visibility:Hidden Async f
+        ~visibility:Hidden Async
+        (fun rule ->
+          evaluate_and_discover_dynamic_deps_unmemoized (Memoized rule))
 
     let evaluate_and_discover_dynamic_deps (type a) (t : a t) =
       match t with
-      | Non_memoized build ->
-        let+ () = build_deps (Build.static_deps build).rule_deps in
-        Build.exec build
+      | Non_memoized _ -> evaluate_and_discover_dynamic_deps_unmemoized t
       | Memoized rule -> Memo.exec memo rule
 
     let evaluate t =
       let+ result, dynamic_deps = evaluate_and_discover_dynamic_deps t in
-      (result, Dep.Set.union (static_deps t) dynamic_deps)
+      (result, Dep.Set.union (static_deps t).action_deps dynamic_deps)
 
     let peek_deps_exn rule =
       let _, dynamic_deps = Memo.peek_exn memo rule in
-      (Dep.Set.union (Rule.static_action_deps rule) dynamic_deps)
+      Dep.Set.union (static_deps (Memoized rule)).action_deps dynamic_deps
 
     (* Same as the function just below, but with less parallelism. We keep this
        here only for documentation purposes as it is easier to read than the one
@@ -1196,7 +1197,7 @@ end = struct
        static dependencies before we know the final result and the dynamic
        dependencies. We do this to increase parallelism. *)
     let evaluate_and_wait_for_dynamic_dependencies (type a) (t : a t) =
-      let static_deps = static_deps t in
+      let static_deps = (static_deps t).action_deps in
       (* Build the static dependencies in parallel with evaluation of the result
          and dynamic dependencies. *)
       let* result, dynamic_deps =
@@ -1206,7 +1207,6 @@ end = struct
       in
       build_deps dynamic_deps
       >>> Fiber.return (result, Dep.Set.union static_deps dynamic_deps)
-
   end
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
@@ -1717,8 +1717,9 @@ let package_deps pkg files =
       else (
         rules_seen := Rule.Set.add !rules_seen ir;
         (* We know that at this point of execution, all the action deps have
-           been computed and memoized (see the call to [Build.paths_for_rule] below), so
-           the following call to [Build_request.peek_deps_exn] cannot raise. *)
+           been computed and memoized (see the call to [Build.paths_for_rule]
+           below), so the following call to [Build_request.peek_deps_exn] cannot
+           raise. *)
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
@@ -1729,9 +1730,9 @@ let package_deps pkg files =
   in
   let open Build.O in
   let+ () = Build.paths_for_rule files in
-  (* We know that after [Build.paths_for_rule], all transitive dependencies of [files]
-     are computed and memoized so we can call [Build_request.peek_deps_exn] above safely.
-  *)
+  (* We know that after [Build.paths_for_rule], all transitive dependencies of
+     [files] are computed and memoized so we can call
+     [Build_request.peek_deps_exn] above safely. *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc

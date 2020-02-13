@@ -27,6 +27,7 @@ type 'a t =
   | Catch : 'a t * (exn -> 'a) -> 'a t
   | Deps : Dep.Set.t -> unit t
   | Fiber : 'a Fiber.t -> 'a t
+  | Dyn_fiber : 'a Fiber.t t -> 'a t
   | Build : 'a t t -> 'a t
 
 and 'a memo =
@@ -318,6 +319,7 @@ end = struct
     | Memo m -> Memo.exec memo (Input.T m)
     | Catch (t, _) -> static_deps t
     | Fiber _ -> Static_deps.empty
+    | Dyn_fiber b -> static_deps b
     | Build b -> static_deps b
 end
 
@@ -360,6 +362,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
     | Memo m -> loop m.t acc
     | Catch (t, _) -> loop t acc
     | Fiber _ -> acc
+    | Dyn_fiber b -> loop b acc
     | Build b -> loop b acc
   in
   loop t init
@@ -367,6 +370,7 @@ let fold_labeled (type acc) t ~(init : acc) ~f =
 (* Execution *)
 
 let do_not_use_stage_fiber f = Fiber f
+let do_not_use_stage_dyn_fiber f = Dyn_fiber f
 let do_not_use_stage_build f = Build f
 
 module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) = struct
@@ -453,6 +457,10 @@ module Make_exec (Build_deps:sig val build_deps: Dep.Set.t -> unit Fiber.t end) 
           | Fiber f ->
             let+ f = f in
             (f, Dep.Set.empty)
+          | Dyn_fiber f ->
+            let* f, deps = go f in
+            let+ f = f in
+            (f, deps)
           | Build b ->
             let* b, deps0 = go b in
             let+ r, deps1 = go_deps b in

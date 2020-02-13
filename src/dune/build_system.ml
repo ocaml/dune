@@ -1182,7 +1182,7 @@ end = struct
       (result, Dep.Set.union (static_deps t).action_deps dynamic_deps)
 
     let peek_deps_exn rule =
-      let _, dynamic_deps = Memo.peek_exn memo rule in
+      let (_ : Action.t), dynamic_deps = Memo.peek_exn memo rule in
       Dep.Set.union (static_deps (Memoized rule)).action_deps dynamic_deps
 
     (* Same as the function just below, but with less parallelism. We keep this
@@ -1731,8 +1731,8 @@ let package_deps pkg files =
   let open Build.O in
   let+ () = Build.paths_for_rule files in
   (* We know that after [Build.paths_for_rule], all transitive dependencies of
-     [files] are computed and memoized so we can call
-     [Build_request.peek_deps_exn] above safely. *)
+     [files] are computed and memoized and so the above call to
+     [Build_request.peek_deps_exn] is safe. *)
   Path.Set.fold files ~init:Package.Name.Set.empty ~f:(fun fn acc ->
       match Path.as_in_build_dir fn with
       | None -> acc

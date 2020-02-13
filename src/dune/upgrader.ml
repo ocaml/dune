@@ -1,5 +1,6 @@
 open! Stdune
 open Import
+open Upgrader_common
 
 (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
    the files in includes, recursiverly *)
@@ -37,17 +38,6 @@ let scan_included_files path =
   iter path;
   !files
 
-type rename_and_edit =
-  { original_file : Path.Source.t
-  ; extra_files_to_delete : Path.Source.t list
-  ; new_file : Path.Source.t
-  ; contents : string
-  }
-
-type todo =
-  { mutable to_rename_and_edit : rename_and_edit list
-  ; mutable to_edit : (Path.Source.t * string) list
-  }
 
 let rename_basename base =
   match String.drop_prefix base ~prefix:File_tree.Dune_file.jbuild_fname with
@@ -347,7 +337,8 @@ let upgrade_opam_file todo fn =
     if s <> s' then todo.to_edit <- (fn, s') :: todo.to_edit
   )
 
-let upgrade_dir todo dir =
+let upgrade_to_v1 todo dir =
+  Dune_project.default_dune_language_version := (1, 0);
   let project = File_tree.Dir.project dir in
   let project_root = Dune_project.root project in
   ( if project_root = File_tree.Dir.path dir then
@@ -376,14 +367,24 @@ let upgrade_dir todo dir =
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
-let fold_on_project_roots ~f ~init =
-  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only ~init
-    ~f
+
+let upgrade_to_v2 todo dir =
+  let open Upgrader_v2 in
+  Dune_project.default_dune_language_version := (2, 0);
+  let project = File_tree.Dir.project dir in
+  let _project_root = Dune_project.root project in
+  update_project_file todo project
 
 type project_version =
   | Jbuild_project
   | Dune2_project
   | Dune1_project
+
+let fold_on_project_roots ~f ~init =
+  File_tree.fold_with_progress
+    ~traverse:Sub_dirs.Status.Set.normal_only
+    ~init
+    ~f
 
 let detect_project_version project dir =
   (* TODO is it useful or can we use dune_version directly *)
@@ -404,24 +405,26 @@ let detect_and_add_project_version dir acc =
   (dir, detected_version) :: acc
 
 let upgrade () =
-  Dune_project.default_dune_language_version := (1, 0);
   let todo = { to_rename_and_edit = []; to_edit = [] } in
   let current_versions =
     fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
   in
   List.iter current_versions ~f:(fun (dir, version) ->
       match version with
-      | Jbuild_project -> upgrade_dir todo dir
+      | Jbuild_project ->
+        Console.print
+          [ Pp.textf "TODO: upgrade v0 -> v1: %s\n"
+          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))];
+          upgrade_to_v1 todo dir
       | Dune1_project ->
         Console.print
-          [ Pp.textf "TODO: upgrade v1 -> v2: %s"
-              (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))
-          ]
+          [ Pp.textf "TODO: upgrade v1 -> v2: %s\n"
+          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))];
+          upgrade_to_v2 todo dir
       | Dune2_project ->
         Console.print
-          [ Pp.textf "TODO: already upgraded at v2: %s"
-              (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))
-          ]);
+          [ Pp.textf "TODO: already upgraded at v2: %s\n"
+          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))]);
   List.iter todo.to_edit ~f:(fun (fn, s) ->
       Console.print
         [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];

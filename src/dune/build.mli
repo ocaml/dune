@@ -192,11 +192,13 @@ val static_deps : _ t -> Static_deps.t
 (** Compute static library dependencies of a build description. *)
 val lib_deps : _ t -> Lib_deps_info.t
 
+val fiber : 'a Fiber.t -> 'a t
+
 (** {1 Execution} *)
 
 (** Execute a build description. Returns the result and the set of dynamic
     dependencies discovered during execution. *)
-val exec : 'a t -> 'a * Dep.Set.t
+val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 
 (**/**)
 

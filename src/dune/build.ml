@@ -16,6 +16,7 @@ type 'a t =
   | Fail : fail -> _ t
   | Memo : 'a memo -> 'a t
   | Catch : 'a t * (exn -> 'a) -> 'a t
+  | Fiber : 'a Fiber.t -> 'a t
   | Deps : Dep.Set.t -> unit t
 
 and 'a memo =
@@ -142,6 +143,8 @@ let paths_existing paths =
          if_file_exists file ~then_:(path file) ~else_:(return ())))
 
 let fail x = Fail x
+
+let fiber x = Fiber x
 
 let of_result = function
   | Ok x -> x
@@ -279,6 +282,7 @@ end = struct
    fun t ->
     let file_exists = Fdecl.get file_exists_fdecl in
     match t with
+    | Fiber _ -> Static_deps.empty
     | Pure _ -> Static_deps.empty
     | Map (_, t) -> static_deps t
     | Map2 (_, x, y) -> Static_deps.union (static_deps x) (static_deps y)
@@ -315,6 +319,7 @@ let lib_deps t =
   let rec loop : type a. a t -> Lib_deps_info.t -> Lib_deps_info.t =
    fun t acc ->
     match t with
+    | Fiber _ -> acc
     | Pure _ -> acc
     | Map (_, a) -> loop a acc
     | Map2 (_, a, b) ->
@@ -342,7 +347,7 @@ let lib_deps t =
 (* Execution *)
 
 module rec Execution : sig
-  val exec : 'a t -> 'a * Dep.Set.t
+  val exec : 'a t -> ('a * Dep.Set.t) Fiber.t
 end = struct
   module Function = struct
     type 'a input = 'a memo
@@ -358,43 +363,51 @@ end = struct
     let eval m = Execution.exec m.t
   end
 
-  module Memo = Memo.Poly.Sync (Function)
+  module Memo = Memo.Poly.Async (Function)
 
   let exec t =
     let file_exists = Fdecl.get file_exists_fdecl in
     let eval_pred = Fdecl.get eval_pred_fdecl in
-    let rec go : type a. a t -> a * Dep.Set.t =
+    let rec go : type a. a t -> (a * Dep.Set.t) Fiber.t =
      fun t ->
       match t with
-      | Pure x -> (x, Dep.Set.empty)
+      | Pure x -> Fiber.return (x, Dep.Set.empty)
       | Map (f, a) ->
-        let a, dyn_deps_a = go a in
+        let open Fiber.O in
+        let+ a, dyn_deps_a = go a in
         (f a, dyn_deps_a)
       | Map2 (f, a, b) ->
-        let a, dyn_deps_a = go a in
-        let b, dyn_deps_b = go b in
+        let open Fiber.O in
+        let* a, dyn_deps_a = go a in
+        let+ b, dyn_deps_b = go b in
         (f a b, Dep.Set.union dyn_deps_a dyn_deps_b)
-      | Deps _ -> ((), Dep.Set.empty)
-      | Paths_for_rule _ -> ((), Dep.Set.empty)
-      | Paths_glob g -> ((eval_pred g : Path.Set.t), Dep.Set.empty)
-      | Contents p -> (Io.read_file p, Dep.Set.empty)
-      | Lines_of p -> (Io.lines_of_file p, Dep.Set.empty)
+      | Deps _ -> Fiber.return ((), Dep.Set.empty)
+      | Paths_for_rule _ -> Fiber.return ((), Dep.Set.empty)
+      | Paths_glob g -> Fiber.return ((eval_pred g : Path.Set.t), Dep.Set.empty)
+      | Contents p -> Fiber.return (Io.read_file p, Dep.Set.empty)
+      | Lines_of p -> Fiber.return (Io.lines_of_file p, Dep.Set.empty)
       | Dyn_paths t ->
-        let (x, paths), dyn_deps = go t in
+        let open Fiber.O in
+        let+ (x, paths), dyn_deps = go t in
         (x, Dep.Set.add_paths dyn_deps paths)
       | Dyn_deps t ->
-        let (x, dyn_deps), dyn_deps_x = go t in
+        let open Fiber.O in
+        let+ (x, dyn_deps), dyn_deps_x = go t in
         (x, Dep.Set.union dyn_deps dyn_deps_x)
-      | Record_lib_deps _ -> ((), Dep.Set.empty)
-      | Fail { fail } -> fail ()
+      | Record_lib_deps _ -> Fiber.return ((), Dep.Set.empty)
+      | Fail { fail } -> Fiber.return (fail ())
       | If_file_exists (p, then_, else_) ->
         if file_exists p then
           go then_
         else
           go else_
       | Catch (t, on_error) -> (
-        try go t with exn -> (on_error exn, Dep.Set.empty) )
+        try go t with exn -> Fiber.return (on_error exn, Dep.Set.empty) )
       | Memo m -> Memo.eval m
+      | Fiber f ->
+        let open Fiber.O in
+        let+ f = f in
+        (f, Dep.Set.empty)
     in
     go t
 end

@@ -1097,27 +1097,31 @@ module type Rec = sig
 
     val build : File_selector.t -> unit Fiber.t
   end
-
-  val evaluate_rule : Rule.t -> (Action.t * Dep.Set.t) Fiber.t
-
-  (* other stuff: *)
-  val evaluate_rule_and_wait_for_dependencies :
-    Rule.t -> (Action.t * Dep.Set.t) Fiber.t
 end
 
 (* Separation between [Used_recursively] and [Exported] is necessary because at
-   least one module in the recursive module group must be pure (only expose
-   functions) *)
+   least one module in the recursive module group must be pure (i.e. only expose
+   functions). *)
 module rec Used_recursively : Rec = Exported
 
 and Exported : sig
   include Rec
 
-  (* exported to inspect cache cycles *)
+  module Build_request : sig
+    type 'a t =
+      | Non_memoized : 'a Build.t -> 'a t
+      | Memoized : Rule.t -> Action.t t
 
-  val evaluate_action_and_dynamic_deps_memo :
-    (Rule.t, Action_and_deps.t, Rule.t -> Action_and_deps.t Fiber.t) Memo.t
+    (* Exported to inspect memoization cycles. *)
+    val memo :
+      (Rule.t, Action_and_deps.t, Rule.t -> Action_and_deps.t Fiber.t) Memo.t
 
+    val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
+
+    val evaluate_and_wait_for_dependencies : 'a t -> ('a * Dep.Set.t) Fiber.t
+  end
+
+  (* Exported to inspect memoization cycles. *)
   val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.t
 end = struct
   open Used_recursively
@@ -1136,22 +1140,63 @@ end = struct
 
   let () = Build.set_file_system_accessors ~file_exists ~eval_pred
 
-  (* Evaluate a rule and return the action and set of dynamic dependencies *)
-  let evaluate_action_and_dynamic_deps_memo =
-    let f (rule : Rule.t) =
-      let+ () = build_deps (Rule.rule_deps rule) in
-      Build.exec rule.action.build
-    in
-    Memo.create "evaluate-action-and-dynamic-deps"
-      ~output:(Simple (module Action_and_deps))
-      ~doc:
-        "Evaluate the build description of a rule and return the action and \
-         dynamic dependencies of the rule."
-      ~input:(module Rule)
-      ~visibility:Hidden Async f
+  module Build_request = struct
+    type 'a t =
+      | Non_memoized : 'a Build.t -> 'a t
+      | Memoized : Rule.t -> Action.t t
 
-  let evaluate_action_and_dynamic_deps =
-    Memo.exec evaluate_action_and_dynamic_deps_memo
+    let static_deps (type a) (t : a t) =
+      match t with
+      | Non_memoized build -> (Build.static_deps build).action_deps
+      | Memoized rule -> Rule.static_action_deps rule
+
+    let memo =
+      let f rule =
+        let+ () = build_deps (Rule.rule_deps rule) in
+        Build.exec rule.action.build
+      in
+      Memo.create "evaluate-rule-and-discover-dynamic-deps"
+        ~output:(Simple (module Action_and_deps))
+        ~doc:
+          "Evaluate the build description of a rule and return the action and \
+           dynamic dependencies of the rule."
+        ~input:(module Rule)
+        ~visibility:Hidden Async f
+
+    let evaluate_and_discover_dynamic_deps (type a) (t : a t) =
+      match t with
+      | Non_memoized build ->
+        let+ () = build_deps (Build.static_deps build).rule_deps in
+        Build.exec build
+      | Memoized rule -> Memo.exec memo rule
+
+    let evaluate t =
+      let+ result, dynamic_deps = evaluate_and_discover_dynamic_deps t in
+      (result, Dep.Set.union (static_deps t) dynamic_deps)
+
+    (* Same as the function just below, but with less parallelism. We keep this
+       here only for documentation purposes as it is easier to read than the one
+       below. The reader only has to check that the functions do the same thing. *)
+    let _evaluate_and_wait_for_dependencies t =
+      let* result, deps = evaluate t in
+      let+ () = build_deps deps in
+      (result, deps)
+
+    (* This function is equivalent to the function above but it starts building
+       static dependencies before we know the final result and the dynamic
+       dependencies. We do this to increase parallelism. *)
+    let evaluate_and_wait_for_dependencies (type a) (t : a t) =
+      let static_deps = static_deps t in
+      (* Build the static dependencies in parallel with evaluation of the result
+         and dynamic dependencies. *)
+      let* result, dynamic_deps =
+        Fiber.fork_and_join_unit
+          (fun () -> build_deps static_deps)
+          (fun () -> evaluate_and_discover_dynamic_deps t)
+      in
+      build_deps dynamic_deps
+      >>> Fiber.return (result, Dep.Set.union static_deps dynamic_deps)
+  end
 
   let select_sandbox_mode (config : Sandbox_config.t) ~loc
       ~sandboxing_preference =
@@ -1189,39 +1234,6 @@ end = struct
             "This rule forbids all sandboxing modes (but it also requires \
              sandboxing)"
         ]
-
-  let evaluate_rule (rule : Rule.t) =
-    let+ action, dynamic_action_deps = evaluate_action_and_dynamic_deps rule in
-    let static_action_deps = Rule.static_action_deps rule in
-    let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
-    (action, action_deps)
-
-  (* Same as the function just bellow, but with less opportunity for
-     parallelism. We keep this dead code here for documentation purposes as it
-     is easier to read the one bellow. The reader only has to check that both
-     function do the same thing. *)
-  let _evaluate_rule_and_wait_for_dependencies rule =
-    let* action, action_deps = evaluate_rule rule in
-    let+ () = build_deps action_deps in
-    (action, action_deps)
-
-  (* The following function does exactly the same as the function above with the
-     difference that it starts the build of static dependencies before we know
-     the final action and set of dynamic dependencies. We do this to increase
-     opportunities for parallelism. *)
-  let evaluate_rule_and_wait_for_dependencies (rule : Rule.t) =
-    let static_action_deps = Rule.static_action_deps rule in
-    (* Build the static dependencies in parallel with evaluation the action and
-       dynamic dependencies *)
-    let* action, dynamic_action_deps =
-      Fiber.fork_and_join_unit
-        (fun () -> build_deps static_action_deps)
-        (fun () -> evaluate_action_and_dynamic_deps rule)
-    in
-    build_deps dynamic_action_deps
-    >>>
-    let action_deps = Dep.Set.union static_action_deps dynamic_action_deps in
-    Fiber.return (action, action_deps)
 
   let start_rule t _rule = t.rule_total <- t.rule_total + 1
 
@@ -1261,7 +1273,9 @@ end = struct
     let targets = action.targets in
     let targets_as_list = Path.Build.Set.to_list targets in
     let head_target = List.hd targets_as_list in
-    let* action, deps = evaluate_rule_and_wait_for_dependencies rule in
+    let* action, deps =
+      Build_request.evaluate_and_wait_for_dependencies (Memoized rule)
+    in
     Stats.new_evaluated_rule ();
     Fs.mkdir_p dir;
     let env = Rule.effective_env rule in
@@ -1633,25 +1647,13 @@ end = struct
             with
             | Some input -> Some input
             | None ->
-              Memo.Stack_frame.as_instance_of frame
-                ~of_:evaluate_action_and_dynamic_deps_memo)
+              Memo.Stack_frame.as_instance_of frame ~of_:Build_request.memo)
         |> Option.map ~f:Rule.loc)
 end
 
 open Exported
 
 let eval_pred = Pred.eval
-
-let build_request ~request =
-  let result = Fdecl.create Dyn.Encoder.opaque in
-  let request =
-    let open Build.O in
-    let+ res = request in
-    Fdecl.set result res
-  in
-  let rule = Rule.shim_of_build_goal request in
-  let+ _act, _deps = evaluate_rule_and_wait_for_dependencies rule in
-  Fdecl.get result
 
 let process_memcycle exn =
   let cycle =
@@ -1709,9 +1711,7 @@ let package_deps pkg files =
         (* CR-someday amokhov: It would be nice to statically rule out such
            potential race conditions between [Sync] and [Async] functions, e.g.
            by moving this code into a fiber. *)
-        let _act, dynamic_action_deps =
-          Memo.peek_exn evaluate_action_and_dynamic_deps_memo ir
-        in
+        let _act, dynamic_action_deps = Memo.peek_exn Build_request.memo ir in
         let action_deps =
           Path.Set.union
             (Dep.Set.paths static_action_deps ~eval_pred)
@@ -1763,7 +1763,11 @@ let entry_point_sync ~f =
 
 let do_build ~request =
   Hooks.End_of_build.once Promotion.finalize;
-  entry_point_async ~f:(fun () -> build_request ~request)
+  entry_point_async ~f:(fun () ->
+      let+ result, (_ : Dep.Set.t) =
+        Build_request.evaluate_and_wait_for_dependencies (Non_memoized request)
+      in
+      result)
 
 let all_targets () =
   let t = t () in
@@ -1814,7 +1818,7 @@ let evaluate_rules ~recursive ~request =
         if Rule.Id.Map.mem !rules rule.id then
           Fiber.return ()
         else
-          let* action, deps = evaluate_rule rule in
+          let* action, deps = Build_request.evaluate (Memoized rule) in
           let (rule : Evaluated_rule.t) =
             { id = rule.id
             ; dir = rule.dir
@@ -1834,8 +1838,7 @@ let evaluate_rules ~recursive ~request =
         | None -> Fiber.return () (* external files *)
         | Some rule -> run_rule rule
       in
-      let rule_shim = Rule.shim_of_build_goal request in
-      let* (_ : Action.t), deps = evaluate_rule rule_shim in
+      let* (), deps = Build_request.evaluate (Non_memoized request) in
       let+ () = Dep.Set.parallel_iter_files deps ~f:run_dep ~eval_pred in
       let rules =
         Rule.Id.Map.fold !rules ~init:Path.Build.Map.empty ~f:(fun r acc ->

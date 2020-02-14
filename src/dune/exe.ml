@@ -31,8 +31,8 @@ module Linkage = struct
 
   let native_or_custom (context : Context.t) =
     match context.ocamlopt with
-    | None -> custom context
-    | Some _ -> native
+    | Error _ -> custom context
+    | Ok _ -> native
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
 
@@ -61,7 +61,7 @@ module Linkage = struct
             Byte
         | Native -> Native
         | Best ->
-          if Option.is_some ctx.ocamlopt then
+          if Result.is_ok ctx.ocamlopt then
             Native
           else
             Byte_with_stubs_statically_linked_in )
@@ -120,7 +120,6 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let dir = CC.dir cctx in
   let mode = Link_mode.mode linkage.mode in
   let exe = exe_path_from_name cctx ~name ~linkage in
-  let compiler = Option.value_exn (Context.compiler ctx mode) in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
   SC.add_rule sctx ~loc ~dir
@@ -143,7 +142,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
      in
      let open Build.With_targets.O in
      Build.with_no_targets prefix
-     >>> Command.run ~dir:(Path.build ctx.build_dir) (Ok compiler)
+     >>> Command.run ~dir:(Path.build ctx.build_dir)
+           (Context.compiler ctx mode)
            [ Command.Args.dyn ocaml_flags
            ; A "-o"
            ; Target exe

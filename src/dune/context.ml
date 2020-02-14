@@ -50,12 +50,12 @@ module T = struct
     ; path : Path.t list
     ; toplevel_path : Path.t option
     ; ocaml_bin : Path.t
-    ; ocaml : Path.t
+    ; ocaml : Action.Prog.t
     ; ocamlc : Path.t
-    ; ocamlopt : Path.t option
-    ; ocamldep : Path.t
-    ; ocamlmklib : Path.t
-    ; ocamlobjinfo : Path.t option
+    ; ocamlopt : Action.Prog.t
+    ; ocamldep : Action.Prog.t
+    ; ocamlmklib : Action.Prog.t
+    ; ocamlobjinfo : Action.Prog.t
     ; env : Env.t
     ; findlib : Findlib.t
     ; findlib_toolchain : Context_name.t option
@@ -89,11 +89,11 @@ module T = struct
       ; ("build_dir", Path.Build.to_dyn t.build_dir)
       ; ("toplevel_path", option path t.toplevel_path)
       ; ("ocaml_bin", path t.ocaml_bin)
-      ; ("ocaml", path t.ocaml)
+      ; ("ocaml", Action.Prog.to_dyn t.ocaml)
       ; ("ocamlc", path t.ocamlc)
-      ; ("ocamlopt", option path t.ocamlopt)
-      ; ("ocamldep", path t.ocamldep)
-      ; ("ocamlmklib", path t.ocamlmklib)
+      ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
+      ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
+      ; ("ocamlmklib", Action.Prog.to_dyn t.ocamlmklib)
       ; ("env", Env.to_dyn (Env.diff t.env Env.initial))
       ; ("findlib_path", list path (Findlib.paths t.findlib))
       ; ("arch_sixtyfour", Bool t.arch_sixtyfour)
@@ -305,22 +305,21 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         | None -> prog_not_found_in_path "ocamlc" )
     in
     let dir = Path.parent_exn ocamlc in
-    let ocaml_tool_not_found prog =
-      User_error.raise
-        [ Pp.textf "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
-            (Path.to_string dir) (Path.to_string dir) prog
-            (Context_name.to_string name)
-        ]
-    in
     let get_ocaml_tool prog =
       match get_tool_using_findlib_config prog with
-      | None -> best_prog dir prog
-      | Some _ as x -> x
-    in
-    let get_ocaml_tool_exn prog =
-      match get_ocaml_tool prog with
-      | None -> ocaml_tool_not_found prog
-      | Some fn -> fn
+      | Some x -> Ok x
+      | None -> (
+        match best_prog dir prog with
+        | Some p -> Ok p
+        | None ->
+          let hint =
+            sprintf "ocamlc found in %s, but %s/%s doesn't exist (context: %s)"
+              (Path.to_string dir) (Path.to_string dir) prog
+              (Context_name.to_string name)
+          in
+          Error
+            (Action.Prog.Not_found.create ~context:name ~program:prog ~loc:None
+               ~hint ()) )
     in
     let build_dir = Context_name.build_dir name in
     let ocamlpath =
@@ -458,7 +457,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let ocamlopt = get_ocaml_tool "ocamlopt" in
     let ccomp_type = Lib_config.Ccomp_type.of_config ocfg in
     let lib_config =
-      { Lib_config.has_native = Option.is_some ocamlopt
+      { Lib_config.has_native = Result.is_ok ocamlopt
       ; ext_obj = Ocaml_config.ext_obj ocfg
       ; ext_lib = Ocaml_config.ext_lib ocfg
       ; os_type = Ocaml_config.os_type ocfg
@@ -474,6 +473,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
+    let ocaml =
+      let program = "ocaml" in
+      match which program with
+      | Some s -> Ok s
+      | None ->
+        Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
+    in
     let t =
       { name
       ; implicit
@@ -491,15 +497,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             (Env.get env "OCAML_TOPLEVEL_PATH")
             ~f:Path.of_filename_relative_to_initial_cwd
       ; ocaml_bin = dir
-      ; ocaml =
-          ( match which "ocaml" with
-          | Some p -> p
-          | None -> prog_not_found_in_path "ocaml" )
+      ; ocaml
       ; ocamlc
       ; ocamlopt
-      ; ocamldep = get_ocaml_tool_exn "ocamldep"
-      ; ocamlmklib = get_ocaml_tool_exn "ocamlmklib"
-      ; ocamlobjinfo = which "ocamlobjinfo"
+      ; ocamldep = get_ocaml_tool "ocamldep"
+      ; ocamlmklib = get_ocaml_tool "ocamlmklib"
+      ; ocamlobjinfo = get_ocaml_tool "ocamlobjinfo"
       ; env
       ; findlib =
           Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
@@ -521,12 +524,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let set prog =
         Response_file.set ~prog (Zero_terminated_strings "-args0")
       in
-      set t.ocaml;
+      Result.iter t.ocaml ~f:set;
       set t.ocamlc;
-      Option.iter t.ocamlopt ~f:set;
-      set t.ocamldep;
+      Result.iter t.ocamlopt ~f:set;
+      Result.iter t.ocamldep ~f:set;
       if Ocaml_version.ocamlmklib_supports_response_file version then
-        set t.ocamlmklib
+        Result.iter ~f:set t.ocamlmklib
     );
     Fiber.return t
   in
@@ -812,13 +815,13 @@ let install_ocaml_libdir t =
 
 let compiler t (mode : Mode.t) =
   match mode with
-  | Byte -> Some t.ocamlc
+  | Byte -> Ok t.ocamlc
   | Native -> t.ocamlopt
 
 let best_mode t : Mode.t =
   match t.ocamlopt with
-  | Some _ -> Native
-  | None -> Byte
+  | Ok _ -> Native
+  | Error _ -> Byte
 
 let cc_g (ctx : t) =
   match ctx.ccomp_type with
@@ -827,6 +830,6 @@ let cc_g (ctx : t) =
 
 let name t = t.name
 
-let has_native t = Option.is_some t.ocamlopt
+let has_native t = Result.is_ok t.ocamlopt
 
 let lib_config t = t.lib_config

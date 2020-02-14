@@ -19,7 +19,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
     ~cm_files =
   let ctx = Super_context.context sctx in
   let { Lib_config.ext_lib; _ } = ctx.lib_config in
-  Option.iter (Context.compiler ctx mode) ~f:(fun compiler ->
+  Result.iter (Context.compiler ctx mode) ~f:(fun compiler ->
       let target = Library.archive lib ~dir ~ext:(Mode.compiled_lib_ext mode) in
       let stubs_flags =
         List.concat_map (Library.foreign_archives lib) ~f:(fun archive ->
@@ -132,7 +132,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
            ~standard:(Build.return [])
        in
        let ctx = Super_context.context sctx in
-       Command.run ~dir:(Path.build ctx.build_dir) (Ok ctx.ocamlmklib)
+       Command.run ~dir:(Path.build ctx.build_dir) ctx.ocamlmklib
          [ A "-g"
          ; ( if custom then
              A "-custom"
@@ -231,7 +231,7 @@ let build_stubs lib ~cctx ~dir ~expander ~requires ~dir_contents
 
 let build_shared lib ~dir_contents ~sctx ~dir ~flags =
   let ctx = Super_context.context sctx in
-  Option.iter ctx.ocamlopt ~f:(fun ocamlopt ->
+  Result.iter ctx.ocamlopt ~f:(fun ocamlopt ->
       let ext_lib = ctx.lib_config.ext_lib in
       let src =
         let ext = Mode.compiled_lib_ext Native in

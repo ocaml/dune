@@ -22,6 +22,14 @@ module Prog = struct
         | _ -> hint
       in
       Utils.program_not_found ?hint ~loc ~context program
+
+    let to_dyn { context; program; hint; loc = _ } =
+      let open Dyn.Encoder in
+      record
+        [ ("context", Context_name.to_dyn context)
+        ; ("program", string program)
+        ; ("hint", option string hint)
+        ]
   end
 
   type t = (Path.t, Not_found.t) result
@@ -32,6 +40,12 @@ module Prog = struct
   let encode = function
     | Ok s -> Dpath.encode s
     | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
+
+  let to_dyn t = Result.to_dyn Path.to_dyn Not_found.to_dyn t
+
+  let ok_exn = function
+    | Ok s -> s
+    | Error e -> Not_found.raise e
 end
 
 module type Ast =

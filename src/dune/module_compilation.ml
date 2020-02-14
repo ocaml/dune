@@ -56,7 +56,7 @@ let build_cm cctx ~dep_graphs ~precompiled_cmi ~cm_kind (m : Module.t) ~phase =
   let dynlink = CC.dynlink cctx in
   let sandbox = CC.sandbox cctx in
   (let open Option.O in
-  let* compiler = Context.compiler ctx mode in
+  let* compiler = Result.to_option (Context.compiler ctx mode) in
   let ml_kind = Cm_kind.source cm_kind in
   let+ src = Module.file m ~ml_kind in
   let dst = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:cm_kind in

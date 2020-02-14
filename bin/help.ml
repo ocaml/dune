@@ -24,6 +24,14 @@ let config =
         {|The rest of the file must be written in S-expression syntax and be
            composed of a list of stanzas. The following sections describe
            the stanzas available.|}
+
+    ; `S "CACHING"
+    ; `P {|Syntax: $(b,\(cache ENABLED\))|}
+    ; `P
+        {| This stanza determines whether dune's build caching is enabled.
+           See https://dune.readthedocs.io/en/stable/caching.html for details.
+           Valid values for $(b, ENABLED) are $(b, enabled) or $(b, disabled).|}
+
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
     ; `P
@@ -59,12 +67,14 @@ let config =
            this variable. If your editor already sets another variable,
            please open a ticket on the ocaml/dune GitHub project so that we can
            add support for it.|}
+
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
     ; `P
         {|Set the maximum number of jobs Dune might run in parallel.
            This can also be set from the command line via $(b,-j NUMBER).|}
     ; `P {|The default for this value is 4.|}
+
     ; `S "SANDBOXING"
     ; `P {|Syntax: $(b,\(sandboxing_preference MODE ...\))|}
     ; `P
@@ -90,9 +100,9 @@ let man =
             The following topics are available:|}
   ; `Blocks
       (List.concat_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> []
-           | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
+         match what with
+         | List_topics -> []
+         | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
   ; Common.footer
   ]
 
@@ -101,21 +111,21 @@ let info = Term.info "help" ~doc ~man
 let term =
   Term.ret
   @@ let+ man_format = Arg.man_format
-     and+ what =
-       Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
-     and+ () = Common.build_info in
-     match what with
-     | None -> `Help (man_format, Some "help")
-     | Some (Man man_page) ->
-       Format.printf "%a@?" (Manpage.print man_format) man_page;
-       `Ok ()
-     | Some List_topics ->
-       List.filter_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> None
-           | _ -> Some s)
-       |> List.sort ~compare:String.compare
-       |> String.concat ~sep:"\n" |> print_endline;
-       `Ok ()
+  and+ what =
+    Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
+  and+ () = Common.build_info in
+  match what with
+  | None -> `Help (man_format, Some "help")
+  | Some (Man man_page) ->
+    Format.printf "%a@?" (Manpage.print man_format) man_page;
+    `Ok ()
+  | Some List_topics ->
+    List.filter_map commands ~f:(fun (s, what) ->
+      match what with
+      | List_topics -> None
+      | _ -> Some s)
+    |> List.sort ~compare:String.compare
+    |> String.concat ~sep:"\n" |> print_endline;
+    `Ok ()
 
 let command = (term, info)

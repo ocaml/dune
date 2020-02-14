@@ -1,0 +1,12 @@
+(rule
+ (alias check-lang-dune)
+ (deps (package dune) (glob_files ../*.rst))
+ (action
+  (progn
+    (run %{bin:cram} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+
+(alias
+ (name runtest)
+ (deps
+  (alias check-lang-dune)))

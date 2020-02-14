@@ -92,9 +92,9 @@ let man =
             The following topics are available:|}
   ; `Blocks
       (List.concat_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> []
-           | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
+         match what with
+         | List_topics -> []
+         | Man ((title, _, _, _, _), _) -> [ `I (sprintf "$(b,%s)" s, title) ]))
   ; Common.footer
   ]
 
@@ -103,21 +103,21 @@ let info = Term.info "help" ~doc ~man
 let term =
   Term.ret
   @@ let+ man_format = Arg.man_format
-     and+ what =
-       Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
-     and+ () = Common.build_info in
-     match what with
-     | None -> `Help (man_format, Some "help")
-     | Some (Man man_page) ->
-       Format.printf "%a@?" (Manpage.print man_format) man_page;
-       `Ok ()
-     | Some List_topics ->
-       List.filter_map commands ~f:(fun (s, what) ->
-           match what with
-           | List_topics -> None
-           | _ -> Some s)
-       |> List.sort ~compare:String.compare
-       |> String.concat ~sep:"\n" |> print_endline;
-       `Ok ()
+  and+ what =
+    Arg.(value & pos 0 (some (enum commands)) None & info [] ~docv:"TOPIC")
+  and+ () = Common.build_info in
+  match what with
+  | None -> `Help (man_format, Some "help")
+  | Some (Man man_page) ->
+    Format.printf "%a@?" (Manpage.print man_format) man_page;
+    `Ok ()
+  | Some List_topics ->
+    List.filter_map commands ~f:(fun (s, what) ->
+      match what with
+      | List_topics -> None
+      | _ -> Some s)
+    |> List.sort ~compare:String.compare
+    |> String.concat ~sep:"\n" |> print_endline;
+    `Ok ()
 
 let command = (term, info)

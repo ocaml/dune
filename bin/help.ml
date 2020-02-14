@@ -59,12 +59,14 @@ let config =
            this variable. If your editor already sets another variable,
            please open a ticket on the ocaml/dune GitHub project so that we can
            add support for it.|}
+
     ; `S "JOBS"
     ; `P {|Syntax: $(b,\(jobs NUMBER\))|}
     ; `P
         {|Set the maximum number of jobs Dune might run in parallel.
            This can also be set from the command line via $(b,-j NUMBER).|}
     ; `P {|The default for this value is 4.|}
+
     ; `S "SANDBOXING"
     ; `P {|Syntax: $(b,\(sandboxing_preference MODE ...\))|}
     ; `P

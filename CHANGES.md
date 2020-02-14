@@ -23,6 +23,9 @@
 - Fix bootstrap on bytecode only switches on windows or where `-j1` is set.
   (#3112, @xclerc, @rgrinberg)
 
+- Allow `enabled_if` fields in `executable(s)` stanzas (#3137,
+  fixes #1690 @voodoos)
+
 2.2.0 (06/02/2020)
 ------------------
 

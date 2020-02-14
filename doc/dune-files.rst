@@ -645,6 +645,8 @@ Executables can also be linked as object or shared object files. See
 
 - ``(optional)`` is the same as the corresponding field of `library`_
 
+- ``(enabled_if <blang expression>)`` is the same as the corresponding field of `library`_
+
 - ``(promote <options>)`` allows promoting the linked executables to
   the source tree. The options are the same as for the :ref:`rule
   promote mode <promote>`. Adding ``(promote (until-clean))`` to an

@@ -473,6 +473,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
+    let ocaml = which_exn "ocaml" in
     let t =
       { name
       ; implicit
@@ -490,10 +491,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             (Env.get env "OCAML_TOPLEVEL_PATH")
             ~f:Path.of_filename_relative_to_initial_cwd
       ; ocaml_bin = dir
-      ; ocaml =
-          ( match which "ocaml" with
-          | Some p -> p
-          | None -> prog_not_found_in_path "ocaml" )
+      ; ocaml
       ; ocamlc
       ; ocamlopt
       ; ocamldep = get_ocaml_tool "ocamldep"

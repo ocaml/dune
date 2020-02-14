@@ -24,6 +24,14 @@ let config =
         {|The rest of the file must be written in S-expression syntax and be
            composed of a list of stanzas. The following sections describe
            the stanzas available.|}
+
+    ; `S "CACHING"
+    ; `P {|Syntax: $(b,\(cache ENABLED\))|}
+    ; `P
+        {| This stanza determines whether dune's build caching is enabled.
+           See https://dune.readthedocs.io/en/stable/caching.html for details.
+           Valid values for $(b, ENABLED) are $(b, enabled) or $(b, disabled).|}
+
     ; `S "DISPLAY MODES"
     ; `P {|Syntax: $(b,\(display MODE\))|}
     ; `P

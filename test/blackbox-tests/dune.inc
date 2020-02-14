@@ -602,6 +602,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias enabled_if-exec)
+ (deps (package dune) (source_tree test-cases/enabled_if-exec))
+ (action
+  (chdir
+   test-cases/enabled_if-exec
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias env-env-and-flags-include)
  (deps (package dune) (source_tree test-cases/env/env-and-flags-include))
  (action
@@ -2687,6 +2697,7 @@
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
+  (alias enabled_if-exec)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)
@@ -2940,6 +2951,7 @@
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
   (alias enabled_if)
+  (alias enabled_if-exec)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)

@@ -26,7 +26,7 @@ type t =
   { has_native : bool
   ; ext_lib : string
   ; ext_obj : string
-  ; os_type : string
+  ; os_type : Ocaml_config.Os_type.t
   ; architecture : string
   ; system : string
   ; model : string
@@ -40,7 +40,7 @@ let var_map =
   [ ("architecture", fun t -> t.architecture)
   ; ("system", fun t -> t.system)
   ; ("model", fun t -> t.model)
-  ; ("os_type", fun t -> t.os_type)
+  ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
   ; ("ccomp_type", fun t -> Ccomp_type.to_string t.ccomp_type)
   ]
 

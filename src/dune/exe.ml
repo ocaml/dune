@@ -87,7 +87,7 @@ module Linkage = struct
         | Shared_object -> (
           let so_flags =
             let os_type = Ocaml_config.os_type ctx.ocaml_config in
-            if String.equal os_type "Win32" then
+            if os_type = Win32 then
               so_flags_windows
             else
               so_flags_unix

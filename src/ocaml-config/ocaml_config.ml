@@ -35,6 +35,23 @@ module Value = struct
     | Prog_and_args x -> String.concat ~sep:" " (x.prog :: x.args)
 end
 
+module Os_type = struct
+  type t =
+    | Win32
+    | Unix
+    | Other of string
+
+  let of_string = function
+    | "Win32" -> Win32
+    | "Unix" -> Unix
+    | s -> Other s
+
+  let to_string = function
+    | Win32 -> "Win32"
+    | Unix -> "Unix"
+    | Other s -> s
+end
+
 type t =
   { version : int * int * int
   ; version_string : string
@@ -63,7 +80,7 @@ type t =
   ; ext_asm : string
   ; ext_lib : string
   ; ext_dll : string
-  ; os_type : string
+  ; os_type : Os_type.t
   ; default_executable_name : string
   ; systhread_supported : bool
   ; host : string
@@ -212,7 +229,7 @@ let to_list t : (string * Value.t) list =
   ; ("ext_asm", String t.ext_asm)
   ; ("ext_lib", String t.ext_lib)
   ; ("ext_dll", String t.ext_dll)
-  ; ("os_type", String t.os_type)
+  ; ("os_type", String (Os_type.to_string t.os_type))
   ; ("default_executable_name", String t.default_executable_name)
   ; ("systhread_supported", Bool t.systhread_supported)
   ; ("host", String t.host)
@@ -383,7 +400,7 @@ let make vars =
           [ Pp.textf "Unable to parse ocamlc -config version: %s" version_string
           ]
     in
-    let os_type = get vars "os_type" in
+    let os_type = Os_type.of_string (get vars "os_type") in
     let standard_library_default = get vars "standard_library_default" in
     let standard_library = get vars "standard_library" in
     let standard_runtime =
@@ -423,7 +440,7 @@ let make vars =
       match get_opt vars "exe_ext" with
       | Some s -> s
       | None ->
-        if os_type = "Win32" then
+        if os_type = Os_type.Win32 then
           ".exe"
         else
           ""

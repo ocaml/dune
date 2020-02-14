@@ -73,10 +73,10 @@ type t = private
   ; ocaml_bin : Path.t
   ; ocaml : Path.t
   ; ocamlc : Path.t
-  ; ocamlopt : Path.t option
-  ; ocamldep : Path.t
-  ; ocamlmklib : Path.t
-  ; ocamlobjinfo : Path.t option  (** Environment variables *)
+  ; ocamlopt : Action.Prog.t
+  ; ocamldep : Action.Prog.t
+  ; ocamlmklib : Action.Prog.t
+  ; ocamlobjinfo : Action.Prog.t
   ; env : Env.t
   ; findlib : Findlib.t
   ; findlib_toolchain : Context_name.t option  (** Misc *)
@@ -111,7 +111,7 @@ val install_prefix : t -> Path.t Fiber.t
 val install_ocaml_libdir : t -> Path.t option Fiber.t
 
 (** Return the compiler needed for this compilation mode *)
-val compiler : t -> Mode.t -> Path.t option
+val compiler : t -> Mode.t -> Action.Prog.t
 
 (** The best compilation mode for this context *)
 val best_mode : t -> Mode.t

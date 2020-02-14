@@ -32,6 +32,8 @@ module Prog : sig
   end
 
   type t = (Path.t, Not_found.t) result
+
+  val to_dyn : t -> Dyn.t
 end
 
 include

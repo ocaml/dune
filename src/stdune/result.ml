@@ -36,6 +36,11 @@ let map_error x ~f =
   | Ok _ as res -> res
   | Error x -> Error (f x)
 
+let iter t ~f =
+  match t with
+  | Ok x -> f x
+  | Error _ -> ()
+
 let to_option = function
   | Ok p -> Some p
   | Error _ -> None

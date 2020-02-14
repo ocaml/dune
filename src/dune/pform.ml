@@ -193,8 +193,8 @@ module Map = struct
   let create ~(context : Context.t) =
     let ocamlopt =
       match context.ocamlopt with
-      | None -> Path.relative context.ocaml_bin "ocamlopt"
-      | Some p -> p
+      | Error _ -> Path.relative context.ocaml_bin "ocamlopt"
+      | Ok p -> p
     in
     let string s = values [ Value.String s ] in
     let path p = values [ Value.Path p ] in

@@ -10,6 +10,8 @@ val is_ok : _ t -> bool
 
 val is_error : _ t -> bool
 
+val iter : ('a, _) t -> f:('a -> unit) -> unit
+
 val ok_exn : ('a, exn) t -> 'a
 
 val try_with : (unit -> 'a) -> ('a, exn) t

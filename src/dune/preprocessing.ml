@@ -303,7 +303,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
     | Byte -> Byte_with_stubs_statically_linked_in
     | Native -> Native
   in
-  let compiler = Option.value_exn (Context.compiler ctx mode) in
+  let compiler = Context.compiler ctx mode in
   let jbuild_driver, pps, pp_names = (None, pps, pp_names) in
   let driver_and_libs =
     let open Result.O in
@@ -333,7 +333,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
     ( Build.with_no_targets
         (Build.record_lib_deps
            (Lib_deps.info ~kind:dep_kind (Lib_deps.of_pps pp_names)))
-    >>> Command.run (Ok compiler) ~dir:(Path.build ctx.build_dir)
+    >>> Command.run compiler ~dir:(Path.build ctx.build_dir)
           [ A "-o"
           ; Target target
           ; A "-w"

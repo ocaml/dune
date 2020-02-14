@@ -43,15 +43,6 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     Path.Build.relative dir (Path.basename unit)
     |> Path.Build.extend_basename ~suffix:".ooi-deps"
   in
-  let bin =
-    match ctx.ocamlobjinfo with
-    | None ->
-      Error (
-        let context = Context.name ctx in
-        let program = "ocamlobjinfo" in
-        Action.Prog.Not_found.create ~context ~program ~loc:None ())
-    | Some bin -> Ok bin
-  in
   let no_approx =
     if Ocaml_version.ooi_supports_no_approx ctx.version then
       [Command.Args.A "-no-approx"]
@@ -64,7 +55,7 @@ let rules ~dir ~(ctx : Context.t) ~unit =
     else
       []
   in
-  ( Command.run ~dir:(Path.build dir) bin
+  ( Command.run ~dir:(Path.build dir) ctx.ocamlobjinfo
       (List.concat
          [ no_approx
          ; no_code

@@ -48,7 +48,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
     let l =
-      let has_native = Option.is_some ctx.ocamlopt in
+      let has_native = Result.is_ok ctx.ocamlopt in
       let modes =
         let add_if_not_already_present modes mode loc =
           match L.Map.add exes.modes mode loc with

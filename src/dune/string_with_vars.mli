@@ -74,6 +74,8 @@ type yes_no_unknown =
   | Unknown of Var.t
 
 module Partial : sig
+  type string_with_vars
+
   type nonrec 'a t =
     | Expanded of 'a
     | Unexpanded of t
@@ -85,7 +87,12 @@ module Partial : sig
   val is_suffix : string t -> suffix:string -> yes_no_unknown
 
   val is_prefix : string t -> prefix:string -> yes_no_unknown
+
+  val elim : 'a t -> exp:('a -> 'b) -> unexp:(string_with_vars -> 'b) -> 'b
+
+  val expanded : 'a -> 'a t
 end
+with type string_with_vars := t
 
 type known_suffix =
   | Full of string

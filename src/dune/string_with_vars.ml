@@ -324,4 +324,11 @@ module Partial = struct
     function
     | Expanded x -> constr "Expander" [ f x ]
     | Unexpanded t -> constr "Unexpanded" [ to_dyn t ]
+
+  let elim t ~exp ~unexp =
+    match t with
+    | Expanded e -> exp e
+    | Unexpanded t -> unexp t
+
+  let expanded t = Expanded t
 end

@@ -19,6 +19,10 @@ This one is enabled:
 
 Test the enabled_if field for libraries:
 
+  $ dune build foo
+  Error: Don't know how to build foo
+  [1]
+
   $ dune build main.exe
   File "dune", line 33, characters 12-15:
   33 |  (libraries foo))

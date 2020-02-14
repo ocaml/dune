@@ -41,10 +41,10 @@ module Partial = struct
 
   module type Past =
     Action_intf.Ast
-      with type program = (Program.t, String_with_vars.t) either
-      with type path = (Path.t, String_with_vars.t) either
-      with type target = (Path.Build.t, String_with_vars.t) either
-      with type string = (String.t, String_with_vars.t) either
+      with type program = Program.t String_with_vars.Partial.t
+      with type path = Path.t String_with_vars.Partial.t
+      with type target = Path.Build.t String_with_vars.Partial.t
+      with type string = String.t String_with_vars.Partial.t
 
   module rec Past : Past = Past
 
@@ -52,7 +52,7 @@ module Partial = struct
 
   module E = struct
     let expand ~expander ~mode ~l ~r =
-      Either.map ~l ~r:(fun s ->
+      String_with_vars.Partial.elim ~exp:l ~unexp:(fun s ->
           let dir = Path.build (Expander.dir expander) in
           r
             ~loc:(Some (String_with_vars.loc s))
@@ -65,8 +65,8 @@ module Partial = struct
       expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
 
     let loc = function
-      | Left _ -> None
-      | Right r -> Some (String_with_vars.loc r)
+      | String_with_vars.Partial.Expanded _ -> None
+      | Unexpanded r -> Some (String_with_vars.loc r)
 
     let path e =
       let error_loc = loc e in
@@ -148,8 +148,8 @@ module Partial = struct
     | Remove_tree x -> Remove_tree (E.target ~expander x)
     | Mkdir x -> (
       match x with
-      | Left path -> Mkdir path
-      | Right tmpl ->
+      | Expanded path -> Mkdir path
+      | Unexpanded tmpl ->
         let path = E.path ~expander x in
         check_mkdir (String_with_vars.loc tmpl) path;
         Mkdir path )
@@ -175,8 +175,8 @@ module E = struct
     match String_with_vars.partial_expand ~mode ~dir ~f x with
     | Expanded e ->
       let loc = Some (String_with_vars.loc x) in
-      Left (map ~loc e ~dir)
-    | Unexpanded x -> Right x
+      String_with_vars.Partial.Expanded (map ~loc e ~dir)
+    | Unexpanded x -> Unexpanded x
 
   let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
 
@@ -203,19 +203,19 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     let args =
       List.concat_map args ~f:(fun arg ->
           match E.strings ~expander arg with
-          | Left args -> List.map args ~f:Either.left
-          | Right _ as x -> [ x ])
+          | Expanded args -> List.map args ~f:String_with_vars.Partial.expanded
+          | Unexpanded _ as x -> [ x ])
     in
     match E.prog_and_args ~expander prog with
-    | Left (prog, more_args) ->
-      let more_args = List.map more_args ~f:Either.left in
+    | Expanded (prog, more_args) ->
+      let more_args = List.map more_args ~f:String_with_vars.Partial.expanded in
       let prog =
         match prog with
         | Search _ -> prog
         | This path -> This (map_exe path)
       in
-      (Left prog, more_args @ args)
-    | Right _ as prog -> (prog, args)
+      (String_with_vars.Partial.Expanded prog, more_args @ args)
+    | Unexpanded _ as prog -> (prog, args)
   in
   match t with
   | Run (prog, args) ->
@@ -229,14 +229,14 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Chdir (fn, t) -> (
     let res = E.path ~expander fn in
     match res with
-    | Left dir ->
+    | Expanded dir ->
       let expander =
         (* TODO this conversion doesn't look safe. It's possible to chdir
            outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir)
       in
       Chdir (res, partial_expand t ~expander ~map_exe)
-    | Right fn ->
+    | Unexpanded fn ->
       let loc = String_with_vars.loc fn in
       User_error.raise ~loc
         [ Pp.text "This directory cannot be evaluated statically."
@@ -245,18 +245,18 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Setenv (var, value, t) ->
     let var =
       match E.string ~expander var with
-      | Left l -> l
-      | Right sw ->
+      | Expanded l -> l
+      | Unexpanded sw ->
         User_error.raise ~loc:(String_with_vars.loc sw)
           [ Pp.text "environment variable names must be static" ]
     in
     let value = E.string ~expander value in
     let expander =
       match value with
-      | Left value -> Expander.set_env expander ~var ~value
-      | Right _ -> Expander.hide_env expander ~var
+      | Expanded value -> Expander.set_env expander ~var ~value
+      | Unexpanded _ -> Expander.hide_env expander ~var
     in
-    Setenv (Left var, value, partial_expand t ~expander ~map_exe)
+    Setenv (Expanded var, value, partial_expand t ~expander ~map_exe)
   | Redirect_out (outputs, fn, t) ->
     Redirect_out
       (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
@@ -279,8 +279,8 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
   | Mkdir x ->
     let res = E.path ~expander x in
     ( match res with
-    | Left path -> check_mkdir (String_with_vars.loc x) path
-    | Right _ -> () );
+    | Expanded path -> check_mkdir (String_with_vars.loc x) path
+    | Unexpanded _ -> () );
     Mkdir res
   | Digest_files x -> Digest_files (List.map x ~f:(E.path ~expander))
   | Diff { optional; file1; file2; mode } ->
@@ -444,54 +444,58 @@ module Infer = struct
   module Partial_with_all_targets =
     Make (Partial.Past) (Sets) (Outcome)
       (struct
-        let ( +@+ ) acc fn =
+        let ( +@+ ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with targets = Path.Build.Set.add acc.targets fn }
-          | Right sw ->
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.add acc.targets fn }
+          | Unexpanded sw ->
             User_error.raise ~loc:(String_with_vars.loc sw)
               [ Pp.text "Cannot determine this target statically." ]
 
-        let ( +< ) acc fn =
+        let ( +< ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with deps = Path.Set.add acc.deps fn }
-          | Right _ -> acc
+          | Expanded fn -> { acc with deps = Path.Set.add acc.deps fn }
+          | Unexpanded _ -> acc
 
-        let ( +<+ ) acc fn =
+        let ( +<+ ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
-          | Right _ -> acc
+          | Expanded fn ->
+            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Unexpanded _ -> acc
 
         let ( +<! ) acc fn =
           match (fn : Partial.program) with
-          | Left (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
-          | Left (Search _)
-          | Right _ ->
+          | Expanded (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
+          | Expanded (Search _)
+          | Unexpanded _ ->
             acc
       end)
 
   module Partial =
     Make (Partial.Past) (Sets) (Outcome)
       (struct
-        let ( +@+ ) acc fn =
+        let ( +@+ ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with targets = Path.Build.Set.add acc.targets fn }
-          | Right _ -> acc
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.add acc.targets fn }
+          | Unexpanded _ -> acc
 
-        let ( +< ) acc fn =
+        let ( +< ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with deps = Path.Set.add acc.deps fn }
-          | Right _ -> acc
+          | Expanded fn -> { acc with deps = Path.Set.add acc.deps fn }
+          | Unexpanded _ -> acc
 
-        let ( +<+ ) acc fn =
+        let ( +<+ ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Left fn -> { acc with deps = Path.Set.add acc.deps (Path.build fn) }
-          | Right _ -> acc
+          | Expanded fn ->
+            { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Unexpanded _ -> acc
 
         let ( +<! ) acc fn =
           match (fn : Partial.program) with
-          | Left (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
-          | Left (Search _)
-          | Right _ ->
+          | Expanded (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
+          | Expanded (Search _)
+          | Unexpanded _ ->
             acc
       end)
 

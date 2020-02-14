@@ -3,7 +3,7 @@
 open Stdune
 
 type t =
-  { to_link : Lib.Lib_and_module.t list
+  { to_link : Lib.Lib_and_module.L.t
   ; force_linkall : bool
   }
 

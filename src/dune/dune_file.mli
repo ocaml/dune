@@ -294,6 +294,7 @@ module Executables : sig
     ; package : Package.t option
     ; promote : Rule.Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t

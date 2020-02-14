@@ -5,7 +5,7 @@ module SC = Super_context
 module Executables = Dune_file.Executables
 
 let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
-    (exes : Dune_file.Executables.t) =
+    ~embed_in_plugin_libraries (exes : Dune_file.Executables.t) =
   (* Use "eobjs" rather than "objs" to avoid a potential conflict with a library
      of the same name *)
   let obj_dir = Dune_file.Executables.obj_dir exes ~dir in
@@ -161,7 +161,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let requires_compile = Compilation_context.requires_compile cctx in
   Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
-    ~promote:exes.promote;
+    ~promote:exes.promote ~embed_in_plugin_libraries;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
       ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
@@ -181,7 +181,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
   in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
-      ~compile_info
+      ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
   SC.Libs.gen_select_rules sctx compile_info ~dir;
   Bootstrap_info.gen_rules sctx exes ~dir compile_info;

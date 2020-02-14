@@ -133,26 +133,3 @@ let effective_env t =
   | None, None -> Env.initial
   | Some e, _ -> e
   | None, Some c -> c.env
-
-let rule_deps t = (Build.static_deps t.action.build).rule_deps
-
-let static_action_deps t = (Build.static_deps t.action.build).action_deps
-
-(* CR-soon amokhov: Build [request] directly instead of going via a fake rule. *)
-let shim_of_build_goal request =
-  let request =
-    let open Build.O in
-    let+ () = request in
-    Action.empty
-  in
-  { id = Id.gen ()
-  ; context = None
-  ; dir = Path.Build.root
-  ; env = None
-  ; action =
-      Build.With_targets.memoize "Rule.shim_of_build_goal"
-        (Build.with_no_targets request)
-  ; mode = Mode.Standard
-  ; locks = []
-  ; info = Info.Internal
-  }

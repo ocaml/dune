@@ -83,7 +83,7 @@ end = struct
     | Foreign_library lib ->
       Lib_rules.foreign_rules lib ~sctx ~dir ~dir_contents ~expander;
       empty_none
-    | Executables exes ->
+    | Executables exes when Expander.eval_blang expander exes.enabled_if ->
       Option.iter exes.install_conf ~f:files_to_install;
       let cctx, merlin =
         Exe_rules.rules exes ~sctx ~dir ~scope ~expander ~dir_contents

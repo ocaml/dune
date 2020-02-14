@@ -1,0 +1,9 @@
+(executable
+  (name main)
+  (modules main)
+  (enabled_if true))
+
+(executable
+  (name dis)
+  (modules dis)
+  (enabled_if false))

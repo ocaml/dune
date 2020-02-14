@@ -1525,6 +1525,7 @@ module Executables = struct
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
+    ; enabled_if : Blang.t
     }
 
   let bootstrap_info_extension =
@@ -1581,6 +1582,7 @@ module Executables = struct
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
+    and+ enabled_if = enabled_if ~since:(Some (2, 3))
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1621,6 +1623,7 @@ module Executables = struct
       ; install_conf
       ; forbidden_libraries
       ; bootstrap_info
+      ; enabled_if
       }
 
   let single, multi =
@@ -2128,6 +2131,7 @@ module Tests = struct
            ; install_conf = None
            ; forbidden_libraries
            ; bootstrap_info = None
+           ; enabled_if
            }
        ; locks
        ; package

@@ -196,6 +196,11 @@ module Map = struct
       | Error _ -> Path.relative context.ocaml_bin "ocamlopt"
       | Ok p -> p
     in
+    let ocaml =
+      match context.ocaml with
+      | Error _ -> Path.relative context.ocaml_bin "ocaml"
+      | Ok p -> p
+    in
     let string s = values [ Value.String s ] in
     let path p = values [ Value.Path p ] in
     let make =
@@ -217,7 +222,7 @@ module Map = struct
             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
       ; ("cc", strings (c_compiler :: cflags))
       ; ("cxx", strings (c_compiler :: cxx_flags))
-      ; ("ocaml", path context.ocaml)
+      ; ("ocaml", path ocaml)
       ; ("ocamlc", path context.ocamlc)
       ; ("ocamlopt", path ocamlopt)
       ; ("arch_sixtyfour", string (string_of_bool context.arch_sixtyfour))

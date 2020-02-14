@@ -42,6 +42,10 @@ module Prog = struct
     | Error (e : Not_found.t) -> Dune_lang.Encoder.string e.program
 
   let to_dyn t = Result.to_dyn Path.to_dyn Not_found.to_dyn t
+
+  let ok_exn = function
+    | Ok s -> s
+    | Error e -> Not_found.raise e
 end
 
 module type Ast =

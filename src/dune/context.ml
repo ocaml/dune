@@ -50,7 +50,7 @@ module T = struct
     ; path : Path.t list
     ; toplevel_path : Path.t option
     ; ocaml_bin : Path.t
-    ; ocaml : Path.t
+    ; ocaml : Action.Prog.t
     ; ocamlc : Path.t
     ; ocamlopt : Action.Prog.t
     ; ocamldep : Action.Prog.t
@@ -89,7 +89,7 @@ module T = struct
       ; ("build_dir", Path.Build.to_dyn t.build_dir)
       ; ("toplevel_path", option path t.toplevel_path)
       ; ("ocaml_bin", path t.ocaml_bin)
-      ; ("ocaml", path t.ocaml)
+      ; ("ocaml", Action.Prog.to_dyn t.ocaml)
       ; ("ocamlc", path t.ocamlc)
       ; ("ocamlopt", Action.Prog.to_dyn t.ocamlopt)
       ; ("ocamldep", Action.Prog.to_dyn t.ocamldep)
@@ -473,7 +473,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     if Option.is_some fdo_target_exe then
       check_fdo_support lib_config.has_native ocfg ~name;
-    let ocaml = which_exn "ocaml" in
+    let ocaml =
+      let program = "ocaml" in
+      match which program with
+      | Some s -> Ok s
+      | None ->
+        Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
+    in
     let t =
       { name
       ; implicit
@@ -518,7 +524,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let set prog =
         Response_file.set ~prog (Zero_terminated_strings "-args0")
       in
-      set t.ocaml;
+      Result.iter t.ocaml ~f:set;
       set t.ocamlc;
       Result.iter t.ocamlopt ~f:set;
       Result.iter t.ocamldep ~f:set;

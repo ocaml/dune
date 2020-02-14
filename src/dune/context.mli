@@ -71,7 +71,7 @@ type t = private
   ; toplevel_path : Path.t option
         (** Ocaml bin directory with all ocaml tools *)
   ; ocaml_bin : Path.t
-  ; ocaml : Path.t
+  ; ocaml : Action.Prog.t
   ; ocamlc : Path.t
   ; ocamlopt : Action.Prog.t
   ; ocamldep : Action.Prog.t

@@ -179,9 +179,9 @@ module Dune_files = struct
             ; [ Path.to_absolute_filename (Path.build wrapper) ]
             ]
         in
+        let ocaml = Action.Prog.ok_exn context.ocaml in
         let* () =
-          Process.run Strict ~dir:(Path.source dir) ~env:context.env
-            context.ocaml args
+          Process.run Strict ~dir:(Path.source dir) ~env:context.env ocaml args
         in
         if not (Path.exists (Path.build generated_dune_file)) then
           User_error.raise

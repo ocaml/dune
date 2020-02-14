@@ -296,6 +296,7 @@ module Executables : sig
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
+    ; enabled_if : Blang.t
     }
 
   (** Check if the executables have any foreign stubs or archives. *)

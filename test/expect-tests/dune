@@ -5,6 +5,7 @@
    (source_tree ../unit-tests/findlib-db)
    (source_tree ../unit-tests/toolchain.d)))
  (libraries
+  ocaml_config
   dune_tests_common
   stdune
   dune

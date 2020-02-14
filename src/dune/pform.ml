@@ -250,7 +250,9 @@ module Map = struct
       ; ("workspace_root", values [ Value.Dir (Path.build context.build_dir) ])
       ; ("context_name", string (Context_name.to_string context.name))
       ; ("ROOT", renamed_in ~version:(1, 0) ~new_name:"workspace_root")
-      ; ("os_type", since ~version:(1, 10) (Var.Values [ String os_type ]))
+      ; ( "os_type"
+        , since ~version:(1, 10)
+            (Var.Values [ String (Ocaml_config.Os_type.to_string os_type) ]) )
       ; ( "architecture"
         , since ~version:(1, 10) (Var.Values [ String architecture ]) )
       ; ("system", since ~version:(1, 10) (Var.Values [ String system ]))

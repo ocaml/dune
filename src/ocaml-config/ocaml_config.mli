@@ -36,6 +36,15 @@ module Origin : sig
     | Makefile_config of Path.t
 end
 
+module Os_type : sig
+  type t =
+    | Win32
+    | Unix
+    | Other of string
+
+  val to_string : t -> string
+end
+
 (** Interpret raw bindings (this function also loads the [Makefile.config] file
     in the stdlib directory). *)
 val make : Vars.t -> (t, Origin.t * string) Result.t
@@ -99,7 +108,7 @@ val ext_lib : t -> string
 
 val ext_dll : t -> string
 
-val os_type : t -> string
+val os_type : t -> Os_type.t
 
 val default_executable_name : t -> string
 

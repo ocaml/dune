@@ -14,7 +14,7 @@ type t =
   { has_native : bool
   ; ext_lib : string
   ; ext_obj : string
-  ; os_type : string
+  ; os_type : Ocaml_config.Os_type.t
   ; architecture : string
   ; system : string
   ; model : string  (** Native dynlink *)

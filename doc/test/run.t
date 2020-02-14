@@ -1,5 +1,10 @@
 ----------------------------------------------------------------------------------
-Reveal all occurrences of non-latest (lang dune ...) in examples.
+Reveal all occurrences of non-latest (lang dune ...) version in documentation.
+
+When changing Dune version, you need to update the docs too to make this test pass.
+
+Occasionally we do want to mention an older Dune version in documentation. This
+is fine, but you then need to update the list of such exceptions below.
 
   $ touch dune
   $ dune build > /dev/null 2> /dev/null

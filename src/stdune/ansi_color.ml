@@ -85,7 +85,7 @@ end
 
 let term_supports_color =
   lazy
-    ( match Sys.getenv "TERM" with
+    ( match Stdlib.Sys.getenv "TERM" with
     | exception Not_found -> false
     | "dumb" -> false
     | _ -> true )

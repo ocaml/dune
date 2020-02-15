@@ -129,7 +129,7 @@ struct
           lines)
 
   let read_file_and_normalize_eols fn =
-    if not Sys.win32 then
+    if not Stdlib.Sys.win32 then
       read_file fn
     else
       let src = read_file fn in

@@ -1,3 +1,5 @@
+module Sys = Stdlib.Sys
+
 let is_dir_sep =
   if Sys.win32 || Sys.cygwin then
     fun c ->

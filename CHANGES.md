@@ -1,4 +1,4 @@
-2.3.0 (unreleased)
+2.3.0 (15/02/2020)
 ------------------
 
 - Improve validation and error handling of arguments to `dune init` (#3103, fixes

@@ -4,3 +4,5 @@ end
 
 (** Are we running on linux? *)
 val linux : bool
+
+val force_remove : string -> unit

@@ -88,9 +88,6 @@ val find_scope_by_project : t -> Dune_project.t -> Scope.t
 
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t
 
-(** Tells whether the given source directory is marked as vendored *)
-val dir_is_vendored : Path.Source.t -> bool
-
 val add_rule :
      t
   -> ?sandbox:Sandbox_config.t

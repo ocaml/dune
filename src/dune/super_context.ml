@@ -280,14 +280,12 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
   let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
   (partial, acc)
 
-let dir_is_vendored src_dir =
-  Option.value ~default:false (File_tree.dir_is_vendored src_dir)
-
 let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in
-    let+ src_dir = Path.Build.drop_build_context build_dir in
-    dir_is_vendored src_dir
+    let* src_dir = Path.Build.drop_build_context build_dir in
+    let+ src_dir = File_tree.find_dir src_dir in
+    Sub_dirs.Status.Vendored = File_tree.Dir.status src_dir
   in
   Option.value ~default:false opt
 

@@ -774,11 +774,21 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
- (alias external-lib-deps)
- (deps (package dune) (source_tree test-cases/external-lib-deps))
+ (alias external-lib-deps-github3143)
+ (deps (package dune) (source_tree test-cases/external-lib-deps/github3143))
  (action
   (chdir
-   test-cases/external-lib-deps
+   test-cases/external-lib-deps/github3143
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias external-lib-deps-simple)
+ (deps (package dune) (source_tree test-cases/external-lib-deps/simple))
+ (action
+  (chdir
+   test-cases/external-lib-deps/simple
    (progn
     (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
     (diff? run.t run.t.corrected)))))
@@ -2722,7 +2732,8 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
-  (alias external-lib-deps)
+  (alias external-lib-deps-github3143)
+  (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)
@@ -2977,7 +2988,8 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
-  (alias external-lib-deps)
+  (alias external-lib-deps-github3143)
+  (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)
   (alias findlib)

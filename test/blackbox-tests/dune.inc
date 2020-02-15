@@ -2197,6 +2197,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias strict-package-deps)
+ (deps (package dune) (source_tree test-cases/strict-package-deps))
+ (action
+  (chdir
+   test-cases/strict-package-deps
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -2850,6 +2860,7 @@
   (alias shadow-bindings)
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
+  (alias strict-package-deps)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -3080,6 +3091,7 @@
   (alias shadow-bindings)
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
+  (alias strict-package-deps)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)

@@ -29,6 +29,9 @@
 - Do not fail if `ocamldep`, `ocamlmklib`, or `ocaml` are absent. Wait for them
   to be used to fail (#3138, @rgrinberg)
 
+- Introduce a `strict_package_deps` mode that verifies that dependencies between
+  packages in the workspace are specified correctly. (@rgrinberg, #3117)
+
 2.2.0 (06/02/2020)
 ------------------
 

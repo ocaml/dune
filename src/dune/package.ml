@@ -556,3 +556,10 @@ let load_opam_file file name =
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
   }
+
+let missing_deps (t : t) ~effective_deps =
+  let specified_deps =
+    List.map t.depends ~f:(fun (dep : Dependency.t) -> dep.name)
+    |> Name.Set.of_list
+  in
+  Name.Set.diff effective_deps specified_deps

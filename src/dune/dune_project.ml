@@ -166,6 +166,7 @@ type t =
   ; dialects : Dialect.DB.t
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
+  ; strict_package_deps : bool
   }
 
 let equal = ( == )
@@ -215,6 +216,7 @@ let to_dyn
     ; dialects
     ; explicit_js_mode
     ; format_config
+    ; strict_package_deps
     } =
   let open Dyn.Encoder in
   record
@@ -235,6 +237,7 @@ let to_dyn
     ; ("dialects", Dialect.DB.to_dyn dialects)
     ; ("explicit_js_mode", bool explicit_js_mode)
     ; ("format_config", (option Format_config.to_dyn) format_config)
+    ; ("strict_package_deps", bool strict_package_deps)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -495,6 +498,9 @@ let implicit_transitive_deps_default ~lang:_ = true
 let wrapped_executables_default ~(lang : Lang.Instance.t) =
   lang.version >= (2, 0)
 
+let strict_package_deps_default ~(lang : Lang.Instance.t) =
+  lang.version >= (3, 0)
+
 let explicit_js_mode_default ~(lang : Lang.Instance.t) = lang.version >= (2, 0)
 
 let format_extension_key =
@@ -535,6 +541,7 @@ let infer ~dir packages =
   let implicit_transitive_deps = implicit_transitive_deps_default ~lang in
   let wrapped_executables = wrapped_executables_default ~lang in
   let explicit_js_mode = explicit_js_mode_default ~lang in
+  let strict_package_deps = strict_package_deps_default ~lang in
   let root = dir in
   let file_key = File_key.make ~root ~name in
   { name
@@ -555,6 +562,7 @@ let infer ~dir packages =
   ; dialects = Dialect.DB.builtin
   ; explicit_js_mode
   ; format_config = None
+  ; strict_package_deps
   }
 
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
@@ -594,7 +602,11 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ explicit_js_mode =
        field_o_b "explicit_js_mode"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (1, 11))
-     and+ format_config = Format_config.field in
+     and+ format_config = Format_config.field
+     and+ strict_package_deps =
+       field_o_b "strict_package_deps"
+         ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+     in
      let packages =
        if List.is_empty packages then
          Package.Name.Map.map opam_packages ~f:(fun (_loc, p) -> Lazy.force p)
@@ -683,6 +695,10 @@ let parse ~dir ~lang ~opam_packages ~file =
        Option.value wrapped_executables
          ~default:(wrapped_executables_default ~lang)
      in
+     let strict_package_deps =
+       Option.value strict_package_deps
+         ~default:(strict_package_deps_default ~lang)
+     in
      let dune_version = lang.version in
      let allow_approx_merlin =
        Option.value ~default:(dune_version < (1, 9)) allow_approx_merlin
@@ -719,6 +735,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; dialects
      ; explicit_js_mode
      ; format_config
+     ; strict_package_deps
      })
 
 let load_dune_project ~dir opam_packages =
@@ -763,3 +780,5 @@ let wrapped_executables t = t.wrapped_executables
 let () =
   let open Dune_lang.Decoder in
   Extension.register_simple ~experimental:true Action_plugin.syntax (return [])
+
+let strict_package_deps t = t.strict_package_deps

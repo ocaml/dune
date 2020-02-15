@@ -32,6 +32,9 @@
 - Introduce a `strict_package_deps` mode that verifies that dependencies between
   packages in the workspace are specified correctly. (@rgrinberg, #3117)
 
+- Make sure the `@all` alias is defined when no `dune` file is present
+  in a directory (#2946, fix #2927, @diml)
+
 2.2.0 (06/02/2020)
 ------------------
 

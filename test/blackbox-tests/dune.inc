@@ -512,6 +512,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-project-meta-github2927)
+ (deps (package dune) (source_tree test-cases/dune-project-meta/github2927))
+ (action
+  (chdir
+   test-cases/dune-project-meta/github2927
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-project-no-opam)
  (deps (package dune) (source_tree test-cases/dune-project-no-opam))
  (action
@@ -2698,6 +2708,7 @@
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
   (alias dune-project-meta)
+  (alias dune-project-meta-github2927)
   (alias dune-project-no-opam)
   (alias dune_memory-and-the-universe)
   (alias dup-fields)
@@ -2953,6 +2964,7 @@
   (alias dune-package)
   (alias dune-project-edition)
   (alias dune-project-meta)
+  (alias dune-project-meta-github2927)
   (alias dune-project-no-opam)
   (alias dune_memory-and-the-universe)
   (alias dup-fields)

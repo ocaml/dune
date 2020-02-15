@@ -164,6 +164,34 @@ let lib_src_dirs ~dir_contents =
 
 (* Stanza *)
 
+let define_all_alias ~dir ~scope ~js_targets =
+  let dyn_deps =
+    let pred =
+      let id =
+        lazy
+          (let open Dyn.Encoder in
+          constr "exclude"
+            (List.map ~f:(fun p -> Path.Build.to_dyn p) js_targets))
+      in
+      List.iter js_targets ~f:(fun js_target ->
+          assert (Path.Build.equal (Path.Build.parent_exn js_target) dir));
+      let f =
+        if Dune_project.explicit_js_mode (Scope.project scope) then
+          fun _ ->
+        true
+        else
+          fun basename ->
+        not
+          (List.exists js_targets ~f:(fun js_target ->
+               String.equal (Path.Build.basename js_target) basename))
+      in
+      Predicate.create ~id ~f
+    in
+    File_selector.create ~dir:(Path.build dir) pred
+    |> Build.paths_matching ~loc:Loc.none
+  in
+  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir) Path.Set.empty
+
 let gen_rules sctx dir_contents cctxs
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
     =
@@ -246,39 +274,17 @@ let gen_rules sctx dir_contents cctxs
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
         |> Super_context.add_rules ~dir:ctx_dir sctx
       | _ -> ());
-  let dyn_deps =
-    let pred =
-      let id =
-        lazy
-          (let open Dyn.Encoder in
-          constr "exclude"
-            (List.map ~f:(fun p -> Path.Build.to_dyn p) js_targets))
-      in
-      List.iter js_targets ~f:(fun js_target ->
-          assert (Path.Build.equal (Path.Build.parent_exn js_target) ctx_dir));
-      let f =
-        if Dune_project.explicit_js_mode (Scope.project scope) then
-          fun _ ->
-        true
-        else
-          fun basename ->
-        not
-          (List.exists js_targets ~f:(fun js_target ->
-               String.equal (Path.Build.basename js_target) basename))
-      in
-      Predicate.create ~id ~f
-    in
-    File_selector.create ~dir:(Path.build ctx_dir) pred
-    |> Build.paths_matching ~loc:Loc.none
-  in
-  Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir:ctx_dir) Path.Set.empty;
+  define_all_alias ~dir:ctx_dir ~scope ~js_targets;
   cctxs
 
 let gen_rules sctx dir_contents cctxs ~dir :
     (Loc.t * Compilation_context.t) list =
   with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
   match Super_context.stanzas_in sctx ~dir with
-  | None -> []
+  | None ->
+    define_all_alias ~dir ~js_targets:[]
+      ~scope:(Super_context.find_scope_by_dir sctx dir);
+    []
   | Some d -> gen_rules sctx dir_contents cctxs d
 
 let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep

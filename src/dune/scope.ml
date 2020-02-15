@@ -92,8 +92,9 @@ module DB = struct
             ] )
     in
     let resolve = resolve t public_libs in
-    Lib.DB.create () ~stdlib_dir ~parent:installed_libs ~resolve ~all:(fun () ->
-        Lib_name.Map.keys public_libs)
+    Lib.DB.create ~stdlib_dir ~parent:(Some installed_libs) ~resolve
+      ~all:(fun () -> Lib_name.Map.keys public_libs)
+      ()
 
   let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas =
     let build_context_dir = Context_name.build_dir context in
@@ -132,7 +133,8 @@ module DB = struct
         stanzas
     in
     let by_dir =
-      scopes_by_dir context ~projects ~lib_config ~public_libs stanzas
+      scopes_by_dir context ~projects ~lib_config
+        ~public_libs:(Some public_libs) stanzas
     in
     let value = { by_dir; context } in
     Fdecl.set t value;

@@ -171,7 +171,7 @@ module DB : sig
 
       [all] returns the list of names of libraries available in this database. *)
   val create :
-       ?parent:t
+       parent:t option
     -> stdlib_dir:Path.t
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> all:(unit -> Lib_name.t list)
@@ -187,10 +187,13 @@ module DB : sig
 
   (** Create a database from a list of library/variants stanzas *)
   val create_from_stanzas :
-    ?parent:t -> lib_config:Lib_config.t -> Library_related_stanza.t list -> t
+       parent:t option
+    -> lib_config:Lib_config.t
+    -> Library_related_stanza.t list
+    -> t
 
   val create_from_findlib :
-    ?external_lib_deps_mode:bool -> stdlib_dir:Path.t -> Findlib.t -> t
+    external_lib_deps_mode:bool -> stdlib_dir:Path.t -> Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option
 

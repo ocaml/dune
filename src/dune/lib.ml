@@ -1642,7 +1642,7 @@ module DB = struct
 
   type t = db
 
-  let create ?parent ~stdlib_dir ~resolve ~all () =
+  let create ~parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve
     ; table = Table.create (module Lib_name) 1024
@@ -1707,7 +1707,7 @@ module DB = struct
           (Loc.to_file_colon_line loc2)
       ]
 
-  let create_from_stanzas ?parent ~lib_config stanzas =
+  let create_from_stanzas ~parent ~lib_config stanzas =
     (* Construct a mapping from virtual library name to a list of [(variant,
        implementation_for_this_variant)]. We check a bit later that there is
        duplicate in the inner lists. *)
@@ -1817,14 +1817,13 @@ module DB = struct
        contain valid [virtual_library] fields now since this is the last time we
        analyse them. *)
     check_valid_external_variants map stanzas;
-    create () ?parent ~stdlib_dir:lib_config.stdlib_dir
+    create () ~parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         Lib_name.Map.find map name |> Option.value ~default:Not_found)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ?(external_lib_deps_mode = false) ~stdlib_dir findlib
-      =
-    create () ~stdlib_dir
+  let create_from_findlib ~external_lib_deps_mode ~stdlib_dir findlib =
+    create () ~parent:None ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)

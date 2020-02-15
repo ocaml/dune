@@ -67,10 +67,6 @@ let gen_rules sctx t ~dir ~scope =
        ; Deps (List.map cinapsed_files ~f:Path.build)
        ]);
   let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name:"cinaps" in
-  let modules =
-    Module_name.Map.singleton main_module_name
-      (Module.generated main_module_name ~src_dir:(Path.build cinaps_dir))
-  in
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
@@ -78,7 +74,10 @@ let gen_rules sctx t ~dir ~scope =
       ~preprocessor_deps:t.preprocessor_deps ~lib_name:None ~scope
   in
   let modules =
-    Modules.exe_unwrapped modules
+    let module_ =
+      Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
+    in
+    Modules.singleton_exe module_
     |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
   in
   let dune_version = Scope.project scope |> Dune_project.dune_version in

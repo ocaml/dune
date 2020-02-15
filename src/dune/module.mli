@@ -91,8 +91,6 @@ module Name_map : sig
 
   val of_list_exn : module_ list -> t
 
-  val singleton : module_ -> t
-
   val add : t -> module_ -> t
 
   val by_obj : t -> t

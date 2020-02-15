@@ -351,8 +351,6 @@ module Name_map = struct
   let encode t =
     Module_name.Map.values t |> List.map ~f:(fun x -> Dune_lang.List (encode x))
 
-  let singleton m = Module_name.Map.singleton (name m) m
-
   let impl_only =
     Module_name.Map.fold ~init:[] ~f:(fun m acc ->
         if has m ~ml_kind:Impl then

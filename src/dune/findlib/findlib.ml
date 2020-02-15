@@ -184,7 +184,7 @@ module Loader : sig
   val lookup_and_load :
     db -> Package.Name.t -> (Dune_package.t, Unavailable_reason.t) result
 
-  val dummy_package : db -> Package.Name.t -> Dune_package.t
+  val dummy_package : db -> Lib_name.t -> Dune_package.t
 end = struct
   module Findlib_package : sig
     type t =
@@ -439,12 +439,22 @@ end = struct
       ~meta_file:(Path.of_string "<internal>")
       ~meta
 
-  let dummy_package db name =
-    load_builtin db
-      { name = Some (Lib_name.of_package_name name)
-      ; vars = String.Map.empty
-      ; subs = []
-      }
+  let dummy_package db lib_name =
+    let pkg, names = Lib_name.split lib_name in
+    let top_lib = Lib_name.of_package_name pkg in
+    let dummy name subs =
+      { Meta.Simplified.name = Some name; vars = String.Map.empty; subs }
+    in
+    let subs : Meta.Simplified.t list =
+      let rec loop = function
+        | [] -> []
+        | name :: names ->
+          [ dummy (Lib_name.of_string_exn ~loc:None name) (loop names) ]
+      in
+      loop names
+    in
+    let meta = dummy top_lib subs in
+    load_builtin db meta
 
   let lookup_and_load_one_dir db ~dir ~name =
     let meta_file = Path.relative dir meta_fn in
@@ -493,8 +503,8 @@ end
 
 type t = db
 
-let dummy_package t ~name =
-  let p = Loader.dummy_package t (Lib_name.package_name name) in
+let dummy_lib t ~name =
+  let p = Loader.dummy_package t name in
   match Lib_name.Map.find_exn p.entries name with
   | Library lib -> lib
   | _ -> assert false

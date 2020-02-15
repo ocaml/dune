@@ -228,7 +228,7 @@ module Dir0 = struct
 
   let path t = t.path
 
-  let ignored t = t.status = Data_only
+  let data_only t = t.status = Data_only
 
   let vendored t = t.status = Vendored
 
@@ -351,6 +351,35 @@ end = struct
              let subdirs = String.Map.set subdirs fn sub_dir in
              (dirs_visited_acc, subdirs))
 
+  let dune_file ~(dir_status : Sub_dirs.Status.t) ~recognize_jbuilder_projects
+      ~path ~files ~project =
+    if dir_status = Data_only then
+      None
+    else if
+      (not recognize_jbuilder_projects)
+      && String.Set.mem files Dune_file.jbuild_fname
+    then
+      User_error.raise
+        ~loc:
+          (Loc.in_file
+             (Path.source (Path.Source.relative path Dune_file.jbuild_fname)))
+        [ Pp.text
+            "jbuild files are no longer supported, please convert this file to \
+             a dune file instead."
+        ; Pp.text
+            "Note: You can use \"dune upgrade\" to convert your project to \
+             dune."
+        ]
+    else if not (String.Set.mem files Dune_file.fname) then
+      None
+    else (
+      ignore
+        ( Dune_project.ensure_project_file_exists project
+          : Dune_project.created_or_already_exist );
+      let file = Path.Source.relative path Dune_file.fname in
+      Some (Dune_file.load file ~project)
+    )
+
   let contents { Readdir.dirs; files } ~dirs_visited ~project ~path
       ~(dir_status : Sub_dirs.Status.t) =
     let recognize_jbuilder_projects =
@@ -358,32 +387,7 @@ end = struct
       settings.recognize_jbuilder_projects
     in
     let dune_file =
-      if dir_status = Data_only then
-        None
-      else if
-        (not recognize_jbuilder_projects)
-        && String.Set.mem files Dune_file.jbuild_fname
-      then
-        User_error.raise
-          ~loc:
-            (Loc.in_file
-               (Path.source (Path.Source.relative path Dune_file.jbuild_fname)))
-          [ Pp.text
-              "jbuild files are no longer supported, please convert this file \
-               to a dune file instead."
-          ; Pp.text
-              "Note: You can use \"dune upgrade\" to convert your project to \
-               dune."
-          ]
-      else if not (String.Set.mem files Dune_file.fname) then
-        None
-      else (
-        ignore
-          ( Dune_project.ensure_project_file_exists project
-            : Dune_project.created_or_already_exist );
-        let file = Path.Source.relative path Dune_file.fname in
-        Some (Dune_file.load file ~project)
-      )
+      dune_file ~dir_status ~recognize_jbuilder_projects ~files ~project ~path
     in
     let sub_dirs = Dune_file.sub_dirs dune_file in
     let dirs_visited, sub_dirs =

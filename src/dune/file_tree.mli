@@ -38,8 +38,8 @@ module Dir : sig
   val sub_dir_names : t -> String.Set.t
 
   (** Whether this directory is ignored by an [ignored_subdirs] stanza in one of
-      its ancestor directories. *)
-  val ignored : t -> bool
+      its ancestor directories. Or the directory is set to data only *)
+  val data_only : t -> bool
 
   (** Whether this directory is vendored or sits within a vendored directory *)
   val vendored : t -> bool
@@ -78,6 +78,7 @@ val nearest_dir : Path.Source.t -> Dir.t
 
 (** [nearest_vcs t fn] returns the version control system with the longest root
     path that is an ancestor of [fn]. *)
+
 val nearest_vcs : Path.Source.t -> Vcs.t option
 
 val files_of : Path.Source.t -> Path.Source.Set.t

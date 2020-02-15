@@ -1582,8 +1582,7 @@ module Executables = struct
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
-    and+ enabled_if = enabled_if ~since:(Some (2, 3))
-    in
+    and+ enabled_if = enabled_if ~since:(Some (2, 3)) in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in

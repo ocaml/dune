@@ -1840,7 +1840,7 @@ module DB = struct
           | Invalid_dune_package why -> Invalid why
           | Not_found ->
             if external_lib_deps_mode then
-              let pkg = Findlib.dummy_package findlib ~name in
+              let pkg = Findlib.dummy_lib findlib ~name in
               Found (Dune_package.Lib.info pkg)
             else
               Not_found ))

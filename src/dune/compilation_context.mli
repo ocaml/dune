@@ -75,3 +75,6 @@ val vimpl : t -> Vimpl.t option
 val modes : t -> Mode.Dict.Set.t
 
 val for_wrapped_compat : t -> t
+
+val for_module_generated_at_link_time :
+  t -> requires:Lib.t list Or_exn.t -> module_:Module.t -> t

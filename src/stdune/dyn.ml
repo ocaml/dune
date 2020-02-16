@@ -64,14 +64,14 @@ let pp_sequence start stop x ~f =
   match x with
   | [] -> Pp.verbatim start ++ Pp.verbatim stop
   | _ ->
+    let sep = ";" ^ String.make (String.length start) ' ' in
     Pp.hvbox
       ( Pp.concat_mapi ~sep:Pp.cut x ~f:(fun i x ->
             Pp.box
               ( ( if i = 0 then
-                  Pp.verbatim start ++ Pp.space
+                  Pp.verbatim (start ^ " ")
                 else
-                  Pp.char ';'
-                  ++ Pp.break ~nspaces:(String.length start) ~shift:0 )
+                  Pp.verbatim sep)
               ++ f x ))
       ++ Pp.space ++ Pp.verbatim stop )
 

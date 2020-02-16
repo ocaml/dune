@@ -27,12 +27,12 @@ let ooi_deps cctx ~vlib_obj_map ~(ml_kind : Ml_kind.t) (m : Module.t) =
   let read =
     Build.memoize "ocamlobjinfo"
       (let+ (ooi : Ocamlobjinfo.t) = read in
-       Module_name.Set.to_list ooi.intf
+       Module_name.Obj.Set.to_list ooi.intf
        |> List.filter_map ~f:(fun dep ->
-              if Module.real_unit_name m = dep then
+              if Module.obj_name m = dep then
                 None
               else
-                Module_name.Map.find vlib_obj_map dep))
+                Module_name.Obj.Map.find vlib_obj_map dep))
   in
   add_rule
     (let target = Obj_dir.Module.dep obj_dir (Transitive (m, ml_kind)) in

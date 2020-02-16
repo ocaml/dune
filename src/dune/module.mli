@@ -45,14 +45,9 @@ val kind : t -> Kind.t
 
 val to_dyn : t -> Dyn.t
 
-(** [obj_name] Object name. It is different from [name] for wrapped modules. *)
-val of_source :
-  ?obj_name:string -> visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
+val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t
-
-(** Real unit name once wrapped. This is always a valid module name. *)
-val real_unit_name : t -> Module_name.t
 
 val source : t -> ml_kind:Ml_kind.t -> File.t option
 
@@ -60,7 +55,7 @@ val pp_flags : t -> string list Build.t option
 
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
-val obj_name : t -> string
+val obj_name : t -> Module_name.Obj.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 
@@ -92,8 +87,6 @@ module Name_map : sig
   val of_list_exn : module_ list -> t
 
   val add : t -> module_ -> t
-
-  val by_obj : t -> t
 end
 with type module_ := t
 

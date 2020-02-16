@@ -109,7 +109,7 @@ end
 
 type t =
   { source : Source.t
-  ; obj_name : string
+  ; obj_name : Module_name.Obj.t
   ; pp : string list Build.t option
   ; visibility : Visibility.t
   ; kind : Kind.t
@@ -148,16 +148,11 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
   let obj_name =
     match obj_name with
     | Some s -> s
-    | None -> (
+    | None ->
       let file = Source.choose_file source in
-      let fn = Path.basename file.path in
-      match String.index fn '.' with
-      | None -> fn
-      | Some i -> String.take fn i )
+      Module_name.Obj.of_path file.path
   in
   { source; obj_name; pp = None; visibility; kind }
-
-let real_unit_name t = Module_name.of_string (Filename.basename t.obj_name)
 
 let has t ~ml_kind =
   match (ml_kind : Ml_kind.t) with
@@ -174,13 +169,7 @@ let iter t ~f =
   Ml_kind.Dict.iteri t.source.files ~f:(fun kind -> Option.iter ~f:(f kind))
 
 let with_wrapper t ~main_module_name =
-  let lowercase_name n = Module_name.to_string n |> String.uncapitalize in
-  { t with
-    obj_name =
-      sprintf "%s__%s"
-        (lowercase_name main_module_name)
-        (Module_name.to_string t.source.name)
-  }
+  { t with obj_name = Module_name.wrap t.source.name ~with_:main_module_name }
 
 let map_files t ~f =
   let source =
@@ -196,7 +185,7 @@ let to_dyn { source; obj_name; pp; visibility; kind } =
   let open Dyn.Encoder in
   record
     [ ("source", Source.to_dyn source)
-    ; ("obj_name", string obj_name)
+    ; ("obj_name", Module_name.Obj.to_dyn obj_name)
     ; ("pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
@@ -236,13 +225,14 @@ module Obj_map = struct
   include Map.Make (struct
     type nonrec t = t
 
-    let compare m1 m2 = String.compare m1.obj_name m2.obj_name
+    let compare m1 m2 = Module_name.Obj.compare m1.obj_name m2.obj_name
 
     let to_dyn = to_dyn
   end)
 
-  let top_closure t =
-    Top_closure.String.top_closure ~key:obj_name ~deps:(find_exn t)
+  let top_closure =
+    let module T = Top_closure.Make (Module_name.Obj.Set) (Monad.Id) in
+    fun t -> T.top_closure ~key:obj_name ~deps:(find_exn t)
 end
 
 let encode
@@ -264,7 +254,7 @@ let encode
   in
   record_fields
     [ field "name" Module_name.encode name
-    ; field "obj_name" string obj_name
+    ; field "obj_name" Module_name.Obj.encode obj_name
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
@@ -279,7 +269,7 @@ let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields
     (let+ name = field "name" Module_name.decode
-     and+ obj_name = field "obj_name" string
+     and+ obj_name = field "obj_name" Module_name.Obj.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
      and+ impl = field_b "impl"
@@ -325,18 +315,22 @@ let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
 let generated ~src_dir name =
   let basename = String.uncapitalize (Module_name.to_string name) in
+  let obj_name = Module_name.Obj.of_name name in
   let source =
     let impl =
+      (* XXX should we use the obj_name here? *)
       File.make Dialect.ocaml (Path.relative src_dir (basename ^ ml_gen))
     in
     Source.make ~impl name
   in
-  of_source ~visibility:Public ~kind:Impl ~obj_name:basename source
+  of_source ~visibility:Public ~kind:Impl ~obj_name source
 
 let generated_alias ~src_dir name =
   let src_dir = Path.build src_dir in
   let t = generated ~src_dir name in
   { t with kind = Alias }
+
+let of_source ~visibility ~kind source = of_source ~visibility ~kind source
 
 module Name_map = struct
   type nonrec t = t Module_name.Map.t
@@ -362,9 +356,4 @@ module Name_map = struct
     List.map modules ~f:(fun m -> (name m, m)) |> Module_name.Map.of_list_exn
 
   let add t module_ = Module_name.Map.set t (name module_) module_
-
-  let by_obj =
-    Module_name.Map.fold ~init:Module_name.Map.empty ~f:(fun m acc ->
-        let obj = real_unit_name m in
-        Module_name.Map.add_exn acc obj m)
 end

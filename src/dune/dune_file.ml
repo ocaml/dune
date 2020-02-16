@@ -579,11 +579,14 @@ module Buildable = struct
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
 
-  let single_preprocess t =
-    if Per_module.is_constant t.preprocess then
-      Per_module.get t.preprocess (Module_name.of_string "")
-    else
-      Preprocess.No_preprocessing
+  let single_preprocess =
+    (* Any dummy module name works here *)
+    let dummy_name = Module_name.of_string "A" in
+    fun t ->
+      if Per_module.is_constant t.preprocess then
+        Per_module.get t.preprocess dummy_name
+      else
+        Preprocess.No_preprocessing
 end
 
 module Public_lib = struct

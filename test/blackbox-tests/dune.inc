@@ -1549,6 +1549,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias invalid-module-name)
+ (deps (package dune) (source_tree test-cases/invalid-module-name))
+ (action
+  (chdir
+   test-cases/invalid-module-name
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias js_of_ocaml)
  (deps (package dune) (source_tree test-cases/js_of_ocaml))
  (action
@@ -2818,6 +2828,7 @@
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias invalid-dune-package)
+  (alias invalid-module-name)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -3068,6 +3079,7 @@
   (alias installable-dup-private-libs)
   (alias intf-only)
   (alias invalid-dune-package)
+  (alias invalid-module-name)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)

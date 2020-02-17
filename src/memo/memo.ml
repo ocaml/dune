@@ -822,13 +822,18 @@ module Store = Store_intf
 
 let on_already_reported f = on_already_reported := f
 
-let lazy_ (type a) f =
+let lazy_ (type a) ?cutoff f =
+  let equal =
+    match cutoff with
+    | Some equal -> equal
+    | None -> ( == )
+  in
   let module Output = struct
     type t = a
 
     let to_dyn _ = Dyn.Opaque
 
-    let equal = ( == )
+    let equal = equal
   end in
   let id = Lazy_id.gen () in
   let name = sprintf "lazy-%d" (Lazy_id.to_int id) in
@@ -843,13 +848,18 @@ let lazy_ (type a) f =
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
 
-let lazy_async (type a) f =
+let lazy_async (type a) ?cutoff f =
+  let equal =
+    match cutoff with
+    | Some equal -> equal
+    | None -> ( == )
+  in
   let module Output = struct
     type t = a
 
     let to_dyn _ = Dyn.Opaque
 
-    let equal = ( == )
+    let equal = equal
   end in
   let id = Lazy_id.gen () in
   let name = sprintf "lazy-async-%d" (Lazy_id.to_int id) in
@@ -869,7 +879,7 @@ module Lazy = struct
 
   let of_val x () = x
 
-  let create f = lazy_ f
+  let create = lazy_
 
   let force f = f ()
 
@@ -884,7 +894,7 @@ module Lazy = struct
 
     let of_val a () = Fiber.return a
 
-    let create f = lazy_async f
+    let create = lazy_async
 
     let force f = f ()
 

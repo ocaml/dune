@@ -312,7 +312,12 @@ let%expect_test _ =
 Some [ ("id", "lazy: foo"); ("lazy_memo", "foo") ])
 |}]
 
-module Memo_lazy = Test_lazy (Memo.Lazy)
+module Memo_lazy = Test_lazy (struct
+  include Memo.Lazy
+
+  (* Here we hide the optional argument [cutoff] of [Memo.Lazy.create]. *)
+  let create f = create f
+end)
 
 let%expect_test _ =
   Memo_lazy.run () |> Dyn.Encoder.(pair string string) |> print_dyn;

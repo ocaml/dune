@@ -18,7 +18,8 @@ end
 
 module Map = Map.Make (Var)
 
-(* CR-soon amokhov: replace [mutable] with [Memo.Lazy]. *)
+(* The use of [mutable] here is safe, since we never call (back) to the
+   memoization framework when computing [unix]. *)
 type t =
   { vars : string Map.t
   ; mutable unix : string array option

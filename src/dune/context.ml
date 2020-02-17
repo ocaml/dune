@@ -35,41 +35,6 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
-let opam = Memo.Lazy.of_val (Bin.which ~path:(Env.path Env.initial) "opam")
-
-module Opam_config_var = struct
-  module Name = struct
-    include String
-
-    type t = string
-  end
-
-  module Value = struct
-    type t = string option
-
-    let to_dyn t = Dyn.Encoder.option String.to_dyn t
-
-    let equal x y = Option.equal String.equal x y
-  end
-
-  let read ~(kind : Kind.t) ~env (var : Name.t) : Value.t Fiber.t =
-    match var with
-    | "root" ->
-      Fiber.return
-        ( match kind with
-        | Opam { root; _ } -> root
-        | _ -> None )
-    | var -> (
-      match Memo.Lazy.force opam with
-      | None -> Fiber.return None
-      | Some fn -> (
-        Process.run_capture (Accept Predicate_lang.any) fn ~env
-          [ "config"; "var"; var ]
-        >>| function
-        | Ok s -> Some (String.trim s)
-        | Error _ -> None ) )
-end
-
 module T = struct
   type t =
     { name : Context_name.t
@@ -95,8 +60,7 @@ module T = struct
     ; findlib : Findlib.t
     ; findlib_toolchain : Context_name.t option
     ; arch_sixtyfour : bool
-    ; opam_config_var_memo :
-        (Opam_config_var.Name.t, Opam_config_var.Value.t) Memo.Async.t
+    ; install_prefix : Path.t Memo.Lazy.Async.t
     ; ocaml_config : Ocaml_config.t
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
@@ -149,6 +113,18 @@ include T
 let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
 let compare a b = Poly.compare a.name b.name
+
+let opam = Memo.Lazy.of_val (Bin.which ~path:(Env.path Env.initial) "opam")
+
+let read_opam_config_var ~env (var : string) : string option Fiber.t =
+  match Memo.Lazy.force opam with
+  | None -> Fiber.return None
+  | Some fn -> (
+    Process.run_capture (Accept Predicate_lang.any) fn ~env
+      [ "config"; "var"; var ]
+    >>| function
+    | Ok s -> Some (String.trim s)
+    | Error _ -> None )
 
 let best_prog dir prog =
   let fn = Path.relative dir (prog ^ Bin.exe) in
@@ -264,17 +240,6 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives =
-  (* CR-someday amokhov: Move this memoization table to the top level and share
-     it between different contexts. This requires finding a way to efficiently
-     check [Env.t] for equality. *)
-  let opam_config_var_memo =
-    Memo.create "opam-config-var-memo"
-      ~input:(module Opam_config_var.Name)
-      ~visibility:Hidden
-      ~output:(Allow_cutoff (module Opam_config_var.Value))
-      Async
-      (Opam_config_var.read ~kind ~env)
-  in
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -365,6 +330,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None -> []
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
+    let opam_config_var_lib =
+      Memo.Lazy.Async.create (fun () -> read_opam_config_var ~env "lib")
+    in
     let findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
       | Cross_compilation_using_findlib_toolchain toolchain ->
@@ -378,7 +346,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         let p = Path.relative p "lib" in
         Fiber.return (ocamlpath @ [ p ])
       | Opam1_environment -> (
-        Memo.exec opam_config_var_memo "lib" >>| function
+        Memo.Lazy.Async.force opam_config_var_lib >>| function
         | Some s -> ocamlpath @ [ Path.of_filename_relative_to_initial_cwd s ]
         | None -> Utils.program_not_found "opam" ~loc:None )
       | Unknown -> (
@@ -504,6 +472,13 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | None ->
         Error (Action.Prog.Not_found.create ~context:name ~program ~loc:None ())
     in
+    let ocaml_bin = dir in
+    let install_prefix =
+      Memo.Lazy.Async.create (fun () ->
+          Fiber.map (read_opam_config_var ~env "prefix") ~f:(function
+            | Some x -> Path.of_filename_relative_to_initial_cwd x
+            | None -> Path.parent_exn ocaml_bin))
+    in
     let t =
       { name
       ; implicit
@@ -520,7 +495,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Option.map
             (Env.get env "OCAML_TOPLEVEL_PATH")
             ~f:Path.of_filename_relative_to_initial_cwd
-      ; ocaml_bin = dir
+      ; ocaml_bin
       ; ocaml
       ; ocamlc
       ; ocamlopt
@@ -532,7 +507,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
       ; findlib_toolchain
       ; arch_sixtyfour
-      ; opam_config_var_memo
+      ; install_prefix
       ; stdlib_dir
       ; ocaml_config = ocfg
       ; version
@@ -592,8 +567,6 @@ let extend_paths t ~env =
     Env.Map.map ~f env
   in
   Env.extend ~vars env
-
-let opam_config_var t var = Memo.exec t.opam_config_var_memo var
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
     ~disable_dynamically_linked_foreign_archives =
@@ -816,11 +789,6 @@ module DB = struct
 end
 
 let which t s = which ~cache:t.which_cache ~path:t.path ~best_prog s
-
-let install_prefix t =
-  opam_config_var t "prefix" >>| function
-  | Some x -> Path.of_filename_relative_to_initial_cwd x
-  | None -> Path.parent_exn t.ocaml_bin
 
 let install_ocaml_libdir t =
   match (t.kind, t.findlib_toolchain, Setup.library_destdir) with

@@ -1,2 +1,4 @@
 (library
- (name xdg))
+ (name xdg)
+ (public_name dune-private-libs.xdg)
+ (synopsis "[Internal] XDG base directories specification implementation"))

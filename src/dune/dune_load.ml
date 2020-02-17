@@ -240,7 +240,7 @@ let load ~ancestor_vcs () =
                 ]))
   in
   let rec walk dir dune_files =
-    if File_tree.Dir.data_only dir then
+    if File_tree.Dir.status dir = Data_only then
       dune_files
     else
       let path = File_tree.Dir.path dir in

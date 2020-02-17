@@ -228,9 +228,7 @@ module Dir0 = struct
 
   let path t = t.path
 
-  let data_only t = t.status = Data_only
-
-  let vendored t = t.status = Vendored
+  let status t = t.status
 
   let files t = (contents t).files
 
@@ -534,9 +532,6 @@ let file_exists path =
   | Some dir -> String.Set.mem (Dir0.files dir) (Path.Source.basename path)
 
 let dir_exists path = Option.is_some (find_dir path)
-
-let dir_is_vendored path =
-  Option.map ~f:(fun dir -> Dir0.vendored dir) (find_dir path)
 
 module Dir = struct
   include Dir0

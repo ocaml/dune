@@ -229,7 +229,16 @@ let gen_rules sctx dir_contents cctxs
   in
   let allow_approx_merlin =
     let dune_project = Scope.project scope in
-    let dir_is_vendored = Super_context.dir_is_vendored src_dir in
+    let status =
+      let open Option.O in
+      let+ src_dir = File_tree.find_dir src_dir in
+      File_tree.Dir.status src_dir
+    in
+    let dir_is_vendored =
+      match status with
+      | Some Vendored -> true
+      | _ -> false
+    in
     dir_is_vendored || Dune_project.allow_approx_merlin dune_project
   in
   Option.iter (Merlin.merge_all ~allow_approx_merlin merlins) ~f:(fun m ->

@@ -1,27 +1,5 @@
 open! Stdune
 
-module Ccomp_type = struct
-  type t =
-    | Msvc
-    | Other of string
-
-  let to_dyn =
-    let open Dyn.Encoder in
-    function
-    | Msvc -> constr "Msvc" []
-    | Other s -> constr "Other" [ string s ]
-
-  let of_string = function
-    | "msvc" -> Msvc
-    | s -> Other s
-
-  let to_string = function
-    | Msvc -> "msvc"
-    | Other s -> s
-
-  let of_config ocfg = of_string (Ocaml_config.ccomp_type ocfg)
-end
-
 type t =
   { has_native : bool
   ; ext_lib : string
@@ -33,7 +11,7 @@ type t =
   ; natdynlink_supported : Dynlink_supported.By_the_os.t
   ; ext_dll : string
   ; stdlib_dir : Path.t
-  ; ccomp_type : Ccomp_type.t
+  ; ccomp_type : Ocaml_config.Ccomp_type.t
   }
 
 let var_map =
@@ -41,7 +19,7 @@ let var_map =
   ; ("system", fun t -> t.system)
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
-  ; ("ccomp_type", fun t -> Ccomp_type.to_string t.ccomp_type)
+  ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
   ]
 
 let allowed_in_enabled_if =

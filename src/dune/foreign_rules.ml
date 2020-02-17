@@ -103,7 +103,7 @@ let build_cxx_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let flags = Foreign.Source.flags src in
   let ctx = Super_context.context sctx in
   let output_param =
-    match ctx.ccomp_type with
+    match ctx.lib_config.ccomp_type with
     | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
     | Other _ -> [ A "-o"; Target dst ]
   in

@@ -85,7 +85,6 @@ type t = private
   ; ocaml_config : Ocaml_config.t
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
-  ; ccomp_type : Lib_config.Ccomp_type.t
   ; supports_shared_libraries : Dynlink_supported.By_the_os.t
   ; which_cache : (string, Path.t option) Table.t
   ; lib_config : Lib_config.t

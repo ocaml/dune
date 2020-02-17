@@ -64,7 +64,6 @@ module T = struct
     ; ocaml_config : Ocaml_config.t
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
-    ; ccomp_type : Lib_config.Ccomp_type.t
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
     ; which_cache : (string, Path.t option) Table.t
     ; lib_config : Lib_config.t
@@ -455,7 +454,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     let version = Ocaml_version.of_ocaml_config ocfg in
     let arch_sixtyfour = Ocaml_config.word_size ocfg = 64 in
     let ocamlopt = get_ocaml_tool "ocamlopt" in
-    let ccomp_type = Lib_config.Ccomp_type.of_config ocfg in
     let lib_config =
       { Lib_config.has_native = Result.is_ok ocamlopt
       ; ext_obj = Ocaml_config.ext_obj ocfg
@@ -468,7 +466,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; natdynlink_supported =
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
       ; stdlib_dir
-      ; ccomp_type
+      ; ccomp_type = Ocaml_config.ccomp_type ocfg
       }
     in
     if Option.is_some fdo_target_exe then
@@ -512,7 +510,6 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; stdlib_dir
       ; ocaml_config = ocfg
       ; version
-      ; ccomp_type
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool
             (Ocaml_config.supports_shared_libraries ocfg)
@@ -824,7 +821,7 @@ let best_mode t : Mode.t =
   | Error _ -> Byte
 
 let cc_g (ctx : t) =
-  match ctx.ccomp_type with
+  match ctx.lib_config.ccomp_type with
   | Msvc -> []
   | Other _ -> [ "-g" ]
 

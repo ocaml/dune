@@ -55,24 +55,24 @@ let%expect_test _ =
   [%expect
     {|
     { name = Some "foo"
-    ;
-    vars =
-      map
-        {
-        "requires" :
-          {
-          set_rules =
-            [ { var = "requires"; predicates = []; action = Set; value = "bar" }
-            ;
-            { var = "requires"
-            ; predicates = [ Pos "ppx_driver" ]
-            ; action = Set
-            ; value = "baz"
-            }
-            ]
-          ; add_rules = []
+    ; vars =
+        map
+          { "requires" :
+              { set_rules =
+                  [ { var = "requires"
+                    ; predicates = []
+                    ; action = Set
+                    ; value = "bar"
+                    }
+                  ; { var = "requires"
+                    ; predicates = [ Pos "ppx_driver" ]
+                    ; action = Set
+                    ; value = "baz"
+                    }
+                  ]
+              ; add_rules = []
+              }
           }
-        }
     ; subs = []
     } |}]
 
@@ -85,22 +85,18 @@ let%expect_test _ =
   print_dyn (Findlib.Config.to_dyn conf);
   [%expect
     {|
-    {
-    vars =
-      map
-        {
-        "FOO_BAR" :
-          {
-          set_rules =
-            [
-            { preds_required = set { 6; 7 }
-            ; preds_forbidden = set {}
-            ; value = "my variable"
-            }
-            ]
-          ; add_rules = []
+    { vars =
+        map
+          { "FOO_BAR" :
+              { set_rules =
+                  [ { preds_required = set { 6; 7 }
+                    ; preds_forbidden = set {}
+                    ; value = "my variable"
+                    }
+                  ]
+              ; add_rules = []
+              }
           }
-        }
     ; preds = set { 6 }
     } |}];
   print_dyn (Env.to_dyn (Findlib.Config.env conf));

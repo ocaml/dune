@@ -1,6 +1,6 @@
 open Stdune
 open Result.O
-open Dune_cache_intf
+open Cache_intf
 
 type t =
   { socket : out_channel

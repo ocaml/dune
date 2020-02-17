@@ -1,7 +1,7 @@
 module Log = Dune_util.Log
 open Stdune
 module Key = Key
-include Dune_cache_intf
+include Cache_intf
 
 type 'a result = ('a, string) Result.t
 

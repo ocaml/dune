@@ -1,6 +1,6 @@
 open Stdune
 open Result.O
-open Dune_cache_intf
+open Cache_intf
 include Messages_intf
 
 let invalid_args args =

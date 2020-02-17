@@ -1,0 +1,4 @@
+(library
+ (name cache_daemon)
+ (preprocess future_syntax)
+ (libraries threads.posix cache stdune))

@@ -1,4 +1,4 @@
-open Dune_cache_intf
+open Cache_intf
 open Stdune
 
 type version =

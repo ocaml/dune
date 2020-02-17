@@ -31,7 +31,7 @@ include Common.Let_syntax
 
 let make_cache (config : Config.t) =
   let make_cache () =
-    let handle (Dune_cache.Dedup file) =
+    let handle (Cache.Dedup file) =
       match Build_system.get_cache () with
       | None -> Code_error.raise "deduplication message and no caching" []
       | Some caching -> Scheduler.send_dedup caching.cache file
@@ -43,18 +43,17 @@ let make_cache (config : Config.t) =
         Result.ok_exn
           (Result.map_error
              ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
-             (Dune_cache.Local.make ?duplication_mode:config.cache_duplication
+             (Cache.Local.make ?duplication_mode:config.cache_duplication
                 handle))
       in
-      Dune_cache.make_caching (module Dune_cache.Local) cache
+      Cache.make_caching (module Cache.Local) cache
     | Daemon ->
       Log.info "enable binary cache in daemon mode";
       let cache =
         Result.ok_exn
-          (Dune_cache.Client.make ?duplication_mode:config.cache_duplication
-             handle)
+          (Cache.Client.make ?duplication_mode:config.cache_duplication handle)
       in
-      Dune_cache.make_caching (module Dune_cache.Client) cache
+      Cache.make_caching (module Cache.Client) cache
   in
   Fiber.return
     ( match config.cache_mode with

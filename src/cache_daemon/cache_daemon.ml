@@ -3,7 +3,7 @@ module Utils = Utils
 module Log = Dune_util.Log
 open Stdune
 open Utils
-open Dune_cache.Messages
+open Cache.Messages
 open Result.O
 
 type client =
@@ -12,7 +12,7 @@ type client =
   ; input : char Stream.t
   ; output : out_channel
   ; common_metadata : Sexp.t list
-  ; cache : Dune_cache.Local.t
+  ; cache : Cache.Local.t
   ; version : version
   }
 
@@ -26,7 +26,7 @@ let default_port_file () =
          regard, since if someone has access to this directory, it has access to
          the cache content, and having access to the socket does not make a
          difference. *)
-      Path.relative (Dune_cache.Local.default_root ()) "runtime"
+      Path.relative (Cache.Local.default_root ()) "runtime"
   in
   Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
@@ -70,7 +70,7 @@ module Clients = Map.Make (ClientsKey)
 
 type config =
   { exit_no_client : bool
-  ; duplication_mode : Dune_cache.Duplication_mode.t option
+  ; duplication_mode : Cache.Duplication_mode.t option
   }
 
 type event =
@@ -87,15 +87,15 @@ type t =
   ; mutable trim_thread : Thread.t option
   ; config : config
   ; events : event Evt.channel
-  ; cache : Dune_cache.Local.t
+  ; cache : Cache.Local.t
   }
 
 exception Error of string
 
 let make ?root ~config () : t =
   match
-    Dune_cache.Local.make ?root
-      ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
+    Cache.Local.make ?root ~duplication_mode:Cache.Duplication_mode.Hardlink
+      (fun _ -> ())
   with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok cache ->
@@ -127,7 +127,7 @@ let my_versions : version list = [ { major = 1; minor = 1 } ]
 let endpoint m = m.endpoint
 
 let client_handle version output = function
-  | Dune_cache.Dedup f -> send version output (Dedup f)
+  | Cache.Dedup f -> send version output (Dedup f)
 
 let client_thread (events, (client : client)) =
   try
@@ -136,22 +136,18 @@ let client_thread (events, (client : client)) =
       match msg with
       | Promote { duplication; repository; files; key; metadata } ->
         let+ () =
-          Dune_cache.Local.promote client.cache files key
+          Cache.Local.promote client.cache files key
             (metadata @ client.common_metadata)
             ~repository ~duplication
         in
         client
       | SetBuildRoot root ->
         Result.Ok
-          { client with
-            cache = Dune_cache.Local.set_build_dir client.cache root
-          }
+          { client with cache = Cache.Local.set_build_dir client.cache root }
       | SetCommonMetadata metadata ->
         Result.ok { client with common_metadata = metadata }
       | SetRepos repositories ->
-        let cache =
-          Dune_cache.Local.with_repositories client.cache repositories
-        in
+        let cache = Cache.Local.with_repositories client.cache repositories in
         Result.Ok { client with cache }
     in
     let input = client.input in
@@ -204,10 +200,10 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
       Unix.sleep period;
       let () =
         match
-          let size = Dune_cache.Local.size cache in
+          let size = Cache.Local.size cache in
           if size > max_size then (
             Log.infof "trimming %i bytes" (size - max_size);
-            Some (Dune_cache.Local.trim cache (size - max_size))
+            Some (Cache.Local.trim cache (size - max_size))
           ) else
             None
         with
@@ -282,8 +278,8 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
             ; common_metadata = []
             ; cache =
                 ( match
-                    Dune_cache.Local.make ?root:daemon.root
-                      ~duplication_mode:Dune_cache.Duplication_mode.Hardlink
+                    Cache.Local.make ?root:daemon.root
+                      ~duplication_mode:Cache.Duplication_mode.Hardlink
                       (client_handle version output)
                   with
                 | Result.Ok m -> m

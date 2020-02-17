@@ -1,5 +1,5 @@
 (library
- (name dune_cache)
+ (name cache)
  (public_name dune-private-libs.cache)
  (synopsis "[Internal] Dune binary artifact cache protocol")
  (preprocess future_syntax)

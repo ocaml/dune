@@ -114,9 +114,15 @@ let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
 let compare a b = Poly.compare a.name b.name
 
-let opam = Memo.Lazy.of_val (Bin.which ~path:(Env.path Env.initial) "opam")
+let opam = Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
 
 let read_opam_config_var ~env (var : string) : string option Fiber.t =
+  (* CR-soon amokhov: The current implementation of [Memo.Lazy] supports cutoff
+     only using physical equality, therefore the dependency on the [current_run]
+     here would cause recomputation even when variable values remain the same
+     between runs. One way to fix this is to expand the [Memo.Lazy] API to allow
+     taking a custom equality check. *)
+  let (_ : Memo.Run.t) = Memo.current_run () in
   match Memo.Lazy.force opam with
   | None -> Fiber.return None
   | Some fn -> (

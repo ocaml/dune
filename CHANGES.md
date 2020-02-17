@@ -2,8 +2,8 @@
 ------------------
 
 - Add a `:bundle` dependency type for packages. Such dependencies are never
-  filtered by `--only-packages` and are excluded from dune generated opam files.
-  (#3127, @rgrinberg)
+  filtered by `-p` or `--only-packages` and are excluded from dune generated
+  opam files. (#3127, @rgrinberg)
 
 2.3.0 (15/02/2020)
 ------------------

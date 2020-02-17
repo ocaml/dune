@@ -35,10 +35,16 @@ let is_valid_module_name name =
       true
     with Exit -> false )
 
-let of_string s =
+let parse_string s =
   if is_valid_module_name s then
-    String.capitalize s
+    Some (String.capitalize s)
   else
+    None
+
+let of_string s =
+  match parse_string s with
+  | Some s -> s
+  | None ->
     Code_error.raise "Module_name.of_string: invalid name"
       [ ("s", Dyn.Encoder.string s) ]
 

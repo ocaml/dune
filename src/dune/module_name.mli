@@ -11,6 +11,8 @@ val add_suffix : t -> string -> t
 
 val compare : t -> t -> Ordering.t
 
+val parse_string : string -> t option
+
 val of_string : string -> t
 
 val to_string : t -> string

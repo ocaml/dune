@@ -21,7 +21,6 @@ module Install = Dune.Install
 module Watermarks = Dune.Watermarks
 module Promotion = Dune.Promotion
 module Colors = Dune.Colors
-module Report_error = Dune.Report_error
 module Dune_project = Dune.Dune_project
 module Workspace = Dune.Workspace
 module Cached_digest = Dune.Cached_digest

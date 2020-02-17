@@ -1,7 +1,7 @@
 open Stdune
 module Config = Dune.Config
 module Colors = Dune.Colors
-module Clflags = Dune.Clflags
+module Clflags = Stdune.Clflags
 module Package = Dune.Package
 module Profile = Dune.Profile
 module Term = Cmdliner.Term

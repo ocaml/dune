@@ -1,5 +1,4 @@
 (** Error reporting *)
-open! Stdune
 
 (** Reports an error.
 
@@ -9,12 +8,18 @@ open! Stdune
     reported.
 
     We cache what is actually printed to the screen. *)
-val report : Exn_with_backtrace.t -> unit
+val report :
+     ?extra:(Loc0.t option -> User_message.Style.t Pp.t option)
+  -> Exn_with_backtrace.t
+  -> unit
 
 (** Raised for errors that have already been reported to the user and shouldn't
     be reported again. This might happen when trying to build a dependency that
     has already failed. *)
 exception Already_reported
+
+(** Clear the list of already reported errors. *)
+val clear_reported : unit -> unit
 
 (**/**)
 

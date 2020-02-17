@@ -1,3 +1,5 @@
+let on_error = Report_error.report
+
 open! Stdune
 open Import
 open Fiber.O
@@ -717,8 +719,7 @@ end = struct
 
   let run t f =
     let fiber =
-      Fiber.Var.set t_var t (fun () ->
-          Fiber.with_error_handler f ~on_error:Report_error.report)
+      Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
     match
       Fiber.run

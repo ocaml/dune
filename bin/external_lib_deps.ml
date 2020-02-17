@@ -141,6 +141,6 @@ let term =
         (setup, deps))
   in
   let failure = run ~by_dir ~setup ~lib_deps ~sexp ~only_missing in
-  if failure then raise Dune.Report_error.Already_reported
+  if failure then raise Stdune.Report_error.Already_reported
 
 let command = (term, info)

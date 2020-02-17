@@ -1,3 +1,9 @@
+2.4.0 (unreleased)
+------------------
+
+- Fix versioning of artifact variables (eg %{cmxa:...}), which were introduced
+  in 2.0, not 1.11. (#3149, @nojb)
+
 2.3.0 (15/02/2020)
 ------------------
 

@@ -26,29 +26,24 @@ module Deps = struct
     | File of string
     | Dir of string
 
-  let parse_one s =
-    match String.lsplit2 ~on:':' s with
-    | Some ("dir", dir) -> Ok (Dir dir)
-    | Some ("file", file) -> Ok (File file)
-    | Some (_, _)
-    | None ->
-      Result.errorf "Unknown 'ocaml-mdx deps' item: %s" s
-
-  let parse lines =
-    match lines with
-    | [ "" ] -> Ok []
-    | [ line ] ->
-      let items = String.split ~on:' ' line in
-      Result.List.map ~f:parse_one items
+  let parse_one sexp =
+    match (sexp : Sexp.t) with
+    | List [ Atom "dir"; Atom dir ] -> Ok (Dir dir)
+    | List [ Atom "file"; Atom file ] -> Ok (File file)
     | _ ->
-      Result.errorf
-        "Invalid 'ocaml-mdx deps' output should a single line with space \
-         separated items"
+      Result.errorf "Unknown 'ocaml-mdx deps' item: %s" (Sexp.to_string sexp)
+
+  let parse s =
+    match Csexp.parse_string s with
+    | Ok (List items) -> Result.List.map ~f:parse_one items
+    | Ok _ -> Result.errorf "Unsupported 'ocaml-mdx deps' output format"
+    | Error _ as err -> err
 
   let read (files : Files.t) =
     let open Build.O in
-    let+ lines = Build.lines_of (Path.build files.deps) in
-    match parse lines with
+    let path = Path.build files.deps in
+    let+ content = Build.contents path in
+    match parse content with
     | Ok deps -> deps
     | Error msg ->
       User_error.raise

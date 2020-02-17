@@ -1524,7 +1524,18 @@ end = struct
                reason is that enabling the cache will remove write permission
                because of hardlink sharing anyway, so always removing them
                enables to catch mistakes earlier. *)
-            let f (path, _) = Path.Build.chmod ~mode:0x222 ~op:`Remove path in
+            let f (path, _) =
+              (* FIXME: searching the dune version for each single target seems
+                 way suboptimal. This information could probably be stored in
+                 rules directly. *)
+              let _, src_dir = Path.Build.extract_build_context_dir_exn path in
+              let dir = File_tree.nearest_dir src_dir in
+              let version =
+                File_tree.Dir.project dir |> Dune_project.dune_version
+              in
+              if version >= (2, 4) then
+                Path.Build.chmod ~mode:0x222 ~op:`Remove path
+            in
             List.iter ~f targets
           in
           let dynamic_deps_stages =

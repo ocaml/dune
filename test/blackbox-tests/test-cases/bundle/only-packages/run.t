@@ -1,3 +1,6 @@
+This demonstrates that packages that are specified as :bundle dependencies are
+never filtered out by --only-packages (or -p).
+
   $ cat >dune-project <<EOF
   > (lang dune 2.3)
   > (package (name bundledlib))

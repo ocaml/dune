@@ -41,6 +41,17 @@ module Env_nodes : sig
     }
 end
 
+module Opam_config_var : sig
+  module Name : sig
+    type t = string
+  end
+
+  (* The [None] case means the variable is not set. *)
+  module Value : sig
+    type t = string option
+  end
+end
+
 type t = private
   { name : Context_name.t
   ; kind : Kind.t
@@ -81,7 +92,8 @@ type t = private
   ; findlib : Findlib.t
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; arch_sixtyfour : bool
-  ; opam_var_cache : (string, string) Table.t
+  ; opam_config_var_memo :
+      (Opam_config_var.Name.t, Opam_config_var.Value.t) Memo.Async.t
   ; ocaml_config : Ocaml_config.t
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
@@ -104,7 +116,8 @@ val compare : t -> t -> Ordering.t
 
 val which : t -> string -> Path.t option
 
-val opam_config_var : t -> string -> string option Fiber.t
+val opam_config_var :
+  t -> Opam_config_var.Name.t -> Opam_config_var.Value.t Fiber.t
 
 val install_prefix : t -> Path.t Fiber.t
 

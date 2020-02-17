@@ -8,11 +8,12 @@
 
     - opam switch contexts, where one opam switch correspond to one context
 
-    each context is built into a sub-directory of Path.build_dir (usually
+    each context is built into a sub-directory of [Path.build_dir] (usually
     _build):
 
-    - _build/default for the default context - _build/<switch> for other
-    contexts
+    - _build/default for the default context
+
+    - _build/<switch> for other contexts
 
     Dune is able to build simultaneously against several contexts. In particular
     this allow for simple cross-compilation: when an executable running on the
@@ -81,7 +82,7 @@ type t = private
   ; findlib : Findlib.t
   ; findlib_toolchain : Context_name.t option  (** Misc *)
   ; arch_sixtyfour : bool
-  ; opam_var_cache : (string, string) Table.t
+  ; install_prefix : Path.t Memo.Lazy.Async.t
   ; ocaml_config : Ocaml_config.t
   ; version : Ocaml_version.t
   ; stdlib_dir : Path.t
@@ -103,10 +104,6 @@ val to_dyn_concise : t -> Dyn.t
 val compare : t -> t -> Ordering.t
 
 val which : t -> string -> Path.t option
-
-val opam_config_var : t -> string -> string option Fiber.t
-
-val install_prefix : t -> Path.t Fiber.t
 
 val install_ocaml_libdir : t -> Path.t option Fiber.t
 

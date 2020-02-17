@@ -18,6 +18,8 @@ end
 
 module Map = Map.Make (Var)
 
+(* The use of [mutable] here is safe, since we never call (back) to the
+   memoization framework when computing [unix]. *)
 type t =
   { vars : string Map.t
   ; mutable unix : string array option
@@ -54,7 +56,7 @@ let of_unix arr =
          match String.lsplit2 s ~on:'=' with
          | None ->
            Code_error.raise
-             "Env.of_unix: entry without '=' found in the environ"
+             "Env.of_unix: entry without '=' found in the environment"
              [ ("var", String s) ]
          | Some (k, v) -> (k, v))
   |> Map.of_list_multi

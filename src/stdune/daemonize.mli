@@ -9,10 +9,10 @@
 
 (** Result of a daemonization *)
 type status =
-  | Started of string * int
+  | Started of string * Pid.t
       (** The daemon was started in the background with the given payload and
           pid *)
-  | Already_running of string * int
+  | Already_running of string * Pid.t
       (** The daemon is already running in the background with the given payload
           and pid *)
   | Finished  (** The daemon was run synchronously and exited. *)

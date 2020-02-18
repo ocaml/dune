@@ -17,7 +17,7 @@ val poll :
   -> 'a
 
 (** Wait for the following process to terminate *)
-val wait_for_process : int -> Unix.process_status Fiber.t
+val wait_for_process : Pid.t -> Unix.process_status Fiber.t
 
 (** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit

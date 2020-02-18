@@ -35,6 +35,43 @@ module Env_nodes = struct
       (Dune_env.Stanza.find env_nodes.workspace ~profile).env_vars
 end
 
+module Program = struct
+  module Name = String
+
+  module Which_path = struct
+    type t = Path.t option
+
+    let equal = Option.equal Path.equal
+
+    let to_dyn = Dyn.Encoder.option Path.to_dyn
+  end
+
+  let programs_for_which_we_prefer_opt_ext =
+    [ "ocaml"
+    ; "ocamlc"
+    ; "ocamldep"
+    ; "ocamlfind"
+    ; "ocamlmklib"
+    ; "ocamlobjinfo"
+    ; "ocamlopt"
+    ]
+
+  let best_path dir program =
+    let exe_path program =
+      let fn = Path.relative dir (program ^ Bin.exe) in
+      Option.some_if (Bin.exists fn) fn
+    in
+    if List.mem program ~set:programs_for_which_we_prefer_opt_ext then
+      match exe_path (program ^ ".opt") with
+      | None -> exe_path program
+      | Some _ as path -> path
+    else
+      exe_path program
+
+  let which ~path program =
+    List.find_map path ~f:(fun dir -> best_path dir program)
+end
+
 module T = struct
   type t =
     { name : Context_name.t
@@ -65,7 +102,7 @@ module T = struct
     ; version : Ocaml_version.t
     ; stdlib_dir : Path.t
     ; supports_shared_libraries : Dynlink_supported.By_the_os.t
-    ; which_cache : (string, Path.t option) Table.t
+    ; which : string -> Path.t option
     ; lib_config : Lib_config.t
     }
 
@@ -103,7 +140,6 @@ module T = struct
       ; ( "supports_shared_libraries"
         , Bool (Dynlink_supported.By_the_os.get t.supports_shared_libraries) )
       ; ("ocaml_config", Ocaml_config.to_dyn t.ocaml_config)
-      ; ("which", Table.to_dyn (option path) t.which_cache)
       ]
 end
 
@@ -125,21 +161,6 @@ let read_opam_config_var ~env (var : string) : string option Fiber.t =
     >>| function
     | Ok s -> Some (String.trim s)
     | Error _ -> None )
-
-let best_prog dir prog =
-  let fn = Path.relative dir (prog ^ Bin.exe) in
-  Option.some_if (Bin.exists fn) fn
-
-let best_prog_opt_ext dir prog =
-  let fn = Path.relative dir (prog ^ ".opt" ^ Bin.exe) in
-  if Bin.exists fn then
-    Some fn
-  else
-    best_prog dir prog
-
-let which ~cache ~path ~best_prog prog =
-  let which prog = List.find_map path ~f:(fun dir -> best_prog dir prog) in
-  Table.find_or_add cache prog ~f:which
 
 let ocamlpath_sep =
   if Sys.cygwin then
@@ -243,26 +264,31 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
-  let which_cache = Table.create (module String) 128 in
-  let best_prog = best_prog_opt_ext in
-  let which x = which ~best_prog ~cache:which_cache ~path x in
+  let which_memo =
+    Memo.create
+      (sprintf "which-memo-for-%s" (Context_name.to_string name))
+      ~input:(module Program.Name)
+      ~output:(Allow_cutoff (module Program.Which_path))
+      ~visibility:Hidden Sync (Program.which ~path)
+  in
+  let which = Memo.exec which_memo in
   let which_exn x =
     match which x with
     | None -> prog_not_found_in_path x
     | Some x -> x
   in
   let findlib_config_path =
-    lazy
-      (let fn = which_exn "ocamlfind" in
-       (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
-          contents of the variable, but "ocamlfind printconf conf" still prints
-          the configuration file set at the configuration time of ocamlfind,
-          sigh... *)
-       ( match Env.get env "OCAMLFIND_CONF" with
-       | Some s -> Fiber.return s
-       | None -> Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ]
-       )
-       >>| Path.of_filename_relative_to_initial_cwd)
+    Memo.lazy_async ~cutoff:Path.equal (fun () ->
+        let fn = which_exn "ocamlfind" in
+        (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
+           contents of the variable, but "ocamlfind printconf conf" still prints
+           the configuration file set at the configuration time of ocamlfind,
+           sigh... *)
+        ( match Env.get env "OCAMLFIND_CONF" with
+        | Some s -> Fiber.return s
+        | None ->
+          Process.run_capture_line ~env Strict fn [ "printconf"; "conf" ] )
+        >>| Path.of_filename_relative_to_initial_cwd)
   in
   let create_one ~(name : Context_name.t) ~implicit ~findlib_toolchain ~host
       ~merlin =
@@ -270,7 +296,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match findlib_toolchain with
       | None -> Fiber.return None
       | Some toolchain ->
-        let+ path = Lazy.force findlib_config_path in
+        let+ path = Memo.Lazy.Async.force findlib_config_path in
         let toolchain = Context_name.to_string toolchain in
         let context = Context_name.to_string name in
         Some (Findlib.Config.load path ~toolchain ~context)
@@ -280,8 +306,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       let* conf = findlib_config in
       let* s = Findlib.Config.get conf prog in
       match Filename.analyze_program_name s with
-      | In_path
+      | In_path -> which s
       | Relative_to_current_dir ->
+        (* CR-someday amokhov: This is a bug. Instead of searching for [s] in
+           PATH, we should search for it in the "current directory" whatever
+           this means. Perhaps, we should just fail with an error. This code
+           path is untested and is likely unused. *)
         which s
       | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
     in
@@ -298,7 +328,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match get_tool_using_findlib_config prog with
       | Some x -> Ok x
       | None -> (
-        match best_prog dir prog with
+        match Program.best_path dir prog with
         | Some p -> Ok p
         | None ->
           let hint =
@@ -514,7 +544,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; supports_shared_libraries =
           Dynlink_supported.By_the_os.of_bool
             (Ocaml_config.supports_shared_libraries ocfg)
-      ; which_cache
+      ; which
       ; lib_config
       }
     in
@@ -787,15 +817,13 @@ module DB = struct
         Memo.exec memo name
 end
 
-let which t s = which ~cache:t.which_cache ~path:t.path ~best_prog s
-
 let install_ocaml_libdir t =
   match (t.kind, t.findlib_toolchain, Setup.library_destdir) with
   | Default, None, Some d ->
     Fiber.return (Some (Path.of_filename_relative_to_initial_cwd d))
   | _ -> (
     (* If ocamlfind is present, it has precedence over everything else. *)
-    match which t "ocamlfind" with
+    match t.which "ocamlfind" with
     | Some fn ->
       let+ s =
         Process.run_capture_line ~env:t.env Strict fn [ "printconf"; "destdir" ]

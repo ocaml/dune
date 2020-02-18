@@ -16,7 +16,7 @@ module Bin = struct
       match String.Map.find t.local_bins name with
       | Some path -> Ok (Path.build path)
       | None -> (
-        match Context.which t.context name with
+        match t.context.which name with
         | Some p -> Ok p
         | None ->
           Error

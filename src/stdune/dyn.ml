@@ -71,7 +71,7 @@ let pp_sequence start stop x ~f =
               ( ( if i = 0 then
                   Pp.verbatim (start ^ " ")
                 else
-                  Pp.verbatim sep)
+                  Pp.verbatim sep )
               ++ f x ))
       ++ Pp.space ++ Pp.verbatim stop )
 

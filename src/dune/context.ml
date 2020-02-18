@@ -117,11 +117,6 @@ let compare a b = Poly.compare a.name b.name
 let opam = Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
 
 let read_opam_config_var ~env (var : string) : string option Fiber.t =
-  (* CR-soon amokhov: The current implementation of [Memo.Lazy] supports cutoff
-     only using physical equality, therefore the dependency on the [current_run]
-     here would cause recomputation even when variable values remain the same
-     between runs. One way to fix this is to expand the [Memo.Lazy] API to allow
-     taking a custom equality check. *)
   let (_ : Memo.Run.t) = Memo.current_run () in
   match Memo.Lazy.force opam with
   | None -> Fiber.return None
@@ -337,7 +332,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
     let opam_config_var_lib =
-      Memo.Lazy.Async.create (fun () -> read_opam_config_var ~env "lib")
+      Memo.lazy_async ~cutoff:(Option.equal String.equal) (fun () ->
+          read_opam_config_var ~env "lib")
     in
     let findlib_paths () =
       match Build_environment_kind.query ~kind ~findlib_toolchain ~env with
@@ -480,7 +476,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let ocaml_bin = dir in
     let install_prefix =
-      Memo.Lazy.Async.create (fun () ->
+      Memo.lazy_async ~cutoff:Path.equal (fun () ->
           Fiber.map (read_opam_config_var ~env "prefix") ~f:(function
             | Some x -> Path.of_filename_relative_to_initial_cwd x
             | None -> Path.parent_exn ocaml_bin))

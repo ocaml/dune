@@ -158,10 +158,8 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:default_files
-     and+ packages = field_o "packages" (repeat Package.Name.decode)
-     and+ preludes = field_o "preludes" (repeat Prelude.decode) in
-     let packages = Option.value ~default:[] packages in
-     let preludes = Option.value ~default:[] preludes in
+     and+ packages = field ~default:[] "packages" (repeat Package.Name.decode)
+     and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode) in
      { loc; files; packages; preludes })
 
 let () =

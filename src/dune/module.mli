@@ -45,6 +45,9 @@ val kind : t -> Kind.t
 
 val to_dyn : t -> Dyn.t
 
+(** When you initially construct a [t] using [of_source], it assumes no wrapping
+    (so reports an incorrect [obj_name] if wrapping is used) and you might need to fix
+    it later with [with_wrapper]. *)
 val of_source : visibility:Visibility.t -> kind:Kind.t -> Source.t -> t
 
 val name : t -> Module_name.t

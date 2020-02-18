@@ -91,20 +91,20 @@ module Unique = struct
 
   (* We make sure that obj's start with a lowercase letter to make it harder to
      confuse them with a proper module name *)
-  let of_name name = String.uncapitalize_ascii name
+  let of_name_assuming_needs_no_mangling name = String.uncapitalize_ascii name
 
   let to_name = of_string
 
   let encode = Dune_lang.Encoder.string
 
-  let of_string s = of_name (of_string s)
+  let of_string s = of_name_assuming_needs_no_mangling (of_string s)
 
   let decode =
     let open Dune_lang.Decoder in
     let+ s = Dune_lang.Decoder.string in
     of_string s
 
-  let of_path path =
+  let of_path_assuming_needs_no_mangling path =
     let fn = Path.basename path in
     of_string
       ( match String.index fn '.' with
@@ -119,4 +119,4 @@ module Unique = struct
   module Set = Set
 end
 
-let wrap t ~with_ = sprintf "%s__%s" (Unique.of_name with_) t
+let wrap t ~with_ = sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t

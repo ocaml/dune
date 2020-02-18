@@ -37,7 +37,7 @@ module Unique : sig
   (** We use [Unique] module names for OCaml unit names. These must be unique across all
       libraries within a given linkage, so these names often involve mangling on top of
       the user-written names because the user-written names are only unique within a
-      library when wrapping is used.
+      library.
 
       These are the names that are used for the .cmi and .cmx artifacts.
 
@@ -47,9 +47,9 @@ module Unique : sig
 
   val of_string : string -> t
 
-  val of_name : name -> t
+  val of_name_assuming_needs_no_mangling : name -> t
 
-  val of_path : Path.t -> t
+  val of_path_assuming_needs_no_mangling : Path.t -> t
 
   val to_dyn : t -> Dyn.t
 

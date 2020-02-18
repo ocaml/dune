@@ -6,7 +6,7 @@ type t =
   ; vlib_modules : Modules.t
   ; vlib_foreign_objects : Path.t list
   ; impl_cm_kind : Cm_kind.t
-  ; vlib_obj_map : Module.t Module_name.Obj.Map.t Lazy.t
+  ; vlib_obj_map : Module.t Module_name.Unique.Map.t Lazy.t
   }
 
 let vlib_modules t = t.vlib_modules
@@ -37,8 +37,8 @@ let make ~vlib ~impl ~vlib_modules ~vlib_foreign_objects =
       ( Modules.obj_map vlib_modules ~f:(function
           | Normal m -> m
           | _ -> assert false)
-      |> Module.Obj_map.fold ~init:Module_name.Obj.Map.empty ~f:(fun m acc ->
-             Module_name.Obj.Map.add_exn acc (Module.obj_name m) m) )
+      |> Module.Obj_map.fold ~init:Module_name.Unique.Map.empty ~f:(fun m acc ->
+             Module_name.Unique.Map.add_exn acc (Module.obj_name m) m) )
   in
   { impl; impl_cm_kind; vlib; vlib_modules; vlib_foreign_objects; vlib_obj_map }
 

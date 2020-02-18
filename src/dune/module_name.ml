@@ -80,7 +80,7 @@ let decode =
 
 module Per_item = Per_item.Make (T)
 
-module Obj = struct
+module Unique = struct
   module T = struct
     type nonrec t = string
 
@@ -113,10 +113,10 @@ module Obj = struct
 
   let to_dyn = to_dyn
 
-  let fname (t : t) ~ext = t ^ ext
+  let artifact_filename (t : t) ~ext = t ^ ext
 
   module Map = Map
   module Set = Set
 end
 
-let wrap t ~with_ = sprintf "%s__%s" (Obj.of_name with_) t
+let wrap t ~with_ = sprintf "%s__%s" (Unique.of_name with_) t

@@ -55,7 +55,7 @@ val pp_flags : t -> string list Build.t option
 
 val file : t -> ml_kind:Ml_kind.t -> Path.t option
 
-val obj_name : t -> Module_name.Obj.t
+val obj_name : t -> Module_name.Unique.t
 
 val iter : t -> f:(Ml_kind.t -> File.t -> unit) -> unit
 

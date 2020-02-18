@@ -286,7 +286,7 @@ module Module = struct
 
   let obj_file (type path) (t : path t) m ~kind ~ext : path =
     let visibility = Module.visibility m in
-    let obj_name = Module_name.Obj.fname (Module.obj_name m) ~ext in
+    let obj_name = Module_name.Unique.artifact_filename (Module.obj_name m) ~ext in
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 
@@ -309,7 +309,7 @@ module Module = struct
     let ext = Cm_kind.ext kind in
     let base = cm_public_dir t kind in
     let obj_name = Module.obj_name m in
-    let fname = Module_name.Obj.fname obj_name ~ext in
+    let fname = Module_name.Unique.artifact_filename obj_name ~ext in
     relative t base fname
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
@@ -340,7 +340,7 @@ module Module = struct
 
   let odoc t m =
     let obj_name = Module.obj_name m in
-    let basename = Module_name.Obj.fname obj_name ~ext:".odoc" in
+    let basename = Module_name.Unique.artifact_filename obj_name ~ext:".odoc" in
     relative t (odoc_dir t) basename
 
   module Dep = struct
@@ -353,7 +353,7 @@ module Module = struct
       | Transitive (m, ml_kind) ->
         let ext = sprintf ".%s.all-deps" (Ml_kind.to_string ml_kind) in
         let obj = Module.obj_name m in
-        Module_name.Obj.fname obj ~ext
+        Module_name.Unique.artifact_filename obj ~ext
   end
 
   let dep t dep =

@@ -31,12 +31,18 @@ val to_local_lib_name : t -> Lib_name.Local.t
 
 val decode : t Dune_lang.Decoder.t
 
-module Obj : sig
-  (** Object names are unique (within a library or executable) module names.
-      While they can always be converted to valid module names, they always
-      don't correspond names that users see. *)
+module Unique : sig
   type name
 
+  (** We use [Unique] module names for OCaml unit names. These must be unique across all
+      libraries within a given linkage, so these names often involve mangling on top of
+      the user-written names because the user-written names are only unique within a
+      library when wrapping is used.
+
+      These are the names that are used for the .cmi and .cmx artifacts.
+
+      Since [Unique] module names are sometimes mangled, they should not appear in any
+      user-facing messages or configuration files. *)
   type nonrec t
 
   val of_string : string -> t
@@ -51,7 +57,7 @@ module Obj : sig
 
   val compare : t -> t -> Ordering.t
 
-  val fname : t -> ext:string -> string
+  val artifact_filename : t -> ext:string -> string
 
   include Dune_lang.Conv.S with type t := t
 
@@ -61,7 +67,7 @@ module Obj : sig
 end
 with type name := t
 
-val wrap : t -> with_:t -> Obj.t
+val wrap : t -> with_:t -> Unique.t
 
 module Map : Map.S with type key = t
 

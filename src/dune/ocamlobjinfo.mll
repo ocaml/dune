@@ -1,20 +1,20 @@
 {
 open Stdune
 
-type t = Module_name.Obj.Set.t Ml_kind.Dict.t
+type t = Module_name.Unique.Set.t Ml_kind.Dict.t
 
-let to_dyn = Ml_kind.Dict.to_dyn Module_name.Obj.Set.to_dyn
+let to_dyn = Ml_kind.Dict.to_dyn Module_name.Unique.Set.to_dyn
 
 let empty =
   { Ml_kind.Dict.
-    intf = Module_name.Obj.Set.empty
-  ; impl = Module_name.Obj.Set.empty
+    intf = Module_name.Unique.Set.empty
+  ; impl = Module_name.Unique.Set.empty
   }
 
 let add_intf (t : t) i =
-  { t with intf = Module_name.Obj.Set.add t.intf (Module_name.Obj.of_string i) }
+  { t with intf = Module_name.Unique.Set.add t.intf (Module_name.Unique.of_string i) }
 let add_impl (t : t) i =
-  { t with impl = Module_name.Obj.Set.add t.impl (Module_name.Obj.of_string i) }
+  { t with impl = Module_name.Unique.Set.add t.impl (Module_name.Unique.of_string i) }
 }
 
 let newline = '\r'? '\n'

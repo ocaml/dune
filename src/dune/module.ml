@@ -109,7 +109,7 @@ end
 
 type t =
   { source : Source.t
-  ; obj_name : Module_name.Obj.t
+  ; obj_name : Module_name.Unique.t
   ; pp : string list Build.t option
   ; visibility : Visibility.t
   ; kind : Kind.t
@@ -150,7 +150,7 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
     | Some s -> s
     | None ->
       let file = Source.choose_file source in
-      Module_name.Obj.of_path file.path
+      Module_name.Unique.of_path file.path
   in
   { source; obj_name; pp = None; visibility; kind }
 
@@ -185,7 +185,7 @@ let to_dyn { source; obj_name; pp; visibility; kind } =
   let open Dyn.Encoder in
   record
     [ ("source", Source.to_dyn source)
-    ; ("obj_name", Module_name.Obj.to_dyn obj_name)
+    ; ("obj_name", Module_name.Unique.to_dyn obj_name)
     ; ("pp", (option string) (Option.map ~f:(fun _ -> "has pp") pp))
     ; ("visibility", Visibility.to_dyn visibility)
     ; ("kind", Kind.to_dyn kind)
@@ -225,13 +225,13 @@ module Obj_map = struct
   include Map.Make (struct
     type nonrec t = t
 
-    let compare m1 m2 = Module_name.Obj.compare m1.obj_name m2.obj_name
+    let compare m1 m2 = Module_name.Unique.compare m1.obj_name m2.obj_name
 
     let to_dyn = to_dyn
   end)
 
   let top_closure =
-    let module T = Top_closure.Make (Module_name.Obj.Set) (Monad.Id) in
+    let module T = Top_closure.Make (Module_name.Unique.Set) (Monad.Id) in
     fun t -> T.top_closure ~key:obj_name ~deps:(find_exn t)
 end
 
@@ -254,7 +254,7 @@ let encode
   in
   record_fields
     [ field "name" Module_name.encode name
-    ; field "obj_name" Module_name.Obj.encode obj_name
+    ; field "obj_name" Module_name.Unique.encode obj_name
     ; field "visibility" Visibility.encode visibility
     ; field_o "kind" Kind.encode kind
     ; field_b "impl" has_impl
@@ -269,7 +269,7 @@ let decode ~src_dir =
   let open Dune_lang.Decoder in
   fields
     (let+ name = field "name" Module_name.decode
-     and+ obj_name = field "obj_name" Module_name.Obj.decode
+     and+ obj_name = field "obj_name" Module_name.Unique.decode
      and+ visibility = field "visibility" Visibility.decode
      and+ kind = field_o "kind" Kind.decode
      and+ impl = field_b "impl"
@@ -315,7 +315,7 @@ let set_src_dir t ~src_dir = map_files t ~f:(fun _ -> File.set_src_dir ~src_dir)
 
 let generated ~src_dir name =
   let basename = String.uncapitalize (Module_name.to_string name) in
-  let obj_name = Module_name.Obj.of_name name in
+  let obj_name = Module_name.Unique.of_name name in
   let source =
     let impl =
       (* XXX should we use the obj_name here? *)

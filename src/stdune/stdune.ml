@@ -58,6 +58,7 @@ module User_warning = User_warning
 module Lexbuf = Lexbuf
 module Scanf = Scanf
 module Sys = Sys
+module Pid = Pid
 
 external reraise : exn -> _ = "%reraise"
 

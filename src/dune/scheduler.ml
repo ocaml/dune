@@ -3,7 +3,7 @@ open Import
 open Fiber.O
 
 type job =
-  { pid : int
+  { pid : Pid.t
   ; ivar : Unix.process_status Fiber.Ivar.t
   }
 
@@ -228,9 +228,9 @@ module File_watcher : sig
   val create : unit -> t
 
   (** Pid of the external file watcher process *)
-  val pid : t -> int
+  val pid : t -> Pid.t
 end = struct
-  type t = int
+  type t = Pid.t
 
   let pid t = t
 
@@ -404,7 +404,7 @@ end = struct
   module Process_table : sig
     val add : job -> unit
 
-    val remove : pid:int -> Unix.process_status -> unit
+    val remove : pid:Pid.t -> Unix.process_status -> unit
 
     val running_count : unit -> int
 
@@ -416,7 +416,7 @@ end = struct
 
     (* Invariant: [!running_count] is equal to the number of [Running _] values
        in [table]. *)
-    let table = Table.create (module Int) 128
+    let table = Table.create (module Pid) 128
 
     let running_count = ref 0
 
@@ -458,7 +458,7 @@ end = struct
   let killall signal =
     Mutex.lock mutex;
     Process_table.iter ~f:(fun job ->
-        try Unix.kill job.pid signal with Unix.Unix_error _ -> ());
+        try Unix.kill (Pid.to_int job.pid) signal with Unix.Unix_error _ -> ());
     Mutex.unlock mutex
 
   exception Finished of job * Unix.process_status
@@ -466,7 +466,7 @@ end = struct
   let wait_nonblocking_win32 () =
     try
       Process_table.iter ~f:(fun job ->
-          let pid, status = Unix.waitpid [ WNOHANG ] job.pid in
+          let pid, status = Unix.waitpid [ WNOHANG ] (Pid.to_int job.pid) in
           if pid <> 0 then raise_notrace (Finished (job, status)));
       false
     with Finished (job, status) ->
@@ -486,6 +486,7 @@ end = struct
     Mutex.unlock mutex;
     let pid, status = Unix.wait () in
     Mutex.lock mutex;
+    let pid = Pid.of_int pid in
     Process_table.remove ~pid status
 
   let wait =

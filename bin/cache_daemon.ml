@@ -47,7 +47,8 @@ let start ~config ~foreground ~port_path ~root ~display =
   | Result.Ok (Daemonize.Already_running (endpoint, _)) when not foreground ->
     show_endpoint endpoint
   | Result.Ok (Daemonize.Already_running (endpoint, pid)) ->
-    User_error.raise [ Pp.textf "already running on %s (PID %i)" endpoint pid ]
+    User_error.raise
+      [ Pp.textf "already running on %s (PID %i)" endpoint (Pid.to_int pid) ]
   | Result.Error reason -> User_error.raise [ Pp.text reason ]
 
 let stop ~port_path =

@@ -1,6 +1,6 @@
 type status =
-  | Started of string * int
-  | Already_running of string * int
+  | Started of string * Pid.t
+  | Already_running of string * Pid.t
   | Finished
 
 let retry ?message ?(count = 100) f =
@@ -134,8 +134,8 @@ let daemonize ?workdir ?(foreground = false) beacon
               Some (Io.read_all (Unix.in_channel_of_descr fd), pid)
             | _ -> None)
       in
-      Started (content, pid)
-  | Some (e, pid, _) -> Result.Ok (Already_running (e, pid))
+      Started (content, Pid.of_int pid)
+  | Some (e, pid, _) -> Result.Ok (Already_running (e, Pid.of_int pid))
 
 let stop beacon =
   let open Result.O in

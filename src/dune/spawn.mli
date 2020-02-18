@@ -14,4 +14,4 @@ val spawn :
   -> ?stdout:Unix.file_descr
   -> ?stderr:Unix.file_descr
   -> unit
-  -> int
+  -> Stdune.Pid.t

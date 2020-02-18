@@ -16,7 +16,7 @@ module Fd_count = struct
     let argv = [ prog; "-w"; "-p"; string_of_int (Unix.getpid ()) ] in
     let pid = Spawn.spawn ~prog ~argv ~stdout () in
     Unix.close stdout;
-    match Unix.waitpid [] pid with
+    match Unix.waitpid [] (Pid.to_int pid) with
     | _, Unix.WEXITED 0 ->
       let num_lines = List.length (Io.input_lines (open_in temp)) in
       This (num_lines - 1)

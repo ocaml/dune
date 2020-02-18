@@ -216,10 +216,11 @@ let gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza src =
   Super_context.add_rule sctx ~loc ~dir mdx_action;
   (* Attach the diff action to the @runtest for the src and corrected files *)
   let diff_action =
-    let+ () = Build.path (Path.build files.src)
-    and+ () = Build.path (Path.build files.corrected) in
-    Action.diff ~optional:false (Path.build files.src)
-      (Path.build files.corrected)
+    let src = Path.build files.src in
+    let corrected = Path.build files.corrected in
+    let+ () = Build.path src
+    and+ () = Build.path corrected in
+    Action.diff ~optional:false src corrected
   in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
     ~stamp:("mdx", files.src)

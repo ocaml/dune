@@ -77,7 +77,7 @@ let set_dirs c =
 
 let set_common_other ?log_file c ~targets =
   Console.init c.config.display;
-  Log.init () ?file:log_file;
+  Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces := c.debug_backtraces;

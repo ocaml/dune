@@ -1,4 +1,5 @@
 open Stdune
+module Log = Dune_util.Log
 module Context = Dune.Context
 module Build = Dune.Build
 module Build_system = Dune.Build_system

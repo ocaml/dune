@@ -1,5 +1,6 @@
 module Evt = Event
 module Utils = Utils
+module Log = Dune_util.Log
 open Stdune
 open Utils
 open Messages

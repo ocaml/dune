@@ -1,4 +1,5 @@
 (** Log file *)
+open Stdune
 
 module File : sig
   type t =

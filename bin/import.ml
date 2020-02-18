@@ -26,6 +26,7 @@ module Dune_project = Dune.Dune_project
 module Workspace = Dune.Workspace
 module Cached_digest = Dune.Cached_digest
 module Profile = Dune.Profile
+module Log = Dune_util.Log
 include Common.Let_syntax
 
 let make_cache (config : Config.t) =

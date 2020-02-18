@@ -1,4 +1,4 @@
 (library
  (name dune_tests_common)
  (modules dune_tests_common)
- (libraries stdune))
+ (libraries stdune dune_util))

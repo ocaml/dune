@@ -1,5 +1,6 @@
 open! Stdune
 include Stdune
+module Log = Dune_util.Log
 module Re = Dune_re
 
 (* To make bug reports usable *)

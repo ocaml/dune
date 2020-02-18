@@ -1,5 +1,3 @@
-open Stdune
-
 type t
 
 val workspace_file : t -> Arg.Path.t option
@@ -34,13 +32,14 @@ val prefix_target : t -> string -> string
     [set_common_other common ~targets]. In general, [set_common] executes
     sequence of side-effecting actions to initialize Dune's working environment
     based on the options determined in a [Common.t] record.contents. *)
-val set_common : ?log_file:Log.File.t -> t -> targets:Arg.Dep.t list -> unit
+val set_common :
+  ?log_file:Dune_util.Log.File.t -> t -> targets:Arg.Dep.t list -> unit
 
 (** [set_common_other common ~targets] sets all stateful values dictated by
     [common], except those accounted for by [set_dirs]. [targets] are used to
     obtain external library dependency hints, if needed. *)
 val set_common_other :
-  ?log_file:Log.File.t -> t -> targets:Arg.Dep.t list -> unit
+  ?log_file:Dune_util.Log.File.t -> t -> targets:Arg.Dep.t list -> unit
 
 (** [set_dirs common] sets the workspace root and build directories, and makes
     the root the current working directory *)

@@ -52,13 +52,33 @@ module Os_type = struct
     | Other s -> s
 end
 
+module Ccomp_type = struct
+  type t =
+    | Msvc
+    | Other of string
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Msvc -> constr "Msvc" []
+    | Other s -> constr "Other" [ string s ]
+
+  let of_string = function
+    | "msvc" -> Msvc
+    | s -> Other s
+
+  let to_string = function
+    | Msvc -> "msvc"
+    | Other s -> s
+end
+
 type t =
   { version : int * int * int
   ; version_string : string
   ; standard_library_default : string
   ; standard_library : string
   ; standard_runtime : string
-  ; ccomp_type : string
+  ; ccomp_type : Ccomp_type.t
   ; c_compiler : string
   ; ocamlc_cflags : string list
   ; ocamlopt_cflags : string list
@@ -207,7 +227,7 @@ let to_list t : (string * Value.t) list =
   ; ("standard_library_default", String t.standard_library_default)
   ; ("standard_library", String t.standard_library)
   ; ("standard_runtime", String t.standard_runtime)
-  ; ("ccomp_type", String t.ccomp_type)
+  ; ("ccomp_type", String (Ccomp_type.to_string t.ccomp_type))
   ; ("c_compiler", String t.c_compiler)
   ; ("ocamlc_cflags", Words t.ocamlc_cflags)
   ; ("ocamlopt_cflags", Words t.ocamlopt_cflags)
@@ -408,7 +428,7 @@ let make vars =
         (get_opt vars "standard_runtime")
         ~default:"the_standard_runtime_variable_was_deleted"
     in
-    let ccomp_type = get vars "ccomp_type" in
+    let ccomp_type = Ccomp_type.of_string (get vars "ccomp_type") in
     let bytecomp_c_libraries = get_words vars "bytecomp_c_libraries" in
     let native_c_libraries = get_words vars "native_c_libraries" in
     let cc_profile = get_words vars "cc_profile" in

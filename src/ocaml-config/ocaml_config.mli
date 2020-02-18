@@ -45,6 +45,16 @@ module Os_type : sig
   val to_string : t -> string
 end
 
+module Ccomp_type : sig
+  type t =
+    | Msvc
+    | Other of string
+
+  val to_dyn : t -> Dyn.t
+
+  val to_string : t -> string
+end
+
 (** Interpret raw bindings (this function also loads the [Makefile.config] file
     in the stdlib directory). *)
 val make : Vars.t -> (t, Origin.t * string) Result.t
@@ -64,7 +74,7 @@ val standard_library : t -> string
 
 val standard_runtime : t -> string
 
-val ccomp_type : t -> string
+val ccomp_type : t -> Ccomp_type.t
 
 val c_compiler : t -> string
 

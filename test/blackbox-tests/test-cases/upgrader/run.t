@@ -104,6 +104,7 @@ v1 -> v2
 
   $ cat partv2/partv1/dune-project
   (lang dune 2.0)
+  
   (name pouet)
   $ cat partv2/partv1/dune
   (include dune.inc)

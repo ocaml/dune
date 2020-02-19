@@ -339,9 +339,7 @@ let upgrade_to_v2 todo dir =
   let _project_root = Dune_project.root project in
   (* if project_root = File_tree.Dir.path dir ? *)
   Upgrader_v2.update_project_file todo project;
-  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.fname
-  then
-    Upgrader_v2.upgrade_file todo dir
+  Upgrader_v2.upgrade_dune_files todo dir
 
 type project_version =
   | Jbuild_project

@@ -59,6 +59,8 @@ module Lexbuf = Lexbuf
 module Scanf = Scanf
 module Sys = Sys
 module Pid = Pid
+module Applicative_intf = Applicative_intf
+module Applicative = Applicative
 
 external reraise : exn -> _ = "%reraise"
 

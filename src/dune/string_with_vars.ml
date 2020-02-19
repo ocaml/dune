@@ -229,68 +229,110 @@ end
 
 open Private
 
-let partial_expand :
-      'a.    t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list option expander
-      -> 'a Partial.t =
- fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
-  let commit_text acc_text acc =
-    let s = concat_rev acc_text in
-    if s = "" then
-      acc
-    else
-      Text s :: acc
-  in
-  let rec loop acc_text acc items =
-    match items with
-    | [] -> (
-      match acc with
-      | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
-      | _ ->
-        let template =
-          { template with parts = List.rev (commit_text acc_text acc) }
-        in
-        Unexpanded { template; syntax_version } )
-    | Text s :: items -> loop (s :: acc_text) acc items
-    | (Var var as it) :: items -> (
-      match f var syntax_version with
-      | Some (([] | _ :: _ :: _) as e) when not template.quoted ->
-        invalid_multivalue var e
-      | Some t -> loop (Value.L.concat ~dir t :: acc_text) acc items
-      | None -> loop [] (it :: commit_text acc_text acc) items )
-  in
-  match template.parts with
-  | [] -> Partial.Expanded (Mode.string mode "")
-  | [ Text s ] -> Expanded (Mode.string mode s)
-  | [ Var var ] when not template.quoted -> (
-    match f var syntax_version with
-    | None -> Partial.Unexpanded t
-    | Some e ->
-      Expanded
-        ( match Mode.value mode e with
-        | None -> invalid_multivalue var e
-        | Some s -> s ) )
-  | _ -> loop [] [] template.parts
+module type S = sig
+  type 'a app
 
-let expand t ~mode ~dir ~f =
-  match
-    partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
-        match f var syntax_version with
-        | None -> (
-          match var.syntax with
-          | Percent ->
-            if Var.is_macro var then
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown macro %s" (Var.describe var) ]
-            else
-              User_error.raise ~loc:var.loc
-                [ Pp.textf "Unknown variable %S" (Var.name var) ]
-          | Dollar_brace
-          | Dollar_paren ->
-            Some [ Value.String (string_of_var var) ] )
-        | s -> s)
-  with
-  | Partial.Expanded s -> s
-  | Unexpanded _ -> assert false
+  val expand :
+       t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:Value.t list option app expander
+    -> 'a app
+
+  val partial_expand :
+       t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:Value.t list option app expander
+    -> 'a Partial.t app
+end
+
+module Make (A : Applicative_intf.S1) = struct
+  (* We parameterize expansion over an applicative to be able to accumulate
+     dependencies as we expand. *)
+  module App = Applicative.Make (A)
+
+  let partial_expand :
+        'a.    t -> mode:'a Mode.t -> dir:Path.t
+        -> f:Value.t list option A.t expander -> 'a Partial.t A.t =
+   fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
+    match template.parts with
+    | [] -> A.return (Partial.Expanded (Mode.string mode ""))
+    | [ Text s ] -> A.return (Partial.Expanded (Mode.string mode s))
+    | [ Var var ] when not template.quoted -> (
+      let open App.O in
+      let+ exp = f var syntax_version in
+      match exp with
+      | None -> Partial.Unexpanded t
+      | Some e ->
+        Expanded
+          ( match Mode.value mode e with
+          | None -> invalid_multivalue var e
+          | Some s -> s ) )
+    | _ ->
+      let expanded_parts =
+        List.map template.parts ~f:(fun part ->
+            match part with
+            | Text s -> App.return (Text s)
+            | Var var -> (
+              let open App.O in
+              let+ exp = f var syntax_version in
+              match exp with
+              | Some (([] | _ :: _ :: _) as e) when not template.quoted ->
+                invalid_multivalue var e
+              | Some t -> Text (Value.L.concat ~dir t)
+              | None -> Var var ))
+      in
+      let open App.O in
+      let+ expanded = App.all expanded_parts in
+      let commit_text acc_text acc =
+        let s = concat_rev acc_text in
+        if s = "" then
+          acc
+        else
+          Text s :: acc
+      in
+      let rec loop acc_text acc items =
+        match items with
+        | [] -> (
+          match acc with
+          | [] -> Partial.Expanded (Mode.string mode (concat_rev acc_text))
+          | _ ->
+            let template =
+              { template with parts = List.rev (commit_text acc_text acc) }
+            in
+            Unexpanded { template; syntax_version } )
+        | Text s :: items -> loop (s :: acc_text) acc items
+        | it :: items -> loop [] (it :: commit_text acc_text acc) items
+      in
+      loop [] [] expanded
+
+  let expand t ~mode ~dir ~f =
+    let open App.O in
+    let+ exp =
+      partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
+          let+ exp = f var syntax_version in
+          match exp with
+          | None -> (
+            match var.syntax with
+            | Percent ->
+              if Var.is_macro var then
+                User_error.raise ~loc:var.loc
+                  [ Pp.textf "Unknown macro %s" (Var.describe var) ]
+              else
+                User_error.raise ~loc:var.loc
+                  [ Pp.textf "Unknown variable %S" (Var.name var) ]
+            | Dollar_brace
+            | Dollar_paren ->
+              Some [ Value.String (string_of_var var) ] )
+          | s -> s)
+    in
+    match exp with
+    | Partial.Expanded s -> s
+    | Unexpanded _ -> assert false
+end
+
+include Make (Applicative.Id)
 
 (* we are expanding every variable *)
 

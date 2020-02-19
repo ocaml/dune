@@ -36,3 +36,16 @@ Test optional executable
   Error: Library "does-not-exist" not found.
   Hint: try: dune external-lib-deps --missing @run-x
   [1]
+
+Reproduction case for a bug in dune < 2.4 where all executables where
+considered as optional:
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (public_name x)
+  >  (libraries does-not-exist))
+  > EOF
+
+The following command should fail because the executable is not optional:
+
+  $ dune build @install

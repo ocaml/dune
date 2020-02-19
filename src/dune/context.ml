@@ -301,11 +301,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       match Filename.analyze_program_name s with
       | In_path -> which s
       | Relative_to_current_dir ->
-        (* CR-someday amokhov: This is a bug. Instead of searching for [s] in
-           PATH, we should search for it in the "current directory" whatever
-           this means. Perhaps, we should just fail with an error. This code
-           path is untested and is likely unused. *)
-        which s
+        User_error.raise
+          [ Pp.textf
+              "The effective Findlib configuration specifies the relative path \
+               %S for the program %S. This is currently not supported."
+              s prog
+          ]
       | Absolute -> Some (Path.of_filename_relative_to_initial_cwd s)
     in
     let ocamlc =

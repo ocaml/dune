@@ -4,6 +4,8 @@
 - Fix versioning of artifact variables (eg %{cmxa:...}), which were introduced
   in 2.0, not 1.11. (#3149, @nojb)
 
+- Fix a bug causing all executables to be considered as optional (#3163, @diml)
+
 2.3.0 (15/02/2020)
 ------------------
 

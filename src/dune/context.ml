@@ -47,14 +47,7 @@ module Program = struct
   end
 
   let programs_for_which_we_prefer_opt_ext =
-    [ "ocaml"
-    ; "ocamlc"
-    ; "ocamldep"
-    ; "ocamlfind"
-    ; "ocamlmklib"
-    ; "ocamlobjinfo"
-    ; "ocamlopt"
-    ]
+    [ "ocamlc"; "ocamldep"; "ocamlmklib"; "ocamlobjinfo"; "ocamlopt" ]
 
   let best_path dir program =
     let exe_path program =

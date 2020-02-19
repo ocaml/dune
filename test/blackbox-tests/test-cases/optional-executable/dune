@@ -1,8 +1,0 @@
-(executable
- (public_name x)
- (libraries does-not-exist)
- (optional))
-
-(rule
- (alias run-x)
- (action (run %{exe:x.exe})))

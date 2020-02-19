@@ -115,7 +115,7 @@ struct
     let chunk_size = 65536 in
     let buffer = Buffer.create chunk_size in
     let rec loop () =
-      Buffer.add_channel buffer t 65536;
+      Buffer.add_channel buffer t chunk_size;
       loop ()
     in
     try loop () with

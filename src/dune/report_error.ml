@@ -1,3 +1,5 @@
+open Stdune
+
 let () = Hooks.End_of_build.always Stdune.Report_error.clear_reported
 
 let report (e : Stdune.Exn_with_backtrace.t) =

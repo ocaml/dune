@@ -9,8 +9,8 @@ let local_libraries =
   ; ("src/dag", Some "Dag", false, None)
   ; ("src/fiber", Some "Fiber", false, None)
   ; ("src/memo", Some "Memo", false, None)
-  ; ("src/xdg", Some "Xdg", false, None)
   ; ("src/dune_util", Some "Dune_util", false, None)
+  ; ("src/xdg", Some "Xdg", false, None)
   ; ("src/cache", Some "Cache", false, None)
   ; ("src/cache_daemon", Some "Cache_daemon", false, None)
   ; ("vendor/re/src", Some "Dune_re", false, None)
@@ -22,6 +22,7 @@ let local_libraries =
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("src/dune", Some "Dune", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
-  ; ("otherlibs/build-info/src", Some "Build_info", false,
-    Some "build_info_data")
+  ;
+  ("otherlibs/build-info/src", Some "Build_info", false,
+  Some "build_info_data")
   ]

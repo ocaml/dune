@@ -1,4 +1,5 @@
 open Cache_intf
+open Stdune
 
 include Cache
 

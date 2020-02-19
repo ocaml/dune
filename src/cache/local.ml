@@ -1,3 +1,4 @@
+open Dune_util
 open Stdune
 open Result.O
 open Cache_intf

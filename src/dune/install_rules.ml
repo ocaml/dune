@@ -146,6 +146,7 @@ end = struct
       | Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
+        not exes.optional || (
         let compile_info =
           let dune_version = Scope.project scope |> Dune_project.dune_version in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
@@ -155,7 +156,7 @@ end = struct
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             ~variants:exes.variants ~optional:exes.optional
         in
-        Result.is_ok (Lib.Compile.direct_requires compile_info)
+        Result.is_ok (Lib.Compile.direct_requires compile_info))
       | Dune_file.Coq.T d -> Option.is_some d.package
       | _ -> false )
       stanza

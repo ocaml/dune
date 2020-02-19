@@ -34,7 +34,8 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
      in
      Build.write_file_dyn ml code);
   let cctx =
-    Compilation_context.for_module_generated_at_link_time cctx ~requires ~module_
+    Compilation_context.for_module_generated_at_link_time cctx ~requires
+      ~module_
   in
   Module_compilation.build_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)

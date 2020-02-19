@@ -119,4 +119,5 @@ module Unique = struct
   module Set = Set
 end
 
-let wrap t ~with_ = sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t
+let wrap t ~with_ =
+  sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t

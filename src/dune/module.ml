@@ -150,8 +150,8 @@ let of_source ?obj_name ~visibility ~(kind : Kind.t) (source : Source.t) =
     | Some s -> s
     | None ->
       let file = Source.choose_file source in
-      (* CR-someday aalekseyev: seems fragile to assume no mangling
-         without any indication by the caller. *)
+      (* CR-someday aalekseyev: seems fragile to assume no mangling without any
+         indication by the caller. *)
       Module_name.Unique.of_path_assuming_needs_no_mangling file.path
   in
   { source; obj_name; pp = None; visibility; kind }

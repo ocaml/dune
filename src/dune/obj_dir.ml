@@ -286,7 +286,9 @@ module Module = struct
 
   let obj_file (type path) (t : path t) m ~kind ~ext : path =
     let visibility = Module.visibility m in
-    let obj_name = Module_name.Unique.artifact_filename (Module.obj_name m) ~ext in
+    let obj_name =
+      Module_name.Unique.artifact_filename (Module.obj_name m) ~ext
+    in
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 

@@ -48,9 +48,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let cinaps_ml =
     Module.source ~ml_kind:Ml_kind.Impl module_
-    |> Option.value_exn
-    |> Module.File.path
-    |> Path.as_in_build_dir_exn
+    |> Option.value_exn |> Module.File.path |> Path.as_in_build_dir_exn
   in
   let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   (* Files checked by cinaps *)

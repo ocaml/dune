@@ -34,15 +34,15 @@ val decode : t Dune_lang.Decoder.t
 module Unique : sig
   type name
 
-  (** We use [Unique] module names for OCaml unit names. These must be unique across all
-      libraries within a given linkage, so these names often involve mangling on top of
-      the user-written names because the user-written names are only unique within a
-      library.
+  (** We use [Unique] module names for OCaml unit names. These must be unique
+      across all libraries within a given linkage, so these names often involve
+      mangling on top of the user-written names because the user-written names
+      are only unique within a library.
 
       These are the names that are used for the .cmi and .cmx artifacts.
 
-      Since [Unique] module names are sometimes mangled, they should not appear in any
-      user-facing messages or configuration files. *)
+      Since [Unique] module names are sometimes mangled, they should not appear
+      in any user-facing messages or configuration files. *)
   type nonrec t
 
   val of_string : string -> t

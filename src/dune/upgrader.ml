@@ -2,43 +2,6 @@ open! Stdune
 open Import
 open Upgrader_common
 
-(* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
-   the files in includes, recursiverly *)
-let scan_included_files path =
-  let files = ref Path.Source.Map.empty in
-  let rec iter path =
-    if not (Path.Source.Map.mem !files path) then (
-      let s = Io.read_file (Path.source path) in
-      let csts =
-        Dune_lang.Parser.parse_string s
-          ~fname:(Path.Source.to_string path)
-          ~lexer:Jbuild_support.Lexer.token ~mode:Cst
-        |> List.map ~f:(Dune_lang.Cst.fetch_legacy_comments ~file_contents:s)
-      in
-      let comments = Dune_lang.Cst.extract_comments csts in
-      let sexps = List.filter_map csts ~f:Dune_lang.Cst.abstract in
-      files := Path.Source.Map.set !files path (sexps, comments);
-      List.iter sexps ~f:(function
-        | Dune_lang.Ast.List
-            ( _
-            , [ Atom (_, A "include")
-              ; (Atom (loc, A fn) | Quoted_string (loc, fn))
-              ] ) ->
-          let dir = Path.Source.parent_exn path in
-          let included_file = Path.Source.relative dir fn in
-          if not (Path.exists (Path.source included_file)) then
-            User_error.raise ~loc
-              [ Pp.textf "File %s doesn't exist."
-                  (Path.Source.to_string_maybe_quoted included_file)
-              ];
-          iter included_file
-        | _ -> ())
-    )
-  in
-  iter path;
-  !files
-
-
 let rename_basename base =
   match String.drop_prefix base ~prefix:File_tree.Dune_file.jbuild_fname with
   | None -> base
@@ -362,18 +325,23 @@ let upgrade_to_v1 todo dir =
         ; Pp.text "You need to upgrade it manually."
         ]
     else
-      let files = scan_included_files fn in
+      let files = Upgrader_common.scan_included_files fn
+        ~lexer:Jbuild_support.Lexer.token
+      in
       Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
 
 
 let upgrade_to_v2 todo dir =
-  let open Upgrader_v2 in
   Dune_project.default_dune_language_version := (2, 0);
   let project = File_tree.Dir.project dir in
   let _project_root = Dune_project.root project in
-  update_project_file todo project
+  (* if project_root = File_tree.Dir.path dir ? *)
+  Upgrader_v2.update_project_file todo project;
+  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.fname
+  then
+    Upgrader_v2.upgrade_file todo dir
 
 type project_version =
   | Jbuild_project

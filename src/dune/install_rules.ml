@@ -141,11 +141,14 @@ end = struct
     Option.some_if
       ( match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+        (not lib.optional)
+        || Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
       | Dune_file.Documentation _
       | Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
+        (not exes.optional)
+        ||
         let compile_info =
           let dune_version = Scope.project scope |> Dune_project.dune_version in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)

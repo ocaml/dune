@@ -1,4 +1,23 @@
 Test optional executable
+========================
+
+  $ cat >dune <<EOF
+  > (executable
+  >  (public_name x)
+  >  (libraries does-not-exist)
+  >  (optional))
+  > 
+  > (rule
+  >  (alias run-x)
+  >  (action (run %{exe:x.exe})))
+  > EOF
+
+  $ cat >dune-project <<EOF
+  > (lang dune 2.0)
+  > (package (name x))
+  > EOF
+
+  $ touch x.ml
 
   $ dune build @install
 

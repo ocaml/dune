@@ -112,18 +112,14 @@ struct
   (* This function is a copy&paste from Jane Street's [Stdio.In_channel.input_all]. *)
   let read_all t =
     (* We use 65536 because that is the size of OCaml's IO buffers. *)
-    let buf_size = 65536 in
-    let buf = Bytes.create buf_size in
-    let buffer = Buffer.create buf_size in
+    let chunk_size = 65536 in
+    let buffer = Buffer.create chunk_size in
     let rec loop () =
-      let len = input t buf 0 (Bytes.length buf) in
-      if len > 0 then begin
-        Buffer.add_subbytes buffer buf 0 len;
-        loop ();
-      end
+      Buffer.add_channel buffer t 65536;
+      loop ()
     in
-    loop ();
-    Buffer.contents buffer;
+    try loop () with
+    | End_of_file -> Buffer.contents buffer
   ;;
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary

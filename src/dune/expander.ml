@@ -164,38 +164,29 @@ let expand_artifact ~dir ~loc t a s =
       in
       Ok [ Value.Path (Path.build archive) ] )
 
+(* This expansion function only expands the most "static" variables and macros.
+   These are all known without building anything, evaluating any dune files, and
+   they do not introduce any dependencies. *)
+let static_expand ({ ocaml_config; bindings; dir; scope; artifacts_dynamic; _ } as t)
+      var syntax_version =
+  let open Option.O in
+  let* expand = Pform.Map.expand bindings var syntax_version in
+  match expand with
+  | Pform.Expansion.Var (Values l) -> Some (static l)
+  | Macro (Ocaml_config, s) ->
+    Some (static (expand_ocaml_config (Lazy.force ocaml_config) var s))
+  | Macro (Env, s) -> Option.map ~f:static (expand_env t var s)
+  | Macro (Version, s) -> Some (static (expand_version scope var s))
+  | Var Project_root ->
+    Some (static [ Value.Dir (Path.build (Scope.root scope)) ])
+  | Macro (Artifact a, s) when not artifacts_dynamic ->
+    let loc = String_with_vars.Var.loc var in
+    let open Option.O in
+    let+ v = expand_artifact ~dir ~loc t a s in
+    Result.bind v ~f:static
+  | expansion -> Some (Ok (Dynamic expansion))
+
 let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
-  let expand_var
-      ( { bindings
-        ; ocaml_config
-        ; env = _
-        ; scope
-        ; hidden_env = _
-        ; dir
-        ; bin_artifacts_host = _
-        ; expand_var = _
-        ; lib_artifacts = _
-        ; c_compiler = _
-        ; lookup_module = _
-        ; lookup_library = _
-        ; artifacts_dynamic
-        } as t ) var syntax_version =
-    Pform.Map.expand bindings var syntax_version
-    |> Option.bind ~f:(function
-         | Pform.Expansion.Var (Values l) -> Some (static l)
-         | Macro (Ocaml_config, s) ->
-           Some (static (expand_ocaml_config (Lazy.force ocaml_config) var s))
-         | Macro (Env, s) -> Option.map ~f:static (expand_env t var s)
-         | Macro (Version, s) -> Some (static (expand_version scope var s))
-         | Var Project_root ->
-           Some (static [ Value.Dir (Path.build (Scope.root scope)) ])
-         | Macro (Artifact a, s) when not artifacts_dynamic ->
-           let loc = String_with_vars.Var.loc var in
-           let open Option.O in
-           let+ v = expand_artifact ~dir ~loc t a s in
-           Result.bind v ~f:static
-         | expansion -> Some (Ok (Dynamic expansion)))
-  in
   let ocaml_config = lazy (make_ocaml_config context.ocaml_config) in
   let dir = context.build_dir in
   let bindings = Pform.Map.create ~context in
@@ -209,7 +200,7 @@ let make ~scope ~(context : Context.t) ~lib_artifacts ~bin_artifacts_host =
   ; scope
   ; lib_artifacts
   ; bin_artifacts_host
-  ; expand_var
+  ; expand_var = static_expand
   ; c_compiler
   ; artifacts_dynamic = false
   ; lookup_module = None

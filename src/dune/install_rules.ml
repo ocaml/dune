@@ -141,7 +141,8 @@ end = struct
     Option.some_if
       ( match (stanza : Stanza.t) with
       | Dune_file.Library lib ->
-        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
+        not lib.optional || (
+        Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib))
       | Dune_file.Documentation _
       | Dune_file.Install _ ->
         true

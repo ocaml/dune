@@ -109,9 +109,22 @@ struct
           };
         f lb)
 
-  let read_all ic =
-    let len = in_channel_length ic in
-    really_input_string ic len
+  (* This function is a copy&paste from Jane Street's [Stdio.In_channel.input_all]. *)
+  let read_all t =
+    (* We use 65536 because that is the size of OCaml's IO buffers. *)
+    let buf_size = 65536 in
+    let buf = Bytes.create buf_size in
+    let buffer = Buffer.create buf_size in
+    let rec loop () =
+      let len = input t buf 0 (Bytes.length buf) in
+      if len > 0 then begin
+        Buffer.add_subbytes buffer buf 0 len;
+        loop ();
+      end
+    in
+    loop ();
+    Buffer.contents buffer;
+  ;;
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 

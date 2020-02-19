@@ -10,7 +10,7 @@ end
 
 type t =
   { dir : Path.Build.t
-  ; inherit_from : t Lazy.t option
+  ; inherit_from : t Memo.Lazy.t option
   ; scope : Scope.t
   ; config : Dune_env.Stanza.t
   ; mutable local_binaries : File_binding.Expanded.t list option
@@ -49,7 +49,7 @@ let rec local_binaries t ~profile ~expander =
     let default =
       match t.inherit_from with
       | None -> []
-      | Some (lazy t) -> local_binaries t ~profile ~expander
+      | Some t -> local_binaries (Memo.Lazy.force t) ~profile ~expander
     in
     let local_binaries =
       default
@@ -69,7 +69,7 @@ let rec external_ t ~profile ~default =
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> external_ t ~default ~profile
+      | Some t -> external_ (Memo.Lazy.force t) ~default ~profile
     in
     let env, have_binaries =
       let cfg = find_config t ~profile in
@@ -92,7 +92,7 @@ let rec bin_artifacts t ~profile ~default ~expander =
     let default =
       match t.inherit_from with
       | None -> default
-      | Some (lazy t) -> bin_artifacts t ~default ~profile ~expander
+      | Some t -> bin_artifacts (Memo.Lazy.force t) ~default ~profile ~expander
     in
     let bin_artifacts =
       local_binaries t ~profile ~expander
@@ -111,7 +111,7 @@ let rec ocaml_flags t ~profile ~expander =
         let project = Scope.project t.scope in
         let dune_version = Dune_project.dune_version project in
         Ocaml_flags.default ~profile ~dune_version
-      | Some (lazy t) -> ocaml_flags t ~profile ~expander
+      | Some t -> ocaml_flags (Memo.Lazy.force t) ~profile ~expander
     in
     let flags =
       let cfg = find_config t ~profile in
@@ -135,7 +135,7 @@ let rec inline_tests t ~profile =
             Enabled
           else
             Disabled
-        | Some (lazy t) -> inline_tests t ~profile )
+        | Some t -> inline_tests (Memo.Lazy.force t) ~profile )
       | { inline_tests = Some s; _ } -> s
     in
     t.inline_tests <- Some state;
@@ -148,8 +148,9 @@ let rec foreign_flags t ~profile ~expander ~default_context_flags =
     let default =
       match t.inherit_from with
       | None -> Foreign.Language.Dict.map ~f:Build.return default_context_flags
-      | Some (lazy t) ->
-        foreign_flags t ~profile ~expander ~default_context_flags
+      | Some t ->
+        foreign_flags (Memo.Lazy.force t) ~profile ~expander
+          ~default_context_flags
     in
     let flags =
       let cfg = find_config t ~profile in
@@ -168,7 +169,7 @@ let rec menhir_flags t ~profile ~expander =
     let default =
       match t.inherit_from with
       | None -> Build.return []
-      | Some (lazy t) -> menhir_flags t ~profile ~expander
+      | Some t -> menhir_flags (Memo.Lazy.force t) ~profile ~expander
     in
     let flags =
       let cfg = find_config t ~profile in

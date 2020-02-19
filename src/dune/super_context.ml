@@ -10,7 +10,7 @@ module Env_context = struct
     ; profile : Profile.t
     ; scopes : Scope.DB.t
     ; context_env : Env.t
-    ; default_env : Env_node.t lazy_t
+    ; default_env : Env_node.t Memo.Lazy.t
     ; stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t
     ; host : t option
     ; build_dir : Path.Build.t
@@ -49,7 +49,7 @@ type t =
   ; external_lib_deps_mode : bool
   ; (* Env node that represent the environment configured for the workspace. It
        is used as default at the root of every project in the workspace. *)
-    default_env : Env_node.t Lazy.t
+    default_env : Env_node.t Memo.Lazy.t
   ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
@@ -150,7 +150,7 @@ end = struct
           else
             match Path.Build.parent dir with
             | None -> raise_notrace Exit
-            | Some parent -> lazy (get t ~dir:parent ~scope)
+            | Some parent -> Memo.lazy_ (fun () -> get t ~dir:parent ~scope)
         in
         let config = get_env_stanza t ~dir in
         Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
@@ -465,8 +465,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   in
   let env = Table.create (module Path.Build) 128 in
   let default_env =
-    lazy
-      (let make ~inherit_from ~config =
+    Memo.lazy_ (fun () ->
+        let make ~inherit_from ~config =
          let dir = context.build_dir in
          Env_node.make ~dir
            ~scope:(Scope.DB.find_by_dir scopes dir)
@@ -475,8 +475,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
        make ~config:context.env_nodes.context
          ~inherit_from:
            (Some
-              ( lazy
-                (make ~inherit_from:None ~config:context.env_nodes.workspace) )))
+               (Memo.lazy_ (fun () ->
+                    make ~inherit_from:None ~config:context.env_nodes.workspace))))
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in

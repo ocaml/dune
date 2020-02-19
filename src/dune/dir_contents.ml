@@ -214,10 +214,24 @@ let coq_modules_of_library t ~name =
 
 let modules_of_files ~dialects ~dir ~files =
   let dir = Path.build dir in
-  let make_module dialect base fn =
-    (Module_name.of_string base, Module.File.make dialect (Path.relative dir fn))
-  in
   let impl_files, intf_files =
+    let make_module dialect name fn =
+      (name, Module.File.make dialect (Path.relative dir fn))
+    in
+    let parse_name_or_warn ~fn s =
+      match Module_name.parse_string s with
+      | Some _ as s -> s
+      | None ->
+        User_warning.emit ~loc:(Loc.in_dir dir)
+          [ Pp.textf
+              "The following source file corresponds to an invalid module name:"
+          ; Pp.textf "- %s" fn
+          ; Pp.textf
+              "This module is ignored by dune. If it's used to generate a \
+               module source, consider picking a different extension."
+          ];
+        None
+    in
     String.Set.to_list files
     |> List.filter_partition_map ~f:(fun fn ->
            (* we aren't using Filename.extension because we want to handle
@@ -226,9 +240,14 @@ let modules_of_files ~dialects ~dir ~files =
            | None -> Skip
            | Some (s, ext) -> (
              match Dialect.DB.find_by_extension dialects ("." ^ ext) with
-             | Some (dialect, Ml_kind.Impl) -> Left (make_module dialect s fn)
-             | Some (dialect, Ml_kind.Intf) -> Right (make_module dialect s fn)
-             | None -> Skip ))
+             | None -> Skip
+             | Some (dialect, ml_kind) -> (
+               match parse_name_or_warn ~fn s with
+               | None -> Skip
+               | Some name -> (
+                 match ml_kind with
+                 | Impl -> Left (make_module dialect name fn)
+                 | Intf -> Right (make_module dialect name fn) ) ) ))
   in
   let parse_one_set (files : (Module_name.t * Module.File.t) list) =
     match Module_name.Map.of_list files with

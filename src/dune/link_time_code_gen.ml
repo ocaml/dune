@@ -12,9 +12,9 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
   let sctx = CC.super_context cctx in
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
-  let name = Module_name.of_string basename in
-  let wrapped = Result.ok_exn (Lib.wrapped lib) in
   let module_ =
+    let name = Module_name.of_string basename in
+    let wrapped = Result.ok_exn (Lib.wrapped lib) in
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
     let gen_module = Module.generated ~src_dir name in
     match wrapped with
@@ -33,20 +33,8 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
        |> Option.value_exn |> Path.as_in_build_dir_exn
      in
      Build.write_file_dyn ml code);
-  let opaque =
-    Ocaml_version.supports_opaque_for_mli (Super_context.context sctx).version
-  in
-  let modules = Modules.singleton_exe module_ in
   let cctx =
-    Compilation_context.create ~super_context:sctx
-      ~expander:(Compilation_context.expander cctx)
-      ~scope:(Compilation_context.scope cctx)
-      ~obj_dir ~modules ~requires_compile:requires
-      ~requires_link:(lazy requires)
-      ~flags:Ocaml_flags.empty ~opaque ~js_of_ocaml:None
-      ~dynlink:(Compilation_context.dynlink cctx)
-      ~package:(Compilation_context.package cctx)
-      ()
+    Compilation_context.for_module_generated_at_link_time cctx ~requires ~module_
   in
   Module_compilation.build_module
     ~dep_graphs:(Dep_graph.Ml_kind.dummy module_)

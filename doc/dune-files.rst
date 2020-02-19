@@ -1309,10 +1309,16 @@ Fields supported in ``<settings>`` are:
 
 - ``(menhir_flags <flags>))`` to specify flags for menhir stanzas.
 
-- ``(binaries <filepath> (<filepath> as <name>))``. This will make the binary at
-  ``<filepath>`` as ``<name>``. If the ``<name>`` isn't provided, then it will
-  be inferred from the basename of ``<filepath>`` by dropping the ``.exe``
-  suffix if it exists.
+- ``(binaries <binaries>)`` where ``<binaries>`` is a list of entries
+  of the form ``(<filepath> as <name>)``. ``(<filepath> as <name>)``
+  makes the binary ``<filepath>`` available in the command search as
+  just ``<name>``. For instance in a ``(run <name> ...)`` action
+  ``<name>`` will resolve to this file path. You can also write just
+  the file path, in which case the name will be inferred from the
+  basename of ``<filepath>`` by dropping the ``.exe`` suffix if it
+  exists. For instance ``(binaries bin/foo.exe (bin/main.exe as
+  bar))`` would add the commands ``foo`` and ``bar`` to the search
+  path.
 
 - ``(inline_tests <state>)`` where state is either ``enabled``, ``disabled`` or
   ``ignored``. This field is available since Dune 1.11. It controls the value

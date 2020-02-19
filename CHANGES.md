@@ -7,6 +7,8 @@
 - Fix a bug introduced in 2.3.0 where dune insists on using `fswatch` on linux 
   (even when `inotifywait` is available). (#3162, @aalekseyev)
 
+- Fix a bug causing all executables to be considered as optional (#3163, @diml)
+
 2.3.0 (15/02/2020)
 ------------------
 

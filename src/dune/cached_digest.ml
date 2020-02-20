@@ -90,15 +90,19 @@ let set fn digest =
   let stat = Path.stat fn in
   set_with_stat fn digest stat
 
-let refresh fn =
-  let stat = Path.stat fn in
-  let digest = Digest.file_with_stats fn stat in
-  set_with_stat fn digest stat;
+let refresh_ stats fn =
+  let digest = Digest.file_with_stats fn stats in
+  set_with_stat fn digest stats;
   digest
 
+let refresh fn =
+  let stats = Path.stat fn in
+  refresh_ stats fn
+
 let refresh_and_chmod fn =
-  Path.chmod ~mode:0o222 ~op:`Remove fn;
-  refresh fn
+  let stats = Path.stat fn in
+  Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn;
+  refresh_ stats fn
 
 let peek_file fn =
   let cache = Lazy.force cache in

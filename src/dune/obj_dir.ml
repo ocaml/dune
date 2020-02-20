@@ -286,7 +286,9 @@ module Module = struct
 
   let obj_file (type path) (t : path t) m ~kind ~ext : path =
     let visibility = Module.visibility m in
-    let obj_name = Module.obj_name m ^ ext in
+    let obj_name =
+      Module_name.Unique.artifact_filename (Module.obj_name m) ~ext
+    in
     let dir = cm_dir t kind visibility in
     relative t dir obj_name
 
@@ -309,7 +311,8 @@ module Module = struct
     let ext = Cm_kind.ext kind in
     let base = cm_public_dir t kind in
     let obj_name = Module.obj_name m in
-    relative t base (obj_name ^ ext)
+    let fname = Module_name.Unique.artifact_filename obj_name ~ext in
+    relative t base fname
 
   let cm_public_file (type path) (t : path t) m ~(kind : Cm_kind.t) :
       path option =
@@ -338,7 +341,8 @@ module Module = struct
     obj_file t m ~kind:Cmi ~ext
 
   let odoc t m =
-    let basename = Module.obj_name m ^ ".odoc" in
+    let obj_name = Module.obj_name m in
+    let basename = Module_name.Unique.artifact_filename obj_name ~ext:".odoc" in
     relative t (odoc_dir t) basename
 
   module Dep = struct
@@ -349,8 +353,9 @@ module Module = struct
     let basename = function
       | Immediate f -> Path.basename (Module.File.path f) ^ ".d"
       | Transitive (m, ml_kind) ->
-        sprintf "%s.%s.all-deps" (Module.obj_name m)
-          (Ml_kind.choose ml_kind ~intf:"intf" ~impl:"impl")
+        let ext = sprintf ".%s.all-deps" (Ml_kind.to_string ml_kind) in
+        let obj = Module.obj_name m in
+        Module_name.Unique.artifact_filename obj ~ext
   end
 
   let dep t dep =

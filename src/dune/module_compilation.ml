@@ -287,10 +287,13 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
     Modules.for_alias modules |> Module_name.Map.values
     |> List.map ~f:(fun (m : Module.t) ->
            let name = Module_name.to_string (Module.name m) in
+           let obj_name_as_module =
+             Module.obj_name m |> Module_name.Unique.to_name
+             |> Module_name.to_string
+           in
            sprintf "(** @canonical %s.%s *)\nmodule %s = %s\n"
              (Module_name.to_string main_module_name)
-             name name
-             (Module_name.to_string (Module.real_unit_name m)))
+             name name obj_name_as_module)
     |> String.concat ~sep:"\n"
   in
   Super_context.add_rule ~loc sctx ~dir

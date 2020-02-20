@@ -114,12 +114,11 @@ struct
     let chunk_size = 65536 in
     (* Generic function for channels such that seeking is unsupported or broken *)
     let read_all_generic t buffer =
-      try
-        while true do
-          Buffer.add_channel buffer t chunk_size
-        done;
-        assert false
-      with End_of_file -> Buffer.contents buffer
+      let rec loop () =
+        Buffer.add_channel buffer t chunk_size;
+        loop ()
+      in
+      try loop () with End_of_file -> Buffer.contents buffer
     in
     fun t ->
       (* Optimisation for regular files: if the channel supports seeking, we

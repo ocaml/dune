@@ -1344,15 +1344,20 @@ let temp_dir ?(temp_dir = get_temp_dir_name ()) ?(mode = 0o700) prefix suffix =
 let rename old_path new_path =
   Sys.rename (to_string old_path) (to_string new_path)
 
-let chmod ~mode ?(op = `Set) path =
+let chmod ~mode ?(stats = None) ?(op = `Set) path =
   let mode =
     match op with
     | `Set -> mode
-    | `Add ->
-      let stat = stat path in
-      stat.st_perm lor mode
+    | `Add
     | `Remove ->
-      let stat = stat path in
-      stat.st_perm land lnot mode
+      let stats =
+        match stats with
+        | Some stats -> stats
+        | None -> stat path
+      in
+      if Stdlib.( = ) op `Add then
+        stats.st_perm lor mode
+      else
+        stats.st_perm land lnot mode
   in
   Unix.chmod (to_string path) mode

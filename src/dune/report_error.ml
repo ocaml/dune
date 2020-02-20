@@ -2,12 +2,12 @@ open Stdune
 
 let () = Hooks.End_of_build.always Stdune.Report_error.clear_reported
 
-let report (e : Stdune.Exn_with_backtrace.t) =
+let report (e : Exn_with_backtrace.t) =
   let exn, dependency_path = Dep_path.unwrap_exn e.exn in
-  let extra (loc : Stdune.Loc.t option) =
+  let extra (loc : Loc.t option) =
     let dependency_path =
       let dependency_path = Option.value dependency_path ~default:[] in
-      if !Stdune.Clflags.debug_dep_path then
+      if !Clflags.debug_dep_path then
         dependency_path
       else
         (* Only keep the part that doesn't come from the build system *)

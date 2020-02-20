@@ -7,9 +7,12 @@
     keep a cache of reported errors and ignore errors that have already been
     reported.
 
-    We cache what is actually printed to the screen. *)
+    We cache what is actually printed to the screen.
+
+    [extra] is the extra material that is printed between the backtrace and the
+    hint. *)
 val report :
-     ?extra:(Loc0.t option -> User_message.Style.t Pp.t option)
+     ?extra:(Loc.t option -> User_message.Style.t Pp.t option)
   -> Exn_with_backtrace.t
   -> unit
 

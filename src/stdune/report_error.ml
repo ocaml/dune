@@ -87,7 +87,7 @@ let buf = Buffer.create 128
 
 let ppf = Format.formatter_of_buffer buf
 
-let report ?extra { Exn_with_backtrace.exn; backtrace } =
+let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
   match exn with
   | Already_reported -> ()
   | _ ->
@@ -111,8 +111,7 @@ let report ?extra { Exn_with_backtrace.exn; backtrace } =
       if p.backtrace || !Clflags.debug_backtraces then
         Format.fprintf ppf "Backtrace:\n%s"
           (Printexc.raw_backtrace_to_string backtrace);
-      Option.bind ~f:(fun f -> f loc) extra
-      |> Option.iter ~f:(Format.fprintf ppf "%a@\n" render);
+      Option.iter (extra loc) ~f:(Format.fprintf ppf "%a@\n" render);
       Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
       Format.pp_print_flush ppf ();
       let s = Buffer.contents buf in

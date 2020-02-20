@@ -167,4 +167,22 @@ let for_alias_module t =
   ; sandbox
   }
 
+let for_module_generated_at_link_time cctx ~requires ~module_ =
+  let opaque =
+    (* Cmi's of link time generated modules are compiled with -opaque, hence
+       their implementation must also be compiled with -opaque *)
+    let ctx = Super_context.context cctx.super_context in
+    Ocaml_version.supports_opaque_for_mli ctx.version
+  in
+  (* [modules] adds the wrong prefix "dune__exe__" but it's not used anyway *)
+  let modules = Modules.singleton_exe module_ in
+  { cctx with
+    opaque
+  ; js_of_ocaml = None
+  ; flags = Ocaml_flags.empty
+  ; requires_link = lazy requires
+  ; requires_compile = requires
+  ; modules
+  }
+
 let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }

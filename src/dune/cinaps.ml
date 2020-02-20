@@ -11,12 +11,14 @@ type t =
   ; flags : Ocaml_flags.Spec.t
   }
 
+let name = "cinaps"
+
 type Stanza.t += T of t
 
 let syntax =
-  Dune_lang.Syntax.create ~name:"cinaps" ~desc:"the cinaps extension" [ (1, 0) ]
+  Dune_lang.Syntax.create ~name ~desc:"the cinaps extension" [ (1, 0) ]
 
-let alias = Alias.(make (Name.of_string "cinaps"))
+let alias = Alias.make (Alias.Name.of_string name)
 
 let decode =
   let open Dune_lang.Decoder in
@@ -35,15 +37,20 @@ let decode =
 let () =
   let open Dune_lang.Decoder in
   Dune_project.Extension.register_simple syntax
-    (return [ ("cinaps", decode >>| fun x -> [ T x ]) ])
+    (return [ (name, decode >>| fun x -> [ T x ]) ])
 
 let gen_rules sctx t ~dir ~scope =
   let loc = t.loc in
-  let name = "cinaps" in
-  let cinaps_dir = Path.Build.relative dir ".cinaps" in
-  let cinaps_ml = Path.Build.relative cinaps_dir "_cinaps.ml-gen" in
-  let cinaps_exe = Path.Build.relative cinaps_dir "cinaps.exe" in
-  let main_module_name = Module_name.of_string "_cinaps" in
+  let cinaps_dir = Path.Build.relative dir ("." ^ name) in
+  let main_module_name = Module_name.of_string name in
+  let module_ =
+    Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
+  in
+  let cinaps_ml =
+    Module.source ~ml_kind:Ml_kind.Impl module_
+    |> Option.value_exn |> Module.File.path |> Path.as_in_build_dir_exn
+  in
+  let cinaps_exe = Path.Build.relative cinaps_dir (name ^ ".exe") in
   (* Files checked by cinaps *)
   let cinapsed_files =
     File_tree.files_of (Path.Build.drop_build_context_exn dir)
@@ -60,13 +67,13 @@ let gen_rules sctx t ~dir ~scope =
   (* Ask cinaps to produce a .ml file to build *)
   Super_context.add_rule sctx ~loc:t.loc ~dir
     (Command.run ~dir:(Path.build dir)
-       (Super_context.resolve_program sctx ~dir ~loc:(Some loc) "cinaps"
+       (Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
           ~hint:"opam pin add --dev cinaps")
        [ A "-staged"
        ; Target cinaps_ml
        ; Deps (List.map cinapsed_files ~f:Path.build)
        ]);
-  let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name:"cinaps" in
+  let obj_dir = Obj_dir.make_exe ~dir:cinaps_dir ~name in
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
@@ -74,9 +81,6 @@ let gen_rules sctx t ~dir ~scope =
       ~preprocessor_deps:t.preprocessor_deps ~lib_name:None ~scope
   in
   let modules =
-    let module_ =
-      Module.generated main_module_name ~src_dir:(Path.build cinaps_dir)
-    in
     Modules.singleton_exe module_
     |> Modules.map_user_written ~f:(Preprocessing.pp_module preprocess)
   in
@@ -114,7 +118,7 @@ let gen_rules sctx t ~dir ~scope =
                   (Path.extend_basename fn ~suffix:".cinaps-corrected")) ))
   in
   let cinaps_alias = alias ~dir in
-  Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:"cinaps"
+  Super_context.add_alias_action sctx ~dir ~loc:(Some loc) ~stamp:name
     cinaps_alias
     (Build.with_no_targets action);
   let stamp_file =

@@ -18,6 +18,7 @@
  (name dune)
  ; The "depends" and "build" field are written in dune.opam.template
  (conflicts
+  (dune-configurator (< 2.3.0))
   (odoc (< 1.3.0))
   (dune-release (< 1.3.0))
   (jbuilder (= transition)))

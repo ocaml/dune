@@ -114,14 +114,24 @@ val fold_vars : t -> init:'a -> f:(Var.t -> 'a -> 'a) -> 'a
 
 type 'a expander = Var.t -> Dune_lang.Syntax.Version.t -> 'a
 
-val expand :
-  t -> mode:'a Mode.t -> dir:Path.t -> f:Value.t list option expander -> 'a
+module type S = sig
+  type 'a app
 
-val partial_expand :
-     t
-  -> mode:'a Mode.t
-  -> dir:Path.t
-  -> f:Value.t list option expander
-  -> 'a Partial.t
+  val expand :
+       t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:Value.t list option app expander
+    -> 'a app
+
+  val partial_expand :
+       t
+    -> mode:'a Mode.t
+    -> dir:Path.t
+    -> f:Value.t list option app expander
+    -> 'a Partial.t app
+end
+
+include S with type 'a app := 'a
 
 val remove_locs : t -> t

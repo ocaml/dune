@@ -298,7 +298,11 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
                 let src =
                   Path.build (Obj_dir.Module.obj_file obj_dir m ~kind ~ext)
                 in
-                let dst = Path.Build.relative dir (Module.obj_name m ^ ext) in
+                let obj_name = Module.obj_name m in
+                let fname =
+                  Module_name.Unique.artifact_filename obj_name ~ext
+                in
+                let dst = Path.Build.relative dir fname in
                 Super_context.add_rule sctx ~dir (Build.copy ~src ~dst)));
   let top_sorted_modules =
     Dep_graph.top_closed_implementations dep_graphs.impl impl_only

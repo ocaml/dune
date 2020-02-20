@@ -27,6 +27,7 @@ homepage: "https://github.com/ocaml/dune"
 doc: "https://dune.readthedocs.io/"
 bug-reports: "https://github.com/ocaml/dune/issues"
 conflicts: [
+  "dune-configurator" {< "2.3.0"}
   "odoc" {< "1.3.0"}
   "dune-release" {< "1.3.0"}
   "jbuilder" {= "transition"}

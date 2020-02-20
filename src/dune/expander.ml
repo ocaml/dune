@@ -584,9 +584,7 @@ let expand_ddeps_and_bindings
     ~(dynamic_expansions : Value.t list Pform.Expansion.Map.t)
     ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var syntax_version
     =
-  let key =
-    Pform.Map.expand t.bindings var syntax_version |> Option.value_exn
-  in
+  let key = Pform.Map.expand_exn t.bindings var syntax_version in
   ( match Pform.Expansion.Map.find dynamic_expansions key with
   | Some v -> Some v
   | None ->

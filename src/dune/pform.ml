@@ -408,6 +408,23 @@ module Map = struct
       Option.map (expand t.macros ~syntax_version ~pform) ~f:(fun x ->
           Expansion.Macro (x, payload))
 
+  let to_dyn { vars; macros } =
+    let open Dyn.Encoder in
+    record
+      [ ("vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars)
+      ; ("macros", String.Map.to_dyn (to_dyn Macro.to_dyn) macros)
+      ]
+
+  let expand_exn t pform syntax_version =
+    match expand t pform syntax_version with
+    | Some v -> v
+    | None ->
+      Code_error.raise "Pform.Map.expand_exn"
+        [ ("t", to_dyn t)
+        ; ("pform", String_with_vars.Var.to_dyn pform)
+        ; ("syntax_version", Dune_lang.Syntax.Version.to_dyn syntax_version)
+        ]
+
   let empty = { vars = String.Map.empty; macros = String.Map.empty }
 
   let singleton k v =
@@ -443,11 +460,4 @@ module Map = struct
 
   let to_stamp { vars; macros } : stamp =
     (String.Map.to_list vars, String.Map.to_list macros)
-
-  let to_dyn { vars; macros } =
-    let open Dyn.Encoder in
-    record
-      [ ("vars", String.Map.to_dyn (to_dyn Var.to_dyn) vars)
-      ; ("macros", String.Map.to_dyn (to_dyn Macro.to_dyn) macros)
-      ]
 end

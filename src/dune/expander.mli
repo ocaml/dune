@@ -11,8 +11,6 @@ open Stdune
 
 type t
 
-val bindings : t -> Pform.Map.t
-
 val scope : t -> Scope.t
 
 val dir : t -> Path.Build.t
@@ -102,6 +100,9 @@ module Targets : sig
     | Forbidden of string  (** context *)
 end
 
+(** An expander that attempts an expansion where instead of substituting for
+    forms that require targets to be built, we record them into the passed
+    [Resolve_forms.t] value *)
 val with_record_deps :
      t
   -> Resolved_forms.t
@@ -121,6 +122,8 @@ val with_record_no_ddeps :
        (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
   -> t
 
+(** After recording dynamic dependencies, and then building them, we may use
+    them to create a new expander that will fully substitute the action. *)
 val add_ddeps_and_bindings :
      t
   -> dynamic_expansions:Value.t list String.Map.t

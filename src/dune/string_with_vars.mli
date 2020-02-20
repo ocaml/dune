@@ -42,12 +42,21 @@ val has_vars : t -> bool
 val text_only : t -> string option
 
 module Mode : sig
+  (** Expansion may produce either a [Single] value or [Many] values
+
+      The caller always knows which of the contexts above it requires, therefore
+      it can specify this to the expansion functions. This allows us to return a
+      precise result type from the expansion, and do some validation to make
+      sure we aren't expanding into multiple values in cases where it's not
+      allowed. *)
   type _ t =
     | Single : Value.t t
     | Many : Value.t list t
 end
 
 module Var : sig
+  (** Variables are of the form %{foo} or %{foo:bar}. The latter form is also
+      referred to as macros. *)
   type t
 
   val to_dyn : t -> Dyn.t
@@ -58,11 +67,10 @@ module Var : sig
 
   val full_name : t -> string
 
+  (** Variables do not have a payload. While macros always do. *)
   val payload : t -> string option
 
   val with_name : t -> name:string -> t
-
-  val is_macro : t -> bool
 
   (** Describe what this variable is *)
   val describe : t -> string
@@ -76,6 +84,9 @@ type yes_no_unknown =
 module Partial : sig
   type string_with_vars
 
+  (** Result of a best effort expansion. If we managed to expand everything we
+      return some ['a Mode.t t], otherwise we return a new template where all
+      the variables we know about are expanded. *)
   type nonrec 'a t =
     | Expanded of 'a
     | Unexpanded of t
@@ -117,6 +128,9 @@ type 'a expander = Var.t -> Dune_lang.Syntax.Version.t -> 'a
 module type S = sig
   type 'a app
 
+  (** [expand ~f] attempts to expand all percent forms in a template. If [f]
+      returns [None] for any variable (no substitution was found), then this
+      function will raise. *)
   val expand :
        t
     -> mode:'a Mode.t
@@ -124,6 +138,10 @@ module type S = sig
     -> f:Value.t list option app expander
     -> 'a app
 
+  (** [partial_expand] does a best effort expansion of the template. If it fails
+      to expand any variables, it will return [Unexpanded t] where [t] is the
+      maximally expanded template. If it manages to expand everything [Expanded]
+      will be returned. *)
   val partial_expand :
        t
     -> mode:'a Mode.t

@@ -32,8 +32,6 @@ let scope t = t.scope
 
 let dir t = t.dir
 
-let bindings t = t.bindings
-
 let make_ocaml_config ocaml_config =
   let string s = [ Value.String s ] in
   Ocaml_config.to_list ocaml_config

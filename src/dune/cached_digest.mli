@@ -13,6 +13,9 @@ val remove : Path.t -> unit
 (** Same as {!file} but forces the digest to be recomputed *)
 val refresh : Path.t -> Digest.t
 
+(** Same as {!refresh} remove write permissions on the file *)
+val refresh_and_chmod : Path.t -> Digest.t
+
 (** Update the digest for a file in the cache *)
 val set : Path.t -> Digest.t -> unit
 

@@ -96,6 +96,10 @@ let refresh fn =
   set_with_stat fn digest stat;
   digest
 
+let refresh_and_chmod fn =
+  Path.chmod ~mode:0o222 ~op:`Remove fn;
+  refresh fn
+
 let peek_file fn =
   let cache = Lazy.force cache in
   match Path.Table.find cache.table fn with

@@ -450,7 +450,30 @@ let compute_targets_digest_or_raise_error ~loc targets =
   let good, bad =
     List.partition_map targets ~f:(fun target ->
         let fn = Path.build target in
-        match Cached_digest.refresh fn with
+        let remove_write_permissions =
+          (* Remove write permissions on targets. A first theoretical reason is
+             that the build process should be a computational graph and targets
+             should not change state once built. A very practical reason is that
+             enabling the cache will remove write permission because of hardlink
+             sharing anyway, so always removing them enables to catch mistakes
+             earlier. *)
+          (* FIXME: searching the dune version for each single target seems way
+             suboptimal. This information could probably be stored in rules
+             directly. *)
+          let _, src_dir = Path.Build.extract_build_context_dir_exn target in
+          let dir = File_tree.nearest_dir src_dir in
+          let version =
+            File_tree.Dir.project dir |> Dune_project.dune_version
+          in
+          version >= (2, 4)
+        in
+        let refresh =
+          if remove_write_permissions then
+            Cached_digest.refresh_and_chmod
+          else
+            Cached_digest.refresh
+        in
+        match refresh fn with
         | digest -> Left (target, digest)
         | exception (Unix.Unix_error _ | Sys_error _) -> Right fn)
   in
@@ -1516,27 +1539,6 @@ end = struct
                 ~repository:None ~duplication:None
               |> Result.map_error ~f:report |> ignore
             | _ -> ()
-          in
-          let () =
-            (* Remove write permissions on targets. A first theoretical reason
-               is that the build process should be a computational graph and
-               targets should not change state once built. A very practical
-               reason is that enabling the cache will remove write permission
-               because of hardlink sharing anyway, so always removing them
-               enables to catch mistakes earlier. *)
-            let f (path, _) =
-              (* FIXME: searching the dune version for each single target seems
-                 way suboptimal. This information could probably be stored in
-                 rules directly. *)
-              let _, src_dir = Path.Build.extract_build_context_dir_exn path in
-              let dir = File_tree.nearest_dir src_dir in
-              let version =
-                File_tree.Dir.project dir |> Dune_project.dune_version
-              in
-              if version >= (2, 4) then
-                Path.Build.chmod ~mode:0x222 ~op:`Remove path
-            in
-            List.iter ~f targets
           in
           let dynamic_deps_stages =
             List.map exec_result.dynamic_deps_stages ~f:(fun deps ->

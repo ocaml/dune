@@ -165,8 +165,6 @@ module Map = struct
       ; ("@", renamed_in ~version:(1, 0) ~new_name:"targets")
       ; ("^", renamed_in ~version:(1, 0) ~new_name:"deps")
       ; ("SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root")
-      ; ("cc", since ~version:(1, 0) Var.Cc)
-      ; ("cxx", since ~version:(1, 0) Var.Cxx)
       ]
 
   let macros =
@@ -231,6 +229,8 @@ module Map = struct
       ; ("ocamlopt", path ocamlopt)
       ; ("arch_sixtyfour", string (string_of_bool context.arch_sixtyfour))
       ; ("make", make)
+      ; ("cc", No_info Var.Cc)
+      ; ("cxx", No_info Var.Cxx)
       ]
     in
     let uppercased =

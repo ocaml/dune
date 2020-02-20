@@ -5,6 +5,8 @@ type t =
   | Cmo
   | Cmx
 
+let compare = Poly.compare
+
 let all = [ Cmi; Cmo; Cmx ]
 
 let choose cmi cmo cmx = function

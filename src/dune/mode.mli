@@ -4,6 +4,8 @@ type t =
   | Byte
   | Native
 
+val compare : t -> t -> Ordering.t
+
 val decode : t Dune_lang.Decoder.t
 
 val all : t list

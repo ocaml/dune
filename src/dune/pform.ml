@@ -13,6 +13,34 @@ module Var = struct
     | Cc
     | Cxx
 
+  let compare x y =
+    match (x, y) with
+    | Values v1, Values v2 -> List.compare ~compare:Value.compare v1 v2
+    | Values _, _ -> Lt
+    | _, Values _ -> Gt
+    | Project_root, Project_root -> Eq
+    | Project_root, _ -> Lt
+    | _, Project_root -> Gt
+    | First_dep, First_dep -> Eq
+    | First_dep, _ -> Lt
+    | _, First_dep -> Gt
+    | Deps, Deps -> Eq
+    | Deps, _ -> Lt
+    | _, Deps -> Gt
+    | Named_local, Named_local -> Eq
+    | Named_local, _ -> Lt
+    | _, Named_local -> Gt
+    | Targets, Targets -> Eq
+    | Targets, _ -> Lt
+    | _, Targets -> Gt
+    | Target, Target -> Eq
+    | Target, _ -> Lt
+    | _, Target -> Gt
+    | Cc, Cc -> Eq
+    | Cc, _ -> Lt
+    | _, Cc -> Gt
+    | Cxx, Cxx -> Eq
+
   let to_dyn =
     let open Dyn.Encoder in
     function
@@ -31,6 +59,13 @@ module Artifact = struct
   type t =
     | Mod of Cm_kind.t
     | Lib of Mode.t
+
+  let compare x y =
+    match (x, y) with
+    | Mod x, Mod y -> Cm_kind.compare x y
+    | Mod _, _ -> Lt
+    | _, Mod _ -> Gt
+    | Lib x, Lib y -> Mode.compare x y
 
   let ext = function
     | Mod cm_kind -> Cm_kind.ext cm_kind
@@ -66,6 +101,48 @@ module Macro = struct
     | Env
     | Artifact of Artifact.t
 
+  let compare x y =
+    match (x, y) with
+    | Exe, Exe -> Eq
+    | Exe, _ -> Lt
+    | _, Exe -> Gt
+    | Dep, Dep -> Eq
+    | Dep, _ -> Lt
+    | _, Dep -> Gt
+    | Bin, Bin -> Eq
+    | Bin, _ -> Lt
+    | _, Bin -> Gt
+    | Lib { lib_exec; lib_private }, Lib y ->
+      Tuple.T2.compare Bool.compare Bool.compare (lib_exec, lib_private)
+        (y.lib_exec, y.lib_private)
+    | Lib _, _ -> Lt
+    | _, Lib _ -> Gt
+    | Lib_available, Lib_available -> Eq
+    | Lib_available, _ -> Lt
+    | _, Lib_available -> Gt
+    | Version, Version -> Eq
+    | Version, _ -> Lt
+    | _, Version -> Gt
+    | Read, Read -> Eq
+    | Read, _ -> Lt
+    | _, Read -> Gt
+    | Read_strings, Read_strings -> Eq
+    | Read_strings, _ -> Lt
+    | _, Read_strings -> Gt
+    | Read_lines, Read_lines -> Eq
+    | Read_lines, _ -> Lt
+    | _, Read_lines -> Gt
+    | Path_no_dep, Path_no_dep -> Eq
+    | Path_no_dep, _ -> Lt
+    | _, Path_no_dep -> Gt
+    | Ocaml_config, Ocaml_config -> Eq
+    | Ocaml_config, _ -> Lt
+    | _, Ocaml_config -> Gt
+    | Env, Env -> Eq
+    | Env, _ -> Lt
+    | _, Env -> Gt
+    | Artifact x, Artifact y -> Artifact.compare x y
+
   let to_dyn =
     let open Dyn.Encoder in
     function
@@ -100,7 +177,13 @@ module Expansion = struct
       | Var v -> pair string Var.to_dyn ("Var", v)
       | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
 
-    let compare = Poly.compare
+    let compare x y =
+      match (x, y) with
+      | Var x, Var y -> Var.compare x y
+      | Var _, _ -> Lt
+      | _, Var _ -> Gt
+      | Macro (m1, s1), Macro (m2, s2) ->
+        Tuple.T2.compare Macro.compare String.compare (m1, s1) (m2, s2)
   end
 
   include T

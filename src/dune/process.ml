@@ -13,13 +13,12 @@ let accepted_codes : type a b. (a, b) failure_mode -> int -> bool = function
       Predicate_lang.exec exit_codes ~standard:(Predicate_lang.Element 0)
         (Int.equal i)
 
-let map_result :
-    type a b. (a, b) failure_mode -> int Fiber.t -> f:(unit -> a) -> b Fiber.t =
+let map_result : type a b. (a, b) failure_mode -> int -> f:(unit -> a) -> b =
  fun mode t ~f ->
   match mode with
-  | Strict -> t >>| fun _ -> f ()
+  | Strict -> f ()
   | Accept _ -> (
-    t >>| function
+    match t with
     | 0 -> Ok (f ())
     | n -> Error n )
 
@@ -564,18 +563,20 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =
-  map_result fail_mode
-    (run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose fail_mode
-       prog args)
-    ~f:ignore
+  let+ run =
+    run_internal ?dir ?stdout_to ?stderr_to ?stdin_from ~env ~purpose fail_mode
+      prog args
+  in
+  map_result fail_mode run ~f:ignore
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
   let fn = Temp.create "dune" ".output" in
-  map_result fail_mode
-    (run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from
-       ~env ~purpose fail_mode prog args)
-    ~f:(fun () ->
+  let+ run =
+    run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ~env
+      ~purpose fail_mode prog args
+  in
+  map_result fail_mode run ~f:(fun () ->
       let x = f fn in
       Temp.destroy fn;
       x)

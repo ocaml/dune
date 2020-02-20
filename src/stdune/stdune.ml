@@ -63,6 +63,7 @@ module Sys = Sys
 module Pid = Pid
 module Applicative_intf = Applicative_intf
 module Applicative = Applicative
+module Spawn = Spawn
 
 external reraise : exn -> _ = "%reraise"
 

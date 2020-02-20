@@ -86,7 +86,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     match config with
     | { inline_tests = Some s; _ } -> Memo.Lazy.of_val s
     | { inline_tests = None; _ } ->
-      inherited ~field:inline_tests Fun.id
+      inherited ~field:inline_tests Fn.id
         ~root:
           ( if Profile.is_inline_test profile then
             Enabled

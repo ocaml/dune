@@ -15,7 +15,7 @@ module Env_context = struct
     ; host : t option
     ; build_dir : Path.Build.t
     ; context : Context.t
-    ; expander : Expander.t
+    ; root_expander : Expander.t
     ; bin_artifacts : Artifacts.Bin.t
     }
 end
@@ -163,8 +163,8 @@ end = struct
         let default_context_flags = default_context_flags t.context in
         Env_node.make ~dir ~scope ~config_stanza
           ~inherit_from:(Some inherit_from) ~profile:t.profile
-          ~expander:t.expander ~default_context_flags ~default_env:t.context_env
-          ~default_bin_artifacts:t.bin_artifacts
+          ~expander:t.root_expander ~default_context_flags
+          ~default_env:t.context_env ~default_bin_artifacts:t.bin_artifacts
       in
       Table.set t.env_cache dir node;
       node
@@ -204,7 +204,9 @@ end = struct
       bin_artifacts host ~dir
 
   let expander t ~dir =
-    let expander = expander_for_artifacts t ~context_expander:t.expander ~dir in
+    let expander =
+      expander_for_artifacts t ~context_expander:t.root_expander ~dir
+    in
     let bin_artifacts_host = bin_artifacts_host t ~dir in
     let bindings =
       let str = inline_tests t ~dir |> Dune_env.Stanza.Inline_tests.to_string in
@@ -460,7 +462,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           ~local_bins:(get_installed_binaries ~context stanzas)
     }
   in
-  let expander =
+  let root_expander =
     let artifacts_host =
       match host with
       | None -> artifacts
@@ -478,9 +480,9 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           let default_context_flags = default_context_flags context in
           Env_node.make ~dir
             ~scope:(Scope.DB.find_by_dir scopes dir)
-            ~inherit_from ~config_stanza ~profile:context.profile ~expander
-            ~default_context_flags ~default_env:context.env
-            ~default_bin_artifacts:artifacts.bin
+            ~inherit_from ~config_stanza ~profile:context.profile
+            ~expander:root_expander ~default_context_flags
+            ~default_env:context.env ~default_bin_artifacts:artifacts.bin
         in
         make ~config_stanza:context.env_nodes.context
           ~inherit_from:
@@ -499,7 +501,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     ; host = Option.map host ~f:(fun x -> x.env_context)
     ; build_dir = context.build_dir
     ; context
-    ; expander
+    ; root_expander
     ; bin_artifacts = artifacts.Artifacts.bin
     }
   in
@@ -509,7 +511,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         (Dune_project.file_key project, project))
   in
   { context
-  ; expander
+  ; expander = root_expander
   ; host
   ; scopes
   ; public_libs

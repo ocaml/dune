@@ -138,10 +138,7 @@ struct
         | c ->
           (* The [+ chunk_size] is to make sure there is at least [chunk_size]
              free space so that the first [Buffer.add_channel buffer t
-             chunk_size] in [read_all_generic] does not grow the buffer. We
-             expect the file to be small and to require only one call to
-             [Buffer.add_channel], so growing the buffer eagerly would be
-             useless and inefficient. *)
+             chunk_size] in [read_all_generic] does not grow the buffer. *)
           let buffer = Buffer.create (String.length s + 1 + chunk_size) in
           Buffer.add_string buffer s;
           Buffer.add_char buffer c;

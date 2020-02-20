@@ -29,7 +29,7 @@ let perform_redirections stdin stdout stderr =
 let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
     ?(stderr = Unix.stderr) () =
   let argv = Array.of_list argv in
-  Stdune.Pid.of_int
+  Pid.of_int
     ( if Sys.win32 then
       match env with
       | None -> Unix.create_process prog argv stdin stdout stderr

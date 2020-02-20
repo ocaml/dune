@@ -159,11 +159,12 @@ end = struct
             | None -> raise_notrace Exit
             | Some parent -> Memo.lazy_ (fun () -> get t ~dir:parent ~scope)
         in
-        let config = get_env_stanza t ~dir in
+        let config_stanza = get_env_stanza t ~dir in
         let default_context_flags = default_context_flags t.context in
-        Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
-          ~profile:t.profile ~expander:t.expander ~default_context_flags
-          ~default_env:t.context_env ~default_bin_artifacts:t.bin_artifacts
+        Env_node.make ~dir ~scope ~config_stanza
+          ~inherit_from:(Some inherit_from) ~profile:t.profile
+          ~expander:t.expander ~default_context_flags ~default_env:t.context_env
+          ~default_bin_artifacts:t.bin_artifacts
       in
       Table.set t.env dir node;
       node
@@ -479,20 +480,21 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   in
   let default_env =
     Memo.lazy_ (fun () ->
-        let make ~inherit_from ~config =
+        let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let default_context_flags = default_context_flags context in
           Env_node.make ~dir
             ~scope:(Scope.DB.find_by_dir scopes dir)
-            ~inherit_from ~config ~profile:context.profile ~expander
+            ~inherit_from ~config_stanza ~profile:context.profile ~expander
             ~default_context_flags ~default_env:context.env
             ~default_bin_artifacts:artifacts.bin
         in
-        make ~config:context.env_nodes.context
+        make ~config_stanza:context.env_nodes.context
           ~inherit_from:
             (Some
                (Memo.lazy_ (fun () ->
-                    make ~inherit_from:None ~config:context.env_nodes.workspace))))
+                    make ~inherit_from:None
+                      ~config_stanza:context.env_nodes.workspace))))
   in
   let env_context =
     { Env_context.env

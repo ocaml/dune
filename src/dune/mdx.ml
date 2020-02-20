@@ -19,6 +19,14 @@ module Files = struct
     let deps = deps_file src in
     let corrected = corrected_file src in
     { src; deps; corrected }
+
+  let diff_action { src; corrected; deps = _ } =
+    let src = Path.build src in
+    let corrected = Path.build corrected in
+    let open Build.O in
+    let+ () = Build.path src
+    and+ () = Build.path corrected in
+    Action.diff ~optional:false src corrected
 end
 
 module Deps = struct
@@ -69,11 +77,8 @@ module Deps = struct
       | Dir d -> Left (to_path ~dir d)
       | File f -> Right (to_path ~dir f))
 
-  let dir_without_files_dep =
-    let pred =
-      Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false)
-    in
-    fun dir -> Dep.file_selector (File_selector.create ~dir pred)
+  let dir_without_files_dep dir =
+    Dep.file_selector (File_selector.create ~dir Predicate.false_)
 
   let source_tree_dep_set dir =
     let prefix_with, dir = Path.extract_build_context_dir_exn dir in
@@ -128,7 +133,7 @@ module Prelude = struct
     match t with
     | Default file -> [ A "--prelude"; Dep (bpath file) ]
     | Env { env; file } ->
-      let arg = Printf.sprintf "%s:%s" env (Path.Local.to_string file) in
+      let arg = sprintf "%s:%s" env (Path.Local.to_string file) in
       [ A "--prelude"; A arg; Hidden_deps (Dep.Set.of_files [ bpath file ]) ]
 end
 
@@ -148,8 +153,7 @@ let syntax =
 
 let default_files =
   let has_extention ext s = String.equal ext (Filename.extension s) in
-  let md_files = Predicate_lang.Glob.of_pred (has_extention ".md") in
-  md_files
+  Predicate_lang.Glob.of_pred (has_extention ".md")
 
 let decode =
   let open Dune_lang.Decoder in
@@ -169,7 +173,7 @@ let () =
 
 (** Returns the list of files (in _build) to be passed to mdx for the given
     stanza and context *)
-let files_to_mdx ~sctx ~dir t =
+let files_to_mdx t ~sctx ~dir =
   let src_dir = Path.Build.drop_build_context_exn dir in
   let src_dir_files = Path.Source.Set.to_list (File_tree.files_of src_dir) in
   let must_mdx src_path =
@@ -187,8 +191,7 @@ let files_to_mdx ~sctx ~dir t =
 
 (** Generates the rules for a single [src] file covered covered by the given
     [stanza]. *)
-let gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza src =
-  let open Build.O in
+let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
   let loc = stanza.loc in
   let files = Files.from_source_file src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
@@ -214,23 +217,16 @@ let gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza src =
   in
   Super_context.add_rule sctx ~loc ~dir mdx_action;
   (* Attach the diff action to the @runtest for the src and corrected files *)
-  let diff_action =
-    let src = Path.build files.src in
-    let corrected = Path.build files.corrected in
-    let+ () = Build.path src
-    and+ () = Build.path corrected in
-    Action.diff ~optional:false src corrected
-  in
+  let diff_action = Files.diff_action files in
   Super_context.add_alias_action sctx (Alias.runtest ~dir) ~loc:(Some loc) ~dir
     ~stamp:("mdx", files.src)
     (Build.with_no_targets diff_action)
 
 (** Generates the rules for a given mdx stanza *)
-let gen_rules ~sctx ~dir t =
-  let files_to_mdx = files_to_mdx ~sctx ~dir t in
+let gen_rules t ~sctx ~dir =
+  let files_to_mdx = files_to_mdx t ~sctx ~dir in
   let mdx_prog =
     Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
       ~hint:"opam install mdx" "ocaml-mdx"
   in
-  List.iter files_to_mdx
-    ~f:(gen_rules_for_single_file ~sctx ~dir ~mdx_prog ~stanza:t)
+  List.iter files_to_mdx ~f:(gen_rules_for_single_file t ~sctx ~dir ~mdx_prog)

@@ -109,9 +109,39 @@ struct
           };
         f lb)
 
-  let read_all ic =
-    let len = in_channel_length ic in
-    really_input_string ic len
+  let read_all =
+    (* We use 65536 because that is the size of OCaml's IO buffers. *)
+    let chunk_size = 65536 in
+    (* Generic function for channels such that seeking is unsupported or broken *)
+    let read_all_generic t buffer =
+      let rec loop () =
+        Buffer.add_channel buffer t chunk_size;
+        loop ()
+      in
+      try loop () with End_of_file -> Buffer.contents buffer
+    in
+    fun t ->
+      (* Optimisation for regular files: if the channel supports seeking, we
+         compute the length of the file so that we read exactly what we need and
+         avoid an extra memory copy. We expect that most files Dune reads are
+         regular files so this optimizations seems worth it. *)
+      match in_channel_length t with
+      | exception _ -> read_all_generic t (Buffer.create chunk_size)
+      | n -> (
+        let s = really_input_string t n in
+        (* For some files [in_channel_length] returns an invalid value. For
+           instance for files in /proc it returns [0]. So we try to read one
+           more character to make sure we did indeed reach the end of the file *)
+        match input_char t with
+        | exception End_of_file -> s
+        | c ->
+          (* The [+ chunk_size] is to make sure there is at least [chunk_size]
+             free space so that the first [Buffer.add_channel buffer t
+             chunk_size] in [read_all_generic] does not grow the buffer. *)
+          let buffer = Buffer.create (String.length s + 1 + chunk_size) in
+          Buffer.add_string buffer s;
+          Buffer.add_char buffer c;
+          read_all_generic t buffer )
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 

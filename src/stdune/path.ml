@@ -630,7 +630,7 @@ module Kind = struct
     | External x -> External (External.relative x (Local.to_string y))
 end
 
-let _chmod ~mode ?(op = `Set) path =
+let chmod_generic ~mode ?(op = `Set) path =
   let mode =
     match op with
     | `Set -> mode
@@ -739,7 +739,7 @@ module Build = struct
 
   let of_local t = t
 
-  let chmod ~mode ?(op = `Set) path = _chmod ~mode ~op (to_string path)
+  let chmod ~mode ?(op = `Set) path = chmod_generic ~mode ~op (to_string path)
 
   module Kind = Kind
 end

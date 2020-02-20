@@ -143,14 +143,13 @@ type Stanza.t += T of t
 
 let syntax =
   let name = "mdx" in
-  let desc = "mdx extension to verify code blocks in .md and .mli" in
+  let desc = "mdx extension to verify code blocks in .md files" in
   Dune_lang.Syntax.create ~name ~desc [ (0, 1) ]
 
 let default_files =
   let has_extention ext s = String.equal ext (Filename.extension s) in
   let md_files = Predicate_lang.Glob.of_pred (has_extention ".md") in
-  let mli_files = Predicate_lang.Glob.of_pred (has_extention ".mli") in
-  Predicate_lang.union [ md_files; mli_files ]
+  md_files
 
 let decode =
   let open Dune_lang.Decoder in

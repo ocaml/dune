@@ -109,18 +109,43 @@ struct
           };
         f lb)
 
-  (* This function is a copy&paste from Jane Street's [Stdio.In_channel.input_all]. *)
-  let read_all t =
+  let read_all =
     (* We use 65536 because that is the size of OCaml's IO buffers. *)
     let chunk_size = 65536 in
-    let buffer = Buffer.create chunk_size in
-    let rec loop () =
-      Buffer.add_channel buffer t chunk_size;
-      loop ()
+    (* Generic function for channels such that seeking is unsupported or broken *)
+    let read_all_generic t buffer =
+      try
+        while true do
+          Buffer.add_channel buffer t chunk_size
+        done;
+        assert false
+      with End_of_file -> Buffer.contents buffer
     in
-    try loop () with
-    | End_of_file -> Buffer.contents buffer
-  ;;
+    fun t ->
+      (* Optimisation for regular files: if the channel supports seeking, we
+         compute the length of the file so that we read exactly what we need and
+         avoid an extra memory copy. We expect that most files Dune reads are
+         regular files so this optimizations seems worth it. *)
+      match in_channel_length t with
+      | exception _ -> read_all_generic t (Buffer.create chunk_size)
+      | n -> (
+        let s = really_input_string t n in
+        (* For some files [in_channel_length] returns an invalid value. For
+           instance for files in /proc it returns [0]. So we try to read one
+           more character to make sure we did indeed reach the end of the file *)
+        match input_char t with
+        | exception End_of_file -> s
+        | c ->
+          (* The [+ chunk_size] is to make sure there is at least [chunk_size]
+             free space so that the first [Buffer.add_channel buffer t
+             chunk_size] in [read_all_generic] does not grow the buffer. We
+             expect the file to be small and to require only one call to
+             [Buffer.add_channel], so growing the buffer eagerly would be
+             useless and inefficient. *)
+          let buffer = Buffer.create (String.length s + 1 + chunk_size) in
+          Buffer.add_string buffer s;
+          Buffer.add_char buffer c;
+          read_all_generic t buffer )
 
   let read_file ?binary fn = with_file_in fn ~f:read_all ?binary
 

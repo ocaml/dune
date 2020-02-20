@@ -165,8 +165,9 @@ let expand_artifact ~dir ~loc t a s =
 (* This expansion function only expands the most "static" variables and macros.
    These are all known without building anything, evaluating any dune files, and
    they do not introduce any dependencies. *)
-let static_expand ({ ocaml_config; bindings; dir; scope; artifacts_dynamic; _ } as t)
-      var syntax_version =
+let static_expand
+    ({ ocaml_config; bindings; dir; scope; artifacts_dynamic; _ } as t) var
+    syntax_version =
   let open Option.O in
   let* expand = Pform.Map.expand bindings var syntax_version in
   match expand with
@@ -241,7 +242,7 @@ module Resolved_forms = struct
     ; (* Static deps from %{...} variables. For instance %{exe:...} *)
       mutable sdeps : Path.Set.t
     ; (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-      mutable ddeps : Value.t list Build.t String.Map.t
+      mutable ddeps : Value.t list Build.t Pform.Expansion.Map.t
     }
 
   let failures t = t.failures
@@ -256,7 +257,7 @@ module Resolved_forms = struct
     { failures = []
     ; lib_deps = Lib_name.Map.empty
     ; sdeps = Path.Set.empty
-    ; ddeps = String.Map.empty
+    ; ddeps = Pform.Expansion.Map.empty
     }
 
   let add_lib_dep acc lib kind =
@@ -266,8 +267,8 @@ module Resolved_forms = struct
     acc.failures <- fail :: acc.failures;
     None
 
-  let add_ddep acc ~key dep =
-    acc.ddeps <- String.Map.set acc.ddeps key dep;
+  let add_ddep acc pform dep =
+    acc.ddeps <- Pform.Expansion.Map.set acc.ddeps pform dep;
     None
 end
 
@@ -314,13 +315,12 @@ let cannot_be_used_here pform =
 let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     ~(dir : Path.Build.t) ~pform t expansion
     ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
-  let key = String_with_vars.Var.full_name pform in
   let loc = String_with_vars.Var.loc pform in
   let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
   let add_ddep =
     match expansion_kind with
     | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
-    | Dynamic -> Resolved_forms.add_ddep acc ~key
+    | Dynamic -> Resolved_forms.add_ddep acc expansion
   in
   let add_fail =
     match expansion_kind with
@@ -580,11 +580,14 @@ let expand_special_vars ~deps_written_by_user ~var pform =
     Code_error.raise "Unexpected variable in step2"
       [ ("var", String_with_vars.Var.to_dyn var) ]
 
-let expand_ddeps_and_bindings ~(dynamic_expansions : Value.t list String.Map.t)
+let expand_ddeps_and_bindings
+    ~(dynamic_expansions : Value.t list Pform.Expansion.Map.t)
     ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var syntax_version
     =
-  let key = String_with_vars.Var.full_name var in
-  ( match String.Map.find dynamic_expansions key with
+  let key =
+    Pform.Map.expand t.bindings var syntax_version |> Option.value_exn
+  in
+  ( match Pform.Expansion.Map.find dynamic_expansions key with
   | Some v -> Some v
   | None ->
     expand_var t var syntax_version

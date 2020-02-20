@@ -49,6 +49,8 @@ module Expansion : sig
     | Macro of Macro.t * string
 
   val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
 end
 
 module Map : sig

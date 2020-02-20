@@ -257,7 +257,7 @@ module Make (A : Applicative_intf.S1) = struct
         -> f:Value.t list option A.t expander -> 'a Partial.t A.t =
    fun ({ template; syntax_version } as t) ~mode ~dir ~f ->
     match template.parts with
-   (* Optimizations for some common cases *)
+    (* Optimizations for some common cases *)
     | [] -> A.return (Partial.Expanded (Mode.string mode ""))
     | [ Text s ] -> A.return (Partial.Expanded (Mode.string mode s))
     | [ Var var ] when not template.quoted -> (

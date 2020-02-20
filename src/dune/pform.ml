@@ -89,15 +89,22 @@ module Macro = struct
 end
 
 module Expansion = struct
-  type t =
-    | Var of Var.t
-    | Macro of Macro.t * string
+  module T = struct
+    type t =
+      | Var of Var.t
+      | Macro of Macro.t * string
 
-  let to_dyn e =
-    let open Dyn.Encoder in
-    match e with
-    | Var v -> pair string Var.to_dyn ("Var", v)
-    | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
+    let to_dyn e =
+      let open Dyn.Encoder in
+      match e with
+      | Var v -> pair string Var.to_dyn ("Var", v)
+      | Macro (m, s) -> triple string Macro.to_dyn string ("Macro", m, s)
+
+    let compare = Poly.compare
+  end
+
+  include T
+  module Map = Map.Make (T)
 end
 
 type 'a t =
@@ -158,6 +165,8 @@ module Map = struct
       ; ("@", renamed_in ~version:(1, 0) ~new_name:"targets")
       ; ("^", renamed_in ~version:(1, 0) ~new_name:"deps")
       ; ("SCOPE_ROOT", renamed_in ~version:(1, 0) ~new_name:"project_root")
+      ; ("cc", since ~version:(1, 0) Var.Cc)
+      ; ("cxx", since ~version:(1, 0) Var.Cxx)
       ]
 
   let macros =
@@ -209,9 +218,6 @@ module Map = struct
       | Some p -> path p
     in
     let cflags = Ocaml_config.ocamlc_cflags context.ocaml_config in
-    let cxx_flags =
-      List.filter cflags ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
-    in
     let strings s = values (Value.L.strings s) in
     let lowercased =
       let c_compiler = Ocaml_config.c_compiler context.ocaml_config in
@@ -220,8 +226,6 @@ module Map = struct
         , strings
             ( (c_compiler :: cflags)
             @ [ "-undef"; "-traditional"; "-x"; "c"; "-E" ] ) )
-      ; ("cc", strings (c_compiler :: cflags))
-      ; ("cxx", strings (c_compiler :: cxx_flags))
       ; ("ocaml", path ocaml)
       ; ("ocamlc", path context.ocamlc)
       ; ("ocamlopt", path ocamlopt)

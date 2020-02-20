@@ -89,7 +89,7 @@ module Resolved_forms : sig
   val sdeps : t -> Path.Set.t
 
   (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-  val ddeps : t -> Value.t list Build.t String.Map.t
+  val ddeps : t -> Value.t list Build.t Pform.Expansion.Map.t
 
   val empty : unit -> t
 end
@@ -121,8 +121,7 @@ val with_record_deps :
 
 (** In this expander, we record dependencies whenever we expand a variable into
     a file path, but we forbid variables that require us to build something to
-    expand. For example, %{exe:/foo} is allowed but %{read:bar} is not
-    allowed. *)
+    expand. For example, %{exe:/foo} is allowed but %{read:bar} is not allowed. *)
 val with_record_no_ddeps :
      t
   -> Resolved_forms.t
@@ -136,7 +135,7 @@ val with_record_no_ddeps :
     them to create a new expander that will fully substitute the action. *)
 val add_ddeps_and_bindings :
      t
-  -> dynamic_expansions:Value.t list String.Map.t
+  -> dynamic_expansions:Value.t list Pform.Expansion.Map.t
   -> deps_written_by_user:Path.t Bindings.t
   -> t
 

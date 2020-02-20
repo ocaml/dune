@@ -639,7 +639,9 @@ module Deps = struct
     and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
     and+ (_ : Value.t list list) =
       (* TODO: Why do we ignore the resulting [ddeps] values? *)
-      let ddeps = String.Map.values (Expander.Resolved_forms.ddeps forms) in
+      let ddeps =
+        Pform.Expansion.Map.values (Expander.Resolved_forms.ddeps forms)
+      in
       Build.all ddeps
     and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
     deps
@@ -726,14 +728,17 @@ module Action = struct
       >>> Build.path_set
             (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
       >>>
-      let ddeps = String.Map.to_list (Expander.Resolved_forms.ddeps forms) in
+      let ddeps =
+        Pform.Expansion.Map.to_list (Expander.Resolved_forms.ddeps forms)
+      in
       Build.dyn_path_set
         (let+ action =
            let+ vals = Build.all (List.map ddeps ~f:snd)
            and+ deps_written_by_user = bindings in
            let dynamic_expansions =
-             List.fold_left2 ddeps vals ~init:String.Map.empty
-               ~f:(fun acc (var, _) value -> String.Map.set acc var value)
+             List.fold_left2 ddeps vals ~init:Pform.Expansion.Map.empty
+               ~f:(fun acc (var, _) value ->
+                 Pform.Expansion.Map.add_exn acc var value)
            in
            let unresolved =
              let expander =

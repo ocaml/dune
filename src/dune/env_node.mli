@@ -26,7 +26,7 @@ val make :
 
 val scope : t -> Scope.t
 
-val external_ : t -> Env.t
+val external_env : t -> Env.t
 
 val ocaml_flags : t -> Ocaml_flags.t
 

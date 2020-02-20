@@ -6,7 +6,7 @@ module Env_context = struct
   type data = (Path.Build.t, Env_node.t) Table.t
 
   type t =
-    { env : data
+    { env_cache : data
     ; profile : Profile.t
     ; scopes : Scope.DB.t
     ; context_env : Env.t
@@ -125,7 +125,7 @@ module Env : sig
 
   val menhir_flags : t -> dir:Path.Build.t -> string list Build.t
 
-  val external_ : t -> dir:Path.Build.t -> External_env.t
+  val external_env : t -> dir:Path.Build.t -> External_env.t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t
 
@@ -147,7 +147,7 @@ end = struct
       | _ -> None)
 
   let rec get t ~dir ~scope =
-    match Table.find t.env dir with
+    match Table.find t.env_cache dir with
     | Some node -> node
     | None ->
       let node =
@@ -166,11 +166,11 @@ end = struct
           ~expander:t.expander ~default_context_flags ~default_env:t.context_env
           ~default_bin_artifacts:t.bin_artifacts
       in
-      Table.set t.env dir node;
+      Table.set t.env_cache dir node;
       node
 
   let get t ~dir =
-    match Table.find t.env dir with
+    match Table.find t.env_cache dir with
     | Some node -> node
     | None -> (
       let scope = Scope.DB.find_by_dir t.scopes dir in
@@ -179,24 +179,17 @@ end = struct
         Code_error.raise "Super_context.Env.get called on invalid directory"
           [ ("dir", Path.Build.to_dyn dir) ] )
 
-  let external_ t ~dir = Env_node.external_ (get t ~dir)
+  let external_env t ~dir = Env_node.external_env (get t ~dir)
 
   let expander_for_artifacts t ~context_expander ~dir =
-    let node = get t ~dir in
-    let external_ = external_ t ~dir in
-    Expander.extend_env context_expander ~env:external_
-    |> Expander.set_scope ~scope:(Env_node.scope node)
-    |> Expander.set_dir ~dir
+    let scope = Env_node.scope (get t ~dir) in
+    let external_env = external_env t ~dir in
+    Expander.extend_env context_expander ~env:external_env
+    |> Expander.set_scope ~scope |> Expander.set_dir ~dir
 
-  let local_binaries t ~dir =
-    let node = get t ~dir in
-    (* let expander = expander_for_artifacts ~context_expander:t.expander t ~dir
-       in *)
-    Env_node.local_binaries node
+  let local_binaries t ~dir = Env_node.local_binaries (get t ~dir)
 
-  let inline_tests t ~dir =
-    let node = get t ~dir in
-    Env_node.inline_tests node
+  let inline_tests t ~dir = Env_node.inline_tests (get t ~dir)
 
   let bin_artifacts t ~dir = Env_node.bin_artifacts (get t ~dir)
 
@@ -240,7 +233,7 @@ let chdir_to_build_context_root t build =
 
 let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
-  let env = Env.external_ t.env_context ~dir in
+  let env = Env.external_env t.env_context ~dir in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some t.context) ~env:(Some env) build
 
@@ -258,7 +251,7 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let t = t.env_context in
-  let env = Some (Env.external_ t ~dir) in
+  let env = Some (Env.external_env t ~dir) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
@@ -457,8 +450,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
-  (* CR-soon amokhov: Do we need this? *)
-  let env = Table.create (module Path.Build) 128 in
+  (* CR-soon amokhov: Remove this cache. *)
+  let env_cache = Table.create (module Path.Build) 128 in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
     { Artifacts.public_libs
@@ -497,7 +490,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
                       ~config_stanza:context.env_nodes.workspace))))
   in
   let env_context =
-    { Env_context.env
+    { Env_context.env_cache
     ; profile = context.profile
     ; scopes
     ; context_env = context.env

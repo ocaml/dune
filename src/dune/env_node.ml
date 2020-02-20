@@ -13,7 +13,7 @@ type t =
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
   ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
   ; foreign_flags : string list Build.t Foreign.Language.Dict.t Memo.Lazy.t
-  ; external_ : Env.t Memo.Lazy.t
+  ; external_env : Env.t Memo.Lazy.t
   ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Build.t Memo.Lazy.t
@@ -28,7 +28,7 @@ let ocaml_flags t = Memo.Lazy.force t.ocaml_flags
 
 let foreign_flags t = Memo.Lazy.force t.foreign_flags
 
-let external_ t = Memo.Lazy.force t.external_
+let external_env t = Memo.Lazy.force t.external_env
 
 let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
 
@@ -55,8 +55,8 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
                    Expander.expand expander ~mode:Single ~template
                    |> Value.to_string ~dir:(Path.build dir))))
   in
-  let external_ =
-    inherited ~field:external_ ~root:default_env (fun env ->
+  let external_env =
+    inherited ~field:external_env ~root:default_env (fun env ->
         let env, have_binaries =
           (Env.extend_env env config.env_vars, List.is_non_empty config.binaries)
         in
@@ -111,7 +111,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   { scope
   ; ocaml_flags
   ; foreign_flags
-  ; external_
+  ; external_env
   ; bin_artifacts
   ; local_binaries
   ; inline_tests

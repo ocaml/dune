@@ -48,6 +48,9 @@ val set_lookup_library :
        (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
   -> t
 
+(** Expander need to expand custom bindings sometimes. For exmaple, the name of
+    the library for the action that runs inline tests. This is the place to add
+    such bindings. *)
 val add_bindings : t -> bindings:Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t
@@ -71,6 +74,9 @@ val expand_with_reduced_var_set :
   context:Context.t -> reduced_var_result String_with_vars.expander
 
 module Resolved_forms : sig
+  (** [Resolved_forms.t] values are mutated as we do a dependency discovery
+      pass. In the end, [Resolved_forms.t] should contain all the dependencies
+      we've discovered. *)
   type t
 
   (* Failed resolutions *)
@@ -113,6 +119,10 @@ val with_record_deps :
        (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
   -> t
 
+(** In this expander, we record dependencies whenever we expand a variable into
+    a file path, but we forbid variables that require us to build something to
+    expand. For example, %{exe:/foo} is allowed but %{read:bar} is not
+    allowed. *)
 val with_record_no_ddeps :
      t
   -> Resolved_forms.t
@@ -130,8 +140,12 @@ val add_ddeps_and_bindings :
   -> deps_written_by_user:Path.t Bindings.t
   -> t
 
+(** Expand individual string templates with this function *)
 val expand_var_exn : t -> Value.t list option String_with_vars.expander
 
+(** Expand forms of the form (:standard \ foo bar). Expansion is only possible
+    inside [Build.t] because such forms may contain the form (:include ..) which
+    needs files to be built. *)
 val expand_and_eval_set :
      t
   -> Ordered_set_lang.Unexpanded.t

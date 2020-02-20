@@ -1,3 +1,5 @@
+let on_error = Report_error.report
+
 open! Stdune
 open Import
 open Fiber.O
@@ -87,7 +89,7 @@ module Event : sig
 
   val send_signal : Signal.t -> unit
 
-  val send_dedup : Dune_cache.caching -> Dune_cache.File.t -> unit
+  val send_dedup : Cache.caching -> Cache.File.t -> unit
 end = struct
   type t =
     | Files_changed
@@ -129,7 +131,7 @@ end = struct
     if Queue.is_empty dedup_pending then
       false
     else
-      let (module Caching : Dune_cache.Caching), (file : Dune_cache.File.t) =
+      let (module Caching : Cache.Caching), (file : Cache.File.t) =
         Queue.pop dedup_pending
       in
       ( match
@@ -717,8 +719,7 @@ end = struct
 
   let run t f =
     let fiber =
-      Fiber.Var.set t_var t (fun () ->
-          Fiber.with_error_handler f ~on_error:Report_error.report)
+      Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
     match
       Fiber.run

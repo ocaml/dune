@@ -11,7 +11,7 @@
   dune
   fiber
   dune_lang
-  dune_cache
+  cache
   memo
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project

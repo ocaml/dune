@@ -1,5 +1,7 @@
+open Dune_util
 open Stdune
 open Result.O
+open Cache_intf
 include Messages_intf
 
 let invalid_args args =
@@ -21,7 +23,7 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
                 ]))
            versions )
   | Promote promotion ->
-    let key = Dune_cache.Key.to_string promotion.key
+    let key = Key.to_string promotion.key
     and f (path, digest) =
       Sexp.List
         [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
@@ -32,15 +34,15 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
     let rest =
       match promotion.duplication with
       | Some mode
-        when version = { major = 1; minor = 0 }
-             && mode = Dune_cache.Duplication_mode.Copy ->
+        when version = { major = 1; minor = 0 } && mode = Duplication_mode.Copy
+        ->
         User_error.raise
           [ Pp.textf "cache daemon v1.0 does not support copy duplication mode"
           ]
       | Some mode ->
         Sexp.List
           [ Sexp.Atom "duplication"
-          ; Sexp.Atom (Dune_cache.Duplication_mode.to_string mode)
+          ; Sexp.Atom (Duplication_mode.to_string mode)
           ]
         :: rest
       | None -> rest
@@ -60,7 +62,7 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata
   | SetRepos repositories ->
-    let f { Dune_cache.directory; remote; commit } =
+    let f { directory; remote; commit } =
       Sexp.List
         [ Sexp.List [ Sexp.Atom "dir"; Sexp.Atom directory ]
         ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
@@ -78,12 +80,23 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
           ]
       ]
 
+let int_of_string ?where s =
+  match Int.of_string s with
+  | Some s -> Ok s
+  | None ->
+    Result.Error
+      (Printf.sprintf "invalid integer%s: %s"
+         ( match where with
+         | Some l -> " in " ^ l
+         | None -> "" )
+         s)
+
 let lang_of_sexp = function
   | Sexp.Atom "dune-cache-protocol" :: versions ->
     let decode_version = function
       | Sexp.List [ Sexp.Atom major; Sexp.Atom minor ] ->
-        let+ major = Utils.int_of_string ~where:"lang command version" major
-        and+ minor = Utils.int_of_string ~where:"lang command version" minor in
+        let+ major = int_of_string ~where:"lang command version" major
+        and+ minor = int_of_string ~where:"lang command version" minor in
         { major; minor }
       | v ->
         Result.Error
@@ -126,7 +139,7 @@ let outgoing_message_of_sexp _ =
           ; Sexp.List [ Sexp.Atom "remote"; Sexp.Atom remote ]
           ; Sexp.List [ Sexp.Atom "commit_id"; Sexp.Atom commit ]
           ] ->
-        Result.ok { Dune_cache.directory; remote; commit }
+        Result.ok { directory; remote; commit }
       | invalid ->
         Result.Error
           (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
@@ -139,7 +152,7 @@ let outgoing_message_of_sexp _ =
       cmd ->
       let file = function
         | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          let+ d = Dune_cache.Key.of_string hash in
+          let+ d = Key.of_string hash in
           (Path.Build.of_local (Path.Local.of_string path), d)
         | sexp ->
           Result.Error
@@ -151,20 +164,20 @@ let outgoing_message_of_sexp _ =
         | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] :: rest ->
           Result.map
             ~f:(fun repo -> (Some repo, rest))
-            (Utils.int_of_string ~where:"repository index" repo)
+            (int_of_string ~where:"repository index" repo)
         | _ -> Result.Ok (None, rest)
       in
       let+ duplication =
         match rest with
         | [ Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ] ->
-          Result.map ~f:Option.some (Dune_cache.Duplication_mode.of_string mode)
+          Result.map ~f:Option.some (Duplication_mode.of_string mode)
         | [] -> Result.Ok None
         | _ ->
           Result.Error
             (Printf.sprintf "invalid promotion message: %s"
                (Sexp.to_string (Sexp.List cmd)))
       and+ files = Result.List.map ~f:file files
-      and+ key = Dune_cache.Key.of_string key in
+      and+ key = Key.of_string key in
       { repository; files; key; metadata; duplication }
     | args -> invalid_args args
   and path_of_sexp = function
@@ -190,3 +203,46 @@ let outgoing_message_of_sexp _ =
   | cmd ->
     Result.Error
       (Printf.sprintf "invalid command format: %s" (Sexp.to_string cmd))
+
+let send_sexp output sexp =
+  output_string output (Csexp.to_string sexp);
+  flush output
+
+let send version output message =
+  send_sexp output (sexp_of_message version message)
+
+let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
+
+let find_highest_common_version my_versions versions =
+  let find a b =
+    let f { major; minor } = (major, minor) in
+    let a = Int.Map.of_list_exn (List.map ~f a)
+    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let common =
+      Int.Map.merge
+        ~f:(fun _ minor_in_a minor_in_b ->
+          match (minor_in_a, minor_in_b) with
+          | Some a, Some b -> Some (min a b)
+          | _ -> None)
+        a b
+    in
+    Option.map
+      ~f:(fun (major, minor) -> { major; minor })
+      (Int.Map.max_binding common)
+  in
+  match find my_versions versions with
+  | None -> Result.Error "no compatible versions"
+  | Some version ->
+    Log.infof "negotiated version: %a" pp_version version;
+    Result.ok version
+
+let negotiate_version my_versions fd input output =
+  send { major = 1; minor = 0 } output (Lang my_versions);
+  let f msg =
+    Unix.close fd;
+    msg
+  in
+  Result.map_error ~f
+    (let* sexp = Csexp.parse input in
+     let* (Lang versions) = initial_message_of_sexp sexp in
+     find_highest_common_version my_versions versions)

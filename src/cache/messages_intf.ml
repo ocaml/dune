@@ -1,3 +1,4 @@
+open Cache_intf
 open Stdune
 
 type version =
@@ -10,7 +11,7 @@ type promotion =
   ; files : (Path.Build.t * Digest.t) list
   ; metadata : Sexp.t list
   ; repository : int option
-  ; duplication : Dune_cache.Duplication_mode.t option
+  ; duplication : Duplication_mode.t option
   }
 
 type initial = Initial
@@ -24,5 +25,5 @@ type _ message =
   | Promote : promotion -> outgoing message
   | SetBuildRoot : Path.t -> outgoing message
   | SetCommonMetadata : Sexp.t list -> outgoing message
-  | SetRepos : Dune_cache.repository list -> outgoing message
-  | Dedup : Dune_cache.File.t -> incoming message
+  | SetRepos : repository list -> outgoing message
+  | Dedup : File.t -> incoming message

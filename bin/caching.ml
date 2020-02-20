@@ -39,7 +39,7 @@ let start ~config ~foreground ~port_path ~root ~display =
         Verbose
       else
         Quiet );
-    Dune_cache_daemon.daemon ~root ~config started
+    Cache_daemon.daemon ~root ~config started
   in
   match Daemonize.daemonize ~workdir:root ~foreground port_path f with
   | Result.Ok Finished -> ()
@@ -61,16 +61,16 @@ let trim ~trimmed_size ~size =
   let open Result.O in
   match
     let* cache =
-      Dune_cache.Cache.make
-        ~duplication_mode:Dune_cache.Duplication_mode.Hardlink (fun _ -> ())
+      Cache.Local.make ~duplication_mode:Cache.Duplication_mode.Hardlink
+        (fun _ -> ())
     in
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size -> Result.Ok (Dune_cache.size cache - size)
+      | None, Some size -> Result.Ok (Cache.Local.size cache - size)
       | _ -> Result.Error "specify either --size either --trimmed-size"
     in
-    Dune_cache.trim cache trimmed_size
+    Cache.Local.trim cache trimmed_size
   with
   | Error s -> User_error.raise [ Pp.text s ]
   | Ok { trimmed_files_size = size; _ } ->
@@ -110,13 +110,13 @@ let term =
      and+ port_path =
        Arg.(
          value
-         & opt path_conv (Dune_cache_daemon.default_port_file ())
+         & opt path_conv (Cache_daemon.default_port_file ())
          & info ~docv:"PATH" [ "port-file" ]
              ~doc:"The file to read/write the daemon port to/from.")
      and+ root =
        Arg.(
          value
-         & opt path_conv (Dune_cache.default_root ())
+         & opt path_conv (Cache.Local.default_root ())
          & info ~docv:"PATH" [ "root" ] ~doc:"Root of the dune cache")
      and+ trimmed_size =
        Arg.(
@@ -133,7 +133,7 @@ let term =
      match mode with
      | Some Start ->
        let config =
-         { Dune_cache_daemon.exit_no_client
+         { Cache_daemon.exit_no_client
          ; duplication_mode = config.cache_duplication
          }
        in

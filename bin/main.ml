@@ -16,7 +16,7 @@ let run_build_command ~common ~targets =
   else
     Scheduler.go ~common once;
   match Build_system.get_cache () with
-  | Some { cache = (module Caching : Dune_cache.Caching); _ } ->
+  | Some { cache = (module Caching : Cache.Caching); _ } ->
     (* Synchronously wait for the end of the connection with the cache daemon,
        ensuring all dedup messages have been queued. *)
     Caching.Cache.teardown Caching.cache;
@@ -192,7 +192,7 @@ let all =
   ; Format_dune_file.command
   ; Compute.command
   ; Upgrade.command
-  ; Cache_daemon.command
+  ; Caching.command
   ]
 
 let default =
@@ -244,5 +244,5 @@ let () =
   | Fiber.Never -> exit 1
   | exn ->
     let exn = Exn_with_backtrace.capture exn in
-    Report_error.report exn;
+    Dune.Report_error.report exn;
     exit 1

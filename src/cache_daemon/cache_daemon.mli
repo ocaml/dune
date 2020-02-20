@@ -7,7 +7,7 @@ exception Error of string
 
 type config =
   { exit_no_client : bool
-  ; duplication_mode : Dune_cache.Duplication_mode.t option
+  ; duplication_mode : Cache.Duplication_mode.t option
   }
 
 val make : ?root:Path.t -> config:config -> unit -> t
@@ -26,13 +26,3 @@ val stop : t -> unit
 val endpoint : t -> string option
 
 val daemon : root:Path.t -> config:config -> (string -> unit) -> unit
-
-module Client : sig
-  include Dune_cache.Cache
-
-  val make :
-       ?finally:(unit -> unit)
-    -> ?duplication_mode:Dune_cache.Duplication_mode.t
-    -> (Dune_cache.command -> unit)
-    -> (t, exn) Result.t
-end

@@ -1,4 +1,4 @@
-(** Implement the XDG specification
+(** Implement the XDG base directories specification
 
     http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html *)
 

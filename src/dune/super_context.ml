@@ -150,7 +150,7 @@ end = struct
       | Dune_env.T config -> Some config
       | _ -> None)
 
-  let rec get_uncached t ~dir ~scope =
+  let rec get_with_scope t ~dir ~scope =
     match Table.find t.env_cache dir with
     | Some node -> node
     | None ->
@@ -160,19 +160,23 @@ end = struct
             t.default_env
           else
             match Path.Build.parent dir with
-            | None -> raise_notrace Exit
+            | None ->
+              Code_error.raise
+                "Super_context.Env.get called on invalid directory"
+                [ ("dir", Path.Build.to_dyn dir) ]
             | Some parent ->
-              Memo.lazy_ (fun () -> get_uncached t ~dir:parent ~scope)
+              Memo.lazy_ (fun () -> get_with_scope t ~dir:parent ~scope)
         in
         let config_stanza = get_env_stanza t ~dir in
         let default_context_flags = default_context_flags t.context in
-        let expander = Memo.lazy_ (fun () -> expander t ~dir) in
-        (* CR amokhov: There is some code duplication: [expander] also computes
-           [expander_for_artifacts]. *)
         let expander_for_artifacts =
           Memo.lazy_ (fun () ->
               expander_for_artifacts ~scope ~root_expander:t.root_expander
                 ~external_env:(external_env t ~dir) ~dir)
+        in
+        let expander =
+          Memo.Lazy.map expander_for_artifacts ~f:(fun expander_for_artifacts ->
+              extend_expander t ~dir ~expander_for_artifacts)
         in
         Env_node.make ~dir ~scope ~config_stanza
           ~inherit_from:(Some inherit_from) ~profile:t.profile ~expander
@@ -183,18 +187,18 @@ end = struct
       node
 
   and get t ~dir : Env_node.t =
+    (* CR-soon amokhov: This should either be simplified (if correct) or fixed
+       (if a bug). Why does it seem to be a bug? We use the same [env_cache]
+       table for caching [get] requests in potentially different scopes: see how
+       [get_with_scope] passes the very same [scope] through the recursion even
+       though the [dir] arguments change. *)
     match Table.find t.env_cache dir with
     | Some node -> node
-    | None -> (
+    | None ->
       let scope = Scope.DB.find_by_dir t.scopes dir in
-      try get_uncached t ~dir ~scope
-      with Exit ->
-        Code_error.raise "Super_context.Env.get called on invalid directory"
-          [ ("dir", Path.Build.to_dyn dir) ] )
+      get_with_scope t ~dir ~scope
 
   and external_env t ~dir = Env_node.external_env (get t ~dir)
-
-  and local_binaries t ~dir = Env_node.local_binaries (get t ~dir)
 
   and inline_tests t ~dir = Env_node.inline_tests (get t ~dir)
 
@@ -210,25 +214,30 @@ end = struct
       in
       bin_artifacts host ~dir
 
-  and expander t ~dir =
-    let scope = Env_node.scope (get t ~dir) in
-    let external_env = external_env t ~dir in
-    let expander =
-      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
-        ~dir
-    in
+  and extend_expander t ~dir ~expander_for_artifacts =
     let bin_artifacts_host = bin_artifacts_host t ~dir in
     let bindings =
       let str = inline_tests t ~dir |> Dune_env.Stanza.Inline_tests.to_string in
       Pform.Map.singleton "inline_tests" (Values [ String str ])
     in
-    expander
+    expander_for_artifacts
     |> Expander.add_bindings ~bindings
     |> Expander.set_bin_artifacts ~bin_artifacts_host
 
-  and ocaml_flags t ~dir = Env_node.ocaml_flags (get t ~dir)
+  let expander t ~dir =
+    let scope = Env_node.scope (get t ~dir) in
+    let external_env = external_env t ~dir in
+    let expander_for_artifacts =
+      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
+        ~dir
+    in
+    extend_expander t ~dir ~expander_for_artifacts
 
-  and foreign_flags t ~dir = Env_node.foreign_flags (get t ~dir)
+  let local_binaries t ~dir = Env_node.local_binaries (get t ~dir)
+
+  let ocaml_flags t ~dir = Env_node.ocaml_flags (get t ~dir)
+
+  let foreign_flags t ~dir = Env_node.foreign_flags (get t ~dir)
 
   let odoc t ~dir = Env_node.odoc (get t ~dir)
 
@@ -489,13 +498,14 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
           let default_context_flags = default_context_flags context in
+          let expander_for_artifacts =
+            Memo.lazy_ (fun () ->
+                Code_error.raise
+                  "[expander_for_artifacts] in [default_env] is undefined" [])
+          in
+          let expander = Memo.Lazy.of_val root_expander in
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza
-            ~profile:context.profile
-            ~expander:(Memo.Lazy.of_val root_expander)
-            ~expander_for_artifacts:
-              (Memo.Lazy.of_val
-                 (expander_for_artifacts ~scope ~root_expander
-                    ~external_env:context.env ~dir))
+            ~profile:context.profile ~expander ~expander_for_artifacts
             ~default_context_flags ~default_env:context.env
             ~default_bin_artifacts:artifacts.bin
         in
@@ -517,7 +527,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     ; build_dir = context.build_dir
     ; context
     ; root_expander
-    ; bin_artifacts = artifacts.Artifacts.bin
+    ; bin_artifacts = artifacts.bin
     }
   in
   let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in

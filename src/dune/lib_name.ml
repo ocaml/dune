@@ -5,8 +5,8 @@ module Local = struct
 
   let valid_format_doc =
     Pp.text
-      "library names must be non-empty and composed only of the following \
-       characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'"
+      "Library names must be non-empty and composed only of the following \
+       characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'."
 
   include (
     Stringlike.Make (struct

@@ -11,13 +11,13 @@ module Make (S : Stringlike_intf.S_base) = struct
         ("Invalid " ^ S.module_ ^ ".t")
         [ ("s", Dyn.Encoder.string s) ]
 
-  let error_message s = Printf.sprintf "%S is an invalid %s" s S.description
+  let error_message s = Printf.sprintf "%S is an invalid %s." s S.description
 
   let user_error (loc, s) =
     let valid_desc =
       match S.description_of_valid_string with
       | None -> []
-      | Some m -> [m]
+      | Some m -> [ m ]
     in
     User_error.make ~loc (Pp.text (error_message s) :: valid_desc)
 

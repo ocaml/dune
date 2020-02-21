@@ -35,8 +35,8 @@ there's only a public name but it's invalid as a name
   Public library names don't have this restriction. You can either change this
   public name to be a valid library name or add a "name" field with a valid
   library name.
-  Hint: library names must be non-empty and composed only of the following
-  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
+  Hint: Library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
   [1]
 
 there's only a public name which is invalid, but sine the library is unwrapped,
@@ -51,6 +51,6 @@ it's just a warning
   Public library names don't have this restriction. You can either change this
   public name to be a valid library name or add a "name" field with a valid
   library name.
-  Hint: library names must be non-empty and composed only of the following
-  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
+  Hint: Library names must be non-empty and composed only of the following
+  characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
   [1]

@@ -31,8 +31,9 @@ let component_name_parser s =
   (* TODO refactor to use Lib_name.Local.conv *)
   let err_msg () =
     User_error.make
-      [ Pp.textf "invalid component name `%s'" s ]
-      ~hints:[ Lib_name.Local.valid_format_doc ]
+      [ Pp.textf "invalid component name `%s'" s
+      ; Lib_name.Local.valid_format_doc
+      ]
     |> User_message.to_string
     |> fun m -> `Msg m
   in

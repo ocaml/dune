@@ -76,3 +76,5 @@ module Set : sig
 
   val to_dyn : t -> Dyn.t
 end
+
+val of_string_warn : Loc.t * string -> t

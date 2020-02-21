@@ -28,8 +28,10 @@ module Name = struct
 
       let description = "package name"
 
+      let description_of_valid_string = None
+
       let of_string_opt s =
-        (* TODO verify no dots or spaces *)
+        (* DUNE3 verify no dots or spaces *)
         if s = "" then
           None
         else

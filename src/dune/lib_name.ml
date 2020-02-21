@@ -3,68 +3,61 @@ open Stdune
 module Local = struct
   type t = string
 
-  let valid_char = function
-    | 'A' .. 'Z'
-    | 'a' .. 'z'
-    | '_'
-    | '0' .. '9' ->
-      true
-    | _ -> false
-
-  let of_string (name : string) =
-    match name with
-    | "" -> Error ()
-    | (s : string) ->
-      if s.[0] = '.' then
-        Error ()
-      else
-        let len = String.length s in
-        let rec loop warn i =
-          if i = len - 1 then
-            if warn then
-              Error ()
-            else
-              Ok s
-          else
-            let c = String.unsafe_get s i in
-            if valid_char c then
-              loop warn (i + 1)
-            else if c = '.' then
-              loop true (i + 1)
-            else
-              Error ()
-        in
-        loop false 0
-
-  let of_string_exn s =
-    match of_string s with
-    | Ok s -> s
-    | Error () ->
-      Code_error.raise "Lib_name.Local.of_string_exn got invalid name"
-        [ ("name", String s) ]
-
-  let decode_loc =
-    Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, of_string s))
-
-  let encode = Dune_lang.Encoder.string
-
-  let pp_quoted fmt t = Format.fprintf fmt "%S" t
-
-  let pp fmt t = Format.fprintf fmt "%s" t
-
   let valid_format_doc =
     Pp.text
       "library names must be non-empty and composed only of the following \
        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'"
 
-  let validate (loc, res) =
-    match res with
-    | Ok s -> s
-    | Error () ->
-      User_error.raise ~loc ~hints:[ valid_format_doc ]
-        [ Pp.text "Invalid library name." ]
+  include (
+    Stringlike.Make (struct
+      type t = string
 
-  let to_string s = s
+      let to_string s = s
+
+      let module_ = "Lib_name.Local"
+
+      let description = "library name"
+
+      let description_of_valid_string = Some valid_format_doc
+
+      let valid_char = function
+        | 'A' .. 'Z'
+        | 'a' .. 'z'
+        | '_'
+        | '0' .. '9' ->
+          true
+        | _ -> false
+
+      let of_string_opt (name : string) =
+        match name with
+        | "" -> None
+        | (s : string) ->
+          if s.[0] = '.' then
+            None
+          else
+            let len = String.length s in
+            let rec loop warn i =
+              if i = len - 1 then
+                if warn then
+                  None
+                else
+                  Some s
+              else
+                let c = String.unsafe_get s i in
+                if valid_char c then
+                  loop warn (i + 1)
+                else if c = '.' then
+                  loop true (i + 1)
+                else
+                  None
+            in
+            loop false 0
+    end) :
+      Stringlike_intf.S with type t := t )
+
+  let pp_quoted fmt t = Format.fprintf fmt "%S" t
+
+  let pp fmt t = Format.fprintf fmt "%s" t
 end
 
 let split t =
@@ -76,10 +69,12 @@ let pp = Format.pp_print_string
 
 let pp_quoted fmt t = Format.fprintf fmt "%S" t
 
-let to_local = Local.of_string
+let to_local = Local.of_string_opt
 
 include Stringlike.Make (struct
   type nonrec t = string
+
+  let description_of_valid_string = None
 
   let to_string s = s
 

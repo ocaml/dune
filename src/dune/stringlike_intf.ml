@@ -3,13 +3,17 @@ open Import
 module type S_base = sig
   type t
 
-  (** The name of the module, for use in error messages. For example ["Lib_name"],
-      ["Context_name"]. *)
+  (** The name of the module, for use in error messages. For example
+      ["Lib_name"], ["Context_name"]. *)
   val module_ : string
 
   (** A short description of the type, for use in user-facing error messages.
       For example "context name", "library name". *)
   val description : string
+
+  (** A description of valid identifiers. Will be added to error messages if
+      present *)
+  val description_of_valid_string : 'a Pp.t option
 
   val of_string_opt : string -> t option
 
@@ -38,4 +42,6 @@ module type S = sig
     * (Format.formatter -> t -> unit)
 
   include Dune_lang.Conv.S with type t := t
+
+  val decode_loc : (Loc.t * t) Dune_lang.Decoder.t
 end

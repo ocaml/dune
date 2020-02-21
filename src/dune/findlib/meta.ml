@@ -260,9 +260,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let dummy name =
-    { name = Some (Lib_name.of_string name)
-    ; entries = [ version ]
-    }
+    { name = Some (Lib_name.of_string name); entries = [ version ] }
   in
   let compiler_libs =
     let sub name deps =

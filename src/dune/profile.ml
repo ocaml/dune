@@ -21,6 +21,8 @@ include (
         | "release" -> Release
         | s -> User_defined s )
 
+    let description_of_valid_string = None
+
     let to_string = function
       | Dev -> "dev"
       | Release -> "release"

@@ -916,12 +916,12 @@ module Library = struct
        let name =
          let open Dune_lang.Syntax.Version.Infix in
          match (name, public) with
-         | Some (loc, res), _ -> (loc, Lib_name.Local.validate (loc, res))
+         | Some (loc, res), _ -> (loc, res)
          | None, Some { name = loc, name; _ } ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with
-             | Ok m -> (loc, m)
-             | Error () ->
+             | Some m -> (loc, m)
+             | None ->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text

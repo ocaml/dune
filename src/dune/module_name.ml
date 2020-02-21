@@ -9,6 +9,8 @@ include Stringlike.Make (struct
 
   let module_ = "Module_name"
 
+  let description_of_valid_string = None
+
   let is_valid_module_name name =
     match name with
     | "" -> false
@@ -56,7 +58,7 @@ module Infix = Comparator.Operators (String)
 
 let of_local_lib_name s = of_string (Lib_name.Local.to_string s)
 
-let to_local_lib_name s = Lib_name.Local.of_string_exn s
+let to_local_lib_name s = Lib_name.Local.of_string s
 
 module Per_item = Per_item.Make (String)
 

@@ -117,5 +117,4 @@ let bytes =
   in
   conv (decode, Format.pp_print_int)
 
-let context_name : Context_name.t conv =
-  conv Context_name.conv
+let context_name : Context_name.t conv = conv Context_name.conv

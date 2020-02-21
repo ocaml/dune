@@ -13,7 +13,13 @@ module Make (S : Stringlike_intf.S_base) = struct
 
   let error_message s = Printf.sprintf "%S is an invalid %s" s S.description
 
-  let user_error (loc, s) = User_error.make ~loc [ Pp.text (error_message s) ]
+  let user_error (loc, s) =
+    let valid_desc =
+      match S.description_of_valid_string with
+      | None -> []
+      | Some m -> [m]
+    in
+    User_error.make ~loc (Pp.text (error_message s) :: valid_desc)
 
   let of_string_user_error (loc, s) =
     match of_string_opt s with
@@ -35,6 +41,13 @@ module Make (S : Stringlike_intf.S_base) = struct
   let decode =
     let open Dune_lang.Decoder in
     map_validate (located string) ~f:of_string_user_error
+
+  let decode_loc =
+    let open Dune_lang.Decoder in
+    map_validate (located string) ~f:(fun ((loc, _) as s) ->
+        let open Result.O in
+        let+ t = of_string_user_error s in
+        (loc, t))
 
   let encode t = Dune_lang.Encoder.(string (to_string t))
 

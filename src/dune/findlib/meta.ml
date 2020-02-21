@@ -279,6 +279,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
         ]
     }
   in
+  let stdlib = dummy "stdlib" in
   let str = simple "str" [] ~dir:"+" in
   let unix = simple "unix" [] ~dir:"+" in
   let bigarray =
@@ -325,7 +326,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   in
   let libs =
     let base =
-      [ compiler_libs; str; unix; bigarray; threads; dynlink; bytes ]
+      [ stdlib; compiler_libs; str; unix; bigarray; threads; dynlink; bytes ]
     in
     let base =
       if Ocaml_version.pervasives_includes_result ocaml_version then

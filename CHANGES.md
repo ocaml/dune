@@ -2,7 +2,11 @@
 ------------------
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
+
 - Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
+
+- Fix regression introduced by overly strict parsing of modules names. It's only
+  a warning now. (#3181, fixes #3180, @rgrinberg)
 
 2.3.1 (20/02/2020)
 ------------------

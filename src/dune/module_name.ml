@@ -101,5 +101,17 @@ module Unique = struct
   module Set = Set
 end
 
+let of_string_warn (loc, s) =
+  match of_string_opt s with
+  | Some s -> s
+  | None ->
+    User_warning.emit ~loc
+      [ Pp.textf "%S is not a valid module name." s
+      ; Pp.text
+          "Switch to a proper module names as this will no be allowed in \
+           future versions of dune."
+      ];
+    s
+
 let wrap t ~with_ =
   sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t

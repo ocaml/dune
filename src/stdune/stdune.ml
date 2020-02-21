@@ -62,6 +62,7 @@ module Scanf = Scanf
 module Sys = Sys
 module Pid = Pid
 module Applicative_intf = Applicative_intf
+module Monad_intf = Monad_intf
 module Applicative = Applicative
 module Spawn = Spawn
 

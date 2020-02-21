@@ -252,7 +252,7 @@ module Id : sig
   module Map : Map.S with type key = t
 
   module Top_closure :
-    Top_closure.S with type key := t and type 'a monad := 'a Monad.Id.t
+    Top_closure_intf.S with type key := t and type 'a monad := 'a Monad.Id.t
 end = struct
   module T = struct
     type t =

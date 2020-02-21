@@ -21,7 +21,7 @@ val uncapitalize : t -> string
 
 val pp_quote : Format.formatter -> t -> unit
 
-module Per_item : Per_item.S with type key = t
+module Per_item : Per_item_intf.S with type key = t
 
 module Infix : Comparator.OPS with type t = t
 

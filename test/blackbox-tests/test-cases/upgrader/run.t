@@ -106,6 +106,8 @@ v1 -> v2
   (lang dune 2.0)
   
   (name pouet)
+  
+  (formatting disabled)
   $ cat partv2/partv1/dune
   (include dune.inc)
   

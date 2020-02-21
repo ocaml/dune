@@ -1,6 +1,26 @@
 open! Stdune
 open Upgrader_common
 
+let update_formatting sexps =
+  let elt, sexps = Ast_ops.extract_first ["using"; "fmt"] sexps in
+  match elt with
+  (* Was not using fmt *)
+  | None -> sexps @ [
+    Ast_ops.field_of_list
+      Dune_lang.Atom.[of_string "formatting"; of_string "disabled"]
+  ]
+  (* Was using fmt *)
+  | Some ([_;_;_]) -> sexps
+  (* Was using fmt enabled_for *)
+  | Some (_ :: _ :: _ :: tl) -> sexps @ [
+    Ast_ops.field_of_list
+      Dune_lang.Atom.[
+        of_string "formatting"]
+      ~more:tl
+  ]
+  (* Unexpected *)
+  | _ -> sexps
+
 let update_project_file todo project =
     let sexps, comments =
       Upgrader_common.read_and_parse
@@ -9,8 +29,10 @@ let update_project_file todo project =
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps
       |> Ast_ops.bump_lang_version v
+      |> update_formatting
     in
     let new_file_contents = string_of_sexps sexps comments in
+    (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
     todo.to_edit <-
       (Dune_project.file project, new_file_contents)::todo.to_edit
 

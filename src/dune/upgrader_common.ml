@@ -15,6 +15,40 @@ type todo =
 module Ast_ops = struct
   open Dune_lang.Ast
 
+  let field_of_list ?more:(m=[]) atoms =
+    List(Loc.none, (List.map atoms
+      ~f:(fun a -> Atom(Loc.none, a)))
+      @ m
+      )
+
+  let rec replace_first old_name new_name = function
+  | List(loc, Atom(loca, A atom) :: tll)
+    :: tl when atom = old_name ->
+      List(loc, Atom(loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl
+  | List(loc, Quoted_string(loca, str) :: tll)
+    :: tl when str = old_name ->
+      List(loc, Quoted_string(loca, new_name) :: tll) :: tl
+  | hd :: tl -> hd :: (replace_first old_name new_name tl)
+  | [] -> []
+
+  let extract_first names =
+    let rec is_names vals names = match vals, names with
+      | (Atom(_, A str) | Quoted_string(_, str)) :: tl, name :: tln
+        when str = name -> is_names tl tln
+      | _, [] -> true
+      | _, _ -> false
+    in
+    let rec aux rest = function
+    | List(_, elt) :: _ when is_names elt names -> Some elt, List.rev rest
+    | hd :: tl -> aux (hd :: rest) tl
+    | [] -> None, List.rev rest
+    in aux []
+
+  let is_in_list names sexp =
+    match fst (extract_first names sexp) with
+    | Some _ -> true
+    | None -> false
+
   let bump_lang_version v =
     let v = Dune_lang.Syntax.Version.to_string v in
     function
@@ -27,28 +61,12 @@ module Ast_ops = struct
         :: tll) :: tl
     | sexp -> sexp
 
-  let rec replace_first old_name new_name = function
-  | List(loc, Atom(loca, A atom) :: tll)
-    :: tl when atom = old_name ->
-      List(loc, Atom(loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl
-  | List(loc, Quoted_string(loca, str) :: tll)
-    :: tl when str = old_name ->
-      List(loc, Quoted_string(loca, new_name) :: tll) :: tl
-  | hd :: tl -> hd :: (replace_first old_name new_name tl)
-  | [] -> []
-
-  let rec is_in_list name = function
-  | List(_, (Atom(_, A str) | Quoted_string(_, str)) :: _)
-    :: _ when str = name -> true
-  | _ :: tl -> is_in_list name tl
-  | [] -> false
-
   let alias_to_rule = function
     | List
         (loc,
           Atom (loca, A "alias") :: tl
         ) as ast ->
-        if is_in_list "action" tl then
+        if is_in_list ["action"] tl then
           let tl = replace_first "name" "alias" tl in
           List (loc, Atom (loca, Dune_lang.Atom.of_string ("rule")) :: tl)
         else ast

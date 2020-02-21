@@ -49,6 +49,8 @@ module Expansion : sig
     | Macro of Macro.t * string
 
   val to_dyn : t -> Dyn.t
+
+  module Map : Map.S with type key = t
 end
 
 module Map : sig
@@ -68,6 +70,8 @@ module Map : sig
   val input_file : Path.t -> t
 
   val expand : t -> Expansion.t option String_with_vars.expander
+
+  val expand_exn : t -> Expansion.t String_with_vars.expander
 
   val empty : t
 

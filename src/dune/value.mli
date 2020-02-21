@@ -5,6 +5,8 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
+val compare : t -> t -> Ordering.t
+
 val to_dyn : t -> Dyn.t
 
 val to_string : t -> dir:Path.t -> string

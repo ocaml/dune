@@ -5,6 +5,8 @@ type t =
   | Byte
   | Native
 
+let compare = Poly.compare
+
 let all = [ Byte; Native ]
 
 let decode =

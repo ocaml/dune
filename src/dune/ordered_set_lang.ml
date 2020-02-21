@@ -40,6 +40,8 @@ let equal_generic f { ast; loc = _; context } t =
 
 type ast_expanded = (Loc.t * string, Ast.expanded) Ast.t
 
+(* TODO this type should really be parameterized by the type of elements
+   contained in the set, like we do with the predicate language. *)
 type t = ast_expanded generic
 
 let equal = equal_generic (Ast.equal (fun (_, x) (_, y) -> String.equal x y))

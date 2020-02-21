@@ -35,6 +35,8 @@ module Set : sig
 
   val sandbox_config : t -> Sandbox_config.t
 
+  val source_tree : Path.t -> t
+
   val of_files : Path.t list -> t
 
   val of_files_set : Path.Set.t -> t

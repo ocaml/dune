@@ -12,7 +12,7 @@ like:
 
 .. code:: scheme
 
-          (lang dune 2.3)
+          (lang dune 2.4)
 
 Additionally, they can contains the following stanzas.
 
@@ -1611,6 +1611,44 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
 
 .. _dune-workspace:
 
+mdx (since 2.4)
+---------------
+
+MDX is a tool that helps you keep your markdown documentation up to date by
+checking that the code examples it contains are correct.
+
+See `MDX's repository <https://github.com/realworldocaml/mdx>` for more details.
+
+You can define an MDX stanza to specify which files you want checked.
+
+Note that this features is still experimental and needs to be enabled in your
+``dune-project`` with the following ``using`` stanza:
+
+.. code:: scheme
+
+  (using mdx 0.1)
+
+The syntax is as follows:
+
+.. code:: scheme
+
+  (mdx <optional-fields>)
+
+Where ``<optional-fields>`` are:
+
+- ``(files <globs>)`` are the files that you want MDX to check, describe as a
+  list of globs (see the `Glob language specification <glob>`).
+  It defaults to ``*.md``.
+
+- ``(packages <packages>)`` are the local dune packages that your documentation
+  code blocks depend on. I.e. if your documentation examples depend on a public
+  executable or library defined from a local package, it has to be specified in
+  the stanza.
+
+- ``(preludes <files>)`` are the prelude files you want to pass to MDX.
+  See `MDX's documentation <https://github.com/realworldocaml/mdx>` for more
+  details on preludes.
+
 dune-workspace
 ==============
 
@@ -1633,7 +1671,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.3)
+    (lang dune 2.4)
     (context (opam (switch 4.02.3)))
     (context (opam (switch 4.03.0)))
     (context (opam (switch 4.04.0)))
@@ -1645,7 +1683,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.3)
+    (lang dune 2.4)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

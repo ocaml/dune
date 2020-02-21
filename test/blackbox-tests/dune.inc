@@ -1652,6 +1652,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias mdx-stanza)
+ (deps (package dune) (source_tree test-cases/mdx-stanza))
+ (action
+  (chdir
+   test-cases/mdx-stanza
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias menhir-cmly)
  (deps (package dune) (source_tree test-cases/menhir/cmly))
  (action
@@ -2837,6 +2847,7 @@
   (alias lint)
   (alias loop)
   (alias macro-expand-error)
+  (alias mdx-stanza)
   (alias menhir-cmly)
   (alias menhir-env)
   (alias menhir-general)

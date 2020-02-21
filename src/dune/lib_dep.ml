@@ -18,10 +18,9 @@ module Select = struct
              ~before:
                (let+ s = string
                 and+ loc = loc in
-                let loc = Some loc in
                 match String.drop_prefix s ~prefix:"!" with
-                | Some s -> Right (Lib_name.of_string_exn ~loc s)
-                | None -> Left (Lib_name.of_string_exn ~loc s))
+                | Some s -> Right (Lib_name.parse_string_exn (loc, s))
+                | None -> Left (Lib_name.parse_string_exn (loc, s)))
              ~after:(located filename)
          in
          match file with

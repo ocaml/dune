@@ -148,7 +148,7 @@ let expand_artifact ~dir ~loc t a s =
       | Some path -> Ok [ Value.Path (Path.build path) ] ) )
   | Lib mode -> (
     let+ lookup_library = t.lookup_library in
-    let name = Lib_name.of_string_exn ~loc:(Some loc) name in
+    let name = Lib_name.parse_string_exn (loc, name) in
     match lookup_library ~dir name with
     | None ->
       let msg =
@@ -291,7 +291,7 @@ let str_exp str = [ Value.String str ]
 let parse_lib_file ~loc s =
   match String.lsplit2 s ~on:':' with
   | None -> User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
-  | Some (lib, f) -> (Lib_name.of_string_exn ~loc:(Some loc) lib, f)
+  | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
 
 type expansion_kind =
   | Dynamic
@@ -428,7 +428,7 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
         else
           add_fail acc { fail = (fun () -> raise e) } ) )
   | Macro (Lib_available, s) ->
-    let lib = Lib_name.of_string_exn ~loc:(Some loc) s in
+    let lib = Lib_name.parse_string_exn (loc, s) in
     Resolved_forms.add_lib_dep acc lib Optional;
     Lib.DB.available (Scope.libs t.scope) lib
     |> string_of_bool |> str_exp |> Option.some

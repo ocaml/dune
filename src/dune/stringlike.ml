@@ -1,0 +1,42 @@
+open Import
+
+module Make (S : Stringlike_intf.S_base) = struct
+  include S
+
+  let of_string s : t =
+    match S.of_string_opt s with
+    | Some s -> s
+    | None ->
+      Code_error.raise
+        ("Invalid " ^ S.module_ ^ ".t")
+        [ ("s", Dyn.Encoder.string s) ]
+
+  let error_message s = Printf.sprintf "%S is an invalid %s" s S.description
+
+  let user_error (loc, s) = User_error.make ~loc [ Pp.text (error_message s) ]
+
+  let of_string_user_error (loc, s) =
+    match of_string_opt s with
+    | Some s -> Ok s
+    | None -> Error (user_error (loc, s))
+
+  let parse_string_exn (loc, s) =
+    match of_string_user_error (loc, s) with
+    | Ok s -> s
+    | Error err -> raise (User_error.E err)
+
+  let conv =
+    ( (fun s ->
+        match of_string_opt s with
+        | Some x -> Ok x
+        | None -> Error (`Msg (error_message s)))
+    , fun fmt t -> Format.pp_print_string fmt (to_string t) )
+
+  let decode =
+    let open Dune_lang.Decoder in
+    map_validate (located string) ~f:of_string_user_error
+
+  let encode t = Dune_lang.Encoder.(string (to_string t))
+
+  let to_dyn t = Dyn.Encoder.string (to_string t)
+end

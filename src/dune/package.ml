@@ -18,32 +18,24 @@ module Name = struct
 
   include T
 
-  let of_string_opt s =
-    (* TODO verify no dots or spaces *)
-    if s = "" then
-      None
-    else
-      Some (make s)
+  include (
+    Stringlike.Make (struct
+      type t = T.t
 
-  let of_string pkg =
-    match of_string_opt pkg with
-    | Some p -> p
-    | None ->
-      Code_error.raise "Invalid package name"
-        [ ("pkg", Dyn.Encoder.string pkg) ]
+      let to_string = T.to_string
 
-  let invalid_package_name (loc, s) =
-    User_error.make ~loc [ Pp.textf "%S is an invalid package name" s ]
+      let module_ = "Package.Name"
 
-  let of_string_user_error (loc, s) =
-    match of_string_opt s with
-    | Some s -> Ok s
-    | None -> Error (invalid_package_name (loc, s))
+      let description = "package name"
 
-  let parse_string_exn s =
-    match of_string_user_error s with
-    | Ok s -> s
-    | Error err -> raise (User_error.E err)
+      let of_string_opt s =
+        (* TODO verify no dots or spaces *)
+        if s = "" then
+          None
+        else
+          Some (make s)
+    end) :
+      Stringlike_intf.S with type t := t )
 
   let of_opam_file_basename basename =
     let open Option.O in
@@ -57,14 +49,6 @@ module Name = struct
   let version_fn (t : t) = to_string t ^ ".version"
 
   let pp fmt t = Format.pp_print_string fmt (to_string t)
-
-  let decode =
-    let open Dune_lang.Decoder in
-    map_validate (located string) ~f:of_string_user_error
-
-  let encode t = Dune_lang.Encoder.(string (to_string t))
-
-  let to_dyn t = Dyn.Encoder.string (to_string t)
 
   module Infix = Comparator.Operators (T)
 end

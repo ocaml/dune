@@ -2,8 +2,7 @@ open Stdune
 open Dune
 include Cmdliner.Arg
 
-let package_name =
-  conv ((fun p -> Ok (Package.Name.of_string p)), Package.Name.pp)
+let package_name = conv Package.Name.conv
 
 module Path = struct
   type t = string
@@ -17,10 +16,7 @@ end
 
 let path = Path.conv
 
-let profile =
-  conv
-    ( (fun p -> Ok (Profile.of_string p))
-    , fun fmt t -> Format.pp_print_string fmt (Profile.to_string t) )
+let profile = conv Dune.Profile.conv
 
 module Dep = struct
   module Dep_conf = Dep_conf
@@ -121,6 +117,5 @@ let bytes =
   in
   conv (decode, Format.pp_print_int)
 
-let context_name =
-  let printer ppf t = Format.pp_print_string ppf (Context_name.to_string t) in
-  (Context_name.arg_parse, printer)
+let context_name : Context_name.t conv =
+  conv Context_name.conv

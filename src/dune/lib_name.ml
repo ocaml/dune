@@ -1,9 +1,5 @@
 open Stdune
 
-let encode = Dune_lang.Encoder.string
-
-let decode = Dune_lang.Decoder.string
-
 module Local = struct
   type t = string
 
@@ -82,29 +78,27 @@ let pp_quoted fmt t = Format.fprintf fmt "%S" t
 
 let to_local = Local.of_string
 
-let to_dyn t = Dyn.String t
+include Stringlike.Make (struct
+  type nonrec t = string
 
-let to_string t = t
+  let to_string s = s
 
-let of_string_exn ~loc:_ s = s
+  let module_ = "Lib_name"
+
+  let description = "library name"
+
+  let of_string_opt s = Some s
+end)
 
 let of_local (_loc, t) = t
 
 let of_package_name p = Package.Name.to_string p
 
-type t = string
-
 let hash = String.hash
 
 let compare = String.compare
 
-include (
-  Comparator.Operators (struct
-    type nonrec t = t
-
-    let compare = compare
-  end) :
-    Comparator.OPS with type t := t )
+include (Comparator.Operators (String) : Comparator.OPS with type t := t)
 
 module O = Comparable.Make (String)
 module Map = O.Map

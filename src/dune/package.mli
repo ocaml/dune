@@ -5,10 +5,6 @@ open! Stdune
 module Name : sig
   type t
 
-  val of_string : string -> t
-
-  val parse_string_exn : Loc.t * string -> t
-
   val opam_fn : t -> string
 
   val version_fn : t -> string
@@ -19,7 +15,7 @@ module Name : sig
 
   module Infix : Comparator.OPS with type t = t
 
-  val to_dyn : t -> Dyn.t
+  include Stringlike_intf.S with type t := t
 
   val of_opam_file_basename : string -> t option
 end

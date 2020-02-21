@@ -219,10 +219,11 @@ let modules_of_files ~dialects ~dir ~files =
       (name, Module.File.make dialect (Path.relative dir fn))
     in
     let parse_name_or_warn ~fn s =
-      match Module_name.parse_string s with
+      let loc = Loc.in_dir dir in
+      match Module_name.of_string_opt s with
       | Some _ as s -> s
       | None ->
-        User_warning.emit ~loc:(Loc.in_dir dir)
+        User_warning.emit ~loc
           [ Pp.textf
               "The following source file corresponds to an invalid module name:"
           ; Pp.textf "- %s" fn

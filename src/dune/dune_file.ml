@@ -147,8 +147,7 @@ module Pps_and_flags = struct
             | None ->
               User_error.raise ~loc
                 [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt -> Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
-            ))
+            | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt)) ))
     in
     let all_flags = more_flags @ Option.value flags ~default:[] in
     if syntax_version < (1, 10) then

@@ -36,7 +36,7 @@ let runtime_file ~dir ~sctx file =
   match
     Artifacts.Public_libs.file_of_lib (SC.artifacts sctx).public_libs
       ~loc:Loc.none
-      ~lib:(Lib_name.of_string_exn ~loc:None "js_of_ocaml-compiler")
+      ~lib:(Lib_name.of_string "js_of_ocaml-compiler")
       ~file
   with
   | Error _ -> (
@@ -153,7 +153,7 @@ let setup_separate_compilation_rules sctx components =
     | _ :: _ :: _ ->
       ()
     | [ pkg ] -> (
-      let pkg = Lib_name.of_string_exn ~loc:None pkg in
+      let pkg = Lib_name.parse_string_exn (Loc.none, pkg) in
       let ctx = SC.context sctx in
       match Lib.DB.find (SC.installed_libs sctx) pkg with
       | None -> ()

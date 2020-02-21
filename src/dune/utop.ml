@@ -71,7 +71,7 @@ let setup sctx ~dir =
   let modules = Toplevel.Source.modules source in
   let requires =
     let open Result.O in
-    (loc, Lib_name.of_string_exn ~loc:(Some loc) "utop")
+    (loc, Lib_name.of_string "utop")
     |> Lib.DB.resolve db
     >>| (fun utop -> utop :: libs)
     >>= Lib.closure ~linking:true

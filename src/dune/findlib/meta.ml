@@ -73,7 +73,8 @@ module Parse = struct
     | String s ->
       if String.contains s '.' then
         error lb "'.' not allowed in sub-package names";
-      Lib_name.of_string_exn ~loc:None s
+      let loc = Loc.of_lexbuf lb in
+      Lib_name.parse_string_exn (loc, s)
     | _ -> error lb "package name expected"
 
   let string lb =
@@ -247,7 +248,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
       | None -> name
       | Some a -> a
     in
-    let name = Lib_name.of_string_exn ~loc:None name in
+    let name = Lib_name.of_string name in
     let archives = archives archive_name in
     { name = Some name
     ; entries =
@@ -259,7 +260,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let dummy name =
-    { name = Some (Lib_name.of_string_exn ~loc:None name)
+    { name = Some (Lib_name.of_string name)
     ; entries = [ version ]
     }
   in
@@ -267,7 +268,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     let sub name deps =
       Package (simple name deps ~archive_name:("ocaml" ^ name))
     in
-    { name = Some (Lib_name.of_string_exn ~loc:None "compiler-libs")
+    { name = Some (Lib_name.of_string "compiler-libs")
     ; entries =
         [ requires []
         ; version
@@ -297,7 +298,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
   let uchar = dummy "uchar" in
   let seq = dummy "seq" in
   let threads =
-    { name = Some (Lib_name.of_string_exn ~loc:None "threads")
+    { name = Some (Lib_name.of_string "threads")
     ; entries =
         [ version
         ; requires ~preds:[ Pos "mt"; Pos "mt_vm" ] [ "threads.vm" ]
@@ -316,7 +317,7 @@ let builtins ~stdlib_dir ~version:ocaml_version =
     }
   in
   let num =
-    { name = Some (Lib_name.of_string_exn ~loc:None "num")
+    { name = Some (Lib_name.of_string "num")
     ; entries =
         [ requires [ "num.core" ]
         ; version

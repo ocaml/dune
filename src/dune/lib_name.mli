@@ -4,11 +4,7 @@ type t
 
 val hash : t -> int
 
-val of_string_exn : loc:Loc.t option -> string -> t
-
-val to_string : t -> string
-
-include Dune_lang.Conv.S with type t := t
+include Stringlike_intf.S with type t := t
 
 module Local : sig
   type t
@@ -60,5 +56,3 @@ module Set : sig
 end
 
 val nest : t -> t -> t
-
-val to_dyn : t -> Dyn.t

@@ -5,22 +5,35 @@ type t =
   | Release
   | User_defined of string
 
+include (
+  Stringlike.Make (struct
+    type nonrec t = t
+
+    let description = "profile"
+
+    let module_ = "Profile"
+
+    let of_string_opt p =
+      (* TODO actually validate *)
+      Some
+        ( match p with
+        | "dev" -> Dev
+        | "release" -> Release
+        | s -> User_defined s )
+
+    let to_string = function
+      | Dev -> "dev"
+      | Release -> "release"
+      | User_defined s -> s
+  end) :
+    Stringlike_intf.S with type t := t )
+
 let equal x y =
   match (x, y) with
   | Dev, Dev -> true
   | Release, Release -> true
   | User_defined x, User_defined y -> String.equal x y
   | _, _ -> false
-
-let of_string = function
-  | "dev" -> Dev
-  | "release" -> Release
-  | s -> User_defined s
-
-let to_string = function
-  | Dev -> "dev"
-  | Release -> "release"
-  | User_defined s -> s
 
 let default = Dev
 
@@ -35,11 +48,6 @@ let is_release = function
 let is_inline_test = function
   | Release -> false
   | _ -> true
-
-let decode =
-  let open Dune_lang.Decoder in
-  let+ name = string in
-  of_string name
 
 let to_dyn =
   let open Dyn.Encoder in

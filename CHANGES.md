@@ -2,6 +2,7 @@
 ------------------
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
+- Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
 
 2.3.1 (20/02/2020)
 ------------------

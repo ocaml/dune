@@ -134,7 +134,7 @@ let expand_artifact ~dir ~loc t a s =
   match a with
   | Pform.Artifact.Mod kind -> (
     let+ lookup_module = t.lookup_module in
-    let name = Module_name.of_string name in
+    let name = Module_name.of_string_warn (loc, name) in
     match lookup_module ~dir name with
     | None ->
       let msg =

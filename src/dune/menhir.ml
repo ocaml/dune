@@ -185,7 +185,7 @@ module Run (P : PARAMS) : sig end = struct
          ; Target (mock_ml base)
          ]);
     (* 2. The OCaml compiler performs type inference. *)
-    let name = Module_name.of_string (mock base) in
+    let name = Module_name.of_string_warn (stanza.loc, mock base) in
     let mock_module : Module.t =
       let source =
         let impl = Module.File.make Dialect.ocaml (Path.build (mock_ml base)) in
@@ -284,7 +284,9 @@ let targets (stanza : Dune_file.Menhir.t) : string list =
   List.concat_map (modules stanza) ~f
 
 let module_names (stanza : Dune_file.Menhir.t) : Module_name.t list =
-  List.map (modules stanza) ~f:Module_name.of_string
+  List.map (modules stanza) ~f:(fun s ->
+      (* TODO the loc can improved here *)
+      Module_name.of_string_warn (stanza.loc, s))
 
 let gen_rules ~build_dir ~dir cctx stanza =
   let module R = Run (struct

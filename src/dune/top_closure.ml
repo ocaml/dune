@@ -1,30 +1,6 @@
 open! Stdune
 
-module type Keys = sig
-  type t
-
-  type elt
-
-  val empty : t
-
-  val add : t -> elt -> t
-
-  val mem : t -> elt -> bool
-end
-
-module type S = sig
-  type key
-
-  type 'a monad
-
-  val top_closure :
-       key:('a -> key)
-    -> deps:('a -> 'a list monad)
-    -> 'a list
-    -> ('a list, 'a list) result monad
-end
-
-module Make (Keys : Keys) (Monad : Monad.S) = struct
+module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
   open Monad
 
   let top_closure ~key ~deps elements =

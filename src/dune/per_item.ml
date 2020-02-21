@@ -1,27 +1,6 @@
 open! Stdune
 
-module type S = sig
-  type key
-
-  type 'a t
-
-  val for_all : 'a -> 'a t
-
-  val of_mapping :
-    (key list * 'a) list -> default:'a -> ('a t, key * 'a * 'a) result
-
-  val get : 'a t -> key -> 'a
-
-  val is_constant : _ t -> bool
-
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val fold : 'a t -> init:'acc -> f:('a -> 'acc -> 'acc) -> 'acc
-
-  val exists : 'a t -> f:('a -> bool) -> bool
-end
-
-module Make (Key : Map.Key) : S with type key = Key.t = struct
+module Make (Key : Map.Key) : Per_item_intf.S with type key = Key.t = struct
   module Map = Map.Make (Key)
 
   type key = Key.t

@@ -37,7 +37,8 @@ let inline_tests t = Memo.Lazy.force t.inline_tests
 let menhir_flags t = Memo.Lazy.force t.menhir_flags
 
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
-    ~default_context_flags ~default_env ~default_bin_artifacts =
+    ~expander_for_artifacts ~default_context_flags ~default_env
+    ~default_bin_artifacts =
   let config = Dune_env.Stanza.find config_stanza ~profile in
   let inherited ~field ~root extend =
     Memo.lazy_ (fun () ->
@@ -52,7 +53,9 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         @ List.map config.binaries
             ~f:
               (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
-                   Expander.expand expander ~mode:Single ~template
+                   Expander.expand
+                     (Memo.Lazy.force expander_for_artifacts)
+                     ~mode:Single ~template
                    |> Value.to_string ~dir:(Path.build dir))))
   in
   let external_env =
@@ -78,7 +81,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
       Ocaml_flags.default ~profile ~dune_version
     in
     inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
-        let expander = Expander.set_dir expander ~dir in
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Ocaml_flags.make ~spec:config.flags ~default:flags
           ~eval:(Expander.expand_and_eval_set expander))
   in
@@ -97,14 +100,14 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     inherited ~field:foreign_flags
       ~root:(Foreign.Language.Dict.map ~f:Build.return default_context_flags)
       (fun flags ->
-        let expander = Expander.set_dir expander ~dir in
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Foreign.Language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
             let standard = Foreign.Language.Dict.get flags language in
             Expander.expand_and_eval_set expander f ~standard))
   in
   let menhir_flags =
     inherited ~field:menhir_flags ~root:(Build.return []) (fun flags ->
-        let expander = Expander.set_dir expander ~dir in
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)
   in

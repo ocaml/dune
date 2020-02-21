@@ -28,16 +28,22 @@ let atom_parser s =
 let atom_printer ppf a = Format.pp_print_string ppf (Dune_lang.Atom.to_string a)
 
 let component_name_parser s =
+  (* TODO refactor to use Lib_name.Local.conv *)
   let err_msg () =
     User_error.make
-      [ Pp.textf "invalid component name `%s'" s ]
-      ~hints:[ Lib_name.Local.valid_format_doc ]
+      [ Pp.textf "invalid component name `%s'" s
+      ; Lib_name.Local.valid_format_doc
+      ]
     |> User_message.to_string
     |> fun m -> `Msg m
   in
   let open Result.O in
   let* atom = atom_parser s in
-  let* _ = Lib_name.Local.of_string s |> Result.map_error ~f:err_msg in
+  let* _ =
+    match Lib_name.Local.of_string_opt s with
+    | None -> Error (err_msg ())
+    | Some s -> Ok s
+  in
   Ok atom
 
 let atom_conv = Arg.conv (atom_parser, atom_printer)

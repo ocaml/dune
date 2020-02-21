@@ -203,10 +203,10 @@ let handle_special_libs cctx =
                findlib. That's why it's ok to use a dummy location. *)
             let+ dynlink =
               Lib.DB.resolve (SC.public_libs sctx)
-                (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
+                (Loc.none, Lib_name.of_string "dynlink")
             and+ findlib =
               Lib.DB.resolve (SC.public_libs sctx)
-                (Loc.none, Lib_name.of_string_exn ~loc:None "findlib")
+                (Loc.none, Lib_name.of_string "findlib")
             in
             [ dynlink; findlib ]
           in

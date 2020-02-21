@@ -155,8 +155,8 @@ let builtin_for_dune : Dune_package.t =
   let entry =
     Dune_package.Entry.Deprecated_library_name
       { loc = Loc.of_pos __POS__
-      ; old_public_name = Lib_name.of_string_exn "dune.configurator" ~loc:None
-      ; new_public_name = Lib_name.of_string_exn "dune-configurator" ~loc:None
+      ; old_public_name = Lib_name.of_string "dune.configurator"
+      ; new_public_name = Lib_name.of_string "dune-configurator"
       }
   in
   { name = Opam_package.Name.of_string "dune"
@@ -222,11 +222,11 @@ end = struct
 
     let requires t =
       Vars.get_words t.vars "requires" preds
-      |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
+      |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
 
     let ppx_runtime_deps t =
       Vars.get_words t.vars "ppx_runtime_deps" preds
-      |> List.map ~f:(Lib_name.of_string_exn ~loc:None)
+      |> List.map ~f:(fun s -> Lib_name.parse_string_exn (Loc.none, s))
 
     let kind t =
       match Vars.get t.vars "library_kind" Ps.empty with
@@ -448,8 +448,7 @@ end = struct
     let subs : Meta.Simplified.t list =
       let rec loop = function
         | [] -> []
-        | name :: names ->
-          [ dummy (Lib_name.of_string_exn ~loc:None name) (loop names) ]
+        | name :: names -> [ dummy (Lib_name.of_string name) (loop names) ]
       in
       loop names
     in

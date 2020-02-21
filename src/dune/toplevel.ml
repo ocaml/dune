@@ -102,7 +102,7 @@ module Stanza = struct
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let compile_info =
       let compiler_libs =
-        Lib_name.of_string_exn ~loc:(Some source.loc) "compiler-libs.toplevel"
+        Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
       in
       Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
         [ (source.loc, source.name) ]

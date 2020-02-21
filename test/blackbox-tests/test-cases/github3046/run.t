@@ -26,9 +26,9 @@ are given as paramters
 
   $ dune init lib foo --public="some/invalid&name!"
   dune: option `--public': invalid component name `some/invalid&name!'
-        Hint: library names must be non-empty and composed only of the
+        Library names must be non-empty and composed only of the
         following
-        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'
+        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]

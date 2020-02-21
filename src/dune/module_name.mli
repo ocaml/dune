@@ -3,19 +3,11 @@ open Stdune
 (** Represents a valid OCaml module name *)
 type t
 
-val to_dyn : t -> Dyn.t
-
-include Dune_lang.Conv.S with type t := t
+include Stringlike_intf.S with type t := t
 
 val add_suffix : t -> string -> t
 
 val compare : t -> t -> Ordering.t
-
-val parse_string : string -> t option
-
-val of_string : string -> t
-
-val to_string : t -> string
 
 val uncapitalize : t -> string
 
@@ -28,8 +20,6 @@ module Infix : Comparator.OPS with type t = t
 val of_local_lib_name : Lib_name.Local.t -> t
 
 val to_local_lib_name : t -> Lib_name.Local.t
-
-val decode : t Dune_lang.Decoder.t
 
 module Unique : sig
   type name

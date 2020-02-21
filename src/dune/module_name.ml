@@ -1,54 +1,47 @@
 open Stdune
 
-module T = struct
+include Stringlike.Make (struct
   type t = string
 
-  let compare = Poly.compare
+  let to_string s = s
 
-  let to_dyn = Dyn.Encoder.string
-end
+  let description = "module name"
 
-include T
+  let module_ = "Module_name"
 
-let encode = Dune_lang.Encoder.string
+  let description_of_valid_string = None
+
+  let is_valid_module_name name =
+    match name with
+    | "" -> false
+    | s -> (
+      try
+        ( match s.[0] with
+        | 'A' .. 'Z'
+        | 'a' .. 'z' ->
+          ()
+        | _ -> raise_notrace Exit );
+        String.iter s ~f:(function
+          | 'A' .. 'Z'
+          | 'a' .. 'z'
+          | '0' .. '9'
+          | '\''
+          | '_' ->
+            ()
+          | _ -> raise_notrace Exit);
+        true
+      with Exit -> false )
+
+  let of_string_opt s =
+    if is_valid_module_name s then
+      Some (String.capitalize s)
+    else
+      None
+end)
+
+let compare = String.compare
 
 let add_suffix = ( ^ )
-
-let is_valid_module_name name =
-  match name with
-  | "" -> false
-  | s -> (
-    try
-      ( match s.[0] with
-      | 'A' .. 'Z'
-      | 'a' .. 'z' ->
-        ()
-      | _ -> raise_notrace Exit );
-      String.iter s ~f:(function
-        | 'A' .. 'Z'
-        | 'a' .. 'z'
-        | '0' .. '9'
-        | '\''
-        | '_' ->
-          ()
-        | _ -> raise_notrace Exit);
-      true
-    with Exit -> false )
-
-let parse_string s =
-  if is_valid_module_name s then
-    Some (String.capitalize s)
-  else
-    None
-
-let of_string s =
-  match parse_string s with
-  | Some s -> s
-  | None ->
-    Code_error.raise "Module_name.of_string: invalid name"
-      [ ("s", Dyn.Encoder.string s) ]
-
-let to_string x = x
 
 let uncapitalize = String.uncapitalize
 
@@ -61,24 +54,13 @@ module Set = struct
 end
 
 module Map = String.Map
-module Infix = Comparator.Operators (T)
+module Infix = Comparator.Operators (String)
 
 let of_local_lib_name s = of_string (Lib_name.Local.to_string s)
 
-let to_local_lib_name s = Lib_name.Local.of_string_exn s
+let to_local_lib_name s = Lib_name.Local.of_string s
 
-let invalid_module_name ~loc name =
-  User_error.raise ~loc [ Pp.textf "invalid module name: %S" name ]
-
-let decode =
-  let open Dune_lang.Decoder in
-  plain_string (fun ~loc name ->
-      if is_valid_module_name name then
-        of_string name
-      else
-        invalid_module_name ~loc name)
-
-module Per_item = Per_item.Make (T)
+module Per_item = Per_item.Make (String)
 
 module Unique = struct
   module T = struct

@@ -14,21 +14,9 @@ val target : t -> toolchain:t -> t
 
 val equal : t -> t -> bool
 
-val of_string_opt : string -> t option
-
-val of_string : string -> t
-
-val to_string : t -> string
-
-val parse_string_exn : Loc.t * string -> t
-
-val arg_parse : string -> [ `Ok of t | `Error of string ]
-
-include Dune_lang.Conv.S with type t := t
+include Stringlike_intf.S with type t := t
 
 module Infix : Comparator.OPS with type t = t
-
-val to_dyn : t -> Dyn.t
 
 module Map : Map.S with type key = t
 

@@ -34,6 +34,8 @@ module Name : sig
 end = struct
   include String
 
+  (* DUNE3 once we get rid the "loose" validation, implement this module using
+     [Stringlike] *)
   let of_string_opt_loose s = Option.some_if (Filename.basename s = s) s
 
   let of_string_opt = function

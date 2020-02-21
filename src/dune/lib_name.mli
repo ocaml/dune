@@ -4,28 +4,12 @@ type t
 
 val hash : t -> int
 
-val of_string_exn : loc:Loc.t option -> string -> t
-
-val to_string : t -> string
-
-include Dune_lang.Conv.S with type t := t
+include Stringlike_intf.S with type t := t
 
 module Local : sig
-  type t
+  include Stringlike_intf.S
 
-  val encode : t Dune_lang.Encoder.t
-
-  val decode_loc : (Loc.t * (t, unit) Result.t) Dune_lang.Decoder.t
-
-  val validate : Loc.t * (t, unit) Result.t -> t
-
-  val of_string_exn : string -> t
-
-  val of_string : string -> (t, unit) Result.t
-
-  val to_string : t -> string
-
-  (** Description of valid library banes *)
+  (** Description of valid library names *)
   val valid_format_doc : User_message.Style.t Pp.t
 
   val pp_quoted : t Fmt.t
@@ -43,7 +27,7 @@ val pp_quoted : t Fmt.t
 
 val of_local : Loc.t * Local.t -> t
 
-val to_local : t -> (Local.t, unit) Result.t
+val to_local : t -> Local.t option
 
 val split : t -> Package.Name.t * string list
 
@@ -60,5 +44,3 @@ module Set : sig
 end
 
 val nest : t -> t -> t
-
-val to_dyn : t -> Dyn.t

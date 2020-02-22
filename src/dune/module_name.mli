@@ -66,3 +66,5 @@ module Set : sig
 
   val to_dyn : t -> Dyn.t
 end
+
+val of_string_allow_invalid : Loc.t * string -> t

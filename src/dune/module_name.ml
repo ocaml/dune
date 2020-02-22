@@ -101,5 +101,9 @@ module Unique = struct
   module Set = Set
 end
 
+let of_string_allow_invalid (_loc, s) =
+  (* TODO add a warning here that is possible to disable *)
+  String.capitalize s
+
 let wrap t ~with_ =
   sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t

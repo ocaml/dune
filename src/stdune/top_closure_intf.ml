@@ -1,5 +1,3 @@
-open Import
-
 module type Keys = sig
   type t
 

@@ -64,6 +64,8 @@ module Pid = Pid
 module Applicative_intf = Applicative_intf
 module Monad_intf = Monad_intf
 module Applicative = Applicative
+module Top_closure_intf = Top_closure_intf
+module Top_closure = Top_closure
 module Spawn = Spawn
 
 external reraise : exn -> _ = "%reraise"

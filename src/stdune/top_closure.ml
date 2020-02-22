@@ -1,5 +1,3 @@
-open! Stdune
-
 module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
   open Monad
 

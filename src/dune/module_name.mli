@@ -39,11 +39,12 @@ module Unique : sig
 
   val of_name_assuming_needs_no_mangling : name -> t
 
-  val of_path_assuming_needs_no_mangling : Path.t -> t
+  (** We allow invalid module names for backwards compatibility *)
+  val of_path_assuming_needs_no_mangling_allow_invalid : Path.t -> t
 
   val to_dyn : t -> Dyn.t
 
-  val to_name : t -> name
+  val to_name : t -> loc:Loc.t -> name
 
   val compare : t -> t -> Ordering.t
 

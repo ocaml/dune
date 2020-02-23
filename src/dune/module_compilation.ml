@@ -288,7 +288,8 @@ let build_alias_module ~loc ~alias_module ~dir ~cctx =
     |> List.map ~f:(fun (m : Module.t) ->
            let name = Module_name.to_string (Module.name m) in
            let obj_name_as_module =
-             Module.obj_name m |> Module_name.Unique.to_name
+             Module.obj_name m
+             |> Module_name.Unique.to_name ~loc
              |> Module_name.to_string
            in
            sprintf "(** @canonical %s.%s *)\nmodule %s = %s\n"

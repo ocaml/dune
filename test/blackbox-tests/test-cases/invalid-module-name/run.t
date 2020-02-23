@@ -4,5 +4,5 @@ Dune does not report an invalid module name as an error
   > (library (name foo))
   > EOF
   $ touch foo.ml foo-as-bar.ml
-  $ dune build @all --display short 2>&1 | head -1
+  $ dune build @all
   Error: exception { exn = ("Invalid Module_name.t", { s = "foo-as-bar" })

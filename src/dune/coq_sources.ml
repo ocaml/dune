@@ -34,7 +34,13 @@ let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
 
 let library t ~name = Coq_lib_name.Map.find_exn t.libraries name
 
-let of_dir d ~subdirs =
+let check_no_unqualified loc (qualif_mode : Dune_file.Include_subdirs.t) =
+  if qualif_mode = Include Unqualified then
+    User_error.raise ~loc
+      [ Pp.text "(include_subdirs unqualified) is not supported yet" ]
+
+let of_dir d ~loc ~subdirs ~include_subdirs =
+  check_no_unqualified loc include_subdirs;
   { libraries =
       build_coq_modules_map d ~dir:d.ctx_dir
         ~modules:(coq_modules_of_files ~subdirs)

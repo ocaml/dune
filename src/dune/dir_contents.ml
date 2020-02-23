@@ -408,6 +408,7 @@ end = struct
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
+          (* XXX What about mli files? *)
           | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
@@ -435,7 +436,8 @@ end = struct
     { t : t
     ; (* [rules] includes rules for subdirectories too *)
       rules : Rules.t option
-    ; subdirs : t Path.Build.Map.t
+    ; (* The [kind] of the nodes must be Group_part *)
+      subdirs : t Path.Build.Map.t
     }
 
   type result0 =
@@ -457,11 +459,6 @@ end = struct
 
   let check_no_qualified loc qualif_mode =
     if qualif_mode = Include_subdirs.Qualified then
-      User_error.raise ~loc
-        [ Pp.text "(include_subdirs qualified) is not supported yet" ]
-
-  let check_no_unqualified loc qualif_mode =
-    if qualif_mode = Include_subdirs.Unqualified then
       User_error.raise ~loc
         [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
@@ -507,7 +504,8 @@ end = struct
               ; coq =
                   Memo.lazy_ (fun () ->
                       let subdirs = [ (dir, [], files) ] in
-                      Coq_sources.of_dir d ~subdirs)
+                      Coq_sources.of_dir d ~include_subdirs:No ~loc:Loc.none
+                        ~subdirs)
               ; artifacts =
                   Memo.Lazy.map ~f:(Dir_artifacts.make d) libs_and_exes
               }
@@ -515,6 +513,7 @@ end = struct
           ; subdirs = Path.Build.Map.empty
           } )
     | Group_root (ft_dir, qualif_mode, d) ->
+      (* XXX it's not clear what this [local] parameter is for *)
       let rec walk ft_dir ~dir ~local acc =
         match Dir_status.DB.get dir_status_db ~dir with
         | Is_component_of_a_group_but_not_the_root
@@ -597,9 +596,12 @@ end = struct
       in
       let coq =
         Memo.lazy_ (fun () ->
-            check_no_unqualified Loc.none qualif_mode;
             let subdirs = (dir, [], files) :: subdirs in
-            Coq_sources.of_dir d ~subdirs)
+            let loc = Loc.none in
+            let include_subdirs =
+              Dune_file.Include_subdirs.Include qualif_mode
+            in
+            Coq_sources.of_dir d ~subdirs ~loc ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->

@@ -196,6 +196,24 @@ let all =
   ; Describe.command
   ]
 
+let common_commands_synopsis =
+  (* Short reminders for the most used and useful commands *)
+  let commands =
+    [ "build [--wait]"
+    ; "test [--wait]"
+    ; "exec NAME"
+    ; "utop [DIR]"
+    ; "clean"
+    ; "init project NAME [PATH] [--libs=l1,l2 --ppx=p1,p2 --inline-tests]"
+    ]
+  in
+  let format_command c acc =
+    `Noblank :: `P (Printf.sprintf "$(b,dune %s)" c) :: acc
+  in
+  [ `S "SYNOPSIS"
+  ; `Blocks (List.fold_right ~init:[] ~f:format_command commands)
+  ]
+
 let default =
   let doc = "composable build system for OCaml" in
   let term =
@@ -210,7 +228,8 @@ let default =
         | None -> "n/a"
         | Some v -> Build_info.V1.Version.to_string v )
       ~man:
-        [ `S "DESCRIPTION"
+        [ `Blocks common_commands_synopsis
+        ; `S "DESCRIPTION"
         ; `P
             {|Dune is a build system designed for OCaml projects only. It
               focuses on providing the user with a consistent experience and takes

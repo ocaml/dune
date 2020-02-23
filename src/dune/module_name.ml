@@ -80,6 +80,10 @@ let decode =
 
 module Per_item = Per_item.Make (T)
 
+let of_string_allow_invalid (_loc, s) =
+  (* TODO add a warning here that is possible to disable *)
+  String.capitalize s
+
 module Unique = struct
   module T = struct
     type nonrec t = string
@@ -93,7 +97,12 @@ module Unique = struct
      confuse them with a proper module name *)
   let of_name_assuming_needs_no_mangling name = String.uncapitalize_ascii name
 
-  let to_name = of_string
+  let to_name t ~loc =
+    match of_string_opt t with
+    | Some t -> t
+    | None ->
+      User_error.raise ~loc
+        [ Pp.textf "%s corresponds to an invalid module name" t ]
 
   let encode = Dune_lang.Encoder.string
 
@@ -104,12 +113,15 @@ module Unique = struct
     let+ s = Dune_lang.Decoder.string in
     of_string s
 
-  let of_path_assuming_needs_no_mangling path =
+  let of_path_assuming_needs_no_mangling_allow_invalid path =
     let fn = Path.basename path in
-    of_string
-      ( match String.index fn '.' with
+    let loc = Loc.in_file path in
+    let name =
+      match String.index fn '.' with
       | None -> fn
-      | Some i -> String.take fn i )
+      | Some i -> String.take fn i
+    in
+    of_name_assuming_needs_no_mangling (of_string_allow_invalid (loc, name))
 
   let to_dyn = to_dyn
 
@@ -118,10 +130,6 @@ module Unique = struct
   module Map = Map
   module Set = Set
 end
-
-let of_string_allow_invalid (_loc, s) =
-  (* TODO add a warning here that is possible to disable *)
-  String.capitalize s
 
 let wrap t ~with_ =
   sprintf "%s__%s" (Unique.of_name_assuming_needs_no_mangling with_) t

@@ -98,7 +98,7 @@ module Unique = struct
   let of_name_assuming_needs_no_mangling name = String.uncapitalize_ascii name
 
   let to_name t ~loc =
-    match of_string_opt t with
+    match parse_string t with
     | Some t -> t
     | None ->
       User_error.raise ~loc

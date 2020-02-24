@@ -1,4 +1,3 @@
 (library
  (name cache_daemon)
- (preprocess future_syntax)
  (libraries dune_util threads.posix cache stdune dune_csexp))

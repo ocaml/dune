@@ -1,5 +1,4 @@
 (library
  (name memo)
- (preprocess future_syntax)
  (libraries stdune dune_lang dag fiber)
  (synopsis "Function memoizer"))

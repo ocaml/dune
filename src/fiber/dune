@@ -1,5 +1,4 @@
 (library
  (name fiber)
  (libraries stdune)
- (preprocess future_syntax)
  (synopsis "Monadic concurrency library"))

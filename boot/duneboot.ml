@@ -970,7 +970,7 @@ let write_args file args =
   output_string ch (String.concat ~sep:"\n" args);
   close_out ch
 
-let get_dependencies ~pp libraries =
+let get_dependencies libraries =
   let alias_files =
     List.fold_left libraries ~init:[] ~f:(fun acc (_, alias_file, _) ->
         match alias_file with
@@ -981,7 +981,7 @@ let get_dependencies ~pp libraries =
     List.map ~f:(fun (x, _, _) -> x) libraries |> List.concat
   in
   write_args "source_files" all_source_files;
-  ocamldep (pp @ mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
+  ocamldep (mk_flags "-map" alias_files @ [ "-args"; "source_files" ])
   >>| fun dependencies ->
   let all_source_files =
     List.fold_left alias_files ~init:(StringSet.of_list all_source_files)
@@ -1053,18 +1053,17 @@ let sort_files dependencies ~main =
   loop (Filename.basename main);
   List.rev !res
 
-let common_build_args name ~pp ~external_includes ~external_libraries =
+let common_build_args name ~external_includes ~external_libraries =
   List.concat
     [ [ "-o"; Filename.concat ".." (name ^ ".exe"); "-g" ]
     ; ( match Config.mode with
       | Byte -> [ Config.output_complete_obj_arg ]
       | Native -> [] )
-    ; pp
     ; external_includes
     ; external_libraries
     ]
 
-let build ~ocaml_config ~pp ~dependencies ~c_files
+let build ~ocaml_config ~dependencies ~c_files
     { target = name, main; external_libraries; _ } =
   let ext_obj =
     try StringMap.find "ext_obj" ocaml_config with Not_found -> ".o"
@@ -1094,7 +1093,6 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
              Process.run ~cwd:build_dir Config.compiler
                (List.concat
                   [ [ "-c"; "-g"; "-no-alias-deps"; "-w"; "-49" ]
-                  ; pp
                   ; external_includes
                   ; [ file ]
                   ]))));
@@ -1120,12 +1118,12 @@ let build ~ocaml_config ~pp ~dependencies ~c_files
   write_args "compiled_ml_files" compiled_ml_files;
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
-       [ common_build_args name ~pp ~external_includes ~external_libraries
+       [ common_build_args name ~external_includes ~external_libraries
        ; obj_files
        ; [ "-args"; "compiled_ml_files" ]
        ])
 
-let build_with_single_command ~ocaml_config:_ ~pp ~dependencies ~c_files
+let build_with_single_command ~ocaml_config:_ ~dependencies ~c_files
     { target = name, main; external_libraries; _ } =
   let external_libraries, external_includes =
     resolve_externals external_libraries
@@ -1133,7 +1131,7 @@ let build_with_single_command ~ocaml_config:_ ~pp ~dependencies ~c_files
   write_args "mods_list" (sort_files dependencies ~main);
   Process.run ~cwd:build_dir Config.compiler
     (List.concat
-       [ common_build_args name ~pp ~external_includes ~external_libraries
+       [ common_build_args name ~external_includes ~external_libraries
        ; [ "-no-alias-deps"; "-w"; "-49" ]
        ; c_files
        ; [ "-args"; "mods_list" ]
@@ -1147,62 +1145,22 @@ let rec rm_rf fn =
   | _ -> Unix.unlink fn
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
 
-(** {2 ocaml-syntax-shims} *)
-
-let build_syntax_shims () =
-  if Config.ocaml_version >= (4, 08) then
-    Fiber.return []
-  else
-    let cwd = "src/ocaml-syntax-shims" in
-    Fiber.fork_and_join
-      (fun () ->
-        Process.run_and_capture ~cwd "ocaml"
-          [ "select-impl"; Sys.ocaml_version ])
-      (fun () ->
-        Process.run_and_capture ~cwd "ocaml"
-          [ "select-shims"; Sys.ocaml_version ])
-    >>= fun (impl, shims) ->
-    let build_dir = build_dir ^/ "pp" in
-    Unix.mkdir build_dir 0o777;
-    List.iter [ ("pp", impl); ("shims", shims) ] ~f:(fun (name, selector) ->
-        let dst = build_dir ^/ name ^ ".ml" in
-        if selector = "nop" then
-          close_out (open_out dst)
-        else
-          copy (cwd ^/ sprintf "%s.%s.ml" name selector) dst);
-    copy_lexer (cwd ^/ "let_trail.mll") (build_dir ^/ "let_trail.ml") ~header:""
-    >>= fun () ->
-    copy (cwd ^/ "let_trail.mli") (build_dir ^/ "let_trail.mli");
-    Process.run ~cwd:build_dir Config.compiler
-      [ "-o"
-      ; "pp.exe"
-      ; "-I"
-      ; "+compiler-libs"
-      ; "ocamlcommon" ^ Config.ocaml_archive_ext
-      ; "shims.ml"
-      ; "let_trail.mli"
-      ; "let_trail.ml"
-      ; "pp.ml"
-      ]
-    >>| fun () -> [ "-pp"; "." ^/ "pp" ^/ "pp.exe" ^ " -dump-ast" ]
-
-(** {2 Bootstrap process} *)
+(** {2 Bootstrap process *)
 let main () =
   rm_rf build_dir;
   Unix.mkdir build_dir 0o777;
   Config.ocaml_config () >>= fun ocaml_config ->
-  build_syntax_shims () >>= fun pp ->
   assemble_libraries task >>= fun libraries ->
   let c_files =
     List.map ~f:(fun (_, _, c_files) -> c_files) libraries |> List.concat
   in
-  get_dependencies ~pp libraries >>= fun dependencies ->
+  get_dependencies libraries >>= fun dependencies ->
   let build =
     if concurrency = 1 || Sys.win32 then
       build_with_single_command
     else
       build
   in
-  build ~ocaml_config ~pp ~dependencies ~c_files task
+  build ~ocaml_config ~dependencies ~c_files task
 
 let () = Fiber.run (main ())

@@ -5,6 +5,21 @@ include Cache
 
 val default_root : unit -> Path.t
 
+module Metadata_file : sig
+  type t =
+    { metadata : Sexp.t list
+    ; files : File.t list
+    }
+
+  val to_sexp : t -> Sexp.t
+
+  val of_sexp : Sexp.t -> (t, string) result
+
+  val of_string : string -> (t, string) result
+
+  val parse : Path.t -> (t, string) result
+end
+
 val promote_sync :
      t
   -> (Path.Build.t * Digest.t) list

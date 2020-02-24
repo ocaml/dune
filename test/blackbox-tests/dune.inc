@@ -622,6 +622,18 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias env-env-affects-expander-affects-env)
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-affects-expander-affects-env))
+ (action
+  (chdir
+   test-cases/env/env-affects-expander-affects-env
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias env-env-and-flags-include)
  (deps (package dune) (source_tree test-cases/env/env-and-flags-include))
  (action
@@ -2770,6 +2782,7 @@
   (alias embed-jbuild)
   (alias enabled_if)
   (alias enabled_if-exec)
+  (alias env-env-affects-expander-affects-env)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)
@@ -3031,6 +3044,7 @@
   (alias embed-jbuild)
   (alias enabled_if)
   (alias enabled_if-exec)
+  (alias env-env-affects-expander-affects-env)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)

@@ -16,17 +16,9 @@ val dir : t -> Path.Build.t
     stanzas. *)
 val text_files : t -> String.Set.t
 
-(** Modules attached to a library. [name] is the library best name. *)
-val modules_of_library : t -> name:Lib_name.t -> Modules.t
-
 val foreign_sources : t -> Foreign_sources.t
 
-(** Modules attached to a set of executables. *)
-val modules_of_executables :
-  t -> obj_dir:Path.Build.t Obj_dir.t -> first_exe:string -> Modules.t
-
-(** Find out what buildable a module is part of *)
-val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
+val ocaml : t -> Ml_sources.t
 
 (** Artifacts defined in this directory *)
 val artifacts : t -> Ml_sources.Artifacts.t

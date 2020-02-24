@@ -251,12 +251,13 @@ let gen_rules sctx dir_contents cctxs
       Merlin.add_rules sctx ~dir:ctx_dir ~more_src_dirs ~expander
         (Merlin.add_source_dir m src_dir));
   let build_dir = Super_context.build_dir sctx in
+  let ml_sources = Dir_contents.ocaml dir_contents in
   List.iter stanzas ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Menhir.T m when Expander.eval_blang expander m.enabled_if -> (
         match
           List.find_map (Menhir_rules.module_names m) ~f:(fun name ->
-              Option.bind (Dir_contents.lookup_module dir_contents name)
+              Option.bind (Ml_sources.lookup_module ml_sources name)
                 ~f:(fun buildable ->
                   List.find_map cctxs ~f:(fun (loc, cctx) ->
                       Option.some_if (Loc.equal loc buildable.loc) cctx)))

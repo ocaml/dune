@@ -67,7 +67,8 @@ end = struct
              | Some dir -> sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
-      Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
+      Dir_contents.ocaml dir_contents
+      |> Ml_sources.modules_of_library ~name:(Library.best_name lib)
       |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let sources =
@@ -356,7 +357,8 @@ let gen_dune_package sctx pkg =
                   |> List.map ~f:Path.build
                 in
                 let modules =
-                  Dir_contents.modules_of_library dir_contents ~name
+                  Dir_contents.ocaml dir_contents
+                  |> Ml_sources.modules_of_library ~name
                 in
                 Lib_name.Map.add_exn acc name
                   (Library

@@ -419,7 +419,8 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
   in
   let f () =
     let source_modules =
-      Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
+      Dir_contents.ocaml dir_contents
+      |> Ml_sources.modules_of_library ~name:(Library.best_name lib)
     in
     let cctx =
       cctx lib ~sctx ~source_modules ~dir ~scope ~expander ~compile_info

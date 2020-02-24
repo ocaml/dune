@@ -44,6 +44,8 @@ let dir t = t.dir
 
 let coq t = Memo.Lazy.force t.coq
 
+let ocaml t = Memo.Lazy.force t.ml
+
 let artifacts t = Memo.Lazy.force t.ml |> Ml_sources.artifacts
 
 let dirs t =
@@ -56,15 +58,7 @@ let dirs t =
 
 let text_files t = t.text_files
 
-let modules_of_library t ~name =
-  Ml_sources.modules_of_library (Memo.Lazy.force t.ml) ~name
-
-let modules_of_executables t ~obj_dir ~first_exe =
-  Ml_sources.modules_of_executables (Memo.Lazy.force t.ml) ~obj_dir ~first_exe
-
 let foreign_sources t = Memo.Lazy.force t.foreign_sources
-
-let lookup_module t name = Ml_sources.lookup_module (Memo.Lazy.force t.ml) name
 
 let mlds t (doc : Documentation.t) =
   let map = Memo.Lazy.force t.mlds in

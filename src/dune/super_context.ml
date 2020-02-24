@@ -6,16 +6,16 @@ module Env_context = struct
   type data = (Path.Build.t, Env_node.t) Table.t
 
   type t =
-    { env : data
+    { env_cache : data
     ; profile : Profile.t
     ; scopes : Scope.DB.t
     ; context_env : Env.t
-    ; default_env : Env_node.t lazy_t
+    ; default_env : Env_node.t Memo.Lazy.t
     ; stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t
     ; host : t option
     ; build_dir : Path.Build.t
     ; context : Context.t
-    ; expander : Expander.t
+    ; root_expander : Expander.t
     ; bin_artifacts : Artifacts.Bin.t
     }
 end
@@ -47,9 +47,9 @@ type t =
   ; env_context : Env_context.t
   ; dir_status_db : Dir_status.DB.t
   ; external_lib_deps_mode : bool
-  ; (* Env node that represent the environment configured for the workspace. It
+  ; (* Env node that represents the environment configured for the workspace. It
        is used as default at the root of every project in the workspace. *)
-    default_env : Env_node.t Lazy.t
+    default_env : Env_node.t Memo.Lazy.t
   ; projects_by_key : Dune_project.t Dune_project.File_key.Map.t
   }
 
@@ -106,7 +106,18 @@ let find_scope_by_project t = Scope.DB.find_by_project t.scopes
 
 let find_project_by_key t = Dune_project.File_key.Map.find_exn t.projects_by_key
 
+let default_context_flags (ctx : Context.t) =
+  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  let cxx =
+    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  in
+  Foreign.Language.Dict.make ~c ~cxx
+
 module External_env = Env
+
+let expander_for_artifacts ~scope ~external_env ~root_expander ~dir =
+  Expander.extend_env root_expander ~env:external_env
+  |> Expander.set_scope ~scope |> Expander.set_dir ~dir
 
 module Env : sig
   type t = Env_context.t
@@ -118,7 +129,7 @@ module Env : sig
 
   val menhir_flags : t -> dir:Path.Build.t -> string list Build.t
 
-  val external_ : t -> dir:Path.Build.t -> External_env.t
+  val external_env : t -> dir:Path.Build.t -> External_env.t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t
 
@@ -139,8 +150,8 @@ end = struct
       | Dune_env.T config -> Some config
       | _ -> None)
 
-  let rec get t ~dir ~scope =
-    match Table.find t.env dir with
+  let rec get_with_scope t ~dir ~scope =
+    match Table.find t.env_cache dir with
     | Some node -> node
     | None ->
       let node =
@@ -149,50 +160,51 @@ end = struct
             t.default_env
           else
             match Path.Build.parent dir with
-            | None -> raise_notrace Exit
-            | Some parent -> lazy (get t ~dir:parent ~scope)
+            | None ->
+              Code_error.raise
+                "Super_context.Env.get called on invalid directory"
+                [ ("dir", Path.Build.to_dyn dir) ]
+            | Some parent ->
+              Memo.lazy_ (fun () -> get_with_scope t ~dir:parent ~scope)
         in
-        let config = get_env_stanza t ~dir in
-        Env_node.make ~dir ~scope ~config ~inherit_from:(Some inherit_from)
+        let config_stanza = get_env_stanza t ~dir in
+        let default_context_flags = default_context_flags t.context in
+        let expander_for_artifacts =
+          Memo.lazy_ (fun () ->
+              expander_for_artifacts ~scope ~root_expander:t.root_expander
+                ~external_env:(external_env t ~dir) ~dir)
+        in
+        let expander =
+          Memo.Lazy.map expander_for_artifacts ~f:(fun expander_for_artifacts ->
+              extend_expander t ~dir ~expander_for_artifacts)
+        in
+        Env_node.make ~dir ~scope ~config_stanza
+          ~inherit_from:(Some inherit_from) ~profile:t.profile ~expander
+          ~expander_for_artifacts ~default_context_flags
+          ~default_env:t.context_env ~default_bin_artifacts:t.bin_artifacts
       in
-      Table.set t.env dir node;
+      Table.set t.env_cache dir node;
       node
 
-  let get t ~dir =
-    match Table.find t.env dir with
+  and get t ~dir : Env_node.t =
+    (* CR-soon amokhov: This should either be simplified (if correct) or fixed
+       (if a bug). Why does it seem to be a bug? We use the same [env_cache]
+       table for caching [get] requests in potentially different scopes: see how
+       [get_with_scope] passes the very same [scope] through the recursion even
+       though the [dir] arguments change. *)
+    match Table.find t.env_cache dir with
     | Some node -> node
-    | None -> (
+    | None ->
       let scope = Scope.DB.find_by_dir t.scopes dir in
-      try get t ~dir ~scope
-      with Exit ->
-        Code_error.raise "Super_context.Env.get called on invalid directory"
-          [ ("dir", Path.Build.to_dyn dir) ] )
+      get_with_scope t ~dir ~scope
 
-  let external_ t ~dir =
-    Env_node.external_ (get t ~dir) ~profile:t.profile ~default:t.context_env
+  and external_env t ~dir = Env_node.external_env (get t ~dir)
 
-  let expander_for_artifacts t ~context_expander ~dir =
-    let node = get t ~dir in
-    let external_ = external_ t ~dir in
-    Expander.extend_env context_expander ~env:external_
-    |> Expander.set_scope ~scope:(Env_node.scope node)
-    |> Expander.set_dir ~dir
+  and inline_tests t ~dir = Env_node.inline_tests (get t ~dir)
 
-  let local_binaries t ~dir =
-    let node = get t ~dir in
-    let expander = expander_for_artifacts ~context_expander:t.expander t ~dir in
-    Env_node.local_binaries node ~profile:t.profile ~expander
+  and bin_artifacts t ~dir = Env_node.bin_artifacts (get t ~dir)
 
-  let inline_tests ({ profile; _ } as t) ~dir =
-    let node = get t ~dir in
-    Env_node.inline_tests node ~profile
-
-  let bin_artifacts t ~dir =
-    let expander = expander_for_artifacts t ~context_expander:t.expander ~dir in
-    Env_node.bin_artifacts (get t ~dir) ~profile:t.profile ~expander
-      ~default:t.bin_artifacts
-
-  let bin_artifacts_host t ~dir =
+  and bin_artifacts_host t ~dir =
     match t.host with
     | None -> bin_artifacts t ~dir
     | Some host ->
@@ -202,38 +214,34 @@ end = struct
       in
       bin_artifacts host ~dir
 
-  let expander t ~dir =
-    let expander = expander_for_artifacts t ~context_expander:t.expander ~dir in
+  and extend_expander t ~dir ~expander_for_artifacts =
     let bin_artifacts_host = bin_artifacts_host t ~dir in
     let bindings =
       let str = inline_tests t ~dir |> Dune_env.Stanza.Inline_tests.to_string in
       Pform.Map.singleton "inline_tests" (Values [ String str ])
     in
-    expander
+    expander_for_artifacts
     |> Expander.add_bindings ~bindings
     |> Expander.set_bin_artifacts ~bin_artifacts_host
 
-  let ocaml_flags t ~dir =
-    Env_node.ocaml_flags (get t ~dir) ~profile:t.profile
-      ~expander:(expander t ~dir)
-
-  let default_context_flags (ctx : Context.t) =
-    let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
-    let cxx =
-      List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+  let expander t ~dir =
+    let scope = Env_node.scope (get t ~dir) in
+    let external_env = external_env t ~dir in
+    let expander_for_artifacts =
+      expander_for_artifacts ~scope ~external_env ~root_expander:t.root_expander
+        ~dir
     in
-    Foreign.Language.Dict.make ~c ~cxx
+    extend_expander t ~dir ~expander_for_artifacts
 
-  let foreign_flags t ~dir =
-    let default_context_flags = default_context_flags t.context in
-    Env_node.foreign_flags (get t ~dir) ~profile:t.profile
-      ~expander:(expander t ~dir) ~default_context_flags
+  let local_binaries t ~dir = Env_node.local_binaries (get t ~dir)
 
-  let menhir_flags t ~dir =
-    Env_node.menhir_flags (get t ~dir) ~profile:t.profile
-      ~expander:(expander t ~dir)
+  let ocaml_flags t ~dir = Env_node.ocaml_flags (get t ~dir)
 
-  let odoc t ~dir = Env_node.odoc (get t ~dir) ~profile:t.profile
+  let foreign_flags t ~dir = Env_node.foreign_flags (get t ~dir)
+
+  let odoc t ~dir = Env_node.odoc (get t ~dir)
+
+  let menhir_flags t ~dir = Env_node.menhir_flags (get t ~dir)
 end
 
 let expander t ~dir = Env.expander t.env_context ~dir
@@ -246,7 +254,7 @@ let chdir_to_build_context_root t build =
 
 let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
-  let env = Env.external_ t.env_context ~dir in
+  let env = Env.external_env t.env_context ~dir in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some t.context) ~env:(Some env) build
 
@@ -264,7 +272,7 @@ let add_rules t ?sandbox ~dir builds =
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let t = t.env_context in
-  let env = Some (Env.external_ t ~dir) in
+  let env = Some (Env.external_env t ~dir) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
@@ -463,21 +471,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
     |> Path.Build.Map.of_list_exn
   in
-  let env = Table.create (module Path.Build) 128 in
-  let default_env =
-    lazy
-      (let make ~inherit_from ~config =
-         let dir = context.build_dir in
-         Env_node.make ~dir
-           ~scope:(Scope.DB.find_by_dir scopes dir)
-           ~inherit_from ~config
-       in
-       make ~config:context.env_nodes.context
-         ~inherit_from:
-           (Some
-              ( lazy
-                (make ~inherit_from:None ~config:context.env_nodes.workspace) )))
-  in
+  (* CR-soon amokhov: Remove this cache. *)
+  let env_cache = Table.create (module Path.Build) 128 in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
     { Artifacts.public_libs
@@ -486,7 +481,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           ~local_bins:(get_installed_binaries ~context stanzas)
     }
   in
-  let expander =
+  let root_expander =
     let artifacts_host =
       match host with
       | None -> artifacts
@@ -497,8 +492,32 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
   in
+  let default_env =
+    Memo.lazy_ (fun () ->
+        let make ~inherit_from ~config_stanza =
+          let dir = context.build_dir in
+          let scope = Scope.DB.find_by_dir scopes dir in
+          let default_context_flags = default_context_flags context in
+          let expander_for_artifacts =
+            Memo.lazy_ (fun () ->
+                Code_error.raise
+                  "[expander_for_artifacts] in [default_env] is undefined" [])
+          in
+          let expander = Memo.Lazy.of_val root_expander in
+          Env_node.make ~dir ~scope ~inherit_from ~config_stanza
+            ~profile:context.profile ~expander ~expander_for_artifacts
+            ~default_context_flags ~default_env:context.env
+            ~default_bin_artifacts:artifacts.bin
+        in
+        make ~config_stanza:context.env_nodes.context
+          ~inherit_from:
+            (Some
+               (Memo.lazy_ (fun () ->
+                    make ~inherit_from:None
+                      ~config_stanza:context.env_nodes.workspace))))
+  in
   let env_context =
-    { Env_context.env
+    { Env_context.env_cache
     ; profile = context.profile
     ; scopes
     ; context_env = context.env
@@ -507,8 +526,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
     ; host = Option.map host ~f:(fun x -> x.env_context)
     ; build_dir = context.build_dir
     ; context
-    ; expander
-    ; bin_artifacts = artifacts.Artifacts.bin
+    ; root_expander
+    ; bin_artifacts = artifacts.bin
     }
   in
   let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in
@@ -517,7 +536,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         (Dune_project.file_key project, project))
   in
   { context
-  ; expander
+  ; expander = root_expander
   ; host
   ; scopes
   ; public_libs

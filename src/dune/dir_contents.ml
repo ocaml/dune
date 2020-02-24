@@ -4,6 +4,13 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
+let loc_of_dune_file ft_dir =
+  Loc.in_file
+    (Path.source
+       ( match File_tree.Dir.dune_file ft_dir with
+       | Some d -> File_tree.Dune_file.path d
+       | None -> Path.Source.relative (File_tree.Dir.path ft_dir) "_unknown_" ))
+
 module Dir_modules = struct
   type t =
     { libraries : Modules.t Lib_name.Map.t
@@ -544,16 +551,7 @@ end = struct
       in
       let libs_and_exes =
         Memo.lazy_ (fun () ->
-            let loc =
-              Loc.in_file
-                (Path.source
-                   ( match File_tree.Dir.dune_file ft_dir with
-                   | Some d -> File_tree.Dune_file.path d
-                   | None ->
-                     Path.Source.relative
-                       (File_tree.Dir.path ft_dir)
-                       "_unknown_" ))
-            in
+            let loc = loc_of_dune_file ft_dir in
             check_no_qualified loc qualif_mode;
             let modules =
               let dialects = Dune_project.dialects (Scope.project d.scope) in

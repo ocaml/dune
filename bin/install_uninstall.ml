@@ -46,6 +46,8 @@ let set_executable_bits x = x lor 0o111
 
 let clear_executable_bits x = x land lnot 0o111
 
+let restore_write_permissions x = x lor 0o200
+
 module Special_file = struct
   type t =
     | META
@@ -192,12 +194,13 @@ module File_ops_real (W : Workspace) : File_operations = struct
           Format.pp_close_box ppf ())
 
   let copy_file ~src ~dst ~executable ~special_file ~package =
-    let chmod =
+    let set_executable_bits =
       if executable then
         set_executable_bits
       else
         clear_executable_bits
     in
+    let chmod x = x |> restore_write_permissions |> set_executable_bits in
     let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
     Fiber.finalize
       ~finally:(fun () ->

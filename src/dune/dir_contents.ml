@@ -183,14 +183,7 @@ let modules_of_executables t ~obj_dir ~first_exe =
   let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe |> Modules.relocate_alias_module ~src_dir
 
-let foreign_sources_of_executables t ~first_exe =
-  Foreign_sources.for_exes (Memo.Lazy.force t.foreign_sources) ~first_exe
-
-let foreign_sources_of_library t ~name =
-  Foreign_sources.for_lib (Memo.Lazy.force t.foreign_sources) ~name
-
-let foreign_sources_of_archive t ~archive_name =
-  Foreign_sources.for_archive (Memo.Lazy.force t.foreign_sources) ~archive_name
+let foreign_sources t = Memo.Lazy.force t.foreign_sources
 
 let lookup_module t name =
   Module_name.Map.find (Memo.Lazy.force t.modules).rev_map name

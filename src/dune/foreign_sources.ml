@@ -114,8 +114,16 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
           multiple_sources_error ~name ~loc
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
-let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
-    ~ext_obj =
+let check_no_qualified loc include_subdirs =
+  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
+    User_error.raise ~loc
+      [ Pp.text
+          "(include_subdirs qualified) is only meant for OCaml and Coq sources"
+      ]
+
+let make (d : _ Dir_with_dune.t) ~loc ~include_subdirs
+    ~(sources : Foreign.Sources.Unresolved.t) ~ext_obj =
+  check_no_qualified loc include_subdirs;
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with

@@ -201,12 +201,12 @@ let gen_rules sctx dir_contents cctxs
   let expander = Super_context.expander sctx ~dir:ctx_dir in
   let expander =
     let lookup_module ~dir name =
-      Dir_contents.Dir_artifacts.lookup_module
+      Ml_sources.Artifacts.lookup_module
         (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
         name
     in
     let lookup_library ~dir name =
-      Dir_contents.Dir_artifacts.lookup_library
+      Ml_sources.Artifacts.lookup_library
         (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
         name
     in

@@ -1,3 +1,5 @@
+open Import
+
 (** This module loads and validates foreign sources from directories. *)
 
 type t
@@ -14,6 +16,8 @@ val for_exes : t -> first_exe:string -> Foreign.Sources.t
     [ext_obj] only for nicer error messages. *)
 val make :
      Stanza.t list Dir_with_dune.t
+  -> loc:Loc.t
+  -> include_subdirs:Dune_file.Include_subdirs.t
   -> sources:Foreign.Sources.Unresolved.t
   -> ext_obj:string
   -> t

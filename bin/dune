@@ -2,7 +2,6 @@
  (name main)
  (libraries memo dune_lang fiber stdune unix cache_daemon cache dune
    dune_util cmdliner threads.posix build_info dune_csexp)
- (preprocess future_syntax)
  (bootstrap_info bootstrap-info))
 
 (rule

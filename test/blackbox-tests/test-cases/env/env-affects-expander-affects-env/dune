@@ -1,8 +1,0 @@
-(library
- (name whatever)
- (inline_tests)
- (libraries ))
-
-(env
- (_
-  (ocamlc_flags "%{inline_tests}%{cmi:foo}")))

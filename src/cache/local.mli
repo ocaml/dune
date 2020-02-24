@@ -27,7 +27,7 @@ val promote_sync :
   -> metadata
   -> int option
   -> Duplication_mode.t option
-  -> (promotion list, string) Result.t
+  -> (Metadata_file.t * promotion list, string) Result.t
 
 val make :
      ?root:Path.t

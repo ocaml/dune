@@ -295,7 +295,7 @@ let promote_sync cache paths key metadata repo duplication =
     | _ -> ()
   in
   List.iter ~f promoted;
-  promoted
+  (metadata_file, promoted)
 
 let promote cache paths key metadata ~repository ~duplication =
   Result.map ~f:ignore

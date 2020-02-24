@@ -5,4 +5,5 @@ Dune does not report an invalid module name as an error
   > EOF
   $ touch foo.ml foo-as-bar.ml
   $ dune build @all
-  Error: exception { exn = ("Invalid Module_name.t", { s = "foo-as-bar" })
+  Error: foo__Foo-as-bar corresponds to an invalid module name
+  [1]

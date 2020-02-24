@@ -1,5 +1,3 @@
-open! Stdune
-
 module Int :
   Top_closure_intf.S with type key := int and type 'a monad := 'a Monad.Id.t
 

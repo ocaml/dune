@@ -1939,6 +1939,17 @@
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
+ (alias odoc-warnings)
+ (deps (package dune) (source_tree test-cases/odoc/warnings))
+ (action
+  (chdir
+   test-cases/odoc/warnings
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
+
+(rule
  (alias old-dune-subsystem)
  (deps (package dune) (source_tree test-cases/old-dune-subsystem))
  (action
@@ -2885,6 +2896,7 @@
   (alias odoc-odoc-package-mld-link)
   (alias odoc-odoc-simple)
   (alias odoc-odoc-unique-mlds)
+  (alias odoc-warnings)
   (alias old-dune-subsystem)
   (alias optional)
   (alias optional-executable)

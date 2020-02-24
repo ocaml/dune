@@ -1,5 +1,13 @@
 open Stdune
 
+module Odoc = struct
+  type warnings = Dune_env.Stanza.Odoc.warnings =
+    | Fatal
+    | Nonfatal
+
+  type t = { warnings : warnings }
+end
+
 type t =
   { dir : Path.Build.t
   ; inherit_from : t Lazy.t option
@@ -12,6 +20,7 @@ type t =
   ; mutable bin_artifacts : Artifacts.Bin.t option
   ; mutable inline_tests : Dune_env.Stanza.Inline_tests.t option
   ; mutable menhir_flags : string list Build.t option
+  ; mutable odoc : Odoc.t option
   }
 
 let scope t = t.scope
@@ -28,6 +37,7 @@ let make ~dir ~inherit_from ~scope ~config =
   ; local_binaries = None
   ; inline_tests = None
   ; menhir_flags = None
+  ; odoc = None
   }
 
 let find_config t ~profile = Dune_env.Stanza.find t.config ~profile
@@ -167,3 +177,24 @@ let rec menhir_flags t ~profile ~expander =
     in
     t.menhir_flags <- Some flags;
     flags
+
+let rec odoc t ~profile =
+  match t.odoc with
+  | Some x -> x
+  | None ->
+    let open Odoc in
+    let default =
+      (* DUNE3: Enable for dev profile in the future *)
+      { warnings = Nonfatal }
+    in
+    let inherited =
+      match t.inherit_from with
+      | None -> default
+      | Some (lazy t) -> odoc t ~profile
+    in
+    let conf =
+      let c = (find_config t ~profile).odoc in
+      { warnings = Option.value c.warnings ~default:inherited.warnings }
+    in
+    t.odoc <- Some conf;
+    conf

@@ -2,6 +2,14 @@
 
 open Stdune
 
+module Odoc : sig
+  type warnings = Dune_env.Stanza.Odoc.warnings =
+    | Fatal
+    | Nonfatal
+
+  type t = { warnings : warnings }
+end
+
 type t
 
 val make :
@@ -38,3 +46,5 @@ val bin_artifacts :
 
 val menhir_flags :
   t -> profile:Profile.t -> expander:Expander.t -> string list Build.t
+
+val odoc : t -> profile:Profile.t -> Odoc.t

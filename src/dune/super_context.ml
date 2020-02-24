@@ -125,6 +125,8 @@ module Env : sig
   val expander : t -> dir:Path.Build.t -> Expander.t
 
   val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
+
+  val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
 end = struct
   include Env_context
 
@@ -230,6 +232,8 @@ end = struct
   let menhir_flags t ~dir =
     Env_node.menhir_flags (get t ~dir) ~profile:t.profile
       ~expander:(expander t ~dir)
+
+  let odoc t ~dir = Env_node.odoc (get t ~dir) ~profile:t.profile
 end
 
 let expander t ~dir = Env.expander t.env_context ~dir
@@ -321,6 +325,8 @@ let menhir_flags t ~dir ~expander ~flags =
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
 let local_binaries t ~dir = Env.local_binaries t.env_context ~dir
+
+let odoc t ~dir = Env.odoc t.env_context ~dir
 
 let dump_env t ~dir =
   let t = t.env_context in

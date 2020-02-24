@@ -1326,6 +1326,9 @@ Fields supported in ``<settings>`` are:
   The default value is ``disabled`` for the ``release`` profile and ``enabled``
   otherwise.
 
+- ``(odoc <fields>)``. This allows to pass options to Odoc, see
+  :ref:`odoc-options` for more details.
+
 .. _dune-subdirs:
 
 dirs (since 1.6)

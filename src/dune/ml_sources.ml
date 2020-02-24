@@ -294,16 +294,17 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~parent ~modules =
         Right (exes, modules)
       | _ -> Skip)
 
-let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~parent =
-  let libs_and_exes =
-    let dialects = Dune_project.dialects (Scope.project d.scope) in
-    Memo.lazy_ (fun () ->
-        libs_and_exes d ~parent
-          ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
-  in
+let make d libs_and_exes =
   let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
   let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
   { modules; artifacts }
+
+let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~parent =
+  let dialects = Dune_project.dialects (Scope.project d.scope) in
+  Memo.lazy_ (fun () ->
+      libs_and_exes d ~parent
+        ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
+  |> make d
 
 let check_no_qualified loc include_subdirs =
   if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
@@ -312,28 +313,23 @@ let check_no_qualified loc include_subdirs =
 
 let group (d : _ Dir_with_dune.t) ~loc ~parent ~include_subdirs ~dir ~files
     ~subdirs =
-  let libs_and_exes =
-    Memo.lazy_ (fun () ->
-        check_no_qualified loc include_subdirs;
-        let modules =
-          let dialects = Dune_project.dialects (Scope.project d.scope) in
-          List.fold_left ((dir, [], files) :: subdirs)
-            ~init:Module_name.Map.empty
-            ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-              let modules = modules_of_files ~dialects ~dir ~files in
-              Module_name.Map.union acc modules ~f:(fun name x y ->
-                  User_error.raise ~loc
-                    [ Pp.textf "Module %S appears in several directories:"
-                        (Module_name.to_string name)
-                    ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                    ; Pp.textf "- %s"
-                        (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                    ; Pp.text "This is not allowed, please rename one of them."
-                    ]))
-        in
-        libs_and_exes d ~parent ~modules)
-  in
-  let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
-  let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
-  { modules; artifacts }
+  Memo.lazy_ (fun () ->
+      check_no_qualified loc include_subdirs;
+      let modules =
+        let dialects = Dune_project.dialects (Scope.project d.scope) in
+        List.fold_left ((dir, [], files) :: subdirs) ~init:Module_name.Map.empty
+          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+            let modules = modules_of_files ~dialects ~dir ~files in
+            Module_name.Map.union acc modules ~f:(fun name x y ->
+                User_error.raise ~loc
+                  [ Pp.textf "Module %S appears in several directories:"
+                      (Module_name.to_string name)
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                  ; Pp.textf "- %s"
+                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                  ; Pp.text "This is not allowed, please rename one of them."
+                  ]))
+      in
+      libs_and_exes d ~parent ~modules)
+  |> make d

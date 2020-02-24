@@ -4,6 +4,13 @@ module Menhir_rules = Menhir
 open Dune_file
 open! No_io
 
+let loc_of_dune_file ft_dir =
+  Loc.in_file
+    (Path.source
+       ( match File_tree.Dir.dune_file ft_dir with
+       | Some d -> File_tree.Dune_file.path d
+       | None -> Path.Source.relative (File_tree.Dir.path ft_dir) "_unknown_" ))
+
 module Dir_modules = struct
   type t =
     { libraries : Modules.t Lib_name.Map.t
@@ -176,14 +183,7 @@ let modules_of_executables t ~obj_dir ~first_exe =
   let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
   String.Map.find_exn map first_exe |> Modules.relocate_alias_module ~src_dir
 
-let foreign_sources_of_executables t ~first_exe =
-  Foreign_sources.for_exes (Memo.Lazy.force t.foreign_sources) ~first_exe
-
-let foreign_sources_of_library t ~name =
-  Foreign_sources.for_lib (Memo.Lazy.force t.foreign_sources) ~name
-
-let foreign_sources_of_archive t ~archive_name =
-  Foreign_sources.for_archive (Memo.Lazy.force t.foreign_sources) ~archive_name
+let foreign_sources t = Memo.Lazy.force t.foreign_sources
 
 let lookup_module t name =
   Module_name.Map.find (Memo.Lazy.force t.modules).rev_map name
@@ -544,16 +544,7 @@ end = struct
       in
       let libs_and_exes =
         Memo.lazy_ (fun () ->
-            let loc =
-              Loc.in_file
-                (Path.source
-                   ( match File_tree.Dir.dune_file ft_dir with
-                   | Some d -> File_tree.Dune_file.path d
-                   | None ->
-                     Path.Source.relative
-                       (File_tree.Dir.path ft_dir)
-                       "_unknown_" ))
-            in
+            let loc = loc_of_dune_file ft_dir in
             check_no_qualified loc qualif_mode;
             let modules =
               let dialects = Dune_project.dialects (Scope.project d.scope) in

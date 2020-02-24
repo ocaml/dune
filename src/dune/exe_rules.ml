@@ -147,7 +147,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  exe)\"."
             ];
       let foreign_sources =
-        Dir_contents.foreign_sources_of_executables dir_contents ~first_exe
+        let foreign_sources = Dir_contents.foreign_sources dir_contents in
+        Foreign_sources.for_exes foreign_sources ~first_exe
       in
       let o_files =
         Foreign_rules.build_o_files ~sctx ~dir ~expander

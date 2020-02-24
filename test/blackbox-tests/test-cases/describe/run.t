@@ -28,35 +28,28 @@ Describe various things
 -----------------------
 
   $ dune describe workspace --lang 2.3
-  [ library
-      { name = "foo"
-      ; uid = "0c8684c86d6ffbcecee09205033aa0a5"
-      ; requires = [ "da24c54ea66d10c3bf80362265e8accb" ]
-      ; source_dir = "_build/default"
-      ; modules =
-          [ { name = "Foo"
-            ; impl = Some "_build/default/foo.ml"
-            ; intf = None
-            ; cmt = Some "_build/default/.foo.objs/byte/foo.cmt"
-            ; cmti = None
-            }
-          ]
-      }
-  ; library
-      { name = "foo.x"
-      ; uid = "da24c54ea66d10c3bf80362265e8accb"
-      ; requires = []
-      ; source_dir = "_build/default"
-      ; modules =
-          [ { name = "Foo_x"
-            ; impl = Some "_build/default/foo_x.ml"
-            ; intf = None
-            ; cmt = Some "_build/default/.foo_x.objs/byte/foo_x.cmt"
-            ; cmti = None
-            }
-          ]
-      }
-  ]
+  ((library
+    ((name foo)
+     (uid 0c8684c86d6ffbcecee09205033aa0a5)
+     (requires (da24c54ea66d10c3bf80362265e8accb))
+     (source_dir _build/default)
+     (modules
+       (((name Foo)
+         (impl (_build/default/foo.ml))
+         (intf ())
+         (cmt (_build/default/.foo.objs/byte/foo.cmt))
+         (cmti ()))))))
+   (library
+    ((name foo.x)
+     (uid da24c54ea66d10c3bf80362265e8accb)
+     (requires ())
+     (source_dir _build/default)
+     (modules
+       (((name Foo_x)
+         (impl (_build/default/foo_x.ml))
+         (intf ())
+         (cmt (_build/default/.foo_x.objs/byte/foo_x.cmt))
+         (cmti ())))))))
 
 Test other formats
 ------------------

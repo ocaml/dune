@@ -116,15 +116,15 @@ end
 
 module Format = struct
   type t =
-    | OCaml
+    | Sexp
     | Csexp
 
-  let all = [ ("ocaml", OCaml); ("csexp", Csexp) ]
+  let all = [ ("sexp", Sexp); ("csexp", Csexp) ]
 
   let arg =
     Arg.(
       value
-      & opt (enum all) OCaml
+      & opt (enum all) Sexp
       & info [ "format" ] ~docv:"FORMAT" ~doc:"Output format.")
 end
 
@@ -150,6 +150,18 @@ module Lang = struct
           ~doc:"Behave the same as this version of Dune.")
 end
 
+let print_as_sexp dyn =
+  let rec dune_lang_of_sexp : Sexp.t -> Dune_lang.t = function
+    | Atom s -> Dune_lang.atom_or_quoted_string s
+    | List l -> List (List.map l ~f:dune_lang_of_sexp)
+  in
+  let cst =
+    dyn |> Sexp.of_dyn |> dune_lang_of_sexp
+    |> Dune_lang.Ast.add_loc ~loc:Loc.none
+    |> Dune_lang.Cst.concrete
+  in
+  Dune.Format_dune_lang.pp_top_sexps Stdlib.Format.std_formatter [ cst ]
+
 let term =
   let+ common = Common.term
   and+ what =
@@ -173,7 +185,7 @@ let term =
       let res = What.describe what setup context in
       Fiber.return
         ( match format with
-        | OCaml -> Ansi_color.print (Dyn.pp res)
-        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res) ))
+        | Csexp -> Csexp.to_channel stdout (Sexp.of_dyn res)
+        | Sexp -> print_as_sexp res ))
 
 let command = (term, info)

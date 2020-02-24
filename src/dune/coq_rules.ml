@@ -212,7 +212,10 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Dune_file.Coq.t) =
       Path.Build.pp (Scope.root scope);
   let cc = create_ccoq sctx ~dir in
   let name = snd s.name in
-  let coq_modules = Dir_contents.coq_modules_of_library dir_contents ~name in
+  let coq_modules =
+    let coq = Dir_contents.coq dir_contents in
+    Coq_sources.library coq ~name
+  in
   (* coqdep requires all the files to be in the tree to produce correct
      dependencies *)
   let source_rule =
@@ -269,7 +272,8 @@ let install_rules ~sctx ~dir s =
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = coqlib_wrapper_name s in
     let dst_dir = Path.Local.relative coq_root dst_suffix in
-    Dir_contents.coq_modules_of_library dir_contents ~name
+    Dir_contents.coq dir_contents
+    |> Coq_sources.library ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
            let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
            let vofile_rel =

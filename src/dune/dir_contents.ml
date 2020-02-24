@@ -126,7 +126,7 @@ type t =
   ; modules : Dir_modules.t Memo.Lazy.t
   ; foreign_sources : Foreign_sources.t Memo.Lazy.t
   ; mlds : (Dune_file.Documentation.t * Path.Build.t list) list Memo.Lazy.t
-  ; coq_modules : Coq_module.t list Coq_lib_name.Map.t Memo.Lazy.t
+  ; coq : Coq_sources.t Memo.Lazy.t
   ; artifacts : Dir_artifacts.t Memo.Lazy.t
   }
 
@@ -142,7 +142,7 @@ let empty kind ~dir =
   ; modules = Memo.Lazy.of_val Dir_modules.empty
   ; mlds = Memo.Lazy.of_val []
   ; foreign_sources = Memo.Lazy.of_val Foreign_sources.empty
-  ; coq_modules = Memo.Lazy.of_val Coq_lib_name.Map.empty
+  ; coq = Memo.Lazy.of_val Coq_sources.empty
   ; artifacts = Memo.Lazy.of_val Dir_artifacts.empty
   }
 
@@ -151,6 +151,8 @@ type gen_rules_result =
   | Group_part of Path.Build.t
 
 let dir t = t.dir
+
+let coq t = Memo.Lazy.force t.coq
 
 let artifacts t = Memo.Lazy.force t.artifacts
 
@@ -199,17 +201,6 @@ let mlds t (doc : Documentation.t) =
       ; ( "available"
         , Dyn.Encoder.(list Loc.to_dyn)
             (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
-      ]
-
-let coq_modules_of_library t ~name =
-  let map = Memo.Lazy.force t.coq_modules in
-  match Coq_lib_name.Map.find map name with
-  | Some x -> x
-  | None ->
-    Code_error.raise "Dir_contents.coq_modules_of_library"
-      [ ("name", Coq_lib_name.to_dyn name)
-      ; ( "available"
-        , Dyn.Encoder.(list Coq_lib_name.to_dyn) (Coq_lib_name.Map.keys map) )
       ]
 
 let modules_of_files ~dialects ~dir ~files =
@@ -281,34 +272,6 @@ let build_mlds_map (d : _ Dir_with_dune.t) ~files =
       in
       Some (doc, List.map (String.Map.values mlds) ~f:(Path.Build.relative dir))
     | _ -> None)
-
-let coq_modules_of_files ~subdirs =
-  let filter_v_files (dir, local, files) =
-    ( dir
-    , local
-    , String.Set.filter files ~f:(fun f -> Filename.check_suffix f ".v") )
-  in
-  let subdirs = List.map subdirs ~f:filter_v_files in
-  let build_mod_dir (dir, prefix, files) =
-    String.Set.to_list files
-    |> List.map ~f:(fun file ->
-           let name, _ = Filename.split_extension file in
-           let name = Coq_module.Name.make name in
-           Coq_module.make ~source:(Path.Build.relative dir file) ~prefix ~name)
-  in
-  let modules = List.concat_map ~f:build_mod_dir subdirs in
-  modules
-
-(* TODO: Build reverse map and check duplicates, however, are duplicates harmful?
- * In Coq all libs are "wrapped" so including a module twice is not so bad.
- *)
-let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
-  List.fold_left d.data ~init:Coq_lib_name.Map.empty ~f:(fun map ->
-    function
-    | Coq.T coq ->
-      let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
-      Coq_lib_name.Map.add_exn map (snd coq.name) modules
-    | _ -> map)
 
 module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t
@@ -445,6 +408,7 @@ end = struct
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
+          (* XXX What about mli files? *)
           | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
@@ -472,7 +436,8 @@ end = struct
     { t : t
     ; (* [rules] includes rules for subdirectories too *)
       rules : Rules.t option
-    ; subdirs : t Path.Build.Map.t
+    ; (* The [kind] of the nodes must be Group_part *)
+      subdirs : t Path.Build.Map.t
     }
 
   type result0 =
@@ -494,11 +459,6 @@ end = struct
 
   let check_no_qualified loc qualif_mode =
     if qualif_mode = Include_subdirs.Qualified then
-      User_error.raise ~loc
-        [ Pp.text "(include_subdirs qualified) is not supported yet" ]
-
-  let check_no_unqualified loc qualif_mode =
-    if qualif_mode = Include_subdirs.Unqualified then
       User_error.raise ~loc
         [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
@@ -541,11 +501,11 @@ end = struct
                         ~sources:
                           (Foreign.Sources.Unresolved.load ~dune_version
                              ~dir:d.ctx_dir ~files))
-              ; coq_modules =
+              ; coq =
                   Memo.lazy_ (fun () ->
-                      build_coq_modules_map d ~dir:d.ctx_dir
-                        ~modules:
-                          (coq_modules_of_files ~subdirs:[ (dir, [], files) ]))
+                      let subdirs = [ (dir, [], files) ] in
+                      Coq_sources.of_dir d ~include_subdirs:No ~loc:Loc.none
+                        ~subdirs)
               ; artifacts =
                   Memo.Lazy.map ~f:(Dir_artifacts.make d) libs_and_exes
               }
@@ -553,6 +513,7 @@ end = struct
           ; subdirs = Path.Build.Map.empty
           } )
     | Group_root (ft_dir, qualif_mode, d) ->
+      (* XXX it's not clear what this [local] parameter is for *)
       let rec walk ft_dir ~dir ~local acc =
         match Dir_status.DB.get dir_status_db ~dir with
         | Is_component_of_a_group_but_not_the_root
@@ -633,12 +594,14 @@ end = struct
             in
             Foreign_sources.make d ~sources ~ext_obj:ctx.lib_config.ext_obj)
       in
-      let coq_modules =
+      let coq =
         Memo.lazy_ (fun () ->
-            check_no_unqualified Loc.none qualif_mode;
-            build_coq_modules_map d ~dir:d.ctx_dir
-              ~modules:
-                (coq_modules_of_files ~subdirs:((dir, [], files) :: subdirs)))
+            let subdirs = (dir, [], files) :: subdirs in
+            let loc = Loc.none in
+            let include_subdirs =
+              Dune_file.Include_subdirs.Include qualif_mode
+            in
+            Coq_sources.of_dir d ~subdirs ~loc ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->
@@ -648,7 +611,7 @@ end = struct
             ; modules
             ; foreign_sources
             ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-            ; coq_modules
+            ; coq
             ; artifacts
             })
       in
@@ -659,7 +622,7 @@ end = struct
         ; modules
         ; foreign_sources
         ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-        ; coq_modules
+        ; coq
         ; artifacts
         }
       in

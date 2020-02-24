@@ -26,7 +26,8 @@ module Crawl = struct
   open Dune
 
   let uid_of_library lib =
-    Digest.generic (Lib.name lib, Lib_info.src_dir (Lib.info lib))
+    Digest.generic
+      (Lib.name lib, Path.to_string (Lib_info.src_dir (Lib.info lib)))
     |> Digest.to_string
 
   let library sctx lib =

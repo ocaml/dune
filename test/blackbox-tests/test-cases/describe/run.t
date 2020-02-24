@@ -30,8 +30,8 @@ Describe various things
   $ dune describe workspace --lang 0.1
   ((library
     ((name foo)
-     (uid 0c8684c86d6ffbcecee09205033aa0a5)
-     (requires (da24c54ea66d10c3bf80362265e8accb))
+     (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
+     (requires (c17373aee51bab94097b4b7818553cf3))
      (source_dir _build/default)
      (modules
        (((name Foo)
@@ -41,7 +41,7 @@ Describe various things
          (cmti ()))))))
    (library
     ((name foo.x)
-     (uid da24c54ea66d10c3bf80362265e8accb)
+     (uid c17373aee51bab94097b4b7818553cf3)
      (requires ())
      (source_dir _build/default)
      (modules
@@ -55,7 +55,7 @@ Test other formats
 ------------------
 
   $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-70
-  ((7:library((4:name3:foo)(3:uid32:0c8684c86d6ffbcecee09205033aa0a5)(8:
+  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(8:
 
 Test errors
 -----------

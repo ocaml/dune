@@ -146,6 +146,12 @@ let odoc sctx =
     ~dir:(Super_context.build_dir sctx)
     "odoc" ~loc:None ~hint:"try: opam install odoc"
 
+let odoc_base_flags sctx build_dir =
+  let conf = Super_context.odoc sctx ~dir:build_dir in
+  match conf.Env_node.Odoc.warnings with
+  | Fatal -> Command.Args.A "--warn-error"
+  | Nonfatal -> S []
+
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Build.dyn_paths_unit
     (let+ deps =
@@ -168,6 +174,7 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
       [ A "compile"
+      ; odoc_base_flags sctx odoc_file
       ; A "-I"
       ; Path doc_dir
       ; iflags
@@ -180,14 +187,16 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   let odoc_file = Mld.odoc_file m ~doc_dir in
+  let odoc_input = Mld.odoc_input m in
   add_rule sctx
     (Command.run ~dir:(Path.build doc_dir) (odoc sctx)
        [ A "compile"
+       ; odoc_base_flags sctx odoc_input
        ; Command.Args.dyn includes
        ; As [ "--pkg"; Package.Name.to_string pkg ]
        ; A "-o"
        ; Target odoc_file
-       ; Dep (Path.build (Mld.odoc_input m))
+       ; Dep (Path.build odoc_input)
        ]);
   odoc_file
 
@@ -243,6 +252,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                ~dir:(Path.build (Paths.html_root ctx))
                (odoc sctx)
                [ A "html"
+               ; odoc_base_flags sctx odoc_file.odoc_input
                ; odoc_include_flags ctx pkg requires
                ; A "-o"
                ; Path (Path.build (Paths.html_root ctx))

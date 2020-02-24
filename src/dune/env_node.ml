@@ -1,169 +1,134 @@
 open Stdune
 
+module Odoc = struct
+  type warnings = Dune_env.Stanza.Odoc.warnings =
+    | Fatal
+    | Nonfatal
+
+  type t = { warnings : warnings }
+end
+
 type t =
-  { dir : Path.Build.t
-  ; inherit_from : t Lazy.t option
-  ; scope : Scope.t
-  ; config : Dune_env.Stanza.t
-  ; mutable local_binaries : File_binding.Expanded.t list option
-  ; mutable ocaml_flags : Ocaml_flags.t option
-  ; mutable foreign_flags : string list Build.t Foreign.Language.Dict.t option
-  ; mutable external_ : Env.t option
-  ; mutable bin_artifacts : Artifacts.Bin.t option
-  ; mutable inline_tests : Dune_env.Stanza.Inline_tests.t option
-  ; mutable menhir_flags : string list Build.t option
+  { scope : Scope.t
+  ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
+  ; ocaml_flags : Ocaml_flags.t Memo.Lazy.t
+  ; foreign_flags : string list Build.t Foreign.Language.Dict.t Memo.Lazy.t
+  ; external_env : Env.t Memo.Lazy.t
+  ; bin_artifacts : Artifacts.Bin.t Memo.Lazy.t
+  ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
+  ; menhir_flags : string list Build.t Memo.Lazy.t
+  ; odoc : Odoc.t Memo.Lazy.t
   }
 
 let scope t = t.scope
 
-let make ~dir ~inherit_from ~scope ~config =
-  { dir
-  ; inherit_from
-  ; scope
-  ; config
-  ; ocaml_flags = None
-  ; foreign_flags = None
-  ; external_ = None
-  ; bin_artifacts = None
-  ; local_binaries = None
-  ; inline_tests = None
-  ; menhir_flags = None
-  }
+let local_binaries t = Memo.Lazy.force t.local_binaries
 
-let find_config t ~profile = Dune_env.Stanza.find t.config ~profile
+let ocaml_flags t = Memo.Lazy.force t.ocaml_flags
 
-let rec local_binaries t ~profile ~expander =
-  match t.local_binaries with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None -> []
-      | Some (lazy t) -> local_binaries t ~profile ~expander
-    in
-    let local_binaries =
-      default
-      @ List.map (find_config t ~profile).binaries
-          ~f:
-            (File_binding.Unexpanded.expand ~dir:t.dir ~f:(fun template ->
-                 Expander.expand expander ~mode:Single ~template
-                 |> Value.to_string ~dir:(Path.build t.dir)))
-    in
-    t.local_binaries <- Some local_binaries;
-    local_binaries
+let foreign_flags t = Memo.Lazy.force t.foreign_flags
 
-let rec external_ t ~profile ~default =
-  match t.external_ with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None -> default
-      | Some (lazy t) -> external_ t ~default ~profile
-    in
-    let env, have_binaries =
-      let cfg = find_config t ~profile in
-      (Env.extend_env default cfg.env_vars, List.is_non_empty cfg.binaries)
-    in
-    let env =
-      if have_binaries then
-        let dir = Utils.local_bin t.dir |> Path.build in
-        Env.cons_path env ~dir
-      else
-        env
-    in
-    t.external_ <- Some env;
-    env
+let external_env t = Memo.Lazy.force t.external_env
 
-let rec bin_artifacts t ~profile ~default ~expander =
-  match t.bin_artifacts with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None -> default
-      | Some (lazy t) -> bin_artifacts t ~default ~profile ~expander
-    in
-    let bin_artifacts =
-      local_binaries t ~profile ~expander
-      |> Artifacts.Bin.add_binaries default ~dir:t.dir
-    in
-    t.bin_artifacts <- Some bin_artifacts;
-    bin_artifacts
+let bin_artifacts t = Memo.Lazy.force t.bin_artifacts
 
-let rec ocaml_flags t ~profile ~expander =
-  match t.ocaml_flags with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None ->
-        let project = Scope.project t.scope in
-        let dune_version = Dune_project.dune_version project in
-        Ocaml_flags.default ~profile ~dune_version
-      | Some (lazy t) -> ocaml_flags t ~profile ~expander
-    in
-    let flags =
-      let cfg = find_config t ~profile in
-      let expander = Expander.set_dir expander ~dir:t.dir in
-      Ocaml_flags.make ~spec:cfg.flags ~default
-        ~eval:(Expander.expand_and_eval_set expander)
-    in
-    t.ocaml_flags <- Some flags;
-    flags
+let inline_tests t = Memo.Lazy.force t.inline_tests
 
-let rec inline_tests t ~profile =
-  match t.inline_tests with
-  | Some x -> x
-  | None ->
-    let state : Dune_env.Stanza.Inline_tests.t =
-      match find_config t ~profile with
-      | { inline_tests = None; _ } -> (
-        match t.inherit_from with
-        | None ->
-          if Profile.is_inline_test profile then
+let menhir_flags t = Memo.Lazy.force t.menhir_flags
+
+let odoc t = Memo.Lazy.force t.odoc
+
+let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
+    ~expander_for_artifacts ~default_context_flags ~default_env
+    ~default_bin_artifacts =
+  let config = Dune_env.Stanza.find config_stanza ~profile in
+  let inherited ~field ~root extend =
+    Memo.lazy_ (fun () ->
+        extend
+          ( match inherit_from with
+          | None -> root
+          | Some t -> field (Memo.Lazy.force t) ))
+  in
+  let local_binaries =
+    inherited ~field:local_binaries ~root:[] (fun binaries ->
+        binaries
+        @ List.map config.binaries
+            ~f:
+              (File_binding.Unexpanded.expand ~dir ~f:(fun template ->
+                   Expander.expand
+                     (Memo.Lazy.force expander_for_artifacts)
+                     ~mode:Single ~template
+                   |> Value.to_string ~dir:(Path.build dir))))
+  in
+  let external_env =
+    inherited ~field:external_env ~root:default_env (fun env ->
+        let env, have_binaries =
+          (Env.extend_env env config.env_vars, List.is_non_empty config.binaries)
+        in
+        if have_binaries then
+          let dir = Utils.local_bin dir |> Path.build in
+          Env.cons_path env ~dir
+        else
+          env)
+  in
+  let bin_artifacts =
+    inherited ~field:bin_artifacts ~root:default_bin_artifacts (fun binaries ->
+        Artifacts.Bin.add_binaries binaries ~dir
+          (Memo.Lazy.force local_binaries))
+  in
+  let ocaml_flags =
+    let default_ocaml_flags =
+      let project = Scope.project scope in
+      let dune_version = Dune_project.dune_version project in
+      Ocaml_flags.default ~profile ~dune_version
+    in
+    inherited ~field:ocaml_flags ~root:default_ocaml_flags (fun flags ->
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
+        Ocaml_flags.make ~spec:config.flags ~default:flags
+          ~eval:(Expander.expand_and_eval_set expander))
+  in
+  let inline_tests =
+    match config with
+    | { inline_tests = Some s; _ } -> Memo.Lazy.of_val s
+    | { inline_tests = None; _ } ->
+      inherited ~field:inline_tests Fn.id
+        ~root:
+          ( if Profile.is_inline_test profile then
             Enabled
           else
-            Disabled
-        | Some (lazy t) -> inline_tests t ~profile )
-      | { inline_tests = Some s; _ } -> s
+            Disabled )
+  in
+  let foreign_flags =
+    inherited ~field:foreign_flags
+      ~root:(Foreign.Language.Dict.map ~f:Build.return default_context_flags)
+      (fun flags ->
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
+        Foreign.Language.Dict.mapi config.foreign_flags ~f:(fun ~language f ->
+            let standard = Foreign.Language.Dict.get flags language in
+            Expander.expand_and_eval_set expander f ~standard))
+  in
+  let menhir_flags =
+    inherited ~field:menhir_flags ~root:(Build.return []) (fun flags ->
+        let expander = Expander.set_dir (Memo.Lazy.force expander) ~dir in
+        Expander.expand_and_eval_set expander config.menhir_flags
+          ~standard:flags)
+  in
+  let odoc =
+    let open Odoc in
+    let root =
+      (* DUNE3: Enable for dev profile in the future *)
+      { warnings = Nonfatal }
     in
-    t.inline_tests <- Some state;
-    state
-
-let rec foreign_flags t ~profile ~expander ~default_context_flags =
-  match t.foreign_flags with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None -> Foreign.Language.Dict.map ~f:Build.return default_context_flags
-      | Some (lazy t) ->
-        foreign_flags t ~profile ~expander ~default_context_flags
-    in
-    let flags =
-      let cfg = find_config t ~profile in
-      let expander = Expander.set_dir expander ~dir:t.dir in
-      Foreign.Language.Dict.mapi cfg.foreign_flags ~f:(fun ~language f ->
-          let default = Foreign.Language.Dict.get default language in
-          Expander.expand_and_eval_set expander f ~standard:default)
-    in
-    t.foreign_flags <- Some flags;
-    flags
-
-let rec menhir_flags t ~profile ~expander =
-  match t.menhir_flags with
-  | Some x -> x
-  | None ->
-    let default =
-      match t.inherit_from with
-      | None -> Build.return []
-      | Some (lazy t) -> menhir_flags t ~profile ~expander
-    in
-    let flags =
-      let cfg = find_config t ~profile in
-      let expander = Expander.set_dir expander ~dir:t.dir in
-      Expander.expand_and_eval_set expander cfg.menhir_flags ~standard:default
-    in
-    t.menhir_flags <- Some flags;
-    flags
+    inherited ~field:odoc ~root (fun { warnings } ->
+        { warnings = Option.value config.odoc.warnings ~default:warnings })
+  in
+  { scope
+  ; ocaml_flags
+  ; foreign_flags
+  ; external_env
+  ; bin_artifacts
+  ; local_binaries
+  ; inline_tests
+  ; menhir_flags
+  ; odoc
+  }

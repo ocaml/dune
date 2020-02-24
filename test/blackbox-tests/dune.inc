@@ -632,6 +632,18 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias env-env-affects-expander-affects-env)
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-affects-expander-affects-env))
+ (action
+  (chdir
+   test-cases/env/env-affects-expander-affects-env
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias env-env-and-flags-include)
  (deps (package dune) (source_tree test-cases/env/env-and-flags-include))
  (action
@@ -1949,6 +1961,17 @@
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
 (rule
+ (alias odoc-warnings)
+ (deps (package dune) (source_tree test-cases/odoc/warnings))
+ (action
+  (chdir
+   test-cases/odoc/warnings
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected))))
+ (enabled_if (<> %{ocaml_version} 4.02.3)))
+
+(rule
  (alias old-dune-subsystem)
  (deps (package dune) (source_tree test-cases/old-dune-subsystem))
  (action
@@ -2770,6 +2793,7 @@
   (alias embed-jbuild)
   (alias enabled_if)
   (alias enabled_if-exec)
+  (alias env-env-affects-expander-affects-env)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)
@@ -2896,6 +2920,7 @@
   (alias odoc-odoc-package-mld-link)
   (alias odoc-odoc-simple)
   (alias odoc-odoc-unique-mlds)
+  (alias odoc-warnings)
   (alias old-dune-subsystem)
   (alias optional)
   (alias optional-executable)
@@ -3031,6 +3056,7 @@
   (alias embed-jbuild)
   (alias enabled_if)
   (alias enabled_if-exec)
+  (alias env-env-affects-expander-affects-env)
   (alias env-env-and-flags-include)
   (alias env-env-bin-pform)
   (alias env-env-bins)

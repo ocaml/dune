@@ -210,6 +210,7 @@ let exclusions =
   ; odoc "odoc-unique-mlds"
   ; odoc "github717-odoc-index"
   ; odoc "multiple-private-libs"
+  ; odoc "warnings"
   ; make "cinaps" ~external_deps:true ~enabled:false
   ; make "fdo" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
   ; make "ppx-rewriter" ~only_ocaml:("<>", "4.02.3") ~external_deps:true

@@ -25,8 +25,8 @@ val promote_sync :
   -> (Path.Build.t * Digest.t) list
   -> Key.t
   -> metadata
-  -> int option
-  -> Duplication_mode.t option
+  -> repository:int option
+  -> duplication:Duplication_mode.t option
   -> (Metadata_file.t * promotion list, string) Result.t
 
 val make :

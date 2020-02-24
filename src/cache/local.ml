@@ -200,10 +200,10 @@ let apply ~f o v =
   | Some o -> f v o
   | None -> v
 
-let promote_sync cache paths key metadata repo duplication =
+let promote_sync cache paths key metadata ~repository ~duplication =
   let open Result.O in
   let* repo =
-    match repo with
+    match repository with
     | Some idx -> (
       match List.nth cache.repositories idx with
       | None -> Result.Error (Printf.sprintf "repository out of range: %i" idx)
@@ -299,7 +299,7 @@ let promote_sync cache paths key metadata repo duplication =
 
 let promote cache paths key metadata ~repository ~duplication =
   Result.map ~f:ignore
-    (promote_sync cache paths key metadata repository duplication)
+    (promote_sync cache paths key metadata ~repository ~duplication)
 
 let search cache key =
   let path = path_metadata cache key in

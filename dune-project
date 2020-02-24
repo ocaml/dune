@@ -61,7 +61,7 @@ executable was built.
 (package
  (name dune-private-libs)
  (depends
-  (ocaml (>= 4.07)))
+  (ocaml (>= 4.10)))
  (synopsis "Private libraries of Dune")
  (description "\
 !!!!!!!!!!!!!!!!!!!!!!

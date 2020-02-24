@@ -127,15 +127,7 @@ let subst_file path ~map =
 
 (* Extending the Dune_project APIs, but adding capability to modify *)
 module Dune_project = struct
-  (* The below incantation hides [Dune_project.t] preventing name conflicts in
-     OCaml 4.07. It can be replaced simply with [include Dune_project] once we
-     stop supporting OCaml 4.07. *)
-  include (
-    Dune_project :
-      module type of struct
-        include Dune_project
-      end
-      with type t := Dune_project.t )
+  include Dune_project
 
   type 'a simple_field =
     { loc : Loc.t

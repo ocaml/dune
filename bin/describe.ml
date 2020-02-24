@@ -143,11 +143,23 @@ module Lang = struct
     Arg.conv ~docv:"VERSION" (parser, printer)
 
   let arg : t Term.t =
-    Arg.(
-      value
-      & opt arg_conv Dune.Stanza.latest_version
-      & info [ "lang" ] ~docv:"VERSION"
-          ~doc:"Behave the same as this version of Dune.")
+    Term.ret
+    @@ let+ v =
+         Arg.(
+           value
+           & opt arg_conv (0, 1)
+           & info [ "lang" ] ~docv:"VERSION"
+               ~doc:"Behave the same as this version of Dune.")
+       in
+       if v = (0, 1) then
+         `Ok v
+       else
+         `Error
+           ( true
+           , "Only --lang 0.1 is available at the moment as this command is \
+              not yet stabilised. If you would like to release a software that \
+              relies on the output of 'dune describe', please open a ticket on \
+              https://github.com/ocaml/dune." )
 end
 
 let print_as_sexp dyn =

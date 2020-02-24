@@ -27,7 +27,7 @@ Setup
 Describe various things
 -----------------------
 
-  $ dune describe workspace --lang 2.3
+  $ dune describe workspace --lang 0.1
   ((library
     ((name foo)
      (uid 0c8684c86d6ffbcecee09205033aa0a5)
@@ -54,17 +54,26 @@ Describe various things
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 2.3 | cut -c 1-70
+  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-70
   ((7:library((4:name3:foo)(3:uid32:0c8684c86d6ffbcecee09205033aa0a5)(8:
 
 Test errors
 -----------
 
-  $ dune describe --lang 2.3 workspac
+  $ dune describe --lang 0.1 workspac
   Error: Unknown constructor workspac
   Hint: did you mean workspace?
   [1]
 
-  $ dune describe --lang 2.3 workspace xxx
+  $ dune describe --lang 0.1 workspace xxx
   Error: Too many argument for workspace
+  [1]
+
+  $ dune describe --lang 1.0
+  dune: Only --lang 0.1 is available at the moment as this command is not yet
+        stabilised. If you would like to release a software that relies on the
+        output of 'dune describe', please open a ticket on
+        https://github.com/ocaml/dune.
+  Usage: dune describe [OPTION]... [STRING]...
+  Try `dune describe --help' or `dune --help' for more information.
   [1]

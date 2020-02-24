@@ -3,7 +3,13 @@ open Dune_file
 module Library = Dune_file.Library
 
 (* TODO: This is a strange module; it seems to add unnecessary indirection for
-   accessing foreign sources. It's worth checking if it can be simplified away. *)
+   accessing foreign sources. It's worth checking if it can be simplified away.
+
+   Before this module is removed, there should be a good way to handle new types
+   of source files without shoving everything into [Dir_contents].
+
+   Furthemore, this module is also responsible for details such as handling file
+   extensions and validing filenames. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
   ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t

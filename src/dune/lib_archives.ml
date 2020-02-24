@@ -38,10 +38,9 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           (byte && not virtual_library)
           [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Byte) ]
       ; ( if virtual_library then
-          let files =
-            Dir_contents.foreign_sources_of_library dir_contents
-              ~name:(Library.best_name lib)
-          in
+          let foreign_sources = Dir_contents.foreign_sources dir_contents in
+          let name = Library.best_name lib in
+          let files = Foreign_sources.for_lib foreign_sources ~name in
           Foreign.Sources.object_files files ~dir ~ext_obj
         else
           Library.foreign_lib_files lib ~dir ~ext_lib )

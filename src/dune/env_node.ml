@@ -36,6 +36,8 @@ let inline_tests t = Memo.Lazy.force t.inline_tests
 
 let menhir_flags t = Memo.Lazy.force t.menhir_flags
 
+let odoc t = Memo.Lazy.force t.odoc
+
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
     ~default_bin_artifacts =
@@ -111,6 +113,15 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
         Expander.expand_and_eval_set expander config.menhir_flags
           ~standard:flags)
   in
+  let odoc =
+    let open Odoc in
+    let root =
+      (* DUNE3: Enable for dev profile in the future *)
+      { warnings = Nonfatal }
+    in
+    inherited ~field:odoc ~root (fun { warnings } ->
+        { warnings = Option.value config.odoc.warnings ~default:warnings })
+  in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -119,25 +130,5 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; local_binaries
   ; inline_tests
   ; menhir_flags
+  ; odoc
   }
-
-let rec odoc t ~profile =
-  match t.odoc with
-  | Some x -> x
-  | None ->
-    let open Odoc in
-    let default =
-      (* DUNE3: Enable for dev profile in the future *)
-      { warnings = Nonfatal }
-    in
-    let inherited =
-      match t.inherit_from with
-      | None -> default
-      | Some (lazy t) -> odoc t ~profile
-    in
-    let conf =
-      let c = (find_config t ~profile).odoc in
-      { warnings = Option.value c.warnings ~default:inherited.warnings }
-    in
-    t.odoc <- Some conf;
-    conf

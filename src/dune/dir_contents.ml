@@ -219,12 +219,8 @@ end = struct
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                      let dune_version = d.dune_version in
-                      Foreign_sources.make d ~loc ~include_subdirs
-                        ~ext_obj:ctx.lib_config.ext_obj
-                        ~sources:
-                          (Foreign.Sources.Unresolved.load ~dune_version
-                             ~dir:d.ctx_dir ~files))
+                      let lib_config = ctx.lib_config in
+                      Foreign_sources.standalone d ~lib_config ~files)
               ; coq =
                   Memo.lazy_ (fun () ->
                       let subdirs = [ (dir, [], files) ] in
@@ -267,7 +263,6 @@ end = struct
       in
       let ml =
         Memo.lazy_ (fun () ->
-            let loc = loc_of_dune_file ft_dir in
             let parent ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
             let include_subdirs =
               Dune_file.Include_subdirs.Include qualif_mode
@@ -277,18 +272,9 @@ end = struct
       in
       let foreign_sources =
         Memo.lazy_ (fun () ->
-            let dune_version = d.dune_version in
-            let init = String.Map.empty in
-            let sources =
-              List.fold_left ((dir, [], files) :: subdirs) ~init
-                ~f:(fun acc (dir, _local, files) ->
-                  let sources =
-                    Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
-                  in
-                  String.Map.Multi.rev_union sources acc)
-            in
-            Foreign_sources.make d ~loc ~include_subdirs ~sources
-              ~ext_obj:ctx.lib_config.ext_obj)
+            let lib_config = ctx.lib_config in
+            let subdirs = (dir, [], files) :: subdirs in
+            Foreign_sources.group d ~loc ~include_subdirs ~lib_config ~subdirs)
       in
       let coq =
         Memo.lazy_ (fun () ->

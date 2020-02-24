@@ -140,9 +140,13 @@ module Metadata_file = struct
     >>= of_sexp
 end
 
-let path_files cache = Path.relative cache.root "files"
+let root_data cache = Path.relative cache.root "files"
 
-let path_meta cache = Path.relative cache.root "meta"
+let root_metadata cache = Path.relative cache.root "meta"
+
+let path_metadata cache key = FSSchemeImpl.path (root_metadata cache) key
+
+let path_data cache key = FSSchemeImpl.path (root_data cache) key
 
 let make_path cache path =
   match cache.build_root with
@@ -152,8 +156,7 @@ let make_path cache path =
       (Format.asprintf "relative path \"%a\" while no build root was set"
          Path.Local.pp path)
 
-let search cache hash file =
-  Collision.search (FSSchemeImpl.path (path_files cache) hash) file
+let search cache hash file = Collision.search (path_data cache hash) file
 
 let with_repositories cache repositories = { cache with repositories }
 
@@ -267,7 +270,7 @@ let promote_sync cache paths key metadata repo duplication =
              })
   in
   let+ promoted = Result.List.map ~f:promote paths in
-  let metadata_path = FSSchemeImpl.path (path_meta cache) key
+  let metadata_path = path_metadata cache key
   and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
   and files = List.map ~f:file_of_promotion promoted in
   let metadata_file : Metadata_file.t = { metadata; files } in
@@ -297,7 +300,7 @@ let promote cache paths key metadata ~repository ~duplication =
     (promote_sync cache paths key metadata repository duplication)
 
 let search cache key =
-  let path = FSSchemeImpl.path (path_meta cache) key in
+  let path = path_metadata cache key in
   let* sexp =
     try
       Io.with_file_in path ~f:(fun input ->
@@ -358,7 +361,7 @@ let duplication_mode cache = cache.duplication_mode
 let trimmable stats = stats.Unix.st_nlink = 1
 
 let _garbage_collect default_trim cache =
-  let path = path_meta cache in
+  let path = root_metadata cache in
   let metas =
     List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list path)
   in
@@ -400,7 +403,7 @@ let _garbage_collect default_trim cache =
 let garbage_collect = _garbage_collect Trimming_result.empty
 
 let trim cache free =
-  let path = path_files cache in
+  let path = root_data cache in
   let files = FSSchemeImpl.list path in
   let f path =
     let stats = Path.stat path in
@@ -422,7 +425,7 @@ let trim cache free =
   _garbage_collect trim cache
 
 let size cache =
-  let root = path_files cache in
+  let root = root_data cache in
   let files = FSSchemeImpl.list root in
   let stats =
     let f p =

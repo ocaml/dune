@@ -40,3 +40,9 @@ val trim : t -> int -> Trimming_result.t
 
 (** Purge invalid or incomplete cached rules. *)
 val garbage_collect : t -> Trimming_result.t
+
+(** Path to a metadata file *)
+val path_metadata : t -> Key.t -> Path.t
+
+(** Path to a data file *)
+val path_data : t -> Key.t -> Path.t

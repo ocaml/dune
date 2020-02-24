@@ -5,7 +5,6 @@ Given that we only have a few string_with_vars in env, a reasonable
 example is hard to come up with, but here's a contrived one.
 
   $ echo '(lang dune 2.0)' > dune-project
-  
   $ cat > dune <<EOF
   > (library
   >  (name whatever)

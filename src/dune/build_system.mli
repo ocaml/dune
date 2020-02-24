@@ -8,7 +8,7 @@ open! Import
 (** {2 Creation} *)
 
 type caching =
-  { cache : (module Dune_cache.Caching)
+  { cache : (module Cache.Caching)
   ; check_probability : float
   }
 

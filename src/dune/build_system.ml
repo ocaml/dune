@@ -310,7 +310,7 @@ module Context_or_install = struct
 end
 
 type caching =
-  { cache : (module Dune_cache.Caching)
+  { cache : (module Cache.Caching)
   ; check_probability : float
   }
 
@@ -1397,7 +1397,7 @@ end = struct
         List.iter targets_as_list ~f:(fun target ->
             Cached_digest.remove (Path.build target);
             Path.unlink_no_err (Path.build target));
-        let from_Dune_cache =
+        let from_Cache =
           match (do_not_memoize, t.caching) with
           | true, _
           | _, None ->
@@ -1414,9 +1414,9 @@ end = struct
           | _ -> false
         in
         let pulled_from_cache =
-          match from_Dune_cache with
+          match from_Cache with
           | Some (files, (module Caching)) when not cache_checking -> (
-            let retrieve (file : Dune_cache.File.t) =
+            let retrieve (file : Cache.File.t) =
               let retrieved = Caching.Cache.retrieve Caching.cache file in
               Cached_digest.set retrieved file.digest;
               file.digest
@@ -1482,14 +1482,14 @@ end = struct
             (* Check cache. We don't check for missing file in the cache, since
                the file list is part of the rule hash this really never should
                happen. *)
-            match from_Dune_cache with
+            match from_Cache with
             | Some (cached, _) when cache_checking ->
               (* This being [false] is unexpected and means we have a hash
                  collision *)
               let data_are_ok =
                 match
                   List.for_all2 targets cached
-                    ~f:(fun (target, _) (c : Dune_cache.File.t) ->
+                    ~f:(fun (target, _) (c : Cache.File.t) ->
                       Path.Build.equal target c.in_the_build_directory)
                 with
                 | Ok b -> b
@@ -1506,12 +1506,12 @@ end = struct
                 User_warning.emit
                   [ Pp.text "unexpected list of targets in the cache"
                   ; pp "expected: " targets ~f:fst
-                  ; pp "got:      " cached ~f:(fun (c : Dune_cache.File.t) ->
+                  ; pp "got:      " cached ~f:(fun (c : Cache.File.t) ->
                         c.in_the_build_directory)
                   ]
               else
                 List.iter2 targets cached
-                  ~f:(fun (_, digest) (c : Dune_cache.File.t) ->
+                  ~f:(fun (_, digest) (c : Cache.File.t) ->
                     if not (Digest.equal digest c.digest) then
                       User_warning.emit
                         [ Pp.textf "cache mismatch on %s: hash differ with %s"
@@ -1525,7 +1525,7 @@ end = struct
           let () =
             (* Promote *)
             match t.caching with
-            | Some { cache = (module Caching : Dune_cache.Caching); _ }
+            | Some { cache = (module Caching : Cache.Caching); _ }
               when not do_not_memoize ->
               let report msg =
                 let targets =
@@ -1968,13 +1968,13 @@ let init ~contexts ?caching ~sandboxing_preference =
     |> Context_name.Map.of_list_exn
   in
   let caching =
-    let f ({ cache = (module Caching : Dune_cache.Caching); _ } as v) =
+    let f ({ cache = (module Caching : Cache.Caching); _ } as v) =
       let cache =
         ( module struct
           module Cache = Caching.Cache
 
           let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-        end : Dune_cache.Caching )
+        end : Cache.Caching )
       in
       { v with cache }
     in

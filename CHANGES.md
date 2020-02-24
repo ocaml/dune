@@ -1,10 +1,17 @@
+2.4.0 (unreleased)
+------------------
+
+- Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
+
+- Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
+
 2.3.1 (20/02/2020)
 ------------------
 
 - Fix versioning of artifact variables (eg %{cmxa:...}), which were introduced
   in 2.0, not 1.11. (#3149, @nojb)
-  
-- Fix a bug introduced in 2.3.0 where dune insists on using `fswatch` on linux 
+
+- Fix a bug introduced in 2.3.0 where dune insists on using `fswatch` on linux
   (even when `inotifywait` is available). (#3162, @aalekseyev)
 
 - Fix a bug causing all executables to be considered as optional (#3163, @diml)

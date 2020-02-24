@@ -192,7 +192,7 @@ let gen ~package ~version ?(add_directory_entry = true) entries =
              in
              Package pkg)
     in
-    { name = Some (Lib_name.of_string_exn ~loc:None name)
+    { name = Some (Lib_name.parse_string_exn (Loc.none, name))
     ; entries = entries @ subs
     }
   in

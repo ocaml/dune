@@ -255,6 +255,7 @@ let exclusions =
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ; make "pkg-config-quoting"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
+  ; make "mdx-stanza" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

@@ -48,8 +48,7 @@ val artifacts : t -> Dir_artifacts.t
 (** All mld files attached to this documentation stanza *)
 val mlds : t -> Dune_file.Documentation.t -> Path.Build.t list
 
-(** Coq modules of library [name] is the Coq library name. *)
-val coq_modules_of_library : t -> name:Coq_lib_name.t -> Coq_module.t list
+val coq : t -> Coq_sources.t
 
 (** Get the directory contents of the given directory. *)
 val get : Super_context.t -> dir:Path.Build.t -> t

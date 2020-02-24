@@ -24,7 +24,7 @@ let eval =
   in
   let module Unordered = Ordered_set_lang.Unordered (Module_name) in
   let parse ~all_modules ~fake_modules ~loc s =
-    let name = Module_name.of_string s in
+    let name = Module_name.of_string_allow_invalid (loc, s) in
     match Module_name.Map.find all_modules name with
     | Some m -> Ok m
     | None ->

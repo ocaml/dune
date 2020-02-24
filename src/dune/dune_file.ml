@@ -147,8 +147,7 @@ module Pps_and_flags = struct
             | None ->
               User_error.raise ~loc
                 [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt -> Left (loc, Lib_name.of_string_exn ~loc:(Some loc) txt)
-            ))
+            | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt)) ))
     in
     let all_flags = more_flags @ Option.value flags ~default:[] in
     if syntax_version < (1, 10) then
@@ -917,12 +916,12 @@ module Library = struct
        let name =
          let open Dune_lang.Syntax.Version.Infix in
          match (name, public) with
-         | Some (loc, res), _ -> (loc, Lib_name.Local.validate (loc, res))
+         | Some (loc, res), _ -> (loc, res)
          | None, Some { name = loc, name; _ } ->
            if dune_version >= (1, 1) then
              match Lib_name.to_local name with
-             | Ok m -> (loc, m)
-             | Error () ->
+             | Some m -> (loc, m)
+             | None ->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text

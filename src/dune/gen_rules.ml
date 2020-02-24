@@ -124,6 +124,9 @@ end = struct
     | Cinaps.T cinaps ->
       Cinaps.gen_rules sctx cinaps ~dir ~scope;
       empty_none
+    | Mdx.T mdx ->
+      Mdx.gen_rules ~sctx ~dir mdx;
+      empty_none
     | _ -> empty_none
 
   let of_stanzas stanzas ~cctxs ~sctx ~src_dir ~ctx_dir ~scope ~dir_contents

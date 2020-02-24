@@ -5,6 +5,8 @@ type t =
   | Cmo
   | Cmx
 
+val compare : t -> t -> Ordering.t
+
 val all : t list
 
 val pp : t Fmt.t

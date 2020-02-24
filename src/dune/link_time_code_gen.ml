@@ -13,7 +13,11 @@ let generate_and_compile_module cctx ~precompiled_cmi ~name:basename ~lib ~code
   let obj_dir = CC.obj_dir cctx in
   let dir = CC.dir cctx in
   let module_ =
-    let name = Module_name.of_string basename in
+    let name =
+      let info = Lib.info lib in
+      let loc = Lib_info.loc info in
+      Module_name.of_string_allow_invalid (loc, basename)
+    in
     let wrapped = Result.ok_exn (Lib.wrapped lib) in
     let src_dir = Path.build (Obj_dir.obj_dir obj_dir) in
     let gen_module = Module.generated ~src_dir name in
@@ -203,10 +207,10 @@ let handle_special_libs cctx =
                findlib. That's why it's ok to use a dummy location. *)
             let+ dynlink =
               Lib.DB.resolve (SC.public_libs sctx)
-                (Loc.none, Lib_name.of_string_exn ~loc:None "dynlink")
+                (Loc.none, Lib_name.of_string "dynlink")
             and+ findlib =
               Lib.DB.resolve (SC.public_libs sctx)
-                (Loc.none, Lib_name.of_string_exn ~loc:None "findlib")
+                (Loc.none, Lib_name.of_string "findlib")
             in
             [ dynlink; findlib ]
           in

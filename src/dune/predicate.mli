@@ -23,6 +23,9 @@ val create : id:Dyn.t Lazy.t -> f:('a -> bool) -> 'a t
 (** The predicate that evaluates to [true] for any query. *)
 val true_ : _ t
 
+(** The predicate that evaluates to [false] for any query. *)
+val false_ : _ t
+
 val test : 'a t -> 'a -> bool
 
 (** the user of this function must take care not to break the uniqueness of the

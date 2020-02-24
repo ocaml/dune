@@ -1248,6 +1248,16 @@
     (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias github3180)
+ (deps (package dune) (source_tree test-cases/github3180))
+ (action
+  (chdir
+   test-cases/github3180
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github534)
  (deps (package dune) (source_tree test-cases/github534))
  (action
@@ -1647,6 +1657,16 @@
  (action
   (chdir
    test-cases/macro-expand-error
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias mdx-stanza)
+ (deps (package dune) (source_tree test-cases/mdx-stanza))
+ (action
+  (chdir
+   test-cases/mdx-stanza
    (progn
     (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
     (diff? run.t run.t.corrected)))))
@@ -2808,6 +2828,7 @@
   (alias github2681)
   (alias github2848)
   (alias github3046)
+  (alias github3180)
   (alias github534)
   (alias github568)
   (alias github597)
@@ -2847,6 +2868,7 @@
   (alias lint)
   (alias loop)
   (alias macro-expand-error)
+  (alias mdx-stanza)
   (alias menhir-cmly)
   (alias menhir-env)
   (alias menhir-general)
@@ -3063,6 +3085,7 @@
   (alias github2681)
   (alias github2848)
   (alias github3046)
+  (alias github3180)
   (alias github534)
   (alias github568)
   (alias github597)

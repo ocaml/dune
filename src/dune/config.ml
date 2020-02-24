@@ -153,13 +153,13 @@ module Caching = struct
   end
 
   module Duplication = struct
-    type t = Dune_cache.Duplication_mode.t option
+    type t = Cache.Duplication_mode.t option
 
     let all =
       ("auto", None)
       :: List.map
            ~f:(fun (name, mode) -> (name, Some mode))
-           Dune_cache.Duplication_mode.all
+           Cache.Duplication_mode.all
 
     let decode = enum all
   end

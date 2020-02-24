@@ -6,6 +6,16 @@ type t =
   | Dir of Path.t
   | Path of Path.t
 
+let compare x y =
+  match (x, y) with
+  | String x, String y -> String.compare x y
+  | String _, _ -> Lt
+  | _, String _ -> Gt
+  | Dir x, Dir y -> Path.compare x y
+  | Dir _, _ -> Lt
+  | _, Dir _ -> Gt
+  | Path x, Path y -> Path.compare x y
+
 let to_dyn =
   let open Dyn.Encoder in
   function

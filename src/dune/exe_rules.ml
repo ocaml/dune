@@ -27,7 +27,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let programs =
     List.map exes.names ~f:(fun (loc, name) ->
-        let mod_name = Module_name.of_string name in
+        let mod_name = Module_name.of_string_allow_invalid (loc, name) in
         match Modules.find modules mod_name with
         | Some m ->
           if not (Module.has m ~ml_kind:Impl) then

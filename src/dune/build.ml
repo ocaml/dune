@@ -149,34 +149,10 @@ let of_result_map res ~f =
 
 let memoize name t = Memo { name; id = Type_eq.Id.create (); t }
 
-(* This is to force the rules to be loaded for directories without files when
-   depending on [(source_tree x)]. Otherwise, we wouldn't clean up stale
-   directories in directories that contain no file. *)
-let depend_on_dir_without_files =
-  let pred = Predicate.create ~id:(lazy (String "false")) ~f:(fun _ -> false) in
-  fun dir -> Paths_glob (File_selector.create ~dir pred) |> ignore
-
 let source_tree ~dir =
-  let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-  let paths, dirs_without_files =
-    let init = (Path.Set.empty, return ()) in
-    match File_tree.find_dir dir with
-    | None -> init
-    | Some dir ->
-      File_tree.Dir.fold dir ~init ~traverse:Sub_dirs.Status.Set.all
-        ~f:(fun dir (acc_files, acc_dirs_without_files) ->
-          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
-          let files = File_tree.Dir.files dir in
-          match String.Set.is_empty files with
-          | true ->
-            ( acc_files
-            , depend_on_dir_without_files path >>> acc_dirs_without_files )
-          | false ->
-            ( String.Set.fold files ~init:acc_files ~f:(fun fn acc ->
-                  Path.Set.add acc (Path.relative path fn))
-            , acc_dirs_without_files ))
-  in
-  dirs_without_files >>> path_set paths >>> return paths
+  let dep_set = Dep.Set.source_tree dir in
+  let+ () = deps dep_set in
+  Dep.Set.paths dep_set ~eval_pred:(fun _ -> Path.Set.empty)
 
 (* CR-someday amokhov: The set of targets is accumulated using information from
    multiple sources by calling [Path.Build.Set.union] and hence occasionally

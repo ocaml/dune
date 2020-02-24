@@ -34,7 +34,7 @@ let findlib =
 
 let%expect_test _ =
   let pkg =
-    match Findlib.find findlib (Lib_name.of_string_exn ~loc:None "foo") with
+    match Findlib.find findlib (Lib_name.of_string "foo") with
     | Ok (Library x) -> x
     | _ -> assert false
   in

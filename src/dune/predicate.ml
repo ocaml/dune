@@ -21,6 +21,8 @@ let create ~id ~f = { id; f }
 
 let true_ = { id = lazy (String "true_"); f = (fun _ -> true) }
 
+let false_ = { id = lazy (String "false_"); f = (fun _ -> false) }
+
 let test t e = t.f e
 
 let contramap t ~f ~map_id =

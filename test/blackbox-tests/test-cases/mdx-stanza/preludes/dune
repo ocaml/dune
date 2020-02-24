@@ -1,0 +1,6 @@
+(mdx
+ (files README.md)
+ (preludes
+  default.ml
+  (env a a.ml)
+  (env b b.ml)))

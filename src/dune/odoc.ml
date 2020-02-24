@@ -14,14 +14,14 @@ end = struct
   let of_string sctx s =
     match String.rsplit2 s ~on:'@' with
     | None ->
-      (Lib_name.of_string_exn s ~loc:None, Super_context.public_libs sctx)
+      (Lib_name.parse_string_exn (Loc.none, s), Super_context.public_libs sctx)
     | Some (lib, key) ->
       let scope =
         Dune_project.File_key.of_string key
         |> Super_context.find_project_by_key sctx
         |> Super_context.find_scope_by_project sctx
       in
-      (Lib_name.of_string_exn lib ~loc:None, Scope.libs scope)
+      (Lib_name.parse_string_exn (Loc.none, lib), Scope.libs scope)
 
   let to_string lib project =
     let key = Dune_project.file_key project in

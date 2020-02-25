@@ -16,5 +16,5 @@ val make :
      Stanza.t list Dir_with_dune.t
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> lib_config:Lib_config.t
-  -> subdirs:(Path.Build.t * 'a * String.Set.t) list
+  -> dirs:(Path.Build.t * 'a * String.Set.t) list
   -> t

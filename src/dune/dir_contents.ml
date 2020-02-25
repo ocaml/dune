@@ -200,12 +200,12 @@ end = struct
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
         in
-        let subdirs = [ (dir, [], files) ] in
+        let dirs = [ (dir, [], files) ] in
         let ml =
           Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx in
               let loc = loc_of_dune_file ft_dir in
-              Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~subdirs)
+              Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~dirs)
         in
         Here
           { t =
@@ -217,10 +217,10 @@ end = struct
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
                       Foreign_sources.make d ~lib_config:ctx.lib_config
-                        ~include_subdirs ~subdirs)
+                        ~include_subdirs ~dirs)
               ; coq =
                   Memo.lazy_ (fun () ->
-                      Coq_sources.of_dir d ~include_subdirs ~subdirs)
+                      Coq_sources.of_dir d ~include_subdirs ~dirs)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
@@ -260,19 +260,19 @@ end = struct
             let subdirs = walk_children ft_dir ~dir ~local:[] [] in
             (files, subdirs))
       in
-      let subdirs = (dir, [], files) :: subdirs in
+      let dirs = (dir, [], files) :: subdirs in
       let ml =
         Memo.lazy_ (fun () ->
             let lookup_vlib = lookup_vlib sctx in
-            Ml_sources.make d ~loc ~lookup_vlib ~include_subdirs ~subdirs)
+            Ml_sources.make d ~loc ~lookup_vlib ~include_subdirs ~dirs)
       in
       let foreign_sources =
         Memo.lazy_ (fun () ->
             Foreign_sources.make d ~include_subdirs ~lib_config:ctx.lib_config
-              ~subdirs)
+              ~dirs)
       in
       let coq =
-        Memo.lazy_ (fun () -> Coq_sources.of_dir d ~subdirs ~include_subdirs)
+        Memo.lazy_ (fun () -> Coq_sources.of_dir d ~dirs ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->

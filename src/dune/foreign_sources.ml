@@ -200,12 +200,12 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
   { libraries; archives; executables }
 
 let make (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
-    ~subdirs =
+    ~dirs =
   check_no_qualified include_subdirs;
   let dune_version = d.dune_version in
   let init = String.Map.empty in
   let sources =
-    List.fold_left subdirs ~init ~f:(fun acc (dir, _local, files) ->
+    List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->
         let sources =
           Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
         in

@@ -185,14 +185,14 @@ let lookup_module (t : t) name =
   let modules = Memo.Lazy.force t.modules in
   Module_name.Map.find modules.rev_map name
 
-let virtual_modules parent vlib =
+let virtual_modules lookup_vlib vlib =
   let info = Lib.info vlib in
   let modules =
     match Option.value_exn (Lib_info.virtual_ info) with
     | External modules -> modules
     | Local ->
       let src_dir = Lib_info.src_dir info |> Path.as_in_build_dir_exn in
-      let t = parent ~dir:src_dir in
+      let t = lookup_vlib ~dir:src_dir in
       modules_of_library t ~name:(Lib.name vlib)
   in
   let existing_virtual_modules = Modules_group.virtual_module_names modules in
@@ -203,8 +203,8 @@ let virtual_modules parent vlib =
   ; allow_new_public_modules
   }
 
-let make_lib_modules (d : _ Dir_with_dune.t) ~parent ~(lib : Library.t) ~modules
-    =
+let make_lib_modules (d : _ Dir_with_dune.t) ~lookup_vlib ~(lib : Library.t)
+    ~modules =
   let src_dir = d.ctx_dir in
   let kind, main_module_name, wrapped =
     match lib.implements with
@@ -249,7 +249,7 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~parent ~(lib : Library.t) ~modules
           (Option.value_exn (Lib.implements resolved))
       in
       let kind : Modules_field_evaluator.kind =
-        Implementation (virtual_modules parent vlib)
+        Implementation (virtual_modules lookup_vlib vlib)
       in
       let main_module_name, wrapped =
         Result.ok_exn
@@ -271,11 +271,11 @@ let make_lib_modules (d : _ Dir_with_dune.t) ~parent ~(lib : Library.t) ~modules
   Modules_group.lib ~stdlib ~implements ~lib_name ~src_dir ~modules
     ~main_module_name ~wrapped
 
-let libs_and_exes (d : _ Dir_with_dune.t) ~parent ~modules =
+let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
   List.filter_partition_map d.data ~f:(fun stanza ->
       match (stanza : Stanza.t) with
       | Library lib ->
-        let modules = make_lib_modules d ~parent ~modules ~lib in
+        let modules = make_lib_modules d ~lookup_vlib ~modules ~lib in
         Left (lib, modules)
       | Executables exes
       | Tests { exes; _ } ->
@@ -299,10 +299,10 @@ let make d libs_and_exes =
   let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
   { modules; artifacts }
 
-let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~parent =
+let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~lookup_vlib =
   let dialects = Dune_project.dialects (Scope.project d.scope) in
   Memo.lazy_ (fun () ->
-      libs_and_exes d ~parent
+      libs_and_exes d ~lookup_vlib
         ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
   |> make d
 
@@ -311,7 +311,7 @@ let check_no_qualified loc include_subdirs =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
-let group (d : _ Dir_with_dune.t) ~loc ~parent ~include_subdirs ~dir ~files
+let group (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~dir ~files
     ~subdirs =
   Memo.lazy_ (fun () ->
       check_no_qualified loc include_subdirs;
@@ -331,5 +331,5 @@ let group (d : _ Dir_with_dune.t) ~loc ~parent ~include_subdirs ~dir ~files
                   ; Pp.text "This is not allowed, please rename one of them."
                   ]))
       in
-      libs_and_exes d ~parent ~modules)
+      libs_and_exes d ~lookup_vlib ~modules)
   |> make d

@@ -201,8 +201,8 @@ end = struct
         in
         let ml =
           Memo.lazy_ (fun () ->
-              let parent ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
-              Ml_sources.standalone d ~parent ~files)
+              let lookup_vlib ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
+              Ml_sources.standalone d ~lookup_vlib ~files)
         in
         Here
           { t =
@@ -257,11 +257,11 @@ end = struct
       in
       let ml =
         Memo.lazy_ (fun () ->
-            let parent ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
+            let lookup_vlib ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
             let include_subdirs =
               Dune_file.Include_subdirs.Include qualif_mode
             in
-            Ml_sources.group d ~loc ~parent ~include_subdirs ~dir ~files
+            Ml_sources.group d ~loc ~lookup_vlib ~include_subdirs ~dir ~files
               ~subdirs)
       in
       let foreign_sources =

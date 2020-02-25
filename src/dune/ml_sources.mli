@@ -28,18 +28,24 @@ val modules_of_executables :
 (** Find out what buildable a module is part of *)
 val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
 
+val empty : t
+
+(** This [lookup_vlib] argument is required for constructing the collection of
+    modules for an implementation of a virtual library.
+
+    We need to know the contents of the virtual library to: - verify conditions
+    all virtual modules are implemented - make sure that we construct [Module.t]
+    with the correct [kind] *)
 val standalone :
      Stanza.t list Dir_with_dune.t
   -> files:String.Set.t
-  -> parent:(dir:Path.Build.t -> t)
+  -> lookup_vlib:(dir:Path.Build.t -> t)
   -> t
-
-val empty : t
 
 val group :
      Stanza.t list Dir_with_dune.t
   -> loc:Loc.t
-  -> parent:(dir:Path.Build.t -> t)
+  -> lookup_vlib:(dir:Path.Build.t -> t)
   -> include_subdirs:Dune_file.Include_subdirs.t
   -> dir:Path.Build.t
   -> files:String.Set.t

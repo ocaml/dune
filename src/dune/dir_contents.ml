@@ -194,8 +194,7 @@ end = struct
           ; subdirs = Path.Build.Map.empty
           }
       | Some (ft_dir, Some d) ->
-        let loc = loc_of_dune_file ft_dir in
-        let include_subdirs = Include_subdirs.No in
+        let include_subdirs = (Loc.none, Include_subdirs.No) in
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
         in
@@ -218,14 +217,17 @@ end = struct
               ; coq =
                   Memo.lazy_ (fun () ->
                       let subdirs = [ (dir, [], files) ] in
-                      Coq_sources.of_dir d ~include_subdirs ~loc ~subdirs)
+                      Coq_sources.of_dir d ~include_subdirs ~subdirs)
               }
           ; rules
           ; subdirs = Path.Build.Map.empty
           } )
     | Group_root (ft_dir, qualif_mode, d) ->
       let loc = loc_of_dune_file ft_dir in
-      let include_subdirs = Dune_file.Include_subdirs.Include qualif_mode in
+      let include_subdirs =
+        let loc, qualif_mode = qualif_mode in
+        (loc, Dune_file.Include_subdirs.Include qualif_mode)
+      in
       (* XXX it's not clear what this [local] parameter is for *)
       let rec walk ft_dir ~dir ~local acc =
         match Dir_status.DB.get dir_status_db ~dir with
@@ -242,7 +244,7 @@ end = struct
         File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
             let dir = Path.Build.relative dir name in
             let local =
-              if qualif_mode = Qualified then
+              if snd qualif_mode = Qualified then
                 name :: local
               else
                 local
@@ -258,9 +260,6 @@ end = struct
       let ml =
         Memo.lazy_ (fun () ->
             let lookup_vlib ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
-            let include_subdirs =
-              Dune_file.Include_subdirs.Include qualif_mode
-            in
             Ml_sources.group d ~loc ~lookup_vlib ~include_subdirs ~dir ~files
               ~subdirs)
       in
@@ -268,12 +267,12 @@ end = struct
         Memo.lazy_ (fun () ->
             let lib_config = ctx.lib_config in
             let subdirs = (dir, [], files) :: subdirs in
-            Foreign_sources.group d ~loc ~include_subdirs ~lib_config ~subdirs)
+            Foreign_sources.group d ~include_subdirs ~lib_config ~subdirs)
       in
       let coq =
         Memo.lazy_ (fun () ->
             let subdirs = (dir, [], files) :: subdirs in
-            Coq_sources.of_dir d ~subdirs ~loc ~include_subdirs)
+            Coq_sources.of_dir d ~subdirs ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->

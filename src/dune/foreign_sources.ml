@@ -114,7 +114,7 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
           multiple_sources_error ~name ~loc
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
-let check_no_qualified loc include_subdirs =
+let check_no_qualified (loc, include_subdirs) =
   if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
     User_error.raise ~loc
       [ Pp.text
@@ -205,9 +205,9 @@ let standalone (d : _ Dir_with_dune.t) ~(lib_config : Lib_config.t) ~files =
     ~sources:
       (Foreign.Sources.Unresolved.load ~dune_version ~dir:d.ctx_dir ~files)
 
-let group (d : _ Dir_with_dune.t) ~loc ~include_subdirs
-    ~(lib_config : Lib_config.t) ~subdirs =
-  check_no_qualified loc include_subdirs;
+let group (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
+    ~subdirs =
+  check_no_qualified include_subdirs;
   let dune_version = d.dune_version in
   let init = String.Map.empty in
   let sources =

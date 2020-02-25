@@ -306,7 +306,7 @@ let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~lookup_vlib =
         ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
   |> make d
 
-let check_no_qualified loc include_subdirs =
+let check_no_qualified (loc, include_subdirs) =
   if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
     User_error.raise ~loc
       [ Pp.text "(include_subdirs qualified) is not supported yet" ]
@@ -314,7 +314,7 @@ let check_no_qualified loc include_subdirs =
 let group (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~dir ~files
     ~subdirs =
   Memo.lazy_ (fun () ->
-      check_no_qualified loc include_subdirs;
+      check_no_qualified include_subdirs;
       let modules =
         let dialects = Dune_project.dialects (Scope.project d.scope) in
         List.fold_left ((dir, [], files) :: subdirs) ~init:Module_name.Map.empty

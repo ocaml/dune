@@ -14,7 +14,7 @@ module T = struct
        directory that are not from the source tree, such as generated ones. *)
     | Group_root of
         File_tree.Dir.t
-        * Include_subdirs.qualification
+        * (Loc.t * Include_subdirs.qualification)
         * Stanza.t list Dir_with_dune.t
     (* Directory with [(include_subdirs x)] where [x] is not [no] *)
     | Is_component_of_a_group_but_not_the_root of
@@ -46,7 +46,7 @@ let get_include_subdirs stanzas =
             [ Pp.text
                 "The 'include_subdirs' stanza cannot appear more than once"
             ];
-        Some x
+        Some (loc, x)
       | _ -> acc)
 
 let check_no_module_consumer stanzas =
@@ -104,8 +104,8 @@ module DB = struct
               { stanzas = None; group_root } )
       | Some d -> (
         match get_include_subdirs d.data with
-        | Some (Include mode) -> Group_root (ft_dir, mode, d)
-        | Some No -> Standalone (Some (ft_dir, Some d))
+        | Some (loc, Include mode) -> Group_root (ft_dir, (loc, mode), d)
+        | Some (_, No) -> Standalone (Some (ft_dir, Some d))
         | None -> (
           if build_dir_is_project_root then
             Standalone (Some (ft_dir, Some d))

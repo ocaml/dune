@@ -46,7 +46,7 @@ val group :
      Stanza.t list Dir_with_dune.t
   -> loc:Loc.t
   -> lookup_vlib:(dir:Path.Build.t -> t)
-  -> include_subdirs:Dune_file.Include_subdirs.t
+  -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> dir:Path.Build.t
   -> files:String.Set.t
   -> subdirs:(Path.Build.t * 'a list * String.Set.t) list

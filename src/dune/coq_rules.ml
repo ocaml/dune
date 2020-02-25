@@ -138,45 +138,51 @@ let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags ~boot
   >>> Build.with_no_targets source_rule
   >>> Command.run ~dir ~stdout_to coqdep cd_arg
 
+let coqc_rule ~expander ~dir ~coqc ~boot ~coq_flags ~file_flags coq_module =
+  let source = Coq_module.source coq_module in
+  let boot_type = get_bootstrap_type ~boot coq_module in
+  let obj_dir = dir in
+  let file_flags =
+    let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
+    List.concat
+      [ [ Command.Args.Hidden_targets [ object_to ] ]
+      ; flags_of_bootstrap_type ~boot_type ~obj_dir
+      ; file_flags
+      ; [ Command.Args.Dep (Path.build source) ]
+      ]
+  in
+  let open Build.With_targets.O in
+  Build.with_no_targets
+    (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
+  >>>
+  let coq_flags =
+    Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return [])
+  in
+  let dir = Path.build dir in
+  Command.run ~dir coqc (Command.Args.dyn coq_flags :: file_flags)
+
 let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     ~mlpack_rule ~boot coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
-  let obj_dir = dir in
-  let source = Coq_module.source coq_module in
-  let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
 
   let coqdep_rule =
     coqdep_rule ~dir ~coqdep:cc.coqdep ~mlpack_rule ~source_rule ~file_flags
       ~boot coq_module
   in
 
-  let file_flags = file_flags @ [ Command.Args.Dep (Path.build source) ] in
-
-  let boot_type = get_bootstrap_type ~boot coq_module in
-
   (* Process coqdep and generate rules *)
   let deps_of = deps_of ~dir ~boot coq_module in
 
-  let file_flags = flags_of_bootstrap_type ~boot_type ~obj_dir @ file_flags in
-
-  let cc_arg = Command.Args.Hidden_targets [ object_to ] :: file_flags in
   (* Rules for the files *)
   [ coqdep_rule
-  ; ( Build.with_no_targets deps_of
+  ; Build.with_no_targets deps_of
     >>> (* The way we handle the transitive dependencies of .vo files is not
            safe for sandboxing *)
-    Build.with_no_targets
-      (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
-    >>>
-    let coq_flags =
-      Expander.expand_and_eval_set expander coq_flags
-        ~standard:(Build.return [])
-    in
-    let dir = Path.build dir in
-    Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg) )
+    coqc_rule ~expander ~dir ~coqc:cc.coqc ~boot ~coq_flags ~file_flags
+      coq_module
   ]
 
 (* TODO: remove; rgrinberg points out: - resolve program is actually cached, -

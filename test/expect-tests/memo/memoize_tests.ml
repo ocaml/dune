@@ -77,10 +77,10 @@ aaa
 let%expect_test _ =
   let open Dyn.Encoder in
   Memo.get_deps mcomp "a"
-  |> option (list (pair string (fun x -> x)))
+  |> option (list (pair (option string) (fun x -> x)))
   |> print_dyn;
   [%expect {|
-Some [ ("another", "aa"); ("some", "a") ]
+Some [ (Some "another", "aa"); (Some "some", "a") ]
 |}]
 
 let%expect_test _ =
@@ -148,7 +148,9 @@ let%expect_test _ =
     !stack
     |> List.map ~f:(fun st ->
            let open Dyn.Encoder in
-           pair string (fun x -> x) (Stack_frame.name st, Stack_frame.input st))
+           pair (option string)
+             (fun x -> x)
+             (Stack_frame.name st, Stack_frame.input st))
     |> Dyn.Encoder.list (fun x -> x)
     |> print_dyn;
     [%expect
@@ -158,7 +160,11 @@ let%expect_test _ =
 - 0
 - 2
 4
-[ ("cycle", 2); ("cycle", 1); ("cycle", 0); ("cycle", 5) ]
+[ (Some "cycle", 2)
+; (Some "cycle", 1)
+; (Some "cycle", 0)
+; (Some "cycle", 5)
+]
 |}]
 
 let mfib =
@@ -285,7 +291,7 @@ struct
 
   let deps () =
     let open Dyn.Encoder in
-    let conv = option (list (pair string (fun x -> x))) in
+    let conv = option (list (pair (option string) (fun x -> x))) in
     pair conv conv (get_deps f1_def "foo", get_deps f2_def "foo")
 end
 
@@ -308,8 +314,8 @@ let%expect_test _ =
   Builtin_lazy.deps () |> print_dyn;
   [%expect
     {|
-(Some [ ("lazy_memo", "foo") ],
-Some [ ("id", "lazy: foo"); ("lazy_memo", "foo") ])
+(Some [ (Some "lazy_memo", "foo") ],
+Some [ (Some "id", "lazy: foo"); (Some "lazy_memo", "foo") ])
 |}]
 
 module Memo_lazy = Test_lazy (struct
@@ -329,8 +335,8 @@ let%expect_test _ =
   Memo_lazy.deps () |> print_dyn;
   [%expect
     {|
-(Some [ ("lazy-0", ()); ("lazy_memo", "foo") ],
-Some [ ("lazy-0", ()); ("lazy_memo", "foo") ])
+(Some [ (None, ()); (Some "lazy_memo", "foo") ],
+Some [ (None, ()); (Some "lazy_memo", "foo") ])
 |}]
 
 (* Tests for depending on the current run *)

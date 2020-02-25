@@ -1,16 +1,3 @@
-open Stdune
-
-module Name =
-  Interned.Make
-    (struct
-      let initial_size = 1024
-
-      let resize_policy = Interned.Greedy
-
-      let order = Interned.Fast
-    end)
-    ()
-
 module Type = struct
   type ('a, 'b, 'f) t =
     | Sync : ('a, 'b, 'a -> 'b) t
@@ -19,7 +6,7 @@ end
 
 module Info = struct
   type t =
-    { name : Name.t
+    { name : string
     ; doc : string option
     }
 end

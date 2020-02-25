@@ -24,7 +24,7 @@ module Stack_frame : sig
 
   val compare : t -> t -> Ordering.t
 
-  val name : t -> string
+  val name : t -> string option
 
   val input : t -> Dyn.t
 
@@ -51,8 +51,6 @@ end
 val reset : unit -> unit
 
 module Function : sig
-  module Name : Interned.S
-
   module Type : sig
     type ('a, 'b, 'f) t =
       | Sync : ('a, 'b, 'a -> 'b) t
@@ -61,7 +59,7 @@ module Function : sig
 
   module Info : sig
     type t =
-      { name : Name.t
+      { name : string
       ; doc : string option
       }
   end
@@ -189,7 +187,7 @@ val exec : (_, _, 'f) t -> 'f
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string * Dyn.t) list option
+val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
 
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)

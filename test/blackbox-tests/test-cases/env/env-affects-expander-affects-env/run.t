@@ -11,8 +11,8 @@ example is hard to come up with, but here is a contrived one.
   >   (ocamlc_flags "%{inline_tests}")))
   > EOF
 
-  $ dune printenv --root . . | grep ocamlc_flags
-    (ocamlc_flags (enabled))
+  $ dune printenv --root . . --field ocamlc_flags
+  (ocamlc_flags (enabled))
 
 
   $ echo '(lang dune 2.0)' > dune-project
@@ -23,5 +23,5 @@ example is hard to come up with, but here is a contrived one.
   >   (inline_tests ignored)))
   > EOF
 
-  $ dune printenv --root . . | grep ocamlc_flags
-    (ocamlc_flags (ignored))
+  $ dune printenv --root . . --field ocamlc_flags
+  (ocamlc_flags (ignored))

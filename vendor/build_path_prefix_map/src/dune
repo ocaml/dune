@@ -1,0 +1,2 @@
+(library
+ (name build_path_prefix_map))

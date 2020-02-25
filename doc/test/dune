@@ -5,7 +5,7 @@
   (glob_files ../*.rst))
  (action
   (progn
-   (run %{bin:cram} run.t -sanitizer %{bin:sanitizer})
+   (run dune-cram run run.t)
    (diff? run.t run.t.corrected))))
 
 (alias

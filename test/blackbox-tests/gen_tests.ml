@@ -144,12 +144,7 @@ module Test = struct
         ; List
             [ atom "progn"
             ; Dune_lang.List
-                [ atom "run"
-                ; Sexp.parse "%{exe:cram.exe}"
-                ; atom filename
-                ; atom "-sanitizer"
-                ; Sexp.parse "%{bin:sanitizer}"
-                ]
+                [ atom "run"; atom "dune-cram"; atom "run"; atom filename ]
             ; Sexp.strings [ "diff?"; filename; filename ^ ".corrected" ]
             ]
         ]

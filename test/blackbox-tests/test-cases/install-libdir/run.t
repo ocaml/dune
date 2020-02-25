@@ -1,5 +1,5 @@
   $ opam_prefix="$(opam config var prefix)"
-  $ alias sed_opam_prefix="sed \"s#$opam_prefix#OPAM_VAR_PREFIX#\""
+  $ export BUILD_PATH_PREFIX_MAP="/OPAM_PREFIX=$opam_prefix:$BUILD_PATH_PREFIX_MAP"
 
 `dune install` should handle destination directories that don't exist
 
@@ -90,7 +90,7 @@ destdir`:
 
   $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
   >  dune install --dry-run
-  >  dune uninstall --dry-run) 2>&1 | sed_opam_prefix
+  >  dune uninstall --dry-run)
   Installing /OCAMLFIND_DESTDIR/foo/META
   Installing /OCAMLFIND_DESTDIR/foo/dune-package
   Installing /OCAMLFIND_DESTDIR/foo/foo$ext_lib
@@ -102,10 +102,10 @@ destdir`:
   Installing /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Installing /OCAMLFIND_DESTDIR/foo/foo.ml
   Installing /OCAMLFIND_DESTDIR/foo/opam
-  Installing OPAM_VAR_PREFIX/bin/exec
-  Installing OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Installing OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Installing OPAM_VAR_PREFIX/man/man3/another-man-page.3
+  Installing /OPAM_PREFIX/bin/exec
+  Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Installing /OPAM_PREFIX/man/man1/a-man-page.1
+  Installing /OPAM_PREFIX/man/man3/another-man-page.3
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/META to /OCAMLFIND_DESTDIR/foo/META (executable: false)
@@ -139,18 +139,18 @@ destdir`:
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
   Creating directory /OCAMLFIND_DESTDIR/foo
   Copying _build/install/default/lib/foo/opam to /OCAMLFIND_DESTDIR/foo/opam (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Creating directory OPAM_VAR_PREFIX/bin
-  Copying _build/install/default/bin/exec to OPAM_VAR_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Creating directory OPAM_VAR_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Creating directory OPAM_VAR_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Creating directory OPAM_VAR_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/bin/exec
+  Creating directory /OPAM_PREFIX/bin
+  Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
+  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Creating directory /OPAM_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to /OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
+  Creating directory /OPAM_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to /OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
+  Creating directory /OPAM_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/META
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/dune-package
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo$ext_lib
@@ -162,21 +162,21 @@ destdir`:
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.cmxs
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/foo.ml
   Removing (if it exists) /OCAMLFIND_DESTDIR/foo/opam
-  Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing (if it exists) /OPAM_PREFIX/bin/exec
+  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
+  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
+  Removing directory (if empty) /OPAM_PREFIX/man/man3
+  Removing directory (if empty) /OPAM_PREFIX/man/man1
+  Removing directory (if empty) /OPAM_PREFIX/man
+  Removing directory (if empty) /OPAM_PREFIX/bin
   Removing directory (if empty) /OCAMLFIND_DESTDIR/foo
 
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
 
-  $ dune install --libdir /LIBDIR --dry-run 2>&1 | sed_opam_prefix
-  > dune uninstall --libdir /LIBDIR --dry-run 2>&1 | sed_opam_prefix
+  $ dune install --libdir /LIBDIR --dry-run
+  > dune uninstall --libdir /LIBDIR --dry-run
   Installing /LIBDIR/foo/META
   Installing /LIBDIR/foo/dune-package
   Installing /LIBDIR/foo/foo$ext_lib
@@ -188,10 +188,10 @@ in libdir:
   Installing /LIBDIR/foo/foo.cmxs
   Installing /LIBDIR/foo/foo.ml
   Installing /LIBDIR/foo/opam
-  Installing OPAM_VAR_PREFIX/bin/exec
-  Installing OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Installing OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Installing OPAM_VAR_PREFIX/man/man3/another-man-page.3
+  Installing /OPAM_PREFIX/bin/exec
+  Installing /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Installing /OPAM_PREFIX/man/man1/a-man-page.1
+  Installing /OPAM_PREFIX/man/man3/another-man-page.3
   Removing (if it exists) /LIBDIR/foo/META
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/META to /LIBDIR/foo/META (executable: false)
@@ -225,18 +225,18 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/opam
   Creating directory /LIBDIR/foo
   Copying _build/install/default/lib/foo/opam to /LIBDIR/foo/opam (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Creating directory OPAM_VAR_PREFIX/bin
-  Copying _build/install/default/bin/exec to OPAM_VAR_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Creating directory OPAM_VAR_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Creating directory OPAM_VAR_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Creating directory OPAM_VAR_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/bin/exec
+  Creating directory /OPAM_PREFIX/bin
+  Copying _build/install/default/bin/exec to /OPAM_PREFIX/bin/exec (executable: true)
+  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Creating directory /OPAM_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to /OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
+  Creating directory /OPAM_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to /OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
+  Creating directory /OPAM_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /LIBDIR/foo/META
   Removing (if it exists) /LIBDIR/foo/dune-package
   Removing (if it exists) /LIBDIR/foo/foo$ext_lib
@@ -248,81 +248,80 @@ in libdir:
   Removing (if it exists) /LIBDIR/foo/foo.cmxs
   Removing (if it exists) /LIBDIR/foo/foo.ml
   Removing (if it exists) /LIBDIR/foo/opam
-  Removing (if it exists) OPAM_VAR_PREFIX/bin/exec
-  Removing (if it exists) OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Removing (if it exists) OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man3
-  Removing directory (if empty) OPAM_VAR_PREFIX/man/man1
-  Removing directory (if empty) OPAM_VAR_PREFIX/man
-  Removing directory (if empty) OPAM_VAR_PREFIX/bin
+  Removing (if it exists) /OPAM_PREFIX/bin/exec
+  Removing (if it exists) /OPAM_PREFIX/man/a-man-page-with-no-ext
+  Removing (if it exists) /OPAM_PREFIX/man/man1/a-man-page.1
+  Removing (if it exists) /OPAM_PREFIX/man/man3/another-man-page.3
+  Removing directory (if empty) /OPAM_PREFIX/man/man3
+  Removing directory (if empty) /OPAM_PREFIX/man/man1
+  Removing directory (if empty) /OPAM_PREFIX/man
+  Removing directory (if empty) /OPAM_PREFIX/bin
   Removing directory (if empty) /LIBDIR/foo
 
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
 
-  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | \
-  >   sed "s#$opam_prefix#/OPAM_VAR_PREFIX#"
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/META
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/dune-package
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cma
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmi
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmt
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmx
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxa
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxs
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml
-  Installing DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam
-  Installing DESTDIR/OPAM_VAR_PREFIX/bin/exec
-  Installing DESTDIR/OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Installing DESTDIR/OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Installing DESTDIR/OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/META
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/META to DESTDIR/OPAM_VAR_PREFIX/lib/foo/META (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/dune-package
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/dune-package to DESTDIR/OPAM_VAR_PREFIX/lib/foo/dune-package (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo$ext_lib (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cma
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cma (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmi
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmi (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmt
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmt (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmx
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmx (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxa
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxa (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxs
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.cmxs (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/OPAM_VAR_PREFIX/lib/foo/foo.ml (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/lib/foo
-  Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_VAR_PREFIX/lib/foo/opam (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/bin/exec
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/bin
-  Copying _build/install/default/bin/exec to DESTDIR/OPAM_VAR_PREFIX/bin/exec (executable: true)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/man/a-man-page-with-no-ext
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/man
-  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/OPAM_VAR_PREFIX/man/a-man-page-with-no-ext (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/man/man1/a-man-page.1
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/man/man1
-  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/OPAM_VAR_PREFIX/man/man1/a-man-page.1 (executable: false)
-  Removing (if it exists) DESTDIR/OPAM_VAR_PREFIX/man/man3/another-man-page.3
-  Creating directory DESTDIR/OPAM_VAR_PREFIX/man/man3
-  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/OPAM_VAR_PREFIX/man/man3/another-man-page.3 (executable: false)
+  $ DESTDIR=DESTDIR dune install --dry-run
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/META
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/dune-package
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cma
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
+  Installing DESTDIR/OPAM_PREFIX/lib/foo/opam
+  Installing DESTDIR/OPAM_PREFIX/bin/exec
+  Installing DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext
+  Installing DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1
+  Installing DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/META
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/META to DESTDIR/OPAM_PREFIX/lib/foo/META (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/dune-package
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/dune-package to DESTDIR/OPAM_PREFIX/lib/foo/dune-package (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo$ext_lib to DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cma
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cma to DESTDIR/OPAM_PREFIX/lib/foo/foo.cma (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmi to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmi (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmt to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmt (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmx to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmx (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxa to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxa (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.cmxs to DESTDIR/OPAM_PREFIX/lib/foo/foo.cmxs (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/foo.ml
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/foo.ml to DESTDIR/OPAM_PREFIX/lib/foo/foo.ml (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/lib/foo/opam
+  Creating directory DESTDIR/OPAM_PREFIX/lib/foo
+  Copying _build/install/default/lib/foo/opam to DESTDIR/OPAM_PREFIX/lib/foo/opam (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/bin/exec
+  Creating directory DESTDIR/OPAM_PREFIX/bin
+  Copying _build/install/default/bin/exec to DESTDIR/OPAM_PREFIX/bin/exec (executable: true)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext
+  Creating directory DESTDIR/OPAM_PREFIX/man
+  Copying _build/install/default/man/a-man-page-with-no-ext to DESTDIR/OPAM_PREFIX/man/a-man-page-with-no-ext (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1
+  Creating directory DESTDIR/OPAM_PREFIX/man/man1
+  Copying _build/install/default/man/man1/a-man-page.1 to DESTDIR/OPAM_PREFIX/man/man1/a-man-page.1 (executable: false)
+  Removing (if it exists) DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3
+  Creating directory DESTDIR/OPAM_PREFIX/man/man3
+  Copying _build/install/default/man/man3/another-man-page.3 to DESTDIR/OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
 
 But also when the prefix is explicit:
 

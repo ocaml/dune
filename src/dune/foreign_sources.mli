@@ -12,13 +12,7 @@ val for_archive : t -> archive_name:Foreign.Archive.Name.t -> Foreign.Sources.t
 
 val for_exes : t -> first_exe:string -> Foreign.Sources.t
 
-val standalone :
-     Stanza.t list Dir_with_dune.t
-  -> lib_config:Lib_config.t
-  -> files:String.Set.t
-  -> t
-
-val group :
+val make :
      Stanza.t list Dir_with_dune.t
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
   -> lib_config:Lib_config.t

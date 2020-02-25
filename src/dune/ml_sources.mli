@@ -47,7 +47,5 @@ val group :
   -> loc:Loc.t
   -> lookup_vlib:(dir:Path.Build.t -> t)
   -> include_subdirs:Loc.t * Dune_file.Include_subdirs.t
-  -> dir:Path.Build.t
-  -> files:String.Set.t
   -> subdirs:(Path.Build.t * 'a list * String.Set.t) list
   -> t

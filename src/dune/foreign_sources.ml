@@ -199,13 +199,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
   in
   { libraries; archives; executables }
 
-let standalone (d : _ Dir_with_dune.t) ~(lib_config : Lib_config.t) ~files =
-  let dune_version = d.dune_version in
-  make d ~lib_config
-    ~sources:
-      (Foreign.Sources.Unresolved.load ~dune_version ~dir:d.ctx_dir ~files)
-
-let group (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
+let make (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
     ~subdirs =
   check_no_qualified include_subdirs;
   let dune_version = d.dune_version in

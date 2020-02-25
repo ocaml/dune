@@ -178,6 +178,8 @@ end = struct
     let hash = Tuple.T2.hash Super_context.hash Path.Build.hash
   end
 
+  let lookup_vlib sctx ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml
+
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
@@ -200,9 +202,10 @@ end = struct
         in
         let ml =
           Memo.lazy_ (fun () ->
-              let lookup_vlib ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
+              let lookup_vlib = lookup_vlib sctx in
               Ml_sources.standalone d ~lookup_vlib ~files)
         in
+        let subdirs = [ (dir, [], files) ] in
         Here
           { t =
               { kind = Standalone
@@ -212,11 +215,10 @@ end = struct
               ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
               ; foreign_sources =
                   Memo.lazy_ (fun () ->
-                      let lib_config = ctx.lib_config in
-                      Foreign_sources.standalone d ~lib_config ~files)
+                      Foreign_sources.make d ~lib_config:ctx.lib_config
+                        ~include_subdirs ~subdirs)
               ; coq =
                   Memo.lazy_ (fun () ->
-                      let subdirs = [ (dir, [], files) ] in
                       Coq_sources.of_dir d ~include_subdirs ~subdirs)
               }
           ; rules
@@ -257,22 +259,19 @@ end = struct
             let subdirs = walk_children ft_dir ~dir ~local:[] [] in
             (files, subdirs))
       in
+      let subdirs = (dir, [], files) :: subdirs in
       let ml =
         Memo.lazy_ (fun () ->
-            let lookup_vlib ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml in
-            Ml_sources.group d ~loc ~lookup_vlib ~include_subdirs ~dir ~files
-              ~subdirs)
+            let lookup_vlib = lookup_vlib sctx in
+            Ml_sources.group d ~loc ~lookup_vlib ~include_subdirs ~subdirs)
       in
       let foreign_sources =
         Memo.lazy_ (fun () ->
-            let lib_config = ctx.lib_config in
-            let subdirs = (dir, [], files) :: subdirs in
-            Foreign_sources.group d ~include_subdirs ~lib_config ~subdirs)
+            Foreign_sources.make d ~include_subdirs ~lib_config:ctx.lib_config
+              ~subdirs)
       in
       let coq =
-        Memo.lazy_ (fun () ->
-            let subdirs = (dir, [], files) :: subdirs in
-            Coq_sources.of_dir d ~subdirs ~include_subdirs)
+        Memo.lazy_ (fun () -> Coq_sources.of_dir d ~subdirs ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->

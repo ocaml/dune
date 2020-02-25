@@ -36,13 +36,8 @@ val empty : t
     We need to know the contents of the virtual library to: - verify conditions
     all virtual modules are implemented - make sure that we construct [Module.t]
     with the correct [kind] *)
-val standalone :
-     Stanza.t list Dir_with_dune.t
-  -> files:String.Set.t
-  -> lookup_vlib:(dir:Path.Build.t -> t)
-  -> t
 
-val group :
+val make :
      Stanza.t list Dir_with_dune.t
   -> loc:Loc.t
   -> lookup_vlib:(dir:Path.Build.t -> t)

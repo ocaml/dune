@@ -294,41 +294,33 @@ let libs_and_exes (d : _ Dir_with_dune.t) ~lookup_vlib ~modules =
         Right (exes, modules)
       | _ -> Skip)
 
-let make d libs_and_exes =
-  let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
-  let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
-  { modules; artifacts }
-
-let standalone (d : Stanza.t list Dir_with_dune.t) ~files ~lookup_vlib =
-  let dialects = Dune_project.dialects (Scope.project d.scope) in
-  Memo.lazy_ (fun () ->
-      libs_and_exes d ~lookup_vlib
-        ~modules:(modules_of_files ~dialects ~dir:d.ctx_dir ~files))
-  |> make d
-
 let check_no_qualified (loc, include_subdirs) =
   if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
     User_error.raise ~loc
       [ Pp.text "(include_subdirs qualified) is not supported yet" ]
 
-let group (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~subdirs =
-  Memo.lazy_ (fun () ->
-      check_no_qualified include_subdirs;
-      let modules =
-        let dialects = Dune_project.dialects (Scope.project d.scope) in
-        List.fold_left subdirs ~init:Module_name.Map.empty
-          ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
-            let modules = modules_of_files ~dialects ~dir ~files in
-            Module_name.Map.union acc modules ~f:(fun name x y ->
-                User_error.raise ~loc
-                  [ Pp.textf "Module %S appears in several directories:"
-                      (Module_name.to_string name)
-                  ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir x))
-                  ; Pp.textf "- %s"
-                      (Path.to_string_maybe_quoted (Module.Source.src_dir y))
-                  ; Pp.text "This is not allowed, please rename one of them."
-                  ]))
-      in
-      libs_and_exes d ~lookup_vlib ~modules)
-  |> make d
+let make (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~subdirs =
+  let libs_and_exes =
+    Memo.lazy_ (fun () ->
+        check_no_qualified include_subdirs;
+        let modules =
+          let dialects = Dune_project.dialects (Scope.project d.scope) in
+          List.fold_left subdirs ~init:Module_name.Map.empty
+            ~f:(fun acc ((dir : Path.Build.t), _local, files) ->
+              let modules = modules_of_files ~dialects ~dir ~files in
+              Module_name.Map.union acc modules ~f:(fun name x y ->
+                  User_error.raise ~loc
+                    [ Pp.textf "Module %S appears in several directories:"
+                        (Module_name.to_string name)
+                    ; Pp.textf "- %s"
+                        (Path.to_string_maybe_quoted (Module.Source.src_dir x))
+                    ; Pp.textf "- %s"
+                        (Path.to_string_maybe_quoted (Module.Source.src_dir y))
+                    ; Pp.text "This is not allowed, please rename one of them."
+                    ]))
+        in
+        libs_and_exes d ~lookup_vlib ~modules)
+  in
+  let modules = Memo.Lazy.map ~f:Modules.make libs_and_exes in
+  let artifacts = Memo.Lazy.map ~f:(Artifacts.make d) libs_and_exes in
+  { modules; artifacts }

@@ -200,12 +200,13 @@ end = struct
         let files, rules =
           Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
         in
+        let subdirs = [ (dir, [], files) ] in
         let ml =
           Memo.lazy_ (fun () ->
               let lookup_vlib = lookup_vlib sctx in
-              Ml_sources.standalone d ~lookup_vlib ~files)
+              let loc = loc_of_dune_file ft_dir in
+              Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~subdirs)
         in
-        let subdirs = [ (dir, [], files) ] in
         Here
           { t =
               { kind = Standalone
@@ -263,7 +264,7 @@ end = struct
       let ml =
         Memo.lazy_ (fun () ->
             let lookup_vlib = lookup_vlib sctx in
-            Ml_sources.group d ~loc ~lookup_vlib ~include_subdirs ~subdirs)
+            Ml_sources.make d ~loc ~lookup_vlib ~include_subdirs ~subdirs)
       in
       let foreign_sources =
         Memo.lazy_ (fun () ->

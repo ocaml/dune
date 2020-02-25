@@ -124,7 +124,7 @@ end = struct
 
      Morally, the code below is just:
 
-     let rec env_context = ... and memo = ...
+     let rec env_nodes = ... and memo = ... in env_nodes
 
      However, the right-hand side of [memo] is not allowed in a recursive let
      binding. To work around this limitation, we place the functions into a
@@ -134,11 +134,11 @@ end = struct
       ~root_expander ~bin_artifacts =
     let module Non_rec = struct
       module rec Rec : sig
-        val env_context : unit -> t
+        val env_nodes : unit -> t
 
         val memo : Path.Build.t -> Env_node.t
       end = struct
-        let env_context =
+        let env_nodes =
           { context
           ; scopes
           ; default_env
@@ -151,14 +151,14 @@ end = struct
 
         let memo =
           Memo.exec
-            (Memo.create_hidden "env_context_memo"
+            (Memo.create_hidden "env-nodes-memo"
                ~input:(module Path.Build)
-               Sync (get_impl env_context))
+               Sync (get_impl env_nodes))
 
-        let env_context () = env_context
+        let env_nodes () = env_nodes
       end
     end in
-    Non_rec.Rec.env_context ()
+    Non_rec.Rec.env_nodes ()
 end
 
 module Lib_entry = struct
@@ -182,10 +182,10 @@ type t =
   ; stanzas_per_dir : Dune_file.Stanzas.t Dir_with_dune.t Path.Build.Map.t
   ; packages : Package.t Package.Name.Map.t
   ; artifacts : Artifacts.t
-  ; expander : Expander.t
+  ; root_expander : Expander.t
   ; host : t option
   ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
-  ; env_context : Env_nodes.t
+  ; env_nodes : Env_nodes.t
   ; dir_status_db : Dir_status.DB.t
   ; external_lib_deps_mode : bool
   ; (* Env node that represents the environment configured for the workspace. It
@@ -247,7 +247,7 @@ let find_scope_by_project t = Scope.DB.find_by_project t.scopes
 
 let find_project_by_key t = Dune_project.File_key.Map.find_exn t.projects_by_key
 
-let expander t ~dir = Env_nodes.expander t.env_context ~dir
+let expander t ~dir = Env_nodes.expander t.env_nodes ~dir
 
 let get_node t = Env_nodes.get_node t
 
@@ -259,7 +259,7 @@ let chdir_to_build_context_root t build =
 
 let make_rule t ?sandbox ?mode ?locks ?loc ~dir build =
   let build = chdir_to_build_context_root t build in
-  let env = get_node t.env_context ~dir |> Env_node.external_env in
+  let env = get_node t.env_nodes ~dir |> Env_node.external_env in
   Rule.make ?sandbox ?mode ?locks ~info:(Rule.Info.of_loc_opt loc)
     ~context:(Some t.context) ~env:(Some env) build
 
@@ -276,7 +276,7 @@ let add_rules t ?sandbox ~dir builds =
   List.iter builds ~f:(add_rule t ?sandbox ~dir)
 
 let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
-  let env = Some (get_node t.env_context ~dir |> Env_node.external_env) in
+  let env = Some (get_node t.env_nodes ~dir |> Env_node.external_env) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
@@ -289,7 +289,7 @@ let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
     =
   let acc = Expander.Resolved_forms.empty () in
   let foreign_flags ~dir =
-    get_node sctx.env_context ~dir |> Env_node.foreign_flags
+    get_node sctx.env_nodes ~dir |> Env_node.foreign_flags
   in
   let expander =
     Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
@@ -308,10 +308,10 @@ let build_dir_is_vendored build_dir =
   Option.value ~default:false opt
 
 let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
-  let expander = Env_nodes.expander t.env_context ~dir in
+  let expander = Env_nodes.expander t.env_nodes ~dir in
   let flags =
     Ocaml_flags.make ~spec:x.flags
-      ~default:(get_node t.env_context ~dir |> Env_node.ocaml_flags)
+      ~default:(get_node t.env_nodes ~dir |> Env_node.ocaml_flags)
       ~eval:(Expander.expand_and_eval_set expander)
   in
   let dir_is_vendored = build_dir_is_vendored dir in
@@ -322,7 +322,7 @@ let ocaml_flags t ~dir (x : Dune_file.Buildable.t) =
 
 let foreign_flags t ~dir ~expander ~flags ~language =
   let ccg = Context.cc_g t.context in
-  let default = get_node t.env_context ~dir |> Env_node.foreign_flags in
+  let default = get_node t.env_nodes ~dir |> Env_node.foreign_flags in
   let name = Foreign.Language.proper_name language in
   Build.memoize (sprintf "%s flags" name)
     (let default = Foreign.Language.Dict.get default language in
@@ -332,18 +332,17 @@ let foreign_flags t ~dir ~expander ~flags ~language =
      l @ ccg)
 
 let menhir_flags t ~dir ~expander ~flags =
-  let t = t.env_context in
+  let t = t.env_nodes in
   let default = get_node t ~dir |> Env_node.menhir_flags in
   Build.memoize "menhir flags"
     (Expander.expand_and_eval_set expander flags ~standard:default)
 
-let local_binaries t ~dir =
-  get_node t.env_context ~dir |> Env_node.local_binaries
+let local_binaries t ~dir = get_node t.env_nodes ~dir |> Env_node.local_binaries
 
-let odoc t ~dir = get_node t.env_context ~dir |> Env_node.odoc
+let odoc t ~dir = get_node t.env_nodes ~dir |> Env_node.odoc
 
 let dump_env t ~dir =
-  let t = t.env_context in
+  let t = t.env_nodes in
   let open Build.O in
   let+ o_dump = Ocaml_flags.dump (get_node t ~dir |> Env_node.ocaml_flags)
   and+ c_dump =
@@ -361,7 +360,7 @@ let dump_env t ~dir =
   List.concat [ o_dump; c_dump; menhir_dump ]
 
 let resolve_program t ~dir ?hint ~loc bin =
-  let t = t.env_context in
+  let t = t.env_nodes in
   let bin_artifacts = Env_nodes.bin_artifacts_host t ~dir in
   Artifacts.Bin.binary ?hint ~loc bin_artifacts bin
 
@@ -520,9 +519,9 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
                     make ~inherit_from:None
                       ~config_stanza:context.env_nodes.workspace))))
   in
-  let env_context =
+  let env_nodes =
     Env_nodes.create ~context ~scopes ~default_env ~stanzas_per_dir
-      ~host_env_nodes:(Option.map host ~f:(fun x -> x.env_context))
+      ~host_env_nodes:(Option.map host ~f:(fun x -> x.env_nodes))
       ~root_expander ~bin_artifacts:artifacts.bin
   in
   let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in
@@ -531,7 +530,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         (Dune_project.file_key project, project))
   in
   { context
-  ; expander = root_expander
+  ; root_expander
   ; host
   ; scopes
   ; public_libs
@@ -561,7 +560,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
            ~f:
              (List.sort ~compare:(fun a b ->
                   Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
-  ; env_context
+  ; env_nodes
   ; default_env
   ; external_lib_deps_mode
   ; dir_status_db
@@ -650,7 +649,7 @@ module Deps = struct
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
     let foreign_flags ~dir =
-      get_node t.env_context ~dir |> Env_node.foreign_flags
+      get_node t.env_nodes ~dir |> Env_node.foreign_flags
     in
     let expander =
       Expander.with_record_no_ddeps expander forms ~dep_kind:Optional

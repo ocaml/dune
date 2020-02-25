@@ -119,26 +119,41 @@ module DB = struct
 
   module Coq_lib_closure = Top_closure.Make (String.Set) (Or_exn)
 
-  let requires db t : lib list Or_exn.t =
-    let theories =
-      match db.boot with
-      | None -> t.theories
-      (* XXX: Note that this means that we will prefix Coq with -Q, not sure we
-         want to do that (yet), but seems like good practice. *)
-      | Some (loc, stdlib) -> (loc, snd stdlib.name) :: t.theories
-    in
+  let add_boot db theories =
+    match db.boot with
+    | None -> theories
+    (* XXX: Note that this means that we will prefix Coq with -Q, not sure we
+       want to do that (yet), but seems like good practice. *)
+    | Some (loc, stdlib) -> (loc, snd stdlib.name) :: theories
+
+  let top_closure db theories ~allow_private_deps ~loc =
     let open Result.O in
-    let allow_private_deps = Option.is_none t.package in
     let* theories =
-      Result.List.map ~f:(resolve ~allow_private_deps db) theories
+      add_boot db theories
+      |> Result.List.map ~f:(resolve ~allow_private_deps db)
     in
-    let key t = Coq_lib_name.to_string (snd t.name) in
-    let deps t =
+    let key (t : lib) = Coq_lib_name.to_string (snd t.name) in
+    let deps (t : lib) =
       Result.List.map ~f:(resolve ~allow_private_deps db) t.theories
     in
-    Result.bind (Coq_lib_closure.top_closure theories ~key ~deps) ~f:(function
-      | Ok libs -> Ok libs
-      | Error cycle -> Error.cycle_found ~loc:(location t) cycle)
+    match Coq_lib_closure.top_closure theories ~key ~deps with
+    | Ok (Ok s) -> Ok s
+    | Ok (Error cycle) -> Error.cycle_found ~loc cycle
+    | Error exn -> Error exn
+
+  let requires db (t : lib) : lib list Or_exn.t =
+    let allow_private_deps = Option.is_none t.package in
+    let loc = location t in
+    top_closure db t.theories ~loc ~allow_private_deps
+
+  let requires_for_user_written db = function
+    | [] -> Ok []
+    | start :: xs as theories ->
+      let loc =
+        let stop = Option.value (List.last xs) ~default:start in
+        Loc.span (fst start) (fst stop)
+      in
+      top_closure db theories ~loc ~allow_private_deps:true
 
   let resolve db l = resolve db l
 end

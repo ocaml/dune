@@ -1976,6 +1976,43 @@ module Coqpp = struct
   type Stanza.t += T of t
 end
 
+let coq_syntax =
+  Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
+    [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
+
+module Coq_extract = struct
+  type t =
+    { extracted_modules : Module_name.t list
+    ; prelude : Loc.t * Coq_module.Name.t
+    ; flags : Ordered_set_lang.Unexpanded.t
+    ; libraries : (Loc.t * Lib_name.t) list
+    ; theories : (Loc.t * Coq_lib_name.t) list
+    ; loc : Loc.t
+    }
+
+  let decode =
+    fields
+      (let+ loc = loc
+       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+       and+ extracted_modules =
+         field "extracted_modules" (repeat Module_name.decode)
+       and+ libraries =
+         field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ theories =
+         field "theories"
+           ( Dune_lang.Syntax.since coq_syntax (0, 2)
+           >>> repeat Coq_lib_name.decode )
+           ~default:[]
+       and+ prelude =
+         field "prelude" (located (string >>| Coq_module.Name.make))
+       in
+       { prelude; extracted_modules; flags; libraries; loc; theories })
+
+  type Stanza.t += T of t
+
+  let p = ("coq.extract", decode >>| fun x -> [ T x ])
+end
+
 module Coq = struct
   type t =
     { name : Loc.t * Coq_lib_name.t
@@ -1990,10 +2027,6 @@ module Coq = struct
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }
-
-  let syntax =
-    Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
 
   let coq_public_decode =
     map_validate
@@ -2041,13 +2074,15 @@ module Coq = struct
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since syntax (0, 2))
+       and+ boot =
+         field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ theories =
          field "theories"
-           (Dune_lang.Syntax.since syntax (0, 2) >>> repeat Coq_lib_name.decode)
+           ( Dune_lang.Syntax.since coq_syntax (0, 2)
+           >>> repeat Coq_lib_name.decode )
            ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
@@ -2081,10 +2116,10 @@ module Coq = struct
   let coqpp_p = ("coq.pp", Coqpp.(decode >>| fun x -> [ T x ]))
 
   let unit_stanzas =
-    let+ r = return [ coqlib_p; coqtheory_p; coqpp_p ] in
+    let+ r = return [ coqlib_p; coqtheory_p; coqpp_p; Coq_extract.p ] in
     ((), r)
 
-  let key = Dune_project.Extension.register syntax unit_stanzas Unit.to_dyn
+  let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn
 end
 
 module Alias_conf = struct

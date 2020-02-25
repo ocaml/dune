@@ -26,3 +26,11 @@ val coqpp_rules :
   -> dir:Path.Build.t
   -> Dune_file.Coqpp.t
   -> Action.t Build.With_targets.t list
+
+val extract_rules :
+     sctx:Super_context.t
+  -> build_dir:Path.Build.t
+  -> dir:Path.Build.t
+  -> dir_contents:Dir_contents.t
+  -> Dune_file.Coq_extract.t
+  -> Action.t Build.With_targets.t list

@@ -135,6 +135,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias coq-extract)
+ (deps (package dune) (source_tree test-cases/coq/extract))
+ (action
+  (chdir
+   test-cases/coq/extract
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias corrections)
  (deps (package dune) (source_tree test-cases/corrections))
  (action
@@ -2426,6 +2434,7 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias coq-extract)
   (alias corrections)
   (alias cross-compilation)
   (alias custom-build-dir)
@@ -2714,6 +2723,7 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias coq-extract)
   (alias corrections)
   (alias custom-build-dir)
   (alias custom-cross-compilation)

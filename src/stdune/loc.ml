@@ -1,5 +1,15 @@
 include Loc0
 
+module O = Comparable.Make (struct
+  type nonrec t = t
+
+  let compare = Poly.compare
+
+  let to_dyn = to_dyn
+end)
+
+include O
+
 let in_file p =
   let pos = none_pos (Path.to_string p) in
   { start = pos; stop = pos }
@@ -126,3 +136,5 @@ let on_same_line loc1 loc2 =
   let same_file = String.equal start1.pos_fname start2.pos_fname in
   let same_line = Int.equal start1.pos_lnum start2.pos_lnum in
   same_file && same_line
+
+let span begin_ end_ = { begin_ with stop = end_.stop }

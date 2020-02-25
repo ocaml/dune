@@ -4,9 +4,12 @@ open Stdune
    harmful?
 
    In Coq all libs are "wrapped" so including a module twice is not so bad. *)
-type t = { libraries : Coq_module.t list Coq_lib_name.Map.t }
+type t =
+  { libraries : Coq_module.t list Coq_lib_name.Map.t
+  ; extract : Coq_module.t Loc.Map.t
+  }
 
-let empty = { libraries = Coq_lib_name.Map.empty }
+let empty = { libraries = Coq_lib_name.Map.empty; extract = Loc.Map.empty }
 
 let coq_modules_of_files ~dirs =
   let filter_v_files (dir, local, files) =
@@ -24,14 +27,6 @@ let coq_modules_of_files ~dirs =
   in
   List.concat_map ~f:build_mod_dir dirs
 
-let build_coq_modules_map (d : _ Dir_with_dune.t) ~dir ~modules =
-  List.fold_left d.data ~init:Coq_lib_name.Map.empty ~f:(fun map ->
-    function
-    | Dune_file.Coq.T coq ->
-      let modules = Coq_module.eval ~dir coq.modules ~standard:modules in
-      Coq_lib_name.Map.add_exn map (snd coq.name) modules
-    | _ -> map)
-
 let library t ~name = Coq_lib_name.Map.find_exn t.libraries name
 
 let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
@@ -39,9 +34,34 @@ let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs unqualified) is not supported yet" ]
 
-let of_dir d ~include_subdirs ~dirs =
+let extract t (stanza : Dune_file.Coq_extract.t) =
+  Loc.Map.find_exn t.extract stanza.loc
+
+let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
   check_no_unqualified include_subdirs;
-  { libraries =
-      build_coq_modules_map d ~dir:d.ctx_dir
-        ~modules:(coq_modules_of_files ~dirs)
-  }
+  let modules = coq_modules_of_files ~dirs in
+  List.fold_left d.data ~init:empty ~f:(fun acc ->
+    function
+    | Dune_file.Coq.T coq ->
+      let modules =
+        Coq_module.eval ~dir:d.ctx_dir coq.modules ~standard:modules
+      in
+      let libraries =
+        Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
+      in
+      { acc with libraries }
+    | Dune_file.Coq_extract.T extract ->
+      let loc, prelude = extract.prelude in
+      let m =
+        match
+          List.find modules ~f:(fun m ->
+              Coq_module.Name.equal (Coq_module.name m) prelude)
+        with
+        | Some m -> m
+        | None ->
+          User_error.raise ~loc
+            [ Pp.text "no coq source corresponding to prelude field" ]
+      in
+      let extract = Loc.Map.add_exn acc.extract extract.loc m in
+      { acc with extract }
+    | _ -> acc)

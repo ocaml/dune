@@ -80,7 +80,8 @@ let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
     let depname, _ = Filename.split_extension ff in
     let modname =
       String.concat ~sep:"/"
-        Coq_module.(prefix coq_module @ [ name coq_module ])
+        Coq_module.(
+          prefix coq_module @ [ Coq_module.Name.to_string (name coq_module) ])
     in
     if coq_debug then
       Format.eprintf "depname / modname: %s / %s@\n%!" depname modname;
@@ -371,3 +372,50 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
     Command.run ~dir:(Path.build build_dir) cc.coqpp args
   in
   List.map ~f:mlg_rule s.modules
+
+let extract_rules ~sctx ~build_dir ~dir ~dir_contents
+    (s : Dune_file.Coq_extract.t) =
+  let cc = create_ccoq sctx ~dir in
+  let expander = SC.expander sctx ~dir in
+  let coq_flags = s.flags in
+  let scope = SC.find_scope_by_dir sctx dir in
+  let coq_lib_db = Scope.coq_libs scope in
+  (* Coq flags for depending libraries *)
+  let theories_deps =
+    Coq_lib.DB.requires_for_user_written coq_lib_db s.theories
+  in
+  let theories_flags =
+    Command.of_result_map theories_deps ~f:(fun libs ->
+        Command.Args.S (List.concat_map libs ~f:setup_theory_flag))
+  in
+  let coq_module =
+    let coq = Dir_contents.coq dir_contents in
+    Coq_sources.extract coq s
+  in
+  let wrapper_name = "dummy" in
+  let file_flags =
+    [ theories_flags
+    ; Command.Args.A "-R"
+    ; Path (Path.build dir)
+    ; A wrapper_name
+    ]
+  in
+  let file_flags =
+    [ Command.Args.S (flags_of_bootstrap_type ~boot_type:No_boot)
+    ; S file_flags
+    ]
+  in
+  let ml_targets =
+    List.concat_map s.extracted_modules ~f:(fun m ->
+        let m = Module_name.to_string m in
+        [ m ^ ".ml"; m ^ ".mli" ] |> List.map ~f:(Path.Build.relative build_dir))
+  in
+  let coqc =
+    coqc_rule ~build_dir ~expander ~dir ~coqc:cc.coqc ~coq_flags ~file_flags
+      coq_module
+  in
+  let targets =
+    List.fold_left ml_targets ~init:coqc.targets ~f:(fun acc target ->
+        Path.Build.Set.add acc target)
+  in
+  [ { coqc with targets } ]

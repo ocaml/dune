@@ -282,6 +282,9 @@ let gen_rules sctx dir_contents cctxs
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~build_dir ~dir:ctx_dir ~dir_contents m
         |> Super_context.add_rules ~dir:ctx_dir sctx
+      | Coq_extract.T m ->
+        Coq_rules.extract_rules ~sctx ~dir:ctx_dir ~build_dir ~dir_contents m
+        |> Super_context.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m
         |> Super_context.add_rules ~dir:ctx_dir sctx

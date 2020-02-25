@@ -102,17 +102,24 @@ let flags_of_bootstrap_type ~boot_type ~obj_dir =
   | Bootstrap_prelude ->
     [ Args.A "-coqlib"; Args.Path (Path.build obj_dir); Args.A "-noinit" ]
 
-let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
-    ~mlpack_rule ~boot coq_module =
-  let open Build.With_targets.O in
-  if coq_debug then
-    Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
-      (Dyn.pp (Coq_module.to_dyn coq_module));
-  let obj_dir = dir in
+let coqdep_file ~dir coq_module =
+  Coq_module.obj_file ~obj_dir:dir ~ext:".v.d" coq_module
+
+let deps_of ~dir ~boot coq_module =
+  let stdout_to = coqdep_file ~dir coq_module in
+  let boot_type = get_bootstrap_type ~boot coq_module in
+  Build.dyn_paths_unit
+    (Build.map
+       (Build.lines_of (Path.build stdout_to))
+       ~f:(fun x ->
+         List.map
+           ~f:(Path.relative (Path.build dir))
+           (parse_coqdep ~boot_type ~coq_module x)))
+
+let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags ~boot
+    coq_module =
+  (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
-  let stdout_to = Coq_module.obj_file ~obj_dir ~ext:".v.d" coq_module in
-  let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
-  let dir = Path.build dir in
   let file_flags = file_flags @ [ Command.Args.Dep (Path.build source) ] in
   let cd_arg = Command.Args.As [ "-dyndep"; "opt" ] :: file_flags in
   let cd_arg =
@@ -121,27 +128,37 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     else
       cd_arg
   in
-
+  let stdout_to = coqdep_file ~dir coq_module in
+  let dir = Path.build dir in
+  let open Build.With_targets.O in
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
+  (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags :(
+     I wish we had more flexible typing. *)
+  Build.with_no_targets mlpack_rule
+  >>> Build.with_no_targets source_rule
+  >>> Command.run ~dir ~stdout_to coqdep cd_arg
+
+let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
+    ~mlpack_rule ~boot coq_module =
+  let open Build.With_targets.O in
+  if coq_debug then
+    Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
+      (Dyn.pp (Coq_module.to_dyn coq_module));
+  let obj_dir = dir in
+  let source = Coq_module.source coq_module in
+  let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
+
   let coqdep_rule =
-    (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags
-       :( I wish we had more flexible typing. *)
-    Build.with_no_targets mlpack_rule
-    >>> Build.with_no_targets source_rule
-    >>> Command.run ~dir ~stdout_to cc.coqdep cd_arg
+    coqdep_rule ~dir ~coqdep:cc.coqdep ~mlpack_rule ~source_rule ~file_flags
+      ~boot coq_module
   in
+
+  let file_flags = file_flags @ [ Command.Args.Dep (Path.build source) ] in
 
   let boot_type = get_bootstrap_type ~boot coq_module in
 
   (* Process coqdep and generate rules *)
-  let deps_of : unit Build.t =
-    Build.dyn_paths_unit
-      (Build.map
-         (Build.lines_of (Path.build stdout_to))
-         ~f:(fun x ->
-           List.map ~f:(Path.relative dir)
-             (parse_coqdep ~boot_type ~coq_module x)))
-  in
+  let deps_of = deps_of ~dir ~boot coq_module in
 
   let file_flags = flags_of_bootstrap_type ~boot_type ~obj_dir @ file_flags in
 
@@ -158,6 +175,7 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
       Expander.expand_and_eval_set expander coq_flags
         ~standard:(Build.return [])
     in
+    let dir = Path.build dir in
     Command.run ~dir cc.coqc (Command.Args.dyn coq_flags :: cc_arg) )
   ]
 

@@ -15,6 +15,8 @@ module Metadata_file : sig
 
   val of_sexp : Sexp.t -> (t, string) result
 
+  val to_string : t -> string
+
   val of_string : string -> (t, string) result
 
   val parse : Path.t -> (t, string) result

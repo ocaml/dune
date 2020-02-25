@@ -137,6 +137,8 @@ module Metadata_file = struct
 
   let of_string s = Csexp.parse (Stream.of_string s) >>= of_sexp
 
+  let to_string f = to_sexp f |> Csexp.to_string
+
   let parse path =
     Io.with_file_in path ~f:(fun input -> Csexp.parse (Stream.of_channel input))
     >>= of_sexp

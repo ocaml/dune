@@ -144,12 +144,11 @@ let coqc_rule ~expander ~dir ~coqc ~boot ~coq_flags ~file_flags coq_module =
   let obj_dir = dir in
   let file_flags =
     let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
-    List.concat
-      [ [ Command.Args.Hidden_targets [ object_to ] ]
-      ; flags_of_bootstrap_type ~boot_type ~obj_dir
-      ; file_flags
-      ; [ Command.Args.Dep (Path.build source) ]
-      ]
+    [ Command.Args.Hidden_targets [ object_to ]
+    ; S (flags_of_bootstrap_type ~boot_type ~obj_dir)
+    ; S file_flags
+    ; Command.Args.Dep (Path.build source)
+    ]
   in
   let open Build.With_targets.O in
   Build.with_no_targets

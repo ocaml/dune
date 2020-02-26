@@ -75,7 +75,9 @@ end = struct
       { pps; project_root = Option.map project ~f:Dune_project.root }
   end
 
-  (* This mutable table is safe: it caches a pure function. *)
+  (* This mutable table is safe. Even though it can have stale entries remaining
+     from previous runs, the entries themselves are correct, so this seems
+     harmless apart from the lack of error in [decode] in this situation. *)
   let reverse_table : (Digest.t, Decoded.t) Table.t =
     Table.create (module Digest) 128
 

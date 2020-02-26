@@ -24,8 +24,7 @@ end
 
 module Make (R : Settings) () = struct
   (* The mutable tables in this module can be made safe if we stop leaking
-     information about the string representation, e.g. by switching from [int]s
-     to an opaque data type. *)
+     information about the representation, e.g. by not exposing [compare]. *)
   let ids = Table.create (module String) 1024
 
   let next = ref 0

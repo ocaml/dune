@@ -1,12 +1,23 @@
 open! Stdune
 open Upgrader_common
 
+(* If no mode is defined, explicitely use the previous default *)
 let explicit_mode fields =
-  if Ast_ops.is_in_list [ "modes" ] fields then None
+  if Ast_ops.is_in_list [ "modes" ] fields then
+    fields
   else
-    Some Dune_lang.Atom.(
+    Dune_lang.Atom.(
       Ast_ops.field_of_list
-        [ of_string "modes"; of_string "byte"; of_string "exe" ])
+        [ of_string "modes"; of_string "byte"; of_string "exe" ]) :: fields
+
+(* Field preprocessor_deps cannot exist without field preprocess *)
+let no_single_preprocessor_deps fields =
+  match Ast_ops.extract_first ["preprocessor_deps"] fields with
+  | Some _, rest when Ast_ops.is_in_list
+    ["preprocess"; "no_preprocessing"] rest -> rest
+  | Some _, rest when Ast_ops.is_in_list ["preprocess"] rest -> fields
+  | Some _, rest -> rest
+  | None, _ -> fields
 
 let update_stanza =
   let open Dune_lang.Ast in
@@ -17,15 +28,13 @@ let update_stanza =
         List (loc, Atom (loca, Dune_lang.Atom.of_string "rule") :: tl)
       else
         ast
-    | (List (loc, Atom (loca, ((A "executable") as atom)) :: tl) as stanza)
-    | (List (loc, Atom (loca, ((A "executables")as atom)) :: tl) as stanza) ->
-      (* If no mode is defined, explicitely use the previous default *)
-      (match explicit_mode tl with
-      | None -> stanza
-      | Some modes ->
-        List (loc, Atom (loca, atom)
-          :: modes
-          :: tl ))
+    | List (loc, Atom (loca, ((A "executable") as atom)) :: tl)
+    | List (loc, Atom (loca, ((A "executables")as atom)) :: tl) ->
+      let tl = tl |> no_single_preprocessor_deps |> explicit_mode in
+      List (loc, Atom (loca, atom) :: tl)
+    | List (loc, Atom (loca, ((A "library") as atom)) :: tl) ->
+      let tl = tl |> no_single_preprocessor_deps in
+      List (loc, Atom (loca, atom) :: tl)
     | stanza -> stanza
 
 let update_formatting sexps =

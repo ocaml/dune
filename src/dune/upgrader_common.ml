@@ -36,7 +36,8 @@ module Ast_ops = struct
       | _, _ -> false
     in
     let rec aux rest = function
-      | List (_, elt) :: _ when is_names elt names -> (Some elt, List.rev rest)
+      | List (_, elt) :: tl when is_names elt names ->
+        (Some elt, List.rev_append rest tl)
       | hd :: tl -> aux (hd :: rest) tl
       | [] -> (None, List.rev rest)
     in

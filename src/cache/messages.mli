@@ -20,3 +20,5 @@ val negotiate_version :
   -> char Stream.t
   -> out_channel
   -> (version, string) result
+
+val pp_version : Format.formatter -> version -> unit

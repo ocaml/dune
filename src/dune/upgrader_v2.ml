@@ -19,6 +19,11 @@ let no_single_preprocessor_deps fields =
   | Some _, rest -> rest
   | None, _ -> fields
 
+(* Always no-op no_keep_loc field should be removed *)
+let no_no_keep_loc fields =
+  match Ast_ops.extract_first ["no_keep_locs"] fields with
+  | Some _, rest | None, rest -> rest
+
 let update_stanza =
   let open Dune_lang.Ast in
     function
@@ -33,7 +38,7 @@ let update_stanza =
       let tl = tl |> no_single_preprocessor_deps |> explicit_mode in
       List (loc, Atom (loca, atom) :: tl)
     | List (loc, Atom (loca, ((A "library") as atom)) :: tl) ->
-      let tl = tl |> no_single_preprocessor_deps in
+      let tl = tl |> no_single_preprocessor_deps |> no_no_keep_loc in
       List (loc, Atom (loca, atom) :: tl)
     | stanza -> stanza
 

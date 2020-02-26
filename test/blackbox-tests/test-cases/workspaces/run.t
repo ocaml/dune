@@ -42,13 +42,11 @@ Workspaces also allow you to set the env for a context:
 
   $ dune printenv --root workspace-env --profile default
   Entering directory 'workspace-env'
-  
-   ((flags
-     (-w -40 -machin))
-    (ocamlc_flags
-     (-g -verbose))
-    (ocamlopt_flags (-g))
-    (c_flags ())
-    (cxx_flags ())
-    (menhir_flags ()))
-  
+  (flags
+   (-w -40 -machin))
+  (ocamlc_flags
+   (-g -verbose))
+  (ocamlopt_flags (-g))
+  (c_flags ())
+  (cxx_flags ())
+  (menhir_flags ())

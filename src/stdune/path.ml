@@ -171,7 +171,7 @@ end = struct
     include T.Set
 
     let of_listing ~dir ~filenames =
-      of_list (List.map filenames ~f:(fun f -> relative dir f))
+      of_list_map filenames ~f:(fun f -> relative dir f)
   end
 
   module Map = T.Map
@@ -466,7 +466,7 @@ end = struct
       include T.Set
 
       let of_listing ~dir ~filenames =
-        of_list (List.map filenames ~f:(fun f -> relative dir f))
+        of_list_map filenames ~f:(fun f -> relative dir f)
     end
 
     module Map = T.Map
@@ -1265,7 +1265,7 @@ module Set = struct
   include O.Set
 
   let of_listing ~dir ~filenames =
-    of_list (List.map filenames ~f:(fun f -> relative dir f))
+    of_list_map filenames ~f:(fun f -> relative dir f)
 end
 
 let in_source s = in_source_tree (Local.of_string s)
@@ -1301,7 +1301,7 @@ module Source = struct
 end
 
 let set_of_source_paths set =
-  Source.Set.to_list set |> List.map ~f:source |> Set.of_list
+  Source.Set.to_list set |> Set.of_list_map ~f:source
 
 let set_of_build_paths_list =
   List.fold_left ~init:Set.empty ~f:(fun acc e -> Set.add acc (build e))

@@ -67,7 +67,8 @@ end = struct
              | Some dir -> sprintf "%s/%s" dir dst) )
     in
     let installable_modules =
-      Dir_contents.modules_of_library dir_contents ~name:(Library.best_name lib)
+      Dir_contents.ocaml dir_contents
+      |> Ml_sources.modules_of_library ~name:(Library.best_name lib)
       |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc -> m :: acc)
     in
     let sources =
@@ -349,13 +350,15 @@ let gen_dune_package sctx pkg =
                 let name = Lib.name lib in
                 let foreign_objects =
                   let dir = Obj_dir.obj_dir obj_dir in
-                  Dir_contents.foreign_sources_of_library dir_contents ~name
+                  Dir_contents.foreign_sources dir_contents
+                  |> Foreign_sources.for_lib ~name
                   |> Foreign.Sources.object_files ~dir
                        ~ext_obj:ctx.lib_config.ext_obj
                   |> List.map ~f:Path.build
                 in
                 let modules =
-                  Dir_contents.modules_of_library dir_contents ~name
+                  Dir_contents.ocaml dir_contents
+                  |> Ml_sources.modules_of_library ~name
                 in
                 Lib_name.Map.add_exn acc name
                   (Library
@@ -638,10 +641,9 @@ let install_rules sctx (package : Package.t) =
       ~dyn_deps:
         (let+ packages = packages in
          Package.Name.Set.to_list packages
-         |> List.map ~f:(fun pkg ->
+         |> Path.Set.of_list_map ~f:(fun pkg ->
                 Build_system.Alias.package_install ~context:ctx ~pkg
-                |> Alias.stamp_file |> Path.build)
-         |> Path.Set.of_list)
+                |> Alias.stamp_file |> Path.build))
   in
   let action =
     Build.write_file_dyn install_file

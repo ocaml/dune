@@ -1,18 +1,6 @@
 (data_only_dirs test-cases)
 
 (executable
- (name cram)
- (modules cram)
- (libraries stdune dune))
-
-(executable
- (name sanitizer)
- (modules sanitizer)
- (libraries stdune dune_re configurator))
-
-(ocamllex cram)
-
-(executable
  (name gen_tests)
  (libraries stdune dune_lang)
  (modules gen_tests))

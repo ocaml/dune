@@ -193,6 +193,7 @@ let all =
   ; Compute.command
   ; Upgrade.command
   ; Caching.command
+  ; Describe.command
   ]
 
 let default =

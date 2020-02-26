@@ -203,9 +203,11 @@ let lib_src_dirs ~sctx lib =
   | Some info ->
     let info = Lib.Local.info info in
     let dir = Lib_info.src_dir info in
-    let dir_contents = Dir_contents.get sctx ~dir in
     let name = Lib_info.name info in
-    let modules = Dir_contents.modules_of_library dir_contents ~name in
+    let modules =
+      Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+      |> Ml_sources.modules_of_library ~name
+    in
     Path.Set.map ~f:Path.drop_optional_build_context
       (Modules.source_dirs modules)
 
@@ -246,7 +248,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
               in
               let src_dirs =
                 Path.Set.union src_dirs
-                  (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+                  (Path.Set.of_list_map ~f:Path.source more_src_dirs)
               in
               Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
          in

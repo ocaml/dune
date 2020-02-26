@@ -13,7 +13,8 @@ let has_native_archive lib config contents =
   Lib_config.linker_can_create_empty_archives config
   ||
   let name = Dune_file.Library.best_name lib in
-  let modules = Dir_contents.modules_of_library contents ~name in
+  let ml_sources = Dir_contents.ocaml contents in
+  let modules = Ml_sources.modules_of_library ml_sources ~name in
   not (Modules.is_empty modules)
 
 module Library = Dune_file.Library
@@ -38,10 +39,9 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
           (byte && not virtual_library)
           [ Library.archive ~dir lib ~ext:(Mode.compiled_lib_ext Byte) ]
       ; ( if virtual_library then
-          let files =
-            Dir_contents.foreign_sources_of_library dir_contents
-              ~name:(Library.best_name lib)
-          in
+          let foreign_sources = Dir_contents.foreign_sources dir_contents in
+          let name = Library.best_name lib in
+          let files = Foreign_sources.for_lib foreign_sources ~name in
           Foreign.Sources.object_files files ~dir ~ext_obj
         else
           Library.foreign_lib_files lib ~dir ~ext_lib )

@@ -79,4 +79,23 @@ directory to the inferred package:
    (documentation
     (mld_files :standard \ wip))
 
+.. _odoc-options:
+
+Passing options to Odoc
+=======================
+
+.. code-block:: lisp
+
+    (env
+     (<profile>
+      (odoc <optional-fields>)))
+
+See :ref:`dune-env` for more details on the ``(env ...)`` stanza.
+``<optional-fields>`` are:
+
+- ``(warnings <mode>)`` specifies how warnings should be handled.
+  ``<mode>`` can be: ``fatal`` or ``nonfatal``.
+  The default value is ``nonfatal``.
+  This field is available since Dune 2.4.0 and requires Odoc 1.5.0.
+
 .. _odoc: https://github.com/ocaml-doc/odoc

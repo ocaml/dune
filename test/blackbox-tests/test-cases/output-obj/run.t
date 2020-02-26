@@ -7,6 +7,6 @@
         static alias runtest
   OK: ./static.bc
        dynamic alias runtest
-  OK: ./dynamic.exe ./test.bc.so
+  OK: ./dynamic.exe ./test.bc$ext_dll
 #        static alias runtest
 #  OK: ./static.bc.c.exe

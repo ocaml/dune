@@ -44,6 +44,32 @@ module Stanza = struct
       | Ignored -> "ignored"
   end
 
+  module Odoc = struct
+    type warnings =
+      | Fatal
+      | Nonfatal
+
+    type t = { warnings : warnings option }
+
+    let empty = { warnings = None }
+
+    let warnings_equal x y =
+      match (x, y) with
+      | Fatal, Fatal
+      | Nonfatal, Nonfatal ->
+        true
+      | (Fatal | Nonfatal), _ -> false
+
+    let equal x y = Option.equal warnings_equal x.warnings y.warnings
+
+    let warnings_decode = enum [ ("fatal", Fatal); ("nonfatal", Nonfatal) ]
+
+    let decode =
+      fields
+      @@ let+ warnings = field_o "warnings" warnings_decode in
+         { warnings }
+  end
+
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
@@ -51,11 +77,18 @@ module Stanza = struct
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
+    ; odoc : Odoc.t
     }
 
   let equal_config
-      { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags } t
-      =
+      { flags
+      ; foreign_flags
+      ; env_vars
+      ; binaries
+      ; inline_tests
+      ; menhir_flags
+      ; odoc
+      } t =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
          foreign_flags t.foreign_flags
@@ -63,6 +96,7 @@ module Stanza = struct
     && List.equal File_binding.Unexpanded.equal binaries t.binaries
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
+    && Odoc.equal odoc t.odoc
 
   let hash_config = Hashtbl.hash
 
@@ -74,6 +108,7 @@ module Stanza = struct
     ; binaries = []
     ; inline_tests = None
     ; menhir_flags = Ordered_set_lang.Unexpanded.standard
+    ; odoc = Odoc.empty
     }
 
   type pattern =
@@ -116,6 +151,10 @@ module Stanza = struct
           User_error.raise ~loc
             [ Pp.textf "Variable %s is specified several times" k ] )
 
+  let odoc_field =
+    field "odoc" ~default:Odoc.empty
+      (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
+
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
@@ -125,8 +164,16 @@ module Stanza = struct
         ( Dune_lang.Syntax.since Stanza.syntax (1, 6)
         >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field
-    and+ menhir_flags = menhir_flags ~since:(Some (2, 1)) in
-    { flags; foreign_flags; env_vars; binaries; inline_tests; menhir_flags }
+    and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
+    and+ odoc = odoc_field in
+    { flags
+    ; foreign_flags
+    ; env_vars
+    ; binaries
+    ; inline_tests
+    ; menhir_flags
+    ; odoc
+    }
 
   let rule =
     enter

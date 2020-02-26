@@ -562,6 +562,11 @@ let all_packages t =
            (Dune_package.Entry.name a)
            (Dune_package.Entry.name b))
 
+(* CR-soon amokhov: Remove the mutable table below and add:
+
+   - A memoized function for finding packages by names (see [find]).
+
+   - A [Memo.Lazy.t] storing the set of all packages (see [root_packages]). *)
 let create ~stdlib_dir ~paths ~version ~lib_config =
   { stdlib_dir
   ; paths

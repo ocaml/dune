@@ -6,7 +6,7 @@ OPAMYES="true"; export OPAMYES
 OPAM_VERSION="2.0.5"
 
 # This allows a specific version of odoc to be selected if necessary
-ODOC="odoc>=1.4.2"
+ODOC="odoc>=1.5.0"
 
 TARGET="$1"; shift
 

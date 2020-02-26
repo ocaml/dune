@@ -80,30 +80,34 @@ end
 
 module Spec = struct
   type ('a, 'b, 'f) t =
-    { name : Function.Name.t
+    { info : Function.Info.t option
     ; input : (module Store_intf.Input with type t = 'a)
     ; output : (module Output_simple with type t = 'b)
     ; allow_cutoff : 'b Allow_cutoff.t
     ; decode : 'a Dune_lang.Decoder.t
     ; witness : 'a Type_eq.Id.t
     ; f : ('a, 'b, 'f) Function.t
-    ; doc : string option
     }
 
   type packed = T : (_, _, _) t -> packed [@@unboxed]
 
-  let by_name = Function.Name.Table.create ~default_value:None
+  (* This mutable table is safe under the assumption that [register] is called
+     only at the top level, which is currently true. This means that all
+     memoization tables created not at the top level are hidden. *)
+  let by_name : packed String.Table.t = String.Table.create 256
 
-  let find name = Function.Name.Table.get by_name name
+  let find name = String.Table.find by_name name
 
   let register t =
-    match find t.name with
-    | Some _ ->
-      Code_error.raise "[Spec.register] called twice on the same function" []
-    | None -> Function.Name.Table.set by_name ~key:t.name ~data:(Some (T t))
+    match t.info with
+    | None -> Code_error.raise "[Spec.register] got a function with no info" []
+    | Some info -> (
+      match find info.name with
+      | Some _ ->
+        Code_error.raise "[Spec.register] called twice on the same function" []
+      | None -> String.Table.set by_name info.name (T t) )
 
-  let create (type o) name ~input ~visibility ~(output : o Output.t) ~f ~doc =
-    let name = Function.Name.make name in
+  let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
     let (output : (module Output_simple with type t = o)), allow_cutoff =
       match output with
       | Simple (module Output) -> ((module Output), Allow_cutoff.No)
@@ -117,14 +121,13 @@ module Spec = struct
         let+ loc = loc in
         User_error.raise ~loc [ Pp.text "<not-implemented>" ]
     in
-    { name
+    { info
     ; input
     ; output
     ; allow_cutoff
     ; decode
     ; witness = Type_eq.Id.create ()
     ; f
-    ; doc
     }
 end
 
@@ -357,7 +360,7 @@ module Stack_frame0 = struct
 
   type t = packed
 
-  let name (T t) = Function.Name.to_string t.spec.name
+  let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
 
   let input (T t) = ser_input t
 
@@ -365,7 +368,14 @@ module Stack_frame0 = struct
 
   let compare (T a) (T b) = Id.compare a.id b.id
 
-  let to_dyn t = Dyn.Tuple [ String (name t); input t ]
+  let to_dyn t =
+    Dyn.Tuple
+      [ String
+          ( match name t with
+          | Some name -> name
+          | None -> "<unnamed>" )
+      ; input t
+      ]
 end
 
 module To_open = struct
@@ -488,7 +498,9 @@ end
 let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
     (typ : (i, o, f) Function.Type.t) (f : f) =
   let f = Function.of_type typ f in
-  let spec = Spec.create name ~input ~output ~visibility ~doc ~f in
+  let spec =
+    Spec.create ~info:(Some { name; doc }) ~input ~output ~visibility ~f
+  in
   ( match visibility with
   | Public _ -> Spec.register spec
   | Hidden -> () );
@@ -503,6 +515,7 @@ let create_with_store (type i) name
 
 let create (type i) name ?doc ~input:(module Input : Input with type t = i)
     ~visibility ~output typ f =
+  (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ?doc ~input ~visibility ~output typ f
@@ -704,13 +717,10 @@ let get_deps (type i o f) (t : (i, o, f) t) inp =
   | Some { state = Done cv; _ } ->
     Some
       (List.map cv.deps ~f:(fun (Last_dep.T (n, _u)) ->
-           (Function.Name.to_string n.spec.name, ser_input n)))
+           (Option.map n.spec.info ~f:(fun x -> x.name), ser_input n)))
 
 let get_func name =
-  match
-    let open Option.O in
-    Function.Name.get name >>= Spec.find
-  with
+  match Spec.find name with
   | None -> User_error.raise [ Pp.textf "function %s doesn't exist!" name ]
   | Some spec -> spec
 
@@ -726,20 +736,18 @@ let call name input =
   in
   Output.to_dyn output
 
-module Function_info = struct
-  include Function.Info
-
-  let of_spec (Spec.T spec) = { name = spec.name; doc = spec.doc }
-end
+let function_info_of_spec (Spec.T spec) =
+  match spec.info with
+  | Some info -> info
+  | None -> Code_error.raise "[function_info_of_spec] got an unnamed spec" []
 
 let registered_functions () =
-  Function.Name.all ()
-  |> List.filter_map ~f:(Function.Name.Table.get Spec.by_name)
-  |> List.map ~f:Function_info.of_spec
-  |> List.sort ~compare:(fun a b ->
-         Function.Name.compare a.Function_info.name b.Function_info.name)
+  String.Table.to_seq_values Spec.by_name
+  |> Seq.fold_left (fun xs x -> List.cons (function_info_of_spec x) xs) []
+  |> List.sort ~compare:(fun x y ->
+         String.compare x.Function.Info.name y.Function.Info.name)
 
-let function_info name = get_func name |> Function_info.of_spec
+let function_info name = get_func name |> function_info_of_spec
 
 let get_call_stack = Call_stack.get_call_stack
 
@@ -830,15 +838,13 @@ let lazy_ (type a) ?(cutoff = ( == )) f =
 
     let equal = cutoff
   end in
-  let id = Lazy_id.gen () in
-  let name = sprintf "lazy-%d" (Lazy_id.to_int id) in
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Sync f in
   let spec =
-    Spec.create name
+    Spec.create ~info:None
       ~input:(module Unit)
       ~output:(Allow_cutoff (module Output))
-      ~visibility ~f ~doc:None
+      ~visibility ~f
   in
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
@@ -851,15 +857,13 @@ let lazy_async (type a) ?(cutoff = ( == )) f =
 
     let equal = cutoff
   end in
-  let id = Lazy_id.gen () in
-  let name = sprintf "lazy-async-%d" (Lazy_id.to_int id) in
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Async f in
   let spec =
-    Spec.create name
+    Spec.create ~info:None
       ~input:(module Unit)
       ~output:(Allow_cutoff (module Output))
-      ~visibility ~f ~doc:None
+      ~visibility ~f
   in
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_async cell

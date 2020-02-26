@@ -57,6 +57,8 @@ module type S = sig
 
   val of_list : elt list -> t
 
+  val of_list_map : 'a list -> f:('a -> elt) -> t
+
   val to_list : t -> elt list
 
   val find : t -> f:(elt -> bool) -> elt option

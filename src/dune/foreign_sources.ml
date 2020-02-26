@@ -3,7 +3,13 @@ open Dune_file
 module Library = Dune_file.Library
 
 (* TODO: This is a strange module; it seems to add unnecessary indirection for
-   accessing foreign sources. It's worth checking if it can be simplified away. *)
+   accessing foreign sources. It's worth checking if it can be simplified away.
+
+   Before this module is removed, there should be a good way to handle new types
+   of source files without shoving everything into [Dir_contents].
+
+   Furthemore, this module is also responsible for details such as handling file
+   extensions and validing filenames. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
   ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t
@@ -108,8 +114,15 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
           multiple_sources_error ~name ~loc
             ~paths:Foreign.Source.[ path src1; path src2 ]))
 
+let check_no_qualified (loc, include_subdirs) =
+  if include_subdirs = Dune_file.Include_subdirs.Include Qualified then
+    User_error.raise ~loc
+      [ Pp.text
+          "(include_subdirs qualified) is only meant for OCaml and Coq sources"
+      ]
+
 let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
-    ~ext_obj =
+    ~(lib_config : Lib_config.t) =
   let libs, exes =
     List.filter_partition_map d.data ~f:(fun stanza ->
         match (stanza : Stanza.t) with
@@ -166,7 +179,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
       |> List.concat_map ~f:(fun sources ->
              String.Map.values sources
              |> List.map ~f:(fun (loc, source) ->
-                    (Foreign.Source.object_name source ^ ext_obj, loc)))
+                    (Foreign.Source.object_name source ^ lib_config.ext_obj, loc)))
     in
     match String.Map.of_list objects with
     | Ok _ -> ()
@@ -185,3 +198,17 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
           ]
   in
   { libraries; archives; executables }
+
+let make (d : _ Dir_with_dune.t) ~include_subdirs ~(lib_config : Lib_config.t)
+    ~dirs =
+  check_no_qualified include_subdirs;
+  let dune_version = d.dune_version in
+  let init = String.Map.empty in
+  let sources =
+    List.fold_left dirs ~init ~f:(fun acc (dir, _local, files) ->
+        let sources =
+          Foreign.Sources.Unresolved.load ~dir ~dune_version ~files
+        in
+        String.Map.Multi.rev_union sources acc)
+  in
+  make d ~sources ~lib_config

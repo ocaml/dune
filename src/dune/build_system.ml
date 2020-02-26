@@ -205,7 +205,7 @@ end = struct
       }
   end
 
-  (* Keyed by the first target *)
+  (* Keyed by the first target of the rule. *)
   type t = Entry.t Path.Table.t
 
   let file = Path.relative Path.build_dir ".db"
@@ -221,9 +221,13 @@ end = struct
   let needs_dumping = ref false
 
   let t =
+    (* This [lazy] is safe: it does not call any memoized functions. *)
     lazy
       ( match P.load file with
       | Some t -> t
+      (* This mutable table is safe: it's only used by [execute_rule_impl] to
+         decide whether to rebuild a rule or not; [execute_rule_impl] ensures
+         that the targets are produced deterministically. *)
       | None -> Path.Table.create 1024 )
 
   let dump () =
@@ -488,6 +492,7 @@ let compute_targets_digest_or_raise_error ~loc targets =
 
 let sandbox_dir = Path.Build.relative Path.Build.root ".sandbox"
 
+(* This mutable table is safe: it merely maps paths to lazily created mutexes. *)
 let locks : (Path.t, Fiber.Mutex.t) Table.t = Table.create (module Path) 32
 
 let rec with_locks mutexes ~f =
@@ -614,8 +619,7 @@ end = struct
     match load_dir ~dir with
     | Non_build targets -> targets
     | Build { rules_here; _ } ->
-      Path.Build.Map.keys rules_here
-      |> List.map ~f:Path.build |> Path.Set.of_list
+      Path.Build.Map.keys rules_here |> Path.Set.of_list_map ~f:Path.build
 
   let compute_alias_rules ~context_name ~(collected : Rules.Dir_rules.ready)
       ~dir ~sub_dir =
@@ -722,8 +726,7 @@ end = struct
                of a build context since there are source files to copy, so this
                call can't fail. *)
             Path.Build.Set.to_list rule.action.targets
-            |> List.map ~f:Path.Build.drop_build_context_exn
-            |> Path.Source.Set.of_list
+            |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
           if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
           then
@@ -909,8 +912,7 @@ end = struct
     in
     let source_files_to_ignore =
       Path.Build.Set.to_list source_files_to_ignore
-      |> List.map ~f:Path.Build.drop_build_context_exn
-      |> Path.Source.Set.of_list
+      |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
     (* Take into account the source files *)
     let to_copy, subdirs_to_keep =

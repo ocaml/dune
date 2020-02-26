@@ -363,6 +363,8 @@ let unique_id t = t.unique_id
 
 let is_impl t = Option.is_some t.implements
 
+let requires t = t.requires
+
 let obj_dir t = Lib_info.obj_dir t.info
 
 let is_local t =
@@ -622,6 +624,8 @@ module Sub_system = struct
     val get : lib -> t option
   end
 
+  (* This mutable table is safe under the assumption that subsystems are
+     registered at the top level, which is currently true. *)
   let all = Sub_system_name.Table.create ~default_value:None
 
   module Register (M : S) = struct
@@ -1642,6 +1646,8 @@ module DB = struct
 
   type t = db
 
+  (* CR-soon amokhov: this whole module should be rewritten using the
+     memoization framework instead of using mutable state. *)
   let create ~parent ~stdlib_dir ~resolve ~all () =
     { parent
     ; resolve

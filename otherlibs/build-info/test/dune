@@ -5,5 +5,5 @@
   (package dune-build-info))
  (action
   (progn
-   (run cram %{dep:run.t} -sanitizer %{bin:sanitizer})
+   (run dune-cram run %{dep:run.t})
    (diff? run.t run.t.corrected))))

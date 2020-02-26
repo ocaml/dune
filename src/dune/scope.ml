@@ -23,6 +23,8 @@ module DB = struct
     ; context : Context_name.t
     }
 
+  (* This function is linear in the depth of [dir] in the worst case, so if it
+     shows up in the profile we should memoize it. *)
   let find_by_dir t (dir : Path.Source.t) =
     let rec loop d =
       match Path.Source.Map.find t.by_dir d with

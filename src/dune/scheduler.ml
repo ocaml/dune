@@ -108,6 +108,12 @@ end = struct
 
   let cond = Condition.create ()
 
+  (* CR-soon amokhov: The way we handle "ignored files" using this mutable table
+     is fragile and also wrong. We use [ignored_files] for the [(mode promote)]
+     feature: if a file is promoted, we call [ignore_next_file_change_event] so
+     that the upcoming file-change event does not invalidate the current build.
+     However, instead of ignoring the events, we should merely postpone them and
+     restart the build to take the promoted files into account if need be. *)
   let ignored_files = String.Table.create 64
 
   let pending_jobs = ref 0
@@ -416,6 +422,8 @@ end = struct
       | Running of job
       | Zombie of Unix.process_status
 
+    (* This mutable table is safe: it does not interact with the state we track
+       in the build system. *)
     (* Invariant: [!running_count] is equal to the number of [Running _] values
        in [table]. *)
     let table = Table.create (module Pid) 128

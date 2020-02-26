@@ -1,1 +1,1 @@
-include Stdune.Interned.S
+include Stdune.Interned_intf.S

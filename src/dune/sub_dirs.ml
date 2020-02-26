@@ -143,7 +143,7 @@ let decode =
   let ignored_sub_dirs =
     let ignored =
       let+ l = enter (repeat (strict_subdir "ignored_sub_dirs")) in
-      Predicate_lang.Glob.of_string_set (String.Set.of_list (List.map ~f:snd l))
+      Predicate_lang.Glob.of_string_set (String.Set.of_list_map ~f:snd l)
     in
     let+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc, ignored = located ignored in

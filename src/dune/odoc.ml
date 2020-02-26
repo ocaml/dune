@@ -146,6 +146,12 @@ let odoc sctx =
     ~dir:(Super_context.build_dir sctx)
     "odoc" ~loc:None ~hint:"try: opam install odoc"
 
+let odoc_base_flags sctx build_dir =
+  let conf = Super_context.odoc sctx ~dir:build_dir in
+  match conf.Env_node.Odoc.warnings with
+  | Fatal -> Command.Args.A "--warn-error"
+  | Nonfatal -> S []
+
 let module_deps (m : Module.t) ~obj_dir ~(dep_graphs : Dep_graph.Ml_kind.t) =
   Build.dyn_paths_unit
     (let+ deps =
@@ -168,6 +174,7 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
     let doc_dir = Path.build (Obj_dir.odoc_dir obj_dir) in
     Command.run ~dir:doc_dir (odoc sctx)
       [ A "compile"
+      ; odoc_base_flags sctx odoc_file
       ; A "-I"
       ; Path doc_dir
       ; iflags
@@ -180,14 +187,16 @@ let compile_module sctx ~obj_dir (m : Module.t) ~includes:(file_deps, iflags)
 
 let compile_mld sctx (m : Mld.t) ~includes ~doc_dir ~pkg =
   let odoc_file = Mld.odoc_file m ~doc_dir in
+  let odoc_input = Mld.odoc_input m in
   add_rule sctx
     (Command.run ~dir:(Path.build doc_dir) (odoc sctx)
        [ A "compile"
+       ; odoc_base_flags sctx odoc_input
        ; Command.Args.dyn includes
        ; As [ "--pkg"; Package.Name.to_string pkg ]
        ; A "-o"
        ; Target odoc_file
-       ; Dep (Path.build (Mld.odoc_input m))
+       ; Dep (Path.build odoc_input)
        ]);
   odoc_file
 
@@ -243,6 +252,7 @@ let setup_html sctx (odoc_file : odoc) ~pkg ~requires =
                ~dir:(Path.build (Paths.html_root ctx))
                (odoc sctx)
                [ A "html"
+               ; odoc_base_flags sctx odoc_file.odoc_input
                ; odoc_include_flags ctx pkg requires
                ; A "-o"
                ; Path (Path.build (Paths.html_root ctx))
@@ -281,8 +291,7 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
         compiled :: acc)
   in
   Dep.setup_deps ctx (Lib local_lib)
-    ( List.map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p)
-    |> Path.Set.of_list )
+    (Path.Set.of_list_map modules_and_odoc_files ~f:(fun (_, p) -> Path.build p))
 
 let setup_css_rule sctx =
   let ctx = Super_context.context sctx in
@@ -423,7 +432,8 @@ let odocs sctx target =
     let dir = Lib_info.src_dir info in
     let modules =
       let name = Lib_info.name info in
-      Dir_contents.get sctx ~dir |> Dir_contents.modules_of_library ~name
+      Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+      |> Ml_sources.modules_of_library ~name
     in
     let obj_dir = Lib_info.obj_dir info in
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
@@ -530,15 +540,14 @@ let setup_package_aliases sctx (pkg : Package.t) =
     ( Dep.html_alias ctx (Pkg pkg.name)
       :: ( libs_of_pkg sctx ~pkg:pkg.name
          |> List.map ~f:(fun lib -> Dep.html_alias ctx (Lib lib)) )
-    |> List.map ~f:(fun f -> Path.build (Alias.stamp_file f))
-    |> Path.Set.of_list )
+    |> Path.Set.of_list_map ~f:(fun f -> Path.build (Alias.stamp_file f)) )
 
 let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get sctx ~dir
-  |> Dir_contents.modules_of_library ~name
+  Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+  |> Ml_sources.modules_of_library ~name
   |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =
@@ -641,9 +650,8 @@ let init sctx =
                  |> Lib.DB.find_even_when_hidden (Scope.libs scope)
                  |> Option.value_exn |> Lib.Local.of_lib_exn |> Option.some )
              | _ -> None))
-    |> List.map ~f:(fun (lib : Lib.Local.t) ->
-           Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build)
-    |> Path.Set.of_list )
+    |> Path.Set.of_list_map ~f:(fun (lib : Lib.Local.t) ->
+           Lib lib |> Dep.html_alias ctx |> Alias.stamp_file |> Path.build) )
 
 let gen_rules sctx ~dir:_ rest =
   match rest with

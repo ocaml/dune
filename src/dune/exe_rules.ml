@@ -12,7 +12,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   Check_rules.add_obj_dir sctx ~obj_dir;
   let first_exe = snd (List.hd exes.names) in
   let modules =
-    Dir_contents.modules_of_executables dir_contents ~first_exe ~obj_dir
+    let ml_sources = Dir_contents.ocaml dir_contents in
+    Ml_sources.modules_of_executables ml_sources ~first_exe ~obj_dir
   in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander
@@ -147,7 +148,8 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                  exe)\"."
             ];
       let foreign_sources =
-        Dir_contents.foreign_sources_of_executables dir_contents ~first_exe
+        let foreign_sources = Dir_contents.foreign_sources dir_contents in
+        Foreign_sources.for_exes foreign_sources ~first_exe
       in
       let o_files =
         Foreign_rules.build_o_files ~sctx ~dir ~expander

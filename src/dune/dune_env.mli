@@ -14,6 +14,16 @@ module Stanza : sig
     val to_string : t -> string
   end
 
+  module Odoc : sig
+    type warnings =
+      | Fatal
+      | Nonfatal
+
+    type t = { warnings : warnings option }
+
+    val decode : t Dune_lang.Decoder.t
+  end
+
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
@@ -21,6 +31,7 @@ module Stanza : sig
     ; binaries : File_binding.Unexpanded.t list
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
+    ; odoc : Odoc.t
     }
 
   type pattern =

@@ -75,6 +75,7 @@ end = struct
       { pps; project_root = Option.map project ~f:Dune_project.root }
   end
 
+  (* This mutable table is safe: it caches a pure function. *)
   let reverse_table : (Digest.t, Decoded.t) Table.t =
     Table.create (module Digest) 128
 

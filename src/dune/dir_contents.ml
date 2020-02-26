@@ -180,6 +180,28 @@ end = struct
 
   let lookup_vlib sctx ~dir = Memo.Lazy.force (Load.get sctx ~dir).ml
 
+  let collect_group sctx ~ft_dir ~dir =
+    let dir_status_db = Super_context.dir_status_db sctx in
+    let rec walk ft_dir ~dir ~local acc =
+      match Dir_status.DB.get dir_status_db ~dir with
+      | Is_component_of_a_group_but_not_the_root { stanzas = d; group_root = _ }
+        ->
+        let files =
+          match d with
+          | None -> File_tree.Dir.files ft_dir
+          | Some d -> load_text_files sctx ft_dir d
+        in
+        walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
+      | Standalone _
+      | Group_root _ -> acc
+    and walk_children ft_dir ~dir ~local acc =
+      File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
+          let dir = Path.Build.relative dir name in
+          let local = name :: local in
+          walk ft_dir ~dir ~local acc)
+    in
+    walk_children ft_dir ~dir ~local:[] []
+
   let get0_impl (sctx, dir) : result0 =
     let dir_status_db = Super_context.dir_status_db sctx in
     let ctx = Super_context.context sctx in
@@ -231,33 +253,10 @@ end = struct
         let loc, qualif_mode = qualif_mode in
         (loc, Dune_file.Include_subdirs.Include qualif_mode)
       in
-      (* XXX it's not clear what this [local] parameter is for *)
-      let rec walk ft_dir ~dir ~local acc =
-        match Dir_status.DB.get dir_status_db ~dir with
-        | Is_component_of_a_group_but_not_the_root
-            { stanzas = d; group_root = _ } ->
-          let files =
-            match d with
-            | None -> File_tree.Dir.files ft_dir
-            | Some d -> load_text_files sctx ft_dir d
-          in
-          walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
-        | _ -> acc
-      and walk_children ft_dir ~dir ~local acc =
-        File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
-            let dir = Path.Build.relative dir name in
-            let local =
-              if snd qualif_mode = Qualified then
-                name :: local
-              else
-                local
-            in
-            walk ft_dir ~dir ~local acc)
-      in
       let (files, (subdirs : (Path.Build.t * _ * _) list)), rules =
         Rules.collect_opt (fun () ->
             let files = load_text_files sctx ft_dir d in
-            let subdirs = walk_children ft_dir ~dir ~local:[] [] in
+            let subdirs = collect_group sctx ~ft_dir ~dir in
             (files, subdirs))
       in
       let dirs = (dir, [], files) :: subdirs in

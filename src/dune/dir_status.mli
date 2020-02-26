@@ -6,8 +6,9 @@ type is_component_of_a_group_but_not_the_root =
   }
 
 type t =
-  | Standalone of
-      (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
+  | Generated
+  | Source_only of File_tree.Dir.t
+  | Standalone of File_tree.Dir.t * Stanza.t list Dir_with_dune.t
   (* Directory not part of a multi-directory group. The argument is [None] for
      directory that are not from the source tree, such as generated ones. *)
   | Group_root of

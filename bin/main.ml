@@ -199,11 +199,11 @@ let all =
 let common_commands_synopsis =
   (* Short reminders for the most used and useful commands *)
   let commands =
-    [ "build [--wait]"
-    ; "test [--wait]"
+    [ "build [--watch]"
+    ; "runtest [--watch]"
     ; "exec NAME"
     ; "utop [DIR]"
-    ; "clean"
+    ; "install"
     ; "init project NAME [PATH] [--libs=l1,l2 --ppx=p1,p2 --inline-tests]"
     ]
   in

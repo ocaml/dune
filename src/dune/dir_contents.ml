@@ -134,8 +134,8 @@ end = struct
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
-            |> Path.Build.Set.to_list
-            |> List.map ~f:Path.Build.basename
+            |> Path.Build.Set.fold ~init:[] ~f:(fun a acc ->
+                   Path.Build.basename a :: acc)
           | Copy_files def ->
             Simple_rules.copy_files sctx def ~src_dir ~dir ~expander
             |> Path.Set.to_list |> List.map ~f:Path.basename

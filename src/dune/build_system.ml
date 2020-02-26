@@ -590,8 +590,7 @@ end = struct
     match load_dir ~dir with
     | Non_build targets -> targets
     | Build { rules_here; _ } ->
-      Path.Build.Map.keys rules_here
-      |> List.map ~f:Path.build |> Path.Set.of_list
+      Path.Build.Map.keys rules_here |> Path.Set.of_list_map ~f:Path.build
 
   let compute_alias_rules ~context_name ~(collected : Rules.Dir_rules.ready)
       ~dir ~sub_dir =
@@ -698,8 +697,7 @@ end = struct
                of a build context since there are source files to copy, so this
                call can't fail. *)
             Path.Build.Set.to_list rule.action.targets
-            |> List.map ~f:Path.Build.drop_build_context_exn
-            |> Path.Source.Set.of_list
+            |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
           in
           if Path.Source.Set.is_subset source_files_for_targtes ~of_:to_copy
           then
@@ -885,8 +883,7 @@ end = struct
     in
     let source_files_to_ignore =
       Path.Build.Set.to_list source_files_to_ignore
-      |> List.map ~f:Path.Build.drop_build_context_exn
-      |> Path.Source.Set.of_list
+      |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
     (* Take into account the source files *)
     let to_copy, subdirs_to_keep =

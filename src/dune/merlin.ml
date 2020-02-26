@@ -248,7 +248,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
               in
               let src_dirs =
                 Path.Set.union src_dirs
-                  (Path.Set.of_list (List.map ~f:Path.source more_src_dirs))
+                  (Path.Set.of_list_map ~f:Path.source more_src_dirs)
               in
               Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
          in

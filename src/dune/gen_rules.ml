@@ -215,11 +215,10 @@ let gen_rules sctx dir_contents cctxs
       ~lookup_library
   in
   let files_to_install { Install_conf.section = _; files; package = _ } =
-    List.map files ~f:(fun fb ->
+    Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
           ~f:(Expander.expand_str expander)
         |> Path.build)
-    |> Path.Set.of_list
     |> Rules.Produce.Alias.add_deps (Alias.all ~dir:ctx_dir)
   in
   let { For_stanza.merlin = merlins

@@ -42,10 +42,6 @@ let print_unix_error f =
   with Unix.Unix_error (e, _, _) ->
     User_message.prerr (User_error.make [ Pp.text (Unix.error_message e) ])
 
-let set_executable_bits x = x lor 0o111
-
-let clear_executable_bits x = x land lnot 0o111
-
 module Special_file = struct
   type t =
     | META
@@ -194,9 +190,11 @@ module File_ops_real (W : Workspace) : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file ~package =
     let chmod =
       if executable then
-        set_executable_bits
+        fun _ ->
+      0o755
       else
-        clear_executable_bits
+        fun _ ->
+      0o644
     in
     let ic, oc = Io.setup_copy ~chmod ~src ~dst () in
     Fiber.finalize

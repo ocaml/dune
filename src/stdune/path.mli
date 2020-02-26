@@ -169,6 +169,8 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
 
   val of_local : Local.t -> t
+
+  val chmod : mode:int -> ?op:[ `Add | `Remove | `Set ] -> t -> unit
 end
 
 type t = private
@@ -370,3 +372,15 @@ val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
     If newpath already exists, its contents will be replaced with those of
     oldpath. *)
 val rename : t -> t -> unit
+
+(** Set permissions on the designed files. [op] is [`Set] by default, which sets
+    the permissions exactly to [mode], while [`Add] will add the given [mode] to
+    the current permissions and [`Remove] remove them. [path] will be stat'd in
+    the `Add and `Remove case to determine the current premission, unless the
+    already computed stats are passed as [stats] to save a system call. *)
+val chmod :
+     mode:int
+  -> ?stats:Unix.stats option
+  -> ?op:[ `Add | `Remove | `Set ]
+  -> t
+  -> unit

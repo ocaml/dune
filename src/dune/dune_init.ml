@@ -64,8 +64,8 @@ module File = struct
 
     let executables_conflict (a : Dune_file.Executables.t)
         (b : Dune_file.Executables.t) =
-      let a_names = List.map ~f:snd a.names |> String.Set.of_list in
-      let b_names = List.map ~f:snd b.names |> String.Set.of_list in
+      let a_names = String.Set.of_list_map ~f:snd a.names in
+      let b_names = String.Set.of_list_map ~f:snd b.names in
       String.Set.inter a_names b_names |> String.Set.is_empty |> not
 
     let tests_conflict (a : Dune_file.Tests.t) (b : Dune_file.Tests.t) =

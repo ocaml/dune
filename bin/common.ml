@@ -224,8 +224,8 @@ module Options_implied_by_dash_p = struct
   let packages =
     let parser s =
       Ok
-        (Package.Name.Set.of_list
-           (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
+        (Package.Name.Set.of_list_map ~f:Package.Name.of_string
+           (String.split s ~on:','))
     in
     let printer ppf set =
       Format.pp_print_string ppf

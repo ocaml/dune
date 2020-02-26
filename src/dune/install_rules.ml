@@ -641,10 +641,9 @@ let install_rules sctx (package : Package.t) =
       ~dyn_deps:
         (let+ packages = packages in
          Package.Name.Set.to_list packages
-         |> List.map ~f:(fun pkg ->
+         |> Path.Set.of_list_map ~f:(fun pkg ->
                 Build_system.Alias.package_install ~context:ctx ~pkg
-                |> Alias.stamp_file |> Path.build)
-         |> Path.Set.of_list)
+                |> Alias.stamp_file |> Path.build))
   in
   let action =
     Build.write_file_dyn install_file

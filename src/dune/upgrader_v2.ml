@@ -1,10 +1,16 @@
 open! Stdune
 open Upgrader_common
 
+let explicit_mode fields =
+  if Ast_ops.is_in_list [ "modes" ] fields then None
+  else
+    Some Dune_lang.Atom.(
+      Ast_ops.field_of_list
+        [ of_string "modes"; of_string "byte"; of_string "exe" ])
 
 let update_stanza =
   let open Dune_lang.Ast in
-  function
+    function
     | List (loc, Atom (loca, A "alias") :: tl) as ast ->
       if Ast_ops.is_in_list [ "action" ] tl then
         let tl = Ast_ops.replace_first "name" "alias" tl in
@@ -14,16 +20,12 @@ let update_stanza =
     | (List (loc, Atom (loca, ((A "executable") as atom)) :: tl) as stanza)
     | (List (loc, Atom (loca, ((A "executables")as atom)) :: tl) as stanza) ->
       (* If no mode is defined, explicitely use the previous default *)
-      if Ast_ops.is_in_list [ "modes" ] tl then
-        stanza
-      else
-        List
-          ( loc
-          , Atom (loca, atom)
-            :: Dune_lang.Atom.(
-                 Ast_ops.field_of_list
-                   [ of_string "modes"; of_string "byte"; of_string "exe" ])
-            :: tl )
+      (match explicit_mode tl with
+      | None -> stanza
+      | Some modes ->
+        List (loc, Atom (loca, atom)
+          :: modes
+          :: tl ))
     | stanza -> stanza
 
 let update_formatting sexps =

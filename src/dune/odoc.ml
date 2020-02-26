@@ -433,7 +433,8 @@ let odocs sctx target =
     let dir = Lib_info.src_dir info in
     let modules =
       let name = Lib_info.name info in
-      Dir_contents.get sctx ~dir |> Dir_contents.modules_of_library ~name
+      Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+      |> Ml_sources.modules_of_library ~name
     in
     let obj_dir = Lib_info.obj_dir info in
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
@@ -547,8 +548,8 @@ let entry_modules_by_lib sctx lib =
   let info = Lib.Local.info lib in
   let dir = Lib_info.src_dir info in
   let name = Lib.name (Lib.Local.to_lib lib) in
-  Dir_contents.get sctx ~dir
-  |> Dir_contents.modules_of_library ~name
+  Dir_contents.get sctx ~dir |> Dir_contents.ocaml
+  |> Ml_sources.modules_of_library ~name
   |> Modules.entry_modules
 
 let entry_modules sctx ~pkg =

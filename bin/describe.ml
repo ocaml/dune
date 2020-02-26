@@ -41,7 +41,8 @@ module Crawl = struct
       let dyn_path p = Dyn.String (Path.to_string p) in
       let modules_ =
         Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
-        |> Dir_contents.modules_of_library ~name
+        |> Dir_contents.ocaml
+        |> Ml_sources.modules_of_library ~name
         |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
                let source ml_kind =
                  Dyn.Encoder.option dyn_path

@@ -13,7 +13,8 @@ let has_native_archive lib config contents =
   Lib_config.linker_can_create_empty_archives config
   ||
   let name = Dune_file.Library.best_name lib in
-  let modules = Dir_contents.modules_of_library contents ~name in
+  let ml_sources = Dir_contents.ocaml contents in
+  let modules = Ml_sources.modules_of_library ml_sources ~name in
   not (Modules.is_empty modules)
 
 module Library = Dune_file.Library

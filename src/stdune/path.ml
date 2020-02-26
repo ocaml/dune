@@ -1,5 +1,24 @@
 module Sys = Stdlib.Sys
 
+module Fpath = struct
+  let is_root t = Filename.dirname t = t
+
+  let rec mkdir_p ?(perms = 0o777) t_s =
+    if is_root t_s then
+      ()
+    else
+      try Unix.mkdir t_s perms with
+      | Unix.Unix_error (EEXIST, _, _) -> ()
+      | Unix.Unix_error (ENOENT, _, _) as e ->
+        let parent = Filename.dirname t_s in
+        if is_root parent then
+          raise e
+        else (
+          mkdir_p parent ~perms;
+          Unix.mkdir t_s perms
+        )
+end
+
 let is_dir_sep =
   if Sys.win32 || Sys.cygwin then
     fun c ->
@@ -103,18 +122,6 @@ end = struct
     | "." -> x
     | _ -> make (Filename.concat (to_string x) y)
 
-  let rec mkdir_p ?(perms = 0o777) t =
-    let t_s = to_string t in
-    let p_s = Filename.dirname t_s in
-    let p = make p_s in
-    if p <> t then (
-      try Unix.mkdir t_s perms with
-      | Unix.Unix_error (EEXIST, _, _) -> ()
-      | Unix.Unix_error (ENOENT, _, _) ->
-        mkdir_p ~perms p;
-        Unix.mkdir t_s perms
-    )
-
   let basename t = Filename.basename (to_string t)
 
   let root = of_string "/"
@@ -126,6 +133,14 @@ end = struct
       None
     else
       Some (as_string t ~f:Filename.dirname)
+
+  let parent_exn t =
+    match parent t with
+    | None ->
+      Code_error.raise "Path.External.parent_exn called on a root path" []
+    | Some p -> p
+
+  let mkdir_p ?perms p = Fpath.mkdir_p ?perms (to_string p)
 
   let extension t = Filename.extension (to_string t)
 
@@ -154,12 +169,6 @@ end = struct
       Comparator.OPS with type t := t )
 
   let to_string_maybe_quoted t = String.maybe_quoted (to_string t)
-
-  let parent_exn t =
-    match parent t with
-    | None ->
-      Code_error.raise "Path.External.parent_exn called on a root path" []
-    | Some p -> p
 
   let is_descendant b ~of_:a =
     if is_root a then
@@ -552,26 +561,8 @@ end = struct
   end)
 end
 
-module Relative_to_source_root : sig
-  val mkdir_p : ?perms:int -> Local.t -> unit
-end = struct
-  open Local
-
-  let rec mkdir_p ?(perms = 0o777) t =
-    if is_root t then
-      ()
-    else
-      let t_s = to_string t in
-      try Unix.mkdir t_s perms with
-      | Unix.Unix_error (EEXIST, _, _) -> ()
-      | Unix.Unix_error (ENOENT, _, _) as e ->
-        let parent = parent_exn t in
-        if is_root parent then
-          raise e
-        else (
-          mkdir_p parent ~perms;
-          Unix.mkdir t_s perms
-        )
+module Relative_to_source_root = struct
+  let mkdir_p ?perms s = Fpath.mkdir_p ?perms (Local.to_string s)
 end
 
 module Source0 = Local

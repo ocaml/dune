@@ -10,7 +10,7 @@ module Token : sig
 
               is represented as:
 
-              {[ Lines [" abc"; " def"] ]} *)
+              {[ Lines [ " abc"; " def" ] ]} *)
       | Legacy
           (** Legacy for jbuild files: either block comments or sexp comments.
               The programmer is responsible for fetching the comment contents

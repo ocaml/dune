@@ -20,8 +20,8 @@
     containing the path separator character ('/').
 
     Such a path can be rooted at the source tree root, the build directory or an
-    unspecified root. All these paths are represented by values of type ['a
-    Path.Local_gen.t] where ['a] denotes the root of the path.
+    unspecified root. All these paths are represented by values of type
+    ['a Path.Local_gen.t] where ['a] denotes the root of the path.
 
     {2 External paths}
 
@@ -237,8 +237,10 @@ val extract_build_dir_first_component : t -> (string * Local.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
 
-    {[ extract_build_context "_build/blah/foo/bar" = Some ("_build/blah",
-    "foo/bar") ]} *)
+    {[
+      extract_build_context "_build/blah/foo/bar"
+      = Some ("_build/blah", "foo/bar")
+    ]} *)
 val extract_build_context_dir : t -> (t * Source.t) option
 
 val extract_build_context_dir_maybe_sandboxed : t -> (t * Source.t) option

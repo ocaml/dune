@@ -1,7 +1,7 @@
 (** Tracking of library dependencies *)
 
-(** This module implements tracking of external library dependencies, for [dune
-    external-lib-deps] *)
+(** This module implements tracking of external library dependencies, for
+    [dune external-lib-deps] *)
 
 open! Stdune
 

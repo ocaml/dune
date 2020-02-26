@@ -657,14 +657,15 @@ module Deps = struct
     let+ deps =
       Build.map ~f:List.concat (List.map l ~f:(f t expander) |> Build.all)
     and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-    and+ (_ : Value.t list list) =
-      (* TODO: Why do we ignore the resulting [ddeps] values? *)
-      let ddeps =
-        Pform.Expansion.Map.values (Expander.Resolved_forms.ddeps forms)
-      in
-      Build.all ddeps
-    and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
-    deps
+    and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms)
+    in
+    if Pform.Expansion.Map.is_empty (Expander.Resolved_forms.ddeps forms) then
+      deps
+    else
+      (* calling [with_record_no_ddeps] above guarantees this never happens *)
+      Code_error.raise "ddeps are not allowed in this position"
+        [ "forms", Dyn.Encoder.opaque forms
+        ]
 
   let interpret t ~expander l =
     let+ _paths = make_interpreter ~f:dep t ~expander l in

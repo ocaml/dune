@@ -62,6 +62,7 @@ let make ?finally ?duplication_mode handle =
     Result.map_error ~f:err
       (Messages.negotiate_version my_versions fd input socket)
   in
+  Log.infof "negotiated version: %a" Messages.pp_version version;
   let rec thread input =
     match
       let+ command = read version input in

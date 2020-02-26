@@ -2193,9 +2193,7 @@
  (action
   (chdir
    test-cases/write-permissions
-   (progn
-    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
-    (diff? run.t run.t.corrected)))))
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (alias
  (name runtest)

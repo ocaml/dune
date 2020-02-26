@@ -7,7 +7,8 @@
     A sub-system is generally split into two sub-systems:
 
     - a backend part, which will be used by libraries that provide an
-    implementation of the sub-system - an end point, for users of the sub-system
+      implementation of the sub-system - an end point, for users of the
+      sub-system
 
     For instance, for inline tests, the backend is what defines the inline tests
     framework. "ppx_inline_test" and "qtest" are examples of backends. An end
@@ -24,7 +25,7 @@ end
     - connect the parser to the [dune] file parser
 
     - connect the metatada generator [M.to_sexp] so that metadata are included
-    in installed [<lib>.dune] files *)
+      in installed [<lib>.dune] files *)
 module Register_backend (M : Backend) : Registered_backend with type t := M.t
 
 (** Register a sub-system backend:

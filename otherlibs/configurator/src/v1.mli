@@ -38,9 +38,11 @@ module C_define : sig
 
   (** Import some #define from the given header files. For instance:
 
-      {[ # C.C_define.import c ~includes:"caml/config.h" ["ARCH_SIXTYFOUR",
-      Switch];; - (string * Configurator.C_define.Value.t) list =
-      ["ARCH_SIXTYFOUR", Switch true] ]} *)
+      {[
+        # C.C_define.import c ~includes:"caml/config.h" ["ARCH_SIXTYFOUR",
+        Switch];; - (string * Configurator.C_define.Value.t) list =
+        ["ARCH_SIXTYFOUR", Switch true]
+      ]} *)
   val import :
        t
     -> ?prelude:string
@@ -100,8 +102,8 @@ with type configurator := t
 
 module Flags : sig
   (** [write_sexp fname s] writes the list of strings [s] to the file [fname] in
-      an appropriate format so that it can used in [dune] files with [(:include
-      [fname])]. *)
+      an appropriate format so that it can used in [dune] files with
+      [(:include \[fname\])]. *)
   val write_sexp : string -> string list -> unit
 
   (** [write_lines fname s] writes the list of string [s] to the file [fname]

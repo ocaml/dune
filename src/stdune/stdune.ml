@@ -19,6 +19,7 @@ module Id = Id
 module Io = Io
 module List = List
 module Lock_file = Lock_file
+module Log = Log
 module Map = Map
 module Option = Option
 module Or_exn = Or_exn

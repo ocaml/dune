@@ -19,11 +19,11 @@ type hint =
     The input can be seen either as a plain sequence of S-expressions or a list
     of fields. The ['kind] parameter indicates how the input is seen:
 
-    - with {['kind = [values]]}, the input is seen as an ordered sequence of
-    S-expressions
+    - with ['kind = \[values\]], the input is seen as an ordered sequence of
+      S-expressions
 
-    - with {['kind = [fields]]}, the input is seen as an unordered sequence of
-    fields
+    - with [!'kind = \[fields\]], the input is seen as an unordered sequence of
+      fields
 
     A field is a S-expression of the form: [(<atom> <values>...)] where [atom]
     is a plain atom, i.e. not a quoted string and not containing variables.
@@ -90,7 +90,7 @@ val if_paren_colon_form : then_:(Loc.t * string -> 'a) t -> else_:'a t -> 'a t
 (** Expect the next element to be the following atom. *)
 val keyword : string -> unit t
 
-(** {[match_keyword [(k1, t1); (k2, t2); ...] ~fallback]} inspects the next
+(** [match_keyword \[(k1, t1); (k2, t2); ...\] ~fallback] inspects the next
     element of the input sequence. If it is an atom equal to one of [k1], [k2],
     ... then the corresponding parser is used to parse the rest of the sequence.
     Other [fallback] is used. *)

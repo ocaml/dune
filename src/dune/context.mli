@@ -62,7 +62,7 @@ type t = private
             host. *)
   ; for_host : t option
         (** [false] if a user explicitly listed this context in the workspace.
-            Controls whether we add artifacts from this context @install *)
+            Controls whether we add artifacts from this context \@install *)
   ; implicit : bool
         (** Directory where artifact are stored, for instance "_build/default" *)
   ; build_dir : Path.Build.t

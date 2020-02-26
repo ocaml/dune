@@ -11,14 +11,15 @@ let update_stanza =
         List (loc, Atom (loca, Dune_lang.Atom.of_string "rule") :: tl)
       else
         ast
-    | List (loc, Atom (loca, A "executable") :: tl) as stanza ->
+    | (List (loc, Atom (loca, ((A "executable") as atom)) :: tl) as stanza)
+    | (List (loc, Atom (loca, ((A "executables")as atom)) :: tl) as stanza) ->
       (* If no mode is defined, explicitely use the previous default *)
       if Ast_ops.is_in_list [ "modes" ] tl then
         stanza
       else
         List
           ( loc
-          , Atom (loca, Dune_lang.Atom.of_string "executable")
+          , Atom (loca, atom)
             :: Dune_lang.Atom.(
                  Ast_ops.field_of_list
                    [ of_string "modes"; of_string "byte"; of_string "exe" ])

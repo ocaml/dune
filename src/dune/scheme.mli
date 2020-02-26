@@ -39,10 +39,11 @@ end
     This consists of:
 
     - Sharing the work of scheme data structure traversal. For example, if a
-    scheme consists of a many nested [Union]s, a naive scheme lookup would have
-    to look at them all at every [get_rules] query. [evaluate] will collapse
-    them to a directory-keyed trie for faster lookup. - Sharing the work done by
-    user thunks. Every thunk will only be called at most once per [evaluate]. *)
+      scheme consists of a many nested [Union]s, a naive scheme lookup would
+      have to look at them all at every [get_rules] query. [evaluate] will
+      collapse them to a directory-keyed trie for faster lookup. - Sharing the
+      work done by user thunks. Every thunk will only be called at most once per
+      [evaluate]. *)
 val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
 
 val all : 'a t list -> 'a t

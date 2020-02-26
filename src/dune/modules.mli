@@ -78,8 +78,8 @@ val main_module_name : t -> Module_name.t option
 (** Returns only the virtual module names in the library *)
 val virtual_module_names : t -> Module_name.Set.t
 
-(** Returns the alias module if it exists. This module only exists for [(wrapped
-    true)] and when there is more than 1 module. *)
+(** Returns the alias module if it exists. This module only exists for
+    [(wrapped true)] and when there is more than 1 module. *)
 val alias_module : t -> Module.t option
 
 val wrapped : t -> Wrapped.t

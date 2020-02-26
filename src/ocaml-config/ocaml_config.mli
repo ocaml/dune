@@ -61,8 +61,8 @@ val make : Vars.t -> (t, Origin.t * string) Result.t
 
 (** {1 Query} *)
 
-(** The following parameters match the variables in the output of [ocamlc
-    -config] but are stable across versions of OCaml. *)
+(** The following parameters match the variables in the output of
+    [ocamlc -config] but are stable across versions of OCaml. *)
 
 val version : t -> int * int * int
 

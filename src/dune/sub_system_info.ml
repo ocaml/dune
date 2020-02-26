@@ -21,6 +21,8 @@ module type S = sig
   val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
 end
 
+(* This mutable table is safe under the assumption that subsystems are
+   registered at the top level, which is currently true. *)
 let all = Sub_system_name.Table.create ~default_value:None
 
 (* For parsing config files in the workspace *)

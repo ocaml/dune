@@ -91,6 +91,9 @@ module Spec = struct
 
   type packed = T : (_, _, _) t -> packed [@@unboxed]
 
+  (* This mutable table is safe under the assumption that [register] is called
+     only at the top level, which is currently true. This means that all
+     memoization tables created not at the top level are hidden. *)
   let by_name : packed String.Table.t = String.Table.create 256
 
   let find name = String.Table.find by_name name
@@ -512,6 +515,7 @@ let create_with_store (type i) name
 
 let create (type i) name ?doc ~input:(module Input : Input with type t = i)
     ~visibility ~output typ f =
+  (* This mutable table is safe: the implementation tracks all dependencies. *)
   let cache = Store.of_table (Table.create (module Input) 16) in
   let input = (module Input : Store_intf.Input with type t = i) in
   create_with_cache name ~cache ?doc ~input ~visibility ~output typ f

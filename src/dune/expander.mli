@@ -121,7 +121,8 @@ val with_record_deps :
 
 (** In this expander, we record dependencies whenever we expand a variable into
     a file path, but we forbid variables that require us to build something to
-    expand. For example, %{exe:/foo} is allowed but %{read:bar} is not allowed. *)
+    expand. For example, %\{exe:/foo\} is allowed but %\{read:bar\} is not
+    allowed. *)
 val with_record_no_ddeps :
      t
   -> Resolved_forms.t

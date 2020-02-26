@@ -12,7 +12,7 @@ open! Stdune
     A dialect can use the standard OCaml syntax or it can specify an action to
     convert from a custom syntax to a binary OCaml syntax.
 
-    Similarly, a dialect can specify a custom formatter to implement the @fmt
+    Similarly, a dialect can specify a custom formatter to implement the \@fmt
     alias.
 
     When not using a custom syntax or formatting action, a dialect is nothing

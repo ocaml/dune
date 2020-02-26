@@ -170,6 +170,7 @@ let find_dir_specified_on_command_line ~dir =
       ]
   | Some dir -> dir
 
+(* This mutable table is safe: it's modified only at the top level. *)
 let standard_aliases = Table.create (module Name) 7
 
 let is_standard name = Table.mem standard_aliases name

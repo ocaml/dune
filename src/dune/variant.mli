@@ -5,7 +5,7 @@
 
     They are directly mapped to findlib predicates. *)
 
-include Stdune.Interned.S
+include Stdune.Interned_intf.S
 
 (** Well-known variants *)
 val ppx_driver : t

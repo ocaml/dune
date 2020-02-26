@@ -1,52 +1,5 @@
 module Stdune_table = Table
 
-module type S = sig
-  type t
-
-  val hash : t -> int
-
-  val equal : t -> t -> bool
-
-  val compare : t -> t -> Ordering.t
-
-  val to_dyn : t -> Dyn.t
-
-  val to_string : t -> string
-
-  val pp : t Fmt.t
-
-  val make : string -> t
-
-  val get : string -> t option
-
-  val all : unit -> t list
-
-  module Set : sig
-    include Set.S with type elt = t
-
-    val to_dyn : t -> Dyn.t
-
-    val make : string list -> t
-
-    val pp : t Fmt.t
-  end
-
-  module Map : Map.S with type key = t
-
-  module Table : sig
-    type key = t
-
-    type 'a t
-
-    val create : default_value:'a -> 'a t
-
-    val get : 'a t -> key -> 'a
-
-    val set : 'a t -> key:key -> data:'a -> unit
-  end
-  with type key := t
-end
-
 type resize_policy =
   | Conservative
   | Greedy
@@ -70,6 +23,8 @@ module type Settings = sig
 end
 
 module Make (R : Settings) () = struct
+  (* The mutable tables in this module can be made safe if we stop leaking
+     information about the representation, e.g. by not exposing [compare]. *)
   let ids = Table.create (module String) 1024
 
   let next = ref 0

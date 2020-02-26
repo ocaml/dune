@@ -1,7 +1,7 @@
-(** String with variables of the form %{...} or %(...)
+(** String with variables of the form %\{...\} or %(...)
 
-    Variables cannot contain "%{", "%(", ")" or "}". For instance in "%(cat
-    %{x})", only "%{x}" will be considered a variable, the rest is text. *)
+    Variables cannot contain "%\{", "%(", ")" or "\}". For instance in "%(cat
+    %\{x\})", only "%\{x\}" will be considered a variable, the rest is text. *)
 open! Stdune
 
 open Import
@@ -55,8 +55,8 @@ module Mode : sig
 end
 
 module Var : sig
-  (** Variables are of the form %{foo} or %{foo:bar}. The latter form is also
-      referred to as macros. *)
+  (** Variables are of the form %\{foo\} or %\{foo:bar\}. The latter form is
+      also referred to as macros. *)
   type t
 
   val to_dyn : t -> Dyn.t

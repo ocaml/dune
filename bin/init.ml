@@ -18,7 +18,7 @@ let validate_component_options kind unsupported_options =
   in
   List.iter ~f:report_invalid_option unsupported_options
 
-(** {2 Cmdliner Argument Converters }*)
+(** {2 Cmdliner Argument Converters} *)
 
 let atom_parser s =
   match Dune_lang.Atom.parse s with

@@ -5,11 +5,15 @@ open! Stdune
     program as well as the dependencies and targets of the program at the same
     time.
 
-    For instance to represent the argument of [ocamlc -o src/foo.exe
-    src/foo.ml], one might write:
+    For instance to represent the argument of
+    [ocamlc -o src/foo.exe src/foo.ml], one might write:
 
-    {[ [ A "-o" ; Target (Path.relatie dir "foo.exe") ; Dep (Path.relative dir
-    "foo.ml") ] ]}
+    {[
+      [ A "-o"
+      ; Target (Path.relatie dir "foo.exe")
+      ; Dep (Path.relative dir "foo.ml")
+      ]
+    ]}
 
     This DSL was inspired from the ocamlbuild API. *)
 
@@ -20,9 +24,9 @@ open! Import
 
     [Path] is similar to [A] in the sense that it defines a command line
     argument that is neither a dependency or target. However, the difference
-    between the two is that [A s] produces exactly the argument [s], while [Path
-    p] produces a string that depends on where the command is executed. For
-    instance [Path (Path.of_string "src/foo.ml")] will translate to
+    between the two is that [A s] produces exactly the argument [s], while
+    [Path p] produces a string that depends on where the command is executed.
+    For instance [Path (Path.of_string "src/foo.ml")] will translate to
     "../src/foo.ml" if the command is started from the "test" directory. *)
 
 module Args : sig

@@ -11,6 +11,10 @@
 - Add a `dune describe` command to obtain the topology of a dune
   workspace, for projects such as ROTOR. (#3128, @diml)
 
+- Prevent installation of public executables disabled using the `enabled_if` field.
+  Installation will now simply skip such executables instead of raising an
+  error. (#3195, @voodoos)
+
 2.3.1 (20/02/2020)
 ------------------
 

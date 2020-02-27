@@ -94,20 +94,15 @@ let get_bootstrap_type ~boot coq_module =
     | false -> Bootstrap
     | true -> Bootstrap_prelude )
 
-let flags_of_bootstrap_type ~boot_type ~obj_dir =
+let flags_of_bootstrap_type ~boot_type =
   let open Command in
   match boot_type with
   | No_boot -> []
-  | Bootstrap -> [ Args.A "-coqlib"; Args.Path (Path.build obj_dir) ]
-  | Bootstrap_prelude ->
-    [ Args.A "-coqlib"; Args.Path (Path.build obj_dir); Args.A "-noinit" ]
+  | Bootstrap -> [ Args.A "-boot" ]
+  | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
 
-let coqdep_file ~dir coq_module =
-  Coq_module.obj_file ~obj_dir:dir ~ext:".v.d" coq_module
-
-let deps_of ~dir ~boot coq_module =
-  let stdout_to = coqdep_file ~dir coq_module in
-  let boot_type = get_bootstrap_type ~boot coq_module in
+let deps_of ~dir ~boot_type coq_module =
+  let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
   Build.dyn_paths_unit
     (Build.map
        (Build.lines_of (Path.build stdout_to))
@@ -116,38 +111,34 @@ let deps_of ~dir ~boot coq_module =
            ~f:(Path.relative (Path.build dir))
            (parse_coqdep ~boot_type ~coq_module x)))
 
-let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags ~boot
-    coq_module =
+let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
-  let file_flags = file_flags @ [ Command.Args.Dep (Path.build source) ] in
-  let cd_arg = Command.Args.As [ "-dyndep"; "opt" ] :: file_flags in
-  let cd_arg =
-    if boot then
-      Command.Args.As [ "-boot" ] :: cd_arg
-    else
-      cd_arg
+  let file_flags =
+    [ Command.Args.S file_flags
+    ; As [ "-dyndep"; "opt" ]
+    ; Dep (Path.build source)
+    ]
   in
-  let stdout_to = coqdep_file ~dir coq_module in
+  let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
   let dir = Path.build dir in
   let open Build.With_targets.O in
   Build.with_no_targets mlpack_rule
   >>> Build.with_no_targets source_rule
-  >>> Command.run ~dir ~stdout_to coqdep cd_arg
+  >>> Command.run ~dir ~stdout_to coqdep file_flags
 
-let coqc_rule ~expander ~dir ~coqc ~boot ~coq_flags ~file_flags coq_module =
+let coqc_rule ~expander ~dir ~coqc ~coq_flags ~file_flags coq_module =
   let source = Coq_module.source coq_module in
-  let boot_type = get_bootstrap_type ~boot coq_module in
-  let obj_dir = dir in
   let file_flags =
-    let object_to = Coq_module.obj_file ~obj_dir ~ext:".vo" coq_module in
+    let object_to = Coq_module.obj_file ~obj_dir:dir coq_module in
     [ Command.Args.Hidden_targets [ object_to ]
-    ; S (flags_of_bootstrap_type ~boot_type ~obj_dir)
     ; S file_flags
     ; Command.Args.Dep (Path.build source)
     ]
   in
   let open Build.With_targets.O in
+  (* The way we handle the transitive dependencies of .vo files is not safe for
+     sandboxing *)
   Build.with_no_targets
     (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
   >>>
@@ -164,21 +155,23 @@ let setup_rule ~expander ~dir ~cc ~source_rule ~coq_flags ~file_flags
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
+  let boot_type = get_bootstrap_type ~boot coq_module in
+  let file_flags =
+    [ Command.Args.S (flags_of_bootstrap_type ~boot_type); S file_flags ]
+  in
+
   let coqdep_rule =
     coqdep_rule ~dir ~coqdep:cc.coqdep ~mlpack_rule ~source_rule ~file_flags
-      ~boot coq_module
+      coq_module
   in
 
   (* Process coqdep and generate rules *)
-  let deps_of = deps_of ~dir ~boot coq_module in
+  let deps_of = deps_of ~dir ~boot_type coq_module in
 
   (* Rules for the files *)
   [ coqdep_rule
   ; Build.with_no_targets deps_of
-    >>> (* The way we handle the transitive dependencies of .vo files is not
-           safe for sandboxing *)
-    coqc_rule ~expander ~dir ~coqc:cc.coqc ~boot ~coq_flags ~file_flags
-      coq_module
+    >>> coqc_rule ~expander ~dir ~coqc:cc.coqc ~coq_flags ~file_flags coq_module
   ]
 
 (* TODO: remove; rgrinberg points out: - resolve program is actually cached, -
@@ -287,15 +280,27 @@ let install_rules ~sctx ~dir s =
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
-    (* This is the usual root for now, Coq + Dune will change it! *)
-    let coq_root = Path.Local.of_string "coq/user-contrib" in
     (* This must match the wrapper prefix for now to remain compatible *)
     let dst_suffix = coqlib_wrapper_name s in
-    let dst_dir = Path.Local.relative coq_root dst_suffix in
+    (* These are the rules for now, coq lang 2.0 will make this uniform *)
+    let dst_dir =
+      if s.boot then
+        (* We drop the "Coq" prefix (!) *)
+        Path.Local.of_string "coq/theories"
+      else
+        let coq_root = Path.Local.of_string "coq/user-contrib" in
+        Path.Local.relative coq_root dst_suffix
+    in
+    let coq_plugins_install_rules =
+      if s.boot then
+        []
+      else
+        coq_plugins_install_rules ~scope ~package ~dst_dir s
+    in
     Dir_contents.coq dir_contents
     |> Coq_sources.library ~name
     |> List.map ~f:(fun (vfile : Coq_module.t) ->
-           let vofile = Coq_module.obj_file ~obj_dir:dir ~ext:".vo" vfile in
+           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
            let vofile_rel =
              Path.reach ~from:(Path.build dir) (Path.build vofile)
            in
@@ -304,7 +309,7 @@ let install_rules ~sctx ~dir s =
            , Install.(
                Entry.make Section.Lib_root ~dst:(Path.Local.to_string dst)
                  vofile) ))
-    |> List.rev_append (coq_plugins_install_rules ~scope ~package ~dst_dir s)
+    |> List.rev_append coq_plugins_install_rules
 
 let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
   let cc = create_ccoq sctx ~dir in

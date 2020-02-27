@@ -32,7 +32,9 @@ val prefix : t -> string list
 
 val name : t -> string
 
-val obj_file : obj_dir:Path.Build.t -> ext:string -> t -> Path.Build.t
+val dep_file : obj_dir:Path.Build.t -> t -> Path.Build.t
+
+val obj_file : obj_dir:Path.Build.t -> t -> Path.Build.t
 
 val to_dyn : t -> Dyn.t
 

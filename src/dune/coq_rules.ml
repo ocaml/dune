@@ -131,9 +131,6 @@ let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags ~boot
   let stdout_to = coqdep_file ~dir coq_module in
   let dir = Path.build dir in
   let open Build.With_targets.O in
-  (* coqdep needs the full source + plugin's mlpack to be present :( *)
-  (* This is weird stuff in order to adapt the rule so we can reuse ml_iflags :(
-     I wish we had more flexible typing. *)
   Build.with_no_targets mlpack_rule
   >>> Build.with_no_targets source_rule
   >>> Command.run ~dir ~stdout_to coqdep cd_arg

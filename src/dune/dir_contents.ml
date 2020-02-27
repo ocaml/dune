@@ -193,7 +193,8 @@ end = struct
         in
         walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
       | Standalone _
-      | Group_root _ -> acc
+      | Group_root _ ->
+        acc
     and walk_children ft_dir ~dir ~local acc =
       File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
           let dir = Path.Build.relative dir name in

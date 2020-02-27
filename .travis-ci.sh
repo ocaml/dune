@@ -18,6 +18,7 @@ opam_install_test_deps () {
          "$ODOC" \
          menhir \
          ocaml-migrate-parsetree \
+         result.1.4 \
          utop.2.4.2 \
          mdx.1.6.0
          # js_of_ocaml-ppx \

@@ -325,13 +325,12 @@ let upgrade_to_v1 todo dir =
         ; Pp.text "You need to upgrade it manually."
         ]
     else
-      let files = Upgrader_common.scan_included_files fn
-        ~lexer:Jbuild_support.Lexer.token
+      let files =
+        Upgrader_common.scan_included_files fn ~lexer:Jbuild_support.Lexer.token
       in
       Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
           upgrade_file todo fn' sexps comments
             ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
-
 
 let upgrade_to_v2 todo dir =
   Dune_project.default_dune_language_version := (2, 0);
@@ -347,9 +346,7 @@ type project_version =
   | Dune1_project
 
 let fold_on_project_roots ~f ~init =
-  File_tree.fold_with_progress
-    ~traverse:Sub_dirs.Status.Set.normal_only
-    ~init
+  File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only ~init
     ~f
 
 let detect_project_version project dir =
@@ -375,12 +372,23 @@ let upgrade () =
   let current_versions =
     fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
   in
+  let v1_updates = ref false in
+  let v2_updates = ref false in
+  let log_update dir ver =
+    Console.print
+          [ Pp.textf "Project in dir %s will be upgraded to dune %s.\n" dir ver ]
+  in
   List.iter current_versions ~f:(fun (dir, version) ->
+      let d = Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir) in
       match version with
       | Jbuild_project ->
-          upgrade_to_v1 todo dir
+        log_update d "v1";
+        v1_updates := true;
+        upgrade_to_v1 todo dir
       | Dune1_project ->
-          upgrade_to_v2 todo dir
+        log_update d "v2";
+        v2_updates := true;
+        upgrade_to_v2 todo dir
       | Dune2_project -> ());
   List.iter todo.to_edit ~f:(fun (fn, s) ->
       Console.print
@@ -398,4 +406,17 @@ let upgrade () =
         ];
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
           Path.unlink (Path.source p));
-      Io.write_file (Path.source new_file) contents ~binary:true)
+      Io.write_file (Path.source new_file) contents ~binary:true);
+  if !v1_updates then
+    log
+      "\n\
+       Some projects where upgraded to dune v1, you can run the upgrader\n\
+       again to upgrade them to dune v2.\n";
+  if !v2_updates then
+    log
+      "\n\
+       Some projects were upgraded to dune v2. Some breaking changes may not\n\
+       have been treated automatically. Here is a list of things you should check\n\
+       to complete the migration:\n\
+       %s"
+      Upgrader_v2.todo_log

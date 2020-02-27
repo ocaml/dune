@@ -16,6 +16,8 @@ val report :
   -> Exn_with_backtrace.t
   -> unit
 
+val report_backtraces : bool -> unit
+
 (** Raised for errors that have already been reported to the user and shouldn't
     be reported again. This might happen when trying to build a dependency that
     has already failed. *)

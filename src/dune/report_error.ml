@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 let () = Hooks.End_of_build.always Stdune.Report_error.clear_reported
 

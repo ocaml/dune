@@ -12,7 +12,7 @@ let external_lib_deps_hint = ref []
 
 let capture_outputs = ref true
 
-let debug_backtraces = ref false
+let debug_backtraces = Stdune.Report_error.report_backtraces
 
 let diff_command = ref None
 

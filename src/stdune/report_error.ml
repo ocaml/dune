@@ -81,6 +81,10 @@ let i_must_not_segfault =
 
 let reported = ref Digest.Set.empty
 
+let report_backtraces_flag = ref false
+
+let report_backtraces b = report_backtraces_flag := b
+
 let clear_reported () = reported := Digest.Set.empty
 
 let buf = Buffer.create 128
@@ -108,7 +112,7 @@ let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
       Buffer.clear buf
     else (
       reported := Digest.Set.add !reported hash;
-      if p.backtrace || !Clflags.debug_backtraces then
+      if p.backtrace || !report_backtraces_flag then
         Format.fprintf ppf "Backtrace:\n%s"
           (Printexc.raw_backtrace_to_string backtrace);
       Option.iter (extra loc) ~f:(Format.fprintf ppf "%a@\n" render);

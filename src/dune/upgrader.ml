@@ -378,19 +378,10 @@ let upgrade () =
   List.iter current_versions ~f:(fun (dir, version) ->
       match version with
       | Jbuild_project ->
-        Console.print
-          [ Pp.textf "TODO: upgrade v0 -> v1: %s\n"
-          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))];
           upgrade_to_v1 todo dir
       | Dune1_project ->
-        Console.print
-          [ Pp.textf "TODO: upgrade v1 -> v2: %s\n"
-          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))];
           upgrade_to_v2 todo dir
-      | Dune2_project ->
-        Console.print
-          [ Pp.textf "TODO: already upgraded at v2: %s\n"
-          (Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir))]);
+      | Dune2_project -> ());
   List.iter todo.to_edit ~f:(fun (fn, s) ->
       Console.print
         [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];

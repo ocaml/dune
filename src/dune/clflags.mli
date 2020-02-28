@@ -13,7 +13,7 @@ val external_lib_deps_hint : string list ref
 val capture_outputs : bool ref
 
 (** Always print backtraces, to help debugging dune itself *)
-val debug_backtraces : bool ref
+val debug_backtraces : bool -> unit
 
 (** Command to use to diff things *)
 val diff_command : string option ref

@@ -34,7 +34,7 @@ val is_universal : 'w t -> bool
     directory separator characters. *)
 val descend : 'w t -> string -> Path.Local.w t
 
-(** [exceptions t] is the set of all bindings of the form [(comp, t']] such
+(** [exceptions t] is the set of all bindings of the form [(comp, t')] such
     that:
 
     - [t' = descend t comp] - [t' <> trivial (default t)]

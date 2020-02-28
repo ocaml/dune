@@ -1,7 +1,7 @@
 open Stdune
 module Config = Dune.Config
 module Colors = Dune.Colors
-module Clflags = Stdune.Clflags
+module Clflags = Dune.Clflags
 module Package = Dune.Package
 module Profile = Dune.Profile
 module Term = Cmdliner.Term
@@ -80,7 +80,7 @@ let set_common_other ?log_file c ~targets =
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
-  Clflags.debug_backtraces := c.debug_backtraces;
+  Clflags.debug_backtraces c.debug_backtraces;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
@@ -224,8 +224,8 @@ module Options_implied_by_dash_p = struct
   let packages =
     let parser s =
       Ok
-        (Package.Name.Set.of_list
-           (List.map ~f:Package.Name.of_string (String.split s ~on:',')))
+        (Package.Name.Set.of_list_map ~f:Package.Name.of_string
+           (String.split s ~on:','))
     in
     let printer ppf set =
       Format.pp_print_string ppf

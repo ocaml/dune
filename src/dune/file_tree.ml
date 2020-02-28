@@ -521,10 +521,8 @@ let files_of path =
   match find_dir path with
   | None -> Path.Source.Set.empty
   | Some dir ->
-    Path.Source.Set.of_list
-      (List.map
-         (String.Set.to_list (Dir0.files dir))
-         ~f:(Path.Source.relative path))
+    Dir0.files dir |> String.Set.to_list
+    |> Path.Source.Set.of_list_map ~f:(Path.Source.relative path)
 
 let file_exists path =
   match find_dir (Path.Source.parent_exn path) with

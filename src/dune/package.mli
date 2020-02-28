@@ -9,7 +9,7 @@ module Name : sig
 
   val version_fn : t -> string
 
-  include Interned.S with type t := t
+  include Interned_intf.S with type t := t
 
   include Dune_lang.Conv.S with type t := t
 

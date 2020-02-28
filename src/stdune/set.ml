@@ -73,4 +73,9 @@ module Make (Key : Map_intf.Key) (M : Map_intf.S with type key = Key.t) = struct
   let of_keys = M.foldi ~init:empty ~f:(fun k _ acc -> add acc k)
 
   let to_map = fold ~init:M.empty ~f:(fun k acc -> M.set acc k ())
+
+  let of_list_map xs ~f =
+    (* We don't [fold_left] & [add] over [xs] because [of_list] has a
+       specialized implementation *)
+    List.map xs ~f |> of_list
 end

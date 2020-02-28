@@ -2187,6 +2187,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.06.0)))
 
+(rule
+ (alias write-permissions)
+ (deps (package dune) (source_tree test-cases/write-permissions))
+ (action
+  (chdir
+   test-cases/write-permissions
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
 (alias
  (name runtest)
  (deps
@@ -2449,7 +2457,8 @@
   (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
-  (alias wrapped-transition)))
+  (alias wrapped-transition)
+  (alias write-permissions)))
 
 (alias
  (name runtest-no-deps)
@@ -2681,7 +2690,8 @@
   (alias workspace-paths)
   (alias workspaces)
   (alias wrapped-false-main-module-name)
-  (alias wrapped-transition)))
+  (alias wrapped-transition)
+  (alias write-permissions)))
 
 (alias
  (name runtest-disabled)

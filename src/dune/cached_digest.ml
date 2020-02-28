@@ -26,6 +26,11 @@ end)
 
 let needs_dumping = ref false
 
+(* CR-soon amokhov: replace this mutable table with a memoized function. This
+   will probably require splitting this module in two, for dealing with source
+   and target files, respectively. For source files, we receive updates via the
+   file-watching API. For target files, we modify the digests ourselves, without
+   subscribing for file-watching updates. *)
 let cache =
   lazy
     ( match P.load db_file with
@@ -90,11 +95,19 @@ let set fn digest =
   let stat = Path.stat fn in
   set_with_stat fn digest stat
 
-let refresh fn =
-  let stat = Path.stat fn in
-  let digest = Digest.file_with_stats fn stat in
-  set_with_stat fn digest stat;
+let refresh_ stats fn =
+  let digest = Digest.file_with_stats fn stats in
+  set_with_stat fn digest stats;
   digest
+
+let refresh fn =
+  let stats = Path.stat fn in
+  refresh_ stats fn
+
+let refresh_and_chmod fn =
+  let stats = Path.stat fn in
+  Path.chmod ~stats:(Some stats) ~mode:0o222 ~op:`Remove fn;
+  refresh_ stats fn
 
 let peek_file fn =
   let cache = Lazy.force cache in

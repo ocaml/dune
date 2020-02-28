@@ -105,7 +105,7 @@ module Test = struct
   let make ?env ?only_ocaml ?(skip_platforms = []) ?(enabled = true)
       ?(js = false) ?(coq = false) ?(external_deps = false)
       ?(disable_sandboxing = false) ?(additional_deps = []) path =
-    let external_deps = external_deps || coq in
+    let external_deps = external_deps || coq || js in
     { path
     ; env
     ; only_ocaml

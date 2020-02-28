@@ -8,13 +8,13 @@ module T = struct
     }
 
   type t =
-    | Standalone of
-        (File_tree.Dir.t * Stanza.t list Dir_with_dune.t option) option
-    (* Directory not part of a multi-directory group. The argument is [None] for
-       directory that are not from the source tree, such as generated ones. *)
+    | Generated
+    | Source_only of File_tree.Dir.t
+    | Standalone of File_tree.Dir.t * Stanza.t list Dir_with_dune.t
+    (* Directory not part of a multi-directory group. *)
     | Group_root of
         File_tree.Dir.t
-        * Include_subdirs.qualification
+        * (Loc.t * Include_subdirs.qualification)
         * Stanza.t list Dir_with_dune.t
     (* Directory with [(include_subdirs x)] where [x] is not [no] *)
     | Is_component_of_a_group_but_not_the_root of
@@ -32,7 +32,10 @@ type enclosing_group =
   | Group_root of Path.Build.t
 
 let current_group dir = function
-  | Standalone _ -> No_group
+  | Generated
+  | Source_only _
+  | Standalone _ ->
+    No_group
   | Group_root _ -> Group_root dir
   | Is_component_of_a_group_but_not_the_root { group_root; _ } ->
     Group_root group_root
@@ -46,7 +49,7 @@ let get_include_subdirs stanzas =
             [ Pp.text
                 "The 'include_subdirs' stanza cannot appear more than once"
             ];
-        Some x
+        Some (loc, x)
       | _ -> acc)
 
 let check_no_module_consumer stanzas =
@@ -83,7 +86,7 @@ module DB = struct
     with
     | None -> (
       match enclosing_group ~dir with
-      | No_group -> Standalone None
+      | No_group -> Generated
       | Group_root group_root ->
         Is_component_of_a_group_but_not_the_root { stanzas = None; group_root }
       )
@@ -95,27 +98,27 @@ module DB = struct
       match stanzas_in db ~dir with
       | None -> (
         if build_dir_is_project_root then
-          Standalone (Some (ft_dir, None))
+          Source_only ft_dir
         else
           match enclosing_group ~dir with
-          | No_group -> Standalone (Some (ft_dir, None))
+          | No_group -> Source_only ft_dir
           | Group_root group_root ->
             Is_component_of_a_group_but_not_the_root
               { stanzas = None; group_root } )
       | Some d -> (
         match get_include_subdirs d.data with
-        | Some (Include mode) -> Group_root (ft_dir, mode, d)
-        | Some No -> Standalone (Some (ft_dir, Some d))
+        | Some (loc, Include mode) -> Group_root (ft_dir, (loc, mode), d)
+        | Some (_, No) -> Standalone (ft_dir, d)
         | None -> (
           if build_dir_is_project_root then
-            Standalone (Some (ft_dir, Some d))
+            Standalone (ft_dir, d)
           else
             match enclosing_group ~dir with
             | Group_root group_root ->
               check_no_module_consumer d.data;
               Is_component_of_a_group_but_not_the_root
                 { stanzas = Some d; group_root }
-            | No_group -> Standalone (Some (ft_dir, Some d)) ) ) )
+            | No_group -> Standalone (ft_dir, d) ) ) )
 
   let make ~stanzas_per_dir =
     (* CR-someday aalekseyev: This local recursive module is a bit awkward. In

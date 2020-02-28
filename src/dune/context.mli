@@ -3,8 +3,8 @@
 (** Dune supports two different kind of contexts:
 
     - the default context, which correspond to the environment Dune is run, i.e.
-    it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
-    configuration where it can find it
+      it takes [ocamlc] and other tools from the [PATH] and the ocamlfind
+      configuration where it can find it
 
     - opam switch contexts, where one opam switch correspond to one context
 
@@ -62,7 +62,7 @@ type t = private
             host. *)
   ; for_host : t option
         (** [false] if a user explicitly listed this context in the workspace.
-            Controls whether we add artifacts from this context @install *)
+            Controls whether we add artifacts from this context \@install *)
   ; implicit : bool
         (** Directory where artifact are stored, for instance "_build/default" *)
   ; build_dir : Path.Build.t

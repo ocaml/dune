@@ -1,4 +1,4 @@
-open Stdune
+open Import
 
 module Inherited = struct
   type 'a t =
@@ -204,7 +204,7 @@ module Enabled_status = struct
       constr "Disabled_because_of_enabled_if" []
 end
 
-(** Note {1: Lib_info_invariants}.
+(** {1 Lib_info_invariants}
 
     Many of the fields here are optional and are "entangled" in the sense that
     they are all either set to [None] (for external libraries) or to [Some] (for

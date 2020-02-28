@@ -44,6 +44,8 @@ struct
         }
     end
 
+    (* This mutable table is safe under the assumption that we call [register]
+       only at the top level, which is currently true. *)
     let langs = Table.create (module String) 32
 
     let register syntax data =

@@ -5,6 +5,7 @@ _build, things are rebuild as expected.
   $ dune build x
   $ cat _build/default/x
   42
+  $ chmod u+w _build/default/x
   $ echo 0 > _build/default/x
 
 To force the mtime to change:

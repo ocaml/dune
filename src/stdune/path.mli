@@ -20,8 +20,8 @@
     containing the path separator character ('/').
 
     Such a path can be rooted at the source tree root, the build directory or an
-    unspecified root. All these paths are represented by values of type ['a
-    Path.Local_gen.t] where ['a] denotes the root of the path.
+    unspecified root. All these paths are represented by values of type
+    ['a Path.Local_gen.t] where ['a] denotes the root of the path.
 
     {2 External paths}
 
@@ -169,6 +169,8 @@ module Build : sig
   val split_sandbox_root : t -> t option * t
 
   val of_local : Local.t -> t
+
+  val chmod : mode:int -> ?op:[ `Add | `Remove | `Set ] -> t -> unit
 end
 
 type t = private
@@ -235,8 +237,10 @@ val extract_build_dir_first_component : t -> (string * Local.t) option
 
 (** Same as [extract_build_context] but return the build context as a path:
 
-    {[ extract_build_context "_build/blah/foo/bar" = Some ("_build/blah",
-    "foo/bar") ]} *)
+    {[
+      extract_build_context "_build/blah/foo/bar"
+      = Some ("_build/blah", "foo/bar")
+    ]} *)
 val extract_build_context_dir : t -> (t * Source.t) option
 
 val extract_build_context_dir_maybe_sandboxed : t -> (t * Source.t) option
@@ -368,3 +372,15 @@ val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
     If newpath already exists, its contents will be replaced with those of
     oldpath. *)
 val rename : t -> t -> unit
+
+(** Set permissions on the designed files. [op] is [`Set] by default, which sets
+    the permissions exactly to [mode], while [`Add] will add the given [mode] to
+    the current permissions and [`Remove] remove them. [path] will be stat'd in
+    the `Add and `Remove case to determine the current premission, unless the
+    already computed stats are passed as [stats] to save a system call. *)
+val chmod :
+     mode:int
+  -> ?stats:Unix.stats option
+  -> ?op:[ `Add | `Remove | `Set ]
+  -> t
+  -> unit

@@ -46,12 +46,11 @@ module Dynamic_dep = struct
   module Set = struct
     include O.Set
 
-    let to_dep_set t = t |> to_list |> List.map ~f:to_dep |> Dep.Set.of_list
+    let to_dep_set t = t |> to_list |> Dep.Set.of_list_map ~f:to_dep
 
     let of_DAP_dep_set ~working_dir t =
       t |> DAP.Dependency.Set.to_list
-      |> List.map ~f:(of_DAP_dep ~working_dir)
-      |> of_list
+      |> of_list_map ~f:(of_DAP_dep ~working_dir)
   end
 end
 
@@ -125,7 +124,7 @@ let exec_run_dynamic_client ~ectx ~eenv prog args =
         path |> Stdune.Path.build |> Stdune.Path.reach ~from:eenv.working_dir
       in
       Stdune.Path.Build.Set.to_list ectx.targets
-      |> List.map ~f:to_relative |> String.Set.of_list
+      |> String.Set.of_list_map ~f:to_relative
     in
     DAP.Run_arguments.
       { prepared_dependencies = eenv.prepared_dependencies; targets }

@@ -1,4 +1,4 @@
-open! Stdune
+open Import
 
 let staging_area = Path.Build.relative Path.Build.root ".promotion-staging"
 

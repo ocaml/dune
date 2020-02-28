@@ -182,6 +182,14 @@ module M = struct
   end =
     Cached_value
 
+  and Deps_so_far : sig
+    type t =
+      { map : Dep_node.packed Id.Map.t
+      ; deps_reversed : Dep_node.packed list
+      }
+  end =
+    Deps_so_far
+
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Running] includes computations that already terminated with an
@@ -190,8 +198,10 @@ module M = struct
          [Init] should be treated exactly the same as [Running*] with a stale
          value of [Run.t]. *)
       | Init
-      | Running_sync : Run.t -> ('a, 'b, 'a -> 'b) t
-      | Running_async : Run.t * 'b Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
+      | Running_sync : Run.t * Deps_so_far.t -> ('a, 'b, 'a -> 'b) t
+      | Running_async :
+          Run.t * Deps_so_far.t * 'b Fiber.Ivar.t
+          -> ('a, 'b, 'a -> 'b Fiber.t) t
       | Failed of Run.t * Exn_with_backtrace.t
       | Done of 'b Cached_value.t
   end =
@@ -224,8 +234,11 @@ end
 
 module State = M.State
 module Dep_node = M.Dep_node
+module Deps_so_far = M.Deps_so_far
 module Last_dep = M.Last_dep
 module Dag = M.Dag
+
+let no_deps_so_far : Deps_so_far.t = { map = Id.Map.empty; deps_reversed = [] }
 
 module Cached_value = struct
   include M.Cached_value
@@ -253,7 +266,7 @@ module Cached_value = struct
               already_reported exn
             else
               true
-          | Running_sync run ->
+          | Running_sync (run, _deps_so_far) ->
             if Run.is_current run then
               Code_error.raise
                 "Unreported dependency cycle in [Cached_value.get_sync] (this \
@@ -314,7 +327,7 @@ module Cached_value = struct
                managed to call an asynchronous one which depended on its \
                results in a cyclic manner."
               []
-          | Running_async (run, ivar) ->
+          | Running_async (run, _deps_so_far, ivar) ->
             if not (Run.is_current run) then
               Fiber.return true
             else
@@ -358,7 +371,7 @@ let ser_input (type a) (node : (a, _, _) Dep_node.t) =
 module Stack_frame0 = struct
   open Dep_node
 
-  type t = packed
+  type t = Dep_node.packed
 
   let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
 
@@ -432,51 +445,88 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
-(* Add a dependency on [dep_node] from the caller, if there is one.
-
-   CR-someday amokhov: In principle, it's best to always have a caller, perhaps
-   a dummy one, to catch potential errors that result in the empty stack. *)
-let add_rev_dep (type i o f) ~called_from_peek (dep_node : (i, o, f) Dep_node.t)
-    =
+(* Add a dependency on [node] from the caller, if there is one. *)
+let add_dep_from_caller (type i o f) ~called_from_peek
+    (node : (i, o, f) Dep_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
-  | Some (Dep_node.T rev_dep) -> (
+  | Some (Dep_node.T caller as packed_caller) -> (
     let () =
-      match (rev_dep.spec.f, dep_node.spec.f) with
+      match (caller.spec.f, node.spec.f) with
       | Async _, Async _ -> ()
       | Async _, Sync _ -> ()
       | Sync _, Sync _ -> ()
       | Sync _, Async _ ->
         if not called_from_peek then
           Code_error.raise
-            "[Memo.add_rev_dep ~called_from_peek:false] Synchronous functions \
-             are not allowed to depend on asynchronous ones."
+            "[Memo.add_dep_from_caller ~called_from_peek:false] Synchronous \
+             functions are not allowed to depend on asynchronous ones."
             [ ("stack", Call_stack.get_call_stack_as_dyn ())
-            ; ("adding", Stack_frame.to_dyn (T dep_node))
+            ; ("adding", Stack_frame.to_dyn (T node))
             ]
     in
-    let dag_node = dep_node.dag_node in
-    let rev_dep = rev_dep.dag_node in
-    try Dag.add_idempotent global_dep_dag rev_dep dag_node
-    with Dag.Cycle cycle ->
-      raise
-        (Cycle_error.E
-           { stack = Call_stack.get_call_stack ()
-           ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-           }) )
+    let update_deps_so_far (deps_so_far : Deps_so_far.t) =
+      match Id.Map.find deps_so_far.map node.id with
+      | Some _the_same_caller_added_before -> deps_so_far
+      | None ->
+        let () =
+          try
+            Dag.add_assuming_missing global_dep_dag caller.dag_node
+              node.dag_node
+          with Dag.Cycle cycle ->
+            raise
+              (Cycle_error.E
+                 { stack = Call_stack.get_call_stack ()
+                 ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+                 })
+        in
+        { map = Id.Map.add_exn deps_so_far.map node.id packed_caller
+        ; deps_reversed = T node :: deps_so_far.deps_reversed
+        }
+    in
+    let error where =
+      Code_error.raise
+        (sprintf "[add_dep_from_caller] got a non-running state (%s)." where)
+        []
+    in
+    match caller.state with
+    | Init -> error "Init"
+    | Failed _ -> error "Failed"
+    | Done _ -> error "Done"
+    | Running_sync (run, deps_so_far) ->
+      caller.state <- Running_sync (run, update_deps_so_far deps_so_far)
+    | Running_async (run, deps_so_far, ivar) ->
+      caller.state <- Running_async (run, update_deps_so_far deps_so_far, ivar)
+    )
 
-(* CR-soon amokhov: The order of dependencies in the resulting list seems to be
-   wrong: [Dag.children] returns children in the reverse order instead of the
-   order in which they were added. See the comment for [deps : Last_dep.t list]. *)
-let get_deps_from_graph_exn (dep_node : _ Dep_node.t) =
-  Dag.children dep_node.dag_node
-  |> List.map ~f:(fun { Dag.data = Dep_node.T node; _ } ->
-         match node.state with
-         | Init -> assert false
-         | Failed _ -> assert false
-         | Running_sync _ -> assert false
-         | Running_async _ -> assert false
-         | Done res -> Last_dep.T (node, res.data))
+let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
+  let last_dep_exn (Dep_node.T dep) =
+    let error state =
+      Code_error.raise
+        (sprintf "[get_deps_exn] dependencey in a non-Done state (%s)." state)
+        []
+    in
+    match dep.state with
+    | Init -> error "Init"
+    | Failed _ -> error "Failed"
+    | Running_sync _ -> error "Running_sync"
+    | Running_async _ -> error "Running_async"
+    | Done res -> Last_dep.T (dep, res.data)
+  in
+  let deps_so_far =
+    let error state =
+      Code_error.raise
+        (sprintf "[get_deps_exn] node in a non-Running state (%s)." state)
+        []
+    in
+    match node.state with
+    | Init -> error "Init"
+    | Failed _ -> error "Failed"
+    | Done _ -> error "Done"
+    | Running_sync (_run, deps_so_far) -> deps_so_far
+    | Running_async (_run, deps_so_far, _ivar) -> deps_so_far
+  in
+  List.rev_map deps_so_far.deps_reversed ~f:last_dep_exn
 
 type ('input, 'output, 'f) t =
   { spec : ('input, 'output, 'f) Spec.t
@@ -595,17 +645,17 @@ module Exec_sync = struct
       | Ok res -> res
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_from_graph_exn dep_node in
+    let deps = get_deps_exn dep_node in
     dep_node.state <- Done (Cached_value.create res ~deps);
     res
 
   let recompute inp (dep_node : _ Dep_node.t) =
     let run = Run.current () in
-    dep_node.state <- Running_sync run;
+    dep_node.state <- Running_sync (run, no_deps_so_far);
     compute run inp dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep ~called_from_peek:false dep_node;
+    add_dep_from_caller ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -613,7 +663,7 @@ module Exec_sync = struct
         already_reported exn
       else
         recompute inp dep_node
-    | Running_sync run ->
+    | Running_sync (run, _deps_so_far) ->
       if Run.is_current run then
         (* hopefully this branch should be unreachable and [add_rev_dep] reports
            a cycle above instead *)
@@ -642,7 +692,7 @@ module Exec_async = struct
           | Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_from_graph_exn dep_node in
+    let deps = get_deps_exn dep_node in
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
        errors file running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
@@ -655,11 +705,11 @@ module Exec_async = struct
   let recompute inp (dep_node : _ Dep_node.t) =
     (* create an ivar so other threads can wait for the computation to finish *)
     let ivar : 'b Fiber.Ivar.t = Fiber.Ivar.create () in
-    dep_node.state <- Running_async (Run.current (), ivar);
+    dep_node.state <- Running_async (Run.current (), no_deps_so_far, ivar);
     compute inp ivar dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_rev_dep ~called_from_peek:false dep_node;
+    add_dep_from_caller ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -667,7 +717,7 @@ module Exec_async = struct
         already_reported exn
       else
         recompute inp dep_node
-    | Running_async (run, ivar) ->
+    | Running_async (run, _deps_so_far, ivar) ->
       if Run.is_current run then
         Fiber.Ivar.read ivar
       else
@@ -693,7 +743,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
-    add_rev_dep ~called_from_peek:true dep_node;
+    add_dep_from_caller ~called_from_peek:true dep_node;
     match dep_node.state with
     | Init -> None
     | Running_sync _ -> None

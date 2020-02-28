@@ -30,20 +30,12 @@ module type S = sig
   (** [create_node_info dag v] creates new node info that belongs to [dag]. *)
   val create_node_info : t -> node_info
 
-  (** [add_idempotent dag v w] creates an arc going from [v] to [w] unless it
-      already exists.
+  (** [add_assuming_missing dag v w] creates an arc going from [v] to [w]
+      assuming it doesn't already exists.
 
       @raise Cycle if creating the arc would create a cycle. *)
-  val add_idempotent : t -> node -> node -> unit
-
-  (** [children v] returns all nodes [w] for which an arc going from [v] to [w]
-      exists. *)
-  val children : node -> node list
+  val add_assuming_missing : t -> node -> node -> unit
 
   (** Pretty print a node. *)
   val pp_node : value Fmt.t -> node Fmt.t
-
-  (** [is_child v w] returns a boolean indicating if an arc going from [v] to
-      [w] exists. *)
-  val is_child : node -> node -> bool
 end

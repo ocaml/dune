@@ -80,7 +80,7 @@ let%expect_test _ =
   |> option (list (pair (option string) (fun x -> x)))
   |> print_dyn;
   [%expect {|
-Some [ (Some "another", "aa"); (Some "some", "a") ]
+Some [ (Some "some", "a"); (Some "another", "aa") ]
 |}]
 
 let%expect_test _ =
@@ -315,7 +315,7 @@ let%expect_test _ =
   [%expect
     {|
 (Some [ (Some "lazy_memo", "foo") ],
-Some [ (Some "id", "lazy: foo"); (Some "lazy_memo", "foo") ])
+Some [ (Some "lazy_memo", "foo"); (Some "id", "lazy: foo") ])
 |}]
 
 module Memo_lazy = Test_lazy (struct
@@ -335,8 +335,8 @@ let%expect_test _ =
   Memo_lazy.deps () |> print_dyn;
   [%expect
     {|
-(Some [ (None, ()); (Some "lazy_memo", "foo") ],
-Some [ (None, ()); (Some "lazy_memo", "foo") ])
+(Some [ (Some "lazy_memo", "foo"); (None, ()) ],
+Some [ (Some "lazy_memo", "foo"); (None, ()) ])
 |}]
 
 (* Tests for depending on the current run *)

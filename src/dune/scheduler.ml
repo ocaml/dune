@@ -767,7 +767,7 @@ let go ?config f =
   match res with
   | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
   | Ok res -> res
-  | Error Got_signal -> raise Report_error.Already_reported
+  | Error Got_signal -> raise Dune_util.Report_error.Already_reported
   | Error Never -> raise Fiber.Never
   | Error Files_changed ->
     Code_error.raise
@@ -822,14 +822,14 @@ let poll ?config ~once ~finally () =
     | Ok () ->
       wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
       |> after_wait
-    | Error Got_signal -> (Report_error.Already_reported, None)
+    | Error Got_signal -> (Dune_util.Report_error.Already_reported, None)
     | Error Never ->
       wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
     | Error Files_changed -> loop ()
     | Error (Exn (exn, bt)) -> (exn, Some bt)
   and after_wait = function
-    | Exit -> (Report_error.Already_reported, None)
+    | Exit -> (Dune_util.Report_error.Already_reported, None)
     | Continue -> loop ()
   in
   let exn, bt = loop () in

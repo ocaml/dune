@@ -1,4 +1,5 @@
 (** Error reporting *)
+open Stdune
 
 (** Reports an error.
 

@@ -1,3 +1,5 @@
+open Stdune
+
 exception Already_reported
 
 type printer =

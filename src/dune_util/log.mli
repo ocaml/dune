@@ -27,4 +27,4 @@ val command :
   -> exit_status:Unix.process_status
   -> unit
 
-module StdLogger : Stdune.Log.S
+module StdLogger : Stdune.Logger.S

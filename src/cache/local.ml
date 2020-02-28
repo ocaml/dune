@@ -352,7 +352,7 @@ let detect_duplication_mode root =
 
 let make ?(root = default_root ())
     ?(duplication_mode = detect_duplication_mode root)
-    ?(log = (module Dune_util.Log.StdLogger : Stdune.Log.S)) handler =
+    ?(log = (module Dune_util.Log.StdLogger : Stdune.Logger.S)) handler =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-cache"
   else

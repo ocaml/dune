@@ -207,12 +207,21 @@ module M = struct
   end =
     State
 
-  and Dep_node : sig
+  and Dep_node_without_state : sig
     type ('a, 'b, 'f) t =
       { spec : ('a, 'b, 'f) Spec.t
       ; input : 'a
       ; id : Id.t
       ; dag_node : Dag.node
+      }
+
+    type packed = T : (_, _, _) t -> packed [@@unboxed]
+  end =
+    Dep_node_without_state
+
+  and Dep_node : sig
+    type ('a, 'b, 'f) t =
+      { without_state : ('a, 'b, 'f) Dep_node_without_state.t
       ; mutable state : ('a, 'b, 'f) State.t
       }
 
@@ -226,14 +235,15 @@ module M = struct
   end =
     Last_dep
 
-  and Dag : (Generic_dag.S with type value := Dep_node.packed) =
+  and Dag : (Generic_dag.S with type value := Dep_node_without_state.packed) =
   Generic_dag.Make (struct
-    type t = Dep_node.packed
+    type t = Dep_node_without_state.packed
   end)
 end
 
 module State = M.State
 module Dep_node = M.Dep_node
+module Dep_node_without_state = M.Dep_node_without_state
 module Deps_so_far = M.Deps_so_far
 module Last_dep = M.Last_dep
 module Dag = M.Dag
@@ -247,7 +257,7 @@ module Cached_value = struct
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
       =
-    match node.spec.allow_cutoff with
+    match node.without_state.spec.allow_cutoff with
     | Yes equal -> not (equal prev_output curr_output)
     | No -> true
 
@@ -348,7 +358,7 @@ module Cached_value = struct
                 deps_changed acc deps
             else
               let changed =
-                ( match node.spec.f with
+                ( match node.without_state.spec.f with
                 | Function.Sync _ -> Fiber.return (get_sync t')
                 | Function.Async _ -> get_async t' )
                 >>| function
@@ -364,22 +374,18 @@ module Cached_value = struct
         Some t.data
 end
 
-let ser_input (type a) (node : (a, _, _) Dep_node.t) =
+let ser_input (type a) (node : (a, _, _) Dep_node_without_state.t) =
   let (module Input : Store_intf.Input with type t = a) = node.spec.input in
   Input.to_dyn node.input
 
-module Stack_frame0 = struct
-  open Dep_node
+module Stack_frame_without_state = struct
+  open Dep_node_without_state
 
-  type t = Dep_node.packed
+  type t = Dep_node_without_state.packed
 
   let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
 
   let input (T t) = ser_input t
-
-  let equal (T a) (T b) = Id.equal a.id b.id
-
-  let compare (T a) (T b) = Id.compare a.id b.id
 
   let to_dyn t =
     Dyn.Tuple
@@ -391,16 +397,22 @@ module Stack_frame0 = struct
       ]
 end
 
+module Stack_frame_with_state = struct
+  open Dep_node
+
+  let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.without_state)
+end
+
 module To_open = struct
-  module Stack_frame = Stack_frame0
+  module Stack_frame = Stack_frame_with_state
 end
 
 open To_open
 
 module Cycle_error = struct
   type t =
-    { cycle : Stack_frame.t list
-    ; stack : Stack_frame.t list
+    { cycle : Stack_frame_without_state.t list
+    ; stack : Stack_frame_without_state.t list
     }
 
   exception E of t
@@ -418,6 +430,11 @@ module Call_stack = struct
 
   let get_call_stack () =
     Fiber.Var.get call_stack_key |> Option.value ~default:[]
+
+  let get_call_stack_without_state () =
+    get_call_stack ()
+    |> List.map ~f:(fun (Dep_node.T t) ->
+           Dep_node_without_state.T t.without_state)
 
   let get_call_stack_as_dyn () =
     Dyn.Encoder.list Stack_frame.to_dyn (get_call_stack ())
@@ -452,7 +469,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
   | None -> ()
   | Some (Dep_node.T caller as packed_caller) -> (
     let () =
-      match (caller.spec.f, node.spec.f) with
+      match (caller.without_state.spec.f, node.without_state.spec.f) with
       | Async _, Async _ -> ()
       | Async _, Sync _ -> ()
       | Sync _, Sync _ -> ()
@@ -466,21 +483,22 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             ]
     in
     let update_deps_so_far (deps_so_far : Deps_so_far.t) =
-      match Id.Map.find deps_so_far.map node.id with
+      match Id.Map.find deps_so_far.map node.without_state.id with
       | Some _the_same_caller_added_before -> deps_so_far
       | None ->
         let () =
           try
-            Dag.add_assuming_missing global_dep_dag caller.dag_node
-              node.dag_node
+            Dag.add_assuming_missing global_dep_dag
+              caller.without_state.dag_node node.without_state.dag_node
           with Dag.Cycle cycle ->
             raise
               (Cycle_error.E
-                 { stack = Call_stack.get_call_stack ()
+                 { stack = Call_stack.get_call_stack_without_state ()
                  ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
                  })
         in
-        { map = Id.Map.add_exn deps_so_far.map node.id packed_caller
+        { map =
+            Id.Map.add_exn deps_so_far.map node.without_state.id packed_caller
         ; deps_reversed = T node :: deps_so_far.deps_reversed
         }
     in
@@ -536,10 +554,10 @@ type ('input, 'output, 'f) t =
 module Stack_frame = struct
   type ('input, 'output, 'f) memo = ('input, 'output, 'f) t
 
-  include Stack_frame0
+  include Stack_frame_without_state
 
-  let as_instance_of (type i) (Dep_node.T t) ~of_:(memo : (i, _, _) memo) :
-      i option =
+  let as_instance_of (type i) (Dep_node_without_state.T t)
+      ~of_:(memo : (i, _, _) memo) : i option =
     match Type_eq.Id.same memo.spec.witness t.spec.witness with
     | Some Type_eq.T -> Some t.input
     | None -> None
@@ -582,10 +600,14 @@ let create_hidden (type output) name ?doc ~input typ impl =
 
 module Exec = struct
   let make_dep_node ~spec ~state ~input =
-    let rec dep_node : _ Dep_node.t =
-      { id = Id.gen (); input; spec; dag_node; state }
+    let rec dep_node_without_state : _ Dep_node_without_state.t =
+      { id = Id.gen (); input; spec; dag_node }
+    and dep_node : _ Dep_node.t =
+      { without_state = dep_node_without_state; state }
     and dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag; data = Dep_node.T dep_node }
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node_without_state.T dep_node_without_state
+      }
     in
     dep_node
 end
@@ -605,7 +627,7 @@ module Exec_sync = struct
     let res =
       match
         Call_stack.push_sync_frame (T dep_node) (fun () ->
-            match dep_node.spec.f with
+            match dep_node.without_state.spec.f with
             | Function.Sync f ->
               (* If [f] raises an exception, [push_sync_frame] re-raises it
                  twice, so you'd end up with ugly "re-raised by" stack frames.
@@ -626,7 +648,7 @@ module Exec_sync = struct
             { exn
             ; reverse_backtrace =
                 { ocaml = Printexc.raw_backtrace_to_string bt
-                ; memo = Stack_frame.to_dyn (T dep_node)
+                ; memo = Stack_frame.to_dyn (T dep_node.without_state)
                 }
                 :: reverse_backtrace
             ; outer_call_stack = Call_stack.get_call_stack_as_dyn ()
@@ -669,7 +691,7 @@ module Exec_sync = struct
            a cycle above instead *)
         Code_error.raise "bug: unreported sync dependency_cycle"
           [ ("stack", Call_stack.get_call_stack_as_dyn ())
-          ; ("adding", Stack_frame.to_dyn (T dep_node))
+          ; ("adding", Stack_frame.to_dyn (T dep_node.without_state))
           ]
       else
         (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
@@ -688,7 +710,7 @@ module Exec_async = struct
     (* set context of computation then run it *)
     let* res =
       Call_stack.push_async_frame (T dep_node) (fun () ->
-          match dep_node.spec.f with
+          match dep_node.without_state.spec.f with
           | Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
@@ -767,7 +789,8 @@ let get_deps (type i o f) (t : (i, o, f) t) inp =
   | Some { state = Done cv; _ } ->
     Some
       (List.map cv.deps ~f:(fun (Last_dep.T (n, _u)) ->
-           (Option.map n.spec.info ~f:(fun x -> x.name), ser_input n)))
+           ( Option.map n.without_state.spec.info ~f:(fun x -> x.name)
+           , ser_input n.without_state )))
 
 let get_func name =
   match Spec.find name with
@@ -799,7 +822,7 @@ let registered_functions () =
 
 let function_info name = get_func name |> function_info_of_spec
 
-let get_call_stack = Call_stack.get_call_stack
+let get_call_stack = Call_stack.get_call_stack_without_state
 
 module Sync = struct
   type nonrec ('i, 'o) t = ('i, 'o, 'i -> 'o) t
@@ -864,13 +887,13 @@ end
 module Cell = struct
   type ('a, 'b, 'f) t = ('a, 'b, 'f) Dep_node.t
 
-  let input (t : (_, _, _) t) = t.input
+  let input (t : (_, _, _) t) = t.without_state.input
 
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
-    Exec_sync.exec_dep_node dep_node dep_node.input
+    Exec_sync.exec_dep_node dep_node dep_node.without_state.input
 
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
-    Exec_async.exec_dep_node dep_node dep_node.input
+    Exec_async.exec_dep_node dep_node dep_node.without_state.input
 end
 
 let cell t inp = dep_node t inp

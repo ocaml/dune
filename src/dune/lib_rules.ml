@@ -158,10 +158,10 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
     (* Build both the static and dynamic targets in one [ocamlmklib] invocation,
        unless dynamically linked foreign archives are disabled. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
-      ( if ctx.disable_dynamically_linked_foreign_archives then
-        [ static_target ]
+      ( if ctx.dynamically_linked_foreign_archives then
+        [ static_target; dynamic_target ]
       else
-        [ static_target; dynamic_target ] )
+        [ static_target ] )
   else (
     (* Build the static target only by passing the [-custom] flag. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:true
@@ -177,7 +177,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    if not ctx.disable_dynamically_linked_foreign_archives then
+    if ctx.dynamically_linked_foreign_archives then
       build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
         [ dynamic_target ]
   )

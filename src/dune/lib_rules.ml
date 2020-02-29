@@ -122,9 +122,6 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
-  let dynamic_target =
-    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
-  in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
@@ -153,6 +150,9 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
                   | Other _ -> As cclibs))
          ; Hidden_targets targets
          ])
+  in
+  let dynamic_target =
+    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
   in
   if build_targets_together then
     (* Build both the static and dynamic targets in one [ocamlmklib] invocation,

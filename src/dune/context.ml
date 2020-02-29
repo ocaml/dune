@@ -502,6 +502,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Some x -> Path.of_filename_relative_to_initial_cwd x
             | None -> Path.parent_exn ocaml_bin))
     in
+    let supports_shared_libraries =
+      Ocaml_config.supports_shared_libraries ocfg
+    in
+    let dynamically_linked_foreign_archives =
+      supports_shared_libraries && dynamically_linked_foreign_archives
+    in
     let t =
       { name
       ; implicit
@@ -535,8 +541,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_config = ocfg
       ; version
       ; supports_shared_libraries =
-          Dynlink_supported.By_the_os.of_bool
-            (Ocaml_config.supports_shared_libraries ocfg)
+          Dynlink_supported.By_the_os.of_bool supports_shared_libraries
       ; which
       ; lib_config
       }

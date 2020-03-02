@@ -18,6 +18,28 @@ module Ast_ops = struct
   let field_of_list ?more:(m = []) atoms =
     List (Loc.none, List.map atoms ~f:(fun a -> Atom (Loc.none, a)) @ m)
 
+  let make_foreign_stubs lang names flags =
+    let open Dune_lang.Atom in
+
+    let add_more name olist more = match olist with
+      | Some (_::l) -> (field_of_list
+        [of_string name]
+        ~more:l)::more
+      | _ -> more
+    in
+
+    let more = List.rev
+      ([field_of_list [of_string "language"; of_string lang]]
+      |> add_more "names" names
+      |> add_more "flags" flags)
+    in
+
+    field_of_list
+      [
+        of_string "foreign_stubs"
+      ]
+      ~more
+
   let rec replace_first old_name new_name = function
     | List (loc, Atom (loca, A atom) :: tll) :: tl when atom = old_name ->
       List (loc, Atom (loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl

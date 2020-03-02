@@ -28,6 +28,17 @@ let no_no_keep_loc fields =
   | None, rest ->
     rest
 
+(* c_names, c_flags, cxx_names and cxx_flags -> foreign_stubs *)
+let to_foreign_stubs fields =
+  let aux lang fields =
+    let names, rest = Ast_ops.extract_first [lang ^ "_names"] fields in
+    let flags, rest = Ast_ops.extract_first [lang ^ "_flags"] rest in
+    match names, flags with
+    | None, None -> fields
+    | _ -> (Ast_ops.make_foreign_stubs lang names flags)::rest
+  in
+  fields |> aux "c" |> aux "cxx"
+
 let update_stanza =
   let open Dune_lang.Ast in
   function
@@ -39,7 +50,10 @@ let update_stanza =
       ast
   | List (loc, Atom (loca, (A "executable" as atom)) :: tl)
   | List (loc, Atom (loca, (A "executables" as atom)) :: tl) ->
-    let tl = tl |> no_single_preprocessor_deps |> explicit_mode in
+    let tl = tl
+      |> no_single_preprocessor_deps
+      |> explicit_mode
+      |> to_foreign_stubs in
     List (loc, Atom (loca, atom) :: tl)
   | List (loc, Atom (loca, (A "library" as atom)) :: tl) ->
     let tl = tl |> no_single_preprocessor_deps |> no_no_keep_loc in
@@ -84,9 +98,17 @@ let upgrade_dune_files todo dir =
   if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.fname then
     let path = File_tree.Dir.path dir in
     let fn = Path.Source.relative path File_tree.Dune_file.fname in
-    let files = Upgrader_common.scan_included_files fn in
-    Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
-        upgrade_dune_file todo fn' sexps comments)
+    if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
+      User_warning.emit
+        ~loc:(Loc.in_file (Path.source fn))
+        [ Pp.text
+            "Cannot upgrade this file as it is using the OCaml syntax."
+        ; Pp.text "You need to upgrade it manually."
+        ]
+    else
+      let files = Upgrader_common.scan_included_files fn in
+      Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
+          upgrade_dune_file todo fn' sexps comments)
 
 let todo_log =
   {|

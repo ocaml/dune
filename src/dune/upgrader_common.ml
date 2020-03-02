@@ -21,11 +21,11 @@ module Ast_ops = struct
   let make_foreign_stubs lang names flags =
     let open Dune_lang.Atom in
 
-    let add_more name olist more = match olist with
-      | Some (_::l) -> (field_of_list
+    let add_more name olist m = match olist with
+      | Some (_::more) -> (field_of_list
         [of_string name]
-        ~more:l)::more
-      | _ -> more
+        ~more)::m
+      | _ -> m
     in
 
     let more = List.rev
@@ -35,9 +35,7 @@ module Ast_ops = struct
     in
 
     field_of_list
-      [
-        of_string "foreign_stubs"
-      ]
+      [of_string "foreign_stubs"]
       ~more
 
   let rec replace_first old_name new_name = function
@@ -59,14 +57,14 @@ module Ast_ops = struct
     in
     let rec aux rest = function
       | List (_, elt) :: tl when is_names elt names ->
-        (Some elt, List.rev_append rest tl)
+        Some elt, List.rev_append rest tl
       | hd :: tl -> aux (hd :: rest) tl
-      | [] -> (None, List.rev rest)
+      | [] -> None, List.rev rest
     in
     aux []
 
-  let is_in_list names sexp =
-    match fst (extract_first names sexp) with
+  let is_in_fields names fields =
+    match fst (extract_first names fields) with
     | Some _ -> true
     | None -> false
 

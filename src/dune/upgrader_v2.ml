@@ -53,10 +53,14 @@ let update_stanza =
     let tl = tl
       |> no_single_preprocessor_deps
       |> explicit_mode
-      |> to_foreign_stubs in
+      |> to_foreign_stubs
+    in
     List (loc, Atom (loca, atom) :: tl)
   | List (loc, Atom (loca, (A "library" as atom)) :: tl) ->
-    let tl = tl |> no_single_preprocessor_deps |> no_no_keep_loc in
+    let tl = tl
+      |> no_single_preprocessor_deps
+      |> no_no_keep_loc
+    in
     List (loc, Atom (loca, atom) :: tl)
   | stanza -> stanza
 

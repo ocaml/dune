@@ -10,6 +10,16 @@ ODOC="odoc>=1.5.0"
 
 TARGET="$1"; shift
 
+# Travis times out after 10mn with no output, which can happen while
+# building Coq. This simply outputs something regularly to prevent
+# this behavior.
+keep_travis_happy () {
+    for i in $(seq 15); do sleep 60; echo "Keeping Travis happy ..."; done&
+    local job=$!
+    "$@"
+    kill "$job"
+}
+
 opam_install_test_deps () {
     opam install \
          ocamlfind \
@@ -21,19 +31,17 @@ opam_install_test_deps () {
          result.1.4 \
          utop.2.4.2 \
          mdx.1.6.0
-    # FIXME: Coq temporarily disabled as it times out in the CI. See
-    # https://github.com/ocaml/dune/issues/3207.
-    #
     # We install Coq separatedly as to be more resistant w.r.t. the 10
     # minutes Travis timeout; the travis_wait hack doesn't work well
     # with Dune's current setup. Note that Travis caching should help
     # w.r.t. Coq reinstalls; also, in the future we will install a
     # coq-core package which is much more lightweight thus adding less
     # pressure to Dune's CI.
-    # opam install \
-    #      coq.8.11.0
-    #      # js_of_ocaml-ppx \
-    #      # js_of_ocaml-compiler \
+    keep_travis_happy \
+        opam install \
+        coq.8.11.0
+        # js_of_ocaml-ppx \
+        # js_of_ocaml-compiler \
 }
 
 if [ ${OCAML_VERSION//./} -lt 406 ] ; then
@@ -144,7 +152,7 @@ case "$TARGET" in
       cat $RUNTEST_NO_DEPS;
       ./dune.exe runtest && \
       # ./dune.exe build @test/blackbox-tests/runtest-js && \
-      # ./dune.exe build @test/blackbox-tests/runtest-coq && \
+      ./dune.exe build @test/blackbox-tests/runtest-coq && \
       ! ./dune.exe build @test/fail-with-background-jobs-running
       RESULT=$?
       if [ $UPDATE_OPAM -eq 0 ] ; then

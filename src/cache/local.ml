@@ -140,9 +140,14 @@ module Metadata_file = struct
     >>= of_sexp
 end
 
-let path_files cache = Path.relative cache.root "files"
+let path_ cache d =
+  let res = Path.relative cache.root d in
+  Path.mkdir_p res;
+  res
 
-let path_meta cache = Path.relative cache.root "meta"
+let path_files cache = path_ cache "files"
+
+let path_meta cache = path_ cache "meta"
 
 let make_path cache path =
   match cache.build_root with

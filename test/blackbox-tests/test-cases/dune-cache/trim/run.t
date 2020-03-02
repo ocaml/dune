@@ -12,6 +12,13 @@
   >   (targets multi_a multi_b)
   >   (action (bash "touch beacon_multi; echo multi_a > multi_a; echo multi_b > multi_b")))
   > EOF
+
+Check that trimming does not crash when the cache directory does not exist.
+
+  $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --size 0B
+
+Build some targets.
+
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
 
 Trimming the cache at this point should not remove anything, as both

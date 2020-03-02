@@ -19,7 +19,6 @@ type project_version =
   | Dune1_project
 
 module Common = struct
-
   module Ast_tools = struct
     open Dune_lang.Ast
 
@@ -28,28 +27,25 @@ module Common = struct
 
     let make_foreign_stubs lang names flags =
       let open Dune_lang.Atom in
-
-      let add_more name olist m = match olist with
-        | Some (_::more) -> (field_of_list
-          [of_string name]
-          ~more)::m
+      let add_more name olist m =
+        match olist with
+        | Some (_ :: more) -> field_of_list [ of_string name ] ~more :: m
         | _ -> m
       in
 
-      let more = List.rev
-        ([field_of_list [of_string "language"; of_string lang]]
-        |> add_more "names" names
-        |> add_more "flags" flags)
+      let more =
+        List.rev
+          ( [ field_of_list [ of_string "language"; of_string lang ] ]
+          |> add_more "names" names |> add_more "flags" flags )
       in
 
-      field_of_list
-        [of_string "foreign_stubs"]
-        ~more
+      field_of_list [ of_string "foreign_stubs" ] ~more
 
     let rec replace_first old_name new_name = function
       | List (loc, Atom (loca, A atom) :: tll) :: tl when atom = old_name ->
         List (loc, Atom (loca, Dune_lang.Atom.of_string new_name) :: tll) :: tl
-      | List (loc, Quoted_string (loca, str) :: tll) :: tl when str = old_name ->
+      | List (loc, Quoted_string (loca, str) :: tll) :: tl when str = old_name
+        ->
         List (loc, Quoted_string (loca, new_name) :: tll) :: tl
       | hd :: tl -> hd :: replace_first old_name new_name tl
       | [] -> []
@@ -65,9 +61,9 @@ module Common = struct
       in
       let rec aux rest = function
         | List (_, elt) :: tl when is_names elt names ->
-          Some elt, List.rev_append rest tl
+          (Some elt, List.rev_append rest tl)
         | hd :: tl -> aux (hd :: rest) tl
-        | [] -> None, List.rev rest
+        | [] -> (None, List.rev rest)
       in
       aux []
 
@@ -84,7 +80,8 @@ module Common = struct
           , (Atom (_, A "lang") as lang)
             :: (Atom (_, A "dune") as dune) :: Atom (loc3, A _) :: tll )
         :: tl ->
-        List (loc, lang :: dune :: Atom (loc3, Dune_lang.Atom.of_string v) :: tll)
+        List
+          (loc, lang :: dune :: Atom (loc3, Dune_lang.Atom.of_string v) :: tll)
         :: tl
       | sexp -> sexp
 
@@ -120,7 +117,7 @@ module Common = struct
     (sexps, comments)
 
   (* Return a mapping [Path.t -> Dune_lang.Ast.t list] containing [path] and all
-    the files in includes, recursiverly *)
+     the files in includes, recursiverly *)
   let scan_included_files ?lexer path =
     let files = ref Path.Source.Map.empty in
     let rec iter path =
@@ -138,7 +135,6 @@ module Common = struct
     Dune_lang.Parser.insert_comments new_csts comments
     |> Format.asprintf "%a@?" Format_dune_lang.pp_top_sexps
 end
-
 
 module V1 = struct
   open Common
@@ -222,24 +218,26 @@ module V1 = struct
               else
                 Filename.concat (Filename.dirname s) new_base
             in
-            [ x; Dune_lang.Ast.add_loc ~loc (Dune_lang.atom_or_quoted_string s) ]
+            [ x
+            ; Dune_lang.Ast.add_loc ~loc (Dune_lang.atom_or_quoted_string s)
+            ]
           | [ Atom _; List (_, [ Atom (_, A ":include"); Atom _ ]) ] ->
             List.map l ~f:upgrade
           | (Atom (_, A ("preprocess" | "lint")) as field) :: rest ->
             upgrade field
             :: List.map rest ~f:(fun x ->
-                  map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
-                      Dune_lang.Template.Var
-                        ( if v.name = "<" then
-                          { v with name = "input-file" }
-                        else
-                          v )))
+                   map_var (upgrade x) ~f:(fun (v : Dune_lang.Template.var) ->
+                       Dune_lang.Template.Var
+                         ( if v.name = "<" then
+                           { v with name = "input-file" }
+                         else
+                           v )))
           | (Atom (_, A "per_module") as field) :: specs ->
             upgrade field
             :: List.map specs ~f:(function
-                | List (loc, [ spec; List (_, modules) ]) ->
-                  List (loc, upgrade spec :: List.map modules ~f:upgrade)
-                | sexp -> upgrade sexp)
+                 | List (loc, [ spec; List (_, modules) ]) ->
+                   List (loc, upgrade spec :: List.map modules ~f:upgrade)
+                 | sexp -> upgrade sexp)
           | [ (Atom (_, A "pps") as field); List (_, pps) ] -> (
             let pps, args =
               List.partition_map pps ~f:(function
@@ -257,8 +255,9 @@ module V1 = struct
             | _ -> Atom (loc, Dune_lang.Atom.of_string "--") :: args )
           | [ (Atom (_, A field_name) as field); List (_, args) ]
             when match (field_name, args) with
-                | "rule", Atom (_, A field_name) :: _ -> is_rule_field field_name
-                | _ -> simplify_field field_name ->
+                 | "rule", Atom (_, A field_name) :: _ ->
+                   is_rule_field field_name
+                 | _ -> simplify_field field_name ->
             upgrade field :: List.map args ~f:upgrade
           | _ -> List.map l ~f:upgrade
         in
@@ -311,8 +310,8 @@ module V1 = struct
         let stanza =
           Dune_lang.Ast.add_loc ~loc:Loc.none
             (List
-              ( Dune_lang.atom "data_only_dirs"
-              :: List.map
+               ( Dune_lang.atom "data_only_dirs"
+               :: List.map
                     (String.Set.to_list data_only_dirs)
                     ~f:Dune_lang.atom_or_quoted_string ))
         in
@@ -329,8 +328,8 @@ module V1 = struct
       { original_file = file; new_file; extra_files_to_delete; contents }
       :: todo.to_rename_and_edit
 
-  (* This was obtained by trial and error. We should improve the opam parsing API
-    to return better locations. *)
+  (* This was obtained by trial and error. We should improve the opam parsing
+     API to return better locations. *)
   let rec end_offset_of_opam_value : OpamParserTypes.value -> int = function
     | Bool ((_, _, ofs), b) -> ofs + String.length (string_of_bool b)
     | Int ((_, _, ofs), x) -> ofs + String.length (string_of_int x)
@@ -371,7 +370,7 @@ module V1 = struct
         let stop = end_offset_of_opam_value (List.last l |> Option.value_exn) in
         add_subst (start + 1) stop
           (sprintf "build & >= %S"
-            (Dune_lang.Syntax.Version.to_string
+             (Dune_lang.Syntax.Version.to_string
                 !Dune_project.default_dune_language_version))
       | List
           (_, (String (jpos, "jbuilder") :: String (arg_pos, "subst") :: _ as l))
@@ -466,9 +465,7 @@ module V1 = struct
           ; Pp.text "You need to upgrade it manually."
           ]
       else
-        let files =
-          scan_included_files fn ~lexer:Jbuild_support.Lexer.token
-        in
+        let files = scan_included_files fn ~lexer:Jbuild_support.Lexer.token in
         Path.Source.Map.iteri files ~f:(fun fn' (sexps, comments) ->
             upgrade_file todo fn' sexps comments
               ~look_for_jbuild_ignore:(Path.Source.equal fn fn'))
@@ -507,11 +504,11 @@ module V2 = struct
   (* c_names, c_flags, cxx_names and cxx_flags -> foreign_stubs *)
   let to_foreign_stubs fields =
     let aux lang fields =
-      let names, rest = Ast_tools.extract_first [lang ^ "_names"] fields in
-      let flags, rest = Ast_tools.extract_first [lang ^ "_flags"] rest in
-      match names, flags with
+      let names, rest = Ast_tools.extract_first [ lang ^ "_names" ] fields in
+      let flags, rest = Ast_tools.extract_first [ lang ^ "_flags" ] rest in
+      match (names, flags) with
       | None, None -> fields
-      | _ -> (Ast_tools.make_foreign_stubs lang names flags)::rest
+      | _ -> Ast_tools.make_foreign_stubs lang names flags :: rest
     in
     fields |> aux "c" |> aux "cxx"
 
@@ -526,17 +523,12 @@ module V2 = struct
         ast
     | List (loc, Atom (loca, (A "executable" as atom)) :: tl)
     | List (loc, Atom (loca, (A "executables" as atom)) :: tl) ->
-      let tl = tl
-        |> no_single_preprocessor_deps
-        |> explicit_mode
-        |> to_foreign_stubs
+      let tl =
+        tl |> no_single_preprocessor_deps |> explicit_mode |> to_foreign_stubs
       in
       List (loc, Atom (loca, atom) :: tl)
     | List (loc, Atom (loca, (A "library" as atom)) :: tl) ->
-      let tl = tl
-        |> no_single_preprocessor_deps
-        |> no_no_keep_loc
-      in
+      let tl = tl |> no_single_preprocessor_deps |> no_no_keep_loc in
       List (loc, Atom (loca, atom) :: tl)
     | stanza -> stanza
 
@@ -554,20 +546,21 @@ module V2 = struct
     (* Was using fmt enabled_for *)
     | Some (_ :: _ :: _ :: tl) ->
       sexps
-      @ [ Ast_tools.field_of_list Dune_lang.Atom.[ of_string "formatting" ] ~more:tl
+      @ [ Ast_tools.field_of_list
+            Dune_lang.Atom.[ of_string "formatting" ]
+            ~more:tl
         ]
     (* Unexpected *)
     | _ -> sexps
 
   let update_project_file todo project =
-    let sexps, comments =
-      read_and_parse (Dune_project.file project)
-    in
+    let sexps, comments = read_and_parse (Dune_project.file project) in
     let v = !Dune_project.default_dune_language_version in
     let sexps = sexps |> Ast_tools.bump_lang_version v |> update_formatting in
     let new_file_contents = string_of_sexps sexps comments in
     (* Printf.eprintf "AAAH: %b\n!" (was_formatted sexps); *)
-    todo.to_edit <- (Dune_project.file project, new_file_contents) :: todo.to_edit
+    todo.to_edit <-
+      (Dune_project.file project, new_file_contents) :: todo.to_edit
 
   let upgrade_dune_file todo fn sexps comments =
     let new_ast = sexps |> List.map ~f:update_stanza in
@@ -581,8 +574,7 @@ module V2 = struct
       if Io.with_lexbuf_from_file (Path.source fn) ~f:Dune_lexer.is_script then
         User_warning.emit
           ~loc:(Loc.in_file (Path.source fn))
-          [ Pp.text
-              "Cannot upgrade this file as it is using the OCaml syntax."
+          [ Pp.text "Cannot upgrade this file as it is using the OCaml syntax."
           ; Pp.text "You need to upgrade it manually."
           ]
       else
@@ -696,7 +688,8 @@ let upgrade () =
     log
       "\n\
        Some projects were upgraded to dune v2. Some breaking changes may not\n\
-       have been treated automatically. Here is a list of things you should check\n\
+       have been treated automatically. Here is a list of things you should \
+       check\n\
        to complete the migration:\n\
        %s"
       V2.todo_log

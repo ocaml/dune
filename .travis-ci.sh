@@ -10,6 +10,16 @@ ODOC="odoc>=1.5.0"
 
 TARGET="$1"; shift
 
+# Travis times out after 10mn with no output, which can happen while
+# building Coq. This simply outputs something regularly to prevent
+# this behavior.
+keep_travis_happy () {
+    for i in $(seq 15); do sleep 60; echo "Keeping Travis happy ..."; done&
+    local job=$!
+    "$@"
+    kill "$job"
+}
+
 opam_install_test_deps () {
     opam install \
          ocamlfind \
@@ -27,10 +37,11 @@ opam_install_test_deps () {
     # w.r.t. Coq reinstalls; also, in the future we will install a
     # coq-core package which is much more lightweight thus adding less
     # pressure to Dune's CI.
-    opam install \
-         coq.8.11.0
-         # js_of_ocaml-ppx \
-         # js_of_ocaml-compiler \
+    keep_travis_happy \
+        opam install \
+        coq.8.11.0
+        # js_of_ocaml-ppx \
+        # js_of_ocaml-compiler \
 }
 
 if [ ${OCAML_VERSION//./} -lt 406 ] ; then

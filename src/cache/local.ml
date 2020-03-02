@@ -357,7 +357,7 @@ let make ?(root = default_root ())
     Result.Error "unable to read dune-cache"
   else
     let module Log = (val log) in
-    Result.ok
+    let res =
       { root
       ; build_root = None
       ; info = Log.info
@@ -369,6 +369,10 @@ let make ?(root = default_root ())
           Path.temp_dir ~temp_dir:root "promoting"
             (string_of_int (Unix.getpid ()))
       }
+    in
+    Path.mkdir_p @@ root_metadata res;
+    Path.mkdir_p @@ root_data res;
+    Result.ok res
 
 let duplication_mode cache = cache.duplication_mode
 

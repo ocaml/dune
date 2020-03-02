@@ -82,14 +82,13 @@ let set_with_stat fn digest stat =
   let permissions = stat.Unix.st_perm in
   needs_dumping := true;
   set_max_timestamp cache stat;
-  Path.Table.replace cache.table ~key:fn
-    ~data:
-      { digest
-      ; timestamp = stat.st_mtime
-      ; stats_checked = cache.checked_key
-      ; size = stat.st_size
-      ; permissions
-      }
+  Path.Table.set cache.table fn
+    { digest
+    ; timestamp = stat.st_mtime
+    ; stats_checked = cache.checked_key
+    ; size = stat.st_size
+    ; permissions
+    }
 
 let set fn digest =
   let stat = Path.stat fn in

@@ -1,5 +1,17 @@
 module type S = sig
-  include MoreLabels.Hashtbl.S
+  type 'a t
+
+  type key
+
+  val create : int -> 'a t
+
+  val clear : 'a t -> unit
+
+  val mem : 'a t -> key -> bool
+
+  val remove : 'a t -> key -> unit
+
+  val to_seq_values : 'a t -> 'a Seq.t
 
   val iter : 'a t -> f:('a -> unit) -> unit
 

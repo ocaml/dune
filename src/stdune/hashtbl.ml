@@ -8,6 +8,8 @@ end) =
 struct
   include MoreLabels.Hashtbl.Make (H)
 
+  let[@ocaml.warning "-32"] add = `Use_set
+
   let find = find_opt
 
   let find_exn t key =
@@ -15,7 +17,7 @@ struct
     | Some v -> v
     | None -> Code_error.raise "Hashtbl.find_exn" [ ("key", H.to_dyn key) ]
 
-  let set t key data = add t ~key ~data
+  let set t key data = replace t ~key ~data
 
   let find_or_add t key ~f =
     match find t key with

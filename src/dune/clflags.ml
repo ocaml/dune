@@ -12,7 +12,7 @@ let external_lib_deps_hint = ref []
 
 let capture_outputs = ref true
 
-let debug_backtraces = Stdune.Report_error.report_backtraces
+let debug_backtraces = Dune_util.Report_error.report_backtraces
 
 let diff_command = ref None
 

@@ -140,9 +140,11 @@ module Metadata_file = struct
     >>= of_sexp
 end
 
-let path_files cache = Path.relative cache.root "files"
+let path_ cache d = Path.relative cache.root d
 
-let path_meta cache = Path.relative cache.root "meta"
+let path_files cache = path_ cache "files"
+
+let path_meta cache = path_ cache "meta"
 
 let make_path cache path =
   match cache.build_root with
@@ -342,7 +344,7 @@ let make ?(root = default_root ())
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-cache"
   else
-    Result.ok
+    let res =
       { root
       ; build_root = None
       ; repositories = []
@@ -352,6 +354,10 @@ let make ?(root = default_root ())
           Path.temp_dir ~temp_dir:root "promoting"
             (string_of_int (Unix.getpid ()))
       }
+    in
+    Path.mkdir_p @@ path_meta res;
+    Path.mkdir_p @@ path_files res;
+    Result.ok res
 
 let duplication_mode cache = cache.duplication_mode
 

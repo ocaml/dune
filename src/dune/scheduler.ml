@@ -122,9 +122,7 @@ end = struct
 
   let ignore_next_file_change_event path =
     assert (Path.is_in_source_tree path);
-    String.Table.replace ignored_files
-      ~key:(Path.to_absolute_filename path)
-      ~data:()
+    String.Table.set ignored_files (Path.to_absolute_filename path) ()
 
   let available () =
     not

@@ -613,8 +613,8 @@ module V2 = struct
   let upgrade todo dir =
     Dune_project.default_dune_language_version := (2, 0);
     let project = File_tree.Dir.project dir in
-    let _project_root = Dune_project.root project in
-    (* if project_root = File_tree.Dir.path dir ? *)
+    if Dune_project.root project = File_tree.Dir.path dir then
+      ignore (Dune_project.ensure_project_file_exists project);
     update_project_file todo project;
     upgrade_dune_files todo dir
 end
@@ -624,8 +624,9 @@ let fold_on_project_roots ~f ~init =
     ~f
 
 let detect_project_version project dir =
-  (* TODO is it useful or can we use dune_version directly *)
-  if String.Set.mem (File_tree.Dir.files dir) File_tree.Dune_file.jbuild_fname
+  let in_tree = String.Set.mem (File_tree.Dir.files dir) in
+  Dune_project.default_dune_language_version := (0, 1);
+  if in_tree File_tree.Dune_file.jbuild_fname
   then
     Jbuild_project
   else
@@ -633,8 +634,11 @@ let detect_project_version project dir =
     let open Dune_lang.Syntax.Version.Infix in
     if project_dune_version >= (2, 0) then
       Dune2_project
-    else
+    else if project_dune_version >= (1, 0) then
       Dune1_project
+    else if in_tree File_tree.Dune_file.fname then
+      Dune1_project
+    else Jbuild_project
 
 let detect_and_add_project_version dir acc =
   let project = File_tree.Dir.project dir in

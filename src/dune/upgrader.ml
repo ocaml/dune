@@ -608,7 +608,9 @@ module V2 = struct
 - Stub names are no longer allowed relative paths. This was previously a warning
   and is now an error.
 - In `(diff? x y)` action, require `x` to exist and register a
-  dependency on that file.|}
+  dependency on that file.
+- `self_build_stubs_archive` was deleted in version 2.0 of the dune
+language. Use the (foreign_archives ...) field instead.|}
 
   let upgrade todo dir =
     Dune_project.default_dune_language_version := (2, 0);

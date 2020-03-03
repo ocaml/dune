@@ -74,7 +74,7 @@ let make ~(ctx : Context.t) ~dir ~dir_contents (lib : Library.t) =
     if_
       ( byte
       && Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
-      && not ctx.disable_dynamically_linked_foreign_archives )
+      && ctx.dynamically_linked_foreign_archives )
       (Library.foreign_dll_files lib ~dir ~ext_dll)
   in
   { lib_files; dll_files }

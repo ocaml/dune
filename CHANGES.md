@@ -11,6 +11,9 @@
 - Add a `dune describe` command to obtain the topology of a dune
   workspace, for projects such as ROTOR. (#3128, @diml)
 
+- Dune will no longer build shared objects for stubs if
+  `supports_shared_libraries` is false (#3225, fixes #3222, @rgrinberg)
+
 2.3.1 (20/02/2020)
 ------------------
 

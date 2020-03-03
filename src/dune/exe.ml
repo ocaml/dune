@@ -52,13 +52,13 @@ module Linkage = struct
       | Other { mode; _ } -> (
         match mode with
         | Byte ->
-          if ctx.disable_dynamically_linked_foreign_archives then
-            (* When [disable_dynamically_linked_foreign_archives] is set to
-               [true] in the workspace, we link in all stub archives statically
-               into the runtime system. *)
-            Byte_with_stubs_statically_linked_in
-          else
+          if ctx.dynamically_linked_foreign_archives then
             Byte
+          else
+            (* When [dynamically_linked_foreign_archives] is set to [false] in
+               the workspace, we link in all stub archives statically into the
+               runtime system. *)
+            Byte_with_stubs_statically_linked_in
         | Native -> Native
         | Best ->
           if Result.is_ok ctx.ocamlopt then

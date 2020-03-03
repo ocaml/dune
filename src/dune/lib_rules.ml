@@ -122,9 +122,6 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
   let static_target =
     Foreign.Archive.Name.lib_file archive_name ~dir ~ext_lib
   in
-  let dynamic_target =
-    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
-  in
   let build ~custom ~sandbox targets =
     Super_context.add_rule sctx ~sandbox ~dir ~loc
       (let cclibs_args =
@@ -154,14 +151,17 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
          ; Hidden_targets targets
          ])
   in
+  let dynamic_target =
+    Foreign.Archive.Name.dll_file archive_name ~dir ~ext_dll
+  in
   if build_targets_together then
     (* Build both the static and dynamic targets in one [ocamlmklib] invocation,
        unless dynamically linked foreign archives are disabled. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:false
-      ( if ctx.disable_dynamically_linked_foreign_archives then
-        [ static_target ]
+      ( if ctx.dynamically_linked_foreign_archives then
+        [ static_target; dynamic_target ]
       else
-        [ static_target; dynamic_target ] )
+        [ static_target ] )
   else (
     (* Build the static target only by passing the [-custom] flag. *)
     build ~sandbox:Sandbox_config.no_special_requirements ~custom:true
@@ -177,7 +177,7 @@ let ocamlmklib ~loc ~c_library_flags ~sctx ~dir ~expander ~o_files ~archive_name
        "optional targets", allowing us to run [ocamlmklib] with the [-failsafe]
        flag, which always produces the static target and sometimes produces the
        dynamic target too. *)
-    if not ctx.disable_dynamically_linked_foreign_archives then
+    if ctx.dynamically_linked_foreign_archives then
       build ~sandbox:Sandbox_config.needs_sandboxing ~custom:false
         [ dynamic_target ]
   )

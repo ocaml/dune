@@ -64,13 +64,13 @@ let get_printer = function
     in
     make_printer ~backtrace:true pp
 
-let i_must_not_segfault =
+let i_must_not_crash =
   let x =
     lazy
       (at_exit (fun () ->
            prerr_endline
              "\n\
-              I must not segfault.  Uncertainty is the mind-killer.  \
+              I must not crash.  Uncertainty is the mind-killer.  \
               Exceptions are\n\
               the little-death that brings total obliteration.  I will fully \
               express\n\
@@ -123,5 +123,5 @@ let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
       let s = Buffer.contents buf in
       Buffer.clear buf;
       Console.print s;
-      if p.backtrace then i_must_not_segfault ()
+      if p.backtrace then i_must_not_crash ()
     )

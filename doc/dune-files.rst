@@ -388,13 +388,13 @@ to use the :ref:`include_subdirs` stanza.
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.
   C or C++ stubs, to be compiled and packaged together with the library. See
   the section :ref:`foreign-sources-and-archives` for more details. This field
-  replaces the now deprecated fields ``c_names``, ``c_flags``, ``cxx_names``
+  replaces the now deleted fields ``c_names``, ``c_flags``, ``cxx_names``
   and ``cxx_flags``.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be packaged with the library. See the section
   :ref:`foreign-archives` for more details. This field replaces the now
-  deprecated field ``self_build_stubs_archive``.
+  deleted field ``self_build_stubs_archive``.
 
 - ``(install_c_headers (<names>))``, if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``

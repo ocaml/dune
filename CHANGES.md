@@ -300,7 +300,7 @@ Unreleased
 - `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
   and `executables` stanzas. (#2562, @nojb)
   Note: this feature has been subsequently extended into a separate
-  `foreign_stubs` field. (#2659, RFC #2650, @snowleopard)
+  `foreign_stubs` field. The fields `c(xx)_names` and `c(xx)_flags` are now deleted. (#2659, RFC #2650, @snowleopard)
 
 - Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
 
@@ -394,6 +394,8 @@ Unreleased
   should no longer stack overflow (#2854, @dra27, @diml)
 
 - Allow `.opam.template` files to be generated using rules (#2866, @rgrinberg)
+
+- Delete the deprecated `self_build_stubs_archive` field, replaced by `foreign_archives`.
 
 1.11.4 (09/10/2019)
 -------------------

@@ -190,6 +190,15 @@ module M = struct
   end =
     Deps_so_far
 
+  and Running_state : sig
+    type t =
+      { run : Run.t
+      ; mutable deps_so_far : Deps_so_far.t
+      ; sample : Dag.node
+      }
+  end =
+    Running_state
+
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Running] includes computations that already terminated with an
@@ -198,9 +207,9 @@ module M = struct
          [Init] should be treated exactly the same as [Running*] with a stale
          value of [Run.t]. *)
       | Init
-      | Running_sync : Run.t * Deps_so_far.t -> ('a, 'b, 'a -> 'b) t
+      | Running_sync : Running_state.t -> ('a, 'b, 'a -> 'b) t
       | Running_async :
-          Run.t * Deps_so_far.t * 'b Fiber.Ivar.t
+          Running_state.t * 'b Fiber.Ivar.t
           -> ('a, 'b, 'a -> 'b Fiber.t) t
       | Failed of Run.t * Exn_with_backtrace.t
       | Done of 'b Cached_value.t
@@ -212,7 +221,6 @@ module M = struct
       { spec : ('a, 'b, 'f) Spec.t
       ; input : 'a
       ; id : Id.t
-      ; dag_node : Dag.node
       }
 
     type packed = T : (_, _, _) t -> packed [@@unboxed]
@@ -276,7 +284,7 @@ module Cached_value = struct
               already_reported exn
             else
               true
-          | Running_sync (run, _deps_so_far) ->
+          | Running_sync { run; _ } ->
             if Run.is_current run then
               Code_error.raise
                 "Unreported dependency cycle in [Cached_value.get_sync] (this \
@@ -337,7 +345,7 @@ module Cached_value = struct
                managed to call an asynchronous one which depended on its \
                results in a cyclic manner."
               []
-          | Running_async (run, _deps_so_far, ivar) ->
+          | Running_async ({ run; _ }, ivar) ->
             if not (Run.is_current run) then
               Fiber.return true
             else
@@ -462,12 +470,28 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
-(* Add a dependency on [node] from the caller, if there is one. *)
+let get_running_state (type i o f) (state : (i, o, f) State.t) =
+  match state with
+  | Init -> None
+  | Failed _ -> None
+  | Done _ -> None
+  | Running_sync running_state -> Some running_state
+  | Running_async (running_state, _) -> Some running_state
+
+let get_running_state_exn (type i o f) (state : (i, o, f) State.t) =
+  match get_running_state state with
+  | Some running_state -> running_state
+  | None ->
+    Code_error.raise
+      (sprintf "[get_running_state_exn] got a non-running state.")
+      []
+
+(* TODO: comments *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
-  | Some (Dep_node.T caller as packed_caller) -> (
+  | Some (Dep_node.T caller) -> (
     let () =
       match (caller.without_state.spec.f, node.without_state.spec.f) with
       | Async _, Async _ -> ()
@@ -482,40 +506,40 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             ; ("adding", Stack_frame.to_dyn (T node))
             ]
     in
-    let update_deps_so_far (deps_so_far : Deps_so_far.t) =
-      match Id.Map.find deps_so_far.map node.without_state.id with
-      | Some _the_same_caller_added_before -> deps_so_far
-      | None ->
+    let running_state_of_caller = get_running_state_exn caller.state in
+    match
+      Id.Map.find running_state_of_caller.deps_so_far.map node.without_state.id
+    with
+    | Some _the_same_node -> ()
+    | None ->
+      let () =
         let () =
+          match node.state with
+          | Init -> assert false
+          | Failed _ -> assert false
+          | _ -> ()
+        in
+        match get_running_state node.state with
+        | None -> ()
+        | Some { sample; _ } -> (
           try
             Dag.add_assuming_missing global_dep_dag
-              caller.without_state.dag_node node.without_state.dag_node
+              running_state_of_caller.sample sample
           with Dag.Cycle cycle ->
             raise
               (Cycle_error.E
                  { stack = Call_stack.get_call_stack_without_state ()
                  ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-                 })
-        in
-        { map =
-            Id.Map.add_exn deps_so_far.map node.without_state.id packed_caller
-        ; deps_reversed = T node :: deps_so_far.deps_reversed
-        }
-    in
-    let error where =
-      Code_error.raise
-        (sprintf "[add_dep_from_caller] got a non-running state (%s)." where)
-        []
-    in
-    match caller.state with
-    | Init -> error "Init"
-    | Failed _ -> error "Failed"
-    | Done _ -> error "Done"
-    | Running_sync (run, deps_so_far) ->
-      caller.state <- Running_sync (run, update_deps_so_far deps_so_far)
-    | Running_async (run, deps_so_far, ivar) ->
-      caller.state <- Running_async (run, update_deps_so_far deps_so_far, ivar)
-    )
+                 }) )
+      in
+      let packed_node = Dep_node.T node in
+      running_state_of_caller.deps_so_far <-
+        { Deps_so_far.map =
+            Id.Map.add_exn running_state_of_caller.deps_so_far.map
+              node.without_state.id packed_node
+        ; deps_reversed =
+            packed_node :: running_state_of_caller.deps_so_far.deps_reversed
+        } )
 
 let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
   let last_dep_exn (Dep_node.T dep) =
@@ -531,19 +555,7 @@ let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
     | Running_async _ -> error "Running_async"
     | Done res -> Last_dep.T (dep, res.data)
   in
-  let deps_so_far =
-    let error state =
-      Code_error.raise
-        (sprintf "[get_deps_exn] node in a non-Running state (%s)." state)
-        []
-    in
-    match node.state with
-    | Init -> error "Init"
-    | Failed _ -> error "Failed"
-    | Done _ -> error "Done"
-    | Running_sync (_run, deps_so_far) -> deps_so_far
-    | Running_async (_run, deps_so_far, _ivar) -> deps_so_far
-  in
+  let deps_so_far = (get_running_state_exn node.state).deps_so_far in
   List.rev_map deps_so_far.deps_reversed ~f:last_dep_exn
 
 type ('input, 'output, 'f) t =
@@ -599,17 +611,11 @@ let create_hidden (type output) name ?doc ~input typ impl =
     ~visibility:Hidden name ?doc ~input typ impl
 
 module Exec = struct
-  let make_dep_node ~spec ~state ~input =
-    let rec dep_node_without_state : _ Dep_node_without_state.t =
-      { id = Id.gen (); input; spec; dag_node }
-    and dep_node : _ Dep_node.t =
-      { without_state = dep_node_without_state; state }
-    and dag_node : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node_without_state
-      }
+  let make_dep_node ~spec ~state ~input : _ Dep_node.t =
+    let dep_node_without_state : _ Dep_node_without_state.t =
+      { id = Id.gen (); input; spec }
     in
-    dep_node
+    { without_state = dep_node_without_state; state }
 end
 
 let dep_node (type i o f) (t : (i, o, f) t) inp =
@@ -673,11 +679,16 @@ module Exec_sync = struct
 
   let recompute inp (dep_node : _ Dep_node.t) =
     let run = Run.current () in
-    dep_node.state <- Running_sync (run, no_deps_so_far);
+    let sample : Dag.node =
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node_without_state.T dep_node.without_state
+      }
+    in
+    dep_node.state <- Running_sync { run; deps_so_far = no_deps_so_far; sample };
+    add_dep_from_caller ~called_from_peek:false dep_node;
     compute run inp dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_dep_from_caller ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -685,7 +696,7 @@ module Exec_sync = struct
         already_reported exn
       else
         recompute inp dep_node
-    | Running_sync (run, _deps_so_far) ->
+    | Running_sync { run; _ } ->
       if Run.is_current run then
         (* hopefully this branch should be unreachable and [add_rev_dep] reports
            a cycle above instead *)
@@ -698,7 +709,9 @@ module Exec_sync = struct
         recompute inp dep_node
     | Done cv -> (
       match Cached_value.get_sync cv with
-      | Some v -> v
+      | Some v ->
+        add_dep_from_caller ~called_from_peek:false dep_node;
+        v
       | None -> recompute inp dep_node )
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
@@ -727,11 +740,18 @@ module Exec_async = struct
   let recompute inp (dep_node : _ Dep_node.t) =
     (* create an ivar so other threads can wait for the computation to finish *)
     let ivar : 'b Fiber.Ivar.t = Fiber.Ivar.create () in
-    dep_node.state <- Running_async (Run.current (), no_deps_so_far, ivar);
+    let run = Run.current () in
+    let sample : Dag.node =
+      { info = Dag.create_node_info global_dep_dag
+      ; data = Dep_node_without_state.T dep_node.without_state
+      }
+    in
+    dep_node.state <-
+      Running_async ({ run; deps_so_far = no_deps_so_far; sample }, ivar);
+    add_dep_from_caller ~called_from_peek:false dep_node;
     compute inp ivar dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
-    add_dep_from_caller ~called_from_peek:false dep_node;
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
@@ -739,7 +759,7 @@ module Exec_async = struct
         already_reported exn
       else
         recompute inp dep_node
-    | Running_async (run, _deps_so_far, ivar) ->
+    | Running_async ({ run; _ }, ivar) ->
       if Run.is_current run then
         Fiber.Ivar.read ivar
       else
@@ -750,7 +770,9 @@ module Exec_async = struct
         recompute inp dep_node
     | Done cv -> (
       Cached_value.get_async cv >>= function
-      | Some v -> Fiber.return v
+      | Some v ->
+        add_dep_from_caller ~called_from_peek:false dep_node;
+        Fiber.return v
       | None -> recompute inp dep_node )
 
   let exec t inp = exec_dep_node (dep_node t inp) inp

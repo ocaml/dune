@@ -259,9 +259,9 @@ Unreleased
   `dirs` stanza in `dune` files. (#2456, @rgrinberg)
 
 - Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
-  and the dep spec `sandbox` in dune language. These let the user control the level of
-  sandboxing done by dune per rule and globally. The rule specification takes precedence.
-  The global configuration merely specifies the default.
+  and the dep spec `sandbox` in dune language. These let the user control the
+  level of sandboxing done by dune per rule and globally. The rule specification
+  takes precedence. The global configuration merely specifies the default.
   (#2213, @aalekseyev, @diml)
 
 - Remove support for old style subsystems. Dune will now emit a warning to
@@ -297,10 +297,10 @@ Unreleased
   sandboxing and in general reduces build directory pollution. (#2486,
   @aalekseyev, fixes #2482)
 
-- `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
-  and `executables` stanzas. (#2562, @nojb)
-  Note: this feature has been subsequently extended into a separate
-  `foreign_stubs` field. The fields `c(xx)_names` and `c(xx)_flags` are now deleted. (#2659, RFC #2650, @snowleopard)
+- `c_flags`, `c_names` and `cxx_names` are now supported in `executable` and
+  `executables` stanzas. (#2562, @nojb) Note: this feature has been subsequently
+  extended into a separate `foreign_stubs` field. The fields `c(xx)_names` and
+  `c(xx)_flags` are now deleted. (#2659, RFC #2650, @snowleopard)
 
 - Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
 
@@ -395,7 +395,8 @@ Unreleased
 
 - Allow `.opam.template` files to be generated using rules (#2866, @rgrinberg)
 
-- Delete the deprecated `self_build_stubs_archive` field, replaced by `foreign_archives`.
+- Delete the deprecated `self_build_stubs_archive` field, replaced by
+  `foreign_archives`.
 
 1.11.4 (09/10/2019)
 -------------------

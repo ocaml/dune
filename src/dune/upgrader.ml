@@ -628,8 +628,7 @@ let fold_on_project_roots ~f ~init =
 let detect_project_version project dir =
   let in_tree = String.Set.mem (File_tree.Dir.files dir) in
   Dune_project.default_dune_language_version := (0, 1);
-  if in_tree File_tree.Dune_file.jbuild_fname
-  then
+  if in_tree File_tree.Dune_file.jbuild_fname then
     Jbuild_project
   else
     let project_dune_version = Dune_project.dune_version project in
@@ -640,7 +639,8 @@ let detect_project_version project dir =
       Dune1_project
     else if in_tree File_tree.Dune_file.fname then
       Dune1_project
-    else Jbuild_project
+    else
+      Jbuild_project
 
 let detect_and_add_project_version dir acc =
   let project = File_tree.Dir.project dir in

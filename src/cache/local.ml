@@ -1,4 +1,3 @@
-open Dune_util
 open Stdune
 open Result.O
 open Cache_intf
@@ -6,6 +5,10 @@ open Cache_intf
 type t =
   { root : Path.t
   ; build_root : Path.t option
+  ; info :
+      'a. ((('a, Format.formatter, unit, unit) format4 -> 'a) -> unit) -> unit
+  ; warn :
+      'a. ((('a, Format.formatter, unit, unit) format4 -> 'a) -> unit) -> unit
   ; repositories : repository list
   ; handler : handler
   ; duplication_mode : Duplication_mode.t
@@ -135,16 +138,22 @@ module Metadata_file = struct
       { metadata; files }
     | _ -> Error "invalid metadata"
 
+  let of_string s = Csexp.parse (Stream.of_string s) >>= of_sexp
+
+  let to_string f = to_sexp f |> Csexp.to_string
+
   let parse path =
     Io.with_file_in path ~f:(fun input -> Csexp.parse (Stream.of_channel input))
     >>= of_sexp
 end
 
-let path_ cache d = Path.relative cache.root d
+let root_data cache = Path.relative cache.root "files"
 
-let path_files cache = path_ cache "files"
+let root_metadata cache = Path.relative cache.root "meta"
 
-let path_meta cache = path_ cache "meta"
+let path_metadata cache key = FSSchemeImpl.path (root_metadata cache) key
+
+let path_data cache key = FSSchemeImpl.path (root_data cache) key
 
 let make_path cache path =
   match cache.build_root with
@@ -154,8 +163,7 @@ let make_path cache path =
       (Format.asprintf "relative path \"%a\" while no build root was set"
          Path.Local.pp path)
 
-let search cache hash file =
-  Collision.search (FSSchemeImpl.path (path_files cache) hash) file
+let search cache hash file = Collision.search (path_data cache hash) file
 
 let with_repositories cache repositories = { cache with repositories }
 
@@ -166,7 +174,8 @@ let duplicate ?(duplication = None) cache =
 
 let retrieve cache (file : File.t) =
   let path = Path.build file.in_the_build_directory in
-  Log.infof "retrieve %s from cache" (Path.to_string_maybe_quoted path);
+  cache.info (fun m ->
+      m "retrieve %s from cache" (Path.to_string_maybe_quoted path));
   duplicate cache file.in_the_cache path;
   path
 
@@ -176,7 +185,8 @@ let deduplicate cache (file : File.t) =
   | Hardlink -> (
     let target = Path.Build.to_string file.in_the_build_directory in
     let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-    Log.infof "deduplicate %s from %s" target (Path.to_string file.in_the_cache);
+    cache.info (fun m ->
+        m "deduplicate %s from %s" target (Path.to_string file.in_the_cache));
     let rm p = try Unix.unlink p with _ -> () in
     try
       rm tmpname;
@@ -184,8 +194,9 @@ let deduplicate cache (file : File.t) =
       Unix.rename tmpname target
     with Unix.Unix_error (e, syscall, _) ->
       rm tmpname;
-      Log.infof "error handling dune-cache command: %s: %s" syscall
-        (Unix.error_message e) )
+      cache.warn (fun m ->
+          m "error handling dune-cache command: %s: %s" syscall
+            (Unix.error_message e)) )
 
 let file_of_promotion = function
   | Already_promoted f
@@ -197,10 +208,10 @@ let apply ~f o v =
   | Some o -> f v o
   | None -> v
 
-let promote_sync cache paths key metadata repo duplication =
+let promote_sync cache paths key metadata ~repository ~duplication =
   let open Result.O in
   let* repo =
-    match repo with
+    match repository with
     | Some idx -> (
       match List.nth cache.repositories idx with
       | None -> Result.Error (Printf.sprintf "repository out of range: %i" idx)
@@ -218,7 +229,7 @@ let promote_sync cache paths key metadata repo duplication =
   in
   let promote (path, expected_hash) =
     let* abs_path = make_path cache (Path.Build.local path) in
-    Log.infof "promote %s" (Path.to_string abs_path);
+    cache.info (fun m -> m "promote %s" (Path.to_string abs_path));
     let stat = Unix.lstat (Path.to_string abs_path) in
     let* stat =
       if stat.st_kind = S_REG then
@@ -242,7 +253,7 @@ let promote_sync cache paths key metadata repo duplication =
           (Digest.to_string effective_hash)
           (Digest.to_string expected_hash)
       in
-      Log.infof "%s" message;
+      cache.info (fun m -> m "%s" message);
       Result.Error message
     ) else
       match search cache effective_hash tmp with
@@ -269,7 +280,7 @@ let promote_sync cache paths key metadata repo duplication =
              })
   in
   let+ promoted = Result.List.map ~f:promote paths in
-  let metadata_path = FSSchemeImpl.path (path_meta cache) key
+  let metadata_path = path_metadata cache key
   and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
   and files = List.map ~f:file_of_promotion promoted in
   let metadata_file : Metadata_file.t = { metadata; files } in
@@ -292,14 +303,14 @@ let promote_sync cache paths key metadata repo duplication =
     | _ -> ()
   in
   List.iter ~f promoted;
-  promoted
+  (metadata_file, promoted)
 
 let promote cache paths key metadata ~repository ~duplication =
   Result.map ~f:ignore
-    (promote_sync cache paths key metadata repository duplication)
+    (promote_sync cache paths key metadata ~repository ~duplication)
 
 let search cache key =
-  let path = FSSchemeImpl.path (path_meta cache) key in
+  let path = path_metadata cache key in
   let* sexp =
     try
       Io.with_file_in path ~f:(fun input ->
@@ -340,13 +351,17 @@ let detect_duplication_mode root =
   test ()
 
 let make ?(root = default_root ())
-    ?(duplication_mode = detect_duplication_mode root) handler =
+    ?(duplication_mode = detect_duplication_mode root)
+    ?(log = (module Dune_util.Log.StdLogger : Stdune.Logger.S)) handler =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-cache"
   else
+    let module Log = (val log) in
     let res =
       { root
       ; build_root = None
+      ; info = Log.info
+      ; warn = Log.warn
       ; repositories = []
       ; handler
       ; duplication_mode
@@ -355,8 +370,8 @@ let make ?(root = default_root ())
             (string_of_int (Unix.getpid ()))
       }
     in
-    Path.mkdir_p @@ path_meta res;
-    Path.mkdir_p @@ path_files res;
+    Path.mkdir_p @@ root_metadata res;
+    Path.mkdir_p @@ root_data res;
     Result.ok res
 
 let duplication_mode cache = cache.duplication_mode
@@ -364,13 +379,14 @@ let duplication_mode cache = cache.duplication_mode
 let trimmable stats = stats.Unix.st_nlink = 1
 
 let _garbage_collect default_trim cache =
-  let path = path_meta cache in
+  let path = root_metadata cache in
   let metas =
     List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list path)
   in
   let f default_trim = function
     | p, Result.Error msg ->
-      Log.infof "remove invalid metadata file %a: %s" Path.pp p msg;
+      cache.warn (fun m ->
+          m "remove invalid metadata file %a: %s" Path.pp p msg);
       Path.unlink_no_err p;
       { default_trim with Trimming_result.trimmed_metafiles = [ p ] }
     | p, Result.Ok { Metadata_file.files; _ } ->
@@ -381,8 +397,9 @@ let _garbage_collect default_trim cache =
       then
         default_trim
       else (
-        Log.infof "remove metadata file %a as some produced files are missing"
-          Path.pp p;
+        cache.info (fun m ->
+            m "remove metadata file %a as some produced files are missing"
+              Path.pp p);
         let res =
           List.fold_left ~init:default_trim
             ~f:(fun trim f ->
@@ -406,7 +423,7 @@ let _garbage_collect default_trim cache =
 let garbage_collect = _garbage_collect Trimming_result.empty
 
 let trim cache free =
-  let path = path_files cache in
+  let path = root_data cache in
   let files = FSSchemeImpl.list path in
   let f path =
     let stats = Path.stat path in
@@ -428,7 +445,7 @@ let trim cache free =
   _garbage_collect trim cache
 
 let size cache =
-  let root = path_files cache in
+  let root = root_data cache in
   let files = FSSchemeImpl.list root in
   let stats =
     let f p =

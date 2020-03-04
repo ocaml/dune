@@ -86,3 +86,13 @@ let command ~command_line ~output ~exit_status =
     | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (Signal.name n)
     | WSTOPPED _ -> assert false );
     flush oc
+
+module StdLogger = struct
+  let debug f = f infof
+
+  let err f = f infof
+
+  let info f = f infof
+
+  let warn f = f infof
+end

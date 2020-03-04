@@ -26,3 +26,5 @@ val command :
   -> output:string
   -> exit_status:Unix.process_status
   -> unit
+
+module StdLogger : Stdune.Logger.S

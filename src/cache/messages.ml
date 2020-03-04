@@ -1,4 +1,3 @@
-open Dune_util
 open Stdune
 open Result.O
 open Cache_intf
@@ -232,9 +231,7 @@ let find_highest_common_version my_versions versions =
   in
   match find my_versions versions with
   | None -> Result.Error "no compatible versions"
-  | Some version ->
-    Log.infof "negotiated version: %a" pp_version version;
-    Result.ok version
+  | Some version -> Result.ok version
 
 let negotiate_version my_versions fd input output =
   send { major = 1; minor = 0 } output (Lang my_versions);

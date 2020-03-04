@@ -1,7 +1,7 @@
 module Evt = Event
 module Utils = Utils
-module Log = Dune_util.Log
 open Stdune
+module Log = Dune_util.Log
 open Utils
 open Cache.Messages
 open Result.O

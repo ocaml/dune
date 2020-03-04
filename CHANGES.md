@@ -14,6 +14,9 @@
 - Dune will no longer build shared objects for stubs if
   `supports_shared_libraries` is false (#3225, fixes #3222, @rgrinberg)
 
+- Fix a memory leak in the file-watching mode (`dune build -w`)
+  (#3220, @snowleopard and @aalekseyev)
+
 2.3.1 (20/02/2020)
 ------------------
 

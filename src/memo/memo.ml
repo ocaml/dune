@@ -545,7 +545,7 @@ let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
   let last_dep_exn (Dep_node.T dep) =
     let error state =
       Code_error.raise
-        (sprintf "[get_deps_exn] dependencey in a non-Done state (%s)." state)
+        (sprintf "[get_deps_exn] dependency in a non-Done state (%s)." state)
         []
     in
     match dep.state with
@@ -697,14 +697,15 @@ module Exec_sync = struct
       else
         recompute inp dep_node
     | Running_sync { run; _ } ->
-      if Run.is_current run then
-        (* hopefully this branch should be unreachable and [add_rev_dep] reports
-           a cycle above instead *)
-        Code_error.raise "bug: unreported sync dependency_cycle"
+      if Run.is_current run then (
+        add_dep_from_caller ~called_from_peek:false dep_node;
+        (* The code below should be unreachable because the above call to
+           [add_dep_from_caller] reports a cycle. *)
+        Code_error.raise "[Exec_sync.exec_dep_node]: unreported cycle"
           [ ("stack", Call_stack.get_call_stack_as_dyn ())
           ; ("adding", Stack_frame.to_dyn (T dep_node.without_state))
           ]
-      else
+      ) else
         (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
         recompute inp dep_node
     | Done cv -> (
@@ -729,7 +730,7 @@ module Exec_async = struct
     (* update the output cache with the correct value *)
     let deps = get_deps_exn dep_node in
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
-       errors file running [f]. Currently not doing that because sometimes [f]
+       errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
     dep_node.state <- Done (Cached_value.create res ~deps);
     (* fill the ivar for any waiting threads *)
@@ -760,9 +761,10 @@ module Exec_async = struct
       else
         recompute inp dep_node
     | Running_async ({ run; _ }, ivar) ->
-      if Run.is_current run then
+      if Run.is_current run then (
+        add_dep_from_caller ~called_from_peek:false dep_node;
         Fiber.Ivar.read ivar
-      else
+      ) else
         (* In this case we know that: (i) the [ivar] will never be filled
            because the computation was cancelled in the previous run, and
            furthermore (ii) even if [ivar] was still running, we couldn't use

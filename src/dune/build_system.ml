@@ -245,7 +245,7 @@ end = struct
   let set path e =
     let t = Lazy.force t in
     needs_dumping := true;
-    Path.Table.replace t ~key:path ~data:e
+    Path.Table.set t path e
 end
 
 module Subdir_set = struct

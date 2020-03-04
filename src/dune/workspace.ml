@@ -47,7 +47,7 @@ module Context = struct
       ; host_context : Context_name.t option
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
-      ; disable_dynamically_linked_foreign_archives : bool
+      ; dynamically_linked_foreign_archives : bool
       }
 
     let to_dyn = Dyn.Encoder.opaque
@@ -62,7 +62,7 @@ module Context = struct
         ; host_context
         ; paths
         ; fdo_target_exe
-        ; disable_dynamically_linked_foreign_archives
+        ; dynamically_linked_foreign_archives
         } t =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -74,8 +74,8 @@ module Context = struct
            (Tuple.T2.equal String.equal Ordered_set_lang.equal)
            paths t.paths
       && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
-      && Bool.equal disable_dynamically_linked_foreign_archives
-           t.disable_dynamically_linked_foreign_archives
+      && Bool.equal dynamically_linked_foreign_archives
+           t.dynamically_linked_foreign_archives
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -95,9 +95,10 @@ module Context = struct
       and+ toolchain =
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
-      and+ disable_dynamically_linked_foreign_archives =
+      and+ dynamically_linked_foreign_archives =
         field ~default:false "disable_dynamically_linked_foreign_archives"
-          (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
+          (let+ disable = Dune_lang.Syntax.since syntax (2, 0) >>> bool in
+           not disable)
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in
@@ -148,7 +149,7 @@ module Context = struct
       ; toolchain
       ; paths
       ; fdo_target_exe
-      ; disable_dynamically_linked_foreign_archives
+      ; dynamically_linked_foreign_archives
       }
   end
 
@@ -279,7 +280,7 @@ module Context = struct
       ; toolchain = None
       ; paths = []
       ; fdo_target_exe = None
-      ; disable_dynamically_linked_foreign_archives = false
+      ; dynamically_linked_foreign_archives = true
       }
 end
 

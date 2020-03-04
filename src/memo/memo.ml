@@ -474,21 +474,18 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
-let get_running_state (type i o f) (state : (i, o, f) State.t) =
-  match state with
-  | Init -> None
-  | Failed _ -> None
-  | Done _ -> None
-  | Running_sync running_state -> Some running_state
-  | Running_async (running_state, _) -> Some running_state
-
 let get_running_state_exn (type i o f) (state : (i, o, f) State.t) =
-  match get_running_state state with
-  | Some running_state -> running_state
-  | None ->
+  let error where =
     Code_error.raise
-      (sprintf "[get_running_state_exn] got a non-running state.")
+      (sprintf "[get_running_state_exn] got a non-running (%s) state." where)
       []
+  in
+  match state with
+  | Init -> error "Init"
+  | Failed _ -> error "Failed"
+  | Done _ -> error "Done"
+  | Running_sync running_state -> running_state
+  | Running_async (running_state, _) -> running_state
 
 (* Add a dependency on the [node] from the caller, if there is one. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
@@ -516,25 +513,24 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     with
     | Some _the_same_node -> ()
     | None ->
+      let add_sample_dep sample =
+        try
+          Dag.add_assuming_missing global_dep_dag running_state_of_caller.sample
+            sample
+        with Dag.Cycle cycle ->
+          raise
+            (Cycle_error.E
+               { stack = Call_stack.get_call_stack_without_state ()
+               ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+               })
+      in
       let () =
-        let () =
-          match node.state with
-          | Init -> assert false
-          | Failed _ -> assert false
-          | _ -> ()
-        in
-        match get_running_state node.state with
-        | None -> ()
-        | Some { sample; _ } -> (
-          try
-            Dag.add_assuming_missing global_dep_dag
-              running_state_of_caller.sample sample
-          with Dag.Cycle cycle ->
-            raise
-              (Cycle_error.E
-                 { stack = Call_stack.get_call_stack_without_state ()
-                 ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-                 }) )
+        match node.state with
+        | Init -> assert false
+        | Failed _ -> assert false
+        | Running_sync { sample; _ } -> add_sample_dep sample
+        | Running_async ({ sample; _ }, _) -> add_sample_dep sample
+        | Done _ -> ()
       in
       let packed_node = Dep_node.T node in
       running_state_of_caller.deps_so_far <-

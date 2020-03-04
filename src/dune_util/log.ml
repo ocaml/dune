@@ -15,6 +15,8 @@ type real =
 
 let t = Fdecl.create Dyn.Encoder.opaque
 
+let verbose = ref false
+
 let init ?(file = File.Default) () =
   let oc =
     match file with
@@ -48,9 +50,7 @@ let info_internal { oc; _ } str =
     Format.pp_print_flush ppf ()
   in
   Option.iter ~f:(fun o -> write (Format.formatter_of_out_channel o)) oc;
-  match Console.display () with
-  | Verbose -> Console.print (Format.asprintf "%t" write)
-  | _ -> ()
+  if !verbose then Console.print (Format.asprintf "%t" write)
 
 let info s =
   match t () with

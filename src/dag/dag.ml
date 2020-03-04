@@ -23,8 +23,6 @@ module Make (Value : Value) : S with type value := Value.t = struct
         mutable mark : mark
       ; mutable level : int
       ; mutable deps : node list
-      ; (* see #2959, we need to implement is_child efficiently *)
-        mutable deps_set : unit Node_map.t
       ; mutable rev_deps : node list
       ; mutable parent : node option
       }
@@ -66,9 +64,7 @@ module Make (Value : Value) : S with type value := Value.t = struct
 
     let set_parent _ v p = v.info.parent <- Some p
 
-    let raw_add_edge _ v w =
-      v.info.deps <- w :: v.info.deps;
-      v.info.deps_set <- Node_map.add_exn v.info.deps_set w.info.id ()
+    let raw_add_edge _ v w = v.info.deps <- w :: v.info.deps
 
     let raw_add_vertex _ _ = ()
   end
@@ -83,14 +79,7 @@ module Make (Value : Value) : S with type value := Value.t = struct
   let create_node_info g =
     let id = g.fresh_id in
     g.fresh_id <- g.fresh_id + 1;
-    { id
-    ; mark = -1
-    ; level = 1
-    ; deps = []
-    ; deps_set = Node_map.empty
-    ; rev_deps = []
-    ; parent = None
-    }
+    { id; mark = -1; level = 1; deps = []; rev_deps = []; parent = None }
 
   (* [add_assuming_missing dag v w] creates an arc going from [v] to [w]. @raise
      Cycle if creating the arc would create a cycle. This assumes that the arc
@@ -106,8 +95,6 @@ module Make (Value : Value) : S with type value := Value.t = struct
             assert (Option.value_exn (List.last path) == v);
             List.rev path @ [ v ]))
 
-  let children node = node.info.deps
-
   let rec pp_depth depth pp_value fmt n =
     if depth >= 20 then
       Format.fprintf fmt "..."
@@ -119,16 +106,4 @@ module Make (Value : Value) : S with type value := Value.t = struct
         n.info.deps
 
   let pp_node pp_value fmt n = pp_depth 0 pp_value fmt n
-
-  let is_child v w = Node_map.mem v.info.deps_set w.info.id
-
-  let add_idempotent g v w =
-    (* if the edge doesn't already exist, we add it to the graph; note that the
-       complexity guarantees for `Dag.add` don't hold if the edge is already in
-       the graph, hence the check , see #2959 for more details and the README of
-       the vendored library *)
-    if is_child v w then
-      ()
-    else
-      add_assuming_missing g v w
 end

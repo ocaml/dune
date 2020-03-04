@@ -20,10 +20,6 @@ module Stack_frame : sig
 
   val to_dyn : t -> Dyn.t
 
-  val equal : t -> t -> bool
-
-  val compare : t -> t -> Ordering.t
-
   val name : t -> string option
 
   val input : t -> Dyn.t

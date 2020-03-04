@@ -780,6 +780,41 @@ let already_in_table info name x =
     ; ("conflicting_with", dyn)
     ]
 
+(* Find implementation that matches given variants *)
+let find_implementation_for lib ~variants =
+  assert (
+    let virtual_ = Lib_info.virtual_ lib.info in
+    Option.is_some virtual_ );
+  match variants with
+  | None -> Ok None
+  | Some (loc, variants_set) -> (
+    let available_implementations =
+      Lazy.force (Option.value_exn lib.resolved_implementations)
+    in
+    let* candidates =
+      Variant.Set.fold variants_set ~init:[] ~f:(fun variant acc ->
+          match Variant.Map.find available_implementations variant with
+          | Some res ->
+            (let+ res = res in
+             (variant, res))
+            :: acc
+          | None -> acc)
+      |> Result.List.all
+    in
+    (* TODO once we find one conflict, there's no need to search for more *)
+    match candidates with
+    | [] -> Ok None
+    | [ (variant, elem) ] ->
+      Ok (Some (Dep_stack.Implements_via.Variant variant, elem))
+    | conflict ->
+      let variants, conflict =
+        List.map conflict ~f:(fun (variant, lib) -> (variant, lib.info))
+        |> List.split
+      in
+      let given_variants = Variant.Set.of_list variants in
+      Error.multiple_implementations_for_virtual_lib ~loc ~lib:lib.info
+        ~given_variants ~conflict )
+
 module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
@@ -801,8 +836,12 @@ module Vlib : sig
 
     val add : t -> lib -> t Or_exn.t
 
-    val fold :
-      t -> init:'acc -> f:(lib -> 'acc -> 'acc Or_exn.t) -> 'acc Or_exn.t
+    val implemented_via_variants :
+         t
+      -> variants:(Loc.t * Variant.Set.t) option
+      -> (Dep_stack.Implements_via.t * lib) list Or_exn.t
+
+    val with_default_implementations : t -> lib list
   end
 end = struct
   module Unimplemented = struct
@@ -830,14 +869,19 @@ end = struct
         ; unimplemented = Set.remove t.unimplemented vlib
         }
 
-    let fold =
-      let rec loop ~f ~acc = function
-        | [] -> Ok acc
-        | lib :: libs ->
-          let* acc = f lib acc in
-          loop ~f ~acc libs
-      in
-      fun t ~init ~f -> loop (Set.to_list t.unimplemented) ~acc:init ~f
+    let with_default_implementations t =
+      Set.fold t.unimplemented ~init:[] ~f:(fun lib acc ->
+          match lib.default_implementation with
+          | None -> acc
+          | Some _ -> lib :: acc)
+
+    let implemented_via_variants t ~variants =
+      Set.fold t.unimplemented ~init:(Ok []) ~f:(fun lib acc ->
+          let* acc = acc in
+          let+ impl = find_implementation_for lib ~variants in
+          match impl with
+          | None -> acc
+          | Some impl -> impl :: acc)
   end
 
   module Table = struct
@@ -955,41 +999,6 @@ end = struct
       t := Map.set !t lib Visited;
       res
 end
-
-(* Find implementation that matches given variants *)
-let find_implementation_for lib ~variants =
-  assert (
-    let virtual_ = Lib_info.virtual_ lib.info in
-    Option.is_some virtual_ );
-  match variants with
-  | None -> Ok None
-  | Some (loc, variants_set) -> (
-    let available_implementations =
-      Lazy.force (Option.value_exn lib.resolved_implementations)
-    in
-    let* candidates =
-      Variant.Set.fold variants_set ~init:[] ~f:(fun variant acc ->
-          match Variant.Map.find available_implementations variant with
-          | Some res ->
-            (let+ res = res in
-             (variant, res))
-            :: acc
-          | None -> acc)
-      |> Result.List.all
-    in
-    (* TODO once we find one conflict, there's no need to search for more *)
-    match candidates with
-    | [] -> Ok None
-    | [ (variant, elem) ] ->
-      Ok (Some (Dep_stack.Implements_via.Variant variant, elem))
-    | conflict ->
-      let variants, conflict =
-        List.map conflict ~f:(fun (variant, lib) -> (variant, lib.info))
-        |> List.split
-      in
-      let given_variants = Variant.Set.of_list variants in
-      Error.multiple_implementations_for_virtual_lib ~loc ~lib:lib.info
-        ~given_variants ~conflict )
 
 module rec Resolve : sig
   val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> status
@@ -1498,26 +1507,6 @@ end = struct
           in
           res := (t, stack) :: !res
     in
-    let implemented_via_variants () =
-      !unimplemented
-      |> Vlib.Unimplemented.fold ~init:[] ~f:(fun lib acc ->
-             let+ impl = find_implementation_for lib ~variants in
-             match impl with
-             | None -> acc
-             | Some impl -> impl :: acc)
-    in
-    let implemented_via_defaults () =
-      let* default_impls =
-        !unimplemented
-        |> Vlib.Unimplemented.fold ~init:[] ~f:(fun lib acc ->
-               Ok
-                 ( if Option.is_some lib.default_implementation then
-                   lib :: acc
-                 else
-                   acc ))
-      in
-      resolve_default_libraries default_impls ~variants
-    in
     (* Closure loop with virtual libraries/variants selection*)
     let rec handle ts ~stack =
       let* () = Result.List.iter ts ~f:(loop ~stack) in
@@ -1525,13 +1514,20 @@ end = struct
         Ok ()
       else
         let* impls =
-          let+ impls = implemented_via_variants () in
+          let+ impls =
+            Vlib.Unimplemented.implemented_via_variants !unimplemented ~variants
+          in
           List.map impls ~f:(fun (via, impl) -> (Some via, impl))
         in
         match impls with
         | _ :: _ -> handle impls ~stack
         | [] -> (
-          let* defaults = implemented_via_defaults () in
+          let* defaults =
+            let default_impls =
+              Vlib.Unimplemented.with_default_implementations !unimplemented
+            in
+            resolve_default_libraries default_impls ~variants
+          in
           match defaults with
           | [] -> Ok ()
           | _ :: _ ->

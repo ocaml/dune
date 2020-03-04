@@ -254,6 +254,7 @@ module M = struct
 end
 
 module State = M.State
+module Running_state = M.Running_state
 module Dep_node = M.Dep_node
 module Dep_node_without_state = M.Dep_node_without_state
 module Deps_so_far = M.Deps_so_far
@@ -487,9 +488,19 @@ let get_running_state_exn (type i o f) (state : (i, o, f) State.t) =
   | Running_sync running_state -> running_state
   | Running_async (running_state, _) -> running_state
 
+(** Describes the state of a given sample attempt. The sample attempt starts out
+    in Running state, accumulates dependencies over time and then transitions to
+    [Finished]. *)
+module Sample_attempt_state = struct
+  type t =
+    | Running of Running_state.t
+    | Finished
+end
+
 (* Add a dependency on the [node] from the caller, if there is one. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
-    (node : (i, o, f) Dep_node.t) =
+    (node : (i, o, f) Dep_node.t)
+    (sample_attempt_state : Sample_attempt_state.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
   | Some (Dep_node.T caller) -> (
@@ -513,24 +524,19 @@ let add_dep_from_caller (type i o f) ~called_from_peek
     with
     | Some _the_same_node -> ()
     | None ->
-      let add_sample_dep sample =
-        try
-          Dag.add_assuming_missing global_dep_dag running_state_of_caller.sample
-            sample
-        with Dag.Cycle cycle ->
-          raise
-            (Cycle_error.E
-               { stack = Call_stack.get_call_stack_without_state ()
-               ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
-               })
-      in
       let () =
-        match node.state with
-        | Init -> assert false
-        | Failed _ -> assert false
-        | Running_sync { sample; _ } -> add_sample_dep sample
-        | Running_async ({ sample; _ }, _) -> add_sample_dep sample
-        | Done _ -> ()
+        match sample_attempt_state with
+        | Finished -> ()
+        | Running { sample; _ } -> (
+          try
+            Dag.add_assuming_missing global_dep_dag
+              running_state_of_caller.sample sample
+          with Dag.Cycle cycle ->
+            raise
+              (Cycle_error.E
+                 { stack = Call_stack.get_call_stack_without_state ()
+                 ; cycle = List.map cycle ~f:(fun node -> node.Dag.data)
+                 }) )
       in
       let packed_node = Dep_node.T node in
       running_state_of_caller.deps_so_far <-
@@ -684,21 +690,25 @@ module Exec_sync = struct
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
-    dep_node.state <- Running_sync { run; deps_so_far = no_deps_so_far; sample };
-    add_dep_from_caller ~called_from_peek:false dep_node;
+    let running_state : Running_state.t =
+      { run; deps_so_far = no_deps_so_far; sample }
+    in
+    dep_node.state <- Running_sync running_state;
+    add_dep_from_caller ~called_from_peek:false dep_node (Running running_state);
     compute run inp dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
-      if Run.is_current run then
-        already_reported exn
-      else
-        recompute inp dep_node
-    | Running_sync { run; _ } ->
       if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node;
+        add_dep_from_caller ~called_from_peek:false dep_node Finished;
+        already_reported exn
+      ) else
+        recompute inp dep_node
+    | Running_sync ({ run; _ } as state) ->
+      if Run.is_current run then (
+        add_dep_from_caller ~called_from_peek:false dep_node (Running state);
         (* The code below should be unreachable because the above call to
            [add_dep_from_caller] reports a cycle. *)
         Code_error.raise "[Exec_sync.exec_dep_node]: unreported cycle"
@@ -711,7 +721,7 @@ module Exec_sync = struct
     | Done cv -> (
       match Cached_value.get_sync cv with
       | Some v ->
-        add_dep_from_caller ~called_from_peek:false dep_node;
+        add_dep_from_caller ~called_from_peek:false dep_node Finished;
         v
       | None -> recompute inp dep_node )
 
@@ -747,22 +757,26 @@ module Exec_async = struct
       ; data = Dep_node_without_state.T dep_node.without_state
       }
     in
-    dep_node.state <-
-      Running_async ({ run; deps_so_far = no_deps_so_far; sample }, ivar);
-    add_dep_from_caller ~called_from_peek:false dep_node;
+    let running_state : Running_state.t =
+      { run; deps_so_far = no_deps_so_far; sample }
+    in
+    dep_node.state <- Running_async (running_state, ivar);
+    add_dep_from_caller ~called_from_peek:false dep_node (Running running_state);
     compute inp ivar dep_node
 
   let exec_dep_node (dep_node : _ Dep_node.t) inp =
     match dep_node.state with
     | Init -> recompute inp dep_node
     | Failed (run, exn) ->
-      if Run.is_current run then
-        already_reported exn
-      else
-        recompute inp dep_node
-    | Running_async ({ run; _ }, ivar) ->
       if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node;
+        add_dep_from_caller ~called_from_peek:false dep_node Finished;
+        already_reported exn
+      ) else
+        recompute inp dep_node
+    | Running_async (({ run; _ } as running_state), ivar) ->
+      if Run.is_current run then (
+        add_dep_from_caller ~called_from_peek:false dep_node
+          (Running running_state);
         Fiber.Ivar.read ivar
       ) else
         (* In this case we know that: (i) the [ivar] will never be filled
@@ -773,7 +787,7 @@ module Exec_async = struct
     | Done cv -> (
       Cached_value.get_async cv >>= function
       | Some v ->
-        add_dep_from_caller ~called_from_peek:false dep_node;
+        add_dep_from_caller ~called_from_peek:false dep_node Finished;
         Fiber.return v
       | None -> recompute inp dep_node )
 
@@ -789,16 +803,22 @@ let peek (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some dep_node -> (
-    add_dep_from_caller ~called_from_peek:true dep_node;
     match dep_node.state with
     | Init -> None
     | Running_sync _ -> None
     | Running_async _ -> None
     | Failed _ -> None
     | Done cv ->
-      if Run.is_current cv.calculated_at then
+      if Run.is_current cv.calculated_at then (
+        (* Not adding any dependency in the [None] cases sounds somewhat wrong,
+           but adding a full dependency is also wrong (the thing doesn't depend
+           on the value), and it's unclear that None can be reasonably handled
+           at all.
+
+           We just consider it a bug when [peek_exn] raises. *)
+        add_dep_from_caller ~called_from_peek:true dep_node Finished;
         Some cv.data
-      else
+      ) else
         None )
 
 let peek_exn t inp = Option.value_exn (peek t inp)

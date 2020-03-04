@@ -2082,14 +2082,196 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias virtual-libraries-vlib)
+ (alias virtual-libraries-double-implementation)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/vlib)
+  (source_tree test-cases/virtual-libraries/double-implementation))
+ (action
+  (chdir
+   test-cases/virtual-libraries/double-implementation
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-dune-package-info)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/dune-package-info))
+ (action
+  (chdir
+   test-cases/virtual-libraries/dune-package-info
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-github2896)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/github2896))
+ (action
+  (chdir
+   test-cases/virtual-libraries/github2896
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-lib-interface-module)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-lib-interface-module))
+ (action
+  (chdir
+   test-cases/virtual-libraries/impl-lib-interface-module
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-not-virtual)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-not-virtual))
+ (action
+  (chdir
+   test-cases/virtual-libraries/impl-not-virtual
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-not-virtual-external)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-not-virtual-external)
   (package dune-configurator))
  (action
   (chdir
-   test-cases/virtual-libraries/vlib
+   test-cases/virtual-libraries/impl-not-virtual-external
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-private-modules)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-private-modules))
+ (action
+  (chdir
+   test-cases/virtual-libraries/impl-private-modules
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-public-modules)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-public-modules))
+ (action
+  (chdir
+   test-cases/virtual-libraries/impl-public-modules
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-impl-using-vlib-modules)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/impl-using-vlib-modules))
+ (action
+  (chdir
+   test-cases/virtual-libraries/impl-using-vlib-modules
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-implements-external)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/implements-external))
+ (action
+  (chdir
+   test-cases/virtual-libraries/implements-external
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-install-file)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/install-file))
+ (action
+  (chdir
+   test-cases/virtual-libraries/install-file
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-invalid-virtual-lib)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/invalid-virtual-lib))
+ (action
+  (chdir
+   test-cases/virtual-libraries/invalid-virtual-lib
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-missing-implementation)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/missing-implementation))
+ (action
+  (chdir
+   test-cases/virtual-libraries/missing-implementation
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-module-fields)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/module-fields))
+ (action
+  (chdir
+   test-cases/virtual-libraries/module-fields
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-no-vlib-present)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/no-vlib-present))
+ (action
+  (chdir
+   test-cases/virtual-libraries/no-vlib-present
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-preprocess)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/preprocess))
+ (action
+  (chdir
+   test-cases/virtual-libraries/preprocess
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-private-modules-overlapping-names)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/private-modules-overlapping-names))
+ (action
+  (chdir
+   test-cases/virtual-libraries/private-modules-overlapping-names
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-unwrapped)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/unwrapped))
+ (action
+  (chdir
+   test-cases/virtual-libraries/unwrapped
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-variants-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/variants-simple))
+ (action
+  (chdir
+   test-cases/virtual-libraries/variants-simple
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias virtual-libraries-variants-sub-module)
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/variants-sub-module))
+ (action
+  (chdir
+   test-cases/virtual-libraries/variants-sub-module
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2446,7 +2628,26 @@
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
-  (alias virtual-libraries-vlib)
+  (alias virtual-libraries-double-implementation)
+  (alias virtual-libraries-dune-package-info)
+  (alias virtual-libraries-github2896)
+  (alias virtual-libraries-impl-lib-interface-module)
+  (alias virtual-libraries-impl-not-virtual)
+  (alias virtual-libraries-impl-not-virtual-external)
+  (alias virtual-libraries-impl-private-modules)
+  (alias virtual-libraries-impl-public-modules)
+  (alias virtual-libraries-impl-using-vlib-modules)
+  (alias virtual-libraries-implements-external)
+  (alias virtual-libraries-install-file)
+  (alias virtual-libraries-invalid-virtual-lib)
+  (alias virtual-libraries-missing-implementation)
+  (alias virtual-libraries-module-fields)
+  (alias virtual-libraries-no-vlib-present)
+  (alias virtual-libraries-preprocess)
+  (alias virtual-libraries-private-modules-overlapping-names)
+  (alias virtual-libraries-unwrapped)
+  (alias virtual-libraries-variants-simple)
+  (alias virtual-libraries-variants-sub-module)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)
   (alias windows-diff)
@@ -2679,7 +2880,26 @@
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
-  (alias virtual-libraries-vlib)
+  (alias virtual-libraries-double-implementation)
+  (alias virtual-libraries-dune-package-info)
+  (alias virtual-libraries-github2896)
+  (alias virtual-libraries-impl-lib-interface-module)
+  (alias virtual-libraries-impl-not-virtual)
+  (alias virtual-libraries-impl-not-virtual-external)
+  (alias virtual-libraries-impl-private-modules)
+  (alias virtual-libraries-impl-public-modules)
+  (alias virtual-libraries-impl-using-vlib-modules)
+  (alias virtual-libraries-implements-external)
+  (alias virtual-libraries-install-file)
+  (alias virtual-libraries-invalid-virtual-lib)
+  (alias virtual-libraries-missing-implementation)
+  (alias virtual-libraries-module-fields)
+  (alias virtual-libraries-no-vlib-present)
+  (alias virtual-libraries-preprocess)
+  (alias virtual-libraries-private-modules-overlapping-names)
+  (alias virtual-libraries-unwrapped)
+  (alias virtual-libraries-variants-simple)
+  (alias virtual-libraries-variants-sub-module)
   (alias virtual-libraries-vlib-default-impl)
   (alias virtual-libraries-vlib-wrong-default-impl)
   (alias windows-diff)

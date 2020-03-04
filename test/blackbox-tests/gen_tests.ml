@@ -247,7 +247,7 @@ let exclusions =
     (* for the following tests sandboxing is disabled because absolute paths end
        up appearing in the output if we sandbox *)
   ; make "env/env-bins" ~disable_sandboxing:true
-  ; make "virtual-libraries/vlib"
+  ; make "virtual-libraries/impl-not-virtual-external"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ; make "pkg-config-quoting"
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]

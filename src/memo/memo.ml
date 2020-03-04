@@ -199,6 +199,10 @@ module M = struct
   end =
     Running_state
 
+  (* CR-soon amokhov: The current implementation relies on a few invariants
+     about moving from one state to another. As a result the code is full of
+     [Code_error]s and is hard to reason about. I would like to clean this up in
+     a separate semantics-preserving PR. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Running] includes computations that already terminated with an
@@ -486,7 +490,7 @@ let get_running_state_exn (type i o f) (state : (i, o, f) State.t) =
       (sprintf "[get_running_state_exn] got a non-running state.")
       []
 
-(* TODO: comments *)
+(* Add a dependency on the [node] from the caller, if there is one. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t) =
   match Call_stack.get_call_stack_tip () with

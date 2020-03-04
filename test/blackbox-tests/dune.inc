@@ -2102,6 +2102,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias virtual-libraries-github2896)
+ (deps (package dune) (source_tree test-cases/virtual-libraries/github2896))
+ (action
+  (chdir
+   test-cases/virtual-libraries/github2896
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias virtual-libraries-impl-lib-interface-module)
  (deps
   (package dune)
@@ -2622,6 +2630,7 @@
   (alias vendor-do-not-install-vendored-packages)
   (alias virtual-libraries-double-implementation)
   (alias virtual-libraries-dune-package-info)
+  (alias virtual-libraries-github2896)
   (alias virtual-libraries-impl-lib-interface-module)
   (alias virtual-libraries-impl-not-virtual)
   (alias virtual-libraries-impl-not-virtual-external)
@@ -2873,6 +2882,7 @@
   (alias vendor-do-not-install-vendored-packages)
   (alias virtual-libraries-double-implementation)
   (alias virtual-libraries-dune-package-info)
+  (alias virtual-libraries-github2896)
   (alias virtual-libraries-impl-lib-interface-module)
   (alias virtual-libraries-impl-not-virtual)
   (alias virtual-libraries-impl-not-virtual-external)

@@ -411,7 +411,12 @@ module Stack_frame_without_state = struct
 end
 
 module Stack_frame_with_state = struct
-  open Dep_node
+  type ('i, 'o, 'f) unpacked =
+    { without_state : ('i, 'o, 'f) Dep_node_without_state.t
+    ; running_state : Running_state.t
+    }
+
+  type t = T : ('i, 'o, 'f) unpacked -> t
 
   let to_dyn (T t) = Stack_frame_without_state.to_dyn (T t.without_state)
 end
@@ -446,7 +451,7 @@ module Call_stack = struct
 
   let get_call_stack_without_state () =
     get_call_stack ()
-    |> List.map ~f:(fun (Dep_node.T t) ->
+    |> List.map ~f:(fun (Stack_frame_with_state.T t) ->
            Dep_node_without_state.T t.without_state)
 
   let get_call_stack_as_dyn () =
@@ -454,12 +459,12 @@ module Call_stack = struct
 
   let get_call_stack_tip () = List.hd_opt (get_call_stack ())
 
-  let push_async_frame frame f =
+  let push_async_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
     Fiber.Var.set call_stack_key (frame :: stack) (fun () ->
         Implicit_output.forbid_async f)
 
-  let push_sync_frame frame f =
+  let push_sync_frame (frame : Stack_frame_with_state.t) f =
     let stack = get_call_stack () in
     Fiber.Var.set_sync call_stack_key (frame :: stack) (fun () ->
         Implicit_output.forbid_sync f)
@@ -475,35 +480,26 @@ let pp_stack () =
 
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
-let get_running_state_exn (type i o f) (state : (i, o, f) State.t) =
-  let error where =
-    Code_error.raise
-      (sprintf "[get_running_state_exn] got a non-running (%s) state." where)
-      []
-  in
-  match state with
-  | Init -> error "Init"
-  | Failed _ -> error "Failed"
-  | Done _ -> error "Done"
-  | Running_sync running_state -> running_state
-  | Running_async (running_state, _) -> running_state
-
 (** Describes the state of a given sample attempt. The sample attempt starts out
     in Running state, accumulates dependencies over time and then transitions to
-    [Finished]. *)
-module Sample_attempt_state = struct
+    [Finished].
+
+    We maintain a DAG of running attempts for cycle detection, but finished ones
+    don't need to be in the DAG. (although currently they still are) *)
+module Sample_attempt_dag_node = struct
   type t =
-    | Running of Running_state.t
+    | Running of Dag.node
     | Finished
 end
 
 (* Add a dependency on the [node] from the caller, if there is one. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t)
-    (sample_attempt_state : Sample_attempt_state.t) =
+    (sample_attempt_dag_node : Sample_attempt_dag_node.t) =
   match Call_stack.get_call_stack_tip () with
   | None -> ()
-  | Some (Dep_node.T caller) -> (
+  | Some (Stack_frame_with_state.T caller) -> (
+    let running_state_of_caller = caller.running_state in
     let () =
       match (caller.without_state.spec.f, node.without_state.spec.f) with
       | Async _, Async _ -> ()
@@ -515,22 +511,21 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             "[Memo.add_dep_from_caller ~called_from_peek:false] Synchronous \
              functions are not allowed to depend on asynchronous ones."
             [ ("stack", Call_stack.get_call_stack_as_dyn ())
-            ; ("adding", Stack_frame.to_dyn (T node))
+            ; ("adding", Stack_frame_without_state.to_dyn (T node.without_state))
             ]
     in
-    let running_state_of_caller = get_running_state_exn caller.state in
     match
       Id.Map.find running_state_of_caller.deps_so_far.map node.without_state.id
     with
     | Some _the_same_node -> ()
     | None ->
       let () =
-        match sample_attempt_state with
+        match sample_attempt_dag_node with
         | Finished -> ()
-        | Running { sample; _ } -> (
+        | Running node -> (
           try
             Dag.add_assuming_missing global_dep_dag
-              running_state_of_caller.sample sample
+              running_state_of_caller.sample node
           with Dag.Cycle cycle ->
             raise
               (Cycle_error.E
@@ -547,7 +542,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             packed_node :: running_state_of_caller.deps_so_far.deps_reversed
         } )
 
-let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
+let get_deps_exn (running_state : Running_state.t) =
   let last_dep_exn (Dep_node.T dep) =
     let error state =
       Code_error.raise
@@ -561,7 +556,7 @@ let get_deps_exn (type i o f) (node : (i, o, f) Dep_node.t) =
     | Running_async _ -> error "Running_async"
     | Done res -> Last_dep.T (dep, res.data)
   in
-  let deps_so_far = (get_running_state_exn node.state).deps_so_far in
+  let deps_so_far = running_state.deps_so_far in
   List.rev_map deps_so_far.deps_reversed ~f:last_dep_exn
 
 type ('input, 'output, 'f) t =
@@ -632,13 +627,30 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
     Store.set t.cache inp dep_node;
     dep_node
 
+module Cache_lookup_result = struct
+  type ('a, 'ivar) t =
+    | New_attempt of Running_state.t * 'ivar
+    | Waiting of Dag.node * 'ivar
+    | Done of 'a
+    | Already_reported_failure of Exn_with_backtrace.t
+
+  let sample_attempt_dag_node : _ t -> Sample_attempt_dag_node.t = function
+    | Done _
+    | Already_reported_failure _ ->
+      Finished
+    | New_attempt (running, _) -> Running running.sample
+    | Waiting (dag_node, _) -> Running dag_node
+end
+
 module Exec_sync = struct
-  let compute run inp dep_node =
+  let compute inp (dep_node : _ Dep_node.t) running_state =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let res =
       match
-        Call_stack.push_sync_frame (T dep_node) (fun () ->
+        Call_stack.push_sync_frame
+          (T { without_state = dep_node.without_state; running_state })
+          (fun () ->
             match dep_node.without_state.spec.f with
             | Function.Sync f ->
               (* If [f] raises an exception, [push_sync_frame] re-raises it
@@ -647,7 +659,7 @@ module Exec_sync = struct
               Exn_with_backtrace.try_with (fun () -> f inp))
       with
       | Error exn -> (
-        dep_node.state <- Failed (run, exn);
+        dep_node.state <- Failed (Run.current (), exn);
         let code_error (e : Code_error_with_memo_backtrace.t) =
           let bt = exn.backtrace in
           let { Code_error_with_memo_backtrace.exn
@@ -679,66 +691,74 @@ module Exec_sync = struct
       | Ok res -> res
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_exn dep_node in
+    let deps = get_deps_exn running_state in
     dep_node.state <- Done (Cached_value.create res ~deps);
     res
 
-  let recompute inp (dep_node : _ Dep_node.t) =
-    let run = Run.current () in
-    let sample : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node.without_state
-      }
+  let try_to_use_cache (dep_node : _ Dep_node.t) : _ Cache_lookup_result.t =
+    let new_attempt () : _ Cache_lookup_result.t =
+      let run = Run.current () in
+      let sample : Dag.node =
+        { info = Dag.create_node_info global_dep_dag
+        ; data = Dep_node_without_state.T dep_node.without_state
+        }
+      in
+      let running_state : Running_state.t =
+        { run; deps_so_far = no_deps_so_far; sample }
+      in
+      dep_node.state <- Running_sync running_state;
+      New_attempt (running_state, ())
     in
-    let running_state : Running_state.t =
-      { run; deps_so_far = no_deps_so_far; sample }
-    in
-    dep_node.state <- Running_sync running_state;
-    add_dep_from_caller ~called_from_peek:false dep_node (Running running_state);
-    compute run inp dep_node
-
-  let exec_dep_node (dep_node : _ Dep_node.t) inp =
     match dep_node.state with
-    | Init -> recompute inp dep_node
+    | Init -> new_attempt ()
     | Failed (run, exn) ->
-      if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node Finished;
-        already_reported exn
-      ) else
-        recompute inp dep_node
+      if Run.is_current run then
+        Already_reported_failure exn
+      else
+        new_attempt ()
     | Running_sync ({ run; _ } as state) ->
-      if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node (Running state);
-        (* The code below should be unreachable because the above call to
-           [add_dep_from_caller] reports a cycle. *)
-        Code_error.raise "[Exec_sync.exec_dep_node]: unreported cycle"
-          [ ("stack", Call_stack.get_call_stack_as_dyn ())
-          ; ("adding", Stack_frame.to_dyn (T dep_node.without_state))
-          ]
-      ) else
+      if Run.is_current run then
+        Waiting (state.sample, ())
+      else
         (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
-        recompute inp dep_node
+        new_attempt ()
     | Done cv -> (
       match Cached_value.get_sync cv with
-      | Some v ->
-        add_dep_from_caller ~called_from_peek:false dep_node Finished;
-        v
-      | None -> recompute inp dep_node )
+      | Some v -> Done v
+      | None -> new_attempt () )
+
+  let exec_dep_node (dep_node : _ Dep_node.t) inp =
+    let result = try_to_use_cache dep_node in
+    add_dep_from_caller ~called_from_peek:false dep_node
+      (Cache_lookup_result.sample_attempt_dag_node result);
+    match result with
+    | Done v -> v
+    | Already_reported_failure exn -> already_reported exn
+    | New_attempt (running, _) -> compute inp dep_node running
+    | Waiting _ ->
+      (* The code below should be unreachable because the above call to
+         [add_dep_from_caller] reports a cycle. *)
+      Code_error.raise "[Exec_sync.exec_dep_node]: unreported cycle"
+        [ ("stack", Call_stack.get_call_stack_as_dyn ())
+        ; ("adding", Stack_frame.to_dyn (T dep_node.without_state))
+        ]
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
 module Exec_async = struct
-  let compute inp ivar dep_node =
+  let compute inp ivar (dep_node : _ Dep_node.t) running_state =
     (* define the function to update / double check intermediate result *)
     (* set context of computation then run it *)
     let* res =
-      Call_stack.push_async_frame (T dep_node) (fun () ->
+      Call_stack.push_async_frame
+        (T { without_state = dep_node.without_state; running_state })
+        (fun () ->
           match dep_node.without_state.spec.f with
           | Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_exn dep_node in
+    let deps = get_deps_exn running_state in
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
        errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
@@ -747,49 +767,58 @@ module Exec_async = struct
     let+ () = Fiber.Ivar.fill ivar res in
     res
 
-  (* the computation that force computes the fiber *)
-  let recompute inp (dep_node : _ Dep_node.t) =
-    (* create an ivar so other threads can wait for the computation to finish *)
-    let ivar : 'b Fiber.Ivar.t = Fiber.Ivar.create () in
-    let run = Run.current () in
-    let sample : Dag.node =
-      { info = Dag.create_node_info global_dep_dag
-      ; data = Dep_node_without_state.T dep_node.without_state
-      }
+  (* CR-someday aalekseyev: I defined in continuation-passing style instead of
+     using [Fiber.return] to make sure there's no interleaving intervening
+     between this and the continuation (as before), but I can't think of
+     anything that would break if we allowed such interleaving and maybe Fiber
+     already guarantees there is no such interleaving. If so, we should simplify
+     the code. *)
+  let try_to_use_cache_k (dep_node : _ Dep_node.t)
+      (k : _ Cache_lookup_result.t -> _ Fiber.t) =
+    let new_attempt () =
+      let run = Run.current () in
+      let sample : Dag.node =
+        { info = Dag.create_node_info global_dep_dag
+        ; data = Dep_node_without_state.T dep_node.without_state
+        }
+      in
+      let running_state : Running_state.t =
+        { run; deps_so_far = no_deps_so_far; sample }
+      in
+      let ivar = Fiber.Ivar.create () in
+      dep_node.state <- Running_async (running_state, ivar);
+      k (New_attempt (running_state, ivar))
     in
-    let running_state : Running_state.t =
-      { run; deps_so_far = no_deps_so_far; sample }
-    in
-    dep_node.state <- Running_async (running_state, ivar);
-    add_dep_from_caller ~called_from_peek:false dep_node (Running running_state);
-    compute inp ivar dep_node
-
-  let exec_dep_node (dep_node : _ Dep_node.t) inp =
     match dep_node.state with
-    | Init -> recompute inp dep_node
+    | Init -> new_attempt ()
     | Failed (run, exn) ->
-      if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node Finished;
-        already_reported exn
-      ) else
-        recompute inp dep_node
-    | Running_async (({ run; _ } as running_state), ivar) ->
-      if Run.is_current run then (
-        add_dep_from_caller ~called_from_peek:false dep_node
-          (Running running_state);
-        Fiber.Ivar.read ivar
-      ) else
+      if Run.is_current run then
+        k (Already_reported_failure exn)
+      else
+        new_attempt ()
+    | Running_async (({ run; _ } as state), ivar) ->
+      if Run.is_current run then
+        k (Waiting (state.sample, ivar))
+      else
         (* In this case we know that: (i) the [ivar] will never be filled
            because the computation was cancelled in the previous run, and
            furthermore (ii) even if [ivar] was still running, we couldn't use
            its result because it would have been out of date. *)
-        recompute inp dep_node
+        new_attempt ()
     | Done cv -> (
       Cached_value.get_async cv >>= function
-      | Some v ->
-        add_dep_from_caller ~called_from_peek:false dep_node Finished;
-        Fiber.return v
-      | None -> recompute inp dep_node )
+      | Some v -> k (Done v)
+      | None -> new_attempt () )
+
+  let exec_dep_node (dep_node : _ Dep_node.t) inp =
+    try_to_use_cache_k dep_node (fun result ->
+        add_dep_from_caller ~called_from_peek:false dep_node
+          (Cache_lookup_result.sample_attempt_dag_node result);
+        match result with
+        | Done v -> Fiber.return v
+        | Already_reported_failure exn -> already_reported exn
+        | Waiting (_dag_node, ivar) -> Fiber.Ivar.read ivar
+        | New_attempt (running, ivar) -> compute inp ivar dep_node running)
 
   let exec t inp = exec_dep_node (dep_node t inp) inp
 end

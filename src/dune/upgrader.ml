@@ -647,7 +647,7 @@ let detect_and_add_project_version dir acc =
   let detected_version = detect_project_version project dir in
   (dir, detected_version) :: acc
 
-let  rec upgrade ?last:(last=false) () =
+let rec upgrade ?(last = false) () =
   let todo = { to_rename_and_edit = []; to_edit = [] } in
   let current_versions =
     fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
@@ -687,14 +687,13 @@ let  rec upgrade ?last:(last=false) () =
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
           Path.unlink (Path.source p));
       Io.write_file (Path.source new_file) contents ~binary:true);
-  if !v1_updates && not last then begin
-    (* Run the upgrader again to update new v1 projects to v2
-       No more than one additionnal upgrade should be needed *)
-    (* We reset thje memoization as a simple way
-       to refresh the File_tree *)
+  if !v1_updates && not last then (
+    (* Run the upgrader again to update new v1 projects to v2 No more than one
+       additionnal upgrade should be needed *)
+    (* We reset thje memoization as a simple way to refresh the File_tree *)
     Memo.reset ();
     upgrade ~last:true ()
-  end else if !v2_updates then
+  ) else if !v2_updates then
     log
       "\n\
        Some projects were upgraded to dune v2. Some breaking changes may not\n\

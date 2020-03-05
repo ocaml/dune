@@ -22,9 +22,10 @@
   Upgrading partv2/partv1bis/dune-project...
   Upgrading jbuild.inc to dune.inc...
   Upgrading jbuild to dune...
-  
-  Some projects where upgraded to dune v1, you can run the upgrader
-  again to upgrade them to dune v2.
+  Project in dir . will be upgraded to dune v2.
+  Upgrading dune.inc...
+  Upgrading dune...
+  Upgrading dune-project...
   
   Some projects were upgraded to dune v2. Some breaking changes may not
   have been treated automatically. Here is a list of things you should check
@@ -53,6 +54,8 @@
     and is now an error.
   - In `(diff? x y)` action, require `x` to exist and register a
     dependency on that file.
+  - `self_build_stubs_archive` was deleted in version 2.0 of the dune
+  language. Use the (foreign_archives ...) field instead.
 
   $ cat dune
   ;old style
@@ -63,7 +66,8 @@
    (deps
     (:< x)
     y
-    z) ; abc
+    z)
+   ; abc
    (targets z)
    ; def
    (action

@@ -48,13 +48,13 @@ let make ?loc ?prefix ?(hints = []) paragraphs =
   { loc; hints; paragraphs }
 
 let pp { loc; paragraphs; hints } =
+  let open Pp.O in
   let paragraphs =
     match hints with
     | [] -> paragraphs
     | _ ->
       List.append paragraphs
-        (List.map hints ~f:(fun hint ->
-             Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
+        (List.map hints ~f:(fun hint -> Pp.verbatim "Hint:" ++ Pp.space ++ hint))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =

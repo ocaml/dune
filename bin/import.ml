@@ -37,7 +37,7 @@ let make_cache (config : Config.t) =
     in
     match config.cache_transport with
     | Config.Caching.Transport.Direct ->
-      Log.info "enable binary cache in direct access mode";
+      Log.info [ Pp.text "enable binary cache in direct access mode" ];
       let cache =
         Result.ok_exn
           (Result.map_error
@@ -47,7 +47,7 @@ let make_cache (config : Config.t) =
       in
       Cache.make_caching (module Cache.Local) cache
     | Daemon ->
-      Log.info "enable binary cache in daemon mode";
+      Log.info [ Pp.text "enable binary cache in daemon mode" ];
       let cache =
         Result.ok_exn
           (Cache.Client.make ?duplication_mode:config.cache_duplication handle)
@@ -62,7 +62,7 @@ let make_cache (config : Config.t) =
         ; check_probability = config.cache_check_probability
         }
     | Config.Caching.Mode.Disabled ->
-      Log.info "disable binary cache";
+      Log.info [ Pp.text "disable binary cache" ];
       None )
 
 module Main = struct

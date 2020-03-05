@@ -19,3 +19,6 @@ val make :
   -> ?hints:User_message.Style.t Pp.t list
   -> User_message.Style.t Pp.t list
   -> User_message.t
+
+(** The "Error:" prefix *)
+val prefix : User_message.Style.t Pp.t

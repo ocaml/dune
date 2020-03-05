@@ -27,12 +27,6 @@ let request targets =
           Build_system.Alias.dep_multi_contexts )
           ~dir ~name ~contexts)
 
-let log_targets targets =
-  List.iter targets ~f:(function
-    | File path -> Log.info @@ "- " ^ Path.to_string path
-    | Alias a -> Log.info (Alias.to_log_string a));
-  flush stdout
-
 let target_hint (_setup : Dune.Main.build_system) path =
   assert (Path.is_managed path);
   let sub_dir = Option.value ~default:path (Path.parent path) in
@@ -160,13 +154,17 @@ let resolve_targets_mixed common setup user_targets =
             (resolve_path p ~setup))
     in
     let config = Common.config common in
-    if config.display = Verbose then (
-      Log.info "Actual targets:";
-      List.concat_map targets ~f:(function
-        | Ok targets -> targets
-        | Error _ -> [])
-      |> log_targets
-    );
+    if config.display = Verbose then
+      Log.info
+        [ Pp.text "Actual targets:"
+        ; Pp.enumerate
+            (List.concat_map targets ~f:(function
+              | Ok targets -> targets
+              | Error _ -> []))
+            ~f:(function
+              | File p -> Pp.verbatim (Path.to_string_maybe_quoted p)
+              | Alias a -> Alias.pp a)
+        ];
     targets
 
 let resolve_targets common (setup : Dune.Main.build_system) user_targets =

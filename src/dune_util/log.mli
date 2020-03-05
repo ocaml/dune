@@ -16,9 +16,12 @@ val init : ?file:File.t -> unit -> unit
 val init_disabled : unit -> unit
 
 (** Print an informative message in the log *)
-val info : string -> unit
+val info_user_message : User_message.t -> unit
 
-val infof : ('a, Format.formatter, unit, unit) format4 -> 'a
+(** [info paragraphs] is a short-hand for:
+
+    {[ info_user_message (User_message.make paragraphs) ]} *)
+val info : User_message.Style.t Pp.t list -> unit
 
 (** Print an executed command in the log *)
 val command :
@@ -26,8 +29,6 @@ val command :
   -> output:string
   -> exit_status:Unix.process_status
   -> unit
-
-module StdLogger : Stdune.Logger.S
 
 (** Whether we are running in verbose mode *)
 val verbose : bool ref

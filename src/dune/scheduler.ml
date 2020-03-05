@@ -619,7 +619,8 @@ let rec restart_waiting_for_available_job t =
     restart_waiting_for_available_job t
 
 let got_signal signal =
-  if !Log.verbose then Log.infof "Got signal %s, exiting." (Signal.name signal)
+  if !Log.verbose then
+    Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
 type saw_signal =
   | Ok
@@ -639,8 +640,10 @@ let kill_and_wait_for_all_processes t () =
   !saw_signal
 
 let prepare ?(config = Config.default) () =
-  Log.infof "Workspace root: %s"
-    (Path.to_absolute_filename Path.root |> String.maybe_quoted);
+  Log.info
+    [ Pp.textf "Workspace root: %s"
+        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
+    ];
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init ();

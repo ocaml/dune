@@ -62,16 +62,19 @@ let make ?finally ?duplication_mode handle =
     Result.map_error ~f:err
       (Messages.negotiate_version my_versions fd input socket)
   in
-  Log.infof "negotiated version: %a" Messages.pp_version version;
+  Log.info
+    [ Pp.textf "negotiated version: %s" (Messages.string_of_version version) ];
   let rec thread input =
     match
       let+ command = read version input in
-      Log.infof "dune-cache command: %a" Pp.render_ignore_tags
-        (Dyn.pp (command_to_dyn command));
+      Log.info
+        [ (let open Pp.O in
+          Pp.text "dune-cache command: " ++ Dyn.pp (command_to_dyn command))
+        ];
       handle command
     with
     | Result.Error e ->
-      Log.infof "dune-cache read error: %s" e;
+      Log.info [ Pp.textf "dune-cache read error: %s" e ];
       Option.iter ~f:(fun f -> f ()) finally
     | Result.Ok () -> (thread [@tailcall]) input
   in

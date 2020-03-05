@@ -42,32 +42,21 @@ let init_disabled () = Fdecl.set t None
 
 let t () = Fdecl.get t
 
-let info_internal { oc; _ } str =
-  let write ppf =
-    List.iter (String.split_lines str) ~f:(function
-      | "" -> Format.pp_print_string ppf "#\n"
-      | s -> Format.fprintf ppf "# %s\n" s);
-    Format.pp_print_flush ppf ()
-  in
-  Option.iter ~f:(fun o -> write (Format.formatter_of_out_channel o)) oc;
-  if !verbose then Console.print (Format.asprintf "%t" write)
-
-let info s =
+let info_user_message msg =
   match t () with
   | None -> ()
-  | Some t -> info_internal t s
+  | Some { oc; _ } ->
+    Option.iter oc ~f:(fun oc ->
+        let s =
+          Format.asprintf "%a@?" Pp.render_ignore_tags (User_message.pp msg)
+        in
+        List.iter (String.split_lines s) ~f:(function
+          | "" -> output_string oc "#\n"
+          | s -> Printf.fprintf oc "# %s\n" s);
+        flush oc);
+    if !verbose then Console.print_user_message msg
 
-let infof fmt =
-  match t () with
-  | None -> Format.ikfprintf ignore Format.str_formatter fmt
-  | Some t ->
-    Buffer.clear t.buf;
-    Format.kfprintf
-      (fun ppf ->
-        Format.pp_print_flush ppf ();
-        let s = Buffer.contents t.buf in
-        info_internal t s)
-      t.ppf fmt
+let info paragraphs = info_user_message (User_message.make paragraphs)
 
 let command ~command_line ~output ~exit_status =
   match t () with
@@ -86,13 +75,3 @@ let command ~command_line ~output ~exit_status =
     | WSIGNALED n -> Printf.fprintf oc "[got signal %s]\n" (Signal.name n)
     | WSTOPPED _ -> assert false );
     flush oc
-
-module StdLogger = struct
-  let debug f = f infof
-
-  let err f = f infof
-
-  let info f = f infof
-
-  let warn f = f infof
-end

@@ -1408,7 +1408,7 @@ end = struct
             match Caching.Cache.search Caching.cache rule_digest with
             | Ok (_, files) -> Some (files, cache)
             | Error msg ->
-              Log.infof "cache miss: %s" msg;
+              Log.info [ Pp.textf "cache miss: %s" msg ];
               None )
         and cache_checking =
           match t.caching with
@@ -1535,8 +1535,7 @@ end = struct
                   |> List.map ~f:Path.Build.to_string
                   |> String.concat ~sep:", "
                 in
-                Log.info
-                  (Format.sprintf "promotion failed for %s: %s" targets msg)
+                Log.info [ Pp.textf "promotion failed for %s: %s" targets msg ]
               in
               Caching.Cache.promote Caching.cache targets rule_digest []
                 ~repository:None ~duplication:None

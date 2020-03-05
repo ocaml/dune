@@ -34,7 +34,8 @@ val promote_sync :
 val make :
      ?root:Path.t
   -> ?duplication_mode:Duplication_mode.t
-  -> ?log:(module Stdune.Logger.S)
+  -> ?log:(User_message.Style.t Pp.t list -> unit)
+  -> ?warn:(User_message.Style.t Pp.t list -> unit)
   -> handler
   -> (t, string) Result.t
 

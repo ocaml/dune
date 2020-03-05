@@ -383,18 +383,20 @@ let upgrade () =
   let todo = { to_rename_and_edit = []; to_add = []; to_edit = [] } in
   File_tree.fold_with_progress ~traverse:Sub_dirs.Status.Set.normal_only
     ~init:() ~f:(fun dir () -> upgrade_dir todo dir);
-  let log fmt = Printf.ksprintf Console.print fmt in
   List.iter todo.to_edit ~f:(fun (fn, s) ->
-      log "Upgrading %s...\n" (Path.Source.to_string_maybe_quoted fn);
+      Console.print
+        [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];
       Io.write_file (Path.source fn) s ~binary:true);
   List.iter todo.to_rename_and_edit ~f:(fun x ->
       let { original_file; new_file; extra_files_to_delete; contents } = x in
-      log "Upgrading %s to %s...\n"
-        ( List.map
-            (extra_files_to_delete @ [ original_file ])
-            ~f:Path.Source.to_string_maybe_quoted
-        |> String.enumerate_and )
-        (Path.Source.to_string_maybe_quoted new_file);
+      Console.print
+        [ Pp.textf "Upgrading %s to %s..."
+            ( List.map
+                (extra_files_to_delete @ [ original_file ])
+                ~f:Path.Source.to_string_maybe_quoted
+            |> String.enumerate_and )
+            (Path.Source.to_string_maybe_quoted new_file)
+        ];
       List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
           Path.unlink (Path.source p));
       Io.write_file (Path.source new_file) contents ~binary:true)

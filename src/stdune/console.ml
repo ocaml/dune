@@ -1,7 +1,5 @@
 module Backend = struct
   module type S = sig
-    val print : string -> unit
-
     val print_user_message : User_message.t -> unit
 
     val set_status_line : User_message.Style.t Pp.t option -> unit
@@ -12,8 +10,6 @@ module Backend = struct
   type t = (module S)
 
   module Dumb_no_flush : S = struct
-    let print = prerr_string
-
     let print_user_message msg =
       Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
       User_message.prerr { msg with loc = None }
@@ -25,10 +21,6 @@ module Backend = struct
 
   module Dumb : S = struct
     include Dumb_no_flush
-
-    let print msg =
-      print msg;
-      flush stderr
 
     let print_user_message msg =
       print_user_message msg;
@@ -67,12 +59,6 @@ module Backend = struct
         show_status_line ();
         flush stderr
 
-    let print msg =
-      hide_status_line ();
-      Dumb_no_flush.print msg;
-      show_status_line ();
-      flush stderr
-
     let print_user_message msg =
       hide_status_line ();
       Dumb_no_flush.print_user_message msg;
@@ -92,10 +78,6 @@ module Backend = struct
 
   let compose (module A : S) (module B : S) =
     ( module struct
-      let print msg =
-        A.print msg;
-        B.print msg
-
       let print_user_message msg =
         A.print_user_message msg;
         B.print_user_message msg
@@ -110,13 +92,11 @@ module Backend = struct
     end : S )
 end
 
-let print msg =
-  let (module M : Backend.S) = !Backend.main in
-  M.print msg
-
 let print_user_message msg =
   let (module M : Backend.S) = !Backend.main in
   M.print_user_message msg
+
+let print paragraphs = print_user_message (User_message.make paragraphs)
 
 let set_status_line line =
   let (module M : Backend.S) = !Backend.main in

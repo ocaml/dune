@@ -32,10 +32,10 @@ prefixed and unprefixed modules are built.
 Command line version.
 
   $ ./sdune build --verbose %{cmo:a} %{cmo:b} %{cmo:c} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/.a1.objs/byte/a1__A.cmo
-  # - _build/default/.b.eobjs/byte/dune__exe__B.cmo
-  # - _build/default/.c1.objs/byte/c.cmo
+  Actual targets:
+  - _build/default/.a1.objs/byte/a1__A.cmo
+  - _build/default/.b.eobjs/byte/dune__exe__B.cmo
+  - _build/default/.c1.objs/byte/c.cmo
 
 The next test tries to build a .cmi file (of a module in a wrapped library).
 
@@ -48,8 +48,8 @@ The next test tries to build a .cmi file (of a module in a wrapped library).
 Command line version.
 
   $ ./sdune build --verbose %{cmi:a} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/.a1.objs/byte/a1__A.cmi
+  Actual targets:
+  - _build/default/.a1.objs/byte/a1__A.cmi
 
 The next test tries to build a module that does not exist.
 
@@ -89,8 +89,8 @@ The next test builds a native .cmxa.
 Command line version.
 
   $ ./sdune build --verbose %{cmxa:a1} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/a1.cmxa
+  Actual targets:
+  - _build/default/a1.cmxa
 
 This test tries to build a non-existant .cma.
 
@@ -129,8 +129,8 @@ defined. The library is public in this case, but we use the local name.
 Command line version.
 
   $ ./sdune build --verbose %{cma:sub2/bar2} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/sub2/bar2.cma
+  Actual targets:
+  - _build/default/sub2/bar2.cma
 
 This test builds a .cmo in a subdirectory (same project).
 
@@ -143,8 +143,8 @@ This test builds a .cmo in a subdirectory (same project).
 Command line version.
 
   $ ./sdune build --verbose %{cmo:sub/x} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/sub/.bar.objs/byte/bar__X.cmo
+  Actual targets:
+  - _build/default/sub/.bar.objs/byte/bar__X.cmo
 
 This test builds a module in a subdirectory (differnet project) belonging to a
 private library.
@@ -158,8 +158,8 @@ private library.
 COmmand line version.
 
   $ ./sdune build --verbose %{cmo:sub3/x} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/sub3/.c1.objs/byte/c1__X.cmo
+  Actual targets:
+  - _build/default/sub3/.c1.objs/byte/c1__X.cmo
 
 This test builds a private library in a subdirectory belonging to a different
 project.
@@ -174,8 +174,8 @@ project.
 Command line version.
 
   $ ./sdune build --verbose %{cma:sub3/c1} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/sub3/c1.cma
+  Actual targets:
+  - _build/default/sub3/c1.cma
 
 This test builds a library in the current directory that has the same name as a
 public library defined in a subdirectory.
@@ -189,8 +189,8 @@ public library defined in a subdirectory.
 Command line version.
 
   $ ./sdune build --verbose %{cma:c1} 2>&1 | grep -A100 'Actual targets'
-  # Actual targets:
-  # - _build/default/c1.cma
+  Actual targets:
+  - _build/default/c1.cma
 
 This test checks error handling.
 

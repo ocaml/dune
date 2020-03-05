@@ -449,7 +449,7 @@ end
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.stdin) ~env ~purpose fail_mode prog args =
   let* scheduler = Scheduler.wait_for_available_job () in
-  let display = Console.display () in
+  let display = (Config.t ()).display in
   let dir =
     match dir with
     | None -> dir

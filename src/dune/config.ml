@@ -71,7 +71,18 @@ module Terminal_persistence = struct
 end
 
 module Display = struct
-  include Stdune.Console.Display
+  type t =
+    | Progress
+    | Short
+    | Verbose
+    | Quiet
+
+  let all =
+    [ ("progress", Progress)
+    ; ("verbose", Verbose)
+    ; ("short", Short)
+    ; ("quiet", Quiet)
+    ]
 
   let decode = enum all
 
@@ -80,6 +91,13 @@ module Display = struct
     | Quiet -> "quiet"
     | Short -> "short"
     | Verbose -> "verbose"
+
+  let console_backend = function
+    | Progress -> Console.Backend.progress
+    | Short
+    | Verbose
+    | Quiet ->
+      Console.Backend.dumb
 end
 
 module Concurrency = struct
@@ -331,3 +349,12 @@ let to_dyn config =
     ; ("cache_trim_period", Dyn.Encoder.int config.cache_trim_period)
     ; ("cache_trim_size", Dyn.Encoder.int config.cache_trim_size)
     ]
+
+let global = Fdecl.create to_dyn
+
+let t () = Fdecl.get global
+
+let init t =
+  Fdecl.set global t;
+  Console.Backend.set (Display.console_backend t.display);
+  Log.verbose := t.display = Verbose

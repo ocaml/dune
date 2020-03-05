@@ -3,7 +3,9 @@ open Dune
 open Fiber.O
 open! Dune_tests_common
 
-let () = init ()
+let () =
+  init ();
+  Config.init { Config.default with display = Quiet }
 
 let printf = Printf.printf
 

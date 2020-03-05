@@ -619,8 +619,7 @@ let rec restart_waiting_for_available_job t =
     restart_waiting_for_available_job t
 
 let got_signal signal =
-  if Console.display () = Verbose then
-    Log.infof "Got signal %s, exiting." (Signal.name signal)
+  if !Log.verbose then Log.infof "Got signal %s, exiting." (Signal.name signal)
 
 type saw_signal =
   | Ok
@@ -783,7 +782,7 @@ let maybe_clear_screen ~config =
     | Some cfg -> cfg.Config.terminal_persistence
     | None -> Preserve
   with
-  | Clear_on_rebuild -> Console.reset_terminal ()
+  | Clear_on_rebuild -> Console.reset ()
   | Preserve ->
     Console.print_user_message
       (User_message.make

@@ -47,7 +47,7 @@ module Terminal_persistence : sig
 end
 
 module Display : sig
-  type t = Stdune.Console.Display.t =
+  type t =
     | Progress  (** Single interactive status line *)
     | Short  (** One line per command *)
     | Verbose  (** Display all commands fully *)
@@ -56,6 +56,9 @@ module Display : sig
   val decode : t Dune_lang.Decoder.t
 
   val all : (string * t) list
+
+  (** The console backend corresponding to the selected display mode *)
+  val console_backend : t -> Console.Backend.t
 end
 
 module Concurrency : sig
@@ -140,5 +143,11 @@ val load_config_file : Path.t -> t
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty and
     we are not running inside emacs. *)
 val adapt_display : t -> output_is_a_tty:bool -> t
+
+(** The global configuration for the process *)
+val t : unit -> t
+
+(** Initialises the configuration for the process *)
+val init : t -> unit
 
 val to_dyn : t -> Dyn.t

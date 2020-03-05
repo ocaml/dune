@@ -28,3 +28,6 @@ val command :
   -> unit
 
 module StdLogger : Stdune.Logger.S
+
+(** Whether we are running in verbose mode *)
+val verbose : bool ref

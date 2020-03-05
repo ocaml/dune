@@ -76,7 +76,7 @@ let set_dirs c =
   Path.Build.set_build_dir (Path.Build.Kind.of_string c.build_dir)
 
 let set_common_other ?log_file c ~targets =
-  Console.init c.config.display;
+  Config.init c.config;
   Dune_util.Log.init () ?file:log_file;
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;

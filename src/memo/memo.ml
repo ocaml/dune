@@ -630,7 +630,7 @@ let dep_node (type i o f) (t : (i, o, f) t) inp =
 module Cache_lookup_result = struct
   type ('a, 'ivar) t =
     | New_attempt of Running_state.t * 'ivar
-    | Waiting of Running_state.t * 'ivar
+    | Waiting of Dag.node * 'ivar
     | Done of 'a
     | Already_reported_failure of Exn_with_backtrace.t
 
@@ -638,9 +638,8 @@ module Cache_lookup_result = struct
     | Done _
     | Already_reported_failure _ ->
       Finished
-    | New_attempt (running, _)
-    | Waiting (running, _) ->
-      Running running.sample
+    | New_attempt (running, _) -> Running running.sample
+    | Waiting (dag_node, _) -> Running dag_node
 end
 
 module Exec_sync = struct
@@ -719,7 +718,7 @@ module Exec_sync = struct
         new_attempt ()
     | Running_sync ({ run; _ } as state) ->
       if Run.is_current run then
-        Waiting (state, ())
+        Waiting (state.sample, ())
       else
         (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
         new_attempt ()
@@ -799,7 +798,7 @@ module Exec_async = struct
         new_attempt ()
     | Running_async (({ run; _ } as state), ivar) ->
       if Run.is_current run then
-        k (Waiting (state, ivar))
+        k (Waiting (state.sample, ivar))
       else
         (* In this case we know that: (i) the [ivar] will never be filled
            because the computation was cancelled in the previous run, and
@@ -818,7 +817,7 @@ module Exec_async = struct
         match result with
         | Done v -> Fiber.return v
         | Already_reported_failure exn -> already_reported exn
-        | Waiting (_running, ivar) -> Fiber.Ivar.read ivar
+        | Waiting (_dag_node, ivar) -> Fiber.Ivar.read ivar
         | New_attempt (running, ivar) -> compute inp ivar dep_node running)
 
   let exec t inp = exec_dep_node (dep_node t inp) inp

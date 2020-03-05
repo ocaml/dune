@@ -7,9 +7,6 @@
 
 module Backend : sig
   module type S = sig
-    (** Print a message to the console *)
-    val print : string -> unit
-
     (** Format and print a user message to the console *)
     val print_user_message : User_message.t -> unit
 
@@ -38,6 +35,11 @@ end
 
 (** The main backend for the application *)
 include Backend.S
+
+(** [print paragraphs] is a short-hand for:
+
+    {[ print_user_message (User_message.make paragraphs) ]} *)
+val print : User_message.Style.t Pp.t list -> unit
 
 module Status_line : sig
   (** This module allows to buffer status updates so that they don't slow down

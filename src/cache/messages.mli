@@ -21,4 +21,4 @@ val negotiate_version :
   -> out_channel
   -> (version, string) result
 
-val pp_version : Format.formatter -> version -> unit
+val string_of_version : version -> string

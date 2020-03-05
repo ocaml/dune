@@ -2,84 +2,66 @@ open Stdune
 
 exception Already_reported
 
-type printer =
-  { loc : Loc.t option
-  ; pp : Format.formatter -> unit
-  ; hint : string option
-  ; backtrace : bool
-  }
+type who_is_responsible_for_the_error =
+  | User
+  | Developer
 
-let make_printer ?(backtrace = false) ?hint ?loc pp =
-  { loc; pp; hint; backtrace }
-
-let rec tag_handler ppf (style : User_message.Style.t) pp =
-  (Format.pp_open_tag ppf
-     ( User_message.Print_config.default style
-     |> Ansi_color.Style.escape_sequence ) [@warning "-3"]);
-  Pp.render ppf pp ~tag_handler;
-  (Format.pp_close_tag ppf () [@warning "-3"])
-
-let render ppf pp = Pp.render ppf pp ~tag_handler
-
-let get_printer = function
-  | User_error.E msg ->
-    { loc = msg.loc
-    ; backtrace = false
-    ; hint =
-        ( match msg.hints with
-        | [] -> None
-        | hint :: _ ->
-          Some (Format.asprintf "@[%a@]" Pp.render_ignore_tags hint) )
-    ; pp =
-        (fun ppf ->
-          render ppf (User_message.pp { msg with loc = None; hints = [] }))
-    }
-  | Code_error.E t ->
-    let maybe_pp_loc fmt =
-      Option.iter ~f:(Format.fprintf fmt "@.%a" Loc.print)
-    in
-    let pp ppf =
-      Format.fprintf ppf
-        "@{<error>Internal error, please report upstream including the \
-         contents of _build/log.@}\n\
-         Description:%a%a\n"
-        Pp.render_ignore_tags
-        (Dyn.pp (Code_error.to_dyn_without_loc t))
-        maybe_pp_loc t.loc
-    in
-    make_printer ~backtrace:true pp
+let get_user_message = function
+  | User_error.E msg -> (User, msg)
+  | Code_error.E e ->
+    let open Pp.O in
+    ( Developer
+    , User_message.make ?loc:e.loc
+        [ Pp.tag ~tag:User_message.Style.Error
+            (Pp.textf
+               "Internal error, please report upstream including the contents \
+                of _build/log.")
+        ; Pp.text "Description:"
+        ; Pp.box ~indent:2
+            (Pp.verbatim "  " ++ Dyn.pp (Code_error.to_dyn_without_loc e))
+        ] )
   | Unix.Unix_error (err, func, fname) ->
-    let pp ppf =
-      Format.fprintf ppf "@{<error>Error@}: %s: %s: %s\n" func fname
-        (Unix.error_message err)
-    in
-    make_printer pp
+    let open Pp.O in
+    ( User
+    , User_error.make
+        [ User_error.prefix
+          ++ Pp.textf " %s: %s: %s" func fname (Unix.error_message err)
+        ] )
   | exn ->
-    let pp ppf =
-      let s = Printexc.to_string exn in
-      if String.is_prefix s ~prefix:"File \"" then
-        Format.fprintf ppf "%s\n" s
-      else
-        Format.fprintf ppf "@{<error>Error@}: exception %s\n" s
+    let open Pp.O in
+    let s = Printexc.to_string exn in
+    let loc, pp =
+      match
+        Scanf.sscanf s "File %S, line %d, characters %d-%d:" (fun a b c d ->
+            (a, b, c, d))
+      with
+      | Error () -> (None, User_error.prefix ++ Pp.textf " exception %s" s)
+      | Ok (fname, line, start, stop) ->
+        let start : Lexing.position =
+          { pos_fname = fname; pos_lnum = line; pos_cnum = start; pos_bol = 0 }
+        in
+        let stop = { start with pos_cnum = stop } in
+        (Some { Loc.start; stop }, Pp.text s)
     in
-    make_printer ~backtrace:true pp
+    (Developer, User_message.make ?loc [ pp ])
 
 let i_must_not_crash =
-  let x =
-    lazy
-      (at_exit (fun () ->
-           prerr_endline
-             "\n\
-              I must not crash.  Uncertainty is the mind-killer.  \
-              Exceptions are\n\
-              the little-death that brings total obliteration.  I will fully \
-              express\n\
-              my cases.  Execution will pass over me and through me.  And when \
-              it\n\
-              has gone past, I will unwind the stack along its path.  Where the\n\
-              cases are handled there will be nothing.  Only I will remain."))
-  in
-  fun () -> Lazy.force x
+  let reported = ref false in
+  fun () ->
+    if !reported then
+      []
+    else (
+      reported := true;
+      [ Pp.nop
+      ; Pp.text
+          "I must not crash.  Uncertainty is the mind-killer. Exceptions are \
+           the little-death that brings total obliteration.  I will fully \
+           express my cases.  Execution will pass over me and through me.  And \
+           when it has gone past, I will unwind the stack along its path.  \
+           Where the cases are handled there will be nothing.  Only I will \
+           remain."
+      ]
+    )
 
 let reported = ref Digest.Set.empty
 
@@ -97,31 +79,37 @@ let report ?(extra = fun _ -> None) { Exn_with_backtrace.exn; backtrace } =
   match exn with
   | Already_reported -> ()
   | _ ->
-    let p = get_printer exn in
-    let loc =
-      if Option.equal Loc.equal p.loc (Some Loc.none) then
-        None
+    let who_is_responsible, msg = get_user_message exn in
+    let msg =
+      if msg.loc = Some Loc.none then
+        { msg with loc = None }
       else
-        p.loc
+        msg
     in
-    Option.iter loc ~f:(Loc.print ppf);
-    p.pp ppf;
-    Format.pp_print_flush ppf ();
-    let s = Buffer.contents buf in
-    (* Hash to avoid keeping huge errors in memory *)
-    let hash = Digest.string s in
-    if Digest.Set.mem !reported hash then
-      Buffer.clear buf
-    else (
+    let hash = Digest.generic msg in
+    if not (Digest.Set.mem !reported hash) then (
       reported := Digest.Set.add !reported hash;
-      if p.backtrace || !report_backtraces_flag then
-        Format.fprintf ppf "Backtrace:\n%s"
-          (Printexc.raw_backtrace_to_string backtrace);
-      Option.iter (extra loc) ~f:(Format.fprintf ppf "%a@\n" render);
-      Option.iter p.hint ~f:(fun s -> Format.fprintf ppf "Hint: %s\n" s);
-      Format.pp_print_flush ppf ();
-      let s = Buffer.contents buf in
-      Buffer.clear buf;
-      Console.print s;
-      if p.backtrace then i_must_not_crash ()
+      let append (msg : User_message.t) pp =
+        { msg with paragraphs = msg.paragraphs @ pp }
+      in
+      let msg =
+        if who_is_responsible = User && not !report_backtraces_flag then
+          msg
+        else
+          append msg
+            (List.map
+               (Printexc.raw_backtrace_to_string backtrace |> String.split_lines)
+               ~f:(fun line -> Pp.box ~indent:2 (Pp.text line)))
+      in
+      let msg =
+        match extra msg.loc with
+        | None -> msg
+        | Some pp -> append msg [ pp ]
+      in
+      let msg =
+        match who_is_responsible with
+        | User -> msg
+        | Developer -> append msg (i_must_not_crash ())
+      in
+      Console.print_user_message msg
     )

@@ -34,13 +34,13 @@ module Error = struct
 
   let external_lib_deps_hint () =
     match !Clflags.external_lib_deps_hint with
-    | [] -> (* during bootstrap *) []
+    | [] -> []
     | l ->
-      [ Pp.box ~indent:2
-          (Pp.concat ~sep:Pp.space
-             ( Pp.text "try:"
-             :: List.map l ~f:(fun x -> Pp.verbatim (String.quote_for_shell x))
-             ))
+      let open Pp.O in
+      [ Pp.text "try:" ++ Pp.space
+        ++ Pp.box
+             (Pp.concat_map l ~sep:Pp.space ~f:(fun x ->
+                  Pp.verbatim (String.quote_for_shell x)))
       ]
 
   let not_found ~loc ~name =

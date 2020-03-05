@@ -210,7 +210,7 @@ let send_sexp output sexp =
 let send version output message =
   send_sexp output (sexp_of_message version message)
 
-let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
+let string_of_version { major; minor } = sprintf "%i.%i" major minor
 
 let find_highest_common_version my_versions versions =
   let find a b =

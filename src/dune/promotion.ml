@@ -42,20 +42,21 @@ module File = struct
     let correction_file = Option.value staging ~default:src in
     let correction_exists = Path.exists (Path.build correction_file) in
     Console.print
-      ( if correction_exists then
-        Format.sprintf "Promoting %s to %s.@."
-          (Path.to_string_maybe_quoted (Path.build src))
-          (Path.Source.to_string_maybe_quoted dst)
-      else
-        (Format.sprintf
-           "Skipping promotion of %s to %s as the %s is missing.@.")
-          (Path.to_string_maybe_quoted (Path.build src))
-          (Path.Source.to_string_maybe_quoted dst)
-          ( match staging with
-          | None -> "file"
-          | Some staging ->
-            Format.sprintf "staging file (%s)"
-              (Path.to_string_maybe_quoted (Path.build staging)) ) );
+      [ Pp.box ~indent:2
+          ( if correction_exists then
+            Pp.textf "Promoting %s to %s."
+              (Path.to_string_maybe_quoted (Path.build src))
+              (Path.Source.to_string_maybe_quoted dst)
+          else
+            Pp.textf "Skipping promotion of %s to %s as the %s is missing."
+              (Path.to_string_maybe_quoted (Path.build src))
+              (Path.Source.to_string_maybe_quoted dst)
+              ( match staging with
+              | None -> "file"
+              | Some staging ->
+                Format.sprintf "staging file (%s)"
+                  (Path.to_string_maybe_quoted (Path.build staging)) ) )
+      ];
     if correction_exists then
       let chmod perms = perms lor 0o200 in
       Io.copy_file ~chmod

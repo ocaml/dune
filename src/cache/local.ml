@@ -5,10 +5,8 @@ open Cache_intf
 type t =
   { root : Path.t
   ; build_root : Path.t option
-  ; info :
-      'a. ((('a, Format.formatter, unit, unit) format4 -> 'a) -> unit) -> unit
-  ; warn :
-      'a. ((('a, Format.formatter, unit, unit) format4 -> 'a) -> unit) -> unit
+  ; info : User_message.Style.t Pp.t list -> unit
+  ; warn : User_message.Style.t Pp.t list -> unit
   ; repositories : repository list
   ; handler : handler
   ; duplication_mode : Duplication_mode.t
@@ -174,8 +172,8 @@ let duplicate ?(duplication = None) cache =
 
 let retrieve cache (file : File.t) =
   let path = Path.build file.in_the_build_directory in
-  cache.info (fun m ->
-      m "retrieve %s from cache" (Path.to_string_maybe_quoted path));
+  cache.info
+    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted path) ];
   duplicate cache file.in_the_cache path;
   path
 
@@ -185,8 +183,10 @@ let deduplicate cache (file : File.t) =
   | Hardlink -> (
     let target = Path.Build.to_string file.in_the_build_directory in
     let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-    cache.info (fun m ->
-        m "deduplicate %s from %s" target (Path.to_string file.in_the_cache));
+    cache.info
+      [ Pp.textf "deduplicate %s from %s" target
+          (Path.to_string file.in_the_cache)
+      ];
     let rm p = try Unix.unlink p with _ -> () in
     try
       rm tmpname;
@@ -194,9 +194,10 @@ let deduplicate cache (file : File.t) =
       Unix.rename tmpname target
     with Unix.Unix_error (e, syscall, _) ->
       rm tmpname;
-      cache.warn (fun m ->
-          m "error handling dune-cache command: %s: %s" syscall
-            (Unix.error_message e)) )
+      cache.warn
+        [ Pp.textf "error handling dune-cache command: %s: %s" syscall
+            (Unix.error_message e)
+        ] )
 
 let file_of_promotion = function
   | Already_promoted f
@@ -229,7 +230,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
   in
   let promote (path, expected_hash) =
     let* abs_path = make_path cache (Path.Build.local path) in
-    cache.info (fun m -> m "promote %s" (Path.to_string abs_path));
+    cache.info [ Pp.textf "promote %s" (Path.to_string abs_path) ];
     let stat = Unix.lstat (Path.to_string abs_path) in
     let* stat =
       if stat.st_kind = S_REG then
@@ -253,7 +254,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
           (Digest.to_string effective_hash)
           (Digest.to_string expected_hash)
       in
-      cache.info (fun m -> m "%s" message);
+      cache.info [ Pp.text message ];
       Result.Error message
     ) else
       match search cache effective_hash tmp with
@@ -352,16 +353,16 @@ let detect_duplication_mode root =
 
 let make ?(root = default_root ())
     ?(duplication_mode = detect_duplication_mode root)
-    ?(log = (module Dune_util.Log.StdLogger : Stdune.Logger.S)) handler =
+    ?(log = Dune_util.Log.info) ?(warn = fun pp -> User_warning.emit pp) handler
+    =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-cache"
   else
-    let module Log = (val log) in
     let res =
       { root
       ; build_root = None
-      ; info = Log.info
-      ; warn = Log.warn
+      ; info = log
+      ; warn
       ; repositories = []
       ; handler
       ; duplication_mode
@@ -385,8 +386,11 @@ let _garbage_collect default_trim cache =
   in
   let f default_trim = function
     | p, Result.Error msg ->
-      cache.warn (fun m ->
-          m "remove invalid metadata file %a: %s" Path.pp p msg);
+      cache.warn
+        [ Pp.textf "remove invalid metadata file %s: %s"
+            (Path.to_string_maybe_quoted p)
+            msg
+        ];
       Path.unlink_no_err p;
       { default_trim with Trimming_result.trimmed_metafiles = [ p ] }
     | p, Result.Ok { Metadata_file.files; _ } ->
@@ -397,9 +401,11 @@ let _garbage_collect default_trim cache =
       then
         default_trim
       else (
-        cache.info (fun m ->
-            m "remove metadata file %a as some produced files are missing"
-              Path.pp p);
+        cache.info
+          [ Pp.textf
+              "remove metadata file %s as some produced files are missing"
+              (Path.to_string_maybe_quoted p)
+          ];
         let res =
           List.fold_left ~init:default_trim
             ~f:(fun trim f ->

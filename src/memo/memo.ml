@@ -299,13 +299,12 @@ module Cached_value = struct
               else
                 true
             | Async _ ->
-              (* To make this case unreachable we would need to avoid using
-                 synchronous [Memo.peek] calls on asynchronous [Dep_node]s. In
-                 addition to that, we would need to preserve the synchronicity
-                 information in the call stack, which seems like an overkill. *)
+              (* To convince the compiler that this case is unreachable, we
+                 would need to preserve the synchronicity information in the
+                 call stack, which seems like an overkill. *)
               Code_error.raise
                 "Synchronous function depends on an asynchronous one. This is \
-                 not allowed."
+                 not allowed (this case should be unreachable)."
                 [] )
           | Done t' -> (
             match get_sync t' with
@@ -503,7 +502,9 @@ module Sample_attempt_dag_node = struct
     | Finished
 end
 
-(* Add a dependency on the [node] from the caller, if there is one. *)
+(* Add a dependency on the [node] from the caller, if there is one. In the case
+   that the dependency is new (i.e. hasn't been added before), return a function
+   [add_last_dep] that can be used to record a [Last_dep.t] once it's ready. *)
 let add_dep_from_caller (type i o f) ~called_from_peek
     (node : (i, o, f) Dep_node.t)
     (sample_attempt_dag_node : Sample_attempt_dag_node.t) =

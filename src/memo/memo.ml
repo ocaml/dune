@@ -171,8 +171,8 @@ end)
 module M = struct
   module rec Cached_value : sig
     type 'a t =
-      { (* CR-soon amokhov: To track errors, this should be changed to something
-           like [data : ('a, Exn_with_backtrace.t) Result.t]. *)
+      { (* CR-soon amokhov: To properly track errors, this should be changed to
+           something like [data : ('a, Exn_with_backtrace.t) Result.t]. *)
         data : 'a
       ; (* When was the value calculated. *)
         mutable calculated_at : Run.t
@@ -215,7 +215,7 @@ module M = struct
     type t =
       { run : Run.t
       ; mutable deps_so_far : Deps_so_far.t
-      ; sample : Dag.node
+      ; sample_attempt : Dag.node
       }
   end =
     Running_state
@@ -491,11 +491,12 @@ let pp_stack () =
 let dump_stack () = Format.eprintf "%a" Pp.render_ignore_tags (pp_stack ())
 
 (** Describes the state of a given sample attempt. The sample attempt starts out
-    in Running state, accumulates dependencies over time and then transitions to
-    [Finished].
+    in [Running] state, accumulates dependencies over time and then transitions
+    to [Finished].
 
     We maintain a DAG of running attempts for cycle detection, but finished ones
-    don't need to be in the DAG. (although currently they still are) *)
+    don't need to be in the DAG (although currently they still are, until a run
+    is complete and we throw away the entire DAG). *)
 module Sample_attempt_dag_node = struct
   type t =
     | Running of Dag.node
@@ -535,7 +536,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
         | Running node -> (
           try
             Dag.add_assuming_missing global_dep_dag
-              running_state_of_caller.sample node
+              running_state_of_caller.sample_attempt node
           with Dag.Cycle cycle ->
             raise
               (Cycle_error.E
@@ -637,7 +638,7 @@ module Cache_lookup_result = struct
     | Done _
     | Already_reported_failure _ ->
       Finished
-    | New_attempt (running, _) -> Running running.sample
+    | New_attempt (running, _) -> Running running.sample_attempt
     | Waiting (dag_node, _) -> Running dag_node
 end
 
@@ -697,13 +698,13 @@ module Exec_sync = struct
   let try_to_use_cache (dep_node : _ Dep_node.t) : _ Cache_lookup_result.t =
     let new_attempt () : _ Cache_lookup_result.t =
       let run = Run.current () in
-      let sample : Dag.node =
+      let sample_attempt : Dag.node =
         { info = Dag.create_node_info global_dep_dag
         ; data = Dep_node_without_state.T dep_node.without_state
         }
       in
       let running_state : Running_state.t =
-        { run; deps_so_far = no_deps_so_far; sample }
+        { run; deps_so_far = no_deps_so_far; sample_attempt }
       in
       dep_node.state <- Running (running_state, Sync);
       New_attempt (running_state, ())
@@ -717,7 +718,7 @@ module Exec_sync = struct
         new_attempt ()
     | Running (({ run; _ } as state), _) ->
       if Run.is_current run then
-        Waiting (state.sample, ())
+        Waiting (state.sample_attempt, ())
       else
         (* CR-soon amokhov: How can we end up here? If we can't raise an error. *)
         new_attempt ()
@@ -788,13 +789,13 @@ module Exec_async = struct
       (k : _ Cache_lookup_result.t -> _ Fiber.t) =
     let new_attempt () =
       let run = Run.current () in
-      let sample : Dag.node =
+      let sample_attempt : Dag.node =
         { info = Dag.create_node_info global_dep_dag
         ; data = Dep_node_without_state.T dep_node.without_state
         }
       in
       let running_state : Running_state.t =
-        { run; deps_so_far = no_deps_so_far; sample }
+        { run; deps_so_far = no_deps_so_far; sample_attempt }
       in
       let ivar = Fiber.Ivar.create () in
       dep_node.state <- Running (running_state, Async ivar);
@@ -809,7 +810,7 @@ module Exec_async = struct
         new_attempt ()
     | Running (({ run; _ } as state), Async ivar) ->
       if Run.is_current run then
-        k (Waiting (state.sample, ivar))
+        k (Waiting (state.sample_attempt, ivar))
       else
         (* In this case we know that: (i) the [ivar] will never be filled
            because the computation was cancelled in the previous run, and

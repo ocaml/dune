@@ -310,7 +310,7 @@ module Cached_value = struct
               else
                 true
             | Async _ ->
-              (* To make this case is unreachable we would need to avoid using
+              (* To make this case unreachable we would need to avoid using
                  synchronous [Memo.peek] calls on asynchronous [Dep_node]s. In
                  addition to that, we would need to preserve the synchronicity
                  information in the call stack, which seems like an overkill. *)
@@ -362,6 +362,9 @@ module Cached_value = struct
           | Running ({ run; _ }, completion) -> (
             match completion with
             | Sync ->
+              (* To make this case unreachable, we would need to preserve the
+                 synchronicity information in the call stack and disallow sync
+                 to async calls, which seems like an overkill. *)
               Code_error.raise
                 "[Running Sync] encountered in [Cached_value.get_async]: this \
                  means a synchronous computation is still running and it \
@@ -747,7 +750,9 @@ module Exec_sync = struct
       | New_attempt (running, _) -> compute inp dep_node running
       | Waiting _ ->
         (* The code below should be unreachable because the above call to
-           [add_dep_from_caller] reports a cycle. *)
+           [add_dep_from_caller] reports a cycle. To explain this to the
+           compiler, we would need to prove the correctness of the cycle
+           detection algorithm in types. Let's leave this to Coq wizards. *)
         Code_error.raise "[Exec_sync.exec_dep_node]: unreported cycle"
           [ ("stack", Call_stack.get_call_stack_as_dyn ())
           ; ("adding", Stack_frame.to_dyn (T dep_node.without_state))

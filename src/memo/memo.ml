@@ -215,7 +215,7 @@ module M = struct
       (* [Running] includes computations that already terminated with an
          exception or cancelled because we've advanced to the next run.
 
-         [Init] should be treated exactly the same as [Running*] with a stale
+         [Init] should be treated exactly the same as [Running] with a stale
          value of [Run.t]. *)
       | Init
       | Running : Running_state.t * ('a, 'b, 'f) Completion.t -> ('a, 'b, 'f) t
@@ -298,6 +298,9 @@ module Cached_value = struct
             match completion with
             | Sync ->
               if Run.is_current run then
+                (* To convince the compiler that this case is unreachable we
+                   would need to prove the correctness of the cycle detection
+                   algorithm in types. Let's leave this to Coq wizards. *)
                 Code_error.raise
                   "Unreported dependency cycle in [Cached_value.get_sync] \
                    (this case should be unreachable)."
@@ -305,9 +308,13 @@ module Cached_value = struct
               else
                 true
             | Async _ ->
+              (* To make this case is unreachable we would need to avoid using
+                 synchronous [Memo.peek] calls on asynchronous [Dep_node]s. In
+                 addition to that, we would need to preserve the synchronicity
+                 information in the call stack, which seems like an overkill. *)
               Code_error.raise
                 "Synchronous function depends on an asynchronous one. This is \
-                 not allowed (in fact this case should be unreachable)."
+                 not allowed."
                 [] )
           | Done t' -> (
             match get_sync t' with
@@ -354,7 +361,7 @@ module Cached_value = struct
             match completion with
             | Sync ->
               Code_error.raise
-                "[Running_sync] encountered in [Cached_value.get_async]: this \
+                "[Running Sync] encountered in [Cached_value.get_async]: this \
                  means a synchronous computation is still running and it \
                  somehow managed to call an asynchronous one which depended on \
                  its results in a cyclic manner."
@@ -551,7 +558,7 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             packed_node :: running_state_of_caller.deps_so_far.deps_reversed
         } )
 
-let get_deps_exn (running_state : Running_state.t) =
+let get_deps_exn (deps_so_far : Deps_so_far.t) =
   let last_dep_exn (Dep_node.T dep) =
     let error state =
       Code_error.raise
@@ -564,7 +571,6 @@ let get_deps_exn (running_state : Running_state.t) =
     | Running _ -> error "Running"
     | Done res -> Last_dep.T (dep, res.data)
   in
-  let deps_so_far = running_state.deps_so_far in
   List.rev_map deps_so_far.deps_reversed ~f:last_dep_exn
 
 type ('input, 'output, 'f) t =
@@ -699,7 +705,7 @@ module Exec_sync = struct
       | Ok res -> res
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_exn running_state in
+    let deps = get_deps_exn running_state.deps_so_far in
     dep_node.state <- Done (Cached_value.create res ~deps);
     res
 
@@ -766,7 +772,7 @@ module Exec_async = struct
           | Function.Async f -> f inp)
     in
     (* update the output cache with the correct value *)
-    let deps = get_deps_exn running_state in
+    let deps = get_deps_exn running_state.deps_so_far in
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
        errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)

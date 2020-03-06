@@ -8,8 +8,13 @@
 
 - Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
 
-- Add a `dune describe` command to obtain the topology of a dune
-  workspace, for projects such as ROTOR. (#3128, @diml)
+- Add a `dune describe` command to obtain the topology of a dune workspace, for
+  projects such as ROTOR. (#3128, @diml)
+
+- Add `plugin` linking mode for executables and the `(embed_in_plugin_libraries
+  ...)` field. (#3141, @nojb)
+
+- Add an `%{ext_plugin}` variable (#3141, @nojb)
 
 - Dune will no longer build shared objects for stubs if
   `supports_shared_libraries` is false (#3225, fixes #3222, @rgrinberg)

@@ -668,6 +668,12 @@ Executables can also be linked as object or shared object files. See
   pulled in. This field is available since the 2.0 version of the dune
   language.
 
+- ``(embed_in_plugin_libraries <library-list>)`` specifies a list of libraries
+  to link statically when using ``plugin`` linking mode. By default, no
+  libraries are linked in. Note that you may need to also use the ``-linkall``
+  flag if some of the libraries listed here are not referenced from any of the
+  plugin modules.
+
 Linking modes
 ~~~~~~~~~~~~~
 
@@ -692,6 +698,8 @@ compilation is not available.
   in OCaml for a non-OCaml application.
 - ``js`` for producing JavaScript from bytecode executables, see
   :ref:`explicit-js-mode`.
+- ``plugin`` for producing a plugin (``.cmxs`` if native or ``.cma``
+  if bytecode).
 
 For instance the following ``executables`` stanza will produce byte
 code executables and native shared objects:
@@ -711,6 +719,7 @@ Additionally, you can use the following short-hands:
 - ``byte`` for ``(byte exe)``
 - ``native`` for ``(native exe)``
 - ``js`` for ``(byte js)``
+- ``plugin`` for ``(best plugin)``
 
 For instance the following ``modes`` fields are all equivalent:
 
@@ -741,6 +750,9 @@ byte_complete               .bc.exe
 (native/best shared_object) %{ext_dll}
 c                           .bc.c
 js                          .bc.js
+(best plugin)               %{ext_plugin}
+(byte plugin)               .cma
+(native plugin)             .cmxs
 =========================== =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object

@@ -36,6 +36,8 @@ module Linkage = struct
 
   let js = { mode = Byte; ext = ".bc.js"; flags = [] }
 
+  let is_plugin t = List.mem t.ext ~set:(List.map ~f:Mode.plugin_ext Mode.all)
+
   let c_flags = [ "-output-obj" ]
 
   let o_flags = [ "-output-complete-obj" ]
@@ -43,6 +45,10 @@ module Linkage = struct
   let so_flags_windows = o_flags
 
   let so_flags_unix = [ "-output-complete-obj"; "-runtime-variant"; "_pic" ]
+
+  let cmxs_flags = [ "-shared" ]
+
+  let cma_flags = [ "-a" ]
 
   let of_user_config (ctx : Context.t) ~loc
       (m : Dune_file.Executables.Link_mode.t) =
@@ -84,6 +90,10 @@ module Linkage = struct
             [ Ocaml_version.custom_or_output_complete_exe ctx.version ]
           | _ -> [] )
         | Object -> o_flags
+        | Plugin -> (
+          match link_mode with
+          | Native -> cmxs_flags
+          | _ -> cma_flags )
         | Shared_object -> (
           let so_flags =
             let os_type = Ocaml_config.os_type ctx.ocaml_config in
@@ -180,7 +190,8 @@ let link_js ~name ~cm_files ~promote cctx =
   Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
-let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files cctx =
+let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
+    ?(embed_in_plugin_libraries = []) cctx =
   let modules = Compilation_context.modules cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;
@@ -201,6 +212,13 @@ let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files cctx =
           if linkage = Linkage.js then
             link_js ~name ~cm_files ~promote cctx
           else
+            let link_time_code_gen =
+              if Linkage.is_plugin linkage then
+                Link_time_code_gen.handle_special_libs
+                  (CC.for_plugin_executable cctx ~embed_in_plugin_libraries)
+              else
+                link_time_code_gen
+            in
             link_exe cctx ~loc ~name ~linkage ~cm_files ~link_time_code_gen
               ~promote ?link_args ?o_files))
 

@@ -1637,6 +1637,16 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias plugin-mode)
+ (deps (package dune) (source_tree test-cases/plugin-mode))
+ (action
+  (chdir
+   test-cases/plugin-mode
+   (progn
+    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
+    (diff? run.t run.t.corrected)))))
+
+(rule
  (alias ppx-rewriter)
  (deps (package dune) (source_tree test-cases/ppx-rewriter))
  (action
@@ -2575,6 +2585,7 @@
   (alias package-dep)
   (alias path-variables)
   (alias pkg-config-quoting)
+  (alias plugin-mode)
   (alias ppx-rewriter)
   (alias ppx-runtime-dependencies)
   (alias preprocess-with-action)
@@ -2836,6 +2847,7 @@
   (alias output-obj)
   (alias path-variables)
   (alias pkg-config-quoting)
+  (alias plugin-mode)
   (alias preprocess-with-action)
   (alias private-modules)
   (alias project-root)

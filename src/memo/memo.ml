@@ -199,6 +199,13 @@ module M = struct
   end =
     Running_state
 
+  and Completion : sig
+    type ('a, 'b, 'f) t =
+      | Sync : ('a, 'b, 'a -> 'b) t
+      | Async : 'b Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
+  end =
+    Completion
+
   (* CR-soon amokhov: The current implementation relies on a few invariants
      about moving from one state to another. As a result the code is full of
      [Code_error]s and is hard to reason about. I would like to clean this up in
@@ -211,10 +218,7 @@ module M = struct
          [Init] should be treated exactly the same as [Running*] with a stale
          value of [Run.t]. *)
       | Init
-      | Running_sync : Running_state.t -> ('a, 'b, 'a -> 'b) t
-      | Running_async :
-          Running_state.t * 'b Fiber.Ivar.t
-          -> ('a, 'b, 'a -> 'b Fiber.t) t
+      | Running : Running_state.t * ('a, 'b, 'f) Completion.t -> ('a, 'b, 'f) t
       | Failed of Run.t * Exn_with_backtrace.t
       | Done of 'b Cached_value.t
   end =
@@ -255,6 +259,7 @@ end
 
 module State = M.State
 module Running_state = M.Running_state
+module Completion = M.Completion
 module Dep_node = M.Dep_node
 module Dep_node_without_state = M.Dep_node_without_state
 module Deps_so_far = M.Deps_so_far
@@ -289,19 +294,21 @@ module Cached_value = struct
               already_reported exn
             else
               true
-          | Running_sync { run; _ } ->
-            if Run.is_current run then
+          | Running ({ run; _ }, completion) -> (
+            match completion with
+            | Sync ->
+              if Run.is_current run then
+                Code_error.raise
+                  "Unreported dependency cycle in [Cached_value.get_sync] \
+                   (this case should be unreachable)."
+                  []
+              else
+                true
+            | Async _ ->
               Code_error.raise
-                "Unreported dependency cycle in [Cached_value.get_sync] (this \
-                 case should be unreachable)."
-                []
-            else
-              true
-          | Running_async _ ->
-            Code_error.raise
-              "Synchronous function depends on an asynchronous one. This is \
-               not allowed (in fact this case should be unreachable)."
-              []
+                "Synchronous function depends on an asynchronous one. This is \
+                 not allowed (in fact this case should be unreachable)."
+                [] )
           | Done t' -> (
             match get_sync t' with
             | None -> true
@@ -343,22 +350,24 @@ module Cached_value = struct
               already_reported exn
             else
               Fiber.return true
-          | Running_sync _ ->
-            Code_error.raise
-              "[Running_sync] encountered in [Cached_value.get_async]: this \
-               means a synchronous computation is still running and it somehow \
-               managed to call an asynchronous one which depended on its \
-               results in a cyclic manner."
-              []
-          | Running_async ({ run; _ }, ivar) ->
-            if not (Run.is_current run) then
-              Fiber.return true
-            else
-              let changed =
-                let+ curr_output = Fiber.Ivar.read ivar in
-                dep_changed node prev_output curr_output
-              in
-              deps_changed (changed :: acc) deps
+          | Running ({ run; _ }, completion) -> (
+            match completion with
+            | Sync ->
+              Code_error.raise
+                "[Running_sync] encountered in [Cached_value.get_async]: this \
+                 means a synchronous computation is still running and it \
+                 somehow managed to call an asynchronous one which depended on \
+                 its results in a cyclic manner."
+                []
+            | Async ivar ->
+              if not (Run.is_current run) then
+                Fiber.return true
+              else
+                let changed =
+                  let+ curr_output = Fiber.Ivar.read ivar in
+                  dep_changed node prev_output curr_output
+                in
+                deps_changed (changed :: acc) deps )
           | Done t' ->
             if Run.is_current t'.calculated_at then
               if
@@ -552,8 +561,7 @@ let get_deps_exn (running_state : Running_state.t) =
     match dep.state with
     | Init -> error "Init"
     | Failed _ -> error "Failed"
-    | Running_sync _ -> error "Running_sync"
-    | Running_async _ -> error "Running_async"
+    | Running _ -> error "Running"
     | Done res -> Last_dep.T (dep, res.data)
   in
   let deps_so_far = running_state.deps_so_far in
@@ -706,7 +714,7 @@ module Exec_sync = struct
       let running_state : Running_state.t =
         { run; deps_so_far = no_deps_so_far; sample }
       in
-      dep_node.state <- Running_sync running_state;
+      dep_node.state <- Running (running_state, Sync);
       New_attempt (running_state, ())
     in
     match dep_node.state with
@@ -716,7 +724,7 @@ module Exec_sync = struct
         Already_reported_failure exn
       else
         new_attempt ()
-    | Running_sync ({ run; _ } as state) ->
+    | Running (({ run; _ } as state), _) ->
       if Run.is_current run then
         Waiting (state.sample, ())
       else
@@ -786,7 +794,7 @@ module Exec_async = struct
         { run; deps_so_far = no_deps_so_far; sample }
       in
       let ivar = Fiber.Ivar.create () in
-      dep_node.state <- Running_async (running_state, ivar);
+      dep_node.state <- Running (running_state, Async ivar);
       k (New_attempt (running_state, ivar))
     in
     match dep_node.state with
@@ -796,7 +804,7 @@ module Exec_async = struct
         k (Already_reported_failure exn)
       else
         new_attempt ()
-    | Running_async (({ run; _ } as state), ivar) ->
+    | Running (({ run; _ } as state), Async ivar) ->
       if Run.is_current run then
         k (Waiting (state.sample, ivar))
       else
@@ -834,8 +842,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
   | Some dep_node -> (
     match dep_node.state with
     | Init -> None
-    | Running_sync _ -> None
-    | Running_async _ -> None
+    | Running _ -> None
     | Failed _ -> None
     | Done cv ->
       if Run.is_current cv.calculated_at then (
@@ -856,8 +863,7 @@ let get_deps (type i o f) (t : (i, o, f) t) inp =
   match Store.find t.cache inp with
   | None -> None
   | Some { state = Init; _ } -> None
-  | Some { state = Running_async _; _ } -> None
-  | Some { state = Running_sync _; _ } -> None
+  | Some { state = Running _; _ } -> None
   | Some { state = Failed _; _ } -> None
   | Some { state = Done cv; _ } ->
     Some

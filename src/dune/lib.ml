@@ -237,6 +237,8 @@ module Id : sig
     ; name : Lib_name.t
     }
 
+  val to_dyn : t -> Dyn.t
+
   val to_dep_path_lib : t -> Dep_path.Entry.Lib.t
 
   val hash : t -> int
@@ -263,7 +265,12 @@ end = struct
 
     let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
 
-    let to_dyn _ = Dyn.opaque
+    let to_dyn { unique_id = _; path ; name } =
+      let open Dyn.Encoder in
+      record
+        [ "path", Path.to_dyn path
+        ; "name", Lib_name.to_dyn name
+        ]
   end
 
   include T
@@ -320,21 +327,33 @@ end
 
 include T
 
+type lib = t
+
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
-type status =
-  | St_initializing of Id.t (* To detect cycles *)
-  | St_found of t
-  | St_not_found
-  | St_hidden of t * Path.t * string
-  | St_invalid of exn
+module Status = struct
+  type t =
+    | Initializing of Id.t (* To detect cycles *)
+    | Found of lib
+    | Not_found
+    | Hidden of lib * Path.t * string
+    | Invalid of exn
 
-(* reason *)
+  let to_dyn t =
+    let open Dyn.Encoder in
+    match t with
+    | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
+    | Initializing i -> constr "Initializing" [ Id.to_dyn i ]
+    | Not_found -> constr "Not_found" []
+    | Hidden (_, path, reason) ->
+      constr "Hidden" [ Path.to_dyn path; string reason ]
+    | Found t -> constr "Found" [ to_dyn t ]
+end
 
 type db =
   { parent : db option
   ; resolve : Lib_name.t -> resolve_result
-  ; table : (Lib_name.t, status) Table.t
+  ; table : (Lib_name.t, Status.t) Table.t
   ; all : Lib_name.t list Lazy.t
   ; stdlib_dir : Path.t
   }
@@ -348,10 +367,6 @@ and resolve_result =
       }
   | Invalid of exn
   | Redirect of db option * (Loc.t * Lib_name.t)
-
-type lib = t
-
-(* Generals *)
 
 let name t = t.name
 
@@ -760,24 +775,12 @@ let check_private_deps lib ~loc ~allow_private_deps =
 
 let already_in_table info name x =
   let to_dyn = Dyn.Encoder.(pair Path.to_dyn Lib_name.to_dyn) in
-  let dyn =
-    let open Dyn.Encoder in
-    match x with
-    | St_invalid e -> constr "St_invalid" [ Exn.to_dyn e ]
-    | St_initializing x -> constr "St_initializing" [ Path.to_dyn x.path ]
-    | St_found t ->
-      let src_dir = Lib_info.src_dir t.info in
-      constr "St_found" [ Path.to_dyn src_dir ]
-    | St_not_found -> constr "Not_found" []
-    | St_hidden (_, path, reason) ->
-      constr "Hidden" [ Path.to_dyn path; string reason ]
-  in
   let src_dir = Lib_info.src_dir info in
   Code_error.raise
     "Lib_db.DB: resolver returned name that's already in the table"
     [ ("name", Lib_name.to_dyn name)
     ; ("returned_lib", to_dyn (src_dir, name))
-    ; ("conflicting_with", dyn)
+    ; ("conflicting_with", Status.to_dyn x)
     ]
 
 (* Find implementation that matches given variants *)
@@ -1001,7 +1004,7 @@ end = struct
 end
 
 module rec Resolve : sig
-  val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> status
+  val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> Status.t
 
   val resolve_dep :
        db
@@ -1011,7 +1014,7 @@ module rec Resolve : sig
     -> stack:Dep_stack.t
     -> lib Or_exn.t
 
-  val resolve_name : db -> Lib_name.t -> stack:Dep_stack.t -> status
+  val resolve_name : db -> Lib_name.t -> stack:Dep_stack.t -> Status.t
 
   val available_internal : db -> Lib_name.t -> stack:Dep_stack.t -> bool
 
@@ -1053,7 +1056,7 @@ end = struct
     Option.iter (Table.find db.table name) ~f:(fun x ->
         already_in_table info name x);
     (* Add [id] to the table, to detect loops *)
-    Table.add_exn db.table name (St_initializing unique_id);
+    Table.add_exn db.table name (Status.Initializing unique_id);
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
     let resolve (loc, name) =
@@ -1178,13 +1181,13 @@ end = struct
           | Disabled_because_of_enabled_if -> Some "unsatisfied 'enabled_if'" )
       in
       match hidden with
-      | None -> St_found t
-      | Some reason -> St_hidden (t, src_dir, reason)
+      | None -> Status.Found t
+      | Some reason -> Hidden (t, src_dir, reason)
     in
     Table.set db.table name res;
     res
 
-  let find_internal db (name : Lib_name.t) ~stack : status =
+  let find_internal db (name : Lib_name.t) ~stack : Status.t =
     match Table.find db.table name with
     | Some x -> x
     | None -> resolve_name db name ~stack
@@ -1192,27 +1195,27 @@ end = struct
   let resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack :
       t Or_exn.t =
     match find_internal db name ~stack with
-    | St_initializing id -> Dep_stack.dependency_cycle stack id
-    | St_found lib -> check_private_deps lib ~loc ~allow_private_deps
-    | St_not_found -> Error.not_found ~loc ~name
-    | St_invalid why -> Error why
-    | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
+    | Initializing id -> Dep_stack.dependency_cycle stack id
+    | Found lib -> check_private_deps lib ~loc ~allow_private_deps
+    | Not_found -> Error.not_found ~loc ~name
+    | Invalid why -> Error why
+    | Hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
 
   let resolve_name db name ~stack =
     match db.resolve name with
     | Redirect (db', (_, name')) -> (
       let db' = Option.value db' ~default:db in
       match find_internal db' name' ~stack with
-      | St_initializing _ as x -> x
+      | Status.Initializing _ as x -> x
       | x ->
         Table.add_exn db.table name x;
         x )
     | Found info -> instantiate db name info ~stack ~hidden:None
-    | Invalid e -> St_invalid e
+    | Invalid e -> Status.Invalid e
     | Not_found ->
       let res =
         match db.parent with
-        | None -> St_not_found
+        | None -> Status.Not_found
         | Some db -> find_internal db name ~stack
       in
       Table.add_exn db.table name res;
@@ -1220,10 +1223,10 @@ end = struct
     | Hidden { info; reason = hidden } -> (
       match
         match db.parent with
-        | None -> St_not_found
+        | None -> Status.Not_found
         | Some db -> find_internal db name ~stack
       with
-      | St_found _ as x ->
+      | Status.Found _ as x ->
         Table.add_exn db.table name x;
         x
       | _ -> instantiate db name info ~stack ~hidden:(Some hidden) )
@@ -1488,7 +1491,7 @@ end = struct
             | None -> Ok ()
             | Some db -> (
               match find_internal db t.name ~stack with
-              | St_found t' ->
+              | Status.Found t' ->
                 if t = t' then
                   Ok ()
                 else
@@ -1850,30 +1853,30 @@ module DB = struct
 
   let find t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
-    | St_found t -> Some t
-    | St_not_found
-    | St_invalid _
-    | St_hidden _ ->
+    | Status.Initializing _ -> assert false
+    | Found t -> Some t
+    | Not_found
+    | Invalid _
+    | Hidden _ ->
       None
 
   let find_even_when_hidden t name =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
-    | St_found t
-    | St_hidden (t, _, _) ->
+    | Initializing _ -> assert false
+    | Found t
+    | Hidden (t, _, _) ->
       Some t
-    | St_invalid _
-    | St_not_found ->
+    | Invalid _
+    | Not_found ->
       None
 
   let resolve t (loc, name) =
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
-    | St_initializing _ -> assert false
-    | St_found t -> Ok t
-    | St_invalid w -> Error w
-    | St_not_found -> Error.not_found ~loc ~name
-    | St_hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
+    | Status.Initializing _ -> assert false
+    | Found t -> Ok t
+    | Invalid w -> Error w
+    | Not_found -> Error.not_found ~loc ~name
+    | Hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
 
   let available t name =
     Resolve.available_internal t name ~stack:Dep_stack.empty

@@ -147,9 +147,28 @@ let reset () =
   Caches.clear ();
   Run.restart ()
 
-module M = struct
-  module Generic_dag = Dag
+module Completion = struct
+  type ('a, 'b, 'f) t =
+    | Sync : ('a, 'b, 'a -> 'b) t
+    | Async : 'b Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
+end
 
+module Dep_node_without_state = struct
+  type ('a, 'b, 'f) t =
+    { spec : ('a, 'b, 'f) Spec.t
+    ; input : 'a
+    ; id : Id.t
+    }
+
+  type packed = T : (_, _, _) t -> packed [@@unboxed]
+end
+
+module Dag : Dag.S with type value := Dep_node_without_state.packed =
+Dag.Make (struct
+  type t = Dep_node_without_state.packed
+end)
+
+module M = struct
   module rec Cached_value : sig
     type 'a t =
       { (* CR-soon amokhov: To track errors, this should be changed to something
@@ -201,17 +220,6 @@ module M = struct
   end =
     Running_state
 
-  and Completion : sig
-    type ('a, 'b, 'f) t =
-      | Sync : ('a, 'b, 'a -> 'b) t
-      | Async : 'b Fiber.Ivar.t -> ('a, 'b, 'a -> 'b Fiber.t) t
-  end =
-    Completion
-
-  (* CR-soon amokhov: The current implementation relies on a few invariants
-     about moving from one state to another. As a result the code is full of
-     [Code_error]s and is hard to reason about. I would like to clean this up in
-     a separate semantics-preserving PR. *)
   and State : sig
     type ('a, 'b, 'f) t =
       (* [Running] includes computations that already terminated with an
@@ -225,17 +233,6 @@ module M = struct
       | Done of 'b Cached_value.t
   end =
     State
-
-  and Dep_node_without_state : sig
-    type ('a, 'b, 'f) t =
-      { spec : ('a, 'b, 'f) Spec.t
-      ; input : 'a
-      ; id : Id.t
-      }
-
-    type packed = T : (_, _, _) t -> packed [@@unboxed]
-  end =
-    Dep_node_without_state
 
   and Dep_node : sig
     type ('a, 'b, 'f) t =
@@ -252,21 +249,13 @@ module M = struct
     type t = T : ('a, 'b, 'f) Dep_node.t * 'b -> t
   end =
     Last_dep
-
-  and Dag : (Generic_dag.S with type value := Dep_node_without_state.packed) =
-  Generic_dag.Make (struct
-    type t = Dep_node_without_state.packed
-  end)
 end
 
 module State = M.State
 module Running_state = M.Running_state
-module Completion = M.Completion
 module Dep_node = M.Dep_node
-module Dep_node_without_state = M.Dep_node_without_state
 module Deps_so_far = M.Deps_so_far
 module Last_dep = M.Last_dep
-module Dag = M.Dag
 
 let no_deps_so_far : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
 

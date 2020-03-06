@@ -134,6 +134,10 @@ Testsuite for (mode plugin).
   [1]
 
   $ cat > dune <<EOF
+  > (rule (with-stdout-to xxx.ml (echo "let () = print_endline \"Hello, xxx\"")))
+  > (library
+  >  (name xxx)
+  >  (modules xxx))
   > (executable
   >  (name a)
   >  (modules a)
@@ -143,12 +147,6 @@ Testsuite for (mode plugin).
   > EOF
 
   $ dune build @all
-  File "dune", line 6, characters 28-31:
-  6 |  (embed_in_plugin_libraries xxx))
-                                  ^^^
-  Error: Library "xxx" not found.
-  Hint: try: dune external-lib-deps --missing @all
-  [1]
 
   $ cat > dune <<EOF
   > (rule (with-stdout-to xxx.ml (echo "let () = print_endline \"Hello, xxx\"")))

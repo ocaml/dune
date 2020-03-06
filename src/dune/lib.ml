@@ -265,12 +265,9 @@ end = struct
 
     let compare t1 t2 = Int.compare t1.unique_id t2.unique_id
 
-    let to_dyn { unique_id = _; path ; name } =
+    let to_dyn { unique_id = _; path; name } =
       let open Dyn.Encoder in
-      record
-        [ "path", Path.to_dyn path
-        ; "name", Lib_name.to_dyn name
-        ]
+      record [ ("path", Path.to_dyn path); ("name", Lib_name.to_dyn name) ]
   end
 
   include T
@@ -331,12 +328,40 @@ type lib = t
 
 include (Comparator.Operators (T) : Comparator.OPS with type t := t)
 
+module Hidden = struct
+  type 'lib t =
+    { lib : 'lib
+    ; path : Path.t
+    ; reason : string
+    }
+
+  let of_lib lib ~reason =
+    let path = Lib_info.src_dir lib.info in
+    { lib; path; reason }
+
+  let to_dyn to_dyn { lib; path; reason } =
+    let open Dyn.Encoder in
+    record
+      [ ("lib", to_dyn lib)
+      ; ("path", Path.to_dyn path)
+      ; ("reason", string reason)
+      ]
+
+  let error { path; reason; lib = _ } ~name ~loc =
+    Error.hidden ~loc ~name ~dir:path ~reason
+
+  let unsatisfied_exist_if pkg =
+    let info = Dune_package.Lib.info pkg in
+    let path = Lib_info.src_dir info in
+    { lib = info; reason = "unsatisfied 'exist_if'"; path }
+end
+
 module Status = struct
   type t =
     | Initializing of Id.t (* To detect cycles *)
     | Found of lib
     | Not_found
-    | Hidden of lib * Path.t * string
+    | Hidden of lib Hidden.t
     | Invalid of exn
 
   let to_dyn t =
@@ -345,7 +370,7 @@ module Status = struct
     | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
     | Initializing i -> constr "Initializing" [ Id.to_dyn i ]
     | Not_found -> constr "Not_found" []
-    | Hidden (_, path, reason) ->
+    | Hidden { lib = _; path; reason } ->
       constr "Hidden" [ Path.to_dyn path; string reason ]
     | Found t -> constr "Found" [ to_dyn t ]
 end
@@ -361,10 +386,7 @@ type db =
 and resolve_result =
   | Not_found
   | Found of Lib_info.external_
-  | Hidden of
-      { info : Lib_info.external_
-      ; reason : string
-      }
+  | Hidden of Lib_info.external_ Hidden.t
   | Invalid of exn
   | Redirect of db option * (Loc.t * Lib_name.t)
 
@@ -1182,7 +1204,7 @@ end = struct
       in
       match hidden with
       | None -> Status.Found t
-      | Some reason -> Hidden (t, src_dir, reason)
+      | Some reason -> Hidden (Hidden.of_lib t ~reason)
     in
     Table.set db.table name res;
     res
@@ -1199,7 +1221,7 @@ end = struct
     | Found lib -> check_private_deps lib ~loc ~allow_private_deps
     | Not_found -> Error.not_found ~loc ~name
     | Invalid why -> Error why
-    | Hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
+    | Hidden h -> Hidden.error h ~loc ~name
 
   let resolve_name db name ~stack =
     match db.resolve name with
@@ -1220,7 +1242,7 @@ end = struct
       in
       Table.add_exn db.table name res;
       res
-    | Hidden { info; reason = hidden } -> (
+    | Hidden { lib = info; reason = hidden; path = _ } -> (
       match
         match db.parent with
         | None -> Status.Not_found
@@ -1625,12 +1647,13 @@ module DB = struct
     type t = resolve_result =
       | Not_found
       | Found of Lib_info.external_
-      | Hidden of
-          { info : Lib_info.external_
-          ; reason : string
-          }
+      | Hidden of Lib_info.external_ Hidden.t
       | Invalid of exn
       | Redirect of db option * (Loc.t * Lib_name.t)
+
+    let not_found = Not_found
+
+    let redirect db lib = Redirect (db, lib)
 
     let to_dyn x =
       let open Dyn.Encoder in
@@ -1638,8 +1661,8 @@ module DB = struct
       | Not_found -> constr "Not_found" []
       | Invalid e -> constr "Invalid" [ Exn.to_dyn e ]
       | Found lib -> constr "Found" [ Lib_info.to_dyn Path.to_dyn lib ]
-      | Hidden { info = lib; reason } ->
-        constr "Hidden" [ Lib_info.to_dyn Path.to_dyn lib; string reason ]
+      | Hidden h ->
+        constr "Hidden" [ Hidden.to_dyn (Lib_info.to_dyn Path.to_dyn) h ]
       | Redirect (_, (_, name)) -> constr "Redirect" [ Lib_name.to_dyn name ]
   end
 
@@ -1834,11 +1857,7 @@ module DB = struct
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
         | Ok (Deprecated_library_name d) ->
           Redirect (None, (Loc.none, d.new_public_name))
-        | Ok (Hidden_library pkg) ->
-          Hidden
-            { info = Dune_package.Lib.info pkg
-            ; reason = "unsatisfied 'exist_if'"
-            }
+        | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
         | Error e -> (
           match e with
           | Invalid_dune_package why -> Invalid why
@@ -1864,7 +1883,7 @@ module DB = struct
     match Resolve.find_internal t name ~stack:Dep_stack.empty with
     | Initializing _ -> assert false
     | Found t
-    | Hidden (t, _, _) ->
+    | Hidden { lib = t; reason = _; path = _ } ->
       Some t
     | Invalid _
     | Not_found ->
@@ -1876,7 +1895,7 @@ module DB = struct
     | Found t -> Ok t
     | Invalid w -> Error w
     | Not_found -> Error.not_found ~loc ~name
-    | Hidden (_, dir, reason) -> Error.hidden ~loc ~name ~dir ~reason
+    | Hidden h -> Hidden.error h ~loc ~name
 
   let available t name =
     Resolve.available_internal t name ~stack:Dep_stack.empty

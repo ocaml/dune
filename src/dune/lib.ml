@@ -1856,7 +1856,7 @@ module DB = struct
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
         | Ok (Deprecated_library_name d) ->
-          Redirect (None, (Loc.none, d.new_public_name))
+          Redirect (None, (d.loc, d.new_public_name))
         | Ok (Hidden_library pkg) -> Hidden (Hidden.unsatisfied_exist_if pkg)
         | Error e -> (
           match e with

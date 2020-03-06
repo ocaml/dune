@@ -1642,9 +1642,7 @@
  (action
   (chdir
    test-cases/plugin-mode
-   (progn
-    (run %{exe:cram.exe} run.t -sanitizer %{bin:sanitizer})
-    (diff? run.t run.t.corrected)))))
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ppx-rewriter)

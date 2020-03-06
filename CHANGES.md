@@ -1,4 +1,4 @@
-2.4.0 (unreleased)
+2.4.0 (06/03/2020)
 ------------------
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)

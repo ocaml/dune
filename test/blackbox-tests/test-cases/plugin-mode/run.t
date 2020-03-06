@@ -147,6 +147,7 @@ Testsuite for (mode plugin).
   6 |  (embed_in_plugin_libraries xxx))
                                   ^^^
   Error: Library "xxx" not found.
+  Hint: try: dune external-lib-deps --missing @all
   [1]
 
   $ cat > dune <<EOF

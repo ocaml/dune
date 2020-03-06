@@ -184,7 +184,7 @@ module M = struct
 
   and Deps_so_far : sig
     type t =
-      { map : Dep_node.packed Id.Map.t
+      { set : Id.Set.t
       ; deps_reversed : Dep_node.packed list
       }
   end =
@@ -266,7 +266,7 @@ module Deps_so_far = M.Deps_so_far
 module Last_dep = M.Last_dep
 module Dag = M.Dag
 
-let no_deps_so_far : Deps_so_far.t = { map = Id.Map.empty; deps_reversed = [] }
+let no_deps_so_far : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
 
 module Cached_value = struct
   include M.Cached_value
@@ -531,10 +531,10 @@ let add_dep_from_caller (type i o f) ~called_from_peek
             ]
     in
     match
-      Id.Map.find running_state_of_caller.deps_so_far.map node.without_state.id
+      Id.Set.mem running_state_of_caller.deps_so_far.set node.without_state.id
     with
-    | Some _the_same_node -> ()
-    | None ->
+    | true -> ()
+    | false ->
       let () =
         match sample_attempt_dag_node with
         | Finished -> ()
@@ -551,9 +551,9 @@ let add_dep_from_caller (type i o f) ~called_from_peek
       in
       let packed_node = Dep_node.T node in
       running_state_of_caller.deps_so_far <-
-        { Deps_so_far.map =
-            Id.Map.add_exn running_state_of_caller.deps_so_far.map
-              node.without_state.id packed_node
+        { Deps_so_far.set =
+            Id.Set.add running_state_of_caller.deps_so_far.set
+              node.without_state.id
         ; deps_reversed =
             packed_node :: running_state_of_caller.deps_so_far.deps_reversed
         } )

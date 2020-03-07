@@ -55,8 +55,7 @@ type t = private
             archives (usually named [dll*.so]). It is possible to disable this
             by adding (disable_dynamically_linked_foreign_archives true) to the
             workspace file, in which case bytecode executables will be built
-            with all foreign archives statically linked into the runtime
-            system. *)
+            with all foreign archives statically linked into the runtime system. *)
   ; dynamically_linked_foreign_archives : bool
         (** If this context is a cross-compilation context, you need another
             context for building tools used for the compilation that run on the

@@ -302,7 +302,7 @@ let check_no_qualified (loc, include_subdirs) =
 let make (d : _ Dir_with_dune.t) ~loc ~lookup_vlib ~include_subdirs ~dirs =
   let libs_and_exes =
     Memo.lazy_ (fun () ->
-      check_no_qualified include_subdirs;
+        check_no_qualified include_subdirs;
         let modules =
           let dialects = Dune_project.dialects (Scope.project d.scope) in
           List.fold_left dirs ~init:Module_name.Map.empty

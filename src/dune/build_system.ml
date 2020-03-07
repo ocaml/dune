@@ -1368,6 +1368,15 @@ end = struct
       force_rerun || depends_on_universe
     in
     let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
+    let () =
+      let f { cache = (module Caching); _ } =
+        match Caching.Cache.hint Caching.cache [ rule_digest ] with
+        | Result.Ok _ -> ()
+        | Result.Error e ->
+          User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
+      in
+      Option.iter ~f t.caching
+    in
     let do_not_memoize =
       always_rerun || is_action_dynamic
       || Action.is_useful_to_memoize action = Clearly_not
@@ -1993,17 +2002,25 @@ let init ~contexts ?caching ~sandboxing_preference =
     |> Context_name.Map.of_list_exn
   in
   let caching =
-    let f ({ cache = (module Caching : Cache.Caching); _ } as v) =
-      let cache =
-        ( module struct
-          module Cache = Caching.Cache
+    match caching with
+    | Some ({ cache = (module Caching : Cache.Caching); _ } as v) -> (
+      match Caching.Cache.set_build_dir Caching.cache Path.build_dir with
+      | Result.Ok cache ->
+        let cache =
+          ( module struct
+            module Cache = Caching.Cache
 
-          let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-        end : Cache.Caching )
-      in
-      { v with cache }
-    in
-    Option.map ~f caching
+            let cache = cache
+          end : Cache.Caching )
+        in
+        Some { v with cache }
+      | Result.Error e ->
+        User_warning.emit
+          [ Pp.text "Unable to set cache build directory"
+          ; Pp.textf "Reason: %s" e
+          ];
+        None )
+    | None -> None
   in
   let t =
     { contexts

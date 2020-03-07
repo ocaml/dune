@@ -85,20 +85,21 @@ let with_repositories client repositories =
   Messages.send client.version client.socket (SetRepos repositories);
   client
 
+let send client message =
+  try Result.Ok (Messages.send client.version client.socket message)
+  with Sys_error (* "Broken_pipe" *) _ ->
+    Result.Error "lost connection to cache daemon"
+
 let promote (client : t) files key metadata ~repository ~duplication =
   let duplication =
     Some
       (Option.value ~default:(Local.duplication_mode client.cache) duplication)
   in
-  try
-    Messages.send client.version client.socket
-      (Promote { key; files; metadata; repository; duplication });
-    Result.Ok ()
-  with Sys_error (* "Broken_pipe" *) _ ->
-    Result.Error "lost connection to cache daemon"
+  send client
+    (Messages.Promote { key; files; metadata; repository; duplication })
 
 let set_build_dir client path =
-  Messages.send client.version client.socket (SetBuildRoot path);
+  let+ () = send client (Messages.SetBuildRoot path) in
   client
 
 let search client key = Local.search client.cache key
@@ -112,3 +113,5 @@ let teardown client =
     with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
   Thread.join client.thread;
   Local.teardown client.cache
+
+let hint client keys = send client (Messages.Hint keys)

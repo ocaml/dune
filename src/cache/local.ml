@@ -331,9 +331,11 @@ let search cache key =
   in
   (metadata.metadata, metadata.files)
 
-let set_build_dir cache p = { cache with build_root = Some p }
+let set_build_dir cache p = Result.Ok { cache with build_root = Some p }
 
 let teardown cache = Path.rm_rf ~allow_external:true cache.temp_dir
+
+let hint _ _ = Result.Ok ()
 
 let detect_duplication_mode root =
   let () = Path.mkdir_p root in

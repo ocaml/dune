@@ -61,9 +61,12 @@ module type Cache = sig
 
   val deduplicate : t -> File.t -> unit
 
-  val set_build_dir : t -> Path.t -> t
+  val set_build_dir : t -> Path.t -> (t, string) Result.t
 
   val teardown : t -> unit
+
+  (* Hint that the given rule will be looked up soon *)
+  val hint : t -> Key.t list -> (unit, string) Result.t
 end
 
 module type Caching = sig

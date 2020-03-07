@@ -143,8 +143,8 @@ let client_thread (events, (client : client)) =
         in
         client
       | SetBuildRoot root ->
-        Result.Ok
-          { client with cache = Cache.Local.set_build_dir client.cache root }
+        let+ cache = Cache.Local.set_build_dir client.cache root in
+        { client with cache }
       | SetCommonMetadata metadata ->
         Result.ok { client with common_metadata = metadata }
       | SetRepos repositories ->

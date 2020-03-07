@@ -1685,7 +1685,14 @@ module DB = struct
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  let check_valid_external_variants libmap stanzas =
+  module Found_or_redirect = struct
+    type t =
+      | Found of Lib_info.external_
+      | Redirect of (Loc.t * Lib_name.t)
+  end
+
+  let check_valid_external_variants
+      (libmap : Found_or_redirect.t Lib_name.Map.t) stanzas =
     List.iter stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
         match stanza with
         | Library _
@@ -1700,15 +1707,13 @@ module DB = struct
                    name)] where [name] is in [libmap] for sure and maps to
                    [Found _]. *)
                 match res with
-                | Invalid _
-                | Not_found
-                | Hidden _ ->
-                  assert false
                 | Found x -> x
-                | Redirect (_, (_, name')) -> (
+                | Redirect (_, name') -> (
                   match Lib_name.Map.find libmap name' with
                   | Some (Found x) -> x
-                  | _ -> assert false ))
+                  | Some (Redirect _)
+                  | None ->
+                    assert false ))
           with
           | None ->
             User_error.raise ~loc
@@ -1757,7 +1762,7 @@ module DB = struct
               (ev.variant, ev.implementation)
           | _ -> acc)
     in
-    let map =
+    let map : Found_or_redirect.t Lib_name.Map.t =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
           | External_variant _ -> []
@@ -1767,7 +1772,7 @@ module DB = struct
               ; _
               } ->
             [ ( Dune_file.Public_lib.name old_public_name
-              , Redirect (None, new_public_name) )
+              , Found_or_redirect.Redirect new_public_name )
             ]
           | Library (dir, (conf : Dune_file.Library.t)) -> (
             (* In the [implements] field of library stanzas, the user might use
@@ -1801,35 +1806,29 @@ module DB = struct
               |> Lib_info.of_local
             in
             match conf.public with
-            | None ->
-              [ (Dune_file.Library.best_name conf, Resolve_result.Found info) ]
+            | None -> [ (Dune_file.Library.best_name conf, Found info) ]
             | Some p ->
               let name = Dune_file.Public_lib.name p in
               if Lib_name.equal name (Lib_name.of_local conf.name) then
                 [ (name, Found info) ]
               else
                 [ (name, Found info)
-                ; (Lib_name.of_local conf.name, Redirect (None, p.name))
+                ; (Lib_name.of_local conf.name, Redirect p.name)
                 ] ))
-      |> Lib_name.Map.of_list_reducei ~f:(fun name v1 v2 ->
+      |> Lib_name.Map.of_list_reducei
+           ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
              let res =
                match (v1, v2) with
                | Found info1, Found info2 ->
                  Error (Lib_info.loc info1, Lib_info.loc info2)
-               | Found info, Redirect (None, (loc, _))
-               | Redirect (None, (loc, _)), Found info ->
+               | Found info, Redirect (loc, _)
+               | Redirect (loc, _), Found info ->
                  Error (loc, Lib_info.loc info)
-               | Redirect (None, (loc1, lib1)), Redirect (None, (loc2, lib2)) ->
+               | Redirect (loc1, lib1), Redirect (loc2, lib2) ->
                  if Lib_name.equal lib1 lib2 then
                    Ok v1
                  else
                    Error (loc1, loc2)
-               | _ ->
-                 Code_error.raise
-                   "create_from_stanzas produced unexpected result"
-                   [ ("v1", Resolve_result.to_dyn v1)
-                   ; ("v2", Resolve_result.to_dyn v2)
-                   ]
              in
              match res with
              | Ok x -> x
@@ -1847,7 +1846,10 @@ module DB = struct
     check_valid_external_variants map stanzas;
     create () ~parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
-        Lib_name.Map.find map name |> Option.value ~default:Not_found)
+        match Lib_name.Map.find map name with
+        | None -> Not_found
+        | Some (Redirect lib) -> Redirect (None, lib)
+        | Some (Found lib) -> Found lib)
       ~all:(fun () -> Lib_name.Map.keys map)
 
   let create_from_findlib ~external_lib_deps_mode ~stdlib_dir findlib =

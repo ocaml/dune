@@ -22,3 +22,7 @@ val negotiate_version :
   -> (version, string) result
 
 val string_of_version : version -> string
+
+val hint_supported : version -> bool
+
+val hint_min_version : version

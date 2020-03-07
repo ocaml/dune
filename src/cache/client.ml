@@ -114,4 +114,16 @@ let teardown client =
   Thread.join client.thread;
   Local.teardown client.cache
 
-let hint client keys = send client (Messages.Hint keys)
+let hint client keys =
+  if Messages.hint_supported client.version then
+    send client (Messages.Hint keys)
+  else
+    User_warning.emit
+      ~hints:
+        [ Pp.textf "update sietch to version %s at least"
+            (Messages.string_of_version Messages.hint_min_version)
+        ]
+      [ Pp.textf "not hinting the cache as sietch version is too old: %s"
+          (Messages.string_of_version client.version)
+      ]
+    |> Result.ok

@@ -11,15 +11,26 @@ let invalid_args args =
 let version_at_least ~min v =
   v.major > min.major || (v.major = min.major && v.minor >= min.minor)
 
-let hint_min = { major = 1; minor = 2 }
+let string_of_version { major; minor } = sprintf "%i.%i" major minor
+
+let dyn_of_version { major; minor } =
+  Dyn.Encoder.record
+    [ ("major", Dyn.Encoder.int major); ("minor", Dyn.Encoder.int minor) ]
+
+let hint_min_version = { major = 1; minor = 2 }
+
+let hint_supported version = version_at_least ~min:hint_min_version version
 
 let sexp_of_message : type a. version -> a message -> Sexp.t =
  fun version ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
   | Hint keys ->
-    if not @@ version_at_least ~min:hint_min version then
-      Code_error.raise "tried sending a not yet supported hint message" [];
+    if not (hint_supported version) then
+      Code_error.raise "tried sending a not yet supported hint message"
+        [ ("current version", dyn_of_version version)
+        ; ("minimum version", dyn_of_version hint_min_version)
+        ];
     let f k = Sexp.Atom (Digest.to_string k) in
     cmd "hint" @@ List.map ~f keys
   | Lang versions ->
@@ -210,7 +221,7 @@ let outgoing_message_of_sexp version =
     Result.map_error
       ~f:(fun s -> cmd ^ ": " ^ s)
       ( match cmd with
-      | "hint" when version_at_least ~min:hint_min version ->
+      | "hint" when hint_supported version ->
         let+ keys = hint_of_sexp args in
         Hint keys
       | "promote" ->
@@ -234,8 +245,6 @@ let send_sexp output sexp =
 
 let send version output message =
   send_sexp output (sexp_of_message version message)
-
-let string_of_version { major; minor } = sprintf "%i.%i" major minor
 
 let find_highest_common_version my_versions versions =
   let find a b =

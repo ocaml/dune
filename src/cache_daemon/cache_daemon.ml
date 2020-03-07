@@ -134,6 +134,7 @@ let client_thread (events, (client : client)) =
     let handle_cmd (client : client) sexp =
       let* msg = outgoing_message_of_sexp client.version sexp in
       match msg with
+      | Hint _ -> Result.Ok client
       | Promote { duplication; repository; files; key; metadata } ->
         let+ () =
           Cache.Local.promote client.cache files key

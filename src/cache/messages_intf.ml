@@ -21,6 +21,7 @@ type outgoing = Outgoing
 type incoming = Incoming
 
 type _ message =
+  | Hint : Digest.t list -> outgoing message
   | Lang : version list -> initial message
   | Promote : promotion -> outgoing message
   | SetBuildRoot : Path.t -> outgoing message

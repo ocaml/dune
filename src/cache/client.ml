@@ -13,7 +13,7 @@ type t =
   ; version : Messages.version
   }
 
-let my_versions : Messages.version list = [ { major = 1; minor = 1 } ]
+let my_versions : Messages.version list = [ { major = 1; minor = 2 } ]
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 

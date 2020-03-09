@@ -181,10 +181,9 @@ let client_thread (events, (client : client)) =
       in
       handle client
     and finally () =
-      ( try
-          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-          Unix.close client.fd
+      ( try Unix.shutdown client.fd Unix.SHUTDOWN_ALL
         with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+      Unix.close client.fd;
       Evt.sync (Evt.send events (Client_left client.fd))
     in
     try Exn.protect ~f ~finally with

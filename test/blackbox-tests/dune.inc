@@ -358,8 +358,7 @@
  (action
   (chdir
    test-cases/dune-cache/trim
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
- (enabled_if (<> %{ocaml-config:system} macosx)))
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-init)

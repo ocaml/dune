@@ -1368,18 +1368,19 @@ end = struct
       force_rerun || depends_on_universe
     in
     let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
-    let () =
-      let f { cache = (module Caching); _ } =
-        match Caching.Cache.hint Caching.cache [ rule_digest ] with
-        | Result.Ok _ -> ()
-        | Result.Error e ->
-          User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
-      in
-      Option.iter ~f t.caching
-    in
     let do_not_memoize =
       always_rerun || is_action_dynamic
       || Action.is_useful_to_memoize action = Clearly_not
+    in
+    let () =
+      if not do_not_memoize then
+        let f { cache = (module Caching); _ } =
+          match Caching.Cache.hint Caching.cache [ rule_digest ] with
+          | Result.Ok _ -> ()
+          | Result.Error e ->
+            User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
+        in
+        Option.iter ~f t.caching
     in
     (* Here we determine if we need to rerun the action based on information
        stored in Trace_db. *)

@@ -367,8 +367,8 @@ let make ?(root = default_root ())
       ; handler
       ; duplication_mode
       ; temp_dir =
-          Path.temp_dir ~temp_dir:root "promoting"
-            (string_of_int (Unix.getpid ()))
+          Path.temp_dir ~temp_dir:root "promoting."
+            ("." ^ string_of_int (Unix.getpid ()))
       }
     in
     Path.mkdir_p @@ root_metadata res;

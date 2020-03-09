@@ -47,11 +47,11 @@ module DB = struct
 
   let resolve t public_libs name : Lib.DB.Resolve_result.t =
     match Lib_name.Map.find public_libs name with
-    | None -> Not_found
+    | None -> Lib.DB.Resolve_result.not_found
     | Some (Project project) ->
       let scope = find_by_project (Fdecl.get t) project in
-      Redirect (Some scope.db, (Loc.none, name))
-    | Some (Name name) -> Redirect (None, name)
+      Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
+    | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
   let public_libs t ~stdlib_dir ~installed_libs stanzas =
     let public_libs =

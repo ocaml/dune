@@ -154,6 +154,11 @@ let path_metadata cache key = FSSchemeImpl.path (root_metadata cache) key
 
 let path_data cache key = FSSchemeImpl.path (root_data cache) key
 
+let path_tmp cache name =
+  let res = Path.relative cache.temp_dir name in
+  Path.mkdir_p res;
+  res
+
 let make_path cache path =
   match cache.build_root with
   | Some p -> Result.ok (Path.append_local p path)
@@ -368,7 +373,7 @@ let make ?(root = default_root ())
       ; handler
       ; duplication_mode
       ; temp_dir =
-          Path.temp_dir ~temp_dir:root "promoting."
+          Path.temp_dir ~temp_dir:root "tmp."
             ("." ^ string_of_int (Unix.getpid ()))
       }
     in

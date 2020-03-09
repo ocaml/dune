@@ -65,3 +65,6 @@ val path_metadata : t -> Key.t -> Path.t
 
 (** Path to a data file *)
 val path_data : t -> Key.t -> Path.t
+
+(** Path to a safe, instance specific temporary directory *)
+val path_tmp : t -> string -> Path.t

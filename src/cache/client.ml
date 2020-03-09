@@ -110,4 +110,5 @@ let deduplicate client file = Local.deduplicate client.cache file
 let teardown client =
   ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
     with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
-  Thread.join client.thread
+  Thread.join client.thread;
+  Local.teardown client.cache

@@ -116,6 +116,8 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-val is_useful_to_sandbox : t -> is_useful
+val is_useful_to_distribute : t -> is_useful
 
 val is_useful_to_memoize : t -> is_useful
+
+val is_useful_to_sandbox : t -> is_useful

@@ -221,7 +221,7 @@ let exclusions =
   ; make "merlin/merlin-tests" ~external_deps:true
   ; make "use-meta" ~external_deps:true
   ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~only_ocaml:(">=", "4.06.0")
-  ; make "dune-cache/trim" ~skip_platforms:[ Mac ]
+  ; make "dune-cache/trim"
   ; make "github644" ~external_deps:true
   ; make "private-public-overlap" ~external_deps:true
   ; make "reason" ~external_deps:true

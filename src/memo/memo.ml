@@ -168,12 +168,18 @@ Dag.Make (struct
   type t = Dep_node_without_state.packed
 end)
 
+module Value = struct
+  type 'a t = ('a, Exn_with_backtrace.t) Result.t
+
+  let get = function
+    | Ok a -> a
+    | Error exn -> already_reported exn
+end
+
 module M = struct
   module rec Cached_value : sig
     type 'a t =
-      { (* CR-soon amokhov: To properly track errors, this should be changed to
-           something like [data : ('a, Exn_with_backtrace.t) Result.t]. *)
-        data : 'a
+      { value : 'a Value.t
       ; (* When was the value calculated. *)
         mutable calculated_at : Run.t
       ; (* The values stored in [deps] must have been calculated at
@@ -246,7 +252,7 @@ module M = struct
 
   (* We store the last value ['b] we depended on to support early cutoff. *)
   and Last_dep : sig
-    type t = T : ('a, 'b, 'f) Dep_node.t * 'b -> t
+    type t = T : ('a, 'b, 'f) Dep_node.t * 'b Value.t -> t
   end =
     Last_dep
 end
@@ -262,19 +268,22 @@ let no_deps_so_far : Deps_so_far.t = { set = Id.Set.empty; deps_reversed = [] }
 module Cached_value = struct
   include M.Cached_value
 
-  let create x ~deps = { deps; data = x; calculated_at = Run.current () }
+  let create x ~deps = { deps; value = x; calculated_at = Run.current () }
 
   let dep_changed (type a) (node : (_, a, _) Dep_node.t) prev_output curr_output
       =
-    match node.without_state.spec.allow_cutoff with
-    | Yes equal -> not (equal prev_output curr_output)
-    | No -> true
+    match prev_output with
+    | Error _ -> true
+    | Ok prev_output -> (
+      match node.without_state.spec.allow_cutoff with
+      | Yes equal -> not (equal prev_output curr_output)
+      | No -> true )
 
   (* Check if a cached value is up to date. If yes, return it. *)
   let rec get_sync : type a. a t -> a option =
    fun t ->
     if Run.is_current t.calculated_at then
-      Some t.data
+      Some (Value.get t.value)
     else
       let dep_changed = function
         | Last_dep.T (node, prev_output) -> (
@@ -315,13 +324,13 @@ module Cached_value = struct
       | true -> None
       | false ->
         t.calculated_at <- Run.current ();
-        Some t.data
+        Some (Value.get t.value)
 
   (* Check if a cached value is up to date. If yes, return it. *)
   let rec get_async : type a. a t -> a option Fiber.t =
    fun t ->
     if Run.is_current t.calculated_at then
-      Fiber.return (Some t.data)
+      Fiber.return (Some (Value.get t.value))
     else
       let rec deps_changed acc = function
         | [] ->
@@ -368,12 +377,12 @@ module Cached_value = struct
                   dep_changed node prev_output curr_output
                 in
                 deps_changed (changed :: acc) deps )
-          | Done t' ->
-            if Run.is_current t'.calculated_at then
+          | Done t ->
+            if Run.is_current t.calculated_at then
               if
                 (* handle common case separately to avoid feeding more fibers to
                    [parallel_map] *)
-                dep_changed node prev_output t'.data
+                dep_changed node prev_output (Value.get t.value)
               then
                 Fiber.return true
               else
@@ -381,8 +390,8 @@ module Cached_value = struct
             else
               let changed =
                 ( match node.without_state.spec.f with
-                | Function.Sync _ -> Fiber.return (get_sync t')
-                | Function.Async _ -> get_async t' )
+                | Function.Sync _ -> Fiber.return (get_sync t)
+                | Function.Async _ -> get_async t )
                 >>| function
                 | None -> true
                 | Some curr_output -> dep_changed node prev_output curr_output
@@ -393,7 +402,7 @@ module Cached_value = struct
       | true -> None
       | false ->
         t.calculated_at <- Run.current ();
-        Some t.data
+        Some (Value.get t.value)
 end
 
 let ser_input (type a) (node : (a, _, _) Dep_node_without_state.t) =
@@ -693,7 +702,7 @@ module Exec_sync = struct
     in
     (* update the output cache with the correct value *)
     let deps = List.rev running_state.deps_so_far.deps_reversed in
-    dep_node.state <- Done (Cached_value.create res ~deps);
+    dep_node.state <- Done (Cached_value.create (Ok res) ~deps);
     res
 
   let try_to_use_cache (dep_node : _ Dep_node.t) : _ Cache_lookup_result.t =
@@ -751,7 +760,7 @@ module Exec_sync = struct
     in
     let () =
       Option.iter add_last_dep ~f:(fun add_last_dep ->
-          let last_dep = Last_dep.T (dep_node, res) in
+          let last_dep = Last_dep.T (dep_node, Ok res) in
           add_last_dep ~last_dep)
     in
     res
@@ -775,7 +784,7 @@ module Exec_async = struct
     (* CR-someday aalekseyev: Set [dep_node.state] to [Failed] if there are
        errors while running [f]. Currently not doing that because sometimes [f]
        both returns a result and keeps producing errors. Not sure why. *)
-    dep_node.state <- Done (Cached_value.create res ~deps);
+    dep_node.state <- Done (Cached_value.create (Ok res) ~deps);
     (* fill the ivar for any waiting threads *)
     let+ () = Fiber.Ivar.fill ivar res in
     res
@@ -838,7 +847,7 @@ module Exec_async = struct
         in
         let () =
           Option.iter add_last_dep ~f:(fun add_last_dep ->
-              let last_dep = Last_dep.T (dep_node, res) in
+              let last_dep = Last_dep.T (dep_node, Ok res) in
               add_last_dep ~last_dep)
         in
         res)
@@ -872,10 +881,10 @@ let peek (type i o f) (t : (i, o, f) t) inp =
         in
         let () =
           Option.iter add_last_dep ~f:(fun add_last_dep ->
-              let last_dep = Last_dep.T (dep_node, cv.data) in
+              let last_dep = Last_dep.T (dep_node, cv.value) in
               add_last_dep ~last_dep)
         in
-        Some cv.data
+        Some (Value.get cv.value)
       else
         None )
 

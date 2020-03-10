@@ -1568,7 +1568,7 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   included in the theory, similarly to its OCaml counterpart. Modules
   are specified in Coq notation, that is to say ``A/b.v`` is written
   ``A.b`` in this field,
-- if ``package``is present, Dune will generate install rules for the
+- if ``package`` is present, Dune will generate install rules for the
   ``.vo`` files on the theory. ``pkg_name`` must be a valid package
   name. Note that the 1.0 version of the language uses the Coq legacy
   install setup, where all packages share a common root namespace and

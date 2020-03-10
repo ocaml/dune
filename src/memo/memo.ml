@@ -2,8 +2,6 @@ open! Stdune
 open Fiber.O
 module Function = Function
 
-let on_already_reported = ref Exn_with_backtrace.reraise
-
 module Code_error_with_memo_backtrace = struct
   (* A single memo frame and the OCaml frames it called which lead to the error *)
   type frame =
@@ -37,8 +35,6 @@ module Code_error_with_memo_backtrace = struct
       | E t -> Some (Dyn.to_string (to_dyn t))
       | _ -> None)
 end
-
-let already_reported exn = Nothing.unreachable_code (!on_already_reported exn)
 
 module Allow_cutoff = struct
   type 'o t =
@@ -150,9 +146,9 @@ let reset () =
 module Value = struct
   type 'a t = ('a, Exn_with_backtrace.t) Result.t
 
-  let get = function
+  let get_exn = function
     | Ok a -> a
-    | Error exn -> already_reported exn
+    | Error exn -> Exn_with_backtrace.reraise exn
 end
 
 module Completion = struct
@@ -720,8 +716,7 @@ module Exec_sync = struct
       | Some v -> Done v
       | None -> new_attempt () )
 
-  let exec_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) inp : 'b Value.t
-      =
+  let exec_dep_node (dep_node : ('a, 'b, 'a -> 'b) Dep_node.t) inp : 'b =
     let result = try_to_use_cache dep_node in
     let add_last_dep =
       add_dep_from_caller ~called_from_peek:false dep_node
@@ -746,9 +741,9 @@ module Exec_sync = struct
           let last_dep = Last_dep.T (dep_node, res) in
           add_last_dep ~last_dep)
     in
-    res
+    Value.get_exn res
 
-  let exec t inp = exec_dep_node (dep_node t inp) inp |> Value.get
+  let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
 module Exec_async = struct
@@ -811,7 +806,7 @@ module Exec_async = struct
       | Some v -> k (Done v)
       | None -> new_attempt () )
 
-  let exec_dep_node (dep_node : _ Dep_node.t) inp : _ Value.t Fiber.t =
+  let exec_dep_node (dep_node : _ Dep_node.t) inp : _ Fiber.t =
     try_to_use_cache_k dep_node (fun result ->
         let add_last_dep =
           add_dep_from_caller ~called_from_peek:false dep_node
@@ -828,9 +823,9 @@ module Exec_async = struct
               let last_dep = Last_dep.T (dep_node, res) in
               add_last_dep ~last_dep)
         in
-        res)
+        Value.get_exn res)
 
-  let exec t inp = Fiber.map ~f:Value.get (exec_dep_node (dep_node t inp) inp)
+  let exec t inp = exec_dep_node (dep_node t inp) inp
 end
 
 let exec (type i o f) (t : (i, o, f) t) =
@@ -861,7 +856,7 @@ let peek (type i o f) (t : (i, o, f) t) inp =
               let last_dep = Last_dep.T (dep_node, cv.value) in
               add_last_dep ~last_dep)
         in
-        Some (Value.get cv.value)
+        Some (Value.get_exn cv.value)
       else
         None )
 
@@ -976,19 +971,16 @@ module Cell = struct
   let input (t : (_, _, _) t) = t.without_state.input
 
   let get_sync (type a b) (dep_node : (a, b, a -> b) Dep_node.t) =
-    Exec_sync.exec_dep_node dep_node dep_node.without_state.input |> Value.get
+    Exec_sync.exec_dep_node dep_node dep_node.without_state.input
 
   let get_async (type a b) (dep_node : (a, b, a -> b Fiber.t) Dep_node.t) =
     Exec_async.exec_dep_node dep_node dep_node.without_state.input
-    |> Fiber.map ~f:Value.get
 end
 
 let cell t inp = dep_node t inp
 
 module Implicit_output = Implicit_output
 module Store = Store_intf
-
-let on_already_reported f = on_already_reported := f
 
 let lazy_ (type a) ?(cutoff = ( == )) f =
   let module Output = struct

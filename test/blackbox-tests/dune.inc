@@ -637,6 +637,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias extensions-versionning)
+ (deps (package dune) (source_tree test-cases/extensions-versionning))
+ (action
+  (chdir
+   test-cases/extensions-versionning
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias external-lib-deps-github3143)
  (deps (package dune) (source_tree test-cases/external-lib-deps/github3143))
  (action
@@ -2462,6 +2470,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
@@ -2745,6 +2754,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)

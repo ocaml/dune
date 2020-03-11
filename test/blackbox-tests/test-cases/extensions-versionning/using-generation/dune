@@ -1,0 +1,2 @@
+(menhir
+  (modules parser.mly))

@@ -44,22 +44,109 @@ module Version = struct
 end
 
 module Supported_versions = struct
-  type t = int Int.Map.t
+  (* The extension supported versions are declared using an explicit list of all
+     versions but stored as a map from major versions to maps from minor version
+     to dune_lang required versions *)
+  type t =
+    [ `Old of int Int.Map.t
+    | `New of Version.t Int.Map.t Int.Map.t
+    ]
 
-  let to_dyn = Int.Map.to_dyn Int.to_dyn
+  let to_dyn t =
+    match t with
+    | `Old t -> Int.Map.to_dyn Int.to_dyn t
+    | `New t -> Int.Map.to_dyn (Int.Map.to_dyn Version.to_dyn) t
 
-  let make = Int.Map.of_list_exn
+  let _print t =
+    Int.Map.iteri t ~f:(fun k m ->
+        Printf.eprintf "Major: %i" k;
+        Int.Map.iteri m ~f:(fun k dlv ->
+            Printf.eprintf " (Minor: %i DLV: %s)" k (Version.to_string dlv));
+        Printf.eprintf "\n")
 
-  let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
+  let make v : t = `Old (Int.Map.of_list_exn v)
 
-  let is_supported t (major, minor) =
-    match Int.Map.find t major with
-    | Some minor' -> minor' >= minor
-    | None -> false
+  (* We convert the exposed extension version type: `(Version.t * [ `Since of
+     Version.t ]) list` which is a list of fully qualified versions paired with
+     the corresponding dune_lang version. To the internal representation:
+     `(Version.t Int.Map.t) Int.Map.t` which is a list of major versions paired
+     with lists of minor versions paires with a dune_lang version. *)
+  let maken (versions : (Version.t * [ `Since of Version.t ]) list) : t =
+    let v =
+      List.fold_left versions
+        ~init:(Int.Map.empty : Version.t Int.Map.t Int.Map.t)
+        ~f:(fun major_map (v_ext, `Since v_lang) ->
+          let major, minor = v_ext in
+          let minor_map =
+            match Int.Map.find major_map major with
+            | Some m -> m
+            | None -> Int.Map.empty
+          in
+          let minor_map = Int.Map.add_exn minor_map minor v_lang in
+          Int.Map.update major_map major ~f:(function
+            | Some _minor_map -> Some minor_map
+            | None -> Some minor_map))
+    in
+    `New v
 
-  let supported_ranges t =
-    Int.Map.to_list t
-    |> List.map ~f:(fun (major, minor) -> ((major, 0), (major, minor)))
+  let remove_uncompatible_versions lang_ver =
+    Int.Map.filter_map ~f:(fun minors ->
+        let minors =
+          Int.Map.filter minors ~f:(fun min_lang -> lang_ver >= min_lang)
+        in
+        if Int.Map.is_empty minors then
+          None
+        else
+          Some minors)
+
+  let rec greatest_supported_version ?lang_ver t =
+    let open Option.O in
+    match (t, lang_ver) with
+    | `Old t, _ -> Int.Map.max_binding t
+    | `New t, Some lang_ver ->
+      let compat = remove_uncompatible_versions lang_ver t in
+      greatest_supported_version (`New compat)
+    | `New t, None ->
+      let* major, minors = Int.Map.max_binding t in
+      let* minor, _ = Int.Map.max_binding minors in
+      Some (major, minor)
+
+  let get_min_lang_ver t (major, minor) =
+    match t with
+    | `New t ->
+      let open Option.O in
+      let* minors = Int.Map.find t major in
+      Int.Map.find minors minor
+    | `Old _ -> None
+
+  let is_supported t (major, minor) lang_ver =
+    match t with
+    | `Old t -> (
+      match Int.Map.find t major with
+      | Some minor' -> minor' >= minor
+      | None -> false )
+    | `New t -> (
+      match Int.Map.find t major with
+      | Some t -> (
+        match Int.Map.find t minor with
+        | Some min_lang_ver -> lang_ver >= min_lang_ver
+        | None -> false )
+      | None -> false )
+
+  let supported_ranges lang_ver (t : t) =
+    match t with
+    | `Old t ->
+      Int.Map.to_list t
+      |> List.map ~f:(fun (major, minor) -> ((major, 0), (major, minor)))
+    | `New t ->
+      let compat = remove_uncompatible_versions lang_ver t in
+      Int.Map.to_list compat
+      |> List.map ~f:(fun (major, minors) ->
+             let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
+             if major > 0 then
+               ((major, 0), (major, max_minor))
+             else
+               ((major, 1), (major, max_minor)))
 end
 
 type t =
@@ -123,16 +210,38 @@ let create ~name ~desc supported_versions =
   ; supported_versions = Supported_versions.make supported_versions
   }
 
+let createn ~name ~desc supported_versions =
+  { name
+  ; desc
+  ; key = Univ_map.Key.create ~name Version.to_dyn
+  ; supported_versions = Supported_versions.maken supported_versions
+  }
+
 let name t = t.name
 
-let check_supported t (loc, ver) =
-  if not (Supported_versions.is_supported t.supported_versions ver) then
+let check_supported ~lang_ver t (loc, ver) =
+  if not (Supported_versions.is_supported t.supported_versions ver lang_ver)
+  then
+    let until =
+      match Supported_versions.get_min_lang_ver t.supported_versions ver with
+      | Some v -> Printf.sprintf " until dune lang %s" (Version.to_string v)
+      | None -> ""
+    in
+    let l = Supported_versions.supported_ranges lang_ver t.supported_versions in
+    let supported =
+      ( if List.is_empty l then
+        Pp.textf
+          "There are no supported versions of this extension for dune lang %s."
+      else
+        Pp.textf "Supported versions for dune lang %s:" )
+        (Version.to_string lang_ver)
+    in
+
     User_error.raise ~loc
-      [ Pp.textf "Version %s of %s is not supported." (Version.to_string ver)
-          t.name
-      ; Pp.text "Supported versions:"
-      ; Pp.enumerate (Supported_versions.supported_ranges t.supported_versions)
-          ~f:(fun (a, b) ->
+      [ Pp.textf "Version %s of %s is not supported%s." (Version.to_string ver)
+          t.name until
+      ; supported
+      ; Pp.enumerate l ~f:(fun (a, b) ->
             let open Version.Infix in
             if a = b then
               Pp.text (Version.to_string a)
@@ -140,8 +249,8 @@ let check_supported t (loc, ver) =
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
 
-let greatest_supported_version t =
-  Supported_versions.greatest_supported_version t.supported_versions
+let greatest_supported_version ?lang_ver t =
+  Supported_versions.greatest_supported_version ?lang_ver t.supported_versions
 
 let key t = t.key
 

@@ -295,7 +295,7 @@ let gen_dune_package sctx pkg =
   let meta_template = Package_paths.meta_template ctx pkg in
   let name = pkg.name in
   let dune_version =
-    Dune_lang.Syntax.greatest_supported_version Stanza.syntax
+    Option.value_exn (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
   in
   let lib_entries = Super_context.lib_entries_of_package sctx pkg.name in
   let deprecated_dune_packages =

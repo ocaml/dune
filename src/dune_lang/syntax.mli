@@ -63,13 +63,16 @@ end
     error messages. *)
 val create : name:string -> desc:string -> Version.t list -> t
 
+val createn :
+  name:string -> desc:string -> (Version.t * [ `Since of Version.t ]) list -> t
+
 (** Return the name of the syntax. *)
 val name : t -> string
 
 (** Check that the given version is supported and raise otherwise. *)
-val check_supported : t -> Loc.t * Version.t -> unit
+val check_supported : lang_ver:Version.t -> t -> Loc.t * Version.t -> unit
 
-val greatest_supported_version : t -> Version.t
+val greatest_supported_version : ?lang_ver:Version.t -> t -> Version.t option
 
 (** {1 S-expression parsing} *)
 

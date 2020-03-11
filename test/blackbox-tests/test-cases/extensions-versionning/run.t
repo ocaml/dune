@@ -4,7 +4,7 @@ Test that version of extensions is compatible with dune_lang version
   File "dune-project", line 2, characters 14-17:
   2 | (using menhir 2.0)
                     ^^^
-  Error: Version 2.0 of menhir is not supported.
+  Error: Version 2.0 of menhir is not supported until dune lang 1.4.
   Supported versions for dune lang 1.2:
   - 1.0
   [1]

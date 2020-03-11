@@ -316,7 +316,7 @@ val rm_rf : ?allow_external:bool -> t -> unit
 
 val mkdir_p : ?perms:int -> t -> unit
 
-val touch : t -> unit
+val touch : ?create:bool -> t -> unit
 
 val pp_debug : Format.formatter -> t -> unit
 

@@ -325,7 +325,7 @@ let search cache key =
       (* There is no point in trying to trim out files that are missing : dune
          will have to check when hardlinking anyway since they could disappear
          inbetween. *)
-      try Path.touch file.in_the_cache
+      try Path.touch ~create:false file.in_the_cache
       with Unix.(Unix_error (ENOENT, _, _)) -> ()
     in
     List.iter ~f metadata.files

@@ -193,3 +193,15 @@ let rec for_all2 x y ~f =
     else
       Ok false
   | _, _ -> Error `Length_mismatch
+
+let min xs ~f =
+  match xs with
+  | [] -> None
+  | init :: xs ->
+    Some
+      (fold_left xs ~init ~f:(fun min a ->
+           match f min a with
+           | Ordering.Gt -> a
+           | Lt
+           | Eq ->
+             min))

@@ -78,3 +78,5 @@ val for_all2 :
   -> 'b list
   -> f:('a -> 'b -> bool)
   -> (bool, [ `Length_mismatch ]) result
+
+val min : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option

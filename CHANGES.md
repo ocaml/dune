@@ -1,3 +1,10 @@
+next (unreleased)
+-----------------
+
+- Add a `--release` option meaning the same as `-p` but without the
+  package filtering. This is useful for custom `dune` invocation in opam
+  files where we don't want `-p` (#...., @diml)
+
 2.4.0 (06/03/2020)
 ------------------
 

@@ -193,3 +193,12 @@ let rec for_all2 x y ~f =
     else
       Ok false
   | _, _ -> Error `Length_mismatch
+
+let reduce xs ~f =
+  match xs with
+  | [] -> None
+  | init :: xs -> Some (fold_left xs ~init ~f)
+
+let min xs ~f = reduce xs ~f:(Ordering.min f)
+
+let max xs ~f = reduce xs ~f:(Ordering.max f)

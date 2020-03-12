@@ -67,11 +67,10 @@ let print_completion kind name =
   let open Pp.O in
   Console.print_user_message
     (User_message.make
-       [ Pp.tag (Pp.verbatim "Success") ~tag:User_message.Style.Ok
+       [ Pp.tag User_message.Style.Ok (Pp.verbatim "Success")
          ++ Pp.textf ": initialized %s component named " (Kind.to_string kind)
-         ++ Pp.tag
+         ++ Pp.tag User_message.Style.Kwd
               (Pp.verbatim (Dune_lang.Atom.to_string name))
-              ~tag:User_message.Style.Kwd
        ])
 
 (** {1 CLI} *)

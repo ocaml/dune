@@ -137,7 +137,7 @@ let of_config ~ext ~dune_lang =
       | Some explicit ->
         let dlang = encode_explicit explicit in
         [ Pp.textf "To port it to the new syntax, you can replace this part by:"
-        ; Pp.tag ~tag:User_message.Style.Details (Dune_lang.pp dlang)
+        ; Pp.tag User_message.Style.Details (Dune_lang.pp dlang)
         ]
       | None ->
         [ Pp.textf "To port it to the new syntax, you can delete this part." ]

@@ -240,16 +240,15 @@ module Fancy = struct
         User_message.Style.Ansi_styles styles
       in
       Pp.seq (Pp.verbatim before)
-        (Pp.seq (Pp.tag (Pp.verbatim prog) ~tag:styles) (Pp.verbatim after))
+        (Pp.seq (Pp.tag styles (Pp.verbatim prog)) (Pp.verbatim after))
 
   let rec colorize_args = function
     | [] -> []
     | "-o" :: fn :: rest ->
       Pp.verbatim "-o"
       :: Pp.tag
+           (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
            (Pp.verbatim (String.quote_for_shell fn))
-           ~tag:
-             (User_message.Style.Ansi_styles Ansi_color.Style.[ bold; fg_green ])
       :: colorize_args rest
     | x :: rest -> Pp.verbatim (String.quote_for_shell x) :: colorize_args rest
 
@@ -310,7 +309,7 @@ module Fancy = struct
       | l ->
         let open Pp.O in
         pp ++ Pp.char ' '
-        ++ Pp.tag ~tag:User_message.Style.Details
+        ++ Pp.tag User_message.Style.Details
              ( Pp.char '['
              ++ Pp.concat_map l ~sep:(Pp.char ',') ~f:(fun ctx ->
                     Pp.verbatim (Context_name.to_string ctx))
@@ -329,9 +328,7 @@ let cmdline_approximate_length prog args =
 
 let pp_id id =
   let open Pp.O in
-  Pp.char '['
-  ++ Pp.tag ~tag:User_message.Style.Id (Pp.textf "%d" id)
-  ++ Pp.char ']'
+  Pp.char '[' ++ Pp.tag User_message.Style.Id (Pp.textf "%d" id) ++ Pp.char ']'
 
 module Exit_status = struct
   type error =
@@ -359,13 +356,13 @@ module Exit_status = struct
       Option.iter output ~f:(fun output ->
           Console.print_user_message
             (User_message.make
-               [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Output")
+               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Output")
                  ++ pp_id id ++ Pp.char ':'
                ; output
                ]));
       if not (ok_codes n) then
         User_warning.emit
-          [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
+          [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
             ++ Pp.space ++ pp_id id
             ++ Pp.textf
                  " exited with code %d, but I'm ignoring it, hope that's OK." n
@@ -378,9 +375,9 @@ module Exit_status = struct
         | Signaled signame -> sprintf "got signal %s" signame
       in
       fail
-        ( Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Command")
+        ( Pp.tag User_message.Style.Kwd (Pp.verbatim "Command")
           ++ Pp.space ++ pp_id id ++ Pp.space ++ Pp.text msg ++ Pp.char ':'
-        :: Pp.tag ~tag:User_message.Style.Prompt (Pp.char '$')
+        :: Pp.tag User_message.Style.Prompt (Pp.char '$')
            ++ Pp.char ' ' ++ command_line
         :: Option.to_list output )
 
@@ -413,7 +410,7 @@ module Exit_status = struct
     let _, progname, _ = Fancy.split_prog prog in
     let progname_and_purpose tag =
       let progname = sprintf "%12s" progname in
-      Pp.tag ~tag (Pp.verbatim progname)
+      Pp.tag tag (Pp.verbatim progname)
       ++ Pp.char ' ' ++ Fancy.pp_purpose purpose
     in
     match t with
@@ -441,8 +438,8 @@ module Exit_status = struct
       in
       fail
         ( progname_and_purpose Error ++ Pp.char ' '
-          ++ Pp.tag ~tag:User_message.Style.Error (Pp.verbatim msg)
-        :: Pp.tag ~tag:User_message.Style.Details (Pp.verbatim command_line)
+          ++ Pp.tag User_message.Style.Error (Pp.verbatim msg)
+        :: Pp.tag User_message.Style.Details (Pp.verbatim command_line)
         :: Option.to_list output )
 end
 
@@ -475,7 +472,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       in
       Console.print_user_message
         (User_message.make
-           [ Pp.tag ~tag:User_message.Style.Kwd (Pp.verbatim "Running")
+           [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
              ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
            ]);
       cmdline

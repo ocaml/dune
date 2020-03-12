@@ -143,7 +143,7 @@ let text s = Text s
 
 let textf fmt = Printf.ksprintf text fmt
 
-let tag t ~tag = Tag (tag, t)
+let tag tag t = Tag (tag, t)
 
 let enumerate l ~f =
   vbox

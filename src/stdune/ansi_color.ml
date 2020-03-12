@@ -151,7 +151,7 @@ let parse_line str styles =
       let s =
         match styles with
         | [] -> s
-        | _ -> Pp.tag s ~tag:styles
+        | _ -> Pp.tag styles s
       in
       Pp.seq acc s
   in

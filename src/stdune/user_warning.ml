@@ -10,5 +10,5 @@ let emit ?loc ?hints ?(is_error = false) paragraphs =
       (User_message.make paragraphs ?loc ?hints
          ~prefix:
            (Pp.seq
-              (Pp.tag (Pp.verbatim "Warning") ~tag:User_message.Style.Warning)
+              (Pp.tag User_message.Style.Warning (Pp.verbatim "Warning"))
               (Pp.char ':')))

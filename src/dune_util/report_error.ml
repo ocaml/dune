@@ -12,7 +12,7 @@ let get_user_message = function
     let open Pp.O in
     ( Developer
     , User_message.make ?loc:e.loc
-        [ Pp.tag ~tag:User_message.Style.Error
+        [ Pp.tag User_message.Style.Error
             (Pp.textf
                "Internal error, please report upstream including the contents \
                 of _build/log.")

@@ -476,7 +476,7 @@ module Component = struct
       let open Pp.O in
       User_warning.emit
         [ Pp.textf "File "
-          ++ Pp.tag ~tag:User_message.Style.Kwd
+          ++ Pp.tag User_message.Style.Kwd
                (Pp.verbatim (Path.to_string_maybe_quoted path))
           ++ Pp.text " was not created because it already exists"
         ]

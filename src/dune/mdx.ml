@@ -45,7 +45,7 @@ module Deps = struct
     match Csexp.parse_string s with
     | Ok (List items) -> Result.List.map ~f:parse_one items
     | Ok _ -> Result.errorf "Unsupported 'ocaml-mdx deps' output format"
-    | Error _ as err -> err
+    | Error (_, msg) -> Error msg
 
   let read (files : Files.t) =
     let open Build.O in

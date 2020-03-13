@@ -6,7 +6,7 @@ open Cache_intf
 type t =
   { socket : out_channel
   ; fd : Unix.file_descr
-  ; input : char Stream.t
+  ; input : in_channel
   ; cache : Local.t
   ; thread : Thread.t
   ; finally : (unit -> unit) option
@@ -20,7 +20,7 @@ let err msg = User_error.E (User_error.make [ Pp.text msg ])
 let errf msg = User_error.E (User_error.make msg)
 
 let read version input =
-  let* sexp = Csexp.parse input in
+  let* sexp = Csexp.input input in
   let+ (Dedup v) = Messages.incoming_message_of_sexp version sexp in
   Dedup v
 
@@ -57,7 +57,7 @@ let make ?finally ?duplication_mode handle =
     Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
   in
   let socket = Unix.out_channel_of_descr fd in
-  let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+  let input = Unix.in_channel_of_descr fd in
   let+ version =
     Result.map_error ~f:err
       (Messages.negotiate_version my_versions fd input socket)

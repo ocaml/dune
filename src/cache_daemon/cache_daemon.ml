@@ -9,7 +9,7 @@ open Result.O
 type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
-  ; input : char Stream.t
+  ; input : in_channel
   ; output : out_channel
   ; common_metadata : Sexp.t list
   ; cache : Cache.Local.t
@@ -52,7 +52,7 @@ let check_port_file ?(close = true) p =
   | Result.Error e -> Result.Error e
 
 let send_sexp output sexp =
-  output_string output (Csexp.to_string sexp);
+  Csexp.to_channel output sexp;
   flush output
 
 let send version output message =
@@ -154,25 +154,17 @@ let client_thread (events, (client : client)) =
     let f () =
       Log.info [ Pp.textf "accept client: %s" (peer_name client.peer) ];
       let rec handle client =
-        match Stream.peek input with
-        | None -> Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
-        | Some '\n' ->
-          (* Skip toplevel newlines, for easy netcat interaction *)
-          Stream.junk input;
-          (handle [@tailcall]) client
-        | _ -> (
-          match
-            let* cmd =
-              Result.map_error
-                ~f:(fun r -> "parse error: " ^ r)
-                (Csexp.parse input)
-            in
-            Log.info
-              [ Pp.textf "%s: received command: %s" (peer_name client.peer)
-                  (Sexp.to_string cmd)
-              ];
-            handle_cmd client cmd
-          with
+        match Csexp.input_opt input with
+        | Error msg ->
+          Log.info
+            [ Pp.textf "%s: parse error: %s" (peer_name client.peer) msg ]
+        | Ok None -> Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
+        | Ok (Some cmd) -> (
+          Log.info
+            [ Pp.textf "%s: received command: %s" (peer_name client.peer)
+                (Sexp.to_string cmd)
+            ];
+          match handle_cmd client cmd with
           | Result.Error e ->
             Log.info
               [ Pp.textf "%s: command error: %s" (peer_name client.peer) e ];
@@ -271,7 +263,7 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
       | Stop -> stop ()
       | New_client (fd, peer) -> (
         let output = Unix.out_channel_of_descr fd
-        and input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+        and input = Unix.in_channel_of_descr fd in
         match
           let* version = negotiate_version my_versions fd input output in
           let client =

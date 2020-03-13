@@ -46,6 +46,15 @@ module Error = struct
     let name = Coq_lib_name.to_string name in
     make ~loc [ Pp.textf "Theory %s not found" name ]
 
+  let private_deps_not_allowed ~loc private_dep =
+    let name = Coq_lib_name.to_string (name private_dep) in
+    make ~loc
+      [ Pp.textf
+          "Theory %S is private, it cannot be a dependency of a public theory. \
+           You need to associate %S to a package."
+          name name
+      ]
+
   let duplicate_boot_lib ~loc boot_theory =
     let name = Coq_lib_name.to_string (snd boot_theory.Dune_file.Coq.name) in
     make ~loc [ Pp.textf "Cannot have more than one boot library: %s)" name ]
@@ -97,9 +106,13 @@ module DB = struct
     in
     { boot; libs }
 
-  let resolve db (loc, name) =
+  let resolve ?(allow_private_deps = true) db (loc, name) =
     match Coq_lib_name.Map.find db.libs name with
-    | Some s -> Ok s
+    | Some s ->
+      if (not allow_private_deps) && Option.is_none s.package then
+        Error.private_deps_not_allowed ~loc s
+      else
+        Ok s
     | None -> Error.theory_not_found ~loc name
 
   let find_many t ~loc = Result.List.map ~f:(fun name -> resolve t (loc, name))
@@ -125,10 +138,15 @@ module DB = struct
       | Some (loc, stdlib) -> (loc, snd stdlib.name) :: t.theories
     in
     let open Result.O in
-    let* theories = Result.List.map ~f:(resolve db) theories in
+    let allow_private_deps = Option.is_none t.package in
+    let* theories = Result.List.map ~f:(resolve ~allow_private_deps db) theories in
     let key t = Coq_lib_name.to_string (snd t.name) in
-    let deps t = Result.List.map ~f:(resolve db) t.theories in
+    let deps t =
+      Result.List.map ~f:(resolve ~allow_private_deps db) t.theories
+    in
     Result.bind (Coq_lib_closure.top_closure theories ~key ~deps) ~f:(function
       | Ok libs -> Ok libs
       | Error cycle -> Error.cycle_found ~loc:(location t) cycle)
+
+  let resolve db l = resolve db l
 end

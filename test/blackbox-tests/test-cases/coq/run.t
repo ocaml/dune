@@ -117,6 +117,21 @@
 # Test only works on Coq 8.12 due to boot constraints
 # $ dune build --root compose_boot/ --display short --debug-dependency-path
 
+  $ dune build --root public_dep_on_private/ --display short --debug-dependency-path
+  Entering directory 'public_dep_on_private'
+  File "public/dune", line 4, characters 11-18:
+  4 |  (theories private))
+                 ^^^^^^^
+  Error: Theory "private" is private, it cannot be a dependency of a public
+  theory. You need to associate "private" to a package.
+  -> required by public/b.v.d
+  -> required by public/b.vo
+  -> required by install lib/coq/user-contrib/public/b.vo
+  -> required by public.install
+  -> required by alias default
+  -> required by alias default
+  [1]
+
   $ dune build --root compose_cycle/ --display short --debug-dependency-path
   Entering directory 'compose_cycle'
   File "a/dune", line 2, characters 7-8:

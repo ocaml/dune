@@ -3,7 +3,8 @@ let executables = [ "main" ]
 let external_libraries = [ "unix"; "threads.posix" ]
 
 let local_libraries =
-  [ ("src/stdune", Some "Stdune", false, None)
+  [ ("vendor/csexp/src", Some "Dune_csexp", false, None)
+  ; ("src/stdune", Some "Stdune", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)

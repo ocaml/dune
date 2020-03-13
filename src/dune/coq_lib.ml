@@ -21,6 +21,8 @@ type t =
 
 let name l = snd l.name
 
+let location l = fst l.name
+
 let wrapper l = l.wrapper
 
 let src_root l = l.src_root
@@ -30,6 +32,31 @@ let obj_root l = l.obj_root
 let libraries l = l.libraries
 
 let package l = l.package
+
+module Error = struct
+  let make ?loc ?hints paragraphs =
+    Error (User_error.E (User_error.make ?loc ?hints paragraphs))
+
+  let duplicate_theory_name theory =
+    let loc, name = theory.Dune_file.Coq.name in
+    let name = Coq_lib_name.to_string name in
+    make ~loc [ Pp.textf "Duplicate theory name: %s" name ]
+
+  let theory_not_found ~loc name =
+    let name = Coq_lib_name.to_string name in
+    make ~loc [ Pp.textf "Theory %s not found" name ]
+
+  let duplicate_boot_lib ~loc boot_theory =
+    let name = Coq_lib_name.to_string (snd boot_theory.Dune_file.Coq.name) in
+    make ~loc [ Pp.textf "Cannot have more than one boot library: %s)" name ]
+
+  let cycle_found ~loc cycle =
+    make ~loc
+      [ Pp.textf "Cycle found"
+      ; Pp.enumerate cycle ~f:(fun t ->
+            Pp.text (Coq_lib_name.to_string (snd t.name)))
+      ]
+end
 
 module DB = struct
   type lib = t
@@ -58,32 +85,22 @@ module DB = struct
     let libs =
       match Coq_lib_name.Map.of_list_map ~f:create_from_stanza sl with
       | Ok m -> m
-      | Error (name, _w1, w2) ->
-        let loc = (snd w2).loc in
-        User_error.raise ~loc
-          [ Pp.textf "Duplicate theory name: %s" (Coq_lib_name.to_string name) ]
+      | Error (_name, _w1, (_, w2)) ->
+        Result.ok_exn (Error.duplicate_theory_name w2)
     in
     let boot =
       match List.find_all ~f:(fun (_, s) -> s.Dune_file.Coq.boot) sl with
       | [] -> None
       | [ l ] -> Some ((snd l).loc, snd (create_from_stanza l))
       | _ :: (_, s2) :: _ ->
-        User_error.raise ~loc:s2.loc
-          [ Pp.textf "Cannot have more than one boot library: %s)"
-              (Coq_lib_name.to_string (snd s2.name))
-          ]
+        Result.ok_exn (Error.duplicate_boot_lib ~loc:s2.loc s2)
     in
     { boot; libs }
 
   let resolve db (loc, name) =
     match Coq_lib_name.Map.find db.libs name with
-    | None ->
-      Error
-        User_error.(
-          E
-            (make ~loc
-               [ Pp.textf "Theory %s not found" (Coq_lib_name.to_string name) ]))
     | Some s -> Ok s
+    | None -> Error.theory_not_found ~loc name
 
   let find_many t ~loc = Result.List.map ~f:(fun name -> resolve t (loc, name))
 
@@ -113,12 +130,5 @@ module DB = struct
     let deps t = Result.List.map ~f:(resolve db) t.theories in
     Result.bind (Coq_lib_closure.top_closure theories ~key ~deps) ~f:(function
       | Ok libs -> Ok libs
-      | Error cycle ->
-        let msg =
-          [ Pp.textf "Cycle found"
-          ; Pp.enumerate cycle ~f:(fun t ->
-                Pp.text (Coq_lib_name.to_string (snd t.name)))
-          ]
-        in
-        Error User_error.(E (make ~loc:(fst t.name) msg)))
+      | Error cycle -> Error.cycle_found ~loc:(location t) cycle)
 end

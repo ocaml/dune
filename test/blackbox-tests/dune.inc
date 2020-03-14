@@ -39,6 +39,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bin-eager-deps)
+ (deps (package dune) (source_tree test-cases/bin-eager-deps))
+ (action
+  (chdir
+   test-cases/bin-eager-deps
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias block-strings)
  (deps (package dune) (source_tree test-cases/block-strings))
  (action
@@ -2392,6 +2400,7 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -2677,6 +2686,7 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)

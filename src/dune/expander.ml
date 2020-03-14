@@ -217,6 +217,26 @@ let expand_path t sw =
 let expand_str t sw =
   expand t ~mode:Single ~template:sw |> Value.to_string ~dir:(Path.build t.dir)
 
+module Or_exn = struct
+  let expand t ~mode ~template =
+    try
+      Ok
+        (String_with_vars.expand ~dir:(Path.build t.dir) ~mode template
+           ~f:(expand_var_exn t))
+    with User_error.E _ as e -> Error e
+
+  let expand_path t sw =
+    expand t ~mode:Single ~template:sw
+    |> Result.map
+         ~f:
+           (Value.to_path ~error_loc:(String_with_vars.loc sw)
+              ~dir:(Path.build t.dir))
+
+  let expand_str t sw =
+    expand t ~mode:Single ~template:sw
+    |> Result.map ~f:(Value.to_string ~dir:(Path.build t.dir))
+end
+
 type reduced_var_result =
   | Unknown
   | Restricted
@@ -245,13 +265,16 @@ module Resolved_forms = struct
       mutable ddeps : Value.t list Build.t Pform.Expansion.Map.t
     }
 
-  let failures t = t.failures
-
   let lib_deps t = t.lib_deps
 
   let sdeps t = t.sdeps
 
   let ddeps t = t.ddeps
+
+  let prefix_failures t b =
+    match t.failures with
+    | [] -> b
+    | fail :: _ -> Build.O.( >>> ) (Build.fail fail) b
 
   let empty () =
     { failures = []
@@ -304,9 +327,7 @@ let cc_of_c_flags t (cc : string list Build.t Foreign.Language.Dict.t) =
       Value.L.strings (t.c_compiler :: flags))
 
 let resolve_binary t ~loc ~prog =
-  match Artifacts.Bin.binary ~loc t.bin_artifacts_host prog with
-  | Ok path -> Ok path
-  | Error e -> Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }
+  Artifacts.Bin.binary ~loc t.bin_artifacts_host prog
 
 let cannot_be_used_here pform =
   Pp.textf "%s cannot be used in this position"
@@ -316,137 +337,139 @@ let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
     ~(dir : Path.Build.t) ~pform t expansion
     ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
   let loc = String_with_vars.Var.loc pform in
-  let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
-  let add_ddep =
-    match expansion_kind with
-    | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
-    | Dynamic -> Resolved_forms.add_ddep acc expansion
-  in
-  let add_fail =
-    match expansion_kind with
-    | Static -> fun _ (f : fail) -> f.fail ()
-    | Dynamic -> Resolved_forms.add_fail
-  in
-  let open Build.O in
-  match (expansion : Pform.Expansion.t) with
-  | Var
-      ( Project_root | First_dep | Deps | Targets | Target | Named_local
-      | Values _ )
-  | Macro ((Ocaml_config | Env | Version), _) ->
-    assert false
-  | Var Cc -> add_ddep (cc ~dir).c
-  | Var Cxx -> add_ddep (cc ~dir).cxx
-  | Macro (Artifact a, s) ->
-    let data =
-      Build.dyn_paths
-        (let+ values =
-           Build.delayed (fun () ->
-               match expand_artifact ~dir ~loc t a s with
-               | Some (Ok v) -> v
-               | Some (Error msg) -> raise (User_error.E msg)
-               | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
-         in
-         ( values
-         , List.filter_map values ~f:(function
-             | Value.Path p -> Some p
-             | _ -> None) ))
+  let expansion () =
+    let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
+    let add_ddep =
+      match expansion_kind with
+      | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
+      | Dynamic -> Resolved_forms.add_ddep acc expansion
     in
-    add_ddep data
-  | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
-  | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
-  | Macro (Dep, s) -> Some (path_exp (relative dir s))
-  | Macro (Bin, s) -> (
-    match resolve_binary ~loc:(Some loc) t ~prog:s with
-    | Error fail -> add_fail acc fail
-    | Ok path -> Some (path_exp path) )
-  | Macro (Lib { lib_exec; lib_private }, s) -> (
-    let lib, file = parse_lib_file ~loc s in
-    Resolved_forms.add_lib_dep acc lib dep_kind;
-    match
-      if lib_private then
-        let open Result.O in
-        let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
-        let current_project_name = Scope.name t.scope
-        and referenced_project_name =
-          Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
-        in
-        if
-          Option.equal Dune_project.Name.equal (Some current_project_name)
-            referenced_project_name
-        then
-          Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
-        else
-          Error
-            (User_error.E
-               (User_error.make ~loc
-                  [ Pp.textf
-                      "The variable \"lib-private\" can only refer to \
-                       libraries within the same project. The current \
-                       project's name is %S, but the reference is to %s."
-                      (Dune_project.Name.to_string_hum current_project_name)
-                      ( match referenced_project_name with
-                      | Some name ->
-                        "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
-                      | None -> "an external library" )
-                  ]))
-      else
-        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
-    with
-    | Ok path ->
-      (* TODO: The [exec = true] case is currently not handled correctly and
-         does not match the documentation. *)
-      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe" then
-        Some (path_exp path)
-      else
-        let path_exe = Path.extend_basename path ~suffix:".exe" in
-        let dep =
-          Build.if_file_exists path_exe
-            ~then_:
-              (let+ () = Build.path path_exe in
-               path_exp path_exe)
-            ~else_:
-              (let+ () = Build.path path in
-               path_exp path)
-        in
-        add_ddep dep
-    | Error e -> (
-      match lib_private with
-      | true -> add_fail acc { fail = (fun () -> raise e) }
-      | false ->
-        if Lib.DB.available (Scope.libs t.scope) lib then
-          let fail () =
-            raise
-              (User_error.raise ~loc
-                 [ Pp.textf
-                     "The library %S is not public. The variable \"lib\" \
-                      expands to the file's installation path which is not \
-                      defined for private libraries."
-                     (Lib_name.to_string lib)
-                 ])
+    let open Build.O in
+    match (expansion : Pform.Expansion.t) with
+    | Var
+        ( Project_root | First_dep | Deps | Targets | Target | Named_local
+        | Values _ )
+    | Macro ((Ocaml_config | Env | Version), _) ->
+      assert false
+    | Var Cc -> add_ddep (cc ~dir).c
+    | Var Cxx -> add_ddep (cc ~dir).cxx
+    | Macro (Artifact a, s) ->
+      let data =
+        Build.dyn_paths
+          (let+ values =
+             Build.delayed (fun () ->
+                 match expand_artifact ~dir ~loc t a s with
+                 | Some (Ok v) -> v
+                 | Some (Error msg) -> raise (User_error.E msg)
+                 | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
+           in
+           ( values
+           , List.filter_map values ~f:(function
+               | Value.Path p -> Some p
+               | _ -> None) ))
+      in
+      add_ddep data
+    | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
+    | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
+    | Macro (Dep, s) -> Some (path_exp (relative dir s))
+    | Macro (Bin, s) -> (
+      match resolve_binary ~loc:(Some loc) t ~prog:s with
+      | Error e -> Action.Prog.Not_found.raise e
+      | Ok path -> Some (path_exp path) )
+    | Macro (Lib { lib_exec; lib_private }, s) -> (
+      let lib, file = parse_lib_file ~loc s in
+      Resolved_forms.add_lib_dep acc lib dep_kind;
+      match
+        if lib_private then
+          let open Result.O in
+          let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+          let current_project_name = Scope.name t.scope
+          and referenced_project_name =
+            Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
           in
-          add_fail acc { fail }
+          if
+            Option.equal Dune_project.Name.equal (Some current_project_name)
+              referenced_project_name
+          then
+            Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
+          else
+            Error
+              (User_error.E
+                 (User_error.make ~loc
+                    [ Pp.textf
+                        "The variable \"lib-private\" can only refer to \
+                         libraries within the same project. The current \
+                         project's name is %S, but the reference is to %s."
+                        (Dune_project.Name.to_string_hum current_project_name)
+                        ( match referenced_project_name with
+                        | Some name ->
+                          "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
+                        | None -> "an external library" )
+                    ]))
         else
-          add_fail acc { fail = (fun () -> raise e) } ) )
-  | Macro (Lib_available, s) ->
-    let lib = Lib_name.parse_string_exn (loc, s) in
-    Resolved_forms.add_lib_dep acc lib Optional;
-    Lib.DB.available (Scope.libs t.scope) lib
-    |> string_of_bool |> str_exp |> Option.some
-  | Macro (Read, s) ->
-    let path = relative dir s in
-    let data =
-      let+ s = Build.contents path in
-      [ Value.String s ]
-    in
-    add_ddep data
-  | Macro (Read_lines, s) ->
-    let path = relative dir s in
-    let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
-    add_ddep data
-  | Macro (Read_strings, s) ->
-    let path = relative dir s in
-    let data = Build.map (Build.strings path) ~f:Value.L.strings in
-    add_ddep data
+          Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
+      with
+      | Ok path ->
+        (* TODO: The [exec = true] case is currently not handled correctly and
+           does not match the documentation. *)
+        if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+        then
+          Some (path_exp path)
+        else
+          let path_exe = Path.extend_basename path ~suffix:".exe" in
+          let dep =
+            Build.if_file_exists path_exe
+              ~then_:
+                (let+ () = Build.path path_exe in
+                 path_exp path_exe)
+              ~else_:
+                (let+ () = Build.path path in
+                 path_exp path)
+          in
+          add_ddep dep
+      | Error e ->
+        raise
+          ( match lib_private with
+          | true -> e
+          | false ->
+            if Lib.DB.available (Scope.libs t.scope) lib then
+              User_error.E
+                (User_error.make ~loc
+                   [ Pp.textf
+                       "The library %S is not public. The variable \"lib\" \
+                        expands to the file's installation path which is not \
+                        defined for private libraries."
+                       (Lib_name.to_string lib)
+                   ])
+            else
+              e ) )
+    | Macro (Lib_available, s) ->
+      let lib = Lib_name.parse_string_exn (loc, s) in
+      Resolved_forms.add_lib_dep acc lib Optional;
+      Lib.DB.available (Scope.libs t.scope) lib
+      |> string_of_bool |> str_exp |> Option.some
+    | Macro (Read, s) ->
+      let path = relative dir s in
+      let data =
+        let+ s = Build.contents path in
+        [ Value.String s ]
+      in
+      add_ddep data
+    | Macro (Read_lines, s) ->
+      let path = relative dir s in
+      let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
+      add_ddep data
+    | Macro (Read_strings, s) ->
+      let path = relative dir s in
+      let data = Build.map (Build.strings path) ~f:Value.L.strings in
+      add_ddep data
+  in
+  match expansion_kind with
+  | Static -> expansion ()
+  | Dynamic -> (
+    try expansion ()
+    with User_error.E _ as e ->
+      Resolved_forms.add_fail acc { fail = (fun () -> raise e) } )
 
 let check_multiplicity ~pform ~declaration ~use =
   let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
@@ -641,3 +664,8 @@ let expand_and_eval_set t set ~standard =
 let eval_blang t = function
   | Blang.Const x -> x (* common case *)
   | blang -> Blang.eval blang ~dir:(Path.build t.dir) ~f:(expand_var_exn t)
+
+let resolve_binary t ~loc ~prog =
+  match resolve_binary t ~loc ~prog with
+  | Ok path -> Ok path
+  | Error e -> Error { Import.fail = (fun () -> Action.Prog.Not_found.raise e) }

@@ -602,48 +602,63 @@ module Deps = struct
 
   let make_alias expander s =
     let loc = String_with_vars.loc s in
-    Expander.expand_path expander s |> Alias.of_user_written_path ~loc
+    Expander.Or_exn.expand_path expander s
+    |> Result.map ~f:(Alias.of_user_written_path ~loc)
 
   let dep t expander = function
     | File s ->
-      let path = Expander.expand_path expander s in
-      let+ () = Build.path path in
-      [ path ]
+      Expander.Or_exn.expand_path expander s
+      |> Result.map ~f:(fun path ->
+             let+ () = Build.path path in
+             [ path ])
     | Alias s ->
-      let+ () = Build.alias (make_alias expander s) in
-      []
+      make_alias expander s
+      |> Result.map ~f:(fun a ->
+             let+ () = Build.alias a in
+             [])
     | Alias_rec s ->
-      let+ () =
-        Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
-          (make_alias expander s)
-      in
-      []
+      make_alias expander s
+      |> Result.map ~f:(fun a ->
+             let+ () =
+               Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a
+             in
+             [])
     | Glob_files s ->
       let loc = String_with_vars.loc s in
-      let path = Expander.expand_path expander s in
-      let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
-      let dir = Path.parent_exn path in
-      Build.map ~f:Path.Set.to_list
-        (File_selector.create ~dir pred |> Build.paths_matching ~loc)
+      let path = Expander.Or_exn.expand_path expander s in
+      Result.map path ~f:(fun path ->
+          let pred =
+            Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
+          in
+          let dir = Path.parent_exn path in
+          Build.map ~f:Path.Set.to_list
+            (File_selector.create ~dir pred |> Build.paths_matching ~loc))
     | Source_tree s ->
-      let path = Expander.expand_path expander s in
-      Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path)
+      let path = Expander.Or_exn.expand_path expander s in
+      Result.map path ~f:(fun path ->
+          Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path))
     | Package p ->
-      let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      let+ () =
-        Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
-      in
-      []
+      Expander.Or_exn.expand_str expander p
+      |> Result.map ~f:(fun pkg ->
+             let pkg = Package.Name.of_string pkg in
+             let+ () =
+               Build.alias
+                 (Build_system.Alias.package_install ~context:t.context ~pkg)
+             in
+             [])
     | Universe ->
-      let+ () = Build.dep Dep.universe in
-      []
+      Ok
+        (let+ () = Build.dep Dep.universe in
+         [])
     | Env_var var_sw ->
-      let var = Expander.expand_str expander var_sw in
-      let+ () = Build.env_var var in
-      []
+      Expander.Or_exn.expand_str expander var_sw
+      |> Result.map ~f:(fun var ->
+             let+ () = Build.env_var var in
+             [])
     | Sandbox_config sandbox_config ->
-      let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
-      []
+      Ok
+        (let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
+         [])
 
   let make_interpreter ~f t ~expander l =
     let forms = Expander.Resolved_forms.empty () in
@@ -654,16 +669,24 @@ module Deps = struct
       Expander.with_record_no_ddeps expander forms ~dep_kind:Optional
         ~map_exe:Fn.id ~foreign_flags
     in
-    let+ deps =
-      Build.map ~f:List.concat (List.map l ~f:(f t expander) |> Build.all)
-    and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-    and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
-    if Pform.Expansion.Map.is_empty (Expander.Resolved_forms.ddeps forms) then
-      deps
-    else
+    match
+      Pform.Expansion.Map.is_empty (Expander.Resolved_forms.ddeps forms)
+    with
+    | false ->
       (* calling [with_record_no_ddeps] above guarantees this never happens *)
       Code_error.raise "ddeps are not allowed in this position"
         [ ("forms", Dyn.Encoder.opaque forms) ]
+    | true ->
+      let deps =
+        match Result.List.map l ~f:(f t expander) with
+        | Ok deps -> Build.all deps
+        | Error exn -> Build.fail { fail = (fun () -> reraise exn) }
+      in
+      (let+ deps = Build.map ~f:List.concat deps
+       and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
+       and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
+       deps)
+      |> Expander.Resolved_forms.prefix_failures forms
 
   let interpret t ~expander l =
     let+ _paths = make_interpreter ~f:dep t ~expander l in
@@ -673,11 +696,15 @@ module Deps = struct
     make_interpreter ~f:(fun t expander ->
       function
       | Bindings.Unnamed p ->
-        let+ l = dep t expander p in
-        List.map l ~f:(fun x -> Bindings.Unnamed x)
+        dep t expander p
+        |> Result.map ~f:(fun l ->
+               let+ l = l in
+               List.map l ~f:(fun x -> Bindings.Unnamed x))
       | Named (s, ps) ->
-        let+ l = Build.all (List.map ps ~f:(dep t expander)) in
-        [ Bindings.Named (s, List.concat l) ])
+        Result.List.map ps ~f:(dep t expander)
+        |> Result.map ~f:(fun xs ->
+               let+ l = Build.all xs in
+               [ Bindings.Named (s, List.concat l) ]))
 end
 
 module Action = struct
@@ -775,9 +802,7 @@ module Action = struct
          (Action.Chdir (Path.build dir, action), deps))
     in
     Build.with_targets ~targets
-      ( match Expander.Resolved_forms.failures forms with
-      | [] -> build
-      | fail :: _ -> Build.fail fail >>> build )
+      (Expander.Resolved_forms.prefix_failures forms build)
 end
 
 let opaque t =

@@ -62,6 +62,18 @@ val expand_path : t -> String_with_vars.t -> Path.t
 
 val expand_str : t -> String_with_vars.t -> string
 
+module Or_exn : sig
+  val expand :
+       t
+    -> mode:'a String_with_vars.Mode.t
+    -> template:String_with_vars.t
+    -> 'a Or_exn.t
+
+  val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
+
+  val expand_str : t -> String_with_vars.t -> string Or_exn.t
+end
+
 val resolve_binary :
   t -> loc:Loc.t option -> prog:string -> (Path.t, Import.fail) Result.t
 
@@ -79,16 +91,16 @@ module Resolved_forms : sig
       we've discovered. *)
   type t
 
-  (* Failed resolutions *)
-  val failures : t -> Import.fail list
+  (** Prefix with failed resolutions (if present) *)
+  val prefix_failures : t -> 'a Build.t -> 'a Build.t
 
-  (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
+  (** All "name" for [%{lib:name:...}/%{lib-available:name}] forms *)
   val lib_deps : t -> Lib_deps_info.t
 
-  (* Static deps from %{...} variables. For instance %{exe:...} *)
+  (** Static deps from [%{...}] variables. For instance [%{exe:...}] *)
   val sdeps : t -> Path.Set.t
 
-  (* Dynamic deps from %{...} variables. For instance %{read:...} *)
+  (** Dynamic deps from [%{...}] variables. For instance [%{read:...}] *)
   val ddeps : t -> Value.t list Build.t Pform.Expansion.Map.t
 
   val empty : unit -> t

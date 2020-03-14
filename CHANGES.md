@@ -9,7 +9,9 @@ Unreleased
   with `-custom` by default (#3269, fixes #3262, @diml)
 
 - Allow contexts to be defined with local switches in workspace files (#3265,
-  fix #3264, @rgrinberg)
+
+- Delay expansion errors until the rule is used to build something (#3261, fix
+  #3252, @rgrinberg)
 
 2.4.0 (06/03/2020)
 ------------------

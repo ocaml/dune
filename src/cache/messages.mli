@@ -26,3 +26,5 @@ val string_of_version : version -> string
 val hint_supported : version -> bool
 
 val hint_min_version : version
+
+val highest_common_version : version list -> version list -> (version, string) result

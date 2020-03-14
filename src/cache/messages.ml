@@ -246,7 +246,7 @@ let send_sexp output sexp =
 let send version output message =
   send_sexp output (sexp_of_message version message)
 
-let find_highest_common_version my_versions versions =
+let highest_common_version my_versions versions =
   let find a b =
     let f { major; minor } = (major, minor) in
     let a = Int.Map.of_list_exn (List.map ~f a)
@@ -276,4 +276,4 @@ let negotiate_version my_versions fd ic output =
   Result.map_error ~f
     (let* sexp = Csexp.input ic in
      let* (Lang versions) = initial_message_of_sexp sexp in
-     find_highest_common_version my_versions versions)
+     highest_common_version my_versions versions)

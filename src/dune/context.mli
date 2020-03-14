@@ -26,7 +26,7 @@ module Kind : sig
   module Opam : sig
     type t =
       { root : string option
-      ; switch : Context_name.t
+      ; switch : string
       }
   end
 

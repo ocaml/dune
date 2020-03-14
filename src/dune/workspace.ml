@@ -158,7 +158,7 @@ module Context = struct
   module Opam = struct
     type t =
       { base : Common.t
-      ; switch : Context_name.t
+      ; switch : string
       ; root : string option
       ; merlin : bool
       }
@@ -167,29 +167,38 @@ module Context = struct
       let open Dyn.Encoder in
       record
         [ ("base", Common.to_dyn base)
-        ; ("switch", Context_name.to_dyn switch)
+        ; ("switch", string switch)
         ; ("root", option string root)
         ; ("merlin", bool merlin)
         ]
 
     let equal { base; switch; root; merlin } t =
       Common.equal base t.base
-      && Context_name.equal switch t.switch
+      && String.equal switch t.switch
       && Option.equal String.equal root t.root
       && Bool.equal merlin t.merlin
 
     let t ~profile ~x =
-      let+ switch = field "switch" Context_name.decode
+      let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
       and+ base = Common.t ~profile in
-      let default =
-        (* TODO this needs proper error handling with locations *)
-        let name = Context_name.to_string switch ^ Common.fdo_suffix base in
-        Context_name.parse_string_exn (Loc.none, name)
+      let name =
+        match name with
+        | Some s -> s
+        | None -> (
+          let name = Filename.basename switch ^ Common.fdo_suffix base in
+          match Context_name.of_string_opt name with
+          | Some s -> s
+          | None ->
+            User_error.raise ~loc:loc_switch
+              [ Pp.textf "Generated context name %S is invalid" name
+              ; Pp.text
+                  "Please specify a context name manually with the (name ..) \
+                   field"
+              ] )
       in
-      let name = Option.value ~default name in
       let base = { base with targets = Target.add base.targets x; name } in
       { base; switch; root; merlin }
   end

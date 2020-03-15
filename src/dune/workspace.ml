@@ -22,9 +22,10 @@ module Context = struct
       | _, _ -> false
 
     let t =
-      map string ~f:(function
-        | "native" -> Native
-        | s -> Named (Context_name.parse_string_exn (Loc.none, s)))
+      let+ context_name = Context_name.decode in
+      match Context_name.to_string context_name with
+      | "native" -> Native
+      | _ -> Named context_name
 
     let add ts x =
       match x with

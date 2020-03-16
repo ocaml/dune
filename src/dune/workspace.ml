@@ -96,9 +96,11 @@ module Context = struct
         field_o "toolchain"
           (Dune_lang.Syntax.since syntax (1, 5) >>> Context_name.decode)
       and+ dynamically_linked_foreign_archives =
-        field ~default:false "disable_dynamically_linked_foreign_archives"
-          (let+ disable = Dune_lang.Syntax.since syntax (2, 0) >>> bool in
-           not disable)
+        let+ disable =
+          field ~default:false "disable_dynamically_linked_foreign_archives"
+            (Dune_lang.Syntax.since syntax (2, 0) >>> bool)
+        in
+        not disable
       and+ fdo_target_exe =
         let f file =
           let ext = Filename.extension file in

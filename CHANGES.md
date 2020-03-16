@@ -1,9 +1,15 @@
-next (unreleased)
------------------
+2.5.0 (unreleased)
+------------------
 
 - Add a `--release` option meaning the same as `-p` but without the
   package filtering. This is useful for custom `dune` invocation in opam
   files where we don't want `-p` (#3260, @diml)
+
+2.4.1 (unreleased)
+------------------
+
+- Fix a bug introduced in 2.4.0 causing `.bc` programs to be built
+  with `-custom` by default (#3269, fixes #3262, @diml)
 
 2.4.0 (06/03/2020)
 ------------------

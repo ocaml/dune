@@ -96,6 +96,8 @@ module Source : sig
       though having such paths is almost always an error. *)
   val is_in_build_dir : t -> bool
 
+  val descendant : t -> of_:t -> t option
+
   val to_local : t -> Local.t
 end
 

@@ -1429,10 +1429,7 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let* () =
-      if rule_need_rerun then (
-        List.iter targets_as_list ~f:(fun target ->
-            Cached_digest.remove (Path.build target);
-            Path.unlink_no_err (Path.build target));
+      if rule_need_rerun then
         let from_Cache =
           match (do_not_memoize, t.caching) with
           | true, _
@@ -1487,6 +1484,9 @@ end = struct
         if pulled_from_cache then
           Fiber.return ()
         else (
+          List.iter targets_as_list ~f:(fun target ->
+              Cached_digest.remove (Path.build target);
+              Path.unlink_no_err (Path.build target));
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let sandboxed, action =
             match sandbox with
@@ -1599,7 +1599,7 @@ end = struct
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
         )
-      ) else
+      else
         Fiber.return ()
     in
     let+ () =

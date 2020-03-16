@@ -1440,9 +1440,16 @@ end = struct
             None
           | false, Some { cache = (module Caching) as cache; _ } -> (
             match Caching.Cache.search Caching.cache rule_digest with
-            | Ok (_, files) -> Some (files, cache)
+            | Ok (_, files) ->
+              Log.info
+                [ Pp.textf "cache hit for %s" (Digest.to_string rule_digest) ];
+              Some (files, cache)
             | Error msg ->
-              Log.info [ Pp.textf "cache miss: %s" msg ];
+              Log.info
+                [ Pp.textf "cache miss for %s: %s"
+                    (Digest.to_string rule_digest)
+                    msg
+                ];
               None )
         and cache_checking =
           match t.caching with
@@ -1467,7 +1474,13 @@ end = struct
                 ; dynamic_deps_stages = []
                 }
             with
-            | exception Unix.(Unix_error (ENOENT, _, _)) -> false
+            | exception Unix.(Unix_error (ENOENT, _, f)) ->
+              Log.info
+                [ Pp.textf "missing data file for cached rule %s: %s"
+                    (Digest.to_string rule_digest)
+                    f
+                ];
+              false
             | () -> true )
           | _ -> false
         in

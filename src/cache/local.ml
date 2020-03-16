@@ -179,7 +179,10 @@ let duplicate ?(duplication = None) cache =
 let retrieve cache (file : File.t) =
   let path = Path.build file.in_the_build_directory in
   cache.info
-    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted path) ];
+    [ Pp.textf "retrieve %s from cache (%s)"
+        (Path.to_string_maybe_quoted path)
+        (Path.to_string_maybe_quoted file.in_the_cache)
+    ];
   duplicate cache file.in_the_cache path;
   path
 

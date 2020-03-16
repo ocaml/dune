@@ -80,8 +80,9 @@ type caching = (module Caching)
 let command_to_dyn = function
   | Dedup { in_the_build_directory; in_the_cache; digest } ->
     let open Dyn.Encoder in
-    record
-      [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
-      ; ("in_the_cache", Path.to_dyn in_the_cache)
-      ; ("digest", Digest.to_dyn digest)
-      ]
+    pair string record
+    @@ ( "dedup"
+       , [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
+         ; ("in_the_cache", Path.to_dyn in_the_cache)
+         ; ("digest", Digest.to_dyn digest)
+         ] )

@@ -72,8 +72,9 @@ struct
         Syntax.check_supported ~lang_ver t.syntax (ver_loc, lang_ver);
         { syntax = t.syntax; data = t.data; version = lang_ver }
 
-    (* TODO get_exn is only called with "dune" so far, but greatest_supported_version may return None for extensions
-    which are not supported under the specified dune_lang version *)
+    (* TODO get_exn is only called with "dune" so far, but
+       greatest_supported_version may return None for extensions which are not
+       supported under the specified dune_lang version *)
     let get_exn name : Instance.t =
       let t = Table.find_exn langs name in
       { syntax = t.syntax

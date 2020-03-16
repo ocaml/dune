@@ -14,5 +14,5 @@ let all_minors (major, minor) =
   List.init (minor + 1) ~f:(fun i -> since (major, i))
 
 let syntax =
-  Dune_lang.Syntax.createn ~name:"dune" ~desc:"the dune language"
+  Dune_lang.Syntax.create ~name:"dune" ~desc:"the dune language"
     (all_minors (1, 12) @ all_minors latest_version)

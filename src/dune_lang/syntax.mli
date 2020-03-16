@@ -58,12 +58,10 @@ module Warning : sig
 end
 
 (** [create ~name ~desc supported_versions] defines a new syntax.
-    [supported_version] is the list of the last minor version of each supported
-    major version. [desc] is used to describe what this syntax represent in
-    error messages. *)
-val create : name:string -> desc:string -> Version.t list -> t
-
-val createn :
+    [supported_version] is the list of all the supported versions paired with
+    the versions of the dune lang in which they where introduced. [desc] is used
+    to describe what this syntax represent in error messages. *)
+val create :
   name:string -> desc:string -> (Version.t * [ `Since of Version.t ]) list -> t
 
 (** Return the name of the syntax. *)

@@ -6,7 +6,7 @@ type t =
 
 let syntax =
   let syntax =
-    Dune_lang.Syntax.createn
+    Dune_lang.Syntax.create
       ~name:"experimental_building_ocaml_compiler_with_dune"
       ~desc:"experimental feature for building the compiler with dune"
       [ ((0, 1), `Since (1, 3)) ]

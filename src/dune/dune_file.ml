@@ -21,7 +21,7 @@ let relative_file =
 
 let library_variants =
   let syntax =
-    Dune_lang.Syntax.createn ~name:"library_variants"
+    Dune_lang.Syntax.create ~name:"library_variants"
       ~desc:"the experimental library variants feature."
       [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
   in
@@ -1538,7 +1538,7 @@ module Executables = struct
 
   let bootstrap_info_extension =
     let syntax =
-      Dune_lang.Syntax.createn ~name:"dune-bootstrap-info"
+      Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
         ~desc:"private extension to handle Dune bootstrap"
         [ ((0, 1), `Since (2, 0)) ]
     in
@@ -1991,8 +1991,7 @@ module Coq = struct
     }
 
   let syntax =
-    Dune_lang.Syntax.createn ~name:"coq"
-      ~desc:"the coq extension (experimental)"
+    Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
       [ ((0, 1), `Since (1, 9)) ]
 
   let coq_public_decode =

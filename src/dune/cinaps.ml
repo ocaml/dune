@@ -16,7 +16,7 @@ let name = "cinaps"
 type Stanza.t += T of t
 
 let syntax =
-  Dune_lang.Syntax.createn ~name ~desc:"the cinaps extension"
+  Dune_lang.Syntax.create ~name ~desc:"the cinaps extension"
     [ ((1, 0), `Since (1, 11)) ]
 
 let alias = Alias.make (Alias.Name.of_string name)

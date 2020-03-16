@@ -656,7 +656,7 @@ let rec upgrade ?(last = false) () =
   let v2_updates = ref false in
   let log_update dir ver =
     Console.print
-          [ Pp.textf "Project in dir %s will be upgraded to dune %s.\n" dir ver ]
+          [ Pp.textf "Project in dir %s will be upgraded to dune %s." dir ver ]
   in
   List.iter current_versions ~f:(fun (dir, version) ->
       let d = Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir) in
@@ -694,11 +694,12 @@ let rec upgrade ?(last = false) () =
     Memo.reset ();
     upgrade ~last:true ()
   ) else if !v2_updates then
-    log
+    Console.print
+          [ Pp.textf
       "\n\
        Some projects were upgraded to dune v2. Some breaking changes may not\n\
        have been treated automatically. Here is a list of things you should \
        check\n\
        to complete the migration:\n\
        %s"
-      V2.todo_log
+      V2.todo_log ]

@@ -31,7 +31,8 @@
   have been treated automatically. Here is a list of things you should check
   to complete the migration:
   
-  - If you use generated dune.inc files you probably should update your generators.
+  - If you use generated dune.inc files you probably should update your
+  generators.
   - mli only modules must now be explicitly declared. This was previously a
     warning and is now an error.
   - Stop installing the `ocaml-syntax-shims` binary. In order to use
@@ -44,13 +45,16 @@
     package.
   - Do not put the `<package>.install` files in the source tree unless `-p` or
     `--promote-install-files` is passed on the command line
-  - Library names are now validated in a strict fashion. Previously, invalid names
+  - Library names are now validated in a strict fashion. Previously, invalid
+  names
     would be allowed for unwrapped libraries
-  - Stricter validation of file names in `select`. The file names of conditional
+  - Stricter validation of file names in `select`. The file names of
+  conditional
     sources must match the prefix and the extension of the resultant filename.
   - Modules filtered out from the module list via the Ordered Set Language must
     now be actual modules.
-  - Stub names are no longer allowed relative paths. This was previously a warning
+  - Stub names are no longer allowed relative paths. This was previously a
+  warning
     and is now an error.
   - In `(diff? x y)` action, require `x` to exist and register a
     dependency on that file.

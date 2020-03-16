@@ -241,27 +241,10 @@ module Options_implied_by_dash_p = struct
         & opt (some dir) None
         & info [ "root" ] ~docs ~docv:"DIR"
             ~doc:
-              {|Use this directory as workspace root instead of
-                      guessing it. Note that this option doesn't change
-                      the interpretation of targets given on the command
-                      line. It is only intended for scripts.|})
-    and+ only_packages =
-      let+ names =
-        Arg.(
-          value
-          & opt (some packages) None
-          & info [ "only-packages" ] ~docs ~docv:"PACKAGES"
-              ~doc:
-                {|Ignore stanzas referring to a package that is not in
-                      $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
-                      of package names. Note that this has the same effect
-                      as deleting the relevant stanzas from dune files.
-                      It is mostly meant for releases. During development,
-                      it is likely that what you want instead is to
-                      build a particular $(b,<package>.install) target.|})
-      in
-      Option.map names ~f:(fun names ->
-          { Only_packages.names; command_line_option = "only-packages" })
+              "Use this directory as workspace root instead of guessing it. \
+               Note that this option doesn't change the interpretation of \
+               targets given on the command line. It is only intended for \
+               scripts.")
     and+ ignore_promoted_rules =
       Arg.(
         value & flag
@@ -269,11 +252,9 @@ module Options_implied_by_dash_p = struct
             [ "ignore-promoted-rules" ]
             ~docs
             ~doc:
-              "Ignore rules with (mode promote),\n\
-              \                     except ones with (only ...). The variable\n\
-              \                     %{ignoring_promoted_rules} in dune files \
-               reflects\n\
-              \                     whether this option was passed or not.")
+              "Ignore rules with (mode promote), except ones with (only ...). \
+               The variable %{ignoring_promoted_rules} in dune files reflects \
+               whether this option was passed or not.")
     and+ config_file = config_file_term
     and+ default_target =
       Arg.(
@@ -296,7 +277,7 @@ module Options_implied_by_dash_p = struct
       Arg.(value & flag & info [ "promote-install-files" ] ~docs ~doc)
     in
     { root
-    ; only_packages
+    ; only_packages = None
     ; ignore_promoted_rules
     ; config_file
     ; profile = None
@@ -305,27 +286,9 @@ module Options_implied_by_dash_p = struct
     ; promote_install_files
     }
 
-  let for_release = "for-release-of-packages"
-
-  let dash_p =
-    let+ pkgs, args =
-      Term.with_used_args
-        Arg.(
-          value
-          & opt (some packages) None
-          & info [ "p"; for_release ] ~docs ~docv:"PACKAGES"
-              ~doc:
-                {|Shorthand for $(b,--root . --only-packages PACKAGE
-                      --ignore-promoted-rules --no-config --profile release).
-                      You must use this option in your $(i,<package>.opam)
-                      files, in order to build only what's necessary when
-                      your project contains multiple packages as well as
-                      getting reproducible builds.|})
-    in
+  let release_options =
     { root = Some "."
-    ; only_packages =
-        Option.map pkgs ~f:(fun names ->
-            { Only_packages.names; command_line_option = List.hd args })
+    ; only_packages = None
     ; ignore_promoted_rules = true
     ; config_file = No_config
     ; profile = Some Profile.Release
@@ -333,6 +296,66 @@ module Options_implied_by_dash_p = struct
         Arg.Dep.alias_rec ~dir:Path.Local.root Dune.Alias.Name.install
     ; always_show_command_line = true
     ; promote_install_files = true
+    }
+
+  let dash_dash_release =
+    let+ (_ : bool) =
+      Arg.(
+        value & flag
+        & info [ "release" ] ~docs ~docv:"PACKAGES"
+            ~doc:
+              "Put $(b,dune) into a reproducible $(i,release) mode. This is in \
+               fact a shorthand for $(b,--root . --ignore-promoted-rules \
+               --no-config --profile release --always-show-command-line \
+               --promote-install-files --default-target @install). You should \
+               use this option for release builds. For instance, you must use \
+               this option in your $(i,<package>.opam) files. Except if you \
+               already use $(b,-p), as $(b,-p) implies this option.")
+    in
+    release_options
+
+  let options =
+    let+ t = one_of options dash_dash_release
+    and+ only_packages =
+      let+ names =
+        Arg.(
+          value
+          & opt (some packages) None
+          & info [ "only-packages" ] ~docs ~docv:"PACKAGES"
+              ~doc:
+                {|Ignore stanzas referring to a package that is not in
+                      $(b,PACKAGES). $(b,PACKAGES) is a comma-separated list
+                      of package names. Note that this has the same effect
+                      as deleting the relevant stanzas from dune files.
+                      It is mostly meant for releases. During development,
+                      it is likely that what you want instead is to
+                      build a particular $(b,<package>.install) target.|})
+      in
+      Option.map names ~f:(fun names ->
+          { Only_packages.names; command_line_option = "only-packages" })
+    in
+    { t with only_packages }
+
+  let dash_p =
+    let+ pkgs, args =
+      Term.with_used_args
+        Arg.(
+          value
+          & opt (some packages) None
+          & info
+              [ "p"; "for-release-of-packages" ]
+              ~docs ~docv:"PACKAGES"
+              ~doc:
+                "Shorthand for $(b,--release --only-packages PACKAGE). You \
+                 must use this option in your $(i,<package>.opam) files, in \
+                 order to build only what's necessary when your project \
+                 contains multiple packages as well as getting reproducible \
+                 builds.")
+    in
+    { release_options with
+      only_packages =
+        Option.map pkgs ~f:(fun names ->
+            { Only_packages.names; command_line_option = List.hd args })
     }
 
   let term =

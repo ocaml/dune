@@ -36,11 +36,13 @@ let is_eq = function
 let min f x y =
   match f x y with
   | Eq
-  | Lt -> x
+  | Lt ->
+    x
   | Gt -> y
 
 let max f x y =
   match f x y with
   | Eq
-  | Gt -> x
+  | Gt ->
+    x
   | Lt -> y

@@ -182,3 +182,6 @@ v1 -> v2
   
   (formatting
    (enabled_for reason))
+
+Check that the upgrader is idempotent:
+  $ dune upgrade

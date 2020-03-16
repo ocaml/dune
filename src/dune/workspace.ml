@@ -189,7 +189,7 @@ module Context = struct
         match name with
         | Some s -> s
         | None -> (
-          let name = Filename.basename switch ^ Common.fdo_suffix base in
+          let name = switch ^ Common.fdo_suffix base in
           match Context_name.of_string_opt name with
           | Some s -> s
           | None ->

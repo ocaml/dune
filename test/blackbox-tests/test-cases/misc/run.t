@@ -28,3 +28,22 @@ Test that incompatible options are properly reported
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]
+
+  $ dune build -p toto --release
+  dune: Cannot use --release and -p simultaneously
+  Usage: dune build [OPTION]... [TARGET]...
+  Try `dune build --help' or `dune --help' for more information.
+  [1]
+
+  $ dune build --release --root .
+  dune: Cannot use --root and --release simultaneously
+  Usage: dune build [OPTION]... [TARGET]...
+  Try `dune build --help' or `dune --help' for more information.
+  [1]
+
+Allowed combinations
+--------------------
+
+  $ dune build --release --only-packages toto
+
+  $ dune build --release --only-packages toto --profile foo

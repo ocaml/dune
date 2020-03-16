@@ -1537,8 +1537,9 @@ module Executables = struct
 
   let bootstrap_info_extension =
     let syntax =
-      Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
-        ~desc:"private extension to handle Dune bootstrap" [ (0, 1) ]
+      Dune_lang.Syntax.createn ~name:"dune-bootstrap-info"
+        ~desc:"private extension to handle Dune bootstrap"
+        [ ((0, 1), `Since (2, 0)) ]
     in
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
@@ -1989,8 +1990,9 @@ module Coq = struct
     }
 
   let syntax =
-    Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ (0, 1) ]
+    Dune_lang.Syntax.createn ~name:"coq"
+      ~desc:"the coq extension (experimental)"
+      [ ((0, 1), `Since (1, 9)) ]
 
   let coq_public_decode =
     map_validate

@@ -4,6 +4,17 @@ type var_syntax =
   | Parens
   | Braces
 
+type var =
+  { loc : Loc.t
+  ; name : string
+  ; payload : string option
+  ; syntax : var_syntax
+  }
+
+type part =
+  | Text of string
+  | Var of var
+
 module Token = struct
   type t =
     | String of string
@@ -44,7 +55,7 @@ module Token = struct
 end
 
 (* Remark: Consecutive [Text] items are concatenated. *)
-let rec of_tokens : Loc.t -> Token.t list -> Dune_lang.Template.part list =
+let rec of_tokens : Loc.t -> Token.t list -> part list =
  fun loc -> function
   | [] -> []
   | Open a :: String s :: Close b :: rest when a = b ->
@@ -53,16 +64,7 @@ let rec of_tokens : Loc.t -> Token.t list -> Dune_lang.Template.part list =
       | None -> (s, None)
       | Some (n, p) -> (n, Some p)
     in
-    Var
-      { loc
-      ; name
-      ; payload
-      ; syntax =
-          ( match a with
-          | Parens -> Dollar_paren
-          | Braces -> Dollar_brace )
-      }
-    :: of_tokens loc rest
+    Var { loc; name; payload; syntax = a } :: of_tokens loc rest
   | token :: rest -> (
     let s = Token.to_string token in
     match of_tokens loc rest with
@@ -145,8 +147,17 @@ module Upgrade_var = struct
       (List.concat [ macros; static_vars; lowercased; uppercased; other ])
 end
 
+let string_of_var { loc = _; name; payload; syntax } =
+  let s =
+    match payload with
+    | None -> name
+    | Some p -> sprintf "%s:%s" name p
+  in
+  match syntax with
+  | Parens -> sprintf "$(%s)" s
+  | Braces -> sprintf "${%s}" s
+
 let upgrade_to_dune s ~loc ~quoted ~allow_first_dep_var =
-  let open Dune_lang.Template in
   let map_var v =
     match String.Map.find Upgrade_var.map v.name with
     | None -> None
@@ -162,11 +173,11 @@ let upgrade_to_dune s ~loc ~quoted ~allow_first_dep_var =
       | Renamed_to new_name -> Some new_name )
   in
   let map_part = function
-    | Text _ as part -> part
+    | Text s -> Dune_lang.Template.Text s
     | Var v -> (
       match map_var v with
       | None -> Text (string_of_var v)
-      | Some name -> Var { v with name; syntax = Percent } )
+      | Some name -> Var { name; payload = v.payload; loc = v.loc } )
   in
   let parts = List.map (parse ~loc s) ~f:map_part in
   { Dune_lang.Template.quoted; parts; loc }

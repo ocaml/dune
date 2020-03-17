@@ -46,20 +46,32 @@ end
 module Supported_versions = struct
   (* The extension supported versions are declared using an explicit list of all
      versions but stored as a map from major versions to maps from minor version
-     to dune_lang required versions *)
+     to dune_lang required versions. For instance, if:
+
+     - version 1.0 of an extension was introduced in Dune 1.4
+
+     - version 1.1 was introduced in Dune 1.6
+
+     - version 1.2 was introduced in Dune 2.3
+
+     - version 2.0 was introduced in Dune 2.4
+
+     we'd have the following map (in associative list syntax):
+
+     {[ [ 1, [ 0, (1, 4); 1, (1, 6); 2, (2, 3) ]; 2, [ 0, (2, 3) ] ] ]} *)
   type t = Version.t Int.Map.t Int.Map.t
 
   let to_dyn t = Int.Map.to_dyn (Int.Map.to_dyn Version.to_dyn) t
 
-  (* We convert the exposed extension version type: `(Version.t * [ `Since of
-     Version.t ]) list` which is a list of fully qualified versions paired with
-     the corresponding dune_lang version. To the internal representation:
-     `(Version.t Int.Map.t) Int.Map.t` which is a list of major versions paired
-     with lists of minor versions paires with a dune_lang version. *)
+  (* We convert the exposed extension version type: {[ (Version.t * [ `Since of
+     Version.t ]) list ]} which is a list of fully qualified versions paired
+     with the corresponding dune_lang version. To the internal representation:
+     {[ (Version.t Int.Map.t) Int.Map.t ]} which is a list of major versions
+     paired with lists of minor versions paires with a dune_lang version. *)
   let make (versions : (Version.t * [ `Since of Version.t ]) list) : t =
     let v =
       List.fold_left versions
-        ~init:(Int.Map.empty : Version.t Int.Map.t Int.Map.t)
+        ~init:(Int.Map.empty : t)
         ~f:(fun major_map (v_ext, `Since v_lang) ->
           let major, minor = v_ext in
           let minor_map =

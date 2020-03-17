@@ -372,7 +372,8 @@ module Extension = struct
     let (_ : unit t) = register ?experimental syntax unit_stanzas Unit.to_dyn in
     ()
 
-  let instantiate ~lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver) =
+  let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver)
+      =
     match Table.find extensions name with
     | None ->
       User_error.raise ~loc:name_loc
@@ -380,7 +381,7 @@ module Extension = struct
         ~hints:
           (User_message.did_you_mean name ~candidates:(Table.keys extensions))
     | Some t ->
-      Dune_lang.Syntax.check_supported ~lang_ver (syntax t) (ver_loc, ver);
+      Dune_lang.Syntax.check_supported ~dune_lang_ver (syntax t) (ver_loc, ver);
       { extension = t; version = ver; loc; parse_args }
 
   (* Extensions that are not selected in the dune-project file are automatically
@@ -393,8 +394,8 @@ module Extension = struct
             if is_experimental extension then
               Some (0, 0)
             else
-              let lang_ver = lang.Lang.Instance.version in
-              Dune_lang.Syntax.greatest_supported_version ~lang_ver
+              let dune_lang_ver = lang.Lang.Instance.version in
+              Dune_lang.Syntax.greatest_supported_version ~dune_lang_ver
                 (syntax extension)
           in
           match version with
@@ -590,7 +591,7 @@ let parse ~dir ~lang ~opam_packages ~file =
           and+ parse_args = capture in
           (* We don't parse the arguments quite yet as we want to set the
              version of extensions before parsing them. *)
-          Extension.instantiate ~lang_ver:lang.Lang.Instance.version ~loc
+          Extension.instantiate ~dune_lang_ver:lang.Lang.Instance.version ~loc
             ~parse_args name ver)
      and+ implicit_transitive_deps =
        field_o_b "implicit_transitive_deps"

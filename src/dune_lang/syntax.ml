@@ -96,9 +96,9 @@ module Supported_versions = struct
         else
           Some minors)
 
-  let rec greatest_supported_version ?lang_ver t =
+  let rec greatest_supported_version ?dune_lang_ver t =
     let open Option.O in
-    match lang_ver with
+    match dune_lang_ver with
     | Some lang_ver ->
       let compat = remove_uncompatible_versions lang_ver t in
       greatest_supported_version compat
@@ -194,22 +194,25 @@ let create ~name ~desc supported_versions =
 
 let name t = t.name
 
-let check_supported ~lang_ver t (loc, ver) =
-  if not (Supported_versions.is_supported t.supported_versions ver lang_ver)
+let check_supported ~dune_lang_ver t (loc, ver) =
+  if
+    not (Supported_versions.is_supported t.supported_versions ver dune_lang_ver)
   then
     let until =
       match Supported_versions.get_min_lang_ver t.supported_versions ver with
       | Some v -> Printf.sprintf " until dune lang %s" (Version.to_string v)
       | None -> ""
     in
-    let l = Supported_versions.supported_ranges lang_ver t.supported_versions in
+    let l =
+      Supported_versions.supported_ranges dune_lang_ver t.supported_versions
+    in
     let supported =
       ( if List.is_empty l then
         Pp.textf
           "There are no supported versions of this extension for dune lang %s."
       else
         Pp.textf "Supported versions for dune lang %s:" )
-        (Version.to_string lang_ver)
+        (Version.to_string dune_lang_ver)
     in
 
     User_error.raise ~loc
@@ -224,8 +227,9 @@ let check_supported ~lang_ver t (loc, ver) =
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
 
-let greatest_supported_version ?lang_ver t =
-  Supported_versions.greatest_supported_version ?lang_ver t.supported_versions
+let greatest_supported_version ?dune_lang_ver t =
+  Supported_versions.greatest_supported_version ?dune_lang_ver
+    t.supported_versions
 
 let key t = t.key
 

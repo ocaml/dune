@@ -6,7 +6,7 @@ module Parser = struct
   type nonrec t = string * t list Dune_lang.Decoder.t
 end
 
-let latest_version = (2, 4)
+let latest_version = (2, 5)
 
 let since v = (v, `Since v)
 

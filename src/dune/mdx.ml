@@ -77,32 +77,11 @@ module Deps = struct
       | Dir d -> Left (to_path ~dir d)
       | File f -> Right (to_path ~dir f))
 
-  let dir_without_files_dep dir =
-    Dep.file_selector (File_selector.create ~dir Predicate.false_)
-
-  let source_tree_dep_set dir =
-    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    match File_tree.find_dir dir with
-    | None -> Dep.Set.empty
-    | Some dir ->
-      File_tree.Dir.fold dir ~init:Dep.Set.empty
-        ~traverse:Sub_dirs.Status.Set.all ~f:(fun dir acc ->
-          let files = File_tree.Dir.files dir in
-          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
-          match String.Set.is_empty files with
-          | true -> Dep.Set.add acc (dir_without_files_dep path)
-          | false ->
-            let paths =
-              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
-                  Path.Set.add acc (Path.relative path fn))
-            in
-            Dep.Set.add_paths acc paths)
-
   let to_dep_set ~dir t_list =
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
     List.fold_left dirs ~init:dep_set ~f:(fun acc dir ->
-        Dep.Set.union acc (source_tree_dep_set dir))
+        Dep.Set.union acc (Dep.Set.source_tree dir))
 end
 
 module Prelude = struct

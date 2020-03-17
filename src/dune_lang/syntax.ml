@@ -215,7 +215,7 @@ let check_supported ~dune_lang_ver t (loc, ver) =
         Pp.textf "Supported versions of this extension in %s:" )
         (dune_ver_text dune_lang_ver)
     in
-    User_error.raise ~loc
+    let message =
       [ Pp.textf "Version %s of %s is not supported%s." (Version.to_string ver)
           t.desc until
       ; supported
@@ -226,6 +226,11 @@ let check_supported ~dune_lang_ver t (loc, ver) =
             else
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
+    in
+    if (not (String.is_empty until)) && dune_lang_ver < (2, 5) then
+      User_warning.emit ~loc message
+    else
+      User_error.raise ~loc message
 
 let greatest_supported_version ?dune_lang_ver t =
   Supported_versions.greatest_supported_version ?dune_lang_ver

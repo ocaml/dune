@@ -72,17 +72,13 @@ module Supported_versions = struct
     let v =
       List.fold_left versions
         ~init:(Int.Map.empty : t)
-        ~f:(fun major_map (v_ext, `Since v_lang) ->
-          let major, minor = v_ext in
-          let minor_map =
-            match Int.Map.find major_map major with
-            | Some m -> m
-            | None -> Int.Map.empty
+        ~f:(fun major_map ((major, minor), `Since lang_ver) ->
+          let add_minor minor_map =
+            Some (Int.Map.add_exn minor_map minor lang_ver)
           in
-          let minor_map = Int.Map.add_exn minor_map minor v_lang in
           Int.Map.update major_map major ~f:(function
-            | Some _minor_map -> Some minor_map
-            | None -> Some minor_map))
+            | Some minor_map -> add_minor minor_map
+            | None -> add_minor Int.Map.empty))
     in
     v
 

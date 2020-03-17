@@ -194,9 +194,12 @@ let check_supported ~dune_lang_ver t (loc, ver) =
   if
     not (Supported_versions.is_supported t.supported_versions ver dune_lang_ver)
   then
+    let dune_ver_text v =
+      Printf.sprintf "version %s of the dune language" (Version.to_string v)
+    in
     let until =
       match Supported_versions.get_min_lang_ver t.supported_versions ver with
-      | Some v -> Printf.sprintf " until dune lang %s" (Version.to_string v)
+      | Some v -> Printf.sprintf " until %s" (dune_ver_text v)
       | None -> ""
     in
     let l =
@@ -204,16 +207,14 @@ let check_supported ~dune_lang_ver t (loc, ver) =
     in
     let supported =
       ( if List.is_empty l then
-        Pp.textf
-          "There are no supported versions of this extension for dune lang %s."
+        Pp.textf "There are no supported versions of this extension in %s."
       else
-        Pp.textf "Supported versions for dune lang %s:" )
-        (Version.to_string dune_lang_ver)
+        Pp.textf "Supported versions of this extension in %s:" )
+        (dune_ver_text dune_lang_ver)
     in
-
     User_error.raise ~loc
       [ Pp.textf "Version %s of %s is not supported%s." (Version.to_string ver)
-          t.name until
+          t.desc until
       ; supported
       ; Pp.enumerate l ~f:(fun (a, b) ->
             let open Version.Infix in

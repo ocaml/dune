@@ -227,10 +227,8 @@ let check_supported ~dune_lang_ver t (loc, ver) =
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
     in
-    if (not (String.is_empty until)) && dune_lang_ver < (2, 5) then
-      User_warning.emit ~loc message
-    else
-      User_error.raise ~loc message
+    let is_error = String.is_empty until || dune_lang_ver >= (2, 5) in
+    User_warning.emit ~is_error ~loc message
 
 let greatest_supported_version ?dune_lang_ver t =
   Supported_versions.greatest_supported_version ?dune_lang_ver

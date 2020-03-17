@@ -87,10 +87,7 @@ module Supported_versions = struct
         let minors =
           Int.Map.filter minors ~f:(fun min_lang -> lang_ver >= min_lang)
         in
-        if Int.Map.is_empty minors then
-          None
-        else
-          Some minors)
+        Option.some_if (not (Int.Map.is_empty minors)) minors)
 
   let rec greatest_supported_version ?dune_lang_ver t =
     let open Option.O in

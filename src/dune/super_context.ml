@@ -284,19 +284,6 @@ let source_files ~src_path =
   | None -> String.Set.empty
   | Some dir -> File_tree.Dir.files dir
 
-let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
-    =
-  let acc = Expander.Resolved_forms.empty () in
-  let foreign_flags ~dir =
-    get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-  in
-  let expander =
-    Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~foreign_flags
-  in
-  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
-  (partial, acc)
-
 let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in
@@ -661,32 +648,16 @@ module Deps = struct
          [])
 
   let make_interpreter ~f t ~expander l =
-    let forms = Expander.Resolved_forms.empty () in
     let foreign_flags ~dir =
       get_node t.env_tree ~dir |> Env_node.foreign_flags
     in
-    let expander =
-      Expander.with_record_no_ddeps expander forms ~dep_kind:Optional
-        ~map_exe:Fn.id ~foreign_flags
-    in
-    match
-      Pform.Expansion.Map.is_empty (Expander.Resolved_forms.ddeps forms)
-    with
-    | false ->
-      (* calling [with_record_no_ddeps] above guarantees this never happens *)
-      Code_error.raise "ddeps are not allowed in this position"
-        [ ("forms", Dyn.Encoder.opaque forms) ]
-    | true ->
-      let deps =
+    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fn.id
+      ~foreign_flags ~f:(fun expander ->
         match Result.List.map l ~f:(f t expander) with
-        | Ok deps -> Build.all deps
-        | Error exn -> Build.fail { fail = (fun () -> reraise exn) }
-      in
-      (let+ deps = Build.map ~f:List.concat deps
-       and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-       and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
-       deps)
-      |> Expander.Resolved_forms.prefix_failures forms
+        | Ok deps ->
+          let+ l = Build.all deps in
+          List.concat l
+        | Error exn -> Build.fail { fail = (fun () -> reraise exn) })
 
   let interpret t ~expander l =
     let+ _paths = make_interpreter ~f:dep t ~expander l in
@@ -722,7 +693,7 @@ module Action = struct
         | _ -> exe )
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
-      ~targets_dir t bindings : Action.t Build.With_targets.t =
+      ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
     ( match (targets_written_by_user : Expander.Targets.t) with
@@ -737,24 +708,30 @@ module Action = struct
         User_error.raise ~loc
           [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
     );
-    let t, forms =
-      partial_expand sctx ~expander ~dep_kind ~targets_written_by_user ~map_exe
-        t
+    let partially_expanded, fully_expanded =
+      let foreign_flags ~dir =
+        get_node sctx.env_tree ~dir |> Env_node.foreign_flags
+      in
+      Expander.expand_action expander ~dep_kind ~deps_written_by_user
+        ~targets_written_by_user ~map_exe ~foreign_flags
+        ~partial:(fun expander ->
+          Action_unexpanded.partial_expand t ~expander ~map_exe)
+        ~final:(fun expander t -> U.Partial.expand t ~expander ~map_exe)
     in
     let { U.Infer.Outcome.deps; targets } =
       match targets_written_by_user with
-      | Infer -> U.Infer.partial t ~all_targets:true
+      | Infer -> U.Infer.partial partially_expanded ~all_targets:true
       | Static { targets = targets_written_by_user; multiplicity = _ } ->
         let targets_written_by_user =
           Path.Build.Set.of_list targets_written_by_user
         in
         let { U.Infer.Outcome.deps; targets } =
-          U.Infer.partial t ~all_targets:false
+          U.Infer.partial partially_expanded ~all_targets:false
         in
         { deps; targets = Path.Build.Set.union targets targets_written_by_user }
       | Forbidden _ ->
         let { U.Infer.Outcome.deps; targets = _ } =
-          U.Infer.partial t ~all_targets:false
+          U.Infer.partial partially_expanded ~all_targets:false
         in
         { U.Infer.Outcome.deps; targets = Path.Build.Set.empty }
     in
@@ -770,39 +747,19 @@ module Action = struct
             ]);
     let open Build.O in
     let build =
-      Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-      >>> Build.path_set
-            (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
-      >>>
-      let ddeps =
-        Pform.Expansion.Map.to_list (Expander.Resolved_forms.ddeps forms)
-      in
-      Build.dyn_path_set
-        (let+ action =
-           let+ vals = Build.all (List.map ddeps ~f:snd)
-           and+ deps_written_by_user = bindings in
-           let dynamic_expansions =
-             List.fold_left2 ddeps vals ~init:Pform.Expansion.Map.empty
-               ~f:(fun acc (var, _) value ->
-                 Pform.Expansion.Map.add_exn acc var value)
-           in
-           let unresolved =
-             let expander =
-               Expander.add_ddeps_and_bindings expander ~dynamic_expansions
-                 ~deps_written_by_user
+      Build.path_set deps
+      >>> Build.dyn_path_set
+            (let+ action =
+               let+ unresolved = fully_expanded in
+               Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+                   match Expander.resolve_binary ~loc expander ~prog with
+                   | Ok path -> path
+                   | Error { fail } -> fail ())
              in
-             U.Partial.expand t ~expander ~map_exe
-           in
-           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-               match Expander.resolve_binary ~loc expander ~prog with
-               | Ok path -> path
-               | Error { fail } -> fail ())
-         in
-         let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-         (Action.Chdir (Path.build dir, action), deps))
+             let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
+             (Action.Chdir (Path.build dir, action), deps))
     in
-    Build.with_targets ~targets
-      (Expander.Resolved_forms.prefix_failures forms build)
+    Build.with_targets ~targets build
 end
 
 let opaque t =

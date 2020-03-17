@@ -219,11 +219,12 @@ let expand_str t sw =
 
 module Or_exn = struct
   let expand t ~mode ~template =
-    try
-      Ok
-        (String_with_vars.expand ~dir:(Path.build t.dir) ~mode template
-           ~f:(expand_var_exn t))
-    with User_error.E _ as e -> Error e
+    match
+      String_with_vars.expand ~dir:(Path.build t.dir) ~mode template
+        ~f:(expand_var_exn t)
+    with
+    | x -> Ok x
+    | exception (User_error.E _ as e) -> Error e
 
   let expand_path t sw =
     expand t ~mode:Single ~template:sw
@@ -256,7 +257,7 @@ let expand_with_reduced_var_set ~(context : Context.t) =
 module Resolved_forms = struct
   type t =
     { (* Failed resolutions *)
-      mutable failures : Import.fail list
+      mutable failure : Import.fail option
     ; (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
       mutable lib_deps : Lib_deps_info.t
     ; (* Static deps from %{...} variables. For instance %{exe:...} *)
@@ -265,19 +266,8 @@ module Resolved_forms = struct
       mutable ddeps : Value.t list Build.t Pform.Expansion.Map.t
     }
 
-  let lib_deps t = t.lib_deps
-
-  let sdeps t = t.sdeps
-
-  let ddeps t = t.ddeps
-
-  let prefix_failures t b =
-    match t.failures with
-    | [] -> b
-    | fail :: _ -> Build.O.( >>> ) (Build.fail fail) b
-
-  let empty () =
-    { failures = []
+  let create () =
+    { failure = None
     ; lib_deps = Lib_name.Map.empty
     ; sdeps = Path.Set.empty
     ; ddeps = Pform.Expansion.Map.empty
@@ -286,13 +276,19 @@ module Resolved_forms = struct
   let add_lib_dep acc lib kind =
     acc.lib_deps <- Lib_name.Map.set acc.lib_deps lib kind
 
-  let add_fail acc fail =
-    acc.failures <- fail :: acc.failures;
-    None
-
-  let add_ddep acc pform dep =
-    acc.ddeps <- Pform.Expansion.Map.set acc.ddeps pform dep;
-    None
+  let to_build t =
+    let open Build.O in
+    let ddeps = Pform.Expansion.Map.to_list t.ddeps in
+    let+ () = Build.record_lib_deps t.lib_deps
+    and+ () = Build.path_set t.sdeps
+    and+ values = Build.all (List.map ddeps ~f:snd)
+    and+ () =
+      match t.failure with
+      | None -> Build.return ()
+      | Some fail -> Build.fail fail
+    in
+    List.fold_left2 ddeps values ~init:Pform.Expansion.Map.empty
+      ~f:(fun acc (var, _) value -> Pform.Expansion.Map.add_exn acc var value)
 end
 
 module Targets = struct
@@ -316,10 +312,6 @@ let parse_lib_file ~loc s =
   | None -> User_error.raise ~loc [ Pp.textf "invalid %%{lib:...} form: %s" s ]
   | Some (lib, f) -> (Lib_name.parse_string_exn (loc, lib), f)
 
-type expansion_kind =
-  | Dynamic
-  | Static
-
 let cc_of_c_flags t (cc : string list Build.t Foreign.Language.Dict.t) =
   let open Build.O in
   Foreign.Language.Dict.map cc ~f:(fun cc ->
@@ -333,143 +325,158 @@ let cannot_be_used_here pform =
   Pp.textf "%s cannot be used in this position"
     (String_with_vars.Var.describe pform)
 
-let expand_and_record acc ~map_exe ~dep_kind ~expansion_kind
-    ~(dir : Path.Build.t) ~pform t expansion
+type expand_result =
+  | Static of Value.t list
+  | Dynamic of Value.t list Build.t
+
+let expand_and_record_generic acc ~map_exe ~dep_kind ~(dir : Path.Build.t)
+    ~pform t expansion
     ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
   let loc = String_with_vars.Var.loc pform in
-  let expansion () =
-    let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
-    let add_ddep =
-      match expansion_kind with
-      | Static -> fun _ -> User_error.raise ~loc [ cannot_be_used_here pform ]
-      | Dynamic -> Resolved_forms.add_ddep acc expansion
+  let relative d s = Path.build (Path.Build.relative ~error_loc:loc d s) in
+  let open Build.O in
+  match (expansion : Pform.Expansion.t) with
+  | Var
+      ( Project_root | First_dep | Deps | Targets | Target | Named_local
+      | Values _ )
+  | Macro ((Ocaml_config | Env | Version), _) ->
+    assert false
+  | Var Cc -> Dynamic (cc ~dir).c
+  | Var Cxx -> Dynamic (cc ~dir).cxx
+  | Macro (Artifact a, s) ->
+    let data =
+      Build.dyn_paths
+        (let+ values =
+           Build.delayed (fun () ->
+               match expand_artifact ~dir ~loc t a s with
+               | Some (Ok v) -> v
+               | Some (Error msg) -> raise (User_error.E msg)
+               | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
+         in
+         ( values
+         , List.filter_map values ~f:(function
+             | Value.Path p -> Some p
+             | _ -> None) ))
     in
-    let open Build.O in
-    match (expansion : Pform.Expansion.t) with
-    | Var
-        ( Project_root | First_dep | Deps | Targets | Target | Named_local
-        | Values _ )
-    | Macro ((Ocaml_config | Env | Version), _) ->
-      assert false
-    | Var Cc -> add_ddep (cc ~dir).c
-    | Var Cxx -> add_ddep (cc ~dir).cxx
-    | Macro (Artifact a, s) ->
-      let data =
-        Build.dyn_paths
-          (let+ values =
-             Build.delayed (fun () ->
-                 match expand_artifact ~dir ~loc t a s with
-                 | Some (Ok v) -> v
-                 | Some (Error msg) -> raise (User_error.E msg)
-                 | None -> User_error.raise ~loc [ cannot_be_used_here pform ])
-           in
-           ( values
-           , List.filter_map values ~f:(function
-               | Value.Path p -> Some p
-               | _ -> None) ))
-      in
-      add_ddep data
-    | Macro (Path_no_dep, s) -> Some [ Value.Dir (relative dir s) ]
-    | Macro (Exe, s) -> Some (path_exp (map_exe (relative dir s)))
-    | Macro (Dep, s) -> Some (path_exp (relative dir s))
-    | Macro (Bin, s) -> (
-      match resolve_binary ~loc:(Some loc) t ~prog:s with
-      | Error e -> Action.Prog.Not_found.raise e
-      | Ok path -> Some (path_exp path) )
-    | Macro (Lib { lib_exec; lib_private }, s) -> (
-      let lib, file = parse_lib_file ~loc s in
-      Resolved_forms.add_lib_dep acc lib dep_kind;
-      match
-        if lib_private then
-          let open Result.O in
-          let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
-          let current_project_name = Scope.name t.scope
-          and referenced_project_name =
-            Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
-          in
-          if
-            Option.equal Dune_project.Name.equal (Some current_project_name)
-              referenced_project_name
-          then
-            Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
-          else
-            Error
-              (User_error.E
-                 (User_error.make ~loc
-                    [ Pp.textf
-                        "The variable \"lib-private\" can only refer to \
-                         libraries within the same project. The current \
-                         project's name is %S, but the reference is to %s."
-                        (Dune_project.Name.to_string_hum current_project_name)
-                        ( match referenced_project_name with
-                        | Some name ->
-                          "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
-                        | None -> "an external library" )
-                    ]))
-        else
-          Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
-      with
-      | Ok path ->
-        (* TODO: The [exec = true] case is currently not handled correctly and
-           does not match the documentation. *)
-        if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe"
+    Dynamic data
+  | Macro (Path_no_dep, s) -> Static [ Value.Dir (relative dir s) ]
+  | Macro (Exe, s) -> Static (path_exp (map_exe (relative dir s)))
+  | Macro (Dep, s) -> Static (path_exp (relative dir s))
+  | Macro (Bin, s) -> (
+    match resolve_binary ~loc:(Some loc) t ~prog:s with
+    | Error e -> Action.Prog.Not_found.raise e
+    | Ok path -> Static (path_exp path) )
+  | Macro (Lib { lib_exec; lib_private }, s) -> (
+    let lib, file = parse_lib_file ~loc s in
+    Resolved_forms.add_lib_dep acc lib dep_kind;
+    match
+      if lib_private then
+        let open Result.O in
+        let* lib = Lib.DB.resolve (Scope.libs t.scope) (loc, lib) in
+        let current_project_name = Scope.name t.scope
+        and referenced_project_name =
+          Lib.info lib |> Lib_info.status |> Lib_info.Status.project_name
+        in
+        if
+          Option.equal Dune_project.Name.equal (Some current_project_name)
+            referenced_project_name
         then
-          Some (path_exp path)
+          Ok (Path.relative (Lib_info.src_dir (Lib.info lib)) file)
         else
-          let path_exe = Path.extend_basename path ~suffix:".exe" in
-          let dep =
-            Build.if_file_exists path_exe
-              ~then_:
-                (let+ () = Build.path path_exe in
-                 path_exp path_exe)
-              ~else_:
-                (let+ () = Build.path path in
-                 path_exp path)
-          in
-          add_ddep dep
-      | Error e ->
-        raise
-          ( match lib_private with
-          | true -> e
-          | false ->
-            if Lib.DB.available (Scope.libs t.scope) lib then
-              User_error.E
-                (User_error.make ~loc
-                   [ Pp.textf
-                       "The library %S is not public. The variable \"lib\" \
-                        expands to the file's installation path which is not \
-                        defined for private libraries."
-                       (Lib_name.to_string lib)
-                   ])
-            else
-              e ) )
-    | Macro (Lib_available, s) ->
-      let lib = Lib_name.parse_string_exn (loc, s) in
-      Resolved_forms.add_lib_dep acc lib Optional;
-      Lib.DB.available (Scope.libs t.scope) lib
-      |> string_of_bool |> str_exp |> Option.some
-    | Macro (Read, s) ->
-      let path = relative dir s in
-      let data =
-        let+ s = Build.contents path in
-        [ Value.String s ]
-      in
-      add_ddep data
-    | Macro (Read_lines, s) ->
-      let path = relative dir s in
-      let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
-      add_ddep data
-    | Macro (Read_strings, s) ->
-      let path = relative dir s in
-      let data = Build.map (Build.strings path) ~f:Value.L.strings in
-      add_ddep data
-  in
-  match expansion_kind with
-  | Static -> expansion ()
-  | Dynamic -> (
-    try expansion ()
-    with User_error.E _ as e ->
-      Resolved_forms.add_fail acc { fail = (fun () -> raise e) } )
+          Error
+            (User_error.E
+               (User_error.make ~loc
+                  [ Pp.textf
+                      "The variable \"lib-private\" can only refer to \
+                       libraries within the same project. The current \
+                       project's name is %S, but the reference is to %s."
+                      (Dune_project.Name.to_string_hum current_project_name)
+                      ( match referenced_project_name with
+                      | Some name ->
+                        "\"" ^ Dune_project.Name.to_string_hum name ^ "\""
+                      | None -> "an external library" )
+                  ]))
+      else
+        Artifacts.Public_libs.file_of_lib t.lib_artifacts ~loc ~lib ~file
+    with
+    | Ok path ->
+      (* TODO: The [exec = true] case is currently not handled correctly and
+         does not match the documentation. *)
+      if (not lib_exec) || (not Sys.win32) || Filename.extension s = ".exe" then
+        Static (path_exp path)
+      else
+        let path_exe = Path.extend_basename path ~suffix:".exe" in
+        let dep =
+          Build.if_file_exists path_exe
+            ~then_:
+              (let+ () = Build.path path_exe in
+               path_exp path_exe)
+            ~else_:
+              (let+ () = Build.path path in
+               path_exp path)
+        in
+        Dynamic dep
+    | Error e ->
+      raise
+        ( match lib_private with
+        | true -> e
+        | false ->
+          if Lib.DB.available (Scope.libs t.scope) lib then
+            User_error.E
+              (User_error.make ~loc
+                 [ Pp.textf
+                     "The library %S is not public. The variable \"lib\" \
+                      expands to the file's installation path which is not \
+                      defined for private libraries."
+                     (Lib_name.to_string lib)
+                 ])
+          else
+            e ) )
+  | Macro (Lib_available, s) ->
+    let lib = Lib_name.parse_string_exn (loc, s) in
+    Resolved_forms.add_lib_dep acc lib Optional;
+    Static
+      (Lib.DB.available (Scope.libs t.scope) lib |> string_of_bool |> str_exp)
+  | Macro (Read, s) ->
+    let path = relative dir s in
+    let data =
+      let+ s = Build.contents path in
+      [ Value.String s ]
+    in
+    Dynamic data
+  | Macro (Read_lines, s) ->
+    let path = relative dir s in
+    let data = Build.map (Build.lines_of path) ~f:Value.L.strings in
+    Dynamic data
+  | Macro (Read_strings, s) ->
+    let path = relative dir s in
+    let data = Build.map (Build.strings path) ~f:Value.L.strings in
+    Dynamic data
+
+let expand_and_record_static acc ~map_exe ~dep_kind ~(dir : Path.Build.t) ~pform
+    t expansion
+    ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
+  match
+    expand_and_record_generic acc ~map_exe ~dep_kind ~dir ~pform t expansion ~cc
+  with
+  | Static l -> Some l
+  | Dynamic _ ->
+    let loc = String_with_vars.Var.loc pform in
+    User_error.raise ~loc [ cannot_be_used_here pform ]
+
+let expand_and_record_dynamic acc ~map_exe ~dep_kind ~(dir : Path.Build.t)
+    ~pform t expansion
+    ~(cc : dir:Path.Build.t -> Value.t list Build.t Foreign.Language.Dict.t) =
+  match
+    expand_and_record_generic acc ~map_exe ~dep_kind ~dir ~pform t expansion ~cc
+  with
+  | Static l -> Some l
+  | Dynamic dep ->
+    acc.ddeps <- Pform.Expansion.Map.set acc.ddeps expansion dep;
+    None
+  | exception (User_error.E _ as e) ->
+    acc.failure <- Some { fail = (fun () -> raise e) };
+    None
 
 let check_multiplicity ~pform ~declaration ~use =
   let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
@@ -528,8 +535,8 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
            | Var Targets -> targets ~multiplicity:Multiple
            | Var Target -> targets ~multiplicity:One
            | _ ->
-             expand_and_record acc ~map_exe ~dep_kind ~expansion_kind:Dynamic
-               ~dir ~pform ~cc t expansion ))
+             expand_and_record_dynamic acc ~map_exe ~dep_kind ~dir ~pform ~cc t
+               expansion ))
   in
   Option.iter res ~f:(fun v ->
       acc.sdeps <-
@@ -544,8 +551,8 @@ let expand_no_ddeps acc ~dir ~dep_kind ~map_exe ~expand_var ~cc t pform
          | Ok (Static s : expanded) -> Some s
          | Error msg -> raise (User_error.E msg)
          | Ok (Dynamic (expansion : Pform.Expansion.t)) ->
-           expand_and_record acc ~map_exe ~dep_kind ~cc ~expansion_kind:Static
-             ~dir ~pform t expansion)
+           expand_and_record_static acc ~map_exe ~dep_kind ~cc ~dir ~pform t
+             expansion)
   in
   Option.iter res ~f:(fun v ->
       acc.sdeps <-
@@ -568,11 +575,20 @@ let gen_with_record_deps ~expand t resolved_forms ~dep_kind ~map_exe
   in
   { t with expand_var; bindings }
 
-let with_record_deps t resolved_forms ~targets_written_by_user =
-  let expand = expand_and_record_deps ~targets_written_by_user in
-  gen_with_record_deps ~expand t resolved_forms
-
-let with_record_no_ddeps = gen_with_record_deps ~expand:expand_no_ddeps
+let expand_deps_like_field t ~dep_kind ~map_exe ~foreign_flags ~f =
+  let open Build.O in
+  let forms = Resolved_forms.create () in
+  let t =
+    gen_with_record_deps ~expand:expand_no_ddeps t forms ~dep_kind ~map_exe
+      ~foreign_flags
+  in
+  let build = f t in
+  let+ x = build
+  and+ dynamic_expansions = Resolved_forms.to_build forms in
+  if Pform.Expansion.Map.is_empty dynamic_expansions then
+    x
+  else
+    Code_error.raise "ddeps are not allowed in this position" []
 
 let expand_special_vars ~deps_written_by_user ~var pform =
   let key = String_with_vars.Var.full_name var in
@@ -625,6 +641,27 @@ let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =
       ~expand_var:t.expand_var
   in
   { t with expand_var }
+
+let expand_action t ~deps_written_by_user ~targets_written_by_user ~dep_kind
+    ~map_exe ~foreign_flags ~partial ~final =
+  let open Build.O in
+  let forms = Resolved_forms.create () in
+  let expand = expand_and_record_deps ~targets_written_by_user in
+  let x =
+    let t =
+      gen_with_record_deps ~expand t forms ~dep_kind ~map_exe ~foreign_flags
+    in
+    partial t
+  in
+  let y =
+    let+ dynamic_expansions = Resolved_forms.to_build forms
+    and+ deps_written_by_user = deps_written_by_user in
+    let t =
+      add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user
+    in
+    final t x
+  in
+  (x, y)
 
 let expand_and_eval_set t set ~standard =
   let open Build.O in

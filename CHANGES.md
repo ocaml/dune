@@ -11,7 +11,7 @@ Unreleased
 - Allow contexts to be defined with local switches in workspace files (#3265,
 
 - Delay expansion errors until the rule is used to build something (#3261, fix
-  #3252, @rgrinberg)
+  #3252, @rgrinberg, @diml)
 
 2.4.0 (06/03/2020)
 ------------------

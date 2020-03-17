@@ -118,10 +118,16 @@ module Supported_versions = struct
     Int.Map.to_list compat
     |> List.map ~f:(fun (major, minors) ->
            let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
-           if major > 0 then
-             ((major, 0), (major, max_minor))
-           else
-             ((major, 1), (major, max_minor)))
+           let lower_bound =
+             (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
+             if major = 0 then
+               (0, 1)
+             else
+               (major, 0)
+           in
+           let upper_bound = (major, max_minor) in
+           assert (lower_bound <= upper_bound);
+           (lower_bound, upper_bound))
 end
 
 type t =

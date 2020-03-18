@@ -1,7 +1,7 @@
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
 (* (c) INRIA 2020                              *)
-(* Written by: Emilio Jesús Gallego Arias      *)
+(* Written by: Emilio Jesús Gallego Arias *)
 
 open! Stdune
 module SC = Super_context

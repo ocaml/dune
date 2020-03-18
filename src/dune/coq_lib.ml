@@ -1,6 +1,6 @@
 (* This file is licensed under The MIT License *)
 (* (c) MINES ParisTech 2018-2019               *)
-(* Written by: Emilio Jesús Gallego Arias      *)
+(* Written by: Emilio Jesús Gallego Arias *)
 
 open! Stdune
 
@@ -117,17 +117,7 @@ module DB = struct
 
   let find_many t ~loc = Result.List.map ~f:(fun name -> resolve t (loc, name))
 
-  (* Where should we move this? *)
-  module Result_monad : Monad_intf.S with type 'a t = 'a Or_exn.t =
-  struct
-    type 'a t = 'a Or_exn.t
-
-    let return x = Ok x
-
-    let ( >>= ) = Result.O.( >>= )
-  end
-
-  module Coq_lib_closure = Top_closure.Make (String.Set) (Result_monad)
+  module Coq_lib_closure = Top_closure.Make (String.Set) (Or_exn)
 
   let requires db t : lib list Or_exn.t =
     let theories =
@@ -139,7 +129,9 @@ module DB = struct
     in
     let open Result.O in
     let allow_private_deps = Option.is_none t.package in
-    let* theories = Result.List.map ~f:(resolve ~allow_private_deps db) theories in
+    let* theories =
+      Result.List.map ~f:(resolve ~allow_private_deps db) theories
+    in
     let key t = Coq_lib_name.to_string (snd t.name) in
     let deps t =
       Result.List.map ~f:(resolve ~allow_private_deps db) t.theories

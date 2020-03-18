@@ -4,6 +4,8 @@ type ('a, 'error) t = ('a, 'error) result =
 
 let ok x = Ok x
 
+let return = ok
+
 let is_ok = function
   | Ok _ -> true
   | Error _ -> false
@@ -25,6 +27,8 @@ let bind t ~f =
   match t with
   | Ok x -> f x
   | Error _ as t -> t
+
+let ( >>= ) x f = bind x ~f
 
 let map x ~f =
   match x with

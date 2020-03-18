@@ -1979,11 +1979,13 @@ module Coq = struct
   type t =
     { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
+    ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }
@@ -2034,6 +2036,7 @@ module Coq = struct
       (let+ name = field "name" Coq_lib_name.decode
        and+ loc = loc
        and+ package = field_o "package" Pkg.decode
+       and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
@@ -2042,15 +2045,18 @@ module Coq = struct
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ theories = field "theories" (repeat Coq_lib_name.decode) ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
        { name
        ; package
+       ; project
        ; synopsis
        ; modules
        ; flags
        ; boot
        ; libraries
+       ; theories
        ; loc
        ; enabled_if
        })

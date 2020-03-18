@@ -355,11 +355,13 @@ module Coq : sig
   type t =
     { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
+    ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }

@@ -1,4 +1,4 @@
-module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S) = struct
+module Make (Keys : Top_closure_intf.Keys) (Monad : Monad_intf.S1) = struct
   open Monad
 
   let top_closure ~key ~deps elements =

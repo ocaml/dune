@@ -13,6 +13,9 @@ Unreleased
 - Delay expansion errors until the rule is used to build something (#3261, fix
   #3252, @rgrinberg, @diml)
 
+- [coq] Support for theory dependencies and compositional builds using
+  new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
+
 2.4.0 (06/03/2020)
 ------------------
 

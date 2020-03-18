@@ -1,15 +1,9 @@
 open! Stdune
 
-type var_syntax =
-  | Dollar_brace
-  | Dollar_paren
-  | Percent
-
 type var =
   { loc : Loc.t
   ; name : string
   ; payload : string option
-  ; syntax : var_syntax
   }
 
 type part =
@@ -22,24 +16,10 @@ type t =
   ; loc : Loc.t
   }
 
-let compare_var_syntax x y =
-  match (x, y) with
-  | Percent, Percent
-  | Dollar_brace, Dollar_brace
-  | Dollar_paren, Dollar_paren ->
-    Ordering.Eq
-  | Percent, (Dollar_brace | Dollar_paren) -> Ordering.Lt
-  | (Dollar_brace | Dollar_paren), Percent -> Ordering.Gt
-  | Dollar_brace, Dollar_paren -> Ordering.Lt
-  | Dollar_paren, Dollar_brace -> Ordering.Gt
-
 let compare_var_no_loc v1 v2 =
   match String.compare v1.name v2.name with
   | (Ordering.Lt | Gt) as a -> a
-  | Eq -> (
-    match Option.compare String.compare v1.payload v2.payload with
-    | (Ordering.Lt | Gt) as a -> a
-    | Eq -> compare_var_syntax v1.syntax v2.syntax )
+  | Eq -> Option.compare String.compare v1.payload v2.payload
 
 let compare_part p1 p2 =
   match (p1, p2) with
@@ -58,7 +38,7 @@ module Pp : sig
 end = struct
   let buf = Buffer.create 16
 
-  let add_var { loc = _; syntax = _; name; payload } =
+  let add_var { loc = _; name; payload } =
     let before, after = ("%{", "}") in
     Buffer.add_string buf before;
     Buffer.add_string buf name;
@@ -107,7 +87,7 @@ end
 
 let to_string = Pp.to_string
 
-let string_of_var { loc = _; syntax = _; name; payload } =
+let string_of_var { loc = _; name; payload } =
   let before, after = ("%{", "}") in
   match payload with
   | None -> before ^ name ^ after
@@ -145,20 +125,9 @@ let remove_locs t =
         | Text _ as s -> s)
   }
 
-let dyn_of_var_syntax =
+let dyn_of_var { loc = _; name; payload } =
   let open Dyn.Encoder in
-  function
-  | Dollar_brace -> constr "Dollar_brace" []
-  | Dollar_paren -> constr "Dollar_paren" []
-  | Percent -> constr "Percent" []
-
-let dyn_of_var { loc = _; name; payload; syntax } =
-  let open Dyn.Encoder in
-  record
-    [ ("name", string name)
-    ; ("payload", option string payload)
-    ; ("syntax", dyn_of_var_syntax syntax)
-    ]
+  record [ ("name", string name); ("payload", option string payload) ]
 
 let dyn_of_part =
   let open Dyn.Encoder in

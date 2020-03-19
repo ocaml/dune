@@ -1206,6 +1206,9 @@ end = struct
       | None -> Status.Found t
       | Some reason -> Hidden (Hidden.of_lib t ~reason)
     in
+    ( match Table.find db.table name with
+    | Some (Status.Initializing u) -> assert (Id.equal u unique_id)
+    | _ -> assert false );
     Table.set db.table name res;
     res
 

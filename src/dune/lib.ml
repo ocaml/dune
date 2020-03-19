@@ -1683,7 +1683,6 @@ module DB = struct
       | Library of Path.Build.t * Dune_file.Library.t
       | External_variant of Dune_file.External_variant.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
-      | Coq_theory of Path.Build.t * Dune_file.Coq.t
   end
 
   module Found_or_redirect = struct
@@ -1697,8 +1696,7 @@ module DB = struct
     List.iter stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
         match stanza with
         | Library _
-        | Deprecated_library_name _
-        | Coq_theory _ ->
+        | Deprecated_library_name _ ->
           ()
         | External_variant ev -> (
           let loc, virtual_lib = ev.virtual_lib in
@@ -1816,10 +1814,7 @@ module DB = struct
               else
                 [ (name, Found info)
                 ; (Lib_name.of_local conf.name, Redirect p.name)
-                ] )
-          | Coq_theory _ ->
-            (* As of today Coq theories do live in a separate namespace *)
-            [])
+                ] ))
       |> Lib_name.Map.of_list_reducei
            ~f:(fun name (v1 : Found_or_redirect.t) v2 ->
              let res =

@@ -4,7 +4,6 @@ open Import
 type t =
   { project : Dune_project.t
   ; db : Lib.DB.t
-  ; coq_db : Coq_lib.DB.t
   ; root : Path.Build.t
   }
 
@@ -15,8 +14,6 @@ let name t = Dune_project.name t.project
 let project t = t.project
 
 let libs t = t.db
-
-let coq_libs t = t.coq_db
 
 module DB = struct
   type scope = t
@@ -71,11 +68,7 @@ module DB = struct
               ; _
               } ->
             Some
-              (Dune_file.Public_lib.name old_public_name, Name new_public_name)
-          | Coq_theory _ ->
-            (* All libraries in Coq are private to a scope for now, we will lift
-               this restriction soon *)
-            None)
+              (Dune_file.Public_lib.name old_public_name, Name new_public_name))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
@@ -119,7 +112,6 @@ module DB = struct
             | Library (_, lib) -> lib.project
             | External_variant ev -> ev.project
             | Deprecated_library_name x -> x.project
-            | Coq_theory (_, thr) -> thr.project
           in
           (Dune_project.root project, stanza))
       |> Path.Source.Map.of_list_multi
@@ -131,16 +123,10 @@ module DB = struct
         let db =
           Lib.DB.create_from_stanzas stanzas ~parent:public_libs ~lib_config
         in
-        let coq_stanzas =
-          List.filter_map stanzas ~f:(function
-            | Coq_theory (p, l) -> Some (p, l)
-            | _ -> None)
-        in
-        let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
         let root =
           Path.Build.append_source build_context_dir (Dune_project.root project)
         in
-        Some { project; db; coq_db; root })
+        Some { project; db; root })
 
   let create ~projects ~context ~installed_libs ~lib_config stanzas =
     let t = Fdecl.create Dyn.Encoder.opaque in

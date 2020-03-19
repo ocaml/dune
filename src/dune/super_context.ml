@@ -175,6 +175,7 @@ end
 type t =
   { context : Context.t
   ; scopes : Scope.DB.t
+  ; coq_scopes : Coq_scope.DB.t
   ; public_libs : Lib.DB.t
   ; installed_libs : Lib.DB.t
   ; stanzas : Dune_file.Stanzas.t Dir_with_dune.t list
@@ -241,6 +242,8 @@ let public_libs t = t.public_libs
 let installed_libs t = t.installed_libs
 
 let find_scope_by_dir t dir = Scope.DB.find_by_dir t.scopes dir
+
+let find_coq_scope_by_dir t dir = Coq_scope.DB.find_by_dir t.coq_scopes dir
 
 let find_scope_by_project t = Scope.DB.find_by_project t.scopes
 
@@ -441,15 +444,24 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           | Dune_file.External_variant ev -> External_variant ev :: acc
           | Dune_file.Deprecated_library_name d ->
             Deprecated_library_name d :: acc
-          | Dune_file.Coq.T coq_lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Coq_theory (ctx_dir, coq_lib) :: acc
           | _ -> acc)
     in
     Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
       stanzas
+  in
+  let coq_scopes =
+    let stanzas =
+      Dune_load.Dune_file.fold_stanzas stanzas ~init:[]
+        ~f:(fun dune_file stanza acc ->
+          match stanza with
+          | Dune_file.Coq.T theory ->
+            let ctx_dir =
+              Path.Build.append_source context.build_dir dune_file.dir
+            in
+            (ctx_dir, theory) :: acc
+          | _ -> acc)
+    in
+    Coq_scope.DB.create ~context:context.name stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->
@@ -524,6 +536,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   ; root_expander
   ; host
   ; scopes
+  ; coq_scopes
   ; public_libs
   ; installed_libs
   ; stanzas

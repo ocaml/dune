@@ -240,8 +240,9 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
   let cc = create_ccoq sctx ~dir in
   let name = snd s.name in
   let scope = SC.find_scope_by_dir sctx dir in
+  let coq_scope = SC.find_coq_scope_by_dir sctx dir in
   let lib_db = Scope.libs scope in
-  let coq_lib_db = Scope.coq_libs scope in
+  let coq_lib_db = Coq_scope.libs coq_scope in
   let expander = SC.expander sctx ~dir in
 
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in

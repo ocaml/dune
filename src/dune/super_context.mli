@@ -87,6 +87,8 @@ val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
+val find_coq_scope_by_dir : t -> Path.Build.t -> Coq_scope.t
+
 val find_scope_by_project : t -> Dune_project.t -> Scope.t
 
 val find_project_by_key : t -> Dune_project.File_key.t -> Dune_project.t

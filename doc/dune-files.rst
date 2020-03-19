@@ -1526,17 +1526,18 @@ in the ``dune-project`` file. For example:
 
 .. code:: scheme
 
-    (using coq 0.1)
+    (using coq 0.2)
 
 This will enable support for the ``coq.theory`` stanza in the current project. If the
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
-The only version supported is ``0.1`` and it doesn't provide any kind
-of guarantees with respect to stability, however, as implementation of
-features progresses, we hope to bump ``0.1`` to ``1.0`` soon. The 1.0
-version will commit to a stable set of functionality; features marked
-``1.0`` below are expected to reach 1.0 unchanged.
+The supported Coq language versions are ``0.1``, and ``0.2`` which
+adds support for the ``theories`` field. We don't provide any
+guarantees with respect to stability yet, however, as implementation
+of features progresses, we hope reach ``1.0`` soon. The ``1.0``
+version will commit to a stable set of functionality; all the features
+below are expected to reach 1.0 unchanged or minimally modified.
 
 The basic form for defining Coq libraries is very similar to the OCaml form:
 
@@ -1589,7 +1590,7 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   domain). We will lift this restriction in the future. Note that
   composition with the Coq's standard library is supported, but in
   this case the ``Coq`` prefix will be made available in a qualified
-  way.
+  way. Since Coq's lang version ``0.2``.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

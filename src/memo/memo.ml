@@ -340,7 +340,7 @@ module Cached_value = struct
              [parallel_or] that would run all jobs in parallel and terminate as
              soon as any of them evaluates to [true]. This is somewhere in
              between the above alternatives but is more complex. *)
-          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
+          Fiber.parallel_map acc ~f:Fun.id >>| List.exists ~f:Fun.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
           | Init -> Fiber.return true

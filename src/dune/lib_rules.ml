@@ -36,7 +36,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
         (* https://github.com/ocaml/dune/issues/119 *)
         match ctx.lib_config.ccomp_type with
         | Msvc -> msvc_hack_cclibs
-        | Other _ -> Fn.id
+        | Other _ -> Fun.id
       in
       let obj_deps =
         Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)

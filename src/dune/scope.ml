@@ -71,11 +71,7 @@ module DB = struct
               ; _
               } ->
             Some
-              (Dune_file.Public_lib.name old_public_name, Name new_public_name)
-          | Coq_theory _ ->
-            (* All libraries in Coq are private to a scope for now, we will lift
-               this restriction soon *)
-            None)
+              (Dune_file.Public_lib.name old_public_name, Name new_public_name))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
@@ -105,7 +101,8 @@ module DB = struct
       ~all:(fun () -> Lib_name.Map.keys public_libs)
       ()
 
-  let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas =
+  let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas
+      coq_stanzas =
     let build_context_dir = Context_name.build_dir context in
     let projects_by_dir =
       List.map projects ~f:(fun (project : Dune_project.t) ->
@@ -119,22 +116,29 @@ module DB = struct
             | Library (_, lib) -> lib.project
             | External_variant ev -> ev.project
             | Deprecated_library_name x -> x.project
-            | Coq_theory (_, thr) -> thr.project
           in
           (Dune_project.root project, stanza))
       |> Path.Source.Map.of_list_multi
     in
+    let coq_stanzas_by_project_dir =
+      List.map coq_stanzas ~f:(fun (dir, t) ->
+          let project = t.Dune_file.Coq.project in
+          (Dune_project.root project, (dir, t)))
+      |> Path.Source.Map.of_list_multi
+    in
+    let stanzas_by_project_dir =
+      Path.Source.Map.merge stanzas_by_project_dir coq_stanzas_by_project_dir
+        ~f:(fun _dir stanzas coq_stanzas ->
+          let stanza = Option.value stanzas ~default:[] in
+          let coq_stanzas = Option.value coq_stanzas ~default:[] in
+          Some (stanza, coq_stanzas))
+    in
     Path.Source.Map.merge projects_by_dir stanzas_by_project_dir
       ~f:(fun _dir project stanzas ->
         let project = Option.value_exn project in
-        let stanzas = Option.value stanzas ~default:[] in
+        let stanzas, coq_stanzas = Option.value stanzas ~default:([], []) in
         let db =
           Lib.DB.create_from_stanzas stanzas ~parent:public_libs ~lib_config
-        in
-        let coq_stanzas =
-          List.filter_map stanzas ~f:(function
-            | Coq_theory (p, l) -> Some (p, l)
-            | _ -> None)
         in
         let coq_db = Coq_lib.DB.create_from_coqlib_stanzas coq_stanzas in
         let root =
@@ -142,7 +146,8 @@ module DB = struct
         in
         Some { project; db; coq_db; root })
 
-  let create ~projects ~context ~installed_libs ~lib_config stanzas =
+  let create ~projects ~context ~installed_libs ~lib_config stanzas coq_stanzas
+      =
     let t = Fdecl.create Dyn.Encoder.opaque in
     let public_libs =
       public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir ~installed_libs
@@ -150,7 +155,7 @@ module DB = struct
     in
     let by_dir =
       scopes_by_dir context ~projects ~lib_config
-        ~public_libs:(Some public_libs) stanzas
+        ~public_libs:(Some public_libs) stanzas coq_stanzas
     in
     let value = { by_dir; context } in
     Fdecl.set t value;

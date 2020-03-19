@@ -30,6 +30,7 @@ module DB : sig
     -> installed_libs:Lib.DB.t
     -> lib_config:Lib_config.t
     -> Lib.DB.Library_related_stanza.t list
+    -> (Path.Build.t * Dune_file.Coq.t) list
     -> t * Lib.DB.t
 
   val find_by_dir : t -> Path.Build.t -> scope

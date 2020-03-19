@@ -168,4 +168,30 @@ module DB = struct
         ; ("context", Context_name.to_dyn t.context)
         ];
     find_by_dir t (Path.Build.drop_build_context_exn dir)
+
+  let create_from_stanzas ~projects ~context ~installed_libs ~lib_config stanzas
+      =
+    let stanzas, coq_stanzas =
+      Dune_load.Dune_file.fold_stanzas stanzas ~init:([], [])
+        ~f:(fun dune_file stanza (acc, coq_acc) ->
+          match stanza with
+          | Dune_file.Library lib ->
+            let ctx_dir =
+              Path.Build.append_source context.Context.build_dir dune_file.dir
+            in
+            ( Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
+            , coq_acc )
+          | Dune_file.External_variant ev ->
+            (External_variant ev :: acc, coq_acc)
+          | Dune_file.Deprecated_library_name d ->
+            (Deprecated_library_name d :: acc, coq_acc)
+          | Dune_file.Coq.T coq_lib ->
+            let ctx_dir =
+              Path.Build.append_source context.build_dir dune_file.dir
+            in
+            (acc, (ctx_dir, coq_lib) :: coq_acc)
+          | _ -> (acc, coq_acc))
+    in
+    create ~projects ~context:context.name ~installed_libs ~lib_config stanzas
+      coq_stanzas
 end

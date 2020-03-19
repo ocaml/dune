@@ -429,28 +429,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       ~external_lib_deps_mode
   in
   let scopes, public_libs =
-    let stanzas =
-      Dune_load.Dune_file.fold_stanzas stanzas ~init:[]
-        ~f:(fun dune_file stanza acc ->
-          match stanza with
-          | Dune_file.Library lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Left (Lib.DB.Library_related_stanza.Library (ctx_dir, lib)) :: acc
-          | Dune_file.External_variant ev -> Left (External_variant ev) :: acc
-          | Dune_file.Deprecated_library_name d ->
-            Left (Deprecated_library_name d) :: acc
-          | Dune_file.Coq.T coq_lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Right (ctx_dir, coq_lib) :: acc
-          | _ -> acc)
-    in
-    let stanzas, coq_stanzas = List.partition_map stanzas ~f:Fun.id in
-    Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
-      stanzas coq_stanzas
+    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
+      stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->

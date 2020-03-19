@@ -24,13 +24,12 @@ module DB : sig
   type t
 
   (** Return the new scope database as well as the public libraries database *)
-  val create :
+  val create_from_stanzas :
        projects:Dune_project.t list
-    -> context:Context_name.t
+    -> context:Context.t
     -> installed_libs:Lib.DB.t
     -> lib_config:Lib_config.t
-    -> Lib.DB.Library_related_stanza.t list
-    -> (Path.Build.t * Dune_file.Coq.t) list
+    -> Dune_load.Dune_file.t list
     -> t * Lib.DB.t
 
   val find_by_dir : t -> Path.Build.t -> scope

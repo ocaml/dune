@@ -647,60 +647,62 @@ let detect_and_add_project_version dir acc =
   let detected_version = detect_project_version project dir in
   (dir, detected_version) :: acc
 
-let rec upgrade ?(last = false) () =
-  let todo = { to_rename_and_edit = []; to_edit = [] } in
-  let current_versions =
-    fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
-  in
-  let v1_updates = ref false in
-  let v2_updates = ref false in
-  let log_update dir ver =
-    Console.print
-      [ Pp.textf "Project in dir %s will be upgraded to dune %s." dir ver ]
-  in
-  List.iter current_versions ~f:(fun (dir, version) ->
-      let d = Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir) in
-      match version with
-      | Jbuild_project ->
-        log_update d "v1";
-        v1_updates := true;
-        V1.upgrade todo dir
-      | Dune1_project ->
-        log_update d "v2";
-        v2_updates := true;
-        V2.upgrade todo dir
-      | Dune2_project -> ());
-  List.iter todo.to_edit ~f:(fun (fn, s) ->
+let upgrade () =
+  let rec aux last =
+    let todo = { to_rename_and_edit = []; to_edit = [] } in
+    let current_versions =
+      fold_on_project_roots ~init:[] ~f:detect_and_add_project_version
+    in
+    let v1_updates = ref false in
+    let v2_updates = ref false in
+    let log_update dir ver =
       Console.print
-        [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];
-      Io.write_file (Path.source fn) s ~binary:true);
-  List.iter todo.to_rename_and_edit ~f:(fun x ->
-      let { original_file; new_file; extra_files_to_delete; contents } = x in
+        [ Pp.textf "Project in dir %s will be upgraded to dune %s." dir ver ]
+    in
+    List.iter current_versions ~f:(fun (dir, version) ->
+        let d = Path.Source.to_string_maybe_quoted (File_tree.Dir.path dir) in
+        match version with
+        | Jbuild_project ->
+          log_update d "v1";
+          v1_updates := true;
+          V1.upgrade todo dir
+        | Dune1_project ->
+          log_update d "v2";
+          v2_updates := true;
+          V2.upgrade todo dir
+        | Dune2_project -> ());
+    List.iter todo.to_edit ~f:(fun (fn, s) ->
+        Console.print
+          [ Pp.textf "Upgrading %s..." (Path.Source.to_string_maybe_quoted fn) ];
+        Io.write_file (Path.source fn) s ~binary:true);
+    List.iter todo.to_rename_and_edit ~f:(fun x ->
+        let { original_file; new_file; extra_files_to_delete; contents } = x in
+        Console.print
+          [ Pp.textf "Upgrading %s to %s..."
+              ( List.map
+                  (extra_files_to_delete @ [ original_file ])
+                  ~f:Path.Source.to_string_maybe_quoted
+              |> String.enumerate_and )
+              (Path.Source.to_string_maybe_quoted new_file)
+          ];
+        List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
+            Path.unlink (Path.source p));
+        Io.write_file (Path.source new_file) contents ~binary:true);
+    if !v1_updates && not last then (
+      (* Run the upgrader again to update new v1 projects to v2 No more than one
+        additionnal upgrade should be needed *)
+      (* We reset thje memoization as a simple way to refresh the File_tree *)
+      Memo.reset ();
+      aux true
+    ) else if !v2_updates then
       Console.print
-        [ Pp.textf "Upgrading %s to %s..."
-            ( List.map
-                (extra_files_to_delete @ [ original_file ])
-                ~f:Path.Source.to_string_maybe_quoted
-            |> String.enumerate_and )
-            (Path.Source.to_string_maybe_quoted new_file)
-        ];
-      List.iter (original_file :: extra_files_to_delete) ~f:(fun p ->
-          Path.unlink (Path.source p));
-      Io.write_file (Path.source new_file) contents ~binary:true);
-  if !v1_updates && not last then (
-    (* Run the upgrader again to update new v1 projects to v2 No more than one
-       additionnal upgrade should be needed *)
-    (* We reset thje memoization as a simple way to refresh the File_tree *)
-    Memo.reset ();
-    upgrade ~last:true ()
-  ) else if !v2_updates then
-    Console.print
-      [ Pp.textf
-          "\n\
-           Some projects were upgraded to dune v2. Some breaking changes may not\n\
-           have been treated automatically. Here is a list of things you \
-           should check\n\
-           to complete the migration:\n\
-           %s"
-          V2.todo_log
-      ]
+        [ Pp.textf
+            "\n\
+            Some projects were upgraded to dune v2. Some breaking changes may not\n\
+            have been treated automatically. Here is a list of things you \
+            should check\n\
+            to complete the migration:\n\
+            %s"
+            V2.todo_log
+        ]
+  in aux false

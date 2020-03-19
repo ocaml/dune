@@ -896,7 +896,9 @@ let function_info_of_spec (Spec.T spec) =
 
 let registered_functions () =
   String.Table.to_seq_values Spec.by_name
-  |> Seq.fold_left (fun xs x -> List.cons (function_info_of_spec x) xs) []
+  |> Seq.fold_left
+       ~f:(fun xs x -> List.cons (function_info_of_spec x) xs)
+       ~init:[]
   |> List.sort ~compare:(fun x y ->
          String.compare x.Function.Info.name y.Function.Info.name)
 

@@ -1047,9 +1047,22 @@ module rec Resolve : sig
     -> stack:Dep_stack.t
     -> (t list, exn) Result.t
 
-  val resolve_user_deps :
+  type resolved_deps =
+    { resolved : t list Or_exn.t
+    ; selects : Resolved_select.t list
+    ; re_exports : t list Or_exn.t
+    }
+
+  val resolve_complex_deps :
        db
     -> Lib_dep.t list
+    -> allow_private_deps:bool
+    -> stack:Dep_stack.t
+    -> resolved_deps
+
+  val resolve_user_deps :
+       db
+    -> resolved_deps
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
@@ -1151,6 +1164,7 @@ end = struct
       let pps = Lib_info.pps info in
       let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
+      |> resolve_complex_deps db ~allow_private_deps ~stack
       |> resolve_user_deps db ~allow_private_deps ~dune_version ~pps ~stack
     in
     let requires =
@@ -1286,7 +1300,13 @@ end = struct
     let+ () = many ts in
     List.rev !res
 
-  let resolve_complex_deps db deps ~allow_private_deps ~stack =
+  type resolved_deps =
+    { resolved : t list Or_exn.t
+    ; selects : Resolved_select.t list
+    ; re_exports : t list Or_exn.t
+    }
+
+  let resolve_complex_deps db deps ~allow_private_deps ~stack : resolved_deps =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let res, src_fn =
         match
@@ -1347,11 +1367,17 @@ end = struct
     in
     let res = Result.map ~f:List.rev res in
     let re_exports = Result.map ~f:List.rev re_exports in
-    (res, resolved_selects, re_exports)
+    { resolved = res; selects = resolved_selects; re_exports }
 
-  let resolve_user_deps db deps ~allow_private_deps ~pps ~dune_version ~stack =
+  type pp_deps =
+    { pps : t list Or_exn.t
+    ; runtime_deps : t list Or_exn.t
+    }
+
+  let pp_deps db pps ~stack ~dune_version ~allow_private_deps =
     let allow_only_ppx_deps =
       match dune_version with
+      | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
       | None ->
         if List.is_non_empty pps then
           (* See note {!Lib_info_invariants}. *)
@@ -1360,50 +1386,53 @@ end = struct
              Dune language version not set. This should be impossible."
             [];
         true
-      | Some version -> Dune_lang.Syntax.Version.Infix.(version >= (2, 2))
     in
-    let deps, resolved_selects, re_exports =
-      resolve_complex_deps db deps ~allow_private_deps ~stack
+    match pps with
+    | [] -> { runtime_deps = Ok []; pps = Ok [] }
+    | first :: others ->
+      (* Location of the list of ppx rewriters *)
+      let loc : Loc.t =
+        let (last, _) : Loc.t * _ =
+          Option.value (List.last others) ~default:first
+        in
+        Loc.span (fst first) last
+      in
+      let pps =
+        let* pps =
+          Result.List.map pps ~f:(fun (loc, name) ->
+              let* lib =
+                resolve_dep db name ~allow_private_deps:true ~loc ~stack
+              in
+              match (allow_only_ppx_deps, Lib_info.kind lib.info) with
+              | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
+              | _ -> Ok lib)
+        in
+        linking_closure_with_overlap_checks None pps ~stack ~variants:None
+          ~forbidden_libraries:Map.empty
+      in
+      let deps =
+        let* pps = pps in
+        let+ pps_deps =
+          Result.List.concat_map pps ~f:(fun pp ->
+              let* ppx_runtime_deps = pp.ppx_runtime_deps in
+              Result.List.map ppx_runtime_deps
+                ~f:(check_private_deps ~loc ~allow_private_deps))
+        in
+        pps_deps
+      in
+      { runtime_deps = deps; pps }
+
+  let resolve_user_deps db resolved ~allow_private_deps ~pps ~dune_version
+      ~stack =
+    let { runtime_deps; pps } =
+      pp_deps db pps ~stack ~dune_version ~allow_private_deps
     in
-    let deps, pps =
-      match pps with
-      | [] -> (deps, Ok [])
-      | first :: others ->
-        (* Location of the list of ppx rewriters *)
-        let loc : Loc.t =
-          let (last, _) : Loc.t * _ =
-            Option.value (List.last others) ~default:first
-          in
-          Loc.span (fst first) last
-        in
-        let pps =
-          let* pps =
-            Result.List.map pps ~f:(fun (loc, name) ->
-                let* lib =
-                  resolve_dep db name ~allow_private_deps:true ~loc ~stack
-                in
-                match (allow_only_ppx_deps, Lib_info.kind lib.info) with
-                | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
-                | _ -> Ok lib)
-          in
-          linking_closure_with_overlap_checks None pps ~stack ~variants:None
-            ~forbidden_libraries:Map.empty
-        in
-        let deps =
-          let* deps = deps
-          and+ pps = pps in
-          let+ pps_deps =
-            Result.List.concat_map pps ~f:(fun pp ->
-                let* ppx_runtime_deps = pp.ppx_runtime_deps in
-                Result.List.map ppx_runtime_deps
-                  ~f:(check_private_deps ~loc ~allow_private_deps))
-          in
-          deps @ pps_deps
-        in
-        (deps, pps)
+    let deps =
+      let* runtime_deps = runtime_deps in
+      let* deps = resolved.resolved in
+      re_exports_closure (deps @ runtime_deps)
     in
-    let deps = deps >>= re_exports_closure in
-    (deps, pps, resolved_selects, re_exports)
+    (deps, pps, resolved.selects, resolved.re_exports)
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1961,8 +1990,13 @@ module DB = struct
             Required )
     in
     let res, pps, resolved_selects, _re_exports =
-      Resolve.resolve_user_deps t deps ~pps ~dune_version:(Some dune_version)
-        ~stack:Dep_stack.empty ~allow_private_deps:true
+      let allow_private_deps = true in
+      let stack = Dep_stack.empty in
+      let resolved =
+        Resolve.resolve_complex_deps t deps ~allow_private_deps ~stack
+      in
+      Resolve.resolve_user_deps t resolved ~pps
+        ~dune_version:(Some dune_version) ~stack ~allow_private_deps
     in
     let requires_link =
       lazy

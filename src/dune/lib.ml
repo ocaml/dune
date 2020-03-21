@@ -1030,9 +1030,8 @@ module rec Resolve : sig
 
   val resolve_dep :
        db
-    -> Lib_name.t
+    -> Loc.t * Lib_name.t
     -> allow_private_deps:bool
-    -> loc:Loc.t
     -> stack:Dep_stack.t
     -> lib Or_exn.t
 
@@ -1100,9 +1099,7 @@ end = struct
     Table.add_exn db.table name (Status.Initializing unique_id);
     let status = Lib_info.status info in
     let allow_private_deps = Lib_info.Status.is_private status in
-    let resolve (loc, name) =
-      resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack
-    in
+    let resolve name = resolve_dep db name ~allow_private_deps ~stack in
     let implements =
       let open Option.O in
       let+ ((loc, _) as name) = Lib_info.implements info in
@@ -1237,8 +1234,7 @@ end = struct
     | Some x -> x
     | None -> resolve_name db name ~stack
 
-  let resolve_dep db (name : Lib_name.t) ~allow_private_deps ~loc ~stack :
-      t Or_exn.t =
+  let resolve_dep db (loc, name) ~allow_private_deps ~stack : t Or_exn.t =
     match find_internal db name ~stack with
     | Initializing id -> Dep_stack.dependency_cycle stack id
     | Found lib -> check_private_deps lib ~loc ~allow_private_deps
@@ -1277,12 +1273,11 @@ end = struct
       | _ -> instantiate db name info ~stack ~hidden:(Some hidden) )
 
   let available_internal db (name : Lib_name.t) ~stack =
-    resolve_dep db name ~allow_private_deps:true ~loc:Loc.none ~stack
+    resolve_dep db (Loc.none, name) ~allow_private_deps:true ~stack
     |> Result.is_ok
 
   let resolve_simple_deps db names ~allow_private_deps ~stack =
-    Result.List.map names ~f:(fun (loc, name) ->
-        resolve_dep db name ~allow_private_deps ~loc ~stack)
+    Result.List.map names ~f:(resolve_dep db ~allow_private_deps ~stack)
 
   let re_exports_closure ts =
     let visited = ref Set.empty in
@@ -1337,7 +1332,7 @@ end = struct
         ~f:(fun (acc_res, acc_selects, acc_re_exports) dep ->
           match (dep : Lib_dep.t) with
           | Re_export (loc, name) ->
-            let lib = resolve_dep db name ~allow_private_deps ~loc ~stack in
+            let lib = resolve_dep db (loc, name) ~allow_private_deps ~stack in
             let acc_re_exports =
               let+ lib = lib
               and+ acc_re_exports = acc_re_exports in
@@ -1351,7 +1346,7 @@ end = struct
             (acc_res, acc_selects, acc_re_exports)
           | Direct (loc, name) ->
             let acc_res =
-              let+ lib = resolve_dep db name ~allow_private_deps ~loc ~stack
+              let+ lib = resolve_dep db (loc, name) ~allow_private_deps ~stack
               and+ acc_res = acc_res in
               lib :: acc_res
             in
@@ -1401,7 +1396,7 @@ end = struct
         let* pps =
           Result.List.map pps ~f:(fun (loc, name) ->
               let* lib =
-                resolve_dep db name ~allow_private_deps:true ~loc ~stack
+                resolve_dep db (loc, name) ~allow_private_deps:true ~stack
               in
               match (allow_only_ppx_deps, Lib_info.kind lib.info) with
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info

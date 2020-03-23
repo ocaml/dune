@@ -159,8 +159,8 @@ let make_path cache path =
   | Some p -> Result.ok (Path.append_local p path)
   | None ->
     Result.Error
-      (Format.asprintf "relative path \"%a\" while no build root was set"
-         Path.Local.pp path)
+      (sprintf "relative path %s while no build root was set"
+         (Path.Local.to_string_maybe_quoted path))
 
 let search cache hash file = Collision.search (path_data cache hash) file
 

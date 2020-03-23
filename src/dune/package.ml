@@ -50,8 +50,6 @@ module Name = struct
 
   let version_fn (t : t) = to_string t ^ ".version"
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
   module Infix = Comparator.Operators (T)
 end
 

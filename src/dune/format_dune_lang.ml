@@ -35,7 +35,9 @@ let pp_simple fmt t =
 
 let print_wrapped_list fmt =
   Format.fprintf fmt "(@[<hov 1>%a@])"
-    (Fmt.list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ") pp_simple)
+    (Format.pp_print_list
+       ~pp_sep:(fun fmt () -> Format.fprintf fmt "@ ")
+       pp_simple)
 
 let pp_comment_line fmt l = Format.fprintf fmt ";%s" l
 
@@ -43,7 +45,9 @@ let pp_comment loc fmt (comment : Dune_lang.Cst.Comment.t) =
   match comment with
   | Lines ls ->
     Format.fprintf fmt "@[<v 0>%a@]"
-      (Fmt.list ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;") pp_comment_line)
+      (Format.pp_print_list
+         ~pp_sep:(fun fmt () -> Format.fprintf fmt "@;")
+         pp_comment_line)
       ls
   | Legacy ->
     User_error.raise ~loc
@@ -85,7 +89,8 @@ and pp_sexp_list fmt = Format.fprintf fmt "(%a)" (pp_list_with_comments pp_sexp)
 
 let pp_top_sexp fmt sexp = Format.fprintf fmt "%a\n" pp_sexp sexp
 
-let pp_top_sexps = Fmt.list ~pp_sep:Fmt.nl pp_top_sexp
+let pp_top_sexps =
+  Format.pp_print_list ~pp_sep:Format.pp_print_newline pp_top_sexp
 
 let write_file ~path sexps =
   let f oc =

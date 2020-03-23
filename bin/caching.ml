@@ -79,7 +79,9 @@ type mode =
 
 let modes = [ ("start", Start); ("stop", Stop); ("trim", Trim) ]
 
-let path_conv = ((fun s -> `Ok (Path.of_string s)), Path.pp)
+let path_conv =
+  ( (fun s -> `Ok (Path.of_string s))
+  , fun fmt p -> Format.pp_print_string fmt (Path.to_string_maybe_quoted p) )
 
 let term =
   Term.ret

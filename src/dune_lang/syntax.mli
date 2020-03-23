@@ -11,8 +11,6 @@ module Version : sig
 
   include Conv.S with type t := t
 
-  val pp : t Fmt.t
-
   val to_dyn : t Dyn.Encoder.t
 
   val hash : t -> int

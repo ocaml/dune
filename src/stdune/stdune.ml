@@ -33,7 +33,6 @@ module String = String
 module Bool = Bool
 module Sexp = Sexp
 module Path = Path
-module Fmt = Fmt
 module Interned = Interned
 module Interned_intf = Interned_intf
 module Univ_map = Univ_map

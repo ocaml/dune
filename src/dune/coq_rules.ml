@@ -88,8 +88,9 @@ let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
     if depname <> modname then invalid "basename";
     let deps = String.extract_blank_separated_words deps in
     if coq_debug then
-      Format.eprintf "deps for %a: %a@\n%!" Path.Build.pp source
-        Fmt.(list text)
+      Format.eprintf "deps for %s: %a@\n%!"
+        (Path.Build.to_string source)
+        (Format.pp_print_list Format.pp_print_string)
         deps;
     (* Add prelude deps for when stdlib is in scope and we are not actually
        compiling the prelude *)

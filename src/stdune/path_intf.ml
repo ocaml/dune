@@ -9,8 +9,6 @@ module type S = sig
 
   val parse_string_exn : loc:Loc0.t -> string -> t
 
-  val pp : Format.formatter -> t -> unit
-
   (** a directory is smaller than its descendants *)
   include Comparator.S with type t := t
 
@@ -76,8 +74,6 @@ module type Local_gen = sig
   val of_string : string -> 'w t
 
   val parse_string_exn : loc:Loc0.t -> string -> 'w t
-
-  val pp : Format.formatter -> 'w t -> unit
 
   (** a directory is smaller than its descendants *)
   val compare : 'w t -> 'w t -> Ordering.t

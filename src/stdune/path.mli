@@ -318,8 +318,6 @@ val mkdir_p : ?perms:int -> t -> unit
 
 val touch : t -> unit
 
-val pp_debug : Format.formatter -> t -> unit
-
 val build_dir_exists : unit -> bool
 
 val ensure_build_dir_exists : unit -> unit

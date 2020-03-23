@@ -54,20 +54,12 @@ module Local = struct
             loop false 0
     end) :
       Stringlike_intf.S with type t := t )
-
-  let pp_quoted fmt t = Format.fprintf fmt "%S" t
-
-  let pp fmt t = Format.fprintf fmt "%s" t
 end
 
 let split t =
   match String.split t ~on:'.' with
   | [] -> assert false
   | pkg :: rest -> (Package.Name.of_string pkg, rest)
-
-let pp = Format.pp_print_string
-
-let pp_quoted fmt t = Format.fprintf fmt "%S" t
 
 let to_local = Local.of_string_opt
 

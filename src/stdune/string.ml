@@ -300,3 +300,8 @@ let quote_for_shell s =
     Stdlib.Filename.quote s
   else
     s
+
+let of_list chars =
+  let s = Bytes.make (List.length chars) '0' in
+  List.iteri chars ~f:(fun i c -> Bytes.set s i c);
+  Bytes.to_string s

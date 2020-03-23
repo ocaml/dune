@@ -20,6 +20,8 @@ val concat_map : 'a t -> f:('a -> 'b t) -> 'b t
 
 val partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 
+val rev_map_append : 'a t -> 'b t -> f:('a -> 'b) -> 'b t
+
 val rev_partition_map : 'a t -> f:('a -> ('b, 'c) Either.t) -> 'b t * 'c t
 
 type ('a, 'b) skip_or_either =
@@ -78,3 +80,9 @@ val for_all2 :
   -> 'b list
   -> f:('a -> 'b -> bool)
   -> (bool, [ `Length_mismatch ]) result
+
+val reduce : 'a list -> f:('a -> 'a -> 'a) -> 'a option
+
+val min : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option
+
+val max : 'a list -> f:('a -> 'a -> Ordering.t) -> 'a option

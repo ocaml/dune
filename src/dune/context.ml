@@ -6,7 +6,7 @@ module Kind = struct
   module Opam = struct
     type t =
       { root : string option
-      ; switch : Context_name.t
+      ; switch : string
       }
   end
 
@@ -18,10 +18,7 @@ module Kind = struct
     | Default -> Dyn.Encoder.string "default"
     | Opam o ->
       Dyn.Encoder.(
-        record
-          [ ("root", option string o.root)
-          ; ("switch", Context_name.to_dyn o.switch)
-          ])
+        record [ ("root", option string o.root); ("switch", string o.switch) ])
 end
 
 module Env_nodes = struct
@@ -72,7 +69,7 @@ module T = struct
     ; profile : Profile.t
     ; merlin : bool
     ; fdo_target_exe : Path.t option
-    ; disable_dynamically_linked_foreign_archives : bool
+    ; dynamically_linked_foreign_archives : bool
     ; for_host : t option
     ; implicit : bool
     ; build_dir : Path.Build.t
@@ -253,7 +250,7 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
-    ~disable_dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives =
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -502,6 +499,12 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
             | Some x -> Path.of_filename_relative_to_initial_cwd x
             | None -> Path.parent_exn ocaml_bin))
     in
+    let supports_shared_libraries =
+      Ocaml_config.supports_shared_libraries ocfg
+    in
+    let dynamically_linked_foreign_archives =
+      supports_shared_libraries && dynamically_linked_foreign_archives
+    in
     let t =
       { name
       ; implicit
@@ -509,7 +512,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; profile
       ; merlin
       ; fdo_target_exe
-      ; disable_dynamically_linked_foreign_archives
+      ; dynamically_linked_foreign_archives
       ; env_nodes
       ; for_host = host
       ; build_dir
@@ -535,8 +538,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocaml_config = ocfg
       ; version
       ; supports_shared_libraries =
-          Dynlink_supported.By_the_os.of_bool
-            (Ocaml_config.supports_shared_libraries ocfg)
+          Dynlink_supported.By_the_os.of_bool supports_shared_libraries
       ; which
       ; lib_config
       }
@@ -591,10 +593,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
-    ~disable_dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
-    ~disable_dynamically_linked_foreign_archives
+    ~dynamically_linked_foreign_archives
 
 let opam_version =
   let f opam =
@@ -625,7 +627,7 @@ let opam_version =
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
-    ~disable_dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives =
   let opam =
     match Memo.Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -638,7 +640,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
       ; ( match root with
         | None -> []
         | Some root -> [ "--root"; root ] )
-      ; [ "--switch"; Context_name.to_string switch; "--sexp" ]
+      ; [ "--switch"; switch; "--sexp" ]
       ; ( if version < (2, 0, 0) then
           []
         else
@@ -675,7 +677,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
   create
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
-    ~host_toolchain ~fdo_target_exe ~disable_dynamically_linked_foreign_archives
+    ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -694,7 +696,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; paths
       ; loc = _
       ; fdo_target_exe
-      ; disable_dynamically_linked_foreign_archives
+      ; dynamically_linked_foreign_archives
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -709,8 +711,7 @@ let instantiate_context env (workspace : Workspace.t)
     in
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
-      ~host_toolchain ~fdo_target_exe
-      ~disable_dynamically_linked_foreign_archives
+      ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
   | Opam
       { base =
           { targets
@@ -722,7 +723,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; paths
           ; loc = _
           ; fdo_target_exe
-          ; disable_dynamically_linked_foreign_archives
+          ; dynamically_linked_foreign_archives
           }
       ; switch
       ; root
@@ -731,7 +732,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
-      ~disable_dynamically_linked_foreign_archives
+      ~dynamically_linked_foreign_archives
 
 module Create = struct
   module Output = struct

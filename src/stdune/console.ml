@@ -1,78 +1,110 @@
-module Display = struct
-  type t =
-    | Progress
-    | Short
-    | Verbose
-    | Quiet
+module Backend = struct
+  module type S = sig
+    val print_user_message : User_message.t -> unit
 
-  let all =
-    [ ("progress", Progress)
-    ; ("verbose", Verbose)
-    ; ("short", Short)
-    ; ("quiet", Quiet)
-    ]
-end
+    val set_status_line : User_message.Style.t Pp.t option -> unit
 
-let reset_terminal () =
-  print_string "\x1bc";
-  flush stdout
+    val reset : unit -> unit
+  end
 
-module T = struct
-  type t =
-    { display : Display.t
-    ; mutable status_line : Ansi_color.Style.t list Pp.t
-    ; mutable status_line_len : int
-    }
+  type t = (module S)
 
-  let hide_status_line t =
-    if t.status_line_len > 0 then Printf.eprintf "\r%*s\r" t.status_line_len ""
+  module Dumb_no_flush : S = struct
+    let print_user_message msg =
+      Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
+      User_message.prerr { msg with loc = None }
 
-  let show_status_line t =
-    if t.status_line_len > 0 then Ansi_color.prerr t.status_line
+    let set_status_line _ = ()
 
-  let update_status_line t status_line =
-    if t.display = Progress then (
-      let status_line =
-        Pp.map_tags status_line ~f:User_message.Print_config.default
-      in
-      let status_line_len =
-        String.length (Format.asprintf "%a" Pp.render_ignore_tags status_line)
-      in
-      hide_status_line t;
-      t.status_line <- status_line;
-      t.status_line_len <- status_line_len;
-      show_status_line t;
+    let reset () = prerr_string "\x1bc"
+  end
+
+  module Dumb : S = struct
+    include Dumb_no_flush
+
+    let print_user_message msg =
+      print_user_message msg;
       flush stderr
-    )
 
-  let print t msg =
-    hide_status_line t;
-    prerr_string msg;
-    show_status_line t;
-    flush stderr
+    let reset () =
+      reset ();
+      flush stderr
+  end
 
-  let print_user_message t ?config msg =
-    hide_status_line t;
-    Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
-    User_message.prerr ?config { msg with loc = None };
-    show_status_line t;
-    flush stderr
+  module Progress : S = struct
+    let status_line = ref Pp.nop
 
-  let clear_status_line t =
-    hide_status_line t;
-    t.status_line <- Pp.nop;
-    t.status_line_len <- 0;
-    flush stderr
+    let status_line_len = ref 0
+
+    let hide_status_line () =
+      if !status_line_len > 0 then Printf.eprintf "\r%*s\r" !status_line_len ""
+
+    let show_status_line () =
+      if !status_line_len > 0 then Ansi_color.prerr !status_line
+
+    let set_status_line = function
+      | None ->
+        hide_status_line ();
+        status_line := Pp.nop;
+        status_line_len := 0;
+        flush stderr
+      | Some line ->
+        let line = Pp.map_tags line ~f:User_message.Print_config.default in
+        let line_len =
+          String.length (Format.asprintf "%a" Pp.render_ignore_tags line)
+        in
+        hide_status_line ();
+        status_line := line;
+        status_line_len := line_len;
+        show_status_line ();
+        flush stderr
+
+    let print_user_message msg =
+      hide_status_line ();
+      Dumb_no_flush.print_user_message msg;
+      show_status_line ();
+      flush stderr
+
+    let reset () = Dumb.reset ()
+  end
+
+  let dumb = (module Dumb : S)
+
+  let progress = (module Progress : S)
+
+  let main = ref dumb
+
+  let set t = main := t
+
+  let compose (module A : S) (module B : S) =
+    ( module struct
+      let print_user_message msg =
+        A.print_user_message msg;
+        B.print_user_message msg
+
+      let set_status_line x =
+        A.set_status_line x;
+        B.set_status_line x
+
+      let reset () =
+        A.reset ();
+        B.reset ()
+    end : S )
 end
 
-let t_var = ref None
+let print_user_message msg =
+  let (module M : Backend.S) = !Backend.main in
+  M.print_user_message msg
 
-let init display =
-  t_var := Some { T.display; status_line = Pp.nop; status_line_len = 0 }
+let print paragraphs = print_user_message (User_message.make paragraphs)
 
-let t () = Option.value_exn !t_var
+let set_status_line line =
+  let (module M : Backend.S) = !Backend.main in
+  M.set_status_line line
 
-let display () = (t ()).display
+let reset () =
+  let (module M : Backend.S) = !Backend.main in
+  M.reset ()
 
 module Status_line = struct
   type t = unit -> User_message.Style.t Pp.t option
@@ -81,7 +113,7 @@ module Status_line = struct
 
   let refresh () =
     match !status_line () with
-    | None -> T.clear_status_line (t ())
+    | None -> set_status_line None
     | Some pp ->
       (* Always put the status line inside a horizontal to force the [Format]
          module to prefer a single line. In particular, it seems that
@@ -90,7 +122,7 @@ module Status_line = struct
          the whole thing into a [hbox] works around this bug.
 
          See https://github.com/ocaml/dune/issues/2779 *)
-      T.update_status_line (t ()) (Pp.hbox pp)
+      set_status_line (Some (Pp.hbox pp))
 
   let set x =
     status_line := x;
@@ -101,15 +133,5 @@ module Status_line = struct
     set x;
     Exn.protect ~finally:(fun () -> set old) ~f
 end
-
-let print msg =
-  match !t_var with
-  | None -> Printf.eprintf "%s%!" msg
-  | Some t -> T.print t msg
-
-let print_user_message ?config msg =
-  match !t_var with
-  | None -> User_message.prerr ?config msg
-  | Some t -> T.print_user_message t ?config msg
 
 let () = User_warning.set_reporter print_user_message

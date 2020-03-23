@@ -17,4 +17,4 @@ val in_dir :
 val of_string :
   Common.t -> recursive:bool -> string -> contexts:Dune.Context.t list -> t
 
-val to_log_string : t -> string
+val pp : t -> _ Pp.t

@@ -68,7 +68,7 @@ let gen_rules sctx t ~dir ~scope =
   Super_context.add_rule sctx ~loc:t.loc ~dir
     (Command.run ~dir:(Path.build dir)
        (Super_context.resolve_program sctx ~dir ~loc:(Some loc) name
-          ~hint:"opam pin add --dev cinaps")
+          ~hint:"opam install cinaps")
        [ A "-staged"
        ; Target cinaps_ml
        ; Deps (List.map cinapsed_files ~f:Path.build)

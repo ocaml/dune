@@ -1,4 +1,23 @@
-2.4.0 (unreleased)
+Unreleased
+------------------
+
+- Add a `--release` option meaning the same as `-p` but without the
+  package filtering. This is useful for custom `dune` invocation in opam
+  files where we don't want `-p` (#3260, @diml)
+
+- Fix a bug introduced in 2.4.0 causing `.bc` programs to be built
+  with `-custom` by default (#3269, fixes #3262, @diml)
+
+- Allow contexts to be defined with local switches in workspace files (#3265,
+  fix #3264, @rgrinberg)
+
+- Delay expansion errors until the rule is used to build something (#3261, fix
+  #3252, @rgrinberg, @diml)
+
+- [coq] Support for theory dependencies and compositional builds using
+  new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
+
+2.4.0 (06/03/2020)
 ------------------
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
@@ -8,8 +27,19 @@
 
 - Fix separate compilation of JS when findlib is not installed. (#3177, @nojb)
 
-- Add a `dune describe` command to obtain the topology of a dune
-  workspace, for projects such as ROTOR. (#3128, @diml)
+- Add a `dune describe` command to obtain the topology of a dune workspace, for
+  projects such as ROTOR. (#3128, @diml)
+
+- Add `plugin` linking mode for executables and the `(embed_in_plugin_libraries
+  ...)` field. (#3141, @nojb)
+
+- Add an `%{ext_plugin}` variable (#3141, @nojb)
+
+- Dune will no longer build shared objects for stubs if
+  `supports_shared_libraries` is false (#3225, fixes #3222, @rgrinberg)
+
+- Fix a memory leak in the file-watching mode (`dune build -w`)
+  (#3220, @snowleopard and @aalekseyev)
 
 - Prevent installation of public executables disabled using the `enabled_if` field.
   Installation will now simply skip such executables instead of raising an

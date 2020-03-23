@@ -1,15 +1,9 @@
 open! Stdune
 
-type var_syntax =
-  | Dollar_brace
-  | Dollar_paren
-  | Percent
-
 type var =
   { loc : Loc.t
   ; name : string
   ; payload : string option
-  ; syntax : var_syntax
   }
 
 type part =

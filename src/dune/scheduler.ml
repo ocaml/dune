@@ -122,9 +122,7 @@ end = struct
 
   let ignore_next_file_change_event path =
     assert (Path.is_in_source_tree path);
-    String.Table.replace ignored_files
-      ~key:(Path.to_absolute_filename path)
-      ~data:()
+    String.Table.set ignored_files (Path.to_absolute_filename path) ()
 
   let available () =
     not
@@ -621,8 +619,8 @@ let rec restart_waiting_for_available_job t =
     restart_waiting_for_available_job t
 
 let got_signal signal =
-  if Console.display () = Verbose then
-    Log.infof "Got signal %s, exiting." (Signal.name signal)
+  if !Log.verbose then
+    Log.info [ Pp.textf "Got signal %s, exiting." (Signal.name signal) ]
 
 type saw_signal =
   | Ok
@@ -642,8 +640,10 @@ let kill_and_wait_for_all_processes t () =
   !saw_signal
 
 let prepare ?(config = Config.default) () =
-  Log.infof "Workspace root: %s"
-    (Path.to_absolute_filename Path.root |> String.maybe_quoted);
+  Log.info
+    [ Pp.textf "Workspace root: %s"
+        (Path.to_absolute_filename Path.root |> String.maybe_quoted)
+    ];
   (* The signal watcher must be initialized first so that signals are blocked in
      all threads. *)
   Signal_watcher.init ();
@@ -753,7 +753,7 @@ end = struct
       Console.Status_line.set (fun () ->
           Some
             (Pp.seq
-               (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
                (Pp.verbatim ", killing current build...")))
     | _ -> () );
     match kill_and_wait_for_all_processes t () with
@@ -767,7 +767,7 @@ let go ?config f =
   match res with
   | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
   | Ok res -> res
-  | Error Got_signal -> raise Report_error.Already_reported
+  | Error Got_signal -> raise Dune_util.Report_error.Already_reported
   | Error Never -> raise Fiber.Never
   | Error Files_changed ->
     Code_error.raise
@@ -785,12 +785,12 @@ let maybe_clear_screen ~config =
     | Some cfg -> cfg.Config.terminal_persistence
     | None -> Preserve
   with
-  | Clear_on_rebuild -> Console.reset_terminal ()
+  | Clear_on_rebuild -> Console.reset ()
   | Preserve ->
     Console.print_user_message
       (User_message.make
          [ Pp.nop
-         ; Pp.tag ~tag:User_message.Style.Success
+         ; Pp.tag User_message.Style.Success
              (Pp.verbatim "********** NEW BUILD **********")
          ; Pp.nop
          ])
@@ -820,16 +820,16 @@ let poll ?config ~once ~finally () =
     finally ();
     match res with
     | Ok () ->
-      wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
+      wait (Pp.tag User_message.Style.Success (Pp.verbatim "Success"))
       |> after_wait
-    | Error Got_signal -> (Report_error.Already_reported, None)
+    | Error Got_signal -> (Dune_util.Report_error.Already_reported, None)
     | Error Never ->
-      wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+      wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
     | Error Files_changed -> loop ()
     | Error (Exn (exn, bt)) -> (exn, Some bt)
   and after_wait = function
-    | Exit -> (Report_error.Already_reported, None)
+    | Exit -> (Dune_util.Report_error.Already_reported, None)
     | Continue -> loop ()
   in
   let exn, bt = loop () in

@@ -7,18 +7,21 @@ type t =
   ; contexts : Dune.Context.t list
   }
 
-let to_log_string { name; recursive; dir; contexts = _ } =
-  sprintf "- %salias %s%s/%s"
-    ( if recursive then
-      "recursive "
-    else
-      "" )
+let pp { name; recursive; dir; contexts = _ } =
+  let open Pp.O in
+  let s =
     ( if recursive then
       "@"
     else
       "@@" )
-    (Path.Source.to_string_maybe_quoted dir)
-    (Dune.Alias.Name.to_string name)
+    ^ Path.Source.to_string
+        (Path.Source.relative dir (Dune.Alias.Name.to_string name))
+  in
+  let pp = Pp.verbatim "alias" ++ Pp.space ++ Pp.verbatim s in
+  if recursive then
+    Pp.verbatim "recursive" ++ Pp.space ++ pp
+  else
+    pp
 
 let in_dir ~name ~recursive ~contexts dir =
   let checked = Util.check_path contexts dir in

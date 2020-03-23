@@ -264,7 +264,7 @@ module Project_file_edit = struct
       (User_message.make paragraphs
          ~prefix:
            (Pp.seq
-              (Pp.tag (Pp.verbatim "Info") ~tag:User_message.Style.Warning)
+              (Pp.tag User_message.Style.Warning (Pp.verbatim "Info"))
               (Pp.char ':')))
 
   let lang_stanza () =

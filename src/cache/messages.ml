@@ -1,4 +1,3 @@
-open Dune_util
 open Stdune
 open Result.O
 open Cache_intf
@@ -211,7 +210,7 @@ let send_sexp output sexp =
 let send version output message =
   send_sexp output (sexp_of_message version message)
 
-let pp_version fmt { major; minor } = Format.fprintf fmt "%i.%i" major minor
+let string_of_version { major; minor } = sprintf "%i.%i" major minor
 
 let find_highest_common_version my_versions versions =
   let find a b =
@@ -232,17 +231,15 @@ let find_highest_common_version my_versions versions =
   in
   match find my_versions versions with
   | None -> Result.Error "no compatible versions"
-  | Some version ->
-    Log.infof "negotiated version: %a" pp_version version;
-    Result.ok version
+  | Some version -> Result.ok version
 
-let negotiate_version my_versions fd input output =
+let negotiate_version my_versions fd ic output =
   send { major = 1; minor = 0 } output (Lang my_versions);
   let f msg =
     Unix.close fd;
     msg
   in
   Result.map_error ~f
-    (let* sexp = Csexp.parse input in
+    (let* sexp = Csexp.input ic in
      let* (Lang versions) = initial_message_of_sexp sexp in
      find_highest_common_version my_versions versions)

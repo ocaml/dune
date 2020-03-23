@@ -4,6 +4,8 @@ type ('a, 'error) t = ('a, 'error) result =
   | Ok of 'a
   | Error of 'error
 
+val return : 'a -> ('a, _) t
+
 val ok : 'a -> ('a, _) t
 
 val is_ok : _ t -> bool
@@ -36,6 +38,8 @@ end
 val map : ('a, 'error) t -> f:('a -> 'b) -> ('b, 'error) t
 
 val bind : ('a, 'error) t -> f:('a -> ('b, 'error) t) -> ('b, 'error) t
+
+val ( >>= ) : ('a, 'error) t -> ('a -> ('b, 'error) t) -> ('b, 'error) t
 
 val map_error : ('a, 'error1) t -> f:('error1 -> 'error2) -> ('a, 'error2) t
 

@@ -258,8 +258,7 @@ let tq x = Dune_lang.Template { quoted = true; parts = x; loc }
 
 let l x = Dune_lang.List x
 
-let var ?(syntax = Dune_lang.Template.Percent) ?payload name =
-  { Dune_lang.Template.loc; name; payload; syntax }
+let var ?payload name = { Dune_lang.Template.loc; name; payload }
 
 type syntax =
   | Dune

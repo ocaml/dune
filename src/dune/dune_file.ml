@@ -1391,6 +1391,8 @@ module Executables = struct
 
     let js = make Byte Js
 
+    let plugin = make Best Plugin
+
     let installable_modes = [ exe; native; byte ]
 
     let simple_representations =
@@ -1401,6 +1403,7 @@ module Executables = struct
       ; ("native", native)
       ; ("js", js)
       ; ("byte_complete", Byte_complete)
+      ; ("plugin", plugin)
       ]
 
     let simple = Dune_lang.Decoder.enum simple_representations
@@ -1466,6 +1469,7 @@ module Executables = struct
         | Native, Object -> ".exe" ^ ext_obj
         | Byte, Shared_object -> ".bc" ^ ext_dll
         | Native, Shared_object -> ext_dll
+        | mode, Plugin -> Mode.plugin_ext mode
         | Byte, Js -> ".bc.js"
         | Native, Js ->
           User_error.raise ~loc
@@ -1525,6 +1529,7 @@ module Executables = struct
     ; package : Package.t option
     ; promote : Rule.Promote.t option
     ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
@@ -1567,6 +1572,10 @@ module Executables = struct
                      "See https://github.com/ocaml/dune/issues/745 for more \
                       details."
                  ]))
+    and+ embed_in_plugin_libraries =
+      field_o "embed_in_plugin_libraries"
+        ( Dune_lang.Syntax.since Stanza.syntax (2, 4)
+        >>> located (repeat (located Lib_name.decode)) )
     and+ forbidden_libraries =
       field "forbidden_libraries"
         ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
@@ -1612,6 +1621,20 @@ module Executables = struct
           in
           Names.install_conf names ~ext
       in
+      let embed_in_plugin_libraries =
+        let plugin =
+          Link_mode.Map.existsi modes ~f:(fun mode _ ->
+              match mode with
+              | Link_mode.Other { kind = Plugin; _ } -> true
+              | _ -> false)
+        in
+        match (embed_in_plugin_libraries, plugin) with
+        | None, _ -> []
+        | Some (_, l), true -> l
+        | Some (loc, _), false ->
+          User_error.raise ~loc
+            [ Pp.textf "This field can only be used when linking a plugin." ]
+      in
       { names = private_names
       ; link_flags
       ; link_deps
@@ -1622,6 +1645,7 @@ module Executables = struct
       ; package = Names.package names
       ; promote
       ; install_conf
+      ; embed_in_plugin_libraries
       ; forbidden_libraries
       ; bootstrap_info
       ; enabled_if
@@ -1955,11 +1979,13 @@ module Coq = struct
   type t =
     { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
+    ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }
@@ -2010,6 +2036,7 @@ module Coq = struct
       (let+ name = field "name" Coq_lib_name.decode
        and+ loc = loc
        and+ package = field_o "package" Pkg.decode
+       and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
@@ -2018,15 +2045,18 @@ module Coq = struct
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ theories = field "theories" (repeat Coq_lib_name.decode) ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
        { name
        ; package
+       ; project
        ; synopsis
        ; modules
        ; flags
        ; boot
        ; libraries
+       ; theories
        ; loc
        ; enabled_if
        })
@@ -2130,6 +2160,7 @@ module Tests = struct
            ; package = None
            ; promote = None
            ; install_conf = None
+           ; embed_in_plugin_libraries = []
            ; forbidden_libraries
            ; bootstrap_info = None
            ; enabled_if

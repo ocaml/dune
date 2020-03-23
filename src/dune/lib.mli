@@ -153,18 +153,17 @@ module DB : sig
   type t
 
   module Resolve_result : sig
-    type nonrec t =
-      | Not_found
-      | Found of Lib_info.external_
-      | Hidden of
-          { info : Lib_info.external_
-          ; reason : string
-          }
-      | Invalid of exn
-      | Redirect of t option * (Loc.t * Lib_name.t)
+    type t
+
+    type db
+
+    val not_found : t
 
     val to_dyn : t Dyn.Encoder.t
+
+    val redirect : db option -> Loc.t * Lib_name.t -> t
   end
+  with type db := t
 
   (** Create a new library database. [resolve] is used to resolve library names
       in this database.

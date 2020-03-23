@@ -48,13 +48,13 @@ let make ?loc ?prefix ?(hints = []) paragraphs =
   { loc; hints; paragraphs }
 
 let pp { loc; paragraphs; hints } =
+  let open Pp.O in
   let paragraphs =
     match hints with
     | [] -> paragraphs
     | _ ->
       List.append paragraphs
-        (List.map hints ~f:(fun hint ->
-             Pp.concat ~sep:Pp.space [ Pp.verbatim "Hint:"; hint ]))
+        (List.map hints ~f:(fun hint -> Pp.verbatim "Hint:" ++ Pp.space ++ hint))
   in
   let paragraphs = List.map paragraphs ~f:Pp.box in
   let paragraphs =
@@ -63,7 +63,7 @@ let pp { loc; paragraphs; hints } =
     | Some { Loc0.start; stop } ->
       let start_c = start.pos_cnum - start.pos_bol in
       let stop_c = stop.pos_cnum - start.pos_bol in
-      Pp.tag ~tag:Style.Loc
+      Pp.tag Style.Loc
         (Pp.textf "File %S, line %d, characters %d-%d:" start.pos_fname
            start.pos_lnum start_c stop_c)
       :: paragraphs

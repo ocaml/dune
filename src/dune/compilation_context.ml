@@ -186,3 +186,10 @@ let for_module_generated_at_link_time cctx ~requires ~module_ =
   }
 
 let for_wrapped_compat t = { t with includes = Includes.empty; stdlib = None }
+
+let for_plugin_executable t ~embed_in_plugin_libraries =
+  let libs = Scope.libs t.scope in
+  let requires_link =
+    lazy (Result.List.map ~f:(Lib.DB.resolve libs) embed_in_plugin_libraries)
+  in
+  { t with requires_link }

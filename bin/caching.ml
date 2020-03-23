@@ -34,11 +34,7 @@ let start ~config ~foreground ~port_path ~root ~display =
       if foreground then show_endpoint content;
       started content
     in
-    Console.init
-      ( if foreground then
-        Verbose
-      else
-        Quiet );
+    Log.verbose := foreground;
     Cache_daemon.daemon ~root ~config started
   in
   match Daemonize.daemonize ~workdir:root ~foreground port_path f with

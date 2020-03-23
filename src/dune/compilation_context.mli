@@ -78,3 +78,6 @@ val for_wrapped_compat : t -> t
 
 val for_module_generated_at_link_time :
   t -> requires:Lib.t list Or_exn.t -> module_:Module.t -> t
+
+val for_plugin_executable :
+  t -> embed_in_plugin_libraries:(Loc.t * Lib_name.t) list -> t

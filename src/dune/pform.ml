@@ -328,6 +328,13 @@ module Map = struct
       let model = Ocaml_config.model context.ocaml_config in
       let system = Ocaml_config.system context.ocaml_config in
       let version_string = Ocaml_config.version_string context.ocaml_config in
+      let ext_plugin =
+        Mode.plugin_ext
+          ( if Ocaml_config.natdynlink_supported context.ocaml_config then
+            Mode.Native
+          else
+            Mode.Byte )
+      in
       [ ("-verbose", values [])
       ; ("ocaml_bin", values [ Dir context.ocaml_bin ])
       ; ("ocaml_version", string version_string)
@@ -338,6 +345,7 @@ module Map = struct
       ; ("ext_lib", string context.lib_config.ext_lib)
       ; ("ext_dll", string context.lib_config.ext_dll)
       ; ("ext_exe", string ext_exe)
+      ; ("ext_plugin", since ~version:(2, 4) (Var.Values [ String ext_plugin ]))
       ; ("profile", string (Profile.to_string context.profile))
       ; ("workspace_root", values [ Value.Dir (Path.build context.build_dir) ])
       ; ("context_name", string (Context_name.to_string context.name))

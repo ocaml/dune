@@ -192,6 +192,8 @@ end = struct
           | Some d -> load_text_files sctx ft_dir d
         in
         walk_children ft_dir ~dir ~local ((dir, List.rev local, files) :: acc)
+      | Generated
+      | Source_only _
       | Standalone _
       | Group_root _ ->
         acc
@@ -209,45 +211,43 @@ end = struct
     match Dir_status.DB.get dir_status_db ~dir with
     | Is_component_of_a_group_but_not_the_root { group_root; stanzas = _ } ->
       See_above group_root
-    | Standalone x -> (
-      match x with
-      | Some (_, None)
-      | None ->
-        Here
-          { t = empty Standalone ~dir
-          ; rules = None
-          ; subdirs = Path.Build.Map.empty
-          }
-      | Some (ft_dir, Some d) ->
-        let include_subdirs = (Loc.none, Include_subdirs.No) in
-        let files, rules =
-          Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
-        in
-        let dirs = [ (dir, [], files) ] in
-        let ml =
-          Memo.lazy_ (fun () ->
-              let lookup_vlib = lookup_vlib sctx in
-              let loc = loc_of_dune_file ft_dir in
-              Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~dirs)
-        in
-        Here
-          { t =
-              { kind = Standalone
-              ; dir
-              ; text_files = files
-              ; ml
-              ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
-              ; foreign_sources =
-                  Memo.lazy_ (fun () ->
-                      Foreign_sources.make d ~lib_config:ctx.lib_config
-                        ~include_subdirs ~dirs)
-              ; coq =
-                  Memo.lazy_ (fun () ->
-                      Coq_sources.of_dir d ~include_subdirs ~dirs)
-              }
-          ; rules
-          ; subdirs = Path.Build.Map.empty
-          } )
+    | Generated
+    | Source_only _ ->
+      Here
+        { t = empty Standalone ~dir
+        ; rules = None
+        ; subdirs = Path.Build.Map.empty
+        }
+    | Standalone (ft_dir, d) ->
+      let include_subdirs = (Loc.none, Include_subdirs.No) in
+      let files, rules =
+        Rules.collect_opt (fun () -> load_text_files sctx ft_dir d)
+      in
+      let dirs = [ (dir, [], files) ] in
+      let ml =
+        Memo.lazy_ (fun () ->
+            let lookup_vlib = lookup_vlib sctx in
+            let loc = loc_of_dune_file ft_dir in
+            Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~dirs)
+      in
+      Here
+        { t =
+            { kind = Standalone
+            ; dir
+            ; text_files = files
+            ; ml
+            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; foreign_sources =
+                Memo.lazy_ (fun () ->
+                    Foreign_sources.make d ~lib_config:ctx.lib_config
+                      ~include_subdirs ~dirs)
+            ; coq =
+                Memo.lazy_ (fun () ->
+                    Coq_sources.of_dir d ~include_subdirs ~dirs)
+            }
+        ; rules
+        ; subdirs = Path.Build.Map.empty
+        }
     | Group_root (ft_dir, qualif_mode, d) ->
       let loc = loc_of_dune_file ft_dir in
       let include_subdirs =

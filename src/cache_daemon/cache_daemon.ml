@@ -1,7 +1,7 @@
 module Evt = Event
 module Utils = Utils
-module Log = Dune_util.Log
 open Stdune
+module Log = Dune_util.Log
 open Utils
 open Cache.Messages
 open Result.O
@@ -9,7 +9,7 @@ open Result.O
 type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
-  ; input : char Stream.t
+  ; input : in_channel
   ; output : out_channel
   ; common_metadata : Sexp.t list
   ; cache : Cache.Local.t
@@ -52,7 +52,7 @@ let check_port_file ?(close = true) p =
   | Result.Error e -> Result.Error e
 
 let send_sexp output sexp =
-  output_string output (Csexp.to_string sexp);
+  Csexp.to_channel output sexp;
   flush output
 
 let send version output message =
@@ -152,46 +152,43 @@ let client_thread (events, (client : client)) =
     in
     let input = client.input in
     let f () =
-      Log.infof "accept client: %s" (peer_name client.peer);
+      Log.info [ Pp.textf "accept client: %s" (peer_name client.peer) ];
       let rec handle client =
-        match Stream.peek input with
-        | None -> Log.infof "%s: ended" (peer_name client.peer)
-        | Some '\n' ->
-          (* Skip toplevel newlines, for easy netcat interaction *)
-          Stream.junk input;
-          (handle [@tailcall]) client
-        | _ -> (
-          match
-            let* cmd =
-              Result.map_error
-                ~f:(fun r -> "parse error: " ^ r)
-                (Csexp.parse input)
-            in
-            Log.infof "%s: received command: %s" (peer_name client.peer)
-              (Sexp.to_string cmd);
-            handle_cmd client cmd
-          with
+        match Csexp.input_opt input with
+        | Error msg ->
+          Log.info
+            [ Pp.textf "%s: parse error: %s" (peer_name client.peer) msg ]
+        | Ok None -> Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
+        | Ok (Some cmd) -> (
+          Log.info
+            [ Pp.textf "%s: received command: %s" (peer_name client.peer)
+                (Sexp.to_string cmd)
+            ];
+          match handle_cmd client cmd with
           | Result.Error e ->
-            Log.infof "%s: command error: %s" (peer_name client.peer) e;
+            Log.info
+              [ Pp.textf "%s: command error: %s" (peer_name client.peer) e ];
             handle client
           | Result.Ok client -> handle client )
       in
       handle client
     and finally () =
-      ( try
-          Unix.shutdown client.fd Unix.SHUTDOWN_ALL;
-          Unix.close client.fd
+      ( try Unix.shutdown client.fd Unix.SHUTDOWN_ALL
         with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
+      Unix.close client.fd;
       Evt.sync (Evt.send events (Client_left client.fd))
     in
     try Exn.protect ~f ~finally with
     | Unix.Unix_error (Unix.EBADF, _, _) ->
-      Log.infof "%s: ended" (peer_name client.peer)
-    | Sys_error msg -> Log.infof "%s: ended: %s" (peer_name client.peer) msg
+      Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
+    | Sys_error msg ->
+      Log.info [ Pp.textf "%s: ended: %s" (peer_name client.peer) msg ]
   with Code_error.E e as exn ->
-    Log.infof "%s: fatal error: %a" (peer_name client.peer)
-      Pp.render_ignore_tags
-      (Dyn.pp (Code_error.to_dyn e));
+    Log.info
+      [ (let open Pp.O in
+        Pp.textf "%s: fatal error: " (peer_name client.peer)
+        ++ Dyn.pp (Code_error.to_dyn e))
+      ];
     raise exn
 
 let run ?(port_f = ignore) ?(port = 0) daemon =
@@ -202,14 +199,14 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
         match
           let size = Cache.Local.size cache in
           if size > max_size then (
-            Log.infof "trimming %i bytes" (size - max_size);
+            Log.info [ Pp.textf "trimming %i bytes" (size - max_size) ];
             Some (Cache.Local.trim cache (size - max_size))
           ) else
             None
         with
         | Some { trimmed_files_size = freed; _ } ->
-          Log.infof "trimming freed %i bytes" freed
-        | None -> Log.infof "skip trimming"
+          Log.info [ Pp.textf "trimming freed %i bytes" freed ]
+        | None -> Log.info [ Pp.text "skip trimming" ]
       in
       trim ()
     in
@@ -260,13 +257,13 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
           clean (fun (_, tid) -> Thread.join tid);
           clean (fun (client, _) -> Unix.close client.fd);
           Unix.close fd
-        | _ -> Log.infof "stop"
+        | _ -> Log.info [ Pp.text "stop" ]
       in
       ( match Evt.sync (Evt.receive daemon.events) with
       | Stop -> stop ()
       | New_client (fd, peer) -> (
         let output = Unix.out_channel_of_descr fd
-        and input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+        and input = Unix.in_channel_of_descr fd in
         match
           let* version = negotiate_version my_versions fd input output in
           let client =
@@ -295,7 +292,7 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
           daemon.clients <- clients
         with
         | Result.Ok () -> ()
-        | Result.Error msg -> Log.infof "reject client: %s" msg )
+        | Result.Error msg -> Log.info [ Pp.textf "reject client: %s" msg ] )
       | Client_left fd ->
         daemon.clients <- Clients.remove daemon.clients fd;
         if daemon.config.exit_no_client && Clients.is_empty daemon.clients then
@@ -318,7 +315,7 @@ let daemon ~root ~config started =
   let daemon = make ~root ~config () in
   (* Event blocks signals when waiting. Use a separate thread to catch signals. *)
   let signal_handler s =
-    Log.infof "caught signal %i, exiting" s;
+    Log.info [ Pp.textf "caught signal %i, exiting" s ];
     ignore (Thread.create stop daemon)
   and signals = [ Sys.sigint; Sys.sigterm ] in
   let rec signals_handler () =

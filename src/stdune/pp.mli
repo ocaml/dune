@@ -33,8 +33,8 @@ val text : string -> _ t
 (** Same as [text] but take a format string as argument. *)
 val textf : ('a, unit, string, _ t) format4 -> 'a
 
-(** [tag t ~tag] Tag the material printed by [t] with [tag] *)
-val tag : 'a t -> tag:'a -> 'a t
+(** [tag x t] Tag the material printed by [t] with [x] *)
+val tag : 'a -> 'a t -> 'a t
 
 (** {1 Break hints} *)
 

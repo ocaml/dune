@@ -1,6 +1,6 @@
-open Stdune
+open Import
 
-let () = Hooks.End_of_build.always Stdune.Report_error.clear_reported
+let () = Hooks.End_of_build.always Dune_util.Report_error.clear_reported
 
 let report (e : Exn_with_backtrace.t) =
   let exn, dependency_path = Dep_path.unwrap_exn e.exn in
@@ -30,4 +30,4 @@ let report (e : Exn_with_backtrace.t) =
     else
       None
   in
-  Stdune.Report_error.report ~extra { e with exn }
+  Dune_util.Report_error.report ~extra { e with exn }

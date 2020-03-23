@@ -61,8 +61,11 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
   in
   let+ contexts = Context.DB.all () in
   List.iter contexts ~f:(fun (ctx : Context.t) ->
-      Log.infof "@[<1>Dune context:@,%a@]@." Pp.render_ignore_tags
-        (Dyn.pp (Context.to_dyn ctx)));
+      let open Pp.O in
+      Log.info
+        [ Pp.box ~indent:1
+            (Pp.text "Dune context:" ++ Pp.cut ++ Dyn.pp (Context.to_dyn ctx))
+        ]);
   { contexts; conf; env }
 
 let init_build_system ?only_packages ?external_lib_deps_mode
@@ -116,7 +119,7 @@ let auto_concurrency =
           in
           loop commands
       in
-      Log.infof "Auto-detected concurrency: %d" n;
+      Log.info [ Pp.textf "Auto-detected concurrency: %d" n ];
       v := Some n;
       n
 

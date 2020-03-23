@@ -15,3 +15,7 @@ val to_string : t -> string
 val neq : t -> bool
 
 val is_eq : t -> bool
+
+val min : ('a -> 'a -> t) -> 'a -> 'a -> 'a
+
+val max : ('a -> 'a -> t) -> 'a -> 'a -> 'a

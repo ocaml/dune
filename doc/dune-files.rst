@@ -668,6 +668,12 @@ Executables can also be linked as object or shared object files. See
   pulled in. This field is available since the 2.0 version of the dune
   language.
 
+- ``(embed_in_plugin_libraries <library-list>)`` specifies a list of libraries
+  to link statically when using ``plugin`` linking mode. By default, no
+  libraries are linked in. Note that you may need to also use the ``-linkall``
+  flag if some of the libraries listed here are not referenced from any of the
+  plugin modules.
+
 Linking modes
 ~~~~~~~~~~~~~
 
@@ -692,6 +698,8 @@ compilation is not available.
   in OCaml for a non-OCaml application.
 - ``js`` for producing JavaScript from bytecode executables, see
   :ref:`explicit-js-mode`.
+- ``plugin`` for producing a plugin (``.cmxs`` if native or ``.cma``
+  if bytecode).
 
 For instance the following ``executables`` stanza will produce byte
 code executables and native shared objects:
@@ -711,6 +719,7 @@ Additionally, you can use the following short-hands:
 - ``byte`` for ``(byte exe)``
 - ``native`` for ``(native exe)``
 - ``js`` for ``(byte js)``
+- ``plugin`` for ``(best plugin)``
 
 For instance the following ``modes`` fields are all equivalent:
 
@@ -741,6 +750,9 @@ byte_complete               .bc.exe
 (native/best shared_object) %{ext_dll}
 c                           .bc.c
 js                          .bc.js
+(best plugin)               %{ext_plugin}
+(byte plugin)               .cma
+(native plugin)             .cmxs
 =========================== =================
 
 Where ``%{ext_obj}`` and ``%{ext_dll}`` are the extensions for object
@@ -1536,7 +1548,8 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
-     (flags <coq_flags>))
+     (flags <coq_flags>)
+     (theories <coq_theories>))
 
 The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
 
@@ -1556,7 +1569,7 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
   included in the theory, similarly to its OCaml counterpart. Modules
   are specified in Coq notation, that is to say ``A/b.v`` is written
   ``A.b`` in this field,
-- if ``package``is present, Dune will generate install rules for the
+- if ``package`` is present, Dune will generate install rules for the
   ``.vo`` files on the theory. ``pkg_name`` must be a valid package
   name. Note that the 1.0 version of the language uses the Coq legacy
   install setup, where all packages share a common root namespace and
@@ -1568,6 +1581,15 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   theory to depend on a ML plugin,
+- your Coq theory can depend on other theories by specifying them in
+  the ``<coq_theories>`` field. Dune will then pass to Coq the
+  corresponding flags for everything to compile correctly [ ``-Q``
+  ]. As of today, we only support composition with libraries defined
+  in the same scope (that is to say, under the same ``dune-project``
+  domain). We will lift this restriction in the future. Note that
+  composition with the Coq's standard library is supported, but in
+  this case the ``Coq`` prefix will be made available in a qualified
+  way.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1586,11 +1608,11 @@ Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
 Limitations
 ~~~~~~~~~~~
 
-- composition and scoping of Coq libraries is still not possible. For now,
-  libraries are located using Coq's built-in library management,
-- ``.v`` files always depend on the native version of a plugin,
-- a ``foo.mlpack`` file must the present for locally defined plugins to work,
-  this is a limitation of coqdep.
+- ``.v`` files always depend on the native version of Coq / plugins,
+- a ``foo.mlpack`` file must the present in directories of locally
+  defined plugins for things to work, this is a limitation of
+  ``coqdep``, see the template at
+  <https://github.com/ejgallego/coq-plugin-template>
 
 coq.pp
 ------

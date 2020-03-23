@@ -156,6 +156,8 @@ Dune supports the following variables:
 -  ``null`` is ``/dev/null`` on Unix or ``nul`` on Windows
 -  ``ext_obj``, ``ext_asm``, ``ext_lib``, ``ext_dll`` and ``ext_exe``
    are the file extension used for various artifacts
+- ``ext_plugin`` is ``.cmxs`` if ``natdynlink`` is supported and
+  ``.cma`` otherwise.
 - ``ocaml-config:v`` for every variable ``v`` in the output of
   ``ocamlc -config``. Note that dune processes the output
   of ``ocamlc -config`` in order to make it a bit more stable across

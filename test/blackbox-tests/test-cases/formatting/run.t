@@ -131,8 +131,10 @@ And fixable files can be promoted:
 
   $ dune promote enabled/ocaml_file.ml enabled/reason_file.re enabled/dune
   Promoting _build/default/enabled/.formatted/dune to enabled/dune.
-  Promoting _build/default/enabled/.formatted/ocaml_file.ml to enabled/ocaml_file.ml.
-  Promoting _build/default/enabled/.formatted/reason_file.re to enabled/reason_file.re.
+  Promoting _build/default/enabled/.formatted/ocaml_file.ml to
+    enabled/ocaml_file.ml.
+  Promoting _build/default/enabled/.formatted/reason_file.re to
+    enabled/reason_file.re.
   $ cat enabled/ocaml_file.ml
   Sys.argv: ../install/default/bin/ocamlformat --impl enabled/ocaml_file.ml
   ocamlformat output

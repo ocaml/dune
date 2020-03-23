@@ -35,13 +35,6 @@ Dune crashes if there's a file named after the directory target
   [1]
 
 directory target and (mode promote) results in a crash
-  $ dune build --root mode-promote @all 2>&1 | grep -v line
+  $ dune build --root mode-promote @all 2>&1 | head -n2
   Entering directory 'mode-promote'
   Error: exception Sys_error("Is a directory")
-  Backtrace:
-  
-  I must not segfault.  Uncertainty is the mind-killer.  Exceptions are
-  the little-death that brings total obliteration.  I will fully express
-  my cases.  Execution will pass over me and through me.  And when it
-  has gone past, I will unwind the stack along its path.  Where the
-  cases are handled there will be nothing.  Only I will remain.

@@ -17,6 +17,9 @@ Unreleased
 - [coq] Support for theory dependencies and compositional builds using
   new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
 
+- Add an `expand-targets` to get expanded `_build` path to a target.
+  (#3288, @NathanReb)
+
 2.4.0 (06/03/2020)
 ------------------
 

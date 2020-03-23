@@ -194,6 +194,7 @@ let all =
   ; Upgrade.command
   ; Caching.command
   ; Describe.command
+  ; Expand_targets.command
   ]
 
 let common_commands_synopsis =

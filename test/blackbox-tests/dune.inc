@@ -637,6 +637,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias expand-targets)
+ (deps (package dune) (source_tree test-cases/expand-targets))
+ (action
+  (chdir
+   test-cases/expand-targets
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias explicit_js_mode)
  (deps (package dune) (source_tree test-cases/explicit_js_mode))
  (action
@@ -2471,6 +2479,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias expand-targets)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
@@ -2755,6 +2764,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias expand-targets)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)

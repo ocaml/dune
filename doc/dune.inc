@@ -54,6 +54,15 @@
  (files   dune-exec.1))
 
 (rule
+ (with-stdout-to dune-expand-targets.1
+  (run dune expand-targets --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-expand-targets.1))
+
+(rule
  (with-stdout-to dune-external-lib-deps.1
   (run dune external-lib-deps --help=groff)))
 

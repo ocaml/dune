@@ -210,32 +210,31 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     let sexps = File_tree.Dune_file.Plain.get_sexp_and_destroy p in
     Literal (Dune_file.parse sexps ~dir ~file ~project)
 
+module Vcs_map = Map.Make (Path)
+
 let load ~ancestor_vcs () =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
+
   let _, vcs, projects =
-    let f dir ((ancestor_vcs, vcs, projects) as acc) =
-      let ( = ) { Vcs.root = l; _ } { Vcs.root = r; _ } = Path.equal l r in
+    let f dir (ancestor_vcs, vcs, projects) =
       let vcs =
         match File_tree.Dir.vcs dir with
-        | Some repository ->
-          if
-            Option.map ancestor_vcs ~f:(( = ) repository)
-            |> Option.value ~default:false
-          then
-            vcs
-          else
-            repository :: vcs
+        | Some repository -> Vcs_map.set vcs repository.root repository
         | None -> vcs
       in
       let p = File_tree.Dir.project dir in
       if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
         (ancestor_vcs, vcs, p :: projects)
       else
-        acc
+        (ancestor_vcs, vcs, projects)
+    and vcs =
+      match ancestor_vcs with
+      | Some vcs -> Vcs_map.of_list_exn [ (Path.of_string ".", vcs) ]
+      | None -> Vcs_map.empty
     in
     File_tree.fold_with_progress
       ~traverse:{ data_only = false; vendored = true; normal = true }
-      ~init:(ancestor_vcs, [], []) ~f
+      ~init:(ancestor_vcs, vcs, []) ~f
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
@@ -272,4 +271,4 @@ let load ~ancestor_vcs () =
         ~f:(fun _name dir dune_files -> walk dir dune_files)
   in
   let dune_files = walk (File_tree.root ()) [] in
-  { dune_files; packages; projects; vcs }
+  { dune_files; packages; projects; vcs = Vcs_map.values vcs }

@@ -82,7 +82,7 @@ this flag file using ``:include``:
 
   (library
    (name mylib)
-   (c_names foo)
+   (foreign_stubs (language c) (names foo))
    (c_library_flags (:include (flags.sexp))))
 
 For this, generate the list of flags for your library — for example

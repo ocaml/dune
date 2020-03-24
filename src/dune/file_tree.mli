@@ -13,6 +13,8 @@ module Dune_file : sig
     val get_sexp_and_destroy : t -> Dune_lang.Ast.t list
   end
 
+  val fname : string
+
   val jbuild_fname : string
 
   type t = private

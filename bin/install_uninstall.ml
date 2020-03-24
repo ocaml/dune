@@ -360,7 +360,7 @@ let install_uninstall ~what =
                     Left (ctx, (pkg, fn))
                   else
                     Right fn))
-          |> List.partition_map ~f:Fn.id
+          |> List.partition_map ~f:Fun.id
         in
         if missing_install_files <> [] then
           User_error.raise

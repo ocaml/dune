@@ -704,7 +704,7 @@ end = struct
     let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then (
-      Console.Status_line.set (Fn.const None);
+      Console.Status_line.set (Fun.const None);
       Fiber.return Done
     ) else (
       Console.Status_line.refresh ();

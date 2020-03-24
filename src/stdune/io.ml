@@ -163,7 +163,7 @@ struct
     let s2 = read_file fn2 in
     String.compare s1 s2
 
-  let setup_copy ?(chmod = Fn.id) ~src ~dst () =
+  let setup_copy ?(chmod = Fun.id) ~src ~dst () =
     let ic = open_in src in
     let oc =
       try

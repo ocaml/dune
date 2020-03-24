@@ -82,7 +82,7 @@ let gen_emit_counter t key pvalue value =
     key (pp_time time) "value" pvalue value
 
 let emit_counter t key value =
-  gen_emit_counter t key (Fn.const Int.to_string) value
+  gen_emit_counter t key (Fun.const Int.to_string) value
 
 let emit_counter_float =
   let float () f = Printf.sprintf "%.2f" f in

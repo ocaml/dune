@@ -109,7 +109,7 @@ let reset () =
 module Status_line = struct
   type t = unit -> User_message.Style.t Pp.t option
 
-  let status_line = ref (Fn.const None)
+  let status_line = ref (Fun.const None)
 
   let refresh () =
     match !status_line () with

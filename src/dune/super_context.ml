@@ -429,26 +429,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       ~external_lib_deps_mode
   in
   let scopes, public_libs =
-    let stanzas =
-      Dune_load.Dune_file.fold_stanzas stanzas ~init:[]
-        ~f:(fun dune_file stanza acc ->
-          match stanza with
-          | Dune_file.Library lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
-          | Dune_file.External_variant ev -> External_variant ev :: acc
-          | Dune_file.Deprecated_library_name d ->
-            Deprecated_library_name d :: acc
-          | Dune_file.Coq.T coq_lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Coq_theory (ctx_dir, coq_lib) :: acc
-          | _ -> acc)
-    in
-    Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
+    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
       stanzas
   in
   let stanzas =
@@ -656,7 +637,7 @@ module Deps = struct
     let foreign_flags ~dir =
       get_node t.env_tree ~dir |> Env_node.foreign_flags
     in
-    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fn.id
+    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fun.id
       ~foreign_flags ~f:(fun expander ->
         match Result.List.map l ~f:(f t expander) with
         | Ok deps ->

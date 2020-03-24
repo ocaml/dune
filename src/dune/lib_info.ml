@@ -415,7 +415,7 @@ let map t ~f_path ~f_obj_dir =
   ; jsoo_archive = Option.map ~f t.jsoo_archive
   }
 
-let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fn.id
+let map_path t ~f = map t ~f_path:f ~f_obj_dir:Fun.id
 
 let of_local = map ~f_path:Path.build ~f_obj_dir:Obj_dir.of_local
 

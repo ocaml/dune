@@ -28,3 +28,13 @@ let%expect_test _ =
   [%expect {| "*st" matches "t" == false |}];
   test glob "st";
   [%expect {| "*st" matches "st" == false |}]
+
+
+let%expect_test _ =
+  let glob = Glob.of_string "foo.{ml,mli}" in
+  test glob "foo.ml";
+  [%expect {| "foo.{ml,mli}" matches "foo.ml" == true |}];
+  test glob "foo.mli";
+  [%expect {| "foo.{ml,mli}" matches "foo.mli" == true |}];
+  test glob "foo.";
+  [%expect {| "foo.{ml,mli}" matches "foo." == false |}]

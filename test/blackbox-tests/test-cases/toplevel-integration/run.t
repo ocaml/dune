@@ -21,7 +21,8 @@ Test toplevel-init-file on a tiny project
 
   $ ocaml -stdin <<EOF
   > #use "topfind";;
-  > #use "dune.top";;
+  > #use "use_output_compat";;
+  > #use_output "dune toplevel-init-file";;
   > Test.Main.hello ();;
   > EOF
   hello
@@ -39,10 +40,11 @@ Test toplevel-init-file on a tiny project
 
   $ ocaml -stdin <<EOF
   > #use "topfind";;
-  > #use "dune.top";;
+  > #use "use_output_compat";;
+  > #use_output "dune toplevel-init-file";;
   > EOF
   File "error.ml", line 1, characters 14-32:
   1 | let oops () = undefined_function ()
                     ^^^^^^^^^^^^^^^^^^
   Error: Unbound value undefined_function
-  Exception: AbnormalExit ("dune toplevel-init-file", 1).
+  Command exited with code 1.

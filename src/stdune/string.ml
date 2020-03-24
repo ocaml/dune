@@ -155,7 +155,7 @@ let escape_only c s =
 let longest_map l ~f =
   List.fold_left l ~init:0 ~f:(fun acc x -> max acc (length (f x)))
 
-let longest l = longest_map l ~f:Fn.id
+let longest l = longest_map l ~f:Fun.id
 
 let longest_prefix = function
   | [] -> ""

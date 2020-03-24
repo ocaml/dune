@@ -1548,7 +1548,8 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
-     (flags <coq_flags>))
+     (flags <coq_flags>)
+     (theories <coq_theories>))
 
 The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
 
@@ -1580,6 +1581,15 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   theory to depend on a ML plugin,
+- your Coq theory can depend on other theories by specifying them in
+  the ``<coq_theories>`` field. Dune will then pass to Coq the
+  corresponding flags for everything to compile correctly [ ``-Q``
+  ]. As of today, we only support composition with libraries defined
+  in the same scope (that is to say, under the same ``dune-project``
+  domain). We will lift this restriction in the future. Note that
+  composition with the Coq's standard library is supported, but in
+  this case the ``Coq`` prefix will be made available in a qualified
+  way.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1598,11 +1608,11 @@ Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
 Limitations
 ~~~~~~~~~~~
 
-- composition and scoping of Coq libraries is still not possible. For now,
-  libraries are located using Coq's built-in library management,
-- ``.v`` files always depend on the native version of a plugin,
-- a ``foo.mlpack`` file must the present for locally defined plugins to work,
-  this is a limitation of coqdep.
+- ``.v`` files always depend on the native version of Coq / plugins,
+- a ``foo.mlpack`` file must the present in directories of locally
+  defined plugins for things to work, this is a limitation of
+  ``coqdep``, see the template at
+  <https://github.com/ejgallego/coq-plugin-template>
 
 coq.pp
 ------

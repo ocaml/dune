@@ -166,7 +166,7 @@ module Build = struct
     let+ base = string in
     Path.Build.(relative root) base
 
-  let is_dev_null = Fn.const false
+  let is_dev_null = Fun.const false
 
   let install_dir = install_dir
 

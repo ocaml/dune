@@ -1429,7 +1429,7 @@ end = struct
           (Path.Build.relative sandbox_dir sandbox_suffix, mode))
     in
     let* () =
-      if rule_need_rerun then
+      if rule_need_rerun then (
         let from_Cache =
           match (do_not_memoize, t.caching) with
           | true, _
@@ -1453,9 +1453,15 @@ end = struct
           | Some { check_probability; _ } -> Random.float 1. < check_probability
           | _ -> false
         in
+        let remove_targets () =
+          List.iter targets_as_list ~f:(fun target ->
+              Cached_digest.remove (Path.build target);
+              Path.unlink_no_err (Path.build target))
+        in
         let pulled_from_cache =
           match from_Cache with
           | Some (files, (module Caching)) when not cache_checking -> (
+            let () = remove_targets () in
             let retrieve (file : Cache.File.t) =
               let retrieved = Caching.Cache.retrieve Caching.cache file in
               Cached_digest.set retrieved file.digest;
@@ -1465,7 +1471,7 @@ end = struct
               let digests = List.map files ~f:retrieve in
               Trace_db.set (Path.build head_target)
                 (* We do not cache dynamic actions so [dynamic_deps_stages] is
-                   alwa ys an empty list here. *)
+                   always an empty list here. *)
                 { rule_digest
                 ; targets_digest = Digest.generic digests
                 ; dynamic_deps_stages = []
@@ -1483,10 +1489,8 @@ end = struct
         in
         if pulled_from_cache then
           Fiber.return ()
-        else (
-          List.iter targets_as_list ~f:(fun target ->
-              Cached_digest.remove (Path.build target);
-              Path.unlink_no_err (Path.build target));
+        else
+          let () = remove_targets () in
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let sandboxed, action =
             match sandbox with
@@ -1598,8 +1602,7 @@ end = struct
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
-        )
-      else
+      ) else
         Fiber.return ()
     in
     let+ () =

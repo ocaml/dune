@@ -83,17 +83,22 @@ end
 
 module File_ops_dry_run : File_operations = struct
   let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ =
-    Format.printf "Copying %a to %a (executable: %b)\n" Path.pp src Path.pp dst
+    Format.printf "Copying %s to %s (executable: %b)\n"
+      (Path.to_string_maybe_quoted src)
+      (Path.to_string_maybe_quoted dst)
       executable;
     Fiber.return ()
 
-  let mkdir_p path = Format.printf "Creating directory %a\n" Path.pp path
+  let mkdir_p path =
+    Format.printf "Creating directory %s\n" (Path.to_string_maybe_quoted path)
 
   let remove_if_exists path =
-    Format.printf "Removing (if it exists) %a\n" Path.pp path
+    Format.printf "Removing (if it exists) %s\n"
+      (Path.to_string_maybe_quoted path)
 
   let remove_dir_if_empty path =
-    Format.printf "Removing directory (if empty) %a\n" Path.pp path
+    Format.printf "Removing directory (if empty) %s\n"
+      (Path.to_string_maybe_quoted path)
 end
 
 module File_ops_real (W : Workspace) : File_operations = struct
@@ -152,7 +157,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           let meta =
             Dune.Meta.add_versions meta ~get_version:(fun _ -> Some version)
           in
-          Dune.Meta.pp ppf meta.entries)
+          Pp.render_ignore_tags ppf (Dune.Meta.pp meta.entries))
 
   let process_dune_package ic =
     let lb = Lexing.from_channel ic in

@@ -11,19 +11,11 @@ module Local : sig
 
   (** Description of valid library names *)
   val valid_format_doc : User_message.Style.t Pp.t
-
-  val pp_quoted : t Fmt.t
-
-  val pp : t Fmt.t
 end
 
 val compare : t -> t -> Ordering.t
 
 val equal : t -> t -> bool
-
-val pp : t Fmt.t
-
-val pp_quoted : t Fmt.t
 
 val of_local : Loc.t * Local.t -> t
 

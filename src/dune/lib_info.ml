@@ -151,15 +151,6 @@ module Status = struct
       constr "Public" [ Dune_project.Name.to_dyn name; Package.to_dyn package ]
     | Private proj -> constr "Private" [ Dune_project.to_dyn proj ]
 
-  let pp ppf t =
-    Format.pp_print_string ppf
-      ( match t with
-      | Installed -> "installed"
-      | Public _ -> "public"
-      | Private project ->
-        let name = Dune_project.name project in
-        sprintf "private (%s)" (Dune_project.Name.to_string_hum name) )
-
   let is_private = function
     | Private _ -> true
     | Installed

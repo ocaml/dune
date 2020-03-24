@@ -47,8 +47,6 @@ val to_dyn : t -> Dyn.t
 
 val encode : t Dune_lang.Encoder.t
 
-val pp : t Fmt.t
-
 val of_user_written_path : loc:Loc.t -> Path.t -> t
 
 val fully_qualified_name : t -> Path.Build.t

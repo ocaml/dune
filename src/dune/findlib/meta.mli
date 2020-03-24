@@ -61,4 +61,4 @@ val builtins :
   -> version:Ocaml_version.t
   -> Simplified.t Package.Name.Map.t
 
-val pp : Format.formatter -> entry list -> unit
+val pp : entry list -> unit Pp.t

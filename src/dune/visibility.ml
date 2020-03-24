@@ -8,8 +8,6 @@ let to_string = function
   | Public -> "public"
   | Private -> "private"
 
-let pp fmt t = Format.pp_print_string fmt (to_string t)
-
 let to_dyn t = Dyn.Encoder.string (to_string t)
 
 let encode =

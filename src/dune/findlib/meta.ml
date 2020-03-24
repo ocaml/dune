@@ -362,28 +362,23 @@ let string_of_action = function
   | Set -> "="
   | Add -> "+="
 
-let string_of_predicate = function
-  | Pos p -> p
-  | Neg p -> "-" ^ p
+let pp_predicate p =
+  Pp.verbatim
+    ( match p with
+    | Pos p -> p
+    | Neg p -> "-" ^ p )
 
-let pp_list f ppf l =
-  match l with
-  | [] -> ()
-  | x :: l ->
-    f ppf x;
-    List.iter l ~f:(fun x ->
-        Format.pp_print_cut ppf ();
-        f ppf x)
+let pp_print_text s =
+  let open Pp.O in
+  Pp.verbatim "\""
+  ++ Pp.hvbox (Pp.text (String.escape_only '"' s))
+  ++ Pp.verbatim "\""
 
-let pp_print_text ppf s =
-  Format.fprintf ppf "\"@[<hv>";
-  Format.pp_print_text ppf (String.escape_only '"' s);
-  Format.fprintf ppf "@]\""
-
-let pp_print_string ppf s =
-  Format.fprintf ppf "\"@[<hv>";
-  Format.pp_print_string ppf (String.escape_only '"' s);
-  Format.fprintf ppf "@]\""
+let pp_print_string s =
+  let open Pp.O in
+  Pp.verbatim "\""
+  ++ Pp.hvbox (Pp.verbatim (String.escape_only '"' s))
+  ++ Pp.verbatim "\""
 
 let pp_quoted_value var =
   match var with
@@ -396,24 +391,35 @@ let pp_quoted_value var =
     pp_print_text
   | _ -> pp_print_string
 
-let rec pp ppf entries =
-  Format.fprintf ppf "@[<v>%a@]" (pp_list pp_entry) entries
+let rec pp entries = Pp.vbox (Pp.concat_map entries ~sep:Pp.newline ~f:pp_entry)
 
-and pp_entry ppf entry =
-  let open Format in
+and pp_entry entry =
   match entry with
-  | Comment s -> fprintf ppf "# %s" s
+  | Comment s -> Pp.verbatim (sprintf "# %s" s)
   | Rule { var; predicates = []; action; value } ->
-    fprintf ppf "@[%s %s %a@]" var (string_of_action action)
-      (pp_quoted_value var) value
+    Pp.box
+      (Pp.concat ~sep:Pp.space
+         [ Pp.verbatim var
+         ; Pp.verbatim (string_of_action action)
+         ; pp_quoted_value var value
+         ])
   | Rule { var; predicates; action; value } ->
-    fprintf ppf "@[%s(%s) %s %a@]" var
-      (String.concat ~sep:"," (List.map predicates ~f:string_of_predicate))
-      (string_of_action action) (pp_quoted_value var) value
+    let open Pp.O in
+    Pp.box
+      (Pp.concat ~sep:(Pp.verbatim " ")
+         [ Pp.textf "%s(" var
+           ++ Pp.concat_map predicates ~sep:(Pp.verbatim ",") ~f:pp_predicate
+           ++ Pp.verbatim ")"
+         ; Pp.verbatim (string_of_action action)
+         ; pp_quoted_value var value
+         ])
   | Package { name; entries } ->
     let name =
       match name with
       | None -> ""
       | Some l -> Lib_name.to_string l
     in
-    fprintf ppf "@[<v 2>package %S (@,%a@]@,)" name pp entries
+    let open Pp.O in
+    Pp.vbox ~indent:2
+      (Pp.verbatim (sprintf "package %S (" name) ++ Pp.cut ++ pp entries)
+    ++ Pp.cut ++ Pp.verbatim ")"

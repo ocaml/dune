@@ -11,8 +11,6 @@ module type S = sig
 
   val to_string : t -> string
 
-  val pp : t Fmt.t
-
   val make : string -> t
 
   (** Like [make] except it returns [None] if the string hasn't been registered
@@ -28,8 +26,6 @@ module type S = sig
     val to_dyn : t -> Dyn.t
 
     val make : string list -> t
-
-    val pp : t Fmt.t
   end
 
   module Map : Map.S with type key = t

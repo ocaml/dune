@@ -157,7 +157,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
           let meta =
             Dune.Meta.add_versions meta ~get_version:(fun _ -> Some version)
           in
-          Dune.Meta.pp ppf meta.entries)
+          Pp.render_ignore_tags ppf (Dune.Meta.pp meta.entries))
 
   let process_dune_package ic =
     let lb = Lexing.from_channel ic in

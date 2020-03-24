@@ -497,22 +497,20 @@ let meta_and_dune_package_rules_impl (project, sctx) =
                 ~package:(Package.Name.to_string pkg.name)
                 ~version:pkg.version entries
             in
-            let buf = Buffer.create 1024 in
-            let ppf = Format.formatter_of_buffer buf in
-            Format.pp_open_vbox ppf 0;
-            List.iter template ~f:(fun s ->
-                if String.is_prefix s ~prefix:"#" then
-                  match
-                    String.extract_blank_separated_words (String.drop s 1)
-                  with
-                  | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
-                    Format.fprintf ppf "%a@," Meta.pp meta.entries
-                  | _ -> Format.fprintf ppf "%s@," s
-                else
-                  Format.fprintf ppf "%s@," s);
-            Format.pp_close_box ppf ();
-            Format.pp_print_flush ppf ();
-            Buffer.contents buf)
+            let pp =
+              Pp.vbox
+                (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
+                     if String.is_prefix s ~prefix:"#" then
+                       match
+                         String.extract_blank_separated_words (String.drop s 1)
+                       with
+                       | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
+                         Meta.pp meta.entries
+                       | _ -> Pp.verbatim s
+                     else
+                       Pp.verbatim s))
+            in
+            Format.asprintf "%a" Pp.render_ignore_tags pp)
            |> Build.write_file_dyn meta);
          Package.Name.Map.iteri pkg.deprecated_package_names ~f:(fun name _ ->
              let meta = Package_paths.deprecated_meta_file ctx pkg name in
@@ -527,7 +525,11 @@ let meta_and_dune_package_rules_impl (project, sctx) =
                       ~package:(Package.Name.to_string pkg.name)
                       ~version:pkg.version entries ~add_directory_entry:false
                   in
-                  Format.asprintf "@[<v>%a@,@]" Meta.pp meta.entries)
+                  let pp =
+                    let open Pp.O in
+                    Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
+                  in
+                  Format.asprintf "%a" Pp.render_ignore_tags pp)
                |> Build.write_file meta )))
 
 let meta_and_dune_package_rules_memo =

@@ -562,5 +562,5 @@ let fold_with_progress ~traverse ~init ~f =
         if !nb_path_visited mod 100 = 0 then Console.Status_line.refresh ();
         f dir acc)
   in
-  Console.Status_line.set (Fn.const None);
+  Console.Status_line.set (Fun.const None);
   res

@@ -39,6 +39,11 @@ let filteri l ~f =
 
 let concat_map l ~f = concat (map l ~f)
 
+let rec rev_map_append l1 l2 ~f =
+  match l1 with
+  | [] -> l2
+  | a :: l -> rev_map_append l (f a :: l2) ~f
+
 let rev_partition_map =
   let rec loop l accl accr ~f =
     match l with

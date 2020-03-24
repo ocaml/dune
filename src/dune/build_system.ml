@@ -140,7 +140,7 @@ module Alias0 = struct
              let ctx_dir = Context_name.build_dir ctx in
              dep_rec_internal ~name ~dir ~ctx_dir))
     in
-    let is_empty = List.for_all is_empty_list ~f:Fn.id in
+    let is_empty = List.for_all is_empty_list ~f:Fun.id in
     if is_empty && not (is_standard name) then
       User_error.raise
         [ Pp.textf "Alias %S specified on the command line is empty."

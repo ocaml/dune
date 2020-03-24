@@ -340,7 +340,7 @@ module Cached_value = struct
              [parallel_or] that would run all jobs in parallel and terminate as
              soon as any of them evaluates to [true]. This is somewhere in
              between the above alternatives but is more complex. *)
-          Fiber.parallel_map acc ~f:Fn.id >>| List.exists ~f:Fn.id
+          Fiber.parallel_map acc ~f:Fun.id >>| List.exists ~f:Fun.id
         | Last_dep.T (node, prev_output) :: deps -> (
           match node.state with
           | Init -> Fiber.return true
@@ -896,7 +896,9 @@ let function_info_of_spec (Spec.T spec) =
 
 let registered_functions () =
   String.Table.to_seq_values Spec.by_name
-  |> Seq.fold_left (fun xs x -> List.cons (function_info_of_spec x) xs) []
+  |> Seq.fold_left
+       ~f:(fun xs x -> List.cons (function_info_of_spec x) xs)
+       ~init:[]
   |> List.sort ~compare:(fun x y ->
          String.compare x.Function.Info.name y.Function.Info.name)
 

@@ -680,7 +680,7 @@ let rec obj_map : 'a. t -> f:(Sourced_module.t -> 'a) -> 'a Module.Obj_map.t =
   | Wrapped w -> Wrapped.obj_map w ~f:normal
   | Stdlib w -> Stdlib.obj_map w ~f:normal
   | Impl { vlib; impl } ->
-    Module.Obj_map.merge (obj_map vlib ~f:Fn.id) (obj_map impl ~f:Fn.id)
+    Module.Obj_map.merge (obj_map vlib ~f:Fun.id) (obj_map impl ~f:Fun.id)
       ~f:(fun _ vlib impl ->
         match (vlib, impl) with
         | None, None -> assert false

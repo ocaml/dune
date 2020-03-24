@@ -11,10 +11,16 @@ Unreleased
 - Allow contexts to be defined with local switches in workspace files (#3265,
   fix #3264, @rgrinberg)
 
+- Delay expansion errors until the rule is used to build something (#3261, fix
+  #3252, @rgrinberg, @diml)
+
+- [coq] Support for theory dependencies and compositional builds using
+  new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
+  
 - From now on, each version of a syntax extension must be explicitely tied to a
   minimum version of the dune language. Inconsistent versions in a
   `dune-project` will trigger a warning for version <=2.4 and an error for
-  versions >2.4 of the dune language. (3270, fixes #2957, @voodoos)
+  versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
 
 2.4.0 (06/03/2020)
 ------------------

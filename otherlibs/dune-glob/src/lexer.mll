@@ -22,7 +22,7 @@ let make_group st =
     match st with
     | Bottom       -> failwith "'}' without opening '{'"
     | Re (re, st)  -> loop (re :: current_re) full_res st
-    | Char (c, st) -> loop [] (char c :: current_re) st
+    | Char (c, st) -> loop (char c :: current_re) full_res st
     | Comma   st   -> loop [] (seq current_re :: full_res) st
     | Lbrace  st   -> Re (alt (seq current_re :: full_res), st)
   in

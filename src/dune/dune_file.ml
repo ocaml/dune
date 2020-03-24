@@ -1994,7 +1994,8 @@ module Coq = struct
 
   let syntax =
     Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ ((0, 1), `Since (1, 9)) ]
+      [ ((0, 1), `Since (1, 9))
+      ; ((0, 2), `Since (2, 5)) ]
 
   let coq_public_decode =
     map_validate
@@ -2043,11 +2044,15 @@ module Coq = struct
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ boot =
-         field_b "boot" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+         field_b "boot" ~check:(Dune_lang.Syntax.since syntax (0, 2))
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-       and+ theories = field "theories" (repeat Coq_lib_name.decode) ~default:[]
+       and+ theories =
+         field "theories"
+           ( Dune_lang.Syntax.since syntax (0, 2)
+           >>> repeat Coq_lib_name.decode )
+           ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
        { name

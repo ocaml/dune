@@ -4,7 +4,11 @@ open Dune_lang.Decoder
 
 let syntax =
   Dune_lang.Syntax.create ~name:"fmt"
-    ~desc:"integration with automatic formatters" [ (1, 2) ]
+    ~desc:"integration with automatic formatters"
+    [ ((1, 0), `Since (1, 4))
+    ; ((1, 1), `Since (1, 7))
+    ; ((1, 2), `Since (1, 11))
+    ]
 
 module Language = struct
   type t =

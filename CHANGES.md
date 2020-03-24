@@ -131,9 +131,9 @@ Unreleased
   directory that doesn't exist. (#3073, fix #3069, @rgrinberg)
 
 - Correctly build vendored packages in `-p` mode. These packages were
-  incorrectly filtered out before. (#3705, @diml)
+  incorrectly filtered out before. (#3075, @diml)
 
-- Do not install vendored packages (#3704, @diml)
+- Do not install vendored packages (#3074, @diml)
 
 - `make` now prints a message explaining the main targets available
   (#3085, fix #3078, @diml)

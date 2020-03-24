@@ -133,7 +133,7 @@ end = struct
             (Some loc, Install.Entry.make Stublibs a))
       ]
 
-  let keep_if ~external_lib_deps_mode =
+  let keep_if ~external_lib_deps_mode expander =
     if external_lib_deps_mode then
       fun ~scope:_ ->
     Option.some
@@ -148,18 +148,21 @@ end = struct
       | Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-        (not exes.optional)
-        ||
-        let compile_info =
-          let dune_version = Scope.project scope |> Dune_project.dune_version in
-          Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-            exes.names exes.buildable.libraries
-            ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-            ~dune_version
-            ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-            ~variants:exes.variants ~optional:exes.optional
-        in
-        Result.is_ok (Lib.Compile.direct_requires compile_info)
+        Expander.eval_blang expander exes.enabled_if
+        && ( (not exes.optional)
+           ||
+           let compile_info =
+             let dune_version =
+               Scope.project scope |> Dune_project.dune_version
+             in
+             Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+               exes.names exes.buildable.libraries
+               ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+               ~dune_version
+               ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+               ~variants:exes.variants ~optional:exes.optional
+           in
+           Result.is_ok (Lib.Compile.direct_requires compile_info) )
       | Dune_file.Coq.T d -> Option.is_some d.package
       | _ -> false )
       stanza
@@ -227,9 +230,10 @@ end = struct
     in
     Dir_with_dune.deep_fold stanzas ~init ~f:(fun d stanza acc ->
         let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
+        let expander = Super_context.expander sctx ~dir in
         let res =
           let open Option.O in
-          let* stanza = keep_if stanza ~scope in
+          let* stanza = keep_if expander stanza ~scope in
           let+ package = Dune_file.stanza_package stanza in
           (stanza, package)
         in
@@ -240,7 +244,6 @@ end = struct
             match (stanza : Stanza.t) with
             | Dune_file.Install i
             | Dune_file.Executables { install_conf = Some i; _ } ->
-              let expander = Super_context.expander sctx ~dir in
               let path_expander =
                 File_binding.Unexpanded.expand ~dir
                   ~f:(Expander.expand_str expander)

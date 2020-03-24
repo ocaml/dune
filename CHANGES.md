@@ -49,6 +49,10 @@ Unreleased
 - Fix a memory leak in the file-watching mode (`dune build -w`)
   (#3220, @snowleopard and @aalekseyev)
 
+- Prevent installation of public executables disabled using the `enabled_if` field.
+  Installation will now simply skip such executables instead of raising an
+  error. (#3195, @voodoos)
+
 2.3.1 (20/02/2020)
 ------------------
 

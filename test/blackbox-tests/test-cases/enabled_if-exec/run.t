@@ -13,3 +13,5 @@ This one is enabled
   $ dune exec ./main.exe
   Pong
 
+Installing should silently ignore disabled executables
+  $ dune build @install

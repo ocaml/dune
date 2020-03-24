@@ -354,7 +354,7 @@ let located t ctx state1 =
   let x, state2 = t ctx state1 in
   ((loc_between_states ctx state1 state2, x), state2)
 
-let raw = next Fn.id
+let raw = next Fun.id
 
 let basic_loc desc f =
   next (function

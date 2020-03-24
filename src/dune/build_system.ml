@@ -2018,16 +2018,20 @@ let init ~contexts ?caching ~sandboxing_preference =
   let caching =
     match caching with
     | Some ({ cache = (module Caching : Cache.Caching); _ } as v) -> (
-      match Caching.Cache.set_build_dir Caching.cache Path.build_dir with
-      | Result.Ok cache ->
-        let cache =
+      let open Result.O in
+      let res =
+        let* with_build_dir =
+          Caching.Cache.set_build_dir Caching.cache Path.build_dir
+        in
+        Result.Ok
           ( module struct
             module Cache = Caching.Cache
 
-            let cache = cache
+            let cache = with_build_dir
           end : Cache.Caching )
-        in
-        Some { v with cache }
+      in
+      match res with
+      | Result.Ok cache -> Some { v with cache }
       | Result.Error e ->
         User_warning.emit
           [ Pp.text "Unable to set cache build directory"

@@ -21,6 +21,7 @@ type conf = private
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
+  ; vcs : Vcs.t list
   }
 
 val load : ancestor_vcs:Vcs.t option -> unit -> conf

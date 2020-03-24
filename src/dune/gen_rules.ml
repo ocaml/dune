@@ -402,7 +402,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 
 let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load.dune_files; packages; projects } = conf in
+  let { Dune_load.dune_files; packages; projects; vcs = _ } = conf in
   let packages = Option.value only_packages ~default:packages in
   (* CR-soon amokhov: this mutable table is safe because [Ivar]s are created,
      read and filled in the same memoization node (the one that calls [gen]). We

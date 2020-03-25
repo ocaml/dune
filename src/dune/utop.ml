@@ -90,5 +90,6 @@ let setup sctx ~dir =
       ~requires_compile:requires ~flags ~js_of_ocaml:None ~dynlink:false
       ~package:None
   in
-  let toplevel = Toplevel.make ~cctx ~source in
+  (* TODO: get actual preprocess value while iterating through libs *)
+  let toplevel = Toplevel.make ~cctx ~source ~preprocess:Dune_file.Preprocess.No_preprocessing in
   Toplevel.setup_rules toplevel

@@ -16,7 +16,7 @@ type t
 
 val setup_rules : t -> unit
 
-val make : cctx:Compilation_context.t -> source:Source.t -> t
+val make : cctx:Compilation_context.t -> source:Source.t -> preprocess:Dune_file.Preprocess.t -> t
 
 module Stanza : sig
   val setup :

@@ -59,9 +59,29 @@ end
 type t =
   { cctx : Compilation_context.t
   ; source : Source.t
+  ; preprocess : Dune_file.Preprocess.t
   }
 
-let make ~cctx ~source = { cctx; source }
+let make ~cctx ~source ~preprocess = { cctx; source; preprocess }
+
+let pp_flags fmt t =
+  let sctx = Compilation_context.super_context t.cctx in
+  let scope = Compilation_context.scope t.cctx in
+  let expander = Compilation_context.expander t.cctx in
+  match t.preprocess with
+  | Pps { loc; pps; flags; staged = _ } -> (
+    match
+      Preprocessing.get_ppx_driver sctx ~loc ~expander
+      ~lib_name:None ~flags ~scope pps
+    with
+    | Error _exn -> ()
+    | Ok (exe, flags) ->
+      Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+      |> String.concat ~sep:" "
+      |> Filename.quote
+      |> sprintf "FLG -ppx %s"
+      |> Format.fprintf fmt "@[<v 2>Clflags.all_ppx :=@ [ %s@ ]@];@." )
+  | Action _ | Future_syntax _ | No_preprocessing -> ()
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -75,6 +95,7 @@ let setup_module_rules t =
            let b = Buffer.create 64 in
            let fmt = Format.formatter_of_buffer b in
            Source.pp_ml fmt t.source ~include_dirs;
+           pp_flags fmt t;
            Format.pp_print_flush fmt ();
            Buffer.contents b))
     |> Build.write_file_dyn path
@@ -102,6 +123,11 @@ module Stanza = struct
     let expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
+    let pps =
+      match toplevel.pps with
+      | Dune_file.Preprocess.Pps pps -> pps.pps
+      | Action _ | Future_syntax _ | No_preprocessing -> []
+    in
     let compile_info =
       let compiler_libs =
         Lib_name.parse_string_exn (source.loc, "compiler-libs.toplevel")
@@ -110,8 +136,8 @@ module Stanza = struct
         [ (source.loc, source.name) ]
         ( Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
-        ~pps:[] ~dune_version ~allow_overlaps:false ~variants:toplevel.variants
-        ~optional:false
+        ~pps ~dune_version ~allow_overlaps:false
+        ~variants:toplevel.variants ~optional:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
@@ -128,6 +154,6 @@ module Stanza = struct
         ~requires_compile ~requires_link ~flags ~js_of_ocaml:None ~dynlink:false
         ~package:None
     in
-    let resolved = make ~cctx ~source in
+    let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
     setup_rules resolved
 end

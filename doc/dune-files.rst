@@ -1643,11 +1643,11 @@ mdx (since 2.4)
 MDX is a tool that helps you keep your markdown documentation up to date by
 checking that the code examples it contains are correct.
 
-See `MDX's repository <https://github.com/realworldocaml/mdx>` for more details.
+See `MDX's repository <https://github.com/realworldocaml/mdx>`__ for more details.
 
 You can define an MDX stanza to specify which files you want checked.
 
-Note that this features is still experimental and needs to be enabled in your
+Note that this feature is still experimental and needs to be enabled in your
 ``dune-project`` with the following ``using`` stanza:
 
 .. code:: scheme
@@ -1662,8 +1662,8 @@ The syntax is as follows:
 
 Where ``<optional-fields>`` are:
 
-- ``(files <globs>)`` are the files that you want MDX to check, describe as a
-  list of globs (see the `Glob language specification <glob>`).
+- ``(files <globs>)`` are the files that you want MDX to check, described as a
+  list of globs (see the :ref:`Glob language specification <glob>` ).
   It defaults to ``*.md``.
 
 - ``(packages <packages>)`` are the local dune packages that your documentation
@@ -1672,7 +1672,7 @@ Where ``<optional-fields>`` are:
   the stanza.
 
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX.
-  See `MDX's documentation <https://github.com/realworldocaml/mdx>` for more
+  See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
 
 dune-workspace

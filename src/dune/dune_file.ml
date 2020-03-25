@@ -2183,6 +2183,7 @@ module Toplevel = struct
     ; libraries : (Loc.t * Lib_name.t) list
     ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
+    ; pps : Preprocess.t
     }
 
   let decode =
@@ -2193,8 +2194,10 @@ module Toplevel = struct
        and+ variants = variants_field
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ pps =
+         field "preprocess" Preprocess.decode ~default:Preprocess.No_preprocessing
        in
-       { name; libraries; loc; variants })
+       { name; libraries; loc; variants; pps })
 end
 
 module Copy_files = struct

@@ -423,6 +423,7 @@ module Toplevel : sig
     ; libraries : (Loc.t * Lib_name.t) list
     ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
+    ; pps : Preprocess.t
     }
 end
 

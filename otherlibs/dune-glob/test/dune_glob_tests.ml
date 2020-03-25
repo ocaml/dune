@@ -3,8 +3,15 @@ module Glob = Dune_glob.V1
 
 let printf = Printf.printf
 
-let test glob s =
-  printf "%S matches %S == %b" (Glob.to_string glob) s (Glob.test glob s)
+let test glob s ~expect =
+  let res = Glob.test glob s in
+  let status =
+    if res = expect then
+      "pass"
+    else
+      "fail"
+  in
+  printf "[%s] %S matches %S == %b" status (Glob.to_string glob) s res
 
 let%expect_test _ =
   let glob = Glob.of_string "test" in
@@ -13,28 +20,30 @@ let%expect_test _ =
 
 let%expect_test _ =
   let glob = Glob.of_string "te*" in
-  test glob "test";
-  [%expect {| "te*" matches "test" == true |}];
-  test glob "t";
-  [%expect {| "te*" matches "t" == false |}];
-  test glob "te";
-  [%expect {| "te*" matches "te" == true |}]
+  test glob "test" ~expect:true;
+  [%expect {| [pass] "te*" matches "test" == true |}];
+  test glob "t" ~expect:false;
+  [%expect {| [pass] "te*" matches "t" == false |}];
+  test glob "te" ~expect:true;
+  [%expect {| [pass] "te*" matches "te" == true |}]
 
 let%expect_test _ =
   let glob = Glob.of_string "*st" in
-  test glob "test";
-  [%expect {| "*st" matches "test" == true |}];
-  test glob "t";
-  [%expect {| "*st" matches "t" == false |}];
-  test glob "st";
-  [%expect {| "*st" matches "st" == false |}]
-
+  test glob "test" ~expect:true;
+  [%expect {| [pass] "*st" matches "test" == true |}];
+  test glob "t" ~expect:false;
+  [%expect {| [pass] "*st" matches "t" == false |}];
+  (* This is surprising, but documented *)
+  test glob "st" ~expect:false;
+  [%expect {| [pass] "*st" matches "st" == false |}];
+  test glob ".st" ~expect:false;
+  [%expect {| [pass] "*st" matches ".st" == false |}]
 
 let%expect_test _ =
   let glob = Glob.of_string "foo.{ml,mli}" in
-  test glob "foo.ml";
-  [%expect {| "foo.{ml,mli}" matches "foo.ml" == true |}];
-  test glob "foo.mli";
-  [%expect {| "foo.{ml,mli}" matches "foo.mli" == true |}];
-  test glob "foo.";
-  [%expect {| "foo.{ml,mli}" matches "foo." == false |}]
+  test glob "foo.ml" ~expect:true;
+  [%expect {| [pass] "foo.{ml,mli}" matches "foo.ml" == true |}];
+  test glob "foo.mli" ~expect:true;
+  [%expect {| [pass] "foo.{ml,mli}" matches "foo.mli" == true |}];
+  test glob "foo." ~expect:false;
+  [%expect {| [pass] "foo.{ml,mli}" matches "foo." == false |}]

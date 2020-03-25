@@ -25,6 +25,13 @@ Unreleased
 - [coq] Bump coq-lang version to 0.2, put new features under it
   (#3283, @ejgallego)
 
+- Prevent installation of public executables disabled using the `enabled_if` field.
+  Installation will now simply skip such executables instead of raising an
+  error. (#3195, @voodoos)
+
+- `dune upgrade` will now try to upgrade projects using versions <2.0 to version
+  2.0 of the dune language. (#3174, @voodoos)
+
 2.4.0 (06/03/2020)
 ------------------
 
@@ -48,10 +55,6 @@ Unreleased
 
 - Fix a memory leak in the file-watching mode (`dune build -w`)
   (#3220, @snowleopard and @aalekseyev)
-
-- Prevent installation of public executables disabled using the `enabled_if` field.
-  Installation will now simply skip such executables instead of raising an
-  error. (#3195, @voodoos)
 
 2.3.1 (20/02/2020)
 ------------------

@@ -690,7 +690,7 @@ let upgrade () =
         Io.write_file (Path.source new_file) contents ~binary:true);
     if !v1_updates && not last then (
       (* Run the upgrader again to update new v1 projects to v2 No more than one
-        additionnal upgrade should be needed *)
+         additionnal upgrade should be needed *)
       (* We reset thje memoization as a simple way to refresh the File_tree *)
       Memo.reset ();
       aux true
@@ -698,11 +698,13 @@ let upgrade () =
       Console.print
         [ Pp.textf
             "\n\
-            Some projects were upgraded to dune v2. Some breaking changes may not\n\
-            have been treated automatically. Here is a list of things you \
-            should check\n\
-            to complete the migration:\n\
-            %s"
+             Some projects were upgraded to dune v2. Some breaking changes may \
+             not\n\
+             have been treated automatically. Here is a list of things you \
+             should check\n\
+             to complete the migration:\n\
+             %s"
             V2.todo_log
         ]
-  in aux false
+  in
+  aux false

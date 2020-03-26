@@ -244,9 +244,9 @@ module Library : sig
 end
 
 module Install_conf : sig
-  type 'file t =
+  type t =
     { section : Install.Section.t
-    ; files : 'file list
+    ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 end
@@ -293,7 +293,7 @@ module Executables : sig
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
-    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; install_conf : Install_conf.t option
     ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -457,7 +457,7 @@ type Stanza.t +=
   | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
-  | Install of File_binding.Unexpanded.t Install_conf.t
+  | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
   | Documentation of Documentation.t

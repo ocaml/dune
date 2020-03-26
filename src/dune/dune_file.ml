@@ -1155,9 +1155,9 @@ module Library = struct
 end
 
 module Install_conf = struct
-  type 'file t =
+  type t =
     { section : Install.Section.t
-    ; files : 'file list
+    ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 
@@ -1213,8 +1213,7 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf :
-      t -> ext:string -> File_binding.Unexpanded.t Install_conf.t option
+    val install_conf : t -> ext:string -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1529,7 +1528,7 @@ module Executables = struct
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
-    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; install_conf : Install_conf.t option
     ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -2288,7 +2287,7 @@ type Stanza.t +=
   | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
-  | Install of File_binding.Unexpanded.t Install_conf.t
+  | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
   | Documentation of Documentation.t

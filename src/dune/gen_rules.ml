@@ -22,7 +22,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(File_binding.Unexpanded.t Install_conf.t -> unit)
+    -> files_to_install:(Install_conf.t -> unit)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list

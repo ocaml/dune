@@ -194,7 +194,7 @@ let all =
   ; Upgrade.command
   ; Caching.command
   ; Describe.command
-  ; Toplevel_init_file.command
+  ; Top.command
   ]
 
 let common_commands_synopsis =

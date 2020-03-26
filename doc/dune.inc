@@ -153,13 +153,13 @@
  (files   dune-subst.1))
 
 (rule
- (with-stdout-to dune-toplevel-init-file.1
-  (run dune toplevel-init-file --help=groff)))
+ (with-stdout-to dune-top.1
+  (run dune top --help=groff)))
 
 (install
  (section man)
  (package dune)
- (files   dune-toplevel-init-file.1))
+ (files   dune-top.1))
 
 (rule
  (with-stdout-to dune-uninstall.1

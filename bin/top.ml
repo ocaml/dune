@@ -15,7 +15,7 @@ let man =
   ; `Blocks Common.help_secs
   ]
 
-let info = Term.info "toplevel-init-file" ~doc ~man
+let info = Term.info "top" ~doc ~man
 
 let link_deps link ~lib_config =
   List.concat_map link ~f:(fun t ->

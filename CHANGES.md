@@ -32,9 +32,9 @@ Unreleased
 - `dune upgrade` will now try to upgrade projects using versions <2.0 to version
   2.0 of the dune language. (#3174, @voodoos)
 
-- Add a `toplevel-init-file` command to integrate dune with any
-  toplevel, not just utop. It is meant to be used with the new
-  `#use_output` directive of OCaml 4.11 (#2952, @mbernat, @diml)
+- Add a `top` command to integrate dune with any toplevel, not just
+  utop. It is meant to be used with the new `#use_output` directive of
+  OCaml 4.11 (#2952, @mbernat, @diml)
 
 2.4.0 (06/03/2020)
 ------------------

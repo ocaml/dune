@@ -44,7 +44,7 @@ end
 module type Cache = sig
   type t
 
-  val with_repositories : t -> repository list -> t
+  val with_repositories : t -> repository list -> (t, string) Result.t
 
   val promote :
        t

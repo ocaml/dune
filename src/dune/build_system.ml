@@ -328,7 +328,7 @@ type t =
       Fdecl.t
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
-  ; caching : caching option
+  ; mutable caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
@@ -363,8 +363,41 @@ let set_rule_generators ~init ~gen_rules =
   Fdecl.set t.gen_rules gen_rules
 
 let set_vcs vcs =
+  let open Fiber.O in
   let t = t () in
-  Fdecl.set t.vcs vcs
+  let () = Fdecl.set t.vcs vcs in
+  match t.caching with
+  | Some ({ cache = (module Caching); _ } as caching) ->
+     let+ caching =
+       let+ with_repositories =
+        let f ({ Vcs.root; _ } as vcs) =
+          let+ commit = Vcs.commit_id vcs in
+          { Cache.directory = Path.to_string root
+          ; remote = "FIXME: not filled yet"
+          ; commit
+          }
+        in
+        let+ repositories = Fiber.parallel_map ~f (Fdecl.get t.vcs) in
+        Caching.Cache.with_repositories Caching.cache repositories
+       in
+       match with_repositories with
+       | Result.Ok cache ->
+          let cache =
+            ( module struct
+                let cache = cache
+
+                module Cache = Caching.Cache
+              end : Cache.Caching )
+          in
+          Some { caching with cache }
+       | Result.Error e ->
+        User_warning.emit
+          [ Pp.textf "Unable to set cache repositiories, disabling cache: %s" e
+          ];
+        None
+    in
+    t.caching <- caching
+  | None -> Fiber.return ()
 
 let get_cache () =
   let t = t () in
@@ -2029,11 +2062,6 @@ let init ~contexts ?caching ~sandboxing_preference =
       let open Result.O in
       let res =
         let* cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
-        (* let* cache =
-         *   let f =
-         *   in
-         *   Caching.Cache.with_repositories Caching.cache @@ List.map ~f
-         * in *)
         Result.Ok
           ( module struct
             module Cache = Caching.Cache

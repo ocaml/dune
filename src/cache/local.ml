@@ -169,7 +169,7 @@ let make_path cache path =
 
 let search cache hash file = Collision.search (path_data cache hash) file
 
-let with_repositories cache repositories = { cache with repositories }
+let with_repositories cache repositories = Result.Ok { cache with repositories }
 
 let duplicate ?(duplication = None) cache =
   match Option.value ~default:cache.duplication_mode duplication with

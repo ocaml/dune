@@ -436,7 +436,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, sctx)
   in
-  let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
+  let* contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let sctxs = Context_name.Map.of_list_exn contexts in
   let () =
     Build_system.set_packages (fun path ->
@@ -456,5 +456,5 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
       | Context ctx ->
         Context_name.Map.find sctxs ctx
         |> Option.map ~f:(fun sctx -> gen_rules ~sctx));
-  Build_system.set_vcs vcs;
+  let+ () = Build_system.set_vcs vcs in
   sctxs

@@ -81,14 +81,14 @@ let make ?finally ?duplication_mode handle =
   let thread = Thread.create thread input in
   { socket; fd; input; cache; thread; finally; version }
 
-let with_repositories client repositories =
-  Messages.send client.version client.socket (SetRepos repositories);
-  client
-
 let send client message =
   try Result.Ok (Messages.send client.version client.socket message)
   with Sys_error (* "Broken_pipe" *) _ ->
     Result.Error "lost connection to cache daemon"
+
+let with_repositories client repositories =
+  let+ () = send client (SetRepos repositories) in
+  client
 
 let promote (client : t) files key metadata ~repository ~duplication =
   let duplication =

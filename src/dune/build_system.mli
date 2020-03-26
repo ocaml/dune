@@ -68,7 +68,7 @@ val set_rule_generators :
   -> unit
 
 (** Set the list of VCS repositiories contained in the source tree *)
-val set_vcs : Vcs.t list -> unit
+val set_vcs : Vcs.t list -> unit Fiber.t
 
 (** All other functions in this section must be called inside the rule generator
     callback. *)

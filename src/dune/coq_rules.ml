@@ -12,10 +12,9 @@ let coq_debug = false
    This seems to correspond to src_dir. *)
 module Util = struct
   let include_paths ts =
-    List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
+    Path.Set.of_list_map ts ~f:(fun t ->
         let info = Lib.info t in
-        let src_dir = Lib_info.src_dir info in
-        Path.Set.add acc src_dir)
+        Lib_info.src_dir info)
 
   let include_flags ts = include_paths ts |> Lib.L.to_iflags
 
@@ -130,7 +129,7 @@ let deps_of ~dir ~boot_type coq_module =
   Build.dyn_paths_unit
     (Build.map
        (Build.lines_of (Path.build stdout_to))
-       ~f:(fun x -> parse_coqdep ~dir ~boot_type ~coq_module x))
+       ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
 let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -207,8 +206,7 @@ let create_ccoq sctx ~dir =
   { coqdep = rr "coqdep"; coqc = rr "coqc"; coqpp = rr "coqpp" }
 
 (* get_libraries from Coq's ML dependencies *)
-let libs_of_coq_deps ~lib_db libs =
-  Result.List.map ~f:(Lib.DB.resolve lib_db) libs
+let libs_of_coq_deps ~lib_db = Result.List.map ~f:(Lib.DB.resolve lib_db)
 
 (* compute include flags and mlpack rules *)
 let setup_ml_deps ~lib_db libs theories =
@@ -287,11 +285,10 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
     Coq_sources.library coq ~name
   in
 
-  List.concat_map
+  List.concat_map coq_modules
     ~f:
       (setup_rule ~build_dir ~dir ~cc ~expander ~coq_flags ~source_rule
          ~wrapper_name ~file_flags ~mlpack_rule ~boot_lib)
-    coq_modules
 
 (******************************************************************************)
 (* Install rules *)
@@ -309,15 +306,17 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
         (Some package.Package.name)
     then
       let info = Lib.info lib in
+      let loc = Lib_info.loc info in
       let plugins = Lib_info.plugins info in
       Mode.Dict.get plugins Mode.Native
       |> List.map ~f:(fun plugin_file ->
+             (* Safe because all coq libraries are local for now *)
              let plugin_file = Path.as_in_build_dir_exn plugin_file in
              let plugin_file_basename = Path.Build.basename plugin_file in
              let dst =
                Path.Local.(to_string (relative dst_dir plugin_file_basename))
              in
-             (None, Install.(Entry.make Section.Lib_root ~dst plugin_file)))
+             (Some loc, Install.(Entry.make Section.Lib_root ~dst plugin_file)))
     else
       []
   in
@@ -326,7 +325,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
 let install_rules ~sctx ~dir s =
   match s with
   | { Dune_file.Coq.package = None; _ } -> []
-  | { Dune_file.Coq.package = Some package; _ } ->
+  | { Dune_file.Coq.package = Some package; loc; _ } ->
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
@@ -357,7 +356,7 @@ let install_rules ~sctx ~dir s =
              Path.reach ~from:(Path.build dir) (Path.build vofile)
            in
            let dst = Path.Local.relative dst_dir vofile_rel in
-           ( None
+           ( Some loc
            , Install.(
                Entry.make Section.Lib_root ~dst:(Path.Local.to_string dst)
                  vofile) ))

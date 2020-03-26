@@ -372,7 +372,7 @@ let set_vcs vcs =
        let+ with_repositories =
         let f ({ Vcs.root; _ } as vcs) =
           let+ commit = Vcs.commit_id vcs in
-          { Cache.directory = Path.to_string root
+          { Cache.directory = Path.to_absolute_filename root
           ; remote = "FIXME: not filled yet"
           ; commit
           }

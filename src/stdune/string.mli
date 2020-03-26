@@ -17,6 +17,8 @@ val break : t -> pos:int -> t * t
 
 val is_empty : t -> bool
 
+val of_list : char list -> t
+
 val is_prefix : t -> prefix:t -> bool
 
 val is_suffix : t -> suffix:t -> bool

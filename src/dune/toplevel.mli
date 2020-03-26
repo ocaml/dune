@@ -18,6 +18,9 @@ val setup_rules : t -> unit
 
 val make : cctx:Compilation_context.t -> source:Source.t -> t
 
+val print_toplevel_init_file :
+  include_paths:Path.Set.t -> files_to_load:Path.t list -> unit
+
 module Stanza : sig
   val setup :
        sctx:Super_context.t

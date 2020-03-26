@@ -1911,6 +1911,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias toplevel-integration)
+ (deps (package dune) (source_tree test-cases/toplevel-integration))
+ (action
+  (chdir
+   test-cases/toplevel-integration
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias toplevel-stanza)
  (deps (package dune) (source_tree test-cases/toplevel-stanza))
  (action
@@ -2632,6 +2640,7 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
+  (alias toplevel-integration)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -2891,6 +2900,7 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
+  (alias toplevel-integration)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)

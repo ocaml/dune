@@ -67,6 +67,9 @@ val set_rule_generators :
            option)
   -> unit
 
+(** Set the list of VCS repositiories contained in the source tree *)
+val set_vcs : Vcs.t list -> unit
+
 (** All other functions in this section must be called inside the rule generator
     callback. *)
 

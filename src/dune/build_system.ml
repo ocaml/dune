@@ -332,6 +332,7 @@ type t =
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
+  ; vcs : Vcs.t list Fdecl.t
   }
 
 let t = ref None
@@ -360,6 +361,10 @@ let set_rule_generators ~init ~gen_rules =
   let (), init_rules = Rules.collect (fun () -> init ()) in
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
+
+let set_vcs vcs =
+  let t = t () in
+  Fdecl.set t.vcs vcs
 
 let get_cache () =
   let t = t () in
@@ -2023,14 +2028,17 @@ let init ~contexts ?caching ~sandboxing_preference =
     | Some ({ cache = (module Caching : Cache.Caching); _ } as v) -> (
       let open Result.O in
       let res =
-        let* with_build_dir =
-          Caching.Cache.set_build_dir Caching.cache Path.build_dir
-        in
+        let* cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
+        (* let* cache =
+         *   let f =
+         *   in
+         *   Caching.Cache.with_repositories Caching.cache @@ List.map ~f
+         * in *)
         Result.Ok
           ( module struct
             module Cache = Caching.Cache
 
-            let cache = with_build_dir
+            let cache = cache
           end : Cache.Caching )
       in
       match res with
@@ -2048,6 +2056,7 @@ let init ~contexts ?caching ~sandboxing_preference =
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
+    ; vcs = Fdecl.create Dyn.Encoder.opaque
     ; caching
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0

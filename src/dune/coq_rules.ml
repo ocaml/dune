@@ -393,8 +393,11 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
     Coq_sources.extract coq s
   in
   let wrapper_name = "dummy" in
+  let lib_db = Scope.libs scope in
+  let ml_flags, mlpack_rule = setup_ml_deps ~lib_db s.libraries theories_deps in
   let file_flags =
-    [ theories_flags
+    [ ml_flags
+    ; theories_flags
     ; Command.Args.A "-R"
     ; Path (Path.build dir)
     ; A wrapper_name
@@ -411,11 +414,10 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
         [ m ^ ".ml"; m ^ ".mli" ] |> List.map ~f:(Path.Build.relative build_dir))
   in
   let coqc =
+    let open Build.O in
     coqc_rule ~build_dir ~expander ~dir ~coqc:cc.coqc ~coq_flags ~file_flags
       coq_module
+    |> Build.With_targets.map_build ~f:(fun build -> mlpack_rule >>> build)
+    |> Build.With_targets.add ~targets:ml_targets
   in
-  let targets =
-    List.fold_left ml_targets ~init:coqc.targets ~f:(fun acc target ->
-        Path.Build.Set.add acc target)
-  in
-  [ { coqc with targets } ]
+  [ coqc ]

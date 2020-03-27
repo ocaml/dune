@@ -264,7 +264,9 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
   in
 
   (* ML-level flags for depending libraries *)
-  let ml_flags, mlpack_rule = setup_ml_deps ~lib_db s.libraries theories_deps in
+  let ml_flags, mlpack_rule =
+    setup_ml_deps ~lib_db s.buildable.libraries theories_deps
+  in
 
   (* Final flags *)
   let wrapper_name = Coq_lib.wrapper theory in
@@ -278,7 +280,7 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
   in
 
   let boot_lib = Coq_lib.DB.boot_library coq_lib_db in
-  let coq_flags = s.flags in
+  let coq_flags = s.buildable.flags in
 
   (* List of modules to compile for this library *)
   let coq_modules =
@@ -299,7 +301,9 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
    be in the folder containing the `.vo` files *)
 let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
   let lib_db = Scope.libs scope in
-  let ml_libs = libs_of_coq_deps ~lib_db s.libraries |> Result.ok_exn in
+  let ml_libs =
+    libs_of_coq_deps ~lib_db s.buildable.libraries |> Result.ok_exn
+  in
   let rules_for_lib lib =
     (* Don't install libraries that don't belong to this package *)
     if
@@ -326,7 +330,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
 let install_rules ~sctx ~dir s =
   match s with
   | { Dune_file.Coq.package = None; _ } -> []
-  | { Dune_file.Coq.package = Some package; loc; _ } ->
+  | { Dune_file.Coq.package = Some package; _ } ->
+    let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
@@ -377,12 +382,12 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
     (s : Dune_file.Coq_extract.t) =
   let cc = create_ccoq sctx ~dir in
   let expander = SC.expander sctx ~dir in
-  let coq_flags = s.flags in
+  let coq_flags = s.buildable.flags in
   let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   (* Coq flags for depending libraries *)
   let theories_deps =
-    Coq_lib.DB.requires_for_user_written coq_lib_db s.theories
+    Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
   in
   let theories_flags =
     Command.of_result_map theories_deps ~f:(fun libs ->
@@ -394,7 +399,9 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
   in
   let wrapper_name = "dummy" in
   let lib_db = Scope.libs scope in
-  let ml_flags, mlpack_rule = setup_ml_deps ~lib_db s.libraries theories_deps in
+  let ml_flags, mlpack_rule =
+    setup_ml_deps ~lib_db s.buildable.libraries theories_deps
+  in
   let file_flags =
     [ ml_flags
     ; theories_flags

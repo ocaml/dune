@@ -84,8 +84,8 @@ module DB = struct
       ; wrapper = Coq_lib_name.wrapper name
       ; obj_root = dir
       ; src_root = dir
-      ; theories = s.theories
-      ; libraries = s.libraries
+      ; theories = s.buildable.theories
+      ; libraries = s.buildable.libraries
       ; package = s.package
       } )
 
@@ -100,9 +100,9 @@ module DB = struct
     let boot =
       match List.find_all ~f:(fun (_, s) -> s.Dune_file.Coq.boot) sl with
       | [] -> None
-      | [ l ] -> Some ((snd l).loc, snd (create_from_stanza l))
+      | [ l ] -> Some ((snd l).buildable.loc, snd (create_from_stanza l))
       | _ :: (_, s2) :: _ ->
-        Result.ok_exn (Error.duplicate_boot_lib ~loc:s2.loc s2)
+        Result.ok_exn (Error.duplicate_boot_lib ~loc:s2.buildable.loc s2)
     in
     { boot; libs }
 

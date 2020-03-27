@@ -351,14 +351,20 @@ module Rule : sig
     }
 end
 
+module Coq_buildable : sig
+  type t =
+    { flags : Ordered_set_lang.Unexpanded.t
+    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
+    ; loc : Loc.t
+    }
+end
+
 module Coq_extract : sig
   type t =
     { extracted_modules : Module_name.t list
     ; prelude : Loc.t * Coq_module.Name.t
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
-    ; loc : Loc.t
+    ; buildable : Coq_buildable.t
     }
 
   type Stanza.t += T of t
@@ -371,12 +377,9 @@ module Coq : sig
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
-    ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
-    ; loc : Loc.t
     ; enabled_if : Blang.t
+    ; buildable : Coq_buildable.t
     }
 
   type Stanza.t += T of t

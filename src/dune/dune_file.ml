@@ -1980,33 +1980,42 @@ let coq_syntax =
   Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
     [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
 
-module Coq_extract = struct
+module Coq_buildable = struct
   type t =
-    { extracted_modules : Module_name.t list
-    ; prelude : Loc.t * Coq_module.Name.t
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; libraries : (Loc.t * Lib_name.t) list
-    ; theories : (Loc.t * Coq_lib_name.t) list
+    { flags : Ordered_set_lang.Unexpanded.t
+    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     }
 
   let decode =
+    let+ loc = loc
+    and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+    and+ libraries =
+      field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+    and+ theories =
+      field "theories"
+        (Dune_lang.Syntax.since coq_syntax (0, 2) >>> repeat Coq_lib_name.decode)
+        ~default:[]
+    in
+    { flags; libraries; theories; loc }
+end
+
+module Coq_extract = struct
+  type t =
+    { extracted_modules : Module_name.t list
+    ; prelude : Loc.t * Coq_module.Name.t
+    ; buildable : Coq_buildable.t
+    }
+
+  let decode =
     fields
-      (let+ loc = loc
-       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ extracted_modules =
+      (let+ extracted_modules =
          field "extracted_modules" (repeat Module_name.decode)
-       and+ libraries =
-         field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-       and+ theories =
-         field "theories"
-           ( Dune_lang.Syntax.since coq_syntax (0, 2)
-           >>> repeat Coq_lib_name.decode )
-           ~default:[]
        and+ prelude =
          field "prelude" (located (string >>| Coq_module.Name.make))
-       in
-       { prelude; extracted_modules; flags; libraries; loc; theories })
+       and+ buildable = Coq_buildable.decode in
+       { prelude; extracted_modules; buildable })
 
   type Stanza.t += T of t
 
@@ -2020,12 +2029,9 @@ module Coq = struct
     ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
-    ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
-    ; loc : Loc.t
     ; enabled_if : Blang.t
+    ; buildable : Coq_buildable.t
     }
 
   let coq_public_decode =
@@ -2068,41 +2074,30 @@ module Coq = struct
   let decode =
     fields
       (let+ name = field "name" Coq_lib_name.decode
-       and+ loc = loc
        and+ package = field_o "package" Pkg.decode
        and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
-       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
        and+ boot =
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = modules_field "modules"
-       and+ libraries =
-         field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-       and+ theories =
-         field "theories"
-           ( Dune_lang.Syntax.since coq_syntax (0, 2)
-           >>> repeat Coq_lib_name.decode )
-           ~default:[]
-       and+ enabled_if = enabled_if ~since:None in
+       and+ enabled_if = enabled_if ~since:None
+       and+ buildable = Coq_buildable.decode in
        let package = select_deprecation ~package ~public in
        { name
        ; package
        ; project
        ; synopsis
        ; modules
-       ; flags
        ; boot
-       ; libraries
-       ; theories
-       ; loc
+       ; buildable
        ; enabled_if
        })
 
   type Stanza.t += T of t
 
   let coqlib_warn x =
-    User_warning.emit ~loc:x.loc
+    User_warning.emit ~loc:x.buildable.loc
       [ Pp.text
           "(coqlib ...) is deprecated and will be removed in the Coq language \
            version 1.0, please use (coq.theory ...) instead"

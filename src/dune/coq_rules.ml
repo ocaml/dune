@@ -132,6 +132,17 @@ let deps_of ~dir ~boot_type coq_module =
        (Build.lines_of (Path.build stdout_to))
        ~f:(parse_coqdep ~dir ~boot_type ~coq_module))
 
+let coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir =
+  let file_flags =
+    [ ml_flags
+    ; theories_flags
+    ; Command.Args.A "-R"
+    ; Path (Path.build dir)
+    ; A wrapper_name
+    ]
+  in
+  [ Command.Args.S (flags_of_bootstrap_type ~boot_type); S file_flags ]
+
 let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
@@ -171,8 +182,8 @@ let coqc_rule ~build_dir ~expander ~dir ~coqc ~coq_flags ~file_flags coq_module
   let dir = Path.build build_dir in
   Command.run ~dir coqc (Command.Args.dyn coq_flags :: file_flags)
 
-let setup_rule ~build_dir ~dir ~cc ~wrapper_name ~file_flags ~expander
-    ~coq_flags ~source_rule ~mlpack_rule ~boot_lib coq_module =
+let setup_rule ~build_dir ~dir ~cc ~wrapper_name ~ml_flags ~theories_flags
+    ~expander ~coq_flags ~source_rule ~mlpack_rule ~boot_lib coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
@@ -180,7 +191,7 @@ let setup_rule ~build_dir ~dir ~cc ~wrapper_name ~file_flags ~expander
 
   let boot_type = get_bootstrap_type ~boot_lib ~wrapper_name coq_module in
   let file_flags =
-    [ Command.Args.S (flags_of_bootstrap_type ~boot_type); S file_flags ]
+    coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir
   in
 
   let coqdep_rule =
@@ -270,14 +281,6 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
   (* Final flags *)
   let wrapper_name = Coq_lib.wrapper theory in
-  let file_flags =
-    [ ml_flags
-    ; theories_flags
-    ; Command.Args.A "-R"
-    ; Path (Path.build dir)
-    ; A wrapper_name
-    ]
-  in
 
   let boot_lib = Coq_lib.DB.boot_library coq_lib_db in
   let coq_flags = s.buildable.flags in
@@ -291,7 +294,7 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
   List.concat_map coq_modules
     ~f:
       (setup_rule ~build_dir ~dir ~cc ~expander ~coq_flags ~source_rule
-         ~wrapper_name ~file_flags ~mlpack_rule ~boot_lib)
+         ~wrapper_name ~ml_flags ~theories_flags ~mlpack_rule ~boot_lib)
 
 (******************************************************************************)
 (* Install rules *)
@@ -397,23 +400,14 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
-  let wrapper_name = "DuneExtraction" in
   let lib_db = Scope.libs scope in
   let ml_flags, mlpack_rule =
     setup_ml_deps ~lib_db s.buildable.libraries theories_deps
   in
   let file_flags =
-    [ ml_flags
-    ; theories_flags
-    ; Command.Args.A "-R"
-    ; Path (Path.build dir)
-    ; A wrapper_name
-    ]
-  in
-  let file_flags =
-    [ Command.Args.S (flags_of_bootstrap_type ~boot_type:No_boot)
-    ; S file_flags
-    ]
+    let wrapper_name = "DuneExtraction" in
+    coqc_file_flags ~boot_type:No_boot ~ml_flags ~theories_flags ~wrapper_name
+      ~dir
   in
   let ml_targets =
     Dune_file.Coq_extract.ml_target_fnames s

@@ -111,7 +111,7 @@ let opam_fields project (package : Package.t) =
     ; ("homepage", Package.Info.homepage info)
     ; ("doc", Package.Info.documentation info)
     ; ("license", Package.Info.license info)
-    ; ("version", Dune_project.version project)
+    ; ("version", package.Package.version)
     ; ( "dev-repo"
       , Option.map ~f:Package.Source_kind.to_string (Package.Info.source info)
       )

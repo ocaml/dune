@@ -16,7 +16,7 @@
   $ cat >dune <<EOF
   > (coq.extract
   >  (prelude extract)
-  >  (extracted_modules Datatypes Extract))
+  >  (extracted_modules datatypes extract))
   > 
   > (executable
   >  (name foo))
@@ -34,3 +34,15 @@
 
   $ dune exec ./foo.exe
   false
+  $ ls _build/default
+  Datatypes.ml
+  Datatypes.mli
+  extract.glob
+  extract.ml
+  extract.mli
+  extract.v
+  extract.vo
+  extract.vok
+  extract.vos
+  foo.exe
+  foo.ml

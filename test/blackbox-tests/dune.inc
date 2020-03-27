@@ -2434,7 +2434,6 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
-  (alias coq-extract)
   (alias corrections)
   (alias cross-compilation)
   (alias custom-build-dir)
@@ -2723,7 +2722,6 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
-  (alias coq-extract)
   (alias corrections)
   (alias custom-build-dir)
   (alias custom-cross-compilation)
@@ -2967,4 +2965,4 @@
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
-(alias (name runtest-coq) (deps (alias coq)))
+(alias (name runtest-coq) (deps (alias coq) (alias coq-extract)))

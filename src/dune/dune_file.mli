@@ -351,51 +351,6 @@ module Rule : sig
     }
 end
 
-module Coq_buildable : sig
-  type t =
-    { flags : Ordered_set_lang.Unexpanded.t
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
-    ; loc : Loc.t
-    }
-end
-
-module Coq_extract : sig
-  type t =
-    { extracted_modules : Module_name.t list
-    ; prelude : Loc.t * Coq_module.Name.t
-    ; buildable : Coq_buildable.t
-    }
-
-  val ml_target_fnames : t -> string list
-
-  type Stanza.t += T of t
-end
-
-module Coq : sig
-  type t =
-    { name : Loc.t * Coq_lib_name.t
-    ; package : Package.t option
-    ; project : Dune_project.t
-    ; synopsis : string option
-    ; modules : Ordered_set_lang.t
-    ; boot : bool
-    ; enabled_if : Blang.t
-    ; buildable : Coq_buildable.t
-    }
-
-  type Stanza.t += T of t
-end
-
-module Coqpp : sig
-  type t =
-    { modules : string list
-    ; loc : Loc.t
-    }
-
-  type Stanza.t += T of t
-end
-
 module Alias_conf : sig
   type t =
     { name : Alias.Name.t

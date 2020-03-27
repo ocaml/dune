@@ -1,4 +1,5 @@
 open Stdune
+open Coq_stanza
 
 (* TODO: Build reverse map and check duplicates, however, are duplicates
    harmful?
@@ -34,7 +35,7 @@ let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs unqualified) is not supported yet" ]
 
-let extract t (stanza : Dune_file.Coq_extract.t) =
+let extract t (stanza : Extract.t) =
   Loc.Map.find_exn t.extract stanza.buildable.loc
 
 let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
@@ -42,7 +43,7 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
   let modules = coq_modules_of_files ~dirs in
   List.fold_left d.data ~init:empty ~f:(fun acc ->
     function
-    | Dune_file.Coq.T coq ->
+    | Coq_stanza.Theory.T coq ->
       let modules =
         Coq_module.eval ~dir:d.ctx_dir coq.modules ~standard:modules
       in
@@ -50,7 +51,7 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
         Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
       in
       { acc with libraries }
-    | Dune_file.Coq_extract.T extract ->
+    | Coq_stanza.Extract.T extract ->
       let loc, prelude = extract.prelude in
       let m =
         match

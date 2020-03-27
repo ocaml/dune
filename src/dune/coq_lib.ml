@@ -38,7 +38,7 @@ module Error = struct
     Error (User_error.E (User_error.make ?loc ?hints paragraphs))
 
   let duplicate_theory_name theory =
-    let loc, name = theory.Dune_file.Coq.name in
+    let loc, name = theory.Coq_stanza.Theory.name in
     let name = Coq_lib_name.to_string name in
     make ~loc [ Pp.textf "Duplicate theory name: %s" name ]
 
@@ -56,7 +56,9 @@ module Error = struct
       ]
 
   let duplicate_boot_lib ~loc boot_theory =
-    let name = Coq_lib_name.to_string (snd boot_theory.Dune_file.Coq.name) in
+    let name =
+      Coq_lib_name.to_string (snd boot_theory.Coq_stanza.Theory.name)
+    in
     make ~loc [ Pp.textf "Cannot have more than one boot library: %s)" name ]
 
   let cycle_found ~loc cycle =
@@ -77,7 +79,7 @@ module DB = struct
 
   let boot_library { boot; _ } = boot
 
-  let create_from_stanza ((dir, s) : Path.Build.t * Dune_file.Coq.t) =
+  let create_from_stanza ((dir, s) : Path.Build.t * Coq_stanza.Theory.t) =
     let name = snd s.name in
     ( name
     , { name = s.name
@@ -98,7 +100,7 @@ module DB = struct
         Result.ok_exn (Error.duplicate_theory_name w2)
     in
     let boot =
-      match List.find_all ~f:(fun (_, s) -> s.Dune_file.Coq.boot) sl with
+      match List.find_all ~f:(fun (_, s) -> s.Coq_stanza.Theory.boot) sl with
       | [] -> None
       | [ l ] -> Some ((snd l).buildable.loc, snd (create_from_stanza l))
       | _ :: (_, s2) :: _ ->

@@ -130,8 +130,9 @@ end = struct
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
           (* XXX What about mli files? *)
-          | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
-          | Coq_extract.T s -> Coq_extract.ml_target_fnames s
+          | Coq_stanza.Coqpp.T { modules; _ } ->
+            List.map modules ~f:(fun m -> m ^ ".ml")
+          | Coq_stanza.Extract.T s -> Coq_stanza.Extract.ml_target_fnames s
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander

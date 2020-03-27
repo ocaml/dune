@@ -4,6 +4,7 @@
 (* Written by: Emilio Jesús Gallego Arias *)
 
 open! Stdune
+open Coq_stanza
 module SC = Super_context
 
 let coq_debug = false
@@ -250,7 +251,7 @@ let setup_theory_flag lib =
   let dir = Coq_lib.src_root lib in
   [ Command.Args.A "-Q"; Path (Path.build dir); A wrapper ]
 
-let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
+let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
   let cc = create_ccoq sctx ~dir in
   let name = snd s.name in
   let scope = SC.find_scope_by_dir sctx dir in
@@ -305,7 +306,7 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Dune_file.Coq.t) =
 
 (* This is here for compatibility with Coq < 8.11, which expects plugin files to
    be in the folder containing the `.vo` files *)
-let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
+let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
   let lib_db = Scope.libs scope in
   let ml_libs =
     libs_of_coq_deps ~lib_db s.buildable.libraries |> Result.ok_exn
@@ -335,8 +336,8 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Dune_file.Coq.t) =
 
 let install_rules ~sctx ~dir s =
   match s with
-  | { Dune_file.Coq.package = None; _ } -> []
-  | { Dune_file.Coq.package = Some package; _ } ->
+  | { Theory.package = None; _ } -> []
+  | { Theory.package = Some package; _ } ->
     let loc = s.buildable.loc in
     let scope = SC.find_scope_by_dir sctx dir in
     let dir_contents = Dir_contents.get sctx ~dir in
@@ -374,7 +375,7 @@ let install_rules ~sctx ~dir s =
                  vofile) ))
     |> List.rev_append coq_plugins_install_rules
 
-let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
+let coqpp_rules ~sctx ~build_dir ~dir (s : Coqpp.t) =
   let cc = create_ccoq sctx ~dir in
   let mlg_rule m =
     let source = Path.build (Path.Build.relative dir (m ^ ".mlg")) in
@@ -384,8 +385,7 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Dune_file.Coqpp.t) =
   in
   List.map ~f:mlg_rule s.modules
 
-let extract_rules ~sctx ~build_dir ~dir ~dir_contents
-    (s : Dune_file.Coq_extract.t) =
+let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
   let cc = create_ccoq sctx ~dir in
   let expander = SC.expander sctx ~dir in
   let coq_flags = s.buildable.flags in
@@ -413,8 +413,7 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
       ~dir
   in
   let ml_targets =
-    Dune_file.Coq_extract.ml_target_fnames s
-    |> List.map ~f:(Path.Build.relative build_dir)
+    Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative build_dir)
   in
   let coqc =
     let open Build.O in

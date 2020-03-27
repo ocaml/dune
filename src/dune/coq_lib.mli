@@ -25,7 +25,8 @@ module DB : sig
 
   type t
 
-  val create_from_coqlib_stanzas : (Path.Build.t * Dune_file.Coq.t) list -> t
+  val create_from_coqlib_stanzas :
+    (Path.Build.t * Coq_stanza.Theory.t) list -> t
 
   val find_many : t -> loc:Loc.t -> Coq_lib_name.t list -> lib list Or_exn.t
 

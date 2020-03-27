@@ -2008,6 +2008,11 @@ module Coq_extract = struct
     ; buildable : Coq_buildable.t
     }
 
+  let ml_target_fnames t =
+    List.concat_map t.extracted_modules ~f:(fun m ->
+        let m = Module_name.to_string m in
+        [ m ^ ".ml"; m ^ ".mli" ])
+
   let decode =
     fields
       (let+ extracted_modules =

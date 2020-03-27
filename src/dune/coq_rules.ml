@@ -416,9 +416,8 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
     ]
   in
   let ml_targets =
-    List.concat_map s.extracted_modules ~f:(fun m ->
-        let m = Module_name.to_string m in
-        [ m ^ ".ml"; m ^ ".mli" ] |> List.map ~f:(Path.Build.relative build_dir))
+    Dune_file.Coq_extract.ml_target_fnames s
+    |> List.map ~f:(Path.Build.relative build_dir)
   in
   let coqc =
     let open Build.O in

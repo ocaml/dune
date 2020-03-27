@@ -367,6 +367,8 @@ module Coq_extract : sig
     ; buildable : Coq_buildable.t
     }
 
+  val ml_target_fnames : t -> string list
+
   type Stanza.t += T of t
 end
 

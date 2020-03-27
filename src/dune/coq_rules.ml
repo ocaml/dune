@@ -397,7 +397,7 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
-  let wrapper_name = "dummy" in
+  let wrapper_name = "DuneExtraction" in
   let lib_db = Scope.libs scope in
   let ml_flags, mlpack_rule =
     setup_ml_deps ~lib_db s.buildable.libraries theories_deps

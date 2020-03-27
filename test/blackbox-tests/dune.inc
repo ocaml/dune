@@ -2900,7 +2900,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias toplevel-integration)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)

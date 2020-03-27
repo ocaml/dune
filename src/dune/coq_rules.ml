@@ -44,11 +44,26 @@ module Context = struct
     { coqdep : Action.program
     ; coqc : Action.program
     ; wrapper_name : string
+    ; dir : Path.Build.t
+    ; expander : Expander.t
+    ; buildable : Buildable.t
     }
 
-  let create sctx ~loc ~dir ~wrapper_name =
+  let coq_flags t =
+    Expander.expand_and_eval_set t.expander t.buildable.flags
+      ~standard:(Build.return [])
+
+  let create sctx ~dir ~wrapper_name (buildable : Buildable.t) =
+    let loc = buildable.loc in
     let rr = resolve_program sctx ~dir ~loc in
-    { coqdep = rr "coqdep"; coqc = rr "coqc"; wrapper_name }
+    let expander = Super_context.expander sctx ~dir in
+    { coqdep = rr "coqdep"
+    ; coqc = rr "coqc"
+    ; wrapper_name
+    ; dir
+    ; expander
+    ; buildable
+    }
 end
 
 module Bootstrap = struct
@@ -157,7 +172,7 @@ let coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir =
   in
   [ Command.Args.S (Bootstrap.flags boot_type); S file_flags ]
 
-let coqdep_rule (cctx : Context.t) ~dir ~mlpack_rule ~source_rule ~file_flags
+let coqdep_rule (cctx : Context.t) ~mlpack_rule ~source_rule ~file_flags
     coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
   let source = Coq_module.source coq_module in
@@ -167,19 +182,18 @@ let coqdep_rule (cctx : Context.t) ~dir ~mlpack_rule ~source_rule ~file_flags
     ; Dep (Path.build source)
     ]
   in
-  let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
+  let stdout_to = Coq_module.dep_file ~obj_dir:cctx.dir coq_module in
   (* Coqdep has to be called in the stanza's directory *)
-  let dir = Path.build dir in
+  let dir = Path.build cctx.dir in
   let open Build.With_targets.O in
   Build.with_no_targets mlpack_rule
   >>> Build.with_no_targets source_rule
   >>> Command.run ~dir ~stdout_to cctx.coqdep file_flags
 
-let coqc_rule (cctx : Context.t) ~build_dir ~expander ~dir ~coq_flags
-    ~file_flags coq_module =
+let coqc_rule (cctx : Context.t) ~build_dir ~file_flags coq_module =
   let source = Coq_module.source coq_module in
   let file_flags =
-    let object_to = Coq_module.obj_file ~obj_dir:dir coq_module in
+    let object_to = Coq_module.obj_file ~obj_dir:cctx.dir coq_module in
     [ Command.Args.Hidden_targets [ object_to ]
     ; S file_flags
     ; Command.Args.Dep (Path.build source)
@@ -191,14 +205,12 @@ let coqc_rule (cctx : Context.t) ~build_dir ~expander ~dir ~coq_flags
   Build.with_no_targets
     (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
   >>>
-  let coq_flags =
-    Expander.expand_and_eval_set expander coq_flags ~standard:(Build.return [])
-  in
+  let coq_flags = Context.coq_flags cctx in
   let dir = Path.build build_dir in
   Command.run ~dir cctx.coqc (Command.Args.dyn coq_flags :: file_flags)
 
-let setup_rule cctx ~build_dir ~dir ~ml_flags ~theories_flags ~expander
-    ~coq_flags ~source_rule ~mlpack_rule ~boot_lib coq_module =
+let setup_rule cctx ~build_dir ~ml_flags ~theories_flags ~source_rule
+    ~mlpack_rule ~boot_lib coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
@@ -207,21 +219,21 @@ let setup_rule cctx ~build_dir ~dir ~ml_flags ~theories_flags ~expander
   let wrapper_name = cctx.Context.wrapper_name in
   let boot_type = Bootstrap.get ~boot_lib ~wrapper_name coq_module in
   let file_flags =
-    coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir
+    coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name
+      ~dir:cctx.dir
   in
 
   let coqdep_rule =
-    coqdep_rule cctx ~dir ~mlpack_rule ~source_rule ~file_flags coq_module
+    coqdep_rule cctx ~mlpack_rule ~source_rule ~file_flags coq_module
   in
 
   (* Process coqdep and generate rules *)
-  let deps_of = deps_of ~dir ~boot_type coq_module in
+  let deps_of = deps_of ~dir:cctx.dir ~boot_type coq_module in
 
   (* Rules for the files *)
   [ coqdep_rule
   ; Build.with_no_targets deps_of
-    >>> coqc_rule cctx ~build_dir ~expander ~dir ~coq_flags ~file_flags
-          coq_module
+    >>> coqc_rule cctx ~build_dir ~file_flags coq_module
   ]
 
 (* get_libraries from Coq's ML dependencies *)
@@ -259,11 +271,10 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
   let scope = SC.find_scope_by_dir sctx dir in
   let lib_db = Scope.libs scope in
   let coq_lib_db = Scope.coq_libs scope in
-  let expander = SC.expander sctx ~dir in
 
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
   let wrapper_name = Coq_lib.wrapper theory in
-  let cctx = Context.create sctx ~loc:s.buildable.loc ~dir ~wrapper_name in
+  let cctx = Context.create sctx ~dir ~wrapper_name s.buildable in
 
   (* Coq flags for depending libraries *)
   let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
@@ -288,7 +299,6 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
   in
 
   let boot_lib = Coq_lib.DB.boot_library coq_lib_db in
-  let coq_flags = s.buildable.flags in
 
   (* List of modules to compile for this library *)
   let coq_modules =
@@ -298,8 +308,8 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
 
   List.concat_map coq_modules
     ~f:
-      (setup_rule cctx ~build_dir ~dir ~expander ~coq_flags ~source_rule
-         ~ml_flags ~theories_flags ~mlpack_rule ~boot_lib)
+      (setup_rule cctx ~build_dir ~source_rule ~ml_flags ~theories_flags
+         ~mlpack_rule ~boot_lib)
 
 (******************************************************************************)
 (* Install rules *)
@@ -388,9 +398,7 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Coqpp.t) =
 
 let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
   let wrapper_name = "DuneExtraction" in
-  let cctx = Context.create sctx ~dir ~loc:s.buildable.loc ~wrapper_name in
-  let expander = SC.expander sctx ~dir in
-  let coq_flags = s.buildable.flags in
+  let cctx = Context.create sctx ~dir ~wrapper_name s.buildable in
   let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
   (* Coq flags for depending libraries *)
@@ -418,7 +426,7 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
   in
   let coqc =
     let open Build.O in
-    coqc_rule cctx ~build_dir ~expander ~dir ~coq_flags ~file_flags coq_module
+    coqc_rule cctx ~build_dir ~file_flags coq_module
     |> Build.With_targets.map_build ~f:(fun build -> mlpack_rule >>> build)
     |> Build.With_targets.add ~targets:ml_targets
   in

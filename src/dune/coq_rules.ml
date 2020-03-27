@@ -40,20 +40,45 @@ type coq_context =
   ; coqpp : Action.program
   }
 
-(* the internal boot flag determines if the Coq "standard library" is being
-   built, in case we need to explictly tell Coq where the build artifacts are
-   and add `Init.Prelude.vo` as a dependency; there is a further special case
-   when compiling the prelude, in this case we also need to tell Coq not to try
-   to load the prelude. *)
-type coq_bootstrap_type =
-  | No_boot  (** Coq's stdlib is installed globally *)
-  | Bootstrap of Coq_lib.t
-      (** Coq's stdlib is in scope of the composed build *)
-  | Bootstrap_prelude
-      (** We are compiling the prelude itself
-          [should be replaced with (per_file ...) flags] *)
+module Bootstrap = struct
+  (* the internal boot flag determines if the Coq "standard library" is being
+     built, in case we need to explictly tell Coq where the build artifacts are
+     and add `Init.Prelude.vo` as a dependency; there is a further special case
+     when compiling the prelude, in this case we also need to tell Coq not to
+     try to load the prelude. *)
+  type t =
+    | No_boot  (** Coq's stdlib is installed globally *)
+    | Bootstrap of Coq_lib.t
+        (** Coq's stdlib is in scope of the composed build *)
+    | Bootstrap_prelude
+        (** We are compiling the prelude itself
+            [should be replaced with (per_file ...) flags] *)
 
-let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
+  let get ~boot_lib ~wrapper_name coq_module =
+    match boot_lib with
+    | None -> No_boot
+    | Some (_loc, lib) -> (
+      (* This is here as an optimization, TODO; replace with per_file flags *)
+      let init =
+        String.equal (Coq_lib.wrapper lib) wrapper_name
+        && Option.equal String.equal
+             (List.hd_opt (Coq_module.prefix coq_module))
+             (Some "Init")
+      in
+      match init with
+      | false -> Bootstrap lib
+      | true -> Bootstrap_prelude )
+
+  let flags =
+    let open Command in
+    function
+    | No_boot -> []
+    | Bootstrap _lib -> [ Args.A "-boot" ]
+    | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
+end
+
+let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
+    (lines : string list) =
   if coq_debug then Format.eprintf "Parsing coqdep @\n%!";
   let source = Coq_module.source coq_module in
   let invalid p =
@@ -103,28 +128,6 @@ let parse_coqdep ~dir ~boot_type ~coq_module (lines : string list) =
       Path.relative (Path.build (Coq_lib.src_root lib)) "Init/Prelude.vo"
       :: deps )
 
-let get_bootstrap_type ~boot_lib ~wrapper_name coq_module =
-  match boot_lib with
-  | None -> No_boot
-  | Some (_loc, lib) -> (
-    (* This is here as an optimization, TODO; replace with per_file flags *)
-    let init =
-      String.equal (Coq_lib.wrapper lib) wrapper_name
-      && Option.equal String.equal
-           (List.hd_opt (Coq_module.prefix coq_module))
-           (Some "Init")
-    in
-    match init with
-    | false -> Bootstrap lib
-    | true -> Bootstrap_prelude )
-
-let flags_of_bootstrap_type ~boot_type =
-  let open Command in
-  match boot_type with
-  | No_boot -> []
-  | Bootstrap _lib -> [ Args.A "-boot" ]
-  | Bootstrap_prelude -> [ Args.As [ "-boot"; "-noinit" ] ]
-
 let deps_of ~dir ~boot_type coq_module =
   let stdout_to = Coq_module.dep_file ~obj_dir:dir coq_module in
   Build.dyn_paths_unit
@@ -141,7 +144,7 @@ let coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir =
     ; A wrapper_name
     ]
   in
-  [ Command.Args.S (flags_of_bootstrap_type ~boot_type); S file_flags ]
+  [ Command.Args.S (Bootstrap.flags boot_type); S file_flags ]
 
 let coqdep_rule ~dir ~coqdep ~mlpack_rule ~source_rule ~file_flags coq_module =
   (* coqdep needs the full source + plugin's mlpack to be present :( *)
@@ -189,7 +192,7 @@ let setup_rule ~build_dir ~dir ~cc ~wrapper_name ~ml_flags ~theories_flags
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
-  let boot_type = get_bootstrap_type ~boot_lib ~wrapper_name coq_module in
+  let boot_type = Bootstrap.get ~boot_lib ~wrapper_name coq_module in
   let file_flags =
     coqc_file_flags ~boot_type ~ml_flags ~theories_flags ~wrapper_name ~dir
   in

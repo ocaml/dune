@@ -1,0 +1,10 @@
+(library
+(name foo)
+(modules (:standard \ init))
+(libraries core)
+(preprocess (pps ppx_sexp_conv)))
+
+(toplevel
+(name tt)
+(libraries foo core)
+(preprocess (pps ppx_sexp_conv)))

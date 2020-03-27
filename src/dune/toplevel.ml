@@ -42,7 +42,7 @@ module Source = struct
     ; main_module_name = Module.name (main_module t)
     }
 
-  let pp_ml fmt t ~include_dirs =
+  let pp_ml fmt _t ~include_dirs =
     let pp_include fmt =
       let pp_sep fmt () = Format.fprintf fmt "@ ; " in
       Format.pp_print_list ~pp_sep
@@ -50,8 +50,7 @@ module Source = struct
         fmt
     in
     Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@." pp_include
-      include_dirs;
-    Format.fprintf fmt "%s@." t.main
+      include_dirs
 
   let loc t = t.loc
 end
@@ -76,11 +75,10 @@ let pp_flags fmt t =
     with
     | Error _exn -> ()
     | Ok (exe, flags) ->
-      Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+      Path.to_absolute_filename (Path.build exe)
+      :: "--as-ppx" :: flags
       |> String.concat ~sep:" "
-      |> Filename.quote
-      |> sprintf "FLG -ppx %s"
-      |> Format.fprintf fmt "@[<v 2>Clflags.all_ppx :=@ [ %s@ ]@];@." )
+      |> Format.fprintf fmt "@[<v 2>Clflags.all_ppx :=@ [ %S@ ]@];@." )
   | Action _ | Future_syntax _ | No_preprocessing -> ()
 
 let setup_module_rules t =
@@ -96,6 +94,7 @@ let setup_module_rules t =
            let fmt = Format.formatter_of_buffer b in
            Source.pp_ml fmt t.source ~include_dirs;
            pp_flags fmt t;
+           Format.fprintf fmt "%s@." t.source.main;
            Format.pp_print_flush fmt ();
            Buffer.contents b))
     |> Build.write_file_dyn path

@@ -16,7 +16,7 @@
   $ cat >dune <<EOF
   > (coq.extract
   >  (prelude extract)
-  >  (extracted_modules datatypes extract))
+  >  (extracted_modules Datatypes extract))
   > 
   > (executable
   >  (name foo))

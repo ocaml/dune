@@ -46,20 +46,19 @@ end
 
 module Extract = struct
   type t =
-    { extracted_modules : Module_name.t list
+    { (* not a list of modules because we want to preserve whatever case coq
+         uses *)
+      extracted_modules : string list
     ; prelude : Loc.t * Coq_module.Name.t
     ; buildable : Buildable.t
     }
 
   let ml_target_fnames t =
-    List.concat_map t.extracted_modules ~f:(fun m ->
-        let m = Module_name.to_string m in
-        [ m ^ ".ml"; m ^ ".mli" ])
+    List.concat_map t.extracted_modules ~f:(fun m -> [ m ^ ".ml"; m ^ ".mli" ])
 
   let decode =
     fields
-      (let+ extracted_modules =
-         field "extracted_modules" (repeat Module_name.decode)
+      (let+ extracted_modules = field "extracted_modules" (repeat string)
        and+ prelude =
          field "prelude" (located (string >>| Coq_module.Name.make))
        and+ buildable = Buildable.decode in

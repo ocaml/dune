@@ -265,13 +265,19 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let coq_flags = Context.coq_flags cctx in
   Context.run cctx cctx.coqc (Command.Args.dyn coq_flags :: file_flags)
 
+module Module_rule = struct
+  type t =
+    { coqdep : Action.t Build.With_targets.t
+    ; coqc : Action.t Build.With_targets.t
+    }
+end
+
 let setup_rule cctx ~source_rule coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
-  let cctx = Context.for_module cctx coq_module in
   let file_flags = Context.coqc_file_flags cctx in
 
   let coqdep_rule = coqdep_rule cctx ~source_rule ~file_flags coq_module in
@@ -280,9 +286,10 @@ let setup_rule cctx ~source_rule coq_module =
   let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
 
   (* Rules for the files *)
-  [ coqdep_rule
-  ; Build.with_no_targets deps_of >>> coqc_rule cctx ~file_flags coq_module
-  ]
+  { Module_rule.coqdep = coqdep_rule
+  ; coqc =
+      Build.with_no_targets deps_of >>> coqc_rule cctx ~file_flags coq_module
+  }
 
 let coq_modules_of_theory ~sctx lib =
   let name = Coq_lib.name lib in
@@ -326,7 +333,10 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     in
     source_rule ~sctx theories
   in
-  List.concat_map coq_modules ~f:(setup_rule cctx ~source_rule)
+  List.concat_map coq_modules ~f:(fun m ->
+      let cctx = Context.for_module cctx m in
+      let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule m in
+      [ coqc; coqdep ])
 
 (******************************************************************************)
 (* Install rules *)
@@ -427,14 +437,14 @@ let extract_rules ~sctx ~dir ~dir_contents (s : Extract.t) =
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
-  let file_flags = Context.coqc_file_flags cctx in
   let ml_targets =
     Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
-  let coqc =
+  let source_rule =
+    let theories = source_rule ~sctx cctx.theories_deps in
     let open Build.O in
-    coqc_rule cctx ~file_flags coq_module
-    |> Build.With_targets.map_build ~f:(fun build -> cctx.mlpack_rule >>> build)
-    |> Build.With_targets.add ~targets:ml_targets
+    theories >>> Build.path (Path.build (Coq_module.source coq_module))
   in
-  [ coqc ]
+  let { Module_rule.coqc; coqdep } = setup_rule cctx ~source_rule coq_module in
+  let coqc = Build.With_targets.add coqc ~targets:ml_targets in
+  [ coqdep; coqc ]

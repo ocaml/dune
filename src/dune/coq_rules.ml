@@ -290,6 +290,14 @@ let coq_modules_of_theory ~sctx lib =
   let coq_sources = Dir_contents.coq dir_contents in
   Coq_sources.library coq_sources ~name
 
+let source_rule ~sctx theories =
+  (* sources for depending libraries coqdep requires all the files to be in the
+     tree to produce correct dependencies, including those of dependencies *)
+  Build.of_result_map theories ~f:(fun theories ->
+      List.concat_map theories ~f:(coq_modules_of_theory ~sctx)
+      |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
+      |> Build.paths)
+
 let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
   let name = snd s.name in
   let scope = SC.find_scope_by_dir sctx dir in
@@ -303,22 +311,20 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     Context.create sctx ~dir ~wrapper_name ~theories_deps s.buildable
   in
 
-  (* sources for depending libraries coqdep requires all the files to be in the
-     tree to produce correct dependencies, including those of dependencies *)
-  let source_rule =
-    Build.of_result_map cctx.theories_deps ~f:(fun theories ->
-        theory :: theories
-        |> List.concat_map ~f:(coq_modules_of_theory ~sctx)
-        |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
-        |> Build.paths)
-  in
-
   (* List of modules to compile for this library *)
   let coq_modules =
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.library coq ~name
   in
 
+  let source_rule =
+    let theories =
+      let open Result.O in
+      let+ theories = cctx.theories_deps in
+      theory :: theories
+    in
+    source_rule ~sctx theories
+  in
   List.concat_map coq_modules ~f:(setup_rule cctx ~source_rule)
 
 (******************************************************************************)

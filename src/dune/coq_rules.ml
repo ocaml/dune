@@ -418,7 +418,7 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
   in
   let file_flags = Context.coqc_file_flags cctx in
   let ml_targets =
-    Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative build_dir)
+    Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
   let coqc =
     let open Build.O in

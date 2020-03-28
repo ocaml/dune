@@ -290,21 +290,19 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
   let name = snd s.name in
   let scope = SC.find_scope_by_dir sctx dir in
   let coq_lib_db = Scope.coq_libs scope in
-
   let theory = Coq_lib.DB.resolve coq_lib_db s.name |> Result.ok_exn in
-  let wrapper_name = Coq_lib.wrapper theory in
-
-  (* Coq flags for depending libraries *)
-  let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
 
   let cctx =
+    let wrapper_name = Coq_lib.wrapper theory in
+    (* Coq flags for depending libraries *)
+    let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
     Context.create sctx ~dir ~wrapper_name ~theories_deps s.buildable
   in
 
   (* sources for depending libraries coqdep requires all the files to be in the
      tree to produce correct dependencies, including those of dependencies *)
   let source_rule =
-    Build.of_result_map theories_deps ~f:(fun theories ->
+    Build.of_result_map cctx.theories_deps ~f:(fun theories ->
         theory :: theories
         |> List.concat_map ~f:(coq_modules_of_theory ~sctx)
         |> List.rev_map ~f:(fun m -> Path.build (Coq_module.source m))
@@ -405,13 +403,13 @@ let coqpp_rules ~sctx ~build_dir ~dir (s : Coqpp.t) =
   List.map ~f:mlg_rule s.modules
 
 let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
-  let wrapper_name = "DuneExtraction" in
-  let scope = SC.find_scope_by_dir sctx dir in
-  let coq_lib_db = Scope.coq_libs scope in
-  let theories_deps =
-    Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
-  in
   let cctx =
+    let wrapper_name = "DuneExtraction" in
+    let theories_deps =
+      let scope = SC.find_scope_by_dir sctx dir in
+      let coq_lib_db = Scope.coq_libs scope in
+      Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
+    in
     Context.create sctx ~dir ~wrapper_name ~theories_deps s.buildable
   in
   let coq_module =

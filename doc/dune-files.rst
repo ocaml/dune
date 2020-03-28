@@ -1657,6 +1657,9 @@ process. This is done using the ``coq.extract`` stanza:
 - ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
   these fields have the same meaning as in the ``coq.theory`` stanza.
 
+The extracted sources can then be used in ``executable`` or ``library`` stanzas
+as any other sources.
+
 .. _dune-workspace:
 
 mdx (since 2.4)

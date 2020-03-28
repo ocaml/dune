@@ -90,6 +90,8 @@ module Context = struct
     ; theories_deps : Coq_lib.t list Or_exn.t
     ; mlpack_rule : unit Build.t
     ; ml_flags : 'a Command.Args.t
+    ; scope : Scope.t
+    ; boot_type : Bootstrap.t
     }
 
   let coq_flags t =
@@ -106,7 +108,7 @@ module Context = struct
       Command.of_result_map t.theories_deps ~f:(fun libs ->
           Command.Args.S (List.concat_map libs ~f:setup_theory_flag))
 
-  let coqc_file_flags cctx ~boot_type =
+  let coqc_file_flags cctx =
     let file_flags =
       [ cctx.ml_flags
       ; theories_flags cctx
@@ -115,7 +117,7 @@ module Context = struct
       ; A cctx.wrapper_name
       ]
     in
-    [ Command.Args.S (Bootstrap.flags boot_type); S file_flags ]
+    [ Command.Args.S (Bootstrap.flags cctx.boot_type); S file_flags ]
 
   (* compute include flags and mlpack rules *)
   let setup_ml_deps ~lib_db libs theories =
@@ -151,7 +153,16 @@ module Context = struct
     ; theories_deps
     ; mlpack_rule
     ; ml_flags
+    ; scope
+    ; boot_type = Bootstrap.No_boot
     }
+
+  let for_module t coq_module =
+    let boot_lib = t.scope |> Scope.coq_libs |> Coq_lib.DB.boot_library in
+    let boot_type =
+      Bootstrap.get ~boot_lib ~wrapper_name:t.wrapper_name coq_module
+    in
+    { t with boot_type }
 end
 
 let parse_coqdep ~dir ~(boot_type : Bootstrap.t) ~coq_module
@@ -248,20 +259,19 @@ let coqc_rule (cctx : _ Context.t) ~build_dir ~file_flags coq_module =
   let dir = Path.build build_dir in
   Command.run ~dir cctx.coqc (Command.Args.dyn coq_flags :: file_flags)
 
-let setup_rule cctx ~build_dir ~source_rule ~boot_lib coq_module =
+let setup_rule cctx ~build_dir ~source_rule coq_module =
   let open Build.With_targets.O in
   if coq_debug then
     Format.eprintf "gen_rule coq_module: %a@\n%!" Pp.render_ignore_tags
       (Dyn.pp (Coq_module.to_dyn coq_module));
 
-  let wrapper_name = cctx.Context.wrapper_name in
-  let boot_type = Bootstrap.get ~boot_lib ~wrapper_name coq_module in
-  let file_flags = Context.coqc_file_flags cctx ~boot_type in
+  let cctx = Context.for_module cctx coq_module in
+  let file_flags = Context.coqc_file_flags cctx in
 
   let coqdep_rule = coqdep_rule cctx ~source_rule ~file_flags coq_module in
 
   (* Process coqdep and generate rules *)
-  let deps_of = deps_of ~dir:cctx.dir ~boot_type coq_module in
+  let deps_of = deps_of ~dir:cctx.dir ~boot_type:cctx.boot_type coq_module in
 
   (* Rules for the files *)
   [ coqdep_rule
@@ -301,16 +311,13 @@ let setup_rules ~sctx ~build_dir ~dir ~dir_contents (s : Theory.t) =
         |> Build.paths)
   in
 
-  let boot_lib = Coq_lib.DB.boot_library coq_lib_db in
-
   (* List of modules to compile for this library *)
   let coq_modules =
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.library coq ~name
   in
 
-  List.concat_map coq_modules
-    ~f:(setup_rule cctx ~build_dir ~source_rule ~boot_lib)
+  List.concat_map coq_modules ~f:(setup_rule cctx ~build_dir ~source_rule)
 
 (******************************************************************************)
 (* Install rules *)
@@ -411,7 +418,7 @@ let extract_rules ~sctx ~build_dir ~dir ~dir_contents (s : Extract.t) =
     let coq = Dir_contents.coq dir_contents in
     Coq_sources.extract coq s
   in
-  let file_flags = Context.coqc_file_flags cctx ~boot_type:No_boot in
+  let file_flags = Context.coqc_file_flags cctx in
   let ml_targets =
     Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative build_dir)
   in

@@ -96,6 +96,8 @@ configuration will tell ``dune`` to generate two opam files: ``cohttp.opam`` and
 
    (lang dune 2.5)
    (name cohttp)
+   ; version field is optional
+   (version 1.0.0)
 
    (generate_opam_files true)
 
@@ -119,6 +121,9 @@ configuration will tell ``dune`` to generate two opam files: ``cohttp.opam`` and
 
    (package
     (name cohttp-async)
+    ; optional version override to allow single package point
+    ; releases.
+    (version 1.0.1)
     (synopsis "HTTP client and server for the Async library")
     (description "A _really_ long description")
     (depends

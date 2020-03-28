@@ -36,6 +36,8 @@ Unreleased
   utop. It is meant to be used with the new `#use_output` directive of
   OCaml 4.11 (#2952, @mbernat, @diml)
 
+- Allow per-package `version` in generated `opam` files (#3287, @toots)
+
 2.4.0 (06/03/2020)
 ------------------
 

@@ -1635,15 +1635,15 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
-coq.extract
------------
+coq.extraction
+--------------
 
 Coq may be instructed to *extract* OCaml sources as part of the compilation
-process. This is done using the ``coq.extract`` stanza:
+process. This is done using the ``coq.extraction`` stanza:
 
 .. code:: lisp
 
-   (coq.extract
+   (coq.extraction
     (prelude <name>)
     (extracted_modules <names>)
     <optional-fields>)

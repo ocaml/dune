@@ -26,9 +26,9 @@ val coqpp_rules :
   -> Coqpp.t
   -> Action.t Build.With_targets.t list
 
-val extract_rules :
+val extraction_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
-  -> Extract.t
+  -> Extraction.t
   -> Action.t Build.With_targets.t list

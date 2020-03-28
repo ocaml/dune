@@ -44,7 +44,7 @@ module Buildable = struct
     { flags; libraries; theories; loc }
 end
 
-module Extract = struct
+module Extraction = struct
   type t =
     { (* not a list of modules because we want to preserve whatever case coq
          uses *)
@@ -66,7 +66,7 @@ module Extract = struct
 
   type Stanza.t += T of t
 
-  let p = ("coq.extract", decode >>| fun x -> [ T x ])
+  let p = ("coq.extraction", decode >>| fun x -> [ T x ])
 end
 
 module Theory = struct
@@ -157,7 +157,7 @@ module Theory = struct
 end
 
 let unit_stanzas =
-  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extract.p ] in
+  let+ r = return [ Theory.coqlib_p; Theory.p; Coqpp.p; Extraction.p ] in
   ((), r)
 
 let key = Dune_project.Extension.register coq_syntax unit_stanzas Unit.to_dyn

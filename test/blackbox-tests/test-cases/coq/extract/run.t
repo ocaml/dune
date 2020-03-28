@@ -14,7 +14,7 @@
   > EOF
 
   $ cat >dune <<EOF
-  > (coq.extract
+  > (coq.extraction
   >  (prelude extract)
   >  (extracted_modules Datatypes extract))
   > 

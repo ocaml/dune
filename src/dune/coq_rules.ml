@@ -423,7 +423,7 @@ let coqpp_rules ~sctx ~dir (s : Coqpp.t) =
   in
   List.map ~f:mlg_rule s.modules
 
-let extract_rules ~sctx ~dir ~dir_contents (s : Extract.t) =
+let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
   let cctx =
     let wrapper_name = "DuneExtraction" in
     let theories_deps =
@@ -438,7 +438,7 @@ let extract_rules ~sctx ~dir ~dir_contents (s : Extract.t) =
     Coq_sources.extract coq s
   in
   let ml_targets =
-    Extract.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
+    Extraction.ml_target_fnames s |> List.map ~f:(Path.Build.relative dir)
   in
   let source_rule =
     let theories = source_rule ~sctx cctx.theories_deps in

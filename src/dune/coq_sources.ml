@@ -35,7 +35,7 @@ let check_no_unqualified (loc, (qualif_mode : Dune_file.Include_subdirs.t)) =
     User_error.raise ~loc
       [ Pp.text "(include_subdirs unqualified) is not supported yet" ]
 
-let extract t (stanza : Extract.t) =
+let extract t (stanza : Extraction.t) =
   Loc.Map.find_exn t.extract stanza.buildable.loc
 
 let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
@@ -51,7 +51,7 @@ let of_dir (d : _ Dir_with_dune.t) ~include_subdirs ~dirs =
         Coq_lib_name.Map.add_exn acc.libraries (snd coq.name) modules
       in
       { acc with libraries }
-    | Coq_stanza.Extract.T extract ->
+    | Coq_stanza.Extraction.T extract ->
       let loc, prelude = extract.prelude in
       let m =
         match

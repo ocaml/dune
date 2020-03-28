@@ -281,8 +281,8 @@ let gen_rules sctx dir_contents cctxs
       | Coq_stanza.Theory.T m when Expander.eval_blang expander m.enabled_if ->
         Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
         |> Super_context.add_rules ~dir:ctx_dir sctx
-      | Coq_stanza.Extract.T m ->
-        Coq_rules.extract_rules ~sctx ~dir:ctx_dir ~dir_contents m
+      | Coq_stanza.Extraction.T m ->
+        Coq_rules.extraction_rules ~sctx ~dir:ctx_dir ~dir_contents m
         |> Super_context.add_rules ~dir:ctx_dir sctx
       | Coq_stanza.Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~dir:ctx_dir m

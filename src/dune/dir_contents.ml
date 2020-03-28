@@ -132,7 +132,8 @@ end = struct
           (* XXX What about mli files? *)
           | Coq_stanza.Coqpp.T { modules; _ } ->
             List.map modules ~f:(fun m -> m ^ ".ml")
-          | Coq_stanza.Extract.T s -> Coq_stanza.Extract.ml_target_fnames s
+          | Coq_stanza.Extraction.T s ->
+            Coq_stanza.Extraction.ml_target_fnames s
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander

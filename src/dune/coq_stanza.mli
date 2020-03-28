@@ -9,7 +9,7 @@ module Buildable : sig
     }
 end
 
-module Extract : sig
+module Extraction : sig
   type t =
     { extracted_modules : string list
     ; prelude : Loc.t * Coq_module.Name.t

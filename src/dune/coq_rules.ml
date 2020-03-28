@@ -245,7 +245,7 @@ let coqdep_rule (cctx : _ Context.t) ~source_rule ~file_flags coq_module =
   let open Build.With_targets.O in
   Build.with_no_targets cctx.mlpack_rule
   >>> Build.with_no_targets source_rule
-  >>> Context.run cctx ~stdout_to cctx.coqdep file_flags
+  >>> Command.run ~dir:(Path.build cctx.dir) ~stdout_to cctx.coqdep file_flags
 
 let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
   let source = Coq_module.source coq_module in

@@ -12,6 +12,7 @@ open! Stdune
 type t =
   { name : Loc.t * Coq_lib_name.t
   ; wrapper : string
+  ; implicit : bool (* Only useful for the stdlib *)
   ; src_root : Path.Build.t
   ; obj_root : Path.Build.t
   ; theories : (Loc.t * Coq_lib_name.t) list
@@ -20,6 +21,8 @@ type t =
   }
 
 let name l = snd l.name
+
+let implicit l = l.implicit
 
 let location l = fst l.name
 
@@ -84,6 +87,7 @@ module DB = struct
     ( name
     , { name = s.name
       ; wrapper = Coq_lib_name.wrapper name
+      ; implicit = s.boot
       ; obj_root = dir
       ; src_root = dir
       ; theories = s.buildable.theories

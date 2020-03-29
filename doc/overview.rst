@@ -12,7 +12,7 @@ lots of choices in order to encourage a consistent development style.
 
 This scheme is inspired from the one used inside Jane Street and adapted
 to the opam world. It has matured over a long time and is used daily by
-hundred of developers, which means that it is highly tested and
+hundreds of developers, which means that it is highly tested and
 productive.
 
 When using dune, you give very little and high-level information to

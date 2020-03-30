@@ -29,6 +29,8 @@ val to_file_colon_line : t -> string
 
 val pp_file_colon_line : t -> unit Pp.t
 
+val to_dyn_hum : t -> Dyn.t
+
 val pp : t -> unit Pp.t
 
 val on_same_line : t -> t -> bool

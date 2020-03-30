@@ -43,6 +43,8 @@ let is_none = equal none
 let to_file_colon_line t =
   Printf.sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
 
+let to_dyn_hum t : Dyn.t = String (to_file_colon_line t)
+
 let pp_file_colon_line t = Pp.verbatim (to_file_colon_line t)
 
 let pp_left_pad n s =

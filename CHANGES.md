@@ -1,3 +1,43 @@
+Unreleased
+------------------
+
+- Add a `--release` option meaning the same as `-p` but without the
+  package filtering. This is useful for custom `dune` invocation in opam
+  files where we don't want `-p` (#3260, @diml)
+
+- Fix a bug introduced in 2.4.0 causing `.bc` programs to be built
+  with `-custom` by default (#3269, fixes #3262, @diml)
+
+- Allow contexts to be defined with local switches in workspace files (#3265,
+  fix #3264, @rgrinberg)
+
+- Delay expansion errors until the rule is used to build something (#3261, fix
+  #3252, @rgrinberg, @diml)
+
+- [coq] Support for theory dependencies and compositional builds using
+  new field `(theories ...)` (#2053, @ejgallego, @rgrinberg)
+
+- From now on, each version of a syntax extension must be explicitely tied to a
+  minimum version of the dune language. Inconsistent versions in a
+  `dune-project` will trigger a warning for version <=2.4 and an error for
+  versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
+
+- [coq] Bump coq-lang version to 0.2, put new features under it
+  (#3283, @ejgallego)
+
+- Prevent installation of public executables disabled using the `enabled_if` field.
+  Installation will now simply skip such executables instead of raising an
+  error. (#3195, @voodoos)
+
+- `dune upgrade` will now try to upgrade projects using versions <2.0 to version
+  2.0 of the dune language. (#3174, @voodoos)
+
+- Add a `top` command to integrate dune with any toplevel, not just
+  utop. It is meant to be used with the new `#use_output` directive of
+  OCaml 4.11 (#2952, @mbernat, @diml)
+
+- Allow per-package `version` in generated `opam` files (#3287, @toots)
+
 2.4.0 (06/03/2020)
 ------------------
 
@@ -107,9 +147,9 @@
   directory that doesn't exist. (#3073, fix #3069, @rgrinberg)
 
 - Correctly build vendored packages in `-p` mode. These packages were
-  incorrectly filtered out before. (#3705, @diml)
+  incorrectly filtered out before. (#3075, @diml)
 
-- Do not install vendored packages (#3704, @diml)
+- Do not install vendored packages (#3074, @diml)
 
 - `make` now prints a message explaining the main targets available
   (#3085, fix #3078, @diml)
@@ -240,9 +280,9 @@
   `dirs` stanza in `dune` files. (#2456, @rgrinberg)
 
 - Add a new config option `sandboxing_preference`, the cli argument `--sandbox`,
-  and the dep spec `sandbox` in dune language. These let the user control the level of
-  sandboxing done by dune per rule and globally. The rule specification takes precedence.
-  The global configuration merely specifies the default.
+  and the dep spec `sandbox` in dune language. These let the user control the
+  level of sandboxing done by dune per rule and globally. The rule specification
+  takes precedence. The global configuration merely specifies the default.
   (#2213, @aalekseyev, @diml)
 
 - Remove support for old style subsystems. Dune will now emit a warning to
@@ -278,10 +318,10 @@
   sandboxing and in general reduces build directory pollution. (#2486,
   @aalekseyev, fixes #2482)
 
-- `c_flags`, `c_names` and `cxx_names` are now supported in `executable`
-  and `executables` stanzas. (#2562, @nojb)
-  Note: this feature has been subsequently extended into a separate
-  `foreign_stubs` field. (#2659, RFC #2650, @snowleopard)
+- `c_flags`, `c_names` and `cxx_names` are now supported in `executable` and
+  `executables` stanzas. (#2562, @nojb) Note: this feature has been subsequently
+  extended into a separate `foreign_stubs` field. The fields `c(xx)_names` and
+  `c(xx)_flags` are now deleted. (#2659, RFC #2650, @snowleopard)
 
 - Remove git integration from `$ dune upgrade` (#2565, @rgrinberg)
 
@@ -375,6 +415,9 @@
   should no longer stack overflow (#2854, @dra27, @diml)
 
 - Allow `.opam.template` files to be generated using rules (#2866, @rgrinberg)
+
+- Delete the deprecated `self_build_stubs_archive` field, replaced by
+  `foreign_archives`.
 
 1.11.4 (09/10/2019)
 -------------------

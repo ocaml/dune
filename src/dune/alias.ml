@@ -139,9 +139,6 @@ let equal x y = compare x y = Eq
 
 let hash { dir; name } = Tuple.T2.hash Path.Build.hash Name.hash (dir, name)
 
-let pp fmt t =
-  Path.Build.pp fmt (Path.Build.relative t.dir (Name.to_string t.name))
-
 let to_dyn { dir; name } =
   let open Dyn in
   Record [ ("dir", Path.Build.to_dyn dir); ("name", Name.to_dyn name) ]

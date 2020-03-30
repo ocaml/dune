@@ -23,7 +23,7 @@ let make template = { template; syntax_version = make_syntax }
 let make_text ?(quoted = false) loc s = make { parts = [ Text s ]; quoted; loc }
 
 let make_var ?(quoted = false) loc ?payload name =
-  let var = { loc; name; payload; syntax = Percent } in
+  let var = { loc; name; payload } in
   make { parts = [ Var var ]; quoted; loc }
 
 let literal ~quoted ~loc s = { parts = [ Text s ]; quoted; loc }
@@ -52,10 +52,7 @@ let virt_var ?(quoted = false) pos s =
       | _ -> true) );
   let loc = Loc.of_pos pos in
   let template =
-    { parts = [ Var { payload = None; name = s; syntax = Percent; loc } ]
-    ; loc
-    ; quoted
-    }
+    { parts = [ Var { payload = None; name = s; loc } ]; loc; quoted }
   in
   { template; syntax_version = make_syntax }
 
@@ -315,18 +312,13 @@ module Make (A : Applicative_intf.S1) = struct
       partial_expand t ~mode ~dir ~f:(fun var syntax_version ->
           let+ exp = f var syntax_version in
           match exp with
-          | None -> (
-            match var.syntax with
-            | Percent ->
-              if Var.is_macro var then
-                User_error.raise ~loc:var.loc
-                  [ Pp.textf "Unknown macro %s" (Var.describe var) ]
-              else
-                User_error.raise ~loc:var.loc
-                  [ Pp.textf "Unknown variable %S" (Var.name var) ]
-            | Dollar_brace
-            | Dollar_paren ->
-              Some [ Value.String (string_of_var var) ] )
+          | None ->
+            if Var.is_macro var then
+              User_error.raise ~loc:var.loc
+                [ Pp.textf "Unknown macro %s" (Var.describe var) ]
+            else
+              User_error.raise ~loc:var.loc
+                [ Pp.textf "Unknown variable %S" (Var.name var) ]
           | s -> s)
     in
     match exp with

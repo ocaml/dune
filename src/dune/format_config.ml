@@ -4,7 +4,11 @@ open Dune_lang.Decoder
 
 let syntax =
   Dune_lang.Syntax.create ~name:"fmt"
-    ~desc:"integration with automatic formatters" [ (1, 2) ]
+    ~desc:"integration with automatic formatters"
+    [ ((1, 0), `Since (1, 4))
+    ; ((1, 1), `Since (1, 7))
+    ; ((1, 2), `Since (1, 11))
+    ]
 
 module Language = struct
   type t =
@@ -137,7 +141,7 @@ let of_config ~ext ~dune_lang =
       | Some explicit ->
         let dlang = encode_explicit explicit in
         [ Pp.textf "To port it to the new syntax, you can replace this part by:"
-        ; Pp.tag ~tag:User_message.Style.Details (Dune_lang.pp dlang)
+        ; Pp.tag User_message.Style.Details (Dune_lang.pp dlang)
         ]
       | None ->
         [ Pp.textf "To port it to the new syntax, you can delete this part." ]

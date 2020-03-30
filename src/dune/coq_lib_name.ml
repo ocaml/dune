@@ -12,13 +12,16 @@ let to_string x = String.concat ~sep:"." x
 
 let wrapper x = to_string x
 
+(* We should add some further validation to Coq library names; the rules in Coq
+   itself have been tweaked due to Unicode, etc... so this is not trivial *)
 let decode : (Loc.t * t) Dune_lang.Decoder.t =
   Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, String.split ~on:'.' s))
 
 let encode : t Dune_lang.Encoder.t =
  fun lib -> Dune_lang.Encoder.string (to_string lib)
 
-(* let pp x = Pp.text (to_string x) *)
+let pp x = Pp.text (to_string x)
+
 let to_dyn = Dyn.Encoder.(list string)
 
 module Rep = struct

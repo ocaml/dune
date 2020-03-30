@@ -22,7 +22,8 @@ let relative_file =
 let library_variants =
   let syntax =
     Dune_lang.Syntax.create ~name:"library_variants"
-      ~desc:"the experimental library variants feature." [ (0, 2) ]
+      ~desc:"the experimental library variants feature."
+      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
   in
   Dune_project.Extension.register_simple ~experimental:true syntax
     (Dune_lang.Decoder.return []);
@@ -1154,9 +1155,9 @@ module Library = struct
 end
 
 module Install_conf = struct
-  type 'file t =
+  type t =
     { section : Install.Section.t
-    ; files : 'file list
+    ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 
@@ -1212,8 +1213,7 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf :
-      t -> ext:string -> File_binding.Unexpanded.t Install_conf.t option
+    val install_conf : t -> ext:string -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1528,7 +1528,7 @@ module Executables = struct
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
-    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; install_conf : Install_conf.t option
     ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -1538,7 +1538,8 @@ module Executables = struct
   let bootstrap_info_extension =
     let syntax =
       Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
-        ~desc:"private extension to handle Dune bootstrap" [ (0, 1) ]
+        ~desc:"private extension to handle Dune bootstrap"
+        [ ((0, 1), `Since (2, 0)) ]
     in
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
@@ -1979,18 +1980,20 @@ module Coq = struct
   type t =
     { name : Loc.t * Coq_lib_name.t
     ; package : Package.t option
+    ; project : Dune_project.t
     ; synopsis : string option
     ; modules : Ordered_set_lang.t
     ; flags : Ordered_set_lang.Unexpanded.t
     ; boot : bool
     ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
+    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
     ; loc : Loc.t
     ; enabled_if : Blang.t
     }
 
   let syntax =
     Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ (0, 1) ]
+      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (2, 5)) ]
 
   let coq_public_decode =
     map_validate
@@ -2034,23 +2037,29 @@ module Coq = struct
       (let+ name = field "name" Coq_lib_name.decode
        and+ loc = loc
        and+ package = field_o "package" Pkg.decode
+       and+ project = Dune_project.get_exn ()
        and+ public = coq_public_decode
        and+ synopsis = field_o "synopsis" string
        and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ boot =
-         field_b "boot" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+       and+ boot = field_b "boot" ~check:(Dune_lang.Syntax.since syntax (0, 2))
        and+ modules = modules_field "modules"
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ theories =
+         field "theories"
+           (Dune_lang.Syntax.since syntax (0, 2) >>> repeat Coq_lib_name.decode)
+           ~default:[]
        and+ enabled_if = enabled_if ~since:None in
        let package = select_deprecation ~package ~public in
        { name
        ; package
+       ; project
        ; synopsis
        ; modules
        ; flags
        ; boot
        ; libraries
+       ; theories
        ; loc
        ; enabled_if
        })
@@ -2278,7 +2287,7 @@ type Stanza.t +=
   | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
-  | Install of File_binding.Unexpanded.t Install_conf.t
+  | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
   | Documentation of Documentation.t

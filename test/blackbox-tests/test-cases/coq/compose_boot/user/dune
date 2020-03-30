@@ -1,0 +1,5 @@
+(coq.theory
+ (name user)
+ (package cboot))
+
+

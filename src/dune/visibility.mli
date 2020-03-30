@@ -12,8 +12,6 @@ val is_private : t -> bool
 
 val to_dyn : t -> Dyn.t
 
-val pp : t Fmt.t
-
 module Map : sig
   type 'a t =
     { public : 'a

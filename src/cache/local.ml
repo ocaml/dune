@@ -136,13 +136,14 @@ module Metadata_file = struct
       { metadata; files }
     | _ -> Error "invalid metadata"
 
-  let of_string s = Csexp.parse (Stream.of_string s) >>= of_sexp
+  let of_string s =
+    match Csexp.parse_string s with
+    | Ok sexp -> of_sexp sexp
+    | Error (_, msg) -> Error msg
 
   let to_string f = to_sexp f |> Csexp.to_string
 
-  let parse path =
-    Io.with_file_in path ~f:(fun input -> Csexp.parse (Stream.of_channel input))
-    >>= of_sexp
+  let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
 
 let root_data cache = Path.relative cache.root "files"
@@ -158,8 +159,8 @@ let make_path cache path =
   | Some p -> Result.ok (Path.append_local p path)
   | None ->
     Result.Error
-      (Format.asprintf "relative path \"%a\" while no build root was set"
-         Path.Local.pp path)
+      (sprintf "relative path %s while no build root was set"
+         (Path.Local.to_string_maybe_quoted path))
 
 let search cache hash file = Collision.search (path_data cache hash) file
 
@@ -313,9 +314,7 @@ let promote cache paths key metadata ~repository ~duplication =
 let search cache key =
   let path = path_metadata cache key in
   let* sexp =
-    try
-      Io.with_file_in path ~f:(fun input ->
-          Csexp.parse (Stream.of_channel input))
+    try Io.with_file_in path ~f:Csexp.input
     with Sys_error _ -> Error "no cached file"
   in
   let+ metadata = Metadata_file.of_sexp sexp in

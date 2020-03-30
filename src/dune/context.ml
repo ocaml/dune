@@ -6,7 +6,7 @@ module Kind = struct
   module Opam = struct
     type t =
       { root : string option
-      ; switch : Context_name.t
+      ; switch : string
       }
   end
 
@@ -18,10 +18,7 @@ module Kind = struct
     | Default -> Dyn.Encoder.string "default"
     | Opam o ->
       Dyn.Encoder.(
-        record
-          [ ("root", option string o.root)
-          ; ("switch", Context_name.to_dyn o.switch)
-          ])
+        record [ ("root", option string o.root); ("switch", string o.switch) ])
 end
 
 module Env_nodes = struct
@@ -445,6 +442,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
                   (Config.local_install_dir ~context:name)
                   "lib/stublibs"))
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_path
+        ; extend_var "OCAMLTOP_INCLUDE_PATH"
+            (Path.relative local_lib_path "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
             local_lib_path
         ; extend_var "MANPATH"
@@ -643,7 +642,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
       ; ( match root with
         | None -> []
         | Some root -> [ "--root"; root ] )
-      ; [ "--switch"; Context_name.to_string switch; "--sexp" ]
+      ; [ "--switch"; switch; "--sexp" ]
       ; ( if version < (2, 0, 0) then
           []
         else

@@ -12,7 +12,7 @@ like:
 
 .. code:: scheme
 
-          (lang dune 2.4)
+          (lang dune 2.5)
 
 Additionally, they can contains the following stanzas.
 
@@ -388,13 +388,13 @@ to use the :ref:`include_subdirs` stanza.
 - ``(foreign_stubs <foreign-stubs-spec>)`` specifies foreign source files, e.g.
   C or C++ stubs, to be compiled and packaged together with the library. See
   the section :ref:`foreign-sources-and-archives` for more details. This field
-  replaces the now deprecated fields ``c_names``, ``c_flags``, ``cxx_names``
+  replaces the now deleted fields ``c_names``, ``c_flags``, ``cxx_names``
   and ``cxx_flags``.
 
 - ``(foreign_archives <foreign-archives-list>)`` specifies archives of foreign
   object files to be packaged with the library. See the section
   :ref:`foreign-archives` for more details. This field replaces the now
-  deprecated field ``self_build_stubs_archive``.
+  deleted field ``self_build_stubs_archive``.
 
 - ``(install_c_headers (<names>))``, if your library has public C header files
   that must be installed, you must list them in this field, without the ``.h``
@@ -1526,17 +1526,18 @@ in the ``dune-project`` file. For example:
 
 .. code:: scheme
 
-    (using coq 0.1)
+    (using coq 0.2)
 
 This will enable support for the ``coq.theory`` stanza in the current project. If the
 language version is absent, dune will automatically add this line with the
 latest Coq version to the project file once a ``(coq.theory ...)`` stanza is used anywhere.
 
-The only version supported is ``0.1`` and it doesn't provide any kind
-of guarantees with respect to stability, however, as implementation of
-features progresses, we hope to bump ``0.1`` to ``1.0`` soon. The 1.0
-version will commit to a stable set of functionality; features marked
-``1.0`` below are expected to reach 1.0 unchanged.
+The supported Coq language versions are ``0.1``, and ``0.2`` which
+adds support for the ``theories`` field. We don't provide any
+guarantees with respect to stability yet, however, as implementation
+of features progresses, we hope reach ``1.0`` soon. The ``1.0``
+version will commit to a stable set of functionality; all the features
+below are expected to reach 1.0 unchanged or minimally modified.
 
 The basic form for defining Coq libraries is very similar to the OCaml form:
 
@@ -1548,7 +1549,8 @@ The basic form for defining Coq libraries is very similar to the OCaml form:
      (synopsis <text>)
      (modules <ordered_set_lang>)
      (libraries <ocaml_libraries>)
-     (flags <coq_flags>))
+     (flags <coq_flags>)
+     (theories <coq_theories>))
 
 The stanza will build all ``.v`` files on the given directory. The semantics of fields is:
 
@@ -1580,6 +1582,15 @@ The stanza will build all ``.v`` files on the given directory. The semantics of 
 - the path to installed locations of ``<ocaml_libraries>`` will be passed to
   ``coqdep`` and ``coqc`` using Coq's ``-I`` flag; this allows for a Coq
   theory to depend on a ML plugin,
+- your Coq theory can depend on other theories by specifying them in
+  the ``<coq_theories>`` field. Dune will then pass to Coq the
+  corresponding flags for everything to compile correctly [ ``-Q``
+  ]. As of today, we only support composition with libraries defined
+  in the same scope (that is to say, under the same ``dune-project``
+  domain). We will lift this restriction in the future. Note that
+  composition with the Coq's standard library is supported, but in
+  this case the ``Coq`` prefix will be made available in a qualified
+  way. Since Coq's lang version ``0.2``.
 
 Recursive qualification of modules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1598,11 +1609,11 @@ Coq style for sub-directories. For example, file ``A/b/C.v`` will be module
 Limitations
 ~~~~~~~~~~~
 
-- composition and scoping of Coq libraries is still not possible. For now,
-  libraries are located using Coq's built-in library management,
-- ``.v`` files always depend on the native version of a plugin,
-- a ``foo.mlpack`` file must the present for locally defined plugins to work,
-  this is a limitation of coqdep.
+- ``.v`` files always depend on the native version of Coq / plugins,
+- a ``foo.mlpack`` file must the present in directories of locally
+  defined plugins for things to work, this is a limitation of
+  ``coqdep``, see the template at
+  <https://github.com/ejgallego/coq-plugin-template>
 
 coq.pp
 ------
@@ -1632,11 +1643,11 @@ mdx (since 2.4)
 MDX is a tool that helps you keep your markdown documentation up to date by
 checking that the code examples it contains are correct.
 
-See `MDX's repository <https://github.com/realworldocaml/mdx>` for more details.
+See `MDX's repository <https://github.com/realworldocaml/mdx>`__ for more details.
 
 You can define an MDX stanza to specify which files you want checked.
 
-Note that this features is still experimental and needs to be enabled in your
+Note that this feature is still experimental and needs to be enabled in your
 ``dune-project`` with the following ``using`` stanza:
 
 .. code:: scheme
@@ -1651,8 +1662,8 @@ The syntax is as follows:
 
 Where ``<optional-fields>`` are:
 
-- ``(files <globs>)`` are the files that you want MDX to check, describe as a
-  list of globs (see the `Glob language specification <glob>`).
+- ``(files <globs>)`` are the files that you want MDX to check, described as a
+  list of globs (see the :ref:`Glob language specification <glob>` ).
   It defaults to ``*.md``.
 
 - ``(packages <packages>)`` are the local dune packages that your documentation
@@ -1661,7 +1672,7 @@ Where ``<optional-fields>`` are:
   the stanza.
 
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX.
-  See `MDX's documentation <https://github.com/realworldocaml/mdx>` for more
+  See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
 
 dune-workspace
@@ -1686,7 +1697,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.4)
+    (lang dune 2.5)
     (context (opam (switch 4.02.3)))
     (context (opam (switch 4.03.0)))
     (context (opam (switch 4.04.0)))
@@ -1698,7 +1709,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.4)
+    (lang dune 2.5)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

@@ -133,7 +133,7 @@ end = struct
             (Some loc, Install.Entry.make Stublibs a))
       ]
 
-  let keep_if ~external_lib_deps_mode =
+  let keep_if ~external_lib_deps_mode expander =
     if external_lib_deps_mode then
       fun ~scope:_ ->
     Option.some
@@ -148,18 +148,21 @@ end = struct
       | Dune_file.Install _ ->
         true
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
-        (not exes.optional)
-        ||
-        let compile_info =
-          let dune_version = Scope.project scope |> Dune_project.dune_version in
-          Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-            exes.names exes.buildable.libraries
-            ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-            ~dune_version
-            ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-            ~variants:exes.variants ~optional:exes.optional
-        in
-        Result.is_ok (Lib.Compile.direct_requires compile_info)
+        Expander.eval_blang expander exes.enabled_if
+        && ( (not exes.optional)
+           ||
+           let compile_info =
+             let dune_version =
+               Scope.project scope |> Dune_project.dune_version
+             in
+             Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
+               exes.names exes.buildable.libraries
+               ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
+               ~dune_version
+               ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
+               ~variants:exes.variants ~optional:exes.optional
+           in
+           Result.is_ok (Lib.Compile.direct_requires compile_info) )
       | Dune_file.Coq.T d -> Option.is_some d.package
       | _ -> false )
       stanza
@@ -227,9 +230,10 @@ end = struct
     in
     Dir_with_dune.deep_fold stanzas ~init ~f:(fun d stanza acc ->
         let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in
+        let expander = Super_context.expander sctx ~dir in
         let res =
           let open Option.O in
-          let* stanza = keep_if stanza ~scope in
+          let* stanza = keep_if expander stanza ~scope in
           let+ package = Dune_file.stanza_package stanza in
           (stanza, package)
         in
@@ -240,7 +244,6 @@ end = struct
             match (stanza : Stanza.t) with
             | Dune_file.Install i
             | Dune_file.Executables { install_conf = Some i; _ } ->
-              let expander = Super_context.expander sctx ~dir in
               let path_expander =
                 File_binding.Unexpanded.expand ~dir
                   ~f:(Expander.expand_str expander)
@@ -295,7 +298,7 @@ let gen_dune_package sctx pkg =
   let meta_template = Package_paths.meta_template ctx pkg in
   let name = pkg.name in
   let dune_version =
-    Dune_lang.Syntax.greatest_supported_version Stanza.syntax
+    Option.value_exn (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
   in
   let lib_entries = Super_context.lib_entries_of_package sctx pkg.name in
   let deprecated_dune_packages =
@@ -497,22 +500,20 @@ let meta_and_dune_package_rules_impl (project, sctx) =
                 ~package:(Package.Name.to_string pkg.name)
                 ~version:pkg.version entries
             in
-            let buf = Buffer.create 1024 in
-            let ppf = Format.formatter_of_buffer buf in
-            Format.pp_open_vbox ppf 0;
-            List.iter template ~f:(fun s ->
-                if String.is_prefix s ~prefix:"#" then
-                  match
-                    String.extract_blank_separated_words (String.drop s 1)
-                  with
-                  | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
-                    Format.fprintf ppf "%a@," Meta.pp meta.entries
-                  | _ -> Format.fprintf ppf "%s@," s
-                else
-                  Format.fprintf ppf "%s@," s);
-            Format.pp_close_box ppf ();
-            Format.pp_print_flush ppf ();
-            Buffer.contents buf)
+            let pp =
+              Pp.vbox
+                (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
+                     if String.is_prefix s ~prefix:"#" then
+                       match
+                         String.extract_blank_separated_words (String.drop s 1)
+                       with
+                       | [ ("JBUILDER_GEN" | "DUNE_GEN") ] ->
+                         Meta.pp meta.entries
+                       | _ -> Pp.verbatim s
+                     else
+                       Pp.verbatim s))
+            in
+            Format.asprintf "%a" Pp.render_ignore_tags pp)
            |> Build.write_file_dyn meta);
          Package.Name.Map.iteri pkg.deprecated_package_names ~f:(fun name _ ->
              let meta = Package_paths.deprecated_meta_file ctx pkg name in
@@ -527,7 +528,11 @@ let meta_and_dune_package_rules_impl (project, sctx) =
                       ~package:(Package.Name.to_string pkg.name)
                       ~version:pkg.version entries ~add_directory_entry:false
                   in
-                  Format.asprintf "@[<v>%a@,@]" Meta.pp meta.entries)
+                  let pp =
+                    let open Pp.O in
+                    Pp.vbox (Meta.pp meta.entries ++ Pp.cut)
+                  in
+                  Format.asprintf "%a" Pp.render_ignore_tags pp)
                |> Build.write_file meta )))
 
 let meta_and_dune_package_rules_memo =

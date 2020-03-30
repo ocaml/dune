@@ -22,7 +22,7 @@ module For_stanza : sig
     -> scope:Scope.t
     -> dir_contents:Dir_contents.t
     -> expander:Expander.t
-    -> files_to_install:(File_binding.Unexpanded.t Install_conf.t -> unit)
+    -> files_to_install:(Install_conf.t -> unit)
     -> ( Merlin.t list
        , (Loc.t * Compilation_context.t) list
        , Path.Build.t list
@@ -280,7 +280,7 @@ let gen_rules sctx dir_contents cctxs
             |> Build.with_targets ~targets )
         | Some cctx -> Menhir_rules.gen_rules cctx m ~build_dir ~dir:ctx_dir )
       | Coq.T m when Expander.eval_blang expander m.enabled_if ->
-        Coq_rules.setup_rules ~sctx ~dir:ctx_dir ~dir_contents m
+        Coq_rules.setup_rules ~sctx ~build_dir ~dir:ctx_dir ~dir_contents m
         |> Super_context.add_rules ~dir:ctx_dir sctx
       | Coqpp.T m ->
         Coq_rules.coqpp_rules ~sctx ~build_dir ~dir:ctx_dir m

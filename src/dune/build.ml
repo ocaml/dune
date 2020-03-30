@@ -36,7 +36,7 @@ let set_file_system_accessors ~file_exists ~eval_pred =
 
 let return x = Pure x
 
-let ignore x = Map (Fn.const (), x)
+let ignore x = Map (Fun.const (), x)
 
 let map x ~f = Map (f, x)
 

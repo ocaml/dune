@@ -5,5 +5,6 @@
 
 (executable
   (name dis)
+  (public_name dis)
   (modules dis)
   (enabled_if false))

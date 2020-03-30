@@ -1,5 +1,6 @@
-(lang dune 2.0)
+(lang dune 2.5)
 (name foo)
+(version 1.0.0)
 (source (github mirage/ocaml-cohttp))
 (license ISC)
 (authors "Anil Madhavapeddy" "Rudi Grinberg")
@@ -9,6 +10,7 @@
 
 (package
  (name foo)
+ (version 1.0.1)
  (source (github mirage/foo))
  (license MIT)
  (authors "Foo" "Bar"))

@@ -369,7 +369,6 @@ and template_variable = parse
             }
         ; name
         ; payload
-        ; syntax = Percent
         }
   }
   | '}' | eof

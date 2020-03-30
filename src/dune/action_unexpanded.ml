@@ -59,7 +59,7 @@ module Partial = struct
             (Expander.expand expander ~template:s ~mode)
             ~dir)
 
-    let string = expand ~mode:Single ~l:Fn.id ~r:(ignore_loc Value.to_string)
+    let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
 
     let strings =
       expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
@@ -70,11 +70,11 @@ module Partial = struct
 
     let path e =
       let error_loc = loc e in
-      expand ~mode:Single ~l:Fn.id ~r:(ignore_loc (Value.to_path ?error_loc)) e
+      expand ~mode:Single ~l:Fun.id ~r:(ignore_loc (Value.to_path ?error_loc)) e
 
     let target e =
       let error_loc = loc e in
-      expand e ~mode:Single ~l:Fn.id
+      expand e ~mode:Single ~l:Fun.id
         ~r:
           (ignore_loc (fun v ~dir ->
                Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))

@@ -17,7 +17,7 @@ val send : version -> out_channel -> 'a message -> unit
 val negotiate_version :
      version list
   -> Unix.file_descr
-  -> char Stream.t
+  -> in_channel
   -> out_channel
   -> (version, string) result
 

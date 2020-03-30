@@ -39,6 +39,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bin-eager-deps)
+ (deps (package dune) (source_tree test-cases/bin-eager-deps))
+ (action
+  (chdir
+   test-cases/bin-eager-deps
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias block-strings)
  (deps (package dune) (source_tree test-cases/block-strings))
  (action
@@ -634,6 +642,14 @@
  (action
   (chdir
    test-cases/explicit_js_mode
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias extensions-versionning)
+ (deps (package dune) (source_tree test-cases/extensions-versionning))
+ (action
+  (chdir
+   test-cases/extensions-versionning
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1895,6 +1911,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias toplevel-integration)
+ (deps (package dune) (source_tree test-cases/toplevel-integration))
+ (action
+  (chdir
+   test-cases/toplevel-integration
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias toplevel-stanza)
  (deps (package dune) (source_tree test-cases/toplevel-stanza))
  (action
@@ -2392,6 +2416,7 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -2462,6 +2487,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
@@ -2614,6 +2640,7 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
+  (alias toplevel-integration)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -2677,6 +2704,7 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -2745,6 +2773,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)

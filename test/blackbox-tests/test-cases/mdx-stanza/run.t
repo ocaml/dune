@@ -9,6 +9,14 @@ It also requires dune lang 2.4 or higher
 
   $ dune build @install --root lang-version/
   Entering directory 'lang-version'
+  File "dune-project", line 3, characters 11-14:
+  3 | (using mdx 0.1)
+                 ^^^
+  Warning: Version 0.1 of mdx extension to verify code blocks in .md files is
+  not supported until version 2.4 of the dune language.
+  There are no supported versions of this extension in version 2.3 of the dune
+  language.
+  
   File "dune", line 1, characters 0-5:
   1 | (mdx)
       ^^^^^

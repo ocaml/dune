@@ -3,7 +3,8 @@ let executables = [ "main" ]
 let external_libraries = [ "unix"; "threads.posix" ]
 
 let local_libraries =
-  [ ("src/stdune", Some "Stdune", false, None)
+  [ ("vendor/csexp/src", Some "Dune_csexp", false, None)
+  ; ("src/stdune", Some "Stdune", false, None)
   ; ("src/dune_lang", Some "Dune_lang", false, None)
   ; ("vendor/incremental-cycles/src", Some "Incremental_cycles", false, None)
   ; ("src/dag", Some "Dag", false, None)
@@ -15,7 +16,7 @@ let local_libraries =
   ; ("src/cache_daemon", Some "Cache_daemon", false, None)
   ; ("vendor/re/src", Some "Dune_re", false, None)
   ; ("vendor/opam-file-format/src", None, false, None)
-  ; ("otherlibs/dune-glob", Some "Dune_glob", false, None)
+  ; ("otherlibs/dune-glob/src", Some "Dune_glob", false, None)
   ; ("src/ocaml-config", Some "Ocaml_config", false, None)
   ; ("src/catapult", Some "Catapult", false, None)
   ; ("src/jbuild_support", Some "Jbuild_support", false, None)

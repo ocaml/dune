@@ -704,7 +704,7 @@ end = struct
     let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then (
-      Console.Status_line.set (Fn.const None);
+      Console.Status_line.set (Fun.const None);
       Fiber.return Done
     ) else (
       Console.Status_line.refresh ();
@@ -753,7 +753,7 @@ end = struct
       Console.Status_line.set (fun () ->
           Some
             (Pp.seq
-               (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+               (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
                (Pp.verbatim ", killing current build...")))
     | _ -> () );
     match kill_and_wait_for_all_processes t () with
@@ -790,7 +790,7 @@ let maybe_clear_screen ~config =
     Console.print_user_message
       (User_message.make
          [ Pp.nop
-         ; Pp.tag ~tag:User_message.Style.Success
+         ; Pp.tag User_message.Style.Success
              (Pp.verbatim "********** NEW BUILD **********")
          ; Pp.nop
          ])
@@ -820,11 +820,11 @@ let poll ?config ~once ~finally () =
     finally ();
     match res with
     | Ok () ->
-      wait (Pp.tag ~tag:User_message.Style.Success (Pp.verbatim "Success"))
+      wait (Pp.tag User_message.Style.Success (Pp.verbatim "Success"))
       |> after_wait
     | Error Got_signal -> (Dune_util.Report_error.Already_reported, None)
     | Error Never ->
-      wait (Pp.tag ~tag:User_message.Style.Error (Pp.verbatim "Had errors"))
+      wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
     | Error Files_changed -> loop ()
     | Error (Exn (exn, bt)) -> (exn, Some bt)

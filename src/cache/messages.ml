@@ -233,13 +233,13 @@ let find_highest_common_version my_versions versions =
   | None -> Result.Error "no compatible versions"
   | Some version -> Result.ok version
 
-let negotiate_version my_versions fd input output =
+let negotiate_version my_versions fd ic output =
   send { major = 1; minor = 0 } output (Lang my_versions);
   let f msg =
     Unix.close fd;
     msg
   in
   Result.map_error ~f
-    (let* sexp = Csexp.parse input in
+    (let* sexp = Csexp.input ic in
      let* (Lang versions) = initial_message_of_sexp sexp in
      find_highest_common_version my_versions versions)

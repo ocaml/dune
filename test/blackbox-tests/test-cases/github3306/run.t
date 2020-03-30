@@ -14,13 +14,13 @@
   $ dune exec ./main.exe
   Error: exception { exn =
       ("[gen_rules] did not specify rules for the context",
-      { context_name = "libraries" })
+      { context_name = "libraries"; dir = "libraries" })
   ; backtrace =
       [ { ocaml =
             "Raised at file \"src/stdune/code_error.ml\", line 9, characters
   30-62\n\
              Called from file \"src/dune/build_system.ml\", line 892,
-  characters 10-151\n\
+  characters 10-195\n\
              Called from file \"src/stdune/exn_with_backtrace.ml\", line 9,
   characters 8-12\n\
              "
@@ -70,12 +70,12 @@
       ]
   }
   Raised at file "src/stdune/code_error.ml", line 9, characters 30-62
-  Called from file "src/dune/build_system.ml", line 892, characters 10-151
+  Called from file "src/dune/build_system.ml", line 892, characters 10-195
   Called from file "src/stdune/exn_with_backtrace.ml", line 9, characters 8-12
   Re-raised at file "src/stdune/exn.ml", line 37, characters 27-56
-  Called from file "src/dune/build_system.ml", line 1088, characters 15-28
-  Called from file "src/dune/build_system.ml", line 1107, characters 16-55
-  Called from file "src/dune/build_system.ml", line 1656, characters 8-33
+  Called from file "src/dune/build_system.ml", line 1089, characters 15-28
+  Called from file "src/dune/build_system.ml", line 1108, characters 16-55
+  Called from file "src/dune/build_system.ml", line 1657, characters 8-33
   Called from file "src/fiber/fiber.ml", line 114, characters 10-15
   Re-raised at file "src/stdune/exn.ml", line 37, characters 27-56
   Called from file "src/fiber/fiber.ml", line 85, characters 10-17

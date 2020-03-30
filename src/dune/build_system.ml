@@ -409,20 +409,38 @@ let get_dir_triage t ~dir =
   | Build (Regular (With_context _)) ->
     Need_step2
 
-let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
-  let describe (rule : Rule.t) =
+let describe_rule (rule : Rule.t) =
+  match rule.info with
+  | From_dune_file { start; _ } ->
+    start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
+  | Internal -> "<internal location>"
+  | Source_file_copy -> "file present in source tree"
+
+let report_rule_src_dir_conflict dir fn (rule : Rule.t) =
+  let loc =
     match rule.info with
-    | From_dune_file { start; _ } ->
-      start.pos_fname ^ ":" ^ string_of_int start.pos_lnum
-    | Internal -> "<internal location>"
-    | Source_file_copy -> "file present in source tree"
+    | From_dune_file loc -> loc
+    | Internal
+    | Source_file_copy ->
+      let dir =
+        match Path.Build.drop_build_context dir with
+        | None -> Path.build dir
+        | Some s -> Path.source s
+      in
+      Loc.in_dir dir
   in
+  User_error.raise ~loc
+    [ Pp.textf "Rule has a target %s" (Path.Build.to_string_maybe_quoted fn)
+    ; Pp.textf "This conflicts with a source directory in the same directory"
+    ]
+
+let report_rule_conflict fn (rule' : Rule.t) (rule : Rule.t) =
   let fn = Path.build fn in
   User_error.raise
     [ Pp.textf "Multiple rules generated for %s:"
         (Path.to_string_maybe_quoted fn)
-    ; Pp.textf "- %s" (describe rule')
-    ; Pp.textf "- %s" (describe rule)
+    ; Pp.textf "- %s" (describe_rule rule')
+    ; Pp.textf "- %s" (describe_rule rule)
     ]
     ~hints:
       ( match (rule.info, rule'.info) with
@@ -597,11 +615,15 @@ end = struct
              ~sandbox:Sandbox_config.no_sandboxing build ~context:None ~env:None
              ~info:Source_file_copy)
 
-  let compile_rules ~dir rules =
+  let compile_rules ~dir ~source_dirs rules =
     List.concat_map rules ~f:(fun rule ->
         assert (Path.Build.( = ) dir rule.Rule.dir);
-        List.map (Path.Build.Set.to_list rule.action.targets) ~f:(fun target ->
-            (target, rule)))
+        Path.Build.Set.to_list rule.action.targets
+        |> List.map ~f:(fun target ->
+               if String.Set.mem source_dirs (Path.Build.basename target) then
+                 report_rule_src_dir_conflict dir target rule
+               else
+                 (target, rule)))
     |> Path.Build.Map.of_list_reducei ~f:report_rule_conflict
 
   (* Here we are doing a O(log |S|) lookup in a set S of files in the build
@@ -709,7 +731,9 @@ end = struct
           :: rules)
     in
     fun ~subdirs_to_keep ->
-      let rules_here = compile_rules ~dir:alias_dir alias_rules in
+      let rules_here =
+        compile_rules ~dir:alias_dir ~source_dirs:String.Set.empty alias_rules
+      in
       remove_old_artifacts ~rules_here ~dir:alias_dir ~subdirs_to_keep;
       rules_here
 
@@ -915,7 +939,7 @@ end = struct
       |> Path.Source.Set.of_list_map ~f:Path.Build.drop_build_context_exn
     in
     (* Take into account the source files *)
-    let to_copy, subdirs_to_keep =
+    let to_copy, source_dirs =
       match context_name with
       | Install _ -> (None, String.Set.empty)
       | Context context_name ->
@@ -937,7 +961,7 @@ end = struct
     let subdirs_to_keep =
       match extra_subdirs_to_keep with
       | All -> Subdir_set.All
-      | These set -> These (String.Set.union subdirs_to_keep set)
+      | These set -> These (String.Set.union source_dirs set)
     in
     (* Filter out fallback rules *)
     let rules =
@@ -956,7 +980,7 @@ end = struct
         create_copy_rules ~ctx_dir ~non_target_source_files:source_files )
       @ rules
     in
-    let rules_here = compile_rules ~dir rules in
+    let rules_here = compile_rules ~dir ~source_dirs rules in
     let allowed_by_parent =
       Generated_directory_restrictions.allowed_by_parent ~dir
     in

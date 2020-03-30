@@ -1191,7 +1191,7 @@ let mkdir_p ?perms = function
   | In_build_dir k ->
     Kind.mkdir_p ?perms (Kind.append_local (Fdecl.get Build.build_dir) k)
 
-let touch p =
+let touch ?(create = true) p =
   let p =
     match p with
     | External s -> External.to_string s
@@ -1201,7 +1201,7 @@ let touch p =
   in
   try Unix.utimes p 0.0 0.0
   with Unix.Unix_error (Unix.ENOENT, _, _) ->
-    Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
+    if create then Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
 
 let compare x y =
   match (x, y) with

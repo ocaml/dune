@@ -82,7 +82,7 @@ let libs_of_coq_deps ~lib_db = Result.List.map ~f:(Lib.DB.resolve lib_db)
 module Context = struct
   type 'a t =
     { coqdep : Action.program
-    ; coqc : Action.program
+    ; coqc : Action.program * Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -95,9 +95,9 @@ module Context = struct
     ; build_dir : Path.Build.t
     }
 
-  let run ?stdout_to t prog args =
-    let dir = Path.build t.build_dir in
-    Command.run ~dir ?stdout_to prog args
+  let coqc ?stdout_to t args =
+    let dir = Path.build (snd t.coqc) in
+    Command.run ~dir ?stdout_to (fst t.coqc) args
 
   let coq_flags t =
     Expander.expand_and_eval_set t.expander t.buildable.flags
@@ -139,7 +139,8 @@ module Context = struct
           (* If the mlpack files don't exist, don't fail *)
           Build.paths_existing (List.concat_map ~f:Util.ml_pack_files libs)) )
 
-  let create sctx ~dir ~wrapper_name ~theories_deps (buildable : Buildable.t) =
+  let create ~coqc_dir sctx ~dir ~wrapper_name ~theories_deps
+      (buildable : Buildable.t) =
     let loc = buildable.loc in
     let rr = resolve_program sctx ~dir ~loc in
     let expander = Super_context.expander sctx ~dir in
@@ -151,7 +152,7 @@ module Context = struct
     in
     let build_dir = Super_context.build_dir sctx in
     { coqdep = rr "coqdep"
-    ; coqc = rr "coqc"
+    ; coqc = (rr "coqc", coqc_dir)
     ; wrapper_name
     ; dir
     ; expander
@@ -263,7 +264,7 @@ let coqc_rule (cctx : _ Context.t) ~file_flags coq_module =
     (Build.dep (Dep.sandbox_config Sandbox_config.no_sandboxing))
   >>>
   let coq_flags = Context.coq_flags cctx in
-  Context.run cctx cctx.coqc (Command.Args.dyn coq_flags :: file_flags)
+  Context.coqc cctx (Command.Args.dyn coq_flags :: file_flags)
 
 module Module_rule = struct
   type t =
@@ -316,7 +317,8 @@ let setup_rules ~sctx ~dir ~dir_contents (s : Theory.t) =
     let wrapper_name = Coq_lib.wrapper theory in
     (* Coq flags for depending libraries *)
     let theories_deps = Coq_lib.DB.requires coq_lib_db theory in
-    Context.create sctx ~dir ~wrapper_name ~theories_deps s.buildable
+    let coqc_dir = Super_context.build_dir sctx in
+    Context.create sctx ~coqc_dir ~dir ~wrapper_name ~theories_deps s.buildable
   in
 
   (* List of modules to compile for this library *)
@@ -431,7 +433,8 @@ let extraction_rules ~sctx ~dir ~dir_contents (s : Extraction.t) =
       let coq_lib_db = Scope.coq_libs scope in
       Coq_lib.DB.requires_for_user_written coq_lib_db s.buildable.theories
     in
-    Context.create sctx ~dir ~wrapper_name ~theories_deps s.buildable
+    Context.create sctx ~coqc_dir:dir ~dir ~wrapper_name ~theories_deps
+      s.buildable
   in
   let coq_module =
     let coq = Dir_contents.coq dir_contents in

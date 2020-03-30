@@ -368,8 +368,8 @@ let set_vcs vcs =
   let () = Fdecl.set t.vcs vcs in
   match t.caching with
   | Some ({ cache = (module Caching); _ } as caching) ->
-     let+ caching =
-       let+ with_repositories =
+    let+ caching =
+      let+ with_repositories =
         let f ({ Vcs.root; _ } as vcs) =
           let+ commit = Vcs.commit_id vcs in
           { Cache.directory = Path.to_absolute_filename root
@@ -379,18 +379,18 @@ let set_vcs vcs =
         in
         let+ repositories = Fiber.parallel_map ~f (Fdecl.get t.vcs) in
         Caching.Cache.with_repositories Caching.cache repositories
-       in
-       match with_repositories with
-       | Result.Ok cache ->
-          let cache =
-            ( module struct
-                let cache = cache
+      in
+      match with_repositories with
+      | Result.Ok cache ->
+        let cache =
+          ( module struct
+            let cache = cache
 
-                module Cache = Caching.Cache
-              end : Cache.Caching )
-          in
-          Some { caching with cache }
-       | Result.Error e ->
+            module Cache = Caching.Cache
+          end : Cache.Caching )
+        in
+        Some { caching with cache }
+      | Result.Error e ->
         User_warning.emit
           [ Pp.textf "Unable to set cache repositiories, disabling cache: %s" e
           ];
@@ -398,6 +398,10 @@ let set_vcs vcs =
     in
     t.caching <- caching
   | None -> Fiber.return ()
+
+let get_vcs () =
+  let t = t () in
+  Fdecl.get t.vcs
 
 let get_cache () =
   let t = t () in
@@ -505,6 +509,15 @@ let compute_targets_digest targets =
   with
   | l -> Some (Digest.generic l)
   | exception (Unix.Unix_error _ | Sys_error _) -> None
+
+let find_rule_source_dir ({ Rule.action; _ } as rule) =
+  let _, src_dir =
+    match Path.Build.Set.find ~f:(fun _ -> true) action.targets with
+    | Some path -> Path.Build.extract_build_context_dir_exn path
+    | None ->
+      Code_error.raise "rule has no targets" [ ("rule", Rule.to_dyn rule) ]
+  in
+  File_tree.nearest_dir src_dir
 
 let compute_targets_digest_or_raise_error ~loc targets =
   let remove_write_permissions =
@@ -1626,8 +1639,18 @@ end = struct
                 in
                 Log.info [ Pp.textf "promotion failed for %s: %s" targets msg ]
               in
+              let repository =
+                let dir = find_rule_source_dir rule in
+                match File_tree.Dir.vcs dir with
+                | Some vcs -> (
+                  let f found = Path.equal found.Vcs.root vcs.Vcs.root in
+                  match get_vcs () |> List.findi ~f with
+                  | Some (_, i) -> Some i
+                  | None -> None )
+                | None -> None
+              in
               Caching.Cache.promote Caching.cache targets rule_digest []
-                ~repository:None ~duplication:None
+                ~repository ~duplication:None
               |> Result.map_error ~f:report |> ignore
             | _ -> ()
           in

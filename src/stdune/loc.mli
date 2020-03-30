@@ -27,9 +27,9 @@ val of_pos : string * int * int * int -> t
 
 val to_file_colon_line : t -> string
 
-val pp_file_colon_line : Format.formatter -> t -> unit
+val pp_file_colon_line : t -> unit Pp.t
 
-val print : Format.formatter -> t -> unit
+val pp : t -> unit Pp.t
 
 val on_same_line : t -> t -> bool
 

@@ -41,7 +41,7 @@ let print ?(skip_trailing_cr = Sys.win32) path1 path2 =
         args
     in
     let args = args @ [ file1; file2 ] in
-    Format.eprintf "%a@?" Loc.print loc;
+    Format.eprintf "%a@?" Pp.render_ignore_tags (Loc.pp loc);
     let* () = Process.run ~dir ~env:Env.initial Strict path args in
     fallback ()
   in

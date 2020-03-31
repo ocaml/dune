@@ -31,7 +31,11 @@ val pp_file_colon_line : t -> unit Pp.t
 
 val to_dyn_hum : t -> Dyn.t
 
-val pp : t -> unit Pp.t
+type tag = Loc
+
+val pp : t -> tag Pp.t
+
+val render : Format.formatter -> tag Pp.t -> unit
 
 val on_same_line : t -> t -> bool
 

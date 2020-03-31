@@ -60,8 +60,10 @@ let pp_line padding_width (lnum, l) =
   pp_left_pad padding_width lnum
   ++ Pp.verbatim " | " ++ Pp.verbatim l ++ Pp.newline
 
+type tag = Loc
+
 let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
-    unit Pp.t =
+    tag Pp.t =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let file = start.pos_fname in
@@ -144,9 +146,10 @@ let pp ({ start; stop } as loc) =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let open Pp.O in
-  Pp.verbatim
-    (Printf.sprintf "File \"%s\", line %d, characters %d-%d:" start.pos_fname
-       start.pos_lnum start_c stop_c)
+  Pp.tag Loc
+    (Pp.verbatim
+       (Printf.sprintf "File \"%s\", line %d, characters %d-%d:" start.pos_fname
+          start.pos_lnum start_c stop_c))
   ++ Pp.newline
   ++ pp_file_excerpt ~context_lines:2 ~max_lines_to_print_in_full:10 loc
 
@@ -158,3 +161,7 @@ let on_same_line loc1 loc2 =
   same_file && same_line
 
 let span begin_ end_ = { begin_ with stop = end_.stop }
+
+let rec render ppf pp =
+  Pp.render ppf pp ~tag_handler:(fun ppf Loc pp ->
+      Format.fprintf ppf "@{<loc>%a@}" render pp)

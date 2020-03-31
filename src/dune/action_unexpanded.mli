@@ -33,9 +33,9 @@ module Infer : sig
 
   val infer : Action.t -> Outcome.t
 
-  (** If [all_targets] is [true] and a target cannot be determined statically,
-      fail *)
-  val partial : all_targets:bool -> Partial.t -> Outcome.t
+  (** In [partial targets p], if [targets] is [Infer] and a target cannot be
+      determined statically, fail *)
+  val partial : Targets.Or_forbidden.t -> Partial.t -> Outcome.t
 
   (** Return the list of targets of an unexpanded action. *)
   val unexpanded_targets : t -> String_with_vars.t list

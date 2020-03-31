@@ -85,18 +85,6 @@ type reduced_var_result =
 val expand_with_reduced_var_set :
   context:Context.t -> reduced_var_result String_with_vars.expander
 
-module Targets : sig
-  type static =
-    { targets : Path.Build.t list
-    ; multiplicity : Dune_file.Rule.Targets.Multiplicity.t
-    }
-
-  type t =
-    | Static of static
-    | Infer
-    | Forbidden of string  (** context *)
-end
-
 (** Prepare a temporary expander capable of expanding variables in the [deps] or
     similar fields. This expander doesn't support variables that require us to
     build something to expand. For example, [%{exe:foo}] is allowed but
@@ -121,7 +109,7 @@ val expand_deps_like_field :
 val expand_action :
      t
   -> deps_written_by_user:Path.t Bindings.t Build.t
-  -> targets_written_by_user:Targets.t
+  -> targets_written_by_user:Targets.Or_forbidden.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
   -> foreign_flags:

@@ -499,11 +499,22 @@ module Infer = struct
             acc
       end)
 
-  let partial ~all_targets t =
-    if all_targets then
-      Partial_with_all_targets.infer t
-    else
-      Partial.infer t
+  let partial (targets : Targets.Or_forbidden.t) t =
+    match targets with
+    | Targets Infer -> Partial_with_all_targets.infer t
+    | Forbidden _ ->
+      (* Q: why don't we make sure that no targets were inferred?
+
+         A: Target detection is not robust and sufffers from false
+         positive/negatives. *)
+      { (Partial.infer t) with targets = Path.Build.Set.empty }
+    | Targets (Static { targets = written_by_user; multiplicity = _ }) ->
+      let outcome = Partial.infer t in
+      { outcome with
+        targets =
+          Path.Build.Set.union outcome.targets
+            (Path.Build.Set.of_list written_by_user)
+      }
 
   module S_unexp = struct
     module Targets = struct

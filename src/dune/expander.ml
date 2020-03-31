@@ -291,18 +291,6 @@ module Resolved_forms = struct
       ~f:(fun acc (var, _) value -> Pform.Expansion.Map.add_exn acc var value)
 end
 
-module Targets = struct
-  type static =
-    { targets : Path.Build.t list
-    ; multiplicity : Dune_file.Rule.Targets.Multiplicity.t
-    }
-
-  type t =
-    | Static of static
-    | Infer
-    | Forbidden of string
-end
-
 let path_exp path = [ Value.Path path ]
 
 let str_exp str = [ Value.String str ]
@@ -478,31 +466,13 @@ let expand_and_record_dynamic acc ~map_exe ~dep_kind ~(dir : Path.Build.t)
     acc.failure <- Some { fail = (fun () -> raise e) };
     None
 
-let check_multiplicity ~pform ~declaration ~use =
-  let module Multiplicity = Dune_file.Rule.Targets.Multiplicity in
-  let loc = String_with_vars.Var.loc pform in
-  let error declaration use =
-    User_error.raise ~loc
-      [ Pp.textf
-          "You can only use the variable %%{%s} if you defined the list of \
-           targets using the field [%s] (not [%s])"
-          use use declaration
-      ]
-  in
-  match (declaration, use) with
-  | Multiplicity.One, Multiplicity.One
-  | Multiple, Multiple ->
-    ()
-  | One, Multiple -> error "target" "targets"
-  | Multiple, One -> error "targets" "target"
-
 let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
     ~targets_written_by_user ~map_exe ~expand_var ~cc t pform syntax_version =
   let res =
-    let targets ~(multiplicity : Dune_file.Rule.Targets.Multiplicity.t) =
+    let targets ~(multiplicity : Targets.Multiplicity.t) =
       let loc = String_with_vars.Var.loc pform in
-      match (targets_written_by_user : Targets.t) with
-      | Infer ->
+      match (targets_written_by_user : Targets.Or_forbidden.t) with
+      | Targets.Or_forbidden.Targets Infer ->
         User_error.raise ~loc
           [ Pp.textf "You cannot use %s with inferred rules."
               (String_with_vars.Var.describe pform)
@@ -513,14 +483,12 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
               (String_with_vars.Var.describe pform)
               context
           ]
-      | Static { targets; multiplicity = declared_multiplicity } ->
-        let value =
-          List.map ~f:Path.build targets |> Value.L.dirs
-          (* XXX hack to signal no dep *)
-        in
-        check_multiplicity ~pform ~declaration:declared_multiplicity
+      | Targets.Or_forbidden.Targets
+          (Static { targets; multiplicity = declared_multiplicity }) ->
+        Targets.Multiplicity.check ~loc ~declaration:declared_multiplicity
           ~use:multiplicity;
-        Some value
+        (* XXX hack to signal no dep *)
+        Some (List.map ~f:Path.build targets |> Value.L.dirs)
     in
     expand_var t pform syntax_version
     |> Option.bind ~f:(function

@@ -47,3 +47,28 @@ let%expect_test _ =
   [%expect {| [pass] "foo.{ml,mli}" matches "foo.mli" == true |}];
   test glob "foo." ~expect:false;
   [%expect {| [pass] "foo.{ml,mli}" matches "foo." == false |}]
+
+let%expect_test _ =
+  let glob = Glob.of_string "foo**" in
+  test glob "foo.ml" ~expect:false;
+  [%expect {| [pass] "foo**" matches "foo.ml" == false |}];
+  test glob "fooml" ~expect:true;
+  [%expect {| [pass] "foo**" matches "fooml" == true |}]
+
+let%expect_test _ =
+  let glob = Glob.of_string "**" in
+  test glob "foo/bar" ~expect:true;
+  [%expect {| [pass] "**" matches "foo/bar" == true |}];
+  test glob "" ~expect:true;
+  [%expect {| [pass] "**" matches "" == true |}];
+  test glob "foo.bar" ~expect:true;
+  [%expect {| [pass] "**" matches "foo.bar" == true |}]
+
+let%expect_test _ =
+  let glob = Glob.of_string "*" in
+  test glob ".foo" ~expect:false;
+  [%expect {| [pass] "*" matches ".foo" == false |}];
+  test glob "foo.ml" ~expect:true;
+  [%expect {| [pass] "*" matches "foo.ml" == true |}];
+  test glob "foo/" ~expect:false;
+  [%expect {| [pass] "*" matches "foo/" == false |}]

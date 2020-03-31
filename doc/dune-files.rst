@@ -1635,6 +1635,31 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
+coq.extraction
+--------------
+
+Coq may be instructed to *extract* OCaml sources as part of the compilation
+process. This is done using the ``coq.extraction`` stanza:
+
+.. code:: lisp
+
+   (coq.extraction
+    (prelude <name>)
+    (extracted_modules <names>)
+    <optional-fields>)
+
+- ``(prelude <name>)`` refers to the coq source that contains the extraction
+  commands.
+
+- ``(extraced_modules <names>)`` is an exhaustive list of OCaml modules
+  extracted.
+
+- ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
+  these fields have the same meaning as in the ``coq.theory`` stanza.
+
+The extracted sources can then be used in ``executable`` or ``library`` stanzas
+as any other sources.
+
 .. _dune-workspace:
 
 mdx (since 2.4)

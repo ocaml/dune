@@ -163,7 +163,7 @@ end = struct
                ~variants:exes.variants ~optional:exes.optional
            in
            Result.is_ok (Lib.Compile.direct_requires compile_info) )
-      | Dune_file.Coq.T d -> Option.is_some d.package
+      | Coq_stanza.Theory.T d -> Option.is_some d.package
       | _ -> false )
       stanza
 
@@ -259,7 +259,7 @@ end = struct
               let sub_dir = (Option.value_exn lib.public).sub_dir in
               let dir_contents = Dir_contents.get sctx ~dir in
               lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
-            | Dune_file.Coq.T coqlib ->
+            | Coq_stanza.Theory.T coqlib ->
               Coq_rules.install_rules ~sctx ~dir coqlib
             | Dune_file.Documentation d ->
               let dc = Dir_contents.get sctx ~dir in

@@ -25,7 +25,8 @@ module DB : sig
 
   type t
 
-  val create_from_coqlib_stanzas : (Path.Build.t * Dune_file.Coq.t) list -> t
+  val create_from_coqlib_stanzas :
+    (Path.Build.t * Coq_stanza.Theory.t) list -> t
 
   val find_many : t -> loc:Loc.t -> Coq_lib_name.t list -> lib list Or_exn.t
 
@@ -35,5 +36,8 @@ module DB : sig
 
   (** Return the list of dependencies needed for compiling this library *)
   val requires : t -> lib -> lib list Or_exn.t
+
+  val requires_for_user_written :
+    t -> (Loc.t * Coq_lib_name.t) list -> lib list Or_exn.t
 end
 with type lib := t

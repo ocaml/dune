@@ -11,7 +11,11 @@ module Name = struct
 
   let compare = String.compare
 
+  let equal = String.equal
+
   let to_dyn s = Dyn.String s
+
+  let to_string s = s
 end
 
 (* We keep prefix and name separated as the handling of `From Foo Require Bar.`

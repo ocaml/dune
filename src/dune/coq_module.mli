@@ -11,7 +11,11 @@ module Name : sig
 
   val compare : t -> t -> Ordering.t
 
+  val equal : t -> t -> bool
+
   val to_dyn : t -> Dyn.t
+
+  val to_string : t -> string
 end
 
 type t
@@ -30,7 +34,7 @@ val source : t -> Path.Build.t
 
 val prefix : t -> string list
 
-val name : t -> string
+val name : t -> Name.t
 
 val dep_file : obj_dir:Path.Build.t -> t -> Path.Build.t
 

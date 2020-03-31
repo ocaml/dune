@@ -2,6 +2,8 @@ include module type of struct
   include Loc0
 end
 
+module Map : Map_intf.S with type key := t
+
 val in_file : Path.t -> t
 
 val in_dir : Path.t -> t
@@ -30,3 +32,5 @@ val pp_file_colon_line : Format.formatter -> t -> unit
 val print : Format.formatter -> t -> unit
 
 val on_same_line : t -> t -> bool
+
+val span : t -> t -> t

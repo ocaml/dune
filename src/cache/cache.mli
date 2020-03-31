@@ -16,6 +16,8 @@ val promotion_to_string : promotion -> string
 
 val make_caching : (module Cache with type t = 'a) -> 'a -> (module Caching)
 
+val cachable : Unix.file_kind -> bool
+
 module Client = Client
 module Local = Local
 module Messages = Messages

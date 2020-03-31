@@ -414,7 +414,7 @@ module Buildable = struct
            (field ~default:None "self_build_stubs_archive"
               ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                   ~extra_info:"Use the (foreign_archives ...) field instead."
-              >>> option string )))
+              >>> enter (maybe string) )))
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries =
@@ -1303,13 +1303,13 @@ module Executables = struct
     let simple = Dune_lang.Decoder.enum simple_representations
 
     let decode =
-      if_list
-        ~then_:
-          (enter
-             (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode in
-              make mode kind))
-        ~else_:simple
+      alt
+        [ enter
+            (let+ mode = Mode_conf.decode
+             and+ kind = Binary_kind.decode in
+             make mode kind)
+        ; simple
+        ]
 
     let simple_encode link_mode =
       let is_ok (_, candidate) = compare candidate link_mode = Eq in
@@ -1743,20 +1743,16 @@ module Rule = struct
     }
 
   let ocamllex =
-    if_eos
-      ~then_:
-        (return { modules = []; mode = Standard; enabled_if = Blang.true_ })
-      ~else_:
-        (if_list
-           ~then_:
-             (fields
-                (let+ modules = field "modules" (repeat string)
-                 and+ mode = Mode.field
-                 and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-                 { modules; mode; enabled_if }))
-           ~else_:
-             ( repeat string >>| fun modules ->
-               { modules; mode = Standard; enabled_if = Blang.true_ } ))
+    alt
+      [ enter
+          (fields
+             (let+ modules = field "modules" (repeat string)
+              and+ mode = Mode.field
+              and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+              { modules; mode; enabled_if }))
+      ; (let+ modules = repeat string in
+         { modules; mode = Standard; enabled_if = Blang.true_ })
+      ]
 
   let ocamlyacc = ocamllex
 

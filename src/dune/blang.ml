@@ -80,14 +80,14 @@ let decode =
   in
   let decode =
     fix (fun t ->
-        if_list
-          ~then_:
-            ( [ ("or", repeat t >>| fun x -> Or x)
-              ; ("and", repeat t >>| fun x -> And x)
-              ]
-              @ ops
-            |> sum )
-          ~else_:(String_with_vars.decode >>| fun v -> Expr v))
+        alt
+          [ sum
+              ( ("or", repeat t >>| fun x -> Or x)
+              :: ("and", repeat t >>| fun x -> And x)
+              :: ops )
+          ; (let+ v = String_with_vars.decode in
+             Expr v)
+          ])
   in
   let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
   and+ decode = decode in

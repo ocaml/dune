@@ -178,11 +178,11 @@ module Stanza = struct
   let rule =
     enter
       (let+ pat =
-         match_keyword
-           [ ("_", return Any) ]
-           ~fallback:
-             (let+ p = Profile.decode in
+         alt
+           [ keyword "_" >>> return Any
+           ; (let+ p = Profile.decode in
               Profile p)
+           ]
        and+ configs = fields config in
        (pat, configs))
 

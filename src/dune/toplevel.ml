@@ -23,7 +23,10 @@ module Source = struct
 
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
-  let modules t = Modules.singleton_exe (main_module t)
+  let modules t pp =
+    main_module t
+    |> Preprocessing.pp_module pp
+    |> Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
@@ -42,7 +45,7 @@ module Source = struct
     ; main_module_name = Module.name (main_module t)
     }
 
-  let pp_ml fmt _t ~include_dirs =
+  let pp_ml fmt t ~include_dirs =
     let pp_include fmt =
       let pp_sep fmt () = Format.fprintf fmt "@ ; " in
       Format.pp_print_list ~pp_sep
@@ -50,7 +53,8 @@ module Source = struct
         fmt
     in
     Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@." pp_include
-      include_dirs
+      include_dirs;
+    Format.fprintf fmt "%s;@." t.main
 
   let loc t = t.loc
 end
@@ -78,7 +82,7 @@ let pp_flags fmt t =
       Path.to_absolute_filename (Path.build exe)
       :: "--as-ppx" :: flags
       |> String.concat ~sep:" "
-      |> Format.fprintf fmt "@[<v 2>Clflags.all_ppx :=@ [ %S@ ]@];@." )
+      |> Format.fprintf fmt "@[<v 2>Compenv.first_ppx :=@ [ %S@ ] @];@." )
   | Action _ | Future_syntax _ | No_preprocessing -> ()
 
 let setup_module_rules t =
@@ -92,9 +96,8 @@ let setup_module_rules t =
           (let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
            let b = Buffer.create 64 in
            let fmt = Format.formatter_of_buffer b in
-           Source.pp_ml fmt t.source ~include_dirs;
            pp_flags fmt t;
-           Format.fprintf fmt "%s@." t.source.main;
+           Source.pp_ml fmt t.source ~include_dirs;
            Format.pp_print_flush fmt ();
            Buffer.contents b))
     |> Build.write_file_dyn path
@@ -118,14 +121,19 @@ let setup_rules t =
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
-    let source = Source.of_stanza ~dir ~toplevel in
-    let expander = Super_context.expander sctx ~dir in
     let scope = Super_context.find_scope_by_dir sctx dir in
+    let expander = Super_context.expander sctx ~dir in
+    let source = Source.of_stanza ~dir ~toplevel in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
       match toplevel.pps with
       | Dune_file.Preprocess.Pps pps -> pps.pps
       | Action _ | Future_syntax _ | No_preprocessing -> []
+    in
+    let preprocess = Module_name.Per_item.for_all toplevel.pps in
+    let preprocessing = Preprocessing.make sctx ~dir ~expander ~scope
+      ~dep_kind:Required ~lib_name:None
+      ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
     in
     let compile_info =
       let compiler_libs =
@@ -149,9 +157,9 @@ module Stanza = struct
     in
     let cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
-        ~expander ~modules:(Source.modules source) ~opaque:false
+        ~expander ~modules:(Source.modules source preprocessing) ~opaque:false
         ~requires_compile ~requires_link ~flags ~js_of_ocaml:None ~dynlink:false
-        ~package:None
+        ~package:None ~preprocessing
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
     setup_rules resolved

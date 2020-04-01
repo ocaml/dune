@@ -484,9 +484,9 @@ let expand_and_record_deps acc ~(dir : Path.Build.t) ~dep_kind
               context
           ]
       | Targets.Or_forbidden.Targets
-          (Static { targets; multiplicity = declared_multiplicity }) ->
-        Targets.Multiplicity.check ~loc ~declaration:declared_multiplicity
-          ~use:multiplicity;
+          (Static { targets; multiplicity = field_multiplicity }) ->
+        Targets.Multiplicity.check_variable_matches_field ~loc
+          ~field:field_multiplicity ~variable:multiplicity;
         (* XXX hack to signal no dep *)
         Some (List.map ~f:Path.build targets |> Value.L.dirs)
     in

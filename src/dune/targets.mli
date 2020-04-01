@@ -4,10 +4,10 @@ open Import
 
 module Multiplicity : sig
   type t =
-    | One
-    | Multiple
+    | One  (** [target] field or variable *)
+    | Multiple  (** [targets] field or variable *)
 
-  val check : loc:Loc.t -> declaration:t -> use:t -> unit
+  val check_variable_matches_field : loc:Loc.t -> field:t -> variable:t -> unit
 end
 
 module Static : sig

@@ -5,16 +5,16 @@ module Multiplicity = struct
     | One
     | Multiple
 
-  let check ~loc ~declaration ~use =
-    let error declaration use =
+  let check_variable_matches_field ~loc ~field ~variable =
+    let error field variable =
       User_error.raise ~loc
         [ Pp.textf
             "You can only use the variable %%{%s} if you defined the list of \
              targets using the field [%s] (not [%s])"
-            use use declaration
+            variable variable field
         ]
     in
-    match (declaration, use) with
+    match (field, variable) with
     | One, One
     | Multiple, Multiple ->
       ()

@@ -183,7 +183,7 @@ module Stubs = struct
         let+ loc, lib_name = sum [ ("lib", located Lib_name.decode) ] in
         Lib (loc, lib_name)
       in
-      alt [ parse_lib; parse_dir ]
+      parse_lib <|> parse_dir
   end
 
   type t =

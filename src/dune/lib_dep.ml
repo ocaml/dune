@@ -124,19 +124,17 @@ let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   let+ loc, t =
     located
-      (alt
-         [ sum
-             [ ( "re_export"
-               , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
-                 and+ loc, name = located Lib_name.decode in
-                 Re_export (loc, name) )
-             ; ( "select"
-               , let+ select = Select.decode in
-                 Select select )
-             ]
-         ; (let+ loc, name = located Lib_name.decode in
-            Direct (loc, name))
-         ])
+      ( sum
+          [ ( "re_export"
+            , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
+              and+ loc, name = located Lib_name.decode in
+              Re_export (loc, name) )
+          ; ( "select"
+            , let+ select = Select.decode in
+              Select select )
+          ]
+      <|> let+ loc, name = located Lib_name.decode in
+          Direct (loc, name) )
   in
   match t with
   | Re_export _ when not allow_re_export ->

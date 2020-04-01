@@ -281,7 +281,7 @@ let enter t =
         result ctx (t ctx l)
       | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
-let alt =
+let ( <|> ) =
   (* Before you read this code, close your eyes and internalise the fact that
      this code is temporary. It is a temporary state as part of a larger work to
      turn [Decoder.t] into a pure applicative. Once this is done, this function
@@ -295,19 +295,19 @@ let alt =
       (approximate_how_much_input_a_failing_branch_consumed exn1)
       (approximate_how_much_input_a_failing_branch_consumed exn2)
   in
-  let best_error_candidate exns =
-    List.max exns ~f:compare_input_consumed |> Option.value_exn
-  in
-  let rec loop errors ts ctx state =
-    match ts with
-    | [] -> Exn_with_backtrace.reraise (best_error_candidate errors)
-    | t :: ts -> (
-      try t ctx state
-      with exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        loop (exn :: errors) ts ctx state )
-  in
-  fun ts ctx state -> loop [] ts ctx state
+  fun a b ctx state ->
+    try a ctx state
+    with exn_a -> (
+      let exn_a = Exn_with_backtrace.capture exn_a in
+      try b ctx state
+      with exn_b ->
+        let exn_b = Exn_with_backtrace.capture exn_b in
+        Exn_with_backtrace.reraise
+          ( match compare_input_consumed exn_a exn_b with
+          | Gt -> exn_a
+          | Eq
+          | Lt ->
+            exn_b ) )
 
 let fix f =
   let rec p = lazy (f r)
@@ -432,7 +432,7 @@ let bytes_unit =
     ; ("GB", 1000 * 1000 * 1000)
     ]
 
-let maybe t = alt [ t >>| Option.some; return None ]
+let maybe t = t >>| Option.some <|> return None
 
 let find_cstr cstrs loc name ctx values =
   match List.assoc cstrs name with

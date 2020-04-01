@@ -75,10 +75,10 @@ val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 (** Return the location of the list currently being parsed. *)
 val loc : (Loc.t, _) parser
 
-(** [alt l] tries all the parser in [l] in sequence and uses the first one that
-    succeeds. If they all fail, the error from the one that consumed the most
-    input is returned. *)
-val alt : 'a t list -> 'a t
+(** [a <|> b] is either [a] or [b]. If [a] fails to parse the input, then try
+    [b]. If [b] fails as well, raise the error from the parser that consumed the
+    most input. *)
+val ( <|> ) : 'a t -> 'a t -> 'a t
 
 (** [atom_matching f] expects the next element to be an atom for which [f]
     returns [Some v]. [desc] is used to describe the atom in case of error. [f]
@@ -135,11 +135,9 @@ val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 (** [maybe t] is a short-hand for:
 
     {[
-      alt
-        [ (let+ x = t in
-           Some x)
-        ; return None
-        ]
+      (let+ x = t in
+       Some x)
+      <|> return None
     ]} *)
 val maybe : 'a t -> 'a option t
 

@@ -179,11 +179,9 @@ module Dependency = struct
       and+ expr = Constraint.decode in
       { name; constraint_ = Some expr }
     in
-    alt
-      [ enter constrained
-      ; (let+ name = Name.decode in
-         { name; constraint_ = None })
-      ]
+    enter constrained
+    <|> let+ name = Name.decode in
+        { name; constraint_ = None }
 
   let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in

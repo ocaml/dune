@@ -96,7 +96,7 @@ let dune2_record_syntax =
   Some { loc; enabled_for }
 
 let dune2_dec =
-  alt [ keyword "disabled" >>> return None; fields dune2_record_syntax ]
+  keyword "disabled" >>> return None <|> fields dune2_record_syntax
 
 let dune2_default = Some { loc = Loc.none; enabled_for = Enabled_for.All }
 

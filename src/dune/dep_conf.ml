@@ -61,11 +61,9 @@ let decode =
       ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
       ]
   in
-  alt
-    [ decode
-    ; (let+ x = String_with_vars.decode in
-       File x)
-    ]
+  decode
+  <|> let+ x = String_with_vars.decode in
+      File x
 
 open Dune_lang
 

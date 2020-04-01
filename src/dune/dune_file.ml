@@ -1303,13 +1303,11 @@ module Executables = struct
     let simple = Dune_lang.Decoder.enum simple_representations
 
     let decode =
-      alt
-        [ enter
-            (let+ mode = Mode_conf.decode
-             and+ kind = Binary_kind.decode in
-             make mode kind)
-        ; simple
-        ]
+      enter
+        (let+ mode = Mode_conf.decode
+         and+ kind = Binary_kind.decode in
+         make mode kind)
+      <|> simple
 
     let simple_encode link_mode =
       let is_ok (_, candidate) = compare candidate link_mode = Eq in
@@ -1743,16 +1741,14 @@ module Rule = struct
     }
 
   let ocamllex =
-    alt
-      [ enter
-          (fields
-             (let+ modules = field "modules" (repeat string)
-              and+ mode = Mode.field
-              and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-              { modules; mode; enabled_if }))
-      ; (let+ modules = repeat string in
-         { modules; mode = Standard; enabled_if = Blang.true_ })
-      ]
+    enter
+      (fields
+         (let+ modules = field "modules" (repeat string)
+          and+ mode = Mode.field
+          and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+          { modules; mode; enabled_if }))
+    <|> let+ modules = repeat string in
+        { modules; mode = Standard; enabled_if = Blang.true_ }
 
   let ocamlyacc = ocamllex
 

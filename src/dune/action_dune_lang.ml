@@ -93,16 +93,14 @@ let compare_no_locs t1 t2 = Poly.compare (remove_locs t1) (remove_locs t2)
 open Dune_lang.Decoder
 
 let decode =
-  alt
-    [ (let+ loc, action = located decode in
-       validate ~loc action;
-       action)
-    ; (let+ loc = loc in
-       User_error.raise ~loc
-         [ Pp.textf
-             "if you meant for this to be executed with bash, write (bash \
-              \"...\") instead"
-         ])
-    ]
+  (let+ loc, action = located decode in
+   validate ~loc action;
+   action)
+  <|> let+ loc = loc in
+      User_error.raise ~loc
+        [ Pp.textf
+            "if you meant for this to be executed with bash, write (bash \
+             \"...\") instead"
+        ]
 
 let to_dyn a = Dune_lang.to_dyn (encode a)

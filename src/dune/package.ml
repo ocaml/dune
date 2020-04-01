@@ -468,7 +468,7 @@ let to_dyn
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
-      , Name.Map.to_dyn Loc.to_dyn deprecated_package_names )
+      , Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names )
     ]
 
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)

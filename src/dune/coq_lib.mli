@@ -8,6 +8,8 @@ type t
 
 val name : t -> Coq_lib_name.t
 
+val implicit : t -> bool
+
 (* this is not really a wrapper for the prefix path *)
 val wrapper : t -> string
 

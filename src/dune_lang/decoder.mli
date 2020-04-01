@@ -179,8 +179,11 @@ val enum : (string * 'a) list -> 'a t
 (** Parser that parse a S-expression of the form
     [(<atom> <s-exp1> <s-exp2> ...)] or [<atom>]. [<atom>] is looked up in the
     list and the remaining s-expressions are parsed using the corresponding list
-    parser. *)
-val sum : (string * 'a t) list -> 'a t
+    parser.
+
+    If [force_parens] is [true], then the form [<atom>] is never accepted. The
+    default is [false]. *)
+val sum : ?force_parens:bool -> (string * 'a t) list -> 'a t
 
 (** Check the result of a list parser, and raise a properly located error in
     case of failure. *)

@@ -41,7 +41,7 @@ let decode_sandbox_config =
 let decode =
   let decode =
     let sw = String_with_vars.decode in
-    sum
+    sum ~force_parens:true
       [ ("file", sw >>| fun x -> File x)
       ; ("alias", sw >>| fun x -> Alias x)
       ; ("alias_rec", sw >>| fun x -> Alias_rec x)

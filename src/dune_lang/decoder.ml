@@ -443,15 +443,22 @@ let find_cstr cstrs loc name ctx values =
         (User_message.did_you_mean name ~candidates:(List.map cstrs ~f:fst))
       [ Pp.textf "Unknown constructor %s" name ]
 
-let sum cstrs =
+let sum ?(force_parens = false) cstrs =
   next_with_user_context (fun uc sexp ->
       match sexp with
-      | Atom (loc, A s) -> find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Atom (loc, A s) when not force_parens ->
+        find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Atom (loc, _)
       | Template { loc; _ }
-      | Quoted_string (loc, _) ->
-        User_error.raise ~loc [ Pp.text "Atom expected" ]
+      | Quoted_string (loc, _)
       | List (loc, []) ->
-        User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
+        User_error.raise ~loc
+          [ Pp.textf "S-expression of the form %s expected"
+              ( if force_parens then
+                "(<atom> ...)"
+              else
+                "(<atom> ...) or <atom>" )
+          ]
       | List (loc, name :: args) -> (
         match name with
         | Quoted_string (loc, _)

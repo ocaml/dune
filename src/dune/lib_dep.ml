@@ -124,7 +124,7 @@ let decode ~allow_re_export =
   let open Dune_lang.Decoder in
   let+ loc, t =
     located
-      ( sum
+      ( sum ~force_parens:true
           [ ( "re_export"
             , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
               and+ loc, name = located Lib_name.decode in

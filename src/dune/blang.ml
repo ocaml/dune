@@ -80,7 +80,7 @@ let decode =
   in
   let decode =
     fix (fun t ->
-        sum
+        sum ~force_parens:true
           ( ("or", repeat t >>| fun x -> Or x)
           :: ("and", repeat t >>| fun x -> And x)
           :: ops )

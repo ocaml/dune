@@ -148,7 +148,9 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
     | Some args ->
       let action =
         let targets_dir = Expander.dir expander in
-        let targets = Expander.Targets.Forbidden "preprocessing actions" in
+        let targets : Targets.Or_forbidden.t =
+          Forbidden "preprocessing actions"
+        in
         let action = Preprocessing.chdir (Run (exe, args)) in
         Super_context.Action.run sctx ~loc ~expander ~dep_kind:Optional ~targets
           ~targets_dir action

@@ -682,10 +682,8 @@ module Action = struct
       ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
     let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
-    ( match (targets_written_by_user : Expander.Targets.t) with
-    | Static _
-    | Infer ->
-      ()
+    ( match (targets_written_by_user : Targets.Or_forbidden.t) with
+    | Targets _ -> ()
     | Forbidden context -> (
       match U.Infer.unexpanded_targets t with
       | [] -> ()
@@ -705,21 +703,7 @@ module Action = struct
         ~final:(fun expander t -> U.Partial.expand t ~expander ~map_exe)
     in
     let { U.Infer.Outcome.deps; targets } =
-      match targets_written_by_user with
-      | Infer -> U.Infer.partial partially_expanded ~all_targets:true
-      | Static { targets = targets_written_by_user; multiplicity = _ } ->
-        let targets_written_by_user =
-          Path.Build.Set.of_list targets_written_by_user
-        in
-        let { U.Infer.Outcome.deps; targets } =
-          U.Infer.partial partially_expanded ~all_targets:false
-        in
-        { deps; targets = Path.Build.Set.union targets targets_written_by_user }
-      | Forbidden _ ->
-        let { U.Infer.Outcome.deps; targets = _ } =
-          U.Infer.partial partially_expanded ~all_targets:false
-        in
-        { U.Infer.Outcome.deps; targets = Path.Build.Set.empty }
+      U.Infer.partial targets_written_by_user partially_expanded
     in
     let targets = Path.Build.Set.to_list targets in
     List.iter targets ~f:(fun target ->

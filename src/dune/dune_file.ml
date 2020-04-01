@@ -1741,14 +1741,13 @@ module Rule = struct
     }
 
   let ocamllex =
-    enter
-      (fields
-         (let+ modules = field "modules" (repeat string)
-          and+ mode = Mode.field
-          and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-          { modules; mode; enabled_if }))
-    <|> let+ modules = repeat string in
-        { modules; mode = Standard; enabled_if = Blang.true_ }
+    (let+ modules = repeat string in
+     { modules; mode = Standard; enabled_if = Blang.true_ })
+    <|> fields
+          (let+ modules = field "modules" (repeat string)
+           and+ mode = Mode.field
+           and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+           { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
 

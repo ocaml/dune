@@ -54,9 +54,9 @@ let libs_under_dir sctx ~db ~dir =
               if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
               then
                 (match Lib_info.kind info with
-                 | Lib_kind.Ppx_rewriter _ ->
+                 | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
                    lib :: acc, (Lib_info.loc info, Lib_info.name info) :: pps
-                 | Normal | Ppx_deriver _ -> lib :: acc, pps)
+                 | Normal -> lib :: acc, pps)
               else
                 acc, pps
               (* external lib with a name matching our private name *) )

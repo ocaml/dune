@@ -137,9 +137,9 @@ let print_toplevel_init_file ~include_paths ~files_to_load =
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =
-    let scope = Super_context.find_scope_by_dir sctx dir in
-    let expander = Super_context.expander sctx ~dir in
     let source = Source.of_stanza ~dir ~toplevel in
+    let expander = Super_context.expander sctx ~dir in
+    let scope = Super_context.find_scope_by_dir sctx dir in
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
       match toplevel.pps with

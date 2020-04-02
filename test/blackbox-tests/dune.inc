@@ -2004,6 +2004,14 @@
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
+ (alias utop-utop-ppx-rewriters)
+ (deps (package dune) (source_tree test-cases/utop/utop-ppx-rewriters))
+ (action
+  (chdir
+   test-cases/utop/utop-ppx-rewriters
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias utop-utop-simple)
  (deps (package dune) (source_tree test-cases/utop/utop-simple))
  (action
@@ -2658,6 +2666,7 @@
   (alias use-meta)
   (alias utop-utop-default)
   (alias utop-utop-default-implementation)
+  (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
   (alias variants)
@@ -2914,6 +2923,7 @@
   (alias unreadable-src)
   (alias unused-preprocessor-deps)
   (alias upgrader)
+  (alias utop-utop-ppx-rewriters)
   (alias variables-for-artifacts)
   (alias variants)
   (alias variants-variant-dep-stack)

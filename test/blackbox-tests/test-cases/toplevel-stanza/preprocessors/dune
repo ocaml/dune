@@ -1,9 +1,9 @@
 (library
-(name foo)
-(modules (:standard \ init))
-)
+(name fooppx)
+(modules fooppx)
+(libraries ppxlib)
+(kind ppx_rewriter))
 
 (toplevel
 (name tt)
-(libraries foo core)
-(preprocess (pps ppx_sexp_conv)))
+(preprocess (pps fooppx)))

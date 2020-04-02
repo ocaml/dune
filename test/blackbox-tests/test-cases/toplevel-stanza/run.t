@@ -21,4 +21,4 @@ Running toplevel with preprocessor
   Entering directory 'preprocessors'
           Ocaml version REDACTED
   
-  Foo.x = 42
+  PPX extension: 42

@@ -1,4 +1,3 @@
-open Core
 let () =
-  Printf.printf "Foo.x = %s\n%!" (([%sexp_of: int] Foo.x) |> Sexp.to_string);
+  Printf.printf "PPX extension: %d\n%!" [%get_c];
   exit 0

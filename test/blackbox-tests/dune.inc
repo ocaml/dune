@@ -2009,7 +2009,8 @@
  (action
   (chdir
    test-cases/utop/utop-ppx-rewriters
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias utop-utop-simple)
@@ -2917,13 +2918,11 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
   (alias unused-preprocessor-deps)
   (alias upgrader)
-  (alias utop-utop-ppx-rewriters)
   (alias variables-for-artifacts)
   (alias variants)
   (alias variants-variant-dep-stack)

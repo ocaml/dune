@@ -193,7 +193,7 @@ let ocamldep = get_prog bin_dir "ocamldep"
 let run_ocamllex src =
   let dst = String.sub src ~pos:0 ~len:(String.length src - 1) in
   let x = Sys.file_exists dst in
-  let n = exec "\"%s\" -q %s" ocamllex src in
+  let n = exec "%s -q %s" (Filename.quote ocamllex) src in
   if n <> 0 then exit n;
   if not x then add_to_delete dst;
   dst
@@ -308,8 +308,8 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
     add_to_delete out_fn;
     List.map files_by_lib ~f:(fun (libname, files) ->
       let n =
-        exec "\"%s\" -modules%s %s > %s"
-          ocamldep
+        exec "%s -modules%s %s > %s"
+          (Filename.quote ocamldep)
           pp
           (String.concat ~sep:" " files)
           out_fn
@@ -507,8 +507,8 @@ let compile ~dirs ~generated_file ~exe ~main ~flags ~byte_flags ~native_flags
   in
 
   let n =
-    try exec "\"%s\" -g -w -40 -o %s%s %s %s %s"
-          compiler
+    try exec "%s -g -w -40 -o %s%s %s %s %s"
+          (Filename.quote compiler)
           exe
           pp
           flags

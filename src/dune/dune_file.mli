@@ -321,25 +321,8 @@ module Menhir : sig
 end
 
 module Rule : sig
-  module Targets : sig
-    module Multiplicity : sig
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      | Static of static
-      | Infer
-  end
-
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t

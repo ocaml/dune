@@ -1562,45 +1562,6 @@ module Executables = struct
 end
 
 module Rule = struct
-  module Targets = struct
-    module Multiplicity = struct
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      (* List of files in the current directory *)
-      | Static of static
-      | Infer
-
-    let decode_static =
-      let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
-      and+ targets = repeat String_with_vars.decode in
-      if syntax_version < (1, 3) then
-        List.iter targets ~f:(fun target ->
-            if String_with_vars.has_vars target then
-              Dune_lang.Syntax.Error.since
-                (String_with_vars.loc target)
-                Stanza.syntax (1, 3)
-                ~what:"Using variables in the targets field");
-      Static { targets; multiplicity = Multiple }
-
-    let decode_one_static =
-      let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
-      and+ target = String_with_vars.decode in
-      Static { targets = [ target ]; multiplicity = One }
-
-    let fields_parser =
-      fields_mutually_exclusive ~default:Infer
-        [ ("targets", decode_static); ("target", decode_one_static) ]
-  end
-
   module Mode = struct
     include Rule.Mode
 
@@ -1628,7 +1589,7 @@ module Rule = struct
   end
 
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -1692,7 +1653,7 @@ module Rule = struct
   let long_form =
     let+ loc = loc
     and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = Targets.fields_parser
+    and+ targets = Targets.field
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]

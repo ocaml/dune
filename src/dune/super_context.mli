@@ -187,7 +187,7 @@ module Action : sig
     -> loc:Loc.t
     -> expander:Expander.t
     -> dep_kind:Lib_deps_info.Kind.t
-    -> targets:Expander.Targets.t
+    -> targets:Targets.Or_forbidden.t
     -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
     -> Path.t Bindings.t Build.t

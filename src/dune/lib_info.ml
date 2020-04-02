@@ -452,7 +452,7 @@ let to_dyn path
   let open Dyn.Encoder in
   let snd f (_, x) = f x in
   record
-    [ ("loc", Loc.to_dyn loc)
+    [ ("loc", Loc.to_dyn_hum loc)
     ; ("name", Lib_name.to_dyn name)
     ; ("kind", Lib_kind.to_dyn kind)
     ; ("status", Status.to_dyn status)

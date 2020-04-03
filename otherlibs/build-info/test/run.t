@@ -60,6 +60,7 @@ Inside _build, we have no version information:
   n/a
   lib a: n/a
   lib b: n/a
+  lib dune-private-libs.artifact-eval: n/a
   lib dune-build-info: XXX
 
   $ grep version _build/install/default/lib/a/dune-package
@@ -74,6 +75,7 @@ Once installed, we have the version information:
   1.0+c
   lib a: 1.0+a
   lib b: 1.0+b
+  lib dune-private-libs.artifact-eval: n/a
   lib dune-build-info: XXX
 
   $ grep version _install/lib/a/dune-package
@@ -86,28 +88,16 @@ Check what the generated build info module looks like:
 
   $ cat _build/default/c/.c.eobjs/build_info_data.ml-gen \
   >   | sed 's/"dune-build-info".*/"dune-build-info", Some "XXX"/'
-  let eval s =
-    let len = String.length s in
-    if s.[0] = '=' then
-      let colon_pos = String.index_from s 1 ':' in
-      let vlen = int_of_string (String.sub s 1 (colon_pos - 1)) in
-      (* This [min] is because the value might have been truncated
-         if it was too large *)
-      let vlen = min vlen (len - colon_pos - 1) in
-      Some (String.sub s (colon_pos + 1) vlen)
-    else
-      None
-  [@@inline never]
-  
-  let p1 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%"
-  let p2 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%"
-  let p0 = eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p1 = Dune_artifact_eval.eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:a%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p2 = Dune_artifact_eval.eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:b%%%%%%%%%%%%%%%%%%%%%%%%%%"
+  let p0 = Dune_artifact_eval.eval "%%DUNE_PLACEHOLDER:64:vcs-describe:1:c%%%%%%%%%%%%%%%%%%%%%%%%%%"
   
   let version = p0
   
   let statically_linked_libraries =
     [ "a", p1
     ; "b", p2
+    ; "dune-private-libs.artifact-eval", None
     ; "dune-build-info", Some "XXX"
     ]
 
@@ -118,6 +108,7 @@ Test substitution when promoting
   1.0+c
   lib a: 1.0+a
   lib b: 1.0+b
+  lib dune-private-libs.artifact-eval: n/a
   lib dune-build-info: XXX
 
 Version is picked from dune-project if available
@@ -130,4 +121,5 @@ Version is picked from dune-project if available
   project-version
   lib a: 1.0+a
   lib b: 1.0+b
+  lib dune-private-libs.artifact-eval: n/a
   lib dune-build-info: XXX

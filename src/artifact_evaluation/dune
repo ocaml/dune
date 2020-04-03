@@ -1,0 +1,4 @@
+(library
+ (name dune_artifact_eval)
+ (public_name dune-private-libs.artifact-eval)
+ (synopsis "[Internal] evaluation of artifact subtitution format"))

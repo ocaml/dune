@@ -23,6 +23,7 @@ let local_libraries =
   ; ("otherlibs/action-plugin/src", Some "Dune_action_plugin", false, None)
   ; ("src/dune", Some "Dune", true, None)
   ; ("vendor/cmdliner/src", None, false, None)
+  ; ("src/artifact_evaluation", Some "Dune_artifact_eval", false, None)
   ; ("otherlibs/build-info/src", Some "Build_info", false,
     Some "build_info_data")
   ]

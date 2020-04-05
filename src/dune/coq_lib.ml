@@ -12,6 +12,7 @@ open! Stdune
 type t =
   { name : Loc.t * Coq_lib_name.t
   ; wrapper : string
+  ; implicit : bool (* Only useful for the stdlib *)
   ; src_root : Path.Build.t
   ; obj_root : Path.Build.t
   ; theories : (Loc.t * Coq_lib_name.t) list
@@ -20,6 +21,8 @@ type t =
   }
 
 let name l = snd l.name
+
+let implicit l = l.implicit
 
 let location l = fst l.name
 
@@ -38,7 +41,7 @@ module Error = struct
     Error (User_error.E (User_error.make ?loc ?hints paragraphs))
 
   let duplicate_theory_name theory =
-    let loc, name = theory.Dune_file.Coq.name in
+    let loc, name = theory.Coq_stanza.Theory.name in
     let name = Coq_lib_name.to_string name in
     make ~loc [ Pp.textf "Duplicate theory name: %s" name ]
 
@@ -56,7 +59,9 @@ module Error = struct
       ]
 
   let duplicate_boot_lib ~loc boot_theory =
-    let name = Coq_lib_name.to_string (snd boot_theory.Dune_file.Coq.name) in
+    let name =
+      Coq_lib_name.to_string (snd boot_theory.Coq_stanza.Theory.name)
+    in
     make ~loc [ Pp.textf "Cannot have more than one boot library: %s)" name ]
 
   let cycle_found ~loc cycle =
@@ -77,15 +82,16 @@ module DB = struct
 
   let boot_library { boot; _ } = boot
 
-  let create_from_stanza ((dir, s) : Path.Build.t * Dune_file.Coq.t) =
+  let create_from_stanza ((dir, s) : Path.Build.t * Coq_stanza.Theory.t) =
     let name = snd s.name in
     ( name
     , { name = s.name
       ; wrapper = Coq_lib_name.wrapper name
+      ; implicit = s.boot
       ; obj_root = dir
       ; src_root = dir
-      ; theories = s.theories
-      ; libraries = s.libraries
+      ; theories = s.buildable.theories
+      ; libraries = s.buildable.libraries
       ; package = s.package
       } )
 
@@ -98,11 +104,11 @@ module DB = struct
         Result.ok_exn (Error.duplicate_theory_name w2)
     in
     let boot =
-      match List.find_all ~f:(fun (_, s) -> s.Dune_file.Coq.boot) sl with
+      match List.find_all ~f:(fun (_, s) -> s.Coq_stanza.Theory.boot) sl with
       | [] -> None
-      | [ l ] -> Some ((snd l).loc, snd (create_from_stanza l))
+      | [ l ] -> Some ((snd l).buildable.loc, snd (create_from_stanza l))
       | _ :: (_, s2) :: _ ->
-        Result.ok_exn (Error.duplicate_boot_lib ~loc:s2.loc s2)
+        Result.ok_exn (Error.duplicate_boot_lib ~loc:s2.buildable.loc s2)
     in
     { boot; libs }
 
@@ -119,26 +125,41 @@ module DB = struct
 
   module Coq_lib_closure = Top_closure.Make (String.Set) (Or_exn)
 
-  let requires db t : lib list Or_exn.t =
-    let theories =
-      match db.boot with
-      | None -> t.theories
-      (* XXX: Note that this means that we will prefix Coq with -Q, not sure we
-         want to do that (yet), but seems like good practice. *)
-      | Some (loc, stdlib) -> (loc, snd stdlib.name) :: t.theories
-    in
+  let add_boot db theories =
+    match db.boot with
+    | None -> theories
+    (* XXX: Note that this means that we will prefix Coq with -Q, not sure we
+       want to do that (yet), but seems like good practice. *)
+    | Some (loc, stdlib) -> (loc, snd stdlib.name) :: theories
+
+  let top_closure db theories ~allow_private_deps ~loc =
     let open Result.O in
-    let allow_private_deps = Option.is_none t.package in
     let* theories =
-      Result.List.map ~f:(resolve ~allow_private_deps db) theories
+      add_boot db theories
+      |> Result.List.map ~f:(resolve ~allow_private_deps db)
     in
-    let key t = Coq_lib_name.to_string (snd t.name) in
-    let deps t =
+    let key (t : lib) = Coq_lib_name.to_string (snd t.name) in
+    let deps (t : lib) =
       Result.List.map ~f:(resolve ~allow_private_deps db) t.theories
     in
-    Result.bind (Coq_lib_closure.top_closure theories ~key ~deps) ~f:(function
-      | Ok libs -> Ok libs
-      | Error cycle -> Error.cycle_found ~loc:(location t) cycle)
+    match Coq_lib_closure.top_closure theories ~key ~deps with
+    | Ok (Ok s) -> Ok s
+    | Ok (Error cycle) -> Error.cycle_found ~loc cycle
+    | Error exn -> Error exn
+
+  let requires db (t : lib) : lib list Or_exn.t =
+    let allow_private_deps = Option.is_none t.package in
+    let loc = location t in
+    top_closure db t.theories ~loc ~allow_private_deps
+
+  let requires_for_user_written db = function
+    | [] -> Ok []
+    | start :: xs as theories ->
+      let loc =
+        let stop = Option.value (List.last xs) ~default:start in
+        Loc.span (fst start) (fst stop)
+      in
+      top_closure db theories ~loc ~allow_private_deps:true
 
   let resolve db l = resolve db l
 end

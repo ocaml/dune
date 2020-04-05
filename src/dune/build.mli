@@ -6,10 +6,14 @@ open! Import
 type 'a t
 
 module With_targets : sig
+  type 'a build
+
   type nonrec 'a t =
     { build : 'a t
     ; targets : Path.Build.Set.t
     }
+
+  val map_build : 'a t -> f:('a build -> 'b build) -> 'b t
 
   val return : 'a -> 'a t
 
@@ -38,6 +42,7 @@ module With_targets : sig
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 end
+with type 'a build := 'a t
 
 (** This function should be called before analysing build expressions using
     [static_deps], [lib_deps] or [exec], which all require some file system

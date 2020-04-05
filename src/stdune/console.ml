@@ -11,7 +11,8 @@ module Backend = struct
 
   module Dumb_no_flush : S = struct
     let print_user_message msg =
-      Option.iter msg.User_message.loc ~f:(Loc.print Format.err_formatter);
+      Option.iter msg.User_message.loc ~f:(fun loc ->
+          Loc.render Format.err_formatter (Loc.pp loc));
       User_message.prerr { msg with loc = None }
 
     let set_status_line _ = ()

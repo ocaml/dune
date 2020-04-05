@@ -1635,6 +1635,38 @@ which for each ``g_mod`` in ``<mlg_list>`` is equivalent to:
      (deps (:mlg-file g_mod.mlg))
      (action (run coqpp %{mlg-file})))
 
+coq.extraction
+--------------
+
+Coq may be instructed to *extract* OCaml sources as part of the compilation
+process. This is done using the ``coq.extraction`` stanza:
+
+.. code:: lisp
+
+   (coq.extraction
+    (prelude <name>)
+    (extracted_modules <names>)
+    <optional-fields>)
+
+- ``(prelude <name>)`` refers to the Coq source that contains the extraction
+  commands.
+
+- ``(extraced_modules <names>)`` is an exhaustive list of OCaml modules
+  extracted.
+
+- ``<optional-fields>`` are ``flags``, ``theories``, and ``libraries``. All of
+  these fields have the same meaning as in the ``coq.theory`` stanza.
+
+The extracted sources can then be used in ``executable`` or ``library`` stanzas
+as any other sources.
+
+Note that the sources are extracted to the directory where the
+``prelude`` file is; thus the common placement for the ``OCaml``
+stanzas is in the same ``dune`` file. **warning** using Coq's ``Cd``
+command to workaround problems with the output directory is not
+allowed when using extraction from Dune; moreover the ``Cd`` command
+will be deprecated in Coq 8.12.
+
 .. _dune-workspace:
 
 mdx (since 2.4)

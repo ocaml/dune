@@ -122,7 +122,7 @@ module DB = struct
     in
     let coq_stanzas_by_project_dir =
       List.map coq_stanzas ~f:(fun (dir, t) ->
-          let project = t.Dune_file.Coq.project in
+          let project = t.Coq_stanza.Theory.project in
           (Dune_project.root project, (dir, t)))
       |> Path.Source.Map.of_list_multi
     in
@@ -185,7 +185,7 @@ module DB = struct
             (External_variant ev :: acc, coq_acc)
           | Dune_file.Deprecated_library_name d ->
             (Deprecated_library_name d :: acc, coq_acc)
-          | Dune_file.Coq.T coq_lib ->
+          | Coq_stanza.Theory.T coq_lib ->
             let ctx_dir =
               Path.Build.append_source context.build_dir dune_file.dir
             in

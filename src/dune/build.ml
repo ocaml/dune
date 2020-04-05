@@ -168,6 +168,8 @@ module With_targets = struct
     ; targets : Path.Build.Set.t
     }
 
+  let map_build t ~f = { t with build = f t.build }
+
   let return x = { build = Pure x; targets = Path.Build.Set.empty }
 
   let add t ~targets =

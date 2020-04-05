@@ -38,6 +38,9 @@ Unreleased
 
 - Allow per-package `version` in generated `opam` files (#3287, @toots)
 
+- [coq] Introduce the `coq.extraction` stanza. It can be used to extract OCaml
+  sources (#3299, fixes #2178, @rgrinberg)
+
 2.4.0 (06/03/2020)
 ------------------
 

@@ -1365,7 +1365,7 @@ end = struct
           let (last, _) : Loc.t * _ =
             Option.value (List.last others) ~default:first
           in
-          { (fst first) with stop = last.stop }
+          Loc.span (fst first) last
         in
         let pps =
           let* pps =

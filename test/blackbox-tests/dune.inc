@@ -135,6 +135,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias coq-extract)
+ (deps (package dune) (source_tree test-cases/coq/extract))
+ (action
+  (chdir
+   test-cases/coq/extract
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias corrections)
  (deps (package dune) (source_tree test-cases/corrections))
  (action
@@ -2957,4 +2965,4 @@
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
-(alias (name runtest-coq) (deps (alias coq)))
+(alias (name runtest-coq) (deps (alias coq) (alias coq-extract)))

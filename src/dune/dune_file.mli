@@ -321,25 +321,8 @@ module Menhir : sig
 end
 
 module Rule : sig
-  module Targets : sig
-    module Multiplicity : sig
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      | Static of static
-      | Infer
-  end
-
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -349,33 +332,6 @@ module Rule : sig
     ; alias : Alias.Name.t option
     ; package : Package.t option
     }
-end
-
-module Coq : sig
-  type t =
-    { name : Loc.t * Coq_lib_name.t
-    ; package : Package.t option
-    ; project : Dune_project.t
-    ; synopsis : string option
-    ; modules : Ordered_set_lang.t
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; boot : bool
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; theories : (Loc.t * Coq_lib_name.t) list  (** coq libraries *)
-    ; loc : Loc.t
-    ; enabled_if : Blang.t
-    }
-
-  type Stanza.t += T of t
-end
-
-module Coqpp : sig
-  type t =
-    { modules : string list
-    ; loc : Loc.t
-    }
-
-  type Stanza.t += T of t
 end
 
 module Alias_conf : sig

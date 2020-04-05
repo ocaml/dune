@@ -199,6 +199,7 @@ let exclusions =
   [ make "js_of_ocaml" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
   ; make "coq" ~coq:true
+  ; make "coq/extract" ~coq:true
   ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
   ; odoc "odoc-simple"
   ; odoc "odoc-package-mld-link"

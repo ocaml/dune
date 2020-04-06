@@ -105,7 +105,7 @@ module Prelude = struct
       let+ file = path in
       Default file
     in
-    if_list ~then_:(enter decode_env) ~else_:decode_default
+    enter decode_env <|> decode_default
 
   let to_args ~dir t : _ Command.Args.t list =
     let bpath p = Path.build (Path.Build.append_local dir p) in

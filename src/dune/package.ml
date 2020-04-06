@@ -123,11 +123,7 @@ module Dependency = struct
         List.map Op.map ~f:(fun (name, op) ->
             ( name
             , let+ x = Var.decode
-              and+ y =
-                if_eos ~then_:(return None)
-                  ~else_:
-                    (let+ v = Var.decode in
-                     Some v)
+              and+ y = maybe Var.decode
               and+ loc = loc
               and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
               match y with
@@ -183,10 +179,9 @@ module Dependency = struct
       and+ expr = Constraint.decode in
       { name; constraint_ = Some expr }
     in
-    if_list ~then_:(enter constrained)
-      ~else_:
-        (let+ name = Name.decode in
-         { name; constraint_ = None })
+    enter constrained
+    <|> let+ name = Name.decode in
+        { name; constraint_ = None }
 
   let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in

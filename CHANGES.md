@@ -41,6 +41,10 @@ Unreleased
 - [coq] Introduce the `coq.extraction` stanza. It can be used to extract OCaml
   sources (#3299, fixes #2178, @rgrinberg)
 
+- Load ppx rewriters in dune utop and add pps field to toplevel stanza. Ppx
+  extensions will now be usable in the toplevel
+  (#3266, fixes #346, @stephanieyou)
+
 2.4.0 (06/03/2020)
 ------------------
 

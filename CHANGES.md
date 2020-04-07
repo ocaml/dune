@@ -41,6 +41,9 @@ Unreleased
 - [coq] Introduce the `coq.extraction` stanza. It can be used to extract OCaml
   sources (#3299, fixes #2178, @rgrinberg)
 
+- Allow the use of `%{ocaml_version}` variable in `enabled_if` field of the
+  library stanza. (#3339, @voodoos)
+
 2.4.0 (06/03/2020)
 ------------------
 

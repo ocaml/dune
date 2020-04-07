@@ -1,6 +1,12 @@
 type status =
-  | Started of string * Pid.t
-  | Already_running of string * Pid.t
+  | Started of
+      { daemon_info : string
+      ; pid : Pid.t
+      }
+  | Already_running of
+      { daemon_info : string
+      ; pid : Pid.t
+      }
   | Finished
 
 let retry ?message ?(count = 100) f =
@@ -63,9 +69,10 @@ let check_beacon ?(close = true) p =
   | Result.Error _ -> Result.Error (Printf.sprintf "unable to open %s" p)
 
 let daemonize ?workdir ?(foreground = false) beacon
-    (f : (string -> unit) -> unit) =
+    (f : (daemon_info:string -> unit) -> unit) =
   let f fd =
-    let f () = f (fun content -> ignore (seal_beacon beacon fd content))
+    let f () =
+      f (fun ~daemon_info -> ignore (seal_beacon beacon fd daemon_info))
     and finally () = Unix.truncate (Path.to_string beacon) 0 in
     Exn.protect ~f ~finally
   in
@@ -124,7 +131,7 @@ let daemonize ?workdir ?(foreground = false) beacon
             try Some (Unix.openfile path [ Unix.O_RDONLY ] 0o600)
             with Unix.Unix_error (Unix.ENOENT, _, _) -> None)
       in
-      let+ content, pid =
+      let+ daemon_info, pid =
         retry
           ~message:
             (Printf.sprintf "waiting for beacon file \"%s\" to be locked" path)
@@ -134,8 +141,9 @@ let daemonize ?workdir ?(foreground = false) beacon
               Some (Io.read_all (Unix.in_channel_of_descr fd), pid)
             | _ -> None)
       in
-      Started (content, Pid.of_int pid)
-  | Some (e, pid, _) -> Result.Ok (Already_running (e, Pid.of_int pid))
+      Started { daemon_info; pid = Pid.of_int pid }
+  | Some (daemon_info, pid, _) ->
+    Result.Ok (Already_running { daemon_info; pid = Pid.of_int pid })
 
 let stop beacon =
   let open Result.O in
@@ -150,6 +158,6 @@ let stop beacon =
     match kill Sys.sigterm with
     | Error _ ->
       (* Unfortunately the logger may not be set. Print on stderr directly? *)
-      (* Log.infof "unable to terminate daemon with SIGTERM, using SIGKILL"; *)
+      (* Log.info "unable to terminate daemon with SIGTERM, using SIGKILL"; *)
       kill Sys.sigkill
     | ok -> ok )

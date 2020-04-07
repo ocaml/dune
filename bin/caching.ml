@@ -10,14 +10,14 @@ let man =
         $(b,dune cache-daemon) is a daemon that runs in the background
         and manages this shared cache. For instance, it makes sure that it
         does not grow too big and try to maximise sharing between the various
-        workspace that are using the shared cache.|}
+        workspaces that are using the shared cache.|}
   ; `P
       {|The daemon is automatically started by Dune when the shared cache is
         enabled. You do not need to run this command manually.|}
   ; `S "ACTIONS"
   ; `P {|$(b,start) starts the daemon if not already running.|}
   ; `P {|$(b,stop) stops the daemon.|}
-  ; `P {|$(b,trim) remove oldest files from the cache to free space.|}
+  ; `P {|$(b,trim) removes oldest files from the cache to free space.|}
   ; `Blocks Common.help_secs
   ]
 
@@ -30,19 +30,21 @@ let start ~config ~foreground ~port_path ~root ~display =
     if display <> Some Config.Display.Quiet then Printf.printf "%s\n%!" ep
   in
   let f started =
-    let started content =
-      if foreground then show_endpoint content;
-      started content
+    let started daemon_info =
+      if foreground then show_endpoint daemon_info;
+      started ~daemon_info
     in
     Log.verbose := foreground;
     Cache_daemon.daemon ~root ~config started
   in
   match Daemonize.daemonize ~workdir:root ~foreground port_path f with
   | Result.Ok Finished -> ()
-  | Result.Ok (Daemonize.Started (endpoint, _)) -> show_endpoint endpoint
-  | Result.Ok (Daemonize.Already_running (endpoint, _)) when not foreground ->
+  | Result.Ok (Daemonize.Started { daemon_info = endpoint; _ }) ->
     show_endpoint endpoint
-  | Result.Ok (Daemonize.Already_running (endpoint, pid)) ->
+  | Result.Ok (Daemonize.Already_running { daemon_info = endpoint; _ })
+    when not foreground ->
+    show_endpoint endpoint
+  | Result.Ok (Daemonize.Already_running { daemon_info = endpoint; pid }) ->
     User_error.raise
       [ Pp.textf "already running on %s (PID %i)" endpoint (Pid.to_int pid) ]
   | Result.Error reason -> User_error.raise [ Pp.text reason ]

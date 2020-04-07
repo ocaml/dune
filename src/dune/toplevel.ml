@@ -94,7 +94,12 @@ let pp_flags t =
       ++ Pp.verbatim ";" ++ Pp.newline
       ++ Pp.verbatim "Compenv.first_ppx :=" ++ Pp.cut ++ Dyn.pp ppx
       ++ Pp.verbatim ";" ++ Pp.newline)
-  | Action _ | Future_syntax _ | No_preprocessing -> Pp.nop
+  | Action (loc, _) | Future_syntax loc ->
+    User_error.raise ~loc
+      [ Pp.text
+          "Toplevel does not currently support action or future_syntax \
+           preprocessing."]
+  | No_preprocessing -> Pp.nop
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -144,7 +149,12 @@ module Stanza = struct
     let pps =
       match toplevel.pps with
       | Dune_file.Preprocess.Pps pps -> pps.pps
-      | Action _ | Future_syntax _ | No_preprocessing -> []
+      | Action (loc, _) | Future_syntax loc ->
+        User_error.raise ~loc
+          [ Pp.text
+              "Toplevel does not currently support action or future_syntax \
+               preprocessing."]
+      | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in
     let preprocessing = Preprocessing.make sctx ~dir ~expander ~scope

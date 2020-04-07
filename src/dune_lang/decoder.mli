@@ -75,26 +75,20 @@ val set_many : Univ_map.t -> ('a, 'k) parser -> ('a, 'k) parser
 (** Return the location of the list currently being parsed. *)
 val loc : (Loc.t, _) parser
 
-(** End of sequence condition. Uses [then_] if there are no more S-expressions
-    to parse, [else_] otherwise. *)
-val if_eos : then_:('a, 'b) parser -> else_:('a, 'b) parser -> ('a, 'b) parser
+(** [a <|> b] is either [a] or [b]. If [a] fails to parse the input, then try
+    [b]. If [b] fails as well, raise the error from the parser that consumed the
+    most input. *)
+val ( <|> ) : 'a t -> 'a t -> 'a t
 
-(** If the next element of the sequence is a list, parse it with [then_],
-    otherwise parse it with [else_]. *)
-val if_list : then_:'a t -> else_:'a t -> 'a t
+(** [atom_matching f] expects the next element to be an atom for which [f]
+    returns [Some v]. [desc] is used to describe the atom in case of error. [f]
+    must not raise. *)
+val atom_matching : (string -> 'a option) -> desc:string -> 'a t
 
-(** If the next element of the sequence is of the form [(:<name> ...)], use
-    [then_] to parse [...]. Otherwise use [else_]. *)
-val if_paren_colon_form : then_:(Loc.t * string -> 'a) t -> else_:'a t -> 'a t
+(** [keyword s] is a short-hand for
 
-(** Expect the next element to be the following atom. *)
+    {[ atom_matching (String.equal s) ~desc:(sprintf "'%s'" s) ]} *)
 val keyword : string -> unit t
-
-(** [match_keyword \[(k1, t1); (k2, t2); ...\] ~fallback] inspects the next
-    element of the input sequence. If it is an atom equal to one of [k1], [k2],
-    ... then the corresponding parser is used to parse the rest of the sequence.
-    Other [fallback] is used. *)
-val match_keyword : (string * 'a t) list -> fallback:'a t -> 'a t
 
 (** Use [before] to parse elements until the keyword is reached. Then use
     [after] to parse the rest. *)
@@ -138,7 +132,14 @@ val pair : 'a t -> 'b t -> ('a * 'b) t
 
 val triple : 'a t -> 'b t -> 'c t -> ('a * 'b * 'c) t
 
-val option : 'a t -> 'a option t
+(** [maybe t] is a short-hand for:
+
+    {[
+      (let+ x = t in
+       Some x)
+      <|> return None
+    ]} *)
+val maybe : 'a t -> 'a option t
 
 (** Consume the next element as a duration, requiring 's', 'm' or 'h' suffix *)
 val duration : int t
@@ -178,8 +179,11 @@ val enum : (string * 'a) list -> 'a t
 (** Parser that parse a S-expression of the form
     [(<atom> <s-exp1> <s-exp2> ...)] or [<atom>]. [<atom>] is looked up in the
     list and the remaining s-expressions are parsed using the corresponding list
-    parser. *)
-val sum : (string * 'a t) list -> 'a t
+    parser.
+
+    If [force_parens] is [true], then the form [<atom>] is never accepted. The
+    default is [false]. *)
+val sum : ?force_parens:bool -> (string * 'a t) list -> 'a t
 
 (** Check the result of a list parser, and raise a properly located error in
     case of failure. *)

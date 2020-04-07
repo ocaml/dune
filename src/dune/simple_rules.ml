@@ -85,21 +85,22 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         Alias_rules.add_empty sctx ~alias ~loc:(Some rule.loc) ~stamp);
     Path.Build.Set.empty
   | true -> (
-    let targets : Expander.Targets.t =
-      match rule.targets with
-      | Infer -> Infer
-      | Static { targets; multiplicity } ->
-        let targets =
-          List.concat_map targets ~f:(fun target ->
-              let error_loc = String_with_vars.loc target in
-              ( match multiplicity with
-              | One ->
-                [ Expander.expand expander ~mode:Single ~template:target ]
-              | Multiple -> Expander.expand expander ~mode:Many ~template:target
-              )
-              |> List.map ~f:(check_filename ~dir ~error_loc))
-        in
-        Expander.Targets.Static { multiplicity; targets }
+    let targets : Targets.Or_forbidden.t =
+      Targets
+        ( match rule.targets with
+        | Infer -> Infer
+        | Static { targets; multiplicity } ->
+          let targets =
+            List.concat_map targets ~f:(fun target ->
+                let error_loc = String_with_vars.loc target in
+                ( match multiplicity with
+                | One ->
+                  [ Expander.expand expander ~mode:Single ~template:target ]
+                | Multiple ->
+                  Expander.expand expander ~mode:Many ~template:target )
+                |> List.map ~f:(check_filename ~dir ~error_loc))
+          in
+          Static { multiplicity; targets } )
     in
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in

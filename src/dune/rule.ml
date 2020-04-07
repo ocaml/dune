@@ -77,7 +77,7 @@ module T = struct
       Loc.in_file (Path.source file)
 
   let to_dyn t : Dyn.t =
-    Record [ ("id", Id.to_dyn t.id); ("loc", Loc.to_dyn (loc t)) ]
+    Record [ ("id", Id.to_dyn t.id); ("loc", Loc.to_dyn_hum (loc t)) ]
 end
 
 include T

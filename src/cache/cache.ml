@@ -23,6 +23,10 @@ let make_caching (type t) (module Caching : Cache with type t = t) (cache : t) :
     let cache = cache
   end )
 
+let cachable = function
+  | Unix.S_REG -> true
+  | _ -> false
+
 module Client = Client
 module Local = Local
 module Messages = Messages

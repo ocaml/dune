@@ -480,7 +480,7 @@ let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
   let action = chdir action in
   let bindings = Pform.Map.input_file (Path.build src) in
   let expander = Expander.add_bindings expander ~bindings in
-  let targets = Expander.Targets.Forbidden "preprocessing actions" in
+  let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
     SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir

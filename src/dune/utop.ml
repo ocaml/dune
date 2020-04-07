@@ -71,7 +71,7 @@ let setup sctx ~dir =
   let db = Scope.libs scope in
   let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
-    if List.length pps = 0
+    if List.is_empty pps
     then
       Dune_file.Preprocess.No_preprocessing
     else

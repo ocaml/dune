@@ -12,6 +12,7 @@ type t =
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
+  ; ocaml_version : string
   }
 
 let var_map =
@@ -20,6 +21,7 @@ let var_map =
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
   ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
+  ; ("ocaml_version", fun t -> t.ocaml_version)
   ]
 
 let allowed_in_enabled_if =
@@ -27,6 +29,7 @@ let allowed_in_enabled_if =
       let min_version =
         match var with
         | "ccomp_type" -> (2, 0)
+        | "ocaml_version" -> (2, 5)
         | _ -> (1, 0)
       in
       (var, min_version))

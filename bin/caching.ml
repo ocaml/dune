@@ -66,7 +66,7 @@ let trim ~trimmed_size ~size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
       | None, Some size -> Result.Ok (Cache.Local.size cache - size)
-      | _ -> Result.Error "specify either --size either --trimmed-size"
+      | _ -> Result.Error "specify either --size or --trimmed-size"
     in
     Cache.Local.trim cache trimmed_size
   with
@@ -100,7 +100,7 @@ let term =
        Arg.(
          value & flag
          & info [ "foreground"; "f" ]
-             ~doc:"Whether to start in the foreground or as a daeon")
+             ~doc:"Whether to start in the foreground or as a daemon")
      and+ exit_no_client =
        let doc = "Whether to exit once all clients have disconnected" in
        Arg.(
@@ -112,7 +112,7 @@ let term =
          value
          & opt path_conv (Cache_daemon.default_port_file ())
          & info ~docv:"PATH" [ "port-file" ]
-             ~doc:"The file to read/write the daemon port to/from.")
+             ~doc:"The file to read/write the daemon port from/to.")
      and+ root =
        Arg.(
          value

@@ -52,8 +52,10 @@ Unreleased
   (#3352, @diml)
 
 - Allow the use of the `%{profile}` variable in the `enabled_if` field of the
-  library stanza.
-  (#3344, @mrmr1993)
+  library stanza. (#3344, @mrmr1993)
+
+- Allow the use of `%{ocaml_version}` variable in `enabled_if` field of the
+  library stanza. (#3339, @voodoos)
 
 2.4.0 (06/03/2020)
 ------------------

@@ -22,7 +22,7 @@ let%expect_test _ =
   pp
     (Pp.enumerate
        [ Pp.enumerate [ "abc"; "def" ] ~f:Pp.text; enum_x_and_y ]
-       ~f:Fn.id);
+       ~f:Fun.id);
   [%expect
     {|
 - - abc

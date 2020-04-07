@@ -50,8 +50,6 @@ module Name = struct
 
   let version_fn (t : t) = to_string t ^ ".version"
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
   module Infix = Comparator.Operators (T)
 end
 
@@ -400,6 +398,8 @@ let decode ~dir =
      and+ name = field "name" Name.decode
      and+ synopsis = field_o "synopsis" string
      and+ description = field_o "description" string
+     and+ version =
+       field_o "version" (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> string)
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
      and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
@@ -433,7 +433,7 @@ let decode ~dir =
      ; depopts
      ; info
      ; path = dir
-     ; version = None
+     ; version
      ; has_opam_file = false
      ; tags
      ; deprecated_package_names

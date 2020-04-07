@@ -45,16 +45,16 @@ module Source = struct
     ; main_module_name = Module.name (main_module t)
     }
 
-  let pp_ml fmt t ~include_dirs =
-    let pp_include fmt =
-      let pp_sep fmt () = Format.fprintf fmt "@ ; " in
-      Format.pp_print_list ~pp_sep
-        (fun fmt p -> Format.fprintf fmt "%S" (Path.to_absolute_filename p))
-        fmt
+  let pp_ml t ~include_dirs =
+    let open Pp.O in
+    let include_dirs =
+      Dyn.Encoder.list
+        (fun d -> Dyn.Encoder.string (Path.to_absolute_filename d))
+        include_dirs
     in
-    Format.fprintf fmt "@[<v 2>Clflags.include_dirs :=@ [ %a@ ]@];@." pp_include
-      include_dirs;
-    Format.fprintf fmt "%s;@." t.main
+    Pp.vbox ~indent:2
+      (Pp.verbatim "Clflags.include_dirs :=" ++ Pp.cut ++ Dyn.pp include_dirs)
+    ++ Pp.verbatim ";" ++ Pp.newline ++ Pp.verbatim t.main
 
   let loc t = t.loc
 end
@@ -67,7 +67,8 @@ type t =
 
 let make ~cctx ~source ~preprocess = { cctx; source; preprocess }
 
-let pp_flags fmt t =
+let pp_flags t =
+  let open Pp.O in
   let sctx = Compilation_context.super_context t.cctx in
   let scope = Compilation_context.scope t.cctx in
   let expander = Compilation_context.expander t.cctx in
@@ -77,13 +78,23 @@ let pp_flags fmt t =
       Preprocessing.get_ppx_driver sctx ~loc ~expander
       ~lib_name:None ~flags ~scope pps
     with
-    | Error _exn -> ()
+    | Error _exn -> Pp.nop
     | Ok (exe, flags) ->
-      Path.to_absolute_filename (Path.build exe)
-      :: "--as-ppx" :: flags
-      |> String.concat ~sep:" "
-      |> Format.fprintf fmt "@[<v 2>Compenv.first_ppx :=@ [ %S@ ] @];@." )
-  | Action _ | Future_syntax _ | No_preprocessing -> ()
+      let ppx =
+        Dyn.Encoder.list
+          Dyn.Encoder.string
+            [(Path.to_absolute_filename (Path.build exe)
+             :: "--as-ppx" :: flags
+             |> String.concat ~sep:" ")]
+      in
+      (* Set Clflags.all_ppx for dune utop, and Compenv.first_ppx for custom
+         toplevels because Topmain.main() resets Clflags.all_ppx. *)
+      Pp.vbox ~indent:2
+        (Pp.verbatim "Clflags.all_ppx :=" ++ Pp.cut ++ Dyn.pp ppx)
+      ++ Pp.verbatim ";" ++ Pp.newline
+      ++ Pp.verbatim "Compenv.first_ppx :=" ++ Pp.cut ++ Dyn.pp ppx
+      ++ Pp.verbatim ";" ++ Pp.newline)
+  | Action _ | Future_syntax _ | No_preprocessing -> Pp.nop
 
 let setup_module_rules t =
   let dir = Compilation_context.dir t.cctx in
@@ -94,12 +105,10 @@ let setup_module_rules t =
     Build.of_result_map requires_compile ~f:(fun libs ->
         Build.return
           (let include_dirs = Path.Set.to_list (Lib.L.include_paths libs) in
-           let b = Buffer.create 64 in
-           let fmt = Format.formatter_of_buffer b in
-           pp_flags fmt t;
-           Source.pp_ml fmt t.source ~include_dirs;
-           Format.pp_print_flush fmt ();
-           Buffer.contents b))
+           let pp_ppx = pp_flags t in
+           let pp_dirs = Source.pp_ml t.source ~include_dirs in
+           let pp = Pp.seq pp_ppx pp_dirs in
+           Format.asprintf "%a@." Pp.render_ignore_tags pp))
     |> Build.write_file_dyn path
   in
   Super_context.add_rule sctx ~dir main_ml
@@ -118,6 +127,13 @@ let setup_rules t =
   Super_context.add_rule sctx ~dir ~loc:t.source.loc
     (Build.symlink ~src:(Path.build src) ~dst);
   setup_module_rules t
+
+let print_toplevel_init_file ~include_paths ~files_to_load =
+  let includes = Path.Set.to_list include_paths in
+  List.iter includes ~f:(fun p ->
+      print_endline ("#directory \"" ^ Path.to_absolute_filename p ^ "\";;"));
+  List.iter files_to_load ~f:(fun p ->
+      print_endline ("#load \"" ^ Path.to_absolute_filename p ^ "\";;"))
 
 module Stanza = struct
   let setup ~sctx ~dir ~(toplevel : Dune_file.Toplevel.t) =

@@ -90,17 +90,12 @@ module Make (R : Settings) () = struct
   end
 
   include T
-
-  let pp fmt t = Format.fprintf fmt "%S" (to_string t)
-
   module O = Comparable.Make (T)
 
   module Set = struct
     include O.Set
 
     let make l = List.fold_left l ~init:empty ~f:(fun acc s -> add acc (make s))
-
-    let pp fmt (t : t) = Fmt.ocaml_list pp fmt (to_list t)
   end
 
   module Map = Map.Make (T)
@@ -119,8 +114,6 @@ module No_interning (R : Settings) () = struct
 
   let to_string s = s
 
-  let pp fmt s = Format.fprintf fmt "%S" (to_string s)
-
   let get s = Some s
 
   let all () = assert false
@@ -131,8 +124,6 @@ module No_interning (R : Settings) () = struct
     include String.Set
 
     let make = of_list
-
-    let pp fmt t = Fmt.ocaml_list Format.pp_print_string fmt (to_list t)
   end
 
   module Map = String.Map

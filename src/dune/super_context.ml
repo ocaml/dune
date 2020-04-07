@@ -637,7 +637,7 @@ module Deps = struct
     let foreign_flags ~dir =
       get_node t.env_tree ~dir |> Env_node.foreign_flags
     in
-    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fn.id
+    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fun.id
       ~foreign_flags ~f:(fun expander ->
         match Result.List.map l ~f:(f t expander) with
         | Ok deps ->

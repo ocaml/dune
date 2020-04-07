@@ -14,8 +14,6 @@ module Status : sig
     | Public of Dune_project.Name.t * Package.t
     | Private of Dune_project.t
 
-  val pp : t Fmt.t
-
   val is_private : t -> bool
 
   (** For local libraries, return the project name they are part of *)

@@ -8,8 +8,6 @@ val all : t list
 
 val choose : t -> impl:'a -> intf:'a -> 'a
 
-val pp : t Fmt.t
-
 (** "" or "i" *)
 val suffix : t -> string
 

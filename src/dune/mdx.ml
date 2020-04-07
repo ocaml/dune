@@ -128,7 +128,7 @@ type Stanza.t += T of t
 let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
-  Dune_lang.Syntax.create ~name ~desc [ (0, 1) ]
+  Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (2, 4)) ]
 
 let default_files =
   let has_extention ext s = String.equal ext (Filename.extension s) in

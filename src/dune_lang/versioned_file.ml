@@ -59,7 +59,7 @@ struct
       let { First_line.lang = name_loc, name; version = ver_loc, ver } =
         first_line
       in
-      let ver =
+      let dune_lang_ver =
         Decoder.parse Syntax.Version.decode Univ_map.empty
           (Atom (ver_loc, Atom.of_string ver))
       in
@@ -69,14 +69,17 @@ struct
           [ Pp.textf "Unknown language %S." name ]
           ~hints:(User_message.did_you_mean name ~candidates:(Table.keys langs))
       | Some t ->
-        Syntax.check_supported t.syntax (ver_loc, ver);
-        { syntax = t.syntax; data = t.data; version = ver }
+        Syntax.check_supported ~dune_lang_ver t.syntax (ver_loc, dune_lang_ver);
+        { syntax = t.syntax; data = t.data; version = dune_lang_ver }
 
+    (* TODO get_exn is only called with "dune" so far, but
+       greatest_supported_version may return None for extensions which are not
+       supported under the specified dune_lang version *)
     let get_exn name : Instance.t =
       let t = Table.find_exn langs name in
       { syntax = t.syntax
       ; data = t.data
-      ; version = Syntax.greatest_supported_version t.syntax
+      ; version = Option.value_exn (Syntax.greatest_supported_version t.syntax)
       }
   end
 

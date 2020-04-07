@@ -159,8 +159,8 @@ let make_path cache path =
   | Some p -> Result.ok (Path.append_local p path)
   | None ->
     Result.Error
-      (Format.asprintf "relative path \"%a\" while no build root was set"
-         Path.Local.pp path)
+      (sprintf "relative path %s while no build root was set"
+         (Path.Local.to_string_maybe_quoted path))
 
 let search cache hash file = Collision.search (path_data cache hash) file
 
@@ -324,7 +324,7 @@ let search cache key =
       (* There is no point in trying to trim out files that are missing : dune
          will have to check when hardlinking anyway since they could disappear
          inbetween. *)
-      try Path.touch file.in_the_cache
+      try Path.touch ~create:false file.in_the_cache
       with Unix.(Unix_error (ENOENT, _, _)) -> ()
     in
     List.iter ~f metadata.files

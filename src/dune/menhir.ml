@@ -37,10 +37,6 @@ module type PARAMS = sig
      of the form [_build/<context>/src], e.g., [_build/default/src]. *)
   val dir : Path.Build.t
 
-  (* [build_dir] is the base directory of the context; we run menhir from this
-     directoy to we get correct error paths. *)
-  val build_dir : Path.Build.t
-
   (* [stanza] is the [(menhir ...)] stanza, as found in the [dune] file. *)
 
   val stanza : stanza
@@ -57,6 +53,10 @@ module Run (P : PARAMS) : sig end = struct
      information about the current build context. *)
 
   let sctx = Compilation_context.super_context cctx
+
+  (* [build_dir] is the base directory of the context; we run menhir from this
+     directoy to we get correct error paths. *)
+  let build_dir = Super_context.build_dir sctx
 
   let expander = Compilation_context.expander cctx
 
@@ -288,13 +288,11 @@ let module_names (stanza : Dune_file.Menhir.t) : Module_name.t list =
       (* TODO the loc can improved here *)
       Module_name.of_string_allow_invalid (stanza.loc, s))
 
-let gen_rules ~build_dir ~dir cctx stanza =
+let gen_rules ~dir cctx stanza =
   let module R = Run (struct
     let cctx = cctx
 
     let dir = dir
-
-    let build_dir = build_dir
 
     let stanza = stanza
   end) in

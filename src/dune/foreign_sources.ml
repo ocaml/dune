@@ -73,8 +73,8 @@ let eval_foreign_stubs (d : _ Dir_with_dune.t) foreign_stubs
                 (stubs.loc, name)))
     in
     let names =
-      Ordered_set_lang.Unordered_string.eval_loc stubs.names ~key:Fn.id
-        ~standard ~parse:(fun ~loc:_ -> Fn.id)
+      Ordered_set_lang.Unordered_string.eval_loc stubs.names ~key:Fun.id
+        ~standard ~parse:(fun ~loc:_ -> Fun.id)
     in
     String.Map.map names ~f:(fun (loc, s) ->
         let name = valid_name language ~loc s in
@@ -139,7 +139,7 @@ let make (d : _ Dir_with_dune.t) ~(sources : Foreign.Sources.Unresolved.t)
           Right (exes, all)
         | _ -> Skip)
   in
-  let libs, foreign_libs = List.partition_map libs ~f:Fn.id in
+  let libs, foreign_libs = List.partition_map libs ~f:Fun.id in
   let libraries =
     match
       Lib_name.Map.of_list_map libs ~f:(fun (lib, m) ->

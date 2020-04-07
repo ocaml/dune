@@ -87,8 +87,6 @@ end = struct
 
   let hash = T.hash
 
-  let pp = T.pp
-
   let compare = T.compare
 
   let as_string x ~f = to_string x |> f |> make
@@ -229,8 +227,6 @@ end = struct
   let hash = T.hash
 
   let compare = T.compare
-
-  let pp ppf s = Format.pp_print_string ppf (to_string s)
 
   let root = make "."
 
@@ -1195,7 +1191,7 @@ let mkdir_p ?perms = function
   | In_build_dir k ->
     Kind.mkdir_p ?perms (Kind.append_local (Fdecl.get Build.build_dir) k)
 
-let touch p =
+let touch ?(create = true) p =
   let p =
     match p with
     | External s -> External.to_string s
@@ -1205,7 +1201,7 @@ let touch p =
   in
   try Unix.utimes p 0.0 0.0
   with Unix.Unix_error (Unix.ENOENT, _, _) ->
-    Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
+    if create then Unix.close (Unix.openfile p [ Unix.O_CREAT ] 0o777)
 
 let compare x y =
   match (x, y) with
@@ -1241,14 +1237,6 @@ let set_extension t ~ext =
   | External t -> external_ (External.set_extension t ~ext)
   | In_build_dir t -> in_build_dir (Local.set_extension t ~ext)
   | In_source_tree t -> in_source_tree (Local.set_extension t ~ext)
-
-let pp ppf t = Format.pp_print_string ppf (to_string_maybe_quoted t)
-
-let pp_debug ppf = function
-  | In_source_tree s ->
-    Format.fprintf ppf "(In_source_tree %S)" (Local.to_string s)
-  | In_build_dir s -> Format.fprintf ppf "(In_build_dir %S)" (Local.to_string s)
-  | External s -> Format.fprintf ppf "(External %S)" (External.to_string s)
 
 module O = Comparable.Make (T)
 

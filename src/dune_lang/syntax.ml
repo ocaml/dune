@@ -21,8 +21,6 @@ module Version = struct
 
   let to_string (a, b) = sprintf "%u.%u" a b
 
-  let pp fmt t = Format.fprintf fmt "%s" (to_string t)
-
   let hash = Hashtbl.hash
 
   let encode t = Encoder.string (to_string t)
@@ -44,22 +42,90 @@ module Version = struct
 end
 
 module Supported_versions = struct
-  type t = int Int.Map.t
+  (* The extension supported versions are declared using an explicit list of all
+     versions but stored as a map from major versions to maps from minor version
+     to dune_lang required versions. For instance, if:
 
-  let to_dyn = Int.Map.to_dyn Int.to_dyn
+     - version 1.0 of an extension was introduced in Dune 1.4
 
-  let make = Int.Map.of_list_exn
+     - version 1.1 was introduced in Dune 1.6
 
-  let greatest_supported_version t = Option.value_exn (Int.Map.max_binding t)
+     - version 1.2 was introduced in Dune 2.3
 
-  let is_supported t (major, minor) =
+     - version 2.0 was introduced in Dune 2.4
+
+     we'd have the following map (in associative list syntax):
+
+     {[ [ 1, [ 0, (1, 4); 1, (1, 6); 2, (2, 3) ]; 2, [ 0, (2, 3) ] ] ]} *)
+  type t = Version.t Int.Map.t Int.Map.t
+
+  let to_dyn t = Int.Map.to_dyn (Int.Map.to_dyn Version.to_dyn) t
+
+  (* We convert the exposed extension version type: {[ (Version.t * [ `Since of
+     Version.t ]) list ]} which is a list of fully qualified versions paired
+     with the corresponding dune_lang version. To the internal representation:
+     {[ (Version.t Int.Map.t) Int.Map.t ]} which is a list of major versions
+     paired with lists of minor versions paires with a dune_lang version. *)
+  let make (versions : (Version.t * [ `Since of Version.t ]) list) : t =
+    let v =
+      List.fold_left versions
+        ~init:(Int.Map.empty : t)
+        ~f:(fun major_map ((major, minor), `Since lang_ver) ->
+          let add_minor minor_map =
+            Some (Int.Map.add_exn minor_map minor lang_ver)
+          in
+          Int.Map.update major_map major ~f:(function
+            | Some minor_map -> add_minor minor_map
+            | None -> add_minor Int.Map.empty))
+    in
+    v
+
+  let remove_uncompatible_versions lang_ver =
+    Int.Map.filter_map ~f:(fun minors ->
+        let minors =
+          Int.Map.filter minors ~f:(fun min_lang -> lang_ver >= min_lang)
+        in
+        Option.some_if (not (Int.Map.is_empty minors)) minors)
+
+  let rec greatest_supported_version ?dune_lang_ver t =
+    let open Option.O in
+    match dune_lang_ver with
+    | Some lang_ver ->
+      let compat = remove_uncompatible_versions lang_ver t in
+      greatest_supported_version compat
+    | None ->
+      let* major, minors = Int.Map.max_binding t in
+      let* minor, _ = Int.Map.max_binding minors in
+      Some (major, minor)
+
+  let get_min_lang_ver t (major, minor) =
+    let open Option.O in
+    let* minors = Int.Map.find t major in
+    Int.Map.find minors minor
+
+  let is_supported t (major, minor) lang_ver =
     match Int.Map.find t major with
-    | Some minor' -> minor' >= minor
+    | Some t -> (
+      match Int.Map.find t minor with
+      | Some min_lang_ver -> lang_ver >= min_lang_ver
+      | None -> false )
     | None -> false
 
-  let supported_ranges t =
-    Int.Map.to_list t
-    |> List.map ~f:(fun (major, minor) -> ((major, 0), (major, minor)))
+  let supported_ranges lang_ver (t : t) =
+    let compat = remove_uncompatible_versions lang_ver t in
+    Int.Map.to_list compat
+    |> List.map ~f:(fun (major, minors) ->
+           let max_minor, _ = Option.value_exn (Int.Map.max_binding minors) in
+           let lower_bound =
+             (* Map 0.0 to 0.1 since 0.0 is not a valid version number *)
+             if major = 0 then
+               (0, 1)
+             else
+               (major, 0)
+           in
+           let upper_bound = (major, max_minor) in
+           assert (lower_bound <= upper_bound);
+           (lower_bound, upper_bound))
 end
 
 type t =
@@ -125,23 +191,46 @@ let create ~name ~desc supported_versions =
 
 let name t = t.name
 
-let check_supported t (loc, ver) =
-  if not (Supported_versions.is_supported t.supported_versions ver) then
-    User_error.raise ~loc
-      [ Pp.textf "Version %s of %s is not supported." (Version.to_string ver)
-          t.name
-      ; Pp.text "Supported versions:"
-      ; Pp.enumerate (Supported_versions.supported_ranges t.supported_versions)
-          ~f:(fun (a, b) ->
+let check_supported ~dune_lang_ver t (loc, ver) =
+  if
+    not (Supported_versions.is_supported t.supported_versions ver dune_lang_ver)
+  then
+    let dune_ver_text v =
+      Printf.sprintf "version %s of the dune language" (Version.to_string v)
+    in
+    let until =
+      match Supported_versions.get_min_lang_ver t.supported_versions ver with
+      | Some v -> Printf.sprintf " until %s" (dune_ver_text v)
+      | None -> ""
+    in
+    let l =
+      Supported_versions.supported_ranges dune_lang_ver t.supported_versions
+    in
+    let supported =
+      ( if List.is_empty l then
+        Pp.textf "There are no supported versions of this extension in %s."
+      else
+        Pp.textf "Supported versions of this extension in %s:" )
+        (dune_ver_text dune_lang_ver)
+    in
+    let message =
+      [ Pp.textf "Version %s of %s is not supported%s." (Version.to_string ver)
+          t.desc until
+      ; supported
+      ; Pp.enumerate l ~f:(fun (a, b) ->
             let open Version.Infix in
             if a = b then
               Pp.text (Version.to_string a)
             else
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
+    in
+    let is_error = String.is_empty until || dune_lang_ver >= (2, 5) in
+    User_warning.emit ~is_error ~loc message
 
-let greatest_supported_version t =
-  Supported_versions.greatest_supported_version t.supported_versions
+let greatest_supported_version ?dune_lang_ver t =
+  Supported_versions.greatest_supported_version ?dune_lang_ver
+    t.supported_versions
 
 let key t = t.key
 

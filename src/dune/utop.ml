@@ -21,7 +21,7 @@ let source ~dir =
 
 let is_utop_dir dir = Path.Build.basename dir = utop_dir_basename
 
-let libs_under_dir sctx ~db ~dir =
+let libs_and_ppx_under_dir sctx ~db ~dir =
   (let open Option.O in
   let* dir = Path.drop_build_context dir in
   let+ dir = File_tree.find_dir dir in
@@ -63,11 +63,13 @@ let libs_under_dir sctx ~db ~dir =
           | _ -> acc, pps )))
   |> Option.value ~default:([], [])
 
+let libs_under_dir sctx ~db ~dir = fst (libs_and_ppx_under_dir sctx ~db ~dir)
+
 let setup sctx ~dir =
   let expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
-  let libs, pps = libs_under_dir sctx ~db ~dir:(Path.build dir) in
+  let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
     if List.length pps = 0
     then

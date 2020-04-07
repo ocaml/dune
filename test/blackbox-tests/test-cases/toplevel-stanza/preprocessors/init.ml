@@ -1,3 +1,3 @@
 let () =
-  Printf.printf "PPX extension: %d\n%!" [%get_c];
+  Printf.printf "PPX extension: %d\n%!" [%test];
   exit 0

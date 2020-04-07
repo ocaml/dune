@@ -1,3 +1,3 @@
 let () =
-  Printf.printf "%s\n" [%get_c];
+  Printf.printf "%s\n" [%foo];
   exit 0

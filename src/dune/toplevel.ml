@@ -94,11 +94,7 @@ let pp_flags t =
       ++ Pp.verbatim ";" ++ Pp.newline
       ++ Pp.verbatim "Compenv.first_ppx :=" ++ Pp.cut ++ Dyn.pp ppx
       ++ Pp.verbatim ";" ++ Pp.newline)
-  | Action (loc, _) | Future_syntax loc ->
-    User_error.raise ~loc
-      [ Pp.text
-          "Toplevel does not currently support action or future_syntax \
-           preprocessing."]
+  | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
   | No_preprocessing -> Pp.nop
 
 let setup_module_rules t =
@@ -149,11 +145,7 @@ module Stanza = struct
     let pps =
       match toplevel.pps with
       | Dune_file.Preprocess.Pps pps -> pps.pps
-      | Action (loc, _) | Future_syntax loc ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Toplevel does not currently support action or future_syntax \
-               preprocessing."]
+      | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in

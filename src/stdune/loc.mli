@@ -27,9 +27,15 @@ val of_pos : string * int * int * int -> t
 
 val to_file_colon_line : t -> string
 
-val pp_file_colon_line : Format.formatter -> t -> unit
+val pp_file_colon_line : t -> unit Pp.t
 
-val print : Format.formatter -> t -> unit
+val to_dyn_hum : t -> Dyn.t
+
+type tag = Loc
+
+val pp : t -> tag Pp.t
+
+val render : Format.formatter -> tag Pp.t -> unit
 
 val on_same_line : t -> t -> bool
 

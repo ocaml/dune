@@ -414,7 +414,7 @@ module Buildable = struct
            (field ~default:None "self_build_stubs_archive"
               ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                   ~extra_info:"Use the (foreign_archives ...) field instead."
-              >>> option string )))
+              >>> enter (maybe string) )))
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries =
@@ -1303,13 +1303,11 @@ module Executables = struct
     let simple = Dune_lang.Decoder.enum simple_representations
 
     let decode =
-      if_list
-        ~then_:
-          (enter
-             (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode in
-              make mode kind))
-        ~else_:simple
+      enter
+        (let+ mode = Mode_conf.decode
+         and+ kind = Binary_kind.decode in
+         make mode kind)
+      <|> simple
 
     let simple_encode link_mode =
       let is_ok (_, candidate) = compare candidate link_mode = Eq in
@@ -1562,45 +1560,6 @@ module Executables = struct
 end
 
 module Rule = struct
-  module Targets = struct
-    module Multiplicity = struct
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      (* List of files in the current directory *)
-      | Static of static
-      | Infer
-
-    let decode_static =
-      let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
-      and+ targets = repeat String_with_vars.decode in
-      if syntax_version < (1, 3) then
-        List.iter targets ~f:(fun target ->
-            if String_with_vars.has_vars target then
-              Dune_lang.Syntax.Error.since
-                (String_with_vars.loc target)
-                Stanza.syntax (1, 3)
-                ~what:"Using variables in the targets field");
-      Static { targets; multiplicity = Multiple }
-
-    let decode_one_static =
-      let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
-      and+ target = String_with_vars.decode in
-      Static { targets = [ target ]; multiplicity = One }
-
-    let fields_parser =
-      fields_mutually_exclusive ~default:Infer
-        [ ("targets", decode_static); ("target", decode_one_static) ]
-  end
-
   module Mode = struct
     include Rule.Mode
 
@@ -1628,7 +1587,7 @@ module Rule = struct
   end
 
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -1692,7 +1651,7 @@ module Rule = struct
   let long_form =
     let+ loc = loc
     and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = Targets.fields_parser
+    and+ targets = Targets.field
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
@@ -1743,20 +1702,13 @@ module Rule = struct
     }
 
   let ocamllex =
-    if_eos
-      ~then_:
-        (return { modules = []; mode = Standard; enabled_if = Blang.true_ })
-      ~else_:
-        (if_list
-           ~then_:
-             (fields
-                (let+ modules = field "modules" (repeat string)
-                 and+ mode = Mode.field
-                 and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-                 { modules; mode; enabled_if }))
-           ~else_:
-             ( repeat string >>| fun modules ->
-               { modules; mode = Standard; enabled_if = Blang.true_ } ))
+    (let+ modules = repeat string in
+     { modules; mode = Standard; enabled_if = Blang.true_ })
+    <|> fields
+          (let+ modules = field "modules" (repeat string)
+           and+ mode = Mode.field
+           and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+           { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
 

@@ -41,7 +41,7 @@ let decode_sandbox_config =
 let decode =
   let decode =
     let sw = String_with_vars.decode in
-    sum
+    sum ~force_parens:true
       [ ("file", sw >>| fun x -> File x)
       ; ("alias", sw >>| fun x -> Alias x)
       ; ("alias_rec", sw >>| fun x -> Alias_rec x)
@@ -61,7 +61,9 @@ let decode =
       ; ("sandbox", decode_sandbox_config >>| fun x -> Sandbox_config x)
       ]
   in
-  if_list ~then_:decode ~else_:(String_with_vars.decode >>| fun x -> File x)
+  decode
+  <|> let+ x = String_with_vars.decode in
+      File x
 
 open Dune_lang
 

@@ -138,19 +138,11 @@ let loc : type k. k context -> k -> Loc.t * k =
   | Values (loc, _, _) -> (loc, state)
   | Fields (loc, _, _) -> (loc, state)
 
-let at_eos : type k. k context -> k -> bool =
+let eos : type k. k context -> k -> bool * k =
  fun ctx state ->
   match ctx with
-  | Values _ -> state = []
-  | Fields _ -> Name.Map.is_empty state.unparsed
-
-let eos ctx state = (at_eos ctx state, state)
-
-let if_eos ~then_ ~else_ ctx state =
-  if at_eos ctx state then
-    then_ ctx state
-  else
-    else_ ctx state
+  | Values _ -> (state = [], state)
+  | Fields _ -> (Name.Map.is_empty state.unparsed, state)
 
 let repeat : 'a t -> 'a list t =
   let rec loop t acc ctx l =
@@ -238,17 +230,20 @@ let junk_everything : type k. (unit, k) parser =
 
 let keyword kwd =
   next (function
-    | Atom (_, s) when Atom.to_string s = kwd -> ()
+    | Atom (_, A s) when s = kwd -> ()
     | sexp ->
       User_error.raise ~loc:(Ast.loc sexp) [ Pp.textf "'%s' expected" kwd ])
 
-let match_keyword l ~fallback =
-  peek >>= function
-  | Some (Atom (_, A s)) -> (
-    match List.assoc l s with
-    | Some t -> junk >>> t
-    | None -> fallback )
-  | _ -> fallback
+let atom_matching f ~desc =
+  next (fun sexp ->
+      match
+        match sexp with
+        | Atom (_, A s) -> f s
+        | _ -> None
+      with
+      | Some x -> x
+      | None ->
+        User_error.raise ~loc:(Ast.loc sexp) [ Pp.textf "%s expected" desc ])
 
 let until_keyword kwd ~before ~after =
   let rec loop acc =
@@ -286,19 +281,33 @@ let enter t =
         result ctx (t ctx l)
       | sexp -> User_error.raise ~loc:(Ast.loc sexp) [ Pp.text "List expected" ])
 
-let if_list ~then_ ~else_ =
-  peek_exn >>= function
-  | List _ -> then_
-  | _ -> else_
-
-let if_paren_colon_form ~then_ ~else_ =
-  peek_exn >>= function
-  | List (_, Atom (loc, A s) :: _) when String.is_prefix s ~prefix:":" ->
-    let name = String.drop s 1 in
-    enter
-      ( junk >>= fun () ->
-        then_ >>| fun f -> f (loc, name) )
-  | _ -> else_
+let ( <|> ) =
+  (* Before you read this code, close your eyes and internalise the fact that
+     this code is temporary. It is a temporary state as part of a larger work to
+     turn [Decoder.t] into a pure applicative. Once this is done, this function
+     will be implemented in a better way and with a much cleaner semantic. *)
+  let approximate_how_much_input_a_failing_branch_consumed
+      (exn : Exn_with_backtrace.t) =
+    Printexc.raw_backtrace_length exn.backtrace
+  in
+  let compare_input_consumed exn1 exn2 =
+    Int.compare
+      (approximate_how_much_input_a_failing_branch_consumed exn1)
+      (approximate_how_much_input_a_failing_branch_consumed exn2)
+  in
+  fun a b ctx state ->
+    try a ctx state
+    with exn_a -> (
+      let exn_a = Exn_with_backtrace.capture exn_a in
+      try b ctx state
+      with exn_b ->
+        let exn_b = Exn_with_backtrace.capture exn_b in
+        Exn_with_backtrace.reraise
+          ( match compare_input_consumed exn_a exn_b with
+          | Gt -> exn_a
+          | Eq
+          | Lt ->
+            exn_b ) )
 
 let fix f =
   let rec p = lazy (f r)
@@ -423,11 +432,7 @@ let bytes_unit =
     ; ("GB", 1000 * 1000 * 1000)
     ]
 
-let option t =
-  enter
-    (eos >>= function
-     | true -> return None
-     | false -> t >>| Option.some)
+let maybe t = t >>| Option.some <|> return None
 
 let find_cstr cstrs loc name ctx values =
   match List.assoc cstrs name with
@@ -438,15 +443,22 @@ let find_cstr cstrs loc name ctx values =
         (User_message.did_you_mean name ~candidates:(List.map cstrs ~f:fst))
       [ Pp.textf "Unknown constructor %s" name ]
 
-let sum cstrs =
+let sum ?(force_parens = false) cstrs =
   next_with_user_context (fun uc sexp ->
       match sexp with
-      | Atom (loc, A s) -> find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Atom (loc, A s) when not force_parens ->
+        find_cstr cstrs loc s (Values (loc, Some s, uc)) []
+      | Atom (loc, _)
       | Template { loc; _ }
-      | Quoted_string (loc, _) ->
-        User_error.raise ~loc [ Pp.text "Atom expected" ]
+      | Quoted_string (loc, _)
       | List (loc, []) ->
-        User_error.raise ~loc [ Pp.text "Non-empty list expected" ]
+        User_error.raise ~loc
+          [ Pp.textf "S-expression of the form %s expected"
+              ( if force_parens then
+                "(<atom> ...)"
+              else
+                "(<atom> ...) or <atom>" )
+          ]
       | List (loc, name :: args) -> (
         match name with
         | Quoted_string (loc, _)

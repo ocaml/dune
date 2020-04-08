@@ -14,3 +14,11 @@ Running toplevel with variants
           OCaml version REDACTED
   
   Foo.x = 42
+
+Running toplevel with preprocessor
+  $ dune exec --root preprocessors ./tt.exe -- -init preprocessors/init.ml | sed -E 's/OCaml version .*$/Ocaml version REDACTED/g'
+  Entering directory 'preprocessors'
+  Entering directory 'preprocessors'
+          Ocaml version REDACTED
+  
+  PPX extension: 42

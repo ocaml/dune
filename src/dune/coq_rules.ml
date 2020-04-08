@@ -107,7 +107,12 @@ module Context = struct
     let setup_theory_flag lib =
       let wrapper = Coq_lib.wrapper lib in
       let dir = Coq_lib.src_root lib in
-      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
+      let binding_flag =
+        if Coq_lib.implicit lib then
+          "-R"
+        else
+          "-Q"
+      in
       [ Command.Args.A binding_flag; Path (Path.build dir); A wrapper ]
     in
     fun t ->

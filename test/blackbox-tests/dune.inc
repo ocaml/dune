@@ -2004,6 +2004,15 @@
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
+ (alias utop-utop-ppx-rewriters)
+ (deps (package dune) (source_tree test-cases/utop/utop-ppx-rewriters))
+ (action
+  (chdir
+   test-cases/utop/utop-ppx-rewriters
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
+
+(rule
  (alias utop-utop-simple)
  (deps (package dune) (source_tree test-cases/utop/utop-simple))
  (action
@@ -2658,6 +2667,7 @@
   (alias use-meta)
   (alias utop-utop-default)
   (alias utop-utop-default-implementation)
+  (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
   (alias variants)
@@ -2908,7 +2918,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)

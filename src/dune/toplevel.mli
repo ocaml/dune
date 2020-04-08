@@ -7,7 +7,7 @@ module Source : sig
 
   val loc : t -> Loc.t
 
-  val modules : t -> Modules.t
+  val modules : t -> Preprocessing.t -> Modules.t
 
   val obj_dir : t -> Path.Build.t Obj_dir.t
 end
@@ -16,7 +16,11 @@ type t
 
 val setup_rules : t -> unit
 
-val make : cctx:Compilation_context.t -> source:Source.t -> t
+val make :
+     cctx:Compilation_context.t
+  -> source:Source.t
+  -> preprocess:Dune_file.Preprocess.t
+  -> t
 
 val print_toplevel_init_file :
   include_paths:Path.Set.t -> files_to_load:Path.t list -> unit

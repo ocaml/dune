@@ -25,8 +25,8 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
   (let open Option.O in
   let* dir = Path.drop_build_context dir in
   let+ dir = File_tree.find_dir dir in
-  File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all ~init:([], [])
-    ~f:(fun dir (acc, pps) ->
+  File_tree.Dir.fold_dune_files dir ~init:([], [])
+    ~f:(fun ~basename:_ dir _dune_file (acc, pps) ->
       let dir =
         Path.Build.append_source
           (Super_context.build_dir sctx)

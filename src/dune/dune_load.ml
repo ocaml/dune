@@ -111,7 +111,10 @@ module Dune_files = struct
 
   type one =
     | Literal of Dune_file.t
-    | Script of script
+    | Script of
+        { script : script
+        ; from_parent : Dune_lang.Ast.t list
+        }
 
   type t = one list
 
@@ -157,9 +160,9 @@ module Dune_files = struct
     let static, dynamic =
       List.partition_map dune_files ~f:(function
         | Literal x -> Left x
-        | Script x -> Right x)
+        | Script { script; from_parent } -> Right (script, from_parent))
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
+    Fiber.parallel_map dynamic ~f:(fun ({ dir; file; project }, from_parent) ->
         let generated_dune_file =
           Path.Build.append_source
             (Path.Build.relative generated_dune_files_dir
@@ -191,6 +194,7 @@ module Dune_files = struct
             ];
         Fiber.return
           ( Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
+          |> List.rev_append from_parent
           |> Dune_file.parse ~dir ~file ~project ))
     >>| fun dynamic -> static @ dynamic
 end
@@ -203,11 +207,13 @@ type conf =
 
 let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
   let file = File_tree.Dune_file.path dune_file in
-  match dune_file with
-  | Ocaml_script _ -> Dune_files.Script { dir; project; file }
-  | Plain p ->
-    let sexps = File_tree.Dune_file.Plain.get_sexp_and_destroy p in
-    Literal (Dune_file.parse sexps ~dir ~file ~project)
+  let static =
+    File_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
+  in
+  match File_tree.Dune_file.kind dune_file with
+  | Ocaml_script ->
+    Dune_files.Script { script = { dir; project; file }; from_parent = static }
+  | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
 let load ~ancestor_vcs () =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
@@ -239,21 +245,12 @@ let load ~ancestor_vcs () =
                     (Path.Source.to_string_maybe_quoted (Package.opam_file b))
                 ]))
   in
-  let rec walk dir dune_files =
-    if File_tree.Dir.status dir = Data_only then
-      dune_files
-    else
-      let path = File_tree.Dir.path dir in
-      let project = File_tree.Dir.project dir in
-      let dune_files =
-        match File_tree.Dir.dune_file dir with
-        | None -> dune_files
-        | Some dune_file ->
-          let dune_file = interpret ~dir:path ~project ~dune_file in
-          dune_file :: dune_files
-      in
-      File_tree.Dir.fold_sub_dirs dir ~init:dune_files
-        ~f:(fun _name dir dune_files -> walk dir dune_files)
+  let dune_files =
+    File_tree.Dir.fold_dune_files (File_tree.root ()) ~init:[]
+      ~f:(fun ~basename:_ dir dune_file dune_files ->
+        let path = File_tree.Dir.path dir in
+        let project = File_tree.Dir.project dir in
+        let dune_file = interpret ~dir:path ~project ~dune_file in
+        dune_file :: dune_files)
   in
-  let dune_files = walk (File_tree.root ()) [] in
   { dune_files; packages; projects }

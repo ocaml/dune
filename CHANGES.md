@@ -45,6 +45,9 @@ Unreleased
   extensions will now be usable in the toplevel
   (#3266, fixes #346, @stephanieyou)
 
+- Add a `(subdir ..)` stanza to allow evaluating stanzas in sub directories.
+  (#3268, @rgrinberg)
+
 2.4.0 (06/03/2020)
 ------------------
 

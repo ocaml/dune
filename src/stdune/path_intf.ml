@@ -25,6 +25,8 @@ module type S = sig
 
   val basename : t -> string
 
+  val basename_opt : t -> string option
+
   val extend_basename : t -> suffix:string -> t
 
   module Set : sig

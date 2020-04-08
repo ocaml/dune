@@ -201,9 +201,10 @@ end = struct
       | Group_root _ ->
         acc
     and walk_children ft_dir ~dir ~local acc =
-      File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
-          let dir = Path.Build.relative dir name in
-          let local = name :: local in
+      File_tree.Dir.fold_sub_dirs ft_dir ~init:acc
+        ~f:(fun ~basename ft_dir acc ->
+          let dir = Path.Build.relative dir basename in
+          let local = basename :: local in
           walk ft_dir ~dir ~local acc)
     in
     walk_children ft_dir ~dir ~local:[] []

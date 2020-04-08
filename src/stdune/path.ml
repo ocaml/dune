@@ -19,6 +19,12 @@ module Fpath = struct
         )
 end
 
+let basename_opt ~is_root ~basename t =
+  if is_root t then
+    None
+  else
+    Some (basename t)
+
 let is_dir_sep =
   if Sys.win32 || Sys.cygwin then
     fun c ->
@@ -125,6 +131,8 @@ end = struct
   let root = of_string "/"
 
   let is_root = equal root
+
+  let basename_opt = basename_opt ~is_root ~basename
 
   let parent t =
     if is_root t then
@@ -555,6 +563,8 @@ end = struct
   include Fix_root (struct
     type nonrec w = w
   end)
+
+  let basename_opt = basename_opt ~is_root ~basename
 end
 
 module Relative_to_source_root = struct
@@ -927,6 +937,8 @@ let basename t =
   match kind t with
   | In_source_dir t -> Local.basename t
   | External t -> External.basename t
+
+let basename_opt = basename_opt ~is_root ~basename
 
 let parent = function
   | External s -> Option.map (External.parent s) ~f:external_

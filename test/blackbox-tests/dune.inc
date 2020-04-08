@@ -1861,6 +1861,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias subdir-stanza)
+ (deps (package dune) (source_tree test-cases/subdir-stanza))
+ (action
+  (chdir
+   test-cases/subdir-stanza
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -2650,6 +2658,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -2911,6 +2920,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)

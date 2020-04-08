@@ -41,9 +41,9 @@ val make :
 
 val duplication_mode : t -> Duplication_mode.t
 
-(** The size overhead of cached files. That is, the total size of cached files
-    that are not linked in a build directory. *)
-val size : t -> int
+(** The overhead size of the cache, that is, the total size of files in the
+    cache that are not linked from any build directory. *)
+val overhead_size : t -> int
 
 module Trimming_result : sig
   type t =

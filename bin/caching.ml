@@ -65,7 +65,7 @@ let trim ~trimmed_size ~size =
     let+ trimmed_size =
       match (trimmed_size, size) with
       | Some trimmed_size, None -> Result.Ok trimmed_size
-      | None, Some size -> Result.Ok (Cache.Local.size cache - size)
+      | None, Some size -> Result.Ok (Cache.Local.overhead_size cache - size)
       | _ -> Result.Error "specify either --size or --trimmed-size"
     in
     Cache.Local.trim cache trimmed_size

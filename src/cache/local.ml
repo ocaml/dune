@@ -449,7 +449,7 @@ let trim cache free =
   let trim = List.fold_left ~init:Trimming_result.empty ~f:delete files in
   _garbage_collect trim cache
 
-let size cache =
+let overhead_size cache =
   let root = root_data cache in
   let files = FSSchemeImpl.list root in
   let stats =

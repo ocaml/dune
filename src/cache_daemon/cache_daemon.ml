@@ -122,7 +122,7 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let my_versions : version list = [ { major = 1; minor = 1 } ]
+let versions_supported_by_dune : version list = [ { major = 1; minor = 1 } ]
 
 let endpoint m = m.endpoint
 
@@ -272,7 +272,9 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
         let output = Unix.out_channel_of_descr fd
         and input = Unix.in_channel_of_descr fd in
         match
-          let* version = negotiate_version my_versions fd input output in
+          let* version =
+            negotiate_version ~versions_supported_by_dune fd input output
+          in
           let client =
             { fd
             ; peer

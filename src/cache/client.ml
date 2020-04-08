@@ -13,7 +13,8 @@ type t =
   ; version : Messages.version
   }
 
-let my_versions : Messages.version list = [ { major = 1; minor = 1 } ]
+let versions_supported_by_dune : Messages.version list =
+  [ { major = 1; minor = 1 } ]
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
@@ -60,7 +61,7 @@ let make ?finally ?duplication_mode handle =
   let input = Unix.in_channel_of_descr fd in
   let+ version =
     Result.map_error ~f:err
-      (Messages.negotiate_version my_versions fd input socket)
+      (Messages.negotiate_version ~versions_supported_by_dune fd input socket)
   in
   Log.info
     [ Pp.textf "negotiated version: %s" (Messages.string_of_version version) ];

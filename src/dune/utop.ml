@@ -41,7 +41,7 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
             match
               Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
             with
-            | None -> acc, pps (* library is defined but outside our scope *)
+            | None -> (acc, pps) (* library is defined but outside our scope *)
             | Some lib ->
               (* still need to make sure that it's not coming from an external
                  source *)
@@ -53,14 +53,15 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
               let not_impl = Option.is_none (Lib_info.implements info) in
               if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
               then
-                (match Lib_info.kind info with
-                 | Lib_kind.Ppx_rewriter _ | Ppx_deriver _ ->
-                   lib :: acc, (Lib_info.loc info, Lib_info.name info) :: pps
-                 | Normal -> lib :: acc, pps)
+                match Lib_info.kind info with
+                | Lib_kind.Ppx_rewriter _
+                | Ppx_deriver _ ->
+                  (lib :: acc, (Lib_info.loc info, Lib_info.name info) :: pps)
+                | Normal -> (lib :: acc, pps)
               else
-                acc, pps
+                (acc, pps)
               (* external lib with a name matching our private name *) )
-          | _ -> acc, pps )))
+          | _ -> (acc, pps))))
   |> Option.value ~default:([], [])
 
 let libs_under_dir sctx ~db ~dir = fst (libs_and_ppx_under_dir sctx ~db ~dir)
@@ -71,16 +72,17 @@ let setup sctx ~dir =
   let db = Scope.libs scope in
   let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
-    if List.is_empty pps
-    then
+    if List.is_empty pps then
       Dune_file.Preprocess.No_preprocessing
     else
-      Dune_file.Preprocess.Pps { loc=Loc.none; pps; flags=[]; staged=false }
+      Dune_file.Preprocess.Pps
+        { loc = Loc.none; pps; flags = []; staged = false }
   in
   let preprocess = Module_name.Per_item.for_all pps in
-  let preprocessing = Preprocessing.make sctx ~dir ~expander ~scope
-    ~dep_kind:Required ~lib_name:None
-    ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
+  let preprocessing =
+    Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
+      ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
+      ~preprocessor_deps:[]
   in
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in

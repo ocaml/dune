@@ -1918,17 +1918,21 @@ module Toplevel = struct
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ pps =
-         field "preprocess" ( Dune_lang.Syntax.since Stanza.syntax (2, 5)
-           >>> Preprocess.decode ) ~default:Preprocess.No_preprocessing
+         field "preprocess"
+           (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> Preprocess.decode)
+           ~default:Preprocess.No_preprocessing
        in
        match pps with
-       | Preprocess.Pps _ | No_preprocessing ->
-           { name; libraries; loc; variants; pps }
-       | Action (loc, _) | Future_syntax loc ->
-           User_error.raise ~loc
-             [ Pp.text
-                 "Toplevel does not currently support action or future_syntax \
-                  preprocessing."] )
+       | Preprocess.Pps _
+       | No_preprocessing ->
+         { name; libraries; loc; variants; pps }
+       | Action (loc, _)
+       | Future_syntax loc ->
+         User_error.raise ~loc
+           [ Pp.text
+               "Toplevel does not currently support action or future_syntax \
+                preprocessing."
+           ])
 end
 
 module Copy_files = struct

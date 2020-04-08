@@ -24,9 +24,7 @@ module Source = struct
   let obj_dir { dir; name; _ } = Obj_dir.make_exe ~dir ~name
 
   let modules t pp =
-    main_module t
-    |> Preprocessing.pp_module pp
-    |> Modules.singleton_exe
+    main_module t |> Preprocessing.pp_module pp |> Modules.singleton_exe
 
   let make ~dir ~loc ~main ~name = { dir; main; name; loc }
 
@@ -75,26 +73,27 @@ let pp_flags t =
   match t.preprocess with
   | Pps { loc; pps; flags; staged = _ } -> (
     match
-      Preprocessing.get_ppx_driver sctx ~loc ~expander
-      ~lib_name:None ~flags ~scope pps
+      Preprocessing.get_ppx_driver sctx ~loc ~expander ~lib_name:None ~flags
+        ~scope pps
     with
     | Error _exn -> Pp.nop
     | Ok (exe, flags) ->
       let ppx =
-        Dyn.Encoder.list
-          Dyn.Encoder.string
-            [(Path.to_absolute_filename (Path.build exe)
-             :: "--as-ppx" :: flags
-             |> String.concat ~sep:" ")]
+        Dyn.Encoder.list Dyn.Encoder.string
+          [ Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+            |> String.concat ~sep:" "
+          ]
       in
       (* Set Clflags.all_ppx for dune utop, and Compenv.first_ppx for custom
          toplevels because Topmain.main() resets Clflags.all_ppx. *)
       Pp.vbox ~indent:2
         (Pp.verbatim "Clflags.all_ppx :=" ++ Pp.cut ++ Dyn.pp ppx)
       ++ Pp.verbatim ";" ++ Pp.newline
-      ++ Pp.verbatim "Compenv.first_ppx :=" ++ Pp.cut ++ Dyn.pp ppx
-      ++ Pp.verbatim ";" ++ Pp.newline)
-  | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
+      ++ Pp.verbatim "Compenv.first_ppx :="
+      ++ Pp.cut ++ Dyn.pp ppx ++ Pp.verbatim ";" ++ Pp.newline )
+  | Action _
+  | Future_syntax _ ->
+    assert false (* Error in parsing *)
   | No_preprocessing -> Pp.nop
 
 let setup_module_rules t =
@@ -145,13 +144,16 @@ module Stanza = struct
     let pps =
       match toplevel.pps with
       | Dune_file.Preprocess.Pps pps -> pps.pps
-      | Action _ | Future_syntax _ -> assert false (* Error in parsing *)
+      | Action _
+      | Future_syntax _ ->
+        assert false (* Error in parsing *)
       | No_preprocessing -> []
     in
     let preprocess = Module_name.Per_item.for_all toplevel.pps in
-    let preprocessing = Preprocessing.make sctx ~dir ~expander ~scope
-      ~dep_kind:Required ~lib_name:None
-      ~lint:Dune_file.Lint.no_lint ~preprocess ~preprocessor_deps:[]
+    let preprocessing =
+      Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
+        ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
+        ~preprocessor_deps:[]
     in
     let compile_info =
       let compiler_libs =
@@ -161,8 +163,8 @@ module Stanza = struct
         [ (source.loc, source.name) ]
         ( Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
-        ~pps ~dune_version ~allow_overlaps:false
-        ~variants:toplevel.variants ~optional:false
+        ~pps ~dune_version ~allow_overlaps:false ~variants:toplevel.variants
+        ~optional:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in
@@ -175,9 +177,10 @@ module Stanza = struct
     in
     let cctx =
       Compilation_context.create () ~super_context:sctx ~scope ~obj_dir
-        ~expander ~modules:(Source.modules source preprocessing) ~opaque:false
-        ~requires_compile ~requires_link ~flags ~js_of_ocaml:None ~dynlink:false
-        ~package:None ~preprocessing
+        ~expander
+        ~modules:(Source.modules source preprocessing)
+        ~opaque:false ~requires_compile ~requires_link ~flags ~js_of_ocaml:None
+        ~dynlink:false ~package:None ~preprocessing
     in
     let resolved = make ~cctx ~source ~preprocess:toplevel.pps in
     setup_rules resolved

@@ -49,7 +49,7 @@ Unreleased
   (#3268, @rgrinberg)
 
 - Fix a bug preventing one from running inline tests in multiple modes
-  (#3348, @diml)
+  (#3352, @diml)
 
 2.4.0 (06/03/2020)
 ------------------

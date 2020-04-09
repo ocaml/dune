@@ -2,8 +2,6 @@ open Stdune
 
 include module type of Cache_intf
 
-type 'a result = ('a, string) Result.t
-
 module Key : sig
   type t = Digest.t
 

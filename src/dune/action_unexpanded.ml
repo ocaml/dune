@@ -36,6 +36,76 @@ let as_in_build_dir ~loc p =
           (Path.to_string_maybe_quoted p)
       ]
 
+module Expand (S : sig
+  type 'a input
+
+  type 'a output
+
+  val expand :
+       expander:Expander.t
+    -> mode:'a String_with_vars.Mode.t
+    -> l:('b -> 'c)
+    -> r:(loc:Loc.t option -> 'a -> dir:Path.t -> 'c)
+    -> 'b input
+    -> 'c output
+end) : sig
+  open S
+
+  type ('i, 'o) expand = expander:Expander.t -> 'i input -> 'o output
+
+  val string : (String.t, String.t) expand
+
+  val strings : (String.t, String.t list) expand
+
+  val path : (Path.t, Path.t) expand
+
+  val target : (Path.Build.t, Path.Build.t) expand
+
+  val prog_and_args :
+    (Unresolved.Program.t, Unresolved.Program.t * String.t list) expand
+
+  val cat_strings : ('a, String.t) expand
+end = struct
+  open S
+
+  type ('i, 'o) expand = expander:Expander.t -> 'i input -> 'o output
+
+  let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
+
+  let strings =
+    expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
+
+  let path ~expander e =
+    expand ~expander ~mode:Single ~l:Fun.id
+      ~r:(fun ~loc v ~dir -> Value.to_path ?error_loc:loc v ~dir)
+      e
+
+  let target ~expander e =
+    expand e ~expander ~mode:Single ~l:Fun.id ~r:(fun ~loc v ~dir ->
+        Value.to_path ?error_loc:loc v ~dir |> as_in_build_dir ~loc)
+
+  let prog_and_args_of_values ~loc p ~dir =
+    match p with
+    | [] -> (Unresolved.Program.Search (loc, ""), [])
+    | Value.Dir p :: _ ->
+      User_error.raise ?loc
+        [ Pp.textf "%s is a directory and cannot be used as an executable"
+            (Path.to_string_maybe_quoted p)
+        ]
+    | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
+    | String s :: xs ->
+      (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
+
+  let prog_and_args =
+    expand ~mode:Many ~l:(fun x -> (x, [])) ~r:prog_and_args_of_values
+
+  let cat_strings ~expander e =
+    expand ~expander ~mode:Many
+      ~l:(fun _ -> (* This code is never executed *) assert false)
+      ~r:(ignore_loc Value.L.concat)
+      e
+end
+
 module Partial = struct
   module Program = Unresolved.Program
 
@@ -50,7 +120,11 @@ module Partial = struct
 
   include Past
 
-  module E = struct
+  module E = Expand (struct
+    type 'a input = 'a String_with_vars.Partial.t
+
+    type 'a output = 'a
+
     let expand ~expander ~mode ~l ~r =
       String_with_vars.Partial.elim ~exp:l ~unexp:(fun s ->
           let dir = Path.build (Expander.dir expander) in
@@ -58,42 +132,7 @@ module Partial = struct
             ~loc:(Some (String_with_vars.loc s))
             (Expander.expand expander ~template:s ~mode)
             ~dir)
-
-    let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
-
-    let strings =
-      expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
-
-    let loc = function
-      | String_with_vars.Partial.Expanded _ -> None
-      | Unexpanded r -> Some (String_with_vars.loc r)
-
-    let path e =
-      let error_loc = loc e in
-      expand ~mode:Single ~l:Fun.id ~r:(ignore_loc (Value.to_path ?error_loc)) e
-
-    let target e =
-      let error_loc = loc e in
-      expand e ~mode:Single ~l:Fun.id
-        ~r:
-          (ignore_loc (fun v ~dir ->
-               Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))
-
-    let prog_and_args_of_values ~loc p ~dir =
-      match p with
-      | [] -> (Unresolved.Program.Search (loc, ""), [])
-      | Value.Dir p :: _ ->
-        User_error.raise ?loc
-          [ Pp.textf "%s is a directory and cannot be used as an executable"
-              (Path.to_string_maybe_quoted p)
-          ]
-      | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
-      | String s :: xs ->
-        (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
-
-    let prog_and_args =
-      expand ~mode:Many ~l:(fun x -> (x, [])) ~r:prog_and_args_of_values
-  end
+  end)
 
   let rec expand t ~map_exe ~expander : Unresolved.t =
     let expand_run prog args =
@@ -168,35 +207,20 @@ module Partial = struct
         , E.target ~expander target )
 end
 
-module E = struct
-  let expand ~expander ~mode ~map x =
+module E = Expand (struct
+  type 'a input = String_with_vars.t
+
+  type 'a output = 'a String_with_vars.Partial.t
+
+  let expand ~expander ~mode ~l:_ ~r x : _ output =
     let dir = Path.build (Expander.dir expander) in
     let f = Expander.expand_var_exn expander in
     match String_with_vars.partial_expand ~mode ~dir ~f x with
+    | Unexpanded x -> Unexpanded x
     | Expanded e ->
       let loc = Some (String_with_vars.loc x) in
-      String_with_vars.Partial.Expanded (map ~loc e ~dir)
-    | Unexpanded x -> Unexpanded x
-
-  let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
-
-  let strings = expand ~mode:Many ~map:(ignore_loc Value.L.to_strings)
-
-  let cat_strings = expand ~mode:Many ~map:(ignore_loc Value.L.concat)
-
-  let path x =
-    expand ~mode:Single
-      ~map:(fun ~loc v ~dir -> Value.to_path ?error_loc:loc v ~dir)
-      x
-
-  let target x =
-    expand ~mode:Single
-      ~map:(fun ~loc v ~dir ->
-        Value.to_path ?error_loc:loc v ~dir |> as_in_build_dir ~loc)
-      x
-
-  let prog_and_args = expand ~mode:Many ~map:Partial.E.prog_and_args_of_values
-end
+      String_with_vars.Partial.Expanded (r ~loc e ~dir)
+end)
 
 let rec partial_expand t ~map_exe ~expander : Partial.t =
   let partial_expand_exe prog args =

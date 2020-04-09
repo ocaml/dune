@@ -12,7 +12,7 @@ type t =
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
-  ; profile : string
+  ; profile : Profile.t
   ; ocaml_version : string
   }
 

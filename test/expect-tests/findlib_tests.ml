@@ -26,7 +26,7 @@ let findlib =
     ; ext_dll = ".so"
     ; stdlib_dir = Path.root
     ; ccomp_type = Other "gcc"
-    ; profile = "dev"
+    ; profile = Profile.Dev
     ; ocaml_version = "4.02.3"
     }
   in

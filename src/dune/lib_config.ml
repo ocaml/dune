@@ -12,7 +12,7 @@ type t =
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
-  ; profile : string
+  ; profile : Profile.t
   ; ocaml_version : string
   }
 
@@ -22,7 +22,7 @@ let var_map =
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
   ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
-  ; ("profile", fun t -> t.profile)
+  ; ("profile", fun t -> Profile.to_string t.profile)
   ; ("ocaml_version", fun t -> t.ocaml_version)
   ]
 

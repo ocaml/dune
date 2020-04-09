@@ -1,17 +1,7 @@
 open! Stdune
 open Import
-include Action_dune_lang
 module Unresolved = Action.Unresolved
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
-
-let remove_locs =
-  let no_loc_template = String_with_vars.make_text Loc.none "" in
-  fun t ->
-    Mapper.map t ~dir:no_loc_template
-      ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_target:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
 
 let check_mkdir loc path =
   if not (Path.is_managed path) then
@@ -245,7 +235,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       (String_with_vars.Partial.Expanded prog, more_args @ args)
     | Unexpanded _ as prog -> (prog, args)
   in
-  match t with
+  match (t : Action_dune_lang.t) with
   | Run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Run (prog, args)
@@ -589,7 +579,6 @@ end
 let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander ~foreign_flags =
   let open Build.O in
-  let dir = Expander.dir expander in
   ( match (targets_written_by_user : Targets.Or_forbidden.t) with
   | Targets _ -> ()
   | Forbidden context -> (
@@ -628,6 +617,17 @@ let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
                | Ok path -> path
                | Error { fail } -> fail ())
          in
+
+         (* Targets cannot be introduced at this stage because they must all be
+            expanded after partial expansion.
+
+            This is because we don't allow things like: [(with-stdout-to
+            %{read:foo} ..)] *)
          let { Infer.Outcome.deps; targets = _ } = Infer.infer action in
-         (Action.Chdir (Path.build dir, action), deps))
+         let dir = Path.build (Expander.dir expander) in
+         (Action.Chdir (dir, action), deps))
   |> Build.with_targets ~targets
+
+(* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
+   types in this module with all the various t's *)
+include Action_dune_lang

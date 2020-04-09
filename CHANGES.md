@@ -51,6 +51,9 @@ Unreleased
 - Fix a bug preventing one from running inline tests in multiple modes
   (#3352, @diml)
 
+- Fix dune build freezing on MacOS when cache is enabled.
+  (#3249, @artempyanykh)
+
 2.4.0 (06/03/2020)
 ------------------
 

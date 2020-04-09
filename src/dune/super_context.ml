@@ -665,8 +665,6 @@ module Deps = struct
 end
 
 module Action = struct
-  module U = Action_unexpanded
-
   let map_exe sctx =
     match sctx.host with
     | None -> fun exe -> exe
@@ -680,56 +678,12 @@ module Action = struct
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
       ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
-    let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
-    ( match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets _ -> ()
-    | Forbidden context -> (
-      match U.Infer.unexpanded_targets t with
-      | [] -> ()
-      | x :: _ ->
-        let loc = String_with_vars.loc x in
-        User_error.raise ~loc
-          [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
-    );
-    let partially_expanded, fully_expanded =
-      let foreign_flags ~dir =
-        get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-      in
-      Expander.expand_action expander ~dep_kind ~deps_written_by_user
-        ~targets_written_by_user ~map_exe ~foreign_flags
-        ~partial:(fun expander ->
-          Action_unexpanded.partial_expand t ~expander ~map_exe)
-        ~final:(fun expander t -> U.Partial.expand t ~expander ~map_exe)
+    let foreign_flags ~dir =
+      get_node sctx.env_tree ~dir |> Env_node.foreign_flags
     in
-    let { U.Infer.Outcome.deps; targets } =
-      U.Infer.partial targets_written_by_user partially_expanded
-    in
-    let targets = Path.Build.Set.to_list targets in
-    List.iter targets ~f:(fun target ->
-        if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
-          User_error.raise ~loc
-            [ Pp.text
-                "This action has targets in a different directory than the \
-                 current one, this is not allowed by dune at the moment:"
-            ; Pp.enumerate targets ~f:(fun target ->
-                  Pp.text (Dpath.describe_path (Path.build target)))
-            ]);
-    let open Build.O in
-    let build =
-      Build.path_set deps
-      >>> Build.dyn_path_set
-            (let+ action =
-               let+ unresolved = fully_expanded in
-               Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-                   match Expander.resolve_binary ~loc expander ~prog with
-                   | Ok path -> path
-                   | Error { fail } -> fail ())
-             in
-             let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-             (Action.Chdir (Path.build dir, action), deps))
-    in
-    Build.with_targets ~targets build
+    Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
+      ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
 
 let opaque t =

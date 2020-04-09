@@ -1,19 +1,7 @@
 open! Stdune
 open Import
-include Action_dune_lang
 module Unresolved = Action.Unresolved
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
-
-let ignore_loc k ~loc:_ = k
-
-let remove_locs =
-  let no_loc_template = String_with_vars.make_text Loc.none "" in
-  fun t ->
-    Mapper.map t ~dir:no_loc_template
-      ~f_program:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_path:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_target:(fun ~dir:_ -> String_with_vars.remove_locs)
-      ~f_string:(fun ~dir:_ -> String_with_vars.remove_locs)
 
 let check_mkdir loc path =
   if not (Path.is_managed path) then
@@ -26,15 +14,94 @@ let check_mkdir loc path =
                 [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
       ]
 
-let as_in_build_dir ~loc p =
-  match Path.as_in_build_dir p with
-  | Some p -> p
-  | None ->
-    User_error.raise ?loc
-      [ Pp.textf
-          "target %s is outside the build directory. This is not allowed."
-          (Path.to_string_maybe_quoted p)
-      ]
+module Expand (S : sig
+  (** Shared code between the expansion passes.
+
+      Creates common expansion for strings, paths, targets, and programs *)
+  type 'a input
+
+  type 'a output
+
+  val expand :
+       expander:Expander.t
+    -> mode:'a String_with_vars.Mode.t
+    -> l:('b -> 'c) (** Continuation for when expansion isn't necessary*)
+    -> r:(loc:Loc.t option -> 'a -> 'c) (** Expansion continuation *)
+    -> 'b input
+    -> 'c output
+end) : sig
+  open S
+
+  type ('i, 'o) expand = expander:Expander.t -> 'i input -> 'o output
+
+  val string : (String.t, String.t) expand
+
+  val strings : (String.t, String.t list) expand
+
+  val path : (Path.t, Path.t) expand
+
+  val target : (Path.Build.t, Path.Build.t) expand
+
+  val prog_and_args :
+    (Unresolved.Program.t, Unresolved.Program.t * String.t list) expand
+
+  val cat_strings : ('a, String.t) expand
+end = struct
+  open S
+
+  type ('i, 'o) expand = expander:Expander.t -> 'i input -> 'o output
+
+  let ignore_loc k ~loc:_ = k
+
+  let expand ~expander ~mode ~l ~r =
+    let dir = Path.build (Expander.dir expander) in
+    expand ~expander ~mode ~l ~r:(fun ~loc s -> r ~loc s ~dir)
+
+  let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
+
+  let strings =
+    expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
+
+  let path ~expander e =
+    expand ~expander ~mode:Single ~l:Fun.id
+      ~r:(fun ~loc v ~dir -> Value.to_path ?error_loc:loc v ~dir)
+      e
+
+  let as_in_build_dir ~loc p =
+    match Path.as_in_build_dir p with
+    | Some p -> p
+    | None ->
+      User_error.raise ?loc
+        [ Pp.textf
+            "target %s is outside the build directory. This is not allowed."
+            (Path.to_string_maybe_quoted p)
+        ]
+
+  let target ~expander e =
+    expand e ~expander ~mode:Single ~l:Fun.id ~r:(fun ~loc v ~dir ->
+        Value.to_path ?error_loc:loc v ~dir |> as_in_build_dir ~loc)
+
+  let prog_and_args_of_values ~loc p ~dir =
+    match p with
+    | [] -> (Unresolved.Program.Search (loc, ""), [])
+    | Value.Dir p :: _ ->
+      User_error.raise ?loc
+        [ Pp.textf "%s is a directory and cannot be used as an executable"
+            (Path.to_string_maybe_quoted p)
+        ]
+    | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
+    | String s :: xs ->
+      (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
+
+  let prog_and_args =
+    expand ~mode:Many ~l:(fun x -> (x, [])) ~r:prog_and_args_of_values
+
+  let cat_strings ~expander e =
+    expand ~expander ~mode:Many
+      ~l:(fun _ -> (* This code is never executed *) assert false)
+      ~r:(ignore_loc Value.L.concat)
+      e
+end
 
 module Partial = struct
   module Program = Unresolved.Program
@@ -50,50 +117,17 @@ module Partial = struct
 
   include Past
 
-  module E = struct
+  module E = Expand (struct
+    type 'a input = 'a String_with_vars.Partial.t
+
+    type 'a output = 'a
+
     let expand ~expander ~mode ~l ~r =
-      String_with_vars.Partial.elim ~exp:l ~unexp:(fun s ->
-          let dir = Path.build (Expander.dir expander) in
-          r
-            ~loc:(Some (String_with_vars.loc s))
-            (Expander.expand expander ~template:s ~mode)
-            ~dir)
-
-    let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
-
-    let strings =
-      expand ~mode:Many ~l:List.singleton ~r:(ignore_loc Value.L.to_strings)
-
-    let loc = function
-      | String_with_vars.Partial.Expanded _ -> None
-      | Unexpanded r -> Some (String_with_vars.loc r)
-
-    let path e =
-      let error_loc = loc e in
-      expand ~mode:Single ~l:Fun.id ~r:(ignore_loc (Value.to_path ?error_loc)) e
-
-    let target e =
-      let error_loc = loc e in
-      expand e ~mode:Single ~l:Fun.id
-        ~r:
-          (ignore_loc (fun v ~dir ->
-               Value.to_path ?error_loc v ~dir |> as_in_build_dir ~loc:error_loc))
-
-    let prog_and_args_of_values ~loc p ~dir =
-      match p with
-      | [] -> (Unresolved.Program.Search (loc, ""), [])
-      | Value.Dir p :: _ ->
-        User_error.raise ?loc
-          [ Pp.textf "%s is a directory and cannot be used as an executable"
-              (Path.to_string_maybe_quoted p)
-          ]
-      | Value.Path p :: xs -> (This p, Value.L.to_strings ~dir xs)
-      | String s :: xs ->
-        (Unresolved.Program.of_string ~loc ~dir s, Value.L.to_strings ~dir xs)
-
-    let prog_and_args =
-      expand ~mode:Many ~l:(fun x -> (x, [])) ~r:prog_and_args_of_values
-  end
+      String_with_vars.Partial.elim ~exp:l ~unexp:(fun sw ->
+          let x = Expander.expand expander ~template:sw ~mode in
+          let loc = Some (String_with_vars.loc sw) in
+          r ~loc x)
+  end)
 
   let rec expand t ~map_exe ~expander : Unresolved.t =
     let expand_run prog args =
@@ -168,35 +202,19 @@ module Partial = struct
         , E.target ~expander target )
 end
 
-module E = struct
-  let expand ~expander ~mode ~map x =
+module E = Expand (struct
+  type 'a input = String_with_vars.t
+
+  type 'a output = 'a String_with_vars.Partial.t
+
+  let expand ~expander ~mode ~l:_ ~r sw : _ output =
     let dir = Path.build (Expander.dir expander) in
     let f = Expander.expand_var_exn expander in
-    match String_with_vars.partial_expand ~mode ~dir ~f x with
-    | Expanded e ->
-      let loc = Some (String_with_vars.loc x) in
-      String_with_vars.Partial.Expanded (map ~loc e ~dir)
-    | Unexpanded x -> Unexpanded x
-
-  let string = expand ~mode:Single ~map:(ignore_loc Value.to_string)
-
-  let strings = expand ~mode:Many ~map:(ignore_loc Value.L.to_strings)
-
-  let cat_strings = expand ~mode:Many ~map:(ignore_loc Value.L.concat)
-
-  let path x =
-    expand ~mode:Single
-      ~map:(fun ~loc v ~dir -> Value.to_path ?error_loc:loc v ~dir)
-      x
-
-  let target x =
-    expand ~mode:Single
-      ~map:(fun ~loc v ~dir ->
-        Value.to_path ?error_loc:loc v ~dir |> as_in_build_dir ~loc)
-      x
-
-  let prog_and_args = expand ~mode:Many ~map:Partial.E.prog_and_args_of_values
-end
+    String_with_vars.partial_expand ~mode ~dir ~f sw
+    |> String_with_vars.Partial.map ~f:(fun x ->
+           let loc = Some (String_with_vars.loc sw) in
+           r ~loc x)
+end)
 
 let rec partial_expand t ~map_exe ~expander : Partial.t =
   let partial_expand_exe prog args =
@@ -217,7 +235,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       (String_with_vars.Partial.Expanded prog, more_args @ args)
     | Unexpanded _ as prog -> (prog, args)
   in
-  match t with
+  match (t : Action_dune_lang.t) with
   | Run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Run (prog, args)
@@ -425,7 +443,7 @@ module Infer = struct
     end
   end
 
-  include Make (Action) (Sets) (Outcome)
+  include Make (Action.Ast) (Sets) (Outcome)
             (struct
               let ( +@+ ) acc fn =
                 { acc with targets = Path.Build.Set.add acc.targets fn }
@@ -557,3 +575,59 @@ module Infer = struct
 
   let unexpanded_targets t = (Unexp.infer t).targets
 end
+
+let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
+    ~targets:targets_written_by_user ~expander ~foreign_flags =
+  let open Build.O in
+  ( match (targets_written_by_user : Targets.Or_forbidden.t) with
+  | Targets _ -> ()
+  | Forbidden context -> (
+    match Infer.unexpanded_targets t with
+    | [] -> ()
+    | x :: _ ->
+      let loc = String_with_vars.loc x in
+      User_error.raise ~loc
+        [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
+  );
+  let partially_expanded, fully_expanded =
+    Expander.expand_action expander ~dep_kind ~deps_written_by_user
+      ~targets_written_by_user ~map_exe ~foreign_flags
+      ~partial:(fun expander -> partial_expand t ~expander ~map_exe)
+      ~final:(fun expander t -> Partial.expand t ~expander ~map_exe)
+  in
+  let { Infer.Outcome.deps; targets } =
+    Infer.partial targets_written_by_user partially_expanded
+  in
+  Path.Build.Set.iter targets ~f:(fun target ->
+      if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
+        User_error.raise ~loc
+          [ Pp.text
+              "This action has targets in a different directory than the \
+               current one, this is not allowed by dune at the moment:"
+          ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun target ->
+                Pp.text (Dpath.describe_path (Path.build target)))
+          ]);
+  let targets = Path.Build.Set.to_list targets in
+  Build.path_set deps
+  >>> Build.dyn_path_set
+        (let+ action =
+           let+ unresolved = fully_expanded in
+           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+               match Expander.resolve_binary ~loc expander ~prog with
+               | Ok path -> path
+               | Error { fail } -> fail ())
+         in
+
+         (* Targets cannot be introduced at this stage because they must all be
+            expanded after partial expansion.
+
+            This is because we don't allow things like: [(with-stdout-to
+            %{read:foo} ..)] *)
+         let { Infer.Outcome.deps; targets = _ } = Infer.infer action in
+         let dir = Path.build (Expander.dir expander) in
+         (Action.Chdir (dir, action), deps))
+  |> Build.with_targets ~targets
+
+(* We re-export [Action_dune_lang] in the end to avoid polluting the inferred
+   types in this module with all the various t's *)
+include Action_dune_lang

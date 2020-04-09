@@ -134,7 +134,7 @@ case "$TARGET" in
         opam update
         echo $DATE> ~/.opam/last-update
         UPDATE_OPAM=1
-        opam upgrade
+        keep_travis_happy opam upgrade
       fi
       if ! ./dune.exe build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
         cat $RUNTEST_NO_DEPS;

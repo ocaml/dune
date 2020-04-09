@@ -557,3 +557,40 @@ module Infer = struct
 
   let unexpanded_targets t = (Unexp.infer t).targets
 end
+
+let expand t ~map_exe ~dep_kind ~deps_written_by_user
+    ~targets:targets_written_by_user ~expander ~foreign_flags =
+  let open Build.O in
+  let dir = Expander.dir expander in
+  ( match (targets_written_by_user : Targets.Or_forbidden.t) with
+  | Targets _ -> ()
+  | Forbidden context -> (
+    match Infer.unexpanded_targets t with
+    | [] -> ()
+    | x :: _ ->
+      let loc = String_with_vars.loc x in
+      User_error.raise ~loc
+        [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
+  );
+  let partially_expanded, fully_expanded =
+    Expander.expand_action expander ~dep_kind ~deps_written_by_user
+      ~targets_written_by_user ~map_exe ~foreign_flags
+      ~partial:(fun expander -> partial_expand t ~expander ~map_exe)
+      ~final:(fun expander t -> Partial.expand t ~expander ~map_exe)
+  in
+  let { Infer.Outcome.deps; targets } =
+    Infer.partial targets_written_by_user partially_expanded
+  in
+  let targets = Path.Build.Set.to_list targets in
+  Build.path_set deps
+  >>> Build.dyn_path_set
+        (let+ action =
+           let+ unresolved = fully_expanded in
+           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
+               match Expander.resolve_binary ~loc expander ~prog with
+               | Ok path -> path
+               | Error { fail } -> fail ())
+         in
+         let { Infer.Outcome.deps; targets = _ } = Infer.infer action in
+         (Action.Chdir (Path.build dir, action), deps))
+  |> Build.with_targets ~targets

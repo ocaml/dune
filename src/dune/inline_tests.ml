@@ -334,7 +334,7 @@ include Sub_system.Register_end_point (struct
           | Javascript -> Some "node"
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
-          ~stamp:("ppx-runner", name)
+          ~stamp:("ppx-runner", name, mode)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in

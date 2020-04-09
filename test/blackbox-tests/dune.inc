@@ -1194,6 +1194,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias inline_tests-multi-mode)
+ (deps (package dune) (source_tree test-cases/inline_tests-multi-mode))
+ (action
+  (chdir
+   test-cases/inline_tests-multi-mode
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias install-dry-run)
  (deps (package dune) (source_tree test-cases/install-dry-run))
  (action
@@ -2578,6 +2586,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-dry-run)
   (alias install-libdir)
   (alias install-mandir)
@@ -2861,6 +2870,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)

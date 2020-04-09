@@ -48,6 +48,9 @@ Unreleased
 - Add a `(subdir ..)` stanza to allow evaluating stanzas in sub directories.
   (#3268, @rgrinberg)
 
+- Fix a bug preventing one from running inline tests in multiple modes
+  (#3352, @diml)
+
 2.4.0 (06/03/2020)
 ------------------
 

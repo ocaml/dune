@@ -33,40 +33,63 @@ end
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
 
-(* How to handle collisions. E.g. another version could assume collisions are
-   not possible *)
-module Collision = struct
-  type res =
-    | Found of Path.t
-    | Not_found of Path.t
+(* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
+   files stored in the cache.
 
-  (* We need to ensure we do not create holes in the suffix numbering for this
-     to work *)
+   To find a cache entry matching a given file, we try the suffices one after
+   another until we either (i) find a match and return [Found {existing_path}]
+   where the [existing_path] includes the correct suffix, or (ii) find a suffix
+   that is missing in the cache and return [Not_found {missing_path}] where the
+   [missing_path] includes the first suffix that is missing.
+
+   CR-someday amokhov: In Dune we generally assume that digest collisions are
+   impossible, so it seems better to remove this logic in future. *)
+module Collision = struct
+  type search_result =
+    | Found of { existing_path : Path.t }
+    | Not_found of { missing_path : Path.t }
+
+  (* This function assumes that we do not create holes in the suffix numbering. *)
   let search path file =
     let rec loop n =
       let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
       if Path.exists path then
         if Io.compare_files path file = Ordering.Eq then
-          Found path
+          Found { existing_path = path }
         else
           loop (n + 1)
       else
-        Not_found path
+        Not_found { missing_path = path }
     in
     loop 1
 end
 
+(* A file storage scheme. *)
 module type FSScheme = sig
-  val path : Path.t -> Digest.t -> Path.t
+  (* Given a cache root and a file digest, determine the location of the file in
+     the cache. *)
+  val path : root:Path.t -> Digest.t -> Path.t
 
+  (* Extract a file's digest from its location in the cache. *)
   val digest : Path.t -> Digest.t
 
-  val list : Path.t -> Path.t list
+  (* Given a cache root, list all files stored in the cache. *)
+  val list : root:Path.t -> Path.t list
 end
 
-(* Where to store file with a given hash. In this case ab/abcdef. *)
+(* A file storage scheme where a file with a digest [d] is stored in a
+   subdirectory whose name is made of the first two characters of [d], that is:
+
+   [<root>/<first-two-characters-of-d>/<d>.<N>]
+
+   The suffix [.<N>] is used to handle collisions, i.e. the (unlikely)
+   situations where two files have the same digest.
+
+   CR-soon amokhov: Note that the function [path] returns the path without the
+   [.<N>] suffix, whereas the function [digest] expects the [.<N>] suffix to be
+   present. We should fix this inconsistency. *)
 module FirstTwoCharsSubdir : FSScheme = struct
-  let path root hash =
+  let path ~root hash =
     let hash = Digest.to_string hash in
     let short_hash = String.sub hash ~pos:0 ~len:2 in
     Path.L.relative root [ short_hash; hash ]
@@ -78,7 +101,7 @@ module FirstTwoCharsSubdir : FSScheme = struct
       Code_error.raise "strange cached file path (not a valid hash)"
         [ (Path.to_string path, Path.to_dyn path) ]
 
-  let list root =
+  let list ~root =
     let f dir =
       let is_hex_char c =
         let char_in s e = Char.compare c s >= 0 && Char.compare c e <= 0 in
@@ -150,9 +173,9 @@ let root_data cache = Path.relative cache.root "files"
 
 let root_metadata cache = Path.relative cache.root "meta"
 
-let path_metadata cache key = FSSchemeImpl.path (root_metadata cache) key
+let path_metadata cache key = FSSchemeImpl.path ~root:(root_metadata cache) key
 
-let path_data cache key = FSSchemeImpl.path (root_data cache) key
+let path_data cache key = FSSchemeImpl.path ~root:(root_data cache) key
 
 let make_path cache path =
   match cache.build_root with
@@ -259,7 +282,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
       Result.Error message
     ) else
       match search cache effective_hash tmp with
-      | Collision.Found in_the_cache ->
+      | Collision.Found { existing_path = in_the_cache } ->
         Path.unlink tmp;
         Path.touch in_the_cache;
         Result.Ok
@@ -268,7 +291,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
              ; in_the_cache
              ; digest = effective_hash
              })
-      | Collision.Not_found in_the_cache ->
+      | Collision.Not_found { missing_path = in_the_cache } ->
         Path.mkdir_p (Path.parent_exn in_the_cache);
         let dest = Path.to_string in_the_cache in
         Unix.rename (Path.to_string tmp) dest;
@@ -318,7 +341,7 @@ let search cache key =
     with Sys_error _ -> Error "no cached file"
   in
   let+ metadata = Metadata_file.of_sexp sexp in
-  (* Touch cache files so they are removed last by LRU trimming *)
+  (* Touch cache files so they are removed last by LRU trimming. *)
   let () =
     let f (file : File.t) =
       (* There is no point in trying to trim out files that are missing : dune
@@ -379,9 +402,9 @@ let duplication_mode cache = cache.duplication_mode
 let trimmable stats = stats.Unix.st_nlink = 1
 
 let _garbage_collect default_trim cache =
-  let path = root_metadata cache in
+  let root = root_metadata cache in
   let metas =
-    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list path)
+    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list ~root)
   in
   let f default_trim = function
     | p, Result.Error msg ->
@@ -428,8 +451,8 @@ let _garbage_collect default_trim cache =
 let garbage_collect = _garbage_collect Trimming_result.empty
 
 let trim cache free =
-  let path = root_data cache in
-  let files = FSSchemeImpl.list path in
+  let root = root_data cache in
+  let files = FSSchemeImpl.list ~root in
   let f path =
     let stats = Path.stat path in
     if trimmable stats then
@@ -451,7 +474,7 @@ let trim cache free =
 
 let overhead_size cache =
   let root = root_data cache in
-  let files = FSSchemeImpl.list root in
+  let files = FSSchemeImpl.list ~root in
   let stats =
     let f p =
       try

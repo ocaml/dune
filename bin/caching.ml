@@ -60,7 +60,7 @@ let trim ~trimmed_size ~size =
   match
     let* cache =
       Cache.Local.make ~duplication_mode:Cache.Duplication_mode.Hardlink
-        (fun _ -> ())
+        ~command_handler:ignore ()
     in
     let+ trimmed_size =
       match (trimmed_size, size) with

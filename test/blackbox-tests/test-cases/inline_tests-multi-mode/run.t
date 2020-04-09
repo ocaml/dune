@@ -29,8 +29,7 @@ Reproduction case for #3347
   $ touch test.ml
 
   $ dune runtest
-  Error: Multiple rules generated for
-  _build/.aliases/default/runtest-35bbbc336be45723611745d39daa46eb:
-  - dune:5
-  - dune:5
-  [1]
+           run alias runtest
+  Test byte
+           run alias runtest
+  Test native

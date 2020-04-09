@@ -443,7 +443,7 @@ module Infer = struct
     end
   end
 
-  include Make (Action) (Sets) (Outcome)
+  include Make (Action.Ast) (Sets) (Outcome)
             (struct
               let ( +@+ ) acc fn =
                 { acc with targets = Path.Build.Set.add acc.targets fn }

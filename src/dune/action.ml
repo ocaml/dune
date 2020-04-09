@@ -69,8 +69,6 @@ end
 
 include Action_ast.Make (Prog) (Dpath) (Dpath.Build) (String_with_sexp) (Ast)
 
-type program = Prog.t
-
 type path = Path.t
 
 type target = Path.Build.t

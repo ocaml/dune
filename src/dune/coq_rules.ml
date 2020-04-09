@@ -81,8 +81,8 @@ let libs_of_coq_deps ~lib_db = Result.List.map ~f:(Lib.DB.resolve lib_db)
 
 module Context = struct
   type 'a t =
-    { coqdep : Action.program
-    ; coqc : Action.program * Path.Build.t
+    { coqdep : Action.Prog.t
+    ; coqc : Action.Prog.t * Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t

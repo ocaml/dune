@@ -40,10 +40,18 @@ end
 
 include
   Action_intf.Ast
+    with type program := Prog.t
+    with type path := Path.t
+    with type target := Path.Build.t
+    with type string := string
+
+module Ast :
+  Action_intf.Ast
     with type program = Prog.t
     with type path = Path.t
     with type target = Path.Build.t
     with type string = string
+    with type t = t
 
 include
   Action_intf.Helpers

@@ -8,9 +8,11 @@ val remove_locs : t -> t
 
 val expand :
      t
+  -> loc:Loc.t
   -> map_exe:(Path.t -> Path.t)
   -> dep_kind:Lib_deps_info.Kind.t
   -> deps_written_by_user:Path.t Bindings.t Build.t
+  -> targets_dir:Path.Build.t
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
   -> foreign_flags:

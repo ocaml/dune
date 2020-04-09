@@ -679,24 +679,11 @@ module Action = struct
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
       ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
     let map_exe = map_exe sctx in
-    let action =
-      let foreign_flags ~dir =
-        get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-      in
-      Action_unexpanded.expand t ~map_exe ~dep_kind ~deps_written_by_user
-        ~targets:targets_written_by_user ~expander ~foreign_flags
+    let foreign_flags ~dir =
+      get_node sctx.env_tree ~dir |> Env_node.foreign_flags
     in
-    Path.Build.Set.iter action.targets ~f:(fun target ->
-        if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
-          User_error.raise ~loc
-            [ Pp.text
-                "This action has targets in a different directory than the \
-                 current one, this is not allowed by dune at the moment:"
-            ; Pp.enumerate (Path.Build.Set.to_list action.targets)
-                ~f:(fun target ->
-                  Pp.text (Dpath.describe_path (Path.build target)))
-            ]);
-    action
+    Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
+      ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
 
 let opaque t =

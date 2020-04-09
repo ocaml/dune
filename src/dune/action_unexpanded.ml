@@ -582,7 +582,7 @@ module Infer = struct
   let unexpanded_targets t = (Unexp.infer t).targets
 end
 
-let expand t ~map_exe ~dep_kind ~deps_written_by_user
+let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
     ~targets:targets_written_by_user ~expander ~foreign_flags =
   let open Build.O in
   let dir = Expander.dir expander in
@@ -605,6 +605,15 @@ let expand t ~map_exe ~dep_kind ~deps_written_by_user
   let { Infer.Outcome.deps; targets } =
     Infer.partial targets_written_by_user partially_expanded
   in
+  Path.Build.Set.iter targets ~f:(fun target ->
+      if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
+        User_error.raise ~loc
+          [ Pp.text
+              "This action has targets in a different directory than the \
+               current one, this is not allowed by dune at the moment:"
+          ; Pp.enumerate (Path.Build.Set.to_list targets) ~f:(fun target ->
+                Pp.text (Dpath.describe_path (Path.build target)))
+          ]);
   let targets = Path.Build.Set.to_list targets in
   Build.path_set deps
   >>> Build.dyn_path_set

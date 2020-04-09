@@ -4,8 +4,6 @@ include Action_dune_lang
 module Unresolved = Action.Unresolved
 module Mapper = Action_mapper.Make (Action_dune_lang) (Action_dune_lang)
 
-let ignore_loc k ~loc:_ = k
-
 let remove_locs =
   let no_loc_template = String_with_vars.make_text Loc.none "" in
   fun t ->
@@ -26,17 +24,10 @@ let check_mkdir loc path =
                 [ Dune_lang.unsafe_atom_of_string "mkdir"; Dpath.encode path ]))
       ]
 
-let as_in_build_dir ~loc p =
-  match Path.as_in_build_dir p with
-  | Some p -> p
-  | None ->
-    User_error.raise ?loc
-      [ Pp.textf
-          "target %s is outside the build directory. This is not allowed."
-          (Path.to_string_maybe_quoted p)
-      ]
-
 module Expand (S : sig
+  (** Shared code between the expansion passes.
+
+      Creates common expansion for strings, paths, targets, and programs *)
   type 'a input
 
   type 'a output
@@ -44,8 +35,8 @@ module Expand (S : sig
   val expand :
        expander:Expander.t
     -> mode:'a String_with_vars.Mode.t
-    -> l:('b -> 'c)
-    -> r:(loc:Loc.t option -> 'a -> dir:Path.t -> 'c)
+    -> l:('b -> 'c) (** Continuation for when expansion isn't necessary*)
+    -> r:(loc:Loc.t option -> 'a -> 'c) (** Expansion continuation *)
     -> 'b input
     -> 'c output
 end) : sig
@@ -70,6 +61,12 @@ end = struct
 
   type ('i, 'o) expand = expander:Expander.t -> 'i input -> 'o output
 
+  let ignore_loc k ~loc:_ = k
+
+  let expand ~expander ~mode ~l ~r =
+    let dir = Path.build (Expander.dir expander) in
+    expand ~expander ~mode ~l ~r:(fun ~loc s -> r ~loc s ~dir)
+
   let string = expand ~mode:Single ~l:Fun.id ~r:(ignore_loc Value.to_string)
 
   let strings =
@@ -79,6 +76,16 @@ end = struct
     expand ~expander ~mode:Single ~l:Fun.id
       ~r:(fun ~loc v ~dir -> Value.to_path ?error_loc:loc v ~dir)
       e
+
+  let as_in_build_dir ~loc p =
+    match Path.as_in_build_dir p with
+    | Some p -> p
+    | None ->
+      User_error.raise ?loc
+        [ Pp.textf
+            "target %s is outside the build directory. This is not allowed."
+            (Path.to_string_maybe_quoted p)
+        ]
 
   let target ~expander e =
     expand e ~expander ~mode:Single ~l:Fun.id ~r:(fun ~loc v ~dir ->
@@ -126,12 +133,10 @@ module Partial = struct
     type 'a output = 'a
 
     let expand ~expander ~mode ~l ~r =
-      String_with_vars.Partial.elim ~exp:l ~unexp:(fun s ->
-          let dir = Path.build (Expander.dir expander) in
-          r
-            ~loc:(Some (String_with_vars.loc s))
-            (Expander.expand expander ~template:s ~mode)
-            ~dir)
+      String_with_vars.Partial.elim ~exp:l ~unexp:(fun sw ->
+          let x = Expander.expand expander ~template:sw ~mode in
+          let loc = Some (String_with_vars.loc sw) in
+          r ~loc x)
   end)
 
   let rec expand t ~map_exe ~expander : Unresolved.t =
@@ -212,14 +217,13 @@ module E = Expand (struct
 
   type 'a output = 'a String_with_vars.Partial.t
 
-  let expand ~expander ~mode ~l:_ ~r x : _ output =
+  let expand ~expander ~mode ~l:_ ~r sw : _ output =
     let dir = Path.build (Expander.dir expander) in
     let f = Expander.expand_var_exn expander in
-    match String_with_vars.partial_expand ~mode ~dir ~f x with
-    | Unexpanded x -> Unexpanded x
-    | Expanded e ->
-      let loc = Some (String_with_vars.loc x) in
-      String_with_vars.Partial.Expanded (r ~loc e ~dir)
+    String_with_vars.partial_expand ~mode ~dir ~f sw
+    |> String_with_vars.Partial.map ~f:(fun x ->
+           let loc = Some (String_with_vars.loc sw) in
+           r ~loc x)
 end)
 
 let rec partial_expand t ~map_exe ~expander : Partial.t =

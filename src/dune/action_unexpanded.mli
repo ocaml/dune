@@ -6,6 +6,16 @@ end
 
 val remove_locs : t -> t
 
+(** Expand an action and return its target and dependencies.
+
+    Expanding an action substitutes all [%{..}] forms, discovers dependencies
+    and targets, and verifies invariants such as:
+
+    - All the targets are in [targets_dir]
+    - The [targets] mode is respected
+
+    [foreign_flags] has to be passed because it depends on [Super_context].
+    Fetching it directly would introduce a dependency cycle. *)
 val expand :
      t
   -> loc:Loc.t
@@ -16,8 +26,7 @@ val expand :
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
   -> foreign_flags:
-       (   dir:Path.Build.t
-        -> Stdune.String.t list Build.t Foreign.Language.Dict.t)
+       (dir:Path.Build.t -> String.t list Build.t Foreign.Language.Dict.t)
   -> Action.t Build.With_targets.t
 
 (** This module is exposed only for testing *)

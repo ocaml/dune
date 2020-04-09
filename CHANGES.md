@@ -51,6 +51,10 @@ Unreleased
 - Fix a bug preventing one from running inline tests in multiple modes
   (#3352, @diml)
 
+- Allow the use of the `%{profile}` variable in the `enabled_if` field of the
+  library stanza.
+  (#3344, @mrmr1993)
+
 2.4.0 (06/03/2020)
 ------------------
 

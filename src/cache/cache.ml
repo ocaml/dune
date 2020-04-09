@@ -3,8 +3,6 @@ open Stdune
 module Key = Key
 include Cache_intf
 
-type 'a result = ('a, string) Result.t
-
 let promotion_to_string = function
   | Already_promoted { in_the_cache; in_the_build_directory; _ } ->
     Printf.sprintf "%s already promoted as %s"

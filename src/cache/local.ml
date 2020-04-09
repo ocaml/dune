@@ -8,7 +8,7 @@ type t =
   ; info : User_message.Style.t Pp.t list -> unit
   ; warn : User_message.Style.t Pp.t list -> unit
   ; repositories : repository list
-  ; handler : handler
+  ; command_handler : command -> unit
   ; duplication_mode : Duplication_mode.t
   ; temp_dir : Path.t
   }
@@ -39,15 +39,15 @@ let default_root () =
    To find a cache entry matching a given file, we try the suffices one after
    another until we either (i) find a match and return [Found {existing_path}]
    where the [existing_path] includes the correct suffix, or (ii) find a suffix
-   that is missing in the cache and return [Not_found {missing_path}] where the
-   [missing_path] includes the first suffix that is missing.
+   that is missing in the cache and return [Not_found {next_available_path}]
+   where the [next_available_path] includes the first available suffix.
 
    CR-someday amokhov: In Dune we generally assume that digest collisions are
    impossible, so it seems better to remove this logic in future. *)
-module Collision = struct
+module Collision_chain = struct
   type search_result =
     | Found of { existing_path : Path.t }
-    | Not_found of { missing_path : Path.t }
+    | Not_found of { next_available_path : Path.t }
 
   (* This function assumes that we do not create holes in the suffix numbering. *)
   let search path file =
@@ -59,7 +59,7 @@ module Collision = struct
         else
           loop (n + 1)
       else
-        Not_found { missing_path = path }
+        Not_found { next_available_path = path }
     in
     loop 1
 end
@@ -89,16 +89,16 @@ end
    [.<N>] suffix, whereas the function [digest] expects the [.<N>] suffix to be
    present. We should fix this inconsistency. *)
 module FirstTwoCharsSubdir : FSScheme = struct
-  let path ~root hash =
-    let hash = Digest.to_string hash in
-    let short_hash = String.sub hash ~pos:0 ~len:2 in
-    Path.L.relative root [ short_hash; hash ]
+  let path ~root digest =
+    let digest = Digest.to_string digest in
+    let first_two_chars = String.sub digest ~pos:0 ~len:2 in
+    Path.L.relative root [ first_two_chars; digest ]
 
   let digest path =
     match Digest.from_hex (Path.basename (fst (Path.split_extension path))) with
     | Some digest -> digest
     | None ->
-      Code_error.raise "strange cached file path (not a valid hash)"
+      Code_error.raise "strange cached file path (not a valid digest)"
         [ (Path.to_string path, Path.to_dyn path) ]
 
   let list ~root =
@@ -185,20 +185,21 @@ let make_path cache path =
       (sprintf "relative path %s while no build root was set"
          (Path.Local.to_string_maybe_quoted path))
 
-let search cache hash file = Collision.search (path_data cache hash) file
+let search cache digest file =
+  Collision_chain.search (path_data cache digest) file
 
 let with_repositories cache repositories = { cache with repositories }
 
-let duplicate ?(duplication = None) cache =
+let duplicate ?(duplication = None) cache ~src ~dst =
   match Option.value ~default:cache.duplication_mode duplication with
-  | Copy -> fun src dst -> Io.copy_file ~src ~dst ()
-  | Hardlink -> Path.link
+  | Copy -> Io.copy_file ~src ~dst ()
+  | Hardlink -> Path.link src dst
 
 let retrieve cache (file : File.t) =
   let path = Path.build file.in_the_build_directory in
   cache.info
     [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted path) ];
-  duplicate cache file.in_the_cache path;
+  duplicate cache ~src:file.in_the_cache ~dst:path;
   path
 
 let deduplicate cache (file : File.t) =
@@ -222,11 +223,6 @@ let deduplicate cache (file : File.t) =
         [ Pp.textf "error handling dune-cache command: %s: %s" syscall
             (Unix.error_message e)
         ] )
-
-let file_of_promotion = function
-  | Already_promoted f
-  | Promoted f ->
-    f
 
 let apply ~f o v =
   match o with
@@ -252,7 +248,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
           ])
       repo metadata
   in
-  let promote (path, expected_hash) =
+  let promote (path, expected_digest) =
     let* abs_path = make_path cache (Path.Build.local path) in
     cache.info [ Pp.textf "promote %s" (Path.to_string abs_path) ];
     let stat = Unix.lstat (Path.to_string abs_path) in
@@ -264,50 +260,63 @@ let promote_sync cache paths key metadata ~repository ~duplication =
           (Format.sprintf "invalid file type: %s"
              (Path.string_of_file_kind stat.st_kind))
     in
-    let prepare path =
-      let dest = Path.relative cache.temp_dir "data" in
-      if Path.exists dest then Path.unlink dest;
-      duplicate ~duplication cache path dest;
-      dest
+    (* Create a duplicate (either a [Copy] or a [Hardlink] depending on the
+       [duplication] setting) of the promoted file in a temporary directory to
+       correctly handle the situation when the file is modified or deleted
+       during the promotion process. *)
+    let tmp =
+      let dst = Path.relative cache.temp_dir "data" in
+      if Path.exists dst then Path.unlink dst;
+      duplicate ~duplication cache ~src:abs_path ~dst;
+      dst
     in
-    let tmp = prepare abs_path in
-    let effective_hash = Digest.file_with_stats tmp (Path.stat tmp) in
-    if Digest.compare effective_hash expected_hash != Ordering.Eq then (
+    let effective_digest = Digest.file_with_stats tmp (Path.stat tmp) in
+    if Digest.compare effective_digest expected_digest != Ordering.Eq then (
       let message =
-        Printf.sprintf "hash mismatch: %s != %s"
-          (Digest.to_string effective_hash)
-          (Digest.to_string expected_hash)
+        Printf.sprintf "digest mismatch: %s != %s"
+          (Digest.to_string effective_digest)
+          (Digest.to_string expected_digest)
       in
       cache.info [ Pp.text message ];
       Result.Error message
     ) else
-      match search cache effective_hash tmp with
-      | Collision.Found { existing_path = in_the_cache } ->
+      match search cache effective_digest tmp with
+      | Collision_chain.Found { existing_path } ->
+        (* We no longer need the temporary file. *)
         Path.unlink tmp;
-        Path.touch in_the_cache;
+        (* Update the timestamp of the existing cache entry, moving it to the
+           back of the trimming queue. *)
+        Path.touch existing_path;
         Result.Ok
           (Already_promoted
              { in_the_build_directory = path
-             ; in_the_cache
-             ; digest = effective_hash
+             ; in_the_cache = existing_path
+             ; digest = effective_digest
              })
-      | Collision.Not_found { missing_path = in_the_cache } ->
-        Path.mkdir_p (Path.parent_exn in_the_cache);
-        let dest = Path.to_string in_the_cache in
+      | Collision_chain.Not_found { next_available_path } ->
+        Path.mkdir_p (Path.parent_exn next_available_path);
+        let dest = Path.to_string next_available_path in
+        (* Move the temporary file to the cache. *)
         Unix.rename (Path.to_string tmp) dest;
-        (* Remove write permissions *)
+        (* Remove write permissions, making the cache entry immutable. We assume
+           that users do not modify the files in the cache. *)
         Unix.chmod dest (stat.st_perm land 0o555);
         Result.Ok
           (Promoted
              { in_the_build_directory = path
-             ; in_the_cache
-             ; digest = effective_hash
+             ; in_the_cache = next_available_path
+             ; digest = effective_digest
              })
   in
   let+ promoted = Result.List.map ~f:promote paths in
   let metadata_path = path_metadata cache key
   and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
-  and files = List.map ~f:file_of_promotion promoted in
+  and files =
+    List.map promoted ~f:(function
+        | Already_promoted f
+        | Promoted f
+        -> f)
+  in
   let metadata_file : Metadata_file.t = { metadata; files } in
   let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in
   Io.write_file metadata_tmp_path metadata;
@@ -322,12 +331,14 @@ let promote_sync cache paths key metadata ~repository ~duplication =
     | exception Sys_error _ -> Path.mkdir_p (Path.parent_exn metadata_path)
   in
   Path.rename metadata_tmp_path metadata_path;
-  let f = function
-    | Already_promoted file when cache.duplication_mode <> Copy ->
-      cache.handler (Dedup file)
-    | _ -> ()
-  in
-  List.iter ~f promoted;
+  (* The files that have already been present in the cache can be deduplicated,
+     i.e. replaced with hardlinks to their cached copies. *)
+  ( match cache.duplication_mode with
+  | Copy -> ()
+  | Hardlink ->
+    List.iter promoted ~f:(function
+      | Already_promoted file -> cache.command_handler (Dedup file)
+      | _ -> ()) );
   (metadata_file, promoted)
 
 let promote cache paths key metadata ~repository ~duplication =
@@ -375,8 +386,8 @@ let detect_duplication_mode root =
 
 let make ?(root = default_root ())
     ?(duplication_mode = detect_duplication_mode root)
-    ?(log = Dune_util.Log.info) ?(warn = fun pp -> User_warning.emit pp) handler
-    =
+    ?(log = Dune_util.Log.info) ?(warn = fun pp -> User_warning.emit pp)
+    ~command_handler () =
   if Path.basename root <> "v2" then
     Result.Error "unable to read dune-cache"
   else
@@ -386,7 +397,7 @@ let make ?(root = default_root ())
       ; info = log
       ; warn
       ; repositories = []
-      ; handler
+      ; command_handler
       ; duplication_mode
       ; temp_dir =
           Path.temp_dir ~temp_dir:root "promoting."

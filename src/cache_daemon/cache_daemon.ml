@@ -95,7 +95,7 @@ exception Error of string
 let make ?root ~config () : t =
   match
     Cache.Local.make ?root ~duplication_mode:Cache.Duplication_mode.Hardlink
-      (fun _ -> ())
+      ~command_handler:ignore ()
   with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok cache ->
@@ -286,7 +286,8 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
                 ( match
                     Cache.Local.make ?root:daemon.root
                       ~duplication_mode:Cache.Duplication_mode.Hardlink
-                      (client_handle version output)
+                      ~command_handler:(client_handle version output)
+                      ()
                   with
                 | Result.Ok m -> m
                 | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )

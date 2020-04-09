@@ -39,7 +39,7 @@ opam_install_test_deps () {
     # pressure to Dune's CI.
     keep_travis_happy \
         opam install \
-        coq.8.11.0
+        coq.8.11.1
         # js_of_ocaml-ppx \
         # js_of_ocaml-compiler \
 }

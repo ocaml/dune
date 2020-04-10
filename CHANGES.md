@@ -57,6 +57,9 @@ Unreleased
 - Allow the use of `%{ocaml_version}` variable in `enabled_if` field of the
   library stanza. (#3339, @voodoos)
 
+- Fix dune build freezing on MacOS when cache is enabled. (#3249, fixes ##2973,
+  @artempyanykh)
+
 2.4.0 (06/03/2020)
 ------------------
 

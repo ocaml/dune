@@ -145,21 +145,6 @@ val resolve_program :
   -> string
   -> Action.Prog.t
 
-module Libs : sig
-  (** Make sure all rules produces by [f] record the library dependencies for
-      [dune external-lib-deps] and depend on the generation of the .merlin file.
-
-      /!\ WARNING /!\: make sure the last function call inside [f] is fully
-      applied, otherwise the function might end up being executed after this
-      function has returned. Consider adding a type annotation to make sure this
-      doesn't happen by mistake. *)
-  val with_lib_deps :
-    t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
-
-  (** Generate the rules for the [(select ...)] forms in library dependencies *)
-  val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
-end
-
 (** Interpret dependencies written in Dune files *)
 module Deps : sig
   (** Evaluates to the actual list of dependencies, ignoring aliases, and

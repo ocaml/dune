@@ -2049,9 +2049,7 @@ end
 (* META files *)
 
 module Meta = struct
-  let to_names ts =
-    List.fold_left ts ~init:Lib_name.Set.empty ~f:(fun acc t ->
-        Lib_name.Set.add acc t.name)
+  let to_names = Lib_name.Set.of_list_map ~f:(fun t -> t.name)
 
   (* For the deprecated method, we need to put all the runtime dependencies of
      the transitive closure.

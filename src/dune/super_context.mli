@@ -128,8 +128,6 @@ val add_alias_action :
   -> Action.t Build.With_targets.t
   -> unit
 
-val source_files : src_path:Path.Source.t -> String.Set.t
-
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
     If it is not found at all, the resulting [Action.Prog.t] will either return

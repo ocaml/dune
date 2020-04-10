@@ -279,11 +279,6 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
-let source_files ~src_path =
-  match File_tree.find_dir src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
 let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in

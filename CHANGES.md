@@ -1,4 +1,4 @@
-Unreleased
+2.5.0 (09/04/2020)
 ------------------
 
 - Add a `--release` option meaning the same as `-p` but without the
@@ -22,8 +22,8 @@ Unreleased
   `dune-project` will trigger a warning for version <=2.4 and an error for
   versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
 
-- [coq] Bump coq-lang version to 0.2, put new features under it
-  (#3283, @ejgallego)
+- [coq] Bump coq lang version to 0.2. New coq features presented this release
+  require this version of the coq lang. (#3283, @ejgallego)
 
 - Prevent installation of public executables disabled using the `enabled_if` field.
   Installation will now simply skip such executables instead of raising an

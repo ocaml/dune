@@ -162,6 +162,22 @@
   -> required by alias default
   [1]
 
+  $ dune build --root compose_sub_theory/ --display short --debug-dependency-path
+  Entering directory 'compose_sub_theory'
+        coqdep b/b.v.d
+        coqdep a/a.v.d
+          coqc a/a.vo
+          coqc b/b.vo
+  lib: [
+    "_build/install/default/lib/subtheory/META"
+    "_build/install/default/lib/subtheory/dune-package"
+    "_build/install/default/lib/subtheory/opam"
+  ]
+  lib_root: [
+    "_build/install/default/lib/coq/user-contrib/b/b.vo" {"coq/user-contrib/b/b.vo"}
+    "_build/install/default/lib/coq/user-contrib/foo/a/a.vo" {"coq/user-contrib/foo/a/a.vo"}
+  ]
+
   $ dune build --root compose_two_scopes/ --display short --debug-dependency-path
   Entering directory 'compose_two_scopes'
   File "b/dune", line 4, characters 11-12:

@@ -1644,10 +1644,6 @@ let closure l ~linking =
     Resolve.compile_closure_with_overlap_checks None l ~forbidden_libraries
       ~stack
 
-let requires_exn t = Result.ok_exn t.requires
-
-let ppx_runtime_deps_exn t = Result.ok_exn t.ppx_runtime_deps
-
 let closure_exn l ~linking = Result.ok_exn (closure l ~linking)
 
 module Compile = struct
@@ -2067,12 +2063,12 @@ module Meta = struct
      Sigh... *)
   let ppx_runtime_deps_for_deprecated_method t =
     closure_exn [ t ] ~linking:false
-    |> List.concat_map ~f:ppx_runtime_deps_exn
+    |> List.concat_map ~f:(fun lib -> Result.ok_exn lib.ppx_runtime_deps)
     |> to_names
 
-  let requires t = to_names (requires_exn t)
+  let requires t = to_names (Result.ok_exn t.requires)
 
-  let ppx_runtime_deps t = to_names (ppx_runtime_deps_exn t)
+  let ppx_runtime_deps t = to_names (Result.ok_exn t.ppx_runtime_deps)
 end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =

@@ -1046,30 +1046,21 @@ module rec Resolve : sig
     -> stack:Dep_stack.t
     -> (t list, exn) Result.t
 
-  type resolved_deps =
-    { resolved : t list Or_exn.t
+  type resolved =
+    { requires : lib list Or_exn.t
+    ; pps : lib list Or_exn.t
     ; selects : Resolved_select.t list
-    ; re_exports : t list Or_exn.t
+    ; re_exports : lib list Or_exn.t
     }
 
-  val resolve_complex_deps :
+  val resolve_deps_and_add_runtime_deps :
        db
     -> Lib_dep.t list
-    -> allow_private_deps:bool
-    -> stack:Dep_stack.t
-    -> resolved_deps
-
-  val resolve_user_deps :
-       db
-    -> resolved_deps
     -> allow_private_deps:bool
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> stack:Dep_stack.t
-    -> lib list Or_exn.t
-       * lib list Or_exn.t
-       * Resolved_select.t list
-       * lib list Or_exn.t
+    -> resolved
 
   val compile_closure_with_overlap_checks :
        db option
@@ -1157,12 +1148,12 @@ end = struct
                  Lib_info.known_implementations info
                |> Variant.Map.map ~f:resolve_impl ))
     in
-    let requires, pps, resolved_selects, re_exports =
+    let { requires; pps; selects = resolved_selects; re_exports } =
       let pps = Lib_info.pps info in
       let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
-      |> resolve_complex_deps db ~allow_private_deps ~stack
-      |> resolve_user_deps db ~allow_private_deps ~dune_version ~pps ~stack
+      |> resolve_deps_and_add_runtime_deps db ~allow_private_deps ~dune_version
+           ~pps ~stack
     in
     let requires =
       match implements with
@@ -1301,6 +1292,13 @@ end = struct
     ; re_exports : t list Or_exn.t
     }
 
+  type resolved =
+    { requires : lib list Or_exn.t
+    ; pps : lib list Or_exn.t
+    ; selects : Resolved_select.t list
+    ; re_exports : lib list Or_exn.t
+    }
+
   let resolve_complex_deps db deps ~allow_private_deps ~stack : resolved_deps =
     let resolve_select { Lib_dep.Select.result_fn; choices; loc } =
       let res, src_fn =
@@ -1417,8 +1415,8 @@ end = struct
       in
       { runtime_deps = deps; pps }
 
-  let resolve_user_deps db resolved ~allow_private_deps ~pps ~dune_version
-      ~stack =
+  let add_pp_runtime_deps db resolved ~allow_private_deps ~pps ~dune_version
+      ~stack : resolved =
     let { runtime_deps; pps } =
       pp_deps db pps ~stack ~dune_version ~allow_private_deps
     in
@@ -1427,7 +1425,16 @@ end = struct
       let* deps = resolved.resolved in
       re_exports_closure (deps @ runtime_deps)
     in
-    (deps, pps, resolved.selects, resolved.re_exports)
+    { requires = deps
+    ; pps
+    ; selects = resolved.selects
+    ; re_exports = resolved.re_exports
+    }
+
+  let resolve_deps_and_add_runtime_deps db deps ~allow_private_deps ~pps
+      ~dune_version ~stack =
+    resolve_complex_deps db ~allow_private_deps ~stack deps
+    |> add_pp_runtime_deps db ~allow_private_deps ~dune_version ~pps ~stack
 
   (* Compute transitive closure of libraries to figure which ones will trigger
      their default implementation.
@@ -1984,14 +1991,14 @@ module DB = struct
           else
             Required )
     in
-    let res, pps, resolved_selects, _re_exports =
-      let allow_private_deps = true in
-      let stack = Dep_stack.empty in
-      let resolved =
-        Resolve.resolve_complex_deps t deps ~allow_private_deps ~stack
-      in
-      Resolve.resolve_user_deps t resolved ~pps
-        ~dune_version:(Some dune_version) ~stack ~allow_private_deps
+    let { Resolve.requires = res
+        ; pps
+        ; selects = resolved_selects
+        ; re_exports = _
+        } =
+      Resolve.resolve_deps_and_add_runtime_deps t deps ~pps
+        ~allow_private_deps:true ~stack:Dep_stack.empty
+        ~dune_version:(Some dune_version)
     in
     let requires_link =
       lazy

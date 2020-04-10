@@ -195,6 +195,7 @@ let all =
   ; Caching.command
   ; Describe.command
   ; Top.command
+  ; Ocaml_merlin.command
   ]
 
 let common_commands_synopsis =

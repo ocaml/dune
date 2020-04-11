@@ -34,7 +34,15 @@ module Dune_file = struct
     | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
 end
 
-module Jbuild_plugin = struct
+module Jbuild_plugin : sig
+  val create_plugin_wrapper :
+       Context.t
+    -> exec_dir:Path.t
+    -> plugin:Path.t
+    -> wrapper:Path.Build.t
+    -> target:Path.Build.t
+    -> unit
+end = struct
   let replace_in_template =
     let template =
       lazy
@@ -100,28 +108,6 @@ module Jbuild_plugin = struct
       "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
       Assets.jbuild_plugin_mli (replace_in_template vars)
       (Path.to_string plugin) plugin_contents
-end
-
-module Dune_files = struct
-  type script =
-    { dir : Path.Source.t
-    ; file : Path.Source.t
-    ; project : Dune_project.t
-    }
-
-  type one =
-    | Literal of Dune_file.t
-    | Script of
-        { script : script
-        ; from_parent : Dune_lang.Ast.t list
-        }
-
-  type t = one list
-
-  let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
-
-  let ensure_parent_dir_exists path =
-    Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let check_no_requires path str =
     List.iteri (String.split str ~on:'\n') ~f:(fun n line ->
@@ -151,9 +137,30 @@ module Dune_files = struct
       ~target =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-        Jbuild_plugin.write oc ~context ~target ~exec_dir ~plugin
-          ~plugin_contents);
+        write oc ~context ~target ~exec_dir ~plugin ~plugin_contents);
     check_no_requires plugin plugin_contents
+end
+
+module Dune_files = struct
+  type script =
+    { dir : Path.Source.t
+    ; file : Path.Source.t
+    ; project : Dune_project.t
+    }
+
+  type one =
+    | Literal of Dune_file.t
+    | Script of
+        { script : script
+        ; from_parent : Dune_lang.Ast.t list
+        }
+
+  type t = one list
+
+  let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
+
+  let ensure_parent_dir_exists path =
+    Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let eval dune_files ~(context : Context.t) =
     let open Fiber.O in
@@ -173,7 +180,7 @@ module Dune_files = struct
           Path.Build.extend_basename generated_dune_file ~suffix:".ml"
         in
         ensure_parent_dir_exists generated_dune_file;
-        create_plugin_wrapper context ~exec_dir:(Path.source dir)
+        Jbuild_plugin.create_plugin_wrapper context ~exec_dir:(Path.source dir)
           ~plugin:(Path.source file) ~wrapper ~target:generated_dune_file;
         let context = Option.value context.for_host ~default:context in
         let args =

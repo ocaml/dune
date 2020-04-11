@@ -437,6 +437,7 @@ end = struct
       match dune_file with
       | None -> init
       | Some (df : Dune_file.t) ->
+        (* Virtual directories are not in [Readdir.t]. Their presence is only *)
         let dirs = Sub_dirs.Dir_map.sub_dirs df.plain.for_subdirs in
         let status_map = Sub_dirs.eval sub_dirs ~dirs in
         List.fold_left dirs ~init ~f:(fun acc fn ->
@@ -445,7 +446,8 @@ end = struct
             | None -> acc
             | Some dir_status ->
               String.Map.update acc fn ~f:(function
-                (* Directories which are physical are skipped *)
+                (* Physical directories have already been added so they are
+                   skipped here.*)
                 | Some _ as r -> r
                 | None -> Some (make_subdir ~dir_status ~virtual_:true path)))
 

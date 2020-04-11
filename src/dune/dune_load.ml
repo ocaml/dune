@@ -222,7 +222,7 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
-let load ~ancestor_vcs () =
+let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
   let projects =
     File_tree.fold_with_progress

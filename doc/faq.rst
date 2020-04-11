@@ -66,7 +66,7 @@ How to make warnings non-fatal?
 
 ``jbuilder`` used to display warnings, but most of them would not stop the
 build. But ``dune`` makes all warnings fatal by default. This can be a
-challenge when porting a codebase to ``dune``. There are two ways to warnings
+challenge when porting a codebase to ``dune``. There are two ways to make warnings
 non-fatal:
 
 - the ``jbuilder`` compatibility executable works even with ``dune`` files. You

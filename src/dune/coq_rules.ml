@@ -389,7 +389,7 @@ let install_rules ~sctx ~dir s =
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
-    let dst_suffix = Coq_lib_name.wrapper (snd s.name) in
+    let dst_suffix = Coq_lib_name.dir (snd s.name) in
     (* These are the rules for now, coq lang 2.0 will make this uniform *)
     let dst_dir =
       if s.boot then

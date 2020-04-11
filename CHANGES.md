@@ -1,3 +1,9 @@
+2.5.1 (unreleased)
+------------------
+
+- [coq] Fix install path for theory names with level greater than 1
+  (#3358 , @ejgallego)
+
 2.5.0 (09/04/2020)
 ------------------
 

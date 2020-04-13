@@ -1,23 +1,6 @@
-open! Stdune
+open Import
 
-(* we shadow this module on purpose because it's unusable without the build dir
-   initialized *)
-module Path = struct end
-
-module Io = Io.String_path
-
-let sprintf = Printf.sprintf
-
-let eprintf = Printf.eprintf
-
-let ( ^/ ) = Filename.concat
-
-exception Fatal_error of string
-
-let die fmt = Printf.ksprintf (fun s -> raise (Fatal_error s)) fmt
-
-let warn fmt =
-  Printf.ksprintf (fun msg -> prerr_endline ("Warning: " ^ msg)) fmt
+let die = die
 
 type t =
   { name : string
@@ -29,7 +12,7 @@ type t =
   ; c_compiler : string
   ; stdlib_dir : string
   ; ccomp_type : string
-  ; ocamlc_config : string String.Map.t
+  ; ocamlc_config : Ocaml_config.Vars.t
   ; ocamlc_config_cmd : string
   }
 
@@ -266,23 +249,27 @@ module Process = struct
     run_command_ok t ?dir ?env (command_line prog args)
 end
 
-let ocaml_config_var t var = String.Map.find t.ocamlc_config var
+let ocaml_config_var t var = Ocaml_config.Vars.find t.ocamlc_config var
 
 let ocaml_config_var_exn t var =
-  match String.Map.find t.ocamlc_config var with
+  match Ocaml_config.Vars.find t.ocamlc_config var with
   | None ->
     die "variable %S not found in the output of `%s`" var t.ocamlc_config_cmd
   | Some s -> s
 
+let initial_cwd = Sys.getcwd ()
+
 let read_dot_dune_configurator_file ~build_dir =
   let file =
-    Stdune.Path.relative
-      (Stdune.Path.of_filename_relative_to_initial_cwd build_dir)
-      ".dune/configurator"
+    Filename.concat (Filename.concat initial_cwd build_dir) ".dune/configurator"
   in
-  if not (Stdune.Path.exists file) then
+  if not (Sys.file_exists file) then
     die "Cannot find special file produced by dune.";
-  let sexps = Dune_lang.Parser.load file ~mode:Many_as_one in
+  let sexps =
+    Dune_lang.Parser.load
+      (Stdune.Path.of_filename_relative_to_initial_cwd file)
+      ~mode:Many_as_one
+  in
   let decode =
     let open Dune_lang.Decoder in
     enter
@@ -295,15 +282,17 @@ let read_dot_dune_configurator_file ~build_dir =
             leftover_fields
           in
           (* We assume that dune already checked for duplicates *)
-          let ocaml_config_vars = String.Map.of_list_exn ocaml_config_vars in
+          let ocaml_config_vars =
+            Ocaml_config.Vars.of_list_exn ocaml_config_vars
+          in
           (ocamlc, ocaml_config_vars)))
   in
-  Dune_lang.Decoder.parse decode Univ_map.empty sexps
+  Dune_lang.Decoder.parse decode Stdune.Univ_map.empty sexps
 
 let fill_in_fields_that_depends_on_ocamlc_config t =
   let get = ocaml_config_var_exn t in
   let c_compiler =
-    match String.Map.find t.ocamlc_config "c_compiler" with
+    match Ocaml_config.Vars.find t.ocamlc_config "c_compiler" with
     | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
     | None -> get "bytecomp_c_compiler"
   in
@@ -362,7 +351,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
       ; c_compiler = ""
       ; stdlib_dir = ""
       ; ccomp_type = ""
-      ; ocamlc_config = String.Map.empty
+      ; ocamlc_config = Ocaml_config.Vars.of_list_exn []
       ; ocamlc_config_cmd
       }
     in
@@ -568,9 +557,7 @@ const char *s%i = "BEGIN-%i-false-END";
             | ('A' .. 'Z' | '0' .. '9') as c -> c
             | _ -> '_')
     in
-    let vars =
-      List.sort vars ~compare:(fun (a, _) (b, _) -> String.compare a b)
-    in
+    let vars = List.sort vars ~cmp:(fun (a, _) (b, _) -> compare a b) in
     let lines =
       List.map vars ~f:(fun (name, value) ->
           match (value : Value.t) with

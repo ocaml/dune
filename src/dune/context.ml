@@ -245,7 +245,7 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
        (record_fields
           [ field "ocamlc" string (Path.to_absolute_filename ocamlc)
           ; field_l "ocaml_config_vars" (pair string string)
-              (String.Map.to_list ocaml_config_vars)
+              (Ocaml_config.Vars.to_list ocaml_config_vars)
           ]))
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets

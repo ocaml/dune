@@ -35,7 +35,7 @@ dune.
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
 [issues]:         https://github.com/ocaml/dune/issues
-[topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
+[dune-release]:   https://github.com/ocamllabs/dune-release
 [video]:          https://youtu.be/BNZhmMAJarw
 
 Overview

@@ -4,6 +4,9 @@
 - [coq] Fix install path for theory names with level greater than 1
   (#3358 , @ejgallego)
 
+- Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets had
+  no effect. (@aalekseyev, report by @craigfe)
+
 2.5.0 (09/04/2020)
 ------------------
 

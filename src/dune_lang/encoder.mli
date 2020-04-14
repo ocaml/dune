@@ -17,11 +17,11 @@ val field_o : string -> 'a t -> 'a option -> field
 
 val field_b : string -> bool -> field
 
-(** Field with inlined list as value *)
 val field_l : string -> 'a t -> 'a list -> field
+(** Field with inlined list as value *)
 
-(** Same as [field_l] but to represent a single value *)
 val field_i : string -> ('a -> T.t list) -> 'a -> field
+(** Same as [field_l] but to represent a single value *)
 
 val record_fields : field list -> T.t list
 

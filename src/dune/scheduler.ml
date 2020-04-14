@@ -66,24 +66,24 @@ module Event : sig
     | Job_completed of job * Unix.process_status
     | Signal of Signal.t
 
+  val next : unit -> t
   (** Return the next event. File changes event are always flattened and
       returned first. *)
-  val next : unit -> t
 
-  (** Handle all enqueued deduplications. *)
   val flush_dedup : unit -> unit
+  (** Handle all enqueued deduplications. *)
 
-  (** Ignore the ne next file change event about this file. *)
   val ignore_next_file_change_event : Path.t -> unit
+  (** Ignore the ne next file change event about this file. *)
 
-  (** Register the fact that a job was started. *)
   val register_job_started : unit -> unit
+  (** Register the fact that a job was started. *)
 
-  (** Number of jobs for which the status hasn't been reported yet .*)
   val pending_jobs : unit -> int
+  (** Number of jobs for which the status hasn't been reported yet .*)
 
-  (** Send an event to the main thread. *)
   val send_files_changed : Path.t list -> unit
+  (** Send an event to the main thread. *)
 
   val send_job_completed : job -> Unix.process_status -> unit
 
@@ -230,11 +230,11 @@ let ignore_for_watch = Event.ignore_next_file_change_event
 module File_watcher : sig
   type t
 
-  (** Create a new file watcher. *)
   val create : unit -> t
+  (** Create a new file watcher. *)
 
-  (** Pid of the external file watcher process *)
   val pid : t -> Pid.t
+  (** Pid of the external file watcher process *)
 end = struct
   type t = Pid.t
 
@@ -394,14 +394,14 @@ end = struct
 end
 
 module Process_watcher : sig
-  (** Initialize the process watcher thread. *)
   val init : unit -> unit
+  (** Initialize the process watcher thread. *)
 
-  (** Register a new running job. *)
   val register_job : job -> unit
+  (** Register a new running job. *)
 
-  (** Send the following signal to all running processes. *)
   val killall : int -> unit
+  (** Send the following signal to all running processes. *)
 end = struct
   let mutex = Mutex.create ()
 
@@ -692,8 +692,8 @@ module Run_once : sig
     | Never
     | Exn of Exn.t * Printexc.raw_backtrace
 
-  (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
+  (** Run the build and clean up after it (kill any stray processes etc). *)
 end = struct
   type pump_events_result =
     | Done

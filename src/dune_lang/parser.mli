@@ -17,6 +17,6 @@ val parse_string :
 
 val load : ?lexer:Lexer.t -> Path.t -> mode:'a Mode.t -> 'a
 
+val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list
 (** Insert comments in a concrete syntax tree. Comments are inserted based on
     their location. *)
-val insert_comments : Cst.t list -> (Loc.t * Cst.Comment.t) list -> Cst.t list

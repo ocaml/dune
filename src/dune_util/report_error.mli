@@ -1,6 +1,10 @@
 (** Error reporting *)
 open Stdune
 
+val report :
+     ?extra:(Loc.t option -> User_message.Style.t Pp.t option)
+  -> Exn_with_backtrace.t
+  -> unit
 (** Reports an error.
 
     Because dune doesn't stop at the first error, it might end up reporting the
@@ -12,10 +16,6 @@ open Stdune
 
     [extra] is the extra material that is printed between the backtrace and the
     hint. *)
-val report :
-     ?extra:(Loc.t option -> User_message.Style.t Pp.t option)
-  -> Exn_with_backtrace.t
-  -> unit
 
 val report_backtraces : bool -> unit
 
@@ -24,8 +24,8 @@ val report_backtraces : bool -> unit
     has already failed. *)
 exception Already_reported
 
-(** Clear the list of already reported errors. *)
 val clear_reported : unit -> unit
+(** Clear the list of already reported errors. *)
 
 (**/**)
 

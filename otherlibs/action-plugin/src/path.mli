@@ -6,15 +6,15 @@
 type t
 
 module O : sig
-  (** Concatenate two paths. *)
   val ( ^/ ) : t -> t -> t
+  (** Concatenate two paths. *)
 end
 
-(** Concatenate two paths. *)
 val concat : t -> t -> t
+(** Concatenate two paths. *)
 
 val to_string : t -> string
 
+val of_string : string -> t
 (** Convert path to string. Throws an Invalid_argument exception if passed
     string is not a relative path. *)
-val of_string : string -> t

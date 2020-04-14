@@ -48,10 +48,10 @@ val set_lookup_library :
        (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
   -> t
 
+val add_bindings : t -> bindings:Pform.Map.t -> t
 (** Expander need to expand custom bindings sometimes. For exmaple, the name of
     the library for the action that runs inline tests. This is the place to add
     such bindings. *)
-val add_bindings : t -> bindings:Pform.Map.t -> t
 
 val extend_env : t -> env:Env.t -> t
 
@@ -85,12 +85,6 @@ type reduced_var_result =
 val expand_with_reduced_var_set :
   context:Context.t -> reduced_var_result String_with_vars.expander
 
-(** Prepare a temporary expander capable of expanding variables in the [deps] or
-    similar fields. This expander doesn't support variables that require us to
-    build something to expand. For example, [%{exe:foo}] is allowed but
-    [%{read:bar}] is not allowed.
-
-    Once [f] has returned, the temporary expander can no longer be used. *)
 val expand_deps_like_field :
      t
   -> dep_kind:Lib_deps_info.Kind.t
@@ -99,13 +93,13 @@ val expand_deps_like_field :
        (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
   -> f:(t -> 'a Build.t)
   -> 'a Build.t
+(** Prepare a temporary expander capable of expanding variables in the [deps] or
+    similar fields. This expander doesn't support variables that require us to
+    build something to expand. For example, [%{exe:foo}] is allowed but
+    [%{read:bar}] is not allowed.
 
-(** Expand user actions. Both [partial] and [final] receive temporary expander
-    that must not be used once these functions have returned. The expander
-    passed to [partial] will not expand forms such as [%{read:...}], but the one
-    passed to [final] will.
+    Once [f] has returned, the temporary expander can no longer be used. *)
 
-    Returns both the result of partial and final expansion. *)
 val expand_action :
      t
   -> deps_written_by_user:Path.t Bindings.t Build.t
@@ -117,17 +111,23 @@ val expand_action :
   -> partial:(t -> 'a)
   -> final:(t -> 'a -> 'b)
   -> 'a * 'b Build.t
+(** Expand user actions. Both [partial] and [final] receive temporary expander
+    that must not be used once these functions have returned. The expander
+    passed to [partial] will not expand forms such as [%{read:...}], but the one
+    passed to [final] will.
 
-(** Expand individual string templates with this function *)
+    Returns both the result of partial and final expansion. *)
+
 val expand_var_exn : t -> Value.t list option String_with_vars.expander
+(** Expand individual string templates with this function *)
 
-(** Expand forms of the form (:standard \ foo bar). Expansion is only possible
-    inside [Build.t] because such forms may contain the form (:include ..) which
-    needs files to be built. *)
 val expand_and_eval_set :
      t
   -> Ordered_set_lang.Unexpanded.t
   -> standard:string list Build.t
   -> string list Build.t
+(** Expand forms of the form (:standard \ foo bar). Expansion is only possible
+    inside [Build.t] because such forms may contain the form (:include ..) which
+    needs files to be built. *)
 
 val eval_blang : t -> Blang.t -> bool

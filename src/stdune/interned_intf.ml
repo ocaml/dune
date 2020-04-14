@@ -13,12 +13,12 @@ module type S = sig
 
   val make : string -> t
 
+  val get : string -> t option
   (** Like [make] except it returns [None] if the string hasn't been registered
       with [make] previously. *)
-  val get : string -> t option
 
-  (** Return the list of all existing [t]s. *)
   val all : unit -> t list
+  (** Return the list of all existing [t]s. *)
 
   module Set : sig
     include Set.S with type elt = t

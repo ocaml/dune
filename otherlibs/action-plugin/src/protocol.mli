@@ -48,8 +48,8 @@ module Response : sig
   include Serializable with type t := t
 end
 
-(** Dune sets this environment variable to pass [Greeting.t] to client. *)
 val run_by_dune_env_variable : string
+(** Dune sets this environment variable to pass [Greeting.t] to client. *)
 
 module Context : sig
   type t

@@ -50,6 +50,7 @@ val to_map : t -> Dir_rules.t Path.Build.Map.t
 module Produce : sig
   (* CR-someday aalekseyev: the below comments are not quite right *)
 
+  val rule : Rule.t -> unit
   (** Add a rule to the system. This function must be called from the
       [gen_rules] callback. All the target of the rule must be in the same
       directory.
@@ -62,18 +63,14 @@ module Produce : sig
       The call to [load_dir ~dir:a] from [gen_rules ~dir:b] declares a directory
       dependency from [b] to [a]. There must be no cyclic directory
       dependencies. *)
-  val rule : Rule.t -> unit
 
   module Alias : sig
     type t = Alias.t
 
+    val add_deps : t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
     (** [add_deps store alias ?dyn_deps deps] arrange things so that all
         [dyn_deps] and [deps] are built as part of the build of alias [alias]. *)
-    val add_deps : t -> ?dyn_deps:Path.Set.t Build.t -> Path.Set.t -> unit
 
-    (** [add_action store alias ~stamp action] arrange things so that [action]
-        is executed as part of the build of alias [alias]. [stamp] is any
-        S-expression that is unique and persistent S-expression. *)
     val add_action :
          t
       -> context:Context.t
@@ -83,6 +80,9 @@ module Produce : sig
       -> stamp:_
       -> Action.t Build.With_targets.t
       -> unit
+    (** [add_action store alias ~stamp action] arrange things so that [action]
+        is executed as part of the build of alias [alias]. [stamp] is any
+        S-expression that is unique and persistent S-expression. *)
   end
 end
 
@@ -110,5 +110,5 @@ val collect_unit : (unit -> unit) -> t
 
 val collect_opt : (unit -> 'a) -> 'a * t option
 
-(** returns [Dir_rules.empty] for non-build paths *)
 val find : t -> Path.t -> Dir_rules.t
+(** returns [Dir_rules.empty] for non-build paths *)

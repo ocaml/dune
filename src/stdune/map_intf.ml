@@ -34,8 +34,8 @@ module type S = sig
 
   val union : 'a t -> 'a t -> f:(key -> 'a -> 'a -> 'a option) -> 'a t
 
-  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
   val superpose : 'a t -> 'a t -> 'a t
+  (** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
 
   val compare : 'a t -> 'a t -> compare:('a -> 'a -> Ordering.t) -> Ordering.t
 
@@ -84,6 +84,7 @@ module type S = sig
 
   val of_list_reducei : (key * 'a) list -> f:(key -> 'a -> 'a -> 'a) -> 'a t
 
+  val of_list_fold : (key * 'a) list -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
   (** Return a map of [(k, v)] bindings such that:
 
       {[ v = f init @@ f v1 @@ fv2 @@ ... @@ f vn ]}
@@ -93,7 +94,6 @@ module type S = sig
       efficient version of:
 
       {[ of_list_multi l |> map ~f:(List.fold_left ~init ~f) ]} *)
-  val of_list_fold : (key * 'a) list -> init:'b -> f:('b -> 'a -> 'b) -> 'b t
 
   val keys : 'a t -> key list
 
@@ -121,9 +121,9 @@ module type S = sig
 
   val filter_mapi : 'a t -> f:(key -> 'a -> 'b option) -> 'b t
 
+  val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool
   (** [is_subset t ~of_ ~f] is [true] iff all keys in [t] are in [of_] and [f]
       is [true] for all keys that are in both. *)
-  val is_subset : 'a t -> of_:'b t -> f:('a -> of_:'b -> bool) -> bool
 
   val to_dyn : ('a -> Dyn.t) -> 'a t -> Dyn.t
 

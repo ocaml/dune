@@ -5,17 +5,17 @@ module type S = sig
 
   module Map : Map_intf.S with type key = t
 
-  (** Generate a new id. *)
   val gen : unit -> t
+  (** Generate a new id. *)
 
-  (** Get the next id that would be generated, without actually generating it. *)
   val peek : unit -> t
+  (** Get the next id that would be generated, without actually generating it. *)
 
-  (** Convert the id to an integer. *)
   val to_int : t -> int
+  (** Convert the id to an integer. *)
 
-  (** Compare two ids. *)
   val compare : t -> t -> Ordering.t
+  (** Compare two ids. *)
 
   val equal : t -> t -> bool
 

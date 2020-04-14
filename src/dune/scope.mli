@@ -12,8 +12,8 @@ val name : t -> Dune_project.Name.t
 
 val project : t -> Dune_project.t
 
-(** Return the library database associated to this scope *)
 val libs : t -> Lib.DB.t
+(** Return the library database associated to this scope *)
 
 val coq_libs : t -> Coq_lib.DB.t
 
@@ -23,7 +23,6 @@ module DB : sig
 
   type t
 
-  (** Return the new scope database as well as the public libraries database *)
   val create_from_stanzas :
        projects:Dune_project.t list
     -> context:Context.t
@@ -31,6 +30,7 @@ module DB : sig
     -> lib_config:Lib_config.t
     -> Dune_load.Dune_file.t list
     -> t * Lib.DB.t
+  (** Return the new scope database as well as the public libraries database *)
 
   val find_by_dir : t -> Path.Build.t -> scope
 

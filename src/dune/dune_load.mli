@@ -29,5 +29,5 @@ type conf = private
   ; projects : Dune_project.t list
   }
 
-(** Initialize the file tree and load all dune files *)
 val load : ancestor_vcs:Vcs.t option -> conf
+(** Initialize the file tree and load all dune files *)

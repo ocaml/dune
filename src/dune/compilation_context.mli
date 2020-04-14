@@ -10,7 +10,6 @@ open Import
     associated to each library, executable and executables stanza. *)
 type t
 
-(** Create a compilation context. *)
 val create :
      super_context:Super_context.t
   -> scope:Scope.t
@@ -30,9 +29,10 @@ val create :
   -> ?modes:Dune_file.Mode_conf.Set.Details.t Mode.Dict.t
   -> unit
   -> t
+(** Create a compilation context. *)
 
-(** Return a compilation context suitable for compiling the alias module. *)
 val for_alias_module : t -> t
+(** Return a compilation context suitable for compiling the alias module. *)
 
 val super_context : t -> Super_context.t
 

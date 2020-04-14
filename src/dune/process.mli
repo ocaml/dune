@@ -28,20 +28,20 @@ module Io : sig
 
   val stdin : input t
 
-  (** Return a buffered channel for this output. The channel is created lazily. *)
   val out_channel : output t -> out_channel
+  (** Return a buffered channel for this output. The channel is created lazily. *)
 
+  val file : Path.t -> 'a mode -> 'a t
   (** Create a [t] representing redirecting the input or to a file or reading
       input from the file. The returned channel can only be used by a single
       call to {!run}. If you want to use it multiple times, you need to use
       [clone]. *)
-  val file : Path.t -> 'a mode -> 'a t
 
-  (** Call this when you no longer need this redirection *)
   val release : 'a t -> unit
+  (** Call this when you no longer need this redirection *)
 
-  (** [multi_use t] returns a copy for which [release] does nothing *)
   val multi_use : 'a t -> 'a t
+  (** [multi_use t] returns a copy for which [release] does nothing *)
 end
 
 (** Why a Fiber.t was run *)
@@ -49,8 +49,6 @@ type purpose =
   | Internal_job
   | Build_job of Path.Build.Set.t
 
-(** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
-    termination *)
 val run :
      ?dir:Path.t
   -> ?stdout_to:Io.output Io.t
@@ -62,8 +60,9 @@ val run :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+(** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
+    termination *)
 
-(** Run a command and capture its output *)
 val run_capture :
      ?dir:Path.t
   -> ?stderr_to:Io.output Io.t
@@ -74,6 +73,7 @@ val run_capture :
   -> Path.t
   -> string list
   -> 'a Fiber.t
+(** Run a command and capture its output *)
 
 val run_capture_line :
      ?dir:Path.t

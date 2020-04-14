@@ -18,8 +18,8 @@ val empty : t
 
 val vars : t -> Var.Set.t
 
-(** The environment when the process started *)
 val initial : t
+(** The environment when the process started *)
 
 val to_unix : t -> string array
 

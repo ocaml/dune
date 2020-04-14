@@ -131,7 +131,7 @@ val hash : t -> int
 
 val is_opam_file : Path.t -> bool
 
-(** Construct a package description from an opam file. *)
 val load_opam_file : Path.Source.t -> Name.t -> t
+(** Construct a package description from an opam file. *)
 
 val missing_deps : t -> effective_deps:Name.Set.t -> Name.Set.t

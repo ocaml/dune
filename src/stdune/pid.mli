@@ -9,6 +9,6 @@ val equal : t -> t -> bool
 
 val to_int : t -> int
 
+val of_int : int -> t
 (** Unsafe cast of integers to pids. Will be removed once we improve the API
     further *)
-val of_int : int -> t

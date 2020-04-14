@@ -2,23 +2,24 @@
 
    once we drop support for 4.07 *)
 
-(** [id] is the identity function. For any argument [x], [id x] is [x]. *)
 external id : 'a -> 'a = "%identity"
+(** [id] is the identity function. For any argument [x], [id x] is [x]. *)
 
+val const : 'a -> _ -> 'a
 (** [const c] is a function that always returns the value [c]. For any argument
     [x], [(const c) x] is [c]. *)
-val const : 'a -> _ -> 'a
 
+val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
 (** [flip f] reverses the argument order of the binary function [f]. For any
     arguments [x] and [y], [(flip f) x y] is [f y x]. *)
-val flip : ('a -> 'b -> 'c) -> 'b -> 'a -> 'c
 
+val negate : ('a -> bool) -> 'a -> bool
 (** [negate p] is the negation of the predicate function [p]. For any argument
     [x], [(negate p) x] is [not (p x)]. *)
-val negate : ('a -> bool) -> 'a -> bool
 
 (** {1:exception Exception handling} *)
 
+val protect : finally:(unit -> unit) -> (unit -> 'a) -> 'a
 (** [protect ~finally work] invokes [work ()] and then [finally ()] before
     [work ()] returns with its value or an exception. In the latter case the
     exception is re-raised after [finally ()]. If [finally ()] raises an
@@ -34,7 +35,6 @@ val negate : ('a -> bool) -> 'a -> bool
     by [finally], as any exception raised in [work ()] will be lost in the event
     of a {!Finally_raised} exception. Therefore, one should make sure to handle
     those inside the finally. *)
-val protect : finally:(unit -> unit) -> (unit -> 'a) -> 'a
 
 (** [Finally_raised exn] is raised by [protect ~finally work] when [finally]
     raises an exception [exn]. This exception denotes either an unexpected

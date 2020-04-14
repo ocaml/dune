@@ -74,17 +74,17 @@ module For_shell : sig
   val encode : t Dune_lang.Encoder.t
 end
 
-(** Convert the action to a format suitable for printing *)
 val for_shell : t -> For_shell.t
+(** Convert the action to a format suitable for printing *)
 
-(** Return the list of directories the action chdirs to *)
 val chdirs : t -> Path.Set.t
+(** Return the list of directories the action chdirs to *)
 
-(** The empty action that does nothing. *)
 val empty : t
+(** The empty action that does nothing. *)
 
-(** Checks, if action contains a [Dynamic_run]. *)
 val is_dynamic : t -> bool
+(** Checks, if action contains a [Dynamic_run]. *)
 
 (** Ast where programs are not yet looked up in the PATH *)
 module Unresolved : sig
@@ -109,9 +109,6 @@ module Unresolved : sig
 end
 with type action := t
 
-(** Return a sandboxed version of an action. It takes care of preparing deps in
-    the sandbox, but it does not copy the targets back out. It's the
-    responsibility of the caller to do that. *)
 val sandbox :
      t
   -> sandboxed:(Path.Build.t -> Path.Build.t)
@@ -119,6 +116,9 @@ val sandbox :
   -> deps:Dep.Set.t
   -> eval_pred:Dep.eval_pred
   -> t
+(** Return a sandboxed version of an action. It takes care of preparing deps in
+    the sandbox, but it does not copy the targets back out. It's the
+    responsibility of the caller to do that. *)
 
 type is_useful =
   | Clearly_not

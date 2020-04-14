@@ -16,7 +16,6 @@ type build_system =
 val package_install_file :
   workspace -> Package.Name.t -> (Path.Source.t, unit) result
 
-(** Scan the source tree and discover the overall layout of the workspace. *)
 val scan_workspace :
      ?workspace_file:Path.t
   -> ?x:Context_name.t
@@ -25,8 +24,8 @@ val scan_workspace :
   -> ancestor_vcs:Vcs.t option
   -> unit
   -> workspace Fiber.t
+(** Scan the source tree and discover the overall layout of the workspace. *)
 
-(** Load dune files and initializes the build system *)
 val init_build_system :
      ?only_packages:Package.t Package.Name.Map.t
   -> ?external_lib_deps_mode:bool
@@ -34,11 +33,12 @@ val init_build_system :
   -> ?caching:Build_system.caching
   -> workspace
   -> build_system Fiber.t
+(** Load dune files and initializes the build system *)
 
 val find_context_exn : workspace -> name:Context_name.t -> Context.t
 
-(** Setup the environment *)
 val setup_env : capture_outputs:bool -> Env.t
+(** Setup the environment *)
 
-(** Set the concurrency level according to the user configuration *)
 val set_concurrency : Config.t -> unit Fiber.t
+(** Set the concurrency level according to the user configuration *)

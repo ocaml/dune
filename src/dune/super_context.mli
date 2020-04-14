@@ -46,19 +46,19 @@ end
 
 val lib_entries_of_package : t -> Package.Name.t -> Lib_entry.t list
 
-(** All public libraries of the workspace *)
 val public_libs : t -> Lib.DB.t
+(** All public libraries of the workspace *)
 
-(** Installed libraries that are not part of the workspace *)
 val installed_libs : t -> Lib.DB.t
+(** Installed libraries that are not part of the workspace *)
 
-(** All non-public library names *)
 val internal_lib_names : t -> Lib_name.Set.t
+(** All non-public library names *)
 
-(** Compute the ocaml flags based on the directory environment and a buildable
-    stanza *)
 val ocaml_flags :
   t -> dir:Path.Build.t -> Dune_file.Buildable.t -> Ocaml_flags.t
+(** Compute the ocaml flags based on the directory environment and a buildable
+    stanza *)
 
 val foreign_flags :
      t
@@ -75,15 +75,15 @@ val menhir_flags :
   -> flags:Ordered_set_lang.Unexpanded.t
   -> string list Build.t
 
+val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 (** Binaries that are symlinked in the associated .bin directory of [dir]. This
     associated directory is [Path.relative dir ".bin"] *)
-val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 
-(** odoc config in the corresponding [(env)] stanza. *)
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
+(** odoc config in the corresponding [(env)] stanza. *)
 
-(** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
+(** Dump a directory environment in a readable form *)
 
 val find_scope_by_dir : t -> Path.Build.t -> Scope.t
 
@@ -130,13 +130,6 @@ val add_alias_action :
 
 val source_files : src_path:Path.Source.t -> String.Set.t
 
-(** [resolve_program t ?hint name] resolves a program. [name] is looked up in
-    the workspace, if it is not found in the tree is is looked up in the PATH.
-    If it is not found at all, the resulting [Action.Prog.t] will either return
-    the resolved path or a record with details about the error and possibly a
-    hint.
-
-    [hint] should tell the user what to install when the program is not found. *)
 val resolve_program :
      t
   -> dir:Path.Build.t
@@ -144,8 +137,17 @@ val resolve_program :
   -> loc:Loc.t option
   -> string
   -> Action.Prog.t
+(** [resolve_program t ?hint name] resolves a program. [name] is looked up in
+    the workspace, if it is not found in the tree is is looked up in the PATH.
+    If it is not found at all, the resulting [Action.Prog.t] will either return
+    the resolved path or a record with details about the error and possibly a
+    hint.
+
+    [hint] should tell the user what to install when the program is not found. *)
 
 module Libs : sig
+  val with_lib_deps :
+    t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
   (** Make sure all rules produces by [f] record the library dependencies for
       [dune external-lib-deps] and depend on the generation of the .merlin file.
 
@@ -153,35 +155,30 @@ module Libs : sig
       applied, otherwise the function might end up being executed after this
       function has returned. Consider adding a type annotation to make sure this
       doesn't happen by mistake. *)
-  val with_lib_deps :
-    t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
 
-  (** Generate the rules for the [(select ...)] forms in library dependencies *)
   val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
+  (** Generate the rules for the [(select ...)] forms in library dependencies *)
 end
 
 (** Interpret dependencies written in Dune files *)
 module Deps : sig
+  val interpret : t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
   (** Evaluates to the actual list of dependencies, ignoring aliases, and
       registers them as the action dependencies. *)
-  val interpret : t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
 
-  (** Evaluates to the actual list of dependencies, ignoring aliases, and
-      registers them as the action dependencies.
-
-      It returns bindings that are later used for action expansion. *)
   val interpret_named :
        t
     -> expander:Expander.t
     -> Dep_conf.t Bindings.t
     -> Path.t Bindings.t Build.t
+  (** Evaluates to the actual list of dependencies, ignoring aliases, and
+      registers them as the action dependencies.
+
+      It returns bindings that are later used for action expansion. *)
 end
 
 (** Interpret action written in Dune files *)
 module Action : sig
-  (** This function takes as input the list of dependencies written by user,
-      which is used for action expansion. These must be registered with the
-      build description before calling [run]. *)
   val run :
        t
     -> loc:Loc.t
@@ -192,6 +189,9 @@ module Action : sig
     -> Action_unexpanded.t
     -> Path.t Bindings.t Build.t
     -> Action.t Build.With_targets.t
+  (** This function takes as input the list of dependencies written by user,
+      which is used for action expansion. These must be registered with the
+      build description before calling [run]. *)
 
   val map_exe : t -> Path.t -> Path.t
 end

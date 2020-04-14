@@ -24,8 +24,8 @@ end
 module Vars : sig
   type t = string String.Map.t
 
-  (** Parse the output of [ocamlc -config] given as a list of lines. *)
   val of_lines : string list -> (t, string) Result.t
+  (** Parse the output of [ocamlc -config] given as a list of lines. *)
 end
 
 (** {1 Creation} *)
@@ -55,9 +55,9 @@ module Ccomp_type : sig
   val to_string : t -> string
 end
 
+val make : Vars.t -> (t, Origin.t * string) Result.t
 (** Interpret raw bindings (this function also loads the [Makefile.config] file
     in the stdlib directory). *)
-val make : Vars.t -> (t, Origin.t * string) Result.t
 
 (** {1 Query} *)
 

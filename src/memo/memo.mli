@@ -22,9 +22,9 @@ module Stack_frame : sig
 
   val input : t -> Dyn.t
 
+  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
   (** Checks if the stack frame is a frame of the given memoized function and if
       so, returns [Some i] where [i] is the argument of the function. *)
-  val as_instance_of : t -> of_:('input, _, _) memo -> 'input option
 end
 
 module Cycle_error : sig
@@ -32,17 +32,17 @@ module Cycle_error : sig
 
   exception E of t
 
-  (** Get the list of stack frames in this cycle. *)
   val get : t -> Stack_frame.t list
+  (** Get the list of stack frames in this cycle. *)
 
-  (** Return the stack leading to the node which raised the cycle. *)
   val stack : t -> Stack_frame.t list
+  (** Return the stack leading to the node which raised the cycle. *)
 end
 
+val reset : unit -> unit
 (** Notify the memoization system that the build system has restarted. This
     removes the values that depend on the [current_run] from the memoization
     cache, and cancels all pending computations. *)
-val reset : unit -> unit
 
 module Function : sig
   module Type : sig
@@ -132,6 +132,15 @@ val create_with_store :
   -> 'f
   -> ('i, 'o, 'f) t
 
+val create :
+     string
+  -> ?doc:string
+  -> input:(module Input with type t = 'i)
+  -> visibility:'i Visibility.t
+  -> output:'o Output.t
+  -> ('i, 'o, 'f) Function.Type.t
+  -> 'f
+  -> ('i, 'o, 'f) t
 (** [create name ~doc ~input ~visibility ~output f_type f] creates a memoized
     version of [f]. The result of [f] for a given input is cached, so that the
     second time [exec t x] is called, the previous result is re-used if
@@ -149,15 +158,6 @@ val create_with_store :
 
     [visibility] determines whether the function is user-facing or internal and
     if it's user-facing then how to parse the values written by the user. *)
-val create :
-     string
-  -> ?doc:string
-  -> input:(module Input with type t = 'i)
-  -> visibility:'i Visibility.t
-  -> output:'o Output.t
-  -> ('i, 'o, 'f) Function.Type.t
-  -> 'f
-  -> ('i, 'o, 'f) t
 
 val create_hidden :
      string
@@ -167,33 +167,33 @@ val create_hidden :
   -> 'f
   -> ('i, 'o, 'f) t
 
+val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 (** The call [peek_exn t i] registers a dependency on [t i] and returns its
     value, failing if the value has not yet been computed. We do not expose
     [peek] because the [None] case is hard to reason about, and currently there
     are no use-cases for it. *)
-val peek_exn : ('i, 'o, _) t -> 'i -> 'o
 
-(** Execute a memoized function *)
 val exec : (_, _, 'f) t -> 'f
+(** Execute a memoized function *)
 
+val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
 (** After running a memoization function with a given name and input, it is
     possible to query which dependencies that function used during execution by
     calling [get_deps] with the name and input used during execution.
 
     Returns [None] if the dependencies were not computed yet. *)
-val get_deps : ('i, _, _) t -> 'i -> (string option * Dyn.t) list option
 
+val dump_stack : unit -> unit
 (** Print the memoized call stack during execution. This is useful for debugging
     purposes. *)
-val dump_stack : unit -> unit
 
 val pp_stack : unit -> _ Pp.t
 
-(** Get the memoized call stack during the execution of a memoized function. *)
 val get_call_stack : unit -> Stack_frame.t list
+(** Get the memoized call stack during the execution of a memoized function. *)
 
-(** Call a memoized function by name *)
 val call : string -> Dune_lang.Ast.t -> Dyn.t Fiber.t
+(** Call a memoized function by name *)
 
 module Run : sig
   (** A single build run. *)
@@ -203,28 +203,28 @@ module Run : sig
   module Fdecl : sig
     type 'a t
 
+    val create : ('a -> Dyn.t) -> 'a t
     (** [create to_dyn] creates a forward declaration. The [to_dyn] parameter is
         used for reporting errors in [set] and [get]. *)
-    val create : ('a -> Dyn.t) -> 'a t
 
+    val set : 'a t -> 'a -> unit
     (** [set t x] sets the value that is returned by [get t] to [x]. Raises if
         [set] was already called. *)
-    val set : 'a t -> 'a -> unit
 
+    val get : 'a t -> 'a
     (** [get t] returns the [x] if [set comp x] was called. Raises if [set] has
         not been called yet. *)
-    val get : 'a t -> 'a
   end
 end
 
-(** Introduces a dependency on the current build run. *)
 val current_run : unit -> Run.t
+(** Introduces a dependency on the current build run. *)
 
-(** Return the list of registered functions *)
 val registered_functions : unit -> Function.Info.t list
+(** Return the list of registered functions *)
 
-(** Lookup function's info *)
 val function_info : string -> Function.Info.t
+(** Lookup function's info *)
 
 module Lazy : sig
   type +'a t

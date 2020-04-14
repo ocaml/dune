@@ -32,5 +32,5 @@ module Or_forbidden : sig
     | Targets of Path.Build.t t
 end
 
-(** target or targets with field with the correct multiplicity *)
 val field : String_with_vars.t t Dune_lang.Decoder.fields_parser
+(** target or targets with field with the correct multiplicity *)

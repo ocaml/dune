@@ -11,8 +11,8 @@ include
 
 include Dune_lang.Conv.S with type t := t
 
-(** Raises User_error on invalid action. *)
 val validate : loc:Loc.t -> t -> unit
+(** Raises User_error on invalid action. *)
 
 include
   Action_intf.Helpers

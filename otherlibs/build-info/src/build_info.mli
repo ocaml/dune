@@ -7,17 +7,17 @@ module V1 : sig
     val to_string : t -> string
   end
 
+  val version : unit -> Version.t option
   (** The version at which the current executable was built. The version is
       [None] during development, it is only [Some _] once the executable is
       installed or promoted to the source tree. *)
-  val version : unit -> Version.t option
 
   module Statically_linked_library : sig
     type t
 
+    val name : t -> string
     (** The most visible name of the library. If it is a public library, this
         its public name otherwise it is its private name. *)
-    val name : t -> string
 
     val version : t -> Version.t option
   end

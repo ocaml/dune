@@ -7,8 +7,8 @@
 
 include Stdune.Interned_intf.S
 
-(** Well-known variants *)
 val ppx_driver : t
+(** Well-known variants *)
 
 val mt : t
 

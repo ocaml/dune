@@ -841,17 +841,17 @@ let find_implementation_for lib ~variants =
         ~given_variants ~conflict )
 
 module Vlib : sig
+  val associate :
+       (t * Dep_stack.t) list
+    -> orig_stack:Dep_stack.t
+    -> linking:bool
+    -> t list Or_exn.t
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
 
       Additionally, if linking is [true], ensures that every virtual library as
       an implementation and re-arrange the list so that implementations replaces
       virtual libraries. *)
-  val associate :
-       (t * Dep_stack.t) list
-    -> orig_stack:Dep_stack.t
-    -> linking:bool
-    -> t list Or_exn.t
 
   module Unimplemented : sig
     (** set of unimplemented libraries*)

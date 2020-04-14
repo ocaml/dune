@@ -92,9 +92,9 @@ module Source : sig
 
   val explode : t -> string list
 
+  val is_in_build_dir : t -> bool
   (** [Source.t] does not statically forbid overlap with build directory, even
       though having such paths is almost always an error. *)
-  val is_in_build_dir : t -> bool
 
   val descendant : t -> of_:t -> t option
 
@@ -142,9 +142,9 @@ module Build : sig
 
   val drop_build_context_exn : t -> Source.t
 
+  val extract_build_context : t -> (string * Source.t) option
   (** [Source.t] here is a lie in some cases: consider when the context name
       happens to be ["install"] or [".alias"]. *)
-  val extract_build_context : t -> (string * Source.t) option
 
   val extract_build_context_exn : t -> string * Source.t
 
@@ -152,9 +152,9 @@ module Build : sig
 
   val extract_build_context_dir_exn : t -> t * Source.t
 
+  val extract_first_component : t -> (string * Local.t) option
   (** This function does the same as [extract_build_context], but has a
       "righter" type. *)
-  val extract_first_component : t -> (string * Local.t) option
 
   module Kind : sig
     type t = private
@@ -164,9 +164,9 @@ module Build : sig
     val of_string : string -> t
   end
 
+  val set_build_dir : Kind.t -> unit
   (** set the build directory. Can only be called once and must be done before
       paths are converted to strings elsewhere. *)
-  val set_build_dir : Kind.t -> unit
 
   val split_sandbox_root : t -> t option * t
 
@@ -184,8 +184,8 @@ include Path_intf.S with type t := t
 
 val hash : t -> int
 
-(** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 val to_string_maybe_quoted : t -> string
+(** [to_string_maybe_quoted t] is [maybe_quoted (to_string t)] *)
 
 val root : t
 
@@ -197,21 +197,21 @@ val is_managed : t -> bool
 
 val relative : ?error_loc:Loc0.t -> t -> string -> t
 
+val of_filename_relative_to_initial_cwd : string -> t
 (** Create an external path. If the argument is relative, assume it is relative
     to the initial directory dune was launched in. *)
-val of_filename_relative_to_initial_cwd : string -> t
 
+val to_absolute_filename : t -> string
 (** Convert a path to an absolute filename. Must be called after the workspace
     root has been set. [root] is the root directory of local paths *)
-val to_absolute_filename : t -> string
 
+val reach : t -> from:t -> string
 (** Reach a given path [from] a directory. For example, let [p] be a path to the
     file [some/dir/file] and [d] be a path to the directory [some/another/dir].
     Then [reach p ~from:d] evaluates to [../../dir/file]. *)
-val reach : t -> from:t -> string
 
-(** [from] defaults to [Path.root] *)
 val reach_for_running : ?from:t -> t -> string
+(** [from] defaults to [Path.root] *)
 
 val descendant : t -> of_:t -> t option
 
@@ -223,6 +223,7 @@ val append_source : t -> Source.t -> t
 
 val extend_basename : t -> suffix:string -> t
 
+val extract_build_context : t -> (string * Source.t) option
 (** Extract the build context from a path. For instance, representing paths as
     strings:
 
@@ -231,52 +232,51 @@ val extend_basename : t -> suffix:string -> t
     It doesn't work correctly (doesn't return a sensible source path) for build
     directories that are not build contexts, e.g. "_build/install" and
     "_build/.aliases". *)
-val extract_build_context : t -> (string * Source.t) option
 
 val extract_build_context_exn : t -> string * Source.t
 
 val extract_build_dir_first_component : t -> (string * Local.t) option
 
+val extract_build_context_dir : t -> (t * Source.t) option
 (** Same as [extract_build_context] but return the build context as a path:
 
     {[
       extract_build_context "_build/blah/foo/bar"
       = Some ("_build/blah", "foo/bar")
     ]} *)
-val extract_build_context_dir : t -> (t * Source.t) option
 
 val extract_build_context_dir_maybe_sandboxed : t -> (t * Source.t) option
 
 val extract_build_context_dir_exn : t -> t * Source.t
 
-(** Drop the "_build/blah" prefix *)
 val drop_build_context : t -> Source.t option
+(** Drop the "_build/blah" prefix *)
 
 val drop_build_context_exn : t -> Source.t
 
-(** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 val drop_optional_build_context : t -> t
+(** Drop the "_build/blah" prefix if present, return [t] otherwise *)
 
 val drop_optional_build_context_maybe_sandboxed : t -> t
 
 val drop_optional_sandbox_root : t -> t
 
+val drop_optional_build_context_src_exn : t -> Source.t
 (** Drop the "_build/blah" prefix if present, return [t] if it's a source file,
     otherwise fail. *)
-val drop_optional_build_context_src_exn : t -> Source.t
 
 val explode : t -> string list option
 
 val explode_exn : t -> string list
 
-(** The build directory *)
 val build_dir : t
+(** The build directory *)
 
-(** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 val is_in_build_dir : t -> bool
+(** [is_in_build_dir t = is_descendant t ~of:build_dir] *)
 
-(** [is_in_source_tree t = is_managed t && not (is_in_build_dir t)] *)
 val is_in_source_tree : t -> bool
+(** [is_in_source_tree t = is_managed t && not (is_in_build_dir t)] *)
 
 val as_in_source_tree : t -> Source.t option
 
@@ -286,11 +286,11 @@ val as_in_build_dir : t -> Build.t option
 
 val as_in_build_dir_exn : t -> Build.t
 
-(** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <> build_dir] *)
 val is_strict_descendant_of_build_dir : t -> bool
+(** [is_strict_descendant_of_build_dir t = is_in_build_dir t && t <> build_dir] *)
 
-(** Split after the first component if [t] is local *)
 val split_first_component : t -> (string * t) option
+(** Split after the first component if [t] is local *)
 
 val insert_after_build_dir_exn : t -> string -> t
 
@@ -328,24 +328,24 @@ val source : Source.t -> t
 
 val build : Build.t -> t
 
-(** paths guaranteed to be in the source directory *)
 val in_source : string -> t
+(** paths guaranteed to be in the source directory *)
 
 val of_local : Local.t -> t
 
+val set_root : External.t -> unit
 (** Set the workspace root. Can only be called once and the path must be
     absolute *)
-val set_root : External.t -> unit
 
 module L : sig
   val relative : t -> string list -> t
 end
 
+val local_part : t -> Local.t
 (** Return the "local part" of a path. For local paths (in build directory or
     source tree), this returns the path itself. For external paths, it returns a
     path that is relative to the current directory. For example, the local part
     of [/a/b] is [./a/b]. *)
-val local_part : t -> Local.t
 
 val stat : t -> Unix.stats
 
@@ -357,6 +357,7 @@ val set_of_build_paths_list : Build.t list -> Set.t
 
 val string_of_file_kind : Unix.file_kind -> string
 
+val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
 (** temp_dir prefix suffix returns the name of a fresh temporary directory in
     the temporary directory. The base name of the temporary directory is formed
     by concatenating prefix, then a suitably chosen integer number, then suffix.
@@ -365,22 +366,21 @@ val string_of_file_kind : Unix.file_kind -> string
     temporary directory is created with permissions [mode], defaulting to 0700.
     The directory is guaranteed to be different from any other directory that
     existed when temp_dir was called. *)
-val temp_dir : ?temp_dir:t -> ?mode:int -> string -> string -> t
 
+val rename : t -> t -> unit
 (** Rename a file. rename oldpath newpath renames the file called oldpath,
     giving it newpath as its new name, moving it between directories if needed.
     If newpath already exists, its contents will be replaced with those of
     oldpath. *)
-val rename : t -> t -> unit
 
-(** Set permissions on the designed files. [op] is [`Set] by default, which sets
-    the permissions exactly to [mode], while [`Add] will add the given [mode] to
-    the current permissions and [`Remove] remove them. [path] will be stat'd in
-    the `Add and `Remove case to determine the current premission, unless the
-    already computed stats are passed as [stats] to save a system call. *)
 val chmod :
      mode:int
   -> ?stats:Unix.stats option
   -> ?op:[ `Add | `Remove | `Set ]
   -> t
   -> unit
+(** Set permissions on the designed files. [op] is [`Set] by default, which sets
+    the permissions exactly to [mode], while [`Add] will add the given [mode] to
+    the current permissions and [`Remove] remove them. [path] will be stat'd in
+    the `Add and `Remove case to determine the current premission, unless the
+    already computed stats are passed as [stats] to save a system call. *)

@@ -26,7 +26,7 @@ val find_exn : t -> 'a Key.t -> 'a
 
 val singleton : 'a Key.t -> 'a -> t
 
-(** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
 val superpose : t -> t -> t
+(** [superpose a b] is [b] augmented with bindings of [a] that are not in [b]. *)
 
 val to_dyn : t -> Dyn.t

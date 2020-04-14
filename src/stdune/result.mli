@@ -48,8 +48,8 @@ val to_option : ('a, 'error) t -> 'a option
 val to_dyn :
   'a Dyn.Encoder.t -> 'error Dyn.Encoder.t -> ('a, 'error) t Dyn.Encoder.t
 
-(** Produce [Error <message>] *)
 val errorf : ('a, unit, string, (_, string) t) format4 -> 'a
+(** Produce [Error <message>] *)
 
 (** For compatibility with some other code *)
 type ('a, 'error) result = ('a, 'error) t

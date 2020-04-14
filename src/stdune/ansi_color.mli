@@ -75,23 +75,23 @@ module Style : sig
 
   val underlined : t
 
-  (** Ansi escape sequence that set the terminal style to exactly these styles *)
   val escape_sequence : t list -> string
+  (** Ansi escape sequence that set the terminal style to exactly these styles *)
 end
 
-(** Print to [Format.std_formatter] *)
 val print : Style.t list Pp.t -> unit
+(** Print to [Format.std_formatter] *)
 
-(** Print to [Format.err_formatter] *)
 val prerr : Style.t list Pp.t -> unit
+(** Print to [Format.err_formatter] *)
 
-(** Whether [stdout]/[stderr] support colors *)
 val stdout_supports_color : bool Lazy.t
+(** Whether [stdout]/[stderr] support colors *)
 
 val stderr_supports_color : bool Lazy.t
 
-(** Filter out escape sequences in a string *)
 val strip : string -> string
+(** Filter out escape sequences in a string *)
 
-(** Parse a string containing ANSI escape sequences *)
 val parse : string -> Style.t list Pp.t
+(** Parse a string containing ANSI escape sequences *)

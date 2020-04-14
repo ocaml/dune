@@ -31,37 +31,37 @@ type 'path t
 
 val of_local : Path.Build.t t -> Path.t t
 
-(** The source_root directory *)
 val dir : 'path t -> 'path
+(** The source_root directory *)
 
-(** The directory for ocamldep files *)
 val obj_dir : 'path t -> 'path
+(** The directory for ocamldep files *)
 
-(** The private compiled native file directory *)
 val native_dir : 'path t -> 'path
+(** The private compiled native file directory *)
 
-(** The private compiled byte file directories, and all cmi *)
 val byte_dir : 'path t -> 'path
+(** The private compiled byte file directories, and all cmi *)
 
 val all_cmis : 'path t -> 'path list
 
-(** The public compiled cmi file directory *)
 val public_cmi_dir : 'path t -> 'path
+(** The public compiled cmi file directory *)
 
 val odoc_dir : 'path t -> 'path
 
 val all_obj_dirs : 'path t -> mode:Mode.t -> 'path list
 
-(** Create the object directory for a library *)
 val make_lib :
      dir:Path.Build.t
   -> has_private_modules:bool
   -> Lib_name.Local.t
   -> Path.Build.t t
+(** Create the object directory for a library *)
 
+val make_external_no_private : dir:Path.t -> Path.t t
 (** Create the object directory for an external library that has no private
     directory for private modules *)
-val make_external_no_private : dir:Path.t -> Path.t t
 
 val encode : Path.t t -> Dune_lang.t list
 
@@ -79,10 +79,10 @@ val make_exe : dir:Path.Build.t -> name:string -> Path.Build.t t
 
 val as_local_exn : Path.t t -> Path.Build.t t
 
+val need_dedicated_public_dir : Path.Build.t t -> bool
 (** For local libraries with private modules, all public cmi's are symlinked to
     their own directory. Such a public cmi dir is only necessary if a library
     contains private modules *)
-val need_dedicated_public_dir : Path.Build.t t -> bool
 
 val to_local : Path.t t -> Path.Build.t t option
 
@@ -99,16 +99,16 @@ module Module : sig
 
   val obj_file : 'path t -> Module.t -> kind:Cm_kind.t -> ext:string -> 'path
 
+  val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
   (** Same as [cm_file] but doesn't raise if [cm_kind] is [Cmo] or [Cmx] and the
       module has no implementation.*)
-  val cm_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
   val o_file_unsafe : 'path t -> Module.t -> ext_obj:string -> 'path
 
   val cm_public_file_unsafe : 'path t -> Module.t -> kind:Cm_kind.t -> 'path
 
-  (** Either the .cmti, or .cmt if the module has no interface *)
   val cmti_file : 'path t -> Module.t -> 'path
+  (** Either the .cmti, or .cmt if the module has no interface *)
 
   val odoc : 'path t -> Module.t -> 'path
 

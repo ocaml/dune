@@ -8,17 +8,17 @@ type t
 
 val to_dyn : t -> Dyn.t
 
+val name : t -> Lib_name.t
 (** For libraries defined in the workspace, this is the [public_name] if present
     or the [name] if not. *)
-val name : t -> Lib_name.t
 
 val implements : t -> t Or_exn.t option
 
-(** Directory where the object files for the library are located. *)
 val obj_dir : t -> Path.t Obj_dir.t
+(** Directory where the object files for the library are located. *)
 
-(** Same as [Path.is_managed (obj_dir t)] *)
 val is_local : t -> bool
+(** Same as [Path.is_managed (obj_dir t)] *)
 
 val info : t -> Path.t Lib_info.t
 
@@ -26,12 +26,12 @@ val main_module_name : t -> Module_name.t option Or_exn.t
 
 val wrapped : t -> Wrapped.t option Or_exn.t
 
+val is_impl : t -> bool
 (** [is_impl lib] returns [true] if the library is an implementation of a
     virtual library *)
-val is_impl : t -> bool
 
-(** Direct library dependencies of this library *)
 val requires : t -> t list Or_exn.t
+(** Direct library dependencies of this library *)
 
 (** A unique integer identifier. It is only unique for the duration of the
     process *)
@@ -53,9 +53,9 @@ val equal : t -> t -> bool
 
 val hash : t -> int
 
+val link_deps : t -> Link_mode.t -> Lib_config.t -> Path.t list
 (** The list of files that will be read by the compiler when linking an
     executable against this library *)
-val link_deps : t -> Link_mode.t -> Lib_config.t -> Path.t list
 
 (** Operations on list of libraries *)
 module L : sig
@@ -118,11 +118,11 @@ type sub_system = ..
 module Compile : sig
   type t
 
-  (** Return the list of dependencies needed for linking this library/exe *)
   val requires_link : t -> L.t Or_exn.t Lazy.t
+  (** Return the list of dependencies needed for linking this library/exe *)
 
-  (** Dependencies listed by the user + runtime dependencies from ppx *)
   val direct_requires : t -> L.t Or_exn.t
+  (** Dependencies listed by the user + runtime dependencies from ppx *)
 
   module Resolved_select : sig
     type t =
@@ -131,16 +131,16 @@ module Compile : sig
       }
   end
 
-  (** Resolved select forms *)
   val resolved_selects : t -> Resolved_select.t list
+  (** Resolved select forms *)
 
-  (** Transitive closure of all used ppx rewriters *)
   val pps : t -> L.t Or_exn.t
+  (** Transitive closure of all used ppx rewriters *)
 
   val lib_deps_info : t -> Lib_deps_info.t
 
-  (** Sub-systems used in this compilation context *)
   val sub_systems : t -> sub_system list
+  (** Sub-systems used in this compilation context *)
 end
 
 (** {1 Library name resolution} *)
@@ -165,13 +165,6 @@ module DB : sig
   end
   with type db := t
 
-  (** Create a new library database. [resolve] is used to resolve library names
-      in this database.
-
-      When a library is not found, it is looked up in the parent database if
-      any.
-
-      [all] returns the list of names of libraries available in this database. *)
   val create :
        parent:t option
     -> stdlib_dir:Path.t
@@ -179,6 +172,13 @@ module DB : sig
     -> all:(unit -> Lib_name.t list)
     -> unit
     -> t
+  (** Create a new library database. [resolve] is used to resolve library names
+      in this database.
+
+      When a library is not found, it is looked up in the parent database if
+      any.
+
+      [all] returns the list of names of libraries available in this database. *)
 
   module Library_related_stanza : sig
     type t =
@@ -187,12 +187,12 @@ module DB : sig
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  (** Create a database from a list of library/variants stanzas *)
   val create_from_stanzas :
        parent:t option
     -> lib_config:Lib_config.t
     -> Library_related_stanza.t list
     -> t
+  (** Create a database from a list of library/variants stanzas *)
 
   val create_from_findlib :
     external_lib_deps_mode:bool -> stdlib_dir:Path.t -> Findlib.t -> t
@@ -203,17 +203,12 @@ module DB : sig
 
   val available : t -> Lib_name.t -> bool
 
+  val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
   (** Retrieve the compile information for the given library. Works for
       libraries that are optional and not available as well. *)
-  val get_compile_info : t -> ?allow_overlaps:bool -> Lib_name.t -> Compile.t
 
   val resolve : t -> Loc.t * Lib_name.t -> lib Or_exn.t
 
-  (** Resolve libraries written by the user in a [dune] file. The resulting list
-      of libraries is transitively closed and sorted by the order of
-      dependencies.
-
-      This function is for executables stanzas. *)
   val resolve_user_written_deps_for_exes :
        t
     -> (Loc.t * string) list
@@ -225,12 +220,17 @@ module DB : sig
     -> variants:(Loc.t * Variant.Set.t) option
     -> optional:bool
     -> Compile.t
+  (** Resolve libraries written by the user in a [dune] file. The resulting list
+      of libraries is transitively closed and sorted by the order of
+      dependencies.
+
+      This function is for executables stanzas. *)
 
   val resolve_pps : t -> (Loc.t * Lib_name.t) list -> L.t Or_exn.t
 
+  val all : ?recursive:bool -> t -> Set.t
   (** Return the list of all libraries in this database. If [recursive] is true,
       also include libraries in parent databases recursively. *)
-  val all : ?recursive:bool -> t -> Set.t
 end
 with type lib := t
 
@@ -263,8 +263,8 @@ module Sub_system : sig
   end
 
   module Register (M : S) : sig
-    (** Get the instance of the subsystem for this library *)
     val get : lib -> M.t option
+    (** Get the instance of the subsystem for this library *)
   end
 
   val public_info : lib -> Sub_system_info.t Sub_system_name.Map.t

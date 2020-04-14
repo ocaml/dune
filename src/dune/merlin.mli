@@ -20,7 +20,6 @@ val add_source_dir : t -> Path.Source.t -> t
 
 val merge_all : allow_approx_merlin:bool -> t list -> t option
 
-(** Add rules for generating the .merlin in a directory *)
 val add_rules :
      Super_context.t
   -> dir:Path.Build.t
@@ -28,3 +27,4 @@ val add_rules :
   -> expander:Expander.t
   -> t
   -> unit
+(** Add rules for generating the .merlin in a directory *)

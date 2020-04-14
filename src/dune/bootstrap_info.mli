@@ -5,10 +5,10 @@
 
 open Stdune
 
-(** Generate the rules to handle the stanza *)
 val gen_rules :
      Super_context.t
   -> Dune_file.Executables.t
   -> dir:Path.Build.t
   -> Lib.Compile.t
   -> unit
+(** Generate the rules to handle the stanza *)

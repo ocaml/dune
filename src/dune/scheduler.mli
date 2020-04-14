@@ -2,46 +2,46 @@
 
 open! Stdune
 
-(** [go ?log ?config fiber] runs the fiber until it terminates. *)
 val go : ?config:Config.t -> (unit -> 'a Fiber.t) -> 'a
+(** [go ?log ?config fiber] runs the fiber until it terminates. *)
 
-(** Runs [once] in a loop, executing [finally] after every iteration, even if
-    Fiber.Never was encountered.
-
-    If any source files change in the middle of iteration, it gets canceled. *)
 val poll :
      ?config:Config.t
   -> once:(unit -> unit Fiber.t)
   -> finally:(unit -> unit)
   -> unit
   -> 'a
+(** Runs [once] in a loop, executing [finally] after every iteration, even if
+    Fiber.Never was encountered.
 
-(** Wait for the following process to terminate *)
+    If any source files change in the middle of iteration, it gets canceled. *)
+
 val wait_for_process : Pid.t -> Unix.process_status Fiber.t
+(** Wait for the following process to terminate *)
 
-(** Wait for dune cache to be disconnected. Drop any other event. *)
 val wait_for_dune_cache : unit -> unit
+(** Wait for dune cache to be disconnected. Drop any other event. *)
 
 val set_concurrency : int -> unit
 
+val ignore_for_watch : Path.t -> unit
 (** Make the scheduler ignore next change to a certain file in watch mode.
 
     This is used with promoted files that are copied back to the source tree
     after generation *)
-val ignore_for_watch : Path.t -> unit
 
-(** Number of jobs currently running in the background *)
 val running_jobs_count : unit -> int
+(** Number of jobs currently running in the background *)
 
 (** Scheduler information *)
 type t
 
+val wait_for_available_job : unit -> t Fiber.t
 (** Wait until fewer than [!Clflags.concurrency] external processes are running
     and return the scheduler information. *)
-val wait_for_available_job : unit -> t Fiber.t
 
-(** Execute the given callback with current directory temporarily changed *)
 val with_chdir : t -> dir:Path.t -> f:(unit -> 'a) -> 'a
+(** Execute the given callback with current directory temporarily changed *)
 
-(** Notify the scheduler of a file to deduplicate from another thread *)
 val send_dedup : Cache.caching -> Cache.File.t -> unit
+(** Notify the scheduler of a file to deduplicate from another thread *)

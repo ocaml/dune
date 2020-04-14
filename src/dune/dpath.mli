@@ -27,15 +27,15 @@ type 'build path_kind =
   | External of Path.External.t
   | Build of 'build
 
-(** Return the name of an alias from its stamp file *)
 val analyse_target : Path.Build.t -> target_kind
+(** Return the name of an alias from its stamp file *)
 
 val analyse_path : Path.t -> target_kind path_kind
 
 val analyse_dir : Path.t -> Target_dir.t path_kind
 
-(** Nice description of a target *)
 val describe_target : Path.Build.t -> string
+(** Nice description of a target *)
 
 val describe_path : Path.t -> string
 

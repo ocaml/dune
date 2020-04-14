@@ -16,13 +16,13 @@ val to_path : ?error_loc:Loc.t -> t -> dir:Path.t -> Path.t
 module L : sig
   val strings : string list -> t list
 
+  val compare_vals : dir:Path.t -> t list -> t list -> Ordering.t
   (** [compare_vals ~dir a b] is a more efficient version of:
 
       {[
         List.compare ~compare:String.compare (to_string ~dir a)
           (to_string ~dir b)
       ]} *)
-  val compare_vals : dir:Path.t -> t list -> t list -> Ordering.t
 
   val paths : Path.t list -> t list
 

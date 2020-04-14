@@ -23,17 +23,18 @@ module V1 : sig
 
   (** {1:monadic_interface Applicative/monadic interface} *)
 
-  (** [return a] creates a pure computation resulting in [a]. *)
   val return : 'a -> 'a t
+  (** [return a] creates a pure computation resulting in [a]. *)
 
+  val map : 'a t -> f:('a -> 'b) -> 'b t
   (** If [at] is a computation resulting in [a] then [map at ~f] is a
       computation resulting in [f a]. *)
-  val map : 'a t -> f:('a -> 'b) -> 'b t
 
+  val both : 'a t -> 'b t -> ('a * 'b) t
   (** If [at] is a computation resulting in [a] and [bt] is computation
       resulting in [b] then [both at bt] is a computation resulting in [(a, b)]. *)
-  val both : 'a t -> 'b t -> ('a * 'b) t
 
+  val stage : 'a t -> f:('a -> 'b t) -> 'b t
   (** If [at] is a computation resulting in value of type ['a] and [f] is a
       function taking value of type ['a] and returning a computation [bt] then
       [stage a ~f] is a computation that is equivalent to staging computation
@@ -41,33 +42,34 @@ module V1 : sig
 
       Note: This is a monadic "bind" function. This function is costly so
       different name was chosen to discourage excessive use. *)
-  val stage : 'a t -> f:('a -> 'b t) -> 'b t
 
   (** {1 Syntax sugar for applicative subset} *)
 
   (** Syntax sugar for applicative subset of the interface. Syntax sugar for
       [stage] is not provided to prevent accidential use.*)
   module O : sig
-    (** {[ let+ a = g in h ]} is equivalent to {[ map g ~f:(fun a -> g) ]}. *)
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
+    (** {[ let+ a = g in h ]} is equivalent to {[ map g ~f:(fun a -> g) ]}. *)
 
+    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
     (** {[ let+ a1 = g1 and+ a2 = g2 in h ]} is equivalent to {[ both g1 g2 |>
         map ~f:(fun (a1, a2) -> g) ]}. *)
-    val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 
   (** {1:interaction Declaring dependencies and interacting with filesystem} *)
 
+  val read_file : path:Path.t -> string t
   (** [read_file ~path:file] returns a computation depending on a [file] to be
       run and resulting in a file content. *)
-  val read_file : path:Path.t -> string t
 
+  val write_file : path:Path.t -> data:string -> unit t
   (** [write_file ~path:file ~data] returns a computation that writes [data] to
       a [file].
 
       Note: [file] must be declared as a target in dune build file. *)
-  val write_file : path:Path.t -> data:string -> unit t
 
+  val read_directory_with_glob :
+    path:Path.t -> glob:Dune_glob.V1.t -> string list t
   (** [read_directory_with_glob ~path:directory ~glob] returns a computation
       depending on a listing of a [directory] (including source and target
       files) filtered by glob and resulting in that listing.
@@ -82,13 +84,11 @@ module V1 : sig
 
       BUG: the returned listing includes directories even though that dependency
       is not tracked. *)
-  val read_directory_with_glob :
-    path:Path.t -> glob:Dune_glob.V1.t -> string list t
 
   (** {1:running Running the computation} *)
 
-  (** Runs the computation. This function never returns. *)
   val run : unit t -> 'a
+  (** Runs the computation. This function never returns. *)
 end
 
 (* [Private] module should only be used by dune itself. Its stability will not

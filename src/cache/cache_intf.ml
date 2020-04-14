@@ -42,15 +42,14 @@ end
 module type Cache = sig
   type t
 
+  val set_build_dir : t -> Path.t -> t
   (** Set the absolute path to the build directory for interpreting relative
       paths when promoting files. *)
-  val set_build_dir : t -> Path.t -> t
 
+  val with_repositories : t -> repository list -> t
   (** Set all the version controlled repositories in the workspace to be
       referred to when promoting files. *)
-  val with_repositories : t -> repository list -> t
 
-  (** Promote files produced by a build rule into the cache. *)
   val promote :
        t
     -> (Path.Build.t * Digest.t) list
@@ -59,22 +58,23 @@ module type Cache = sig
     -> repository:int option
     -> duplication:Duplication_mode.t option
     -> (unit, string) Result.t
+  (** Promote files produced by a build rule into the cache. *)
 
-  (** Find a build rule in the cache by its key. *)
   val search : t -> Key.t -> (metadata * File.t list, string) Result.t
+  (** Find a build rule in the cache by its key. *)
 
+  val retrieve : t -> File.t -> Path.t
   (** Materialise a cached file in the build directory (using [Copy] or
       [Hardlink] as per the duplication mode) and return the path to it. *)
-  val retrieve : t -> File.t -> Path.t
 
+  val deduplicate : t -> File.t -> unit
   (** Deduplicate a file, i.e. replace the file [in_the_build_directory] with a
       hardlink to the one [in_the_cache] if the deduplication mode is set to
       [Hardlink] (or do nothing if the mode is [Copy]). *)
-  val deduplicate : t -> File.t -> unit
 
+  val teardown : t -> unit
   (** Remove the local cache and disconnect with a distributed cache client if
       any. *)
-  val teardown : t -> unit
 end
 
 module type Caching = sig

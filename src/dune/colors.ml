@@ -47,8 +47,8 @@ let setup_err_formatter_colors () =
     List.iter [ err_formatter; Dune_util.Report_error.ppf ] ~f:(fun ppf ->
         let funcs = (pp_get_formatter_tag_functions ppf () [@warning "-3"]) in
         pp_set_mark_tags ppf true;
-        (pp_set_formatter_tag_functions ppf
-           { funcs with
-             mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
-           ; mark_open_tag
-           } [@warning "-3"]))
+        pp_set_formatter_tag_functions ppf
+          { funcs with
+            mark_close_tag = (fun _ -> Ansi_color.Style.escape_sequence [])
+          ; mark_open_tag
+          } [@warning "-3"])

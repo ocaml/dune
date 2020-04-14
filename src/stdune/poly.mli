@@ -1,5 +1,5 @@
-(** A collection of "polymorphic" functions *)
 val hash : _ -> int
+(** A collection of "polymorphic" functions *)
 
 val compare : 'a -> 'a -> Ordering.t
 

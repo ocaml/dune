@@ -11,5 +11,5 @@ val rules :
   -> unit:Path.t
   -> Action.t Build.With_targets.t * t Build.t
 
-val parse : string -> t
 (** For testing only *)
+val parse : string -> t

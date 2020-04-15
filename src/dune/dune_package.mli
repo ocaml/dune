@@ -1,8 +1,8 @@
 (** Representation of dune-package files *)
 open! Stdune
 
-val fn : string
 (** The filename of a dune-package file*)
+val fn : string
 
 module Lib : sig
   type t

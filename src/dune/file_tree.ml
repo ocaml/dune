@@ -391,6 +391,7 @@ end = struct
   open Memoized
 
   module Get_subdir : sig
+    (** Get all the sub directories of [path].*)
     val all :
          dirs_visited:Dirs_visited.t
       -> dirs:(string * Path.Source.t * File.t) list
@@ -399,7 +400,6 @@ end = struct
       -> dune_file:Dune_file.t option (** to interpret [(subdir ..)] stanzas *)
       -> path:Path.Source.t
       -> Dirs_visited.Per_fn.t * Dir0.sub_dir String.Map.t
-    (** Get all the sub directories of [path].*)
   end = struct
     let status ~status_map ~(parent_status : Sub_dirs.Status.t) dir :
         Sub_dirs.Status.t option =

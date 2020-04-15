@@ -22,8 +22,8 @@ val dyn_of_position_no_file : Lexing.position -> Dyn.t
 
 val equal : t -> t -> bool
 
-val of_pos : string * int * int * int -> t
 (** To be used with [__POS__] *)
+val of_pos : string * int * int * int -> t
 
 val to_file_colon_line : t -> string
 

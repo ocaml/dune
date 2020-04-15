@@ -10,33 +10,33 @@ module type S = sig
       using a library database. *)
   type t
 
+  (** Create an instance of the sub-system *)
   val instantiate :
        resolve:(Loc.t * Lib_name.t -> Lib.t Or_exn.t)
     -> get:(loc:Loc.t -> Lib.t -> t option)
     -> Lib.t
     -> Info.t
     -> t
-  (** Create an instance of the sub-system *)
 end
 
 (** A backend, for implementors of the sub-system *)
 module type Backend = sig
   include S
 
-  val desc : plural:bool -> string
   (** Description of a backend, such as "inline tests framework" or "ppx
       driver". *)
+  val desc : plural:bool -> string
 
-  val desc_article : string
   (** "a" or "an" *)
+  val desc_article : string
 
-  val lib : t -> Lib.t
   (** Library the backend is attached to *)
+  val lib : t -> Lib.t
 
-  val public_info : t -> Info.t Or_exn.t
   (** Return the processed information. This is what is serialised in
       [dune-package] files. Typically, it should be the original info with the
       private library names replaced by public ones. *)
+  val public_info : t -> Info.t Or_exn.t
 end
 
 module type Registered_backend = sig
@@ -44,8 +44,8 @@ module type Registered_backend = sig
 
   val get : Lib.t -> t option
 
-  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t
   (** Resolve a backend name *)
+  val resolve : Lib.DB.t -> Loc.t * Lib_name.t -> t Or_exn.t
 
   module Selection_error : sig
     type nonrec t =
@@ -58,27 +58,27 @@ module type Registered_backend = sig
     val or_exn : ('a, t) result -> loc:Loc.t -> 'a Or_exn.t
   end
 
-  val select_extensible_backends :
-       ?written_by_user:t list
-    -> extends:(t -> t list Or_exn.t)
-    -> Lib.t list
-    -> (t list, Selection_error.t) result
   (** Choose a backend by either using the ones written by the user or by
       scanning the dependencies.
 
       The returned list is sorted by order of dependencies. It is not allowed to
       have two different backend that are completely independent, i.e. none of
       them is in the transitive closure of the other one. *)
+  val select_extensible_backends :
+       ?written_by_user:t list
+    -> extends:(t -> t list Or_exn.t)
+    -> Lib.t list
+    -> (t list, Selection_error.t) result
 
+  (** Choose a backend by either using the ones written by the user or by
+      scanning the dependencies.
+
+      A backend can replace other backends *)
   val select_replaceable_backend :
        ?written_by_user:t list
     -> replaces:(t -> t list Or_exn.t)
     -> Lib.t list
     -> (t, Selection_error.t) result
-  (** Choose a backend by either using the ones written by the user or by
-      scanning the dependencies.
-
-      A backend can replace other backends *)
 end
 
 (* This is probably what we'll give to plugins *)
@@ -98,15 +98,15 @@ module type End_point = sig
   module Backend : sig
     include Registered_backend
 
-    val extends : t -> t list Or_exn.t
     (** Backends that this backends extends *)
+    val extends : t -> t list Or_exn.t
   end
 
   module Info : sig
     include Info
 
-    val backends : t -> (Loc.t * Lib_name.t) list option
     (** Additional backends specified by the user at use-site *)
+    val backends : t -> (Loc.t * Lib_name.t) list option
   end
 
   val gen_rules :

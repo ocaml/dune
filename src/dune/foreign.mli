@@ -11,12 +11,12 @@ module Language : sig
 
   val to_dyn : t -> Dyn.t
 
-  val proper_name : t -> string
   (** The proper name of a language, e.g. "C++" for [Cxx]. Useful for diagnostic
       messages. *)
+  val proper_name : t -> string
 
-  val encode : t -> string
   (** The string used to encode a language in Dune files, e.g. "cxx" for [Cxx]. *)
+  val encode : t -> string
 
   val decode : t Dune_lang.Decoder.t
 
@@ -139,13 +139,13 @@ module Stubs : sig
     ; extra_deps : Dep_conf.t list
     }
 
+  (** Construct foreign library stubs with some fields set to default values. *)
   val make :
        loc:Loc.t
     -> language:Language.t
     -> names:Ordered_set_lang.t
     -> flags:Ordered_set_lang.Unexpanded.t
     -> t
-  (** Construct foreign library stubs with some fields set to default values. *)
 
   val decode : t Dune_lang.Decoder.t
 end
@@ -217,12 +217,12 @@ module Sources : sig
 
     val to_dyn : t -> Dyn.t
 
+    (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
+        the object name. *)
     val load :
          dune_version:Dune_lang.Syntax.Version.t
       -> dir:Path.Build.t
       -> files:String.Set.t
       -> t
-    (** [load ~dir ~files] loads foreign sources in [dir] into a map keyed by
-        the object name. *)
   end
 end

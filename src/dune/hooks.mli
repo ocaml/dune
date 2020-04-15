@@ -2,14 +2,14 @@
     (e.g. end of build). *)
 
 module type S = sig
-  val always : (unit -> unit) -> unit
   (** Register a hook called every time the event occurs. *)
+  val always : (unit -> unit) -> unit
 
-  val once : (unit -> unit) -> unit
   (** Register a hook that will only be called once when the next event occurs. *)
+  val once : (unit -> unit) -> unit
 
-  val run : unit -> unit
   (** Signalize the event and run all registered hooks. *)
+  val run : unit -> unit
 end
 
 module Make () : S

@@ -13,21 +13,21 @@ module type S = sig
 
   type sub_system += T of t
 
-  val name : Sub_system_name.t
   (** Name of the sub-system *)
+  val name : Sub_system_name.t
 
-  val loc : t -> Loc.t
   (** Location of the parameters in the [jbuild] or [dune] file. *)
+  val loc : t -> Loc.t
 
-  val syntax : Dune_lang.Syntax.t
   (** Syntax for [jbuild]/[dune] files *)
+  val syntax : Dune_lang.Syntax.t
 
-  val decode : t Dune_lang.Decoder.t
   (** Parse parameters written by the user in [jbuild]/[dune] files *)
+  val decode : t Dune_lang.Decoder.t
 
-  val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
   (** Dump the sub-system configuration. This is used to generate dune-package
       files. *)
+  val encode : t -> Dune_lang.Syntax.Version.t * Dune_lang.t list
 end
 
 module Register (M : S) : sig end

@@ -7,5 +7,5 @@ type t =
   ; force_linkall : bool
   }
 
-val handle_special_libs : Compilation_context.t -> t Or_exn.t
 (** Generate link time code for special libraries such as [findlib.dynload] *)
+val handle_special_libs : Compilation_context.t -> t Or_exn.t

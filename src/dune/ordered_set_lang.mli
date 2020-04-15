@@ -8,8 +8,8 @@ type t
 
 val decode : t Dune_lang.Decoder.t
 
-val loc : t -> Loc.t option
 (** Return the location of the set. [loc standard] returns [None] *)
+val loc : t -> Loc.t option
 
 val eval :
      t
@@ -30,8 +30,8 @@ val eval_loc :
 
 val standard : t
 
-val replace_standard_with_empty : t -> t
 (** Replace all occurrences of [:standard] with the empty set. *)
+val replace_standard_with_empty : t -> t
 
 val is_standard : t -> bool
 
@@ -62,29 +62,29 @@ module Unexpanded : sig
 
   val has_special_forms : t -> bool
 
-  val files : t -> f:(String_with_vars.t -> Path.t) -> Path.Set.t
   (** List of files needed to expand this set *)
+  val files : t -> f:(String_with_vars.t -> Path.t) -> Path.Set.t
 
+  (** Expand [t] using with the given file contents. [file_contents] is a map
+      from filenames to their parsed contents. Every [(:include fn)] in [t] is
+      replaced by [Map.find files_contents fn]. Every element is converted to a
+      string using [f]. *)
   val expand :
        t
     -> dir:Path.t
     -> files_contents:Dune_lang.Ast.t Path.Map.t
     -> f:(String_with_vars.t -> Value.t list)
     -> expanded
-  (** Expand [t] using with the given file contents. [file_contents] is a map
-      from filenames to their parsed contents. Every [(:include fn)] in [t] is
-      replaced by [Map.find files_contents fn]. Every element is converted to a
-      string using [f]. *)
 
   type position =
     | Pos
     | Neg
 
-  val fold_strings :
-    t -> init:'a -> f:(position -> String_with_vars.t -> 'a -> 'a) -> 'a
   (** Fold a function over all strings in a set. The callback receive whether
       the string is in position or negative position, i.e. on the left or right
       of a [\] operator. *)
+  val fold_strings :
+    t -> init:'a -> f:(position -> String_with_vars.t -> 'a -> 'a) -> 'a
 end
 with type expanded := t
 

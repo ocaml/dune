@@ -2,8 +2,8 @@
 
 open! Import
 
-val local_install_dir : context:Context_name.t -> Path.Build.t
 (** Local installation directory *)
+val local_install_dir : context:Context_name.t -> Path.Build.t
 
 val local_install_bin_dir : context:Context_name.t -> Path.Build.t
 
@@ -14,19 +14,19 @@ val local_install_lib_dir :
 
 val dev_null : Path.t
 
-val dune_keep_fname : string
 (** When this file is present in a directory dune will delete nothing in it if
     it knows to generate this file. *)
+val dune_keep_fname : string
 
-val inside_emacs : bool
 (** Are we running inside an emacs shell? *)
+val inside_emacs : bool
 
-val inside_dune : bool
 (** Are we running inside Dune? *)
+val inside_dune : bool
 
-val inside_ci : bool
 (** Are we running in CI?. This checks the CI environment variable which is
     supported by travis, gitlab.*)
+val inside_ci : bool
 
 val show_full_command_on_error : unit -> bool
 
@@ -57,8 +57,8 @@ module Display : sig
 
   val all : (string * t) list
 
-  val console_backend : t -> Console.Backend.t
   (** The console backend corresponding to the selected display mode *)
+  val console_backend : t -> Console.Backend.t
 end
 
 module Concurrency : sig
@@ -140,14 +140,14 @@ val load_user_config_file : unit -> t
 
 val load_config_file : Path.t -> t
 
-val adapt_display : t -> output_is_a_tty:bool -> t
 (** Set display mode to [Quiet] if it is [Progress], the output is not a tty and
     we are not running inside emacs. *)
+val adapt_display : t -> output_is_a_tty:bool -> t
 
-val t : unit -> t
 (** The global configuration for the process *)
+val t : unit -> t
 
-val init : t -> unit
 (** Initialises the configuration for the process *)
+val init : t -> unit
 
 val to_dyn : t -> Dyn.t

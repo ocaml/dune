@@ -13,11 +13,11 @@ type t =
 
 val to_dyn : t -> Dyn.t
 
-val empty : t
 (** No dependencies. *)
+val empty : t
 
-val union : t -> t -> t
 (** Union of dependencies. *)
+val union : t -> t -> t
 
-val paths : t -> eval_pred:Dep.eval_pred -> Path.Set.t
 (** The paths to both rule and action dependencies. *)
+val paths : t -> eval_pred:Dep.eval_pred -> Path.Set.t

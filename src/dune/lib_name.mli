@@ -9,8 +9,8 @@ include Stringlike_intf.S with type t := t
 module Local : sig
   include Stringlike_intf.S
 
-  val valid_format_doc : User_message.Style.t Pp.t
   (** Description of valid library names *)
+  val valid_format_doc : User_message.Style.t Pp.t
 end
 
 val compare : t -> t -> Ordering.t

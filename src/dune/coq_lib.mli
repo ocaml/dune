@@ -13,8 +13,8 @@ val implicit : t -> bool
 (* this is not really a wrapper for the prefix path *)
 val wrapper : t -> string
 
-val libraries : t -> (Loc.t * Lib_name.t) list
 (** ml libraries *)
+val libraries : t -> (Loc.t * Lib_name.t) list
 
 val src_root : t -> Path.Build.t
 
@@ -36,8 +36,8 @@ module DB : sig
 
   val resolve : t -> Loc.t * Coq_lib_name.t -> lib Or_exn.t
 
-  val requires : t -> lib -> lib list Or_exn.t
   (** Return the list of dependencies needed for compiling this library *)
+  val requires : t -> lib -> lib list Or_exn.t
 
   val requires_for_user_written :
     t -> (Loc.t * Coq_lib_name.t) list -> lib list Or_exn.t

@@ -18,8 +18,8 @@ module type S = sig
 
   val extension : t -> string
 
-  val set_extension : t -> ext:string -> t
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
+  val set_extension : t -> ext:string -> t
 
   val split_extension : t -> t * string
 
@@ -77,15 +77,15 @@ module type Local_gen = sig
 
   val parse_string_exn : loc:Loc0.t -> string -> 'w t
 
-  val compare : 'w t -> 'w t -> Ordering.t
   (** a directory is smaller than its descendants *)
+  val compare : 'w t -> 'w t -> Ordering.t
 
   val to_dyn : 'w t -> Dyn.t
 
   val extension : 'w t -> string
 
-  val set_extension : 'w t -> ext:string -> 'w t
   (** [set_extension path ~ext] replaces extension of [path] by [ext] *)
+  val set_extension : 'w t -> ext:string -> 'w t
 
   val split_extension : 'w t -> 'w t * string
 

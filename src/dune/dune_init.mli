@@ -101,7 +101,7 @@ module Component : sig
     | Project : Options.Project.t Options.t -> Options.Project.t t
     | Test : Options.Test.t Options.t -> Options.Test.t t
 
-  val init : 'options t -> unit
   (** Create or update the component specified by the ['options t], where
       ['options] is *)
+  val init : 'options t -> unit
 end

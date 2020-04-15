@@ -3,19 +3,19 @@ module type S = sig
 
   type 'a t
 
-  val for_all : 'a -> 'a t
   (** Create a mapping where all keys map to the same value *)
+  val for_all : 'a -> 'a t
 
+  (** Create a mapping from a list of bindings *)
   val of_mapping :
     (key list * 'a) list -> default:'a -> ('a t, key * 'a * 'a) result
-  (** Create a mapping from a list of bindings *)
 
-  val get : 'a t -> key -> 'a
   (** Get the configuration for the given item *)
+  val get : 'a t -> key -> 'a
 
-  val is_constant : _ t -> bool
   (** Returns [true] if the mapping returns the same value for all keys. Note
       that the mapping might still be constant if [is_constant] returns [false]. *)
+  val is_constant : _ t -> bool
 
   val map : 'a t -> f:('a -> 'b) -> 'b t
 

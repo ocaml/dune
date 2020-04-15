@@ -15,10 +15,10 @@ module type S = sig
 
   type 'a monad
 
+  (** Returns [Error cycle] in case the graph is not a DAG *)
   val top_closure :
        key:('a -> key)
     -> deps:('a -> 'a list monad)
     -> 'a list
     -> ('a list, 'a list) result monad
-  (** Returns [Error cycle] in case the graph is not a DAG *)
 end

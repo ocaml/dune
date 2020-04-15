@@ -5,20 +5,20 @@
     understand for people who are not familiar with the dune codebase. *)
 exception E of User_message.t
 
+(** Raise a user error. The arguments are interpreted in the same way as
+    [User_message.make]. The first paragraph is prefixed with "Error:". *)
 val raise :
      ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> User_message.Style.t Pp.t list
   -> _
-(** Raise a user error. The arguments are interpreted in the same way as
-    [User_message.make]. The first paragraph is prefixed with "Error:". *)
 
+(** Create a user error. *)
 val make :
      ?loc:Loc0.t
   -> ?hints:User_message.Style.t Pp.t list
   -> User_message.Style.t Pp.t list
   -> User_message.t
-(** Create a user error. *)
 
-val prefix : User_message.Style.t Pp.t
 (** The "Error:" prefix *)
+val prefix : User_message.Style.t Pp.t

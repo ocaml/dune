@@ -3,8 +3,8 @@ open Cache_intf
 
 include Cache
 
-val default_root : unit -> Path.t
 (** The default root directory of the local cache. *)
+val default_root : unit -> Path.t
 
 (** A matadata file contains a list of [files] produced by a cached build rule,
     along with some [metadata] that can be empty.
@@ -29,6 +29,7 @@ module Metadata_file : sig
   val parse : Path.t -> (t, string) result
 end
 
+(** Like [promote] but also returns the resulting metadata and promotions. *)
 val promote_sync :
      t
   -> (Path.Build.t * Digest.t) list
@@ -37,8 +38,13 @@ val promote_sync :
   -> repository:int option
   -> duplication:Duplication_mode.t option
   -> (Metadata_file.t * promotion list, string) Result.t
-(** Like [promote] but also returns the resulting metadata and promotions. *)
 
+(** Create a local cache. The only required argument is a handler for commands
+    from the cache, such as [Dedup] that tell Dune that some files can be
+    replaced with hardlinks to their cached versions. The [root] argument
+    defaults to the [default_root]. If [duplication_mode] is omitted, we attempt
+    to detect whether hardlinks are supported and use [Hardlink] if they are,
+    falling back to [Copy] otherwise. *)
 val make :
      ?root:Path.t
   -> ?duplication_mode:Duplication_mode.t
@@ -47,20 +53,14 @@ val make :
   -> command_handler:(command -> unit)
   -> unit
   -> (t, string) Result.t
-(** Create a local cache. The only required argument is a handler for commands
-    from the cache, such as [Dedup] that tell Dune that some files can be
-    replaced with hardlinks to their cached versions. The [root] argument
-    defaults to the [default_root]. If [duplication_mode] is omitted, we attempt
-    to detect whether hardlinks are supported and use [Hardlink] if they are,
-    falling back to [Copy] otherwise. *)
 
-val duplication_mode : t -> Duplication_mode.t
 (** The deduplication mode that was set or detected automatically (if omitted)
     during the local cache creation with the function [make]. *)
+val duplication_mode : t -> Duplication_mode.t
 
-val overhead_size : t -> int
 (** The overhead size of the cache, that is, the total size of files in the
     cache that are not linked from any build directory. *)
+val overhead_size : t -> int
 
 module Trimming_result : sig
   type t =
@@ -70,15 +70,15 @@ module Trimming_result : sig
     }
 end
 
-val trim : t -> int -> Trimming_result.t
 (** [trim cache size] removes files from [cache], starting with the least
     recently used one, until [size] bytes have been freed. *)
+val trim : t -> int -> Trimming_result.t
 
-val garbage_collect : t -> Trimming_result.t
 (** Purge invalid or incomplete cached rules. *)
+val garbage_collect : t -> Trimming_result.t
 
-val path_metadata : t -> Key.t -> Path.t
 (** Path to a metadata file *)
+val path_metadata : t -> Key.t -> Path.t
 
-val path_data : t -> Key.t -> Path.t
 (** Path to a data file *)
+val path_data : t -> Key.t -> Path.t

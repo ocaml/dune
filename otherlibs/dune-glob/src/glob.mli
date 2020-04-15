@@ -2,20 +2,20 @@
 
 type t
 
-val empty : t
 (** A glob that matches nothing *)
+val empty : t
 
-val universal : t
 (** A glob that matches anything (including the strings starting with a ".") *)
+val universal : t
 
-val test : t -> string -> bool
 (** Tests if string matches the glob. *)
+val test : t -> string -> bool
 
-val to_string : t -> string
 (** Returns textual representation of a glob. *)
+val to_string : t -> string
 
-val of_string : string -> t
 (** Converts string to glob. Throws [Invalid_argument] exception if string is
     not a valid glob. *)
+val of_string : string -> t
 
 val of_string_result : string -> (t, int * string) result

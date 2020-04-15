@@ -20,14 +20,15 @@ val make :
   -> scope:Scope.t
   -> t
 
-val pp_module : t -> ?lint:bool -> Module.t -> Module.t
 (** Setup the preprocessing rules for the following modules and returns the
     translated modules *)
+val pp_module : t -> ?lint:bool -> Module.t -> Module.t
 
-val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
 (** Preprocess a single module, using the configuration for the given module
     name. *)
+val pp_module_as : t -> ?lint:bool -> Module_name.t -> Module.t -> Module.t
 
+(** Get a path to a cached ppx driver with some extra flags for cookies. *)
 val get_ppx_driver :
      Super_context.t
   -> loc:Loc.t
@@ -37,7 +38,6 @@ val get_ppx_driver :
   -> flags:String_with_vars.t list
   -> (Loc.t * Lib_name.t) list
   -> (Path.Build.t * string list) Or_exn.t
-(** Get a path to a cached ppx driver with some extra flags for cookies. *)
 
 val gen_rules : Super_context.t -> string list -> unit
 

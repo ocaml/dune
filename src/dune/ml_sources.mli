@@ -18,15 +18,15 @@ type t
 
 val artifacts : t -> Artifacts.t
 
-val modules_of_library : t -> name:Lib_name.t -> Modules.t
 (** Modules attached to a library. [name] is the library best name. *)
+val modules_of_library : t -> name:Lib_name.t -> Modules.t
 
+(** Modules attached to a set of executables. *)
 val modules_of_executables :
   t -> obj_dir:Path.Build.t Obj_dir.t -> first_exe:string -> Modules.t
-(** Modules attached to a set of executables. *)
 
-val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
 (** Find out what buildable a module is part of *)
+val lookup_module : t -> Module_name.t -> Dune_file.Buildable.t option
 
 val empty : t
 

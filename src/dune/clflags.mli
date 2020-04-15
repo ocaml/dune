@@ -1,22 +1,22 @@
 (** Command line flags *)
 
-val debug_dep_path : bool ref
 (** Print dependency path in case of error *)
+val debug_dep_path : bool ref
 
-val debug_findlib : bool ref
 (** Debug the findlib implementation *)
+val debug_findlib : bool ref
 
-val external_lib_deps_hint : string list ref
 (** The command line for "Hint: try: dune external-lib-deps ..." *)
+val external_lib_deps_hint : string list ref
 
-val capture_outputs : bool ref
 (** Capture the output of sub-commands *)
+val capture_outputs : bool ref
 
-val debug_backtraces : bool -> unit
 (** Always print backtraces, to help debugging dune itself *)
+val debug_backtraces : bool -> unit
 
-val diff_command : string option ref
 (** Command to use to diff things *)
+val diff_command : string option ref
 
 module Promote : sig
   type t =
@@ -24,26 +24,26 @@ module Promote : sig
     | Never
 end
 
-val promote : Promote.t option ref
 (** explicit promotion mode is set *)
+val promote : Promote.t option ref
 
-val force : bool ref
 (** Force re-running actions associated to aliases *)
+val force : bool ref
 
-val watch : bool ref
 (** Instead of terminating build after completion, watch for changes *)
+val watch : bool ref
 
-val no_print_directory : bool ref
 (** Do not print "Entering directory" messages *)
+val no_print_directory : bool ref
 
-val store_orig_src_dir : bool ref
 (** Store original source directory in dune-package metadata *)
+val store_orig_src_dir : bool ref
 
-val always_show_command_line : bool ref
 (** Always show full command on error *)
+val always_show_command_line : bool ref
 
-val promote_install_files : bool ref
 (** Promote the generated [<package>.install] files to the source tree *)
+val promote_install_files : bool ref
 
-val ignore_promoted_rules : bool ref
 (** Wether we are ignorimg rules with [(mode promote)] *)
+val ignore_promoted_rules : bool ref

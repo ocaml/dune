@@ -58,17 +58,17 @@ module Args : sig
     | Fail : fail -> _ t
     | Expand : expand -> _ t
 
-  val dyn : string list Build.t -> dynamic t
   (** Create dynamic command line arguments. *)
+  val dyn : string list Build.t -> dynamic t
 
-  val empty : _ t
   (** Create an empty command line. *)
+  val empty : _ t
 
-  val memo : static t -> _ t
   (** Memoize the computation of command line arguments specified by a given
       expression. Use this function when the same subexpression appears in
       multiple [Command.Args.t] expressions to share both the time and memory
       required for the computation. *)
+  val memo : static t -> _ t
 end
 
 (* TODO: Using list in [dynamic t list] complicates the API unnecessarily: we
@@ -80,8 +80,8 @@ val run :
   -> Args.dynamic Args.t list
   -> Action.t Build.With_targets.t
 
-val quote_args : string -> string list -> _ Args.t
 (** [quote_args quote args] is [As \[quote; arg1; quote; arg2; ...\]] *)
+val quote_args : string -> string list -> _ Args.t
 
 val of_result : 'a Args.t Or_exn.t -> 'a Args.t
 

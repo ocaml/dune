@@ -6,20 +6,20 @@ open OpamParserTypes
 (** Type of opam files *)
 type t = opamfile
 
-val load : Path.t -> t
 (** Load a file *)
+val load : Path.t -> t
 
-val get_field : t -> string -> value option
 (** Extracts a field *)
+val get_field : t -> string -> value option
 
-val parse : Lexing.lexbuf -> t
 (** Parse the contents of an opam file *)
+val parse : Lexing.lexbuf -> t
 
-val parse_value : Lexing.lexbuf -> value
 (** Parse just a value *)
+val parse_value : Lexing.lexbuf -> value
 
-val absolutify_positions : file_contents:string -> opamfile -> opamfile
 (** Replace all [pos] value by a triplet [(fname, line, absolute_offset)] *)
+val absolutify_positions : file_contents:string -> opamfile -> opamfile
 
 val nopos : OpamParserTypes.pos
 

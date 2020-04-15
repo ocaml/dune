@@ -31,15 +31,15 @@ module Entries : sig
   val pp : t -> _ Pp.t
 end
 
-val reraise : Exn_with_backtrace.t -> Entry.t -> _
 (** Re-raise an exception and augment it's dependency path with the given entry.
     The raised exception will be wrapped. *)
+val reraise : Exn_with_backtrace.t -> Entry.t -> _
 
-val prepend_exn : exn -> Entry.t -> exn
 (** Extend the required_by stack of an exception *)
+val prepend_exn : exn -> Entry.t -> exn
 
-val unwrap_exn : exn -> exn * Entry.t list option
 (** Extract a wrapped exception *)
+val unwrap_exn : exn -> exn * Entry.t list option
 
-val map : f:(exn -> exn) -> exn -> exn
 (** Apply [f] to the underlying exception. *)
+val map : f:(exn -> exn) -> exn -> exn

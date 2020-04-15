@@ -43,31 +43,31 @@ module Print_config : sig
   (** Associate ANSI terminal styles to symbolic styles *)
   type t = Style.t -> Ansi_color.Style.t list
 
-  val default : t
   (** The default configuration *)
+  val default : t
 end
 
+(** Construct a user message from a list of paragraphs.
+
+    The first paragraph is prefixed with [prefix] inside the box. [prefix]
+    should not end with a space as a space is automatically inserted by [make]
+    if necessary. *)
 val make :
      ?loc:Loc0.t
   -> ?prefix:Style.t Pp.t
   -> ?hints:Style.t Pp.t list
   -> Style.t Pp.t list
   -> t
-(** Construct a user message from a list of paragraphs.
 
-    The first paragraph is prefixed with [prefix] inside the box. [prefix]
-    should not end with a space as a space is automatically inserted by [make]
-    if necessary. *)
-
-val print : ?config:Print_config.t -> t -> unit
 (** Print to [stdout] (not thread safe) *)
+val print : ?config:Print_config.t -> t -> unit
 
-val prerr : ?config:Print_config.t -> t -> unit
 (** Print to [stderr] (not thread safe) *)
+val prerr : ?config:Print_config.t -> t -> unit
 
-val did_you_mean : string -> candidates:string list -> Style.t Pp.t list
 (** Produces a "Did you mean ...?" hint *)
+val did_you_mean : string -> candidates:string list -> Style.t Pp.t list
 
-val to_string : t -> string
 (** Produces a plain text representation of the error message, without the
     "Error: " prefix. *)
+val to_string : t -> string

@@ -101,19 +101,19 @@ val to_dyn : t -> Dyn.t
 
 val to_dyn_concise : t -> Dyn.t
 
-val compare : t -> t -> Ordering.t
 (** Compare the context names *)
+val compare : t -> t -> Ordering.t
 
 val install_ocaml_libdir : t -> Path.t option Fiber.t
 
-val compiler : t -> Mode.t -> Action.Prog.t
 (** Return the compiler needed for this compilation mode *)
+val compiler : t -> Mode.t -> Action.Prog.t
 
-val best_mode : t -> Mode.t
 (** The best compilation mode for this context *)
+val best_mode : t -> Mode.t
 
-val cc_g : t -> string list
 (** [\["-g"\]] if [!Clflags.g] and [\[\]] otherwise *)
+val cc_g : t -> string list
 
 val name : t -> Context_name.t
 

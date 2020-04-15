@@ -7,9 +7,9 @@ let () = Hooks.End_of_build.always Memo.reset
 module Fs : sig
   val mkdir_p : Path.Build.t -> unit
 
-  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
   (** Creates directory if inside build path, otherwise asserts that directory
       exists. *)
+  val mkdir_p_or_check_exists : loc:Loc.t -> Path.t -> unit
 
   val assert_exists : loc:Loc.t -> Path.t -> unit
 end = struct
@@ -807,13 +807,13 @@ end = struct
       | Unrestricted
       | Restricted of Path.Unspecified.w Dir_set.t Memo.Lazy.t
 
-    val allowed_by_parent : dir:Path.Build.t -> restriction
     (** Used by the child to ask about the restrictions placed by the parent. *)
+    val allowed_by_parent : dir:Path.Build.t -> restriction
 
-    val is_allowed_to_generate_rules_in :
-      dir:Path.Build.t -> subdir:Path.Build.t -> bool
     (** Used by the parent to check what are the subdirs that it's allowed to
         generate rules in. *)
+    val is_allowed_to_generate_rules_in :
+      dir:Path.Build.t -> subdir:Path.Build.t -> bool
   end = struct
     type restriction =
       | Unrestricted
@@ -1162,22 +1162,22 @@ and Exported : sig
       | Non_memoized : 'a Build.t -> 'a t
       | Memoized : Rule.t -> Action.t t
 
-    val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
     (** Evaluate a build request and return its static and dynamic dependencies.
         Note that the evaluation forces building of the static dependencies. *)
+    val evaluate : 'a t -> ('a * Dep.Set.t) Fiber.t
 
-    val peek_deps_exn : Rule.t -> Dep.Set.t
     (** A hack exported because [package_deps] is not in a fiber. *)
+    val peek_deps_exn : Rule.t -> Dep.Set.t
 
-    val evaluate_and_wait_for_dynamic_dependencies :
-      'a t -> ('a * Dep.Set.t) Fiber.t
     (** Evaluate a build request and return its static and dynamic dependencies.
         Unlike [evaluate], this function also forces building of the dynamic
         dependencies. *)
+    val evaluate_and_wait_for_dynamic_dependencies :
+      'a t -> ('a * Dep.Set.t) Fiber.t
   end
 
-  val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.t
   (** Exported to inspect memoization cycles. *)
+  val build_file_memo : (Path.t, unit, Path.t -> unit Fiber.t) Memo.t
 end = struct
   open Used_recursively
 

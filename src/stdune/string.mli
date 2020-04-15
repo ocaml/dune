@@ -33,8 +33,8 @@ val drop_prefix : t -> prefix:t -> t option
 
 val drop_suffix : t -> suffix:t -> t option
 
-val capitalize : t -> t
 (** These only change ASCII characters *)
+val capitalize : t -> t
 
 val uncapitalize : t -> t
 
@@ -66,12 +66,12 @@ val split : t -> on:char -> t list
 
 val split_lines : t -> t list
 
-val escape_only : char -> t -> t
 (** Escace ONLY one character. {!escape} also escapes '\n',... and transforms
     all chars above '~' into '\xxx' which is not suitable for UTF-8 strings. *)
+val escape_only : char -> t -> t
 
-val longest : string list -> int
 (** Return the length of the longest string in the list *)
+val longest : string list -> int
 
 val longest_map : 'a list -> f:('a -> string) -> int
 
@@ -81,28 +81,28 @@ val exists : t -> f:(char -> bool) -> bool
 
 val for_all : t -> f:(char -> bool) -> bool
 
-val maybe_quoted : t -> t
 (** [maybe_quoted s] is [s] if [s] doesn't need escaping according to OCaml
     lexing conventions and [sprintf "%S" s] otherwise.
 
     (* CR-someday aalekseyev: this function is not great: barely anything "needs
     escaping according to OCaml lexing conventions", so the condition for
     whether to add the quote characters ends up being quite arbitrary. *) *)
+val maybe_quoted : t -> t
 
-val enumerate_and : string list -> string
 (** Produces: "x, y and z" *)
+val enumerate_and : string list -> string
 
-val enumerate_or : string list -> string
 (** Produces: "x, y or z" *)
+val enumerate_or : string list -> string
 
-val enumerate_one_of : t list -> t
 (** Produces: "One of x, y or z" *)
+val enumerate_one_of : t list -> t
 
-val findi : string -> f:(char -> bool) -> int option
 (** Find index of first character satisfying [f] *)
+val findi : string -> f:(char -> bool) -> int option
 
-val rfindi : string -> f:(char -> bool) -> int option
 (** Find index of last character satisfying [f] *)
+val rfindi : string -> f:(char -> bool) -> int option
 
 module Set : sig
   include Set.S with type elt = t
@@ -122,9 +122,9 @@ end
 
 module Table : Hashtbl.S with type key = t
 
-val need_quoting : string -> bool
 (** Whether the string needs quoting if it is part of a shell command *)
+val need_quoting : string -> bool
 
-val quote_for_shell : string -> string
 (** [quote_for_shell s] quotes [s] using [Filename.quote] if [need_quoting s] is
     [true] *)
+val quote_for_shell : string -> string

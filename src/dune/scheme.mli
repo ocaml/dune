@@ -28,12 +28,11 @@ type 'rules t =
 module Evaluated : sig
   type 'a t
 
-  val get_rules : 'a t -> dir:Path.Build.t -> 'a option * String.Set.t
   (** returns the rules and the set of child directories that could have rules
       defined in this scheme *)
+  val get_rules : 'a t -> dir:Path.Build.t -> 'a option * String.Set.t
 end
 
-val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
 (** [Evaluated.t] shares the work of scheme evaluation between multiple
     [get_rules] requests.
 
@@ -45,5 +44,6 @@ val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
       collapse them to a directory-keyed trie for faster lookup. - Sharing the
       work done by user thunks. Every thunk will only be called at most once per
       [evaluate]. *)
+val evaluate : 'a t -> union:('a -> 'a -> 'a) -> 'a Evaluated.t
 
 val all : 'a t list -> 'a t

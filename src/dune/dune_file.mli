@@ -49,8 +49,8 @@ module Preprocess_map : sig
 
   val default : t
 
-  val find : Module_name.t -> t -> Preprocess.t
   (** [find module_name] find the preprocessing specification for a given module *)
+  val find : Module_name.t -> t -> Preprocess.t
 
   val pps : t -> (Loc.t * Lib_name.t) list
 end
@@ -80,9 +80,9 @@ module Lib_deps : sig
   val decode : allow_re_export:bool -> t Dune_lang.Decoder.t
 end
 
+(** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
   (Preprocess_map.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
-(** [preprocess] and [preprocessor_deps] fields *)
 
 module Buildable : sig
   type t =
@@ -100,11 +100,11 @@ module Buildable : sig
     ; allow_overlapping_dependencies : bool
     }
 
-  val has_foreign : t -> bool
   (** Check if the buildable has any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
-  val single_preprocess : t -> Preprocess.t
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
+  val single_preprocess : t -> Preprocess.t
 end
 
 module Public_lib : sig
@@ -205,25 +205,25 @@ module Library : sig
     ; enabled_if : Blang.t
     }
 
-  val has_foreign : t -> bool
   (** Check if the library has any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
-  val foreign_archives : t -> Foreign.Archive.t list
   (** The list of all foreign archives, including the foreign stubs archive. *)
+  val foreign_archives : t -> Foreign.Archive.t list
 
-  val foreign_lib_files :
-    t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
   (** The [lib*.a] files of all foreign archives, including foreign stubs. [dir]
       is the directory the library is declared in. *)
+  val foreign_lib_files :
+    t -> dir:Path.Build.t -> ext_lib:string -> Path.Build.t list
 
-  val foreign_dll_files :
-    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
   (** The [dll*.so] files of all foreign archives, including foreign stubs.
       [dir] is the directory the library is declared in. *)
+  val foreign_dll_files :
+    t -> dir:Path.Build.t -> ext_dll:string -> Path.Build.t list
 
-  val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
   (** The path to a library archive. [dir] is the directory the library is
       declared in. *)
+  val archive : t -> dir:Path.Build.t -> ext:string -> Path.Build.t
 
   val best_name : t -> Lib_name.t
 
@@ -300,8 +300,8 @@ module Executables : sig
     ; enabled_if : Blang.t
     }
 
-  val has_foreign : t -> bool
   (** Check if the executables have any foreign stubs or archives. *)
+  val has_foreign : t -> bool
 
   val obj_dir : t -> dir:Path.Build.t -> Path.Build.t Obj_dir.t
 end
@@ -433,12 +433,11 @@ module Stanzas : sig
     | OCaml
     | Plain
 
-  val of_ast : Dune_project.t -> Dune_lang.Ast.t -> Stanza.t list
   (** [of_ast project ast] is the list of [Stanza.t]s derived from decoding the
       [ast] according to the syntax given by [kind] in the context of the
       [project] *)
+  val of_ast : Dune_project.t -> Dune_lang.Ast.t -> Stanza.t list
 
-  val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
   (** [parse ~file ~kind project stanza_exprs] is a list of [Stanza.t]s derived
       from decoding the [stanza_exprs] from [Dune_lang.Ast.t]s to [Stanza.t]s.
 
@@ -450,4 +449,5 @@ module Stanzas : sig
       The syntax [kind] determines whether the expected syntax is the
       depreciated jbuilder syntax or the version of Dune syntax specified by the
       current [project]. *)
+  val parse : file:Path.Source.t -> Dune_project.t -> Dune_lang.Ast.t list -> t
 end

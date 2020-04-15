@@ -12,9 +12,9 @@ type t =
 
 val loc : t -> Loc.t
 
-val fetch_legacy_comments : t -> file_contents:string -> t
 (** Replace all the [Comment Legacy] by [Comment (Lines _)] by extracting the
     contents of comments from the original file. *)
+val fetch_legacy_comments : t -> file_contents:string -> t
 
 val abstract : t -> Ast.t option
 
@@ -24,7 +24,7 @@ val to_dyn : t -> Dyn.t
 
 val to_sexp : t -> T.t option
 
-val extract_comments : t list -> (Loc.t * Comment.t) list
 (** Return all the comments contained in a concrete syntax tree *)
+val extract_comments : t list -> (Loc.t * Comment.t) list
 
 val tokenize : t list -> (Loc.t * Lexer.Token.t) list

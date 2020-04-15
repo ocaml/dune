@@ -16,8 +16,8 @@ module Status : sig
 
   val is_private : t -> bool
 
-  val project_name : t -> Dune_project.Name.t option
   (** For local libraries, return the project name they are part of *)
+  val project_name : t -> Dune_project.Name.t option
 end
 
 (** For values like modules that need to be evaluated to be fetched *)
@@ -74,30 +74,30 @@ val name : _ t -> Lib_name.t
 
 val loc : _ t -> Loc.t
 
-val archives : 'path t -> 'path list Mode.Dict.t
 (** The [*.cma] and [*.cmxa] files for OCaml libraries. Libraries built by Dune
     will always have zero or one element in the list (zero if they are not
     buildable in the corresponding mode). External libraries, however, can have
     more than one element in the list, because the format allows for that. *)
+val archives : 'path t -> 'path list Mode.Dict.t
 
 (* TODO: Rename [foreign_archives] to [foreign_lib_files] and [native_archives]
    to [native_lib_files] for consistent naming with [foreign_dll_files]. *)
 
-val foreign_archives : 'path t -> 'path list
 (** All the [lib*.a] files for stubs *)
+val foreign_archives : 'path t -> 'path list
 
-val native_archives : 'path t -> 'path list
 (** The [lib*.a] files for the OCaml code when compiling to native mode *)
+val native_archives : 'path t -> 'path list
 
-val foreign_dll_files : 'path t -> 'path list
 (** [dll*.so] files for stubs. These are read when linking a bytecode executable
     and are loaded dynamically at runtime by bytecode executables. *)
+val foreign_dll_files : 'path t -> 'path list
 
 val foreign_objects : 'path t -> 'path list Source.t
 
-val exit_module : _ t -> Module_name.t option
 (** The library has a module that must be linked at the end. This is used for
     the [Std_exit] module of the stdlib. *)
+val exit_module : _ t -> Module_name.t option
 
 val plugins : 'path t -> 'path list Mode.Dict.t
 
@@ -149,9 +149,9 @@ val version : _ t -> string option
 
 val dune_version : _ t -> Dune_lang.Syntax.Version.t option
 
-val best_src_dir : 'path t -> 'path
 (** Directory where the source files for the library are located. Returns the
     original src dir when it exists *)
+val best_src_dir : 'path t -> 'path
 
 type external_ = Path.t t
 

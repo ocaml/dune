@@ -60,8 +60,8 @@ module Map : sig
 
   val superpose : t -> t -> t
 
-  val of_bindings : _ Bindings.t -> t
   (** Map with all named values as [Named_local] *)
+  val of_bindings : _ Bindings.t -> t
 
   val singleton : string -> Var.t -> t
 

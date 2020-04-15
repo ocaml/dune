@@ -5,8 +5,8 @@ type t
 
 val empty : t
 
-val library : t -> name:Coq_lib_name.t -> Coq_module.t list
 (** Coq modules of library [name] is the Coq library name. *)
+val library : t -> name:Coq_lib_name.t -> Coq_module.t list
 
 val extract : t -> Coq_stanza.Extraction.t -> Coq_module.t
 

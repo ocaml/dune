@@ -15,19 +15,19 @@ module type Unordered_eval = sig
 
   module Key : Key
 
+  (** Same as [eval] but the result is unordered *)
   val eval :
        t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
     -> standard:'a Key.Map.t
     -> 'a Key.Map.t
-  (** Same as [eval] but the result is unordered *)
 
+  (** Same as [eval] but the result is unordered *)
   val eval_loc :
        t
     -> parse:(loc:Loc.t -> string -> 'a)
     -> key:('a -> Key.t)
     -> standard:(Loc.t * 'a) Key.Map.t
     -> (Loc.t * 'a) Key.Map.t
-  (** Same as [eval] but the result is unordered *)
 end

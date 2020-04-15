@@ -314,7 +314,20 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       , List.map extras ~f:(E.string ~expander)
       , E.target ~expander target )
 
-module Infer = struct
+module Infer : sig
+  module Outcome : sig
+    type t =
+      { deps : Path.Set.t
+      ; targets : Path.Build.Set.t
+      }
+  end
+
+  val unexpanded_targets : Action_dune_lang.t -> String_with_vars.t list
+
+  val infer : Action.t -> Outcome.t
+
+  val partial : Targets.Or_forbidden.t -> Partial.t -> Outcome.t
+end = struct
   module Outcome = struct
     type t =
       { deps : Path.Set.t

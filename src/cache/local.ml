@@ -31,7 +31,48 @@ module Trimming_result = struct
 end
 
 let default_root () =
-  Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db"; "v2" ]
+  Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db" ]
+
+let file_store_version = "v2"
+
+let metadata_store_version = "v2"
+
+let file_store_root cache =
+  Path.L.relative cache.root [ "files"; file_store_version ]
+
+let metadata_store_root cache =
+  Path.L.relative cache.root [ "meta"; metadata_store_version ]
+
+let detect_unexpected_dirs_under_cache_root cache =
+  let expected_in_root path =
+    (* We only report unexpected directories, since quite a few temporary files
+       are created at the cache root, and it would be tedious to keep track of
+       all of them. *)
+    match
+      (Sys.is_directory (Path.to_string (Path.relative cache.root path)), path)
+    with
+    | false, _ -> true
+    | true, "files"
+    | true, "meta" ->
+      true
+    | true, dir -> String.is_prefix ~prefix:"promoting." dir
+  in
+  let in_root =
+    Path.to_string cache.root |> Sys.readdir |> Array.to_list
+    |> List.filter ~f:(fun name -> not (expected_in_root name))
+  in
+  let in_files =
+    Path.relative cache.root "files"
+    |> Path.to_string |> Sys.readdir |> Array.to_list
+    |> List.filter ~f:(fun name -> not (String.equal name file_store_version))
+  in
+  let in_meta =
+    Path.relative cache.root "meta"
+    |> Path.to_string |> Sys.readdir |> Array.to_list
+    |> List.filter ~f:(fun name ->
+           not (String.equal name metadata_store_version))
+  in
+  in_root @ in_files @ in_meta
 
 (* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
    files stored in the cache.
@@ -169,13 +210,10 @@ module Metadata_file = struct
   let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
 
-let root_data cache = Path.relative cache.root "files"
+let metadata_path cache key =
+  FSSchemeImpl.path ~root:(metadata_store_root cache) key
 
-let root_metadata cache = Path.relative cache.root "meta"
-
-let path_metadata cache key = FSSchemeImpl.path ~root:(root_metadata cache) key
-
-let path_data cache key = FSSchemeImpl.path ~root:(root_data cache) key
+let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
 
 let make_path cache path =
   match cache.build_root with
@@ -186,7 +224,7 @@ let make_path cache path =
          (Path.Local.to_string_maybe_quoted path))
 
 let search cache digest file =
-  Collision_chain.search (path_data cache digest) file
+  Collision_chain.search (file_path cache digest) file
 
 let with_repositories cache repositories = { cache with repositories }
 
@@ -309,7 +347,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
              })
   in
   let+ promoted = Result.List.map ~f:promote paths in
-  let metadata_path = path_metadata cache key
+  let metadata_path = metadata_path cache key
   and metadata_tmp_path = Path.relative cache.temp_dir "metadata"
   and files =
     List.map promoted ~f:(function
@@ -346,7 +384,7 @@ let promote cache paths key metadata ~repository ~duplication =
     (promote_sync cache paths key metadata ~repository ~duplication)
 
 let search cache key =
-  let path = path_metadata cache key in
+  let path = metadata_path cache key in
   let* sexp =
     try Io.with_file_in path ~f:Csexp.input
     with Sys_error _ -> Error "no cached file"
@@ -388,32 +426,34 @@ let make ?(root = default_root ())
     ?(duplication_mode = detect_duplication_mode root)
     ?(log = Dune_util.Log.info) ?(warn = fun pp -> User_warning.emit pp)
     ~command_handler () =
-  if Path.basename root <> "v2" then
-    Result.Error "unable to read dune-cache"
-  else
-    let res =
-      { root
-      ; build_root = None
-      ; info = log
-      ; warn
-      ; repositories = []
-      ; command_handler
-      ; duplication_mode
-      ; temp_dir =
-          Path.temp_dir ~temp_dir:root "promoting."
-            ("." ^ string_of_int (Unix.getpid ()))
-      }
-    in
-    Path.mkdir_p @@ root_metadata res;
-    Path.mkdir_p @@ root_data res;
-    Result.ok res
+  let res =
+    { root
+    ; build_root = None
+    ; info = log
+    ; warn
+    ; repositories = []
+    ; command_handler
+    ; duplication_mode
+    ; temp_dir =
+        Path.temp_dir ~temp_dir:root "promoting."
+          ("." ^ string_of_int (Unix.getpid ()))
+    }
+  in
+  match
+    Path.mkdir_p @@ file_store_root res;
+    Path.mkdir_p @@ metadata_store_root res
+  with
+  | () -> Ok res
+  | exception exn ->
+    Error
+      ("Unable to set up the cache root directory: " ^ Printexc.to_string exn)
 
 let duplication_mode cache = cache.duplication_mode
 
 let trimmable stats = stats.Unix.st_nlink = 1
 
 let _garbage_collect default_trim cache =
-  let root = root_metadata cache in
+  let root = metadata_store_root cache in
   let metas =
     List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list ~root)
   in
@@ -462,7 +502,7 @@ let _garbage_collect default_trim cache =
 let garbage_collect = _garbage_collect Trimming_result.empty
 
 let trim cache free =
-  let root = root_data cache in
+  let root = file_store_root cache in
   let files = FSSchemeImpl.list ~root in
   let f path =
     let stats = Path.stat path in
@@ -484,7 +524,7 @@ let trim cache free =
   _garbage_collect trim cache
 
 let overhead_size cache =
-  let root = root_data cache in
+  let root = file_store_root cache in
   let files = FSSchemeImpl.list ~root in
   let stats =
     let f p =

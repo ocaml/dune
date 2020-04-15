@@ -1053,14 +1053,16 @@ module Install_conf = struct
     { section : Install.Section.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
+    ; enabled_if : Blang.t
     }
 
   let decode =
     fields
       (let+ section = field "section" Install.Section.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
-       and+ package = Pkg.field "install" in
-       { section; files; package })
+       and+ package = Pkg.field "install"
+       and+ enabled_if = enabled_if ~since:(Some (2, 6)) in
+       { section; files; package; enabled_if })
 end
 
 module Promote = struct
@@ -1107,7 +1109,7 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf : t -> ext:string -> Install_conf.t option
+    val install_conf : t -> ext:string -> enabled_if: Blang.t -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1234,7 +1236,7 @@ module Executables = struct
       in
       { names; public; project; stanza; loc; multi }
 
-    let install_conf t ~ext =
+    let install_conf t ~ext ~enabled_if =
       Option.map t.public ~f:(fun { package; public_names } ->
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
@@ -1244,7 +1246,7 @@ module Executables = struct
                       ~dst:(locp, pub)))
             |> List.filter_opt
           in
-          { Install_conf.section = Bin; files; package })
+          { Install_conf.section = Bin; files; package; enabled_if })
   end
 
   module Link_mode = struct
@@ -1512,7 +1514,7 @@ module Executables = struct
               ".bc"
             | Other { mode = Native | Best; _ } -> ".exe"
           in
-          Names.install_conf names ~ext
+          Names.install_conf names ~ext ~enabled_if
       in
       let embed_in_plugin_libraries =
         let plugin =

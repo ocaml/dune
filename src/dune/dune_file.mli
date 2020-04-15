@@ -248,6 +248,7 @@ module Install_conf : sig
     { section : Install.Section.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
+    ; enabled_if : Blang.t
     }
 end
 

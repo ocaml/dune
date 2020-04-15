@@ -5,6 +5,7 @@
   > (rule (with-stdout-to foo.txt (echo "bar")))
   > (subdir bar
   >  (rule (with-stdout-to foo.txt (echo "bar"))))
+  > EOF
   $ dune build ./foo.txt ./bar/foo.txt
   $ cat _build/default/foo.txt
   bar

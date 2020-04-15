@@ -85,7 +85,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       l
   in
   let flags = SC.ocaml_flags sctx ~dir exes.buildable in
-  let link_deps = SC.Deps.interpret sctx ~expander exes.link_deps in
+  let link_deps = Dep_conf_eval.unnamed ~expander exes.link_deps in
   let foreign_archives = exes.buildable.foreign_archives |> List.map ~f:snd in
   let link_flags =
     link_deps

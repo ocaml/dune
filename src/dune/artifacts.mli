@@ -25,7 +25,7 @@ module Public_libs : sig
     t -> loc:Loc.t -> lib:Lib_name.t -> file:string -> Path.t Or_exn.t
 end
 
-type t =
+type t = private
   { public_libs : Public_libs.t
   ; bin : Bin.t
   }

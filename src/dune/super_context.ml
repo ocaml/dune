@@ -78,6 +78,8 @@ end = struct
         ~dir
     in
     extend_expander t ~dir ~expander_for_artifacts
+    |> Expander.set_foreign_flags ~f:(fun ~dir ->
+           get_node t ~dir |> Env_node.foreign_flags)
 
   let get_env_stanza t ~dir =
     Option.value ~default:Dune_env.Stanza.empty
@@ -441,12 +443,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
   in
   let artifacts =
-    let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
-    { Artifacts.public_libs
-    ; bin =
-        Artifacts.Bin.create ~context
-          ~local_bins:(get_installed_binaries ~context stanzas)
-    }
+    let local_bins = get_installed_binaries ~context stanzas in
+    Artifacts.create context ~public_libs ~local_bins
   in
   let root_expander =
     let artifacts_host =
@@ -454,10 +452,12 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
       | None -> artifacts
       | Some host -> host.artifacts
     in
+    let find_package = Package.Name.Map.find packages in
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
+      ~find_package
   in
   let default_env =
     Memo.lazy_ (fun () ->
@@ -529,135 +529,6 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   ; dir_status_db
   ; projects_by_key
   }
-
-module Deps = struct
-  open Build.O
-  open Dep_conf
-
-  let make_alias expander s =
-    let loc = String_with_vars.loc s in
-    Expander.Or_exn.expand_path expander s
-    |> Result.map ~f:(Alias.of_user_written_path ~loc)
-
-  let dep t expander = function
-    | File s ->
-      Expander.Or_exn.expand_path expander s
-      |> Result.map ~f:(fun path ->
-             let+ () = Build.path path in
-             [ path ])
-    | Alias s ->
-      make_alias expander s
-      |> Result.map ~f:(fun a ->
-             let+ () = Build.alias a in
-             [])
-    | Alias_rec s ->
-      make_alias expander s
-      |> Result.map ~f:(fun a ->
-             let+ () =
-               Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a
-             in
-             [])
-    | Glob_files s ->
-      let loc = String_with_vars.loc s in
-      let path = Expander.Or_exn.expand_path expander s in
-      Result.map path ~f:(fun path ->
-          let pred =
-            Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
-          in
-          let dir = Path.parent_exn path in
-          Build.map ~f:Path.Set.to_list
-            (File_selector.create ~dir pred |> Build.paths_matching ~loc))
-    | Source_tree s ->
-      let path = Expander.Or_exn.expand_path expander s in
-      Result.map path ~f:(fun path ->
-          Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path))
-    | Package p ->
-      Expander.Or_exn.expand_str expander p
-      |> Result.map ~f:(fun pkg ->
-             let pkg = Package.Name.of_string pkg in
-             let+ () =
-               match Package.Name.Map.find t.packages pkg with
-               | None ->
-                 Build.fail
-                   { fail =
-                       (fun () ->
-                         let loc = String_with_vars.loc p in
-                         User_error.raise ~loc
-                           [ Pp.textf "Package %s does not exist"
-                               (Package.Name.to_string pkg)
-                           ])
-                   }
-               | Some pkg ->
-                 Build.alias
-                   (Build_system.Alias.package_install ~context:t.context ~pkg)
-             in
-             [])
-    | Universe ->
-      Ok
-        (let+ () = Build.dep Dep.universe in
-         [])
-    | Env_var var_sw ->
-      Expander.Or_exn.expand_str expander var_sw
-      |> Result.map ~f:(fun var ->
-             let+ () = Build.env_var var in
-             [])
-    | Sandbox_config sandbox_config ->
-      Ok
-        (let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
-         [])
-
-  let make_interpreter ~f t ~expander l =
-    let foreign_flags ~dir =
-      get_node t.env_tree ~dir |> Env_node.foreign_flags
-    in
-    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fun.id
-      ~foreign_flags ~f:(fun expander ->
-        match Result.List.map l ~f:(f t expander) with
-        | Ok deps ->
-          let+ l = Build.all deps in
-          List.concat l
-        | Error exn -> Build.fail { fail = (fun () -> reraise exn) })
-
-  let interpret t ~expander l =
-    let+ _paths = make_interpreter ~f:dep t ~expander l in
-    ()
-
-  let interpret_named =
-    make_interpreter ~f:(fun t expander ->
-      function
-      | Bindings.Unnamed p ->
-        dep t expander p
-        |> Result.map ~f:(fun l ->
-               let+ l = l in
-               List.map l ~f:(fun x -> Bindings.Unnamed x))
-      | Named (s, ps) ->
-        Result.List.map ps ~f:(dep t expander)
-        |> Result.map ~f:(fun xs ->
-               let+ l = Build.all xs in
-               [ Bindings.Named (s, List.concat l) ]))
-end
-
-module Action = struct
-  let map_exe sctx =
-    match sctx.host with
-    | None -> fun exe -> exe
-    | Some host -> (
-      fun exe ->
-        match Path.extract_build_context_dir exe with
-        | Some (dir, exe)
-          when Path.equal dir (Path.build sctx.context.build_dir) ->
-          Path.append_source (Path.build host.context.build_dir) exe
-        | _ -> exe )
-
-  let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
-      ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
-    let map_exe = map_exe sctx in
-    let foreign_flags ~dir =
-      get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-    in
-    Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
-      ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
-end
 
 let dir_status_db t = t.dir_status_db
 

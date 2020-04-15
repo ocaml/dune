@@ -477,14 +477,15 @@ let promote_correction fn build ~suffix =
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
 
-let action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src ~target =
+let action_for_pp ~dep_kind ~loc ~expander ~action ~src ~target =
   let action = chdir action in
   let bindings = Pform.Map.input_file (Path.build src) in
   let expander = Expander.add_bindings expander ~bindings in
   let targets = Targets.Or_forbidden.Forbidden "preprocessing actions" in
   let targets_dir = Option.value ~default:src target |> Path.Build.parent_exn in
   let action =
-    SC.Action.run sctx action ~loc ~expander ~dep_kind ~targets ~targets_dir
+    Action_unexpanded.expand action ~loc ~expander ~dep_kind ~targets
+      ~targets_dir
       (let+ () = Build.path (Path.build src) in
        Bindings.empty)
   in
@@ -508,7 +509,7 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
           Option.value_exn (Module.file ml ~ml_kind) |> Path.as_in_build_dir_exn
         in
         SC.add_rule sctx ~dir
-          (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src
+          (action_for_pp ~dep_kind ~loc ~expander ~action ~src
              ~target:(Some dst)));
   ml
 
@@ -544,7 +545,7 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
              Module.iter source ~f:(fun _ (src : Module.File.t) ->
                  let src = Path.as_in_build_dir_exn src.path in
                  add_alias src ~loc:(Some loc)
-                   (action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src
+                   (action_for_pp ~dep_kind ~loc ~expander ~action ~src
                       ~target:None))
          | Pps { loc; pps; flags; staged } ->
            if staged then
@@ -596,7 +597,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           (Super_context.context sctx).version)
   in
   let preprocessor_deps =
-    SC.Deps.interpret sctx preprocessor_deps ~expander
+    Dep_conf_eval.unnamed preprocessor_deps ~expander
     |> Build.memoize "preprocessor deps"
   in
   let lint_module =
@@ -615,7 +616,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
           let ast =
             pped_module m ~f:(fun _kind src dst ->
                 let action =
-                  action_for_pp sctx ~dep_kind ~loc ~expander ~action ~src
+                  action_for_pp ~dep_kind ~loc ~expander ~action ~src
                     ~target:(Some dst)
                 in
                 let open Build.With_targets.O in

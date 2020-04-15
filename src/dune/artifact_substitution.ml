@@ -291,22 +291,46 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
+(** The copy algorithm works as follow:
+
+    {v
+       read some data from the input
+                |
+                |
+                v
+        feed data to [Scanner.run]<-----------------------------------------\
+                |                                                           |
+                |                                                           |
+                v                                                           |
+   commit all the data we are sure are not                                  |
+     part of a placeholder to the output                                    |
+                |                                                           |
+                |                                                           |
+                v                                                           |
+ was the begining of a placeholder found by [Scanner.run]?                  |
+          (i.e. "%%DUNE_PLACEHOLDER:<len>:")                                |
+ and if yes, is the whole placeholder currently in [buf]?                   |
+        |                                         |                         |
+        | YES                                     | NO                      |
+        v                                         v                         |
+ extract the placeholder                   read more data from the input    |
+ and try to parse it with                         |                         |
+ [Artifact_substitution.decode]                   \-------------------------|
+ |                            |                                             |
+ | SUCCESS                    |                                             |
+ v                            |                                             |
+output the replacement        |                                             |
+ |                            | FAILURE                                     |
+ |                            v                                             |
+ |                    consider that this                                    |
+ |                    wasn't a placeholder                                  |
+ |                            |                                             |
+ |                            \---------------------------------------------|
+ |                                                                          |
+ \--------------------------------------------------------------------------/
+    v} *)
 let copy ~get_vcs ~input ~output =
   let open Fiber.O in
-  (* The copy algorithm works as follow:
-
-     read some data from the input | | v feed data to
-     [Scanner.run]<-----------------------------------------\ | | | | v | commit
-     all the data we are sure are not | part of a placeholder to the output | |
-     | | | v | was the begining of a placeholder found by [Scanner.run]? | (i.e.
-     "%%DUNE_PLACEHOLDER:<len>:") | and if yes, is the whole placeholder
-     currently in [buf]? | | | | | YES | NO | v v | extract the placeholder read
-     more data from the input | and try to parse it with | |
-     [Artifact_substitution.decode] \-------------------------| | | | | SUCCESS
-     | | v | | output the replacement | | | | FAILURE | | v | | consider that
-     this | | wasn't a placeholder | | | | |
-     \---------------------------------------------| | |
-     \--------------------------------------------------------------------------/ *)
   let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
     let placeholder_start =

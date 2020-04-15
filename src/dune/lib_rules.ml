@@ -355,7 +355,6 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let ctx = Super_context.context sctx in
-  let opaque = Super_context.opaque sctx in
   let dynlink =
     Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in
@@ -364,8 +363,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp ~opaque
-    ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
+    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
+    ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
+    ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
     ?vimpl ~modes
 

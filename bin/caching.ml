@@ -72,10 +72,10 @@ let trim ~trimmed_size ~size =
       | dirs ->
         User_error.raise
           [ Pp.text "Unexpected directories found at the cache root:"
-          ; Pp.enumerate dirs ~f:Pp.text
+          ; Pp.enumerate dirs ~f:(fun dir -> Path.to_string dir |> Pp.text)
           ; Pp.text
-              "It is likely that these directories are in use by Dune of a \
-               different version. Please trim the cache manually."
+              "These directories are probably used by Dune of a different \
+               version. Please trim the cache manually."
           ]
     in
     let+ trimmed_size =

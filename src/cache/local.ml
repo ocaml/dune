@@ -57,22 +57,16 @@ let detect_unexpected_dirs_under_cache_root cache =
       true
     | true, dir -> String.is_prefix ~prefix:"promoting." dir
   in
-  let in_root =
-    Path.to_string cache.root |> Sys.readdir |> Array.to_list
-    |> List.filter ~f:(fun name -> not (expected_in_root name))
+  let expected_in_files = String.equal file_store_version in
+  let expected_in_meta = String.equal metadata_store_version in
+  let detect_in ~dir expected =
+    Path.to_string dir |> Sys.readdir |> Array.to_list
+    |> List.filter ~f:(fun name -> not (expected name))
+    |> List.map ~f:(fun name -> Path.relative dir name)
   in
-  let in_files =
-    Path.relative cache.root "files"
-    |> Path.to_string |> Sys.readdir |> Array.to_list
-    |> List.filter ~f:(fun name -> not (String.equal name file_store_version))
-  in
-  let in_meta =
-    Path.relative cache.root "meta"
-    |> Path.to_string |> Sys.readdir |> Array.to_list
-    |> List.filter ~f:(fun name ->
-           not (String.equal name metadata_store_version))
-  in
-  in_root @ in_files @ in_meta
+  detect_in ~dir:cache.root expected_in_root
+  @ detect_in ~dir:(Path.relative cache.root "files") expected_in_files
+  @ detect_in ~dir:(Path.relative cache.root "meta") expected_in_meta
 
 (* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
    files stored in the cache.

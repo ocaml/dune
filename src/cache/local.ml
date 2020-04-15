@@ -53,7 +53,8 @@ let detect_unexpected_dirs_under_cache_root cache =
     with
     | false, _ -> true
     | true, "files"
-    | true, "meta" ->
+    | true, "meta"
+    | true, "runtime" ->
       true
     | true, dir -> String.is_prefix ~prefix:"promoting." dir
   in
@@ -64,9 +65,10 @@ let detect_unexpected_dirs_under_cache_root cache =
     |> List.filter ~f:(fun name -> not (expected name))
     |> List.map ~f:(fun name -> Path.relative dir name)
   in
-  detect_in ~dir:cache.root expected_in_root
-  @ detect_in ~dir:(Path.relative cache.root "files") expected_in_files
-  @ detect_in ~dir:(Path.relative cache.root "meta") expected_in_meta
+  List.sort ~compare:Path.compare
+    ( detect_in ~dir:cache.root expected_in_root
+    @ detect_in ~dir:(Path.relative cache.root "files") expected_in_files
+    @ detect_in ~dir:(Path.relative cache.root "meta") expected_in_meta )
 
 (* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
    files stored in the cache.

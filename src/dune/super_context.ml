@@ -279,11 +279,6 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
-let source_files ~src_path =
-  match File_tree.find_dir src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
 let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in
@@ -538,36 +533,6 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   ; dir_status_db
   ; projects_by_key
   }
-
-module Libs = struct
-  open Build.O
-
-  let gen_select_rules t ~dir compile_info =
-    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-        let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-        let dst = Path.Build.relative dir dst_fn in
-        add_rule t ~dir
-          ( match src_fn with
-          | Ok src_fn ->
-            let src = Path.build (Path.Build.relative dir src_fn) in
-            Build.copy_and_add_line_directive ~src ~dst
-          | Error e ->
-            Build.fail { fail = (fun () -> raise e) }
-            |> Build.with_targets ~targets:[ dst ] ))
-
-  let with_lib_deps t compile_info ~dir ~f =
-    let prefix =
-      Build.record_lib_deps (Lib.Compile.lib_deps_info compile_info)
-    in
-    let prefix =
-      if t.context.merlin then
-        Path.Build.relative dir ".merlin-exists"
-        |> Path.build |> Build.path >>> prefix
-      else
-        prefix
-    in
-    Build_system.prefix_rules prefix ~f
-end
 
 module Deps = struct
   open Build.O

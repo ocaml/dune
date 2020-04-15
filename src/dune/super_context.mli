@@ -128,8 +128,6 @@ val add_alias_action :
   -> Action.t Build.With_targets.t
   -> unit
 
-val source_files : src_path:Path.Source.t -> String.Set.t
-
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
     If it is not found at all, the resulting [Action.Prog.t] will either return
@@ -144,21 +142,6 @@ val resolve_program :
   -> loc:Loc.t option
   -> string
   -> Action.Prog.t
-
-module Libs : sig
-  (** Make sure all rules produces by [f] record the library dependencies for
-      [dune external-lib-deps] and depend on the generation of the .merlin file.
-
-      /!\ WARNING /!\: make sure the last function call inside [f] is fully
-      applied, otherwise the function might end up being executed after this
-      function has returned. Consider adding a type annotation to make sure this
-      doesn't happen by mistake. *)
-  val with_lib_deps :
-    t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
-
-  (** Generate the rules for the [(select ...)] forms in library dependencies *)
-  val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
-end
 
 (** Interpret dependencies written in Dune files *)
 module Deps : sig

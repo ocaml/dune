@@ -4,8 +4,8 @@
         ocamlc .foo.objs/byte/dummy.{cmi,cmo,cmt}
       ocamlopt .foo.objs/native/dummy.{cmx,o}
       ocamlopt foo.{a,cmxa}
-        ocamlc bar$ext_obj
-    ocamlmklib dllfoo_stubs$ext_dll,libfoo_stubs$ext_lib
+        ocamlc bar.o
+    ocamlmklib dllfoo_stubs.so,libfoo_stubs.a
       ocamllex lexers/lexer1.ml
       ocamldep .test.eobjs/lexer1.ml.d
       ocamldep .test.eobjs/test.ml.d

@@ -59,7 +59,7 @@ let term =
     Arg.(value & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
   in
   let ext_replace =
-    if Option.is_some (Env.get Env.initial "INSIDE_DUNE") then
+    if false && Option.is_some (Env.get Env.initial "INSIDE_DUNE") then
       make_ext_replace (Configurator.create "sanitizer")
     else
       fun s ->

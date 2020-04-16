@@ -849,3 +849,23 @@ let name t = t.name
 let has_native t = Result.is_ok t.ocamlopt
 
 let lib_config t = t.lib_config
+
+let sanitize_for_console t =
+  match !Clflags.sanitize_for_console with
+  | false -> Fun.id
+  | true -> (
+    let ext_black_list =
+      [ (Ocaml_config.ext_exe t.ocaml_config, "ext_exe")
+      ; (Ocaml_config.ext_asm t.ocaml_config, "ext_asm")
+      ; (t.lib_config.ext_dll, "ext_dll")
+      ; (t.lib_config.ext_lib, "ext_lib")
+      ; (t.lib_config.ext_obj, "ext_obj")
+      ]
+      |> List.map ~f:(fun (ext, repl) -> ("." ^ ext, ".$" ^ repl))
+    in
+    fun p ->
+      match List.assoc ext_black_list (Path.Build.extension p) with
+      | None -> p
+      | Some ext ->
+        let ext = sprintf "$%s" ext in
+        Path.Build.set_extension p ~ext )

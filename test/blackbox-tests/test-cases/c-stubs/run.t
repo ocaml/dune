@@ -1,6 +1,6 @@
   $ dune exec ./qnativerun/run.exe --display short
-        ocamlc q/q_stub$ext_obj
-    ocamlmklib q/dllq_stubs$ext_dll,q/libq_stubs$ext_lib
+        ocamlc q/q_stub.o
+    ocamlmklib q/dllq_stubs.so,q/libq_stubs.a
       ocamldep q/.q.objs/q.mli.d
         ocamlc q/.q.objs/byte/q.{cmi,cmti}
       ocamldep q/.q.objs/q.ml.d

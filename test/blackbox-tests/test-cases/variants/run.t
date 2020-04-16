@@ -18,7 +18,7 @@ variants results in an appropriate error message.
   Error: Multiple solutions for the implementation of "vlib" with variants a
   and b:
   - "lib_b" in _build/default/lib.b (variant b)
-  - "lib2_a" in _build/default/lib2$ext_lib (variant a)
+  - "lib2_a" in _build/default/lib2.a (variant a)
   [1]
 
 Basic sample using variants and a default library.
@@ -48,7 +48,7 @@ Check that variant data is installed in the dune package file.
    (kind normal)
    (archives (byte a.cma) (native a.cmxa))
    (plugins (byte a.cma) (native a.cmxs))
-   (native_archives a$ext_lib)
+   (native_archives a.a)
    (requires b)
    (implements b)
    (main_module_name B)
@@ -72,7 +72,7 @@ Check that variant data is installed in the dune package file.
    (name b)
    (kind normal)
    (virtual)
-   (native_archives b$ext_lib)
+   (native_archives b.a)
    (known_implementations (test a))
    (main_module_name B)
    (modes byte native)

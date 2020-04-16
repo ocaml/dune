@@ -18,7 +18,7 @@
   $ dune install --prefix ./installed
   Installing installed/lib/foobar/META
   Installing installed/lib/foobar/dune-package
-  Installing installed/lib/foobar/foobar$ext_lib
+  Installing installed/lib/foobar/foobar.a
   Installing installed/lib/foobar/foobar.cma
   Installing installed/lib/foobar/foobar.cmi
   Installing installed/lib/foobar/foobar.cmti
@@ -31,7 +31,7 @@
   Installing installed/lib/foobar/impl/foobar.cmx
   Installing installed/lib/foobar/impl/foobar.ml
   Installing installed/lib/foobar/impl/foobar.mli
-  Installing installed/lib/foobar/impl/foobar_impl$ext_lib
+  Installing installed/lib/foobar/impl/foobar_impl.a
   Installing installed/lib/foobar/impl/foobar_impl.cma
   Installing installed/lib/foobar/impl/foobar_impl.cmxa
   Installing installed/lib/foobar/impl/foobar_impl.cmxs

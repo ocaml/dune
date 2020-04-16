@@ -47,7 +47,7 @@ The expected behavior for the following three tests is to output nothing: the te
    (kind normal)
    (archives (byte foo.cma) (native foo.cmxa))
    (plugins (byte foo.cma) (native foo.cmxs))
-   (native_archives foo$ext_lib)
+   (native_archives foo.a)
    (main_module_name Foo)
    (modes byte native)
    (modules
@@ -80,7 +80,7 @@ The expected behavior for the following three tests is to output nothing: the te
   $ dune build dune-file/foo.install && dune install foo --prefix install
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
-  Installing install/lib/foo/foo$ext_lib
+  Installing install/lib/foo/foo.a
   Installing install/lib/foo/foo.cma
   Installing install/lib/foo/foo.cmi
   Installing install/lib/foo/foo.cmt

@@ -10,7 +10,7 @@ Install files for implemenations and virtual libs have all the artifacts:
     "_build/install/default/lib/vlib/vlib.cmt"
     "_build/install/default/lib/vlib/vlib.cmx"
     "_build/install/default/lib/vlib/vlib.ml"
-    "_build/install/default/lib/vlib/vlib$ext_obj"
+    "_build/install/default/lib/vlib/vlib.o"
     "_build/install/default/lib/vlib/vlib__Foo.cmi"
     "_build/install/default/lib/vlib/vlib__Foo.cmti"
   ]
@@ -18,7 +18,7 @@ Install files for implemenations and virtual libs have all the artifacts:
     "_build/install/default/lib/impl/META"
     "_build/install/default/lib/impl/dune-package"
     "_build/install/default/lib/impl/foo.ml"
-    "_build/install/default/lib/impl/impl$ext_lib"
+    "_build/install/default/lib/impl/impl.a"
     "_build/install/default/lib/impl/impl.cma"
     "_build/install/default/lib/impl/impl.cmxa"
     "_build/install/default/lib/impl/impl.cmxs"

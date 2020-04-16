@@ -6,7 +6,7 @@ stubs names, things are still broken if their .o files overlap:
   File "dune", line 4, characters 10-13:
   4 |  (c_names foo))
                 ^^^
-  Error: Multiple definitions for the same object file "foo$ext_obj". See another
+  Error: Multiple definitions for the same object file "foo.o". See another
   definition at dune:9.
   Hint: You can avoid the name clash by renaming one of the objects, or by
   placing it into a different directory.

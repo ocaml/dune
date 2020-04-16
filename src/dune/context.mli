@@ -121,6 +121,8 @@ val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
 
+val sanitize_for_console : t -> Path.Build.t -> Path.Build.t
+
 module DB : sig
   val get : Path.Build.t -> t
 

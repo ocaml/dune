@@ -6,7 +6,7 @@ stubs and js files installed
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/cfoo.h"
     "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/foo$ext_lib"
+    "_build/install/default/lib/foo/foo.a"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmi"
     "_build/install/default/lib/foo/foo.cmt"
@@ -15,11 +15,11 @@ stubs and js files installed
     "_build/install/default/lib/foo/foo.cmxs"
     "_build/install/default/lib/foo/foo.js"
     "_build/install/default/lib/foo/foo.ml"
-    "_build/install/default/lib/foo/libfoo_stubs$ext_lib"
+    "_build/install/default/lib/foo/libfoo_stubs.a"
     "_build/install/default/lib/foo/opam"
   ]
   stublibs: [
-    "_build/install/default/lib/stublibs/dllfoo_stubs$ext_dll"
+    "_build/install/default/lib/stublibs/dllfoo_stubs.so"
   ]
 
 install stanza is respected
@@ -69,7 +69,7 @@ unwrapped libraries have the correct artifacts
   lib: [
     "_build/install/default/lib/foo/META"
     "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/foo$ext_lib"
+    "_build/install/default/lib/foo/foo.a"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmi"
     "_build/install/default/lib/foo/foo.cmt"
@@ -91,7 +91,7 @@ wrapped lib with lib interface module
     "_build/install/default/lib/foo/bar.ml"
     "_build/install/default/lib/foo/bar.mli"
     "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/foo$ext_lib"
+    "_build/install/default/lib/foo/foo.a"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmi"
     "_build/install/default/lib/foo/foo.cmt"
@@ -119,7 +119,7 @@ wrapped lib without lib interface module
     "_build/install/default/lib/foo/bar.ml"
     "_build/install/default/lib/foo/bar.mli"
     "_build/install/default/lib/foo/dune-package"
-    "_build/install/default/lib/foo/foo$ext_lib"
+    "_build/install/default/lib/foo/foo.a"
     "_build/install/default/lib/foo/foo.cma"
     "_build/install/default/lib/foo/foo.cmi"
     "_build/install/default/lib/foo/foo.cmt"

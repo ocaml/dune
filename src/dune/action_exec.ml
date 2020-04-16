@@ -409,7 +409,14 @@ let exec_until_all_deps_ready ~ectx ~eenv t =
   Exec_result.{ dynamic_deps_stages = List.rev !stages }
 
 let exec ~targets ~context ~env ~rule_loc ~build_deps t =
-  let purpose = Process.Build_job targets in
+  let purpose =
+    let sanitize_for_console =
+      match context with
+      | None -> Fun.id
+      | Some ctx -> Context.sanitize_for_console ctx
+    in
+    Process.Build_job { targets; sanitize_for_console }
+  in
   let ectx = { targets; purpose; context; rule_loc; build_deps }
   and eenv =
     { working_dir = Path.root

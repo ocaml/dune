@@ -83,9 +83,9 @@ Testsuite for (mode plugin).
       ocamldep foo/.foo.objs/foo.ml.d
         ocamlc foo/.foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc foo/foo.cma
-      ocamldep $ext_lib.eobjs/a.ml.d
-        ocamlc $ext_lib.eobjs/byte/dune__exe__A.{cmi,cmo,cmt}
-      ocamlopt $ext_lib.eobjs/native/dune__exe__A.{cmx,o}
+      ocamldep .a.eobjs/a.ml.d
+        ocamlc .a.eobjs/byte/dune__exe__A.{cmi,cmo,cmt}
+      ocamlopt .a.eobjs/native/dune__exe__A.{cmx,o}
       ocamlopt a.cmxs
       ocamldep foo/.bar.objs/bar.ml.d
         ocamlc foo/.bar.objs/byte/bar.{cmi,cmo,cmt}

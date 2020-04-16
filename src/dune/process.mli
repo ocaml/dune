@@ -47,7 +47,10 @@ end
 (** Why a Fiber.t was run *)
 type purpose =
   | Internal_job
-  | Build_job of Path.Build.Set.t
+  | Build_job of
+      { targets : Path.Build.Set.t
+      ; sanitize_for_console : Path.Build.t -> Path.Build.t
+      }
 
 (** [run ?dir ?stdout_to prog args] spawns a sub-process and wait for its
     termination *)

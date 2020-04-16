@@ -28,7 +28,7 @@
     "_build/install/default.foo/lib/p/META" {"../../foo-sysroot/lib/p/META"}
     "_build/install/default.foo/lib/p/dune-package" {"../../foo-sysroot/lib/p/dune-package"}
     "_build/install/default.foo/lib/p/opam" {"../../foo-sysroot/lib/p/opam"}
-    "_build/install/default.foo/lib/p/p$ext_lib" {"../../foo-sysroot/lib/p/p$ext_lib"}
+    "_build/install/default.foo/lib/p/p.a" {"../../foo-sysroot/lib/p/p.a"}
     "_build/install/default.foo/lib/p/p.cma" {"../../foo-sysroot/lib/p/p.cma"}
     "_build/install/default.foo/lib/p/p.cmi" {"../../foo-sysroot/lib/p/p.cmi"}
     "_build/install/default.foo/lib/p/p.cmt" {"../../foo-sysroot/lib/p/p.cmt"}

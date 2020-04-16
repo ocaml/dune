@@ -7,7 +7,7 @@
    (kind normal)
    (archives (byte a.cma) (native a.cmxa))
    (plugins (byte a.cma) (native a.cmxs))
-   (native_archives a$ext_lib)
+   (native_archives a.a)
    (main_module_name A)
    (modes byte native)
    (modules
@@ -26,7 +26,7 @@
    (kind normal)
    (archives (byte b/c/c.cma) (native b/c/c.cmxa))
    (plugins (byte b/c/c.cma) (native b/c/c.cmxs))
-   (native_archives b/c/c$ext_lib)
+   (native_archives b/c/c.a)
    (main_module_name C)
    (modes byte native)
    (obj_dir (private_dir .private))

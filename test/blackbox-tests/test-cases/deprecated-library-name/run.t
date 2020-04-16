@@ -66,7 +66,7 @@ deprecated library will be resolved in the installed world only.
   > dune build @install --root .
   > dune install --prefix $PWD/../_install)
   Installing $TESTCASE_ROOT/b/../_install/lib/b/META
-  Installing $TESTCASE_ROOT/b/../_install/lib/b/b$ext_lib
+  Installing $TESTCASE_ROOT/b/../_install/lib/b/b.a
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cma
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmi
   Installing $TESTCASE_ROOT/b/../_install/lib/b/b.cmt

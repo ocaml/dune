@@ -7,7 +7,7 @@ Include variants and implementation information in dune-package
    (kind normal)
    (archives (byte impl/impl.cma) (native impl/impl.cmxa))
    (plugins (byte impl/impl.cma) (native impl/impl.cmxs))
-   (native_archives impl/impl$ext_lib)
+   (native_archives impl/impl.a)
    (requires foo.vlib)
    (implements foo.vlib)
    (main_module_name Vlib)
@@ -32,7 +32,7 @@ Include variants and implementation information in dune-package
    (name foo.vlib)
    (kind normal)
    (virtual)
-   (native_archives vlib/vlib$ext_lib)
+   (native_archives vlib/vlib.a)
    (main_module_name Vlib)
    (modes byte native)
    (modules

@@ -13,7 +13,7 @@
     "_build/install/default/lib/rlib/opam"
     "_build/install/default/lib/rlib/pped.re"
     "_build/install/default/lib/rlib/pped.rei"
-    "_build/install/default/lib/rlib/rlib$ext_lib"
+    "_build/install/default/lib/rlib/rlib.a"
     "_build/install/default/lib/rlib/rlib.cma"
     "_build/install/default/lib/rlib/rlib.cmi"
     "_build/install/default/lib/rlib/rlib.cmt"

@@ -126,7 +126,10 @@ end
 
 type purpose =
   | Internal_job
-  | Build_job of Path.Build.Set.t
+  | Build_job of
+      { targets : Path.Build.Set.t
+      ; sanitize_for_console : Path.Build.t -> Path.Build.t
+      }
 
 module Temp = struct
   let tmp_files = ref Path.Set.empty
@@ -263,7 +266,7 @@ module Fancy = struct
 
   let pp_purpose = function
     | Internal_job -> Pp.verbatim "(internal)"
-    | Build_job targets -> (
+    | Build_job { targets; sanitize_for_console } -> (
       let rec split_paths targets_acc ctxs_acc = function
         | [] -> (List.rev targets_acc, Context_name.Set.to_list ctxs_acc)
         | path :: rest -> (
@@ -275,7 +278,9 @@ module Fancy = struct
           in
           match Dpath.analyse_target path with
           | Other path ->
-            split_paths (Path.Build.to_string path :: targets_acc) ctxs_acc rest
+            split_paths
+              (Path.Build.to_string (sanitize_for_console path) :: targets_acc)
+              ctxs_acc rest
           | Regular (ctx, filename) ->
             split_paths
               (Path.Source.to_string filename :: targets_acc)
@@ -289,8 +294,8 @@ module Fancy = struct
               (("install " ^ Path.Source.to_string name) :: targets_acc)
               (add_ctx ctx ctxs_acc) rest )
       in
-      let targets = Path.Build.Set.to_list targets in
       let target_names, contexts =
+        let targets = Path.Build.Set.to_list targets in
         split_paths [] Context_name.Set.empty targets
       in
       let targets =

@@ -10,7 +10,7 @@ on the directory listing)
   $ cat _build/default/bar/bar.install
   lib: [
     "_build/install/default/lib/bar/META"
-    "_build/install/default/lib/bar/bar$ext_lib"
+    "_build/install/default/lib/bar/bar.a"
     "_build/install/default/lib/bar/bar.cma"
     "_build/install/default/lib/bar/bar.cmi"
     "_build/install/default/lib/bar/bar.cmt"

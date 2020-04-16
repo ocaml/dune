@@ -146,7 +146,7 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   $ ( cd external && ../sdune build @install && ../sdune install --prefix install)
   Installing install/lib/external_library/META
   Installing install/lib/external_library/dune-package
-  Installing install/lib/external_library/extlib$ext_lib
+  Installing install/lib/external_library/extlib.a
   Installing install/lib/external_library/extlib.cma
   Installing install/lib/external_library/extlib.cmi
   Installing install/lib/external_library/extlib.cmt

@@ -40,7 +40,7 @@ Check that default implementation data is installed in the dune package file.
    (name a)
    (kind normal)
    (virtual)
-   (native_archives a$ext_lib)
+   (native_archives a.a)
    (default_implementation a.default-impl)
    (main_module_name A)
    (modes byte native)
@@ -65,7 +65,7 @@ Check that default implementation data is installed in the dune package file.
    (plugins
     (byte default-impl/a_default.cma)
     (native default-impl/a_default.cmxs))
-   (native_archives default-impl/a_default$ext_lib)
+   (native_archives default-impl/a_default.a)
    (requires a)
    (implements a)
    (main_module_name A)

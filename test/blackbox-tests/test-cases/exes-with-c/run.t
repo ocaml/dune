@@ -7,7 +7,7 @@
       ocamldep .aa.eobjs/bb.ml.d
         ocamlc .aa.eobjs/byte/dune__exe__Bb.{cmi,cmo,cmt}
       ocamlopt .aa.eobjs/native/dune__exe__Bb.{cmx,o}
-        ocamlc foo$ext_obj
+        ocamlc foo.o
       ocamlopt bb.exe
       ocamlopt aa.exe
 

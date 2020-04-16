@@ -648,6 +648,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias empty-package-name)
+ (deps
+  (package dune)
+  (source_tree test-cases/empty-package-name)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/empty-package-name
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias enabled_if)
  (deps (package dune) (source_tree test-cases/enabled_if) (alias test-deps))
  (action
@@ -3060,6 +3071,7 @@
   (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
+  (alias empty-package-name)
   (alias enabled_if)
   (alias enabled_if-exec)
   (alias env-env-affects-expander-affects-env)
@@ -3355,6 +3367,7 @@
   (alias duplicate-project-names)
   (alias duplicate-target-no-loc)
   (alias embed-jbuild)
+  (alias empty-package-name)
   (alias enabled_if)
   (alias enabled_if-exec)
   (alias env-env-affects-expander-affects-env)

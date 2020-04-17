@@ -1,6 +1,8 @@
 2.5.1 (unreleased)
 ------------------
 
+- [coq] Fix install .v files for Coq theories (#3384, @lthms)
+
 - [coq] Fix install path for theory names with level greater than 1
   (#3358 , @ejgallego)
 

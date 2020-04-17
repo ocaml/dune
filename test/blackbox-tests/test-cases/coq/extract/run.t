@@ -1,6 +1,7 @@
   $ cat >dune-project <<EOF
   > (lang dune 2.5)
   > (using coq 0.2)
+  > EOF
 
   $ cat >extract.v <<EOF
   > Definition nb (b : bool) : bool :=

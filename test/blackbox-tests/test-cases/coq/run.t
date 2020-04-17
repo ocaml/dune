@@ -51,7 +51,9 @@
     "_build/install/default/lib/base/opam"
   ]
   lib_root: [
+    "_build/install/default/lib/coq/user-contrib/basic/bar.v" {"coq/user-contrib/basic/bar.v"}
     "_build/install/default/lib/coq/user-contrib/basic/bar.vo" {"coq/user-contrib/basic/bar.vo"}
+    "_build/install/default/lib/coq/user-contrib/basic/foo.v" {"coq/user-contrib/basic/foo.v"}
     "_build/install/default/lib/coq/user-contrib/basic/foo.vo" {"coq/user-contrib/basic/foo.vo"}
   ]
 
@@ -63,9 +65,13 @@
     "_build/install/default/lib/rec/opam"
   ]
   lib_root: [
+    "_build/install/default/lib/coq/user-contrib/rec_module/a/bar.v" {"coq/user-contrib/rec_module/a/bar.v"}
     "_build/install/default/lib/coq/user-contrib/rec_module/a/bar.vo" {"coq/user-contrib/rec_module/a/bar.vo"}
+    "_build/install/default/lib/coq/user-contrib/rec_module/b/foo.v" {"coq/user-contrib/rec_module/b/foo.v"}
     "_build/install/default/lib/coq/user-contrib/rec_module/b/foo.vo" {"coq/user-contrib/rec_module/b/foo.vo"}
+    "_build/install/default/lib/coq/user-contrib/rec_module/c/d/bar.v" {"coq/user-contrib/rec_module/c/d/bar.v"}
     "_build/install/default/lib/coq/user-contrib/rec_module/c/d/bar.vo" {"coq/user-contrib/rec_module/c/d/bar.vo"}
+    "_build/install/default/lib/coq/user-contrib/rec_module/c/ooo.v" {"coq/user-contrib/rec_module/c/ooo.v"}
     "_build/install/default/lib/coq/user-contrib/rec_module/c/ooo.vo" {"coq/user-contrib/rec_module/c/ooo.vo"}
   ]
 
@@ -81,7 +87,9 @@
     "_build/install/default/lib/csimple/opam"
   ]
   lib_root: [
+    "_build/install/default/lib/coq/user-contrib/a/a.v" {"coq/user-contrib/a/a.v"}
     "_build/install/default/lib/coq/user-contrib/a/a.vo" {"coq/user-contrib/a/a.vo"}
+    "_build/install/default/lib/coq/user-contrib/b/b.v" {"coq/user-contrib/b/b.v"}
     "_build/install/default/lib/coq/user-contrib/b/b.vo" {"coq/user-contrib/b/b.vo"}
   ]
 
@@ -174,7 +182,9 @@
     "_build/install/default/lib/subtheory/opam"
   ]
   lib_root: [
+    "_build/install/default/lib/coq/user-contrib/b/b.v" {"coq/user-contrib/b/b.v"}
     "_build/install/default/lib/coq/user-contrib/b/b.vo" {"coq/user-contrib/b/b.vo"}
+    "_build/install/default/lib/coq/user-contrib/foo/a/a.v" {"coq/user-contrib/foo/a/a.v"}
     "_build/install/default/lib/coq/user-contrib/foo/a/a.vo" {"coq/user-contrib/foo/a/a.vo"}
   ]
 

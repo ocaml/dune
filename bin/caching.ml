@@ -59,6 +59,10 @@ let trim ~trimmed_size ~size =
   let open Result.O in
   match
     let* cache =
+      (* CR-soon amokhov: The [Hadrlink] duplication mode is chosen artitrarily
+         here, instead of respecting the corresponding configuration setting,
+         because the mode doesn't matter for the trimmer. It would be better to
+         refactor the code to avoid such arbitrary choices. *)
       Cache.Local.make ~duplication_mode:Cache.Duplication_mode.Hardlink
         ~command_handler:ignore ()
     in

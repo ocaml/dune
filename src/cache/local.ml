@@ -48,9 +48,7 @@ let detect_unexpected_dirs_under_cache_root cache =
     (* We only report unexpected directories, since quite a few temporary files
        are created at the cache root, and it would be tedious to keep track of
        all of them. *)
-    match
-      (Sys.is_directory (Path.to_string (Path.relative cache.root path)), path)
-    with
+    match (Path.is_directory (Path.relative cache.root path), path) with
     | false, _ -> true
     | true, "files"
     | true, "meta"
@@ -58,17 +56,21 @@ let detect_unexpected_dirs_under_cache_root cache =
       true
     | true, dir -> String.is_prefix ~prefix:"promoting." dir
   in
+  let open Result.O in
   let expected_in_files = String.equal file_store_version in
   let expected_in_meta = String.equal metadata_store_version in
   let detect_in ~dir expected =
-    Path.to_string dir |> Sys.readdir |> Array.to_list
-    |> List.filter ~f:(fun name -> not (expected name))
-    |> List.map ~f:(fun name -> Path.relative dir name)
+    let+ names = Path.readdir_unsorted dir in
+    List.filter_map names ~f:(fun name ->
+        Option.some_if (not (expected name)) (Path.relative dir name))
   in
-  List.sort ~compare:Path.compare
-    ( detect_in ~dir:cache.root expected_in_root
-    @ detect_in ~dir:(Path.relative cache.root "files") expected_in_files
-    @ detect_in ~dir:(Path.relative cache.root "meta") expected_in_meta )
+  let+ in_root = detect_in ~dir:cache.root expected_in_root
+  and+ in_files =
+    detect_in ~dir:(Path.relative cache.root "files") expected_in_files
+  and+ in_meta =
+    detect_in ~dir:(Path.relative cache.root "meta") expected_in_meta
+  in
+  List.sort ~compare:Path.compare (in_root @ in_files @ in_meta)
 
 (* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
    files stored in the cache.
@@ -431,6 +433,8 @@ let make ?(root = default_root ())
     ; command_handler
     ; duplication_mode
     ; temp_dir =
+        (* CR-soon amokhov: Introduce [val getpid : unit -> t] in [pid.ml] so
+           that we don't use the untyped version of pid anywhere. *)
         Path.temp_dir ~temp_dir:root "promoting."
           ("." ^ string_of_int (Unix.getpid ()))
     }

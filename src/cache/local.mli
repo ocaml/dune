@@ -74,7 +74,8 @@ end
     cache. A non-empty result suggests that the cache directory contains
     multiple versions of the cache, making [trim] and [garbage_collect] less
     effective. *)
-val detect_unexpected_dirs_under_cache_root : t -> Path.t list
+val detect_unexpected_dirs_under_cache_root :
+  t -> (Path.t list, Unix.error) result
 
 (** [trim cache size] removes files from [cache], starting with the least
     recently used one, until [size] bytes have been freed. *)

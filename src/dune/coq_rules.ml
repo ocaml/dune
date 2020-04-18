@@ -409,16 +409,20 @@ let install_rules ~sctx ~dir s =
     in
     Dir_contents.coq dir_contents
     |> Coq_sources.library ~name
-    |> List.map ~f:(fun (vfile : Coq_module.t) ->
-           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
-           let vofile_rel =
-             Path.reach ~from:(Path.build dir) (Path.build vofile)
+    |> List.concat_map ~f:(fun (vfile : Coq_module.t) ->
+           let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
+           let to_dst f =
+             Path.Local.to_string @@ Path.Local.relative dst_dir f
            in
-           let dst = Path.Local.relative dst_dir vofile_rel in
-           ( Some loc
-           , Install.(
-               Entry.make Section.Lib_root ~dst:(Path.Local.to_string dst)
-                 vofile) ))
+           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
+           let vfile = Coq_module.source vfile in
+           let make_entry file =
+             ( Some loc
+             , Install.(
+                 Entry.make Section.Lib_root ~dst:(to_dst (to_path file)) file)
+             )
+           in
+           [ make_entry vfile; make_entry vofile ])
     |> List.rev_append coq_plugins_install_rules
 
 let coqpp_rules ~sctx ~dir (s : Coqpp.t) =

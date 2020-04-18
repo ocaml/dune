@@ -111,9 +111,9 @@ Terminology
   <profile>`` or from ``dune-workspace`` files. The following
   profiles are standard:
 
-  -  ``release`` which is the profile used for opam releases
-  -  ``dev`` which is the default profile when none is set explicitly, it
-     has stricter warnings that the ``release`` one
+  -  ``release`` which is the default profile when none is set explicitly, and
+     the profile used for opam releases
+  -  ``dev`` which has stricter warnings than the ``release`` one.
 
 Project layout
 ==============

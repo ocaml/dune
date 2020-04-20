@@ -216,8 +216,8 @@ let string_of_version { major; minor } = sprintf "%i.%i" major minor
 let find_newest_common_version versions_a versions_b =
   let find a b =
     let f { major; minor } = (major, minor) in
-    let a = Int.Map.of_list_exn (List.map ~f a)
-    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let a = Int.Map.of_list_map_exn ~f a
+    and b = Int.Map.of_list_map_exn ~f b in
     let common =
       Int.Map.merge
         ~f:(fun _major minor_in_a minor_in_b ->

@@ -204,11 +204,11 @@ let to_map x = (x : t :> Dir_rules.t Path.Build.Map.t)
 let map t ~f =
   Path.Build.Map.map t ~f:(fun m ->
       Id.Map.to_list (m : Dir_rules.Nonempty.t :> Dir_rules.t)
-      |> List.map ~f:(fun (id, data) ->
+      |> Id.Map.of_list_map_exn ~f:(fun (id, data) ->
              match f data with
              | `No_change -> (id, data)
              | `Changed data -> (Id.gen (), data))
-      |> Id.Map.of_list_exn |> Dir_rules.Nonempty.create |> Option.value_exn)
+      |> Dir_rules.Nonempty.create |> Option.value_exn)
 
 let is_subset t ~of_ =
   Path.Build.Map.is_subset (to_map t) ~of_:(to_map of_) ~f:Dir_rules.is_subset

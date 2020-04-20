@@ -439,9 +439,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         })
   in
   let stanzas_per_dir =
-    List.map stanzas ~f:(fun stanzas ->
+    Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
-    |> Path.Build.Map.of_list_exn
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in

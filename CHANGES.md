@@ -95,6 +95,10 @@
 - Fix a memory leak in the file-watching mode (`dune build -w`)
   (#3220, @snowleopard and @aalekseyev)
 
+- Starting from `(lang dune 2.4)`, dune systematically puts all files
+  under `_build` in read-only mode instead of only doing it when the
+  shared cache is enabled (#3092, @mefyl)
+
 2.3.1 (20/02/2020)
 ------------------
 

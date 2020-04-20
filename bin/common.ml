@@ -99,7 +99,9 @@ let set_common_other ?log_file c ~targets =
   Clflags.ignore_promoted_rules := c.ignore_promoted_rules;
   Option.iter ~f:Dune.Stats.enable c.stats_trace_file
 
-let set_common ?log_file c ~targets =
+let set_common ?log_file ?external_lib_deps_mode c ~targets =
+  Option.iter external_lib_deps_mode ~f:(fun x ->
+      Clflags.external_lib_deps_mode := x);
   set_dirs c;
   set_common_other ?log_file c ~targets
 

@@ -188,11 +188,11 @@ let term =
   and+ context_name = Common.context_arg ~doc:"Build context to use."
   and+ format = Format.arg
   and+ lang = Lang.arg in
-  Common.set_common common ~targets:[];
+  Common.set_common common ~targets:[] ~external_lib_deps_mode:false;
   let what = What.parse what ~lang in
   Scheduler.go ~common (fun () ->
       let open Fiber.O in
-      let* setup = Import.Main.setup common ~external_lib_deps_mode:false in
+      let* setup = Import.Main.setup common in
       let context =
         Import.Main.find_context_exn setup.workspace ~name:context_name
       in

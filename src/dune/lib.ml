@@ -1918,7 +1918,7 @@ module DB = struct
         | Some (Found lib) -> Found lib)
       ~all:(fun () -> Lib_name.Map.keys map)
 
-  let create_from_findlib ~external_lib_deps_mode ~stdlib_dir findlib =
+  let create_from_findlib ~stdlib_dir findlib =
     create () ~parent:None ~stdlib_dir
       ~resolve:(fun name ->
         match Findlib.find findlib name with
@@ -1930,7 +1930,7 @@ module DB = struct
           match e with
           | Invalid_dune_package why -> Invalid why
           | Not_found ->
-            if external_lib_deps_mode then
+            if !Clflags.external_lib_deps_mode then
               let pkg = Findlib.dummy_lib findlib ~name in
               Found (Dune_package.Lib.info pkg)
             else

@@ -79,7 +79,7 @@ module Main = struct
     let ancestor_vcs = (Common.root common).ancestor_vcs in
     scan_workspace ?workspace_file ?x ?profile ~capture_outputs ~ancestor_vcs ()
 
-  let setup ?external_lib_deps_mode common =
+  let setup common =
     let open Fiber.O in
     let* caching = make_cache (Common.config common) in
     let* workspace = scan_workspace common in
@@ -121,7 +121,7 @@ module Main = struct
     in
     init_build_system workspace
       ~sandboxing_preference:(Common.config common).sandboxing_preference
-      ?caching ?external_lib_deps_mode ?only_packages
+      ?caching ?only_packages
 end
 
 module Scheduler = struct

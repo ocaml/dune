@@ -28,12 +28,17 @@ val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
-(** [set_common ?log common ~targets] is [set_dirs common] followed by
-    [set_common_other common ~targets]. In general, [set_common] executes
-    sequence of side-effecting actions to initialize Dune's working environment
-    based on the options determined in a [Common.t] record.contents. *)
+(** [set_common ?log common ~targets ~external_lib_deps_mode] is
+    [set_dirs common] followed by [set_common_other common ~targets]. In
+    general, [set_common] executes sequence of side-effecting actions to
+    initialize Dune's working environment based on the options determined in a
+    [Common.t] record.contents. *)
 val set_common :
-  ?log_file:Dune_util.Log.File.t -> t -> targets:Arg.Dep.t list -> unit
+     ?log_file:Dune_util.Log.File.t
+  -> ?external_lib_deps_mode:bool
+  -> t
+  -> targets:Arg.Dep.t list
+  -> unit
 
 (** [set_common_other common ~targets] sets all stateful values dictated by
     [common], except those accounted for by [set_dirs]. [targets] are used to

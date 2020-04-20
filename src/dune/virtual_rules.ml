@@ -74,6 +74,7 @@ let setup_copy_rules_for_impl ~sctx ~dir vimpl =
   Modules.iter_no_vlib vlib_modules ~f:(fun m -> copy_objs m)
 
 let impl sctx ~(lib : Dune_file.Library.t) ~scope =
+  let ctx = Super_context.context sctx in
   Option.map lib.implements ~f:(fun (loc, implements) ->
       match Lib.DB.find (Scope.libs scope) implements with
       | None ->
@@ -108,10 +109,13 @@ let impl sctx ~(lib : Dune_file.Library.t) ~scope =
               let dir = Lib_info.src_dir info in
               Dir_contents.get sctx ~dir
             in
+            let preprocess =
+              Dune_file.Buildable.preprocess lib.buildable
+                ~lib_config:ctx.lib_config
+            in
             let modules =
               let pp_spec =
-                Pp_spec.make lib.buildable.preprocess
-                  (Super_context.context sctx).version
+                Pp_spec.make preprocess (Super_context.context sctx).version
               in
               Dir_contents.ocaml dir_contents
               |> Ml_sources.modules_of_library ~name

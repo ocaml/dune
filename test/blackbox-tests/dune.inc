@@ -2109,6 +2109,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias pipe-actions)
+ (deps (package dune) (source_tree test-cases/pipe-actions) (alias test-deps))
+ (action
+  (chdir
+   test-cases/pipe-actions
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias plugin-mode)
  (deps (package dune) (source_tree test-cases/plugin-mode) (alias test-deps))
  (action
@@ -3163,6 +3171,7 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
+  (alias pipe-actions)
   (alias plugin-mode)
   (alias ppx-rewriter)
   (alias ppx-runtime-dependencies)
@@ -3432,6 +3441,7 @@
   (alias optional-executable)
   (alias output-obj)
   (alias path-variables)
+  (alias pipe-actions)
   (alias plugin-mode)
   (alias preprocess-with-action)
   (alias private-modules)

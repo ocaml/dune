@@ -161,7 +161,9 @@ let fold_one_step t ~init:acc ~f =
   | With_accepted_exit_codes (_, t)
   | No_infer t ->
     f acc t
-  | Progn l -> List.fold_left l ~init:acc ~f
+  | Progn l
+  | Pipe (_, l) ->
+    List.fold_left l ~init:acc ~f
   | Run _
   | Dynamic_run _
   | Echo _
@@ -205,7 +207,9 @@ let rec is_dynamic = function
   | With_accepted_exit_codes (_, t)
   | No_infer t ->
     is_dynamic t
-  | Progn l -> List.exists l ~f:is_dynamic
+  | Progn l
+  | Pipe (_, l) ->
+    List.exists l ~f:is_dynamic
   | Run _
   | System _
   | Bash _
@@ -285,7 +289,9 @@ let is_useful_to distribute memoize =
     | With_accepted_exit_codes (_, t)
     | No_infer t ->
       loop t
-    | Progn l -> List.exists l ~f:loop
+    | Progn l
+    | Pipe (_, l) ->
+      List.exists l ~f:loop
     | Echo _ -> false
     | Cat _ -> memoize
     | Copy _ -> memoize

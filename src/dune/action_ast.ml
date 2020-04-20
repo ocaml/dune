@@ -47,6 +47,13 @@ struct
     else
       Redirect_out (output, fn, action)
 
+  let two_or_more decode =
+    let open Dune_lang.Decoder in
+    let+ n1 = decode
+    and+ n2 = decode
+    and+ rest = repeat decode in
+    n1 :: n2 :: rest
+
   let decode =
     let path = Path.decode in
     let string = String.decode in
@@ -185,6 +192,18 @@ struct
           ; ( "no-infer"
             , Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t ->
               No_infer t )
+          ; ( "pipe-stdout"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+              >>> let+ ts = two_or_more t in
+                  Pipe (Stdout, ts) )
+          ; ( "pipe-stderr"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+              >>> let+ ts = two_or_more t in
+                  Pipe (Stderr, ts) )
+          ; ( "pipe-outputs"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 7)
+              >>> let+ ts = two_or_more t in
+                  Pipe (Outputs, ts) )
           ])
 
   let rec encode =
@@ -249,6 +268,10 @@ struct
         ; target into
         ]
     | No_infer r -> List [ atom "no-infer"; encode r ]
+    | Pipe (outputs, l) ->
+      List
+        ( atom (sprintf "pipe-%s" (Outputs.to_string outputs))
+        :: List.map l ~f:encode )
 
   let run prog args = Run (prog, args)
 

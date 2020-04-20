@@ -50,6 +50,7 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
         , List.map extras ~f:(f_string ~dir)
         , f_target ~dir target )
     | No_infer t -> No_infer (f t ~dir)
+    | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(fun t -> f t ~dir))
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =
     map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_target

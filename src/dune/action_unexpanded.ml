@@ -201,6 +201,8 @@ module Partial = struct
         , List.map ~f:(E.string ~expander) extras
         , E.target ~expander target )
     | No_infer t -> No_infer (expand t ~expander)
+    | Pipe (outputs, l) ->
+      Pipe (outputs, List.map l ~f:(expand ~expander))
 end
 
 module E = Expand (struct
@@ -313,6 +315,8 @@ let rec partial_expand t ~expander : Partial.t =
       , List.map extras ~f:(E.string ~expander)
       , E.target ~expander target )
   | No_infer t -> No_infer (partial_expand t ~expander)
+  | Pipe (outputs, l) ->
+    Pipe (outputs, List.map l ~f:(partial_expand ~expander))
 
 module Infer : sig
   module Outcome : sig
@@ -418,7 +422,9 @@ end = struct
       | Setenv (_, _, t)
       | Ignore (_, t) ->
         infer acc t
-      | Progn l -> List.fold_left l ~init:acc ~f:infer
+      | Progn l
+      | Pipe (_, l) ->
+        List.fold_left l ~init:acc ~f:infer
       | Digest_files l -> List.fold_left l ~init:acc ~f:( +< )
       | Diff { optional; file1; file2; mode = _ } ->
         if optional then

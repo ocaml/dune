@@ -194,8 +194,7 @@ module DB : sig
     -> Library_related_stanza.t list
     -> t
 
-  val create_from_findlib :
-    external_lib_deps_mode:bool -> stdlib_dir:Path.t -> Findlib.t -> t
+  val create_from_findlib : stdlib_dir:Path.t -> Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option
 

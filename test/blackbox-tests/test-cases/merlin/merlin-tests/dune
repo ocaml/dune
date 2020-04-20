@@ -1,14 +1,14 @@
 (alias
  (name print-merlins)
- (deps lib/.merlin exe/.merlin)
+ (deps lib/.merlin-conf exe/.merlin-conf)
  (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))
 
 (alias
  (name print-merlins-pp)
- (deps pp-with-expand/.merlin)
+ (deps pp-with-expand/.merlin-conf)
  (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))
 
 (alias
  (name print-merlins-future-syntax)
- (deps future-syntax/.merlin)
+ (deps future-syntax/.merlin-conf)
  (action (run ./sanitize-dot-merlin/sanitize_dot_merlin.exe %{deps})))

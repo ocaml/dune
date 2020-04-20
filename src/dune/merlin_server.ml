@@ -83,7 +83,7 @@ let to_local abs_file_path =
 let load_merlin_file dir =
   let ctx = Context_name.(to_string default) in
   let dir_path = Path.Build.(append_local (relative root ctx) dir) in
-  let file_path = Path.Build.relative dir_path ".merlin" in
+  let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
   if Path.exists (Path.build file_path) then
     let build = Build.lines_of (Path.build file_path) in
     let lines, _ = Build.exec build in

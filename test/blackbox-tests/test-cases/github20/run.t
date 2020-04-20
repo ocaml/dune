@@ -1,1 +1,1 @@
-  $ dune build .merlin --display short
+  $ dune build .merlin-conf --display short

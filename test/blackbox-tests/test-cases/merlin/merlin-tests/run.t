@@ -8,7 +8,7 @@
       ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/native/sanitize_dot_merlin.{cmx,o}
       ocamlopt sanitize-dot-merlin/sanitize_dot_merlin.exe
   sanitize_dot_merlin alias print-merlins
-  # Processing exe/.merlin
+  # Processing exe/.merlin-conf
   EXCLUDE_QUERY_DIR
   B $LIB_PREFIX/lib/bytes
   B $LIB_PREFIX/lib/findlib
@@ -22,7 +22,7 @@
   S ../lib
   FLG -pp '$PP/_build/default/pp/pp.exe'
   FLG -w -40
-  # Processing lib/.merlin
+  # Processing lib/.merlin-conf
   EXCLUDE_QUERY_DIR
   B $LIB_PREFIX/lib/bytes
   B $LIB_PREFIX/lib/findlib
@@ -39,13 +39,13 @@
 
 Make sure a ppx directive is generated
 
-  $ grep -q ppx lib/.merlin
+  $ grep -q ppx _build/default/lib/.merlin-conf
 
 Make sure pp flag is correct and variables are expanded
 
   $ dune build @print-merlins-pp
   sanitize_dot_merlin alias print-merlins-pp
-  # Processing pp-with-expand/.merlin
+  # Processing pp-with-expand/.merlin-conf
   EXCLUDE_QUERY_DIR
   B ../_build/default/pp-with-expand/.foobar.eobjs/byte
   S .
@@ -56,7 +56,7 @@ We want future-syntax to either be applied, or not, depending on OCaml version.
 Adding the `echo` with expected output to the set of lines is a way of achieving that.
 
   $ (echo "FLG -pp '\$BIN/ocaml-syntax-shims'"; dune build @print-merlins-future-syntax 2>&1) | sort | uniq
-  # Processing future-syntax/.merlin
+  # Processing future-syntax/.merlin-conf
   B ../_build/default/future-syntax/.pp_future_syntax.eobjs/byte
   EXCLUDE_QUERY_DIR
   FLG -pp '$BIN/ocaml-syntax-shims'

@@ -1,4 +1,4 @@
-  $ dune build --root test1 test.exe .merlin --display short --debug-dependency-path
+  $ dune build --root test1 test.exe .merlin-conf --display short --debug-dependency-path
   Entering directory 'test1'
       ocamldep .foo.objs/dummy.ml.d
         ocamlc .foo.objs/byte/dummy.{cmi,cmo,cmt}

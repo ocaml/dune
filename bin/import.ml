@@ -30,7 +30,7 @@ include Common.Let_syntax
 
 let make_cache (config : Config.t) =
   let make_cache () =
-    let handle (Cache.Dedup file) =
+    let command_handler (Cache.Dedup file) =
       match Build_system.get_cache () with
       | None -> Code_error.raise "deduplication message and no caching" []
       | Some caching -> Scheduler.send_dedup caching.cache file
@@ -43,14 +43,15 @@ let make_cache (config : Config.t) =
           (Result.map_error
              ~f:(fun s -> User_error.E (User_error.make [ Pp.text s ]))
              (Cache.Local.make ?duplication_mode:config.cache_duplication
-                handle))
+                ~command_handler ()))
       in
       Cache.make_caching (module Cache.Local) cache
     | Daemon ->
       Log.info [ Pp.text "enable binary cache in daemon mode" ];
       let cache =
         Result.ok_exn
-          (Cache.Client.make ?duplication_mode:config.cache_duplication handle)
+          (Cache.Client.make ?duplication_mode:config.cache_duplication
+             ~command_handler ())
       in
       Cache.make_caching (module Cache.Client) cache
   in

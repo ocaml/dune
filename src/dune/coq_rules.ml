@@ -81,8 +81,8 @@ let libs_of_coq_deps ~lib_db = Result.List.map ~f:(Lib.DB.resolve lib_db)
 
 module Context = struct
   type 'a t =
-    { coqdep : Action.program
-    ; coqc : Action.program * Path.Build.t
+    { coqdep : Action.Prog.t
+    ; coqc : Action.Prog.t * Path.Build.t
     ; wrapper_name : string
     ; dir : Path.Build.t
     ; expander : Expander.t
@@ -107,7 +107,12 @@ module Context = struct
     let setup_theory_flag lib =
       let wrapper = Coq_lib.wrapper lib in
       let dir = Coq_lib.src_root lib in
-      let binding_flag = if Coq_lib.implicit lib then "-R" else "-Q" in
+      let binding_flag =
+        if Coq_lib.implicit lib then
+          "-R"
+        else
+          "-Q"
+      in
       [ Command.Args.A binding_flag; Path (Path.build dir); A wrapper ]
     in
     fun t ->
@@ -384,7 +389,7 @@ let install_rules ~sctx ~dir s =
     let dir_contents = Dir_contents.get sctx ~dir in
     let name = snd s.name in
     (* This must match the wrapper prefix for now to remain compatible *)
-    let dst_suffix = Coq_lib_name.wrapper (snd s.name) in
+    let dst_suffix = Coq_lib_name.dir (snd s.name) in
     (* These are the rules for now, coq lang 2.0 will make this uniform *)
     let dst_dir =
       if s.boot then
@@ -404,16 +409,20 @@ let install_rules ~sctx ~dir s =
     in
     Dir_contents.coq dir_contents
     |> Coq_sources.library ~name
-    |> List.map ~f:(fun (vfile : Coq_module.t) ->
-           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
-           let vofile_rel =
-             Path.reach ~from:(Path.build dir) (Path.build vofile)
+    |> List.concat_map ~f:(fun (vfile : Coq_module.t) ->
+           let to_path f = Path.reach ~from:(Path.build dir) (Path.build f) in
+           let to_dst f =
+             Path.Local.to_string @@ Path.Local.relative dst_dir f
            in
-           let dst = Path.Local.relative dst_dir vofile_rel in
-           ( Some loc
-           , Install.(
-               Entry.make Section.Lib_root ~dst:(Path.Local.to_string dst)
-                 vofile) ))
+           let vofile = Coq_module.obj_file ~obj_dir:dir vfile in
+           let vfile = Coq_module.source vfile in
+           let make_entry file =
+             ( Some loc
+             , Install.(
+                 Entry.make Section.Lib_root ~dst:(to_dst (to_path file)) file)
+             )
+           in
+           [ make_entry vfile; make_entry vofile ])
     |> List.rev_append coq_plugins_install_rules
 
 let coqpp_rules ~sctx ~dir (s : Coqpp.t) =

@@ -39,7 +39,7 @@ opam_install_test_deps () {
     # pressure to Dune's CI.
     keep_travis_happy \
         opam install \
-        coq.8.11.0
+        coq.8.11.1
         # js_of_ocaml-ppx \
         # js_of_ocaml-compiler \
 }
@@ -134,7 +134,7 @@ case "$TARGET" in
         opam update
         echo $DATE> ~/.opam/last-update
         UPDATE_OPAM=1
-        opam upgrade
+        keep_travis_happy opam upgrade
       fi
       if ! ./dune.exe build @runtest-no-deps &> $RUNTEST_NO_DEPS ; then
         cat $RUNTEST_NO_DEPS;

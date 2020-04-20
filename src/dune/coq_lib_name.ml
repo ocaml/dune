@@ -10,7 +10,11 @@ type t = string list
 
 let to_string x = String.concat ~sep:"." x
 
+let to_dir x = String.concat ~sep:"/" x
+
 let wrapper x = to_string x
+
+let dir x = to_dir x
 
 (* We should add some further validation to Coq library names; the rules in Coq
    itself have been tweaked due to Unicode, etc... so this is not trivial *)

@@ -1,6 +1,10 @@
+(** Loads dune files from the file system.
+
+    Also responsible for evaluating dune files written in OCaml syntax. *)
 open! Stdune
 
 module Dune_file : sig
+  (** A fully evaluated dune file *)
   type t =
     { dir : Path.Source.t
     ; project : Dune_project.t
@@ -12,6 +16,8 @@ module Dune_file : sig
 end
 
 module Dune_files : sig
+  (** A partially evaluated dune file. The context's ocamlc is used to evaluate
+      dune files in ocaml syntax *)
   type t
 
   val eval : t -> context:Context.t -> Dune_file.t list Fiber.t
@@ -24,4 +30,5 @@ type conf = private
   ; vcs : Vcs.t list
   }
 
-val load : ancestor_vcs:Vcs.t option -> unit -> conf
+(** Initialize the file tree and load all dune files *)
+val load : ancestor_vcs:Vcs.t option -> conf

@@ -1,3 +1,7 @@
+  $ cat >using-mdx/dune-project <<EOF
+  > (lang dune 2.4)
+  > EOF
+
 To use the mdx stanza you need to explicitly set (using mdx ..) in the
 dune-project
 

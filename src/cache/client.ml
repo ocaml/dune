@@ -13,7 +13,8 @@ type t =
   ; version : Messages.version
   }
 
-let my_versions : Messages.version list = [ { major = 1; minor = 2 } ]
+let versions_supported_by_dune : Messages.version list =
+  [ { major = 1; minor = 2 } ]
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
@@ -24,11 +25,14 @@ let read version input =
   let+ (Dedup v) = Messages.incoming_message_of_sexp version sexp in
   Dedup v
 
-let make ?finally ?duplication_mode handle =
+let make ?finally ?duplication_mode ~command_handler () =
   (* This is a bit ugly as it is global, but flushing a closed socket will nuke
      the program if we don't. *)
   let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-  let* cache = Result.map_error ~f:err (Local.make ?duplication_mode ignore) in
+  let* cache =
+    Result.map_error ~f:err
+      (Local.make ?duplication_mode ~command_handler:ignore ())
+  in
   let* port =
     let cmd =
       Format.sprintf "%s cache start --display progress --exit-no-client"
@@ -60,7 +64,7 @@ let make ?finally ?duplication_mode handle =
   let input = Unix.in_channel_of_descr fd in
   let+ version =
     Result.map_error ~f:err
-      (Messages.negotiate_version my_versions fd input socket)
+      (Messages.negotiate_version ~versions_supported_by_dune fd input socket)
   in
   Log.info
     [ Pp.textf "negotiated version: %s" (Messages.string_of_version version) ];
@@ -71,7 +75,7 @@ let make ?finally ?duplication_mode handle =
         [ (let open Pp.O in
           Pp.text "dune-cache command: " ++ Dyn.pp (command_to_dyn command))
         ];
-      handle command
+      command_handler command
     with
     | Result.Error e ->
       Log.info [ Pp.textf "dune-cache read error: %s" e ];

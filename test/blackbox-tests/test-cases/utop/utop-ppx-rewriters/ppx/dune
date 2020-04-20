@@ -1,0 +1,4 @@
+(library
+ (name fooppx)
+ (kind ppx_rewriter)
+ (libraries ppxlib))

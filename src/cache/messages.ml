@@ -90,13 +90,14 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
         ]
     in
     cmd "set-repos" (List.map ~f repositories)
-  | Dedup f ->
+  | Dedup file ->
     cmd "dedup"
       [ Sexp.List
           [ Sexp.Atom
-              (Path.Local.to_string (Path.Build.local f.in_the_build_directory))
-          ; Sexp.Atom (Path.to_string f.in_the_cache)
-          ; Sexp.Atom (Digest.to_string f.digest)
+              (Path.Local.to_string
+                 (Path.Build.local file.in_the_build_directory))
+          ; Sexp.Atom (Path.to_string file.in_the_cache)
+          ; Sexp.Atom (Digest.to_string file.digest)
           ]
       ]
 
@@ -134,7 +135,7 @@ let initial_message_of_sexp = function
     Result.Error
       (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
 
-let incoming_message_of_sexp _ = function
+let incoming_message_of_sexp _version = function
   | Sexp.List
       [ Sexp.Atom "dedup"
       ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
@@ -246,14 +247,14 @@ let send_sexp output sexp =
 let send version output message =
   send_sexp output (sexp_of_message version message)
 
-let highest_common_version my_versions versions =
+let find_newest_common_version versions_a versions_b =
   let find a b =
     let f { major; minor } = (major, minor) in
     let a = Int.Map.of_list_exn (List.map ~f a)
     and b = Int.Map.of_list_exn (List.map ~f b) in
     let common =
       Int.Map.merge
-        ~f:(fun _ minor_in_a minor_in_b ->
+        ~f:(fun _major minor_in_a minor_in_b ->
           match (minor_in_a, minor_in_b) with
           | Some a, Some b -> Some (min a b)
           | _ -> None)
@@ -263,17 +264,17 @@ let highest_common_version my_versions versions =
       ~f:(fun (major, minor) -> { major; minor })
       (Int.Map.max_binding common)
   in
-  match find my_versions versions with
+  match find versions_a versions_b with
   | None -> Result.Error "no compatible versions"
   | Some version -> Result.ok version
 
-let negotiate_version my_versions fd ic output =
-  send { major = 1; minor = 0 } output (Lang my_versions);
+let negotiate_version ~versions_supported_by_dune fd input output =
+  send { major = 1; minor = 0 } output (Lang versions_supported_by_dune);
   let f msg =
     Unix.close fd;
     msg
   in
   Result.map_error ~f
-    (let* sexp = Csexp.input ic in
+    (let* sexp = Csexp.input input in
      let* (Lang versions) = initial_message_of_sexp sexp in
-     highest_common_version my_versions versions)
+     find_newest_common_version versions_supported_by_dune versions)

@@ -1497,6 +1497,25 @@ run this toplevel with:
 
    $ dune exec ./tt.exe
 
+``(preprocess (pps ...))`` is the same as the ``(preprocess (pps ...))`` field
+of `library`_. Currently, ``action`` and ``future_syntax`` are not supported
+in the toplevel.
+
+subdir
+------
+
+The ``subdir`` stanza can be used to evaluate stanzas in sub directories. This is
+useful for generated files or to override stanzas in vendored direcotries
+without editing vendored dune files.
+
+In this example, a ``bar`` target is created in the ``foo`` directory, and a bar
+target will be created in ``a/b/bar``:
+
+.. code:: scheme
+
+   (subdir foo (rule (with-stdout-to bar (echo baz))))
+   (subdir a/b (rule (with-stdout-to bar (echo baz))))
+
 external_variant
 -----------------
 

@@ -12,6 +12,8 @@ type t =
   ; ext_dll : string
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
+  ; profile : Profile.t
+  ; ocaml_version : string
   }
 
 let var_map =
@@ -20,13 +22,17 @@ let var_map =
   ; ("model", fun t -> t.model)
   ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
   ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
+  ; ("profile", fun t -> Profile.to_string t.profile)
+  ; ("ocaml_version", fun t -> t.ocaml_version)
   ]
 
 let allowed_in_enabled_if =
   List.map var_map ~f:(fun (var, _) ->
       let min_version =
         match var with
+        | "profile" -> (2, 5)
         | "ccomp_type" -> (2, 0)
+        | "ocaml_version" -> (2, 5)
         | _ -> (1, 0)
       in
       (var, min_version))

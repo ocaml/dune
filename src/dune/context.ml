@@ -483,6 +483,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
+      ; profile
+      ; ocaml_version = Ocaml_config.version_string ocfg
       }
     in
     if Option.is_some fdo_target_exe then

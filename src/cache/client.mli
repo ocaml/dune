@@ -6,5 +6,6 @@ include Cache
 val make :
      ?finally:(unit -> unit)
   -> ?duplication_mode:Duplication_mode.t
-  -> (command -> unit)
+  -> command_handler:(command -> unit)
+  -> unit
   -> (t, exn) Result.t

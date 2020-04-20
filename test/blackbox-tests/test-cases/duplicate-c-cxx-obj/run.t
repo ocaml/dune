@@ -1,6 +1,12 @@
 This test showcases that although libraries can technically have non overlapping
 stubs names, things are still broken if their .o files overlap:
 
+  $ cat >same-stanza/dune <<EOF
+  > (library
+  >  (name foo)
+  >  (c_names foo sub/foo))
+  > EOF
+
   $ dune build --root diff-stanza @all
   Entering directory 'diff-stanza'
   File "dune", line 4, characters 10-13:

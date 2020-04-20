@@ -233,7 +233,8 @@ let exclusions =
   ; utop "utop-simple"
   ; utop "utop-default"
   ; utop "utop-default-implementation"
-  ; make "toplevel-stanza" ~only_ocaml:(">=", "4.05.0")
+  ; utop "utop-ppx-rewriters"
+  ; make "toplevel-stanza" ~only_ocaml:(">=", "4.05.0") ~external_deps:true
   ; make "github764" ~skip_platforms:[ Win ]
   ; make "gen-opam-install-file" ~external_deps:true
   ; make "scope-ppx-bug" ~external_deps:true

@@ -34,7 +34,15 @@ module Dune_file = struct
     | x :: inner_list -> inner_fold t inner_list l ~init:(f t x init) ~f
 end
 
-module Jbuild_plugin = struct
+module Jbuild_plugin : sig
+  val create_plugin_wrapper :
+       Context.t
+    -> exec_dir:Path.t
+    -> plugin:Path.t
+    -> wrapper:Path.Build.t
+    -> target:Path.Build.t
+    -> unit
+end = struct
   let replace_in_template =
     let template =
       lazy
@@ -100,25 +108,6 @@ module Jbuild_plugin = struct
       "module Jbuild_plugin : sig\n%s\nend = struct\n%s\nend\n# 1 %S\n%s"
       Assets.jbuild_plugin_mli (replace_in_template vars)
       (Path.to_string plugin) plugin_contents
-end
-
-module Dune_files = struct
-  type script =
-    { dir : Path.Source.t
-    ; file : Path.Source.t
-    ; project : Dune_project.t
-    }
-
-  type one =
-    | Literal of Dune_file.t
-    | Script of script
-
-  type t = one list
-
-  let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
-
-  let ensure_parent_dir_exists path =
-    Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let check_no_requires path str =
     List.iteri (String.split str ~on:'\n') ~f:(fun n line ->
@@ -148,18 +137,39 @@ module Dune_files = struct
       ~target =
     let plugin_contents = Io.read_file plugin in
     Io.with_file_out (Path.build wrapper) ~f:(fun oc ->
-        Jbuild_plugin.write oc ~context ~target ~exec_dir ~plugin
-          ~plugin_contents);
+        write oc ~context ~target ~exec_dir ~plugin ~plugin_contents);
     check_no_requires plugin plugin_contents
+end
+
+module Dune_files = struct
+  type script =
+    { dir : Path.Source.t
+    ; file : Path.Source.t
+    ; project : Dune_project.t
+    }
+
+  type one =
+    | Literal of Dune_file.t
+    | Script of
+        { script : script
+        ; from_parent : Dune_lang.Ast.t list
+        }
+
+  type t = one list
+
+  let generated_dune_files_dir = Path.Build.relative Path.Build.root ".dune"
+
+  let ensure_parent_dir_exists path =
+    Path.build path |> Path.parent |> Option.iter ~f:Path.mkdir_p
 
   let eval dune_files ~(context : Context.t) =
     let open Fiber.O in
     let static, dynamic =
       List.partition_map dune_files ~f:(function
         | Literal x -> Left x
-        | Script x -> Right x)
+        | Script { script; from_parent } -> Right (script, from_parent))
     in
-    Fiber.parallel_map dynamic ~f:(fun { dir; file; project } ->
+    Fiber.parallel_map dynamic ~f:(fun ({ dir; file; project }, from_parent) ->
         let generated_dune_file =
           Path.Build.append_source
             (Path.Build.relative generated_dune_files_dir
@@ -170,7 +180,7 @@ module Dune_files = struct
           Path.Build.extend_basename generated_dune_file ~suffix:".ml"
         in
         ensure_parent_dir_exists generated_dune_file;
-        create_plugin_wrapper context ~exec_dir:(Path.source dir)
+        Jbuild_plugin.create_plugin_wrapper context ~exec_dir:(Path.source dir)
           ~plugin:(Path.source file) ~wrapper ~target:generated_dune_file;
         let context = Option.value context.for_host ~default:context in
         let args =
@@ -191,6 +201,7 @@ module Dune_files = struct
             ];
         Fiber.return
           ( Dune_lang.Parser.load (Path.build generated_dune_file) ~mode:Many
+          |> List.rev_append from_parent
           |> Dune_file.parse ~dir ~file ~project ))
     >>| fun dynamic -> static @ dynamic
 end
@@ -204,15 +215,17 @@ type conf =
 
 let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
   let file = File_tree.Dune_file.path dune_file in
-  match dune_file with
-  | Ocaml_script _ -> Dune_files.Script { dir; project; file }
-  | Plain p ->
-    let sexps = File_tree.Dune_file.Plain.get_sexp_and_destroy p in
-    Literal (Dune_file.parse sexps ~dir ~file ~project)
+  let static =
+    File_tree.Dune_file.get_static_sexp_and_possibly_destroy dune_file
+  in
+  match File_tree.Dune_file.kind dune_file with
+  | Ocaml_script ->
+    Dune_files.Script { script = { dir; project; file }; from_parent = static }
+  | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
 module Vcs_map = Map.Make (Path)
 
-let load ~ancestor_vcs () =
+let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
 
   let _, vcs, projects =
@@ -254,21 +267,12 @@ let load ~ancestor_vcs () =
                     (Path.Source.to_string_maybe_quoted (Package.opam_file b))
                 ]))
   in
-  let rec walk dir dune_files =
-    if File_tree.Dir.status dir = Data_only then
-      dune_files
-    else
-      let path = File_tree.Dir.path dir in
-      let project = File_tree.Dir.project dir in
-      let dune_files =
-        match File_tree.Dir.dune_file dir with
-        | None -> dune_files
-        | Some dune_file ->
-          let dune_file = interpret ~dir:path ~project ~dune_file in
-          dune_file :: dune_files
-      in
-      File_tree.Dir.fold_sub_dirs dir ~init:dune_files
-        ~f:(fun _name dir dune_files -> walk dir dune_files)
+  let dune_files =
+    File_tree.Dir.fold_dune_files (File_tree.root ()) ~init:[]
+      ~f:(fun ~basename:_ dir dune_file dune_files ->
+        let path = File_tree.Dir.path dir in
+        let project = File_tree.Dir.project dir in
+        let dune_file = interpret ~dir:path ~project ~dune_file in
+        dune_file :: dune_files)
   in
-  let dune_files = walk (File_tree.root ()) [] in
   { dune_files; packages; projects; vcs = Vcs_map.values vcs }

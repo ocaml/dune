@@ -21,27 +21,27 @@ let source ~dir =
 
 let is_utop_dir dir = Path.Build.basename dir = utop_dir_basename
 
-let libs_under_dir sctx ~db ~dir =
+let libs_and_ppx_under_dir sctx ~db ~dir =
   (let open Option.O in
   let* dir = Path.drop_build_context dir in
   let+ dir = File_tree.find_dir dir in
-  File_tree.Dir.fold dir ~traverse:Sub_dirs.Status.Set.all ~init:[]
-    ~f:(fun dir acc ->
+  File_tree.Dir.fold_dune_files dir ~init:([], [])
+    ~f:(fun ~basename:_ dir _dune_file (acc, pps) ->
       let dir =
         Path.Build.append_source
           (Super_context.build_dir sctx)
           (File_tree.Dir.path dir)
       in
       match Super_context.stanzas_in sctx ~dir with
-      | None -> acc
+      | None -> (acc, pps)
       | Some (d : _ Dir_with_dune.t) ->
-        List.fold_left d.data ~init:acc ~f:(fun acc ->
+        List.fold_left d.data ~init:(acc, pps) ~f:(fun (acc, pps) ->
           function
           | Dune_file.Library l -> (
             match
               Lib.DB.find_even_when_hidden db (Dune_file.Library.best_name l)
             with
-            | None -> acc (* library is defined but outside our scope *)
+            | None -> (acc, pps) (* library is defined but outside our scope *)
             | Some lib ->
               (* still need to make sure that it's not coming from an external
                  source *)
@@ -53,22 +53,41 @@ let libs_under_dir sctx ~db ~dir =
               let not_impl = Option.is_none (Lib_info.implements info) in
               if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
               then
-                lib :: acc
+                match Lib_info.kind info with
+                | Lib_kind.Ppx_rewriter _
+                | Ppx_deriver _ ->
+                  (lib :: acc, (Lib_info.loc info, Lib_info.name info) :: pps)
+                | Normal -> (lib :: acc, pps)
               else
-                acc
+                (acc, pps)
               (* external lib with a name matching our private name *) )
-          | _ -> acc)))
-  |> Option.value ~default:[]
+          | _ -> (acc, pps))))
+  |> Option.value ~default:([], [])
+
+let libs_under_dir sctx ~db ~dir = fst (libs_and_ppx_under_dir sctx ~db ~dir)
 
 let setup sctx ~dir =
   let expander = Super_context.expander sctx ~dir in
   let scope = Super_context.find_scope_by_dir sctx dir in
   let db = Scope.libs scope in
-  let libs = libs_under_dir sctx ~db ~dir:(Path.build dir) in
+  let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
+  let pps =
+    if List.is_empty pps then
+      Dune_file.Preprocess.No_preprocessing
+    else
+      Dune_file.Preprocess.Pps
+        { loc = Loc.none; pps; flags = []; staged = false }
+  in
+  let preprocess = Module_name.Per_item.for_all pps in
+  let preprocessing =
+    Preprocessing.make sctx ~dir ~expander ~scope ~dep_kind:Required
+      ~lib_name:None ~lint:Dune_file.Lint.no_lint ~preprocess
+      ~preprocessor_deps:[]
+  in
   let source = source ~dir in
   let obj_dir = Toplevel.Source.obj_dir source in
   let loc = Toplevel.Source.loc source in
-  let modules = Toplevel.Source.modules source in
+  let modules = Toplevel.Source.modules source preprocessing in
   let requires =
     let open Result.O in
     (loc, Lib_name.of_string "utop")
@@ -88,7 +107,7 @@ let setup sctx ~dir =
       ~modules ~opaque:false
       ~requires_link:(lazy requires)
       ~requires_compile:requires ~flags ~js_of_ocaml:None ~dynlink:false
-      ~package:None
+      ~package:None ~preprocessing
   in
-  let toplevel = Toplevel.make ~cctx ~source in
+  let toplevel = Toplevel.make ~cctx ~source ~preprocess:pps in
   Toplevel.setup_rules toplevel

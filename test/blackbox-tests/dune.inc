@@ -1194,6 +1194,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias inline_tests-multi-mode)
+ (deps (package dune) (source_tree test-cases/inline_tests-multi-mode))
+ (action
+  (chdir
+   test-cases/inline_tests-multi-mode
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias install-dry-run)
  (deps (package dune) (source_tree test-cases/install-dry-run))
  (action
@@ -1861,6 +1869,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias subdir-stanza)
+ (deps (package dune) (source_tree test-cases/subdir-stanza))
+ (action
+  (chdir
+   test-cases/subdir-stanza
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -2000,6 +2016,15 @@
  (action
   (chdir
    test-cases/utop/utop-default-implementation
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
+
+(rule
+ (alias utop-utop-ppx-rewriters)
+ (deps (package dune) (source_tree test-cases/utop/utop-ppx-rewriters))
+ (action
+  (chdir
+   test-cases/utop/utop-ppx-rewriters
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2561,6 +2586,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-dry-run)
   (alias install-libdir)
   (alias install-mandir)
@@ -2641,6 +2667,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -2658,6 +2685,7 @@
   (alias use-meta)
   (alias utop-utop-default)
   (alias utop-utop-default-implementation)
+  (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
   (alias variants)
@@ -2842,6 +2870,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
@@ -2901,6 +2930,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -2908,7 +2938,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)

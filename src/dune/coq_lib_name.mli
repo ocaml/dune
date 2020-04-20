@@ -9,7 +9,12 @@ open! Stdune
 (** A Coq library name is a dot-separated list of Coq module identifiers. *)
 type t
 
+(** Returns the wrapper name, a dot-separated list of Coq module identifies *)
 val wrapper : t -> string
+
+(** Returns the directoy name for a lib name, in this case library name foo.bar
+    lives in foo/bar *)
+val dir : t -> string
 
 val encode : t Dune_lang.Encoder.t
 

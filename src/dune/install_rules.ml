@@ -179,7 +179,11 @@ end = struct
     let init =
       Super_context.packages sctx
       |> Package.Name.Map.map ~f:(fun (pkg : Package.t) ->
-             let files = Super_context.source_files ~src_path:pkg.path in
+             let files =
+               match File_tree.find_dir pkg.path with
+               | None -> String.Set.empty
+               | Some dir -> File_tree.Dir.files dir
+             in
              let pkg_dir = Path.Build.append_source ctx.build_dir pkg.path in
              let init =
                let meta_file = Package_paths.meta_file ctx pkg in

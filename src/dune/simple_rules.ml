@@ -11,13 +11,13 @@ module Alias_rules = struct
     , Option.map ~f:Action_unexpanded.remove_locs action
     , Option.map extra_bindings ~f:Pform.Map.to_stamp )
 
-  let add sctx ~alias ~stamp ~loc ?(locks = []) build =
+  let add sctx ~alias ~stamp ~loc ~locks build =
     let dir = Alias.dir alias in
     SC.add_alias_action sctx alias ~dir ~loc ~locks ~stamp build
 
   let add_empty sctx ~loc ~alias ~stamp =
     let action = Build.With_targets.return Action.empty in
-    add sctx ~loc ~alias ~stamp action
+    add sctx ~loc ~alias ~stamp action ~locks:[]
 end
 
 let interpret_locks ~expander = List.map ~f:(Expander.expand_path expander)
@@ -105,7 +105,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
     let action =
-      SC.Deps.interpret_named sctx ~expander rule.deps
+      Super_context.Deps.interpret_named sctx ~expander rule.deps
       |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
            ~dep_kind:Required ~targets ~targets_dir:dir
     in
@@ -124,7 +124,8 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
         let action = Some (snd rule.action) in
         Alias_rules.stamp ~deps:rule.deps ~extra_bindings ~action
       in
-      Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action;
+      let locks = interpret_locks ~expander rule.locks in
+      Alias_rules.add sctx ~alias ~stamp ~loc:(Some rule.loc) action ~locks;
       Path.Build.Set.empty )
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =

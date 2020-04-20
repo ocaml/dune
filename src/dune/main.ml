@@ -42,7 +42,7 @@ let setup_env ~capture_outputs =
 let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
     ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
-  let conf = Dune_load.load ~ancestor_vcs () in
+  let conf = Dune_load.load ~ancestor_vcs in
   let () =
     let path : Path.t option =
       match workspace_file with

@@ -39,11 +39,15 @@ let to_dyn dyn_of_a bindings =
 let decode elem =
   let+ l =
     repeat
-      (if_paren_colon_form
-         ~then_:
-           (let+ values = repeat elem in
-            fun (loc, name) -> Left (loc, name, values))
-         ~else_:(elem >>| Either.right))
+      ( enter
+          (let+ loc, name =
+             located
+               (atom_matching ~desc:"Atom of the form :<name>"
+                  (String.drop_prefix ~prefix:":"))
+           and+ values = repeat elem in
+           Left (loc, name, values))
+      <|> let+ value = elem in
+          Right value )
   in
   let rec loop vars acc = function
     | [] -> List.rev acc

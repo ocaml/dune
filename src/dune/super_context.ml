@@ -279,11 +279,6 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
 
-let source_files ~src_path =
-  match File_tree.find_dir src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
 let build_dir_is_vendored build_dir =
   let opt =
     let open Option.O in
@@ -539,36 +534,6 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   ; projects_by_key
   }
 
-module Libs = struct
-  open Build.O
-
-  let gen_select_rules t ~dir compile_info =
-    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-        let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-        let dst = Path.Build.relative dir dst_fn in
-        add_rule t ~dir
-          ( match src_fn with
-          | Ok src_fn ->
-            let src = Path.build (Path.Build.relative dir src_fn) in
-            Build.copy_and_add_line_directive ~src ~dst
-          | Error e ->
-            Build.fail { fail = (fun () -> raise e) }
-            |> Build.with_targets ~targets:[ dst ] ))
-
-  let with_lib_deps t compile_info ~dir ~f =
-    let prefix =
-      Build.record_lib_deps (Lib.Compile.lib_deps_info compile_info)
-    in
-    let prefix =
-      if t.context.merlin then
-        Path.Build.relative dir ".merlin-exists"
-        |> Path.build |> Build.path >>> prefix
-      else
-        prefix
-    in
-    Build_system.prefix_rules prefix ~f
-end
-
 module Deps = struct
   open Build.O
   open Dep_conf
@@ -665,8 +630,6 @@ module Deps = struct
 end
 
 module Action = struct
-  module U = Action_unexpanded
-
   let map_exe sctx =
     match sctx.host with
     | None -> fun exe -> exe
@@ -680,56 +643,12 @@ module Action = struct
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
       ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
-    let dir = Expander.dir expander in
     let map_exe = map_exe sctx in
-    ( match (targets_written_by_user : Targets.Or_forbidden.t) with
-    | Targets _ -> ()
-    | Forbidden context -> (
-      match U.Infer.unexpanded_targets t with
-      | [] -> ()
-      | x :: _ ->
-        let loc = String_with_vars.loc x in
-        User_error.raise ~loc
-          [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
-    );
-    let partially_expanded, fully_expanded =
-      let foreign_flags ~dir =
-        get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-      in
-      Expander.expand_action expander ~dep_kind ~deps_written_by_user
-        ~targets_written_by_user ~map_exe ~foreign_flags
-        ~partial:(fun expander ->
-          Action_unexpanded.partial_expand t ~expander ~map_exe)
-        ~final:(fun expander t -> U.Partial.expand t ~expander ~map_exe)
+    let foreign_flags ~dir =
+      get_node sctx.env_tree ~dir |> Env_node.foreign_flags
     in
-    let { U.Infer.Outcome.deps; targets } =
-      U.Infer.partial targets_written_by_user partially_expanded
-    in
-    let targets = Path.Build.Set.to_list targets in
-    List.iter targets ~f:(fun target ->
-        if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
-          User_error.raise ~loc
-            [ Pp.text
-                "This action has targets in a different directory than the \
-                 current one, this is not allowed by dune at the moment:"
-            ; Pp.enumerate targets ~f:(fun target ->
-                  Pp.text (Dpath.describe_path (Path.build target)))
-            ]);
-    let open Build.O in
-    let build =
-      Build.path_set deps
-      >>> Build.dyn_path_set
-            (let+ action =
-               let+ unresolved = fully_expanded in
-               Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-                   match Expander.resolve_binary ~loc expander ~prog with
-                   | Ok path -> path
-                   | Error { fail } -> fail ())
-             in
-             let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-             (Action.Chdir (Path.build dir, action), deps))
-    in
-    Build.with_targets ~targets build
+    Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
+      ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
 
 let opaque t =

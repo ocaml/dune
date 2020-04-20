@@ -183,6 +183,8 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
-  SC.Libs.gen_select_rules sctx compile_info ~dir;
+  Buildable_rules.gen_select_rules sctx compile_info ~dir;
   Bootstrap_info.gen_rules sctx exes ~dir compile_info;
-  SC.Libs.with_lib_deps sctx compile_info ~dir ~f
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    compile_info ~dir ~f

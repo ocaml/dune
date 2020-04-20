@@ -1,4 +1,15 @@
-Unreleased
+2.5.1 (17/04/2020)
+------------------
+
+- [coq] Fix install .v files for Coq theories (#3384, @lthms)
+
+- [coq] Fix install path for theory names with level greater than 1 (#3358,
+  @ejgallego)
+
+- Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets
+  had no effect. (@aalekseyev, report by @craigfe)
+
+2.5.0 (09/04/2020)
 ------------------
 
 - Add a `--release` option meaning the same as `-p` but without the
@@ -22,8 +33,8 @@ Unreleased
   `dune-project` will trigger a warning for version <=2.4 and an error for
   versions >2.4 of the dune language. (#3270, fixes #2957, @voodoos)
 
-- [coq] Bump coq-lang version to 0.2, put new features under it
-  (#3283, @ejgallego)
+- [coq] Bump coq lang version to 0.2. New coq features presented this release
+  require this version of the coq lang. (#3283, @ejgallego)
 
 - Prevent installation of public executables disabled using the `enabled_if` field.
   Installation will now simply skip such executables instead of raising an
@@ -40,6 +51,25 @@ Unreleased
 
 - [coq] Introduce the `coq.extraction` stanza. It can be used to extract OCaml
   sources (#3299, fixes #2178, @rgrinberg)
+
+- Load ppx rewriters in dune utop and add pps field to toplevel stanza. Ppx
+  extensions will now be usable in the toplevel
+  (#3266, fixes #346, @stephanieyou)
+
+- Add a `(subdir ..)` stanza to allow evaluating stanzas in sub directories.
+  (#3268, @rgrinberg)
+
+- Fix a bug preventing one from running inline tests in multiple modes
+  (#3352, @diml)
+
+- Allow the use of the `%{profile}` variable in the `enabled_if` field of the
+  library stanza. (#3344, @mrmr1993)
+
+- Allow the use of `%{ocaml_version}` variable in `enabled_if` field of the
+  library stanza. (#3339, @voodoos)
+
+- Fix dune build freezing on MacOS when cache is enabled. (#3249, fixes ##2973,
+  @artempyanykh)
 
 2.4.0 (06/03/2020)
 ------------------

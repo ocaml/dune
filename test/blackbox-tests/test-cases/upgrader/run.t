@@ -1,3 +1,70 @@
+  $ mkdir -p partv2/partv1
+  $ mkdir -p partv2/partv1bis
+  $ cat >partv2/partv1/dune.inc <<EOF
+  > ; comment top
+  > (alias
+  >  (name "runtest")
+  >  (action (run %{bin:ocamlformat} -n 1 -i dir1/dir2/ignore_2.ml)))
+  > 
+  > (executable
+  >  (name aux)
+  >  (c_names cn1 cn2)
+  >  (c_flags cf1 cf2)
+  >  (cxx_names cxxn1 cxxn2)
+  >  (cxx_flags cxxf1 cxxf2))
+  > EOF
+
+  $ cat >partv2/partv1/dune-project <<EOF
+  > (lang dune 1.0)
+  > (name pouet)
+  > EOF
+
+  $ cat >partv2/partv1/dune <<EOF
+  > (include dune.inc)
+  > 
+  > (alias
+  >  (name runtest)
+  >  (action (run %{bin:ocamlformat} -n 1 -i dir1/dir2/ignore_2.ml)))
+  > 
+  > ; comment middle
+  > (alias
+  >  (action (run %{bin:ocamlformat} -n 1 -i dir1/dir2/ignore_2.ml))
+  >  (name runtest)) ; comment end of line
+  > 
+  > (alias
+  >  (name foo)
+  >  (deps opam))
+  > 
+  > (executable
+  >  (preprocessor_deps (alias foo))
+  >  (modes exe))
+  > 
+  > (executable
+  >  (preprocess no_preprocessing)
+  >  (preprocessor_deps (alias foo)))
+  > 
+  > (executable
+  >  (preprocess future_syntax)
+  >  (preprocessor_deps (alias foo))
+  >  (name toto))
+  > 
+  > (library
+  >  (name foolib1)
+  >  (no_keep_locs)
+  >  (preprocess future_syntax)
+  >  (preprocessor_deps (alias foo)))
+  > 
+  > (library
+  >  (name foolib2)
+  >  (preprocessor_deps (alias foo)))
+  > EOF
+
+  $ cat >partv2/partv1bis/dune-project <<EOF
+  > (lang dune 1.11)
+  > (name pouetbis)
+  > (using fmt 1.2 (enabled_for reason))
+  > EOF
+
   $ cat > foo.opam <<EOF
   > build: [
   >   ["jbuilder" "subst" "-p" name]

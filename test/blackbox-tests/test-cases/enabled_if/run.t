@@ -24,8 +24,8 @@ Test the enabled_if field for libraries:
   [1]
 
   $ dune build main.exe
-  File "dune", line 33, characters 12-15:
-  33 |  (libraries foo))
+  File "dune", line 34, characters 12-15:
+  34 |  (libraries foo))
                    ^^^
   Error: Library "foo" in _build/default is hidden (unsatisfied 'enabled_if').
   Hint: try: dune external-lib-deps --missing main.exe
@@ -49,4 +49,14 @@ This one is disabled (version too low)
   Error: Library "futurecaml" in _build/default is hidden (unsatisfied
   'enabled_if').
   Hint: try: dune external-lib-deps --missing --root ocaml_version main2.exe
+  [1]
+
+This one unse forbidden variables
+  $ dune build foo --root forbidden_var
+  Entering directory 'forbidden_var'
+  File "dune", line 3, characters 19-32:
+  3 |   (enabled_if (= %{project_root} "")))
+                         ^^^^^^^^^^^^^
+  Error: Only architecture, system, model, os_type, ccomp_type, profile and
+  ocaml_version are allowed in this 'enabled_if' field.
   [1]

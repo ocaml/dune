@@ -407,6 +407,12 @@ and exec_pipe outputs ts ~ectx ~eenv =
       ~prefix:"dune-pipe-action-"
       ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
+  let multi_use_eenv =
+    match outputs with
+    | Outputs -> eenv
+    | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
+    | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
+  in
   let rec loop ~in_ ts =
     match ts with
     | [] -> assert false
@@ -417,7 +423,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
     | t :: ts -> (
       let out = tmp_file () in
       let* done_or_deps =
-        redirect t ~ectx ~eenv ~in_:(Stdin, in_) ~out:(outputs, out) ()
+        redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_) ~out:(outputs, out) ()
       in
       Temp.destroy in_;
       match done_or_deps with

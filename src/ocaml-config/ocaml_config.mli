@@ -2,13 +2,11 @@
 
     This library is internal to dune and guarantees no API stability. *)
 
-open! Stdune
-
 (** Represent a parsed and interpreted output of [ocamlc -config] and contents
     of [Makefile.config]. *)
 type t
 
-val to_dyn : t Dyn.Encoder.t
+val to_dyn : t Stdune.Dyn.Encoder.t
 
 module Prog_and_args : sig
   type t =
@@ -31,7 +29,7 @@ module Vars : sig
   val to_list : t -> (string * string) list
 
   (** Parse the output of [ocamlc -config] given as a list of lines. *)
-  val of_lines : string list -> (t, string) Result.t
+  val of_lines : string list -> (t, string) result
 end
 
 (** {1 Creation} *)
@@ -39,7 +37,7 @@ end
 module Origin : sig
   type t =
     | Ocamlc_config
-    | Makefile_config of Path.t
+    | Makefile_config of Stdune.Path.t
 end
 
 module Os_type : sig
@@ -56,14 +54,14 @@ module Ccomp_type : sig
     | Msvc
     | Other of string
 
-  val to_dyn : t -> Dyn.t
+  val to_dyn : t -> Stdune.Dyn.t
 
   val to_string : t -> string
 end
 
 (** Interpret raw bindings (this function also loads the [Makefile.config] file
     in the stdlib directory). *)
-val make : Vars.t -> (t, Origin.t * string) Result.t
+val make : Vars.t -> (t, Origin.t * string) result
 
 (** {1 Query} *)
 
@@ -180,7 +178,7 @@ module Value : sig
 
   val to_string : t -> string
 
-  val to_dyn : t Dyn.Encoder.t
+  val to_dyn : t Stdune.Dyn.Encoder.t
 end
 
 val to_list : t -> (string * Value.t) list

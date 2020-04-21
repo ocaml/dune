@@ -128,7 +128,7 @@ module Theory = struct
        and+ boot =
          field_b "boot" ~check:(Dune_lang.Syntax.since coq_syntax (0, 2))
        and+ modules = modules_field "modules"
-       and+ enabled_if = enabled_if ~since:None
+       and+ enabled_if = enabled_if ~since:None ()
        and+ buildable = Buildable.decode in
        let package = select_deprecation ~package ~public in
        { name

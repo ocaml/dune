@@ -1,3 +1,5 @@
+(dirs :standard \ forbidden_var install)
+
 (executable
   (name main)
   (modules main)

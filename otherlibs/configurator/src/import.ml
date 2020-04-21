@@ -275,3 +275,14 @@ module Io = struct
           { pos_fname = fn; pos_lnum = 1; pos_bol = 0; pos_cnum = 0 };
         f lb)
 end
+
+module Sexp = struct
+  module T = struct
+    type t =
+      | Atom of string
+      | List of t list
+  end
+
+  include T
+  include Dune_csexp.Csexp.Make (T)
+end

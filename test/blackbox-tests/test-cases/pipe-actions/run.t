@@ -29,24 +29,26 @@ You need to set the language to 2.7 or higher for it to work:
           grep alias pipe
   b
 
-The makefile version of pipe actious uses actual pipes.
-Note that we wrap the previous into a with-stdout-to so that we can easily refer
-to the target in the dune rule invocation below.
+The makefile version of pipe actious uses actual pipes:
 
+  $ touch a.ml b.ml c.ml dummy.opam
   $ cat >dune <<EOF
+  > (executables
+  >  (public_names a b c))
+  > 
   > (rule
   >  (alias pipe)
   >  (action
   >   (with-outputs-to target
-  >    (pipe-outputs (echo "a\nb\nc") (run grep "'a\\\\|b'") (run grep "'b\\\\|c'")))))
+  >    (pipe-outputs (run a) (run b) (run c)))))
   > EOF
 
   $ dune rule -m target
-  _build/default/target: /usr/bin/grep
+  _build/default/target: _build/install/default/bin/a \
+    _build/install/default/bin/b _build/install/default/bin/c
   	mkdir -p _build/default; \
   	mkdir -p _build/default; \
   	cd _build/default; \
-  	{ echo -n c; echo b; echo a; } 2>&1 | /usr/bin/grep a\|b 2>&1 | /usr/bin/grep \
-  	                                                                  b\|c &> \
-  	  target
+  	../install/default/bin/a 2>&1 | ../install/default/bin/b 2>&1 | ../install/default/bin/c \
+  	  &> target
   

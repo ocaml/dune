@@ -804,7 +804,11 @@ module Library = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Lib_info.Special_builtin_support.decode )
-       and+ enabled_if = enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if) ~since:(Some (1, 10)) () in
+       and+ enabled_if =
+         enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
+           ~since:(Some (1, 10))
+           ()
+       in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in
@@ -1039,7 +1043,11 @@ module Install_conf = struct
       (let+ section = field "section" Install.Section.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
-       and+ enabled_if = enabled_if ~since:(Some (2, 6)) () in
+       and+ enabled_if =
+         enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
+           ~since:(Some (2, 6))
+           ()
+       in
        { section; files; package; enabled_if })
 end
 
@@ -1087,7 +1095,8 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf : t -> ext:string -> enabled_if: Blang.t -> Install_conf.t option
+    val install_conf :
+      t -> ext:string -> enabled_if:Blang.t -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1466,7 +1475,11 @@ module Executables = struct
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
-    and+ enabled_if = enabled_if ~since:(Some (2, 3)) () in
+    and+ enabled_if =
+      enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
+        ~since:(Some (2, 3))
+        ()
+    in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in

@@ -2,10 +2,13 @@ open Stdune
 
 type metadata = Sexp.t list
 
+(** A file stored in Dune cache is fully determined by the build [path] and its
+    content [digest]. There may be multiple [File]s with the same [digest] due
+    to sharing between multiple workspaces. In fact, the more such pairs there
+    are, the more effective the cache is. *)
 module File = struct
   type t =
-    { in_the_cache : Path.t
-    ; in_the_build_directory : Path.Build.t
+    { path : Path.Build.t
     ; digest : Digest.t
     }
 end
@@ -86,10 +89,7 @@ end
 type caching = (module Caching)
 
 let command_to_dyn = function
-  | Dedup { in_the_build_directory; in_the_cache; digest } ->
+  | Dedup { path; digest } ->
     let open Dyn.Encoder in
     record
-      [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
-      ; ("in_the_cache", Path.to_dyn in_the_cache)
-      ; ("digest", Digest.to_dyn digest)
-      ]
+      [ ("path", Path.Build.to_dyn path); ("digest", Digest.to_dyn digest) ]

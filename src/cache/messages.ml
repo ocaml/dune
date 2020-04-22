@@ -72,10 +72,7 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
   | Dedup file ->
     cmd "dedup"
       [ Sexp.List
-          [ Sexp.Atom
-              (Path.Local.to_string
-                 (Path.Build.local file.in_the_build_directory))
-          ; Sexp.Atom (Path.to_string file.in_the_cache)
+          [ Sexp.Atom (Path.Local.to_string (Path.Build.local file.path))
           ; Sexp.Atom (Digest.to_string file.digest)
           ]
       ]
@@ -116,17 +113,10 @@ let initial_message_of_sexp = function
 
 let incoming_message_of_sexp _version = function
   | Sexp.List
-      [ Sexp.Atom "dedup"
-      ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
-      ] -> (
+      [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom path; Sexp.Atom digest ] ] -> (
     match Digest.from_hex digest with
     | Some digest ->
-      Result.Ok
-        (Dedup
-           { in_the_build_directory = Path.Build.of_string source
-           ; in_the_cache = Path.of_string target
-           ; digest
-           })
+      Result.Ok (Dedup { path = Path.Build.of_string path; digest })
     | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
   | exp ->
     Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))

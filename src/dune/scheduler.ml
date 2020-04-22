@@ -138,9 +138,7 @@ end = struct
       let (module Caching : Cache.Caching), (file : Cache.File.t) =
         Queue.pop dedup_pending
       in
-      ( match
-          Cached_digest.peek_file (Path.build file.in_the_build_directory)
-        with
+      ( match Cached_digest.peek_file (Path.build file.path) with
       | None -> ()
       | Some d when not (Digest.equal d file.digest) -> ()
       | _ -> Caching.Cache.deduplicate Caching.cache file );

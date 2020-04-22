@@ -1044,9 +1044,21 @@ module Install_conf = struct
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
        and+ enabled_if =
-         enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
-           ~since:(Some (2, 6))
-           ()
+         let allowed_vars =
+           Some
+             (List.map
+                ~f:(function
+                  | var -> (var, (2, 6)))
+                [ "architecture"
+                ; "system"
+                ; "model"
+                ; "os_type"
+                ; "ccomp_type"
+                ; "profile"
+                ; "ocaml_version"
+                ])
+         in
+         enabled_if ~allowed_vars ~since:(Some (2, 6)) ()
        in
        { section; files; package; enabled_if })
 end
@@ -1476,9 +1488,21 @@ module Executables = struct
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
     and+ enabled_if =
-      enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
-        ~since:(Some (2, 3))
-        ()
+      let allowed_vars =
+        Some
+          (List.map
+             ~f:(function
+               | var -> (var, (2, 6)))
+             [ "architecture"
+             ; "system"
+             ; "model"
+             ; "os_type"
+             ; "ccomp_type"
+             ; "profile"
+             ; "ocaml_version"
+             ])
+      in
+      enabled_if ~allowed_vars ~since:(Some (2, 3)) ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in

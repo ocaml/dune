@@ -137,10 +137,17 @@ type t =
 
 module Error_msg = struct
   let since t ver ~what =
+    let lang_or_using =
+      if t.name = "dune" then
+        "lang"
+      else
+        "using"
+    in
     Printf.sprintf
       "%s is only available since version %s of %s. Please update your \
-       dune-project file to have (lang %s)."
-      what (Version.to_string ver) t.desc (Version.to_string ver)
+       dune-project file to have (%s %s %s)."
+      what (Version.to_string ver) t.desc lang_or_using t.name
+      (Version.to_string ver)
 end
 
 module Error = struct

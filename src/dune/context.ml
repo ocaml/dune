@@ -750,29 +750,27 @@ module Create = struct
     let workspace = Workspace.workspace () in
     let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
       lazy
-        ( List.map workspace.contexts ~f:(fun context ->
-              let contexts =
-                Fiber.Once.create (fun () ->
-                    let* host_context =
-                      match Workspace.Context.host_context context with
-                      | None -> Fiber.return None
-                      | Some context -> (
-                        let+ contexts =
-                          Context_name.Map.find_exn (Lazy.force contexts)
-                            context
-                          |> Fiber.Once.get
-                        in
-                        match contexts with
-                        | [ x ] -> Some x
-                        | [] -> assert false (* checked by workspace *)
-                        | _ :: _ -> assert false
-                        (* target cannot be host *) )
-                    in
-                    instantiate_context env workspace ~context ~host_context)
-              in
-              let name = Workspace.Context.name context in
-              (name, contexts))
-        |> Context_name.Map.of_list_exn )
+        (Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun context ->
+             let contexts =
+               Fiber.Once.create (fun () ->
+                   let* host_context =
+                     match Workspace.Context.host_context context with
+                     | None -> Fiber.return None
+                     | Some context -> (
+                       let+ contexts =
+                         Context_name.Map.find_exn (Lazy.force contexts) context
+                         |> Fiber.Once.get
+                       in
+                       match contexts with
+                       | [ x ] -> Some x
+                       | [] -> assert false (* checked by workspace *)
+                       | _ :: _ -> assert false
+                       (* target cannot be host *) )
+                   in
+                   instantiate_context env workspace ~context ~host_context)
+             in
+             let name = Workspace.Context.name context in
+             (name, contexts)))
     in
     Lazy.force contexts |> Context_name.Map.values
     |> Fiber.parallel_map ~f:Fiber.Once.get

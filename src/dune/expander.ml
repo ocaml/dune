@@ -35,7 +35,7 @@ let dir t = t.dir
 let make_ocaml_config ocaml_config =
   let string s = [ Value.String s ] in
   Ocaml_config.to_list ocaml_config
-  |> List.map ~f:(fun (k, v) ->
+  |> String.Map.of_list_map_exn ~f:(fun (k, v) ->
          ( k
          , match (v : Ocaml_config.Value.t) with
            | Bool x -> string (string_of_bool x)
@@ -43,7 +43,6 @@ let make_ocaml_config ocaml_config =
            | String x -> string x
            | Words x -> Value.L.strings x
            | Prog_and_args x -> Value.L.strings (x.prog :: x.args) ))
-  |> String.Map.of_list_exn
 
 let set_env t ~var ~value =
   { t with

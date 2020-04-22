@@ -12,8 +12,8 @@ type checked =
 
 let check_path contexts =
   let contexts =
-    Dune.Context_name.Map.of_list_exn
-      (List.map contexts ~f:(fun c -> (c.Context.name, c)))
+    Dune.Context_name.Map.of_list_map_exn contexts ~f:(fun c ->
+        (c.Context.name, c))
   in
   fun path ->
     let internal_path () =

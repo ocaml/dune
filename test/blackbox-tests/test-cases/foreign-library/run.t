@@ -25,7 +25,7 @@ Testsuite for the (foreign_library ...) stanza.
   2 |  (language c)
   3 |  (names add))
   Error: 'foreign_library' is only available since version 2.0 of the dune
-  language. Please update your dune-project file to have (lang 2.0).
+  language. Please update your dune-project file to have (lang dune 2.0).
   [1]
 
 ----------------------------------------------------------------------------------

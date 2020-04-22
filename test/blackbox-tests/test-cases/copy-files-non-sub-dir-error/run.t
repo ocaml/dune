@@ -7,5 +7,5 @@ version that introduced this feature:
                   ^^^^^^^^^^^^
   Error: to_copy/* is not a sub-directory of src. This is only available since
   version 1.3 of the dune language. Please update your dune-project file to
-  have (lang 1.3).
+  have (lang dune 1.3).
   [1]

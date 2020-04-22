@@ -23,7 +23,7 @@ let relative_file =
 let library_variants =
   let syntax =
     Dune_lang.Syntax.create ~name:"library_variants"
-      ~desc:"the experimental library variants feature."
+      ~desc:"the experimental library variants feature"
       [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
   in
   Dune_project.Extension.register_simple ~experimental:true syntax

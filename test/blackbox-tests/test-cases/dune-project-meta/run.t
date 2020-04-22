@@ -328,7 +328,7 @@ Not supported before 2.1:
   6 |  (depends (conf-libX11 (<> :os win32))))
                              ^^^^^^^^^^^^^^
   Error: Passing two arguments to <> is only available since version 2.1 of the
-  dune language. Please update your dune-project file to have (lang 2.1).
+  dune language. Please update your dune-project file to have (lang dune 2.1).
   [1]
 
 Supported since 2.1:

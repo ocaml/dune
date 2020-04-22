@@ -25,7 +25,7 @@ It also requires dune lang 2.4 or higher
   1 | (mdx)
       ^^^^^
   Error: 'mdx' is only available since version 2.4 of the dune language. Please
-  update your dune-project file to have (lang 2.4).
+  update your dune-project file to have (lang dune 2.4).
   [1]
 
 You can use the mdx stanza to check your documentation in markdown and mli files

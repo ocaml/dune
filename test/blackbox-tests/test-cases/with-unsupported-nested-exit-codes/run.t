@@ -25,5 +25,5 @@
   10 |            (run ./exit.exe 1)))))
   Error: nesting modifiers under 'with-accepted-exit-codes' is only available
   since version 2.2 of the dune language. Please update your dune-project file
-  to have (lang 2.2).
+  to have (lang dune 2.2).
   [1]

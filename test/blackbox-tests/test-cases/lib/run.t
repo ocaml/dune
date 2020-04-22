@@ -83,7 +83,7 @@ TODO: Fix %{libexec} and %{libexec-private} variables and test them.
   3 |  (action (echo "%{lib-private:private_lib:a.ml}")))
                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   Error: %{lib-private:..} is only available since version 2.1 of the dune
-  language. Please update your dune-project file to have (lang 2.1).
+  language. Please update your dune-project file to have (lang dune 2.1).
   [1]
 
 ----------------------------------------------------------------------------------

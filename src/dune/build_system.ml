@@ -1516,7 +1516,7 @@ end = struct
                 match
                   List.for_all2 targets cached
                     ~f:(fun (target, _) (c : Cache.File.t) ->
-                      Path.Build.equal target c.in_the_build_directory)
+                      Path.Build.equal target c.path)
                 with
                 | Ok b -> b
                 | Error `Length_mismatch -> false
@@ -1532,8 +1532,7 @@ end = struct
                 User_warning.emit
                   [ Pp.text "unexpected list of targets in the cache"
                   ; pp "expected: " targets ~f:fst
-                  ; pp "got:      " cached ~f:(fun (c : Cache.File.t) ->
-                        c.in_the_build_directory)
+                  ; pp "got:      " cached ~f:(fun (c : Cache.File.t) -> c.path)
                   ]
               else
                 List.iter2 targets cached
@@ -1541,10 +1540,8 @@ end = struct
                     if not (Digest.equal digest c.digest) then
                       User_warning.emit
                         [ Pp.textf "cache mismatch on %s: hash differ with %s"
-                            (Path.Build.to_string_maybe_quoted
-                               c.in_the_build_directory)
-                            (Path.Build.to_string_maybe_quoted
-                               c.in_the_build_directory)
+                            (Path.Build.to_string_maybe_quoted c.path)
+                            (Path.Build.to_string_maybe_quoted c.path)
                         ])
             | _ -> ()
           in

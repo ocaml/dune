@@ -2,6 +2,12 @@
 Toplevel integration
 ********************
 
+OCaml provides a small repl to use the language interactively. We
+generally call this tool a toplevel. The compiler distribution comes
+with a small repl called simply ``ocaml`` and the community has
+developed enhanced versions such as `utop
+<https://github.com/ocaml-community/utop>`_.
+
 It's possible to load dune projects in any toplevel. To do that,
 simply execute the following in your toplevel:
 

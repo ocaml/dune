@@ -33,9 +33,9 @@ end
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db" ]
 
-let file_store_version = "v2"
+let file_store_version = "v3"
 
-let metadata_store_version = "v2"
+let metadata_store_version = "v3"
 
 let file_store_root cache =
   Path.L.relative cache.root [ "files"; file_store_version ]
@@ -72,37 +72,6 @@ let detect_unexpected_dirs_under_cache_root cache =
   in
   List.sort ~compare:Path.compare (in_root @ in_files @ in_meta)
 
-(* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
-   files stored in the cache.
-
-   To find a cache entry matching a given file, we try the suffices one after
-   another until we either (i) find a match and return [Found {existing_path}]
-   where the [existing_path] includes the correct suffix, or (ii) find a suffix
-   that is missing in the cache and return [Not_found {next_available_path}]
-   where the [next_available_path] includes the first available suffix.
-
-   CR-someday amokhov: In Dune we generally assume that digest collisions are
-   impossible, so it seems better to remove this logic in future. *)
-module Collision_chain = struct
-  type search_result =
-    | Found of { existing_path : Path.t }
-    | Not_found of { next_available_path : Path.t }
-
-  (* This function assumes that we do not create holes in the suffix numbering. *)
-  let search path file =
-    let rec loop n =
-      let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
-      if Path.exists path then
-        if Io.compare_files path file = Ordering.Eq then
-          Found { existing_path = path }
-        else
-          loop (n + 1)
-      else
-        Not_found { next_available_path = path }
-    in
-    loop 1
-end
-
 (* A file storage scheme. *)
 module type FSScheme = sig
   (* Given a cache root and a file digest, determine the location of the file in
@@ -119,14 +88,14 @@ end
 (* A file storage scheme where a file with a digest [d] is stored in a
    subdirectory whose name is made of the first two characters of [d], that is:
 
-   [<root>/<first-two-characters-of-d>/<d>.<N>]
+   [<root>/<first-two-characters-of-d>/<d>]
 
-   The suffix [.<N>] is used to handle collisions, i.e. the (unlikely)
-   situations where two files have the same digest.
-
-   CR-soon amokhov: Note that the function [path] returns the path without the
-   [.<N>] suffix, whereas the function [digest] expects the [.<N>] suffix to be
-   present. We should fix this inconsistency. *)
+   CR-someday amokhov: We currently do not provide support for collisions where
+   two or more files with different content have the same content digest [d]. If
+   this ever becomes a real (i.e. not hypothetical) problem, a good way forward
+   would be to switch from MD5 to SHA1 or higher, making the chance of this
+   happening even lower, and at the same time making it more difficult to create
+   deliberate collisions. *)
 module FirstTwoCharsSubdir : FSScheme = struct
   let path ~root digest =
     let digest = Digest.to_string digest in
@@ -134,12 +103,13 @@ module FirstTwoCharsSubdir : FSScheme = struct
     Path.L.relative root [ first_two_chars; digest ]
 
   let digest path =
-    match Digest.from_hex (Path.basename (fst (Path.split_extension path))) with
+    match Digest.from_hex (Path.basename path) with
     | Some digest -> digest
     | None ->
       Code_error.raise "strange cached file path (not a valid digest)"
         [ (Path.to_string path, Path.to_dyn path) ]
 
+  (* CR-soon amokhov: Switch from [Sys.readdir] to [Path.readdir_unsorted]. *)
   let list ~root =
     let f dir =
       let is_hex_char c =
@@ -220,9 +190,6 @@ let make_path cache path =
     Result.Error
       (sprintf "relative path %s while no build root was set"
          (Path.Local.to_string_maybe_quoted path))
-
-let search cache digest file =
-  Collision_chain.search (file_path cache digest) file
 
 let with_repositories cache repositories = { cache with repositories }
 
@@ -316,22 +283,31 @@ let promote_sync cache paths key metadata ~repository ~duplication =
       cache.info [ Pp.text message ];
       Result.Error message
     ) else
-      match search cache effective_digest tmp with
-      | Collision_chain.Found { existing_path } ->
+      let in_the_cache = file_path cache effective_digest in
+      (* CR-soon: we assume that if the file with [effective_digest] exists in
+         the file storage, then its content matches the digest, i.e. the user
+         never modifies it. In principle, we could add a consistency check but
+         this would have a non-negligible performance cost. A good compromise
+         seems to be to add a "paranoid" mode to Dune cache where we always
+         check file contents for consistency with the expected digest, so one
+         could enable it when needed. In the paranoid mode, we could futhermore
+         check for a digest collision via [Io.compare_files in_the_cache tmp]. *)
+      match Path.exists in_the_cache with
+      | true ->
         (* We no longer need the temporary file. *)
         Path.unlink tmp;
         (* Update the timestamp of the existing cache entry, moving it to the
            back of the trimming queue. *)
-        Path.touch existing_path;
+        Path.touch in_the_cache;
         Result.Ok
           (Already_promoted
              { in_the_build_directory = path
-             ; in_the_cache = existing_path
+             ; in_the_cache
              ; digest = effective_digest
              })
-      | Collision_chain.Not_found { next_available_path } ->
-        Path.mkdir_p (Path.parent_exn next_available_path);
-        let dest = Path.to_string next_available_path in
+      | false ->
+        Path.mkdir_p (Path.parent_exn in_the_cache);
+        let dest = Path.to_string in_the_cache in
         (* Move the temporary file to the cache. *)
         Unix.rename (Path.to_string tmp) dest;
         (* Remove write permissions, making the cache entry immutable. We assume
@@ -340,7 +316,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
         Result.Ok
           (Promoted
              { in_the_build_directory = path
-             ; in_the_cache = next_available_path
+             ; in_the_cache
              ; digest = effective_digest
              })
   in

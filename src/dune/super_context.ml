@@ -650,10 +650,6 @@ module Action = struct
       ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
 
-let opaque t =
-  Profile.is_dev t.context.profile
-  && Ocaml_version.supports_opaque_for_mli t.context.version
-
 let dir_status_db t = t.dir_status_db
 
 module As_memo_key = struct

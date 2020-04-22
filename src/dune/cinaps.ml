@@ -95,7 +95,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~opaque:false
+      ~modules ~opaque:(Explicit false)
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])

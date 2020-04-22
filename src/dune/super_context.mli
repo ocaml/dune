@@ -179,8 +179,6 @@ module Action : sig
   val map_exe : t -> Path.t -> Path.t
 end
 
-val opaque : t -> bool
-
 val expander : t -> dir:Path.Build.t -> Expander.t
 
 val dir_status_db : t -> Dir_status.DB.t

@@ -10,6 +10,10 @@ open Import
     associated to each library, executable and executables stanza. *)
 type t
 
+type opaque =
+  | Explicit of bool
+  | Inherit_from_settings
+
 (** Create a compilation context. *)
 val create :
      super_context:Super_context.t
@@ -21,7 +25,7 @@ val create :
   -> requires_compile:Lib.t list Or_exn.t
   -> requires_link:Lib.t list Or_exn.t Lazy.t
   -> ?preprocessing:Preprocessing.t
-  -> opaque:bool
+  -> opaque:opaque
   -> ?stdlib:Ocaml_stdlib.t
   -> js_of_ocaml:Dune_file.Js_of_ocaml.t option
   -> dynlink:bool

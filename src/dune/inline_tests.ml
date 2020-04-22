@@ -276,7 +276,7 @@ include Sub_system.Register_end_point (struct
        Build.With_targets.add ~targets:[ target ] action);
     let cctx =
       Compilation_context.create () ~super_context:sctx ~expander ~scope
-        ~obj_dir ~modules ~opaque:false ~requires_compile:runner_libs
+        ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
         ~flags:(Ocaml_flags.of_list [ "-w"; "-24"; "-g" ])
         ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false

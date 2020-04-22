@@ -6,4 +6,4 @@ If there is an (action) field defined in a test stanza and dune-project sets
   3 |   (action (run %{test}))
         ^^^^^^^^^^^^^^^^^^^^^^
   Warning: 'action' is only available since version 1.2 of the dune language.
-  Please update your dune-project file to have (lang 1.2).
+  Please update your dune-project file to have (lang dune 1.2).

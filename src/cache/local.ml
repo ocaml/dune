@@ -109,21 +109,24 @@ module FirstTwoCharsSubdir : FSScheme = struct
       Code_error.raise "strange cached file path (not a valid digest)"
         [ (Path.to_string path, Path.to_dyn path) ]
 
-  (* CR-soon amokhov: Switch from [Sys.readdir] to [Path.readdir_unsorted]. *)
   let list ~root =
+    let open Result.O in
     let f dir =
-      let is_hex_char c =
-        let char_in s e = Char.compare c s >= 0 && Char.compare c e <= 0 in
-        char_in 'a' 'f' || char_in '0' '9'
+      let is_hex_char = function
+        | '0' .. '9'
+        | 'a' .. 'f' ->
+          true
+        | _non_hex_char -> false
       and root = Path.L.relative root [ dir ] in
       if String.for_all ~f:is_hex_char dir then
-        Array.map ~f:(Path.relative root) (Sys.readdir (Path.to_string root))
+        let+ paths = Path.readdir_unsorted root in
+        List.map ~f:(Path.relative root) paths
       else
-        Array.of_list []
+        Ok []
     in
-    Array.to_list
-      (Array.concat
-         (Array.to_list (Array.map ~f (Sys.readdir (Path.to_string root)))))
+    match Path.readdir_unsorted root >>= Result.List.concat_map ~f with
+    | Ok res -> res
+    | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
 end
 
 module FSSchemeImpl = FirstTwoCharsSubdir

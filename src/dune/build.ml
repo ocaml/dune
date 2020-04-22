@@ -54,6 +54,11 @@ end
 
 open O
 
+let both x y =
+  let+ x = x
+  and+ y = y in
+  (x, y)
+
 let rec all xs =
   match xs with
   | [] -> return []

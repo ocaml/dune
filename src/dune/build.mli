@@ -5,6 +5,8 @@ open! Import
 
 type 'a t
 
+include Applicative_intf.S1 with type 'a t := 'a t
+
 module With_targets : sig
   type 'a build
 
@@ -66,14 +68,6 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
 val ignore : 'a t -> unit t
-
-module O : sig
-  val ( >>> ) : unit t -> 'a t -> 'a t
-
-  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-end
 
 val all : 'a t list -> 'a list t
 

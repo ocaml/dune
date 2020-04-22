@@ -78,9 +78,6 @@ module type FSScheme = sig
      the cache. *)
   val path : root:Path.t -> Digest.t -> Path.t
 
-  (* Extract a file's digest from its location in the cache. *)
-  val digest : Path.t -> Digest.t
-
   (* Given a cache root, list all files stored in the cache. *)
   val list : root:Path.t -> Path.t list
 end
@@ -101,13 +98,6 @@ module FirstTwoCharsSubdir : FSScheme = struct
     let digest = Digest.to_string digest in
     let first_two_chars = String.sub digest ~pos:0 ~len:2 in
     Path.L.relative root [ first_two_chars; digest ]
-
-  let digest path =
-    match Digest.from_hex (Path.basename path) with
-    | Some digest -> digest
-    | None ->
-      Code_error.raise "strange cached file path (not a valid digest)"
-        [ (Path.to_string path, Path.to_dyn path) ]
 
   let list ~root =
     let open Result.O in
@@ -131,6 +121,11 @@ end
 
 module FSSchemeImpl = FirstTwoCharsSubdir
 
+let metadata_path cache key =
+  FSSchemeImpl.path ~root:(metadata_store_root cache) key
+
+let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
+
 module Metadata_file = struct
   type t =
     { metadata : Sexp.t list
@@ -139,11 +134,10 @@ module Metadata_file = struct
 
   let to_sexp { metadata; files } =
     let open Sexp in
-    let f ({ in_the_build_directory; in_the_cache; _ } : File.t) =
+    let f ({ path; digest } : File.t) =
       Sexp.List
-        [ Sexp.Atom
-            (Path.Local.to_string (Path.Build.local in_the_build_directory))
-        ; Sexp.Atom (Path.to_string in_the_cache)
+        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
+        ; Sexp.Atom (Digest.to_string digest)
         ]
     in
     List
@@ -157,19 +151,18 @@ module Metadata_file = struct
       ->
       let+ files =
         Result.List.map produced ~f:(function
-          | List [ Atom in_the_build_directory; Atom in_the_cache ] ->
-            let in_the_build_directory =
-              Path.Build.of_string in_the_build_directory
-            and in_the_cache = Path.of_string in_the_cache in
-            Ok
-              { File.in_the_cache
-              ; in_the_build_directory
-              ; digest = FSSchemeImpl.digest in_the_cache
-              }
-          | _ -> Error "invalid metadata scheme in produced files list")
+          | List [ Atom path; Atom digest ] ->
+            let path = Path.Build.of_string path in
+            let+ digest =
+              match Digest.from_hex digest with
+              | Some digest -> Ok digest
+              | None -> Error "Invalid digest in cache metadata"
+            in
+            { File.path; digest }
+          | _ -> Error "Invalid list of produced files in cache metadata")
       in
       { metadata; files }
-    | _ -> Error "invalid metadata"
+    | _ -> Error "Invalid cache metadata"
 
   let of_string s =
     match Csexp.parse_string s with
@@ -180,11 +173,6 @@ module Metadata_file = struct
 
   let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
-
-let metadata_path cache key =
-  FSSchemeImpl.path ~root:(metadata_store_root cache) key
-
-let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
 
 let make_path cache path =
   match cache.build_root with
@@ -202,27 +190,26 @@ let duplicate ?(duplication = None) cache ~src ~dst =
   | Hardlink -> Path.link src dst
 
 let retrieve cache (file : File.t) =
-  let path = Path.build file.in_the_build_directory in
+  let src = file_path cache file.digest in
+  let dst = Path.build file.path in
   cache.info
-    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted path) ];
-  duplicate cache ~src:file.in_the_cache ~dst:path;
-  path
+    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted dst) ];
+  duplicate cache ~src ~dst;
+  dst
 
 let deduplicate cache (file : File.t) =
   match cache.duplication_mode with
   | Copy -> ()
   | Hardlink -> (
-    let target = Path.Build.to_string file.in_the_build_directory in
+    let path = Path.Build.to_string file.path in
+    let path_in_cache = file_path cache file.digest |> Path.to_string in
     let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-    cache.info
-      [ Pp.textf "deduplicate %s from %s" target
-          (Path.to_string file.in_the_cache)
-      ];
+    cache.info [ Pp.textf "deduplicate %s from %s" path path_in_cache ];
     let rm p = try Unix.unlink p with _ -> () in
     try
       rm tmpname;
-      Unix.link (Path.to_string file.in_the_cache) tmpname;
-      Unix.rename tmpname target
+      Unix.link path_in_cache tmpname;
+      Unix.rename tmpname path
     with Unix.Unix_error (e, syscall, _) ->
       rm tmpname;
       cache.warn
@@ -302,12 +289,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
         (* Update the timestamp of the existing cache entry, moving it to the
            back of the trimming queue. *)
         Path.touch in_the_cache;
-        Result.Ok
-          (Already_promoted
-             { in_the_build_directory = path
-             ; in_the_cache
-             ; digest = effective_digest
-             })
+        Result.Ok (Already_promoted { path; digest = effective_digest })
       | false ->
         Path.mkdir_p (Path.parent_exn in_the_cache);
         let dest = Path.to_string in_the_cache in
@@ -316,12 +298,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
         (* Remove write permissions, making the cache entry immutable. We assume
            that users do not modify the files in the cache. *)
         Unix.chmod dest (stat.st_perm land 0o555);
-        Result.Ok
-          (Promoted
-             { in_the_build_directory = path
-             ; in_the_cache
-             ; digest = effective_digest
-             })
+        Result.Ok (Promoted { path; digest = effective_digest })
   in
   let+ promoted = Result.List.map ~f:promote paths in
   let metadata_path = metadata_path cache key
@@ -373,7 +350,7 @@ let search cache key =
       (* There is no point in trying to trim out files that are missing : dune
          will have to check when hardlinking anyway since they could disappear
          inbetween. *)
-      try Path.touch ~create:false file.in_the_cache
+      try Path.touch ~create:false (file_path cache file.digest)
       with Unix.(Unix_error (ENOENT, _, _)) -> ()
     in
     List.iter ~f metadata.files
@@ -448,7 +425,7 @@ let _garbage_collect default_trim cache =
     | p, Result.Ok { Metadata_file.files; _ } ->
       if
         List.for_all
-          ~f:(fun { File.in_the_cache; _ } -> Path.exists in_the_cache)
+          ~f:(fun { File.digest; _ } -> Path.exists (file_path cache digest))
           files
       then
         default_trim
@@ -461,12 +438,13 @@ let _garbage_collect default_trim cache =
         let res =
           List.fold_left ~init:default_trim
             ~f:(fun trim f ->
-              let p = f.File.in_the_cache in
+              let path_in_cache = file_path cache f.File.digest in
               try
-                let stats = Path.stat p in
+                let stats = Path.stat path_in_cache in
                 if trimmable stats then (
-                  Path.unlink_no_err p;
-                  Trimming_result.add trim ~file:p ~size:stats.st_size
+                  Path.unlink_no_err path_in_cache;
+                  Trimming_result.add trim ~file:path_in_cache
+                    ~size:stats.st_size
                 ) else
                   trim
               with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)

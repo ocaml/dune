@@ -5,6 +5,11 @@ module Make (A : Applicative_intf.S1_base) = struct
     let ( let+ ) x f = A.map x ~f
 
     let ( and+ ) = A.both
+
+    let ( >>> ) x y =
+      let+ () = x
+      and+ y = y in
+      y
   end
 
   let rec all xs =

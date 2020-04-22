@@ -1,3 +1,10 @@
+unreleased
+------------------
+
+- Add and `enabled_ if` field to the `install` stanza. Enforce the same
+  variable restrictions for `enabled_if` fields in the `executable` and `install`
+  stanzas than in the `library` stanza. (#3408, fixes #3354, @voodoos)
+
 2.5.1 (17/04/2020)
 ------------------
 

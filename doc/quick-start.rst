@@ -226,8 +226,7 @@ compilation and link flags. Write this ``dune`` file:
 
     (rule
      (targets c_flags.sexp c_library_flags.sexp)
-     (deps    (:discover config/discover.exe))
-     (action  (run %{discover} -ocamlc %{OCAMLC})))
+     (action  (run ./config/discover.exe)))
 
 Then create a ``config`` subdirectory and write this ``dune`` file:
 

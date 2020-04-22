@@ -10,6 +10,8 @@ let debug_dep_path = ref false
 
 let external_lib_deps_hint = ref []
 
+let external_lib_deps_mode = ref false
+
 let capture_outputs = ref true
 
 let debug_backtraces = Dune_util.Report_error.report_backtraces

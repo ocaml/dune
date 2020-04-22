@@ -174,7 +174,7 @@ end = struct
   let stanzas_to_entries sctx =
     let ctx = Super_context.context sctx in
     let stanzas = Super_context.stanzas sctx in
-    let external_lib_deps_mode = Super_context.external_lib_deps_mode sctx in
+    let external_lib_deps_mode = !Clflags.external_lib_deps_mode in
     let keep_if = keep_if ~external_lib_deps_mode in
     let init =
       Super_context.packages sctx

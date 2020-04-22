@@ -29,7 +29,6 @@ val scan_workspace :
 (** Load dune files and initializes the build system *)
 val init_build_system :
      ?only_packages:Package.t Package.Name.Map.t
-  -> ?external_lib_deps_mode:bool
   -> sandboxing_preference:Sandbox_mode.t list
   -> ?caching:Build_system.caching
   -> workspace

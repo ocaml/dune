@@ -511,6 +511,21 @@ let setup_dialect_rules sctx ~dir ~dep_kind ~expander (m : Module.t) =
              ~target:(Some dst)));
   ml
 
+let add_corrected_suffix_binding expander suffix =
+  let bindings =
+    Pform.Map.singleton "corrected-suffix" (Values [ String suffix ])
+  in
+  Expander.add_bindings expander ~bindings
+
+let driver_flags expander ~flags ~corrected_suffix ~driver_flags ~standard =
+  let args : _ Command.Args.t = S [ As flags ] in
+  let ppx_flags =
+    let expander = add_corrected_suffix_binding expander corrected_suffix in
+    Build.memoize "ppx flags"
+      (Expander.expand_and_eval_set expander driver_flags ~standard)
+  in
+  (ppx_flags, args)
+
 let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
   Staged.stage
     (let alias = Alias.lint ~dir in
@@ -537,22 +552,16 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
            let corrected_suffix = ".lint-corrected" in
            let driver_and_flags =
              let open Result.O in
-             let+ exe, driver, driver_flags =
+             let+ exe, driver, flags =
                ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~scope
                  pps
              in
-             let flags =
-               let bindings =
-                 Pform.Map.singleton "corrected-suffix"
-                   (Values [ String corrected_suffix ])
-               in
-               let expander = Expander.add_bindings expander ~bindings in
-               Build.memoize "ppx flags"
-                 (Expander.expand_and_eval_set expander driver.info.lint_flags
-                    ~standard:(Build.return []))
+             let ppx_flags, args =
+               driver_flags expander ~flags ~corrected_suffix
+                 ~driver_flags:driver.info.lint_flags
+                 ~standard:(Build.return [])
              in
-             let args : _ Command.Args.t = S [ As driver_flags ] in
-             (exe, flags, args)
+             (exe, ppx_flags, args)
            in
            fun ~source ~ast ->
              Module.iter ast ~f:(fun ml_kind src ->
@@ -623,17 +632,12 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
               ppx_driver_and_flags sctx ~expander ~loc ~lib_name ~flags ~scope
                 pps
             in
-            let args : _ Command.Args.t = S [ As flags ] in
-            ( exe
-            , (let bindings =
-                 Pform.Map.singleton "corrected-suffix"
-                   (Values [ String corrected_suffix ])
-               in
-               let expander = Expander.add_bindings expander ~bindings in
-               Build.memoize "ppx flags"
-                 (Expander.expand_and_eval_set expander driver.info.flags
-                    ~standard:(Build.return [ "--as-ppx" ])))
-            , args )
+            let ppx_flags, args =
+              driver_flags expander ~flags ~corrected_suffix
+                ~driver_flags:driver.info.flags
+                ~standard:(Build.return [ "--as-ppx" ])
+            in
+            (exe, ppx_flags, args)
           in
           fun m ~lint ->
             let open Build.With_targets.O in

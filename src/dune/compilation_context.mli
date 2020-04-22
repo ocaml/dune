@@ -10,9 +10,15 @@ open Import
     associated to each library, executable and executables stanza. *)
 type t
 
+(** Sets whether [-opaque] is going to be used during compilation. This
+    constructs a different dependency graph for native executables. In
+    partricular, we can omit dependency on .cmx files. For mli only modules,
+    this setting is ignored and is always set when it's available. As there are
+    no .cmx files for such modules anyway *)
 type opaque =
-  | Explicit of bool
+  | Explicit of bool  (** Set directly by the caller *)
   | Inherit_from_settings
+      (** Determined from the version of OCaml and the profile *)
 
 (** Create a compilation context. *)
 val create :

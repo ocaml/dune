@@ -24,8 +24,8 @@ Test the enabled_if field for libraries:
   [1]
 
   $ dune build main.exe
-  File "dune", line 34, characters 12-15:
-  34 |  (libraries foo))
+  File "dune", line 35, characters 12-15:
+  35 |  (libraries foo))
                    ^^^
   Error: Library "foo" in _build/default is hidden (unsatisfied 'enabled_if').
   Hint: try: dune external-lib-deps --missing main.exe

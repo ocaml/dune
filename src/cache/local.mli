@@ -70,15 +70,16 @@ module Trimming_result : sig
     }
 end
 
+(** Return a list of unexpected paths that exist in the root directory of the
+    cache. A non-empty result suggests that the cache directory contains
+    multiple versions of the cache, making [trim] and [garbage_collect] less
+    effective. *)
+val detect_unexpected_dirs_under_cache_root :
+  t -> (Path.t list, Unix.error) result
+
 (** [trim cache size] removes files from [cache], starting with the least
     recently used one, until [size] bytes have been freed. *)
 val trim : t -> int -> Trimming_result.t
 
 (** Purge invalid or incomplete cached rules. *)
 val garbage_collect : t -> Trimming_result.t
-
-(** Path to a metadata file *)
-val path_metadata : t -> Key.t -> Path.t
-
-(** Path to a data file *)
-val path_data : t -> Key.t -> Path.t

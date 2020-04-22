@@ -1,11 +1,13 @@
-2.5.1 (unreleased)
+2.5.1 (17/04/2020)
 ------------------
 
-- [coq] Fix install path for theory names with level greater than 1
-  (#3358 , @ejgallego)
+- [coq] Fix install .v files for Coq theories (#3384, @lthms)
 
-- Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets had
-  no effect. (@aalekseyev, report by @craigfe)
+- [coq] Fix install path for theory names with level greater than 1 (#3358,
+  @ejgallego)
+
+- Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets
+  had no effect. (@aalekseyev, report by @craigfe)
 
 2.5.0 (09/04/2020)
 ------------------
@@ -92,6 +94,10 @@
 
 - Fix a memory leak in the file-watching mode (`dune build -w`)
   (#3220, @snowleopard and @aalekseyev)
+
+- Starting from `(lang dune 2.4)`, dune systematically puts all files
+  under `_build` in read-only mode instead of only doing it when the
+  shared cache is enabled (#3092, @mefyl)
 
 2.3.1 (20/02/2020)
 ------------------

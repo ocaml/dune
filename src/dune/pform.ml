@@ -439,9 +439,7 @@ module Map = struct
     { vars = String.Map.singleton k (No_info v); macros = String.Map.empty }
 
   let of_list_exn pforms =
-    { vars =
-        List.map ~f:(fun (k, x) -> (k, No_info x)) pforms
-        |> String.Map.of_list_exn
+    { vars = String.Map.of_list_map_exn ~f:(fun (k, x) -> (k, No_info x)) pforms
     ; macros = String.Map.empty
     }
 

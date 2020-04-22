@@ -105,7 +105,7 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
     let action =
-      SC.Deps.interpret_named sctx ~expander rule.deps
+      Super_context.Deps.interpret_named sctx ~expander rule.deps
       |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
            ~dep_kind:Required ~targets ~targets_dir:dir
     in

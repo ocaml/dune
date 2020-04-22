@@ -1,4 +1,9 @@
 Test that version of extensions is compatible with dune_lang version
+
+  $ cat >using-generation/dune-project <<EOF
+  > (lang dune 1.2)
+  > EOF
+
   $ dune build --root version-mismatch
   Entering directory 'version-mismatch'
   File "dune-project", line 2, characters 14-17:
@@ -38,4 +43,3 @@ the maximum supported version for the chosen dune lang version
   $ dune build --root using-generation
   Entering directory 'using-generation'
   Info: Appending this line to dune-project: (using menhir 1.0)
-

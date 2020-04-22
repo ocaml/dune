@@ -1989,8 +1989,7 @@ let load_dir ~dir = load_dir_and_produce_its_rules ~dir
 
 let init ~contexts ?caching ~sandboxing_preference =
   let contexts =
-    List.map contexts ~f:(fun c -> (c.Context.name, c))
-    |> Context_name.Map.of_list_exn
+    Context_name.Map.of_list_map_exn contexts ~f:(fun c -> (c.Context.name, c))
   in
   let caching =
     let f ({ cache = (module Caching : Cache.Caching); _ } as v) =

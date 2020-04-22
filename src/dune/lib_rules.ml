@@ -427,5 +427,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
-  Super_context.Libs.gen_select_rules sctx compile_info ~dir;
-  Super_context.Libs.with_lib_deps sctx compile_info ~dir ~f
+  Buildable_rules.gen_select_rules sctx compile_info ~dir;
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    compile_info ~dir ~f

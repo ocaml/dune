@@ -805,9 +805,9 @@ module Library = struct
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Lib_info.Special_builtin_support.decode )
        and+ enabled_if =
-         enabled_if ~allowed_vars:(Some Lib_config.allowed_in_enabled_if)
-           ~since:(Some (1, 10))
-           ()
+         let open Enabled_if in
+         let allowed_vars = Only Lib_config.allowed_in_enabled_if in
+         decode ~allowed_vars ~since:(Some (1, 10)) ()
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -1044,21 +1044,8 @@ module Install_conf = struct
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install"
        and+ enabled_if =
-         let allowed_vars =
-           Some
-             (List.map
-                ~f:(function
-                  | var -> (var, (2, 6)))
-                [ "architecture"
-                ; "system"
-                ; "model"
-                ; "os_type"
-                ; "ccomp_type"
-                ; "profile"
-                ; "ocaml_version"
-                ])
-         in
-         enabled_if ~allowed_vars ~since:(Some (2, 6)) ()
+         let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+         Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
        in
        { section; files; package; enabled_if })
 end
@@ -1488,21 +1475,8 @@ module Executables = struct
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
     and+ enabled_if =
-      let allowed_vars =
-        Some
-          (List.map
-             ~f:(function
-               | var -> (var, (2, 6)))
-             [ "architecture"
-             ; "system"
-             ; "model"
-             ; "os_type"
-             ; "ccomp_type"
-             ; "profile"
-             ; "ocaml_version"
-             ])
-      in
-      enabled_if ~allowed_vars ~since:(Some (2, 3)) ()
+      let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+      Enabled_if.decode ~allowed_vars ~since:(Some (2, 3)) ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1686,7 +1660,7 @@ module Rule = struct
          dune. *)
       assert (not fallback)
     and+ mode = field "mode" Mode.decode ~default:Mode.Standard
-    and+ enabled_if = enabled_if ~since:(Some (1, 4)) ()
+    and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
     and+ package =
       field_o "package"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Pkg.decode)
@@ -1724,7 +1698,7 @@ module Rule = struct
     <|> fields
           (let+ modules = field "modules" (repeat string)
            and+ mode = Mode.field
-           and+ enabled_if = enabled_if ~since:(Some (1, 4)) () in
+           and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) () in
            { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
@@ -1808,7 +1782,7 @@ module Menhir = struct
          field_o_b "infer"
            ~check:(Dune_lang.Syntax.since Menhir_stanza.syntax (2, 0))
        and+ menhir_syntax = Dune_lang.Syntax.get_exn Menhir_stanza.syntax
-       and+ enabled_if = enabled_if ~since:(Some (1, 4)) ()
+       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
        and+ loc = loc in
        let infer =
          match infer with
@@ -1878,7 +1852,7 @@ module Tests = struct
            ~default:Executables.Link_mode.Map.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if = enabled_if ~since:(Some (1, 4)) ()
+       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
        and+ action =
          field_o "action"
            ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)

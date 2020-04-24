@@ -367,6 +367,7 @@ let set_vcs vcs =
   let t = t () in
   let () = Fdecl.set t.vcs vcs in
   match t.caching with
+  | None -> Fiber.return ()
   | Some ({ cache = (module Caching); _ } as caching) ->
     let+ caching =
       let+ with_repositories =
@@ -397,7 +398,6 @@ let set_vcs vcs =
         None
     in
     t.caching <- caching
-  | None -> Fiber.return ()
 
 let get_vcs () =
   let t = t () in
@@ -510,6 +510,8 @@ let compute_targets_digest targets =
   | l -> Some (Digest.generic l)
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
+(* Find the closest corresponding source directory, eg
+   '_build/default/src/dune/.dune.objs' becomes 'src/dune' *)
 let find_rule_source_dir ({ Rule.action; _ } as rule) =
   let _, src_dir =
     match Path.Build.Set.find ~f:(fun _ -> true) action.targets with
@@ -517,7 +519,8 @@ let find_rule_source_dir ({ Rule.action; _ } as rule) =
     | None ->
       Code_error.raise "rule has no targets" [ ("rule", Rule.to_dyn rule) ]
   in
-  File_tree.nearest_dir src_dir
+  let res = File_tree.nearest_dir src_dir in
+  res
 
 let compute_targets_digest_or_raise_error ~loc targets =
   let remove_write_permissions =

@@ -242,7 +242,7 @@ let load ~ancestor_vcs =
         (ancestor_vcs, vcs, projects)
     and vcs =
       match ancestor_vcs with
-      | Some vcs -> Vcs_map.of_list_exn [ (Path.of_string ".", vcs) ]
+      | Some vcs -> Vcs_map.of_list_exn [ (Path.root, vcs) ]
       | None -> Vcs_map.empty
     in
     File_tree.fold_with_progress

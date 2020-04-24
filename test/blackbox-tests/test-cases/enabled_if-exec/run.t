@@ -19,9 +19,9 @@ Installing should silently ignore disabled executables
 This one unse forbidden variables
   $ dune exec ./foo.exe --root forbidden_var
   Entering directory 'forbidden_var'
-  File "dune", line 3, characters 19-32:
-  3 |   (enabled_if (= %{project_root} "")))
-                         ^^^^^^^^^^^^^
+  File "dune", line 3, characters 18-31:
+  3 |  (enabled_if (= %{project_root} "")))
+                        ^^^^^^^^^^^^^
   Error: Only architecture, system, model, os_type, ccomp_type, profile and
   ocaml_version are allowed in this 'enabled_if' field.
   [1]

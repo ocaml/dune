@@ -619,6 +619,12 @@ let install_rules sctx (package : Package.t) =
     Dune_project.strict_package_deps dune_project
   in
   let packages =
+    let () =
+      Format.eprintf "package: %s@. files: %a@."
+        (Package.Name.to_string package.name)
+        Pp.render_ignore_tags
+        (Dyn.pp (Path.Set.to_dyn files))
+    in
     let+ packages = Build_system.package_deps package.name files in
     match strict_package_deps with
     | false -> packages

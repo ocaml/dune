@@ -1757,9 +1757,11 @@ let package_deps pkg files =
       else
         Fiber.return (Package.Name.Set.union acc pkgs)
   and loop_deps fn acc =
+    Format.eprintf "fn: %s@.%!" (Path.Build.to_string fn);
     match get_rule (Path.build fn) with
     | None -> Fiber.return acc
     | Some ir ->
+      Format.eprintf "success@.%@.";
       if Rule.Set.mem !rules_seen ir then
         Fiber.return acc
       else (

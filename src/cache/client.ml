@@ -14,7 +14,7 @@ type t =
   }
 
 let versions_supported_by_dune : Messages.version list =
-  [ { major = 1; minor = 1 } ]
+  [ { major = 1; minor = 2 } ]
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 

@@ -67,13 +67,14 @@ end = struct
              user is interested in is not actually in the set. We're not fully
              committed to supporting this case though, anyway. *)
           String.Map.mapi (Memo.Lazy.force t).by_child ~f:(fun dir v ->
-              Memo.lazy_ (fun () -> restrict (Dir_set.descend dirs dir) v))
+              Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+                  restrict (Dir_set.descend dirs dir) v))
         | false ->
           String.Map.mapi (Dir_set.exceptions dirs) ~f:(fun dir v ->
-              Memo.lazy_ (fun () ->
+              Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
                   restrict v
-                    (Memo.lazy_ (fun () -> descend (Memo.Lazy.force t) dir))))
-        )
+                    (Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+                         descend (Memo.Lazy.force t) dir)))) )
     }
 
   let restrict dirs t = restrict (Dir_set.forget_root dirs) t
@@ -119,7 +120,9 @@ let evaluate ~union_rules =
           [ ("inner", Dir_set.to_dyn paths); ("outer", Dir_set.to_dyn env) ]
       else
         let paths = Dir_set.inter paths env in
-        Evaluated.restrict paths (Memo.lazy_ (fun () -> loop ~env:paths rules))
+        Evaluated.restrict paths
+          (Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+               loop ~env:paths rules))
     | Finite rules ->
       let violations =
         List.filter (Path.Build.Map.keys rules) ~f:(fun p ->

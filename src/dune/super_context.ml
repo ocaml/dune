@@ -100,12 +100,14 @@ end = struct
         | None ->
           Code_error.raise "Super_context.Env.get called on invalid directory"
             [ ("dir", Path.Build.to_dyn dir) ]
-        | Some parent -> Memo.lazy_ (fun () -> get_node t ~dir:parent)
+        | Some parent ->
+          Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+              get_node t ~dir:parent)
     in
     let config_stanza = get_env_stanza t ~dir in
     let default_context_flags = default_context_flags t.context in
     let expander_for_artifacts =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
           expander_for_artifacts ~scope ~root_expander:t.root_expander
             ~external_env:(external_env t ~dir) ~dir)
     in
@@ -457,13 +459,13 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
       ~bin_artifacts_host:artifacts_host.bin
   in
   let default_env =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
         let make ~inherit_from ~config_stanza =
           let dir = context.build_dir in
           let scope = Scope.DB.find_by_dir scopes dir in
           let default_context_flags = default_context_flags context in
           let expander_for_artifacts =
-            Memo.lazy_ (fun () ->
+            Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
                 Code_error.raise
                   "[expander_for_artifacts] in [default_env] is undefined" [])
           in
@@ -476,7 +478,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
         make ~config_stanza:context.env_nodes.context
           ~inherit_from:
             (Some
-               (Memo.lazy_ (fun () ->
+               (Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
                     make ~inherit_from:None
                       ~config_stanza:context.env_nodes.workspace))))
   in

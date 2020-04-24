@@ -98,10 +98,15 @@ module Spec = struct
     match t.info with
     | None -> Code_error.raise "[Spec.register] got a function with no info" []
     | Some info -> (
-      match find info.name with
-      | Some _ ->
-        Code_error.raise "[Spec.register] called twice on the same function" []
-      | None -> String.Table.set by_name info.name (T t) )
+      match Function.Info.name info with
+      | None ->
+        Code_error.raise "[Spec.register] got a function with no info" []
+      | Some name -> (
+        match find name with
+        | Some _ ->
+          Code_error.raise "[Spec.register] called twice on the same function"
+            []
+        | None -> String.Table.set by_name name (T t) ) )
 
   let create (type o) ~info ~input ~visibility ~(output : o Output.t) ~f =
     let (output : (module Output_simple with type t = o)), allow_cutoff =
@@ -402,17 +407,16 @@ module Stack_frame_without_state = struct
 
   type t = Dep_node_without_state.packed
 
-  let name (T t) = Option.map t.spec.info ~f:(fun x -> x.name)
+  let name (T t) = Option.bind t.spec.info ~f:Function.Info.name
 
   let input (T t) = ser_input t
 
-  let to_dyn t =
+  let to_dyn (T t as t') =
     Dyn.Tuple
-      [ String
-          ( match name t with
-          | Some name -> name
-          | None -> "<unnamed>" )
-      ; input t
+      [ ( match t.spec.info with
+        | None -> String "<unnamed>"
+        | Some info -> Function.Info.to_dyn info )
+      ; input t'
       ]
 end
 
@@ -609,7 +613,8 @@ let create_with_cache (type i o f) name ~cache ?doc ~input ~visibility ~output
     (typ : (i, o, f) Function.Type.t) (f : f) =
   let f = Function.of_type typ f in
   let spec =
-    Spec.create ~info:(Some { name; doc }) ~input ~output ~visibility ~f
+    let info = Some (Function.Info.named ?doc ~name ()) in
+    Spec.create ~info ~input ~output ~visibility ~f
   in
   ( match visibility with
   | Public _ -> Spec.register spec
@@ -869,7 +874,7 @@ let get_deps (type i o f) (t : (i, o, f) t) inp =
   | Some { state = Done cv; _ } ->
     Some
       (List.map cv.deps ~f:(fun (Last_dep.T (dep, _value)) ->
-           ( Option.map dep.without_state.spec.info ~f:(fun x -> x.name)
+           ( Option.bind dep.without_state.spec.info ~f:Function.Info.name
            , ser_input dep.without_state )))
 
 let get_func name =
@@ -900,7 +905,9 @@ let registered_functions () =
        ~f:(fun xs x -> List.cons (function_info_of_spec x) xs)
        ~init:[]
   |> List.sort ~compare:(fun x y ->
-         String.compare x.Function.Info.name y.Function.Info.name)
+         String.compare
+           (Option.value_exn (Function.Info.name x))
+           (Option.value_exn (Function.Info.name y)))
 
 let function_info name = get_func name |> function_info_of_spec
 
@@ -983,7 +990,7 @@ let cell t inp = dep_node t inp
 module Implicit_output = Implicit_output
 module Store = Store_intf
 
-let lazy_ (type a) ?(cutoff = ( == )) f =
+let lazy_ (type a) ?loc ?(cutoff = ( == )) f =
   let module Output = struct
     type t = a
 
@@ -994,7 +1001,12 @@ let lazy_ (type a) ?(cutoff = ( == )) f =
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Sync f in
   let spec =
-    Spec.create ~info:None
+    let info =
+      let open Option.O in
+      let+ loc = loc in
+      Function.Info.of_loc loc
+    in
+    Spec.create ~info
       ~input:(module Unit)
       ~output:(Allow_cutoff (module Output))
       ~visibility ~f
@@ -1002,7 +1014,7 @@ let lazy_ (type a) ?(cutoff = ( == )) f =
   let cell = Exec.make_dep_node ~spec ~state:Init ~input:() in
   fun () -> Cell.get_sync cell
 
-let lazy_async (type a) ?(cutoff = ( == )) f =
+let lazy_async (type a) ?loc ?(cutoff = ( == )) f =
   let module Output = struct
     type t = a
 
@@ -1013,7 +1025,12 @@ let lazy_async (type a) ?(cutoff = ( == )) f =
   let visibility = Visibility.Hidden in
   let f = Function.of_type Function.Type.Async f in
   let spec =
-    Spec.create ~info:None
+    let info =
+      let open Option.O in
+      let+ loc = loc in
+      Function.Info.of_loc loc
+    in
+    Spec.create ~info
       ~input:(module Unit)
       ~output:(Allow_cutoff (module Output))
       ~visibility ~f
@@ -1054,8 +1071,8 @@ module Run = struct
     (* [Lazy.t] is the simplest way to create a node in the memoization dag. *)
     type nonrec 'a t = 'a Fdecl.t Lazy.t
 
-    let create to_dyn =
-      Lazy.create (fun () ->
+    let create ?loc to_dyn =
+      Lazy.create ?loc (fun () ->
           let (_ : Run.t) = current_run () in
           Fdecl.create to_dyn)
 

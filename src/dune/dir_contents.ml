@@ -78,7 +78,7 @@ let mlds t (doc : Documentation.t) =
 let build_mlds_map (d : _ Dir_with_dune.t) ~files =
   let dir = d.ctx_dir in
   let mlds =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
         String.Set.fold files ~init:String.Map.empty ~f:(fun fn acc ->
             match String.lsplit2 fn ~on:'.' with
             | Some (s, "mld") -> String.Map.set acc s fn
@@ -229,7 +229,7 @@ end = struct
       in
       let dirs = [ (dir, [], files) ] in
       let ml =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
             let lookup_vlib = lookup_vlib sctx in
             let loc = loc_of_dune_file ft_dir in
             Ml_sources.make d ~loc ~include_subdirs ~lookup_vlib ~dirs)
@@ -240,13 +240,15 @@ end = struct
             ; dir
             ; text_files = files
             ; ml
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; mlds =
+                Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+                    build_mlds_map d ~files)
             ; foreign_sources =
-                Memo.lazy_ (fun () ->
+                Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
                     Foreign_sources.make d ~lib_config:ctx.lib_config
                       ~include_subdirs ~dirs)
             ; coq =
-                Memo.lazy_ (fun () ->
+                Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
                     Coq_sources.of_dir d ~include_subdirs ~dirs)
             }
         ; rules
@@ -266,17 +268,18 @@ end = struct
       in
       let dirs = (dir, [], files) :: subdirs in
       let ml =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
             let lookup_vlib = lookup_vlib sctx in
             Ml_sources.make d ~loc ~lookup_vlib ~include_subdirs ~dirs)
       in
       let foreign_sources =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
             Foreign_sources.make d ~include_subdirs ~lib_config:ctx.lib_config
               ~dirs)
       in
       let coq =
-        Memo.lazy_ (fun () -> Coq_sources.of_dir d ~dirs ~include_subdirs)
+        Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+            Coq_sources.of_dir d ~dirs ~include_subdirs)
       in
       let subdirs =
         List.map subdirs ~f:(fun (dir, _local, files) ->
@@ -285,7 +288,9 @@ end = struct
             ; text_files = files
             ; ml
             ; foreign_sources
-            ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+            ; mlds =
+                Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+                    build_mlds_map d ~files)
             ; coq
             })
       in
@@ -295,7 +300,9 @@ end = struct
         ; text_files = files
         ; ml
         ; foreign_sources
-        ; mlds = Memo.lazy_ (fun () -> build_mlds_map d ~files)
+        ; mlds =
+            Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+                build_mlds_map d ~files)
         ; coq
         }
       in

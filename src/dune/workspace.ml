@@ -459,7 +459,7 @@ module DB = struct
         ; ("path", option Path.to_dyn path)
         ]
 
-    let t = Memo.Run.Fdecl.create to_dyn
+    let t = Memo.Run.Fdecl.create ~loc:(Loc.of_pos __POS__) to_dyn
   end
 end
 

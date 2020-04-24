@@ -83,8 +83,8 @@ end = struct
               make_entry Lib source ?dst))
     in
     let ctx = Super_context.context sctx in
-    let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
     let module_files =
+      let { Lib_config.has_native; ext_obj; _ } = ctx.lib_config in
       let if_ cond l =
         if cond then
           l
@@ -725,7 +725,7 @@ let memo =
       let ctx = Super_context.context sctx in
       let context_name = ctx.name in
       let rules =
-        Memo.lazy_ (fun () ->
+        Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
             Rules.collect_unit (fun () ->
                 install_rules sctx pkg;
                 install_alias ctx pkg))

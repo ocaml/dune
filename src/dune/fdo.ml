@@ -92,7 +92,7 @@ let get_profile =
   let f (ctx : Context.t) =
     let path = ctx.fdo_target_exe |> Option.value_exn |> fdo_profile in
     let profile_exists =
-      Memo.lazy_ (fun () ->
+      Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
           path |> Path.as_in_source_tree
           |> Option.map ~f:File_tree.file_exists
           |> Option.value ~default:false)

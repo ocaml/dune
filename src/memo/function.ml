@@ -1,3 +1,5 @@
+open Stdune
+
 module Type = struct
   type ('a, 'b, 'f) t =
     | Sync : ('a, 'b, 'a -> 'b) t
@@ -6,9 +8,28 @@ end
 
 module Info = struct
   type t =
-    { name : string
-    ; doc : string option
-    }
+    | Named of
+        { name : string
+        ; doc : string option
+        }
+    | Loc of Loc.t
+
+  let of_loc loc = Loc loc
+
+  let name = function
+    | Named { name ; doc = _ } -> Some name
+    | Loc _ -> None
+
+  let doc = function
+    | Named { doc ; name = _ } -> doc
+    | Loc _ -> None
+
+  let named ?doc ~name () = Named { name ; doc }
+
+  let to_dyn = function
+    | Named { name ; doc = _ } ->
+      Dyn.Tuple [String name]
+    | Loc loc -> Loc.to_dyn_hum loc
 end
 
 type ('a, 'b, 'f) t =

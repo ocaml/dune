@@ -1,3 +1,5 @@
+open Stdune
+
 module Type : sig
   type ('a, 'b, 'f) t =
     | Sync : ('a, 'b, 'a -> 'b) t
@@ -5,10 +7,17 @@ module Type : sig
 end
 
 module Info : sig
-  type t =
-    { name : string
-    ; doc : string option
-    }
+  type t
+
+  val named : ?doc:string -> name:string -> unit -> t
+
+  val doc : t -> string option
+
+  val name : t -> string option
+
+  val of_loc : Loc.t -> t
+
+  val to_dyn : t -> Dyn.t
 end
 
 type ('a, 'b, 'f) t =

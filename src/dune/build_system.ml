@@ -860,7 +860,7 @@ end = struct
         Unrestricted
       else
         Restricted
-          (Memo.Lazy.create (fun () ->
+          (Memo.Lazy.create ~loc:(Loc.of_pos __POS__) (fun () ->
                match load_dir ~dir:(Path.build dir) with
                | Non_build _ -> Dir_set.just_the_root
                | Build { allowed_subdirs; _ } ->

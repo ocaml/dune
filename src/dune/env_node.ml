@@ -43,7 +43,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~default_bin_artifacts =
   let config = Dune_env.Stanza.find config_stanza ~profile in
   let inherited ~field ~root extend =
-    Memo.lazy_ (fun () ->
+    Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
         extend
           ( match inherit_from with
           | None -> root

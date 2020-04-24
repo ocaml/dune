@@ -139,7 +139,9 @@ let to_dyn_concise t : Dyn.t = Context_name.to_dyn t.name
 
 let compare a b = Poly.compare a.name b.name
 
-let opam = Memo.lazy_ (fun () -> Bin.which ~path:(Env.path Env.initial) "opam")
+let opam =
+  Memo.lazy_ ~loc:(Loc.of_pos __POS__) (fun () ->
+      Bin.which ~path:(Env.path Env.initial) "opam")
 
 let read_opam_config_var ~env (var : string) : string option Fiber.t =
   let (_ : Memo.Run.t) = Memo.current_run () in
@@ -268,7 +270,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     | Some x -> x
   in
   let findlib_config_path =
-    Memo.lazy_async ~cutoff:Path.equal (fun () ->
+    Memo.lazy_async ~loc:(Loc.of_pos __POS__) ~cutoff:Path.equal (fun () ->
         let fn = which_exn "ocamlfind" in
         (* When OCAMLFIND_CONF is set, "ocamlfind printconf" does print the
            contents of the variable, but "ocamlfind printconf conf" still prints
@@ -352,7 +354,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       | Some s -> Bin.parse_path s ~sep:ocamlpath_sep
     in
     let opam_config_var_lib =
-      Memo.lazy_async ~cutoff:(Option.equal String.equal) (fun () ->
+      Memo.lazy_async ~loc:(Loc.of_pos __POS__)
+        ~cutoff:(Option.equal String.equal) (fun () ->
           read_opam_config_var ~env "lib")
     in
     let findlib_paths () =
@@ -498,7 +501,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     in
     let ocaml_bin = dir in
     let install_prefix =
-      Memo.lazy_async ~cutoff:Path.equal (fun () ->
+      Memo.lazy_async ~loc:(Loc.of_pos __POS__) ~cutoff:Path.equal (fun () ->
           Fiber.map (read_opam_config_var ~env "prefix") ~f:(function
             | Some x -> Path.of_filename_relative_to_initial_cwd x
             | None -> Path.parent_exn ocaml_bin))

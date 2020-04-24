@@ -1,8 +1,8 @@
 (dirs :standard \ forbidden_var)
 
 (executable
-  (name foo)
-  (enabled_if true))
+ (name foo)
+ (enabled_if true))
 
 (install
  (section bin)

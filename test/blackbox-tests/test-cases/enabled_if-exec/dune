@@ -1,12 +1,12 @@
 (dirs :standard \ forbidden_var install)
 
 (executable
-  (name main)
-  (modules main)
-  (enabled_if true))
+ (name main)
+ (modules main)
+ (enabled_if true))
 
 (executable
-  (name dis)
-  (public_name dis)
-  (modules dis)
-  (enabled_if false))
+ (name dis)
+ (public_name dis)
+ (modules dis)
+ (enabled_if false))

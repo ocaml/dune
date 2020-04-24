@@ -1,5 +1,5 @@
 (executable
-  (name foo))
+ (name foo))
 
 (install
  (section bin)

@@ -342,9 +342,8 @@ module Entry = struct
 end
 
 let files entries =
-  List.fold_left entries ~init:Path.Set.empty
-    ~f:(fun acc (entry : Path.Build.t Entry.t) ->
-      Path.Set.add acc (Path.build entry.src))
+  Path.Set.of_list_map entries ~f:(fun (entry : Path.Build.t Entry.t) ->
+      Path.build entry.src)
 
 let group entries =
   List.map entries ~f:(fun (entry : Path.Build.t Entry.t) ->

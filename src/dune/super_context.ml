@@ -573,8 +573,20 @@ module Deps = struct
       |> Result.map ~f:(fun pkg ->
              let pkg = Package.Name.of_string pkg in
              let+ () =
-               Build.alias
-                 (Build_system.Alias.package_install ~context:t.context ~pkg)
+               match Package.Name.Map.find t.packages pkg with
+               | None ->
+                 Build.fail
+                   { fail =
+                       (fun () ->
+                         let loc = String_with_vars.loc p in
+                         User_error.raise ~loc
+                           [ Pp.textf "Package %s does not exist"
+                               (Package.Name.to_string pkg)
+                           ])
+                   }
+               | Some pkg ->
+                 Build.alias
+                   (Build_system.Alias.package_install ~context:t.context ~pkg)
              in
              [])
     | Universe ->

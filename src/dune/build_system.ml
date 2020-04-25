@@ -149,10 +149,12 @@ module Alias0 = struct
             (Path.Source.to_string_maybe_quoted src_dir)
         ]
 
-  let package_install ~(context : Context.t) ~pkg =
+  let package_install ~(context : Context.t) ~(pkg : Package.t) =
+    let dir = Path.Build.append_source context.build_dir pkg.path in
     make
-      (Alias.Name.of_string (sprintf ".%s-files" (Package.Name.to_string pkg)))
-      ~dir:context.build_dir
+      (Alias.Name.of_string
+         (sprintf ".%s-files" (Package.Name.to_string pkg.name)))
+      ~dir
 end
 
 module Loaded = struct

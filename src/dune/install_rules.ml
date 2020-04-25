@@ -639,13 +639,16 @@ let install_rules sctx (package : Package.t) =
   in
   let () =
     let target_alias =
-      Build_system.Alias.package_install ~context:ctx ~pkg:package.name
+      Build_system.Alias.package_install ~context:ctx ~pkg:package
     in
     Rules.Produce.Alias.add_deps target_alias files
       ~dyn_deps:
         (let+ packages = packages in
          Package.Name.Set.to_list packages
          |> Path.Set.of_list_map ~f:(fun pkg ->
+                let pkg =
+                  Package.Name.Map.find_exn (Super_context.packages sctx) pkg
+                in
                 Build_system.Alias.package_install ~context:ctx ~pkg
                 |> Alias.stamp_file |> Path.build))
   in
@@ -731,7 +734,6 @@ let memo =
         ( Dir_set.union_all
             [ Dir_set.subtree (Config.local_install_dir ~context:context_name)
             ; Dir_set.singleton (Package_paths.build_dir ctx pkg)
-            ; Dir_set.singleton ctx.build_dir
             ]
         , Thunk (fun () -> Finite (Rules.to_map (Memo.Lazy.force rules))) ))
 

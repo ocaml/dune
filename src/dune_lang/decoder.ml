@@ -401,9 +401,7 @@ let unit_number name suffixes =
       String.concat ~sep:", " (List.map ~f:fst suffixes)
     in
     let n, suffix =
-      let f c =
-        not (Char.code c >= Char.code '0' && Char.code c <= Char.code '9')
-      in
+      let f c = not (Char.is_digit c) in
       match String.findi s ~f with
       | None ->
         User_error.raise ~loc

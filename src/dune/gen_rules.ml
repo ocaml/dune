@@ -402,7 +402,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
                  { implementation = name; virtual_lib; variant; project; loc })
           | _ -> None ))
 
-let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
+let gen ~contexts ?only_packages conf =
   let open Fiber.O in
   let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
@@ -432,8 +432,7 @@ let gen ~contexts ?(external_lib_deps_mode = false) ?only_packages conf =
     in
     let* host, stanzas = Fiber.fork_and_join host stanzas in
     let sctx =
-      Super_context.create ?host ~context ~projects ~packages
-        ~external_lib_deps_mode ~stanzas
+      Super_context.create ?host ~context ~projects ~packages ~stanzas
     in
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, sctx)

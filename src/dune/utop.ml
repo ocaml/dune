@@ -104,7 +104,7 @@ let setup sctx ~dir =
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~opaque:false
+      ~modules ~opaque:(Explicit false)
       ~requires_link:(lazy requires)
       ~requires_compile:requires ~flags ~js_of_ocaml:None ~dynlink:false
       ~package:None ~preprocessing

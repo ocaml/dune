@@ -16,7 +16,6 @@ val create :
   -> projects:Dune_project.t list
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
-  -> external_lib_deps_mode:bool
   -> t
 
 val context : t -> Context.t
@@ -35,8 +34,6 @@ val build_dir : t -> Path.Build.t
 val profile : t -> Profile.t
 
 val host : t -> t
-
-val external_lib_deps_mode : t -> bool
 
 module Lib_entry : sig
   type t =
@@ -178,8 +175,6 @@ module Action : sig
 
   val map_exe : t -> Path.t -> Path.t
 end
-
-val opaque : t -> bool
 
 val expander : t -> dir:Path.Build.t -> Expander.t
 

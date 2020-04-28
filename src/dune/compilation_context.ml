@@ -39,6 +39,16 @@ module Includes = struct
   let empty = Cm_kind.Dict.make_all Command.Args.empty
 end
 
+type opaque =
+  | Explicit of bool
+  | Inherit_from_settings
+
+let eval_opaque (context : Context.t) = function
+  | Explicit b -> b
+  | Inherit_from_settings ->
+    Profile.is_dev context.profile
+    && Ocaml_version.supports_opaque_for_mli context.version
+
 type t =
   { super_context : Super_context.t
   ; scope : Scope.t
@@ -122,6 +132,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     in
     Option.value ~default modes |> Mode.Dict.map ~f:Option.is_some
   in
+  let opaque = eval_opaque (Super_context.context super_context) opaque in
   { super_context
   ; scope
   ; expander

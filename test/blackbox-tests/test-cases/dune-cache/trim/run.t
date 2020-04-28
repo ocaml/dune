@@ -123,27 +123,19 @@ they are part of the same rule.
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 16 bytes
 
+Check reporting of unexpected directories at the cache root while trimming:
+
   $ mkdir -p $PWD/.xdg-cache/dune/db/temp
   $ mkdir -p $PWD/.xdg-cache/dune/db/runtime
-  $ mkdir -p $PWD/.xdg-cache/dune/db/v1
   $ mkdir -p $PWD/.xdg-cache/dune/db/v2
-  $ mkdir -p $PWD/.xdg-cache/dune/db/v3
-  $ mkdir -p $PWD/.xdg-cache/dune/db/files/v1
   $ mkdir -p $PWD/.xdg-cache/dune/db/files/v2
-  $ mkdir -p $PWD/.xdg-cache/dune/db/files/v3
-  $ mkdir -p $PWD/.xdg-cache/dune/db/meta/v1
   $ mkdir -p $PWD/.xdg-cache/dune/db/meta/v2
-  $ mkdir -p $PWD/.xdg-cache/dune/db/meta/v3
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Error: Unexpected directories found at the cache root:
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/files/v1
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/files/v3
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/meta/v1
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/meta/v3
+  - $TESTCASE_ROOT/.xdg-cache/dune/db/files/v2
+  - $TESTCASE_ROOT/.xdg-cache/dune/db/meta/v2
   - $TESTCASE_ROOT/.xdg-cache/dune/db/temp
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/v1
   - $TESTCASE_ROOT/.xdg-cache/dune/db/v2
-  - $TESTCASE_ROOT/.xdg-cache/dune/db/v3
   These directories are probably used by Dune of a different version. Please
   trim the cache manually.
   [1]

@@ -1505,7 +1505,7 @@ subdir
 ------
 
 The ``subdir`` stanza can be used to evaluate stanzas in sub directories. This is
-useful for generated files or to override stanzas in vendored direcotries
+useful for generated files or to override stanzas in vendored directories
 without editing vendored dune files.
 
 In this example, a ``bar`` target is created in the ``foo`` directory, and a bar

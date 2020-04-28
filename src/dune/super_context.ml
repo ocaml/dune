@@ -186,7 +186,6 @@ type t =
   ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
   ; env_tree : Env_tree.t
   ; dir_status_db : Dir_status.DB.t
-  ; external_lib_deps_mode : bool
   ; (* Env node that represents the environment configured for the workspace. It
        is used as default at the root of every project in the workspace. *)
     default_env : Env_node.t Memo.Lazy.t
@@ -206,8 +205,6 @@ let artifacts t = t.artifacts
 let build_dir t = t.context.build_dir
 
 let profile t = t.context.profile
-
-let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let equal = (( == ) : t -> t -> bool)
 
@@ -415,13 +412,11 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           acc
       | _ -> acc)
 
-let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
-    ~external_lib_deps_mode =
+let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
     Lib.DB.create_from_findlib context.findlib ~stdlib_dir
-      ~external_lib_deps_mode
   in
   let scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
@@ -439,9 +434,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         })
   in
   let stanzas_per_dir =
-    List.map stanzas ~f:(fun stanzas ->
+    Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
-    |> Path.Build.Map.of_list_exn
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
@@ -529,7 +523,6 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
                   Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
   ; env_tree
   ; default_env
-  ; external_lib_deps_mode
   ; dir_status_db
   ; projects_by_key
   }
@@ -650,10 +643,6 @@ module Action = struct
     Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
       ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
-
-let opaque t =
-  Profile.is_dev t.context.profile
-  && Ocaml_version.supports_opaque_for_mli t.context.version
 
 let dir_status_db t = t.dir_status_db
 

@@ -1,4 +1,7 @@
 (lang dune 2.5)
+;          ^^^
+; When changing the version, don't forget to regenerate *.opam files
+; by running [dune build].
 (name dune)
 
 (generate_opam_files true)

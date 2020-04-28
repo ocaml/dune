@@ -95,6 +95,16 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias cinaps-include-subdirs)
+ (deps (package dune) (source_tree test-cases/cinaps))
+ (action
+  (chdir
+   test-cases/cinaps
+   (progn
+    (run dune-cram run include-subdirs.t)
+    (diff? include-subdirs.t include-subdirs.t.corrected)))))
+
+(rule
  (alias cmdliner-dep-conf)
  (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
  (action
@@ -1038,6 +1048,14 @@
  (action
   (chdir
    test-cases/github3180
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias github3412)
+ (deps (package dune) (source_tree test-cases/github3412))
+ (action
+  (chdir
+   test-cases/github3412
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2455,6 +2473,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2567,6 +2586,7 @@
   (alias github2848)
   (alias github3046)
   (alias github3180)
+  (alias github3412)
   (alias github534)
   (alias github568)
   (alias github597)
@@ -2746,6 +2766,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2852,6 +2873,7 @@
   (alias github2848)
   (alias github3046)
   (alias github3180)
+  (alias github3412)
   (alias github534)
   (alias github568)
   (alias github597)

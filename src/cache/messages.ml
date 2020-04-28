@@ -93,10 +93,7 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
   | Dedup file ->
     cmd "dedup"
       [ Sexp.List
-          [ Sexp.Atom
-              (Path.Local.to_string
-                 (Path.Build.local file.in_the_build_directory))
-          ; Sexp.Atom (Path.to_string file.in_the_cache)
+          [ Sexp.Atom (Path.Local.to_string (Path.Build.local file.path))
           ; Sexp.Atom (Digest.to_string file.digest)
           ]
       ]
@@ -135,22 +132,29 @@ let initial_message_of_sexp = function
     Result.Error
       (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
 
-let incoming_message_of_sexp _version = function
-  | Sexp.List
-      [ Sexp.Atom "dedup"
-      ; Sexp.List [ Sexp.Atom source; Sexp.Atom target; Sexp.Atom digest ]
-      ] -> (
-    match Digest.from_hex digest with
-    | Some digest ->
-      Result.Ok
-        (Dedup
-           { in_the_build_directory = Path.Build.of_string source
-           ; in_the_cache = Path.of_string target
-           ; digest
-           })
-    | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
-  | exp ->
-    Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+let incoming_message_of_sexp version sexp =
+  let open Result.O in
+  let* path, digest =
+    match sexp with
+    | Sexp.List
+        [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom path; Sexp.Atom digest ] ]
+      when version = { major = 1; minor = 2 } ->
+      Ok (path, digest)
+    | Sexp.List
+        [ Sexp.Atom "dedup"
+        ; Sexp.List
+            (* Message protocol versions before v1.2 included an additional
+               field [_path_in_cache] which is no longer used. *)
+            [ Sexp.Atom path; Sexp.Atom _path_in_cache; Sexp.Atom digest ]
+        ] ->
+      Ok (path, digest)
+    | exp ->
+      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+  in
+  match Digest.from_hex digest with
+  | Some digest ->
+    Result.Ok (Dedup { path = Path.Build.of_string path; digest })
+  | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest)
 
 let outgoing_message_of_sexp version =
   let repos_of_sexp args =
@@ -250,8 +254,8 @@ let send version output message =
 let find_newest_common_version versions_a versions_b =
   let find a b =
     let f { major; minor } = (major, minor) in
-    let a = Int.Map.of_list_exn (List.map ~f a)
-    and b = Int.Map.of_list_exn (List.map ~f b) in
+    let a = Int.Map.of_list_map_exn ~f a
+    and b = Int.Map.of_list_map_exn ~f b in
     let common =
       Int.Map.merge
         ~f:(fun _major minor_in_a minor_in_b ->

@@ -126,7 +126,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
-      ~js_of_ocaml ~opaque:(SC.opaque sctx) ~dynlink ~package:exes.package
+      ~js_of_ocaml ~opaque:Inherit_from_settings ~dynlink ~package:exes.package
   in
   let o_files =
     if not (Executables.has_foreign exes) then

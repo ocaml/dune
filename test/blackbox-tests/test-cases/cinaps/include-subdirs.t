@@ -22,4 +22,4 @@ cinaps doesn't work with (include_subdirs unqualified)
 
   $ dune runtest --diff-command diff 2>&1 | head -2
   Error: exception { exn =
-      ("Directory creates generated directories inside its descendant source directories. This is not allowed.",
+      ("Directory creates generated directories inside its descendant source

@@ -256,3 +256,23 @@ val yield : unit -> unit t
 val run : 'a t -> 'a
 
 exception Never
+
+module Result : sig
+  type nonrec ('a, 'e) t = ('a, 'e) result t
+
+  val bind : ('a, 'e) t -> f:('a -> ('b, 'e) t) -> ('b, 'e) t
+
+  val return : 'a -> ('a, 'e) t
+
+  module O : sig
+    val ( >>> ) : (unit, 'e) t -> ('a, 'e) t -> ('a, 'e) t
+
+    val ( >>| ) : ('a, 'e) t -> ('a -> 'b) -> ('b, 'e) t
+
+    val ( >>= ) : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+
+    val ( let+ ) : ('a, 'e) t -> ('a -> 'b) -> ('b, 'e) t
+
+    val ( let* ) : ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+  end
+end

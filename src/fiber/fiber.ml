@@ -509,3 +509,33 @@ let run t =
       loop ()
   in
   loop ()
+
+module Result = struct
+  type nonrec ('a, 'e) t = ('a, 'e) result t
+
+  let map t ~f = map ~f:(Result.map ~f) t
+
+  let bind t ~f =
+    bind t ~f:(function
+      | Error _ as e -> return e
+      | Ok x -> f x)
+
+  module O = struct
+    let ( >>> ) x y =
+      let open O in
+      let* x = x in
+      match x with
+      | Error _ as e -> return e
+      | Ok _ -> y
+
+    let ( >>| ) x f = map x ~f
+
+    let ( >>= ) x f = bind x ~f
+
+    let ( let+ ) x f = map x ~f
+
+    let ( let* ) x f = x >>= f
+  end
+
+  let return x = return (Ok x)
+end

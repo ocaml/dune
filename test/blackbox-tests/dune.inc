@@ -95,6 +95,16 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias cinaps-include-subdirs)
+ (deps (package dune) (source_tree test-cases/cinaps))
+ (action
+  (chdir
+   test-cases/cinaps
+   (progn
+    (run dune-cram run include-subdirs.t)
+    (diff? include-subdirs.t include-subdirs.t.corrected)))))
+
+(rule
  (alias cmdliner-dep-conf)
  (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
  (action
@@ -2463,6 +2473,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2755,6 +2766,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)

@@ -1,0 +1,4 @@
+(lang dune 1.9)
+(name foo)
+
+(allow_approximate_merlin true)

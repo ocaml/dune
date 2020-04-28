@@ -768,7 +768,8 @@ Testsuite for the (foreign_library ...) stanza.
   4 |  (include_dirs (lib answer) (lib unknown_lib))
                                        ^^^^^^^^^^^
   Error: Library "unknown_lib" not found.
-  Hint: try: dune external-lib-deps --missing some/dir/main.exe
+  Hint: try:
+    dune external-lib-deps --missing some/dir/main.exe
   [1]
 
 ----------------------------------------------------------------------------------

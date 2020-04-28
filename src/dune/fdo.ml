@@ -36,7 +36,7 @@ let cxx_flags = c_flags
    on the context. *)
 let ocamlfdo_binary sctx dir =
   Super_context.resolve_program sctx ~dir ~loc:None "ocamlfdo"
-    ~hint:"try: opam install ocamlfdo"
+    ~hint:"opam install ocamlfdo"
 
 (* FDO flags are context dependent. *)
 let get_flags var =

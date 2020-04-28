@@ -921,6 +921,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias external-lib-deps-missing)
+ (deps
+  (package dune)
+  (source_tree test-cases/external-lib-deps/missing)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/external-lib-deps/missing
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias external-lib-deps-simple)
  (deps
   (package dune)
@@ -3082,6 +3093,7 @@
   (alias exes-with-c)
   (alias extensions-versionning)
   (alias external-lib-deps-github3143)
+  (alias external-lib-deps-missing)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)
@@ -3377,6 +3389,7 @@
   (alias exes-with-c)
   (alias extensions-versionning)
   (alias external-lib-deps-github3143)
+  (alias external-lib-deps-missing)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)

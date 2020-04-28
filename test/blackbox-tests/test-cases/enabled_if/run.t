@@ -28,7 +28,8 @@ Test the enabled_if field for libraries:
   35 |  (libraries foo))
                    ^^^
   Error: Library "foo" in _build/default is hidden (unsatisfied 'enabled_if').
-  Hint: try: dune external-lib-deps --missing main.exe
+  Hint: try:
+    dune external-lib-deps --missing main.exe
   [1]
 
 Ideally, the above message should mention the dependency path between
@@ -48,7 +49,8 @@ This one is disabled (version too low)
                    ^^^^^^^^^^
   Error: Library "futurecaml" in _build/default is hidden (unsatisfied
   'enabled_if').
-  Hint: try: dune external-lib-deps --missing --root ocaml_version main2.exe
+  Hint: try:
+    dune external-lib-deps --missing --root ocaml_version main2.exe
   [1]
 
 This one unse forbidden variables

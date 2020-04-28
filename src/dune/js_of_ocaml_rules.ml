@@ -21,7 +21,7 @@ let sourcemap sctx =
 
 let standard sctx = pretty sctx @ sourcemap sctx
 
-let install_jsoo_hint = "try: opam install js_of_ocaml-compiler"
+let install_jsoo_hint = "opam install js_of_ocaml-compiler"
 
 let in_build_dir ~ctx args =
   Path.L.relative (Path.build ctx.Context.build_dir) (".js" :: args)

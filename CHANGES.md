@@ -1,3 +1,10 @@
+next
+----
+
+- Insert a constraint one the version of dune when the user explicitly
+  specify the dependency on dune in the `dune-project` file (#....,
+  fixes #3427, @diml)
+
 2.5.1 (17/04/2020)
 ------------------
 

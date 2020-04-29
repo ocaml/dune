@@ -9,6 +9,9 @@
 - Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets
   had no effect. (@aalekseyev, report by @craigfe)
 
+- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
+  @stephanieyou)
+
 2.5.0 (09/04/2020)
 ------------------
 

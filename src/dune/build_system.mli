@@ -101,7 +101,7 @@ module Alias : sig
   type t = Alias.t
 
   (** Alias for all the files in [_build/install] that belong to this package *)
-  val package_install : context:Context.t -> pkg:Package.Name.t -> t
+  val package_install : context:Context.t -> pkg:Package.t -> t
 
   (** [dep t = Build.path (stamp_file t)] *)
   val dep : t -> unit Build.t

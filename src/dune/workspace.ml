@@ -138,7 +138,7 @@ module Context = struct
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
       and+ bisect_enabled =
           field ~default:false "bisect_enabled"
-            (Dune_lang.Syntax.since syntax (2, 5) >>> bool)
+            (Dune_lang.Syntax.since syntax (2, 6) >>> bool)
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
           match targets with

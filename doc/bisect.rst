@@ -24,9 +24,16 @@ dune file would include stanza(s) like this:
 
 This aligns with the standard usage of ppx libraries.
 
-However, if we would like to control which builds measure coverage, instead of
-including ``bisect_ppx`` in ``preprocess``, we should use the ``(bisect_ppx)``
-field. The dune file may look like this:
+However, if we would like to control which builds measure coverage, first we
+must include ``(using bisect_ppx 1.0)`` in our ``dune-project`` file, like so:
+
+.. code:: scheme
+
+          (lang dune 2.6)
+          (using bisect_ppx 1.0)
+
+Then, instead of including ``bisect_ppx`` in ``preprocess``, we should use the
+``(bisect_ppx)`` field. The dune file may look like this:
 
 .. code:: scheme
 
@@ -53,7 +60,7 @@ using ``(bisect_ppx)``. To enable code coverage, we can set the
 
 .. code:: scheme
 
-          (lang dune 2.5)
+          (lang dune 2.6)
           (context (default (bisect_enabled true)))
 
 Then, to build the project with code coverage, we can run:

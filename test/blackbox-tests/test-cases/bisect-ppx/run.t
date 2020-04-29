@@ -1,10 +1,14 @@
 ----------------------------------------------------------------------------------
-Testsuite for %{bisect_ppx} field for libraries/executables.
+Testsuite for (bisect_ppx) field for libraries/executables.
 
-  $ echo "(lang dune 2.5)" > dune-project
+  $ cat >dune-project <<EOF
+  > (lang dune 2.6)
+  > (using bisect_ppx 1.0)
+  > EOF
+
 
   $ cat >dune-workspace.dev <<EOF
-  > (lang dune 2.5)
+  > (lang dune 2.6)
   > (context (default (bisect_enabled true)))
   > EOF
 

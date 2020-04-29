@@ -35,6 +35,14 @@ let variants_field =
     (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
      located (repeat Variant.decode >>| Variant.Set.of_list))
 
+let bisect_ppx_syntax =
+  Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
+    [ ((1, 0), `Since (2, 6)) ]
+
+let () =
+  Dune_project.Extension.register_simple bisect_ppx_syntax
+    (Dune_lang.Decoder.return [])
+
 module Pps_and_flags = struct
   let decode =
     let+ l, flags =
@@ -449,7 +457,8 @@ module Buildable = struct
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
     and+ bisect_ppx =
-      field_b "bisect_ppx" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 5))
+      field_b "bisect_ppx"
+        ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let foreign_stubs =
       foreign_stubs

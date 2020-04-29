@@ -44,7 +44,8 @@ Then, instead of including ``bisect_ppx`` in ``preprocess``, we should use the
 
           (executable
            (name test)
-           (modules test))
+           (modules test)
+           (libraries foo))
 
 The ``(bisect_ppx)`` field can be specified in library and executable stanzas.
 Libraries/executables that do not use ``(bisect_ppx)`` will not be instrumented
@@ -68,5 +69,19 @@ Then, to build the project with code coverage, we can run:
 .. code:: bash
 
           $ dune exec ./test.exe --workspace dune-workspace.dev
+
+We can also define different contexts in the ``dune-workspace`` file as follows:
+
+.. code:: scheme
+
+          (lang dune 2.6)
+          (context default)
+          (context (default (name coverage) (bisect_enabled true)))
+
+Running the following will enable coverage:
+
+.. code:: bash
+    
+          $ dune exec ./test.exe --context coverage
 
 .. _bisect_ppx: https://github.com/aantron/bisect_ppx

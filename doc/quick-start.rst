@@ -2,9 +2,7 @@
 Quickstart
 **********
 
-This document gives simple usage examples of dune. You can also look at
-`examples <https://github.com/ocaml/dune/tree/master/example>`__ for complete
-examples of projects using dune.
+This document gives simple usage examples of dune.
 
 Building a hello world program
 ==============================

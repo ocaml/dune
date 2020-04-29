@@ -16,16 +16,12 @@ Dune comes with a [manual][manual]. If you want to get started
 without reading too much, you can look at the [quick start
 guide][quick-start] or watch [this introduction video][video].
 
-The [example][example] directory contains examples of projects using
-dune.
-
 [![Travis status][travis-img]][travis]
 [![AppVeyor status][appveyor-img]][appveyor]
 [![Release][release-img]][release]
 
 [manual]:         https://dune.readthedocs.io/en/latest/
 [quick-start]:    https://dune.readthedocs.io/en/latest/quick-start.html
-[example]:        https://github.com/ocaml/dune/tree/master/example
 [travis]:         https://travis-ci.org/ocaml/dune
 [travis-img]:     https://travis-ci.org/ocaml/dune.svg?branch=master
 [appveyor]:       https://ci.appveyor.com/project/diml/dune/branch/master

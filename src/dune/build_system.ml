@@ -512,13 +512,8 @@ let compute_targets_digest targets =
 
 (* Find the closest corresponding source directory, eg
    '_build/default/src/dune/.dune.objs' becomes 'src/dune' *)
-let find_rule_source_dir ({ Rule.action; _ } as rule) =
-  let _, src_dir =
-    match Path.Build.Set.find ~f:(fun _ -> true) action.targets with
-    | Some path -> Path.Build.extract_build_context_dir_exn path
-    | None ->
-      Code_error.raise "rule has no targets" [ ("rule", Rule.to_dyn rule) ]
-  in
+let find_rule_source_dir rule =
+  let _, src_dir = Path.Build.extract_build_context_dir_exn rule.Rule.dir in
   let res = File_tree.nearest_dir src_dir in
   res
 

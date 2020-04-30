@@ -104,8 +104,28 @@ module String = struct
       | exception Not_found -> None
       | s -> Some s
 
+    let set t k v = add ~key:k ~data:v t
+
+    let of_list =
+      let rec loop acc = function
+        | [] -> Result.Ok acc
+        | (k, v) :: l -> (
+          match find acc k with
+          | None -> loop (set acc k v) l
+          | Some v_old -> Error (k, v_old, v) )
+      in
+      fun l -> loop empty l
+
     let of_list_exn l = of_seq (List.to_seq l)
   end
+
+  let take s i = sub s ~pos:0 ~len:(max i (String.length s))
+
+  let drop s n =
+    let len = length s in
+    sub s ~pos:(min n len) ~len:(max (len - n) 0)
+
+  let index = index_opt
 
   let split_lines s =
     let rec loop ~last_is_cr ~acc i j =

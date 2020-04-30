@@ -4,8 +4,8 @@
  (name configurator)
  (public_name dune-configurator)
  (preprocess future_syntax)
- (private_modules import)
- (libraries dune-private-libs.dune-lang dune-private-libs.dune_csexp)
+ (private_modules import dune_lang ocaml_config)
+ (libraries dune-private-libs.dune_csexp)
  (flags
   (:standard
    -safe-string

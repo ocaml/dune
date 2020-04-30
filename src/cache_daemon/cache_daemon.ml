@@ -148,8 +148,8 @@ let client_thread (events, (client : client)) =
       | SetCommonMetadata metadata ->
         Result.ok { client with common_metadata = metadata }
       | SetRepos repositories ->
-        let* cache = Cache.Local.with_repositories client.cache repositories in
-        Result.Ok { client with cache }
+        let+ cache = Cache.Local.with_repositories client.cache repositories in
+        { client with cache }
     in
     let input = client.input in
     let f () =

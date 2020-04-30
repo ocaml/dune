@@ -551,9 +551,7 @@ end = struct
       | Some p -> p
     in
     let vcs =
-      get_vcs ~default:settings.ancestor_vcs
-        ~path:(Path.Source.of_string ".")
-        ~readdir
+      get_vcs ~default:settings.ancestor_vcs ~path:Path.Source.root ~readdir
     in
     let dirs_visited = Dirs_visited.singleton path in
     let contents, visited =

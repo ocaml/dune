@@ -2074,27 +2074,25 @@ let init ~contexts ?caching ~sandboxing_preference =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c -> (c.Context.name, c))
   in
   let caching =
-    match caching with
-    | Some ({ cache = (module Caching : Cache.Caching); _ } as v) -> (
-      let open Result.O in
-      let res =
-        let* cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
-        Result.Ok
-          ( module struct
-            module Cache = Caching.Cache
+    let open Option.O in
+    let* ({ cache = (module Caching : Cache.Caching); _ } as v) = caching in
+    let open Result.O in
+    let res =
+      let+ cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
+      ( module struct
+        module Cache = Caching.Cache
 
-            let cache = cache
-          end : Cache.Caching )
-      in
-      match res with
-      | Result.Ok cache -> Some { v with cache }
-      | Result.Error e ->
-        User_warning.emit
-          [ Pp.text "Unable to set cache build directory"
-          ; Pp.textf "Reason: %s" e
-          ];
-        None )
-    | None -> None
+        let cache = cache
+      end : Cache.Caching )
+    in
+    match res with
+    | Result.Ok cache -> Some { v with cache }
+    | Result.Error e ->
+      User_warning.emit
+        [ Pp.text "Unable to set cache build directory"
+        ; Pp.textf "Reason: %s" e
+        ];
+      None
   in
   let t =
     { contexts

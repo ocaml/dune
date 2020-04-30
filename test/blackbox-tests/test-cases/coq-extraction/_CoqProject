@@ -1,0 +1,5 @@
+
+-arg -w -arg -notation-overridden
+-arg -w -arg -abstract-large-number
+
+-R _build/default/theories Bug_Coq

@@ -1,0 +1,4 @@
+(coq.theory
+  (name Bug_Coq)
+	(package Bug_Coq))
+

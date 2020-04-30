@@ -91,4 +91,4 @@ val metadata_path : t -> Key.t -> Path.t
 val file_path : t -> Key.t -> Path.t
 
 (** Path to a safe, instance specific temporary directory *)
-val path_tmp : t -> string -> Path.t
+val tmp_path : t -> string -> Path.t

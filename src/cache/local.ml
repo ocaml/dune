@@ -174,7 +174,7 @@ module Metadata_file = struct
   let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
 
-let path_tmp cache name =
+let tmp_path cache name =
   let res = Path.relative cache.temp_dir name in
   Path.mkdir_p res;
   res

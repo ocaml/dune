@@ -1641,13 +1641,11 @@ end = struct
               in
               let repository =
                 let dir = find_rule_source_dir rule in
-                match File_tree.Dir.vcs dir with
-                | Some vcs -> (
-                  let f found = Path.equal found.Vcs.root vcs.Vcs.root in
-                  match get_vcs () |> List.findi ~f with
-                  | Some (_, i) -> Some i
-                  | None -> None )
-                | None -> None
+                let open Option.O in
+                let* vcs = File_tree.Dir.vcs dir in
+                let f found = Path.equal found.Vcs.root vcs.Vcs.root in
+                let+ _, i = get_vcs () |> List.findi ~f in
+                i
               in
               Caching.Cache.promote Caching.cache targets rule_digest []
                 ~repository ~duplication:None

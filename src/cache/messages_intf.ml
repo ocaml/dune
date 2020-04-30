@@ -31,7 +31,6 @@ type incoming = Incoming
 
 (** Messages of the communication protocol between Dune and the cache daemon. *)
 type _ message =
-  | Hint : Digest.t list -> outgoing message
   | Lang : version list -> initial message
       (** Inform the other party about the supported versions of the
           communication protocol. *)
@@ -46,6 +45,8 @@ type _ message =
           workspace along with the associated commit identifiers. *)
   | Promote : promotion -> outgoing message
       (** Promote files produced by a build rule into the cache. *)
+  | Hint : Digest.t list -> outgoing message
+      (** The cache daemon a rule is going to be built *)
   | Dedup : File.t -> incoming message
       (** Inform Dune that a file that was previously promoted can now be
           replaced by a hardlink to the corresponding file stored in cache. *)

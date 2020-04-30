@@ -29,3 +29,4 @@ Welcome to dune's documentation!
    known-issues
    migration
    caching
+   toplevel-integration

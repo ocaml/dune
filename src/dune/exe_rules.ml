@@ -126,7 +126,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     in
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
       ~modules ~flags ~requires_link ~requires_compile ~preprocessing:pp
-      ~js_of_ocaml ~opaque:(SC.opaque sctx) ~dynlink ~package:exes.package
+      ~js_of_ocaml ~opaque:Inherit_from_settings ~dynlink ~package:exes.package
   in
   let o_files =
     if not (Executables.has_foreign exes) then
@@ -183,6 +183,8 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander
       ~compile_info ~embed_in_plugin_libraries:exes.embed_in_plugin_libraries
   in
-  SC.Libs.gen_select_rules sctx compile_info ~dir;
+  Buildable_rules.gen_select_rules sctx compile_info ~dir;
   Bootstrap_info.gen_rules sctx exes ~dir compile_info;
-  SC.Libs.with_lib_deps sctx compile_info ~dir ~f
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    compile_info ~dir ~f

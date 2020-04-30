@@ -35,7 +35,7 @@ dune.
 [merlin]:         https://github.com/ocaml/merlin
 [opam]:           https://opam.ocaml.org
 [issues]:         https://github.com/ocaml/dune/issues
-[topkg-jbuilder]: https://github.com/diml/topkg-jbuilder
+[dune-release]:   https://github.com/ocamllabs/dune-release
 [video]:          https://youtu.be/BNZhmMAJarw
 
 Overview
@@ -106,6 +106,11 @@ The recommended way to install dune is via the [opam package manager][opam]:
 ```sh
 $ opam install dune
 ```
+
+If you are new to opam, make sure to run `eval $(opam config env)` to
+make `dune` available in your `PATH`. The dune binary is self
+contained and relocatable, so you can safely copy it somewhere else to
+make it permanently available.
 
 You can also build it manually with:
 

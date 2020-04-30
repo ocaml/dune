@@ -9,7 +9,7 @@ open Result.O
 type client =
   { fd : Unix.file_descr
   ; peer : Unix.sockaddr
-  ; input : char Stream.t
+  ; input : in_channel
   ; output : out_channel
   ; common_metadata : Sexp.t list
   ; cache : Cache.Local.t
@@ -52,7 +52,7 @@ let check_port_file ?(close = true) p =
   | Result.Error e -> Result.Error e
 
 let send_sexp output sexp =
-  output_string output (Csexp.to_string sexp);
+  Csexp.to_channel output sexp;
   flush output
 
 let send version output message =
@@ -95,7 +95,7 @@ exception Error of string
 let make ?root ~config () : t =
   match
     Cache.Local.make ?root ~duplication_mode:Cache.Duplication_mode.Hardlink
-      (fun _ -> ())
+      ~command_handler:ignore ()
   with
   | Result.Error msg -> User_error.raise [ Pp.text msg ]
   | Result.Ok cache ->
@@ -122,7 +122,7 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let my_versions : version list = [ { major = 1; minor = 1 } ]
+let versions_supported_by_dune : version list = [ { major = 1; minor = 2 } ]
 
 let endpoint m = m.endpoint
 
@@ -154,25 +154,17 @@ let client_thread (events, (client : client)) =
     let f () =
       Log.info [ Pp.textf "accept client: %s" (peer_name client.peer) ];
       let rec handle client =
-        match Stream.peek input with
-        | None -> Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
-        | Some '\n' ->
-          (* Skip toplevel newlines, for easy netcat interaction *)
-          Stream.junk input;
-          (handle [@tailcall]) client
-        | _ -> (
-          match
-            let* cmd =
-              Result.map_error
-                ~f:(fun r -> "parse error: " ^ r)
-                (Csexp.parse input)
-            in
-            Log.info
-              [ Pp.textf "%s: received command: %s" (peer_name client.peer)
-                  (Sexp.to_string cmd)
-              ];
-            handle_cmd client cmd
-          with
+        match Csexp.input_opt input with
+        | Error msg ->
+          Log.info
+            [ Pp.textf "%s: parse error: %s" (peer_name client.peer) msg ]
+        | Ok None -> Log.info [ Pp.textf "%s: ended" (peer_name client.peer) ]
+        | Ok (Some cmd) -> (
+          Log.info
+            [ Pp.textf "%s: received command: %s" (peer_name client.peer)
+                (Sexp.to_string cmd)
+            ];
+          match handle_cmd client cmd with
           | Result.Error e ->
             Log.info
               [ Pp.textf "%s: command error: %s" (peer_name client.peer) e ];
@@ -200,15 +192,17 @@ let client_thread (events, (client : client)) =
     raise exn
 
 let run ?(port_f = ignore) ?(port = 0) daemon =
-  let trim_thread max_size period cache =
+  let trim_thread ~max_overhead_size period cache =
     let rec trim () =
       Unix.sleep period;
       let () =
         match
-          let size = Cache.Local.size cache in
-          if size > max_size then (
-            Log.info [ Pp.textf "trimming %i bytes" (size - max_size) ];
-            Some (Cache.Local.trim cache (size - max_size))
+          let overhead_size = Cache.Local.overhead_size cache in
+          if overhead_size > max_overhead_size then (
+            Log.info
+              [ Pp.textf "trimming %i bytes" (overhead_size - max_overhead_size)
+              ];
+            Some (Cache.Local.trim cache (overhead_size - max_overhead_size))
           ) else
             None
         with
@@ -236,10 +230,12 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
         ~default:(Result.Ok (10 * 60))
         (Option.map ~f:int_of_string
            (Env.get Env.initial "DUNE_CACHE_TRIM_PERIOD"))
-    and+ trim_size =
+    and+ max_overhead_size =
       Option.value
         ~default:(Result.Ok (10 * 1024 * 1024 * 1024))
         (Option.map ~f:int_of_string
+           (* CR-someday amokhov: the term "size" is ambiguous, it would be
+              better to switch to a more precise one, e.g. "max overhead size". *)
            (Env.get Env.initial "DUNE_CACHE_TRIM_SIZE"))
     in
     let sock = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
@@ -254,7 +250,10 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
     Unix.listen sock 1024;
     daemon.accept_thread <- Some (Thread.create accept_thread sock);
     daemon.trim_thread <-
-      Some (Thread.create (trim_thread trim_size trim_period) daemon.cache);
+      Some
+        (Thread.create
+           (trim_thread ~max_overhead_size trim_period)
+           daemon.cache);
     let rec handle () =
       let stop () =
         match daemon.socket with
@@ -271,9 +270,11 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
       | Stop -> stop ()
       | New_client (fd, peer) -> (
         let output = Unix.out_channel_of_descr fd
-        and input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+        and input = Unix.in_channel_of_descr fd in
         match
-          let* version = negotiate_version my_versions fd input output in
+          let* version =
+            negotiate_version ~versions_supported_by_dune fd input output
+          in
           let client =
             { fd
             ; peer
@@ -285,7 +286,8 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
                 ( match
                     Cache.Local.make ?root:daemon.root
                       ~duplication_mode:Cache.Duplication_mode.Hardlink
-                      (client_handle version output)
+                      ~command_handler:(client_handle version output)
+                      ()
                   with
                 | Result.Ok m -> m
                 | Result.Error e -> User_error.raise [ Pp.textf "%s" e ] )

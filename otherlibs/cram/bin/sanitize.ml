@@ -15,7 +15,8 @@ let rewrite_paths =
       exit 2
     | Ok map ->
       let abs_path_re =
-        Re.(compile (seq [ char '/'; rep1 (diff any (set " \n\r\t")) ]))
+        let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
+        Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
       in
       fun s ->
         Re.replace abs_path_re s ~f:(fun g ->

@@ -5,11 +5,17 @@ open! Import
 
 type 'a t
 
+include Applicative_intf.S1 with type 'a t := 'a t
+
 module With_targets : sig
+  type 'a build
+
   type nonrec 'a t =
     { build : 'a t
     ; targets : Path.Build.Set.t
     }
+
+  val map_build : 'a t -> f:('a build -> 'b build) -> 'b t
 
   val return : 'a -> 'a t
 
@@ -38,6 +44,7 @@ module With_targets : sig
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 end
+with type 'a build := 'a t
 
 (** This function should be called before analysing build expressions using
     [static_deps], [lib_deps] or [exec], which all require some file system
@@ -61,14 +68,6 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 val map2 : 'a t -> 'b t -> f:('a -> 'b -> 'c) -> 'c t
 
 val ignore : 'a t -> unit t
-
-module O : sig
-  val ( >>> ) : unit t -> 'a t -> 'a t
-
-  val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
-
-  val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
-end
 
 val all : 'a t list -> 'a list t
 

@@ -2,10 +2,13 @@ open Stdune
 
 type metadata = Sexp.t list
 
+(** A file stored in Dune cache is fully determined by the build [path] and its
+    content [digest]. There may be multiple [File]s with the same [digest] due
+    to sharing between multiple workspaces. In fact, the more such pairs there
+    are, the more effective the cache is. *)
 module File = struct
   type t =
-    { in_the_cache : Path.t
-    ; in_the_build_directory : Path.Build.t
+    { path : Path.Build.t
     ; digest : Digest.t
     }
 end
@@ -21,8 +24,6 @@ type repository =
   }
 
 type command = Dedup of File.t
-
-type handler = command -> unit
 
 module Duplication_mode = struct
   type t =
@@ -44,8 +45,15 @@ end
 module type Cache = sig
   type t
 
+  (** Set the absolute path to the build directory for interpreting relative
+      paths when promoting files. *)
+  val set_build_dir : t -> Path.t -> t
+
+  (** Set all the version controlled repositories in the workspace to be
+      referred to when promoting files. *)
   val with_repositories : t -> repository list -> t
 
+  (** Promote files produced by a build rule into the cache. *)
   val promote :
        t
     -> (Path.Build.t * Digest.t) list
@@ -55,14 +63,20 @@ module type Cache = sig
     -> duplication:Duplication_mode.t option
     -> (unit, string) Result.t
 
+  (** Find a build rule in the cache by its key. *)
   val search : t -> Key.t -> (metadata * File.t list, string) Result.t
 
+  (** Materialise a cached file in the build directory (using [Copy] or
+      [Hardlink] as per the duplication mode) and return the path to it. *)
   val retrieve : t -> File.t -> Path.t
 
+  (** Deduplicate a file, i.e. replace the file [in_the_build_directory] with a
+      hardlink to the one [in_the_cache] if the deduplication mode is set to
+      [Hardlink] (or do nothing if the mode is [Copy]). *)
   val deduplicate : t -> File.t -> unit
 
-  val set_build_dir : t -> Path.t -> t
-
+  (** Remove the local cache and disconnect with a distributed cache client if
+      any. *)
   val teardown : t -> unit
 end
 
@@ -75,10 +89,7 @@ end
 type caching = (module Caching)
 
 let command_to_dyn = function
-  | Dedup { in_the_build_directory; in_the_cache; digest } ->
+  | Dedup { path; digest } ->
     let open Dyn.Encoder in
     record
-      [ ("in_the_build_directory", Path.Build.to_dyn in_the_build_directory)
-      ; ("in_the_cache", Path.to_dyn in_the_cache)
-      ; ("digest", Digest.to_dyn digest)
-      ]
+      [ ("path", Path.Build.to_dyn path); ("digest", Digest.to_dyn digest) ]

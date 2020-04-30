@@ -29,13 +29,11 @@ let term =
          & info [] ~docv:"INPUT"
              ~doc:"Use $(docv) as the input to the function.")
      in
-     Common.set_common common ~targets:[];
+     Common.set_common common ~targets:[] ~external_lib_deps_mode:true;
      let action =
        Scheduler.go ~common (fun () ->
            let open Fiber.O in
-           let* _setup =
-             Import.Main.setup common ~external_lib_deps_mode:true
-           in
+           let* _setup = Import.Main.setup common in
            match (fn, inp) with
            | "list", None -> Fiber.return `List
            | "list", Some _ ->

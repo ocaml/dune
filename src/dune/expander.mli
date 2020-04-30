@@ -62,6 +62,18 @@ val expand_path : t -> String_with_vars.t -> Path.t
 
 val expand_str : t -> String_with_vars.t -> string
 
+module Or_exn : sig
+  val expand :
+       t
+    -> mode:'a String_with_vars.Mode.t
+    -> template:String_with_vars.t
+    -> 'a Or_exn.t
+
+  val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
+
+  val expand_str : t -> String_with_vars.t -> string Or_exn.t
+end
+
 val resolve_binary :
   t -> loc:Loc.t option -> prog:string -> (Path.t, Import.fail) Result.t
 
@@ -73,72 +85,38 @@ type reduced_var_result =
 val expand_with_reduced_var_set :
   context:Context.t -> reduced_var_result String_with_vars.expander
 
-module Resolved_forms : sig
-  (** [Resolved_forms.t] values are mutated as we do a dependency discovery
-      pass. In the end, [Resolved_forms.t] should contain all the dependencies
-      we've discovered. *)
-  type t
+(** Prepare a temporary expander capable of expanding variables in the [deps] or
+    similar fields. This expander doesn't support variables that require us to
+    build something to expand. For example, [%{exe:foo}] is allowed but
+    [%{read:bar}] is not allowed.
 
-  (* Failed resolutions *)
-  val failures : t -> Import.fail list
-
-  (* All "name" for %{lib:name:...}/%{lib-available:name} forms *)
-  val lib_deps : t -> Lib_deps_info.t
-
-  (* Static deps from %{...} variables. For instance %{exe:...} *)
-  val sdeps : t -> Path.Set.t
-
-  (* Dynamic deps from %{...} variables. For instance %{read:...} *)
-  val ddeps : t -> Value.t list Build.t Pform.Expansion.Map.t
-
-  val empty : unit -> t
-end
-
-module Targets : sig
-  type static =
-    { targets : Path.Build.t list
-    ; multiplicity : Dune_file.Rule.Targets.Multiplicity.t
-    }
-
-  type t =
-    | Static of static
-    | Infer
-    | Forbidden of string  (** context *)
-end
-
-(** An expander that attempts an expansion where instead of substituting for
-    forms that require targets to be built, we record them into the passed
-    [Resolve_forms.t] value *)
-val with_record_deps :
+    Once [f] has returned, the temporary expander can no longer be used. *)
+val expand_deps_like_field :
      t
-  -> Resolved_forms.t
-  -> targets_written_by_user:Targets.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
   -> foreign_flags:
        (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
-  -> t
+  -> f:(t -> 'a Build.t)
+  -> 'a Build.t
 
-(** In this expander, we record dependencies whenever we expand a variable into
-    a file path, but we forbid variables that require us to build something to
-    expand. For example, %\{exe:/foo\} is allowed but %\{read:bar\} is not
-    allowed. *)
-val with_record_no_ddeps :
+(** Expand user actions. Both [partial] and [final] receive temporary expander
+    that must not be used once these functions have returned. The expander
+    passed to [partial] will not expand forms such as [%{read:...}], but the one
+    passed to [final] will.
+
+    Returns both the result of partial and final expansion. *)
+val expand_action :
      t
-  -> Resolved_forms.t
+  -> deps_written_by_user:Path.t Bindings.t Build.t
+  -> targets_written_by_user:Targets.Or_forbidden.t
   -> dep_kind:Lib_deps_info.Kind.t
   -> map_exe:(Path.t -> Path.t)
   -> foreign_flags:
        (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
-  -> t
-
-(** After recording dynamic dependencies, and then building them, we may use
-    them to create a new expander that will fully substitute the action. *)
-val add_ddeps_and_bindings :
-     t
-  -> dynamic_expansions:Value.t list Pform.Expansion.Map.t
-  -> deps_written_by_user:Path.t Bindings.t
-  -> t
+  -> partial:(t -> 'a)
+  -> final:(t -> 'a -> 'b)
+  -> 'a * 'b Build.t
 
 (** Expand individual string templates with this function *)
 val expand_var_exn : t -> Value.t list option String_with_vars.expander

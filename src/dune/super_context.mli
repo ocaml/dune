@@ -16,7 +16,6 @@ val create :
   -> projects:Dune_project.t list
   -> packages:Package.t Package.Name.Map.t
   -> stanzas:Dune_load.Dune_file.t list
-  -> external_lib_deps_mode:bool
   -> t
 
 val context : t -> Context.t
@@ -35,8 +34,6 @@ val build_dir : t -> Path.Build.t
 val profile : t -> Profile.t
 
 val host : t -> t
-
-val external_lib_deps_mode : t -> bool
 
 module Lib_entry : sig
   type t =
@@ -128,8 +125,6 @@ val add_alias_action :
   -> Action.t Build.With_targets.t
   -> unit
 
-val source_files : src_path:Path.Source.t -> String.Set.t
-
 (** [resolve_program t ?hint name] resolves a program. [name] is looked up in
     the workspace, if it is not found in the tree is is looked up in the PATH.
     If it is not found at all, the resulting [Action.Prog.t] will either return
@@ -144,21 +139,6 @@ val resolve_program :
   -> loc:Loc.t option
   -> string
   -> Action.Prog.t
-
-module Libs : sig
-  (** Make sure all rules produces by [f] record the library dependencies for
-      [dune external-lib-deps] and depend on the generation of the .merlin file.
-
-      /!\ WARNING /!\: make sure the last function call inside [f] is fully
-      applied, otherwise the function might end up being executed after this
-      function has returned. Consider adding a type annotation to make sure this
-      doesn't happen by mistake. *)
-  val with_lib_deps :
-    t -> Lib.Compile.t -> dir:Path.Build.t -> f:(unit -> 'a) -> 'a
-
-  (** Generate the rules for the [(select ...)] forms in library dependencies *)
-  val gen_select_rules : t -> dir:Path.Build.t -> Lib.Compile.t -> unit
-end
 
 (** Interpret dependencies written in Dune files *)
 module Deps : sig
@@ -187,7 +167,7 @@ module Action : sig
     -> loc:Loc.t
     -> expander:Expander.t
     -> dep_kind:Lib_deps_info.Kind.t
-    -> targets:Expander.Targets.t
+    -> targets:Targets.Or_forbidden.t
     -> targets_dir:Path.Build.t
     -> Action_unexpanded.t
     -> Path.t Bindings.t Build.t
@@ -195,8 +175,6 @@ module Action : sig
 
   val map_exe : t -> Path.t -> Path.t
 end
-
-val opaque : t -> bool
 
 val expander : t -> dir:Path.Build.t -> Expander.t
 

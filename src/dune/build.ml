@@ -36,7 +36,7 @@ let set_file_system_accessors ~file_exists ~eval_pred =
 
 let return x = Pure x
 
-let ignore x = Map (Fn.const (), x)
+let ignore x = Map (Fun.const (), x)
 
 let map x ~f = Map (f, x)
 
@@ -53,6 +53,11 @@ module O = struct
 end
 
 open O
+
+let both x y =
+  let+ x = x
+  and+ y = y in
+  (x, y)
 
 let rec all xs =
   match xs with
@@ -167,6 +172,8 @@ module With_targets = struct
     { build : 'a t
     ; targets : Path.Build.Set.t
     }
+
+  let map_build t ~f = { t with build = f t.build }
 
   let return x = { build = Pure x; targets = Path.Build.Set.empty }
 

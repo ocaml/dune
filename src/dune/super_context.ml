@@ -186,7 +186,6 @@ type t =
   ; lib_entries_by_package : Lib_entry.t list Package.Name.Map.t
   ; env_tree : Env_tree.t
   ; dir_status_db : Dir_status.DB.t
-  ; external_lib_deps_mode : bool
   ; (* Env node that represents the environment configured for the workspace. It
        is used as default at the root of every project in the workspace. *)
     default_env : Env_node.t Memo.Lazy.t
@@ -206,8 +205,6 @@ let artifacts t = t.artifacts
 let build_dir t = t.context.build_dir
 
 let profile t = t.context.profile
-
-let external_lib_deps_mode t = t.external_lib_deps_mode
 
 let equal = (( == ) : t -> t -> bool)
 
@@ -278,24 +275,6 @@ let add_alias_action t alias ~dir ~loc ?locks ~stamp action =
   let env = Some (get_node t.env_tree ~dir |> Env_node.external_env) in
   Rules.Produce.Alias.add_action ~context:t.context ~env alias ~loc ?locks
     ~stamp action
-
-let source_files ~src_path =
-  match File_tree.find_dir src_path with
-  | None -> String.Set.empty
-  | Some dir -> File_tree.Dir.files dir
-
-let partial_expand sctx ~dep_kind ~targets_written_by_user ~map_exe ~expander t
-    =
-  let acc = Expander.Resolved_forms.empty () in
-  let foreign_flags ~dir =
-    get_node sctx.env_tree ~dir |> Env_node.foreign_flags
-  in
-  let expander =
-    Expander.with_record_deps expander acc ~dep_kind ~targets_written_by_user
-      ~map_exe ~foreign_flags
-  in
-  let partial = Action_unexpanded.partial_expand t ~expander ~map_exe in
-  (partial, acc)
 
 let build_dir_is_vendored build_dir =
   let opt =
@@ -433,30 +412,14 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           acc
       | _ -> acc)
 
-let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
-    ~external_lib_deps_mode =
+let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
   let installed_libs =
     let stdlib_dir = context.stdlib_dir in
     Lib.DB.create_from_findlib context.findlib ~stdlib_dir
-      ~external_lib_deps_mode
   in
   let scopes, public_libs =
-    let stanzas =
-      Dune_load.Dune_file.fold_stanzas stanzas ~init:[]
-        ~f:(fun dune_file stanza acc ->
-          match stanza with
-          | Dune_file.Library lib ->
-            let ctx_dir =
-              Path.Build.append_source context.build_dir dune_file.dir
-            in
-            Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
-          | Dune_file.External_variant ev -> External_variant ev :: acc
-          | Dune_file.Deprecated_library_name d ->
-            Deprecated_library_name d :: acc
-          | _ -> acc)
-    in
-    Scope.DB.create ~projects ~context:context.name ~installed_libs ~lib_config
+    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
       stanzas
   in
   let stanzas =
@@ -471,9 +434,8 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
         })
   in
   let stanzas_per_dir =
-    List.map stanzas ~f:(fun stanzas ->
+    Path.Build.Map.of_list_map_exn stanzas ~f:(fun stanzas ->
         (stanzas.Dir_with_dune.ctx_dir, stanzas))
-    |> Path.Build.Map.of_list_exn
   in
   let artifacts =
     let public_libs = ({ context; public_libs } : Artifacts.Public_libs.t) in
@@ -561,40 +523,9 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
                   Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
   ; env_tree
   ; default_env
-  ; external_lib_deps_mode
   ; dir_status_db
   ; projects_by_key
   }
-
-module Libs = struct
-  open Build.O
-
-  let gen_select_rules t ~dir compile_info =
-    List.iter (Lib.Compile.resolved_selects compile_info) ~f:(fun rs ->
-        let { Lib.Compile.Resolved_select.dst_fn; src_fn } = rs in
-        let dst = Path.Build.relative dir dst_fn in
-        add_rule t ~dir
-          ( match src_fn with
-          | Ok src_fn ->
-            let src = Path.build (Path.Build.relative dir src_fn) in
-            Build.copy_and_add_line_directive ~src ~dst
-          | Error e ->
-            Build.fail { fail = (fun () -> raise e) }
-            |> Build.with_targets ~targets:[ dst ] ))
-
-  let with_lib_deps t compile_info ~dir ~f =
-    let prefix =
-      Build.record_lib_deps (Lib.Compile.lib_deps_info compile_info)
-    in
-    let prefix =
-      if t.context.merlin then
-        Path.Build.relative dir ".merlin-exists"
-        |> Path.build |> Build.path >>> prefix
-      else
-        prefix
-    in
-    Build_system.prefix_rules prefix ~f
-end
 
 module Deps = struct
   open Build.O
@@ -602,68 +533,87 @@ module Deps = struct
 
   let make_alias expander s =
     let loc = String_with_vars.loc s in
-    Expander.expand_path expander s |> Alias.of_user_written_path ~loc
+    Expander.Or_exn.expand_path expander s
+    |> Result.map ~f:(Alias.of_user_written_path ~loc)
 
   let dep t expander = function
     | File s ->
-      let path = Expander.expand_path expander s in
-      let+ () = Build.path path in
-      [ path ]
+      Expander.Or_exn.expand_path expander s
+      |> Result.map ~f:(fun path ->
+             let+ () = Build.path path in
+             [ path ])
     | Alias s ->
-      let+ () = Build.alias (make_alias expander s) in
-      []
+      make_alias expander s
+      |> Result.map ~f:(fun a ->
+             let+ () = Build.alias a in
+             [])
     | Alias_rec s ->
-      let+ () =
-        Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s)
-          (make_alias expander s)
-      in
-      []
+      make_alias expander s
+      |> Result.map ~f:(fun a ->
+             let+ () =
+               Build_system.Alias.dep_rec ~loc:(String_with_vars.loc s) a
+             in
+             [])
     | Glob_files s ->
       let loc = String_with_vars.loc s in
-      let path = Expander.expand_path expander s in
-      let pred = Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred in
-      let dir = Path.parent_exn path in
-      Build.map ~f:Path.Set.to_list
-        (File_selector.create ~dir pred |> Build.paths_matching ~loc)
+      let path = Expander.Or_exn.expand_path expander s in
+      Result.map path ~f:(fun path ->
+          let pred =
+            Glob.of_string_exn loc (Path.basename path) |> Glob.to_pred
+          in
+          let dir = Path.parent_exn path in
+          Build.map ~f:Path.Set.to_list
+            (File_selector.create ~dir pred |> Build.paths_matching ~loc))
     | Source_tree s ->
-      let path = Expander.expand_path expander s in
-      Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path)
+      let path = Expander.Or_exn.expand_path expander s in
+      Result.map path ~f:(fun path ->
+          Build.map ~f:Path.Set.to_list (Build.source_tree ~dir:path))
     | Package p ->
-      let pkg = Package.Name.of_string (Expander.expand_str expander p) in
-      let+ () =
-        Build.alias (Build_system.Alias.package_install ~context:t.context ~pkg)
-      in
-      []
+      Expander.Or_exn.expand_str expander p
+      |> Result.map ~f:(fun pkg ->
+             let pkg = Package.Name.of_string pkg in
+             let+ () =
+               match Package.Name.Map.find t.packages pkg with
+               | None ->
+                 Build.fail
+                   { fail =
+                       (fun () ->
+                         let loc = String_with_vars.loc p in
+                         User_error.raise ~loc
+                           [ Pp.textf "Package %s does not exist"
+                               (Package.Name.to_string pkg)
+                           ])
+                   }
+               | Some pkg ->
+                 Build.alias
+                   (Build_system.Alias.package_install ~context:t.context ~pkg)
+             in
+             [])
     | Universe ->
-      let+ () = Build.dep Dep.universe in
-      []
+      Ok
+        (let+ () = Build.dep Dep.universe in
+         [])
     | Env_var var_sw ->
-      let var = Expander.expand_str expander var_sw in
-      let+ () = Build.env_var var in
-      []
+      Expander.Or_exn.expand_str expander var_sw
+      |> Result.map ~f:(fun var ->
+             let+ () = Build.env_var var in
+             [])
     | Sandbox_config sandbox_config ->
-      let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
-      []
+      Ok
+        (let+ () = Build.dep (Dep.sandbox_config sandbox_config) in
+         [])
 
   let make_interpreter ~f t ~expander l =
-    let forms = Expander.Resolved_forms.empty () in
     let foreign_flags ~dir =
       get_node t.env_tree ~dir |> Env_node.foreign_flags
     in
-    let expander =
-      Expander.with_record_no_ddeps expander forms ~dep_kind:Optional
-        ~map_exe:Fn.id ~foreign_flags
-    in
-    let+ deps =
-      Build.map ~f:List.concat (List.map l ~f:(f t expander) |> Build.all)
-    and+ () = Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-    and+ () = Build.path_set (Expander.Resolved_forms.sdeps forms) in
-    if Pform.Expansion.Map.is_empty (Expander.Resolved_forms.ddeps forms) then
-      deps
-    else
-      (* calling [with_record_no_ddeps] above guarantees this never happens *)
-      Code_error.raise "ddeps are not allowed in this position"
-        [ ("forms", Dyn.Encoder.opaque forms) ]
+    Expander.expand_deps_like_field expander ~dep_kind:Optional ~map_exe:Fun.id
+      ~foreign_flags ~f:(fun expander ->
+        match Result.List.map l ~f:(f t expander) with
+        | Ok deps ->
+          let+ l = Build.all deps in
+          List.concat l
+        | Error exn -> Build.fail { fail = (fun () -> reraise exn) })
 
   let interpret t ~expander l =
     let+ _paths = make_interpreter ~f:dep t ~expander l in
@@ -673,16 +623,18 @@ module Deps = struct
     make_interpreter ~f:(fun t expander ->
       function
       | Bindings.Unnamed p ->
-        let+ l = dep t expander p in
-        List.map l ~f:(fun x -> Bindings.Unnamed x)
+        dep t expander p
+        |> Result.map ~f:(fun l ->
+               let+ l = l in
+               List.map l ~f:(fun x -> Bindings.Unnamed x))
       | Named (s, ps) ->
-        let+ l = Build.all (List.map ps ~f:(dep t expander)) in
-        [ Bindings.Named (s, List.concat l) ])
+        Result.List.map ps ~f:(dep t expander)
+        |> Result.map ~f:(fun xs ->
+               let+ l = Build.all xs in
+               [ Bindings.Named (s, List.concat l) ]))
 end
 
 module Action = struct
-  module U = Action_unexpanded
-
   let map_exe sctx =
     match sctx.host with
     | None -> fun exe -> exe
@@ -695,94 +647,14 @@ module Action = struct
         | _ -> exe )
 
   let run sctx ~loc ~expander ~dep_kind ~targets:targets_written_by_user
-      ~targets_dir t bindings : Action.t Build.With_targets.t =
-    let dir = Expander.dir expander in
+      ~targets_dir t deps_written_by_user : Action.t Build.With_targets.t =
     let map_exe = map_exe sctx in
-    ( match (targets_written_by_user : Expander.Targets.t) with
-    | Static _
-    | Infer ->
-      ()
-    | Forbidden context -> (
-      match U.Infer.unexpanded_targets t with
-      | [] -> ()
-      | x :: _ ->
-        let loc = String_with_vars.loc x in
-        User_error.raise ~loc
-          [ Pp.textf "%s must not have targets." (String.capitalize context) ] )
-    );
-    let t, forms =
-      partial_expand sctx ~expander ~dep_kind ~targets_written_by_user ~map_exe
-        t
+    let foreign_flags ~dir =
+      get_node sctx.env_tree ~dir |> Env_node.foreign_flags
     in
-    let { U.Infer.Outcome.deps; targets } =
-      match targets_written_by_user with
-      | Infer -> U.Infer.partial t ~all_targets:true
-      | Static { targets = targets_written_by_user; multiplicity = _ } ->
-        let targets_written_by_user =
-          Path.Build.Set.of_list targets_written_by_user
-        in
-        let { U.Infer.Outcome.deps; targets } =
-          U.Infer.partial t ~all_targets:false
-        in
-        { deps; targets = Path.Build.Set.union targets targets_written_by_user }
-      | Forbidden _ ->
-        let { U.Infer.Outcome.deps; targets = _ } =
-          U.Infer.partial t ~all_targets:false
-        in
-        { U.Infer.Outcome.deps; targets = Path.Build.Set.empty }
-    in
-    let targets = Path.Build.Set.to_list targets in
-    List.iter targets ~f:(fun target ->
-        if Path.Build.( <> ) (Path.Build.parent_exn target) targets_dir then
-          User_error.raise ~loc
-            [ Pp.text
-                "This action has targets in a different directory than the \
-                 current one, this is not allowed by dune at the moment:"
-            ; Pp.enumerate targets ~f:(fun target ->
-                  Pp.text (Dpath.describe_path (Path.build target)))
-            ]);
-    let open Build.O in
-    let build =
-      Build.record_lib_deps (Expander.Resolved_forms.lib_deps forms)
-      >>> Build.path_set
-            (Path.Set.union deps (Expander.Resolved_forms.sdeps forms))
-      >>>
-      let ddeps =
-        Pform.Expansion.Map.to_list (Expander.Resolved_forms.ddeps forms)
-      in
-      Build.dyn_path_set
-        (let+ action =
-           let+ vals = Build.all (List.map ddeps ~f:snd)
-           and+ deps_written_by_user = bindings in
-           let dynamic_expansions =
-             List.fold_left2 ddeps vals ~init:Pform.Expansion.Map.empty
-               ~f:(fun acc (var, _) value ->
-                 Pform.Expansion.Map.add_exn acc var value)
-           in
-           let unresolved =
-             let expander =
-               Expander.add_ddeps_and_bindings expander ~dynamic_expansions
-                 ~deps_written_by_user
-             in
-             U.Partial.expand t ~expander ~map_exe
-           in
-           Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-               match Expander.resolve_binary ~loc expander ~prog with
-               | Ok path -> path
-               | Error { fail } -> fail ())
-         in
-         let { U.Infer.Outcome.deps; targets = _ } = U.Infer.infer action in
-         (Action.Chdir (Path.build dir, action), deps))
-    in
-    Build.with_targets ~targets
-      ( match Expander.Resolved_forms.failures forms with
-      | [] -> build
-      | fail :: _ -> Build.fail fail >>> build )
+    Action_unexpanded.expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user
+      ~targets_dir ~targets:targets_written_by_user ~expander ~foreign_flags
 end
-
-let opaque t =
-  Profile.is_dev t.context.profile
-  && Ocaml_version.supports_opaque_for_mli t.context.version
 
 let dir_status_db t = t.dir_status_db
 

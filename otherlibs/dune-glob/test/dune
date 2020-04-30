@@ -1,0 +1,14 @@
+(library
+ (name dune_glob_unit_tests)
+ (inline_tests)
+ (libraries
+  stdune
+  dune_glob
+  ;; This is because of the (implicit_transitive_deps false)
+  ;; in dune-project
+  ppx_expect.config
+  ppx_expect.common
+  base
+  ppx_inline_test.config)
+ (preprocess
+  (pps ppx_expect)))

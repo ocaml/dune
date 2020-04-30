@@ -39,6 +39,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bin-eager-deps)
+ (deps (package dune) (source_tree test-cases/bin-eager-deps))
+ (action
+  (chdir
+   test-cases/bin-eager-deps
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias block-strings)
  (deps (package dune) (source_tree test-cases/block-strings))
  (action
@@ -87,6 +95,16 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias cinaps-include-subdirs)
+ (deps (package dune) (source_tree test-cases/cinaps))
+ (action
+  (chdir
+   test-cases/cinaps
+   (progn
+    (run dune-cram run include-subdirs.t)
+    (diff? include-subdirs.t include-subdirs.t.corrected)))))
+
+(rule
  (alias cmdliner-dep-conf)
  (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
  (action
@@ -124,6 +142,14 @@
  (action
   (chdir
    test-cases/coq
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias coq-extract)
+ (deps (package dune) (source_tree test-cases/coq/extract))
+ (action
+  (chdir
+   test-cases/coq/extract
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -637,6 +663,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias extensions-versionning)
+ (deps (package dune) (source_tree test-cases/extensions-versionning))
+ (action
+  (chdir
+   test-cases/extensions-versionning
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias external-lib-deps-github3143)
  (deps (package dune) (source_tree test-cases/external-lib-deps/github3143))
  (action
@@ -1017,6 +1051,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias github3412)
+ (deps (package dune) (source_tree test-cases/github3412))
+ (action
+  (chdir
+   test-cases/github3412
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github534)
  (deps (package dune) (source_tree test-cases/github534))
  (action
@@ -1167,6 +1209,14 @@
  (action
   (chdir
    test-cases/inline_tests
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-multi-mode)
+ (deps (package dune) (source_tree test-cases/inline_tests-multi-mode))
+ (action
+  (chdir
+   test-cases/inline_tests-multi-mode
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1837,6 +1887,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias subdir-stanza)
+ (deps (package dune) (source_tree test-cases/subdir-stanza))
+ (action
+  (chdir
+   test-cases/subdir-stanza
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias subst)
  (deps (package dune) (source_tree test-cases/subst))
  (action
@@ -1892,6 +1950,14 @@
  (action
   (chdir
    test-cases/tests-stanza-action-syntax-version
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias toplevel-integration)
+ (deps (package dune) (source_tree test-cases/toplevel-integration))
+ (action
+  (chdir
+   test-cases/toplevel-integration
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1968,6 +2034,15 @@
  (action
   (chdir
    test-cases/utop/utop-default-implementation
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
+ (enabled_if (>= %{ocaml_version} 4.05.0)))
+
+(rule
+ (alias utop-utop-ppx-rewriters)
+ (deps (package dune) (source_tree test-cases/utop/utop-ppx-rewriters))
+ (action
+  (chdir
+   test-cases/utop/utop-ppx-rewriters
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2392,11 +2467,13 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2462,6 +2539,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
@@ -2508,6 +2586,7 @@
   (alias github2848)
   (alias github3046)
   (alias github3180)
+  (alias github3412)
   (alias github534)
   (alias github568)
   (alias github597)
@@ -2527,6 +2606,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-dry-run)
   (alias install-libdir)
   (alias install-mandir)
@@ -2607,6 +2687,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -2614,6 +2695,7 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
+  (alias toplevel-integration)
   (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
@@ -2623,6 +2705,7 @@
   (alias use-meta)
   (alias utop-utop-default)
   (alias utop-utop-default-implementation)
+  (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
   (alias variants)
@@ -2677,11 +2760,13 @@
   (alias all-alias)
   (alias all-promotions)
   (alias bad-alias-error)
+  (alias bin-eager-deps)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2745,6 +2830,7 @@
   (alias exec-cmd)
   (alias exec-missing)
   (alias exes-with-c)
+  (alias extensions-versionning)
   (alias external-lib-deps-github3143)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
@@ -2787,6 +2873,7 @@
   (alias github2848)
   (alias github3046)
   (alias github3180)
+  (alias github3412)
   (alias github534)
   (alias github568)
   (alias github597)
@@ -2805,6 +2892,7 @@
   (alias include-qualified)
   (alias incremental-rebuilds)
   (alias inline_tests)
+  (alias inline_tests-multi-mode)
   (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
@@ -2864,6 +2952,7 @@
   (alias stale-artifact-removal)
   (alias stdlib-compilation)
   (alias strict-package-deps)
+  (alias subdir-stanza)
   (alias subst)
   (alias syntax-versioning)
   (alias target-dir-alias)
@@ -2871,7 +2960,6 @@
   (alias tests-stanza)
   (alias tests-stanza-action)
   (alias tests-stanza-action-syntax-version)
-  (alias toplevel-stanza)
   (alias trace-file)
   (alias transitive-deps-mode)
   (alias unreadable-src)
@@ -2928,4 +3016,4 @@
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
-(alias (name runtest-coq) (deps (alias coq)))
+(alias (name runtest-coq) (deps (alias coq) (alias coq-extract)))

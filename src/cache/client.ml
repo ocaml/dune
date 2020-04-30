@@ -6,29 +6,33 @@ open Cache_intf
 type t =
   { socket : out_channel
   ; fd : Unix.file_descr
-  ; input : char Stream.t
+  ; input : in_channel
   ; cache : Local.t
   ; thread : Thread.t
   ; finally : (unit -> unit) option
   ; version : Messages.version
   }
 
-let my_versions : Messages.version list = [ { major = 1; minor = 1 } ]
+let versions_supported_by_dune : Messages.version list =
+  [ { major = 1; minor = 2 } ]
 
 let err msg = User_error.E (User_error.make [ Pp.text msg ])
 
 let errf msg = User_error.E (User_error.make msg)
 
 let read version input =
-  let* sexp = Csexp.parse input in
+  let* sexp = Csexp.input input in
   let+ (Dedup v) = Messages.incoming_message_of_sexp version sexp in
   Dedup v
 
-let make ?finally ?duplication_mode handle =
+let make ?finally ?duplication_mode ~command_handler () =
   (* This is a bit ugly as it is global, but flushing a closed socket will nuke
      the program if we don't. *)
   let () = Sys.set_signal Sys.sigpipe Sys.Signal_ignore in
-  let* cache = Result.map_error ~f:err (Local.make ?duplication_mode ignore) in
+  let* cache =
+    Result.map_error ~f:err
+      (Local.make ?duplication_mode ~command_handler:ignore ())
+  in
   let* port =
     let cmd =
       Format.sprintf "%s cache start --display progress --exit-no-client"
@@ -57,10 +61,10 @@ let make ?finally ?duplication_mode handle =
     Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
   in
   let socket = Unix.out_channel_of_descr fd in
-  let input = Stream.of_channel (Unix.in_channel_of_descr fd) in
+  let input = Unix.in_channel_of_descr fd in
   let+ version =
     Result.map_error ~f:err
-      (Messages.negotiate_version my_versions fd input socket)
+      (Messages.negotiate_version ~versions_supported_by_dune fd input socket)
   in
   Log.info
     [ Pp.textf "negotiated version: %s" (Messages.string_of_version version) ];
@@ -71,7 +75,7 @@ let make ?finally ?duplication_mode handle =
         [ (let open Pp.O in
           Pp.text "dune-cache command: " ++ Dyn.pp (command_to_dyn command))
         ];
-      handle command
+      command_handler command
     with
     | Result.Error e ->
       Log.info [ Pp.textf "dune-cache read error: %s" e ];
@@ -110,4 +114,5 @@ let deduplicate client file = Local.deduplicate client.cache file
 let teardown client =
   ( try Unix.shutdown client.fd Unix.SHUTDOWN_SEND
     with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
-  Thread.join client.thread
+  Thread.join client.thread;
+  Local.teardown client.cache

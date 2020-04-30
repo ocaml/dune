@@ -6,9 +6,9 @@ the second run of dune.
 
   $ dune build @package-cycle
   Error: Dependency cycle between the following files:
-     _build/.aliases/default/.b-files-00000000000000000000000000000000
-  -> _build/.aliases/default/.a-files-00000000000000000000000000000000
-  -> _build/.aliases/default/.b-files-00000000000000000000000000000000
+     _build/.aliases/default/b/.b-files-00000000000000000000000000000000
+  -> _build/.aliases/default/a/.a-files-00000000000000000000000000000000
+  -> _build/.aliases/default/b/.b-files-00000000000000000000000000000000
   [1]
 
   $ dune build @simple-repro-case

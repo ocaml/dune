@@ -36,7 +36,7 @@ let build_lib (lib : Library.t) ~sctx ~dir_contents ~expander ~flags ~dir ~mode
         (* https://github.com/ocaml/dune/issues/119 *)
         match ctx.lib_config.ccomp_type with
         | Msvc -> msvc_hack_cclibs
-        | Other _ -> Fn.id
+        | Other _ -> Fun.id
       in
       let obj_deps =
         Build.paths (Cm_files.unsorted_objects_and_cms cm_files ~mode)
@@ -355,7 +355,6 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
   let ctx = Super_context.context sctx in
-  let opaque = Super_context.opaque sctx in
   let dynlink =
     Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in
@@ -364,8 +363,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     Dune_file.Mode_conf.Set.eval_detailed lib.modes ~has_native
   in
   Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp ~opaque
-    ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink ?stdlib:lib.stdlib
+    ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
+    ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
+    ~dynlink ?stdlib:lib.stdlib
     ~package:(Option.map lib.public ~f:(fun p -> p.package))
     ?vimpl ~modes
 
@@ -427,5 +427,7 @@ let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :
     in
     library_rules lib ~cctx ~source_modules ~dir_contents ~compile_info
   in
-  Super_context.Libs.gen_select_rules sctx compile_info ~dir;
-  Super_context.Libs.with_lib_deps sctx compile_info ~dir ~f
+  Buildable_rules.gen_select_rules sctx compile_info ~dir;
+  Buildable_rules.with_lib_deps
+    (Super_context.context sctx)
+    compile_info ~dir ~f

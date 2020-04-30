@@ -1,6 +1,7 @@
 open! Stdune
 open Import
 open Dune_lang.Decoder
+open Stanza_common
 
 (* This file defines Dune types as well as the S-expression syntax for the
    various supported versions of the specification. *)
@@ -22,7 +23,8 @@ let relative_file =
 let library_variants =
   let syntax =
     Dune_lang.Syntax.create ~name:"library_variants"
-      ~desc:"the experimental library variants feature." [ (0, 2) ]
+      ~desc:"the experimental library variants feature"
+      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
   in
   Dune_project.Extension.register_simple ~experimental:true syntax
     (Dune_lang.Decoder.return []);
@@ -32,103 +34,6 @@ let variants_field =
   field_o "variants"
     (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
      located (repeat Variant.decode >>| Variant.Set.of_list))
-
-(* Parse and resolve "package" fields *)
-module Pkg = struct
-  let listing packages =
-    let longest_pkg =
-      String.longest_map packages ~f:(fun p ->
-          Package.Name.to_string p.Package.name)
-    in
-    Pp.enumerate packages ~f:(fun pkg ->
-        Printf.ksprintf Pp.verbatim "%-*s (because of %s)" longest_pkg
-          (Package.Name.to_string pkg.Package.name)
-          (Path.Source.to_string (Package.opam_file pkg)))
-
-  let default (project : Dune_project.t) stanza =
-    match Package.Name.Map.values (Dune_project.packages project) with
-    | [ pkg ] -> Ok pkg
-    | [] ->
-      Error
-        (User_error.make
-           [ Pp.text
-               "The current project defines some public elements, but no opam \
-                packages are defined."
-           ; Pp.text
-               "Please add a <package>.opam file at the project root so that \
-                these elements are installed into it."
-           ])
-    | _ :: _ :: _ ->
-      Error
-        (User_error.make
-           [ Pp.text
-               "I can't determine automatically which package this stanza is \
-                for."
-           ; Pp.text "I have the choice between these ones:"
-           ; listing (Package.Name.Map.values (Dune_project.packages project))
-           ; Pp.textf
-               "You need to add a (package ...) field to this (%s) stanza."
-               stanza
-           ])
-
-  let default_exn ~loc project stanza =
-    match default project stanza with
-    | Ok p -> p
-    | Error msg -> raise (User_error.E { msg with loc = Some loc })
-
-  let resolve (project : Dune_project.t) name =
-    let packages = Dune_project.packages project in
-    match Package.Name.Map.find packages name with
-    | Some pkg -> Ok pkg
-    | None ->
-      let name_s = Package.Name.to_string name in
-      if Package.Name.Map.is_empty packages then
-        Error
-          (User_error.make
-             [ Pp.text
-                 "You cannot declare items to be installed without adding a \
-                  <package>.opam file at the root of your project."
-             ; Pp.textf
-                 "To declare elements to be installed as part of package %S, \
-                  add a %S file at the root of your project."
-                 name_s
-                 (Package.Name.opam_fn name)
-             ; Pp.textf "Root of the project as discovered by dune: %s"
-                 (Path.Source.to_string_maybe_quoted
-                    (Dune_project.root project))
-             ])
-      else
-        Error
-          (User_error.make
-             [ Pp.textf "The current scope doesn't define package %S." name_s
-             ; Pp.text
-                 "The only packages for which you can declare elements to be \
-                  installed in this directory are:"
-             ; listing (Package.Name.Map.values packages)
-             ]
-             ~hints:
-               (User_message.did_you_mean name_s
-                  ~candidates:
-                    ( Package.Name.Map.keys packages
-                    |> List.map ~f:Package.Name.to_string )))
-
-  let decode =
-    let+ p = Dune_project.get_exn ()
-    and+ loc, name = located Package.Name.decode in
-    match resolve p name with
-    | Ok x -> x
-    | Error e -> raise (User_error.E { e with loc = Some loc })
-
-  let field stanza =
-    map_validate
-      (let+ p = Dune_project.get_exn ()
-       and+ pkg = field_o "package" string in
-       (p, pkg))
-      ~f:(fun (p, pkg) ->
-        match pkg with
-        | None -> default p stanza
-        | Some name -> resolve p (Package.Name.of_string name))
-end
 
 module Pps_and_flags = struct
   let decode =
@@ -268,14 +173,6 @@ module Preprocess = struct
                 @ [ String_with_vars.make_var loc "input-file" ] ) )
 end
 
-let enabled_if ~since =
-  let decode =
-    match since with
-    | None -> Blang.decode
-    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode
-  in
-  field "enabled_if" ~default:Blang.true_ decode
-
 module Per_module = struct
   include Module_name.Per_item
 
@@ -414,8 +311,6 @@ module Lib_deps = struct
     |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge
 end
 
-let modules_field name = Ordered_set_lang.field name
-
 let preprocess_fields =
   let+ preprocess =
     field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
@@ -519,7 +414,7 @@ module Buildable = struct
            (field ~default:None "self_build_stubs_archive"
               ( Dune_lang.Syntax.deleted_in Stanza.syntax (2, 0)
                   ~extra_info:"Use the (foreign_archives ...) field instead."
-              >>> option string )))
+              >>> enter (maybe string) )))
     and+ modules_without_implementation =
       modules_field "modules_without_implementation"
     and+ libraries =
@@ -1154,9 +1049,9 @@ module Library = struct
 end
 
 module Install_conf = struct
-  type 'file t =
+  type t =
     { section : Install.Section.t
-    ; files : 'file list
+    ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 
@@ -1212,8 +1107,7 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf :
-      t -> ext:string -> File_binding.Unexpanded.t Install_conf.t option
+    val install_conf : t -> ext:string -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1409,13 +1303,11 @@ module Executables = struct
     let simple = Dune_lang.Decoder.enum simple_representations
 
     let decode =
-      if_list
-        ~then_:
-          (enter
-             (let+ mode = Mode_conf.decode
-              and+ kind = Binary_kind.decode in
-              make mode kind))
-        ~else_:simple
+      enter
+        (let+ mode = Mode_conf.decode
+         and+ kind = Binary_kind.decode in
+         make mode kind)
+      <|> simple
 
     let simple_encode link_mode =
       let is_ok (_, candidate) = compare candidate link_mode = Eq in
@@ -1528,7 +1420,7 @@ module Executables = struct
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
-    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; install_conf : Install_conf.t option
     ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -1538,7 +1430,8 @@ module Executables = struct
   let bootstrap_info_extension =
     let syntax =
       Dune_lang.Syntax.create ~name:"dune-bootstrap-info"
-        ~desc:"private extension to handle Dune bootstrap" [ (0, 1) ]
+        ~desc:"private extension to handle Dune bootstrap"
+        [ ((0, 1), `Since (2, 0)) ]
     in
     Dune_project.Extension.register syntax (return ((), [])) Dyn.Encoder.unit
 
@@ -1667,45 +1560,6 @@ module Executables = struct
 end
 
 module Rule = struct
-  module Targets = struct
-    module Multiplicity = struct
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      (* List of files in the current directory *)
-      | Static of static
-      | Infer
-
-    let decode_static =
-      let+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax
-      and+ targets = repeat String_with_vars.decode in
-      if syntax_version < (1, 3) then
-        List.iter targets ~f:(fun target ->
-            if String_with_vars.has_vars target then
-              Dune_lang.Syntax.Error.since
-                (String_with_vars.loc target)
-                Stanza.syntax (1, 3)
-                ~what:"Using variables in the targets field");
-      Static { targets; multiplicity = Multiple }
-
-    let decode_one_static =
-      let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 11)
-      and+ target = String_with_vars.decode in
-      Static { targets = [ target ]; multiplicity = One }
-
-    let fields_parser =
-      fields_mutually_exclusive ~default:Infer
-        [ ("targets", decode_static); ("target", decode_one_static) ]
-  end
-
   module Mode = struct
     include Rule.Mode
 
@@ -1733,7 +1587,7 @@ module Rule = struct
   end
 
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -1797,7 +1651,7 @@ module Rule = struct
   let long_form =
     let+ loc = loc
     and+ action = field "action" (located Action_dune_lang.decode)
-    and+ targets = Targets.fields_parser
+    and+ targets = Targets.field
     and+ deps =
       field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
     and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
@@ -1848,20 +1702,13 @@ module Rule = struct
     }
 
   let ocamllex =
-    if_eos
-      ~then_:
-        (return { modules = []; mode = Standard; enabled_if = Blang.true_ })
-      ~else_:
-        (if_list
-           ~then_:
-             (fields
-                (let+ modules = field "modules" (repeat string)
-                 and+ mode = Mode.field
-                 and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
-                 { modules; mode; enabled_if }))
-           ~else_:
-             ( repeat string >>| fun modules ->
-               { modules; mode = Standard; enabled_if = Blang.true_ } ))
+    (let+ modules = repeat string in
+     { modules; mode = Standard; enabled_if = Blang.true_ })
+    <|> fields
+          (let+ modules = field "modules" (repeat string)
+           and+ mode = Mode.field
+           and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+           { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
 
@@ -1958,124 +1805,6 @@ module Menhir = struct
   let () =
     Dune_project.Extension.register_simple Menhir_stanza.syntax
       (return [ ("menhir", decode >>| fun x -> [ T x ]) ])
-end
-
-module Coqpp = struct
-  type t =
-    { modules : string list
-    ; loc : Loc.t
-    }
-
-  let decode =
-    fields
-      (let+ modules = field "modules" (repeat string)
-       and+ loc = loc in
-       { modules; loc })
-
-  type Stanza.t += T of t
-end
-
-module Coq = struct
-  type t =
-    { name : Loc.t * Coq_lib_name.t
-    ; package : Package.t option
-    ; synopsis : string option
-    ; modules : Ordered_set_lang.t
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; boot : bool
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; loc : Loc.t
-    ; enabled_if : Blang.t
-    }
-
-  let syntax =
-    Dune_lang.Syntax.create ~name:"coq" ~desc:"the coq extension (experimental)"
-      [ (0, 1) ]
-
-  let coq_public_decode =
-    map_validate
-      (let+ project = Dune_project.get_exn ()
-       and+ loc_name =
-         field_o "public_name"
-           (Dune_lang.Decoder.plain_string (fun ~loc s -> (loc, s)))
-       in
-       (project, loc_name))
-      ~f:(fun (project, loc_name) ->
-        match loc_name with
-        | None -> Ok None
-        | Some (loc, name) ->
-          let pkg =
-            match String.lsplit2 ~on:'.' name with
-            | None -> Package.Name.of_string name
-            | Some (pkg, _) -> Package.Name.of_string pkg
-          in
-          Pkg.resolve project pkg |> Result.map ~f:(fun pkg -> Some (loc, pkg)))
-
-  let select_deprecation ~package ~public =
-    match (package, public) with
-    | p, None -> p
-    | None, Some (loc, pkg) ->
-      User_warning.emit ~loc
-        [ Pp.text
-            "(public_name ...) is deprecated and will be removed in the Coq \
-             language version 1.0, please use (package ...) instead"
-        ];
-      Some pkg
-    | Some _, Some (loc, _) ->
-      User_error.raise ~loc
-        [ Pp.text
-            "Cannot both use (package ...) and (public_name ...), please \
-             remove the latter as it is deprecated and will be removed in the \
-             1.0 version of the Coq language"
-        ]
-
-  let decode =
-    fields
-      (let+ name = field "name" Coq_lib_name.decode
-       and+ loc = loc
-       and+ package = field_o "package" Pkg.decode
-       and+ public = coq_public_decode
-       and+ synopsis = field_o "synopsis" string
-       and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-       and+ boot =
-         field_b "boot" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
-       and+ modules = modules_field "modules"
-       and+ libraries =
-         field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-       and+ enabled_if = enabled_if ~since:None in
-       let package = select_deprecation ~package ~public in
-       { name
-       ; package
-       ; synopsis
-       ; modules
-       ; flags
-       ; boot
-       ; libraries
-       ; loc
-       ; enabled_if
-       })
-
-  type Stanza.t += T of t
-
-  let coqlib_warn x =
-    User_warning.emit ~loc:x.loc
-      [ Pp.text
-          "(coqlib ...) is deprecated and will be removed in the Coq language \
-           version 1.0, please use (coq.theory ...) instead"
-      ];
-    x
-
-  let coqlib_p = ("coqlib", decode >>| fun x -> [ T (coqlib_warn x) ])
-
-  let coqtheory_p = ("coq.theory", decode >>| fun x -> [ T x ])
-
-  let coqpp_p = ("coq.pp", Coqpp.(decode >>| fun x -> [ T x ]))
-
-  let unit_stanzas =
-    let+ r = return [ coqlib_p; coqtheory_p; coqpp_p ] in
-    ((), r)
-
-  let key = Dune_project.Extension.register syntax unit_stanzas Unit.to_dyn
 end
 
 module Alias_conf = struct
@@ -2177,6 +1906,7 @@ module Toplevel = struct
     ; libraries : (Loc.t * Lib_name.t) list
     ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
+    ; pps : Preprocess.t
     }
 
   let decode =
@@ -2187,8 +1917,22 @@ module Toplevel = struct
        and+ variants = variants_field
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+       and+ pps =
+         field "preprocess"
+           (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> Preprocess.decode)
+           ~default:Preprocess.No_preprocessing
        in
-       { name; libraries; loc; variants })
+       match pps with
+       | Preprocess.Pps _
+       | No_preprocessing ->
+         { name; libraries; loc; variants; pps }
+       | Action (loc, _)
+       | Future_syntax loc ->
+         User_error.raise ~loc
+           [ Pp.text
+               "Toplevel does not currently support action or future_syntax \
+                preprocessing."
+           ])
 end
 
 module Copy_files = struct
@@ -2278,7 +2022,7 @@ type Stanza.t +=
   | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
-  | Install of File_binding.Unexpanded.t Install_conf.t
+  | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
   | Documentation of Documentation.t
@@ -2370,7 +2114,8 @@ module Stanzas = struct
         let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
         and+ t =
           let enable_qualified =
-            Option.is_some (Dune_project.find_extension_args project Coq.key)
+            Option.is_some
+              (Dune_project.find_extension_args project Coq_stanza.key)
           in
           Include_subdirs.decode ~enable_qualified
         and+ loc = loc in
@@ -2472,5 +2217,5 @@ let stanza_package = function
   | Documentation { package; _ }
   | Tests { package = Some package; _ } ->
     Some package
-  | Coq.T { package = Some package; _ } -> Some package
+  | Coq_stanza.Theory.T { package = Some package; _ } -> Some package
   | _ -> None

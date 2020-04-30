@@ -26,6 +26,8 @@ let findlib =
     ; ext_dll = ".so"
     ; stdlib_dir = Path.root
     ; ccomp_type = Other "gcc"
+    ; profile = Profile.Dev
+    ; ocaml_version = "4.02.3"
     }
   in
   Findlib.create ~stdlib_dir:cwd ~paths:[ db_path ]

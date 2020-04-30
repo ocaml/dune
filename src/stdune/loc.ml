@@ -1,5 +1,15 @@
 include Loc0
 
+module O = Comparable.Make (struct
+  type nonrec t = t
+
+  let compare = Poly.compare
+
+  let to_dyn = to_dyn
+end)
+
+include O
+
 let in_file p =
   let pos = none_pos (Path.to_string p) in
   { start = pos; stop = pos }
@@ -33,13 +43,27 @@ let is_none = equal none
 let to_file_colon_line t =
   Printf.sprintf "%s:%d" t.start.pos_fname t.start.pos_lnum
 
-let pp_file_colon_line ppf t = Format.pp_print_string ppf (to_file_colon_line t)
+let to_dyn_hum t : Dyn.t = String (to_file_colon_line t)
 
-let pp_line padding_width pp (lnum, l) =
-  Format.fprintf pp "%*s | %s\n" padding_width lnum l
+let pp_file_colon_line t = Pp.verbatim (to_file_colon_line t)
 
-let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
-    { start; stop } =
+let pp_left_pad n s =
+  let needed_spaces = n - String.length s in
+  Pp.verbatim
+    ( if needed_spaces > 0 then
+      String.make needed_spaces ' ' ^ s
+    else
+      s )
+
+let pp_line padding_width (lnum, l) =
+  let open Pp.O in
+  pp_left_pad padding_width lnum
+  ++ Pp.verbatim " | " ++ Pp.verbatim l ++ Pp.newline
+
+type tag = Loc
+
+let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full { start; stop } :
+    tag Pp.t =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
   let file = start.pos_fname in
@@ -51,13 +75,14 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
     let* line =
       Result.try_with (fun () -> Io.String_path.file_line file line_num)
     in
-    if stop_c <= String.length line then (
+    if stop_c <= String.length line then
       let len = stop_c - start_c in
-      Format.fprintf pp "%a%*s@." (pp_line padding_width) (line_num_str, line)
-        (stop_c + padding_width + 3)
-        (String.make len '^');
-      Ok ()
-    ) else
+      let open Pp.O in
+      Ok
+        ( pp_line padding_width (line_num_str, line)
+        ++ pp_left_pad (stop_c + padding_width + 3) (String.make len '^')
+        ++ Pp.newline )
+    else
       let get_padding lines =
         let lnum, _ = Option.value_exn (List.last lines) in
         String.length lnum
@@ -66,10 +91,10 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
         (* We add 2 to the width of max line to account for the extra space and
            the `|` character at the end of a line number *)
         let line = String.make (padding_width + 2) '.' in
-        Format.fprintf pp "%s\n" line
+        Pp.verbatim line
       in
       let print_lines lines padding_width =
-        List.iter ~f:(fun (lnum, l) -> pp_line padding_width pp (lnum, l)) lines
+        Pp.concat_map lines ~f:(pp_line padding_width)
       in
       let file_lines ~start ~stop =
         Result.try_with (fun () -> Io.String_path.file_lines file ~start ~stop)
@@ -89,12 +114,15 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
           file_lines ~start:(stop.pos_lnum - context_lines) ~stop:stop.pos_lnum
         in
         let padding_width = get_padding last_shown_lines in
-        print_lines first_shown_lines padding_width;
-        print_ellipsis padding_width;
-        print_lines last_shown_lines padding_width
+        let open Pp.O in
+        print_lines first_shown_lines padding_width
+        ++ print_ellipsis padding_width
+        ++ print_lines last_shown_lines padding_width
   in
   let whole_file = start_c = 0 && stop_c = 0 in
-  if not whole_file then
+  if whole_file then
+    Pp.nop
+  else
     match
       let open Result.O in
       let* exists =
@@ -103,22 +131,27 @@ let pp_file_excerpt ~context_lines ~max_lines_to_print_in_full pp
       if exists then
         pp_file_excerpt ()
       else
-        Result.Ok ()
+        Result.Ok Pp.nop
     with
+    | Ok pp -> pp
     | Error exn ->
       let backtrace = Printexc.get_backtrace () in
       Format.eprintf "Raised when trying to print location contents of %s@.%a@."
         file
         (Exn.pp_uncaught ~backtrace)
-        exn
-    | Ok () -> Format.pp_print_flush pp ()
+        exn;
+      Pp.nop
 
-let print ppf ({ start; stop } as loc) =
+let pp ({ start; stop } as loc) =
   let start_c = start.pos_cnum - start.pos_bol in
   let stop_c = stop.pos_cnum - start.pos_bol in
-  Format.fprintf ppf "@{<loc>File \"%s\", line %d, characters %d-%d:@}@\n"
-    start.pos_fname start.pos_lnum start_c stop_c;
-  pp_file_excerpt ppf ~context_lines:2 ~max_lines_to_print_in_full:10 loc
+  let open Pp.O in
+  Pp.tag Loc
+    (Pp.verbatim
+       (Printf.sprintf "File \"%s\", line %d, characters %d-%d:" start.pos_fname
+          start.pos_lnum start_c stop_c))
+  ++ Pp.newline
+  ++ pp_file_excerpt ~context_lines:2 ~max_lines_to_print_in_full:10 loc
 
 let on_same_line loc1 loc2 =
   let start1 = loc1.start in
@@ -126,3 +159,9 @@ let on_same_line loc1 loc2 =
   let same_file = String.equal start1.pos_fname start2.pos_fname in
   let same_line = Int.equal start1.pos_lnum start2.pos_lnum in
   same_file && same_line
+
+let span begin_ end_ = { begin_ with stop = end_.stop }
+
+let rec render ppf pp =
+  Pp.render ppf pp ~tag_handler:(fun ppf Loc pp ->
+      Format.fprintf ppf "@{<loc>%a@}" render pp)

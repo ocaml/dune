@@ -6,7 +6,7 @@ module Kind = struct
   module Opam = struct
     type t =
       { root : string option
-      ; switch : Context_name.t
+      ; switch : string
       }
   end
 
@@ -18,10 +18,7 @@ module Kind = struct
     | Default -> Dyn.Encoder.string "default"
     | Opam o ->
       Dyn.Encoder.(
-        record
-          [ ("root", option string o.root)
-          ; ("switch", Context_name.to_dyn o.switch)
-          ])
+        record [ ("root", option string o.root); ("switch", string o.switch) ])
 end
 
 module Env_nodes = struct
@@ -445,6 +442,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
                   (Config.local_install_dir ~context:name)
                   "lib/stublibs"))
         ; extend_var "OCAMLPATH" ~path_sep:ocamlpath_sep local_lib_path
+        ; extend_var "OCAMLTOP_INCLUDE_PATH"
+            (Path.relative local_lib_path "toplevel")
         ; extend_var "OCAMLFIND_IGNORE_DUPS_IN" ~path_sep:ocamlpath_sep
             local_lib_path
         ; extend_var "MANPATH"
@@ -484,6 +483,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
           Dynlink_supported.By_the_os.of_bool natdynlink_supported
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
+      ; profile
+      ; ocaml_version = Ocaml_config.version_string ocfg
       }
     in
     if Option.is_some fdo_target_exe then
@@ -643,7 +644,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
       ; ( match root with
         | None -> []
         | Some root -> [ "--root"; root ] )
-      ; [ "--switch"; Context_name.to_string switch; "--sexp" ]
+      ; [ "--switch"; switch; "--sexp" ]
       ; ( if version < (2, 0, 0) then
           []
         else
@@ -749,29 +750,27 @@ module Create = struct
     let workspace = Workspace.workspace () in
     let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
       lazy
-        ( List.map workspace.contexts ~f:(fun context ->
-              let contexts =
-                Fiber.Once.create (fun () ->
-                    let* host_context =
-                      match Workspace.Context.host_context context with
-                      | None -> Fiber.return None
-                      | Some context -> (
-                        let+ contexts =
-                          Context_name.Map.find_exn (Lazy.force contexts)
-                            context
-                          |> Fiber.Once.get
-                        in
-                        match contexts with
-                        | [ x ] -> Some x
-                        | [] -> assert false (* checked by workspace *)
-                        | _ :: _ -> assert false
-                        (* target cannot be host *) )
-                    in
-                    instantiate_context env workspace ~context ~host_context)
-              in
-              let name = Workspace.Context.name context in
-              (name, contexts))
-        |> Context_name.Map.of_list_exn )
+        (Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun context ->
+             let contexts =
+               Fiber.Once.create (fun () ->
+                   let* host_context =
+                     match Workspace.Context.host_context context with
+                     | None -> Fiber.return None
+                     | Some context -> (
+                       let+ contexts =
+                         Context_name.Map.find_exn (Lazy.force contexts) context
+                         |> Fiber.Once.get
+                       in
+                       match contexts with
+                       | [ x ] -> Some x
+                       | [] -> assert false (* checked by workspace *)
+                       | _ :: _ -> assert false
+                       (* target cannot be host *) )
+                   in
+                   instantiate_context env workspace ~context ~host_context)
+             in
+             let name = Workspace.Context.name context in
+             (name, contexts)))
     in
     Lazy.force contexts |> Context_name.Map.values
     |> Fiber.parallel_map ~f:Fiber.Once.get

@@ -484,6 +484,15 @@ Note that this feature is implemented by the third-party
 <https://github.com/ocaml-ppx/ocaml-syntax-shims>`, so if you use this
 feature you must also declare a dependency on this package.
 
+.. _preprocessor-deps:
+
+Preprocessor dependencies
+-------------------------
+
+If your preprocessor needs extra dependencies you should use the
+``preprocessor_deps`` field available in the ``library``, ``executable`` and
+``executables`` stanzas.
+
 .. _deps-field:
 
 Dependency specification
@@ -875,7 +884,7 @@ Diffing and promotion
 ``(diff <file1> <file2>)`` is very similar to ``(run diff <file1>
 <file2>)``. In particular it behaves in the same way:
 
-- when ``<file1>`` and ``<file2>`` are equal, it doesn't nothing
+- when ``<file1>`` and ``<file2>`` are equal, it does nothing
 - when they are not, the differences are shown and the action fails
 
 However, it is different for the following reason:
@@ -891,8 +900,8 @@ However, it is different for the following reason:
 
      $ opam install patdiff
 
-- on Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize the end of
-  lines before comparing the files
+- on Windows, both ``(diff a b)`` and ``(diff? a b)`` normalize
+  end-of-line characters before comparing the files
 
 - since ``(diff a b)`` is a builtin action, dune knows that ``a``
   and ``b`` are needed and so you don't need to specify them
@@ -904,7 +913,7 @@ However, it is different for the following reason:
 
 - it allows promotion. See below
 
-Note that ``(cmp a b)`` does no end of lines normalization and doesn't
+Note that ``(cmp a b)`` does no end-of-line normalization and doesn't
 print a diff when the files differ. ``cmp`` is meant to be used with
 binary files.
 

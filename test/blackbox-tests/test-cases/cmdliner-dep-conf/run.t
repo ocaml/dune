@@ -20,7 +20,7 @@
   [1]
 
   $ dune build "()"
-  dune: TARGET... arguments: Non-empty list expected
+  dune: TARGET... arguments: Unexpected list
   Usage: dune build [OPTION]... [TARGET]...
   Try `dune build --help' or `dune --help' for more information.
   [1]

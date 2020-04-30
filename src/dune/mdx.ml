@@ -45,7 +45,7 @@ module Deps = struct
     match Csexp.parse_string s with
     | Ok (List items) -> Result.List.map ~f:parse_one items
     | Ok _ -> Result.errorf "Unsupported 'ocaml-mdx deps' output format"
-    | Error _ as err -> err
+    | Error (_, msg) -> Error msg
 
   let read (files : Files.t) =
     let open Build.O in
@@ -77,32 +77,11 @@ module Deps = struct
       | Dir d -> Left (to_path ~dir d)
       | File f -> Right (to_path ~dir f))
 
-  let dir_without_files_dep dir =
-    Dep.file_selector (File_selector.create ~dir Predicate.false_)
-
-  let source_tree_dep_set dir =
-    let prefix_with, dir = Path.extract_build_context_dir_exn dir in
-    match File_tree.find_dir dir with
-    | None -> Dep.Set.empty
-    | Some dir ->
-      File_tree.Dir.fold dir ~init:Dep.Set.empty
-        ~traverse:Sub_dirs.Status.Set.all ~f:(fun dir acc ->
-          let files = File_tree.Dir.files dir in
-          let path = Path.append_source prefix_with (File_tree.Dir.path dir) in
-          match String.Set.is_empty files with
-          | true -> Dep.Set.add acc (dir_without_files_dep path)
-          | false ->
-            let paths =
-              String.Set.fold files ~init:Path.Set.empty ~f:(fun fn acc ->
-                  Path.Set.add acc (Path.relative path fn))
-            in
-            Dep.Set.add_paths acc paths)
-
   let to_dep_set ~dir t_list =
     let dirs, files = dirs_and_files ~dir t_list in
     let dep_set = Dep.Set.of_files files in
     List.fold_left dirs ~init:dep_set ~f:(fun acc dir ->
-        Dep.Set.union acc (source_tree_dep_set dir))
+        Dep.Set.union acc (Dep.Set.source_tree dir))
 end
 
 module Prelude = struct
@@ -126,7 +105,7 @@ module Prelude = struct
       let+ file = path in
       Default file
     in
-    if_list ~then_:(enter decode_env) ~else_:decode_default
+    enter decode_env <|> decode_default
 
   let to_args ~dir t : _ Command.Args.t list =
     let bpath p = Path.build (Path.Build.append_local dir p) in
@@ -149,7 +128,7 @@ type Stanza.t += T of t
 let syntax =
   let name = "mdx" in
   let desc = "mdx extension to verify code blocks in .md files" in
-  Dune_lang.Syntax.create ~name ~desc [ (0, 1) ]
+  Dune_lang.Syntax.create ~name ~desc [ ((0, 1), `Since (2, 4)) ]
 
 let default_files =
   let has_extention ext s = String.equal ext (Filename.extension s) in
@@ -203,8 +182,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
     let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
     let pkg_deps =
       let context = Super_context.context sctx in
-      List.map stanza.packages ~f:(fun pkg ->
-          Build.alias (Build_system.Alias.package_install ~context ~pkg))
+      let packages = Super_context.packages sctx in
+      stanza.packages
+      |> List.map ~f:(fun pkg ->
+             let pkg = Package.Name.Map.find_exn packages pkg in
+             Build.alias (Build_system.Alias.package_install ~context ~pkg))
     in
     let prelude_args =
       List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)

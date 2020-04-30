@@ -1,5 +1,6 @@
 (lang dune 1.10)
 (name cohttp)
+(version 1.0.0)
 (source (github mirage/ocaml-cohttp))
 (license ISC)
 (authors "Anil Madhavapeddy" "Rudi Grinberg")

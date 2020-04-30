@@ -69,9 +69,9 @@ let mlds t (doc : Documentation.t) =
   | Some x -> x
   | None ->
     Code_error.raise "Dir_contents.mlds"
-      [ ("doc", Loc.to_dyn doc.loc)
+      [ ("doc", Loc.to_dyn_hum doc.loc)
       ; ( "available"
-        , Dyn.Encoder.(list Loc.to_dyn)
+        , Dyn.Encoder.(list Loc.to_dyn_hum)
             (List.map map ~f:(fun (d, _) -> d.Documentation.loc)) )
       ]
 
@@ -130,7 +130,10 @@ end = struct
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with
           (* XXX What about mli files? *)
-          | Coqpp.T { modules; _ } -> List.map modules ~f:(fun m -> m ^ ".ml")
+          | Coq_stanza.Coqpp.T { modules; _ } ->
+            List.map modules ~f:(fun m -> m ^ ".ml")
+          | Coq_stanza.Extraction.T s ->
+            Coq_stanza.Extraction.ml_target_fnames s
           | Menhir.T menhir -> Menhir_rules.targets menhir
           | Rule rule ->
             Simple_rules.user_rule sctx rule ~dir ~expander
@@ -198,9 +201,10 @@ end = struct
       | Group_root _ ->
         acc
     and walk_children ft_dir ~dir ~local acc =
-      File_tree.Dir.fold_sub_dirs ft_dir ~init:acc ~f:(fun name ft_dir acc ->
-          let dir = Path.Build.relative dir name in
-          let local = name :: local in
+      File_tree.Dir.fold_sub_dirs ft_dir ~init:acc
+        ~f:(fun ~basename ft_dir acc ->
+          let dir = Path.Build.relative dir basename in
+          let local = basename :: local in
           walk ft_dir ~dir ~local acc)
     in
     walk_children ft_dir ~dir ~local:[] []

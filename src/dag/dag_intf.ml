@@ -38,5 +38,6 @@ module type S = sig
   val add_assuming_missing : t -> node -> node -> unit
 
   (** Pretty print a node. *)
-  val pp_node : value Fmt.t -> node Fmt.t
+  val pp_node :
+    (Format.formatter -> value -> unit) -> Format.formatter -> node -> unit
 end

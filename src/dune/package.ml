@@ -50,8 +50,6 @@ module Name = struct
 
   let version_fn (t : t) = to_string t ^ ".version"
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
   module Infix = Comparator.Operators (T)
 end
 
@@ -125,11 +123,7 @@ module Dependency = struct
         List.map Op.map ~f:(fun (name, op) ->
             ( name
             , let+ x = Var.decode
-              and+ y =
-                if_eos ~then_:(return None)
-                  ~else_:
-                    (let+ v = Var.decode in
-                     Some v)
+              and+ y = maybe Var.decode
               and+ loc = loc
               and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
               match y with
@@ -185,10 +179,9 @@ module Dependency = struct
       and+ expr = Constraint.decode in
       { name; constraint_ = Some expr }
     in
-    if_list ~then_:(enter constrained)
-      ~else_:
-        (let+ name = Name.decode in
-         { name; constraint_ = None })
+    enter constrained
+    <|> let+ name = Name.decode in
+        { name; constraint_ = None }
 
   let rec opam_constraint : Constraint.t -> OpamParserTypes.value =
     let nopos = Opam_file.nopos in
@@ -400,6 +393,8 @@ let decode ~dir =
      and+ name = field "name" Name.decode
      and+ synopsis = field_o "synopsis" string
      and+ description = field_o "description" string
+     and+ version =
+       field_o "version" (Dune_lang.Syntax.since Stanza.syntax (2, 5) >>> string)
      and+ depends = field ~default:[] "depends" (repeat Dependency.decode)
      and+ conflicts = field ~default:[] "conflicts" (repeat Dependency.decode)
      and+ depopts = field ~default:[] "depopts" (repeat Dependency.decode)
@@ -433,7 +428,7 @@ let decode ~dir =
      ; depopts
      ; info
      ; path = dir
-     ; version = None
+     ; version
      ; has_opam_file = false
      ; tags
      ; deprecated_package_names
@@ -468,7 +463,7 @@ let to_dyn
     ; ("tags", list string tags)
     ; ("version", option string version)
     ; ( "deprecated_package_names"
-      , Name.Map.to_dyn Loc.to_dyn deprecated_package_names )
+      , Name.Map.to_dyn Loc.to_dyn_hum deprecated_package_names )
     ]
 
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)

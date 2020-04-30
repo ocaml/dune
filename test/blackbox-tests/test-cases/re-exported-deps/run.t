@@ -43,8 +43,8 @@ transtive deps expressed in the dune-package
 Re-exporting deps in executables isn't allowed
   $ dune build --root re-export-exe @all
   Entering directory 're-export-exe'
-  File "dune", line 7, characters 13-22:
+  File "dune", line 7, characters 12-27:
   7 |  (libraries (re_export foo)))
-                   ^^^^^^^^^
+                  ^^^^^^^^^^^^^^^
   Error: re_export is not allowed here
   [1]

@@ -1,3 +1,24 @@
+  $ cat >dune <<EOF
+  > (library
+  >  (name foo)
+  >  (cxx_names foo)
+  >  (c_names bar)
+  >  (modules foo))
+  > 
+  > (executable
+  >  (name bar)
+  >  (libraries foo)
+  >  (modules bar))
+  > 
+  > (alias
+  >  (name default)
+  >  (action (run ./bar.exe)))
+  > EOF
+
+  $ cat >dune-project <<EOF
+  > (lang dune 1.8)
+  > EOF
+
 * .cxx extension is allowed
   $ dune build
            bar alias default

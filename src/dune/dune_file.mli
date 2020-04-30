@@ -244,9 +244,9 @@ module Library : sig
 end
 
 module Install_conf : sig
-  type 'file t =
+  type t =
     { section : Install.Section.t
-    ; files : 'file list
+    ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 end
@@ -293,7 +293,7 @@ module Executables : sig
     ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
-    ; install_conf : File_binding.Unexpanded.t Install_conf.t option
+    ; install_conf : Install_conf.t option
     ; embed_in_plugin_libraries : (Loc.t * Lib_name.t) list
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
@@ -321,25 +321,8 @@ module Menhir : sig
 end
 
 module Rule : sig
-  module Targets : sig
-    module Multiplicity : sig
-      type t =
-        | One
-        | Multiple
-    end
-
-    type static =
-      { targets : String_with_vars.t list
-      ; multiplicity : Multiplicity.t
-      }
-
-    type t =
-      | Static of static
-      | Infer
-  end
-
   type t =
-    { targets : Targets.t
+    { targets : String_with_vars.t Targets.t
     ; deps : Dep_conf.t Bindings.t
     ; action : Loc.t * Action_dune_lang.t
     ; mode : Rule.Mode.t
@@ -349,31 +332,6 @@ module Rule : sig
     ; alias : Alias.Name.t option
     ; package : Package.t option
     }
-end
-
-module Coq : sig
-  type t =
-    { name : Loc.t * Coq_lib_name.t
-    ; package : Package.t option
-    ; synopsis : string option
-    ; modules : Ordered_set_lang.t
-    ; flags : Ordered_set_lang.Unexpanded.t
-    ; boot : bool
-    ; libraries : (Loc.t * Lib_name.t) list  (** ocaml libraries *)
-    ; loc : Loc.t
-    ; enabled_if : Blang.t
-    }
-
-  type Stanza.t += T of t
-end
-
-module Coqpp : sig
-  type t =
-    { modules : string list
-    ; loc : Loc.t
-    }
-
-  type Stanza.t += T of t
 end
 
 module Alias_conf : sig
@@ -421,6 +379,7 @@ module Toplevel : sig
     ; libraries : (Loc.t * Lib_name.t) list
     ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
+    ; pps : Preprocess.t
     }
 end
 
@@ -455,7 +414,7 @@ type Stanza.t +=
   | Foreign_library of Foreign.Library.t
   | Executables of Executables.t
   | Rule of Rule.t
-  | Install of File_binding.Unexpanded.t Install_conf.t
+  | Install of Install_conf.t
   | Alias of Alias_conf.t
   | Copy_files of Copy_files.t
   | Documentation of Documentation.t

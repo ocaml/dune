@@ -169,15 +169,6 @@ include Sub_system.Register_end_point (struct
 
     type Sub_system_info.t += T of t
 
-    let empty loc =
-      { loc
-      ; deps = []
-      ; flags = Ordered_set_lang.Unexpanded.standard
-      ; backend = None
-      ; modes = Mode_conf.Set.default
-      ; libraries = []
-      }
-
     let loc t = t.loc
 
     let backends t = Option.map t.backend ~f:(fun x -> [ x ])
@@ -187,22 +178,19 @@ include Sub_system.Register_end_point (struct
     open Dune_lang.Decoder
 
     let decode =
-      if_eos ~then_:(loc >>| empty)
-        ~else_:
-          (fields
-             (let+ loc = loc
-              and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
-              and+ flags = Ordered_set_lang.Unexpanded.field "flags"
-              and+ backend = field_o "backend" (located Lib_name.decode)
-              and+ libraries =
-                field "libraries" (repeat (located Lib_name.decode)) ~default:[]
-              and+ modes =
-                field "modes"
-                  ( Dune_lang.Syntax.since syntax (1, 11)
-                  >>> Mode_conf.Set.decode )
-                  ~default:Mode_conf.Set.default
-              in
-              { loc; deps; flags; backend; libraries; modes }))
+      fields
+        (let+ loc = loc
+         and+ deps = field "deps" (repeat Dep_conf.decode) ~default:[]
+         and+ flags = Ordered_set_lang.Unexpanded.field "flags"
+         and+ backend = field_o "backend" (located Lib_name.decode)
+         and+ libraries =
+           field "libraries" (repeat (located Lib_name.decode)) ~default:[]
+         and+ modes =
+           field "modes"
+             (Dune_lang.Syntax.since syntax (1, 11) >>> Mode_conf.Set.decode)
+             ~default:Mode_conf.Set.default
+         in
+         { loc; deps; flags; backend; libraries; modes })
 
     (* We don't use this at the moment, but we could implement it for debugging
        purposes *)
@@ -288,7 +276,7 @@ include Sub_system.Register_end_point (struct
        Build.With_targets.add ~targets:[ target ] action);
     let cctx =
       Compilation_context.create () ~super_context:sctx ~expander ~scope
-        ~obj_dir ~modules ~opaque:false ~requires_compile:runner_libs
+        ~obj_dir ~modules ~opaque:(Explicit false) ~requires_compile:runner_libs
         ~requires_link:(lazy runner_libs)
         ~flags:(Ocaml_flags.of_list [ "-w"; "-24"; "-g" ])
         ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
@@ -346,7 +334,7 @@ include Sub_system.Register_end_point (struct
           | Javascript -> Some "node"
         in
         SC.add_alias_action sctx ~dir ~loc:(Some info.loc) (Alias.runtest ~dir)
-          ~stamp:("ppx-runner", name)
+          ~stamp:("ppx-runner", name, mode)
           (let exe =
              Path.build (Path.Build.relative inline_test_dir (name ^ ext))
            in

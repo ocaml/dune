@@ -16,7 +16,8 @@ let name = "cinaps"
 type Stanza.t += T of t
 
 let syntax =
-  Dune_lang.Syntax.create ~name ~desc:"the cinaps extension" [ (1, 0) ]
+  Dune_lang.Syntax.create ~name ~desc:"the cinaps extension"
+    [ ((1, 0), `Since (1, 11)) ]
 
 let alias = Alias.make (Alias.Name.of_string name)
 
@@ -94,7 +95,7 @@ let gen_rules sctx t ~dir ~scope =
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir
-      ~modules ~opaque:false
+      ~modules ~opaque:(Explicit false)
       ~requires_compile:(Lib.Compile.direct_requires compile_info)
       ~requires_link:(Lib.Compile.requires_link compile_info)
       ~flags:(Ocaml_flags.of_list [ "-w"; "-24" ])

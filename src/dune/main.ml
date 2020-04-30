@@ -42,7 +42,7 @@ let setup_env ~capture_outputs =
 let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
     ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
-  let conf = Dune_load.load ~ancestor_vcs () in
+  let conf = Dune_load.load ~ancestor_vcs in
   let () =
     let path : Path.t option =
       match workspace_file with
@@ -68,14 +68,10 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
         ]);
   { contexts; conf; env }
 
-let init_build_system ?only_packages ?external_lib_deps_mode
-    ~sandboxing_preference ?caching w =
+let init_build_system ?only_packages ~sandboxing_preference ?caching w =
   Build_system.reset ();
   Build_system.init ~sandboxing_preference ~contexts:w.contexts ?caching;
-  let+ scontexts =
-    Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages
-      ?external_lib_deps_mode
-  in
+  let+ scontexts = Gen_rules.gen w.conf ~contexts:w.contexts ?only_packages in
   { workspace = w; scontexts }
 
 let auto_concurrency =

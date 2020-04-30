@@ -33,7 +33,6 @@ module String = String
 module Bool = Bool
 module Sexp = Sexp
 module Path = Path
-module Fmt = Fmt
 module Interned = Interned
 module Interned_intf = Interned_intf
 module Univ_map = Univ_map
@@ -47,7 +46,7 @@ module Digest = Digest
 module Fdecl = Fdecl
 module Unit = Unit
 module Monad = Monad
-module Fn = Fn
+module Fun = Fun
 module Dyn = Dyn
 module Float = Float
 module Tuple = Tuple
@@ -66,6 +65,7 @@ module Applicative = Applicative
 module Top_closure_intf = Top_closure_intf
 module Top_closure = Top_closure
 module Spawn = Spawn
+module Seq = Seq
 
 external reraise : exn -> _ = "%reraise"
 

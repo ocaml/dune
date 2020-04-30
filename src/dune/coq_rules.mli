@@ -5,23 +5,30 @@
 (* Build rules for Coq's .v -> .vo files *)
 
 open! Stdune
+open Coq_stanza
 
 val setup_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
   -> dir_contents:Dir_contents.t
-  -> Dune_file.Coq.t
+  -> Theory.t
   -> Action.t Build.With_targets.t list
 
 val install_rules :
      sctx:Super_context.t
   -> dir:Path.Build.t
-  -> Dune_file.Coq.t
+  -> Theory.t
   -> (Loc.t option * Path.Build.t Install.Entry.t) list
 
 val coqpp_rules :
      sctx:Super_context.t
-  -> build_dir:Path.Build.t
   -> dir:Path.Build.t
-  -> Dune_file.Coqpp.t
+  -> Coqpp.t
+  -> Action.t Build.With_targets.t list
+
+val extraction_rules :
+     sctx:Super_context.t
+  -> dir:Path.Build.t
+  -> dir_contents:Dir_contents.t
+  -> Extraction.t
   -> Action.t Build.With_targets.t list

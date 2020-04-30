@@ -16,13 +16,12 @@
 We should not be able to produce a directory in a rule that already exists
   $ dune build --display=short --root no-overlapping-rules
   Entering directory 'no-overlapping-rules'
-      ocamldep .foo.eobjs/foo.ml.d
-        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
-      ocamlopt .foo.eobjs/native/foo.{cmx,o}
-      ocamlopt foo.exe
-           foo dir (exit 2)
-  (cd _build/default && ./foo.exe dir)
-  Fatal error: exception Unix.Unix_error(Unix.EEXIST, "mkdir", "dir")
+  File "dune", line 5, characters 0-51:
+  5 | (rule
+  6 |  (targets dir)
+  7 |  (action (run ./foo.exe dir)))
+  Error: Rule has a target default/dir
+  This conflicts with a source directory in the same directory
   [1]
 
 Dune crashes if there's a file named after the directory target

@@ -1,4 +1,4 @@
 (coq.theory
-  (name Bug_Coq)
-	(package Bug_Coq))
+  (name Extract_Coq)
+	(package Extract_Coq))
 

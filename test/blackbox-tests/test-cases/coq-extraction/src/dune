@@ -1,14 +1,9 @@
 (executable
-  (name Bug_OCaml)
+  (name Extract_OCaml)
   (modes (best exe)))
 
-; (install
-;  (package Bug_OCaml)
-;  (section bin)
-;  (files (bug.exe as bug)))
-
 (coq.extraction
-	(theories Bug_Coq)
+	(theories Extract_Coq)
 	(prelude extraction)
 	(extracted_modules Extract))
 

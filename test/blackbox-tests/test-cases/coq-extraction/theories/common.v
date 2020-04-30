@@ -1,4 +1,6 @@
 
+(** The following lines are just here to add some noise so that auxiliary files are created. **)
+
 Require Import Ascii.
 
 Axiom axiom : Prop.

@@ -93,6 +93,8 @@ module Int = struct
   end
 end
 
+module Bytes = StdLabels.Bytes
+
 module String = struct
   include StringLabels
 

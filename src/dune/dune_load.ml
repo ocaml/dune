@@ -223,8 +223,6 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
     Dune_files.Script { script = { dir; project; file }; from_parent = static }
   | Plain -> Literal (Dune_file.parse static ~dir ~file ~project)
 
-module Vcs_map = Map.Make (Path)
-
 let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
 
@@ -232,7 +230,7 @@ let load ~ancestor_vcs =
     let f dir (ancestor_vcs, vcs, projects) =
       let vcs =
         match File_tree.Dir.vcs dir with
-        | Some repository -> Vcs_map.set vcs repository.root repository
+        | Some repository -> Path.Map.set vcs repository.root repository
         | None -> vcs
       in
       let p = File_tree.Dir.project dir in
@@ -242,8 +240,8 @@ let load ~ancestor_vcs =
         (ancestor_vcs, vcs, projects)
     and vcs =
       match ancestor_vcs with
-      | Some vcs -> Vcs_map.of_list_exn [ (Path.root, vcs) ]
-      | None -> Vcs_map.empty
+      | Some vcs -> Path.Map.of_list_exn [ (Path.root, vcs) ]
+      | None -> Path.Map.empty
     in
     File_tree.fold_with_progress
       ~traverse:{ data_only = false; vendored = true; normal = true }
@@ -275,4 +273,4 @@ let load ~ancestor_vcs =
         let dune_file = interpret ~dir:path ~project ~dune_file in
         dune_file :: dune_files)
   in
-  { dune_files; packages; projects; vcs = Vcs_map.values vcs }
+  { dune_files; packages; projects; vcs = Path.Map.values vcs }

@@ -1413,14 +1413,17 @@ end = struct
     in
     let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
     let () =
-      if Action.is_useful_to_distribute action = Maybe then
-        let f { cache = (module Caching); _ } =
-          match Caching.Cache.hint Caching.cache [ rule_digest ] with
-          | Result.Ok _ -> ()
-          | Result.Error e ->
-            User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
-        in
-        Option.iter ~f t.caching
+      (* FIXME: Rule hinting provide no relevant speed increase for now. Disable
+         the overhead until we make a decision. *)
+      if false then
+        if Action.is_useful_to_distribute action = Maybe then
+          let f { cache = (module Caching); _ } =
+            match Caching.Cache.hint Caching.cache [ rule_digest ] with
+            | Result.Ok _ -> ()
+            | Result.Error e ->
+              User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
+          in
+          Option.iter ~f t.caching
     in
     let do_not_memoize =
       always_rerun || is_action_dynamic

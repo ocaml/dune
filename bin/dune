@@ -1,7 +1,7 @@
 (executable
  (name main)
- (libraries memo dune_lang fiber stdune unix cache_daemon cache dune
-   dune_util cmdliner threads.posix build_info dune_csexp)
+ (libraries memo dune-private-libs.dune-lang fiber dune-private-libs.stdune unix cache_daemon dune-private-libs.cache dune
+   dune-private-libs.dune_util cmdliner threads.posix dune-build-info dune-private-libs.dune_csexp)
  (preprocess future_syntax)
  (bootstrap_info bootstrap-info))
 

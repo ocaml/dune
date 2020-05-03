@@ -1,4 +1,4 @@
 (library
  (name cache_daemon)
  (preprocess future_syntax)
- (libraries dune_util threads.posix cache stdune dune_csexp))
+ (libraries dune-private-libs.dune_util threads.posix dune-private-libs.cache dune-private-libs.stdune dune-private-libs.dune_csexp))

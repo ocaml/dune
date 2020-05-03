@@ -2,9 +2,9 @@
 
 (library
  (name dune)
- (libraries unix stdune fiber incremental_cycles dag memo xdg dune_re
-   threads.posix opam_file_format dune_lang cache_daemon cache dune_glob
-   ocaml_config catapult jbuild_support dune_action_plugin dune_util)
+ (libraries unix dune-private-libs.stdune fiber incremental_cycles dag memo dune-private-libs.xdg dune-private-libs.dune_re
+   threads.posix opam_file_format dune-private-libs.dune-lang cache_daemon dune-private-libs.cache dune-glob
+   dune-private-libs.ocaml-config catapult jbuild_support dune-action-plugin dune-private-libs.dune_util)
  (synopsis "Internal Dune library, do not use!")
  (preprocess future_syntax))
 

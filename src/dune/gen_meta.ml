@@ -63,7 +63,7 @@ let archives ?(preds = []) lib =
   ; plugin (preds @ [ Pos "native" ]) (make plugins.native)
   ]
 
-let gen_lib pub_name lib ~version =
+let gen_lib pub_name lib ~path ~version =
   let info = Lib.info lib in
   let synopsis = Lib_info.synopsis info in
   let kind = Lib_info.kind info in
@@ -139,7 +139,9 @@ let gen_lib pub_name lib ~version =
         let root = Pub_name.root pub_name in
         let l = List.map l ~f:Path.basename in
         [ rule "linkopts" [ Pos "javascript" ] Set
-            (List.map l ~f:(sprintf "+%s/%s" root) |> String.concat ~sep:" ")
+            ( List.map l
+                ~f:(sprintf "+%s/%s" (String.concat ~sep:"/" (root :: path)))
+            |> String.concat ~sep:" " )
         ; rule "jsoo_runtime" [] Set (String.concat l ~sep:" ")
         ] )
     ]
@@ -153,10 +155,13 @@ let gen ~package ~version ?(add_directory_entry = true) entries =
   let pkgs =
     List.map entries ~f:(fun (e : Super_context.Lib_entry.t) ->
         match e with
-        | Library lib ->
+        | Library lib -> (
           let name = Lib.Local.info lib |> Lib_info.name in
           let pub_name = Pub_name.parse name in
-          (pub_name, gen_lib pub_name (Lib.Local.to_lib lib) ~version)
+          match Pub_name.to_list pub_name with
+          | [] -> assert false
+          | _package :: path ->
+            (pub_name, gen_lib pub_name ~path (Lib.Local.to_lib lib) ~version) )
         | Deprecated_library_name
             { old_public_name = { public = old_public_name; _ }
             ; new_public_name = _, new_public_name

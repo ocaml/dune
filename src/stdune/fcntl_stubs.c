@@ -4,7 +4,7 @@
 # include <fcntl.h>
 # include <stdio.h>
 #else
-# include <Windows.h>
+# include <windows.h>
 #endif
 
 #include <caml/custom.h>

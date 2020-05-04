@@ -61,19 +61,21 @@ module Crawl = struct
                  ]
                :: acc)
       in
+      let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
-        (Dyn.Variant
-           ( "library"
-           , [ Dyn.Encoder.record
-                 [ ("name", Lib_name.to_dyn name)
-                 ; ("uid", String (uid_of_library lib))
-                 ; ( "requires"
-                   , Dyn.Encoder.(list string)
-                       (List.map requires ~f:uid_of_library) )
-                 ; ("source_dir", dyn_path src_dir)
-                 ; ("modules", List modules_)
-                 ]
-             ] ))
+        (let open Dyn.Encoder in
+        Dyn.Variant
+          ( "library"
+          , [ Dyn.Encoder.record
+                [ ("name", Lib_name.to_dyn name)
+                ; ("uid", String (uid_of_library lib))
+                ; ( "requires"
+                  , (list string) (List.map requires ~f:uid_of_library) )
+                ; ("source_dir", dyn_path src_dir)
+                ; ("modules", List modules_)
+                ; ("include_dirs", (list dyn_path) include_dirs)
+                ]
+            ] ))
 
   let workspace { Dune.Main.workspace; scontexts } (context : Context.t) =
     let sctx = Context_name.Map.find_exn scontexts context.name in

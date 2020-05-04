@@ -1,3 +1,9 @@
+Unreleased
+----------
+
+- Generate correct META files for sub-libraries (of the form `lib.foo`) that
+  contain .js runtime files. (#3445, @hhugo)
+
 2.5.1 (17/04/2020)
 ------------------
 

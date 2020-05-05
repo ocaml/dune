@@ -1,0 +1,3 @@
+(rule
+(targets target)
+(action (no-infer (progn (run touch source) (copy source target)))))

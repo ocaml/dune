@@ -158,7 +158,8 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) ->
+  | With_accepted_exit_codes (_, t)
+  | No_infer t ->
     f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -201,7 +202,8 @@ let rec is_dynamic = function
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) ->
+  | With_accepted_exit_codes (_, t)
+  | No_infer t ->
     is_dynamic t
   | Progn l -> List.exists l ~f:is_dynamic
   | Run _
@@ -280,7 +282,8 @@ let is_useful_to memoize =
     | Redirect_out (_, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
-    | With_accepted_exit_codes (_, t) ->
+    | With_accepted_exit_codes (_, t)
+    | No_infer t ->
       loop t
     | Progn l -> List.exists l ~f:loop
     | Echo _ -> false

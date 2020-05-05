@@ -748,33 +748,59 @@ module Create = struct
   let call () : t list Fiber.t =
     let env = Memo.Run.Fdecl.get Global.env in
     let workspace = Workspace.workspace () in
-    let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
-      lazy
-        (Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun context ->
-             let contexts =
-               Fiber.Once.create (fun () ->
-                   let* host_context =
-                     match Workspace.Context.host_context context with
-                     | None -> Fiber.return None
-                     | Some context -> (
-                       let+ contexts =
-                         Context_name.Map.find_exn (Lazy.force contexts) context
-                         |> Fiber.Once.get
-                       in
-                       match contexts with
-                       | [ x ] -> Some x
-                       | [] -> assert false (* checked by workspace *)
-                       | _ :: _ -> assert false
-                       (* target cannot be host *) )
-                   in
-                   instantiate_context env workspace ~context ~host_context)
-             in
-             let name = Workspace.Context.name context in
-             (name, contexts)))
+
+    (* Contexts can depend on each other, for instance for cross-compilation.
+       When instantiating a context, we need the instantiation of its dependent
+       contexts, and we also need to make sure that each context is instantiated
+       only once.
+
+       To do all that, the following code works in three steps:
+
+       - step 1: build a map from context name to their instantiation.
+       Instantiating a context requires looking up dependent contexts in this
+       map, so that map itself is stored in an ivar to break the cyclic
+       definition
+
+       - step 2: fill the context map ivar. This allows the various
+       instantiation fibers blocked on it to resume
+
+       - step 3: wait for all instantiation fibers to complete
+
+       If there was a cycle between contexts, the bellow code would dead-lock.
+       However, we check at parsing time that there is no such cycle. *)
+    let contexts_map_ivar = Fiber.Ivar.create () in
+    let* contexts =
+      Fiber.parallel_map workspace.contexts ~f:(fun context ->
+          let+ contexts =
+            Fiber.fork (fun () ->
+                let* host_context =
+                  match Workspace.Context.host_context context with
+                  | None -> Fiber.return None
+                  | Some context -> (
+                    let* contexts_map = Fiber.Ivar.read contexts_map_ivar in
+                    let+ contexts =
+                      Fiber.Future.wait
+                        (Context_name.Map.find_exn contexts_map context)
+                    in
+                    match contexts with
+                    | [ x ] -> Some x
+                    | [] -> assert false (* checked by workspace *)
+                    | _ :: _ -> assert false
+                    (* target cannot be host *) )
+                in
+                instantiate_context env workspace ~context ~host_context)
+          in
+          let name = Workspace.Context.name context in
+          (name, contexts))
     in
-    Lazy.force contexts |> Context_name.Map.values
-    |> Fiber.parallel_map ~f:Fiber.Once.get
-    |> Fiber.map ~f:List.concat
+    let* () =
+      Fiber.Ivar.fill contexts_map_ivar (Context_name.Map.of_list_exn contexts)
+    in
+    let* contexts =
+      Fiber.parallel_map contexts ~f:(fun (_name, context) ->
+          Fiber.Future.wait context)
+    in
+    Fiber.return (List.concat contexts)
 
   let memo =
     Memo.create "create-context" ~doc:"create contexts"

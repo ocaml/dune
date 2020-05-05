@@ -346,3 +346,54 @@ Supported since 2.1:
   Entering directory 'binops'
   $ grep conf-libX11 binops/foo.opam
     "conf-libX11" {os != "win32"}
+
+Version constraint on dune deps
+-------------------------------
+
+  $ mkdir dune-dep
+  $ cd dune-dep
+
+Without the dune dependency declared in the dune-project file, we
+generate a dune dependency with a constraint:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.1)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A2 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.1"}
+  ]
+
+With the dune dependency declared in the dune-project file and version
+of the langauge < 2.6 we don't add the constraint:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.5)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends dune))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep ^depends: foo.opam
+  depends: ["dune"]
+
+Same with version of the langauge >= 2.6, we now add the constraint:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.6)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends dune))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A2 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.6"}
+  ]

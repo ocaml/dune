@@ -62,7 +62,7 @@ jobs:
       - run: opam pin add dune-private-libs.dev . --no-action
       - run: opam pin add dune.dev . --no-action
 
-      # Oue current setup for 4.02 doesn’t use opam, So skip the next three
+      # Our current setup for 4.02 doesn’t use opam, So skip the next three
       # steps on 4.02.3
       - run: opam depext dune-action-plugin dune-build-info dune-configurator dune-glob dune-private-libs dune --yes --with-test --with-doc
         if: matrix.ocaml-version != '4.02.3'

@@ -1,0 +1,84 @@
+name: Main workflow
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+        # Please keep the list in sync with the minimal version of OCaml in
+        # dune-project, dune.opam.template and bootstrap.ml
+        ocaml-version:
+          - 4.09.1
+          - 4.08.1
+          - 4.07.1
+          - 4.02.3
+        exclude:
+          # ocaml-secondary-compiler and ocamlfind-secondary do not exist in the
+          # opam repository for Windows, So exclude build and test on
+          # Windows/4.02.3
+          - os: windows-latest
+            ocaml-version: 4.02.3
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Use OCaml ${{ matrix.ocaml-version }}
+        uses: avsm/setup-ocaml@v1
+        with:
+          ocaml-version: ${{ matrix.ocaml-version }}
+
+      # The GNU Coreutils needs to be installed for gstat command
+      - run: brew install coreutils
+        if: runner.os == 'macOS'
+
+      # git user needs to be configured for the following tests:
+      # otherlibs/build-info/test/run.t
+      # test/blackbox-tests/test-cases/dune-project-meta/run.t
+      # test/blackbox-tests/test-cases/subst/run.t
+      # test/expect-tests/vcs_tests.ml
+      - name: Set git user
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions-bot@users.noreply.github.com
+
+      - run: opam install ocaml-secondary-compiler ocamlfind-secondary
+        if: matrix.ocaml-version == '4.02.3'
+
+      - run: opam pin add dune-action-plugin.dev . --no-action
+      - run: opam pin add dune-build-info.dev . --no-action
+      - run: opam pin add dune-configurator.dev . --no-action
+      - run: opam pin add dune-glob.dev . --no-action
+      - run: opam pin add dune-private-libs.dev . --no-action
+      - run: opam pin add dune.dev . --no-action
+
+      # Oue current setup for 4.02 doesn’t use opam, So skip the next three
+      # steps on 4.02.3
+      - run: opam depext dune-action-plugin dune-build-info dune-configurator dune-glob dune-private-libs dune --yes --with-test --with-doc
+        if: matrix.ocaml-version != '4.02.3'
+
+      - run: opam install . --deps-only --with-test --with-doc
+        if: matrix.ocaml-version != '4.02.3'
+
+      - run: opam install coq mdx menhir ocaml-migrate-parsetree ocamlfind odoc ppx_expect ppxlib result utop
+        if: matrix.ocaml-version != '4.02.3'
+
+      - run: opam exec -- make dune.exe
+
+      # We don't run tests on all versions of the Windows environment and on
+      # 4.02.3 and 4.07.1 in other environments
+      - run: opam exec -- make test
+        if: runner.os != 'Windows' && matrix.ocaml-version != '4.02.3' && matrix.ocaml-version != '4.07.1'
+
+      - run: opam exec -- make test-coq
+        if: runner.os != 'Windows' && matrix.ocaml-version != '4.02.3' && matrix.ocaml-version != '4.07.1'

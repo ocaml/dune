@@ -40,26 +40,29 @@ module Crawl = struct
       let obj_dir = Lib_info.obj_dir info in
       let dyn_path p = Dyn.String (Path.to_string p) in
       let modules_ =
-        Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
-        |> Dir_contents.ocaml
-        |> Ml_sources.modules_of_library ~name
-        |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
-               let source ml_kind =
-                 Dyn.Encoder.option dyn_path
-                   (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
-               in
-               let cmt ml_kind =
-                 Dyn.Encoder.option dyn_path
-                   (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-               in
-               Dyn.Encoder.record
-                 [ ("name", Module_name.to_dyn (Module.name m))
-                 ; ("impl", source Impl)
-                 ; ("intf", source Intf)
-                 ; ("cmt", cmt Impl)
-                 ; ("cmti", cmt Intf)
-                 ]
-               :: acc)
+        if Lib.is_local lib then
+          Dir_contents.get sctx ~dir:(Path.as_in_build_dir_exn src_dir)
+          |> Dir_contents.ocaml
+          |> Ml_sources.modules_of_library ~name
+          |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
+                let source ml_kind =
+                  Dyn.Encoder.option dyn_path
+                    (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
+                in
+                let cmt ml_kind =
+                  Dyn.Encoder.option dyn_path
+                    (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                in
+                Dyn.Encoder.record
+                  [ ("name", Module_name.to_dyn (Module.name m))
+                  ; ("impl", source Impl)
+                  ; ("intf", source Intf)
+                  ; ("cmt", cmt Impl)
+                  ; ("cmti", cmt Intf)
+                  ]
+                :: acc)
+        else
+          []
       in
       let include_dirs = Obj_dir.all_cmis obj_dir in
       Some
@@ -69,6 +72,7 @@ module Crawl = struct
           , [ Dyn.Encoder.record
                 [ ("name", Lib_name.to_dyn name)
                 ; ("uid", String (uid_of_library lib))
+                ; ("local", bool (Lib.is_local lib))
                 ; ( "requires"
                   , (list string) (List.map requires ~f:uid_of_library) )
                 ; ("source_dir", dyn_path src_dir)
@@ -82,7 +86,7 @@ module Crawl = struct
     Dyn.List
       (List.concat_map workspace.conf.projects ~f:(fun project ->
            Super_context.find_scope_by_project sctx project
-           |> Scope.libs |> Lib.DB.all |> Lib.Set.to_list
+           |> Scope.libs |> Lib.DB.all ~recursive:true |> Lib.Set.to_list
            |> List.filter_map ~f:(library sctx)))
 end
 

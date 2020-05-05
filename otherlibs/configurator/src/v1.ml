@@ -1,23 +1,6 @@
-open! Stdune
+open Import
 
-(* we shadow this module on purpose because it's unusable without the build dir
-   initialized *)
-module Path = struct end
-
-module Io = Io.String_path
-
-let sprintf = Printf.sprintf
-
-let eprintf = Printf.eprintf
-
-let ( ^/ ) = Filename.concat
-
-exception Fatal_error of string
-
-let die fmt = Printf.ksprintf (fun s -> raise (Fatal_error s)) fmt
-
-let warn fmt =
-  Printf.ksprintf (fun msg -> prerr_endline ("Warning: " ^ msg)) fmt
+let die = die
 
 type t =
   { name : string
@@ -29,7 +12,7 @@ type t =
   ; c_compiler : string
   ; stdlib_dir : string
   ; ccomp_type : string
-  ; ocamlc_config : string String.Map.t
+  ; ocamlc_config : Ocaml_config.Vars.t
   ; ocamlc_config_cmd : string
   }
 
@@ -266,44 +249,64 @@ module Process = struct
     run_command_ok t ?dir ?env (command_line prog args)
 end
 
-let ocaml_config_var t var = String.Map.find t.ocamlc_config var
+let ocaml_config_var t var = Ocaml_config.Vars.find t.ocamlc_config var
 
 let ocaml_config_var_exn t var =
-  match String.Map.find t.ocamlc_config var with
+  match Ocaml_config.Vars.find t.ocamlc_config var with
   | None ->
     die "variable %S not found in the output of `%s`" var t.ocamlc_config_cmd
   | Some s -> s
 
+type config =
+  { ocamlc : string
+  ; vars : Ocaml_config.Vars.t
+  }
+
 let read_dot_dune_configurator_file ~build_dir =
-  let file =
-    Stdune.Path.relative
-      (Stdune.Path.of_filename_relative_to_initial_cwd build_dir)
-      ".dune/configurator"
+  let file = Filename.concat build_dir ".dune/configurator" in
+  if not (Sys.file_exists file) then
+    die "Cannot find special file %S produced by dune." file;
+  let open Sexp in
+  let unable_to_parse err = die "Unable to parse %S.@.%s@." file err in
+  let sexp =
+    match Io.with_file_in file ~f:Sexp.input with
+    | Ok s -> s
+    | Error e -> unable_to_parse e
   in
-  if not (Stdune.Path.exists file) then
-    die "Cannot find special file produced by dune.";
-  let sexps = Dune_lang.Parser.load file ~mode:Many_as_one in
-  let decode =
-    let open Dune_lang.Decoder in
-    enter
-      (fields
-         (let+ ocamlc = field "ocamlc" string
-          and+ ocaml_config_vars =
-            field "ocaml_config_vars" (repeat (pair string string))
-          and+ _ =
-            (* So that we can add more fields in the future with minimal hassle *)
-            leftover_fields
-          in
-          (* We assume that dune already checked for duplicates *)
-          let ocaml_config_vars = String.Map.of_list_exn ocaml_config_vars in
-          (ocamlc, ocaml_config_vars)))
-  in
-  Dune_lang.Decoder.parse decode Univ_map.empty sexps
+  match sexp with
+  | Atom _ -> unable_to_parse "unexpected atom"
+  | List xs ->
+    let field name =
+      match
+        List.find_map xs ~f:(function
+          | List [ Atom name'; f ] when name = name' -> Some f
+          | _ -> None)
+      with
+      | None -> die "unable to find field %S" name
+      | Some f -> f
+    in
+    let ocamlc =
+      match field "ocamlc" with
+      | Atom o -> o
+      | _ -> die "invalid ocamlc field"
+    in
+    let vars =
+      let bindings =
+        match field "ocaml_config_vars" with
+        | List bindings ->
+          List.map bindings ~f:(function
+            | List [ Atom k; Atom v ] -> (k, v)
+            | _ -> die "invalid output")
+        | _ -> die "invalid output"
+      in
+      Ocaml_config.Vars.of_list_exn bindings
+    in
+    { ocamlc; vars }
 
 let fill_in_fields_that_depends_on_ocamlc_config t =
   let get = ocaml_config_var_exn t in
   let c_compiler =
-    match String.Map.find t.ocamlc_config "c_compiler" with
+    match Ocaml_config.Vars.find t.ocamlc_config "c_compiler" with
     | Some c_comp -> c_comp ^ " " ^ get "ocamlc_cflags"
     | None -> get "bytecomp_c_compiler"
   in
@@ -320,7 +323,9 @@ let create_from_inside_dune ~dest_dir ~log ~build_dir ~name =
     | Some dir -> dir
     | None -> Temp.create_temp_dir ~prefix:"ocaml-configurator" ~suffix:""
   in
-  let ocamlc, ocamlc_config = read_dot_dune_configurator_file ~build_dir in
+  let { ocamlc; vars = ocamlc_config } =
+    read_dot_dune_configurator_file ~build_dir
+  in
   let ocamlc_config_cmd = Process.command_line ocamlc [ "-config" ] in
   fill_in_fields_that_depends_on_ocamlc_config
     { name
@@ -362,7 +367,7 @@ let create ?dest_dir ?ocamlc ?(log = ignore) name =
       ; c_compiler = ""
       ; stdlib_dir = ""
       ; ccomp_type = ""
-      ; ocamlc_config = String.Map.empty
+      ; ocamlc_config = Ocaml_config.Vars.of_list_exn []
       ; ocamlc_config_cmd
       }
     in
@@ -568,9 +573,7 @@ const char *s%i = "BEGIN-%i-false-END";
             | ('A' .. 'Z' | '0' .. '9') as c -> c
             | _ -> '_')
     in
-    let vars =
-      List.sort vars ~compare:(fun (a, _) (b, _) -> String.compare a b)
-    in
+    let vars = List.sort vars ~cmp:(fun (a, _) (b, _) -> compare a b) in
     let lines =
       List.map vars ~f:(fun (name, value) ->
           match (value : Value.t) with

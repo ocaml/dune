@@ -1692,7 +1692,9 @@ mdx (since 2.4)
 ---------------
 
 MDX is a tool that helps you keep your markdown documentation up to date by
-checking that the code examples it contains are correct.
+checking that the code examples it contains are correct. When setting an MDX 
+stanza, the checks carried out by MDX are automatically attached to the 
+``runtest`` alias of the stanza's directory.
 
 See `MDX's repository <https://github.com/realworldocaml/mdx>`__ for more details.
 

@@ -104,13 +104,15 @@ writing the following code ``src/dune``:
           (rule
            (deps (source_tree libfoo))
            (targets libfoo.a dllfoo.so)
-           (action (progn
+           (action (no-infer (progn
                     (chdir libfoo (run make))
                     (copy libfoo/libfoo.a libfoo.a)
-                    (copy libfoo/libfoo.so dllfoo.so))))
+                    (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``.
+declared as ``targets``. The build is done in a ``no-infer`` action because
+``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by
+an external build system.
 
 The last step is to attach these archives to an OCaml library as
 follows:

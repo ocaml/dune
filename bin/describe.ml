@@ -72,7 +72,7 @@ module Crawl = struct
           , [ Dyn.Encoder.record
                 [ ("name", Lib_name.to_dyn name)
                 ; ("uid", String (uid_of_library lib))
-                ; ("local", bool (Lib.is_local lib))
+                ; ("local", Bool (Lib.is_local lib))
                 ; ( "requires"
                   , (list string) (List.map requires ~f:uid_of_library) )
                 ; ("source_dir", dyn_path src_dir)

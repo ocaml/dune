@@ -1,7 +1,7 @@
 next
 ----
 - Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2` 
-  result in error. (#3444, fix #3443, @bikallem)
+  results in error. (#3444, fix #3443, @bikallem)
 
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,
@@ -9,6 +9,9 @@ next
 
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
+  
+- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
+  @stephanieyou)
 
 - Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
 

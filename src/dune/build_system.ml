@@ -512,13 +512,6 @@ let compute_targets_digest targets =
   | l -> Some (Digest.generic l)
   | exception (Unix.Unix_error _ | Sys_error _) -> None
 
-(* Find the closest corresponding source directory, eg
-   '_build/default/src/dune/.dune.objs' becomes 'src/dune' *)
-let find_rule_source_dir rule =
-  let _, src_dir = Path.Build.extract_build_context_dir_exn rule.Rule.dir in
-  let res = File_tree.nearest_dir src_dir in
-  res
-
 let compute_targets_digest_or_raise_error ~loc targets =
   let remove_write_permissions =
     (* Remove write permissions on targets. A first theoretical reason is that
@@ -1637,7 +1630,7 @@ end = struct
                 Log.info [ Pp.textf "promotion failed for %s: %s" targets msg ]
               in
               let repository =
-                let dir = find_rule_source_dir rule in
+                let dir = Rule.find_source_dir rule in
                 let open Option.O in
                 let* vcs = File_tree.Dir.vcs dir in
                 let f found = Path.equal found.Vcs.root vcs.Vcs.root in

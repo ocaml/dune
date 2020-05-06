@@ -1,5 +1,5 @@
 ************
-Goal of dune
+Goal of Dune
 ************
 
 The main goal of the Dune project is to provide the best possible
@@ -30,7 +30,7 @@ be feature complete.
 In the rest of this page, we develop these points and give some
 insights into our current and future focuses.
 
-Have excelent backward compatibility properties
+Have excellent backward compatibility properties
 ===============================================
 
 In an open-source community, there will always be groups of people
@@ -44,7 +44,7 @@ never change. So changing Dune in a way that it could no longer
 understand a released project is by default a no-no.
 
 Of cource, we can't give a 100% guarantee that Dune will always behave
-exactly the same. That would be irrealistic and would prevent the
+exactly the same. That would be unrealistic and would prevent the
 project from moving forward.  In order for us to provide good backward
 compatibility properties while still keeping the project fresh and
 dynamic, we have to make sure to properly delimit, document and
@@ -110,7 +110,7 @@ Have very good support for the OCaml language
 
 There are many many build systems out there. What makes Dune different
 is that it targets the OCaml community primarily. So Dune must come
-with excelent support for the OCaml language and OCaml projects in
+with excellent support for the OCaml language and OCaml projects in
 general.
 
 If it didn't, then Dune would just be yet another build system.
@@ -127,10 +127,10 @@ Be extensible
 
 No matter how good the support for the OCaml language is, it will
 never be enough to cover every single project need. For this reason,
-Dune needs to provide some form of openness for projects that needs
-something that don't completely fit in the model provided by Dune.
+Dune needs to provide some form of openness for projects that need
+something that doesn't completely fit in the model provided by Dune.
 
-In the long run, extensibility tends to get in the way of inovation
+In the long run, extensibility tends to get in the way of innovation
 and we should always strive to make sure that all the general needs
 are covered by the main Dune language, but we will always need an
 escape hatch for Dune to remain a practical choice.

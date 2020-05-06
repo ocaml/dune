@@ -81,27 +81,46 @@ let package_fields
   in
   List.concat fields
 
+let dune_name = Package.Name.of_string "dune"
+
+let insert_dune_dep depends dune_version =
+  let constraint_ : Package.Dependency.Constraint.t =
+    let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
+    Uop (Gte, QVar dune_version)
+  in
+  let rec loop acc = function
+    | [] ->
+      let dune_dep =
+        { Package.Dependency.name = dune_name; constraint_ = Some constraint_ }
+      in
+      dune_dep :: List.rev acc
+    | (dep : Package.Dependency.t) :: rest ->
+      if Package.Name.equal dep.name dune_name then
+        let dep =
+          if dune_version < (2, 6) then
+            dep
+          else
+            { dep with
+              constraint_ =
+                Some
+                  ( match dep.constraint_ with
+                  | None -> constraint_
+                  | Some c -> And [ constraint_; c ] )
+            }
+        in
+        List.rev_append acc (dep :: rest)
+      else
+        loop (dep :: acc) rest
+  in
+  loop [] depends
+
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
-  let dune_name = Package.Name.of_string "dune" in
   let package =
     if dune_version < (1, 11) || Package.Name.equal package.name dune_name then
       package
     else
-      let dune_dep =
-        let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
-        let constraint_ : Package.Dependency.Constraint.t =
-          Uop (Gte, QVar dune_version)
-        in
-        { Package.Dependency.name = dune_name; constraint_ = Some constraint_ }
-      in
-      let is_dune_depend (pkg : Package.Dependency.t) =
-        Package.Name.equal pkg.name dune_dep.name
-      in
-      if List.exists package.depends ~f:is_dune_depend then
-        package
-      else
-        { package with depends = dune_dep :: package.depends }
+      { package with depends = insert_dune_dep package.depends dune_version }
   in
   let package_fields = package_fields package ~project in
   let open Opam_file.Create in

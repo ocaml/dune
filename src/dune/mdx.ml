@@ -22,10 +22,9 @@ module Files = struct
 
   let diff_action { src; corrected; deps = _ } =
     let src = Path.build src in
-    let corrected = Path.build corrected in
     let open Build.O in
     let+ () = Build.path src
-    and+ () = Build.path corrected in
+    and+ () = Build.path (Path.build corrected) in
     Action.diff ~optional:false src corrected
 end
 
@@ -182,8 +181,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
     let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
     let pkg_deps =
       let context = Super_context.context sctx in
-      List.map stanza.packages ~f:(fun pkg ->
-          Build.alias (Build_system.Alias.package_install ~context ~pkg))
+      let packages = Super_context.packages sctx in
+      stanza.packages
+      |> List.map ~f:(fun pkg ->
+             let pkg = Package.Name.Map.find_exn packages pkg in
+             Build.alias (Build_system.Alias.package_install ~context ~pkg))
     in
     let prelude_args =
       List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)

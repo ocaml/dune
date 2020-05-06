@@ -47,6 +47,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bisect-ppx)
+ (deps (package dune) (source_tree test-cases/bisect-ppx))
+ (action
+  (chdir
+   test-cases/bisect-ppx
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias block-strings)
  (deps (package dune) (source_tree test-cases/block-strings))
  (action
@@ -93,6 +101,16 @@
   (chdir
    test-cases/cinaps
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias cinaps-include-subdirs)
+ (deps (package dune) (source_tree test-cases/cinaps))
+ (action
+  (chdir
+   test-cases/cinaps
+   (progn
+    (run dune-cram run include-subdirs.t)
+    (diff? include-subdirs.t include-subdirs.t.corrected)))))
 
 (rule
  (alias cmdliner-dep-conf)
@@ -1025,6 +1043,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias github2990)
+ (deps (package dune) (source_tree test-cases/github2990))
+ (action
+  (chdir
+   test-cases/github2990
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github3046)
  (deps (package dune) (source_tree test-cases/github3046))
  (action
@@ -1046,6 +1072,14 @@
  (action
   (chdir
    test-cases/github3412
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias github3440)
+ (deps (package dune) (source_tree test-cases/github3440))
+ (action
+  (chdir
+   test-cases/github3440
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2458,11 +2492,13 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
+  (alias bisect-ppx)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2573,9 +2609,11 @@
   (alias github2629)
   (alias github2681)
   (alias github2848)
+  (alias github2990)
   (alias github3046)
   (alias github3180)
   (alias github3412)
+  (alias github3440)
   (alias github534)
   (alias github568)
   (alias github597)
@@ -2755,6 +2793,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -2859,9 +2898,11 @@
   (alias github2629)
   (alias github2681)
   (alias github2848)
+  (alias github2990)
   (alias github3046)
   (alias github3180)
   (alias github3412)
+  (alias github3440)
   (alias github534)
   (alias github568)
   (alias github597)

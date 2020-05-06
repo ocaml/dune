@@ -28,6 +28,7 @@ module Context : sig
                 will be built with all foreign archives statically linked into
                 the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
+      ; bisect_enabled : bool
       }
   end
 

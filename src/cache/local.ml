@@ -33,9 +33,9 @@ end
 let default_root () =
   Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db" ]
 
-let file_store_version = "v2"
+let file_store_version = "v3"
 
-let metadata_store_version = "v2"
+let metadata_store_version = "v3"
 
 let file_store_root cache =
   Path.L.relative cache.root [ "files"; file_store_version ]
@@ -72,45 +72,11 @@ let detect_unexpected_dirs_under_cache_root cache =
   in
   List.sort ~compare:Path.compare (in_root @ in_files @ in_meta)
 
-(* Handling file digest collisions by appending suffices ".1", ".2", etc. to the
-   files stored in the cache.
-
-   To find a cache entry matching a given file, we try the suffices one after
-   another until we either (i) find a match and return [Found {existing_path}]
-   where the [existing_path] includes the correct suffix, or (ii) find a suffix
-   that is missing in the cache and return [Not_found {next_available_path}]
-   where the [next_available_path] includes the first available suffix.
-
-   CR-someday amokhov: In Dune we generally assume that digest collisions are
-   impossible, so it seems better to remove this logic in future. *)
-module Collision_chain = struct
-  type search_result =
-    | Found of { existing_path : Path.t }
-    | Not_found of { next_available_path : Path.t }
-
-  (* This function assumes that we do not create holes in the suffix numbering. *)
-  let search path file =
-    let rec loop n =
-      let path = Path.extend_basename path ~suffix:("." ^ string_of_int n) in
-      if Path.exists path then
-        if Io.compare_files path file = Ordering.Eq then
-          Found { existing_path = path }
-        else
-          loop (n + 1)
-      else
-        Not_found { next_available_path = path }
-    in
-    loop 1
-end
-
 (* A file storage scheme. *)
 module type FSScheme = sig
   (* Given a cache root and a file digest, determine the location of the file in
      the cache. *)
   val path : root:Path.t -> Digest.t -> Path.t
-
-  (* Extract a file's digest from its location in the cache. *)
-  val digest : Path.t -> Digest.t
 
   (* Given a cache root, list all files stored in the cache. *)
   val list : root:Path.t -> Path.t list
@@ -119,44 +85,46 @@ end
 (* A file storage scheme where a file with a digest [d] is stored in a
    subdirectory whose name is made of the first two characters of [d], that is:
 
-   [<root>/<first-two-characters-of-d>/<d>.<N>]
+   [<root>/<first-two-characters-of-d>/<d>]
 
-   The suffix [.<N>] is used to handle collisions, i.e. the (unlikely)
-   situations where two files have the same digest.
-
-   CR-soon amokhov: Note that the function [path] returns the path without the
-   [.<N>] suffix, whereas the function [digest] expects the [.<N>] suffix to be
-   present. We should fix this inconsistency. *)
+   CR-someday amokhov: We currently do not provide support for collisions where
+   two or more files with different content have the same content digest [d]. If
+   this ever becomes a real (i.e. not hypothetical) problem, a good way forward
+   would be to switch from MD5 to SHA1 or higher, making the chance of this
+   happening even lower, and at the same time making it more difficult to create
+   deliberate collisions. *)
 module FirstTwoCharsSubdir : FSScheme = struct
   let path ~root digest =
     let digest = Digest.to_string digest in
     let first_two_chars = String.sub digest ~pos:0 ~len:2 in
     Path.L.relative root [ first_two_chars; digest ]
 
-  let digest path =
-    match Digest.from_hex (Path.basename (fst (Path.split_extension path))) with
-    | Some digest -> digest
-    | None ->
-      Code_error.raise "strange cached file path (not a valid digest)"
-        [ (Path.to_string path, Path.to_dyn path) ]
-
   let list ~root =
+    let open Result.O in
     let f dir =
-      let is_hex_char c =
-        let char_in s e = Char.compare c s >= 0 && Char.compare c e <= 0 in
-        char_in 'a' 'f' || char_in '0' '9'
+      let is_hex_char = function
+        | '0' .. '9'
+        | 'a' .. 'f' ->
+          true
+        | _non_hex_char -> false
       and root = Path.L.relative root [ dir ] in
       if String.for_all ~f:is_hex_char dir then
-        Array.map ~f:(Path.relative root) (Sys.readdir (Path.to_string root))
+        let+ paths = Path.readdir_unsorted root in
+        List.map ~f:(Path.relative root) paths
       else
-        Array.of_list []
+        Ok []
     in
-    Array.to_list
-      (Array.concat
-         (Array.to_list (Array.map ~f (Sys.readdir (Path.to_string root)))))
+    match Path.readdir_unsorted root >>= Result.List.concat_map ~f with
+    | Ok res -> res
+    | Error e -> User_error.raise [ Pp.text (Unix.error_message e) ]
 end
 
 module FSSchemeImpl = FirstTwoCharsSubdir
+
+let metadata_path cache key =
+  FSSchemeImpl.path ~root:(metadata_store_root cache) key
+
+let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
 
 module Metadata_file = struct
   type t =
@@ -166,11 +134,10 @@ module Metadata_file = struct
 
   let to_sexp { metadata; files } =
     let open Sexp in
-    let f ({ in_the_build_directory; in_the_cache; _ } : File.t) =
+    let f ({ path; digest } : File.t) =
       Sexp.List
-        [ Sexp.Atom
-            (Path.Local.to_string (Path.Build.local in_the_build_directory))
-        ; Sexp.Atom (Path.to_string in_the_cache)
+        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
+        ; Sexp.Atom (Digest.to_string digest)
         ]
     in
     List
@@ -184,19 +151,18 @@ module Metadata_file = struct
       ->
       let+ files =
         Result.List.map produced ~f:(function
-          | List [ Atom in_the_build_directory; Atom in_the_cache ] ->
-            let in_the_build_directory =
-              Path.Build.of_string in_the_build_directory
-            and in_the_cache = Path.of_string in_the_cache in
-            Ok
-              { File.in_the_cache
-              ; in_the_build_directory
-              ; digest = FSSchemeImpl.digest in_the_cache
-              }
-          | _ -> Error "invalid metadata scheme in produced files list")
+          | List [ Atom path; Atom digest ] ->
+            let path = Path.Build.of_string path in
+            let+ digest =
+              match Digest.from_hex digest with
+              | Some digest -> Ok digest
+              | None -> Error "Invalid digest in cache metadata"
+            in
+            { File.path; digest }
+          | _ -> Error "Invalid list of produced files in cache metadata")
       in
       { metadata; files }
-    | _ -> Error "invalid metadata"
+    | _ -> Error "Invalid cache metadata"
 
   let of_string s =
     match Csexp.parse_string s with
@@ -208,11 +174,6 @@ module Metadata_file = struct
   let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
 
-let metadata_path cache key =
-  FSSchemeImpl.path ~root:(metadata_store_root cache) key
-
-let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
-
 let make_path cache path =
   match cache.build_root with
   | Some p -> Result.ok (Path.append_local p path)
@@ -220,9 +181,6 @@ let make_path cache path =
     Result.Error
       (sprintf "relative path %s while no build root was set"
          (Path.Local.to_string_maybe_quoted path))
-
-let search cache digest file =
-  Collision_chain.search (file_path cache digest) file
 
 let with_repositories cache repositories = { cache with repositories }
 
@@ -232,27 +190,26 @@ let duplicate ?(duplication = None) cache ~src ~dst =
   | Hardlink -> Path.link src dst
 
 let retrieve cache (file : File.t) =
-  let path = Path.build file.in_the_build_directory in
+  let src = file_path cache file.digest in
+  let dst = Path.build file.path in
   cache.info
-    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted path) ];
-  duplicate cache ~src:file.in_the_cache ~dst:path;
-  path
+    [ Pp.textf "retrieve %s from cache" (Path.to_string_maybe_quoted dst) ];
+  duplicate cache ~src ~dst;
+  dst
 
 let deduplicate cache (file : File.t) =
   match cache.duplication_mode with
   | Copy -> ()
   | Hardlink -> (
-    let target = Path.Build.to_string file.in_the_build_directory in
+    let path = Path.Build.to_string file.path in
+    let path_in_cache = file_path cache file.digest |> Path.to_string in
     let tmpname = Path.Build.to_string (Path.Build.of_string ".dedup") in
-    cache.info
-      [ Pp.textf "deduplicate %s from %s" target
-          (Path.to_string file.in_the_cache)
-      ];
+    cache.info [ Pp.textf "deduplicate %s from %s" path path_in_cache ];
     let rm p = try Unix.unlink p with _ -> () in
     try
       rm tmpname;
-      Unix.link (Path.to_string file.in_the_cache) tmpname;
-      Unix.rename tmpname target
+      Unix.link path_in_cache tmpname;
+      Unix.rename tmpname path
     with Unix.Unix_error (e, syscall, _) ->
       rm tmpname;
       cache.warn
@@ -316,33 +273,32 @@ let promote_sync cache paths key metadata ~repository ~duplication =
       cache.info [ Pp.text message ];
       Result.Error message
     ) else
-      match search cache effective_digest tmp with
-      | Collision_chain.Found { existing_path } ->
+      let in_the_cache = file_path cache effective_digest in
+      (* CR-soon: we assume that if the file with [effective_digest] exists in
+         the file storage, then its content matches the digest, i.e. the user
+         never modifies it. In principle, we could add a consistency check but
+         this would have a non-negligible performance cost. A good compromise
+         seems to be to add a "paranoid" mode to Dune cache where we always
+         check file contents for consistency with the expected digest, so one
+         could enable it when needed. In the paranoid mode, we could futhermore
+         check for a digest collision via [Io.compare_files in_the_cache tmp]. *)
+      match Path.exists in_the_cache with
+      | true ->
         (* We no longer need the temporary file. *)
         Path.unlink tmp;
         (* Update the timestamp of the existing cache entry, moving it to the
            back of the trimming queue. *)
-        Path.touch existing_path;
-        Result.Ok
-          (Already_promoted
-             { in_the_build_directory = path
-             ; in_the_cache = existing_path
-             ; digest = effective_digest
-             })
-      | Collision_chain.Not_found { next_available_path } ->
-        Path.mkdir_p (Path.parent_exn next_available_path);
-        let dest = Path.to_string next_available_path in
+        Path.touch in_the_cache;
+        Result.Ok (Already_promoted { path; digest = effective_digest })
+      | false ->
+        Path.mkdir_p (Path.parent_exn in_the_cache);
+        let dest = Path.to_string in_the_cache in
         (* Move the temporary file to the cache. *)
         Unix.rename (Path.to_string tmp) dest;
         (* Remove write permissions, making the cache entry immutable. We assume
            that users do not modify the files in the cache. *)
         Unix.chmod dest (stat.st_perm land 0o555);
-        Result.Ok
-          (Promoted
-             { in_the_build_directory = path
-             ; in_the_cache = next_available_path
-             ; digest = effective_digest
-             })
+        Result.Ok (Promoted { path; digest = effective_digest })
   in
   let+ promoted = Result.List.map ~f:promote paths in
   let metadata_path = metadata_path cache key
@@ -394,7 +350,7 @@ let search cache key =
       (* There is no point in trying to trim out files that are missing : dune
          will have to check when hardlinking anyway since they could disappear
          inbetween. *)
-      try Path.touch ~create:false file.in_the_cache
+      try Path.touch ~create:false (file_path cache file.digest)
       with Unix.(Unix_error (ENOENT, _, _)) -> ()
     in
     List.iter ~f metadata.files
@@ -469,7 +425,7 @@ let _garbage_collect default_trim cache =
     | p, Result.Ok { Metadata_file.files; _ } ->
       if
         List.for_all
-          ~f:(fun { File.in_the_cache; _ } -> Path.exists in_the_cache)
+          ~f:(fun { File.digest; _ } -> Path.exists (file_path cache digest))
           files
       then
         default_trim
@@ -482,12 +438,13 @@ let _garbage_collect default_trim cache =
         let res =
           List.fold_left ~init:default_trim
             ~f:(fun trim f ->
-              let p = f.File.in_the_cache in
+              let path_in_cache = file_path cache f.File.digest in
               try
-                let stats = Path.stat p in
+                let stats = Path.stat path_in_cache in
                 if trimmable stats then (
-                  Path.unlink_no_err p;
-                  Trimming_result.add trim ~file:p ~size:stats.st_size
+                  Path.unlink_no_err path_in_cache;
+                  Trimming_result.add trim ~file:path_in_cache
+                    ~size:stats.st_size
                 ) else
                   trim
               with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)

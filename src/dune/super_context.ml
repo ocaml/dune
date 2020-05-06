@@ -396,10 +396,14 @@ let get_installed_binaries stanzas ~(context : Context.t) =
         let compile_info =
           let project = Scope.project d.scope in
           let dune_version = Dune_project.dune_version project in
+          let pps =
+            Dune_file.Preprocess_map.pps
+              (Dune_file.Buildable.preprocess exes.buildable
+                ~lib_config:context.lib_config)
+          in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries
-            ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-            ~dune_version
+            ~pps ~dune_version
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
             ~variants:exes.variants ~optional:exes.optional
         in
@@ -573,8 +577,20 @@ module Deps = struct
       |> Result.map ~f:(fun pkg ->
              let pkg = Package.Name.of_string pkg in
              let+ () =
-               Build.alias
-                 (Build_system.Alias.package_install ~context:t.context ~pkg)
+               match Package.Name.Map.find t.packages pkg with
+               | None ->
+                 Build.fail
+                   { fail =
+                       (fun () ->
+                         let loc = String_with_vars.loc p in
+                         User_error.raise ~loc
+                           [ Pp.textf "Package %s does not exist"
+                               (Package.Name.to_string pkg)
+                           ])
+                   }
+               | Some pkg ->
+                 Build.alias
+                   (Build_system.Alias.package_install ~context:t.context ~pkg)
              in
              [])
     | Universe ->

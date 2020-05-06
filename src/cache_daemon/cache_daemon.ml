@@ -122,7 +122,7 @@ let peer_name s =
 
 let stop daemon = Evt.sync (Evt.send daemon.events Stop)
 
-let versions_supported_by_dune : version list = [ { major = 1; minor = 1 } ]
+let versions_supported_by_dune : version list = [ { major = 1; minor = 2 } ]
 
 let endpoint m = m.endpoint
 

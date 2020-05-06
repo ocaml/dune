@@ -234,23 +234,29 @@ let check_fdo_support has_native ocfg ~name =
    against configurator, however we currently don't support this kind of
    "runtime dependencies" so we just do it eagerly. *)
 let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
-  let open Dune_lang.Encoder in
   let dir = Path.build (Path.Build.relative build_dir ".dune") in
   Path.rm_rf dir;
   Path.mkdir_p dir;
   Io.write_file (Path.relative dir Config.dune_keep_fname) "";
-  Io.write_lines
-    (Path.relative dir "configurator")
-    (List.map ~f:Dune_lang.to_string
-       (record_fields
-          [ field "ocamlc" string (Path.to_absolute_filename ocamlc)
-          ; field_l "ocaml_config_vars" (pair string string)
-              (String.Map.to_list ocaml_config_vars)
-          ]))
+  let csexp =
+    let open Sexp in
+    let ocamlc = Atom (Path.to_absolute_filename ocamlc) in
+    let ocaml_config_vars =
+      Sexp.List
+        ( Ocaml_config.Vars.to_list ocaml_config_vars
+        |> List.map ~f:(fun (k, v) -> List [ Atom k; Atom v ]) )
+    in
+    List
+      [ List [ Atom "ocamlc"; ocamlc ]
+      ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+      ]
+  in
+  let path = Path.relative dir "configurator" in
+  Io.write_file path (Csexp.to_string csexp)
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -485,6 +491,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
       ; ocaml_version = Ocaml_config.version_string ocfg
+      ; bisect_enabled
       }
     in
     if Option.is_some fdo_target_exe then
@@ -597,10 +604,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives
+    ~dynamically_linked_foreign_archives ~bisect_enabled
 
 let opam_version =
   let f opam =
@@ -631,7 +638,7 @@ let opam_version =
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let opam =
     match Memo.Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -682,6 +689,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
+    ~bisect_enabled
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -701,6 +709,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; loc = _
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
+      ; bisect_enabled
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -716,6 +725,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
+      ~bisect_enabled
   | Opam
       { base =
           { targets
@@ -728,6 +738,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; loc = _
           ; fdo_target_exe
           ; dynamically_linked_foreign_archives
+          ; bisect_enabled
           }
       ; switch
       ; root
@@ -736,7 +747,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
-      ~dynamically_linked_foreign_archives
+      ~dynamically_linked_foreign_archives ~bisect_enabled
 
 module Create = struct
   module Output = struct
@@ -748,33 +759,59 @@ module Create = struct
   let call () : t list Fiber.t =
     let env = Memo.Run.Fdecl.get Global.env in
     let workspace = Workspace.workspace () in
-    let rec contexts : t list Fiber.Once.t Context_name.Map.t Lazy.t =
-      lazy
-        (Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun context ->
-             let contexts =
-               Fiber.Once.create (fun () ->
-                   let* host_context =
-                     match Workspace.Context.host_context context with
-                     | None -> Fiber.return None
-                     | Some context -> (
-                       let+ contexts =
-                         Context_name.Map.find_exn (Lazy.force contexts) context
-                         |> Fiber.Once.get
-                       in
-                       match contexts with
-                       | [ x ] -> Some x
-                       | [] -> assert false (* checked by workspace *)
-                       | _ :: _ -> assert false
-                       (* target cannot be host *) )
-                   in
-                   instantiate_context env workspace ~context ~host_context)
-             in
-             let name = Workspace.Context.name context in
-             (name, contexts)))
+
+    (* Contexts can depend on each other, for instance for cross-compilation.
+       When instantiating a context, we need the instantiation of its dependent
+       contexts, and we also need to make sure that each context is instantiated
+       only once.
+
+       To do all that, the following code works in three steps:
+
+       - step 1: build a map from context name to their instantiation.
+       Instantiating a context requires looking up dependent contexts in this
+       map, so that map itself is stored in an ivar to break the cyclic
+       definition
+
+       - step 2: fill the context map ivar. This allows the various
+       instantiation fibers blocked on it to resume
+
+       - step 3: wait for all instantiation fibers to complete
+
+       If there was a cycle between contexts, the bellow code would dead-lock.
+       However, we check at parsing time that there is no such cycle. *)
+    let contexts_map_ivar = Fiber.Ivar.create () in
+    let* contexts =
+      Fiber.parallel_map workspace.contexts ~f:(fun context ->
+          let+ contexts =
+            Fiber.fork (fun () ->
+                let* host_context =
+                  match Workspace.Context.host_context context with
+                  | None -> Fiber.return None
+                  | Some context -> (
+                    let* contexts_map = Fiber.Ivar.read contexts_map_ivar in
+                    let+ contexts =
+                      Fiber.Future.wait
+                        (Context_name.Map.find_exn contexts_map context)
+                    in
+                    match contexts with
+                    | [ x ] -> Some x
+                    | [] -> assert false (* checked by workspace *)
+                    | _ :: _ -> assert false
+                    (* target cannot be host *) )
+                in
+                instantiate_context env workspace ~context ~host_context)
+          in
+          let name = Workspace.Context.name context in
+          (name, contexts))
     in
-    Lazy.force contexts |> Context_name.Map.values
-    |> Fiber.parallel_map ~f:Fiber.Once.get
-    |> Fiber.map ~f:List.concat
+    let* () =
+      Fiber.Ivar.fill contexts_map_ivar (Context_name.Map.of_list_exn contexts)
+    in
+    let* contexts =
+      Fiber.parallel_map contexts ~f:(fun (_name, context) ->
+          Fiber.Future.wait context)
+    in
+    Fiber.return (List.concat contexts)
 
   let memo =
     Memo.create "create-context" ~doc:"create contexts"

@@ -1,3 +1,6 @@
 (rule
-(targets target)
-(action (progn (run touch source) (copy source target))))
+ (targets target)
+ (action
+  (progn
+   (run touch source)
+   (copy source target))))

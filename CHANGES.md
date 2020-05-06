@@ -1,7 +1,8 @@
 next
 ----
-- Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2` 
-  result in error. (#3444, fix #3443, @bikallem)
+
+- Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
+  results in an error. (#3444, fix #3443, @bikallem)
 
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,

@@ -355,7 +355,9 @@ include Sub_system.Register_end_point (struct
                  :: List.map source_files ~f:(fun fn ->
                         Build.With_targets.return
                           (Action.diff ~optional:true fn
-                             (Path.extend_basename fn ~suffix:".corrected"))) )))
+                             (Path.Build.extend_basename
+                                (Path.as_in_build_dir_exn fn)
+                                ~suffix:".corrected"))) )))
 end)
 
 let linkme = ()

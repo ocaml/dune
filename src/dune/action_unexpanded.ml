@@ -192,7 +192,7 @@ module Partial = struct
       Diff
         { optional
         ; file1 = E.path ~expander file1
-        ; file2 = E.path ~expander file2
+        ; file2 = E.target ~expander file2
         ; mode
         }
     | Merge_files_into (sources, extras, target) ->
@@ -305,7 +305,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     Diff
       { optional
       ; file1 = E.path ~expander file1
-      ; file2 = E.path ~expander file2
+      ; file2 = E.target ~expander file2
       ; mode
       }
   | Merge_files_into (sources, extras, target) ->
@@ -381,7 +381,7 @@ end = struct
 
     val ( +<! ) : outcome -> program -> outcome
 
-    val ( +<- ) : outcome -> path -> outcome
+    val ( +<- ) : outcome -> target -> outcome
   end
 
   module Make
@@ -424,7 +424,7 @@ end = struct
         if optional then
           acc +< file1 +<- file2
         else
-          acc +< file1 +< file2
+          acc +< file1 +<+ file2
       | Merge_files_into (sources, _extras, target) ->
         List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _
@@ -469,12 +469,7 @@ end = struct
                 { acc with deps = Path.Set.add acc.deps (Path.build fn) }
 
               let ( +<- ) acc fn =
-                match Path.as_in_build_dir fn with
-                | Some target ->
-                  { acc with
-                    targets = Path.Build.Set.remove acc.targets target
-                  }
-                | None -> acc
+                { acc with targets = Path.Build.Set.remove acc.targets fn }
 
               let ( +<! ) acc prog =
                 match prog with
@@ -506,11 +501,8 @@ end = struct
 
         let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Expanded fn -> (
-            match Path.as_in_build_dir fn with
-            | Some target ->
-              { acc with targets = Path.Build.Set.remove acc.targets target }
-            | None -> acc )
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.remove acc.targets fn }
           | Unexpanded _ -> acc
 
         let ( +<! ) acc fn =
@@ -543,11 +535,8 @@ end = struct
 
         let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
           match fn with
-          | Expanded fn -> (
-            match Path.as_in_build_dir fn with
-            | Some target ->
-              { acc with targets = Path.Build.Set.remove acc.targets target }
-            | None -> acc )
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.remove acc.targets fn }
           | Unexpanded _ -> acc
 
         let ( +<! ) acc fn =

@@ -8,14 +8,19 @@ BIN := ./dune.exe
 
 # Dependencies used for developing and testing dune
 DEV_DEPS := \
+coq \
 core_bench \
+mdx \
 menhir \
 merlin \
+ocaml-migrate-parsetree \
+ocamlfind \
 ocamlformat \
 odoc \
 ppx_expect \
 ppx_inline_test \
 ppxlib \
+result \
 utop
 
 -include Makefile.dev
@@ -42,6 +47,9 @@ uninstall:
 	$(BIN) uninstall $(INSTALL_ARGS) dune
 
 reinstall: uninstall install
+
+dev-deps:
+	opam install -y $(DEV_DEPS)
 
 dev-switch:
 	opam switch create -y . --deps-only --with-test

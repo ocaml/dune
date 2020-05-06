@@ -1,6 +1,10 @@
 next
 ----
 
+- Add and `enabled_ if` field to the `install` stanza. Enforce the same
+  variable restrictions for `enabled_if` fields in the `executable` and `install`
+  stanzas than in the `library` stanza. (#3408, fixes #3354, @voodoos)
+
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,
   fixes #3427, @diml)

@@ -192,7 +192,7 @@ module Partial = struct
       Diff
         { optional
         ; file1 = E.path ~expander file1
-        ; file2 = E.path ~expander file2
+        ; file2 = E.target ~expander file2
         ; mode
         }
     | Merge_files_into (sources, extras, target) ->
@@ -305,7 +305,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     Diff
       { optional
       ; file1 = E.path ~expander file1
-      ; file2 = E.path ~expander file2
+      ; file2 = E.target ~expander file2
       ; mode
       }
   | Merge_files_into (sources, extras, target) ->
@@ -380,6 +380,8 @@ end = struct
     val ( +<+ ) : outcome -> target -> outcome
 
     val ( +<! ) : outcome -> program -> outcome
+
+    val ( +<- ) : outcome -> target -> outcome
   end
 
   module Make
@@ -420,9 +422,9 @@ end = struct
       | Digest_files l -> List.fold_left l ~init:acc ~f:( +< )
       | Diff { optional; file1; file2; mode = _ } ->
         if optional then
-          acc +< file1
+          acc +< file1 +<- file2
         else
-          acc +< file1 +< file2
+          acc +< file1 +<+ file2
       | Merge_files_into (sources, _extras, target) ->
         List.fold_left sources ~init:acc ~f:( +< ) +@+ target
       | Echo _
@@ -466,6 +468,9 @@ end = struct
               let ( +<+ ) acc fn =
                 { acc with deps = Path.Set.add acc.deps (Path.build fn) }
 
+              let ( +<- ) acc fn =
+                { acc with targets = Path.Build.Set.remove acc.targets fn }
+
               let ( +<! ) acc prog =
                 match prog with
                 | Ok p -> acc +< p
@@ -494,6 +499,12 @@ end = struct
             { acc with deps = Path.Set.add acc.deps (Path.build fn) }
           | Unexpanded _ -> acc
 
+        let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
+          match fn with
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.remove acc.targets fn }
+          | Unexpanded _ -> acc
+
         let ( +<! ) acc fn =
           match (fn : Partial.program) with
           | Expanded (This fn) -> { acc with deps = Path.Set.add acc.deps fn }
@@ -520,6 +531,12 @@ end = struct
           match fn with
           | Expanded fn ->
             { acc with deps = Path.Set.add acc.deps (Path.build fn) }
+          | Unexpanded _ -> acc
+
+        let ( +<- ) acc (fn : _ String_with_vars.Partial.t) =
+          match fn with
+          | Expanded fn ->
+            { acc with targets = Path.Build.Set.remove acc.targets fn }
           | Unexpanded _ -> acc
 
         let ( +<! ) acc fn =
@@ -584,6 +601,12 @@ end = struct
         let ( +<+ ) acc _ = acc
 
         let ( +<! ) = ( +< )
+
+        let ( +<- ) acc fn =
+          if String_with_vars.is_var fn ~name:"null" then
+            acc
+          else
+            { acc with targets = List.filter acc.targets ~f:(fun t -> t <> fn) }
       end)
 
   let unexpanded_targets t = (Unexp.infer t).targets

@@ -471,7 +471,8 @@ let promote_correction fn build ~suffix =
     [ build
     ; Build.with_no_targets
         (Build.return
-           (Action.diff ~optional:true fn (Path.extend_basename fn ~suffix)))
+           (Action.diff ~optional:true (Path.build fn)
+              (Path.Build.extend_basename fn ~suffix)))
     ]
 
 let chdir action = Action_unexpanded.Chdir (workspace_root_var, action)
@@ -567,7 +568,8 @@ let lint_module sctx ~dir ~expander ~dep_kind ~lint ~lib_name ~scope =
              Module.iter ast ~f:(fun ml_kind src ->
                  add_alias src.path ~loc:None
                    (promote_correction ~suffix:corrected_suffix
-                      (Option.value_exn (Module.file source ~ml_kind))
+                      (Path.as_in_build_dir_exn
+                         (Option.value_exn (Module.file source ~ml_kind)))
                       (Build.With_targets.of_result_map ~targets:[]
                          driver_and_flags ~f:(fun (exe, flags, args) ->
                            Command.run
@@ -647,7 +649,8 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
                 SC.add_rule ~sandbox:Sandbox_config.no_special_requirements sctx
                   ~loc ~dir
                   (promote_correction ~suffix:corrected_suffix
-                     (Option.value_exn (Module.file m ~ml_kind))
+                     (Path.as_in_build_dir_exn
+                        (Option.value_exn (Module.file m ~ml_kind)))
                      ( Build.with_no_targets preprocessor_deps
                      >>> Build.With_targets.of_result_map driver_and_flags
                            ~targets:[ dst ] ~f:(fun (exe, flags, args) ->

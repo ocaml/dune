@@ -2,38 +2,23 @@
 Code coverage with bisect
 *************************
 
-Normally, preprocessors (specified in ``dune`` files) are constant across all
-builds. However, it usually doesn't make sense to analyze code coverage on all
-builds, especially if you aren't running tests every time.
-
 In this section, we will explain how to set up code coverage with bisect_ppx_ so
-that you can enable and disable coverage via ``dune-workspace`` files.
+that you can enable and disable coverage via ``dune-workspace`` files. This
+setup avoids creating a hard dependency on ``bisect_ppx`` in your project.
 
 Specifying what to bisect
 =========================
 
-To measure coverage for every build, we can include ``bisect_ppx`` in the
-``preprocess`` field for each relevant library and executable. For example, the
-dune file would include stanza(s) like this:
-
-.. code:: scheme
-
-          (library
-           (name foo)
-           (preprocess (pps bisect_ppx)))
-
-This aligns with the standard usage of ppx libraries.
-
-However, if we would like to control which builds measure coverage, first we
-must include ``(using bisect_ppx 1.0)`` in our ``dune-project`` file, like so:
+First we must include ``(using bisect_ppx 1.0)`` in our ``dune-project`` file,
+like so:
 
 .. code:: scheme
 
           (lang dune 2.6)
           (using bisect_ppx 1.0)
 
-Then, instead of including ``bisect_ppx`` in ``preprocess``, we should use the
-``(bisect_ppx)`` field. The dune file may look like this:
+Then, we should use the ``(bisect_ppx)`` field. The dune file may look like
+this:
 
 .. code:: scheme
 
@@ -81,7 +66,7 @@ We can also define different contexts in the ``dune-workspace`` file as follows:
 Running the following will enable coverage:
 
 .. code:: bash
-    
+
           $ dune exec ./test.exe --context coverage
 
 .. _bisect_ppx: https://github.com/aantron/bisect_ppx

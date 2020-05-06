@@ -1,6 +1,6 @@
-next
-----
-- Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2` 
+## next
+
+- Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
   result in error. (#3444, fix #3443, @bikallem)
 
 - Insert a constraint one the version of dune when the user explicitly
@@ -10,8 +10,7 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
-2.5.1 (17/04/2020)
-------------------
+- Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
 
 - [coq] Fix install .v files for Coq theories (#3384, @lthms)
 
@@ -21,8 +20,9 @@ next
 - Fix a bug introduced in 2.0.0 where the [locks] field in rules with no targets
   had no effect. (@aalekseyev, report by @craigfe)
 
-2.5.0 (09/04/2020)
-------------------
+  2.5.0 (09/04/2020)
+
+---
 
 - Add a `--release` option meaning the same as `-p` but without the
   package filtering. This is useful for custom `dune` invocation in opam
@@ -83,8 +83,9 @@ next
 - Fix dune build freezing on MacOS when cache is enabled. (#3249, fixes ##2973,
   @artempyanykh)
 
-2.4.0 (06/03/2020)
-------------------
+  2.4.0 (06/03/2020)
+
+---
 
 - Add `mdx` extension and stanza version 0.1 (#3094, @NathanReb)
 
@@ -96,8 +97,7 @@ next
 - Add a `dune describe` command to obtain the topology of a dune workspace, for
   projects such as ROTOR. (#3128, @diml)
 
-- Add `plugin` linking mode for executables and the `(embed_in_plugin_libraries
-  ...)` field. (#3141, @nojb)
+- Add `plugin` linking mode for executables and the `(embed_in_plugin_libraries ...)` field. (#3141, @nojb)
 
 - Add an `%{ext_plugin}` variable (#3141, @nojb)
 
@@ -111,8 +111,9 @@ next
   under `_build` in read-only mode instead of only doing it when the
   shared cache is enabled (#3092, @mefyl)
 
-2.3.1 (20/02/2020)
-------------------
+  2.3.1 (20/02/2020)
+
+---
 
 - Fix versioning of artifact variables (eg %{cmxa:...}), which were introduced
   in 2.0, not 1.11. (#3149, @nojb)
@@ -122,8 +123,9 @@ next
 
 - Fix a bug causing all executables to be considered as optional (#3163, @diml)
 
-2.3.0 (15/02/2020)
-------------------
+  2.3.0 (15/02/2020)
+
+---
 
 - Improve validation and error handling of arguments to `dune init` (#3103, fixes
   #3046, @shonfeder)
@@ -142,7 +144,7 @@ next
 
 - Better error reporting for "data only" and "vendored" dirs. Using these with
   anything else than a strict subdirectory or `*` will raise an error. The
-  previous behavior was to just do nothing  (#3056, fixes #3019, @voodoos)
+  previous behavior was to just do nothing (#3056, fixes #3019, @voodoos)
 
 - Fix bootstrap on bytecode only switches on windows or where `-j1` is set.
   (#3112, @xclerc, @rgrinberg)
@@ -159,8 +161,9 @@ next
 - Make sure the `@all` alias is defined when no `dune` file is present
   in a directory (#2946, fix #2927, @diml)
 
-2.2.0 (06/02/2020)
-------------------
+  2.2.0 (06/02/2020)
+
+---
 
 - `dune test` is now a command alias for `dune runtest`. This is to make the CLI
   less idiosyncratic (#3006, @shonfeder)
@@ -179,7 +182,7 @@ next
   without using the `./` prefix (#3041, fixes #1094, @voodoos).
 
 - Extend the list of modifiers that can be nested under
-  `with-accepted-exit-codes` with `chdir`,  `setenv`, `ignore-<outputs>`,
+  `with-accepted-exit-codes` with `chdir`, `setenv`, `ignore-<outputs>`,
   `with-stdin-from` and `with-<outputs>-to` (#3027, fixes #3014, @voodoos)
 
 - It is now an error to have a preprocessing dependency on a ppx rewriter
@@ -207,20 +210,23 @@ next
   self-contained bytecode programs
   (#3076, fixes #1519, @diml)
 
-2.1.3 (16/01/2020)
-------------------
+  2.1.3 (16/01/2020)
+
+---
 
 - Fix building the OCaml compiler with Dune (#3038, fixes #2974,
   @diml)
 
-2.1.2 (08/01/2020)
-------------------
+  2.1.2 (08/01/2020)
+
+---
 
 - Fix a bug in the `Fiber.finalize` function of the concurrency monad of Dune,
   causing a race condition at the user level (#3009, fix #2958, @diml)
 
-2.1.1 (07/01/2020)
-------------------
+  2.1.1 (07/01/2020)
+
+---
 
 - Guess foreign archives & native archives for libraries defined using the
   `META` format. (#2994, @rgrinberg, @anmonteiro)
@@ -228,8 +234,9 @@ next
 - Fix generation of `.merlin` files when depending on local libraries with more
   than one source directory. (#2983, @rgrinberg)
 
-2.1.0 (21/12/2019)
-------------------
+  2.1.0 (21/12/2019)
+
+---
 
 - Attach cinaps stanza actions to both `@runtest` and `@cinaps` aliases
   (#2831, @NathanReb)
@@ -251,21 +258,22 @@ next
   dependencies so that we can have things such as `(<> :os win32)`
   (#2965, @diml)
 
-2.0.1 (17/12/2019)
-------------------
+  2.0.1 (17/12/2019)
+
+---
 
 - Delay errors raised by invalid `dune-package` files. The error is now raised
   only if the invalid package is treated as a library and used to build
   something. (#2972, @rgrinberg)
 
-2.0.0 (20/11/2019)
-------------------
+  2.0.0 (20/11/2019)
 
-- Remove existing destination files in `install`  before installing the new
+---
+
+- Remove existing destination files in `install` before installing the new
   ones. (#2885, fixes #2883, @bschommer)
 
-- The `action` field in the `alias` stanza is not available starting `lang dune
-  2.0`. The `alias` field in the `rule` stanza is a replacement. (#2846, fixes
+- The `action` field in the `alias` stanza is not available starting `lang dune 2.0`. The `alias` field in the `rule` stanza is a replacement. (#2846, fixes
   2681, @rgrinberg)
 
 - Introduce `alias` and `package` fields to the `rule` stanza. This is the
@@ -293,7 +301,7 @@ next
 - Enable `(explicit_js_mode)` by default. (#1941, @nojb)
 
 - Add an option to clear the console in-between builds with
- `--terminal-persistence=clear-on-rebuild`
+  `--terminal-persistence=clear-on-rebuild`
 
 - Stop symlinking object files to main directory for stanzas defined `jbuild`
   files (#2440, @rgrinberg)
@@ -468,8 +476,9 @@ next
 - Delete the deprecated `self_build_stubs_archive` field, replaced by
   `foreign_archives`.
 
-1.11.4 (09/10/2019)
--------------------
+  1.11.4 (09/10/2019)
+
+---
 
 - Allow to mark directories as `data_only_dirs` without including them as `dirs`
   (#2619, fix #2584, @rgrinberg)
@@ -477,13 +486,15 @@ next
 - Fix reading `.install` files generated with an external `--build-dir`. (#2638,
   fix #2629, @rgrinberg)
 
-1.11.3 (23/08/2019)
--------------------
+  1.11.3 (23/08/2019)
+
+---
 
 - Fix a ppx hash collision in watch mode (#2546, fixes #2520, @diml)
 
-1.11.2 (20/08/2019)
--------------------
+  1.11.2 (20/08/2019)
+
+---
 
 - Remove the optimisation of passing `-nodynlink` for executalbes when
   not necessary. It seems to be breaking things (see #2527, @diml)
@@ -491,8 +502,9 @@ next
 - Fix invalid library names in `dune-package` files. Only public names should
   exist in such files. (#2558, fix #2425, @rgrinberg)
 
-1.11.1 (09/08/2019)
--------------------
+  1.11.1 (09/08/2019)
+
+---
 
 - Fix config file dependencies of ocamlformat (#2471, fixes #2464,
   @nojb)
@@ -501,8 +513,9 @@ next
   presence of directories with only sub-directories and no files
   (#2514, fixes #2499, @diml)
 
-1.11.0 (23/07/2019)
--------------------
+  1.11.0 (23/07/2019)
+
+---
 
 - Don't select all local implementations in `dune utop`. Instead, let the
   default implementation selection do its job. (#2327, fixes #2323, @TheLortex,
@@ -547,7 +560,7 @@ next
   requires at most one word, so `%{targets}` can be confusing; stdout
   redirections and "-o" arguments of various tools are the main use
   case; also, introduce a separate field `target` that must be used
-  instead of `targets` in those situations.  (#2341, @aalekseyev)
+  instead of `targets` in those situations. (#2341, @aalekseyev)
 
 - Fix dependency graph of wrapped_compat modules. Previously, the dependency on
   the user written entry module was omitted. (#2305, @rgrinberg)
@@ -598,8 +611,9 @@ next
   targets, and a switch `(explicit_js_mode)` to require this mode in order to
   declare JS targets corresponding to executables. (#1941, @nojb)
 
-1.10.0 (04/06/2019)
--------------------
+  1.10.0 (04/06/2019)
+
+---
 
 - Restricted the set of variables available for expansion in the destination
   filename of `install` stanza to simplify implementation and avoid dependency
@@ -611,11 +625,9 @@ next
 - [coq] Add `coq.pp` stanza to help with pre-processing of grammar
   files (#2054, @ejgallego, review by @rgrinberg)
 
-- Add a new more generic form for the *promote* mode: `(promote
-  (until-clean) (into <dir>))` (#2068, @diml)
+- Add a new more generic form for the _promote_ mode: `(promote (until-clean) (into <dir>))` (#2068, @diml)
 
-- Allow to promote only a subset of the targets via `(promote (only
-  <pred>))`. For instance: `(promote (only *.mli))` (#2068, @diml)
+- Allow to promote only a subset of the targets via `(promote (only <pred>))`. For instance: `(promote (only *.mli))` (#2068, @diml)
 
 - Improve the behavior when a strict subset of the targets of a rule is already
   in the source tree for projects using the dune language < 1.10 (#2068, fixes
@@ -639,15 +651,14 @@ next
 - Clean up the special support for `findlib.dynload`. Before, Dune would simply
   match on the library name. Now, we only match on the findlib package name when
   the library doesn't come from Dune. Someone writing a library called
-  `findlib.dynload` with Dune would have to add `(special_builtin_support
-  findlib_dynload)` to trigger the special behavior. (#2115, @diml)
+  `findlib.dynload` with Dune would have to add `(special_builtin_support findlib_dynload)` to trigger the special behavior. (#2115, @diml)
 
 - Install the `future_syntax` preprocessor as `ocaml-syntax-shims.exe` (#2125,
   @rgrinberg)
 
 - Hide full command on errors and warnings in development and show them in CI.
   (detected using the `CI` environment variable). Commands for which the
-  invocation might be omitted must output an error prefixed with `File `. Add an
+  invocation might be omitted must output an error prefixed with `File`. Add an
   `--always-show-command-line` option to disable this behavior and always show
   the full command. (#2120, fixes #1733, @rgrinberg)
 
@@ -702,13 +713,15 @@ next
   exist before trying to install anything. This prevents partial installation of
   packages (#2230, @rgrinberg)
 
-1.9.3 (06/05/2019)
-------------------
+  1.9.3 (06/05/2019)
+
+---
 
 - Fix `.install` files not being generated (#2124, fixes #2123, @rgrinberg)
 
-1.9.2 (02/05/2019)
-------------------
+  1.9.2 (02/05/2019)
+
+---
 
 - Put back library variants in development mode. We discovered a
   serious unexpected issue and we might need to adjust the design of
@@ -744,15 +757,17 @@ next
 - Include permissions in the digest of targets and dependencies (#2121, fix
   #1426, @rgrinberg, @xclerc)
 
-1.9.1 (11/04/2019)
-------------------
+  1.9.1 (11/04/2019)
+
+---
 
 - Fix invocation of odoc to add previously missing include paths, impacting
   mld files that are not in directories containing libraries (#2016, fixes
   #2007, @jonludlam)
 
-1.9.0 (09/04/2019)
-------------------
+  1.9.0 (09/04/2019)
+
+---
 
 - Warn when generated `.merlin` does not reflect the preprocessing
   specification. This occurs when multiple stanzas in the same directory use
@@ -799,20 +814,23 @@ next
 - Format rules: if a dune file uses OCaml syntax, do not format it.
   (#2014, fix #2012, @emillon)
 
-1.8.2 (10/03/2019)
-------------------
+  1.8.2 (10/03/2019)
+
+---
 
 - Fix auto-generated `index.mld`. Use correct headings for the listing. (#1925,
   @rgrinberg, @aantron)
 
-1.8.1 (08/03/2019)
-------------------
+  1.8.1 (08/03/2019)
+
+---
 
 - Correctly write `dune-package` when version is empty string (#1919, fix #1918,
   @rgrinberg)
 
-1.8.0 (07/03/2019)
-------------------
+  1.8.0 (07/03/2019)
+
+---
 
 - Clean up watch mode polling loop: improves signal handling and error handling
   during polling (#1912, fix #1907, fix #1671, @aalekseyev)
@@ -855,8 +873,9 @@ next
 - Make sure `(menhir (mode promote) ...)` stanzas are ignored when
   using `--ignore-promoted-rules` or `-p` (#1917, @diml)
 
-1.7.3 (27/02/2019)
-------------------
+  1.7.3 (27/02/2019)
+
+---
 
 - Fix interpretation of `META` files containing archives with `/` in
   the filename. For instance, this was causing llvm to be unusable
@@ -865,8 +884,9 @@ next
 - Make errors about menhir stanzas be located (#1881, fix #1876,
   @diml)
 
-1.7.2 (21/02/2019)
-------------------
+  1.7.2 (21/02/2019)
+
+---
 
 - Add `${corrected-suffix}`, `${library-name}` and a few other
   variables to the list of variables to upgrade. This fixes the
@@ -883,23 +903,24 @@ next
 - Fix unavailable, optional implementations eagerly breaking the build (#1857,
   fix #1856, @rgrinberg)
 
-1.7.1 (13/02/2019)
-------------------
+  1.7.1 (13/02/2019)
+
+---
 
 - Fix the watch mode (#1837, #1839, fix #1836, @diml)
 
 - Configurator: Fix misquoting when running pkg-config (#1835, fix #1833,
   @Chris00)
 
-1.7.0 (12/02/2019)
-------------------
+  1.7.0 (12/02/2019)
 
+---
 
 - Second step of the deprecation of jbuilder: the `jbuilder` binary
   now emits a warning on every startup and both `jbuilder` and `dune`
   emit warnings when encountering `jbuild` files (#1752, @diml)
 
-- Change the layout of build artifacts inside _build. The new layout enables
+- Change the layout of build artifacts inside \_build. The new layout enables
   optimizations that depend on the presence of `.cmx` files of private modules
   (#1676, @bobot)
 
@@ -1001,7 +1022,7 @@ next
 - Pass flags correctly when using `staged_pps` (#1779, fixes #1774, @diml)
 
 - Fix an issue with the use of `(mode promote)` in the menhir
-  stanza. It was previously causing intermediate *mock* files to be
+  stanza. It was previously causing intermediate _mock_ files to be
   promoted (#1783, fixes #1781, @diml)
 
 - unstable-fmt: ignore files using OCaml syntax (#1784, @emillon)
@@ -1036,8 +1057,9 @@ next
 - Autoformatting: record dependencies on `.ocamlformat-ignore` files (#1824,
   fixes #1793, @emillon)
 
-1.6.2 (05/12/2018)
-------------------
+  1.6.2 (05/12/2018)
+
+---
 
 - Fix regression introduced by #1554 reported in:
   https://github.com/ocaml/dune/issues/734#issuecomment-444177134 (#1612,
@@ -1046,8 +1068,9 @@ next
 - Fix `dune external-lib-deps` when preprocessors are not installed
   (#1607, @diml)
 
-1.6.1 (04/12/2018)
-------------------
+  1.6.1 (04/12/2018)
+
+---
 
 - Fix hash collision for on-demand ppx rewriters once and for all
   (#1602, fixes #1524, @diml)
@@ -1055,8 +1078,9 @@ next
 - Add `dune external-lib-deps --sexp --unstable-by-dir` so that the output can
   be easily processed by a machine (#1599, @diml)
 
-1.6.0 (29/11/2018)
-------------------
+  1.6.0 (29/11/2018)
+
+---
 
 - Expand variables in `install` stanzas (#1354, @mseri)
 
@@ -1099,8 +1123,9 @@ next
 - Introduce `data_only_dirs` to replace `ignored_subdirs`. `ignored_subdirs` is
   deprecated since 1.6. (#1590, @rgrinberg)
 
-1.5.1 (7/11/2018)
------------------
+  1.5.1 (7/11/2018)
+
+---
 
 - Fix `dune utop <dir>` when invoked from a sub-directory of the
   project (#1520, fix #1518, @diml)
@@ -1108,8 +1133,9 @@ next
 - Fix bad interaction between on-demand ppx rewriters and polling mode
   (#1525, fix #1524, @diml)
 
-1.5.0 (1/11/2018)
------------------
+  1.5.0 (1/11/2018)
+
+---
 
 - Filter out empty paths from `OCAMLPATH` and `PATH` (#1436, @rgrinberg)
 
@@ -1160,8 +1186,9 @@ next
 - Fix interpretation of environment variables under `setenv`. Also forbid
   dynamic environment names or values (#1503, @rgrinberg).
 
-1.4.0 (10/10/2018)
-------------------
+  1.4.0 (10/10/2018)
+
+---
 
 - Do not fail if the output of `ocamlc -config` doesn't include
   `standard_runtime` (#1326, @diml)
@@ -1213,8 +1240,9 @@ next
 
 - Fix stop early bug when scanning for watermarks (#1423, @struktured)
 
-1.3.0 (23/09/2018)
-------------------
+  1.3.0 (23/09/2018)
+
+---
 
 - Support colors on Windows (#1290, @diml)
 
@@ -1247,8 +1275,9 @@ next
   copied should be in a subdirectory of the current directory.
   (#1323, fix #911, @nojb)
 
-1.2.1 (17/09/2018)
-------------------
+  1.2.1 (17/09/2018)
+
+---
 
 - Enrich the `dune` Emacs mode with syntax highlighting and indentation. New
   file `dune-flymake` to provide a hook `dune-flymake-dune-mode-hook` to enable
@@ -1265,8 +1294,9 @@ next
 
 - ocamlmklib should use response files only if ocaml >= 4.08 (#1268, @bryphe)
 
-1.2.0 (14/09/2018)
-------------------
+  1.2.0 (14/09/2018)
+
+---
 
 - Ignore stderr output when trying to find out the number of jobs
   available (#1118, fix #1116, @diml)
@@ -1340,8 +1370,9 @@ next
 - Make the `dynlink` library available without findlib installed (#1270, fix
   #1264, @rgrinberg)
 
-1.1.1 (08/08/2018)
-------------------
+  1.1.1 (08/08/2018)
+
+---
 
 - Fix `$ jbuilder --dev` (#1104, fixes #1103, @rgrinberg)
 
@@ -1361,8 +1392,9 @@ next
 - Fix a bug causing the toplevel `env` stanza in the workspace file to
   be ignored when at least one context had `(merlin)` (#1114, @diml)
 
-1.1.0 (06/08/2018)
-------------------
+  1.1.0 (06/08/2018)
+
+---
 
 - Fix lookup of command line specified files when `--root` is given. Previously,
   passing in `--root` in conjunction with `--workspace` or `--config` would not
@@ -1396,18 +1428,20 @@ next
 - Add locations to errors when a missing binary in PATH comes from a dune file
   (#1096, fixes #1095, @rgrinberg)
 
-1.0.1 (19/07/2018)
-------------------
+  1.0.1 (19/07/2018)
+
+---
 
 - Fix parsing of `%{lib:name:file}` forms (#1022, fixes #1019, @diml)
 
-1.0.0 (10/07/2018)
-------------------
+  1.0.0 (10/07/2018)
+
+---
 
 - Do not load the user configuration file when running inside dune
   (#700 @diml)
 
-- Do not infer ${null} to be a target (#693 fixes #694 @rgrinberg)
+- Do not infer \${null} to be a target (#693 fixes #694 @rgrinberg)
 
 - Introduce jbuilder.configurator library. This is a revived version of
   janestreet's configurator library with better cross compilation support, a
@@ -1487,9 +1521,7 @@ next
 - Present the `menhir` stanza as an extension with its own version
   (#901, @diml)
 
-- Improve the syntax of flags in `(pps ...)`. Now instead of `(pps
-  (ppx1 -arg1 ppx2 (-foo x)))` one should write `(pps ppx1 -arg ppx2
-  -- -foo x)` which looks nicer (#910, @diml)
+- Improve the syntax of flags in `(pps ...)`. Now instead of `(pps (ppx1 -arg1 ppx2 (-foo x)))` one should write `(pps ppx1 -arg ppx2 -- -foo x)` which looks nicer (#910, @diml)
 
 - Make `(diff a b)` ignore trailing cr on Windows and add `(cmp a b)` for
   comparing binary files (#904, fix #844, @diml)
@@ -1538,11 +1570,12 @@ next
   `# JBUILDER_GEN`. (#958, @rgrinberg)
 
 - Rename the following variables in dune files:
-  + `SCOPE_ROOT` to `project_root`
-  + `@` to `targets`
-  + `^` to `deps`
-  `<` was renamed in this PR and latter deleted in favor or named dependencies.
-  (#957, @rgrinberg)
+
+  - `SCOPE_ROOT` to `project_root`
+  - `@` to `targets`
+  - `^` to `deps`
+    `<` was renamed in this PR and latter deleted in favor or named dependencies.
+    (#957, @rgrinberg)
 
 - Rename `ROOT` to `workspace_root` in dune files (#993, @diml)
 
@@ -1554,8 +1587,9 @@ next
 - Fix detection of dynamic cycles, which in particular may appear when
   using `(package ..)` dependencies (#988, @diml)
 
-1.0+beta20 (10/04/2018)
------------------------
+  1.0+beta20 (10/04/2018)
+
+---
 
 - Add a `documentation` stanza. This stanza allows one to attach .mld files to
   opam packages. (#570 @rgrinberg)
@@ -1579,7 +1613,7 @@ next
 
 - Missing asm in ocaml -config on bytecode only architecture is no longer fatal.
   The same kind of fix is preemptively applied to C compilers being absent.
-  (#646, fixes $637 @rgrinberg)
+  (#646, fixes \$637 @rgrinberg)
 
 - Use the host's PATH variable when running actions during cross compilation
   (#649, fixes #625 @rgrinberg)
@@ -1604,8 +1638,9 @@ next
 
 - Remove most useless parentheses from the syntax (#915, @diml)
 
-1.0+beta19.1 (21/03/2018)
--------------------------
+  1.0+beta19.1 (21/03/2018)
+
+---
 
 - Fix regression introduced by beta19 where duplicate environment variables in
   Unix.environ would cause a fatal error. The first defined environment variable
@@ -1617,8 +1652,9 @@ next
 - Use the contents of the `OCAMLPATH` environment variable when not relying on
   `ocamlfind` (#642 @diml)
 
-1.0+beta19 (14/03/2018)
------------------------
+  1.0+beta19 (14/03/2018)
+
+---
 
 - Ignore errors during the generation of the .merlin (#569, fixes #568 and #51)
 
@@ -1659,8 +1695,9 @@ next
 
 - Fix display when output is not a tty (#518)
 
-1.0+beta18.1 (14/03/2018)
--------------------------
+  1.0+beta18.1 (14/03/2018)
+
+---
 
 - Reduce the number of simultaneously opened fds (#578)
 
@@ -1676,16 +1713,17 @@ next
 - Add a hack to be able to build ppxlib, until beta20 which will have
   generic support for ppx drivers
 
-1.0+beta18 (25/02/2018)
------------------------
+  1.0+beta18 (25/02/2018)
+
+---
 
 - Fix generation of the implicit alias module with 4.02. With 4.02 it
   must have an implementation while with OCaml >= 4.03 it can be an
   interface only module (#549)
 
-- Let the parser distinguish quoted strings from atoms.  This makes
-  possible to use "${v}" to concatenate the list of values provided by
-  a split-variable.  Concatenating split-variables with text is also
+- Let the parser distinguish quoted strings from atoms. This makes
+  possible to use "\${v}" to concatenate the list of values provided by
+  a split-variable. Concatenating split-variables with text is also
   now required to be quoted.
 
 - Split calls to ocamldep. Before ocamldep would be called once per
@@ -1728,8 +1766,9 @@ next
 
 - Fix invalid warning about non-existent directory (#536, fixes #534)
 
-1.0+beta17 (01/02/2018)
------------------------
+  1.0+beta17 (01/02/2018)
+
+---
 
 - Make jbuilder aware that `num` is an external package in OCaml >= 4.06.0
   (#358)
@@ -1801,13 +1840,14 @@ next
   deprecation warning when compiling C++ sources (#354)
 
 - Add a mode field to `rule` stanzas:
-  + `(mode standard)` is the default
-  + `(mode fallback)` replaces `(fallback)`
-  + `(mode promote)` means that targets are copied to the source tree
-  after the rule has completed
-  + `(mode promote-until-clean)` is the same as `(mode promote)` except
-  that `jbuilder clean` deletes the files copied to the source tree.
-  (#437)
+
+  - `(mode standard)` is the default
+  - `(mode fallback)` replaces `(fallback)`
+  - `(mode promote)` means that targets are copied to the source tree
+    after the rule has completed
+  - `(mode promote-until-clean)` is the same as `(mode promote)` except
+    that `jbuilder clean` deletes the files copied to the source tree.
+    (#437)
 
 - Add a flag `--ignore-promoted-rules` to make jbuilder ignore rules
   with `(mode promote)`. `-p` implies `--ignore-promoted-rules` (#437)
@@ -1823,13 +1863,15 @@ next
 - Make the beginning of a new build more explicit in watch mode
   (#2542 @diml)
 
-1.0+beta16 (05/11/2017)
------------------------
+  1.0+beta16 (05/11/2017)
+
+---
 
 - Fix build on 32-bit OCaml (#313)
 
-1.0+beta15 (04/11/2017)
------------------------
+  1.0+beta15 (04/11/2017)
+
+---
 
 - Change the semantic of aliases: there are no longer aliases that are
   recursive such as `install` or `runtest`. All aliases are
@@ -1837,8 +1879,7 @@ next
   line, this request the construction of the alias in the specified
   directory and all its children recursively. This allows users to get
   the same behavior as previous recursive aliases for their own
-  aliases, such as `example`. Inside jbuild files, one can use `(deps
-  (... (alias_rec xxx) ...))` to get the same behavior as on the
+  aliases, such as `example`. Inside jbuild files, one can use `(deps (... (alias_rec xxx) ...))` to get the same behavior as on the
   command line. (#268)
 
 - Include sub libraries that have a `.` in the generated documentation index
@@ -1849,8 +1890,9 @@ next
 
 - Fix `ARCH_SIXTYFOUR` detection for OCaml 4.06.0 (#303)
 
-1.0+beta14 (11/10/2017)
------------------------
+  1.0+beta14 (11/10/2017)
+
+---
 
 - Add (copy_files <glob>) and (copy_files# <glob>) stanzas. These
   stanzas setup rules for copying files from a sub-directory to the
@@ -1876,8 +1918,9 @@ next
 
 - Support `${..}` syntax in the `include` stanza. (#231)
 
-1.0+beta13 (05/09/2017)
------------------------
+  1.0+beta13 (05/09/2017)
+
+---
 
 - Generate toplevel html index for documentation (#224, @samoht)
 
@@ -1885,15 +1928,15 @@ next
   version (1.0+beta12) when digests replaces timestamps for checking staleness
   (#238, @dra27)
 
-1.0+beta12 (18/08/2017)
------------------------
+  1.0+beta12 (18/08/2017)
+
+---
 
 - Fix the quoting of `FLG` lines in generated `.merlin` files (#200,
   @mseri)
 
 - Use the full path of archive files when linking. Before jbuilder
-  would do: `-I <path> file.cmxa`, now it does `-I <path>
-  <path>/file.cmxa`. Fixes #118 and #177
+  would do: `-I <path> file.cmxa`, now it does `-I <path> <path>/file.cmxa`. Fixes #118 and #177
 
 - Use an absolute path for ppx drivers in `.merlin` files. Merlin
   <3.0.0 used to run ppx commands from the directory where the
@@ -1901,8 +1944,7 @@ next
 
 - Allow to use `jbuilder install` in contexts other than opam; if
   `ocamlfind` is present in the `PATH` and the user didn't pass
-  `--prefix` or `--libdir` explicitly, use the output of `ocamlfind
-  printconf destdir` as destination directory for library files (#179,
+  `--prefix` or `--libdir` explicitly, use the output of `ocamlfind printconf destdir` as destination directory for library files (#179,
   @bobot)
 
 - Allow `(:include ...)` forms in all `*flags` fields (#153, @dra27)
@@ -1929,8 +1971,9 @@ next
   avoid more useless recompilations, especially when switching branches
   for instance (#209, fixes #158)
 
-1.0+beta11 (21/07/2017)
------------------------
+  1.0+beta11 (21/07/2017)
+
+---
 
 - Fix the error message when there are more than one `<package>.opam`
   file for a given package
@@ -1950,8 +1993,9 @@ next
 - Fix compilation of reason projects: .rei files where ignored and
   caused the build to fail (#184)
 
-1.0+beta10 (08/06/2017)
------------------------
+  1.0+beta10 (08/06/2017)
+
+---
 
 - Add a `clean` subcommand (@rdavison, #89)
 
@@ -1988,6 +2032,7 @@ next
   instance: `(run foo ${!^})`
 
 - Add support for using the contents of a file inside an action:
+
   - `${read:<file>}`
   - `${read-lines:<file>}`
   - `${read-strings:<file>}` (same as `read-lines` but lines are
@@ -2017,8 +2062,9 @@ next
 - Fix .merlin generation: projects in the same workspace are added to
   merlin's source path, so "locate" works on them.
 
-1.0+beta9 (19/05/2017)
-----------------------
+  1.0+beta9 (19/05/2017)
+
+---
 
 - Add support for building Reason projects (@rgrinberg, #58)
 
@@ -2038,22 +2084,24 @@ next
   tests to a specific package (@rgrinberg, #64)
 
 - Fix a couple of bugs on Windows:
-  + fix parsing of end of lines in some cases
-  + do not take the case into account when comparing environment
+
+  - fix parsing of end of lines in some cases
+  - do not take the case into account when comparing environment
     variable names
 
 - Add AppVeyor CI
 
-- Better error message in case a chain of dependencies *crosses* the
+- Better error message in case a chain of dependencies _crosses_ the
   installed world
 
 - Better error messages for invalid dependency list in jbuild files
 
 - Several improvements/fixes regarding the handling of findlib packages:
-  + Better error messages when a findlib package is unavailable
-  + Don't crash when an installed findlib package has missing
+
+  - Better error messages when a findlib package is unavailable
+  - Don't crash when an installed findlib package has missing
     dependencies
-  + Handle the findlib alternative directory layout which is still
+  - Handle the findlib alternative directory layout which is still
     used by a few packages
 
 - Add `jbuilder installed-libraries --not-available` explaining why
@@ -2068,6 +2116,7 @@ next
 
 - Ignore all directories starting with a `.` or `_`. This seems to be
   a common pattern:
+
   - `.git`, `.hg`, `_darcs`
   - `_build`
   - `_opam` (opam 2 local switches)
@@ -2077,8 +2126,9 @@ next
 - Do not require `ocamllex` and `ocamlyacc` to be at the same location
   as `ocamlc` (#75)
 
-1.0+beta8 (17/04/2017)
-----------------------
+  1.0+beta8 (17/04/2017)
+
+---
 
 - Added `${lib-available:<library-name>}` which expands to `true` or
   `false` with the same semantic as literals in `(select ...)` stanzas
@@ -2090,8 +2140,9 @@ next
 
 - Fix: make sure the action working directory exist before running it
 
-1.0+beta7 (12/04/2017)
-----------------------
+  1.0+beta7 (12/04/2017)
+
+---
 
 - Make the output quieter by default and add a `--verbose` argument
   (@stedolan, #40)
@@ -2122,13 +2173,13 @@ next
 - Don't generate a `exists_if ...` lines in META files. These are
   useless sine the META files are auto-generated
 
-1.0+beta6 (29/03/2017)
-----------------------
+  1.0+beta6 (29/03/2017)
+
+---
 
 - Add an `(executable ...)` stanza for single executables (#33)
 
-- Add a `(package ...)` and `(public_name <name>)/(public_names
-   (<names))` to `executable/executables` stanzas to make it easier to
+- Add a `(package ...)` and `(public_name <name>)/(public_names (<names))` to `executable/executables` stanzas to make it easier to
   install executables (#33)
 
 - Fix a bug when using specific rewriters that jbuilder knows about
@@ -2140,8 +2191,9 @@ next
   number of formal predicates was selected instead of the one with the
   biggest number of formal predicates
 
-1.0+beta5 (22/03/2017)
-----------------------
+  1.0+beta5 (22/03/2017)
+
+---
 
 - When `ocamlfind` is present in the `PATH`, do not attempt to call
   `opam config var lib`
@@ -2156,18 +2208,19 @@ next
 
 - Don't drop inline tests/benchmarks by default
 
-1.0+beta4 (20/03/2017)
-----------------------
+  1.0+beta4 (20/03/2017)
+
+---
 
 - Improve error messages about invalid/missing pkg.opam files
 
 - Ignore all errors while running `ocamlfind printconf path`
 
-1.0+beta3 (15/03/2017)
-----------------------
+  1.0+beta3 (15/03/2017)
 
-- Print optional dependencies as optional in the output of `jbuilder
-   external-lib-deps --missing`
+---
+
+- Print optional dependencies as optional in the output of `jbuilder external-lib-deps --missing`
 
 - Added a few forms to the DSL:
   - `with-{stderr,outputs}-to`
@@ -2201,22 +2254,24 @@ next
 - Do not crash when an installed package that we don't need has
   missing dependencies (#25)
 
-1.0+beta2 (10/03/2017)
-----------------------
+  1.0+beta2 (10/03/2017)
+
+---
 
 - Simplified the rules for finding the root of the workspace as the
   old ones were often picking up the home directory. New rules are:
-  + look for a `jbuild-workspace` file in parent directories
-  + look for a `jbuild-workspace*` file in parent directories
-  + use the current directory
+  - look for a `jbuild-workspace` file in parent directories
+  - look for a `jbuild-workspace*` file in parent directories
+  - use the current directory
 - Fixed the expansion of `${ROOT}` in actions
 
 - Install `quick-start.org` in the documentation directory
 
 - Add a few more things in the log file to help debugging
 
-1.0+beta1 (07/03/2017)
-----------------------
+  1.0+beta1 (07/03/2017)
+
+---
 
 - Added a manual
 
@@ -2225,11 +2280,11 @@ next
 - Switched the CLI to cmdliner and added a `build` command (#5, @rgrinberg)
 
 - Added a few commands:
-  + `runtest`
-  + `install`
-  + `uninstall`
-  + `installed-libraries`
-  + `exec`: execute a command in an environment similar to what you
+  - `runtest`
+  - `install`
+  - `uninstall`
+  - `installed-libraries`
+  - `exec`: execute a command in an environment similar to what you
     would get after `jbuilder install`
 - Removed the `build-package` command in favor of a `--only-packages`
   option that is common to all commands
@@ -2263,9 +2318,10 @@ next
 
 - extended the action language to support common actions without using
   a shell:
-  + `(with-stdout-to <file> <DSL>)`
-  + `(copy <src> <dst>)`
-  + ...
+
+  - `(with-stdout-to <file> <DSL>)`
+  - `(copy <src> <dst>)`
+  - ...
 
 - Removed all implicit uses of bash or the system shell. Now one has
   to write explicitly `(bash "...")` or `(system "...")`
@@ -2275,7 +2331,8 @@ next
 - Strengthen the scope of a package. Jbuilder knows about package
   `foo` only in the sub-tree starting from where `foo.opam` lives
 
-0.1.alpha1 (04/12/2016)
------------------------
+  0.1.alpha1 (04/12/2016)
+
+---
 
 First release

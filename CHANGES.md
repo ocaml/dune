@@ -7,11 +7,13 @@ next
 
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
-  
+
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
 
 - Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
+
+- Fix `$ dune print-rules` crashing (#3459, fixes #3440, @rgrinberg)
 
 2.5.1 (17/04/2020)
 ------------------

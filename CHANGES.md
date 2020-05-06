@@ -11,6 +11,8 @@ next
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
 
+- Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
+
 2.5.1 (17/04/2020)
 ------------------
 

@@ -25,4 +25,10 @@ are given as paramters
 `dune init lib foo --public="some/invalid&name!"` returns an informative parsing error
 
   $ dune init lib foo --public="some/invalid&name!"
-  Success: initialized library component named foo
+  dune: option `--public': invalid component name `some/invalid&name!'
+        Library names must be non-empty and composed only of the
+        following
+        characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
+  Try `dune init --help' or `dune --help' for more information.
+  [1]

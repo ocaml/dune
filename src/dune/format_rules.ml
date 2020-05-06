@@ -6,7 +6,7 @@ let add_diff sctx loc alias ~dir ~input ~output =
   Super_context.add_alias_action sctx alias ~dir ~loc:(Some loc) ~locks:[]
     ~stamp:input
     (Build.with_no_targets
-       (Build.paths [ input; output ] >>> Build.return action))
+       (Build.paths [ input; Path.build output ] >>> Build.return action))
 
 let rec subdirs_until_root dir =
   match Path.parent dir with
@@ -74,8 +74,7 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
     in
     Option.iter formatter ~f:(fun arr ->
         Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;
-        add_diff sctx loc alias_formatted ~dir ~input:(Path.build input)
-          ~output:(Path.build output))
+        add_diff sctx loc alias_formatted ~dir ~input:(Path.build input) ~output)
   in
   File_tree.files_of source_dir |> Path.Source.Set.iter ~f:setup_formatting;
   Rules.Produce.Alias.add_deps alias_formatted Path.Set.empty

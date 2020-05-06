@@ -291,6 +291,12 @@ let split_prog s =
 module Vars = struct
   type t = string String.Map.t
 
+  let to_list = String.Map.to_list
+
+  let of_list_exn = String.Map.of_list_exn
+
+  let find = String.Map.find
+
   let of_lines lines =
     let rec loop acc = function
       | [] -> Ok acc

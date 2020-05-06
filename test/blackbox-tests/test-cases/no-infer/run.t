@@ -1,13 +1,37 @@
 An action with source dependencies that are generated outside of dune should work if wrapped in (no-infer ...) but not otherwise.
 
-  $ dune build --root error-without-no-infer
-  Entering directory 'error-without-no-infer'
-  File "dune", line 1, characters 0-80:
+  $ cat > dune-project << EOF
+  > (lang dune 2.0)
+  > EOF
+
+  $ cat >dune <<EOF
+  > (rule
+  >  (targets target)
+  >  (action
+  >   (progn
+  >    (run touch source)
+  >    (copy source target))))
+  > EOF
+
+  $ dune build --root .
+  File "dune", line 1, characters 0-90:
   1 | (rule
-  2 | (targets target)
-  3 | (action (progn (run touch source) (copy source target))))
+  2 |  (targets target)
+  3 |  (action
+  4 |   (progn
+  5 |    (run touch source)
+  6 |    (copy source target))))
   Error: No rule found for source
   [1]
 
-  $ dune build --root no-error-with-no-infer
-  Entering directory 'no-error-with-no-infer'
+  $ cat >dune <<EOF
+  > (rule
+  >  (targets target)
+  >  (action
+  >   (no-infer
+  >    (progn
+  >     (run touch source)
+  >     (copy source target)))))
+  > EOF
+
+  $ dune build --root .

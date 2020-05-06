@@ -38,7 +38,8 @@ Describe various things
          (impl (_build/default/foo.ml))
          (intf ())
          (cmt (_build/default/.foo.objs/byte/foo.cmt))
-         (cmti ()))))))
+         (cmti ()))))
+     (include_dirs (_build/default/.foo.objs/byte))))
    (library
     ((name foo.x)
      (uid c17373aee51bab94097b4b7818553cf3)
@@ -49,7 +50,8 @@ Describe various things
          (impl (_build/default/foo_x.ml))
          (intf ())
          (cmt (_build/default/.foo_x.objs/byte/foo_x.cmt))
-         (cmti ())))))))
+         (cmti ()))))
+     (include_dirs (_build/default/.foo_x.objs/byte)))))
 
 Test other formats
 ------------------

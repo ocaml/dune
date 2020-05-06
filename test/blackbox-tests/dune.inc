@@ -47,6 +47,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias bisect-ppx)
+ (deps (package dune) (source_tree test-cases/bisect-ppx))
+ (action
+  (chdir
+   test-cases/bisect-ppx
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias block-strings)
  (deps (package dune) (source_tree test-cases/block-strings))
  (action
@@ -2476,6 +2484,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
+  (alias bisect-ppx)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)

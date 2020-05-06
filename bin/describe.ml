@@ -83,11 +83,18 @@ module Crawl = struct
 
   let workspace { Dune.Main.workspace; scontexts } (context : Context.t) =
     let sctx = Context_name.Map.find_exn scontexts context.name in
+    let libs =
+      List.fold_left workspace.conf.projects ~init:Lib.Set.empty
+        ~f:(fun libs project ->
+          Super_context.find_scope_by_project sctx project
+          |> Scope.libs |> Lib.DB.all |> Lib.Set.union libs) in
+    let libs =
+      Lib.Set.fold libs ~init:libs ~f:(fun lib libs ->
+        match Lib.requires lib with
+        | Error _ -> libs
+        | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs) in
     Dyn.List
-      (List.concat_map workspace.conf.projects ~f:(fun project ->
-           Super_context.find_scope_by_project sctx project
-           |> Scope.libs |> Lib.DB.all ~recursive:true |> Lib.Set.to_list
-           |> List.filter_map ~f:(library sctx)))
+      (Lib.Set.to_list libs |> List.filter_map ~f:(library sctx))
 end
 
 (* What to describe. To determine what to describe, we convert the positional

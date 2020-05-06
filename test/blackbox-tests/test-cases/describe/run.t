@@ -32,6 +32,7 @@ Describe various things
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
      (requires (c17373aee51bab94097b4b7818553cf3))
+     (local true)
      (source_dir _build/default)
      (modules
        (((name Foo)
@@ -44,6 +45,7 @@ Describe various things
     ((name foo.x)
      (uid c17373aee51bab94097b4b7818553cf3)
      (requires ())
+     (local true)
      (source_dir _build/default)
      (modules
        (((name Foo_x)

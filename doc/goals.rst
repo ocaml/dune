@@ -63,6 +63,8 @@ do not need upper bounds on Dune.
 
 This guarantee is of course limited to documented behaviours.
 
+.. _semantic versioning: https://semver.org/
+
 Have a robust and scalable core
 ===============================
 

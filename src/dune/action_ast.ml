@@ -172,13 +172,13 @@ struct
               and+ s = string in
               Write_file (fn, s) )
           ; ( "diff"
-            , let+ diff = Diff.decode path ~optional:false in
+            , let+ diff = Diff.decode path target ~optional:false in
               Diff diff )
           ; ( "diff?"
-            , let+ diff = Diff.decode path ~optional:true in
+            , let+ diff = Diff.decode path target ~optional:true in
               Diff diff )
           ; ( "cmp"
-            , let+ diff = Diff.decode_binary path in
+            , let+ diff = Diff.decode_binary path target in
               Diff diff )
           ])
 
@@ -231,11 +231,11 @@ struct
       List [ atom "digest-files"; List (List.map paths ~f:path) ]
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
-      List [ atom "cmp"; path file1; path file2 ]
+      List [ atom "cmp"; path file1; target file2 ]
     | Diff { optional = false; file1; file2; mode = _ } ->
-      List [ atom "diff"; path file1; path file2 ]
+      List [ atom "diff"; path file1; target file2 ]
     | Diff { optional = true; file1; file2; mode = _ } ->
-      List [ atom "diff?"; path file1; path file2 ]
+      List [ atom "diff?"; path file1; target file2 ]
     | Merge_files_into (srcs, extras, into) ->
       List
         [ atom "merge-files-into"

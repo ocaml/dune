@@ -1,8 +1,15 @@
-Unreleased
-------------------
+next
+----
+
+- Insert a constraint one the version of dune when the user explicitly
+  specify the dependency on dune in the `dune-project` file (#3434 ,
+  fixes #3427, @diml)
+
+- Generate correct META files for sub-libraries (of the form `lib.foo`) that
+  contain .js runtime files. (#3445, @hhugo)
+  
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
-
 
 2.5.1 (17/04/2020)
 ------------------

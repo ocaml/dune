@@ -111,15 +111,29 @@ let initial_message_of_sexp = function
     Result.Error
       (Printf.sprintf "invalid initial message: %s" (Sexp.to_string exp))
 
-let incoming_message_of_sexp _version = function
-  | Sexp.List
-      [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom path; Sexp.Atom digest ] ] -> (
-    match Digest.from_hex digest with
-    | Some digest ->
-      Result.Ok (Dedup { path = Path.Build.of_string path; digest })
-    | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest) )
-  | exp ->
-    Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+let incoming_message_of_sexp version sexp =
+  let open Result.O in
+  let* path, digest =
+    match sexp with
+    | Sexp.List
+        [ Sexp.Atom "dedup"; Sexp.List [ Sexp.Atom path; Sexp.Atom digest ] ]
+      when version = { major = 1; minor = 2 } ->
+      Ok (path, digest)
+    | Sexp.List
+        [ Sexp.Atom "dedup"
+        ; Sexp.List
+            (* Message protocol versions before v1.2 included an additional
+               field [_path_in_cache] which is no longer used. *)
+            [ Sexp.Atom path; Sexp.Atom _path_in_cache; Sexp.Atom digest ]
+        ] ->
+      Ok (path, digest)
+    | exp ->
+      Result.Error (Printf.sprintf "invalid command: %s" (Sexp.to_string exp))
+  in
+  match Digest.from_hex digest with
+  | Some digest ->
+    Result.Ok (Dedup { path = Path.Build.of_string path; digest })
+  | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest)
 
 let outgoing_message_of_sexp _version =
   let repos_of_sexp args =

@@ -22,10 +22,9 @@ module Files = struct
 
   let diff_action { src; corrected; deps = _ } =
     let src = Path.build src in
-    let corrected = Path.build corrected in
     let open Build.O in
     let+ () = Build.path src
-    and+ () = Build.path corrected in
+    and+ () = Build.path (Path.build corrected) in
     Action.diff ~optional:false src corrected
 end
 

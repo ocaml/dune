@@ -8,6 +8,9 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
+- Add a `(no-infer ...)` action that prevents inference of targets and
+  dependencies in actions. (#2006, @roddyyaga)
+
 2.5.1 (17/04/2020)
 ------------------
 

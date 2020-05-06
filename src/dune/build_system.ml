@@ -376,7 +376,7 @@ let set_vcs vcs =
         let f ({ Vcs.root; _ } as vcs) =
           let+ commit = Vcs.commit_id vcs in
           { Cache.directory = Path.to_absolute_filename root
-          ; remote = "FIXME: not filled yet"
+          ; remote = "" (* FIXME: fill or drop from the protocol *)
           ; commit
           }
         in

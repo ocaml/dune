@@ -200,6 +200,7 @@ module Partial = struct
         ( List.map ~f:(E.path ~expander) sources
         , List.map ~f:(E.string ~expander) extras
         , E.target ~expander target )
+    | No_infer t -> No_infer (expand t ~expander ~map_exe)
 end
 
 module E = Expand (struct
@@ -313,6 +314,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       ( List.map sources ~f:(E.path ~expander)
       , List.map extras ~f:(E.string ~expander)
       , E.target ~expander target )
+  | No_infer t -> No_infer (partial_expand t ~expander ~map_exe)
 
 module Infer : sig
   module Outcome : sig
@@ -431,7 +433,8 @@ end = struct
       | System _
       | Bash _
       | Remove_tree _
-      | Mkdir _ ->
+      | Mkdir _
+      | No_infer _ ->
         acc
 
     let infer t =

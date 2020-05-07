@@ -229,22 +229,23 @@ module Preprocess_map = struct
       (Loc.none, bisect_name)
     in
     Per_module.map t ~f:(fun pp ->
-      match pp with
-      | Preprocess.No_preprocessing ->
-        let loc = Loc.none in
-        let pps = [ bisect_ppx ] in
-        let flags = [] in
-        let staged = false in
-        Preprocess.Pps { loc; pps; flags; staged }
-      | Preprocess.Pps { loc; pps; flags; staged } ->
-        let pps = bisect_ppx :: pps in
-        Preprocess.Pps { loc; pps; flags; staged }
-      | Action (loc, _) | Future_syntax loc ->
-        User_error.raise ~loc
-          [ Pp.text
-              "Preprocessing with actions and future syntax cannot be used \
-              in conjunction with (bisect_ppx)"
-          ])
+        match pp with
+        | Preprocess.No_preprocessing ->
+          let loc = Loc.none in
+          let pps = [ bisect_ppx ] in
+          let flags = [] in
+          let staged = false in
+          Preprocess.Pps { loc; pps; flags; staged }
+        | Preprocess.Pps { loc; pps; flags; staged } ->
+          let pps = bisect_ppx :: pps in
+          Preprocess.Pps { loc; pps; flags; staged }
+        | Action (loc, _)
+        | Future_syntax loc ->
+          User_error.raise ~loc
+            [ Pp.text
+                "Preprocessing with actions and future syntax cannot be used \
+                 in conjunction with (bisect_ppx)"
+            ])
 end
 
 module Lint = struct
@@ -518,7 +519,7 @@ module Buildable = struct
       else
         Preprocess.No_preprocessing
 
-  let preprocess t ~(lib_config: Lib_config.t) =
+  let preprocess t ~(lib_config : Lib_config.t) =
     if t.bisect_ppx && lib_config.bisect_enabled then
       Preprocess_map.add_bisect t.preprocess
     else
@@ -1059,7 +1060,9 @@ module Library = struct
       let pps_without_bisect = Preprocess_map.pps conf.buildable.preprocess in
       if lib_config.bisect_enabled && conf.buildable.bisect_ppx then
         let bisect_ppx =
-          let bisect_name = Lib_name.parse_string_exn (Loc.none, "bisect_ppx") in
+          let bisect_name =
+            Lib_name.parse_string_exn (Loc.none, "bisect_ppx")
+          in
           (Loc.none, bisect_name)
         in
         bisect_ppx :: pps_without_bisect

@@ -346,8 +346,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind ~scope
-      ~preprocess ~expander
+    Preprocessing.make sctx ~dir ~dep_kind ~scope ~preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))

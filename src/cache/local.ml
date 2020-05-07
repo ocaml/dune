@@ -102,13 +102,8 @@ module FirstTwoCharsSubdir : FSScheme = struct
   let list ~root =
     let open Result.O in
     let f dir =
-      let is_hex_char = function
-        | '0' .. '9'
-        | 'a' .. 'f' ->
-          true
-        | _non_hex_char -> false
-      and root = Path.L.relative root [ dir ] in
-      if String.for_all ~f:is_hex_char dir then
+      let root = Path.L.relative root [ dir ] in
+      if String.for_all ~f:Char.is_lowercase_hex dir then
         let+ paths = Path.readdir_unsorted root in
         List.map ~f:(Path.relative root) paths
       else

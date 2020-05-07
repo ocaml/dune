@@ -446,7 +446,7 @@ let _garbage_collect cache ~trimmed_so_far =
 let garbage_collect = _garbage_collect ~trimmed_so_far:Trimming_result.empty
 
 (* We call a cached file "unused" if there are currently no hard links to it
-   from build directories. Note that [st_nlink] can return 0 in some *)
+   from build directories. *)
 let is_unused_file ~stats = stats.Unix.st_nlink = 1
 
 let trim cache ~goal =
@@ -465,6 +465,8 @@ let trim cache ~goal =
       trimmed_so_far
     else (
       Path.unlink path;
+      (* CR-soon amokhov: We should really be using block_size * #blocks because
+         that's how much we save actually. *)
       Trimming_result.add trimmed_so_far ~bytes
     )
   in

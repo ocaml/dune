@@ -23,7 +23,7 @@ let validate_component_options kind unsupported_options =
 let atom_parser s =
   match Dune_lang.Atom.parse s with
   | Some s -> Ok s
-  | None -> Error (`Msg "expected a valid dune atom"  )
+  | None -> Error (`Msg "expected a valid dune atom")
 
 let atom_printer ppf a = Format.pp_print_string ppf (Dune_lang.Atom.to_string a)
 
@@ -46,9 +46,7 @@ let component_name_parser s =
   in
   Ok atom
 
-let atom_conv =
-  Arg.conv
-    (atom_parser , atom_printer)
+let atom_conv = Arg.conv (atom_parser, atom_printer)
 
 let component_name_conv = Arg.conv (component_name_parser, atom_printer)
 

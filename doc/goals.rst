@@ -4,7 +4,7 @@ Goal of Dune
 
 The main goal of the Dune project is to provide the best possible
 build tool for the whole of the OCaml community, from individual
-developpers who work on open source projects during their free time
+developers who work on open source projects during their free time
 all the way to larger companies such as Jane Street. And to the extent
 that is reasonably possible, help provide the same feature for friend
 communities such as Coq and possibly Reason/Bucklescript in the

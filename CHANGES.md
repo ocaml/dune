@@ -1,17 +1,23 @@
 next
 ----
 
+- Add and `enabled_ if` field to the `install` stanza. Enforce the same
+  variable restrictions for `enabled_if` fields in the `executable` and `install`
+  stanzas than in the `library` stanza. (#3408, fixes #3354, @voodoos)
+
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,
   fixes #3427, @diml)
 
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
-  
+
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
 
 - Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
+
+- Fix `$ dune print-rules` crashing (#3459, fixes #3440, @rgrinberg)
 
 2.5.1 (17/04/2020)
 ------------------

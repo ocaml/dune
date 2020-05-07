@@ -20,8 +20,7 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config
   in
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander
-      ~preprocess
+    Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
       ~preprocessor_deps:exes.buildable.preprocessor_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in

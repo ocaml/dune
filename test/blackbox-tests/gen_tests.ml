@@ -170,6 +170,7 @@ module Test = struct
         (List.concat
            [ Sexp.strings [ "package"; "dune" ]
              :: Sexp.strings [ "source_tree"; dir ]
+             :: Sexp.strings [ "alias"; "test-deps" ]
              :: t.additional_deps
            ; ( if t.disable_sandboxing then
                [ Sexp.strings [ "sandbox"; "none" ] ]

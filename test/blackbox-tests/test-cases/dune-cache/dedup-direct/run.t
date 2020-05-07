@@ -20,7 +20,7 @@ with a hardlink to the cache (and thus also "source"), upping the
 hardlink counts to 3 and 3.
 
   $ env DUNE_CACHE=enabled DUNE_CACHE_TRANSPORT=direct DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target
-  $ ./stat.sh --format=%h _build/default/source
+  $ dune_stat hardlinks _build/default/source
   3
-  $ ./stat.sh --format=%h _build/default/target
+  $ dune_stat hardlinks _build/default/target
   3

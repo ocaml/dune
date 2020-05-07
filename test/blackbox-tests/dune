@@ -5,6 +5,14 @@
  (libraries stdune dune_lang)
  (modules gen_tests))
 
+(env
+ (_
+  (binaries ./utils/dune_stat.exe)))
+
+(alias
+ (name test-deps)
+ (deps ./utils/dune_stat.exe %{bin:dune_stat}))
+
 (include dune.inc)
 
 (rule

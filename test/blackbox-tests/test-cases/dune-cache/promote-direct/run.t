@@ -16,17 +16,17 @@
   > \_o< COIN
   > EOF
   $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
-  $ ./stat.sh --format=%h _build/default/source
+  $ dune_stat hardlinks _build/default/source
   2
-  $ ./stat.sh --format=%h _build/default/target
+  $ dune_stat hardlinks _build/default/target
   2
   $ ls _build/default/beacon
   _build/default/beacon
   $ rm -rf _build/default
   $ env DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
-  $ ./stat.sh --format=%h _build/default/source
+  $ dune_stat hardlinks _build/default/source
   2
-  $ ./stat.sh --format=%h _build/default/target
+  $ dune_stat hardlinks _build/default/target
   2
   $ test -e _build/default/beacon
   [1]

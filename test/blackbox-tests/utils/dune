@@ -1,0 +1,3 @@
+(executable
+ (name dune_stat)
+ (libraries stdune))

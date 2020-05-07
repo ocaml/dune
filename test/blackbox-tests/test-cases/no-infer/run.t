@@ -1,4 +1,5 @@
-An action with source dependencies that are generated outside of dune should work if wrapped in (no-infer ...) but not otherwise.
+An action with source dependencies that are generated outside of dune
+should work if wrapped in (no-infer ...) but not otherwise.
 
   $ cat > dune-project << EOF
   > (lang dune 2.6)

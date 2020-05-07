@@ -182,7 +182,9 @@ struct
           ; ( "cmp"
             , let+ diff = Diff.decode_binary path target in
               Diff diff )
-          ; ("no-infer", Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t)
+          ; ( "no-infer"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t ->
+              No_infer t )
           ])
 
   let rec encode =

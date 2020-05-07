@@ -76,7 +76,8 @@ struct
                     | Setenv (_, _, t)
                     | Ignore (_, t)
                     | Redirect_in (_, _, t)
-                    | Redirect_out (_, _, t) ->
+                    | Redirect_out (_, _, t)
+                    | No_infer t ->
                       if nesting_support then
                         is_ok t
                       else
@@ -104,6 +105,7 @@ struct
                                 ; "ignore-<outputs>"
                                 ; "with-stdin-from"
                                 ; "with-<outputs>-to"
+                                ; "no-infer"
                                 ]))
                       ]
                   | false, false ->
@@ -180,6 +182,7 @@ struct
           ; ( "cmp"
             , let+ diff = Diff.decode_binary path target in
               Diff diff )
+          ; ("no-infer", Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t -> No_infer t)
           ])
 
   let rec encode =
@@ -243,6 +246,7 @@ struct
         ; List (List.map ~f:string extras)
         ; target into
         ]
+    | No_infer r -> List [ atom "no-infer"; encode r ]
 
   let run prog args = Run (prog, args)
 

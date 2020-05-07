@@ -15,6 +15,9 @@ next
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
 
+- Add a `(no-infer ...)` action that prevents inference of targets and
+  dependencies in actions. (#3456, fixes #2006, @roddyyaga)
+
 - Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
 
 - Fix `$ dune print-rules` crashing (#3459, fixes #3440, @rgrinberg)

@@ -86,6 +86,7 @@ let simplify act =
            (List.map srcs ~f:String.quote_for_shell |> String.concat ~sep:" ")
            (String.quote_for_shell target))
       :: acc
+    | No_infer act -> loop act acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

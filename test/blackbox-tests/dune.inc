@@ -1537,6 +1537,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias no-infer)
+ (deps (package dune) (source_tree test-cases/no-infer))
+ (action
+  (chdir
+   test-cases/no-infer
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias no-installable-mode)
  (deps (package dune) (source_tree test-cases/no-installable-mode))
  (action
@@ -2669,6 +2677,7 @@
   (alias multi-dir)
   (alias multiple-targets)
   (alias name-field-validation)
+  (alias no-infer)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)
@@ -2948,6 +2957,7 @@
   (alias multi-dir)
   (alias multiple-targets)
   (alias name-field-validation)
+  (alias no-infer)
   (alias no-installable-mode)
   (alias no-name-field)
   (alias null-dep)

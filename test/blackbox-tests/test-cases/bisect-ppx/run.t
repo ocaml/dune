@@ -51,6 +51,7 @@ Test that bisect_ppx is enabled and produces *.coverage file for libraries.
   >  (name test)
   >  (modules test)
   >  (libraries hello))
+  > EOF
 
   $ dune exec ./test.exe
   Hello, world!
@@ -81,6 +82,7 @@ Test that bisect_ppx is enabled and produces *.coverage file for executables.
   >  (modules test)
   >  (bisect_ppx)
   >  (libraries hello))
+  > EOF
 
   $ dune exec ./test.exe
   Hello, world!

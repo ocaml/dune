@@ -16,7 +16,7 @@ On a practical level, there are a few boxes to check. There are in
 fact a ton details to sort out, but at a high-level a tool that works
 for everyone in the OCaml community should at least:
 
-1. have excelent backward compatibility properties
+1. have excellent backward compatibility properties
 2. have a robust and scalable core
 3. remain a no-brainer dependency
 4. have very good support for the OCaml language
@@ -48,7 +48,7 @@ exactly the same. That would be unrealistic and would prevent the
 project from moving forward.  In order for us to provide good backward
 compatibility properties while still keeping the project fresh and
 dynamic, we have to make sure to properly delimit, document and
-version the set of behaviors that users should relly on. And for this
+version the set of behaviors on which users should rely. And for this
 to be maneageable, the surface API of Dune has to remain small.
 
 A distinguishing feature of Dune is that it lets the user declare what

@@ -8,7 +8,7 @@ are given as paramters
 
   $ dune init exe main --libs="str gsl"
   dune: option `--libs': invalid element in list (`str gsl'): expected a valid
-        dune 'lib' name
+        dune atom
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]
@@ -17,7 +17,7 @@ are given as paramters
 
   $ dune init lib foo --ppx="foo bar"
   dune: option `--ppx': invalid element in list (`foo bar'): expected a valid
-        dune 'ppx' name
+        dune atom
   Usage: dune init [OPTION]... INIT_KIND NAME [PATH]
   Try `dune init --help' or `dune --help' for more information.
   [1]

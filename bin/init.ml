@@ -20,10 +20,10 @@ let validate_component_options kind unsupported_options =
 
 (** {2 Cmdliner Argument Converters} *)
 
-let atom_parser s ~err_msg =
+let atom_parser s =
   match Dune_lang.Atom.parse s with
   | Some s -> Ok s
-  | None -> Error (`Msg err_msg)
+  | None -> Error (`Msg "expected a valid dune atom"  )
 
 let atom_printer ppf a = Format.pp_print_string ppf (Dune_lang.Atom.to_string a)
 
@@ -38,7 +38,7 @@ let component_name_parser s =
     |> fun m -> `Msg m
   in
   let open Result.O in
-  let* atom = atom_parser s ~err_msg:"expected a valid dune atom" in
+  let* atom = atom_parser s in
   let* _ =
     match Lib_name.Local.of_string_opt s with
     | None -> Error (err_msg ())
@@ -46,13 +46,9 @@ let component_name_parser s =
   in
   Ok atom
 
-let ppx_name_conv =
+let atom_conv =
   Arg.conv
-    (atom_parser ~err_msg:"expected a valid dune 'ppx' name", atom_printer)
-
-let lib_name_conv =
-  Arg.conv
-    (atom_parser ~err_msg:"expected a valid dune 'lib' name", atom_printer)
+    (atom_parser , atom_printer)
 
 let component_name_conv = Arg.conv (component_name_parser, atom_printer)
 
@@ -137,13 +133,13 @@ let term =
     let doc =
       "A comma separated list of libraries on which the component depends"
     in
-    Arg.(value & opt (list lib_name_conv) [] & info [ "libs" ] ~docv ~doc)
+    Arg.(value & opt (list atom_conv) [] & info [ "libs" ] ~docv ~doc)
   and+ pps =
     let docv = "PREPROCESSORS" in
     let doc =
       "A comma separated list of ppx preprocessors used by the component"
     in
-    Arg.(value & opt (list ppx_name_conv) [] & info [ "ppx" ] ~docv ~doc)
+    Arg.(value & opt (list atom_conv) [] & info [ "ppx" ] ~docv ~doc)
   and+ public =
     (* TODO(shonfeder): Move to subcommands {lib, exe} once implemented *)
     let docv = "PUBLIC_NAME" in

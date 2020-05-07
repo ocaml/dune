@@ -60,14 +60,10 @@ val duplication_mode : t -> Duplication_mode.t
 
 (** The overhead size of the cache, that is, the total size of files in the
     cache that are not linked from any build directory. *)
-val overhead_size : t -> int
+val overhead_size : t -> int64
 
 module Trimming_result : sig
-  type t =
-    { trimmed_files_size : int
-    ; trimmed_files : Path.t list
-    ; trimmed_metafiles : Path.t list
-    }
+  type t = { trimmed_bytes : int64 }
 end
 
 (** Return a list of unexpected paths that exist in the root directory of the
@@ -77,11 +73,20 @@ end
 val detect_unexpected_dirs_under_cache_root :
   t -> (Path.t list, Unix.error) result
 
-(** [trim cache size] removes files from [cache], starting with the least
-    recently used one, until [size] bytes have been freed. *)
-val trim : t -> int -> Trimming_result.t
+(** Trim the cache by removing a set of unused files from it so that the total
+    freed space is greater or equal to the specificed [goal], in bytes. We call
+    a cached file "unused" if there are currently no hard links to it from build
+    directories.
 
-(** Purge invalid or incomplete cached rules. *)
+    Unused files are removed in the order of last access, i.e. we first remove
+    the least recently accessed one.
+
+    We also remove all metadata files whose file references got broken during
+    the trimming. *)
+val trim : t -> goal:int64 -> Trimming_result.t
+
+(** Purge cache metadata files that can't be read or contain references to
+    non-existing files. *)
 val garbage_collect : t -> Trimming_result.t
 
 (** Path to a metadata file *)

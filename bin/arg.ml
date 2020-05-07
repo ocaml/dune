@@ -115,6 +115,9 @@ let bytes =
     | exception User_error.E msg ->
       Result.Error (`Msg (User_message.to_string msg))
   in
-  conv (decode, Format.pp_print_int)
+  let pp_print_int64 state i =
+    Format.pp_print_string state (Int64.to_string i)
+  in
+  conv (decode, pp_print_int64)
 
 let context_name : Context_name.t conv = conv Context_name.conv

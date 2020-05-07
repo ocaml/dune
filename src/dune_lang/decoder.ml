@@ -395,7 +395,7 @@ let triple a b c =
       b >>= fun b ->
       c >>= fun c -> return (a, b, c) )
 
-let unit_number name suffixes =
+let unit_number_generic ~of_string ~mul name suffixes =
   let unit_number_of_string ~loc s =
     let possible_suffixes () =
       String.concat ~sep:", " (List.map ~f:fst suffixes)
@@ -415,19 +415,27 @@ let unit_number name suffixes =
         User_error.raise ~loc
           [ Pp.textf "invalid suffix, use one of %s" (possible_suffixes ()) ]
     in
-    Option.map ~f:(( * ) factor) (Int.of_string n)
+    Option.map ~f:(mul factor) (of_string n)
   in
   basic_loc name unit_number_of_string
 
+let unit_number = unit_number_generic ~of_string:Int.of_string ~mul:( * )
+
+let unit_number_int64 =
+  (* This can go into a separate module [stdune/int64.ml]. *)
+  let of_string s = Option.try_with (fun () -> Int64.of_string s) in
+  unit_number_generic ~of_string ~mul:Int64.mul
+
 let duration = unit_number "Duration" [ ("s", 1); ("m", 60); ("h", 60 * 60) ]
 
+(* CR-someday amokhov: Add KiB, MiB, GiB. *)
 let bytes_unit =
-  unit_number "Byte amount"
-    [ ("B", 1)
-    ; ("kB", 1000)
-    ; ("KB", 1000)
-    ; ("MB", 1000 * 1000)
-    ; ("GB", 1000 * 1000 * 1000)
+  unit_number_int64 "Byte amount"
+    [ ("B", 1L)
+    ; ("kB", 1000L)
+    ; ("KB", 1000L)
+    ; ("MB", 1000_000L)
+    ; ("GB", 1000_000_000L)
     ]
 
 let maybe t = t >>| Option.some <|> return None

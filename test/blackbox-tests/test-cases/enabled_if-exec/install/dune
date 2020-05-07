@@ -1,0 +1,15 @@
+(dirs :standard \ forbidden_var)
+
+(executable
+ (name foo)
+ (enabled_if true))
+
+(install
+ (section bin)
+ (enabled_if false)
+ (files (foo.exe as foo.x)))
+
+(install
+ (section bin)
+ (enabled_if true)
+ (files (foo.exe as bar.x)))

@@ -288,7 +288,8 @@ let rec exec t ~ectx ~eenv =
   | Diff ({ optional; file1; file2; mode } as diff) ->
     let remove_intermediate_file () =
       if optional then
-        try Path.unlink file2 with Unix.Unix_error (ENOENT, _, _) -> ()
+        try Path.unlink (Path.build file2)
+        with Unix.Unix_error (ENOENT, _, _) -> ()
     in
     if Diff.eq_files diff then (
       remove_intermediate_file ();
@@ -306,24 +307,24 @@ let rec exec t ~ectx ~eenv =
               User_error.raise
                 [ Pp.textf "Files %s and %s differ."
                     (Path.to_string_maybe_quoted file1)
-                    (Path.to_string_maybe_quoted file2)
+                    (Path.to_string_maybe_quoted (Path.build file2))
                 ]
             else
-              Print_diff.print file1 file2
+              Print_diff.print file1 (Path.build file2)
                 ~skip_trailing_cr:(mode = Text && Sys.win32))
           ~finally:(fun () ->
             ( match optional with
             | false ->
               if
                 is_copied_from_source_tree file1
-                && not (is_copied_from_source_tree file2)
+                && not (is_copied_from_source_tree (Path.build file2))
               then
                 Promotion.File.register_dep
                   ~source_file:
                     (snd
                        (Option.value_exn
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
-                  ~correction_file:(Path.as_in_build_dir_exn file2)
+                  ~correction_file:file2
             | true ->
               if is_copied_from_source_tree file1 then
                 Promotion.File.register_intermediate
@@ -331,7 +332,7 @@ let rec exec t ~ectx ~eenv =
                     (snd
                        (Option.value_exn
                           (Path.extract_build_context_dir_maybe_sandboxed file1)))
-                  ~correction_file:(Path.as_in_build_dir_exn file2)
+                  ~correction_file:file2
               else
                 remove_intermediate_file () );
             Fiber.return ())

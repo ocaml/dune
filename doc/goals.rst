@@ -3,15 +3,15 @@ Goal of Dune
 ************
 
 The main goal of the Dune project is to provide the best possible
-build tool for the whole of the OCaml community, from individual
+build tool for the whole of the OCaml community; from individual
 developers who work on open source projects during their free time
 all the way to larger companies such as Jane Street. And to the extent
-that is reasonably possible, help provide the same feature for friend
-communities such as Coq and possibly Reason/Bucklescript in the
-future.
+that is reasonably possible, help provide the same features for friend
+communities such as Coq or MirageOS and possibly Reason/Bucklescript
+in the future.
 
 We haven't reached this goal yet and Dune still lacks in some areas in
-order to be such a tool, but we are slowly working towards that goal.
+order to be such a tool, but we are steadily working towards that goal.
 On a practical level, there are a few boxes to check. There are in
 fact a ton details to sort out, but at a high-level a tool that works
 for everyone in the OCaml community should at least:
@@ -24,8 +24,8 @@ for everyone in the OCaml community should at least:
 
 At this point, we have done a good job at 1, 3 and 4, we are working
 towards 2 and are doing the preparatory work for 5. Once all these
-boxes have been checked, we will consider that the Dune project will
-be feature complete.
+boxes have been checked, we will consider that the Dune project is
+feature complete.
 
 In the rest of this page, we develop these points and give some
 insights into our current and future focuses.
@@ -34,7 +34,7 @@ Have excellent backward compatibility properties
 ===============================================
 
 In an open-source community, there will always be groups of people
-with enough resources to continously bring their projects up to date
+with enough resources to continuously bring their projects up to date
 as well as people who work on their free time and cannot provide the
 same level of continuous support and updates.
 
@@ -43,15 +43,15 @@ project with `dune` files is a precious piece that will potentially
 never change. So changing Dune in a way that it could no longer
 understand a released project is by default a no-no.
 
-Of cource, we can't give a 100% guarantee that Dune will always behave
+Of course, we can't give a 100% guarantee that Dune will always behave
 exactly the same. That would be unrealistic and would prevent the
 project from moving forward.  In order for us to provide good backward
 compatibility properties while still keeping the project fresh and
 dynamic, we have to make sure to properly delimit, document and
-version the set of behaviors on which users should rely. And for this
-to be maneageable, the surface API of Dune has to remain small.
+version the set of behaviours on which users should rely. And for this
+to be manageable, the surface API of Dune has to remain small.
 
-A distinguishing feature of Dune is that it lets the user declare what
+A distinguishing feature of Dune is that it lets the user declare which
 version of the ``dune`` tool their project was written against, and
 ``dune`` will morph itself to behave the same as this version of the
 ``dune`` binary, even if it is a newer version. As a result, a recent
@@ -70,7 +70,7 @@ Have a robust and scalable core
 
 Tech companies tend be fond of big mono repositories, so to be able to
 work for them ``dune`` needs to be able to eat up large repositories
-without blinking. Not only it needs to build fast, but more
+without blinking. It not only needs to build fast, but more
 importantly it must not get in the way of fast feedback during
 development, no matter the size of the repository.
 
@@ -91,7 +91,7 @@ Remain a no-brainer dependency
 ==============================
 
 ``dune`` is a hard dependency of any Dune project. Anyone using Dune
-for developing their project will have to ask their user to install
+to develop their project will have to ask their user to install
 Dune. For this reason, it is very important to keep Dune as lean as
 possible.
 
@@ -109,7 +109,7 @@ Have very good support for the OCaml language
 =============================================
 
 There are many many build systems out there. What makes Dune different
-is that it targets the OCaml community primarily. So Dune must come
+is that it primarily targets the OCaml community. So Dune must come
 with excellent support for the OCaml language and OCaml projects in
 general.
 

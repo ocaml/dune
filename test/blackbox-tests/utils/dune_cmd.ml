@@ -54,8 +54,7 @@ module Cat = struct
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
     | _ -> raise Invalid_command_line
 
-  let run (File p) =
-    print_string (Io.read_file p)
+  let run (File p) = print_string (Io.read_file p)
 
   let () = register name of_args run
 end

@@ -58,8 +58,8 @@ Describe various things
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-70
-  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(8:
+  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-85
+  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(5:local4:true)(8:
 
 Test errors
 -----------

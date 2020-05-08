@@ -25,9 +25,9 @@ Test that with the cache in copy mode:
 Initial build
 
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
-  $ dune_stat hardlinks _build/default/source
+  $ dune_cmd stat hardlinks _build/default/source
   1
-  $ dune_stat hardlinks _build/default/target
+  $ dune_cmd stat hardlinks _build/default/target
   1
   $ ls _build/default/beacon
   _build/default/beacon
@@ -37,9 +37,9 @@ hardlinking them)
 
   $ rm -rf _build/default
   $ env XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build --config-file=config target
-  $ dune_stat hardlinks _build/default/source
+  $ dune_cmd stat hardlinks _build/default/source
   1
-  $ dune_stat hardlinks _build/default/target
+  $ dune_cmd stat hardlinks _build/default/target
   1
   $ test -e _build/default/beacon
   [1]

@@ -27,9 +27,9 @@ files are still hard-linked in the build directory.
 
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 0 bytes
-  $ dune_stat hardlinks _build/default/target_a
+  $ dune_cmd stat hardlinks _build/default/target_a
   2
-  $ dune_stat hardlinks _build/default/target_b
+  $ dune_cmd stat hardlinks _build/default/target_b
   2
 
 If we unlink one file in the build tree, it can be reclaimed when trimming.
@@ -38,9 +38,9 @@ If we unlink one file in the build tree, it can be reclaimed when trimming.
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 9 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
-  $ dune_stat hardlinks _build/default/target_a
+  $ dune_cmd stat hardlinks _build/default/target_a
   2
-  $ dune_stat hardlinks _build/default/target_b
+  $ dune_cmd stat hardlinks _build/default/target_b
   2
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b
@@ -60,9 +60,9 @@ The cache deletes oldest files first.
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 9 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
-  $ dune_stat hardlinks _build/default/target_a
+  $ dune_cmd stat hardlinks _build/default/target_a
   2
-  $ dune_stat hardlinks _build/default/target_b
+  $ dune_cmd stat hardlinks _build/default/target_b
   2
   $ ! test -e _build/default/beacon_a
   $ test -e _build/default/beacon_b
@@ -85,9 +85,9 @@ When a file is pulled from the cache, its mtime is touched so it's deleted last.
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
   Freed 9 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
-  $ dune_stat hardlinks _build/default/target_a
+  $ dune_cmd stat hardlinks _build/default/target_a
   2
-  $ dune_stat hardlinks _build/default/target_b
+  $ dune_cmd stat hardlinks _build/default/target_b
   2
   $ test -e _build/default/beacon_a
   $ ! test -e _build/default/beacon_b

@@ -7,11 +7,11 @@
 
 (env
  (_
-  (binaries ./utils/dune_stat.exe)))
+  (binaries ./utils/dune_cmd.exe)))
 
 (alias
  (name test-deps)
- (deps ./utils/dune_stat.exe %{bin:dune_stat}))
+ (deps ./utils/dune_cmd.exe %{bin:dune_cmd}))
 
 (include dune.inc)
 

@@ -1,7 +1,5 @@
 open Stdune
 
-exception Invalid_command_line
-
 let commands = Table.create (module String) 10
 
 let register name of_args run =
@@ -22,7 +20,11 @@ module Stat = struct
   let data_of_string = function
     | "hardlinks" -> Hardlinks
     | "permissions" -> Permissions
-    | s -> failwith ("invalid data " ^ s)
+    | s ->
+      raise
+        (Arg.Bad
+           (sprintf
+              "%s is invalid. hardlinks, permissions are only valid options" s))
 
   let pp_stats data (stats : Unix.stats) =
     match data with
@@ -36,7 +38,7 @@ module Stat = struct
       let data = data_of_string data in
       let file = Path.of_filename_relative_to_initial_cwd file in
       { file; data }
-    | _ -> raise Invalid_command_line
+    | _ -> raise (Arg.Bad (sprintf "2 arguments must be provided"))
 
   let run { file; data } =
     let stats = Path.stat file in
@@ -52,7 +54,7 @@ module Cat = struct
 
   let of_args = function
     | [ file ] -> File (Path.of_filename_relative_to_initial_cwd file)
-    | _ -> raise Invalid_command_line
+    | _ -> raise (Arg.Bad "Usage: dune_arg cat <file>")
 
   let run (File p) = print_string (Io.read_file p)
 

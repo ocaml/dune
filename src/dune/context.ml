@@ -238,21 +238,34 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
   Path.rm_rf dir;
   Path.mkdir_p dir;
   Io.write_file (Path.relative dir Config.dune_keep_fname) "";
-  let csexp =
-    let open Sexp in
-    let ocamlc = Atom (Path.to_absolute_filename ocamlc) in
-    let ocaml_config_vars =
-      Sexp.List
-        ( Ocaml_config.Vars.to_list ocaml_config_vars
-        |> List.map ~f:(fun (k, v) -> List [ Atom k; Atom v ]) )
-    in
-    List
-      [ List [ Atom "ocamlc"; ocamlc ]
-      ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-      ]
+  let ocamlc = Path.to_absolute_filename ocamlc in
+  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml_config_vars in
+  let () =
+    let open Dune_lang.Encoder in
+    Io.write_lines
+      (Path.relative dir "configurator")
+      (List.map ~f:Dune_lang.to_string
+         (record_fields
+            [ field "ocamlc" string ocamlc
+            ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
+            ]))
   in
-  let path = Path.relative dir "configurator.v2" in
-  Io.write_file path (Csexp.to_string csexp)
+  let () =
+    let csexp =
+      let open Sexp in
+      let ocaml_config_vars =
+        Sexp.List
+          (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
+      in
+      List
+        [ List [ Atom "ocamlc"; Atom ocamlc ]
+        ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+        ]
+    in
+    let path = Path.relative dir "configurator.v2" in
+    Io.write_file path (Csexp.to_string csexp)
+  in
+  ()
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe

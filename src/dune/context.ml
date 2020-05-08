@@ -251,7 +251,7 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
       ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
       ]
   in
-  let path = Path.relative dir "configurator" in
+  let path = Path.relative dir "configurator.v2" in
   Io.write_file path (Csexp.to_string csexp)
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets

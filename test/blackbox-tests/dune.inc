@@ -1,6 +1,9 @@
 (rule
  (alias action-modifying-a-dependency)
- (deps (package dune) (source_tree test-cases/action-modifying-a-dependency))
+ (deps
+  (package dune)
+  (source_tree test-cases/action-modifying-a-dependency)
+  (alias test-deps))
  (action
   (chdir
    test-cases/action-modifying-a-dependency
@@ -8,7 +11,7 @@
 
 (rule
  (alias aliases)
- (deps (package dune) (source_tree test-cases/aliases))
+ (deps (package dune) (source_tree test-cases/aliases) (alias test-deps))
  (action
   (chdir
    test-cases/aliases
@@ -16,7 +19,7 @@
 
 (rule
  (alias all-alias)
- (deps (package dune) (source_tree test-cases/all-alias))
+ (deps (package dune) (source_tree test-cases/all-alias) (alias test-deps))
  (action
   (chdir
    test-cases/all-alias
@@ -24,7 +27,10 @@
 
 (rule
  (alias all-promotions)
- (deps (package dune) (source_tree test-cases/all-promotions))
+ (deps
+  (package dune)
+  (source_tree test-cases/all-promotions)
+  (alias test-deps))
  (action
   (chdir
    test-cases/all-promotions
@@ -32,7 +38,10 @@
 
 (rule
  (alias bad-alias-error)
- (deps (package dune) (source_tree test-cases/bad-alias-error))
+ (deps
+  (package dune)
+  (source_tree test-cases/bad-alias-error)
+  (alias test-deps))
  (action
   (chdir
    test-cases/bad-alias-error
@@ -40,7 +49,10 @@
 
 (rule
  (alias bin-eager-deps)
- (deps (package dune) (source_tree test-cases/bin-eager-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/bin-eager-deps)
+  (alias test-deps))
  (action
   (chdir
    test-cases/bin-eager-deps
@@ -48,7 +60,7 @@
 
 (rule
  (alias bisect-ppx)
- (deps (package dune) (source_tree test-cases/bisect-ppx))
+ (deps (package dune) (source_tree test-cases/bisect-ppx) (alias test-deps))
  (action
   (chdir
    test-cases/bisect-ppx
@@ -56,7 +68,10 @@
 
 (rule
  (alias block-strings)
- (deps (package dune) (source_tree test-cases/block-strings))
+ (deps
+  (package dune)
+  (source_tree test-cases/block-strings)
+  (alias test-deps))
  (action
   (chdir
    test-cases/block-strings
@@ -64,7 +79,10 @@
 
 (rule
  (alias byte-code-only)
- (deps (package dune) (source_tree test-cases/byte-code-only))
+ (deps
+  (package dune)
+  (source_tree test-cases/byte-code-only)
+  (alias test-deps))
  (action
   (chdir
    test-cases/byte-code-only
@@ -72,7 +90,10 @@
 
 (rule
  (alias byte_complete)
- (deps (package dune) (source_tree test-cases/byte_complete))
+ (deps
+  (package dune)
+  (source_tree test-cases/byte_complete)
+  (alias test-deps))
  (action
   (chdir
    test-cases/byte_complete
@@ -80,7 +101,7 @@
 
 (rule
  (alias c-stubs)
- (deps (package dune) (source_tree test-cases/c-stubs))
+ (deps (package dune) (source_tree test-cases/c-stubs) (alias test-deps))
  (action
   (chdir
    test-cases/c-stubs
@@ -88,7 +109,7 @@
 
 (rule
  (alias check-alias)
- (deps (package dune) (source_tree test-cases/check-alias))
+ (deps (package dune) (source_tree test-cases/check-alias) (alias test-deps))
  (action
   (chdir
    test-cases/check-alias
@@ -96,7 +117,7 @@
 
 (rule
  (alias cinaps)
- (deps (package dune) (source_tree test-cases/cinaps))
+ (deps (package dune) (source_tree test-cases/cinaps) (alias test-deps))
  (action
   (chdir
    test-cases/cinaps
@@ -104,7 +125,7 @@
 
 (rule
  (alias cinaps-include-subdirs)
- (deps (package dune) (source_tree test-cases/cinaps))
+ (deps (package dune) (source_tree test-cases/cinaps) (alias test-deps))
  (action
   (chdir
    test-cases/cinaps
@@ -114,7 +135,10 @@
 
 (rule
  (alias cmdliner-dep-conf)
- (deps (package dune) (source_tree test-cases/cmdliner-dep-conf))
+ (deps
+  (package dune)
+  (source_tree test-cases/cmdliner-dep-conf)
+  (alias test-deps))
  (action
   (chdir
    test-cases/cmdliner-dep-conf
@@ -122,7 +146,10 @@
 
 (rule
  (alias contents-depends-on-glob)
- (deps (package dune) (source_tree test-cases/contents-depends-on-glob))
+ (deps
+  (package dune)
+  (source_tree test-cases/contents-depends-on-glob)
+  (alias test-deps))
  (action
   (chdir
    test-cases/contents-depends-on-glob
@@ -130,7 +157,10 @@
 
 (rule
  (alias copy-files-non-sub-dir-error)
- (deps (package dune) (source_tree test-cases/copy-files-non-sub-dir-error))
+ (deps
+  (package dune)
+  (source_tree test-cases/copy-files-non-sub-dir-error)
+  (alias test-deps))
  (action
   (chdir
    test-cases/copy-files-non-sub-dir-error
@@ -138,7 +168,7 @@
 
 (rule
  (alias copy_files)
- (deps (package dune) (source_tree test-cases/copy_files))
+ (deps (package dune) (source_tree test-cases/copy_files) (alias test-deps))
  (action
   (chdir
    test-cases/copy_files
@@ -146,7 +176,7 @@
 
 (rule
  (alias coq)
- (deps (package dune) (source_tree test-cases/coq))
+ (deps (package dune) (source_tree test-cases/coq) (alias test-deps))
  (action
   (chdir
    test-cases/coq
@@ -154,7 +184,7 @@
 
 (rule
  (alias coq-extract)
- (deps (package dune) (source_tree test-cases/coq/extract))
+ (deps (package dune) (source_tree test-cases/coq/extract) (alias test-deps))
  (action
   (chdir
    test-cases/coq/extract
@@ -162,7 +192,7 @@
 
 (rule
  (alias corrections)
- (deps (package dune) (source_tree test-cases/corrections))
+ (deps (package dune) (source_tree test-cases/corrections) (alias test-deps))
  (action
   (chdir
    test-cases/corrections
@@ -170,7 +200,10 @@
 
 (rule
  (alias cross-compilation)
- (deps (package dune) (source_tree test-cases/cross-compilation))
+ (deps
+  (package dune)
+  (source_tree test-cases/cross-compilation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/cross-compilation
@@ -178,7 +211,10 @@
 
 (rule
  (alias custom-build-dir)
- (deps (package dune) (source_tree test-cases/custom-build-dir))
+ (deps
+  (package dune)
+  (source_tree test-cases/custom-build-dir)
+  (alias test-deps))
  (action
   (chdir
    test-cases/custom-build-dir
@@ -186,7 +222,10 @@
 
 (rule
  (alias custom-cross-compilation)
- (deps (package dune) (source_tree test-cases/custom-cross-compilation))
+ (deps
+  (package dune)
+  (source_tree test-cases/custom-cross-compilation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/custom-cross-compilation
@@ -194,7 +233,10 @@
 
 (rule
  (alias cxx-extension)
- (deps (package dune) (source_tree test-cases/cxx-extension))
+ (deps
+  (package dune)
+  (source_tree test-cases/cxx-extension)
+  (alias test-deps))
  (action
   (chdir
    test-cases/cxx-extension
@@ -202,7 +244,10 @@
 
 (rule
  (alias cycle-detection-symlinks-2863)
- (deps (package dune) (source_tree test-cases/cycle-detection-symlinks-2863))
+ (deps
+  (package dune)
+  (source_tree test-cases/cycle-detection-symlinks-2863)
+  (alias test-deps))
  (action
   (chdir
    test-cases/cycle-detection-symlinks-2863
@@ -210,7 +255,10 @@
 
 (rule
  (alias default-targets)
- (deps (package dune) (source_tree test-cases/default-targets))
+ (deps
+  (package dune)
+  (source_tree test-cases/default-targets)
+  (alias test-deps))
  (action
   (chdir
    test-cases/default-targets
@@ -218,7 +266,10 @@
 
 (rule
  (alias dep-on-dir-that-does-not-exist)
- (deps (package dune) (source_tree test-cases/dep-on-dir-that-does-not-exist))
+ (deps
+  (package dune)
+  (source_tree test-cases/dep-on-dir-that-does-not-exist)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dep-on-dir-that-does-not-exist
@@ -226,7 +277,7 @@
 
 (rule
  (alias dep-vars)
- (deps (package dune) (source_tree test-cases/dep-vars))
+ (deps (package dune) (source_tree test-cases/dep-vars) (alias test-deps))
  (action
   (chdir
    test-cases/dep-vars
@@ -234,7 +285,10 @@
 
 (rule
  (alias depend-on-the-universe)
- (deps (package dune) (source_tree test-cases/depend-on-the-universe))
+ (deps
+  (package dune)
+  (source_tree test-cases/depend-on-the-universe)
+  (alias test-deps))
  (action
   (chdir
    test-cases/depend-on-the-universe
@@ -242,7 +296,10 @@
 
 (rule
  (alias deprecated-library-name)
- (deps (package dune) (source_tree test-cases/deprecated-library-name))
+ (deps
+  (package dune)
+  (source_tree test-cases/deprecated-library-name)
+  (alias test-deps))
  (action
   (chdir
    test-cases/deprecated-library-name
@@ -250,7 +307,10 @@
 
 (rule
  (alias deps-conf-vars)
- (deps (package dune) (source_tree test-cases/deps-conf-vars))
+ (deps
+  (package dune)
+  (source_tree test-cases/deps-conf-vars)
+  (alias test-deps))
  (action
   (chdir
    test-cases/deps-conf-vars
@@ -258,7 +318,7 @@
 
 (rule
  (alias describe)
- (deps (package dune) (source_tree test-cases/describe))
+ (deps (package dune) (source_tree test-cases/describe) (alias test-deps))
  (action
   (chdir
    test-cases/describe
@@ -266,7 +326,7 @@
 
 (rule
  (alias dialects)
- (deps (package dune) (source_tree test-cases/dialects))
+ (deps (package dune) (source_tree test-cases/dialects) (alias test-deps))
  (action
   (chdir
    test-cases/dialects
@@ -274,7 +334,10 @@
 
 (rule
  (alias dir-target-dep)
- (deps (package dune) (source_tree test-cases/dir-target-dep))
+ (deps
+  (package dune)
+  (source_tree test-cases/dir-target-dep)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dir-target-dep
@@ -282,7 +345,10 @@
 
 (rule
  (alias disable-promotion)
- (deps (package dune) (source_tree test-cases/disable-promotion))
+ (deps
+  (package dune)
+  (source_tree test-cases/disable-promotion)
+  (alias test-deps))
  (action
   (chdir
    test-cases/disable-promotion
@@ -290,7 +356,7 @@
 
 (rule
  (alias double-echo)
- (deps (package dune) (source_tree test-cases/double-echo))
+ (deps (package dune) (source_tree test-cases/double-echo) (alias test-deps))
  (action
   (chdir
    test-cases/double-echo
@@ -298,7 +364,10 @@
 
 (rule
  (alias dune-build-dir-exec-1101)
- (deps (package dune) (source_tree test-cases/dune-build-dir-exec-1101))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-build-dir-exec-1101)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-build-dir-exec-1101
@@ -306,7 +375,10 @@
 
 (rule
  (alias dune-cache-dedup)
- (deps (package dune) (source_tree test-cases/dune-cache/dedup))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/dedup)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/dedup
@@ -314,7 +386,10 @@
 
 (rule
  (alias dune-cache-dedup-direct)
- (deps (package dune) (source_tree test-cases/dune-cache/dedup-direct))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/dedup-direct)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/dedup-direct
@@ -322,7 +397,10 @@
 
 (rule
  (alias dune-cache-dedup-direct-copy)
- (deps (package dune) (source_tree test-cases/dune-cache/dedup-direct-copy))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/dedup-direct-copy)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/dedup-direct-copy
@@ -330,7 +408,10 @@
 
 (rule
  (alias dune-cache-promote)
- (deps (package dune) (source_tree test-cases/dune-cache/promote))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/promote)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/promote
@@ -338,7 +419,10 @@
 
 (rule
  (alias dune-cache-promote-copy)
- (deps (package dune) (source_tree test-cases/dune-cache/promote-copy))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/promote-copy)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/promote-copy
@@ -346,7 +430,10 @@
 
 (rule
  (alias dune-cache-promote-direct)
- (deps (package dune) (source_tree test-cases/dune-cache/promote-direct))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/promote-direct)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/promote-direct
@@ -354,7 +441,10 @@
 
 (rule
  (alias dune-cache-promote-direct-copy)
- (deps (package dune) (source_tree test-cases/dune-cache/promote-direct-copy))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/promote-direct-copy)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/promote-direct-copy
@@ -364,7 +454,8 @@
  (alias dune-cache-promotion-in-source-tree)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promotion-in-source-tree))
+  (source_tree test-cases/dune-cache/promotion-in-source-tree)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/promotion-in-source-tree
@@ -372,7 +463,10 @@
 
 (rule
  (alias dune-cache-symlink)
- (deps (package dune) (source_tree test-cases/dune-cache/symlink))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/symlink)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/symlink
@@ -380,7 +474,10 @@
 
 (rule
  (alias dune-cache-symlink-direct)
- (deps (package dune) (source_tree test-cases/dune-cache/symlink-direct))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/symlink-direct)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/symlink-direct
@@ -388,7 +485,10 @@
 
 (rule
  (alias dune-cache-trim)
- (deps (package dune) (source_tree test-cases/dune-cache/trim))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/trim)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-cache/trim
@@ -396,7 +496,7 @@
 
 (rule
  (alias dune-init)
- (deps (package dune) (source_tree test-cases/dune-init))
+ (deps (package dune) (source_tree test-cases/dune-init) (alias test-deps))
  (action
   (chdir
    test-cases/dune-init
@@ -404,7 +504,10 @@
 
 (rule
  (alias dune-jbuild-var-case)
- (deps (package dune) (source_tree test-cases/dune-jbuild-var-case))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-jbuild-var-case)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-jbuild-var-case
@@ -412,7 +515,7 @@
 
 (rule
  (alias dune-package)
- (deps (package dune) (source_tree test-cases/dune-package))
+ (deps (package dune) (source_tree test-cases/dune-package) (alias test-deps))
  (action
   (chdir
    test-cases/dune-package
@@ -420,7 +523,10 @@
 
 (rule
  (alias dune-ppx-driver-system)
- (deps (package dune) (source_tree test-cases/dune-ppx-driver-system))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-ppx-driver-system)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-ppx-driver-system
@@ -428,7 +534,10 @@
 
 (rule
  (alias dune-project-edition)
- (deps (package dune) (source_tree test-cases/dune-project-edition))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-project-edition)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-project-edition
@@ -436,7 +545,10 @@
 
 (rule
  (alias dune-project-meta)
- (deps (package dune) (source_tree test-cases/dune-project-meta))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-project-meta)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-project-meta
@@ -444,7 +556,10 @@
 
 (rule
  (alias dune-project-meta-github2927)
- (deps (package dune) (source_tree test-cases/dune-project-meta/github2927))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-project-meta/github2927)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-project-meta/github2927
@@ -452,7 +567,10 @@
 
 (rule
  (alias dune-project-no-opam)
- (deps (package dune) (source_tree test-cases/dune-project-no-opam))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-project-no-opam)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune-project-no-opam
@@ -460,7 +578,10 @@
 
 (rule
  (alias dune_memory-and-the-universe)
- (deps (package dune) (source_tree test-cases/dune_memory-and-the-universe))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune_memory-and-the-universe)
+  (alias test-deps))
  (action
   (chdir
    test-cases/dune_memory-and-the-universe
@@ -468,7 +589,7 @@
 
 (rule
  (alias dup-fields)
- (deps (package dune) (source_tree test-cases/dup-fields))
+ (deps (package dune) (source_tree test-cases/dup-fields) (alias test-deps))
  (action
   (chdir
    test-cases/dup-fields
@@ -476,7 +597,10 @@
 
 (rule
  (alias duplicate-c-cxx)
- (deps (package dune) (source_tree test-cases/duplicate-c-cxx))
+ (deps
+  (package dune)
+  (source_tree test-cases/duplicate-c-cxx)
+  (alias test-deps))
  (action
   (chdir
    test-cases/duplicate-c-cxx
@@ -484,7 +608,10 @@
 
 (rule
  (alias duplicate-c-cxx-obj)
- (deps (package dune) (source_tree test-cases/duplicate-c-cxx-obj))
+ (deps
+  (package dune)
+  (source_tree test-cases/duplicate-c-cxx-obj)
+  (alias test-deps))
  (action
   (chdir
    test-cases/duplicate-c-cxx-obj
@@ -492,7 +619,10 @@
 
 (rule
  (alias duplicate-project-names)
- (deps (package dune) (source_tree test-cases/duplicate-project-names))
+ (deps
+  (package dune)
+  (source_tree test-cases/duplicate-project-names)
+  (alias test-deps))
  (action
   (chdir
    test-cases/duplicate-project-names
@@ -500,7 +630,10 @@
 
 (rule
  (alias duplicate-target-no-loc)
- (deps (package dune) (source_tree test-cases/duplicate-target-no-loc))
+ (deps
+  (package dune)
+  (source_tree test-cases/duplicate-target-no-loc)
+  (alias test-deps))
  (action
   (chdir
    test-cases/duplicate-target-no-loc
@@ -508,7 +641,7 @@
 
 (rule
  (alias embed-jbuild)
- (deps (package dune) (source_tree test-cases/embed-jbuild))
+ (deps (package dune) (source_tree test-cases/embed-jbuild) (alias test-deps))
  (action
   (chdir
    test-cases/embed-jbuild
@@ -516,7 +649,7 @@
 
 (rule
  (alias enabled_if)
- (deps (package dune) (source_tree test-cases/enabled_if))
+ (deps (package dune) (source_tree test-cases/enabled_if) (alias test-deps))
  (action
   (chdir
    test-cases/enabled_if
@@ -524,7 +657,10 @@
 
 (rule
  (alias enabled_if-exec)
- (deps (package dune) (source_tree test-cases/enabled_if-exec))
+ (deps
+  (package dune)
+  (source_tree test-cases/enabled_if-exec)
+  (alias test-deps))
  (action
   (chdir
    test-cases/enabled_if-exec
@@ -534,7 +670,8 @@
  (alias env-env-affects-expander-affects-env)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-affects-expander-affects-env))
+  (source_tree test-cases/env/env-affects-expander-affects-env)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-affects-expander-affects-env
@@ -542,7 +679,10 @@
 
 (rule
  (alias env-env-and-flags-include)
- (deps (package dune) (source_tree test-cases/env/env-and-flags-include))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-and-flags-include)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-and-flags-include
@@ -550,7 +690,10 @@
 
 (rule
  (alias env-env-bin-pform)
- (deps (package dune) (source_tree test-cases/env/env-bin-pform))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-bin-pform)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-bin-pform
@@ -558,7 +701,11 @@
 
 (rule
  (alias env-env-bins)
- (deps (package dune) (source_tree test-cases/env/env-bins) (sandbox none))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-bins)
+  (alias test-deps)
+  (sandbox none))
  (action
   (chdir
    test-cases/env/env-bins
@@ -566,7 +713,10 @@
 
 (rule
  (alias env-env-cflags)
- (deps (package dune) (source_tree test-cases/env/env-cflags))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-cflags)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-cflags
@@ -575,7 +725,10 @@
 
 (rule
  (alias env-env-dune-file)
- (deps (package dune) (source_tree test-cases/env/env-dune-file))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-dune-file)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-dune-file
@@ -583,7 +736,10 @@
 
 (rule
  (alias env-env-simple)
- (deps (package dune) (source_tree test-cases/env/env-simple))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-simple)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-simple
@@ -592,7 +748,10 @@
 
 (rule
  (alias env-env-tracking)
- (deps (package dune) (source_tree test-cases/env/env-tracking))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-tracking)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-tracking
@@ -600,7 +759,10 @@
 
 (rule
  (alias env-env-var-expansion)
- (deps (package dune) (source_tree test-cases/env/env-var-expansion))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-var-expansion)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-var-expansion
@@ -608,7 +770,10 @@
 
 (rule
  (alias env-env-variables)
- (deps (package dune) (source_tree test-cases/env/env-variables))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/env-variables)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/env-variables
@@ -616,7 +781,10 @@
 
 (rule
  (alias env-envs-and-contexts)
- (deps (package dune) (source_tree test-cases/env/envs-and-contexts))
+ (deps
+  (package dune)
+  (source_tree test-cases/env/envs-and-contexts)
+  (alias test-deps))
  (action
   (chdir
    test-cases/env/envs-and-contexts
@@ -624,7 +792,10 @@
 
 (rule
  (alias exclude-missing-module)
- (deps (package dune) (source_tree test-cases/exclude-missing-module))
+ (deps
+  (package dune)
+  (source_tree test-cases/exclude-missing-module)
+  (alias test-deps))
  (action
   (chdir
    test-cases/exclude-missing-module
@@ -632,7 +803,10 @@
 
 (rule
  (alias exe-name-mangle)
- (deps (package dune) (source_tree test-cases/exe-name-mangle))
+ (deps
+  (package dune)
+  (source_tree test-cases/exe-name-mangle)
+  (alias test-deps))
  (action
   (chdir
    test-cases/exe-name-mangle
@@ -640,7 +814,7 @@
 
 (rule
  (alias exec-cmd)
- (deps (package dune) (source_tree test-cases/exec-cmd))
+ (deps (package dune) (source_tree test-cases/exec-cmd) (alias test-deps))
  (action
   (chdir
    test-cases/exec-cmd
@@ -648,7 +822,7 @@
 
 (rule
  (alias exec-missing)
- (deps (package dune) (source_tree test-cases/exec-missing))
+ (deps (package dune) (source_tree test-cases/exec-missing) (alias test-deps))
  (action
   (chdir
    test-cases/exec-missing
@@ -656,7 +830,7 @@
 
 (rule
  (alias exes-with-c)
- (deps (package dune) (source_tree test-cases/exes-with-c))
+ (deps (package dune) (source_tree test-cases/exes-with-c) (alias test-deps))
  (action
   (chdir
    test-cases/exes-with-c
@@ -664,7 +838,10 @@
 
 (rule
  (alias explicit_js_mode)
- (deps (package dune) (source_tree test-cases/explicit_js_mode))
+ (deps
+  (package dune)
+  (source_tree test-cases/explicit_js_mode)
+  (alias test-deps))
  (action
   (chdir
    test-cases/explicit_js_mode
@@ -672,7 +849,10 @@
 
 (rule
  (alias extensions-versionning)
- (deps (package dune) (source_tree test-cases/extensions-versionning))
+ (deps
+  (package dune)
+  (source_tree test-cases/extensions-versionning)
+  (alias test-deps))
  (action
   (chdir
    test-cases/extensions-versionning
@@ -680,7 +860,10 @@
 
 (rule
  (alias external-lib-deps-github3143)
- (deps (package dune) (source_tree test-cases/external-lib-deps/github3143))
+ (deps
+  (package dune)
+  (source_tree test-cases/external-lib-deps/github3143)
+  (alias test-deps))
  (action
   (chdir
    test-cases/external-lib-deps/github3143
@@ -688,7 +871,10 @@
 
 (rule
  (alias external-lib-deps-simple)
- (deps (package dune) (source_tree test-cases/external-lib-deps/simple))
+ (deps
+  (package dune)
+  (source_tree test-cases/external-lib-deps/simple)
+  (alias test-deps))
  (action
   (chdir
    test-cases/external-lib-deps/simple
@@ -696,7 +882,10 @@
 
 (rule
  (alias extra-lang-line)
- (deps (package dune) (source_tree test-cases/extra-lang-line))
+ (deps
+  (package dune)
+  (source_tree test-cases/extra-lang-line)
+  (alias test-deps))
  (action
   (chdir
    test-cases/extra-lang-line
@@ -704,7 +893,10 @@
 
 (rule
  (alias fallback-dune)
- (deps (package dune) (source_tree test-cases/fallback-dune))
+ (deps
+  (package dune)
+  (source_tree test-cases/fallback-dune)
+  (alias test-deps))
  (action
   (chdir
    test-cases/fallback-dune
@@ -712,7 +904,7 @@
 
 (rule
  (alias fdo)
- (deps (package dune) (source_tree test-cases/fdo))
+ (deps (package dune) (source_tree test-cases/fdo) (alias test-deps))
  (action
   (chdir
    test-cases/fdo
@@ -721,7 +913,7 @@
 
 (rule
  (alias findlib)
- (deps (package dune) (source_tree test-cases/findlib))
+ (deps (package dune) (source_tree test-cases/findlib) (alias test-deps))
  (action
   (chdir
    test-cases/findlib
@@ -729,7 +921,10 @@
 
 (rule
  (alias findlib-dynload)
- (deps (package dune) (source_tree test-cases/findlib-dynload))
+ (deps
+  (package dune)
+  (source_tree test-cases/findlib-dynload)
+  (alias test-deps))
  (action
   (chdir
    test-cases/findlib-dynload
@@ -737,7 +932,10 @@
 
 (rule
  (alias findlib-error)
- (deps (package dune) (source_tree test-cases/findlib-error))
+ (deps
+  (package dune)
+  (source_tree test-cases/findlib-error)
+  (alias test-deps))
  (action
   (chdir
    test-cases/findlib-error
@@ -745,7 +943,10 @@
 
 (rule
  (alias forbidden_libraries)
- (deps (package dune) (source_tree test-cases/forbidden_libraries))
+ (deps
+  (package dune)
+  (source_tree test-cases/forbidden_libraries)
+  (alias test-deps))
  (action
   (chdir
    test-cases/forbidden_libraries
@@ -753,7 +954,7 @@
 
 (rule
  (alias force-test)
- (deps (package dune) (source_tree test-cases/force-test))
+ (deps (package dune) (source_tree test-cases/force-test) (alias test-deps))
  (action
   (chdir
    test-cases/force-test
@@ -761,7 +962,10 @@
 
 (rule
  (alias foreign-library)
- (deps (package dune) (source_tree test-cases/foreign-library))
+ (deps
+  (package dune)
+  (source_tree test-cases/foreign-library)
+  (alias test-deps))
  (action
   (chdir
    test-cases/foreign-library
@@ -769,7 +973,10 @@
 
 (rule
  (alias foreign-stubs)
- (deps (package dune) (source_tree test-cases/foreign-stubs))
+ (deps
+  (package dune)
+  (source_tree test-cases/foreign-stubs)
+  (alias test-deps))
  (action
   (chdir
    test-cases/foreign-stubs
@@ -777,7 +984,10 @@
 
 (rule
  (alias format-dune-file)
- (deps (package dune) (source_tree test-cases/format-dune-file))
+ (deps
+  (package dune)
+  (source_tree test-cases/format-dune-file)
+  (alias test-deps))
  (action
   (chdir
    test-cases/format-dune-file
@@ -785,7 +995,7 @@
 
 (rule
  (alias formatting)
- (deps (package dune) (source_tree test-cases/formatting))
+ (deps (package dune) (source_tree test-cases/formatting) (alias test-deps))
  (action
   (chdir
    test-cases/formatting
@@ -793,7 +1003,10 @@
 
 (rule
  (alias gen-opam-install-file)
- (deps (package dune) (source_tree test-cases/gen-opam-install-file))
+ (deps
+  (package dune)
+  (source_tree test-cases/gen-opam-install-file)
+  (alias test-deps))
  (action
   (chdir
    test-cases/gen-opam-install-file
@@ -801,7 +1014,7 @@
 
 (rule
  (alias github1019)
- (deps (package dune) (source_tree test-cases/github1019))
+ (deps (package dune) (source_tree test-cases/github1019) (alias test-deps))
  (action
   (chdir
    test-cases/github1019
@@ -809,7 +1022,7 @@
 
 (rule
  (alias github1099)
- (deps (package dune) (source_tree test-cases/github1099))
+ (deps (package dune) (source_tree test-cases/github1099) (alias test-deps))
  (action
   (chdir
    test-cases/github1099
@@ -817,7 +1030,7 @@
 
 (rule
  (alias github1231)
- (deps (package dune) (source_tree test-cases/github1231))
+ (deps (package dune) (source_tree test-cases/github1231) (alias test-deps))
  (action
   (chdir
    test-cases/github1231
@@ -825,7 +1038,7 @@
 
 (rule
  (alias github1342)
- (deps (package dune) (source_tree test-cases/github1342))
+ (deps (package dune) (source_tree test-cases/github1342) (alias test-deps))
  (action
   (chdir
    test-cases/github1342
@@ -833,7 +1046,7 @@
 
 (rule
  (alias github1372)
- (deps (package dune) (source_tree test-cases/github1372))
+ (deps (package dune) (source_tree test-cases/github1372) (alias test-deps))
  (action
   (chdir
    test-cases/github1372
@@ -841,7 +1054,7 @@
 
 (rule
  (alias github1395)
- (deps (package dune) (source_tree test-cases/github1395))
+ (deps (package dune) (source_tree test-cases/github1395) (alias test-deps))
  (action
   (chdir
    test-cases/github1395
@@ -849,7 +1062,7 @@
 
 (rule
  (alias github1426)
- (deps (package dune) (source_tree test-cases/github1426))
+ (deps (package dune) (source_tree test-cases/github1426) (alias test-deps))
  (action
   (chdir
    test-cases/github1426
@@ -857,7 +1070,7 @@
 
 (rule
  (alias github1529)
- (deps (package dune) (source_tree test-cases/github1529))
+ (deps (package dune) (source_tree test-cases/github1529) (alias test-deps))
  (action
   (chdir
    test-cases/github1529
@@ -865,7 +1078,7 @@
 
 (rule
  (alias github1541)
- (deps (package dune) (source_tree test-cases/github1541))
+ (deps (package dune) (source_tree test-cases/github1541) (alias test-deps))
  (action
   (chdir
    test-cases/github1541
@@ -873,7 +1086,7 @@
 
 (rule
  (alias github1549)
- (deps (package dune) (source_tree test-cases/github1549))
+ (deps (package dune) (source_tree test-cases/github1549) (alias test-deps))
  (action
   (chdir
    test-cases/github1549
@@ -881,7 +1094,7 @@
 
 (rule
  (alias github1560)
- (deps (package dune) (source_tree test-cases/github1560))
+ (deps (package dune) (source_tree test-cases/github1560) (alias test-deps))
  (action
   (chdir
    test-cases/github1560
@@ -889,7 +1102,7 @@
 
 (rule
  (alias github1616)
- (deps (package dune) (source_tree test-cases/github1616))
+ (deps (package dune) (source_tree test-cases/github1616) (alias test-deps))
  (action
   (chdir
    test-cases/github1616
@@ -897,7 +1110,7 @@
 
 (rule
  (alias github1811)
- (deps (package dune) (source_tree test-cases/github1811))
+ (deps (package dune) (source_tree test-cases/github1811) (alias test-deps))
  (action
   (chdir
    test-cases/github1811
@@ -905,7 +1118,7 @@
 
 (rule
  (alias github1855)
- (deps (package dune) (source_tree test-cases/github1855))
+ (deps (package dune) (source_tree test-cases/github1855) (alias test-deps))
  (action
   (chdir
    test-cases/github1855
@@ -913,7 +1126,7 @@
 
 (rule
  (alias github1856)
- (deps (package dune) (source_tree test-cases/github1856))
+ (deps (package dune) (source_tree test-cases/github1856) (alias test-deps))
  (action
   (chdir
    test-cases/github1856
@@ -921,7 +1134,7 @@
 
 (rule
  (alias github1946)
- (deps (package dune) (source_tree test-cases/github1946))
+ (deps (package dune) (source_tree test-cases/github1946) (alias test-deps))
  (action
   (chdir
    test-cases/github1946
@@ -929,7 +1142,7 @@
 
 (rule
  (alias github20)
- (deps (package dune) (source_tree test-cases/github20))
+ (deps (package dune) (source_tree test-cases/github20) (alias test-deps))
  (action
   (chdir
    test-cases/github20
@@ -937,7 +1150,7 @@
 
 (rule
  (alias github2033)
- (deps (package dune) (source_tree test-cases/github2033))
+ (deps (package dune) (source_tree test-cases/github2033) (alias test-deps))
  (action
   (chdir
    test-cases/github2033
@@ -945,7 +1158,7 @@
 
 (rule
  (alias github2061)
- (deps (package dune) (source_tree test-cases/github2061))
+ (deps (package dune) (source_tree test-cases/github2061) (alias test-deps))
  (action
   (chdir
    test-cases/github2061
@@ -953,7 +1166,7 @@
 
 (rule
  (alias github2123)
- (deps (package dune) (source_tree test-cases/github2123))
+ (deps (package dune) (source_tree test-cases/github2123) (alias test-deps))
  (action
   (chdir
    test-cases/github2123
@@ -961,7 +1174,7 @@
 
 (rule
  (alias github2206)
- (deps (package dune) (source_tree test-cases/github2206))
+ (deps (package dune) (source_tree test-cases/github2206) (alias test-deps))
  (action
   (chdir
    test-cases/github2206
@@ -969,7 +1182,7 @@
 
 (rule
  (alias github2228)
- (deps (package dune) (source_tree test-cases/github2228))
+ (deps (package dune) (source_tree test-cases/github2228) (alias test-deps))
  (action
   (chdir
    test-cases/github2228
@@ -977,7 +1190,7 @@
 
 (rule
  (alias github2272)
- (deps (package dune) (source_tree test-cases/github2272))
+ (deps (package dune) (source_tree test-cases/github2272) (alias test-deps))
  (action
   (chdir
    test-cases/github2272
@@ -985,7 +1198,7 @@
 
 (rule
  (alias github24)
- (deps (package dune) (source_tree test-cases/github24))
+ (deps (package dune) (source_tree test-cases/github24) (alias test-deps))
  (action
   (chdir
    test-cases/github24
@@ -993,7 +1206,7 @@
 
 (rule
  (alias github2499)
- (deps (package dune) (source_tree test-cases/github2499))
+ (deps (package dune) (source_tree test-cases/github2499) (alias test-deps))
  (action
   (chdir
    test-cases/github2499
@@ -1001,7 +1214,7 @@
 
 (rule
  (alias github25)
- (deps (package dune) (source_tree test-cases/github25))
+ (deps (package dune) (source_tree test-cases/github25) (alias test-deps))
  (action
   (setenv
    OCAMLPATH
@@ -1012,7 +1225,7 @@
 
 (rule
  (alias github2584)
- (deps (package dune) (source_tree test-cases/github2584))
+ (deps (package dune) (source_tree test-cases/github2584) (alias test-deps))
  (action
   (chdir
    test-cases/github2584
@@ -1020,7 +1233,7 @@
 
 (rule
  (alias github2629)
- (deps (package dune) (source_tree test-cases/github2629))
+ (deps (package dune) (source_tree test-cases/github2629) (alias test-deps))
  (action
   (chdir
    test-cases/github2629
@@ -1028,7 +1241,7 @@
 
 (rule
  (alias github2681)
- (deps (package dune) (source_tree test-cases/github2681))
+ (deps (package dune) (source_tree test-cases/github2681) (alias test-deps))
  (action
   (chdir
    test-cases/github2681
@@ -1036,7 +1249,7 @@
 
 (rule
  (alias github2848)
- (deps (package dune) (source_tree test-cases/github2848))
+ (deps (package dune) (source_tree test-cases/github2848) (alias test-deps))
  (action
   (chdir
    test-cases/github2848
@@ -1044,7 +1257,7 @@
 
 (rule
  (alias github2990)
- (deps (package dune) (source_tree test-cases/github2990))
+ (deps (package dune) (source_tree test-cases/github2990) (alias test-deps))
  (action
   (chdir
    test-cases/github2990
@@ -1060,7 +1273,7 @@
 
 (rule
  (alias github3046)
- (deps (package dune) (source_tree test-cases/github3046))
+ (deps (package dune) (source_tree test-cases/github3046) (alias test-deps))
  (action
   (chdir
    test-cases/github3046
@@ -1068,7 +1281,7 @@
 
 (rule
  (alias github3180)
- (deps (package dune) (source_tree test-cases/github3180))
+ (deps (package dune) (source_tree test-cases/github3180) (alias test-deps))
  (action
   (chdir
    test-cases/github3180
@@ -1076,7 +1289,7 @@
 
 (rule
  (alias github3412)
- (deps (package dune) (source_tree test-cases/github3412))
+ (deps (package dune) (source_tree test-cases/github3412) (alias test-deps))
  (action
   (chdir
    test-cases/github3412
@@ -1084,7 +1297,7 @@
 
 (rule
  (alias github3440)
- (deps (package dune) (source_tree test-cases/github3440))
+ (deps (package dune) (source_tree test-cases/github3440) (alias test-deps))
  (action
   (chdir
    test-cases/github3440
@@ -1092,7 +1305,7 @@
 
 (rule
  (alias github534)
- (deps (package dune) (source_tree test-cases/github534))
+ (deps (package dune) (source_tree test-cases/github534) (alias test-deps))
  (action
   (chdir
    test-cases/github534
@@ -1100,7 +1313,7 @@
 
 (rule
  (alias github568)
- (deps (package dune) (source_tree test-cases/github568))
+ (deps (package dune) (source_tree test-cases/github568) (alias test-deps))
  (action
   (chdir
    test-cases/github568
@@ -1108,7 +1321,7 @@
 
 (rule
  (alias github597)
- (deps (package dune) (source_tree test-cases/github597))
+ (deps (package dune) (source_tree test-cases/github597) (alias test-deps))
  (action
   (chdir
    test-cases/github597
@@ -1116,7 +1329,7 @@
 
 (rule
  (alias github644)
- (deps (package dune) (source_tree test-cases/github644))
+ (deps (package dune) (source_tree test-cases/github644) (alias test-deps))
  (action
   (chdir
    test-cases/github644
@@ -1124,7 +1337,7 @@
 
 (rule
  (alias github660)
- (deps (package dune) (source_tree test-cases/github660))
+ (deps (package dune) (source_tree test-cases/github660) (alias test-deps))
  (action
   (chdir
    test-cases/github660
@@ -1132,7 +1345,7 @@
 
 (rule
  (alias github734)
- (deps (package dune) (source_tree test-cases/github734))
+ (deps (package dune) (source_tree test-cases/github734) (alias test-deps))
  (action
   (chdir
    test-cases/github734
@@ -1140,7 +1353,7 @@
 
 (rule
  (alias github759)
- (deps (package dune) (source_tree test-cases/github759))
+ (deps (package dune) (source_tree test-cases/github759) (alias test-deps))
  (action
   (chdir
    test-cases/github759
@@ -1148,7 +1361,7 @@
 
 (rule
  (alias github761)
- (deps (package dune) (source_tree test-cases/github761))
+ (deps (package dune) (source_tree test-cases/github761) (alias test-deps))
  (action
   (chdir
    test-cases/github761
@@ -1156,7 +1369,7 @@
 
 (rule
  (alias github764)
- (deps (package dune) (source_tree test-cases/github764))
+ (deps (package dune) (source_tree test-cases/github764) (alias test-deps))
  (action
   (chdir
    test-cases/github764
@@ -1165,7 +1378,7 @@
 
 (rule
  (alias github784)
- (deps (package dune) (source_tree test-cases/github784))
+ (deps (package dune) (source_tree test-cases/github784) (alias test-deps))
  (action
   (chdir
    test-cases/github784
@@ -1173,7 +1386,7 @@
 
 (rule
  (alias github992)
- (deps (package dune) (source_tree test-cases/github992))
+ (deps (package dune) (source_tree test-cases/github992) (alias test-deps))
  (action
   (chdir
    test-cases/github992
@@ -1181,7 +1394,7 @@
 
 (rule
  (alias glob-deps)
- (deps (package dune) (source_tree test-cases/glob-deps))
+ (deps (package dune) (source_tree test-cases/glob-deps) (alias test-deps))
  (action
   (chdir
    test-cases/glob-deps
@@ -1189,7 +1402,10 @@
 
 (rule
  (alias glob-deps-change)
- (deps (package dune) (source_tree test-cases/glob-deps-change))
+ (deps
+  (package dune)
+  (source_tree test-cases/glob-deps-change)
+  (alias test-deps))
  (action
   (chdir
    test-cases/glob-deps-change
@@ -1197,7 +1413,10 @@
 
 (rule
  (alias hints-root-executables)
- (deps (package dune) (source_tree test-cases/hints-root-executables))
+ (deps
+  (package dune)
+  (source_tree test-cases/hints-root-executables)
+  (alias test-deps))
  (action
   (chdir
    test-cases/hints-root-executables
@@ -1205,7 +1424,10 @@
 
 (rule
  (alias ignored_subdirs)
- (deps (package dune) (source_tree test-cases/ignored_subdirs))
+ (deps
+  (package dune)
+  (source_tree test-cases/ignored_subdirs)
+  (alias test-deps))
  (action
   (chdir
    test-cases/ignored_subdirs
@@ -1213,7 +1435,7 @@
 
 (rule
  (alias include-loop)
- (deps (package dune) (source_tree test-cases/include-loop))
+ (deps (package dune) (source_tree test-cases/include-loop) (alias test-deps))
  (action
   (chdir
    test-cases/include-loop
@@ -1221,7 +1443,10 @@
 
 (rule
  (alias include-qualified)
- (deps (package dune) (source_tree test-cases/include-qualified))
+ (deps
+  (package dune)
+  (source_tree test-cases/include-qualified)
+  (alias test-deps))
  (action
   (chdir
    test-cases/include-qualified
@@ -1229,7 +1454,10 @@
 
 (rule
  (alias incremental-rebuilds)
- (deps (package dune) (source_tree test-cases/incremental-rebuilds))
+ (deps
+  (package dune)
+  (source_tree test-cases/incremental-rebuilds)
+  (alias test-deps))
  (action
   (chdir
    test-cases/incremental-rebuilds
@@ -1237,7 +1465,7 @@
 
 (rule
  (alias inline_tests)
- (deps (package dune) (source_tree test-cases/inline_tests))
+ (deps (package dune) (source_tree test-cases/inline_tests) (alias test-deps))
  (action
   (chdir
    test-cases/inline_tests
@@ -1245,7 +1473,10 @@
 
 (rule
  (alias inline_tests-multi-mode)
- (deps (package dune) (source_tree test-cases/inline_tests-multi-mode))
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests-multi-mode)
+  (alias test-deps))
  (action
   (chdir
    test-cases/inline_tests-multi-mode
@@ -1253,7 +1484,10 @@
 
 (rule
  (alias install-dry-run)
- (deps (package dune) (source_tree test-cases/install-dry-run))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-dry-run)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-dry-run
@@ -1261,7 +1495,10 @@
 
 (rule
  (alias install-libdir)
- (deps (package dune) (source_tree test-cases/install-libdir))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-libdir)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-libdir
@@ -1269,7 +1506,10 @@
 
 (rule
  (alias install-mandir)
- (deps (package dune) (source_tree test-cases/install-mandir))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-mandir)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-mandir
@@ -1277,7 +1517,10 @@
 
 (rule
  (alias install-multiple-contexts)
- (deps (package dune) (source_tree test-cases/install-multiple-contexts))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-multiple-contexts)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-multiple-contexts
@@ -1285,7 +1528,10 @@
 
 (rule
  (alias install-partial-package)
- (deps (package dune) (source_tree test-cases/install-partial-package))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-partial-package)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-partial-package
@@ -1293,7 +1539,10 @@
 
 (rule
  (alias install-rule-order)
- (deps (package dune) (source_tree test-cases/install-rule-order))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-rule-order)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-rule-order
@@ -1301,7 +1550,10 @@
 
 (rule
  (alias install-single-section)
- (deps (package dune) (source_tree test-cases/install-single-section))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-single-section)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-single-section
@@ -1309,7 +1561,10 @@
 
 (rule
  (alias install-with-var)
- (deps (package dune) (source_tree test-cases/install-with-var))
+ (deps
+  (package dune)
+  (source_tree test-cases/install-with-var)
+  (alias test-deps))
  (action
   (chdir
    test-cases/install-with-var
@@ -1317,7 +1572,10 @@
 
 (rule
  (alias installable-dup-private-libs)
- (deps (package dune) (source_tree test-cases/installable-dup-private-libs))
+ (deps
+  (package dune)
+  (source_tree test-cases/installable-dup-private-libs)
+  (alias test-deps))
  (action
   (chdir
    test-cases/installable-dup-private-libs
@@ -1325,7 +1583,7 @@
 
 (rule
  (alias intf-only)
- (deps (package dune) (source_tree test-cases/intf-only))
+ (deps (package dune) (source_tree test-cases/intf-only) (alias test-deps))
  (action
   (chdir
    test-cases/intf-only
@@ -1333,7 +1591,10 @@
 
 (rule
  (alias invalid-dune-package)
- (deps (package dune) (source_tree test-cases/invalid-dune-package))
+ (deps
+  (package dune)
+  (source_tree test-cases/invalid-dune-package)
+  (alias test-deps))
  (action
   (chdir
    test-cases/invalid-dune-package
@@ -1341,7 +1602,10 @@
 
 (rule
  (alias invalid-module-name)
- (deps (package dune) (source_tree test-cases/invalid-module-name))
+ (deps
+  (package dune)
+  (source_tree test-cases/invalid-module-name)
+  (alias test-deps))
  (action
   (chdir
    test-cases/invalid-module-name
@@ -1349,7 +1613,7 @@
 
 (rule
  (alias js_of_ocaml)
- (deps (package dune) (source_tree test-cases/js_of_ocaml))
+ (deps (package dune) (source_tree test-cases/js_of_ocaml) (alias test-deps))
  (action
   (setenv
    NODE
@@ -1360,7 +1624,7 @@
 
 (rule
  (alias lib)
- (deps (package dune) (source_tree test-cases/lib))
+ (deps (package dune) (source_tree test-cases/lib) (alias test-deps))
  (action
   (chdir
    test-cases/lib
@@ -1368,7 +1632,10 @@
 
 (rule
  (alias lib-available)
- (deps (package dune) (source_tree test-cases/lib-available))
+ (deps
+  (package dune)
+  (source_tree test-cases/lib-available)
+  (alias test-deps))
  (action
   (chdir
    test-cases/lib-available
@@ -1376,7 +1643,7 @@
 
 (rule
  (alias lib-errors)
- (deps (package dune) (source_tree test-cases/lib-errors))
+ (deps (package dune) (source_tree test-cases/lib-errors) (alias test-deps))
  (action
   (chdir
    test-cases/lib-errors
@@ -1384,7 +1651,7 @@
 
 (rule
  (alias link-deps)
- (deps (package dune) (source_tree test-cases/link-deps))
+ (deps (package dune) (source_tree test-cases/link-deps) (alias test-deps))
  (action
   (chdir
    test-cases/link-deps
@@ -1392,7 +1659,10 @@
 
 (rule
  (alias link-includes)
- (deps (package dune) (source_tree test-cases/link-includes))
+ (deps
+  (package dune)
+  (source_tree test-cases/link-includes)
+  (alias test-deps))
  (action
   (chdir
    test-cases/link-includes
@@ -1400,7 +1670,7 @@
 
 (rule
  (alias lint)
- (deps (package dune) (source_tree test-cases/lint))
+ (deps (package dune) (source_tree test-cases/lint) (alias test-deps))
  (action
   (chdir
    test-cases/lint
@@ -1408,7 +1678,7 @@
 
 (rule
  (alias loop)
- (deps (package dune) (source_tree test-cases/loop))
+ (deps (package dune) (source_tree test-cases/loop) (alias test-deps))
  (action
   (chdir
    test-cases/loop
@@ -1416,7 +1686,10 @@
 
 (rule
  (alias macro-expand-error)
- (deps (package dune) (source_tree test-cases/macro-expand-error))
+ (deps
+  (package dune)
+  (source_tree test-cases/macro-expand-error)
+  (alias test-deps))
  (action
   (chdir
    test-cases/macro-expand-error
@@ -1424,7 +1697,7 @@
 
 (rule
  (alias mdx-stanza)
- (deps (package dune) (source_tree test-cases/mdx-stanza))
+ (deps (package dune) (source_tree test-cases/mdx-stanza) (alias test-deps))
  (action
   (chdir
    test-cases/mdx-stanza
@@ -1432,7 +1705,7 @@
 
 (rule
  (alias menhir-cmly)
- (deps (package dune) (source_tree test-cases/menhir/cmly))
+ (deps (package dune) (source_tree test-cases/menhir/cmly) (alias test-deps))
  (action
   (chdir
    test-cases/menhir/cmly
@@ -1440,7 +1713,7 @@
 
 (rule
  (alias menhir-env)
- (deps (package dune) (source_tree test-cases/menhir/env))
+ (deps (package dune) (source_tree test-cases/menhir/env) (alias test-deps))
  (action
   (chdir
    test-cases/menhir/env
@@ -1448,7 +1721,10 @@
 
 (rule
  (alias menhir-general)
- (deps (package dune) (source_tree test-cases/menhir/general))
+ (deps
+  (package dune)
+  (source_tree test-cases/menhir/general)
+  (alias test-deps))
  (action
   (chdir
    test-cases/menhir/general
@@ -1456,7 +1732,10 @@
 
 (rule
  (alias menhir-general-2.0)
- (deps (package dune) (source_tree test-cases/menhir/general-2.0))
+ (deps
+  (package dune)
+  (source_tree test-cases/menhir/general-2.0)
+  (alias test-deps))
  (action
   (chdir
    test-cases/menhir/general-2.0
@@ -1464,7 +1743,10 @@
 
 (rule
  (alias menhir-promote)
- (deps (package dune) (source_tree test-cases/menhir/promote))
+ (deps
+  (package dune)
+  (source_tree test-cases/menhir/promote)
+  (alias test-deps))
  (action
   (chdir
    test-cases/menhir/promote
@@ -1474,7 +1756,8 @@
  (alias merlin-allow_approximate_merlin)
  (deps
   (package dune)
-  (source_tree test-cases/merlin/allow_approximate_merlin))
+  (source_tree test-cases/merlin/allow_approximate_merlin)
+  (alias test-deps))
  (action
   (chdir
    test-cases/merlin/allow_approximate_merlin
@@ -1482,7 +1765,10 @@
 
 (rule
  (alias merlin-merlin-tests)
- (deps (package dune) (source_tree test-cases/merlin/merlin-tests))
+ (deps
+  (package dune)
+  (source_tree test-cases/merlin/merlin-tests)
+  (alias test-deps))
  (action
   (chdir
    test-cases/merlin/merlin-tests
@@ -1490,7 +1776,10 @@
 
 (rule
  (alias merlin-src-dirs-of-deps)
- (deps (package dune) (source_tree test-cases/merlin/src-dirs-of-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/merlin/src-dirs-of-deps)
+  (alias test-deps))
  (action
   (chdir
    test-cases/merlin/src-dirs-of-deps
@@ -1498,7 +1787,7 @@
 
 (rule
  (alias meta-gen)
- (deps (package dune) (source_tree test-cases/meta-gen))
+ (deps (package dune) (source_tree test-cases/meta-gen) (alias test-deps))
  (action
   (chdir
    test-cases/meta-gen
@@ -1506,7 +1795,7 @@
 
 (rule
  (alias misc)
- (deps (package dune) (source_tree test-cases/misc))
+ (deps (package dune) (source_tree test-cases/misc) (alias test-deps))
  (action
   (chdir
    test-cases/misc
@@ -1514,7 +1803,10 @@
 
 (rule
  (alias missing-loc-run)
- (deps (package dune) (source_tree test-cases/missing-loc-run))
+ (deps
+  (package dune)
+  (source_tree test-cases/missing-loc-run)
+  (alias test-deps))
  (action
   (chdir
    test-cases/missing-loc-run
@@ -1522,7 +1814,7 @@
 
 (rule
  (alias multi-dir)
- (deps (package dune) (source_tree test-cases/multi-dir))
+ (deps (package dune) (source_tree test-cases/multi-dir) (alias test-deps))
  (action
   (chdir
    test-cases/multi-dir
@@ -1530,7 +1822,10 @@
 
 (rule
  (alias multiple-targets)
- (deps (package dune) (source_tree test-cases/multiple-targets))
+ (deps
+  (package dune)
+  (source_tree test-cases/multiple-targets)
+  (alias test-deps))
  (action
   (chdir
    test-cases/multiple-targets
@@ -1538,7 +1833,10 @@
 
 (rule
  (alias name-field-validation)
- (deps (package dune) (source_tree test-cases/name-field-validation))
+ (deps
+  (package dune)
+  (source_tree test-cases/name-field-validation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/name-field-validation
@@ -1546,7 +1844,7 @@
 
 (rule
  (alias no-infer)
- (deps (package dune) (source_tree test-cases/no-infer))
+ (deps (package dune) (source_tree test-cases/no-infer) (alias test-deps))
  (action
   (chdir
    test-cases/no-infer
@@ -1554,7 +1852,10 @@
 
 (rule
  (alias no-installable-mode)
- (deps (package dune) (source_tree test-cases/no-installable-mode))
+ (deps
+  (package dune)
+  (source_tree test-cases/no-installable-mode)
+  (alias test-deps))
  (action
   (chdir
    test-cases/no-installable-mode
@@ -1562,7 +1863,10 @@
 
 (rule
  (alias no-name-field)
- (deps (package dune) (source_tree test-cases/no-name-field))
+ (deps
+  (package dune)
+  (source_tree test-cases/no-name-field)
+  (alias test-deps))
  (action
   (chdir
    test-cases/no-name-field
@@ -1570,7 +1874,7 @@
 
 (rule
  (alias null-dep)
- (deps (package dune) (source_tree test-cases/null-dep))
+ (deps (package dune) (source_tree test-cases/null-dep) (alias test-deps))
  (action
   (chdir
    test-cases/null-dep
@@ -1578,7 +1882,10 @@
 
 (rule
  (alias ocaml-config-macro)
- (deps (package dune) (source_tree test-cases/ocaml-config-macro))
+ (deps
+  (package dune)
+  (source_tree test-cases/ocaml-config-macro)
+  (alias test-deps))
  (action
   (chdir
    test-cases/ocaml-config-macro
@@ -1586,7 +1893,7 @@
 
 (rule
  (alias ocaml-syntax)
- (deps (package dune) (source_tree test-cases/ocaml-syntax))
+ (deps (package dune) (source_tree test-cases/ocaml-syntax) (alias test-deps))
  (action
   (chdir
    test-cases/ocaml-syntax
@@ -1594,7 +1901,10 @@
 
 (rule
  (alias ocamldep-multi-stanzas)
- (deps (package dune) (source_tree test-cases/ocamldep-multi-stanzas))
+ (deps
+  (package dune)
+  (source_tree test-cases/ocamldep-multi-stanzas)
+  (alias test-deps))
  (action
   (chdir
    test-cases/ocamldep-multi-stanzas
@@ -1602,7 +1912,10 @@
 
 (rule
  (alias odig-files-workspace)
- (deps (package dune) (source_tree test-cases/odig-files-workspace))
+ (deps
+  (package dune)
+  (source_tree test-cases/odig-files-workspace)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odig-files-workspace
@@ -1610,7 +1923,10 @@
 
 (rule
  (alias odoc-github717-odoc-index)
- (deps (package dune) (source_tree test-cases/odoc/github717-odoc-index))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/github717-odoc-index)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/github717-odoc-index
@@ -1619,7 +1935,10 @@
 
 (rule
  (alias odoc-multiple-private-libs)
- (deps (package dune) (source_tree test-cases/odoc/multiple-private-libs))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/multiple-private-libs)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/multiple-private-libs
@@ -1628,7 +1947,10 @@
 
 (rule
  (alias odoc-odoc-package-mld-link)
- (deps (package dune) (source_tree test-cases/odoc/odoc-package-mld-link))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/odoc-package-mld-link)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/odoc-package-mld-link
@@ -1637,7 +1959,10 @@
 
 (rule
  (alias odoc-odoc-simple)
- (deps (package dune) (source_tree test-cases/odoc/odoc-simple))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/odoc-simple)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/odoc-simple
@@ -1646,7 +1971,10 @@
 
 (rule
  (alias odoc-odoc-unique-mlds)
- (deps (package dune) (source_tree test-cases/odoc/odoc-unique-mlds))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/odoc-unique-mlds)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/odoc-unique-mlds
@@ -1655,7 +1983,10 @@
 
 (rule
  (alias odoc-warnings)
- (deps (package dune) (source_tree test-cases/odoc/warnings))
+ (deps
+  (package dune)
+  (source_tree test-cases/odoc/warnings)
+  (alias test-deps))
  (action
   (chdir
    test-cases/odoc/warnings
@@ -1664,7 +1995,10 @@
 
 (rule
  (alias old-dune-subsystem)
- (deps (package dune) (source_tree test-cases/old-dune-subsystem))
+ (deps
+  (package dune)
+  (source_tree test-cases/old-dune-subsystem)
+  (alias test-deps))
  (action
   (chdir
    test-cases/old-dune-subsystem
@@ -1672,7 +2006,7 @@
 
 (rule
  (alias optional)
- (deps (package dune) (source_tree test-cases/optional))
+ (deps (package dune) (source_tree test-cases/optional) (alias test-deps))
  (action
   (chdir
    test-cases/optional
@@ -1680,7 +2014,10 @@
 
 (rule
  (alias optional-executable)
- (deps (package dune) (source_tree test-cases/optional-executable))
+ (deps
+  (package dune)
+  (source_tree test-cases/optional-executable)
+  (alias test-deps))
  (action
   (chdir
    test-cases/optional-executable
@@ -1688,7 +2025,7 @@
 
 (rule
  (alias output-obj)
- (deps (package dune) (source_tree test-cases/output-obj))
+ (deps (package dune) (source_tree test-cases/output-obj) (alias test-deps))
  (action
   (chdir
    test-cases/output-obj
@@ -1700,7 +2037,7 @@
 
 (rule
  (alias package-dep)
- (deps (package dune) (source_tree test-cases/package-dep))
+ (deps (package dune) (source_tree test-cases/package-dep) (alias test-deps))
  (action
   (chdir
    test-cases/package-dep
@@ -1708,7 +2045,10 @@
 
 (rule
  (alias path-variables)
- (deps (package dune) (source_tree test-cases/path-variables))
+ (deps
+  (package dune)
+  (source_tree test-cases/path-variables)
+  (alias test-deps))
  (action
   (chdir
    test-cases/path-variables
@@ -1719,6 +2059,7 @@
  (deps
   (package dune)
   (source_tree test-cases/pkg-config-quoting)
+  (alias test-deps)
   (package dune-configurator))
  (action
   (chdir
@@ -1727,7 +2068,7 @@
 
 (rule
  (alias plugin-mode)
- (deps (package dune) (source_tree test-cases/plugin-mode))
+ (deps (package dune) (source_tree test-cases/plugin-mode) (alias test-deps))
  (action
   (chdir
    test-cases/plugin-mode
@@ -1735,7 +2076,7 @@
 
 (rule
  (alias ppx-rewriter)
- (deps (package dune) (source_tree test-cases/ppx-rewriter))
+ (deps (package dune) (source_tree test-cases/ppx-rewriter) (alias test-deps))
  (action
   (chdir
    test-cases/ppx-rewriter
@@ -1744,7 +2085,10 @@
 
 (rule
  (alias ppx-runtime-dependencies)
- (deps (package dune) (source_tree test-cases/ppx-runtime-dependencies))
+ (deps
+  (package dune)
+  (source_tree test-cases/ppx-runtime-dependencies)
+  (alias test-deps))
  (action
   (chdir
    test-cases/ppx-runtime-dependencies
@@ -1752,7 +2096,10 @@
 
 (rule
  (alias preprocess-with-action)
- (deps (package dune) (source_tree test-cases/preprocess-with-action))
+ (deps
+  (package dune)
+  (source_tree test-cases/preprocess-with-action)
+  (alias test-deps))
  (action
   (chdir
    test-cases/preprocess-with-action
@@ -1760,7 +2107,10 @@
 
 (rule
  (alias private-modules)
- (deps (package dune) (source_tree test-cases/private-modules))
+ (deps
+  (package dune)
+  (source_tree test-cases/private-modules)
+  (alias test-deps))
  (action
   (chdir
    test-cases/private-modules
@@ -1768,7 +2118,10 @@
 
 (rule
  (alias private-public-overlap)
- (deps (package dune) (source_tree test-cases/private-public-overlap))
+ (deps
+  (package dune)
+  (source_tree test-cases/private-public-overlap)
+  (alias test-deps))
  (action
   (chdir
    test-cases/private-public-overlap
@@ -1776,7 +2129,7 @@
 
 (rule
  (alias project-root)
- (deps (package dune) (source_tree test-cases/project-root))
+ (deps (package dune) (source_tree test-cases/project-root) (alias test-deps))
  (action
   (chdir
    test-cases/project-root
@@ -1784,7 +2137,7 @@
 
 (rule
  (alias promote)
- (deps (package dune) (source_tree test-cases/promote))
+ (deps (package dune) (source_tree test-cases/promote) (alias test-deps))
  (action
   (chdir
    test-cases/promote
@@ -1792,7 +2145,7 @@
 
 (rule
  (alias quoting)
- (deps (package dune) (source_tree test-cases/quoting))
+ (deps (package dune) (source_tree test-cases/quoting) (alias test-deps))
  (action
   (chdir
    test-cases/quoting
@@ -1800,7 +2153,10 @@
 
 (rule
  (alias re-exported-deps)
- (deps (package dune) (source_tree test-cases/re-exported-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/re-exported-deps)
+  (alias test-deps))
  (action
   (chdir
    test-cases/re-exported-deps
@@ -1808,7 +2164,7 @@
 
 (rule
  (alias reason)
- (deps (package dune) (source_tree test-cases/reason))
+ (deps (package dune) (source_tree test-cases/reason) (alias test-deps))
  (action
   (chdir
    test-cases/reason
@@ -1816,7 +2172,7 @@
 
 (rule
  (alias redirections)
- (deps (package dune) (source_tree test-cases/redirections))
+ (deps (package dune) (source_tree test-cases/redirections) (alias test-deps))
  (action
   (chdir
    test-cases/redirections
@@ -1824,7 +2180,10 @@
 
 (rule
  (alias reporting-of-cycles)
- (deps (package dune) (source_tree test-cases/reporting-of-cycles))
+ (deps
+  (package dune)
+  (source_tree test-cases/reporting-of-cycles)
+  (alias test-deps))
  (action
   (chdir
    test-cases/reporting-of-cycles
@@ -1832,7 +2191,10 @@
 
 (rule
  (alias rule-target-external)
- (deps (package dune) (source_tree test-cases/rule-target-external))
+ (deps
+  (package dune)
+  (source_tree test-cases/rule-target-external)
+  (alias test-deps))
  (action
   (chdir
    test-cases/rule-target-external
@@ -1840,7 +2202,10 @@
 
 (rule
  (alias rule-target-inferrence)
- (deps (package dune) (source_tree test-cases/rule-target-inferrence))
+ (deps
+  (package dune)
+  (source_tree test-cases/rule-target-inferrence)
+  (alias test-deps))
  (action
   (chdir
    test-cases/rule-target-inferrence
@@ -1848,7 +2213,7 @@
 
 (rule
  (alias sandboxing)
- (deps (package dune) (source_tree test-cases/sandboxing))
+ (deps (package dune) (source_tree test-cases/sandboxing) (alias test-deps))
  (action
   (chdir
    test-cases/sandboxing
@@ -1856,7 +2221,7 @@
 
 (rule
  (alias scope-bug)
- (deps (package dune) (source_tree test-cases/scope-bug))
+ (deps (package dune) (source_tree test-cases/scope-bug) (alias test-deps))
  (action
   (chdir
    test-cases/scope-bug
@@ -1864,7 +2229,10 @@
 
 (rule
  (alias scope-ppx-bug)
- (deps (package dune) (source_tree test-cases/scope-ppx-bug))
+ (deps
+  (package dune)
+  (source_tree test-cases/scope-ppx-bug)
+  (alias test-deps))
  (action
   (chdir
    test-cases/scope-ppx-bug
@@ -1872,7 +2240,7 @@
 
 (rule
  (alias select)
- (deps (package dune) (source_tree test-cases/select))
+ (deps (package dune) (source_tree test-cases/select) (alias test-deps))
  (action
   (chdir
    test-cases/select
@@ -1880,7 +2248,10 @@
 
 (rule
  (alias select-2-0-rules)
- (deps (package dune) (source_tree test-cases/select-2-0-rules))
+ (deps
+  (package dune)
+  (source_tree test-cases/select-2-0-rules)
+  (alias test-deps))
  (action
   (chdir
    test-cases/select-2-0-rules
@@ -1888,7 +2259,10 @@
 
 (rule
  (alias several-packages)
- (deps (package dune) (source_tree test-cases/several-packages))
+ (deps
+  (package dune)
+  (source_tree test-cases/several-packages)
+  (alias test-deps))
  (action
   (chdir
    test-cases/several-packages
@@ -1896,7 +2270,10 @@
 
 (rule
  (alias shadow-bindings)
- (deps (package dune) (source_tree test-cases/shadow-bindings))
+ (deps
+  (package dune)
+  (source_tree test-cases/shadow-bindings)
+  (alias test-deps))
  (action
   (chdir
    test-cases/shadow-bindings
@@ -1904,7 +2281,10 @@
 
 (rule
  (alias stale-artifact-removal)
- (deps (package dune) (source_tree test-cases/stale-artifact-removal))
+ (deps
+  (package dune)
+  (source_tree test-cases/stale-artifact-removal)
+  (alias test-deps))
  (action
   (chdir
    test-cases/stale-artifact-removal
@@ -1912,7 +2292,10 @@
 
 (rule
  (alias stdlib-compilation)
- (deps (package dune) (source_tree test-cases/stdlib-compilation))
+ (deps
+  (package dune)
+  (source_tree test-cases/stdlib-compilation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/stdlib-compilation
@@ -1920,7 +2303,10 @@
 
 (rule
  (alias strict-package-deps)
- (deps (package dune) (source_tree test-cases/strict-package-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/strict-package-deps)
+  (alias test-deps))
  (action
   (chdir
    test-cases/strict-package-deps
@@ -1928,7 +2314,10 @@
 
 (rule
  (alias subdir-stanza)
- (deps (package dune) (source_tree test-cases/subdir-stanza))
+ (deps
+  (package dune)
+  (source_tree test-cases/subdir-stanza)
+  (alias test-deps))
  (action
   (chdir
    test-cases/subdir-stanza
@@ -1936,7 +2325,7 @@
 
 (rule
  (alias subst)
- (deps (package dune) (source_tree test-cases/subst))
+ (deps (package dune) (source_tree test-cases/subst) (alias test-deps))
  (action
   (chdir
    test-cases/subst
@@ -1944,7 +2333,10 @@
 
 (rule
  (alias syntax-versioning)
- (deps (package dune) (source_tree test-cases/syntax-versioning))
+ (deps
+  (package dune)
+  (source_tree test-cases/syntax-versioning)
+  (alias test-deps))
  (action
   (chdir
    test-cases/syntax-versioning
@@ -1952,7 +2344,10 @@
 
 (rule
  (alias target-dir-alias)
- (deps (package dune) (source_tree test-cases/target-dir-alias))
+ (deps
+  (package dune)
+  (source_tree test-cases/target-dir-alias)
+  (alias test-deps))
  (action
   (chdir
    test-cases/target-dir-alias
@@ -1960,7 +2355,10 @@
 
 (rule
  (alias targets-with-vars)
- (deps (package dune) (source_tree test-cases/targets-with-vars))
+ (deps
+  (package dune)
+  (source_tree test-cases/targets-with-vars)
+  (alias test-deps))
  (action
   (chdir
    test-cases/targets-with-vars
@@ -1968,7 +2366,7 @@
 
 (rule
  (alias tests-stanza)
- (deps (package dune) (source_tree test-cases/tests-stanza))
+ (deps (package dune) (source_tree test-cases/tests-stanza) (alias test-deps))
  (action
   (chdir
    test-cases/tests-stanza
@@ -1976,7 +2374,10 @@
 
 (rule
  (alias tests-stanza-action)
- (deps (package dune) (source_tree test-cases/tests-stanza-action))
+ (deps
+  (package dune)
+  (source_tree test-cases/tests-stanza-action)
+  (alias test-deps))
  (action
   (chdir
    test-cases/tests-stanza-action
@@ -1986,7 +2387,8 @@
  (alias tests-stanza-action-syntax-version)
  (deps
   (package dune)
-  (source_tree test-cases/tests-stanza-action-syntax-version))
+  (source_tree test-cases/tests-stanza-action-syntax-version)
+  (alias test-deps))
  (action
   (chdir
    test-cases/tests-stanza-action-syntax-version
@@ -1994,7 +2396,10 @@
 
 (rule
  (alias toplevel-integration)
- (deps (package dune) (source_tree test-cases/toplevel-integration))
+ (deps
+  (package dune)
+  (source_tree test-cases/toplevel-integration)
+  (alias test-deps))
  (action
   (chdir
    test-cases/toplevel-integration
@@ -2002,7 +2407,10 @@
 
 (rule
  (alias toplevel-stanza)
- (deps (package dune) (source_tree test-cases/toplevel-stanza))
+ (deps
+  (package dune)
+  (source_tree test-cases/toplevel-stanza)
+  (alias test-deps))
  (action
   (chdir
    test-cases/toplevel-stanza
@@ -2011,7 +2419,7 @@
 
 (rule
  (alias trace-file)
- (deps (package dune) (source_tree test-cases/trace-file))
+ (deps (package dune) (source_tree test-cases/trace-file) (alias test-deps))
  (action
   (chdir
    test-cases/trace-file
@@ -2019,7 +2427,10 @@
 
 (rule
  (alias transitive-deps-mode)
- (deps (package dune) (source_tree test-cases/transitive-deps-mode))
+ (deps
+  (package dune)
+  (source_tree test-cases/transitive-deps-mode)
+  (alias test-deps))
  (action
   (chdir
    test-cases/transitive-deps-mode
@@ -2027,7 +2438,10 @@
 
 (rule
  (alias unreadable-src)
- (deps (package dune) (source_tree test-cases/unreadable-src))
+ (deps
+  (package dune)
+  (source_tree test-cases/unreadable-src)
+  (alias test-deps))
  (action
   (chdir
    test-cases/unreadable-src
@@ -2035,7 +2449,10 @@
 
 (rule
  (alias unused-preprocessor-deps)
- (deps (package dune) (source_tree test-cases/unused-preprocessor-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/unused-preprocessor-deps)
+  (alias test-deps))
  (action
   (chdir
    test-cases/unused-preprocessor-deps
@@ -2043,7 +2460,7 @@
 
 (rule
  (alias upgrader)
- (deps (package dune) (source_tree test-cases/upgrader))
+ (deps (package dune) (source_tree test-cases/upgrader) (alias test-deps))
  (action
   (chdir
    test-cases/upgrader
@@ -2051,7 +2468,7 @@
 
 (rule
  (alias use-meta)
- (deps (package dune) (source_tree test-cases/use-meta))
+ (deps (package dune) (source_tree test-cases/use-meta) (alias test-deps))
  (action
   (chdir
    test-cases/use-meta
@@ -2059,7 +2476,10 @@
 
 (rule
  (alias utop-utop-default)
- (deps (package dune) (source_tree test-cases/utop/utop-default))
+ (deps
+  (package dune)
+  (source_tree test-cases/utop/utop-default)
+  (alias test-deps))
  (action
   (chdir
    test-cases/utop/utop-default
@@ -2070,7 +2490,8 @@
  (alias utop-utop-default-implementation)
  (deps
   (package dune)
-  (source_tree test-cases/utop/utop-default-implementation))
+  (source_tree test-cases/utop/utop-default-implementation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/utop/utop-default-implementation
@@ -2079,7 +2500,10 @@
 
 (rule
  (alias utop-utop-ppx-rewriters)
- (deps (package dune) (source_tree test-cases/utop/utop-ppx-rewriters))
+ (deps
+  (package dune)
+  (source_tree test-cases/utop/utop-ppx-rewriters)
+  (alias test-deps))
  (action
   (chdir
    test-cases/utop/utop-ppx-rewriters
@@ -2088,7 +2512,10 @@
 
 (rule
  (alias utop-utop-simple)
- (deps (package dune) (source_tree test-cases/utop/utop-simple))
+ (deps
+  (package dune)
+  (source_tree test-cases/utop/utop-simple)
+  (alias test-deps))
  (action
   (chdir
    test-cases/utop/utop-simple
@@ -2097,7 +2524,10 @@
 
 (rule
  (alias variables-for-artifacts)
- (deps (package dune) (source_tree test-cases/variables-for-artifacts))
+ (deps
+  (package dune)
+  (source_tree test-cases/variables-for-artifacts)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variables-for-artifacts
@@ -2105,7 +2535,7 @@
 
 (rule
  (alias variants)
- (deps (package dune) (source_tree test-cases/variants))
+ (deps (package dune) (source_tree test-cases/variants) (alias test-deps))
  (action
   (chdir
    test-cases/variants
@@ -2113,7 +2543,10 @@
 
 (rule
  (alias variants-variant-dep-stack)
- (deps (package dune) (source_tree test-cases/variants/variant-dep-stack))
+ (deps
+  (package dune)
+  (source_tree test-cases/variants/variant-dep-stack)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variant-dep-stack
@@ -2123,7 +2556,8 @@
  (alias variants-variants-external-declaration)
  (deps
   (package dune)
-  (source_tree test-cases/variants/variants-external-declaration))
+  (source_tree test-cases/variants/variants-external-declaration)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-external-declaration
@@ -2133,7 +2567,8 @@
  (alias variants-variants-external-declaration-conflict)
  (deps
   (package dune)
-  (source_tree test-cases/variants/variants-external-declaration-conflict))
+  (source_tree test-cases/variants/variants-external-declaration-conflict)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-external-declaration-conflict
@@ -2143,7 +2578,8 @@
  (alias variants-variants-multi-project)
  (deps
   (package dune)
-  (source_tree test-cases/variants/variants-multi-project))
+  (source_tree test-cases/variants/variants-multi-project)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-multi-project
@@ -2151,7 +2587,10 @@
 
 (rule
  (alias variants-variants-only-package)
- (deps (package dune) (source_tree test-cases/variants/variants-only-package))
+ (deps
+  (package dune)
+  (source_tree test-cases/variants/variants-only-package)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-only-package
@@ -2159,7 +2598,10 @@
 
 (rule
  (alias variants-variants-rogue-impl)
- (deps (package dune) (source_tree test-cases/variants/variants-rogue-impl))
+ (deps
+  (package dune)
+  (source_tree test-cases/variants/variants-rogue-impl)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-rogue-impl
@@ -2169,7 +2611,8 @@
  (alias variants-variants-wrong-external-declaration)
  (deps
   (package dune)
-  (source_tree test-cases/variants/variants-wrong-external-declaration))
+  (source_tree test-cases/variants/variants-wrong-external-declaration)
+  (alias test-deps))
  (action
   (chdir
    test-cases/variants/variants-wrong-external-declaration
@@ -2177,7 +2620,7 @@
 
 (rule
  (alias vendor)
- (deps (package dune) (source_tree test-cases/vendor))
+ (deps (package dune) (source_tree test-cases/vendor) (alias test-deps))
  (action
   (chdir
    test-cases/vendor
@@ -2187,7 +2630,8 @@
  (alias vendor-dash-p-and-vendored-packages)
  (deps
   (package dune)
-  (source_tree test-cases/vendor/dash-p-and-vendored-packages))
+  (source_tree test-cases/vendor/dash-p-and-vendored-packages)
+  (alias test-deps))
  (action
   (chdir
    test-cases/vendor/dash-p-and-vendored-packages
@@ -2197,7 +2641,8 @@
  (alias vendor-do-not-install-vendored-packages)
  (deps
   (package dune)
-  (source_tree test-cases/vendor/do-not-install-vendored-packages))
+  (source_tree test-cases/vendor/do-not-install-vendored-packages)
+  (alias test-deps))
  (action
   (chdir
    test-cases/vendor/do-not-install-vendored-packages
@@ -2207,7 +2652,8 @@
  (alias virtual-libraries-double-implementation)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/double-implementation))
+  (source_tree test-cases/virtual-libraries/double-implementation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/double-implementation
@@ -2217,7 +2663,8 @@
  (alias virtual-libraries-dune-package-info)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/dune-package-info))
+  (source_tree test-cases/virtual-libraries/dune-package-info)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/dune-package-info
@@ -2225,7 +2672,10 @@
 
 (rule
  (alias virtual-libraries-github2896)
- (deps (package dune) (source_tree test-cases/virtual-libraries/github2896))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/github2896)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/github2896
@@ -2235,7 +2685,8 @@
  (alias virtual-libraries-impl-lib-interface-module)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/impl-lib-interface-module))
+  (source_tree test-cases/virtual-libraries/impl-lib-interface-module)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-lib-interface-module
@@ -2245,7 +2696,8 @@
  (alias virtual-libraries-impl-not-virtual)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/impl-not-virtual))
+  (source_tree test-cases/virtual-libraries/impl-not-virtual)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-not-virtual
@@ -2256,6 +2708,7 @@
  (deps
   (package dune)
   (source_tree test-cases/virtual-libraries/impl-not-virtual-external)
+  (alias test-deps)
   (package dune-configurator))
  (action
   (chdir
@@ -2266,7 +2719,8 @@
  (alias virtual-libraries-impl-private-modules)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/impl-private-modules))
+  (source_tree test-cases/virtual-libraries/impl-private-modules)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-private-modules
@@ -2276,7 +2730,8 @@
  (alias virtual-libraries-impl-public-modules)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/impl-public-modules))
+  (source_tree test-cases/virtual-libraries/impl-public-modules)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-public-modules
@@ -2286,7 +2741,8 @@
  (alias virtual-libraries-impl-using-vlib-modules)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/impl-using-vlib-modules))
+  (source_tree test-cases/virtual-libraries/impl-using-vlib-modules)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-using-vlib-modules
@@ -2296,7 +2752,8 @@
  (alias virtual-libraries-implements-external)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/implements-external))
+  (source_tree test-cases/virtual-libraries/implements-external)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/implements-external
@@ -2304,7 +2761,10 @@
 
 (rule
  (alias virtual-libraries-install-file)
- (deps (package dune) (source_tree test-cases/virtual-libraries/install-file))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/install-file)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/install-file
@@ -2314,7 +2774,8 @@
  (alias virtual-libraries-invalid-virtual-lib)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/invalid-virtual-lib))
+  (source_tree test-cases/virtual-libraries/invalid-virtual-lib)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/invalid-virtual-lib
@@ -2324,7 +2785,8 @@
  (alias virtual-libraries-missing-implementation)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/missing-implementation))
+  (source_tree test-cases/virtual-libraries/missing-implementation)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/missing-implementation
@@ -2334,7 +2796,8 @@
  (alias virtual-libraries-module-fields)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/module-fields))
+  (source_tree test-cases/virtual-libraries/module-fields)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/module-fields
@@ -2344,7 +2807,8 @@
  (alias virtual-libraries-no-vlib-present)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/no-vlib-present))
+  (source_tree test-cases/virtual-libraries/no-vlib-present)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/no-vlib-present
@@ -2352,7 +2816,10 @@
 
 (rule
  (alias virtual-libraries-preprocess)
- (deps (package dune) (source_tree test-cases/virtual-libraries/preprocess))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/preprocess)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/preprocess
@@ -2362,7 +2829,8 @@
  (alias virtual-libraries-private-modules-overlapping-names)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/private-modules-overlapping-names))
+  (source_tree test-cases/virtual-libraries/private-modules-overlapping-names)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/private-modules-overlapping-names
@@ -2370,7 +2838,10 @@
 
 (rule
  (alias virtual-libraries-unwrapped)
- (deps (package dune) (source_tree test-cases/virtual-libraries/unwrapped))
+ (deps
+  (package dune)
+  (source_tree test-cases/virtual-libraries/unwrapped)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/unwrapped
@@ -2380,7 +2851,8 @@
  (alias virtual-libraries-variants-simple)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/variants-simple))
+  (source_tree test-cases/virtual-libraries/variants-simple)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/variants-simple
@@ -2390,7 +2862,8 @@
  (alias virtual-libraries-variants-sub-module)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/variants-sub-module))
+  (source_tree test-cases/virtual-libraries/variants-sub-module)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/variants-sub-module
@@ -2400,7 +2873,8 @@
  (alias virtual-libraries-vlib-default-impl)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/vlib-default-impl))
+  (source_tree test-cases/virtual-libraries/vlib-default-impl)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/vlib-default-impl
@@ -2410,7 +2884,8 @@
  (alias virtual-libraries-vlib-wrong-default-impl)
  (deps
   (package dune)
-  (source_tree test-cases/virtual-libraries/vlib-wrong-default-impl))
+  (source_tree test-cases/virtual-libraries/vlib-wrong-default-impl)
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/vlib-wrong-default-impl
@@ -2418,7 +2893,7 @@
 
 (rule
  (alias windows-diff)
- (deps (package dune) (source_tree test-cases/windows-diff))
+ (deps (package dune) (source_tree test-cases/windows-diff) (alias test-deps))
  (action
   (chdir
    test-cases/windows-diff
@@ -2426,7 +2901,10 @@
 
 (rule
  (alias with-exit-codes)
- (deps (package dune) (source_tree test-cases/with-exit-codes))
+ (deps
+  (package dune)
+  (source_tree test-cases/with-exit-codes)
+  (alias test-deps))
  (action
   (chdir
    test-cases/with-exit-codes
@@ -2434,7 +2912,10 @@
 
 (rule
  (alias with-nested-exit-codes)
- (deps (package dune) (source_tree test-cases/with-nested-exit-codes))
+ (deps
+  (package dune)
+  (source_tree test-cases/with-nested-exit-codes)
+  (alias test-deps))
  (action
   (chdir
    test-cases/with-nested-exit-codes
@@ -2442,7 +2923,10 @@
 
 (rule
  (alias with-stdin-from)
- (deps (package dune) (source_tree test-cases/with-stdin-from))
+ (deps
+  (package dune)
+  (source_tree test-cases/with-stdin-from)
+  (alias test-deps))
  (action
   (chdir
    test-cases/with-stdin-from
@@ -2452,7 +2936,8 @@
  (alias with-unsupported-nested-exit-codes)
  (deps
   (package dune)
-  (source_tree test-cases/with-unsupported-nested-exit-codes))
+  (source_tree test-cases/with-unsupported-nested-exit-codes)
+  (alias test-deps))
  (action
   (chdir
    test-cases/with-unsupported-nested-exit-codes
@@ -2460,7 +2945,10 @@
 
 (rule
  (alias workspace-paths)
- (deps (package dune) (source_tree test-cases/workspace-paths))
+ (deps
+  (package dune)
+  (source_tree test-cases/workspace-paths)
+  (alias test-deps))
  (action
   (chdir
    test-cases/workspace-paths
@@ -2468,7 +2956,7 @@
 
 (rule
  (alias workspaces)
- (deps (package dune) (source_tree test-cases/workspaces))
+ (deps (package dune) (source_tree test-cases/workspaces) (alias test-deps))
  (action
   (chdir
    test-cases/workspaces
@@ -2476,7 +2964,10 @@
 
 (rule
  (alias wrapped-false-main-module-name)
- (deps (package dune) (source_tree test-cases/wrapped-false-main-module-name))
+ (deps
+  (package dune)
+  (source_tree test-cases/wrapped-false-main-module-name)
+  (alias test-deps))
  (action
   (chdir
    test-cases/wrapped-false-main-module-name
@@ -2484,7 +2975,10 @@
 
 (rule
  (alias wrapped-transition)
- (deps (package dune) (source_tree test-cases/wrapped-transition))
+ (deps
+  (package dune)
+  (source_tree test-cases/wrapped-transition)
+  (alias test-deps))
  (action
   (chdir
    test-cases/wrapped-transition
@@ -2493,7 +2987,10 @@
 
 (rule
  (alias write-permissions)
- (deps (package dune) (source_tree test-cases/write-permissions))
+ (deps
+  (package dune)
+  (source_tree test-cases/write-permissions)
+  (alias test-deps))
  (action
   (chdir
    test-cases/write-permissions

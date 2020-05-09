@@ -7,7 +7,7 @@ produce targets in the directory being globbed.
 on the directory listing)
 
   $ dune build @install
-  $ cat _build/default/bar/bar.install
+  $ dune_cmd cat _build/default/bar/bar.install
   lib: [
     "_build/install/default/lib/bar/META"
     "_build/install/default/lib/bar/bar$ext_lib"

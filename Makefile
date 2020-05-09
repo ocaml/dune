@@ -8,6 +8,7 @@ BIN := ./dune.exe
 
 # Dependencies used for developing and testing dune
 DEV_DEPS := \
+bisect_ppx \
 coq \
 core_bench \
 mdx \

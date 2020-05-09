@@ -1265,7 +1265,7 @@
 
 (rule
  (alias github3043)
- (deps (package dune) (source_tree test-cases/github3043))
+ (deps (package dune) (source_tree test-cases/github3043) (alias test-deps))
  (action
   (chdir
    test-cases/github3043

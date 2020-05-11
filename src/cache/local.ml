@@ -409,39 +409,39 @@ let _garbage_collect cache ~trimmed_so_far =
   let metas =
     List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list ~root)
   in
-  let f trimmed_so_far (path, metadata) =
-    let should_be_removed =
-      match metadata with
-      | Result.Error msg ->
-        cache.warn
-          [ Pp.textf "remove invalid metadata file %s: %s"
-              (Path.to_string_maybe_quoted path)
-              msg
-          ];
-        true
-      | Result.Ok { Metadata_file.files; _ } ->
-        if
-          List.for_all
-            ~f:(fun { File.digest; _ } -> Path.exists (file_path cache digest))
-            files
-        then
-          false
-        else (
-          cache.info
-            [ Pp.textf "remove metadata file %s as it refers to missing files"
+  List.fold_left metas ~init:trimmed_so_far
+    ~f:(fun trimmed_so_far (path, metadata) ->
+      let should_be_removed =
+        match metadata with
+        | Result.Error msg ->
+          cache.warn
+            [ Pp.textf "remove invalid metadata file %s: %s"
                 (Path.to_string_maybe_quoted path)
+                msg
             ];
           true
-        )
-    in
-    if should_be_removed then (
-      let bytes = (Path.stat path).st_size in
-      Path.unlink_no_err path;
-      Trimming_result.add trimmed_so_far ~bytes
-    ) else
-      trimmed_so_far
-  in
-  List.fold_left ~init:trimmed_so_far ~f metas
+        | Result.Ok { Metadata_file.files; _ } ->
+          if
+            List.for_all
+              ~f:(fun { File.digest; _ } ->
+                Path.exists (file_path cache digest))
+              files
+          then
+            false
+          else (
+            cache.info
+              [ Pp.textf "remove metadata file %s as it refers to missing files"
+                  (Path.to_string_maybe_quoted path)
+              ];
+            true
+          )
+      in
+      if should_be_removed then (
+        let bytes = (Path.stat path).st_size in
+        Path.unlink_no_err path;
+        Trimming_result.add trimmed_so_far ~bytes
+      ) else
+        trimmed_so_far)
 
 let garbage_collect = _garbage_collect ~trimmed_so_far:Trimming_result.empty
 

@@ -405,14 +405,11 @@ let make ?(root = default_root ())
 let duplication_mode cache = cache.duplication_mode
 
 let _garbage_collect cache ~trimmed_so_far =
-  let root = metadata_store_root cache in
-  let metas =
-    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list ~root)
-  in
-  List.fold_left metas ~init:trimmed_so_far
-    ~f:(fun trimmed_so_far (path, metadata) ->
+  let metadata_files = FSSchemeImpl.list ~root:(metadata_store_root cache) in
+  List.fold_left metadata_files ~init:trimmed_so_far
+    ~f:(fun trimmed_so_far path ->
       let should_be_removed =
-        match metadata with
+        match Metadata_file.parse path with
         | Result.Error msg ->
           cache.warn
             [ Pp.textf "remove invalid metadata file %s: %s"

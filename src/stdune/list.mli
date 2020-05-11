@@ -37,6 +37,8 @@ val rev_filter_partition_map :
 
 val find : 'a t -> f:('a -> bool) -> 'a option
 
+val findi : 'a t -> f:('a -> bool) -> ('a * int) option
+
 val find_exn : 'a t -> f:('a -> bool) -> 'a
 
 val find_map : 'a t -> f:('a -> 'b option) -> 'b option

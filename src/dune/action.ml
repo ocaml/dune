@@ -274,7 +274,7 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to memoize =
+let is_useful_to distribute memoize =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
@@ -291,13 +291,13 @@ let is_useful_to memoize =
     | Copy _ -> memoize
     | Symlink _ -> false
     | Copy_and_add_line_directive _ -> memoize
-    | Write_file _ -> memoize
+    | Write_file _ -> distribute
     | Rename _ -> memoize
     | Remove_tree _ -> false
-    | Diff _ -> memoize
+    | Diff _ -> distribute
     | Mkdir _ -> false
-    | Digest_files _ -> memoize
-    | Merge_files_into _ -> memoize
+    | Digest_files _ -> distribute
+    | Merge_files_into _ -> distribute
     | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true
@@ -308,6 +308,8 @@ let is_useful_to memoize =
     | true -> Maybe
     | false -> Clearly_not
 
-let is_useful_to_sandbox = is_useful_to false
+let is_useful_to_sandbox = is_useful_to false false
 
-let is_useful_to_memoize = is_useful_to true
+let is_useful_to_distribute = is_useful_to true false
+
+let is_useful_to_memoize = is_useful_to true true

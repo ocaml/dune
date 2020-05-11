@@ -134,6 +134,7 @@ let client_thread (events, (client : client)) =
     let handle_cmd (client : client) sexp =
       let* msg = outgoing_message_of_sexp client.version sexp in
       match msg with
+      | Hint _ -> Result.Ok client
       | Promote { duplication; repository; files; key; metadata } ->
         let+ () =
           Cache.Local.promote client.cache files key
@@ -142,13 +143,13 @@ let client_thread (events, (client : client)) =
         in
         client
       | SetBuildRoot root ->
-        Result.Ok
-          { client with cache = Cache.Local.set_build_dir client.cache root }
+        let+ cache = Cache.Local.set_build_dir client.cache root in
+        { client with cache }
       | SetCommonMetadata metadata ->
         Result.ok { client with common_metadata = metadata }
       | SetRepos repositories ->
-        let cache = Cache.Local.with_repositories client.cache repositories in
-        Result.Ok { client with cache }
+        let+ cache = Cache.Local.with_repositories client.cache repositories in
+        { client with cache }
     in
     let input = client.input in
     let f () =

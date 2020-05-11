@@ -8,10 +8,31 @@ let invalid_args args =
     (Printf.sprintf "invalid arguments:%s"
        (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
+let version_at_least ~min v =
+  v.major > min.major || (v.major = min.major && v.minor >= min.minor)
+
+let string_of_version { major; minor } = sprintf "%i.%i" major minor
+
+let dyn_of_version { major; minor } =
+  Dyn.Encoder.record
+    [ ("major", Dyn.Encoder.int major); ("minor", Dyn.Encoder.int minor) ]
+
+let hint_min_version = { major = 1; minor = 2 }
+
+let hint_supported version = version_at_least ~min:hint_min_version version
+
 let sexp_of_message : type a. version -> a message -> Sexp.t =
  fun version ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
   function
+  | Hint keys ->
+    if not (hint_supported version) then
+      Code_error.raise "tried sending a not yet supported hint message"
+        [ ("current version", dyn_of_version version)
+        ; ("minimum version", dyn_of_version hint_min_version)
+        ];
+    let f k = Sexp.Atom (Digest.to_string k) in
+    cmd "hint" @@ List.map ~f keys
   | Lang versions ->
     cmd "lang"
       ( Sexp.Atom "dune-cache-protocol"
@@ -135,7 +156,7 @@ let incoming_message_of_sexp version sexp =
     Result.Ok (Dedup { path = Path.Build.of_string path; digest })
   | None -> Result.Error (Printf.sprintf "invalid digest: %s" digest)
 
-let outgoing_message_of_sexp _version =
+let outgoing_message_of_sexp version =
   let repos_of_sexp args =
     let convert = function
       | Sexp.List
@@ -187,12 +208,27 @@ let outgoing_message_of_sexp _version =
   and path_of_sexp = function
     | [ Sexp.Atom dir ] -> Result.ok (Path.of_string dir)
     | args -> invalid_args args
+  and hint_of_sexp keys =
+    let f = function
+      | Sexp.Atom k -> (
+        match Digest.from_hex k with
+        | Some k -> Result.Ok k
+        | None ->
+          Result.Error (Format.asprintf "invalid key in hint message: %s" k) )
+      | k ->
+        Result.Error
+          (Format.asprintf "invalid expression in hint message: %a" Sexp.pp k)
+    in
+    Result.List.map ~f keys
   in
   function
   | Sexp.List (Sexp.Atom cmd :: args) ->
     Result.map_error
       ~f:(fun s -> cmd ^ ": " ^ s)
       ( match cmd with
+      | "hint" when hint_supported version ->
+        let+ keys = hint_of_sexp args in
+        Hint keys
       | "promote" ->
         let+ promotions = promote_of_sexp args in
         Promote promotions
@@ -214,8 +250,6 @@ let send_sexp output sexp =
 
 let send version output message =
   send_sexp output (sexp_of_message version message)
-
-let string_of_version { major; minor } = sprintf "%i.%i" major minor
 
 let find_newest_common_version versions_a versions_b =
   let find a b =

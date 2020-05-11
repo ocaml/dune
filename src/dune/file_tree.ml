@@ -517,6 +517,17 @@ end = struct
     in
     (Dir0.Contents.create ~files ~sub_dirs ~dune_file, dirs_visited)
 
+  let get_vcs ~default:vcs ~path ~readdir:{ Readdir.files; dirs } =
+    match
+      match
+        List.find_map dirs ~f:(fun (name, _, _) -> Vcs.Kind.of_filename name)
+      with
+      | Some kind -> Some kind
+      | None -> Vcs.Kind.of_dir_contents files
+    with
+    | None -> vcs
+    | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
+
   let root () =
     let settings = Settings.get () in
     let path = Path.Source.root in
@@ -539,24 +550,15 @@ end = struct
       | None -> Dune_project.anonymous ~dir:path
       | Some p -> p
     in
-    let vcs = settings.ancestor_vcs in
+    let vcs =
+      get_vcs ~default:settings.ancestor_vcs ~path:Path.Source.root ~readdir
+    in
     let dirs_visited = Dirs_visited.singleton path in
     let contents, visited =
       contents readdir ~dirs_visited ~project ~path ~dir_status
     in
     let dir = Dir0.create ~project ~path ~status:dir_status ~contents ~vcs in
     { Output.dir; visited }
-
-  let get_vcs ~default:vcs ~path ~readdir:{ Readdir.files; dirs } =
-    match
-      match
-        List.find_map dirs ~f:(fun (name, _, _) -> Vcs.Kind.of_filename name)
-      with
-      | Some kind -> Some kind
-      | None -> Vcs.Kind.of_dir_contents files
-    with
-    | None -> vcs
-    | Some kind -> Some { Vcs.kind; root = Path.(append_source root) path }
 
   let find_dir_raw_impl path : Dir0.t Output.t option =
     match Path.Source.parent path with

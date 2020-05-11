@@ -169,6 +169,11 @@ module Metadata_file = struct
   let parse path = Io.with_file_in path ~f:Csexp.input >>= of_sexp
 end
 
+let tmp_path cache name =
+  let res = Path.relative cache.temp_dir name in
+  Path.mkdir_p res;
+  res
+
 let make_path cache path =
   match cache.build_root with
   | Some p -> Result.ok (Path.append_local p path)
@@ -177,7 +182,7 @@ let make_path cache path =
       (sprintf "relative path %s while no build root was set"
          (Path.Local.to_string_maybe_quoted path))
 
-let with_repositories cache repositories = { cache with repositories }
+let with_repositories cache repositories = Result.Ok { cache with repositories }
 
 let duplicate ?(duplication = None) cache ~src ~dst =
   match Option.value ~default:cache.duplication_mode duplication with
@@ -352,9 +357,11 @@ let search cache key =
   in
   (metadata.metadata, metadata.files)
 
-let set_build_dir cache p = { cache with build_root = Some p }
+let set_build_dir cache p = Result.Ok { cache with build_root = Some p }
 
 let teardown cache = Path.rm_rf ~allow_external:true cache.temp_dir
+
+let hint _ _ = Result.Ok ()
 
 let detect_duplication_mode root =
   let () = Path.mkdir_p root in

@@ -85,8 +85,13 @@ let make ?finally ?duplication_mode ~command_handler () =
   let thread = Thread.create thread input in
   { socket; fd; input; cache; thread; finally; version }
 
+let send client message =
+  try Result.Ok (Messages.send client.version client.socket message)
+  with Sys_error (* "Broken_pipe" *) _ ->
+    Result.Error "lost connection to cache daemon"
+
 let with_repositories client repositories =
-  Messages.send client.version client.socket (SetRepos repositories);
+  let+ () = send client (SetRepos repositories) in
   client
 
 let promote (client : t) files key metadata ~repository ~duplication =
@@ -94,15 +99,11 @@ let promote (client : t) files key metadata ~repository ~duplication =
     Some
       (Option.value ~default:(Local.duplication_mode client.cache) duplication)
   in
-  try
-    Messages.send client.version client.socket
-      (Promote { key; files; metadata; repository; duplication });
-    Result.Ok ()
-  with Sys_error (* "Broken_pipe" *) _ ->
-    Result.Error "lost connection to cache daemon"
+  send client
+    (Messages.Promote { key; files; metadata; repository; duplication })
 
 let set_build_dir client path =
-  Messages.send client.version client.socket (SetBuildRoot path);
+  let+ () = send client (Messages.SetBuildRoot path) in
   client
 
 let search client key = Local.search client.cache key
@@ -116,3 +117,17 @@ let teardown client =
     with Unix.Unix_error (Unix.ENOTCONN, _, _) -> () );
   Thread.join client.thread;
   Local.teardown client.cache
+
+let hint client keys =
+  if Messages.hint_supported client.version then
+    send client (Messages.Hint keys)
+  else
+    User_warning.emit
+      ~hints:
+        [ Pp.textf "update sietch to version %s at least"
+            (Messages.string_of_version Messages.hint_min_version)
+        ]
+      [ Pp.textf "not hinting the cache as sietch version is too old: %s"
+          (Messages.string_of_version client.version)
+      ]
+    |> Result.ok

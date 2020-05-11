@@ -17,11 +17,11 @@
 (rule (with-stdout-to main2.ml (echo "")))
 
 (executable
-  (name main)
-  (modules main)
-  (libraries allcaml))
+ (name main)
+ (modules main)
+ (libraries allcaml))
 
 (executable
-  (name main2)
-  (modules main2)
-  (libraries futurecaml))
+ (name main2)
+ (modules main2)
+ (libraries futurecaml))

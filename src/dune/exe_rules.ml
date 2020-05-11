@@ -15,9 +15,12 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
     let ml_sources = Dir_contents.ocaml dir_contents in
     Ml_sources.modules_of_executables ml_sources ~first_exe ~obj_dir
   in
+  let ctx = SC.context sctx in
+  let preprocess =
+    Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config
+  in
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander
-      ~preprocess:exes.buildable.preprocess
+    Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
       ~preprocessor_deps:exes.buildable.preprocessor_deps
       ~lint:exes.buildable.lint ~lib_name:None
   in
@@ -44,7 +47,6 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
                 (Module_name.to_string mod_name)
             ])
   in
-  let ctx = SC.context sctx in
   let explicit_js_mode = Dune_project.explicit_js_mode (Scope.project scope) in
   let linkages =
     let module L = Dune_file.Executables.Link_mode in
@@ -170,11 +172,14 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
+  let ctx = SC.context sctx in
+  let pps =
+    Dune_file.Preprocess_map.pps
+      (Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config)
+  in
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
-      exes.buildable.libraries
-      ~pps:(Dune_file.Preprocess_map.pps exes.buildable.preprocess)
-      ~dune_version
+      exes.buildable.libraries ~pps ~dune_version
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
       ~variants:exes.variants ~optional:exes.optional
       ~forbidden_libraries:exes.forbidden_libraries

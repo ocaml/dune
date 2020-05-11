@@ -214,7 +214,8 @@ let gen_rules sctx dir_contents cctxs
       (Expander.set_lookup_module expander ~lookup_module)
       ~lookup_library
   in
-  let files_to_install { Install_conf.section = _; files; package = _ } =
+  let files_to_install
+      { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
           ~f:(Expander.expand_str expander)

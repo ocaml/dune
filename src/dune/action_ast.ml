@@ -76,7 +76,8 @@ struct
                     | Setenv (_, _, t)
                     | Ignore (_, t)
                     | Redirect_in (_, _, t)
-                    | Redirect_out (_, _, t) ->
+                    | Redirect_out (_, _, t)
+                    | No_infer t ->
                       if nesting_support then
                         is_ok t
                       else
@@ -104,6 +105,7 @@ struct
                                 ; "ignore-<outputs>"
                                 ; "with-stdin-from"
                                 ; "with-<outputs>-to"
+                                ; "no-infer"
                                 ]))
                       ]
                   | false, false ->
@@ -172,14 +174,17 @@ struct
               and+ s = string in
               Write_file (fn, s) )
           ; ( "diff"
-            , let+ diff = Diff.decode path ~optional:false in
+            , let+ diff = Diff.decode path target ~optional:false in
               Diff diff )
           ; ( "diff?"
-            , let+ diff = Diff.decode path ~optional:true in
+            , let+ diff = Diff.decode path target ~optional:true in
               Diff diff )
           ; ( "cmp"
-            , let+ diff = Diff.decode_binary path in
+            , let+ diff = Diff.decode_binary path target in
               Diff diff )
+          ; ( "no-infer"
+            , Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> t >>| fun t ->
+              No_infer t )
           ])
 
   let rec encode =
@@ -231,11 +236,11 @@ struct
       List [ atom "digest-files"; List (List.map paths ~f:path) ]
     | Diff { optional; file1; file2; mode = Binary } ->
       assert (not optional);
-      List [ atom "cmp"; path file1; path file2 ]
+      List [ atom "cmp"; path file1; target file2 ]
     | Diff { optional = false; file1; file2; mode = _ } ->
-      List [ atom "diff"; path file1; path file2 ]
+      List [ atom "diff"; path file1; target file2 ]
     | Diff { optional = true; file1; file2; mode = _ } ->
-      List [ atom "diff?"; path file1; path file2 ]
+      List [ atom "diff?"; path file1; target file2 ]
     | Merge_files_into (srcs, extras, into) ->
       List
         [ atom "merge-files-into"
@@ -243,6 +248,7 @@ struct
         ; List (List.map ~f:string extras)
         ; target into
         ]
+    | No_infer r -> List [ atom "no-infer"; encode r ]
 
   let run prog args = Run (prog, args)
 

@@ -103,6 +103,6 @@
   48 |      (with-stdout-to out.txt
   49 |       (dynamic-run ./exit.exe 1)))))))
   Error: Only "run", "bash", "system", "chdir", "setenv", "ignore-<outputs>",
-  "with-stdin-from" and "with-<outputs>-to" can be nested under
+  "with-stdin-from", "with-<outputs>-to" and "no-infer" can be nested under
   "with-accepted-exit-codes"
   [1]

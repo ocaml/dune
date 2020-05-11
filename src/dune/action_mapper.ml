@@ -43,12 +43,13 @@ module Make (Src : Action_intf.Ast) (Dst : Action_intf.Ast) = struct
     | Mkdir x -> Mkdir (f_path ~dir x)
     | Digest_files x -> Digest_files (List.map x ~f:(f_path ~dir))
     | Diff ({ file1; file2; _ } as diff) ->
-      Diff { diff with file1 = f_path ~dir file1; file2 = f_path ~dir file2 }
+      Diff { diff with file1 = f_path ~dir file1; file2 = f_target ~dir file2 }
     | Merge_files_into (sources, extras, target) ->
       Merge_files_into
         ( List.map sources ~f:(f_path ~dir)
         , List.map extras ~f:(f_string ~dir)
         , f_target ~dir target )
+    | No_infer t -> No_infer (f t ~dir)
 
   let rec map t ~dir ~f_program ~f_string ~f_path ~f_target =
     map_one_step map t ~dir ~f_program ~f_string ~f_path ~f_target

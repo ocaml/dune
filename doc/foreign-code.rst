@@ -28,9 +28,9 @@ the ``.c`` extension in the :ref:`foreign-stubs` field. For instance:
 
 .. code:: scheme
 
-          (library
-           (name mylib)
-           (foreign_stubs (language c) (names file1 file2)))
+   (library
+    (name mylib)
+    (foreign_stubs (language c) (names file1 file2)))
 
 You can also add C++ stubs to an OCaml library by specifying
 ``(language cxx)`` instead.
@@ -94,32 +94,36 @@ for instance in ``src/libfoo``. Then tell dune to consider
 
 .. code:: scheme
 
-          (data_only_dirs libfoo)
+   (data_only_dirs libfoo)
 
 The next step is to setup the rule to build ``libfoo``. For this,
 writing the following code ``src/dune``:
 
 .. code:: scheme
 
-          (rule
-           (deps (source_tree libfoo))
-           (targets libfoo.a dllfoo.so)
-           (action (progn
-                    (chdir libfoo (run make))
-                    (copy libfoo/libfoo.a libfoo.a)
-                    (copy libfoo/libfoo.so dllfoo.so))))
+   (rule
+    (deps (source_tree libfoo))
+    (targets libfoo.a dllfoo.so)
+    (action
+    (no-infer
+     (progn
+      (chdir libfoo (run make))
+      (copy libfoo/libfoo.a libfoo.a)
+      (copy libfoo/libfoo.so dllfoo.so)))))
 
 We copy the resulting archive files to the top directory where they can be
-declared as ``targets``.
+declared as ``targets``. The build is done in a ``no-infer`` action because
+``libfoo/libfoo.a`` and ``libfoo/libfoo.so`` are dependencies produced by
+an external build system.
 
 The last step is to attach these archives to an OCaml library as
 follows:
 
 .. code:: scheme
 
-          (library
-           (name bar)
-           (foreign_archives foo))
+   (library
+    (name bar)
+    (foreign_archives foo))
 
 Then, whenever you use the ``bar`` library, you will also be able to
 use C functions from ``libfoo``.

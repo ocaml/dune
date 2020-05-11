@@ -170,6 +170,7 @@ module Test = struct
         (List.concat
            [ Sexp.strings [ "package"; "dune" ]
              :: Sexp.strings [ "source_tree"; dir ]
+             :: Sexp.strings [ "alias"; "test-deps" ]
              :: t.additional_deps
            ; ( if t.disable_sandboxing then
                [ Sexp.strings [ "sandbox"; "none" ] ]
@@ -255,6 +256,7 @@ let exclusions =
       ~additional_deps:[ Sexp.strings [ "package"; "dune-configurator" ] ]
   ; make "mdx-stanza" ~external_deps:true
   ; make "toplevel-integration" ~external_deps:true
+  ; make "bisect-ppx" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

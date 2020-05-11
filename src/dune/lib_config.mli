@@ -14,6 +14,7 @@ type t =
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; profile : Profile.t
   ; ocaml_version : string
+  ; bisect_enabled : bool
   }
 
 val allowed_in_enabled_if : (string * Dune_lang.Syntax.Version.t) list

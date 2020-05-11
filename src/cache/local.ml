@@ -446,15 +446,18 @@ let _garbage_collect cache ~trimmed_so_far =
 let garbage_collect = _garbage_collect ~trimmed_so_far:Trimming_result.empty
 
 (* We call a cached file "unused" if there are currently no hard links to it
-   from build directories. *)
-let is_unused_file ~stats = stats.Unix.st_nlink = 1
+   from build directories. Note that [st_nlink] can return 0 if the file has
+   been removed since we scanned the tree -- in this case we do not want to
+   claim that its removal is the result of cache trimming and we, therefore,
+   skip it while trimming. *)
+let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
 let trim cache ~goal =
   let root = file_store_root cache in
   let files = FSSchemeImpl.list ~root in
   let f path =
     let stats = Path.stat path in
-    if is_unused_file ~stats then
+    if file_exists_and_is_unused ~stats then
       Some (path, stats.st_size, stats.st_mtime)
     else
       None
@@ -482,7 +485,7 @@ let overhead_size cache =
     let f p =
       try
         let stats = Path.stat p in
-        if is_unused_file ~stats then
+        if file_exists_and_is_unused ~stats then
           Int64.of_int stats.st_size
         else
           0L

@@ -22,6 +22,14 @@ Build some targets.
 
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
 
+Have a look at one of the metadata files and its size.
+
+  $ cat $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
+  ((8:metadata)(5:files(16:default/target_b32:de8852e356e79df9dddd6b2f2cced43f)))
+
+  $ stat --printf=%s $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
+  79
+
 Trimming the cache at this point should not remove anything, as both
 files are still hard-linked in the build directory.
 
@@ -36,7 +44,7 @@ If we unlink one file in the build tree, it can be reclaimed when trimming.
 
   $ rm -f _build/default/target_a _build/default/beacon_a _build/default/beacon_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
-  Freed 9 bytes
+  Freed 88 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -49,7 +57,7 @@ Reset build tree and cache.
 
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
-  Freed 18 bytes
+  Freed 176 bytes
 
 The cache deletes oldest files first.
 
@@ -58,7 +66,7 @@ The cache deletes oldest files first.
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
-  Freed 9 bytes
+  Freed 88 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -71,7 +79,7 @@ Reset build tree and cache.
 
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
-  Freed 18 bytes
+  Freed 176 bytes
 
 When a file is pulled from the cache, its mtime is touched so it's deleted last.
 
@@ -83,7 +91,7 @@ When a file is pulled from the cache, its mtime is touched so it's deleted last.
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
-  Freed 9 bytes
+  Freed 88 bytes
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build target_a target_b
   $ dune_cmd stat hardlinks _build/default/target_a
   2
@@ -97,7 +105,7 @@ Reset build tree and cache.
 
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
-  Freed 18 bytes
+  Freed 176 bytes
 
 Check background trimming.
 
@@ -113,7 +121,7 @@ Reset build tree and cache.
 
   $ rm -f _build/default/beacon_a _build/default/target_a _build/default/beacon_b _build/default/target_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 18B
-  Freed 9 bytes
+  Freed 88 bytes
 
 Check garbage collection: both multi_a and multi_b must be removed as
 they are part of the same rule.
@@ -121,7 +129,7 @@ they are part of the same rule.
   $ env DUNE_CACHE=enabled DUNE_CACHE_EXIT_NO_CLIENT=1 XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune build multi_a multi_b
   $ rm -f _build/default/multi_a _build/default/multi_b
   $ XDG_RUNTIME_DIR=$PWD/.xdg-runtime XDG_CACHE_HOME=$PWD/.xdg-cache dune cache trim --trimmed-size 1B
-  Freed 16 bytes
+  Freed 141 bytes
 
 Check reporting of unexpected directories at the cache root while trimming:
 

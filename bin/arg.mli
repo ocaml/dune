@@ -25,7 +25,7 @@ module Dep : sig
   val to_string_maybe_quoted : t -> string
 end
 
-val bytes : int conv
+val bytes : int64 conv
 
 val context_name : Context_name.t conv
 

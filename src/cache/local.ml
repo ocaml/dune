@@ -14,20 +14,16 @@ type t =
   }
 
 module Trimming_result = struct
-  type t =
-    { trimmed_files_size : int
-    ; trimmed_files : Path.t list
-    ; trimmed_metafiles : Path.t list
-    }
+  type t = { trimmed_bytes : int64 }
 
-  let empty =
-    { trimmed_files_size = 0; trimmed_files = []; trimmed_metafiles = [] }
+  let empty = { trimmed_bytes = 0L }
 
-  let add t ~size ~file =
-    { t with
-      trimmed_files = file :: t.trimmed_files
-    ; trimmed_files_size = size + t.trimmed_files_size
-    }
+  (* CR-someday amokhov: Right now Dune doesn't support large (>1Gb) files on
+     32-bit platforms due to the pervasive use of [int] for representing
+     individual file sizes. It's not fundamentally difficult to switch to
+     [int64], so we should do it if it becomes a real issue. *)
+  let add t ~(bytes : int) =
+    { trimmed_bytes = Int64.add t.trimmed_bytes (Int64.of_int bytes) }
 end
 
 let default_root () =
@@ -408,79 +404,76 @@ let make ?(root = default_root ())
 
 let duplication_mode cache = cache.duplication_mode
 
-let trimmable stats = stats.Unix.st_nlink = 1
+let _garbage_collect cache ~trimmed_so_far =
+  let metadata_files = FSSchemeImpl.list ~root:(metadata_store_root cache) in
+  List.fold_left metadata_files ~init:trimmed_so_far
+    ~f:(fun trimmed_so_far path ->
+      let should_be_removed =
+        match Metadata_file.parse path with
+        | Result.Error msg ->
+          cache.warn
+            [ Pp.textf "remove invalid metadata file %s: %s"
+                (Path.to_string_maybe_quoted path)
+                msg
+            ];
+          true
+        | Result.Ok { Metadata_file.files; _ } ->
+          if
+            List.for_all
+              ~f:(fun { File.digest; _ } ->
+                Path.exists (file_path cache digest))
+              files
+          then
+            false
+          else (
+            cache.info
+              [ Pp.textf "remove metadata file %s as it refers to missing files"
+                  (Path.to_string_maybe_quoted path)
+              ];
+            true
+          )
+      in
+      if should_be_removed then (
+        let bytes = (Path.stat path).st_size in
+        Path.unlink_no_err path;
+        Trimming_result.add trimmed_so_far ~bytes
+      ) else
+        trimmed_so_far)
 
-let _garbage_collect default_trim cache =
-  let root = metadata_store_root cache in
-  let metas =
-    List.map ~f:(fun p -> (p, Metadata_file.parse p)) (FSSchemeImpl.list ~root)
-  in
-  let f default_trim = function
-    | p, Result.Error msg ->
-      cache.warn
-        [ Pp.textf "remove invalid metadata file %s: %s"
-            (Path.to_string_maybe_quoted p)
-            msg
-        ];
-      Path.unlink_no_err p;
-      { default_trim with Trimming_result.trimmed_metafiles = [ p ] }
-    | p, Result.Ok { Metadata_file.files; _ } ->
-      if
-        List.for_all
-          ~f:(fun { File.digest; _ } -> Path.exists (file_path cache digest))
-          files
-      then
-        default_trim
-      else (
-        cache.info
-          [ Pp.textf
-              "remove metadata file %s as some produced files are missing"
-              (Path.to_string_maybe_quoted p)
-          ];
-        let res =
-          List.fold_left ~init:default_trim
-            ~f:(fun trim f ->
-              let path_in_cache = file_path cache f.File.digest in
-              try
-                let stats = Path.stat path_in_cache in
-                if trimmable stats then (
-                  Path.unlink_no_err path_in_cache;
-                  Trimming_result.add trim ~file:path_in_cache
-                    ~size:stats.st_size
-                ) else
-                  trim
-              with Unix.Unix_error (Unix.ENOENT, _, _) -> trim)
-            files
-        in
-        Path.unlink_no_err p;
-        res
-      )
-  in
-  List.fold_left ~init:default_trim ~f metas
+let garbage_collect = _garbage_collect ~trimmed_so_far:Trimming_result.empty
 
-let garbage_collect = _garbage_collect Trimming_result.empty
+(* We call a cached file "unused" if there are currently no hard links to it
+   from build directories. Note that [st_nlink] can return 0 if the file has
+   been removed since we scanned the tree -- in this case we do not want to
+   claim that its removal is the result of cache trimming and we, therefore,
+   skip it while trimming. *)
+let file_exists_and_is_unused ~stats = stats.Unix.st_nlink = 1
 
-let trim cache free =
+let trim cache ~goal =
   let root = file_store_root cache in
   let files = FSSchemeImpl.list ~root in
   let f path =
     let stats = Path.stat path in
-    if trimmable stats then
+    if file_exists_and_is_unused ~stats then
       Some (path, stats.st_size, stats.st_mtime)
     else
       None
   and compare (_, _, t1) (_, _, t2) = Ordering.of_int (Stdlib.compare t1 t2) in
   let files = List.sort ~compare (List.filter_map ~f files)
-  and delete (trim : Trimming_result.t) (path, size, _) =
-    if trim.trimmed_files_size >= free then
-      trim
+  and delete (trimmed_so_far : Trimming_result.t) (path, bytes, _) =
+    if trimmed_so_far.trimmed_bytes >= goal then
+      trimmed_so_far
     else (
       Path.unlink path;
-      Trimming_result.add trim ~size ~file:path
+      (* CR-soon amokhov: We should really be using block_size * #blocks because
+         that's how much we save actually. *)
+      Trimming_result.add trimmed_so_far ~bytes
     )
   in
-  let trim = List.fold_left ~init:Trimming_result.empty ~f:delete files in
-  _garbage_collect trim cache
+  let trimmed_so_far =
+    List.fold_left ~init:Trimming_result.empty ~f:delete files
+  in
+  _garbage_collect cache ~trimmed_so_far
 
 let overhead_size cache =
   let root = file_store_root cache in
@@ -489,12 +482,12 @@ let overhead_size cache =
     let f p =
       try
         let stats = Path.stat p in
-        if trimmable stats then
-          stats.st_size
+        if file_exists_and_is_unused ~stats then
+          Int64.of_int stats.st_size
         else
-          0
-      with Unix.Unix_error (Unix.ENOENT, _, _) -> 0
+          0L
+      with Unix.Unix_error (Unix.ENOENT, _, _) -> 0L
     in
     List.map ~f files
   in
-  List.fold_left ~f:(fun acc size -> acc + size) ~init:0 stats
+  List.fold_left ~f:Int64.add ~init:0L stats

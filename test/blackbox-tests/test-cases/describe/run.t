@@ -31,6 +31,7 @@ Describe various things
   ((library
     ((name foo)
      (uid 5dd4bd87ad37b4f5713085aff4bee9c9)
+     (local true)
      (requires (c17373aee51bab94097b4b7818553cf3))
      (source_dir _build/default)
      (modules
@@ -43,6 +44,7 @@ Describe various things
    (library
     ((name foo.x)
      (uid c17373aee51bab94097b4b7818553cf3)
+     (local true)
      (requires ())
      (source_dir _build/default)
      (modules
@@ -56,8 +58,8 @@ Describe various things
 Test other formats
 ------------------
 
-  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-70
-  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(8:
+  $ dune describe workspace --format csexp --lang 0.1 | cut -c 1-85
+  ((7:library((4:name3:foo)(3:uid32:5dd4bd87ad37b4f5713085aff4bee9c9)(5:local4:true)(8:
 
 Test errors
 -----------

@@ -88,6 +88,18 @@ let rec find_map l ~f =
     | None -> find_map l ~f
     | Some _ as res -> res )
 
+let findi l ~f =
+  let rec findi acc l ~f =
+    match l with
+    | [] -> None
+    | x :: l ->
+      if f x then
+        Some (x, acc)
+      else
+        findi (acc + 1) l ~f
+  in
+  findi 0 l ~f
+
 let rec find l ~f =
   match l with
   | [] -> None

@@ -12,7 +12,3 @@ module Pkg : sig
 end
 
 val modules_field : string -> Ordered_set_lang.t Dune_lang.Decoder.fields_parser
-
-val enabled_if :
-     since:Dune_lang.Syntax.Version.t option
-  -> Blang.t Dune_lang.Decoder.fields_parser

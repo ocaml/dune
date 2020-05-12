@@ -1,0 +1,3 @@
+(executable
+ (name dune_cmd)
+ (libraries stdune))

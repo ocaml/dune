@@ -330,10 +330,11 @@ type t =
       Fdecl.t
   ; (* Package files are part of *)
     packages : (Path.Build.t -> Package.Name.Set.t) Fdecl.t
-  ; caching : caching option
+  ; mutable caching : caching option
   ; sandboxing_preference : Sandbox_mode.t list
   ; mutable rule_done : int
   ; mutable rule_total : int
+  ; vcs : Vcs.t list Fdecl.t
   }
 
 let t = ref None
@@ -362,6 +363,47 @@ let set_rule_generators ~init ~gen_rules =
   let (), init_rules = Rules.collect (fun () -> init ()) in
   Fdecl.set t.init_rules init_rules;
   Fdecl.set t.gen_rules gen_rules
+
+let set_vcs vcs =
+  let open Fiber.O in
+  let t = t () in
+  let () = Fdecl.set t.vcs vcs in
+  match t.caching with
+  | None -> Fiber.return ()
+  | Some ({ cache = (module Caching); _ } as caching) ->
+    let+ caching =
+      let+ with_repositories =
+        let f ({ Vcs.root; _ } as vcs) =
+          let+ commit = Vcs.commit_id vcs in
+          { Cache.directory = Path.to_absolute_filename root
+          ; remote = "" (* FIXME: fill or drop from the protocol *)
+          ; commit
+          }
+        in
+        let+ repositories = Fiber.parallel_map ~f (Fdecl.get t.vcs) in
+        Caching.Cache.with_repositories Caching.cache repositories
+      in
+      match with_repositories with
+      | Result.Ok cache ->
+        let cache =
+          ( module struct
+            let cache = cache
+
+            module Cache = Caching.Cache
+          end : Cache.Caching )
+        in
+        Some { caching with cache }
+      | Result.Error e ->
+        User_warning.emit
+          [ Pp.textf "Unable to set cache repositiories, disabling cache: %s" e
+          ];
+        None
+    in
+    t.caching <- caching
+
+let get_vcs () =
+  let t = t () in
+  Fdecl.get t.vcs
 
 let get_cache () =
   let t = t () in
@@ -1370,6 +1412,19 @@ end = struct
       force_rerun || depends_on_universe
     in
     let rule_digest = compute_rule_digest rule ~deps ~action ~sandbox_mode in
+    let () =
+      (* FIXME: Rule hinting provide no relevant speed increase for now. Disable
+         the overhead until we make a decision. *)
+      if false then
+        if Action.is_useful_to_distribute action = Maybe then
+          let f { cache = (module Caching); _ } =
+            match Caching.Cache.hint Caching.cache [ rule_digest ] with
+            | Result.Ok _ -> ()
+            | Result.Error e ->
+              User_warning.emit [ Pp.textf "unable to hint the cache: %s" e ]
+          in
+          Option.iter ~f t.caching
+    in
     let do_not_memoize =
       always_rerun || is_action_dynamic
       || Action.is_useful_to_memoize action = Clearly_not
@@ -1422,9 +1477,6 @@ end = struct
     in
     let* () =
       if rule_need_rerun then (
-        List.iter targets_as_list ~f:(fun target ->
-            Cached_digest.remove (Path.build target);
-            Path.unlink_no_err (Path.build target));
         let from_Cache =
           match (do_not_memoize, t.caching) with
           | true, _
@@ -1432,18 +1484,31 @@ end = struct
             None
           | false, Some { cache = (module Caching) as cache; _ } -> (
             match Caching.Cache.search Caching.cache rule_digest with
-            | Ok (_, files) -> Some (files, cache)
+            | Ok (_, files) ->
+              Log.info
+                [ Pp.textf "cache hit for %s" (Digest.to_string rule_digest) ];
+              Some (files, cache)
             | Error msg ->
-              Log.info [ Pp.textf "cache miss: %s" msg ];
+              Log.info
+                [ Pp.textf "cache miss for %s: %s"
+                    (Digest.to_string rule_digest)
+                    msg
+                ];
               None )
         and cache_checking =
           match t.caching with
           | Some { check_probability; _ } -> Random.float 1. < check_probability
           | _ -> false
         in
+        let remove_targets () =
+          List.iter targets_as_list ~f:(fun target ->
+              Cached_digest.remove (Path.build target);
+              Path.unlink_no_err (Path.build target))
+        in
         let pulled_from_cache =
           match from_Cache with
           | Some (files, (module Caching)) when not cache_checking -> (
+            let () = remove_targets () in
             let retrieve (file : Cache.File.t) =
               let retrieved = Caching.Cache.retrieve Caching.cache file in
               Cached_digest.set retrieved file.digest;
@@ -1453,19 +1518,26 @@ end = struct
               let digests = List.map files ~f:retrieve in
               Trace_db.set (Path.build head_target)
                 (* We do not cache dynamic actions so [dynamic_deps_stages] is
-                   alwa ys an empty list here. *)
+                   always an empty list here. *)
                 { rule_digest
                 ; targets_digest = Digest.generic digests
                 ; dynamic_deps_stages = []
                 }
             with
-            | exception Unix.(Unix_error (ENOENT, _, _)) -> false
+            | exception Unix.(Unix_error (ENOENT, _, f)) ->
+              Log.info
+                [ Pp.textf "missing data file for cached rule %s: %s"
+                    (Digest.to_string rule_digest)
+                    f
+                ];
+              false
             | () -> true )
           | _ -> false
         in
         if pulled_from_cache then
           Fiber.return ()
-        else (
+        else
+          let () = remove_targets () in
           pending_targets := Path.Build.Set.union targets !pending_targets;
           let sandboxed, action =
             match sandbox with
@@ -1560,8 +1632,16 @@ end = struct
                 in
                 Log.info [ Pp.textf "promotion failed for %s: %s" targets msg ]
               in
+              let repository =
+                let dir = Rule.find_source_dir rule in
+                let open Option.O in
+                let* vcs = File_tree.Dir.vcs dir in
+                let f found = Path.equal found.Vcs.root vcs.Vcs.root in
+                let+ _, i = get_vcs () |> List.findi ~f in
+                i
+              in
               Caching.Cache.promote Caching.cache targets rule_digest []
-                ~repository:None ~duplication:None
+                ~repository ~duplication:None
               |> Result.map_error ~f:report |> ignore
             | _ -> ()
           in
@@ -1574,7 +1654,6 @@ end = struct
           in
           Trace_db.set (Path.build head_target)
             { rule_digest; dynamic_deps_stages; targets_digest }
-        )
       ) else
         Fiber.return ()
     in
@@ -1991,23 +2070,32 @@ let init ~contexts ?caching ~sandboxing_preference =
     Context_name.Map.of_list_map_exn contexts ~f:(fun c -> (c.Context.name, c))
   in
   let caching =
-    let f ({ cache = (module Caching : Cache.Caching); _ } as v) =
-      let cache =
-        ( module struct
-          module Cache = Caching.Cache
+    let open Option.O in
+    let* ({ cache = (module Caching : Cache.Caching); _ } as v) = caching in
+    let open Result.O in
+    let res =
+      let+ cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir in
+      ( module struct
+        module Cache = Caching.Cache
 
-          let cache = Caching.Cache.set_build_dir Caching.cache Path.build_dir
-        end : Cache.Caching )
-      in
-      { v with cache }
+        let cache = cache
+      end : Cache.Caching )
     in
-    Option.map ~f caching
+    match res with
+    | Result.Ok cache -> Some { v with cache }
+    | Result.Error e ->
+      User_warning.emit
+        [ Pp.text "Unable to set cache build directory"
+        ; Pp.textf "Reason: %s" e
+        ];
+      None
   in
   let t =
     { contexts
     ; packages = Fdecl.create Dyn.Encoder.opaque
     ; gen_rules = Fdecl.create Dyn.Encoder.opaque
     ; init_rules = Fdecl.create Dyn.Encoder.opaque
+    ; vcs = Fdecl.create Dyn.Encoder.opaque
     ; caching
     ; sandboxing_preference = sandboxing_preference @ Sandbox_mode.all
     ; rule_done = 0

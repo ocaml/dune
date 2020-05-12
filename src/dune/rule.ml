@@ -133,3 +133,8 @@ let effective_env t =
   | None, None -> Env.initial
   | Some e, _ -> e
   | None, Some c -> c.env
+
+let find_source_dir rule =
+  let _, src_dir = Path.Build.extract_build_context_dir_exn rule.dir in
+  let res = File_tree.nearest_dir src_dir in
+  res

@@ -158,7 +158,8 @@ let fold_one_step t ~init:acc ~f =
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) ->
+  | With_accepted_exit_codes (_, t)
+  | No_infer t ->
     f acc t
   | Progn l -> List.fold_left l ~init:acc ~f
   | Run _
@@ -201,7 +202,8 @@ let rec is_dynamic = function
   | Redirect_out (_, _, t)
   | Redirect_in (_, _, t)
   | Ignore (_, t)
-  | With_accepted_exit_codes (_, t) ->
+  | With_accepted_exit_codes (_, t)
+  | No_infer t ->
     is_dynamic t
   | Progn l -> List.exists l ~f:is_dynamic
   | Run _
@@ -272,7 +274,7 @@ type is_useful =
   | Clearly_not
   | Maybe
 
-let is_useful_to memoize =
+let is_useful_to distribute memoize =
   let rec loop t =
     match t with
     | Chdir (_, t) -> loop t
@@ -280,7 +282,8 @@ let is_useful_to memoize =
     | Redirect_out (_, _, t) -> memoize || loop t
     | Redirect_in (_, _, t) -> loop t
     | Ignore (_, t)
-    | With_accepted_exit_codes (_, t) ->
+    | With_accepted_exit_codes (_, t)
+    | No_infer t ->
       loop t
     | Progn l -> List.exists l ~f:loop
     | Echo _ -> false
@@ -288,13 +291,13 @@ let is_useful_to memoize =
     | Copy _ -> memoize
     | Symlink _ -> false
     | Copy_and_add_line_directive _ -> memoize
-    | Write_file _ -> memoize
+    | Write_file _ -> distribute
     | Rename _ -> memoize
     | Remove_tree _ -> false
-    | Diff _ -> memoize
+    | Diff _ -> distribute
     | Mkdir _ -> false
-    | Digest_files _ -> memoize
-    | Merge_files_into _ -> memoize
+    | Digest_files _ -> distribute
+    | Merge_files_into _ -> distribute
     | Run _ -> true
     | Dynamic_run _ -> true
     | System _ -> true
@@ -305,6 +308,8 @@ let is_useful_to memoize =
     | true -> Maybe
     | false -> Clearly_not
 
-let is_useful_to_sandbox = is_useful_to false
+let is_useful_to_sandbox = is_useful_to false false
 
-let is_useful_to_memoize = is_useful_to true
+let is_useful_to_distribute = is_useful_to true false
+
+let is_useful_to_memoize = is_useful_to true true

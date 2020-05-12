@@ -2,6 +2,7 @@ type t =
   | Opaque
   | Unit
   | Int of int
+  | Int64 of int64
   | Bool of bool
   | String of string
   | Bytes of bytes
@@ -28,6 +29,8 @@ module Encoder : sig
   val string : string t
 
   val int : int t
+
+  val int64 : int64 t
 
   val float : float t
 

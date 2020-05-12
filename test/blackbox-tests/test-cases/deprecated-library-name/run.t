@@ -51,10 +51,10 @@ tests that the "old_public_name" field is evaluated lazily
 
   $ rm -rf a
 
-  $ cat $PWD/_install/lib/a/META
+  $ dune_cmd cat $PWD/_install/lib/a/META
   requires = "b"
 
-  $ cat $PWD/_install/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat $PWD/_install/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name a)
   (deprecated_library_name (old_public_name a) (new_public_name b))
@@ -133,12 +133,12 @@ First the motivating case.
   d/_build/install/default/lib/menhirLib/META
   d/_build/install/default/lib/menhirSdk/META
 
-  $ cat d/_build/install/default/lib/dummy/META
+  $ dune_cmd cat d/_build/install/default/lib/dummy/META
   
 
-  $ cat d/_build/install/default/lib/menhirLib/META
+  $ dune_cmd cat d/_build/install/default/lib/menhirLib/META
   requires = "menhir.lib"
-  $ cat d/_build/install/default/lib/menhirSdk/META
+  $ dune_cmd cat d/_build/install/default/lib/menhirSdk/META
   requires = "menhir.sdk"
 
   $ find d/_build/install/default -name 'dune-package' | sort
@@ -147,18 +147,18 @@ First the motivating case.
   d/_build/install/default/lib/menhirLib/dune-package
   d/_build/install/default/lib/menhirSdk/dune-package
 
-  $ cat d/_build/install/default/lib/dummy/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat d/_build/install/default/lib/dummy/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name dummy)
 
-  $ cat d/_build/install/default/lib/menhirLib/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat d/_build/install/default/lib/menhirLib/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name menhirLib)
   (deprecated_library_name
    (old_public_name menhirLib)
    (new_public_name menhir.lib))
 
-  $ cat d/_build/install/default/lib/menhirSdk/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat d/_build/install/default/lib/menhirSdk/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name menhirSdk)
   (deprecated_library_name
@@ -200,7 +200,7 @@ Checks that we can migrate top-level libraries across packages.
 
   $ (cd d && dune build --root . @install)
 
-  $ cat d/_build/install/default/lib/top1/META
+  $ dune_cmd cat d/_build/install/default/lib/top1/META
   requires = "q.bar"
 
 Check that we can do it when the name of the new library is the same as the
@@ -219,7 +219,7 @@ old public name:
 
   $ (cd d && dune build --root . @all)
 
-  $ cat d/_build/install/default/lib/top2/META
+  $ dune_cmd cat d/_build/install/default/lib/top2/META
   requires = "q.top2"
 
 We check that there is an error when there is an actual ambiguity:
@@ -295,7 +295,7 @@ Qualified, deprecated old_public_name:
   d/_build/install/default/lib/p/META
   d/_build/install/default/lib/q/META
 
-  $ cat d/_build/install/default/lib/q/META
+  $ dune_cmd cat d/_build/install/default/lib/q/META
   package "foo" (
     requires = "p"
   )
@@ -304,7 +304,7 @@ Qualified, deprecated old_public_name:
   d/_build/install/default/lib/p/dune-package
   d/_build/install/default/lib/q/dune-package
 
-  $ cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name q)
   (deprecated_library_name (old_public_name q.foo) (new_public_name p))
@@ -336,7 +336,7 @@ Two libraries redirecting to the same library:
   d/_build/install/default/lib/p/META
   d/_build/install/default/lib/q/META
 
-  $ cat d/_build/install/default/lib/q/META
+  $ dune_cmd cat d/_build/install/default/lib/q/META
   package "bar" (
     requires = "p"
   )
@@ -348,7 +348,7 @@ Two libraries redirecting to the same library:
   d/_build/install/default/lib/p/dune-package
   d/_build/install/default/lib/q/dune-package
 
-  $ cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat d/_build/install/default/lib/q/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name q)
   (deprecated_library_name (old_public_name q.bar) (new_public_name p))

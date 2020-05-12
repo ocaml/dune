@@ -131,7 +131,7 @@ let term =
     let doc =
       "A comma separated list of libraries on which the component depends"
     in
-    Arg.(value & opt (list component_name_conv) [] & info [ "libs" ] ~docv ~doc)
+    Arg.(value & opt (list atom_conv) [] & info [ "libs" ] ~docv ~doc)
   and+ pps =
     let docv = "PREPROCESSORS" in
     let doc =

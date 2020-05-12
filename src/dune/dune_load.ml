@@ -210,6 +210,7 @@ type conf =
   { dune_files : Dune_files.t
   ; packages : Package.t Package.Name.Map.t
   ; projects : Dune_project.t list
+  ; vcs : Vcs.t list
   }
 
 let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
@@ -224,15 +225,27 @@ let interpret ~dir ~project ~(dune_file : File_tree.Dune_file.t) =
 
 let load ~ancestor_vcs =
   File_tree.init ~ancestor_vcs ~recognize_jbuilder_projects:false;
-  let projects =
+
+  let _, vcs, projects =
+    let f dir (ancestor_vcs, vcs, projects) =
+      let vcs =
+        match File_tree.Dir.vcs dir with
+        | Some repository -> Path.Map.set vcs repository.root repository
+        | None -> vcs
+      in
+      let p = File_tree.Dir.project dir in
+      if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
+        (ancestor_vcs, vcs, p :: projects)
+      else
+        (ancestor_vcs, vcs, projects)
+    and vcs =
+      match ancestor_vcs with
+      | Some vcs -> Path.Map.of_list_exn [ (Path.root, vcs) ]
+      | None -> Path.Map.empty
+    in
     File_tree.fold_with_progress
-      ~traverse:{ data_only = false; vendored = true; normal = true } ~init:[]
-      ~f:(fun dir acc ->
-        let p = File_tree.Dir.project dir in
-        if Path.Source.equal (File_tree.Dir.path dir) (Dune_project.root p) then
-          p :: acc
-        else
-          acc)
+      ~traverse:{ data_only = false; vendored = true; normal = true }
+      ~init:(ancestor_vcs, vcs, []) ~f
   in
   let packages =
     List.fold_left projects ~init:Package.Name.Map.empty
@@ -260,4 +273,4 @@ let load ~ancestor_vcs =
         let dune_file = interpret ~dir:path ~project ~dune_file in
         dune_file :: dune_files)
   in
-  { dune_files; packages; projects }
+  { dune_files; packages; projects; vcs = Path.Map.values vcs }

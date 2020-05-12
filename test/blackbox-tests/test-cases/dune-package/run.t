@@ -1,5 +1,5 @@
   $ dune build
-  $ cat _build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat _build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name a)
   (library
@@ -44,7 +44,7 @@
 
 Build with "--store-orig-source-dir" profile
   $ dune build --store-orig-source-dir
-  $ cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
+  $ dune_cmd cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
    (orig_src_dir
     $TESTCASE_ROOT)
   --
@@ -53,7 +53,7 @@ Build with "--store-orig-source-dir" profile
 
 Build with "DUNE_STORE_ORIG_SOURCE_DIR=true" profile
   $ DUNE_STORE_ORIG_SOURCE_DIR=true dune build
-  $ cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
+  $ dune_cmd cat _build/install/default/lib/a/dune-package | grep -A 1 '(orig_src_dir'
    (orig_src_dir
     $TESTCASE_ROOT)
   --

@@ -99,11 +99,3 @@ module Pkg = struct
 end
 
 let modules_field name = Ordered_set_lang.field name
-
-let enabled_if ~since =
-  let decode =
-    match since with
-    | None -> Blang.decode
-    | Some since -> Dune_lang.Syntax.since Stanza.syntax since >>> Blang.decode
-  in
-  field "enabled_if" ~default:Blang.true_ decode

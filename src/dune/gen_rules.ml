@@ -214,7 +214,8 @@ let gen_rules sctx dir_contents cctxs
       (Expander.set_lookup_module expander ~lookup_module)
       ~lookup_library
   in
-  let files_to_install { Install_conf.section = _; files; package = _ } =
+  let files_to_install
+      { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
         File_binding.Unexpanded.expand_src ~dir:ctx_dir fb
           ~f:(Expander.expand_str expander)
@@ -404,7 +405,7 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
 
 let gen ~contexts ?only_packages conf =
   let open Fiber.O in
-  let { Dune_load.dune_files; packages; projects } = conf in
+  let { Dune_load.dune_files; packages; projects; vcs } = conf in
   let packages = Option.value only_packages ~default:packages in
   (* CR-soon amokhov: this mutable table is safe because [Ivar]s are created,
      read and filled in the same memoization node (the one that calls [gen]). We
@@ -437,7 +438,7 @@ let gen ~contexts ?only_packages conf =
     let+ () = Fiber.Ivar.fill (Table.find_exn sctxs context.name) sctx in
     (context.name, sctx)
   in
-  let+ contexts = Fiber.parallel_map contexts ~f:make_sctx in
+  let* contexts = Fiber.parallel_map contexts ~f:make_sctx in
   let sctxs = Context_name.Map.of_list_exn contexts in
   let () =
     Build_system.set_packages (fun path ->
@@ -457,4 +458,5 @@ let gen ~contexts ?only_packages conf =
       | Context ctx ->
         Context_name.Map.find sctxs ctx
         |> Option.map ~f:(fun sctx -> gen_rules ~sctx));
+  let+ () = Build_system.set_vcs vcs in
   sctxs

@@ -144,9 +144,9 @@ end = struct
       | Dune_file.Library lib ->
         (not lib.optional)
         || Lib.DB.available (Scope.libs scope) (Dune_file.Library.best_name lib)
-      | Dune_file.Documentation _
-      | Dune_file.Install _ ->
-        true
+      | Dune_file.Documentation _ -> true
+      | Dune_file.Install { enabled_if; _ } ->
+        Expander.eval_blang expander enabled_if
       | Dune_file.Executables ({ install_conf = Some _; _ } as exes) ->
         Expander.eval_blang expander exes.enabled_if
         && ( (not exes.optional)
@@ -158,11 +158,10 @@ end = struct
              let pps =
                Dune_file.Preprocess_map.pps
                  (Dune_file.Buildable.preprocess exes.buildable
-                   ~lib_config:ctx.lib_config)
+                    ~lib_config:ctx.lib_config)
              in
              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
-               exes.names exes.buildable.libraries
-               ~pps ~dune_version
+               exes.names exes.buildable.libraries ~pps ~dune_version
                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
                ~variants:exes.variants ~optional:exes.optional
            in

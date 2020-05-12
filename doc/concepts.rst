@@ -657,7 +657,7 @@ The following constructions are available:
 - ``(with-<outputs>-to <file> <DSL>)`` to redirect the output to a file, where
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs`` (for both
   ``stdout`` and ``stderr``)
-- ``(ignore-<outputs> <DSL)`` to ignore the output, where
+- ``(ignore-<outputs> <DSL>)`` to ignore the output, where
   ``<outputs>`` is one of: ``stdout``, ``stderr`` or ``outputs``
 - ``(with-stdin-from <file> <DSL>)`` to redirect the input from a file
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
@@ -687,6 +687,9 @@ The following constructions are available:
 - ``(cmp <file1> <file2>)`` is similar to ``(run cmp <file1>
   <file2>)`` but allows promotion.  See `Diffing and promotion`_ for
   more details
+- ``(no-infer <DSL>)`` to perform an action without inference of dependencies
+  and targets. This is useful if you are generating dependencies in a way
+  that Dune doesn't know about, for instance by calling an external build system.
 
 As mentioned ``copy#`` inserts a line directive at the beginning of
 the destination file. More precisely, it inserts the following line:

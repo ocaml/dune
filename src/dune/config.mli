@@ -120,7 +120,7 @@ module type S = sig
     ; cache_check_probability : float field
     ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
-    ; cache_trim_size : int field
+    ; cache_trim_size : int64 field
     }
 end
 

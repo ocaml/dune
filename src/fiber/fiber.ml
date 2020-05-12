@@ -60,7 +60,7 @@ end = struct
   let current =
     ref
       { on_error = None
-      ; fibers = ref 1
+      ; fibers = ref 0
       ; vars = Univ_map.empty
       ; on_release = None
       }
@@ -401,28 +401,11 @@ module Future = struct
   let peek = Ivar.peek
 end
 
-let fork f k =
+let fork f =
   let ivar = Ivar.create () in
   EC.add_refs 1;
   EC.apply f () (fun x -> Ivar.fill ivar x ignore);
-  k ivar
-
-let nfork_map l ~f k =
-  match l with
-  | [] -> k []
-  | [ x ] -> fork (fun () -> f x) (fun ivar -> k [ ivar ])
-  | l ->
-    let n = List.length l in
-    EC.add_refs (n - 1);
-    let ivars =
-      List.map l ~f:(fun x ->
-          let ivar = Ivar.create () in
-          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-          ivar)
-    in
-    k ivars
-
-let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
+  ivar
 
 module Mutex = struct
   type t =
@@ -452,8 +435,3 @@ module Mutex = struct
 
   let create () = { locked = false; waiters = Queue.create () }
 end
-
-let run t =
-  let result = ref None in
-  EC.apply (fun () -> t) () (fun x -> result := Some x);
-  !result

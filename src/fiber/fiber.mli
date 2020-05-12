@@ -61,14 +61,7 @@ end
 with type 'a fiber := 'a t
 
 (** [fork f] creates a sub-fiber and return a [Future.t] to wait its result. *)
-val fork : (unit -> 'a t) -> 'a Future.t t
-
-(** [nfork l] is similar to [fork] but creates [n] sub-fibers. *)
-val nfork : (unit -> 'a t) list -> 'a Future.t list t
-
-(** [nfork_map l ~f] is the same as [nfork (List.map l ~f:(fun x () -> f x))]
-    but more efficient. *)
-val nfork_map : 'a list -> f:('a -> 'b t) -> 'b Future.t list t
+val fork : (unit -> 'a t) -> 'a Future.t
 
 (** {1 Joining} *)
 
@@ -111,7 +104,8 @@ val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
     {[
       let parallel_map l ~f =
-        nfork_map l ~f >>= fun futures -> all (List.map futures ~f:Future.wait)
+        let* futures = List.map l ~f:(fun x -> fork (fun () -> f x)) in
+        all (List.map futures ~f:Future.wait)
     ]} *)
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
@@ -119,7 +113,7 @@ val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
     {[
       let parallel_iter l ~f =
-        nfork_map l ~f >>= fun futures ->
+        let* futures = List.map l ~f:(fun x -> fork (fun () -> f x)) in
         all_unit (List.map futures ~f:Future.wait)
     ]} *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
@@ -223,9 +217,3 @@ module Mutex : sig
   val with_lock : t -> (unit -> 'a fiber) -> 'a fiber
 end
 with type 'a fiber := 'a t
-
-(** {1 Running fibers} *)
-
-(** [run t] runs a fiber until it (and all the fibers it forked) terminate.
-    Returns the result if it's determined in the end, otherwise returns [None]. *)
-val run : 'a t -> 'a option

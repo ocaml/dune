@@ -780,9 +780,9 @@ module Create = struct
        If there was a cycle between contexts, the bellow code would dead-lock.
        However, we check at parsing time that there is no such cycle. *)
     let contexts_map_ivar = Fiber.Ivar.create () in
-    let* contexts =
-      Fiber.parallel_map workspace.contexts ~f:(fun context ->
-          let+ contexts =
+    let contexts =
+      List.map workspace.contexts ~f:(fun context ->
+          let contexts =
             Fiber.fork (fun () ->
                 let* host_context =
                   match Workspace.Context.host_context context with

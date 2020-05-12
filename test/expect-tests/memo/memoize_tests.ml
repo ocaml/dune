@@ -19,12 +19,13 @@ let int_fn_create name =
 (* to run a computation *)
 let run f v =
   let exn = ref None in
-  match
-    Fiber.run
-      (Fiber.with_error_handler
-         (fun () -> f v)
-         ~on_error:(fun e -> exn := Some e))
-  with
+  let future =
+    Fiber.fork (fun () ->
+        Fiber.with_error_handler
+          (fun () -> f v)
+          ~on_error:(fun e -> exn := Some e))
+  in
+  match Fiber.Future.peek future with
   | Some x -> x
   | None -> (
     match !exn with

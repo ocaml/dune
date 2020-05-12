@@ -16,8 +16,6 @@ module Execution_context : sig
     val run : 'a t -> 'a -> unit
 
     val run_queue : 'a t Queue.t -> 'a -> unit
-
-    val run_list : 'a t list -> 'a -> unit
   end
 
   (* Execute a function returning a fiber, passing any raised excetion to the
@@ -161,11 +159,6 @@ end = struct
     let run_queue q x =
       let backup = !current in
       Queue.iter (fun k -> run_k k x) q;
-      current := backup
-
-    let run_list l x =
-      let backup = !current in
-      List.iter l ~f:(fun k -> run_k k x);
       current := backup
   end
 
@@ -460,24 +453,7 @@ module Mutex = struct
   let create () = { locked = false; waiters = Queue.create () }
 end
 
-let suspended = ref []
-
-let yield () k = suspended := K.create k :: !suspended
-
-exception Never
-
 let run t =
   let result = ref None in
   EC.apply (fun () -> t) () (fun x -> result := Some x);
-  let rec loop () =
-    match List.rev !suspended with
-    | [] -> (
-      match !result with
-      | None -> raise Never
-      | Some x -> x )
-    | to_run ->
-      suspended := [];
-      K.run_list to_run ();
-      loop ()
-  in
-  loop ()
+  !result

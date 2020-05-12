@@ -19,15 +19,17 @@ let int_fn_create name =
 (* to run a computation *)
 let run f v =
   let exn = ref None in
-  try
+  match
     Fiber.run
       (Fiber.with_error_handler
          (fun () -> f v)
          ~on_error:(fun e -> exn := Some e))
-  with Fiber.Never -> (
+  with
+  | Some x -> x
+  | None -> (
     match !exn with
     | Some exn -> Exn_with_backtrace.reraise exn
-    | None -> raise Fiber.Never )
+    | None -> assert false )
 
 let run_memo f v = run (Memo.exec f) v
 

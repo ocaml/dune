@@ -10,25 +10,25 @@ module Dot = struct
 
   let error_tag = "ERROR"
 
+  (* [parse_line l] parses dune-generated .merlin files which only contain a
+     subset of merlin configuration options *)
   let parse_line line =
     let line = String.trim line in
     match line with
     | "EXCLUDE_QUERY_DIR" -> Some EXCLUDE_QUERY_DIR
-    | "" -> None
-    | line when line.[0] = '#' -> None
-    | line ->
-      Some
-        (let re =
-           Re.(
-             case (seq [ group (rep1 upper); rep1 space; group (rep1 notnl) ])
-             |> compile)
-         in
-         match Re.Group.all (Re.exec re line) with
-         | [| _; tag; value |] -> TAG (tag, value)
-         | (exception Not_found)
-         | _ ->
-           let msg = Printf.sprintf "Malformed directive \"%s\"" line in
-           TAG (error_tag, msg))
+    | line when String.length line = 0 || line.[0] = '#' -> None
+    | line -> (
+      let open Re in
+      let re =
+        seq [ group (rep1 upper); rep1 space; group (rep1 notnl) ]
+        |> case |> compile
+      in
+      match Group.all (exec re line) with
+      | [| _; tag; value |] -> Some (TAG (tag, value))
+      | (exception Not_found)
+      | _ ->
+        let msg = Printf.sprintf "Malformed directive \"%s\"" line in
+        Some (TAG (error_tag, msg)) )
 
   let parse_lines lines : t = List.filter_map ~f:parse_line lines
 
@@ -60,23 +60,27 @@ module Commands = struct
       | List [ Atom "File"; Atom path ] -> File path
       | sexp -> Unknown (Sexp.to_string sexp) )
     | Error _msg -> Halt
+
+  (* stdin EOF triggers this Error *)
 end
 
+(* [to_local p] makes absolute path [p] relative to the projects root and
+   optionaly removes the build context *)
 let to_local abs_file_path =
   let error msg = Error msg in
-  let local_root = Path.Local.root in
   let path_opt =
     String.drop_prefix
-      ~prefix:(Path.to_absolute_filename (Path.of_local local_root))
+      ~prefix:Path.(to_absolute_filename (of_local Local.root))
       abs_file_path
   in
   match path_opt with
   | Some path -> (
     try
       Ok
-        ( path |> Filename.concat "." |> Path.of_string
-        |> Path.drop_optional_build_context |> Path.local_part )
-    with _ -> Printf.sprintf "Could not parse path %s" path |> error )
+        Path.(
+          Filename.concat "." path |> of_string |> drop_optional_build_context
+          |> local_part)
+    with _ -> Printf.sprintf "Could not resolve path %s" path |> error )
   | None ->
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 

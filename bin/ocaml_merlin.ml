@@ -20,6 +20,7 @@ let term =
   Common.set_common common ~targets:[];
   Scheduler.go ~common (fun () ->
       Dune.File_tree.init ~recognize_jbuilder_projects:true ~ancestor_vcs:None;
+      Dune.Workspace.init ();
       Dune.Merlin_server.start () |> Fiber.return)
 
 let command = (term, info)

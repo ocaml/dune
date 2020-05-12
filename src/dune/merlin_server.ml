@@ -85,7 +85,12 @@ let to_local abs_file_path =
     Printf.sprintf "Path is not in dune workspace %s" abs_file_path |> error
 
 let load_merlin_file dir =
-  let ctx = Context_name.(to_string default) in
+  let workspace = Workspace.workspace () in
+  let context = Option.value
+    ~default:Context_name.default
+    (workspace.merlin_context)
+  in
+  let ctx = Context_name.to_string context in
   let dir_path = Path.Build.(append_local (relative root ctx) dir) in
   let file_path = Path.Build.relative dir_path Merlin.merlin_file_name in
   if Path.exists (Path.build file_path) then

@@ -699,7 +699,6 @@ end = struct
     | Files_changed
 
   let rec pump_events t =
-    let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then (
       Console.Status_line.set (Fun.const None);

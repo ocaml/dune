@@ -36,4 +36,4 @@ Dune crashes if there's a file named after the directory target
 directory target and (mode promote) results in a crash
   $ dune build --root mode-promote @all 2>&1 | head -n2
   Entering directory 'mode-promote'
-  Error: exception Sys_error("Is a directory")
+  Error: Is a directory

@@ -17,18 +17,19 @@ module Dot = struct
     match line with
     | "EXCLUDE_QUERY_DIR" -> Some EXCLUDE_QUERY_DIR
     | line when String.length line = 0 || line.[0] = '#' -> None
-    | line ->
+    | line -> (
       let open Re in
       let re =
         seq [ group (rep1 upper); rep1 space; group (rep1 notnl) ]
         |> case |> compile
       in
-      try match Group.all (exec re line) with
-      | [| _; tag; value |] -> Some (TAG (tag, value))
-      | _ -> raise Not_found
+      try
+        match Group.all (exec re line) with
+        | [| _; tag; value |] -> Some (TAG (tag, value))
+        | _ -> raise Not_found
       with Not_found ->
         let msg = Printf.sprintf "Malformed directive \"%s\"" line in
-        Some (TAG (error_tag, msg))
+        Some (TAG (error_tag, msg)) )
 
   let parse_lines lines : t = List.filter_map ~f:parse_line lines
 
@@ -86,9 +87,8 @@ let to_local abs_file_path =
 
 let load_merlin_file dir =
   let workspace = Workspace.workspace () in
-  let context = Option.value
-    ~default:Context_name.default
-    (workspace.merlin_context)
+  let context =
+    Option.value ~default:Context_name.default workspace.merlin_context
   in
   let ctx = Context_name.to_string context in
   let dir_path = Path.Build.(append_local (relative root ctx) dir) in

@@ -52,6 +52,7 @@ module Commands = struct
     | Halt
     | Unknown of string
 
+  (* The configuration server should halt only on EOL *)
   let read_input in_channel =
     match Csexp.input in_channel with
     | Ok sexp -> (
@@ -59,10 +60,10 @@ module Commands = struct
       match sexp with
       | Atom "Halt" -> Halt
       | List [ Atom "File"; Atom path ] -> File path
-      | sexp -> Unknown (Sexp.to_string sexp) )
-    | Error _msg -> Halt
-
-  (* stdin EOF triggers this Error *)
+      | sexp ->
+        let msg = Printf.sprintf "Bad input: %s" (Sexp.to_string sexp) in
+        Unknown msg )
+    | Error _ -> Halt
 end
 
 (* [to_local p] makes absolute path [p] relative to the projects root and
@@ -100,23 +101,28 @@ let load_merlin_file dir =
   else
     []
 
-let get_merlin_conf file =
+let out s =
+  Dot.to_channel ~out_channel:stdout s;
+  Printf.printf "\n%!"
+
+let print_merlin_conf file =
   let dir, _file = Filename.(dirname file, basename file) in
   let answer =
     match to_local dir with
     | Ok p -> load_merlin_file p
     | Error s -> Dot.make_error s
   in
-  Dot.to_channel ~out_channel:stdout answer;
-  Printf.printf "\n%!"
+  out answer
 
 let start () =
   let rec main () =
     match Commands.read_input stdin with
     | File path ->
-      get_merlin_conf path;
+      print_merlin_conf path;
       main ()
-    | Unknown _ -> main ()
+    | Unknown msg ->
+      out (Dot.make_error msg);
+      main ()
     | Halt -> exit 0
   in
   main ()

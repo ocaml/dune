@@ -730,12 +730,12 @@ end = struct
       Fiber.run
         (let* user_action_result = Fiber.fork (fun () -> fiber) in
          let* pump_events_result = pump_events t in
+         let* user_action_result = Fiber.Future.peek user_action_result in
          Fiber.return (pump_events_result, user_action_result))
     with
     | None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
     | exception exn -> Error (Exn (exn, Printexc.get_raw_backtrace ()))
     | Some (a, b) -> (
-      let b = Fiber.Future.peek b in
       match (a, b) with
       | Done, None -> Error Never
       | Done, Some res -> Ok res

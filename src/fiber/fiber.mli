@@ -56,7 +56,7 @@ module Future : sig
   val wait : 'a t -> 'a fiber
 
   (** Return [Some x] if [t] has already returned. *)
-  val peek : 'a t -> 'a option
+  val peek : 'a t -> 'a option fiber
 end
 with type 'a fiber := 'a t
 
@@ -193,7 +193,7 @@ val finalize : (unit -> 'a t) -> finally:(unit -> unit t) -> 'a t
 
 (** Write once variables *)
 module Ivar : sig
-  type 'a fiber = 'a t
+  type 'a fiber
 
   (** A ivar is a synchronization variable that can be written only once. *)
   type 'a t
@@ -209,7 +209,7 @@ module Ivar : sig
   val fill : 'a t -> 'a -> unit fiber
 
   (** Return [Some x] is [fill t x] has been called previously. *)
-  val peek : 'a t -> 'a option
+  val peek : 'a t -> 'a option fiber
 end
 with type 'a fiber := 'a t
 

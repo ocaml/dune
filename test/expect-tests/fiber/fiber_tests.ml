@@ -34,13 +34,12 @@ end = struct
       Fiber.run
         (let* result = Fiber.fork (fun () -> t) in
          let* () = restart_suspended () in
-         Fiber.return result)
+         Fiber.Future.peek result)
     with
-    | None -> raise Never
-    | Some future -> (
-      match Fiber.Future.peek future with
-      | None -> raise Never
-      | Some x -> x )
+    | None
+    | Some None ->
+      raise Never
+    | Some (Some x) -> x
 end
 
 let failing_fiber () : unit Fiber.t =

@@ -387,10 +387,11 @@ module Ivar = struct
     | Full x -> k x
     | Empty q -> Queue.push (K.create k) q
 
-  let peek t =
-    match t.state with
-    | Full x -> Some x
-    | Empty _ -> None
+  let peek t k =
+    k
+      ( match t.state with
+      | Full x -> Some x
+      | Empty _ -> None )
 end
 
 module Future = struct

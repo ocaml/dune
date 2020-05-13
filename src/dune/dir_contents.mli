@@ -55,3 +55,9 @@ type gen_rules_result =
     However, if the directory is part of a group, this function simply returns
     the root of the group without emitting any rule. *)
 val gen_rules : Super_context.t -> dir:Path.Build.t -> gen_rules_result
+
+(** Add expansion that depend on OCaml artifacts/sources.
+
+    This function live in super_context.ml or expander.ml because it would
+    introduce a dependency cycle. *)
+val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t

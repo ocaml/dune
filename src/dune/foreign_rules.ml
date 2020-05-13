@@ -163,9 +163,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
          let extra_flags = include_dir_flags ~expander ~dir src.stubs in
          let extra_deps =
            let open Build.O in
-           let+ () =
-             Super_context.Deps.interpret sctx stubs.extra_deps ~expander
-           in
+           let+ () = Dep_conf_eval.unnamed stubs.extra_deps ~expander in
            Command.Args.empty
          in
          let include_flags =

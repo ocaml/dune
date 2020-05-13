@@ -131,7 +131,7 @@ let make ?(requires = Ok []) ~flags
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
-let pp_flag_of_action sctx ~expander ~loc ~action :
+let pp_flag_of_action ~expander ~loc ~action :
     string option Build.With_targets.t =
   match (action : Action_dune_lang.t) with
   | Run (exe, args) -> (
@@ -152,7 +152,7 @@ let pp_flag_of_action sctx ~expander ~loc ~action :
           Forbidden "preprocessing actions"
         in
         let action = Preprocessing.chdir (Run (exe, args)) in
-        Super_context.Action.run sctx ~loc ~expander ~dep_kind:Optional ~targets
+        Action_unexpanded.expand ~loc ~expander ~dep_kind:Optional ~targets
           ~targets_dir action
           (Build.return Bindings.empty)
       in
@@ -191,7 +191,7 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
       |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -ppx %s"
       |> Option.some |> Build.With_targets.return )
   | Action (loc, (action : Action_dune_lang.t)) ->
-    pp_flag_of_action sctx ~expander ~loc ~action
+    pp_flag_of_action ~expander ~loc ~action
   | No_preprocessing -> Build.With_targets.return None
 
 (* This is used to determine the list of source directories to give to Merlin.

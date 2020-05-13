@@ -129,14 +129,14 @@ module Partial = struct
           r ~loc x)
   end)
 
-  let rec expand t ~map_exe ~expander : Unresolved.t =
+  let rec expand t ~expander : Unresolved.t =
     let expand_run prog args =
       let args = List.concat_map args ~f:(E.strings ~expander) in
       let prog, more_args = E.prog_and_args ~expander prog in
       let prog =
         match prog with
         | Search _ -> prog
-        | This path -> This (map_exe path)
+        | This path -> This (Expander.map_exe expander path)
       in
       (prog, more_args @ args)
     in
@@ -145,7 +145,7 @@ module Partial = struct
       let prog, args = expand_run prog args in
       Run (prog, args)
     | With_accepted_exit_codes (pred, t) ->
-      With_accepted_exit_codes (pred, expand ~expander ~map_exe t)
+      With_accepted_exit_codes (pred, expand ~expander t)
     | Dynamic_run (prog, args) ->
       let prog, args = expand_run prog args in
       Dynamic_run (prog, args)
@@ -156,18 +156,18 @@ module Partial = struct
            outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn fn)
       in
-      Chdir (fn, expand t ~expander ~map_exe)
+      Chdir (fn, expand t ~expander)
     | Setenv (var, value, t) ->
       let var = E.string ~expander var in
       let value = E.string ~expander value in
       let expander = Expander.set_env expander ~var ~value in
-      Setenv (var, value, expand t ~expander ~map_exe)
+      Setenv (var, value, expand t ~expander)
     | Redirect_out (outputs, fn, t) ->
-      Redirect_out (outputs, E.target ~expander fn, expand t ~map_exe ~expander)
+      Redirect_out (outputs, E.target ~expander fn, expand t ~expander)
     | Redirect_in (inputs, fn, t) ->
-      Redirect_in (inputs, E.path ~expander fn, expand t ~map_exe ~expander)
-    | Ignore (outputs, t) -> Ignore (outputs, expand t ~expander ~map_exe)
-    | Progn l -> Progn (List.map l ~f:(expand ~expander ~map_exe))
+      Redirect_in (inputs, E.path ~expander fn, expand t ~expander)
+    | Ignore (outputs, t) -> Ignore (outputs, expand t ~expander)
+    | Progn l -> Progn (List.map l ~f:(expand ~expander))
     | Echo xs -> Echo (List.concat_map xs ~f:(E.strings ~expander))
     | Cat x -> Cat (E.path ~expander x)
     | Copy (x, y) -> Copy (E.path ~expander x, E.target ~expander y)
@@ -200,7 +200,7 @@ module Partial = struct
         ( List.map ~f:(E.path ~expander) sources
         , List.map ~f:(E.string ~expander) extras
         , E.target ~expander target )
-    | No_infer t -> No_infer (expand t ~expander ~map_exe)
+    | No_infer t -> No_infer (expand t ~expander)
 end
 
 module E = Expand (struct
@@ -217,7 +217,7 @@ module E = Expand (struct
            r ~loc x)
 end)
 
-let rec partial_expand t ~map_exe ~expander : Partial.t =
+let rec partial_expand t ~expander : Partial.t =
   let partial_expand_exe prog args =
     let args =
       List.concat_map args ~f:(fun arg ->
@@ -231,7 +231,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       let prog =
         match prog with
         | Search _ -> prog
-        | This path -> This (map_exe path)
+        | This path -> This (Expander.map_exe expander path)
       in
       (String_with_vars.Partial.Expanded prog, more_args @ args)
     | Unexpanded _ as prog -> (prog, args)
@@ -241,7 +241,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
     let prog, args = partial_expand_exe prog args in
     Run (prog, args)
   | With_accepted_exit_codes (pred, t) ->
-    With_accepted_exit_codes (pred, partial_expand t ~expander ~map_exe)
+    With_accepted_exit_codes (pred, partial_expand t ~expander)
   | Dynamic_run (prog, args) ->
     let prog, args = partial_expand_exe prog args in
     Dynamic_run (prog, args)
@@ -254,7 +254,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
            outside the build dir *)
         Expander.set_dir expander ~dir:(Path.as_in_build_dir_exn dir)
       in
-      Chdir (res, partial_expand t ~expander ~map_exe)
+      Chdir (res, partial_expand t ~expander)
     | Unexpanded fn ->
       let loc = String_with_vars.loc fn in
       User_error.raise ~loc
@@ -275,15 +275,13 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       | Expanded value -> Expander.set_env expander ~var ~value
       | Unexpanded _ -> Expander.hide_env expander ~var
     in
-    Setenv (Expanded var, value, partial_expand t ~expander ~map_exe)
+    Setenv (Expanded var, value, partial_expand t ~expander)
   | Redirect_out (outputs, fn, t) ->
-    Redirect_out
-      (outputs, E.target ~expander fn, partial_expand t ~expander ~map_exe)
+    Redirect_out (outputs, E.target ~expander fn, partial_expand t ~expander)
   | Redirect_in (inputs, fn, t) ->
-    Redirect_in
-      (inputs, E.path ~expander fn, partial_expand t ~expander ~map_exe)
-  | Ignore (outputs, t) -> Ignore (outputs, partial_expand t ~expander ~map_exe)
-  | Progn l -> Progn (List.map l ~f:(partial_expand ~map_exe ~expander))
+    Redirect_in (inputs, E.path ~expander fn, partial_expand t ~expander)
+  | Ignore (outputs, t) -> Ignore (outputs, partial_expand t ~expander)
+  | Progn l -> Progn (List.map l ~f:(partial_expand ~expander))
   | Echo xs -> Echo (List.map xs ~f:(E.cat_strings ~expander))
   | Cat x -> Cat (E.path ~expander x)
   | Copy (x, y) -> Copy (E.path ~expander x, E.target ~expander y)
@@ -314,7 +312,7 @@ let rec partial_expand t ~map_exe ~expander : Partial.t =
       ( List.map sources ~f:(E.path ~expander)
       , List.map extras ~f:(E.string ~expander)
       , E.target ~expander target )
-  | No_infer t -> No_infer (partial_expand t ~expander ~map_exe)
+  | No_infer t -> No_infer (partial_expand t ~expander)
 
 module Infer : sig
   module Outcome : sig
@@ -615,8 +613,8 @@ end = struct
   let unexpanded_targets t = (Unexp.infer t).targets
 end
 
-let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
-    ~targets:targets_written_by_user ~expander ~foreign_flags =
+let expand t ~loc ~dep_kind ~targets_dir ~targets:targets_written_by_user
+    ~expander deps_written_by_user =
   let open Build.O in
   ( match (targets_written_by_user : Targets.Or_forbidden.t) with
   | Targets _ -> ()
@@ -630,9 +628,9 @@ let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
   );
   let partially_expanded, fully_expanded =
     Expander.expand_action expander ~dep_kind ~deps_written_by_user
-      ~targets_written_by_user ~map_exe ~foreign_flags
-      ~partial:(fun expander -> partial_expand t ~expander ~map_exe)
-      ~final:(fun expander t -> Partial.expand t ~expander ~map_exe)
+      ~targets_written_by_user
+      ~partial:(fun expander -> partial_expand t ~expander)
+      ~final:(fun expander t -> Partial.expand t ~expander)
   in
   let { Infer.Outcome.deps; targets } =
     Infer.partial targets_written_by_user partially_expanded
@@ -651,10 +649,9 @@ let expand t ~loc ~map_exe ~dep_kind ~deps_written_by_user ~targets_dir
   >>> Build.dyn_path_set
         (let+ action =
            let+ unresolved = fully_expanded in
+           let artifacts = Expander.artifacts expander in
            Action.Unresolved.resolve unresolved ~f:(fun loc prog ->
-               match Expander.resolve_binary ~loc expander ~prog with
-               | Ok path -> path
-               | Error { fail } -> fail ())
+               Artifacts.Bin.binary artifacts ~loc prog |> Action.Prog.ok_exn)
          in
 
          (* Targets cannot be introduced at this stage because they must all be

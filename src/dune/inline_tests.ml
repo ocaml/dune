@@ -265,7 +265,7 @@ include Sub_system.Register_end_point (struct
              (List.filter_map backends ~f:(fun (backend : Backend.t) ->
                   Option.map backend.info.generate_runner
                     ~f:(fun (loc, action) ->
-                      SC.Action.run sctx action ~loc ~expander
+                      Action_unexpanded.expand action ~loc ~expander
                         ~dep_kind:Required
                         ~targets:(Forbidden "inline test generators")
                         ~targets_dir:dir
@@ -346,8 +346,7 @@ include Sub_system.Register_end_point (struct
                , Dep exe )
            in
            let open Build.With_targets.O in
-           Build.with_no_targets
-             (Super_context.Deps.interpret sctx info.deps ~expander)
+           Build.with_no_targets (Dep_conf_eval.unnamed info.deps ~expander)
            >>> Build.with_no_targets (Build.paths source_files)
            >>> Build.progn
                  ( Command.run exe ~dir:(Path.build dir)

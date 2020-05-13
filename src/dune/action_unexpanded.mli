@@ -27,14 +27,11 @@ val remove_locs : t -> t
 val expand :
      t
   -> loc:Loc.t
-  -> map_exe:(Path.t -> Path.t)
   -> dep_kind:Lib_deps_info.Kind.t
-  -> deps_written_by_user:Path.t Bindings.t Build.t
   -> targets_dir:Path.Build.t
   -> targets:Targets.Or_forbidden.t
   -> expander:Expander.t
-  -> foreign_flags:
-       (dir:Path.Build.t -> String.t list Build.t Foreign.Language.Dict.t)
+  -> Path.t Bindings.t Build.t
   -> Action.t Build.With_targets.t
 
 (** This module is exposed only for testing *)

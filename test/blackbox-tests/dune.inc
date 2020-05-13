@@ -2707,8 +2707,7 @@
  (deps
   (package dune)
   (source_tree test-cases/virtual-libraries/impl-not-virtual-external)
-  (alias test-deps)
-  (package dune-configurator))
+  (alias test-deps))
  (action
   (chdir
    test-cases/virtual-libraries/impl-not-virtual-external

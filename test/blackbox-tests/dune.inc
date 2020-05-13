@@ -1775,6 +1775,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias merlin-server)
+ (deps
+  (package dune)
+  (source_tree test-cases/merlin/server)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/merlin/server
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias merlin-src-dirs-of-deps)
  (deps
   (package dune)
@@ -3163,6 +3174,7 @@
   (alias menhir-promote)
   (alias merlin-allow_approximate_merlin)
   (alias merlin-merlin-tests)
+  (alias merlin-server)
   (alias merlin-src-dirs-of-deps)
   (alias meta-gen)
   (alias misc)
@@ -3443,6 +3455,7 @@
   (alias macro-expand-error)
   (alias menhir-env)
   (alias merlin-allow_approximate_merlin)
+  (alias merlin-server)
   (alias merlin-src-dirs-of-deps)
   (alias meta-gen)
   (alias misc)

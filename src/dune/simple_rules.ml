@@ -105,9 +105,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
     let bindings = dep_bindings ~extra_bindings rule.deps in
     let expander = Expander.add_bindings expander ~bindings in
     let action =
-      Super_context.Deps.interpret_named sctx ~expander rule.deps
-      |> SC.Action.run sctx (snd rule.action) ~loc:(fst rule.action) ~expander
-           ~dep_kind:Required ~targets ~targets_dir:dir
+      Dep_conf_eval.named ~expander rule.deps
+      |> Action_unexpanded.expand (snd rule.action) ~loc:(fst rule.action)
+           ~expander ~dep_kind:Required ~targets ~targets_dir:dir
     in
     match rule_kind ~rule ~action with
     | No_alias -> add_user_rule sctx ~dir ~rule ~action ~expander
@@ -192,7 +192,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   | true ->
     let locks = interpret_locks ~expander alias_conf.locks in
     let action =
-      SC.Deps.interpret_named sctx ~expander alias_conf.deps
+      Dep_conf_eval.named ~expander alias_conf.deps
       |>
       match alias_conf.action with
       | None ->
@@ -204,7 +204,7 @@ let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
       | Some (loc, action) ->
         let bindings = dep_bindings ~extra_bindings alias_conf.deps in
         let expander = Expander.add_bindings expander ~bindings in
-        SC.Action.run sctx action ~loc ~expander ~dep_kind:Required
+        Action_unexpanded.expand action ~loc ~expander ~dep_kind:Required
           ~targets:(Forbidden "aliases") ~targets_dir:dir
     in
     Alias_rules.add sctx ~loc ~stamp ~locks action ~alias

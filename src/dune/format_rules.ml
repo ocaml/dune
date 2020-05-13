@@ -68,9 +68,8 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         in
         let open Build.With_targets.O in
         Build.with_no_targets extra_deps
-        >>> Preprocessing.action_for_pp sctx
-              ~dep_kind:Lib_deps_info.Kind.Required ~loc ~expander ~action ~src
-              ~target:(Some output)
+        >>> Preprocessing.action_for_pp ~dep_kind:Lib_deps_info.Kind.Required
+              ~loc ~expander ~action ~src ~target:(Some output)
     in
     Option.iter formatter ~f:(fun arr ->
         Super_context.add_rule sctx ~mode:Standard ~loc ~dir arr;

@@ -897,3 +897,13 @@ let name t = t.name
 let has_native t = Result.is_ok t.ocamlopt
 
 let lib_config t = t.lib_config
+
+let map_exe (context : t) =
+  match context.for_host with
+  | None -> fun exe -> exe
+  | Some (host : t) -> (
+    fun exe ->
+      match Path.extract_build_context_dir exe with
+      | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
+        Path.append_source (Path.build host.build_dir) exe
+      | _ -> exe )

@@ -198,21 +198,9 @@ let define_all_alias ~dir ~scope ~js_targets =
 let gen_rules sctx dir_contents cctxs
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
     =
-  let expander = Super_context.expander sctx ~dir:ctx_dir in
   let expander =
-    let lookup_module ~dir name =
-      Ml_sources.Artifacts.lookup_module
-        (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
-        name
-    in
-    let lookup_library ~dir name =
-      Ml_sources.Artifacts.lookup_library
-        (Dir_contents.artifacts (Dir_contents.get sctx ~dir))
-        name
-    in
-    Expander.set_lookup_library
-      (Expander.set_lookup_module expander ~lookup_module)
-      ~lookup_library
+    let expander = Super_context.expander sctx ~dir:ctx_dir in
+    Dir_contents.add_sources_to_expander sctx expander
   in
   let files_to_install
       { Install_conf.section = _; files; package = _; enabled_if = _ } =

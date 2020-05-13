@@ -243,5 +243,5 @@ field of a (rule).
   File "dune", line 3, characters 9-16:
   3 |  (deps %{cmo:x2})
                ^^^^^^^
-  Error: %{cmo:..} cannot be used in this position
+  Error: %{cmo:..} isn't allowed in this position
   [1]

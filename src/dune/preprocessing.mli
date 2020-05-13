@@ -44,8 +44,7 @@ val gen_rules : Super_context.t -> string list -> unit
 val chdir : Action_unexpanded.t -> Action_unexpanded.t
 
 val action_for_pp :
-     Super_context.t
-  -> dep_kind:Lib_deps_info.Kind.t
+     dep_kind:Lib_deps_info.Kind.t
   -> loc:Loc.t
   -> expander:Expander.t
   -> action:Action_unexpanded.t

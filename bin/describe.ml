@@ -45,22 +45,22 @@ module Crawl = struct
           |> Dir_contents.ocaml
           |> Ml_sources.modules_of_library ~name
           |> Modules.fold_no_vlib ~init:[] ~f:(fun m acc ->
-                let source ml_kind =
-                  Dyn.Encoder.option dyn_path
-                    (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
-                in
-                let cmt ml_kind =
-                  Dyn.Encoder.option dyn_path
-                    (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
-                in
-                Dyn.Encoder.record
-                  [ ("name", Module_name.to_dyn (Module.name m))
-                  ; ("impl", source Impl)
-                  ; ("intf", source Intf)
-                  ; ("cmt", cmt Impl)
-                  ; ("cmti", cmt Intf)
-                  ]
-                :: acc)
+                 let source ml_kind =
+                   Dyn.Encoder.option dyn_path
+                     (Option.map (Module.source m ~ml_kind) ~f:Module.File.path)
+                 in
+                 let cmt ml_kind =
+                   Dyn.Encoder.option dyn_path
+                     (Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                 in
+                 Dyn.Encoder.record
+                   [ ("name", Module_name.to_dyn (Module.name m))
+                   ; ("impl", source Impl)
+                   ; ("intf", source Intf)
+                   ; ("cmt", cmt Impl)
+                   ; ("cmti", cmt Intf)
+                   ]
+                 :: acc)
         else
           []
       in
@@ -87,14 +87,15 @@ module Crawl = struct
       List.fold_left workspace.conf.projects ~init:Lib.Set.empty
         ~f:(fun libs project ->
           Super_context.find_scope_by_project sctx project
-          |> Scope.libs |> Lib.DB.all |> Lib.Set.union libs) in
+          |> Scope.libs |> Lib.DB.all |> Lib.Set.union libs)
+    in
     let libs =
       Lib.Set.fold libs ~init:libs ~f:(fun lib libs ->
-        match Lib.requires lib with
-        | Error _ -> libs
-        | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs) in
-    Dyn.List
-      (Lib.Set.to_list libs |> List.filter_map ~f:(library sctx))
+          match Lib.requires lib with
+          | Error _ -> libs
+          | Ok requires -> Lib.Set.of_list requires |> Lib.Set.union libs)
+    in
+    Dyn.List (Lib.Set.to_list libs |> List.filter_map ~f:(library sctx))
 end
 
 (* What to describe. To determine what to describe, we convert the positional

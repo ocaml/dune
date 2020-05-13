@@ -456,8 +456,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
     Expander.make
       ~scope:(Scope.DB.find_by_dir scopes context.build_dir)
       ~context ~lib_artifacts:artifacts.public_libs
-      ~bin_artifacts_host:artifacts_host.bin
-      ~find_package
+      ~bin_artifacts_host:artifacts_host.bin ~find_package
   in
   let default_env =
     Memo.lazy_ (fun () ->

@@ -21,12 +21,10 @@ let get_user_message = function
             (Pp.verbatim "  " ++ Dyn.pp (Code_error.to_dyn_without_loc e))
         ] )
   | Unix.Unix_error (err, func, fname) ->
-    let open Pp.O in
     ( User
     , User_error.make
-        [ User_error.prefix
-          ++ Pp.textf " %s: %s: %s" func fname (Unix.error_message err)
-        ] )
+        [ Pp.textf "%s: %s: %s" func fname (Unix.error_message err) ] )
+  | Sys_error msg -> (User, User_error.make [ Pp.text msg ])
   | exn ->
     let open Pp.O in
     let s = Printexc.to_string exn in

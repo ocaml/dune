@@ -1,0 +1,7 @@
+(library
+ (name dune_cramlib)
+ (libraries dune-private-libs.stdune dune-build-info cmdliner
+   build_path_prefix_map dune-private-libs.dune_re)
+ (preprocess (future_syntax)))
+
+(ocamllex cram_lexer)

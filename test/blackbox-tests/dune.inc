@@ -2066,18 +2066,6 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias pkg-config-quoting)
- (deps
-  (package dune)
-  (source_tree test-cases/pkg-config-quoting)
-  (alias test-deps)
-  (package dune-configurator))
- (action
-  (chdir
-   test-cases/pkg-config-quoting
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias plugin-mode)
  (deps (package dune) (source_tree test-cases/plugin-mode) (alias test-deps))
  (action
@@ -3215,7 +3203,6 @@
   (alias output-obj)
   (alias package-dep)
   (alias path-variables)
-  (alias pkg-config-quoting)
   (alias plugin-mode)
   (alias ppx-rewriter)
   (alias ppx-runtime-dependencies)
@@ -3490,7 +3477,6 @@
   (alias optional-executable)
   (alias output-obj)
   (alias path-variables)
-  (alias pkg-config-quoting)
   (alias plugin-mode)
   (alias preprocess-with-action)
   (alias private-modules)

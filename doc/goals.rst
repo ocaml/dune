@@ -4,11 +4,11 @@ Goal of Dune
 
 The main goal of the Dune project is to provide the best possible
 build tool for the whole of the OCaml community; from individual
-developers who work on open source projects during their free time
-all the way to larger companies such as Jane Street. And to the extent
-that is reasonably possible, help provide the same features for friend
-communities such as Coq or MirageOS and possibly Reason/Bucklescript
-in the future.
+developers who work on open source projects during their free time all
+the way to larger companies such as Jane Street passing by communities
+such as MirageOS. And to the extent that is reasonably possible, help
+provide the same features for friend communities such as Coq and
+possibly Reason/Bucklescript in the future.
 
 We haven't reached this goal yet and Dune still lacks in some areas in
 order to be such a tool, but we are steadily working towards that goal.
@@ -39,7 +39,7 @@ as well as people who work on their free time and cannot provide the
 same level of continuous support and updates.
 
 From the point of view of Dune, we have to assume that a released
-project with `dune` files is a precious piece that will potentially
+project with ``dune`` files is a precious piece that will potentially
 never change. So changing Dune in a way that it could no longer
 understand a released project is by default a no-no.
 

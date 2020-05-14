@@ -52,7 +52,7 @@ module Commands = struct
     | Halt
     | Unknown of string
 
-  (* The configuration will on EOF or bad c-sexp *)
+  (* The configuration server will halt on EOF or bad c-sexp *)
   let read_input in_channel =
     match Csexp.input in_channel with
     | Ok sexp -> (

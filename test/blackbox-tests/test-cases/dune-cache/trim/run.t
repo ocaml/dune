@@ -27,7 +27,7 @@ Have a look at one of the metadata files and its size.
   $ cat $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
   ((8:metadata)(5:files(16:default/target_b32:de8852e356e79df9dddd6b2f2cced43f)))
 
-  $ stat --printf=%s $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
+  $ dune_cmd stat size $PWD/.xdg-cache/dune/db/meta/v3/9a/9a8995f866fa478a9a263b8470fb218f
   79
 
 Trimming the cache at this point should not remove anything, as both

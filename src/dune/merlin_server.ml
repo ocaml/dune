@@ -52,7 +52,7 @@ module Commands = struct
     | Halt
     | Unknown of string
 
-  (* The configuration server should halt only on EOL *)
+  (* The configuration will on EOF or bad c-sexp *)
   let read_input in_channel =
     match Csexp.input in_channel with
     | Ok sexp -> (
@@ -103,7 +103,7 @@ let load_merlin_file dir =
 
 let out s =
   Dot.to_channel ~out_channel:stdout s;
-  Printf.printf "\n%!"
+  flush stdout
 
 let print_merlin_conf file =
   let dir, _file = Filename.(dirname file, basename file) in

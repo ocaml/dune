@@ -29,40 +29,21 @@ let in_build_dir ~ctx args =
 let jsoo ~dir sctx =
   SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint "js_of_ocaml"
 
-let jsoo_link ~dir sctx =
-  SC.resolve_program sctx ~dir ~loc:None ~hint:install_jsoo_hint "jsoo_link"
+type sub_command =
+  | Compile
+  | Link
+  | Build_runtime
 
-let runtime_file ~dir ~sctx file =
-  match
-    Artifacts.Public_libs.file_of_lib (SC.artifacts sctx).public_libs
-      ~loc:Loc.none
-      ~lib:(Lib_name.of_string "js_of_ocaml-compiler")
-      ~file
-  with
-  | Error _ -> (
-    let fail =
-      let fail () =
-        Utils.library_not_found ~context:(SC.context sctx).name
-          ~hint:install_jsoo_hint "js_of_ocaml-compiler"
-      in
-      Build.fail { fail }
-    in
-    match jsoo ~dir sctx with
-    | Ok path ->
-      let path = Path.relative (Path.parent_exn path) file in
-      Build.if_file_exists path ~then_:(Build.return path) ~else_:fail
-    | _ -> fail )
-  | Ok f -> Build.return f
-
-let js_of_ocaml_rule sctx ~dir ~flags ~spec ~target =
+let js_of_ocaml_rule sctx ~sub_command ~dir ~flags ~spec ~target =
   let jsoo = jsoo ~dir sctx in
-  let runtime_dep = runtime_file ~dir ~sctx "runtime.js" in
   Command.run ~dir:(Path.build dir) jsoo
-    [ flags
+    [ ( match sub_command with
+      | Compile -> S []
+      | Link -> A "link"
+      | Build_runtime -> A "build-runtime" )
+    ; flags
     ; A "-o"
     ; Target target
-    ; A "--no-runtime"
-    ; Dyn (Build.map runtime_dep ~f:(fun x -> Command.Args.Dep x))
     ; spec
     ]
 
@@ -74,9 +55,9 @@ let standalone_runtime_rule cc ~javascript_files ~target ~flags =
       ; Deps javascript_files
       ]
   in
-  let flags = Command.Args.S [ A "--runtime-only"; flags ] in
   js_of_ocaml_rule
     (Compilation_context.super_context cc)
+    ~sub_command:Build_runtime
     ~dir:(Compilation_context.dir cc)
     ~flags ~target ~spec
 
@@ -91,7 +72,7 @@ let exe_rule cc ~javascript_files ~src ~target ~flags =
       ; Dep (Path.build src)
       ]
   in
-  js_of_ocaml_rule sctx ~dir ~spec ~target ~flags
+  js_of_ocaml_rule sctx ~sub_command:Compile ~dir ~spec ~target ~flags
 
 let jsoo_archives ~ctx lib =
   let info = Lib.info lib in
@@ -123,14 +104,9 @@ let link_rule cc ~runtime ~target cm =
             in
             Deps (List.concat [ all_libs; all_other_modules ])))
   in
-  let jsoo_link = jsoo_link ~dir sctx in
-  Command.run ~dir:(Path.build dir) jsoo_link
-    [ A "-o"
-    ; Target target
-    ; Dep (Path.build runtime)
-    ; As (sourcemap sctx)
-    ; Dyn get_all
-    ]
+  let spec = Command.Args.S [ Dep (Path.build runtime); Dyn get_all ] in
+  let flags = Command.Args.As (sourcemap sctx) in
+  js_of_ocaml_rule sctx ~sub_command:Link ~dir ~spec ~target ~flags
 
 let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
   let sctx = Compilation_context.super_context cctx in
@@ -142,7 +118,9 @@ let build_cm cctx ~(js_of_ocaml : Dune_file.Js_of_ocaml.t) ~src ~target =
       Expander.expand_and_eval_set expander js_of_ocaml.flags
         ~standard:(Build.return (standard sctx))
     in
-    [ js_of_ocaml_rule sctx ~dir ~flags:(Command.Args.dyn flags) ~spec ~target ]
+    [ js_of_ocaml_rule sctx ~sub_command:Compile ~dir
+        ~flags:(Command.Args.dyn flags) ~spec ~target
+    ]
   else
     []
 
@@ -181,7 +159,7 @@ let setup_separate_compilation_rules sctx components =
             in
             let spec = Command.Args.Dep src in
             SC.add_rule sctx ~dir
-              (js_of_ocaml_rule sctx ~dir
+              (js_of_ocaml_rule sctx ~sub_command:Compile ~dir
                  ~flags:(As (standard sctx))
                  ~spec ~target)) )
 

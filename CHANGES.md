@@ -25,6 +25,8 @@ next
 
 - Fix `$ dune print-rules` crashing (#3459, fixes #3440, @rgrinberg)
 
+- Simplify js_of_ocaml rules using js_of_ocaml.3.6 (#3375, @hhugo)
+
 2.5.1 (17/04/2020)
 ------------------
 

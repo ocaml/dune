@@ -111,7 +111,7 @@ Remain accessible
 
 Since Dune aims to be the best possible tool for the whole OCaml
 community, it is important for Dune to remain accessible. Getting
-started and leaning Dune should be straightforward.
+started and learning Dune should be straightforward.
 
 For that purpose, when designing the language, the command line
 interface or the documentation, we must always put ourselves from the

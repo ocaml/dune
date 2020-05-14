@@ -11,6 +11,7 @@ module Stat = struct
   type data =
     | Hardlinks
     | Permissions
+    | Size
 
   type t =
     { file : Path.t
@@ -18,6 +19,7 @@ module Stat = struct
     }
 
   let data_of_string = function
+    | "size" -> Size
     | "hardlinks" -> Hardlinks
     | "permissions" -> Permissions
     | s ->
@@ -28,6 +30,7 @@ module Stat = struct
 
   let pp_stats data (stats : Unix.stats) =
     match data with
+    | Size -> Int.to_string stats.st_size
     | Hardlinks -> Int.to_string stats.st_nlink
     | Permissions -> sprintf "%o" stats.st_perm
 

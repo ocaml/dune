@@ -70,7 +70,7 @@ Have a robust and scalable core
 ===============================
 
 Tech companies tend be fond of big mono repositories, so to be able to
-work for them ``dune`` needs to be able to eat up large repositories
+work for them Dune needs to be able to eat up large repositories
 without blinking. It not only needs to build fast, but more
 importantly it must not get in the way of fast feedback during
 development, no matter the size of the repository.
@@ -84,14 +84,14 @@ considered unless we get some help to do so and we can keep the other
 promises.
 
 In particular, while making Dune scalable we must also make sure to
-not turn ``dune`` into a monster because no one wants to force their
-users to install a monster to build their project. This brings us to
-the next point of Dune being a no-brainer dependency.
+not turn Dune into a monster because no one wants to force their users
+to install a monster to build their project. This brings us to the
+next point of Dune being a no-brainer dependency.
 
 Remain a no-brainer dependency
 ==============================
 
-``dune`` is a hard dependency of any Dune project. Anyone using Dune
+Dune is a hard dependency of any Dune project. Anyone using Dune
 to develop their project will have to ask their user to install
 Dune. For this reason, it is very important to keep Dune as lean as
 possible.
@@ -101,8 +101,8 @@ piece of software, or when we introduce new concepts. We must make
 sure to not introduce duplication or useless stuff. The overall
 projects has to remain lean.
 
-It is also important to keep ``dune`` as easy to install as
-possible. Currently, the only requirement to build ``dune`` is a
+It is also important to keep Dune as easy to install as
+possible. Currently, the only requirement to build Dune is a
 working OCaml compiler. Nothing else is required, not even a shell and
 we should keep it this way.
 

@@ -1,5 +1,0 @@
-(library
- (name async_ocaml)
- (implements async)
- (libraries clock_ocaml)
- (variant ocaml))

@@ -1,4 +1,0 @@
-(library
- (name lib_test)
- (implements vlib)
- (variant test))

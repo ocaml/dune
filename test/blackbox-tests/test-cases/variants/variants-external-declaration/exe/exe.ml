@@ -1,1 +1,0 @@
-let () = Vlibfoo.implme ()

@@ -1299,14 +1299,6 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias github3412)
- (deps (package dune) (source_tree test-cases/github3412) (alias test-deps))
- (action
-  (chdir
-   test-cases/github3412
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias github3440)
  (deps (package dune) (source_tree test-cases/github3440) (alias test-deps))
  (action
@@ -2544,91 +2536,6 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variants)
- (deps (package dune) (source_tree test-cases/variants) (alias test-deps))
- (action
-  (chdir
-   test-cases/variants
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variant-dep-stack)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variant-dep-stack)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variant-dep-stack
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-external-declaration)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-external-declaration)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-external-declaration
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-external-declaration-conflict)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-external-declaration-conflict)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-external-declaration-conflict
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-multi-project)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-multi-project)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-multi-project
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-only-package)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-only-package)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-only-package
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-rogue-impl)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-rogue-impl)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-rogue-impl
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-wrong-external-declaration)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-wrong-external-declaration)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-wrong-external-declaration
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias vendor)
  (deps (package dune) (source_tree test-cases/vendor) (alias test-deps))
  (action
@@ -3136,7 +3043,6 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
-  (alias github3412)
   (alias github3440)
   (alias github534)
   (alias github568)
@@ -3260,14 +3166,6 @@
   (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
-  (alias variants)
-  (alias variants-variant-dep-stack)
-  (alias variants-variants-external-declaration)
-  (alias variants-variants-external-declaration-conflict)
-  (alias variants-variants-multi-project)
-  (alias variants-variants-only-package)
-  (alias variants-variants-rogue-impl)
-  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
@@ -3428,7 +3326,6 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
-  (alias github3412)
   (alias github3440)
   (alias github534)
   (alias github568)
@@ -3523,14 +3420,6 @@
   (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
-  (alias variants)
-  (alias variants-variant-dep-stack)
-  (alias variants-variants-external-declaration)
-  (alias variants-variants-external-declaration-conflict)
-  (alias variants-variants-multi-project)
-  (alias variants-variants-only-package)
-  (alias variants-variants-rogue-impl)
-  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)

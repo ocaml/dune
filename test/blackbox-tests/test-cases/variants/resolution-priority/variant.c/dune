@@ -1,5 +1,0 @@
-(library
- (name variant_c)
- (implements variant)
- (libraries test)
- (variant c))

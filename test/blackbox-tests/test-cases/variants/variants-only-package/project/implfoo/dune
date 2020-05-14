@@ -1,6 +1,0 @@
-(library
- (name implfoo)
- (public_name implfoo)
- (implements vlibfoo)
- (variant somevariant)
-)

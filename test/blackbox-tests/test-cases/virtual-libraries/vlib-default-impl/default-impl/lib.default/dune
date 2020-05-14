@@ -1,4 +1,3 @@
 (library
  (name lib_default)
- (implements vlib)
- (variant default))
+ (implements vlib))

@@ -319,8 +319,6 @@ end = struct
         let jsoo_archive = None in
         let pps = [] in
         let virtual_ = None in
-        let variant = None in
-        let known_implementations = P.Map.empty in
         let default_implementation = None in
         let wrapped = None in
         let foreign_archives, native_archives =
@@ -366,8 +364,8 @@ end = struct
           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
           ~foreign_archives ~native_archives ~foreign_dll_files:[] ~jsoo_runtime
           ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
-          ~implements ~variant ~known_implementations ~default_implementation
-          ~modes ~wrapped ~special_builtin_support ~exit_module:None
+          ~implements ~default_implementation ~modes ~wrapped
+          ~special_builtin_support ~exit_module:None
       in
       Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
   end

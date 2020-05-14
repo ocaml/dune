@@ -86,54 +86,13 @@ implementation for every virtual library that we've used:
 Variants
 ========
 
-This feature is still under development and may change with new dune
-releases. You need to write ``(using library_variants 0.2)`` in your
-``dune-project`` file to unlock it.
-
-When building a binary, implementations can be selected using a set of variants
-rather than individually specifying implementations.
-
-An example where this is useful is providing JavaScript implementation. It would
-be tedious to select the JS implementation for every single virtual library.
-Instead, such implementations could select a ``js`` variant. Here's the syntax:
-
-.. code:: scheme
-
-   (executable
-    (name foo)
-    (libraries time filesystem)
-    (variants js))
-
-An implementation can specify which variant it corresponds to using the
-``variant`` option. Say for example that ``time`` is a virtual library. Its JS
-implementation would have the following configuration:
-
-.. code:: scheme
-
-   (library
-    (name time-js)
-    (implements time)
-    (variant js))
-
-The list of available variants is computed while building the virtual library.
-This means only variant implementations that are part of the same project are
-implicitly taken into account. It's possible to declare an external
-implementation by using the `external_variant` stanza in the virtual library
-scope.
-
-.. code:: scheme
-
-   (external_variant
-    (variant foo)
-    (implementation lib-foo)
-    (virtual_library vlib))
-
-This will add `lib-foo` to the list of known implementations of `vlib`.
+Dune to lack of usage and confusing semantics, variants were removed in dune 2.6
 
 Default implementation
 ======================
 
-This feature is also guarded by ``(using library_variants ...)``.
+This feature is also guarded by ``(using library_variants ...)`` until version
+2.5. In 2.6, this feature became part of the dune language.
 
 A virtual library may select a default implementation, which is enabled after
 variant resolution, if no suitable implementation has been found.

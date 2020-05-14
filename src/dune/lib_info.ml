@@ -229,8 +229,6 @@ type 'path t =
   ; sub_systems : Sub_system_info.t Sub_system_name.Map.t
   ; virtual_ : Modules.t Source.t option
   ; implements : (Loc.t * Lib_name.t) option
-  ; variant : Variant.t option
-  ; known_implementations : (Loc.t * Lib_name.t) Variant.Map.t
   ; default_implementation : (Loc.t * Lib_name.t) option
   ; wrapped : Wrapped.t Inherited.t option
   ; main_module_name : Main_module_name.t
@@ -273,8 +271,6 @@ let plugins t = t.plugins
 
 let src_dir t = t.src_dir
 
-let variant t = t.variant
-
 let enabled t = t.enabled
 
 let status t = t.status
@@ -282,8 +278,6 @@ let status t = t.status
 let kind t = t.kind
 
 let default_implementation t = t.default_implementation
-
-let known_implementations t = t.known_implementations
 
 let obj_dir t = t.obj_dir
 
@@ -345,9 +339,8 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
     ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
     ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
-    ~dune_version ~virtual_ ~implements ~variant ~known_implementations
-    ~default_implementation ~modes ~wrapped ~special_builtin_support
-    ~exit_module =
+    ~dune_version ~virtual_ ~implements ~default_implementation ~modes ~wrapped
+    ~special_builtin_support ~exit_module =
   { loc
   ; name
   ; kind
@@ -375,8 +368,6 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; sub_systems
   ; virtual_
   ; implements
-  ; variant
-  ; known_implementations
   ; default_implementation
   ; modes
   ; wrapped
@@ -441,8 +432,6 @@ let to_dyn path
     ; sub_systems
     ; virtual_
     ; implements
-    ; variant
-    ; known_implementations
     ; default_implementation
     ; modes
     ; wrapped
@@ -478,9 +467,6 @@ let to_dyn path
     ; ("sub_systems", Sub_system_name.Map.to_dyn Dyn.Encoder.opaque sub_systems)
     ; ("virtual_", option (Source.to_dyn Modules.to_dyn) virtual_)
     ; ("implements", option (snd Lib_name.to_dyn) implements)
-    ; ("variant", option Variant.to_dyn variant)
-    ; ( "known_implementation"
-      , Variant.Map.to_dyn (snd Lib_name.to_dyn) known_implementations )
     ; ( "default_implementation"
       , option (snd Lib_name.to_dyn) default_implementation )
     ; ("wrapped", option (Inherited.to_dyn Wrapped.to_dyn) wrapped)

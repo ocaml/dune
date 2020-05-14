@@ -1,4 +1,0 @@
-(library
- (name clock_ocaml)
- (implements clock)
- (variant ocaml))

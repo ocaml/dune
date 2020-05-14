@@ -1,5 +1,0 @@
-(library
-  (name test_unix)
-  (public_name test-unix)
-  (implements test)
-  (variant unix))

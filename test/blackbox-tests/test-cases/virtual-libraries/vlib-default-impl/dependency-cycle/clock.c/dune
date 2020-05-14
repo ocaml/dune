@@ -1,5 +1,0 @@
-(library
- (name clock_c)
- (implements clock)
- (libraries async_c)
- (variant c))

@@ -163,7 +163,7 @@ end = struct
              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
                exes.names exes.buildable.libraries ~pps ~dune_version
                ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-               ~variants:exes.variants ~optional:exes.optional
+               ~optional:exes.optional
            in
            Result.is_ok (Lib.Compile.direct_requires compile_info) )
       | Coq_stanza.Theory.T d -> Option.is_some d.package

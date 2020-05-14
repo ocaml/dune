@@ -163,8 +163,7 @@ module Stanza = struct
         [ (source.loc, source.name) ]
         ( Lib_dep.Direct (source.loc, compiler_libs)
         :: List.map toplevel.libraries ~f:(fun d -> Lib_dep.Direct d) )
-        ~pps ~dune_version ~allow_overlaps:false ~variants:toplevel.variants
-        ~optional:false
+        ~pps ~dune_version ~allow_overlaps:false ~optional:false
     in
     let requires_compile = Lib.Compile.direct_requires compile_info in
     let requires_link = Lib.Compile.requires_link compile_info in

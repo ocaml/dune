@@ -1,4 +1,0 @@
-(external_variant
- (virtual_library i-dont-exist)
- (variant somevariant)
- (implementation impl1))

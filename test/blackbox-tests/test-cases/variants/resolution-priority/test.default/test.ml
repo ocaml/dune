@@ -1,1 +1,0 @@
-let run () = Printf.printf "hi from test.default\n"

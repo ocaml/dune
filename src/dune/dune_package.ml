@@ -37,9 +37,6 @@ module Lib = struct
     let mode_paths name (xs : Path.t Mode.Dict.List.t) =
       field_l name sexp (Mode.Dict.List.encode path xs)
     in
-    let known_implementations =
-      Lib_info.known_implementations info |> Variant.Map.to_list
-    in
     let libs name = field_l name (no_loc Lib_name.encode) in
     let name = Lib_info.name info in
     let kind = Lib_info.kind info in
@@ -77,9 +74,6 @@ module Lib = struct
        ; Lib_dep.L.field_encode requires ~name:"requires"
        ; libs "ppx_runtime_deps" ppx_runtime_deps
        ; field_o "implements" (no_loc Lib_name.encode) implements
-       ; field_l "known_implementations"
-           (pair Variant.encode (no_loc Lib_name.encode))
-           known_implementations
        ; field_o "default_implementation" (no_loc Lib_name.encode)
            default_implementation
        ; field_o "main_module_name" Module_name.encode main_module_name
@@ -139,9 +133,6 @@ module Lib = struct
        and+ requires = field_l "requires" (Lib_dep.decode ~allow_re_export:true)
        and+ ppx_runtime_deps = libs "ppx_runtime_deps"
        and+ virtual_ = field_b "virtual"
-       and+ known_implementations =
-         field_l "known_implementations"
-           (pair Variant.decode (located Lib_name.decode))
        and+ sub_systems = Sub_system_info.record_parser ()
        and+ orig_src_dir = field_o "orig_src_dir" path
        and+ modules =
@@ -154,9 +145,6 @@ module Lib = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Lib_info.Special_builtin_support.decode )
-       in
-       let known_implementations =
-         Variant.Map.of_list_exn known_implementations
        in
        let modes = Mode.Dict.Set.of_list modes in
        let info : Path.t Lib_info.t =
@@ -177,7 +165,6 @@ module Lib = struct
            else
              None
          in
-         let variant = None in
          let wrapped =
            Option.map modules ~f:Modules.wrapped
            |> Option.map ~f:(fun w -> Lib_info.Inherited.This w)
@@ -187,9 +174,8 @@ module Lib = struct
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
            ~foreign_archives ~native_archives ~foreign_dll_files:[]
            ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-           ~virtual_ ~implements ~variant ~known_implementations
-           ~default_implementation ~modes ~wrapped ~special_builtin_support
-           ~exit_module:None
+           ~virtual_ ~implements ~default_implementation ~modes ~wrapped
+           ~special_builtin_support ~exit_module:None
        in
        { info; main_module_name; modules })
 

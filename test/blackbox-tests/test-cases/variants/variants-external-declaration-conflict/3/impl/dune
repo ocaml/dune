@@ -1,5 +1,0 @@
-(library
- (name impl1)
- (implements vlibfoo)
- (variant somevariant)
-)

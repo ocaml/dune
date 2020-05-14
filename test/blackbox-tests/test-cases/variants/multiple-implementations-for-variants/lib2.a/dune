@@ -1,4 +1,0 @@
-(library
- (name lib2_a)
- (implements vlib)
- (variant a))

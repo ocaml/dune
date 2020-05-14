@@ -1,5 +1,0 @@
-(library
- (name clock)
- (virtual_modules clock)
- (wrapped false)
- (default_implementation clock_c))

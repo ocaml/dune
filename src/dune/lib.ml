@@ -67,32 +67,6 @@ module Error = struct
             Pp.textf "%S" (Lib_name.to_string name))
       ]
 
-  let multiple_implementations_for_virtual_lib ~loc ~lib ~given_variants
-      ~conflict =
-    let name = Lib_info.name lib in
-    let default_implementation = Lib_info.default_implementation lib in
-    make ~loc
-      [ Pp.textf "Multiple solutions for the implementation of %S%s%s:"
-          (Lib_name.to_string name)
-          ( match default_implementation with
-          | None -> ""
-          | Some (_, x) ->
-            sprintf " (default implementation %S)" (Lib_name.to_string x) )
-          ( match
-              Variant.Set.to_list given_variants
-              |> List.map ~f:Variant.to_string
-            with
-          | [] -> ""
-          | [ v ] -> sprintf "with variant %s" v
-          | vs -> sprintf " with variants %s" (String.enumerate_and vs) )
-      ; Pp.enumerate conflict ~f:(fun lib ->
-            let variant = Lib_info.variant lib in
-            Pp.seq (pp_lib lib)
-              ( match variant with
-              | Some v -> Pp.textf " (variant %s)" (Variant.to_string v)
-              | None -> Pp.nop ))
-      ]
-
   let double_implementation impl1 impl2 ~vlib =
     make
       [ Pp.concat
@@ -166,38 +140,6 @@ module Error = struct
       [ Pp.textf "Library %S is not virtual. It cannot be implemented by %S."
           (Lib_name.to_string not_vlib)
           (Lib_name.to_string impl)
-      ]
-
-  let vlib_known_implementation_mismatch ~loc ~name ~variant ~vlib_name =
-    make ~loc
-      [ Pp.textf
-          "Virtual library %S does not know about implementation %S with \
-           variant %S. Instead of using (variant %s) here, you need to \
-           reference it in the virtual library project, using the \
-           external_variant stanza:"
-          (Lib_name.to_string vlib_name)
-          (Lib_name.to_string name)
-          (Variant.to_string variant)
-          (Variant.to_string variant)
-      ; Pp.textf
-          "(external_variant\n\
-          \  (virtual_library %s)\n\
-          \  (variant %s)\n\
-          \  (implementation %s))"
-          (Lib_name.to_string vlib_name)
-          (Variant.to_string variant)
-          (Lib_name.to_string name)
-      ]
-
-  let vlib_variant_conflict ~loc ~name ~known_impl_name ~variant ~vlib_name =
-    make ~loc
-      [ Pp.textf
-          "Implementation %S cannot have variant %S for virtual library %S as \
-           it is already defined for implementation %S."
-          (Lib_name.to_string name)
-          (Variant.to_string variant)
-          (Lib_name.to_string vlib_name)
-          (Lib_name.to_string known_impl_name)
       ]
 end
 
@@ -307,9 +249,6 @@ module T = struct
     ; stdlib_dir : Path.t
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Or_exn.t Lazy.t option
-    ; (* if this is a virtual library, this library contains all known
-         implementations that are associated with a variant *)
-      resolved_implementations : t Or_exn.t Variant.Map.t Lazy.t option
     ; (* This is mutable to avoid this error:
 
          {[ This kind of expression is not allowed as right-hand side of `let
@@ -715,14 +654,11 @@ end
    just returned by the [resolve] callback *)
 module Dep_stack = struct
   module Implements_via = struct
-    type t =
-      | Default_for of Id.t
-      | Variant of Variant.t
+    type t = Default_for of Id.t
 
     let to_dep_path_implements_via = function
       | Default_for id ->
         Dep_path.Entry.Implements_via.Default_for (Id.to_dep_path_lib id)
-      | Variant v -> Dep_path.Entry.Implements_via.Variant v
   end
 
   type t =
@@ -805,41 +741,6 @@ let already_in_table info name x =
     ; ("conflicting_with", Status.to_dyn x)
     ]
 
-(* Find implementation that matches given variants *)
-let find_implementation_for lib ~variants =
-  assert (
-    let virtual_ = Lib_info.virtual_ lib.info in
-    Option.is_some virtual_ );
-  match variants with
-  | None -> Ok None
-  | Some (loc, variants_set) -> (
-    let available_implementations =
-      Lazy.force (Option.value_exn lib.resolved_implementations)
-    in
-    let* candidates =
-      Variant.Set.fold variants_set ~init:[] ~f:(fun variant acc ->
-          match Variant.Map.find available_implementations variant with
-          | Some res ->
-            (let+ res = res in
-             (variant, res))
-            :: acc
-          | None -> acc)
-      |> Result.List.all
-    in
-    (* TODO once we find one conflict, there's no need to search for more *)
-    match candidates with
-    | [] -> Ok None
-    | [ (variant, elem) ] ->
-      Ok (Some (Dep_stack.Implements_via.Variant variant, elem))
-    | conflict ->
-      let variants, conflict =
-        List.map conflict ~f:(fun (variant, lib) -> (variant, lib.info))
-        |> List.split
-      in
-      let given_variants = Variant.Set.of_list variants in
-      Error.multiple_implementations_for_virtual_lib ~loc ~lib:lib.info
-        ~given_variants ~conflict )
-
 module Vlib : sig
   (** Make sure that for every virtual library in the list there is at most one
       corresponding implementation.
@@ -860,11 +761,6 @@ module Vlib : sig
     val empty : t
 
     val add : t -> lib -> t Or_exn.t
-
-    val implemented_via_variants :
-         t
-      -> variants:(Loc.t * Variant.Set.t) option
-      -> (Dep_stack.Implements_via.t * lib) list Or_exn.t
 
     val with_default_implementations : t -> lib list
   end
@@ -899,14 +795,6 @@ end = struct
           match lib.default_implementation with
           | None -> acc
           | Some _ -> lib :: acc)
-
-    let implemented_via_variants t ~variants =
-      Set.fold t.unimplemented ~init:(Ok []) ~f:(fun lib acc ->
-          let* acc = acc in
-          let+ impl = find_implementation_for lib ~variants in
-          match impl with
-          | None -> acc
-          | Some impl -> impl :: acc)
   end
 
   module Table = struct
@@ -1073,7 +961,6 @@ module rec Resolve : sig
        db option
     -> lib list
     -> stack:Dep_stack.t
-    -> variants:(Loc.t * Variant.Set.t) option
     -> forbidden_libraries:Loc.t Map.t
     -> lib list Or_exn.t
 end = struct
@@ -1099,29 +986,7 @@ end = struct
       let virtual_ = Lib_info.virtual_ vlib.info in
       match virtual_ with
       | None -> Error.not_virtual_lib ~loc ~impl:info ~not_vlib:vlib.info
-      | Some _ -> (
-        let variant = Lib_info.variant info in
-        match variant with
-        | None -> Ok vlib
-        | Some variant ->
-          (* If the library is an implementation tagged with a variant, we must
-             make sure that that it's correctly part of the virtual library's
-             known implementations. *)
-          let name = Lib_info.name info in
-          let vlib_name = Lib_info.name vlib.info in
-          let vlib_impls = Lib_info.known_implementations vlib.info in
-          let* _, impl_name =
-            match Variant.Map.find vlib_impls variant with
-            | None ->
-              Error.vlib_known_implementation_mismatch ~loc ~name ~variant
-                ~vlib_name
-            | Some impl_name -> Ok impl_name
-          in
-          if Lib_name.equal impl_name name then
-            Ok vlib
-          else
-            Error.vlib_variant_conflict ~loc ~name ~known_impl_name:impl_name
-              ~variant ~vlib_name )
+      | Some _ -> Ok vlib
     in
     let resolve_impl impl_name =
       let* impl = resolve impl_name in
@@ -1138,15 +1003,6 @@ end = struct
     let default_implementation =
       Lib_info.default_implementation info
       |> Option.map ~f:(fun l -> lazy (resolve_impl l))
-    in
-    let resolved_implementations =
-      Lib_info.virtual_ info
-      |> Option.map ~f:(fun _ ->
-             lazy
-               ( (* TODO this can be made even lazier as we don't need to
-                    resolve all variants at once *)
-                 Lib_info.known_implementations info
-               |> Variant.Map.map ~f:resolve_impl ))
     in
     let { requires; pps; selects = resolved_selects; re_exports } =
       let pps = Lib_info.pps info in
@@ -1187,7 +1043,6 @@ end = struct
       ; sub_systems = Sub_system_name.Map.empty
       ; implements
       ; default_implementation
-      ; resolved_implementations
       ; stdlib_dir = db.stdlib_dir
       ; re_exports
       }
@@ -1400,7 +1255,7 @@ end = struct
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
               | _ -> Ok lib)
         in
-        linking_closure_with_overlap_checks None pps ~stack ~variants:None
+        linking_closure_with_overlap_checks None pps ~stack
           ~forbidden_libraries:Map.empty
       in
       let deps =
@@ -1441,7 +1296,7 @@ end = struct
 
      Assertion: libraries is a list of virtual libraries with no implementation.
      The goal is to find which libraries can safely be defaulted. *)
-  let resolve_default_libraries libraries ~variants =
+  let resolve_default_libraries libraries =
     (* Map from a vlib to vlibs that are implemented in the transitive closure
        of its default impl. *)
     let vlib_status = Vlib_visit.create () in
@@ -1456,12 +1311,9 @@ end = struct
     in
     (* Either by variants or by default. *)
     let impl_for vlib =
-      find_implementation_for vlib ~variants >>= function
-      | Some (_, impl) -> Ok (Some impl)
-      | None -> (
-        match vlib.default_implementation with
-        | None -> Ok None
-        | Some d -> Result.map ~f:Option.some (Lazy.force d) )
+      match vlib.default_implementation with
+      | None -> Ok None
+      | Some d -> Result.map ~f:Option.some (Lazy.force d)
     in
     let impl_different_from_vlib_default vlib (impl : lib) =
       impl_for vlib >>| function
@@ -1604,21 +1456,12 @@ end = struct
     let* state = step1_closure db ts ~stack ~forbidden_libraries in
     Closure.result state ~linking:false
 
-  let linking_closure_with_overlap_checks db ts ~stack ~variants
-      ~forbidden_libraries =
+  let linking_closure_with_overlap_checks db ts ~stack ~forbidden_libraries =
     let* state = step1_closure db ts ~stack ~forbidden_libraries in
-    let rec impls_via_variants () =
-      let* impls =
-        Vlib.Unimplemented.implemented_via_variants state.unimplemented
-          ~variants
-      in
-      match impls with
-      | _ :: _ -> fill_impls impls
-      | [] -> impls_via_defaults ()
-    and impls_via_defaults () =
+    let rec impls_via_defaults () =
       let* defaults =
         Vlib.Unimplemented.with_default_implementations state.unimplemented
-        |> resolve_default_libraries ~variants
+        |> resolve_default_libraries
       in
       match defaults with
       | _ :: _ -> fill_impls defaults
@@ -1628,9 +1471,9 @@ end = struct
         Result.List.iter libs ~f:(fun (via, lib) ->
             Closure.visit state (Some via, lib) ~stack)
       in
-      impls_via_variants ()
+      impls_via_defaults ()
     in
-    let* () = impls_via_variants () in
+    let* () = impls_via_defaults () in
     Closure.result state ~linking:true
 end
 
@@ -1638,7 +1481,7 @@ let closure l ~linking =
   let stack = Dep_stack.empty in
   let forbidden_libraries = Map.empty in
   if linking then
-    Resolve.linking_closure_with_overlap_checks None l ~stack ~variants:None
+    Resolve.linking_closure_with_overlap_checks None l ~stack
       ~forbidden_libraries
   else
     Resolve.compile_closure_with_overlap_checks None l ~forbidden_libraries
@@ -1747,7 +1590,6 @@ module DB = struct
   module Library_related_stanza = struct
     type t =
       | Library of Path.Build.t * Dune_file.Library.t
-      | External_variant of Dune_file.External_variant.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
@@ -1757,81 +1599,10 @@ module DB = struct
       | Redirect of (Loc.t * Lib_name.t)
   end
 
-  let check_valid_external_variants
-      (libmap : Found_or_redirect.t Lib_name.Map.t) stanzas =
-    List.iter stanzas ~f:(fun (stanza : Library_related_stanza.t) ->
-        match stanza with
-        | Library _
-        | Deprecated_library_name _ ->
-          ()
-        | External_variant ev -> (
-          let loc, virtual_lib = ev.virtual_lib in
-          match
-            Option.map (Lib_name.Map.find libmap virtual_lib) ~f:(fun res ->
-                (* [res] is created by the code in [create_from_library_stanzas]
-                   bellow. We know that it is either [Found] or [Redirect (_,
-                   name)] where [name] is in [libmap] for sure and maps to
-                   [Found _]. *)
-                match res with
-                | Found x -> x
-                | Redirect (_, name') -> (
-                  match Lib_name.Map.find libmap name' with
-                  | Some (Found x) -> x
-                  | Some (Redirect _)
-                  | None ->
-                    assert false ))
-          with
-          | None ->
-            User_error.raise ~loc
-              [ Pp.textf "Virtual library %s hasn't been found in the project."
-                  (Lib_name.to_string virtual_lib)
-              ]
-          | Some info -> (
-            match Lib_info.virtual_ info with
-            | Some _ -> ()
-            | None ->
-              User_error.raise ~loc
-                [ Pp.textf "Library %s isn't a virtual library."
-                    (Lib_name.to_string virtual_lib)
-                ] ) ))
-
-  let error_two_impl_for_variant name variant (loc1, impl1) (loc2, impl2) =
-    User_error.raise
-      [ Pp.textf "Two implementations of %s have the same variant %S:"
-          (Lib_name.Local.to_string name)
-          (Variant.to_string variant)
-      ; Pp.textf "- %s (%s)" (Lib_name.to_string impl1)
-          (Loc.to_file_colon_line loc1)
-      ; Pp.textf "- %s (%s)" (Lib_name.to_string impl2)
-          (Loc.to_file_colon_line loc2)
-      ]
-
   let create_from_stanzas ~parent ~lib_config stanzas =
-    (* Construct a mapping from virtual library name to a list of [(variant,
-       implementation_for_this_variant)]. We check a bit later that there is
-       duplicate in the inner lists. *)
-    let variant_map = Lib_name.Map.empty in
-    let variant_map =
-      List.fold_left stanzas ~init:variant_map ~f:(fun acc stanza ->
-          match (stanza : Library_related_stanza.t) with
-          | Library
-              ( _
-              , ( { implements = Some (_, vlib)
-                  ; variant = Some variant
-                  ; buildable = { loc; _ }
-                  ; _
-                  } as lib ) ) ->
-            Lib_name.Map.Multi.cons acc vlib
-              (variant, (loc, Dune_file.Library.best_name lib))
-          | External_variant ev ->
-            Lib_name.Map.Multi.cons acc (snd ev.virtual_lib)
-              (ev.variant, ev.implementation)
-          | _ -> acc)
-    in
     let map : Found_or_redirect.t Lib_name.Map.t =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Library_related_stanza.t) with
-          | External_variant _ -> []
           | Deprecated_library_name
               { old_public_name = { public = old_public_name; _ }
               ; new_public_name
@@ -1841,34 +1612,8 @@ module DB = struct
               , Found_or_redirect.Redirect new_public_name )
             ]
           | Library (dir, (conf : Dune_file.Library.t)) -> (
-            (* In the [implements] field of library stanzas, the user might use
-               either public or private library names. As a result, we have to
-               lookup for implementations via both the public and private names. *)
-            let variants_private =
-              Lib_name.Map.find variant_map (Lib_name.of_local conf.name)
-              |> Option.value ~default:[]
-            in
-            let variants =
-              match conf.public with
-              | None -> variants_private
-              | Some { name = _loc, name; _ } -> (
-                if Lib_name.equal name (Lib_name.of_local conf.name) then
-                  variants_private
-                else
-                  match Lib_name.Map.find variant_map name with
-                  | None -> variants_private
-                  | Some variants_public ->
-                    List.rev_append variants_private variants_public )
-            in
-            let known_implementations =
-              match Variant.Map.of_list variants with
-              | Ok x -> x
-              | Error (variant, x, y) ->
-                error_two_impl_for_variant (snd conf.name) variant x y
-            in
             let info =
               Dune_file.Library.to_lib_info conf ~dir ~lib_config
-                ~known_implementations
               |> Lib_info.of_local
             in
             match conf.public with
@@ -1906,10 +1651,6 @@ module DB = struct
                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                  ])
     in
-    (* We need to check that [external_variant] stanzas are correct, i.e.
-       contain valid [virtual_library] fields now since this is the last time we
-       analyse them. *)
-    check_valid_external_variants map stanzas;
     create () ~parent ~stdlib_dir:lib_config.stdlib_dir
       ~resolve:(fun name ->
         match Lib_name.Map.find map name with
@@ -1978,7 +1719,7 @@ module DB = struct
       Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
-      ?(forbidden_libraries = []) deps ~pps ~dune_version ~variants ~optional =
+      ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =
     let lib_deps_info =
       Compile.make_lib_deps_info ~user_written_deps:deps ~pps
         ~kind:
@@ -2014,7 +1755,7 @@ module DB = struct
          and+ res = res in
          Resolve.linking_closure_with_overlap_checks ~stack:Dep_stack.empty
            (Option.some_if (not allow_overlaps) t)
-           ~variants ~forbidden_libraries res
+           ~forbidden_libraries res
          |> Result.map_error ~f:(fun e ->
                 Dep_path.prepend_exn e (Executables exes)))
     in

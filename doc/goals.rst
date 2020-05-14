@@ -19,13 +19,14 @@ for everyone in the OCaml community should at least:
 1. have excellent backward compatibility properties
 2. have a robust and scalable core
 3. remain a no-brainer dependency
-4. have very good support for the OCaml language
-5. be extensible
+4. remain accessible
+5. have very good support for the OCaml language
+6. be extensible
 
-At this point, we have done a good job at 1, 3 and 4, we are working
-towards 2 and are doing the preparatory work for 5. Once all these
-boxes have been checked, we will consider that the Dune project is
-feature complete.
+At this point, we have done a good job at 1, 3, 4 and 5, we are
+working towards 2 and are doing the preparatory work for 6. Once all
+these boxes have been checked, we will consider that the Dune project
+is feature complete.
 
 In the rest of this page, we develop these points and give some
 insights into our current and future focuses.
@@ -104,6 +105,23 @@ It is also important to keep ``dune`` as easy to install as
 possible. Currently, the only requirement to build ``dune`` is a
 working OCaml compiler. Nothing else is required, not even a shell and
 we should keep it this way.
+
+Remain accessible
+=================
+
+Since Dune aims to be the best possible tool for the whole OCaml
+community, it is important for Dune to remain accessible. Getting
+started and leaning Dune should be straightforward.
+
+For that purpose, when designing the language, the command line
+interface or the documentation, we must always put ourselves from the
+point of view of a user who is discovering Dune and its features.
+
+Because Dune must be suitable for everyone, it must also provide
+advanced and more complex features for expert users. However, the
+documentation should always flow from the simpler concepts and common
+tasks to the more complex ones. Even if the simpler features can be
+explained as instances of the more general ones.
 
 Have very good support for the OCaml language
 =============================================

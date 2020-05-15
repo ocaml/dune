@@ -1,7 +1,7 @@
 open! Stdune
 open Import
 
-module Dot = struct
+module Dot_merlin = struct
   type directive =
     | EXCLUDE_QUERY_DIR
     | TAG of string * string
@@ -97,12 +97,12 @@ let load_merlin_file dir =
   if Path.exists (Path.build file_path) then
     let build = Build.lines_of (Path.build file_path) in
     let lines, _ = Build.exec build in
-    Dot.parse_lines lines
+    Dot_merlin.parse_lines lines
   else
     []
 
 let out s =
-  Dot.to_channel ~out_channel:stdout s;
+  Dot_merlin.to_channel ~out_channel:stdout s;
   flush stdout
 
 let print_merlin_conf file =
@@ -110,7 +110,7 @@ let print_merlin_conf file =
   let answer =
     match to_local dir with
     | Ok p -> load_merlin_file p
-    | Error s -> Dot.make_error s
+    | Error s -> Dot_merlin.make_error s
   in
   out answer
 
@@ -121,7 +121,7 @@ let start () =
       print_merlin_conf path;
       main ()
     | Unknown msg ->
-      out (Dot.make_error msg);
+      out (Dot_merlin.make_error msg);
       main ()
     | Halt -> exit 0
   in

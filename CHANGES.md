@@ -27,6 +27,10 @@ next
 
 - Simplify js_of_ocaml rules using js_of_ocaml.3.6 (#3375, @hhugo)
 
+- Add a new `ocaml-merlin` subcommand that can be used by Merlin to get
+  configuration directly from dune instead of using `.merlin` files. (#3395,
+  @voodoos)
+
 2.5.1 (17/04/2020)
 ------------------
 

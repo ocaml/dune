@@ -344,6 +344,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias disable-promotion)
+ (deps
+  (package dune)
+  (source_tree test-cases/disable-promotion)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/disable-promotion
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias double-echo)
  (deps (package dune) (source_tree test-cases/double-echo) (alias test-deps))
  (action
@@ -3029,6 +3040,7 @@
   (alias describe)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)
@@ -3325,6 +3337,7 @@
   (alias describe)
   (alias dialects)
   (alias dir-target-dep)
+  (alias disable-promotion)
   (alias double-echo)
   (alias dune-build-dir-exec-1101)
   (alias dune-cache-dedup)

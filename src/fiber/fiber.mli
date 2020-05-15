@@ -98,6 +98,8 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
     ]} *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
+val fork_and_race : (unit -> 'a t) -> (unit -> 'b t) -> ('a, 'b) Either.t t
+
 (** Same but assume the first fiber returns [unit]:
 
     {[

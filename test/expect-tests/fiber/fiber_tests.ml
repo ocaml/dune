@@ -65,6 +65,19 @@ Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
+  Scheduler.run
+    (Fiber.fork_and_race
+       (fun () ->
+         let+ () = Scheduler.yield () in
+         "unexpected")
+       (fun () -> Fiber.return 42))
+  |> Either.to_dyn String.to_dyn Int.to_dyn
+  |> print_dyn;
+  [%expect {|
+42
+|}]
+
+let%expect_test _ =
   ( try
       ignore
         ( Scheduler.run (Fiber.collect_errors never_fiber)

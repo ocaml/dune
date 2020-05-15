@@ -128,6 +128,8 @@ let make ?(requires = Ok []) ~flags
   ; objs_dirs
   }
 
+let merlin_file_name = ".merlin"
+
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
@@ -218,7 +220,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
   Path.Build.drop_build_context dir
   |> Option.iter ~f:(fun remaindir ->
          let open Build.With_targets.O in
-         let merlin_file = Path.Build.relative dir ".merlin" in
+         let merlin_file = Path.Build.relative dir merlin_file_name in
 
          (* We make the compilation of .ml/.mli files depend on the existence of
             .merlin so that they are always generated, however the command

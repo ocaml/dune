@@ -16,6 +16,8 @@ val make :
   -> unit
   -> t
 
+val merlin_file_name : string
+
 val add_source_dir : t -> Path.Source.t -> t
 
 val merge_all : allow_approx_merlin:bool -> t list -> t option

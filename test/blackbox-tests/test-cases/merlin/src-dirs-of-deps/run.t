@@ -13,8 +13,8 @@ library also has more than one src dir.
   $ cat >lib2/dune <<EOF
   > (library (name lib2) (libraries lib1) (modules ()))
   > EOF
-  $ dune build lib2/.merlin-conf
-  $ cat _build/default/lib2/.merlin-conf
+  $ dune build lib2/.merlin
+  $ cat lib2/.merlin
   EXCLUDE_QUERY_DIR
   B ../_build/default/lib1/.lib1.objs/byte
   B ../_build/default/lib2/.lib2.objs/byte

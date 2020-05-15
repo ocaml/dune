@@ -1,19 +1,19 @@
   $ dune build foo.cma --profile release
-  $ cat _build/default/.merlin-conf
+  $ cat .merlin
   EXCLUDE_QUERY_DIR
   B _build/default/.foo.objs/byte
   S .
   FLG -open Foo -w -40
-  $ rm -f _build/default/.merlin-conf
+  $ rm -f .merlin
   $ dune build foo.cma --profile release
-  $ cat _build/default/.merlin-conf
+  $ cat .merlin
   EXCLUDE_QUERY_DIR
   B _build/default/.foo.objs/byte
   S .
   FLG -open Foo -w -40
-  $ echo toto > _build/default/.merlin-conf
+  $ echo toto > .merlin
   $ dune build foo.cma --profile release
-  $ cat _build/default/.merlin-conf
+  $ cat .merlin
   EXCLUDE_QUERY_DIR
   B _build/default/.foo.objs/byte
   S .

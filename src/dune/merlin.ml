@@ -128,7 +128,7 @@ let make ?(requires = Ok []) ~flags
   ; objs_dirs
   }
 
-let merlin_file_name = ".merlin-conf"
+let merlin_file_name = ".merlin"
 
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }

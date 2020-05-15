@@ -10,3 +10,7 @@ let map t ~l ~r =
 let left x = Left x
 
 let right x = Right x
+
+let to_dyn f g = function
+  | Left a -> f a
+  | Right b -> g b

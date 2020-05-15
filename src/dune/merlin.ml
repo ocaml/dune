@@ -256,7 +256,9 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; _ } as t)
               in
               Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs)
          in
-         SC.add_rule sctx ~dir ~mode:Standard action)
+         SC.add_rule sctx ~dir
+           ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
+           action)
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

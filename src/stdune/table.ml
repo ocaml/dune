@@ -99,3 +99,6 @@ let iter (type input output) ((module T) : (input, output) t) ~f =
 
 let filteri_inplace (type input output) ((module T) : (input, output) t) ~f =
   T.H.filteri_inplace T.value ~f
+
+let length (type input output) ((module T) : (input, output) t) =
+  T.H.length T.value

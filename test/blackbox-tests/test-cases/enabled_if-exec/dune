@@ -10,3 +10,10 @@
  (public_name dis)
  (modules dis)
  (enabled_if false))
+
+; Github3494 : Enabled if with allowed variable
+; in dune 2.3 to 2.5 should not raise an error
+(executable
+ (name foo)
+ (modules foo)
+ (enabled_if (<> %{os_type} "")))

@@ -31,3 +31,4 @@ Welcome to dune's documentation!
    migration
    caching
    toplevel-integration
+   goals

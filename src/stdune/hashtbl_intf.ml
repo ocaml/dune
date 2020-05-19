@@ -38,4 +38,6 @@ module type S = sig
   val to_dyn : ('v -> Dyn.t) -> 'v t -> Dyn.t
 
   val filteri_inplace : 'a t -> f:(key:key -> data:'a -> bool) -> unit
+
+  val length : _ t -> int
 end

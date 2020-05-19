@@ -98,3 +98,25 @@ build.
 In that case, one can pass ``-j1 --no-buffer`` so that the commands are directly
 printed on the console (and the parallelism is disabled so that the output stays
 readable).
+
+How can I generate an mli file from an ml file?
+=============================================
+
+When a module starts as just an implementation (``.ml`` file), it can be tedious
+to define the corresponding interface (``.mli`` file).
+
+It is possible to use the ``ocaml-print-intf`` program (available on opam
+through ``opam install ocaml-print-intf``) to generate the right ``mli`` file:
+
+.. code:: bash
+
+  $ dune exec -- ocaml-print-intf ocaml_print_intf.ml
+  val root_from_verbose_output : string list -> string
+  val target_from_verbose_output : string list -> string
+  val build_cmi : string -> string
+  val print_intf : string -> unit
+  val version : unit -> string
+  val usage : unit -> unit
+
+It has special support for dune so it will automatically understand external
+dependencies.

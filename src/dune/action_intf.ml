@@ -46,6 +46,7 @@ module type Ast = sig
     | Digest_files of path list
     | Diff of (path, target) Diff.t
     | Merge_files_into of path list * string list * target
+    | No_infer of t
 end
 
 module type Helpers = sig

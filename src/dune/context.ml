@@ -238,25 +238,38 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
   Path.rm_rf dir;
   Path.mkdir_p dir;
   Io.write_file (Path.relative dir Config.dune_keep_fname) "";
-  let csexp =
-    let open Sexp in
-    let ocamlc = Atom (Path.to_absolute_filename ocamlc) in
-    let ocaml_config_vars =
-      Sexp.List
-        ( Ocaml_config.Vars.to_list ocaml_config_vars
-        |> List.map ~f:(fun (k, v) -> List [ Atom k; Atom v ]) )
-    in
-    List
-      [ List [ Atom "ocamlc"; ocamlc ]
-      ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
-      ]
+  let ocamlc = Path.to_absolute_filename ocamlc in
+  let ocaml_config_vars = Ocaml_config.Vars.to_list ocaml_config_vars in
+  let () =
+    let open Dune_lang.Encoder in
+    Io.write_lines
+      (Path.relative dir "configurator")
+      (List.map ~f:Dune_lang.to_string
+         (record_fields
+            [ field "ocamlc" string ocamlc
+            ; field_l "ocaml_config_vars" (pair string string) ocaml_config_vars
+            ]))
   in
-  let path = Path.relative dir "configurator" in
-  Io.write_file path (Csexp.to_string csexp)
+  let () =
+    let csexp =
+      let open Sexp in
+      let ocaml_config_vars =
+        Sexp.List
+          (List.map ocaml_config_vars ~f:(fun (k, v) -> List [ Atom k; Atom v ]))
+      in
+      List
+        [ List [ Atom "ocamlc"; Atom ocamlc ]
+        ; List [ Atom "ocaml_config_vars"; ocaml_config_vars ]
+        ]
+    in
+    let path = Path.relative dir "configurator.v2" in
+    Io.write_file path (Csexp.to_string csexp)
+  in
+  ()
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -491,6 +504,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
       ; ocaml_version = Ocaml_config.version_string ocfg
+      ; bisect_enabled
       }
     in
     if Option.is_some fdo_target_exe then
@@ -603,10 +617,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives
+    ~dynamically_linked_foreign_archives ~bisect_enabled
 
 let opam_version =
   let f opam =
@@ -637,7 +651,7 @@ let opam_version =
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
-    ~dynamically_linked_foreign_archives =
+    ~dynamically_linked_foreign_archives ~bisect_enabled =
   let opam =
     match Memo.Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -688,6 +702,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
+    ~bisect_enabled
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -707,6 +722,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; loc = _
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
+      ; bisect_enabled
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -722,6 +738,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
+      ~bisect_enabled
   | Opam
       { base =
           { targets
@@ -734,6 +751,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; loc = _
           ; fdo_target_exe
           ; dynamically_linked_foreign_archives
+          ; bisect_enabled
           }
       ; switch
       ; root
@@ -742,7 +760,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
-      ~dynamically_linked_foreign_archives
+      ~dynamically_linked_foreign_archives ~bisect_enabled
 
 module Create = struct
   module Output = struct
@@ -879,3 +897,13 @@ let name t = t.name
 let has_native t = Result.is_ok t.ocamlopt
 
 let lib_config t = t.lib_config
+
+let map_exe (context : t) =
+  match context.for_host with
+  | None -> fun exe -> exe
+  | Some (host : t) -> (
+    fun exe ->
+      match Path.extract_build_context_dir exe with
+      | Some (dir, exe) when Path.equal dir (Path.build context.build_dir) ->
+        Path.append_source (Path.build host.build_dir) exe
+      | _ -> exe )

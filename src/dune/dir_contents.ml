@@ -108,7 +108,13 @@ module rec Load : sig
   val get : Super_context.t -> dir:Path.Build.t -> t
 
   val gen_rules : Super_context.t -> dir:Path.Build.t -> gen_rules_result
+
+  val add_sources_to_expander : Super_context.t -> Expander.t -> Expander.t
 end = struct
+  let add_sources_to_expander sctx expander =
+    let f ~dir = Load.get sctx ~dir |> artifacts in
+    Expander.set_lookup_ml_sources expander ~f
+
   (* As a side-effect, setup user rules and copy_files rules. *)
   let load_text_files sctx ft_dir
       { Dir_with_dune.ctx_dir = dir
@@ -119,13 +125,12 @@ end = struct
       } =
     (* Interpret a few stanzas in order to determine the list of files generated
        by the user. *)
-    let lookup ~f ~dir name = f (artifacts (Load.get sctx ~dir)) name in
-    let lookup_module = lookup ~f:Ml_sources.Artifacts.lookup_module in
-    let lookup_library = lookup ~f:Ml_sources.Artifacts.lookup_library in
-    let expander = Super_context.expander sctx ~dir in
-    let expander = Expander.set_lookup_module expander ~lookup_module in
-    let expander = Expander.set_lookup_library expander ~lookup_library in
-    let expander = Expander.set_artifacts_dynamic expander true in
+    let expander =
+      let expander =
+        Super_context.expander sctx ~dir |> add_sources_to_expander sctx
+      in
+      Expander.set_artifacts_dynamic expander true
+    in
     let generated_files =
       List.concat_map stanzas ~f:(fun stanza ->
           match (stanza : Stanza.t) with

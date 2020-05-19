@@ -134,6 +134,7 @@ let client_thread (events, (client : client)) =
     let handle_cmd (client : client) sexp =
       let* msg = outgoing_message_of_sexp client.version sexp in
       match msg with
+      | Hint _ -> Result.Ok client
       | Promote { duplication; repository; files; key; metadata } ->
         let+ () =
           Cache.Local.promote client.cache files key
@@ -142,13 +143,13 @@ let client_thread (events, (client : client)) =
         in
         client
       | SetBuildRoot root ->
-        Result.Ok
-          { client with cache = Cache.Local.set_build_dir client.cache root }
+        let+ cache = Cache.Local.set_build_dir client.cache root in
+        { client with cache }
       | SetCommonMetadata metadata ->
         Result.ok { client with common_metadata = metadata }
       | SetRepos repositories ->
-        let cache = Cache.Local.with_repositories client.cache repositories in
-        Result.Ok { client with cache }
+        let+ cache = Cache.Local.with_repositories client.cache repositories in
+        { client with cache }
     in
     let input = client.input in
     let f () =
@@ -199,15 +200,14 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
         match
           let overhead_size = Cache.Local.overhead_size cache in
           if overhead_size > max_overhead_size then (
-            Log.info
-              [ Pp.textf "trimming %i bytes" (overhead_size - max_overhead_size)
-              ];
-            Some (Cache.Local.trim cache (overhead_size - max_overhead_size))
+            let goal = Int64.sub overhead_size max_overhead_size in
+            Log.info [ Pp.textf "trimming %Li bytes" goal ];
+            Some (Cache.Local.trim cache ~goal)
           ) else
             None
         with
-        | Some { trimmed_files_size = freed; _ } ->
-          Log.info [ Pp.textf "trimming freed %i bytes" freed ]
+        | Some { trimmed_bytes } ->
+          Log.info [ Pp.textf "trimming freed %Li bytes" trimmed_bytes ]
         | None -> Log.info [ Pp.text "skip trimming" ]
       in
       trim ()
@@ -231,9 +231,8 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
         (Option.map ~f:int_of_string
            (Env.get Env.initial "DUNE_CACHE_TRIM_PERIOD"))
     and+ max_overhead_size =
-      Option.value
-        ~default:(Result.Ok (10 * 1024 * 1024 * 1024))
-        (Option.map ~f:int_of_string
+      Option.value ~default:(Result.Ok 10_000_000_000L)
+        (Option.map ~f:int64_of_string
            (* CR-someday amokhov: the term "size" is ambiguous, it would be
               better to switch to a more precise one, e.g. "max overhead size". *)
            (Env.get Env.initial "DUNE_CACHE_TRIM_SIZE"))

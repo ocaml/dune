@@ -5,10 +5,12 @@ let () =
   | exception Not_found -> failwith "INSIDE_DUNE is not passed"
   | "1" -> print_endline "INSIDE_DUNE is from an old dune"
   | dir -> print_endline "INSIDE_DUNE is present";
-    if Sys.file_exists (Filename.concat dir ".dune/configurator") then
-      print_endline ".dune/configurator file present"
-    else
-      print_endline ".dune/configurator file not present"
+    let config_path = ".dune/configurator.v2" in
+    Printf.printf "%s file is %s\n" config_path
+      (if Sys.file_exists (Filename.concat dir config_path) then
+         "present"
+       else
+         "not present")
   end;
   Configurator.main ~name:"config" (fun t ->
     match Configurator.ocaml_config_var t "version" with

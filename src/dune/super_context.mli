@@ -140,42 +140,6 @@ val resolve_program :
   -> string
   -> Action.Prog.t
 
-(** Interpret dependencies written in Dune files *)
-module Deps : sig
-  (** Evaluates to the actual list of dependencies, ignoring aliases, and
-      registers them as the action dependencies. *)
-  val interpret : t -> expander:Expander.t -> Dep_conf.t list -> unit Build.t
-
-  (** Evaluates to the actual list of dependencies, ignoring aliases, and
-      registers them as the action dependencies.
-
-      It returns bindings that are later used for action expansion. *)
-  val interpret_named :
-       t
-    -> expander:Expander.t
-    -> Dep_conf.t Bindings.t
-    -> Path.t Bindings.t Build.t
-end
-
-(** Interpret action written in Dune files *)
-module Action : sig
-  (** This function takes as input the list of dependencies written by user,
-      which is used for action expansion. These must be registered with the
-      build description before calling [run]. *)
-  val run :
-       t
-    -> loc:Loc.t
-    -> expander:Expander.t
-    -> dep_kind:Lib_deps_info.Kind.t
-    -> targets:Targets.Or_forbidden.t
-    -> targets_dir:Path.Build.t
-    -> Action_unexpanded.t
-    -> Path.t Bindings.t Build.t
-    -> Action.t Build.With_targets.t
-
-  val map_exe : t -> Path.t -> Path.t
-end
-
 val expander : t -> dir:Path.Build.t -> Expander.t
 
 val dir_status_db : t -> Dir_status.DB.t

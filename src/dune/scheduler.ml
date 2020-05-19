@@ -699,7 +699,6 @@ end = struct
     | Files_changed
 
   let rec pump_events t =
-    let* () = Fiber.yield () in
     let count = Event.pending_jobs () in
     if count = 0 then (
       Console.Status_line.set (Fun.const None);
@@ -731,13 +730,12 @@ end = struct
       Fiber.run
         (let* user_action_result = Fiber.fork (fun () -> fiber) in
          let* pump_events_result = pump_events t in
+         let* user_action_result = Fiber.Future.peek user_action_result in
          Fiber.return (pump_events_result, user_action_result))
     with
-    | exception Fiber.Never ->
-      Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
+    | None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
     | exception exn -> Error (Exn (exn, Printexc.get_raw_backtrace ()))
-    | a, b -> (
-      let b = Fiber.Future.peek b in
+    | Some (a, b) -> (
       match (a, b) with
       | Done, None -> Error Never
       | Done, Some res -> Ok res
@@ -765,8 +763,7 @@ let go ?config f =
   match res with
   | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
   | Ok res -> res
-  | Error Got_signal -> raise Dune_util.Report_error.Already_reported
-  | Error Never -> raise Fiber.Never
+  | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
   | Error Files_changed ->
     Code_error.raise
       "Scheduler.go: files changed even though we're running without \

@@ -7,6 +7,7 @@ type t =
   | Opaque
   | Unit
   | Int of int
+  | Int64 of int64
   | Bool of bool
   | String of string
   | Bytes of bytes
@@ -81,6 +82,7 @@ let rec pp =
   | Opaque -> Pp.verbatim "<opaque>"
   | Unit -> Pp.verbatim "()"
   | Int i -> Pp.verbatim (string_of_int i)
+  | Int64 i -> Pp.verbatim (Int64.to_string i)
   | Bool b -> Pp.verbatim (string_of_bool b)
   | String s -> string_in_ocaml_syntax s
   | Bytes b -> string_in_ocaml_syntax (Bytes.to_string b)
@@ -128,6 +130,8 @@ module Encoder = struct
   let string x = String x
 
   let int x = Int x
+
+  let int64 x = Int64 x
 
   let float x = Float x
 

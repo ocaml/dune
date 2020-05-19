@@ -74,7 +74,10 @@ include Stringlike.Make (struct
 
   let description = "library name"
 
-  let of_string_opt s = Some s
+  let of_string_opt name =
+    match name with
+    | "" -> None
+    | s -> Option.some_if (s.[0] <> '.') s
 end)
 
 let of_local (_loc, t) = t

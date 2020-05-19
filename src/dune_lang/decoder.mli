@@ -146,7 +146,7 @@ val duration : int t
 
 (** Consume the next element as a number of bytes, requiring 'B', 'KB', 'MB' or
     'GB' suffix *)
-val bytes_unit : int t
+val bytes_unit : int64 t
 
 (** Unparsed next element of the input *)
 val raw : ast t

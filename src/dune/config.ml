@@ -196,7 +196,7 @@ module type S = sig
     ; cache_check_probability : float field
     ; cache_duplication : Caching.Duplication.t field
     ; cache_trim_period : int field
-    ; cache_trim_size : int field
+    ; cache_trim_size : int64 field
     }
 end
 
@@ -240,7 +240,7 @@ let default =
   ; cache_transport = Daemon
   ; cache_check_probability = 0.
   ; cache_trim_period = 10 * 60
-  ; cache_trim_size = 10 * 1000 * 1000 * 1000
+  ; cache_trim_size = 10_000_000_000L
   ; cache_duplication = None
   }
 
@@ -347,7 +347,7 @@ let to_dyn config =
     ; ( "cache_check_probability"
       , Dyn.Encoder.float config.cache_check_probability )
     ; ("cache_trim_period", Dyn.Encoder.int config.cache_trim_period)
-    ; ("cache_trim_size", Dyn.Encoder.int config.cache_trim_size)
+    ; ("cache_trim_size", Dyn.Encoder.int64 config.cache_trim_size)
     ]
 
 let global = Fdecl.create to_dyn

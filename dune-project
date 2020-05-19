@@ -24,6 +24,7 @@
   (dune-configurator (< 2.3.0))
   (odoc (< 1.3.0))
   (dune-release (< 1.3.0))
+  (js_of_ocaml-compiler (< 3.6.0))
   (jbuilder (= transition)))
  (synopsis "Fast, portable, and opinionated build system")
  (description "

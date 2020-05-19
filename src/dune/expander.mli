@@ -15,12 +15,18 @@ val scope : t -> Scope.t
 
 val dir : t -> Path.Build.t
 
+val context : t -> Context.t
+
 val make :
      scope:Scope.t
   -> context:Context.t
   -> lib_artifacts:Artifacts.Public_libs.t
   -> bin_artifacts_host:Artifacts.Bin.t
+  -> find_package:(Package.Name.t -> Package.t option)
   -> t
+
+val set_foreign_flags :
+  t -> f:(dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t) -> t
 
 val set_env : t -> var:string -> value:string -> t
 
@@ -34,19 +40,8 @@ val set_bin_artifacts : t -> bin_artifacts_host:Artifacts.Bin.t -> t
 
 val set_artifacts_dynamic : t -> bool -> t
 
-val set_lookup_module :
-     t
-  -> lookup_module:
-       (   dir:Path.Build.t
-        -> Module_name.t
-        -> (Path.Build.t Obj_dir.t * Module.t) option)
-  -> t
-
-val set_lookup_library :
-     t
-  -> lookup_library:
-       (dir:Path.Build.t -> Lib_name.t -> Dune_file.Library.t option)
-  -> t
+val set_lookup_ml_sources :
+  t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
 
 (** Expander need to expand custom bindings sometimes. For exmaple, the name of
     the library for the action that runs inline tests. This is the place to add
@@ -63,19 +58,10 @@ val expand_path : t -> String_with_vars.t -> Path.t
 val expand_str : t -> String_with_vars.t -> string
 
 module Or_exn : sig
-  val expand :
-       t
-    -> mode:'a String_with_vars.Mode.t
-    -> template:String_with_vars.t
-    -> 'a Or_exn.t
-
   val expand_path : t -> String_with_vars.t -> Path.t Or_exn.t
 
   val expand_str : t -> String_with_vars.t -> string Or_exn.t
 end
-
-val resolve_binary :
-  t -> loc:Loc.t option -> prog:string -> (Path.t, Import.fail) Result.t
 
 type reduced_var_result =
   | Unknown
@@ -92,13 +78,7 @@ val expand_with_reduced_var_set :
 
     Once [f] has returned, the temporary expander can no longer be used. *)
 val expand_deps_like_field :
-     t
-  -> dep_kind:Lib_deps_info.Kind.t
-  -> map_exe:(Path.t -> Path.t)
-  -> foreign_flags:
-       (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
-  -> f:(t -> 'a Build.t)
-  -> 'a Build.t
+  t -> dep_kind:Lib_deps_info.Kind.t -> f:(t -> 'a Build.t) -> 'a Build.t
 
 (** Expand user actions. Both [partial] and [final] receive temporary expander
     that must not be used once these functions have returned. The expander
@@ -111,9 +91,6 @@ val expand_action :
   -> deps_written_by_user:Path.t Bindings.t Build.t
   -> targets_written_by_user:Targets.Or_forbidden.t
   -> dep_kind:Lib_deps_info.Kind.t
-  -> map_exe:(Path.t -> Path.t)
-  -> foreign_flags:
-       (dir:Path.Build.t -> string list Build.t Foreign.Language.Dict.t)
   -> partial:(t -> 'a)
   -> final:(t -> 'a -> 'b)
   -> 'a * 'b Build.t
@@ -131,3 +108,9 @@ val expand_and_eval_set :
   -> string list Build.t
 
 val eval_blang : t -> Blang.t -> bool
+
+val map_exe : t -> Path.t -> Path.t
+
+val artifacts : t -> Artifacts.Bin.t
+
+val find_package : t -> Package.Name.t -> Package.t option

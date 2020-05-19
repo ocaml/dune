@@ -33,7 +33,7 @@ Check that ambiguity is handled correctly.
 Check that default implementation data is installed in the dune package file.
   $ dune build --root dune-package
   Entering directory 'dune-package'
-  $ cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
   (lang dune <version>)
   (name a)
   (library

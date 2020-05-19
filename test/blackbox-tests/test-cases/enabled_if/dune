@@ -1,3 +1,5 @@
+(dirs :standard \ forbidden_var)
+
 (alias
  (name x)
  (action (echo "Building alias x"))

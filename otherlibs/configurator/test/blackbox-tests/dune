@@ -29,3 +29,17 @@
    (progn
     (run dune-cram run run.t)
     (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias runtest)
+ (package dune-configurator)
+ (deps
+  (package dune)
+  (package dune-configurator)
+  (source_tree test-cases/pkg-config-quoting))
+ (action
+  (chdir
+   test-cases/pkg-config-quoting
+   (progn
+    (run dune-cram run run.t)
+    (diff? run.t run.t.corrected)))))

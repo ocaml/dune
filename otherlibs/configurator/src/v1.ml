@@ -263,7 +263,7 @@ type config =
   }
 
 let read_dot_dune_configurator_file ~build_dir =
-  let file = Filename.concat build_dir ".dune/configurator" in
+  let file = Filename.concat build_dir ".dune/configurator.v2" in
   if not (Sys.file_exists file) then
     die "Cannot find special file %S produced by dune." file;
   let open Sexp in

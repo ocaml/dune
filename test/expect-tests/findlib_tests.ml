@@ -28,6 +28,7 @@ let findlib =
     ; ccomp_type = Other "gcc"
     ; profile = Profile.Dev
     ; ocaml_version = "4.02.3"
+    ; bisect_enabled = false
     }
   in
   Findlib.create ~stdlib_dir:cwd ~paths:[ db_path ]

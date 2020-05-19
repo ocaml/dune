@@ -108,6 +108,15 @@
  (files   dune-installed-libraries.1))
 
 (rule
+ (with-stdout-to dune-ocaml-merlin.1
+  (run dune ocaml-merlin --help=groff)))
+
+(install
+ (section man)
+ (package dune)
+ (files   dune-ocaml-merlin.1))
+
+(rule
  (with-stdout-to dune-printenv.1
   (run dune printenv --help=groff)))
 

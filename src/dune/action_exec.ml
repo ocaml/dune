@@ -350,6 +350,7 @@ let rec exec t ~ectx ~eenv =
     let target = Path.build target in
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return Done
+  | No_infer t -> exec t ~ectx ~eenv
 
 and redirect_out t ~ectx ~eenv outputs fn =
   let out = Process.Io.file fn Process.Io.Out in

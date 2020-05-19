@@ -49,6 +49,7 @@ module Context = struct
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
+      ; bisect_enabled : bool
       }
 
     let to_dyn = Dyn.Encoder.opaque
@@ -64,6 +65,7 @@ module Context = struct
         ; paths
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
+        ; bisect_enabled
         } t =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -77,6 +79,7 @@ module Context = struct
       && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
       && Bool.equal dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
+      && Bool.equal bisect_enabled t.bisect_enabled
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -133,6 +136,9 @@ module Context = struct
         field "paths" ~default:[]
           ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
+      and+ bisect_enabled =
+        field ~default:false "bisect_enabled"
+          (Dune_lang.Syntax.since syntax (2, 6) >>> bool)
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
           match targets with
@@ -153,6 +159,7 @@ module Context = struct
       ; paths
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
+      ; bisect_enabled
       }
   end
 
@@ -293,6 +300,7 @@ module Context = struct
       ; paths = []
       ; fdo_target_exe = None
       ; dynamically_linked_foreign_archives = true
+      ; bisect_enabled = false
       }
 end
 

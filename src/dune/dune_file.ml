@@ -35,6 +35,14 @@ let variants_field =
     (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
      located (repeat Variant.decode >>| Variant.Set.of_list))
 
+let bisect_ppx_syntax =
+  Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
+    [ ((1, 0), `Since (2, 6)) ]
+
+let () =
+  Dune_project.Extension.register_simple bisect_ppx_syntax
+    (Dune_lang.Decoder.return [])
+
 module Pps_and_flags = struct
   let decode =
     let+ l, flags =
@@ -214,6 +222,30 @@ module Preprocess_map = struct
         List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
             Lib_name.Map.set acc pp loc))
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
+
+  let add_bisect t =
+    let bisect_ppx =
+      let bisect_name = Lib_name.parse_string_exn (Loc.none, "bisect_ppx") in
+      (Loc.none, bisect_name)
+    in
+    Per_module.map t ~f:(fun pp ->
+        match pp with
+        | Preprocess.No_preprocessing ->
+          let loc = Loc.none in
+          let pps = [ bisect_ppx ] in
+          let flags = [] in
+          let staged = false in
+          Preprocess.Pps { loc; pps; flags; staged }
+        | Preprocess.Pps { loc; pps; flags; staged } ->
+          let pps = bisect_ppx :: pps in
+          Preprocess.Pps { loc; pps; flags; staged }
+        | Action (loc, _)
+        | Future_syntax loc ->
+          User_error.raise ~loc
+            [ Pp.text
+                "Preprocessing with actions and future syntax cannot be used \
+                 in conjunction with (bisect_ppx)"
+            ])
 end
 
 module Lint = struct
@@ -359,6 +391,7 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
+    ; bisect_ppx : bool
     }
 
   let decode ~in_library ~allow_re_export =
@@ -424,6 +457,9 @@ module Buildable = struct
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
+    and+ bisect_ppx =
+      field_b "bisect_ppx"
+        ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let foreign_stubs =
       foreign_stubs
@@ -468,6 +504,7 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
+    ; bisect_ppx
     }
 
   let has_foreign t =
@@ -481,6 +518,12 @@ module Buildable = struct
         Per_module.get t.preprocess dummy_name
       else
         Preprocess.No_preprocessing
+
+  let preprocess t ~(lib_config : Lib_config.t) =
+    if t.bisect_ppx && lib_config.bisect_enabled then
+      Preprocess_map.add_bisect t.preprocess
+    else
+      t.preprocess
 end
 
 module Public_lib = struct
@@ -804,7 +847,11 @@ module Library = struct
          field_o "special_builtin_support"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 10)
            >>> Lib_info.Special_builtin_support.decode )
-       and+ enabled_if = enabled_if ~since:(Some (1, 10)) in
+       and+ enabled_if =
+         let open Enabled_if in
+         let allowed_vars = Only Lib_config.allowed_in_enabled_if in
+         decode ~allowed_vars ~since:(Some (1, 10)) ()
+       in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
        in
@@ -860,28 +907,6 @@ module Library = struct
            [ Pp.text "Only implementations can specify a variant." ]
        | _ -> () );
        let variant = Option.map variant ~f:(fun (_, v) -> v) in
-       Blang.fold_vars enabled_if ~init:() ~f:(fun var () ->
-           let err () =
-             let loc = String_with_vars.Var.loc var in
-             let var_names = List.map ~f:fst Lib_config.allowed_in_enabled_if in
-             User_error.raise ~loc
-               [ Pp.textf
-                   "Only %s are allowed in the 'enabled_if' field of libraries."
-                   (String.enumerate_and var_names)
-               ]
-           in
-           match
-             (String_with_vars.Var.name var, String_with_vars.Var.payload var)
-           with
-           | name, None -> (
-             match List.assoc Lib_config.allowed_in_enabled_if name with
-             | None -> err ()
-             | Some v ->
-               if v > dune_version then
-                 let loc = String_with_vars.Var.loc var in
-                 let what = "This variable" in
-                 Dune_lang.Syntax.Error.since loc Stanza.syntax v ~what )
-           | _ -> err ());
        { name
        ; public
        ; synopsis
@@ -1031,7 +1056,19 @@ module Library = struct
     let synopsis = conf.synopsis in
     let sub_systems = conf.sub_systems in
     let ppx_runtime_deps = conf.ppx_runtime_libraries in
-    let pps = Preprocess_map.pps conf.buildable.preprocess in
+    let pps =
+      let pps_without_bisect = Preprocess_map.pps conf.buildable.preprocess in
+      if lib_config.bisect_enabled && conf.buildable.bisect_ppx then
+        let bisect_ppx =
+          let bisect_name =
+            Lib_name.parse_string_exn (Loc.none, "bisect_ppx")
+          in
+          (Loc.none, bisect_name)
+        in
+        bisect_ppx :: pps_without_bisect
+      else
+        pps_without_bisect
+    in
     let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
     let implements = conf.implements in
@@ -1053,14 +1090,19 @@ module Install_conf = struct
     { section : Install.Section.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
+    ; enabled_if : Blang.t
     }
 
   let decode =
     fields
       (let+ section = field "section" Install.Section.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
-       and+ package = Pkg.field "install" in
-       { section; files; package })
+       and+ package = Pkg.field "install"
+       and+ enabled_if =
+         let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+         Enabled_if.decode ~allowed_vars ~since:(Some (2, 6)) ()
+       in
+       { section; files; package; enabled_if })
 end
 
 module Promote = struct
@@ -1107,7 +1149,8 @@ module Executables = struct
       -> allow_omit_names_version:Dune_lang.Syntax.Version.t
       -> (t, fields) Dune_lang.Decoder.parser
 
-    val install_conf : t -> ext:string -> Install_conf.t option
+    val install_conf :
+      t -> ext:string -> enabled_if:Blang.t -> Install_conf.t option
   end = struct
     type public =
       { public_names : (Loc.t * string option) list
@@ -1234,7 +1277,7 @@ module Executables = struct
       in
       { names; public; project; stanza; loc; multi }
 
-    let install_conf t ~ext =
+    let install_conf t ~ext ~enabled_if =
       Option.map t.public ~f:(fun { package; public_names } ->
           let files =
             List.map2 t.names public_names ~f:(fun (locn, name) (locp, pub) ->
@@ -1244,7 +1287,7 @@ module Executables = struct
                       ~dst:(locp, pub)))
             |> List.filter_opt
           in
-          { Install_conf.section = Bin; files; package })
+          { Install_conf.section = Bin; files; package; enabled_if })
   end
 
   module Link_mode = struct
@@ -1486,7 +1529,10 @@ module Executables = struct
            User_error.raise ~loc
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
-    and+ enabled_if = enabled_if ~since:(Some (2, 3)) in
+    and+ enabled_if =
+      let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+      Enabled_if.decode ~allowed_vars ~since:(Some (2, 3)) ()
+    in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
       let private_names = Names.names names in
@@ -1512,7 +1558,7 @@ module Executables = struct
               ".bc"
             | Other { mode = Native | Best; _ } -> ".exe"
           in
-          Names.install_conf names ~ext
+          Names.install_conf names ~ext ~enabled_if
       in
       let embed_in_plugin_libraries =
         let plugin =
@@ -1669,7 +1715,7 @@ module Rule = struct
          dune. *)
       assert (not fallback)
     and+ mode = field "mode" Mode.decode ~default:Mode.Standard
-    and+ enabled_if = enabled_if ~since:(Some (1, 4))
+    and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
     and+ package =
       field_o "package"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Pkg.decode)
@@ -1707,7 +1753,7 @@ module Rule = struct
     <|> fields
           (let+ modules = field "modules" (repeat string)
            and+ mode = Mode.field
-           and+ enabled_if = enabled_if ~since:(Some (1, 4)) in
+           and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) () in
            { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
@@ -1791,7 +1837,7 @@ module Menhir = struct
          field_o_b "infer"
            ~check:(Dune_lang.Syntax.since Menhir_stanza.syntax (2, 0))
        and+ menhir_syntax = Dune_lang.Syntax.get_exn Menhir_stanza.syntax
-       and+ enabled_if = enabled_if ~since:(Some (1, 4))
+       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
        and+ loc = loc in
        let infer =
          match infer with
@@ -1861,7 +1907,7 @@ module Tests = struct
            ~default:Executables.Link_mode.Map.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if = enabled_if ~since:(Some (1, 4))
+       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
        and+ action =
          field_o "action"
            ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)

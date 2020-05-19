@@ -1,0 +1,8 @@
+(library
+ (name mylib)
+ (modules lib))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries mylib))

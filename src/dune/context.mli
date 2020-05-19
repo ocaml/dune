@@ -121,6 +121,12 @@ val has_native : t -> bool
 
 val lib_config : t -> Lib_config.t
 
+(** [map_exe t exe] returns a version of [exe] that is suitable for being
+    executed on the current machine. For instance, if [t] is a cross-compilation
+    build context, [map_exe t exe] returns the version of [exe] that lives in
+    the host build context. Otherwise, it just returns [exe]. *)
+val map_exe : t -> Path.t -> Path.t
+
 module DB : sig
   val get : Path.Build.t -> t
 

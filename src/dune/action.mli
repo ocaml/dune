@@ -124,6 +124,23 @@ type is_useful =
   | Clearly_not
   | Maybe
 
+(** Whether it makes sense to run the action inside a sandbox because it could
+    have harmful side effects, to ensure it only consumes declared dependencies
+    and it does not produce undeclared targets.
+
+    Eg. it is maybe useful to sandbox an arbitrary shell command, but not a
+    directory creation. *)
 val is_useful_to_sandbox : t -> is_useful
 
+(** Whether it makes sense to lookup the target in the distributed cache.
+
+    Eg. there is no point in trying to fetch the result of a local file copy
+    from the distributed cache, as we already have the file locally. *)
+val is_useful_to_distribute : t -> is_useful
+
+(** Whether it is useful to promote the rule to the cache.
+
+    Eg. a file copy should be cached so we benefit from hardlink deduplication,
+    but an action creating a symlink should not since the cache will reject it
+    anyway. *)
 val is_useful_to_memoize : t -> is_useful

@@ -6,7 +6,7 @@
   File "dune", line 3, characters 9-18:
   3 |  (deps %{read:foo}))
                ^^^^^^^^^
-  Error: %{read:..} cannot be used in this position
+  Error: %{read:..} isn't allowed in this position
   [1]
 
   $ dune build --root alias-lib-file

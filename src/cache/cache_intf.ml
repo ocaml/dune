@@ -47,11 +47,11 @@ module type Cache = sig
 
   (** Set the absolute path to the build directory for interpreting relative
       paths when promoting files. *)
-  val set_build_dir : t -> Path.t -> t
+  val set_build_dir : t -> Path.t -> (t, string) Result.t
 
   (** Set all the version controlled repositories in the workspace to be
       referred to when promoting files. *)
-  val with_repositories : t -> repository list -> t
+  val with_repositories : t -> repository list -> (t, string) Result.t
 
   (** Promote files produced by a build rule into the cache. *)
   val promote :
@@ -78,6 +78,9 @@ module type Cache = sig
   (** Remove the local cache and disconnect with a distributed cache client if
       any. *)
   val teardown : t -> unit
+
+  (* Hint that the given rule will be looked up soon *)
+  val hint : t -> Key.t list -> (unit, string) Result.t
 end
 
 module type Caching = sig
@@ -91,5 +94,7 @@ type caching = (module Caching)
 let command_to_dyn = function
   | Dedup { path; digest } ->
     let open Dyn.Encoder in
-    record
-      [ ("path", Path.Build.to_dyn path); ("digest", Digest.to_dyn digest) ]
+    pair string record
+    @@ ( "dedup"
+       , [ ("path", Path.Build.to_dyn path); ("digest", Digest.to_dyn digest) ]
+       )

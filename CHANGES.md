@@ -1,6 +1,13 @@
 next
 ----
 
+- Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
+  results in an error. (#3444, fix #3443, @bikallem)
+
+- Add and `enabled_ if` field to the `install` stanza. Enforce the same
+  variable restrictions for `enabled_if` fields in the `executable` and `install`
+  stanzas than in the `library` stanza. (#3408, fixes #3354, @voodoos)
+
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,
   fixes #3427, @diml)
@@ -8,7 +15,21 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
+- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
+  @stephanieyou)
+
+- Add a `(no-infer ...)` action that prevents inference of targets and
+  dependencies in actions. (#3456, fixes #2006, @roddyyaga)
+
 - Correctly infer targets for the `diff?` action. (#3457, fixes #2990, @greedy)
+
+- Fix `$ dune print-rules` crashing (#3459, fixes #3440, @rgrinberg)
+
+- Simplify js_of_ocaml rules using js_of_ocaml.3.6 (#3375, @hhugo)
+
+- Add a new `ocaml-merlin` subcommand that can be used by Merlin to get
+  configuration directly from dune instead of using `.merlin` files. (#3395,
+  @voodoos)
 
 2.5.1 (17/04/2020)
 ------------------

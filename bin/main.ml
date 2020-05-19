@@ -195,6 +195,7 @@ let all =
   ; Caching.command
   ; Describe.command
   ; Top.command
+  ; Ocaml_merlin.command
   ]
 
 let common_commands_synopsis =
@@ -261,9 +262,7 @@ let () =
     match Term.eval_choice default all ~catch:false with
     | `Error _ -> exit 1
     | _ -> exit 0
-  with
-  | Fiber.Never -> exit 1
-  | exn ->
+  with exn ->
     let exn = Exn_with_backtrace.capture exn in
     Dune.Report_error.report exn;
     exit 1

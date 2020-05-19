@@ -1484,7 +1484,7 @@ module Executables = struct
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
     and+ enabled_if =
-      let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
+      let allowed_vars = Enabled_if.common_vars ~since:(2, 3) in
       Enabled_if.decode ~allowed_vars ~since:(Some (2, 3)) ()
     in
     fun names ~multi ->

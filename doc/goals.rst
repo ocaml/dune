@@ -114,8 +114,8 @@ community, it is important for Dune to remain accessible. Getting
 started and learning Dune should be straightforward.
 
 For that purpose, when designing the language, the command line
-interface or the documentation, we must always put ourselves from the
-point of view of a user who is discovering Dune and its features.
+interface or the documentation, we must take on the perspective 
+of a user who is just discovering Dune and its features.
 
 Because Dune must be suitable for everyone, it must also provide
 advanced and more complex features for expert users. However, the

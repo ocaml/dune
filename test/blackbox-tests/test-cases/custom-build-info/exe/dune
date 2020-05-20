@@ -1,0 +1,8 @@
+(executable
+ (name foo)
+ (public_name foo)
+ (promote (until-clean))
+ (libraries dune-build-info)
+ (custom_build_info
+  (max_size 65)
+  (action (echo "Some custom information accessible with `Build_info.V2.custom ()`"))))

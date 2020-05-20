@@ -86,13 +86,10 @@ implementation for every virtual library that we've used:
 Variants
 ========
 
-Dune to lack of usage and confusing semantics, variants were removed in dune 2.6
+Variants were an experimental feature that were removed in dune 2.6.
 
 Default implementation
 ======================
-
-This feature is also guarded by ``(using library_variants ...)`` until version
-2.5. In 2.6, this feature became part of the dune language.
 
 A virtual library may select a default implementation, which is enabled after
 variant resolution, if no suitable implementation has been found.
@@ -103,6 +100,15 @@ variant resolution, if no suitable implementation has been found.
     (name time)
     (virtual_modules time)
     (default_implementation time-js))
+
+The default implementation must live in the same package as the virtual library.
+In the example above, that would mean that the ``time-js`` and ``time``
+libraries must be in the same package
+
+Before version 2.6, this was feature was experimental and was guarded under the
+``library_variants`` language. In 2.6, this feature was promoted to the stable
+language of dune and all uses of ``(using library_variants)`` are forbidden
+since 2.6.
 
 Limitations
 ===========

@@ -1523,7 +1523,7 @@ target will be created in ``a/b/bar``:
 external_variant
 -----------------
 
-This stanza was removed in dune 2.6. see :ref:`dune-variants`
+This stanza was experimental and removed in dune 2.6. see :ref:`dune-variants`
 
 .. _coq-theory:
 

@@ -331,7 +331,6 @@ module Extension = struct
   type 'a poly_info =
     { syntax : Dune_lang.Syntax.t
     ; stanzas : ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
-    ; experimental : bool
     ; key : 'a t
     }
 
@@ -339,7 +338,7 @@ module Extension = struct
 
   let syntax (Extension e) = e.syntax
 
-  let is_experimental (Extension e) = e.experimental
+  let is_experimental (Extension e) = Dune_lang.Syntax.experimental e.syntax
 
   type instance =
     { extension : info
@@ -354,22 +353,22 @@ module Extension = struct
      depends on the contents of dune files that declare extensions. *)
   let extensions = Table.create (module String) 32
 
-  let register ?(experimental = false) syntax stanzas arg_to_dyn =
+  let register syntax stanzas arg_to_dyn =
     let name = Dune_lang.Syntax.name syntax in
     if Table.mem extensions name then
       Code_error.raise "Dune_project.Extension.register: already registered"
         [ ("name", Dyn.Encoder.string name) ];
     let key = Univ_map.Key.create ~name arg_to_dyn in
-    let ext = { syntax; stanzas; experimental; key } in
+    let ext = { syntax; stanzas; key } in
     Table.add_exn extensions name (Extension ext);
     key
 
-  let register_simple ?experimental syntax stanzas =
+  let register_simple syntax stanzas =
     let unit_stanzas =
       let+ r = stanzas in
       ((), r)
     in
-    let (_ : unit t) = register ?experimental syntax unit_stanzas Unit.to_dyn in
+    let (_ : unit t) = register syntax unit_stanzas Unit.to_dyn in
     ()
 
   let instantiate ~dune_lang_ver ~loc ~parse_args (name_loc, name) (ver_loc, ver)
@@ -790,6 +789,6 @@ let wrapped_executables t = t.wrapped_executables
 
 let () =
   let open Dune_lang.Decoder in
-  Extension.register_simple ~experimental:true Action_plugin.syntax (return [])
+  Extension.register_simple Action_plugin.syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps

@@ -22,12 +22,11 @@ let relative_file =
 
 let () =
   let syntax =
-    Dune_lang.Syntax.create ~name:"library_variants"
+    Dune_lang.Syntax.create ~name:"library_variants" ~experimental:true
       ~desc:"the experimental library variants feature"
       [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
   in
-  Dune_project.Extension.register_simple ~experimental:true syntax
-    (Dune_lang.Decoder.return [])
+  Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
 
 let bisect_ppx_syntax =
   Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"

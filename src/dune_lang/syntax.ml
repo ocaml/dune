@@ -133,6 +133,7 @@ type t =
   ; desc : string
   ; key : Version.t Univ_map.Key.t
   ; supported_versions : Supported_versions.t
+  ; experimental : bool
   }
 
 module Error_msg = struct
@@ -189,11 +190,12 @@ module Warning = struct
       :: repl )
 end
 
-let create ~name ~desc supported_versions =
+let create ?(experimental = false) ~name ~desc supported_versions =
   { name
   ; desc
   ; key = Univ_map.Key.create ~name Version.to_dyn
   ; supported_versions = Supported_versions.make supported_versions
+  ; experimental
   }
 
 let name t = t.name
@@ -240,6 +242,8 @@ let greatest_supported_version ?dune_lang_ver t =
     t.supported_versions
 
 let key t = t.key
+
+let experimental t = t.experimental
 
 open Decoder
 

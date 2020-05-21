@@ -7,12 +7,11 @@ type t =
 let syntax =
   let syntax =
     Dune_lang.Syntax.create
-      ~name:"experimental_building_ocaml_compiler_with_dune"
+      ~name:"experimental_building_ocaml_compiler_with_dune" ~experimental:true
       ~desc:"experimental feature for building the compiler with dune"
       [ ((0, 1), `Since (1, 3)) ]
   in
-  Dune_project.Extension.register_simple ~experimental:true syntax
-    (Dune_lang.Decoder.return []);
+  Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return []);
   syntax
 
 let decode =

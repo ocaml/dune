@@ -59,7 +59,7 @@ module Supported_versions = struct
      {[ [ 1, [ 0, (1, 4); 1, (1, 6); 2, (2, 3) ]; 2, [ 0, (2, 3) ] ] ]} *)
   type t = Version.t Int.Map.t Int.Map.t
 
-  let to_dyn t = Int.Map.to_dyn (Int.Map.to_dyn Version.to_dyn) t
+  let to_dyn (t : t) = Int.Map.to_dyn (Int.Map.to_dyn Version.to_dyn) t
 
   (* We convert the exposed extension version type: {[ (Version.t * [ `Since of
      Version.t ]) list ]} which is a list of fully qualified versions paired
@@ -67,18 +67,14 @@ module Supported_versions = struct
      {[ (Version.t Int.Map.t) Int.Map.t ]} which is a list of major versions
      paired with lists of minor versions paires with a dune_lang version. *)
   let make (versions : (Version.t * [ `Since of Version.t ]) list) : t =
-    let v =
-      List.fold_left versions
-        ~init:(Int.Map.empty : t)
-        ~f:(fun major_map ((major, minor), `Since lang_ver) ->
-          let add_minor minor_map =
-            Some (Int.Map.add_exn minor_map minor lang_ver)
-          in
-          Int.Map.update major_map major ~f:(function
-            | Some minor_map -> add_minor minor_map
-            | None -> add_minor Int.Map.empty))
-    in
-    v
+    List.fold_left versions ~init:Int.Map.empty
+      ~f:(fun major_map ((major, minor), `Since lang_ver) ->
+        let add_minor minor_map =
+          Some (Int.Map.add_exn minor_map minor lang_ver)
+        in
+        Int.Map.update major_map major ~f:(function
+          | Some minor_map -> add_minor minor_map
+          | None -> add_minor Int.Map.empty))
 
   let remove_uncompatible_versions lang_ver =
     Int.Map.filter_map ~f:(fun minors ->

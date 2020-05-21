@@ -111,6 +111,10 @@ module Extension : sig
       [find_extension_args]. *)
   val register_simple :
     Dune_lang.Syntax.t -> Stanza.Parser.t list Dune_lang.Decoder.t -> unit
+
+  (** Register experimental extensions that were deleted *)
+  val register_deleted :
+    name:string -> deleted_in:Dune_lang.Syntax.Version.t -> unit
 end
 
 (** Load a project description from the following directory. [files] is the set

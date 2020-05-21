@@ -21,12 +21,8 @@ let relative_file =
         User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
 let () =
-  let syntax =
-    Dune_lang.Syntax.create ~name:"library_variants" ~experimental:true
-      ~desc:"the experimental library variants feature"
-      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
-  in
-  Dune_project.Extension.register_simple syntax (Dune_lang.Decoder.return [])
+  Dune_project.Extension.register_deleted ~name:"library_variants"
+    ~deleted_in:(2, 6)
 
 let bisect_ppx_syntax =
   Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
@@ -799,8 +795,6 @@ module Library = struct
          field_o "implements"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
            >>> located Lib_name.decode )
-       and+ (_ : unit option) =
-         field_o "variant" (Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6))
        and+ default_implementation =
          field_o "default_implementation"
            ( Dune_lang.Syntax.since Stanza.syntax (2, 6)

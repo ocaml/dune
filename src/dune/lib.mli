@@ -47,8 +47,6 @@ module Set : Set.S with type elt = t
 
 module Map : Map.S with type key = t
 
-val package : t -> Package.Name.t option
-
 val equal : t -> t -> bool
 
 val hash : t -> int

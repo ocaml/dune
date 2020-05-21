@@ -476,3 +476,9 @@ let to_dyn path
       , option Special_builtin_support.to_dyn special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)
     ]
+
+let package t =
+  match t.status with
+  | Installed -> Some (Lib_name.package_name t.name)
+  | Public (_, p) -> Some p.name
+  | Private _ -> None

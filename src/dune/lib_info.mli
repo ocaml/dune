@@ -209,4 +209,6 @@ val create :
   -> exit_module:Module_name.t option
   -> 'a t
 
+val package : _ t -> Package.Name.t option
+
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t

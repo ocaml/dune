@@ -358,12 +358,12 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
     libs_of_coq_deps ~lib_db s.buildable.libraries |> Result.ok_exn
   in
   let rules_for_lib lib =
+    let info = Lib.info lib in
     (* Don't install libraries that don't belong to this package *)
     if
-      Option.equal Package.Name.equal (Lib.package lib)
+      Option.equal Package.Name.equal (Lib_info.package info)
         (Some package.Package.name)
     then
-      let info = Lib.info lib in
       let loc = Lib_info.loc info in
       let plugins = Lib_info.plugins info in
       Mode.Dict.get plugins Mode.Native

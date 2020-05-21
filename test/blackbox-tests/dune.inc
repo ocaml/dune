@@ -254,6 +254,32 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias default-implementation-package-mismatch1-package-mismatch1)
+ (deps
+  (package dune)
+  (source_tree test-cases/default-implementation/package-mismatch1)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/default-implementation/package-mismatch1
+   (progn
+    (run dune-cram run package-mismatch1.t)
+    (diff? package-mismatch1.t package-mismatch1.t.corrected)))))
+
+(rule
+ (alias default-implementation-package-mismatch2-package-mismatch2)
+ (deps
+  (package dune)
+  (source_tree test-cases/default-implementation/package-mismatch2)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/default-implementation/package-mismatch2
+   (progn
+    (run dune-cram run package-mismatch2.t)
+    (diff? package-mismatch2.t package-mismatch2.t.corrected)))))
+
+(rule
  (alias default-targets)
  (deps
   (package dune)
@@ -2938,6 +2964,8 @@
   (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias cycle-detection-symlinks-2863)
+  (alias default-implementation-package-mismatch1-package-mismatch1)
+  (alias default-implementation-package-mismatch2-package-mismatch2)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
@@ -3226,6 +3254,8 @@
   (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias cycle-detection-symlinks-2863)
+  (alias default-implementation-package-mismatch1-package-mismatch1)
+  (alias default-implementation-package-mismatch2-package-mismatch2)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)

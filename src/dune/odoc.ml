@@ -39,7 +39,7 @@ let lib_unique_name lib =
   | Private project -> Scope_key.to_string name project
 
 let pkg_or_lnu lib =
-  match Lib.package lib with
+  match Lib_info.package (Lib.info lib) with
   | Some p -> Package.Name.to_string p
   | None -> lib_unique_name lib
 
@@ -275,14 +275,14 @@ let setup_library_odoc_rules cctx (library : Library.t) ~dep_graphs =
   let sctx = Compilation_context.super_context cctx in
   let ctx = Super_context.context sctx in
   let requires = Compilation_context.requires_compile cctx in
+  let info = Lib.info lib in
+  let package = Lib_info.package info in
   let odoc_include_flags =
-    Command.Args.memo (odoc_include_flags ctx (Lib.package lib) requires)
+    Command.Args.memo (odoc_include_flags ctx package requires)
   in
   let obj_dir = Compilation_context.obj_dir cctx in
   let modules = Compilation_context.modules cctx in
-  let includes =
-    (Dep.deps ctx (Lib.package lib) requires, odoc_include_flags)
-  in
+  let includes = (Dep.deps ctx package requires, odoc_include_flags) in
   let modules_and_odoc_files =
     Modules.fold_no_vlib modules ~init:[] ~f:(fun m acc ->
         let compiled =
@@ -462,7 +462,7 @@ let setup_lib_html_rules_def =
   let f (sctx, lib, requires) =
     let ctx = Super_context.context sctx in
     let odocs = odocs sctx (Lib lib) in
-    let pkg = Lib.package (Lib.Local.to_lib lib) in
+    let pkg = Lib_info.package (Lib.Local.info lib) in
     List.iter odocs ~f:(setup_html sctx ~pkg ~requires);
     let html_files = List.map ~f:(fun o -> Path.build o.html_file) odocs in
     let static_html = List.map ~f:Path.build (static_html ctx) in
@@ -687,7 +687,7 @@ let gen_rules sctx ~dir:_ rest =
       Lib.Local.of_lib lib
     in
     Option.iter lib ~f:(fun lib ->
-        match Lib.package (Lib.Local.to_lib lib) with
+        match Lib_info.package (Lib.Local.info lib) with
         | None ->
           setup_lib_html_rules sctx lib
             ~requires:(Lib.closure ~linking:false [ Lib.Local.to_lib lib ])

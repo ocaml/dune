@@ -372,13 +372,6 @@ let wrapped t =
       assert false (* will always be specified in dune package *)
     | Some (This x) -> Some x )
 
-let package t =
-  let status = Lib_info.status t.info in
-  match status with
-  | Installed -> Some (Lib_name.package_name t.name)
-  | Public (_, p) -> Some p.name
-  | Private _ -> None
-
 let to_id t : Id.t = t.unique_id
 
 let equal l1 l2 = Id.equal (to_id l1) (to_id l2)
@@ -1002,7 +995,35 @@ end = struct
     in
     let default_implementation =
       Lib_info.default_implementation info
-      |> Option.map ~f:(fun l -> lazy (resolve_impl l))
+      |> Option.map ~f:(fun l ->
+             lazy
+               (let* impl = resolve_impl l in
+                match Lib_info.package impl.info with
+                | None -> Ok impl
+                | Some p -> (
+                  let loc = fst l in
+                  match Lib_info.package info with
+                  | None ->
+                    (* We don't need to verify that impl is private if this
+                       virtual library is private. Every implementation already
+                       depends on the virtual library, so the check will be done
+                       there. *)
+                    Ok impl
+                  | Some p' ->
+                    (* It's not good to rely on package names for equality like
+                       this, but we piggy back on the fact that package names
+                       are globally unique *)
+                    if Package.Name.equal p p' then
+                      Ok impl
+                    else
+                      Error.make ~loc
+                        [ Pp.textf
+                            "default implementation belongs to package %s \
+                             while virtual libarary belongs to package %s. \
+                             This is impossible\n"
+                            (Package.Name.to_string p)
+                            (Package.Name.to_string p')
+                        ] )))
     in
     let { requires; pps; selects = resolved_selects; re_exports } =
       let pps = Lib_info.pps info in
@@ -1508,6 +1529,18 @@ module Compile = struct
       |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge )
 
   let for_lib db (t : lib) =
+    let requires =
+      (* This makes sure that the default implementation belongs to the same
+         package before we build the virtual library *)
+      let* () =
+        match t.default_implementation with
+        | None -> Result.ok ()
+        | Some i ->
+          let+ (_ : lib) = Lazy.force i in
+          ()
+      in
+      t.requires
+    in
     let lib_deps_info =
       let pps = Lib_info.pps t.info in
       let user_written_deps = Lib_info.user_written_deps t.info in
@@ -1521,11 +1554,11 @@ module Compile = struct
     in
     let requires_link =
       lazy
-        ( t.requires
+        ( requires
         >>= Resolve.compile_closure_with_overlap_checks db
               ~stack:Dep_stack.empty ~forbidden_libraries:Map.empty )
     in
-    { direct_requires = t.requires
+    { direct_requires = requires
     ; requires_link
     ; resolved_selects = t.resolved_selects
     ; pps = t.pps

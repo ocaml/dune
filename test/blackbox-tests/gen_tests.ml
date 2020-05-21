@@ -131,7 +131,7 @@ module Test = struct
     (* Make sure we generate paths with forward slashes even on Windows. *)
     let dir =
       String.map dir ~f:(fun c ->
-          if c == path_separator then
+          if c = path_separator then
             '/'
           else
             c)

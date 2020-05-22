@@ -1895,6 +1895,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias nonexistent-subdir)
+ (deps
+  (package dune)
+  (source_tree test-cases/nonexistent-subdir)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/nonexistent-subdir
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias null-dep)
  (deps (package dune) (source_tree test-cases/null-dep) (alias test-deps))
  (action
@@ -3197,6 +3208,7 @@
   (alias no-infer)
   (alias no-installable-mode)
   (alias no-name-field)
+  (alias nonexistent-subdir)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)
@@ -3479,6 +3491,7 @@
   (alias no-infer)
   (alias no-installable-mode)
   (alias no-name-field)
+  (alias nonexistent-subdir)
   (alias null-dep)
   (alias ocaml-config-macro)
   (alias ocaml-syntax)

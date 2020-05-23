@@ -36,9 +36,10 @@ let decode ?(allowed_vars = Any) ?(is_error = true) ~since () =
         ];
       return ()
     in
-    ( match String_with_vars.Var.(name var, payload var) with
-    | name, Some _ -> emit_warning name ()
-    | name, None -> (
+    let name = String_with_vars.Var.name var in
+    ( match String_with_vars.Var.payload var with
+    | Some _ -> emit_warning name ()
+    | None -> (
       match List.assoc allowed_vars name with
       | None -> emit_warning name ()
       | Some min_ver ->

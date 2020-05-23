@@ -5,7 +5,7 @@ type allowed_vars =
 val common_vars : since:Dune_lang.Syntax.Version.t -> allowed_vars
 
 val decode :
-     ?allowed_vars:allowed_vars
+     allowed_vars:allowed_vars
   -> ?is_error:bool
   -> since:Dune_lang.Syntax.Version.t option
   -> unit

@@ -2154,6 +2154,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias promote-directory)
+ (deps
+  (package dune)
+  (source_tree test-cases/promote-directory)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/promote-directory
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias quoting)
  (deps (package dune) (source_tree test-cases/quoting) (alias test-deps))
  (action
@@ -3222,6 +3233,7 @@
   (alias private-public-overlap)
   (alias project-root)
   (alias promote)
+  (alias promote-directory)
   (alias quoting)
   (alias re-exported-deps)
   (alias reason)
@@ -3494,6 +3506,7 @@
   (alias private-modules)
   (alias project-root)
   (alias promote)
+  (alias promote-directory)
   (alias quoting)
   (alias re-exported-deps)
   (alias redirections)

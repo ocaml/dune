@@ -107,7 +107,7 @@ Fatal error with opam file that is not listed in the dune-project file:
   package in your project.
   [1]
 
-Package information fields can be overriden per-package:
+Package information fields can be overridden per-package:
 
   $ mkdir test2
   $ cat >test2/dune-project <<EOF
@@ -370,7 +370,7 @@ generate a dune dependency with a constraint:
   ]
 
 With the dune dependency declared in the dune-project file and version
-of the langauge < 2.6 we don't add the constraint:
+of the language < 2.6 we don't add the constraint:
 
   $ cat > dune-project <<EOF
   > (lang dune 2.5)
@@ -383,7 +383,7 @@ of the langauge < 2.6 we don't add the constraint:
   $ grep ^depends: foo.opam
   depends: ["dune"]
 
-Same with version of the langauge >= 2.6, we now add the constraint:
+Same with version of the language >= 2.6, we now add the constraint:
 
   $ cat > dune-project <<EOF
   > (lang dune 2.6)

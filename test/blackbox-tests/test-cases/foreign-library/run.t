@@ -747,7 +747,7 @@ Testsuite for the (foreign_library ...) stanza.
 
 ----------------------------------------------------------------------------------
 * External library directories in (include_dir ...)
-* Build fails when using an uknown library
+* Build fails when using an unknown library
 
   $ cat >some/dir/dune <<EOF
   > (foreign_library

@@ -32,7 +32,7 @@ In the rest of this page, we develop these points and give some
 insights into our current and future focuses.
 
 Have excellent backward compatibility properties
-===============================================
+================================================
 
 In an open-source community, there will always be groups of people
 with enough resources to continuously bring their projects up to date

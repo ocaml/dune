@@ -100,7 +100,7 @@ printed on the console (and the parallelism is disabled so that the output stays
 readable).
 
 How can I generate an mli file from an ml file?
-=============================================
+===============================================
 
 When a module starts as just an implementation (``.ml`` file), it can be tedious
 to define the corresponding interface (``.mli`` file).

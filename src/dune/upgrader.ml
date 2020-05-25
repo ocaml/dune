@@ -474,7 +474,7 @@ end
 module V2 = struct
   open Common
 
-  (* If no mode is defined, explicitely use the previous default *)
+  (* If no mode is defined, explicitly use the previous default *)
   let explicit_mode fields =
     if Ast_tools.is_in_fields [ "modes" ] fields then
       fields
@@ -690,7 +690,7 @@ let upgrade () =
         Io.write_file (Path.source new_file) contents ~binary:true);
     if !v1_updates && not last then (
       (* Run the upgrader again to update new v1 projects to v2 No more than one
-         additionnal upgrade should be needed *)
+         additional upgrade should be needed *)
       (* We reset thje memoization as a simple way to refresh the File_tree *)
       Memo.reset ();
       aux true

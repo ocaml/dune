@@ -6,7 +6,7 @@ include Cache
 (** The default root directory of the local cache. *)
 val default_root : unit -> Path.t
 
-(** A matadata file contains a list of [files] produced by a cached build rule,
+(** A metadata file contains a list of [files] produced by a cached build rule,
     along with some [metadata] that can be empty.
 
     One example of what can be included in the [metadata] field is a git commit

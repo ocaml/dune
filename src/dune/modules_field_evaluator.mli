@@ -1,5 +1,5 @@
-(** The modules field evaluator inteprets the module sources into proper modules
-    in a directroy in the context of a stanza from a dune file. *)
+(** The modules field evaluator interprets the module sources into proper
+    modules in a directory in the context of a stanza from a dune file. *)
 open! Stdune
 
 module Virtual : sig

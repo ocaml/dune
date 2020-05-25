@@ -20,7 +20,7 @@ let run_build_command ~common ~targets =
     (* Synchronously wait for the end of the connection with the cache daemon,
        ensuring all dedup messages have been queued. *)
     Caching.Cache.teardown Caching.cache;
-    (* Hande all remaining dedup mesages. *)
+    (* Hande all remaining dedup messages. *)
     Scheduler.wait_for_dune_cache ()
   | None -> ()
 

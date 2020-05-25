@@ -41,7 +41,7 @@ let resolve_program sctx ~loc ~dir prog =
 
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being
-     built, in case we need to explictly tell Coq where the build artifacts are
+     built, in case we need to explitly tell Coq where the build artifacts are
      and add `Init.Prelude.vo` as a dependency; there is a further special case
      when compiling the prelude, in this case we also need to tell Coq not to
      try to load the prelude. *)

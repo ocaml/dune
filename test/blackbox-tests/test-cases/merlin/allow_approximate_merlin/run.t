@@ -11,7 +11,7 @@ For lang >= 1.9, a warning is printed:
   4 |  (preprocess future_syntax))
                    ^^^^^^^^^^^^^
   Warning: .merlin generated is inaccurate. Cannot mix preprocessed and non
-  preprocessed specificiations.
+  preprocessed specifications.
   Split the stanzas into different directories or silence this warning by
   adding (allow_approximate_merlin) to your dune-project.
 

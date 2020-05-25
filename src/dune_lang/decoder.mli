@@ -103,7 +103,7 @@ type kind =
 
 val kind : (kind, _) parser
 
-(** [repeat t] use [t] to consume all remaning elements of the input until the
+(** [repeat t] uses [t] to consume all remaining elements of the input until the
     end of sequence is reached. *)
 val repeat : 'a t -> 'a list t
 

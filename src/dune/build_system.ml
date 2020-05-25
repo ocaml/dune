@@ -1826,7 +1826,7 @@ let package_deps pkg files =
   let rec loop fn acc =
     match Path.as_in_build_dir fn with
     | None ->
-      (* if this file isn't in the build dir, it doesnt belong to any packages
+      (* if this file isn't in the build dir, it doesn't belong to any package
          and it doesn't have dependencies that do *)
       acc
     | Some fn ->

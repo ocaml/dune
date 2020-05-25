@@ -2,7 +2,7 @@
     expansion:
 
     1. Static. In this mode it will only expand variables that do not introduce
-    dependncies
+    dependencies
 
     2. Dynamic. In this mode, the expander will record dependencies that are
     introduced by forms it has failed to expand. Later, these dependenceis can
@@ -43,7 +43,7 @@ val set_artifacts_dynamic : t -> bool -> t
 val set_lookup_ml_sources :
   t -> f:(dir:Path.Build.t -> Ml_sources.Artifacts.t) -> t
 
-(** Expander need to expand custom bindings sometimes. For exmaple, the name of
+(** Expander needs to expand custom bindings sometimes. For example, the name of
     the library for the action that runs inline tests. This is the place to add
     such bindings. *)
 val add_bindings : t -> bindings:Pform.Map.t -> t

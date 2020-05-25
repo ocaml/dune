@@ -36,7 +36,7 @@ module Args : sig
 
   (** The type [expand] captures the meaning of a static [Command.Args.t] that
       has no target declarations: it is a way to construct functions that given
-      a current working directory [dir] compute the list of commmand line
+      a current working directory [dir] compute the list of command line
       arguments of type [string list] and a set of dependencies of type
       [Dep.Set.t], or fail. You can use the constructor [Expand] to specify the
       meaning directly, which is sometimes useful, e.g. for memoization. *)

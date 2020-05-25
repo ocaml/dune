@@ -55,7 +55,7 @@ module Run (P : PARAMS) : sig end = struct
   let sctx = Compilation_context.super_context cctx
 
   (* [build_dir] is the base directory of the context; we run menhir from this
-     directoy to we get correct error paths. *)
+     directory to we get correct error paths. *)
   let build_dir = Super_context.build_dir sctx
 
   let expander = Compilation_context.expander cctx

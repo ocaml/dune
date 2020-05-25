@@ -67,7 +67,7 @@ module Commands = struct
 end
 
 (* [to_local p] makes absolute path [p] relative to the projects root and
-   optionaly removes the build context *)
+   optionally removes the build context *)
 let to_local abs_file_path =
   let error msg = Error msg in
   let path_opt =

@@ -1,4 +1,4 @@
-(** Module layout information. Contains infromation about aliasing, wrapping. *)
+(** Module layout information. Contains information about aliasing, wrapping. *)
 open Stdune
 
 type t

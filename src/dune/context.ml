@@ -790,7 +790,7 @@ module Create = struct
 
        - step 3: wait for all instantiation fibers to complete
 
-       If there was a cycle between contexts, the bellow code would dead-lock.
+       If there was a cycle between contexts, the below code would dead-lock.
        However, we check at parsing time that there is no such cycle. *)
     let contexts_map_ivar = Fiber.Ivar.create () in
     let* contexts =

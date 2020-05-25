@@ -70,7 +70,7 @@ let simple_subst =
     let slen = String.length s in
     let extract_placeholder pos =
       let open Option.O in
-      (* Look at the begining manually otherwise it's too slow *)
+      (* Look at the beginning manually otherwise it's too slow *)
       if
         pos + 3 >= slen
         || s.[pos] <> '%'

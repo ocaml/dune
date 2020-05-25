@@ -9,7 +9,7 @@ module Library = Dune_file.Library
    of source files without shoving everything into [Dir_contents].
 
    Furthemore, this module is also responsible for details such as handling file
-   extensions and validing filenames. *)
+   extensions and validating filenames. *)
 type t =
   { libraries : Foreign.Sources.t Lib_name.Map.t
   ; archives : Foreign.Sources.t Foreign.Archive.Name.Map.t

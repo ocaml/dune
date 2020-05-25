@@ -12,7 +12,7 @@ type t
 (** Returns the wrapper name, a dot-separated list of Coq module identifies *)
 val wrapper : t -> string
 
-(** Returns the directoy name for a lib name, in this case library name foo.bar
+(** Returns the directory name for a lib name, in this case library name foo.bar
     lives in foo/bar *)
 val dir : t -> string
 

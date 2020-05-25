@@ -64,7 +64,7 @@ val display_term : Dune.Config.Display.t option Cmdliner.Term.t
 
 val context_arg : doc:string -> Dune.Context_name.t Cmdliner.Term.t
 
-(** A [--build-info] command line argument that print build informations
+(** A [--build-info] command line argument that print build information
     (included in [term]) *)
 val build_info : unit Cmdliner.Term.t
 

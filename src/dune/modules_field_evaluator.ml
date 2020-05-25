@@ -167,7 +167,8 @@ let check_invalid_module_listing ~(buildable : Buildable.t) ~intf_only ~modules
         User_error.raise ~loc (List.concat [ before; [ line_list l ]; after ])
     in
     print
-      [ Pp.text "The folowing modules are implementations of virtual modules:" ]
+      [ Pp.text "The following modules are implementations of virtual modules:"
+      ]
       vmodule_impls_with_own_intf
       [ Pp.text "They cannot have their own interface files." ];
     print

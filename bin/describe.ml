@@ -102,7 +102,7 @@ end
    arguments of the command line to a list of atoms and we parse it using the
    regular [Dune_lang.Decoder].
 
-   This way we can reuse all the existing versionning, error reporting, etc...
+   This way we can reuse all the existing versioning, error reporting, etc...
    machinery. This also allow to easily extend this to arbitrary complex phrases
    without hassle. *)
 module What = struct

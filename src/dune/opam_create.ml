@@ -116,19 +116,26 @@ let insert_dune_dep depends dune_version =
 
 let opam_fields project (package : Package.t) =
   let dune_version = Dune_project.dune_version project in
-  let dune_in_deps = List.exists ~f:(function dep -> Package.(Name.equal dep.Dependency.name dune_name)) package.depends in
   let package =
     if dune_version < (1, 11) || Package.Name.equal package.name dune_name then
-      let () =
-        if not (Package.Name.equal package.name dune_name) && not dune_in_deps then
-          User_warning.emit ?is_error:None ?loc:None ?hints:None [
-            Pp.text "I suggest you to add dune in the depends field or upgrade to dune lang >= 1.11" ] in
       package
     else
       let () =
-        if not (Package.Name.equal package.name dune_name) && dune_in_deps  then
-          User_warning.emit ~is_error:(dune_version >= (2, 6)) ?loc:None ?hints:None [
-            Pp.text "I suggest you to remove dune in the depends field  because I will add myself automatically with the right constraint" ] in
+        if dune_version >= (2, 6) then
+          let dune_in_deps =
+            List.exists
+              ~f:(function
+                | dep -> Package.(Name.equal dep.Dependency.name dune_name))
+              package.depends
+          in
+          if dune_in_deps && not (Package.Name.equal package.name dune_name)
+          then
+            User_warning.emit ~is_error:true ~loc:package.loc ?hints:None
+              [ Pp.text
+                  "I suggest you to remove dune in the depends field because I \
+                   will add myself automatically with the right constraint."
+              ]
+      in
       { package with depends = insert_dune_dep package.depends dune_version }
   in
   let package_fields = package_fields package ~project in

@@ -767,7 +767,7 @@ is ``.dll``.
 
 Up to version 3.0 of the dune language, when ``byte`` is specified but
 none of ``native``, ``exe`` or ``byte_complete`` are specified Dune
-implicitely adds a linking mode that is the same as ``byte_complete``
+implicitly adds a linking mode that is the same as ``byte_complete``
 but using the extension ``.exe``. ``.bc`` files require additional
 files at runtime that are not currently tracked by Dune, so you should
 not run ``.bc`` files during the build. Run the ``.bc.exe`` or

@@ -663,7 +663,7 @@ The following constructions are available:
 - ``(with-accepted-exit-codes <pred> <DSL>)`` specifies the list of expected exit codes
   for the programs executed in ``<DSL>``. ``<pred>`` is a predicate on integer
   values, and is specified using the :ref:`predicate-lang`. ``<DSL>`` can only
-  contain nested occurences of ``run``, ``bash``, ``system``, ``chdir``,
+  contain nested occurrences of ``run``, ``bash``, ``system``, ``chdir``,
   ``setenv``, ``ignore-<outputs>``, ``with-stdin-from`` and
   ``with-<outputs>-to``. This action is available since dune 2.0.
 - ``(progn <DSL>...)`` to execute several commands in sequence
@@ -1000,7 +1000,7 @@ recommended to use this method in new projects as we expect to deprecate it in
 the future. The right way to define a package is with a ``package`` stanza in
 the ``dune-project`` file.
 
-See :ref:`opam-generation` for intructions on configuring dune to automatically
+See :ref:`opam-generation` for instructions on configuring dune to automatically
 generate ``.opam`` files based on the ``package`` stanzas.
 
 Attaching elements to a package

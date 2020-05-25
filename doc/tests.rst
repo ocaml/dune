@@ -240,7 +240,7 @@ Specifying inline test dependencies
 -----------------------------------
 
 If your tests are reading files, you must say it to dune by adding
-a ``deps`` field the the ``inline_tests`` field. The argument of this
+a ``deps`` field the ``inline_tests`` field. The argument of this
 ``deps`` field follows the usual :ref:`deps-field`. For instance:
 
 .. code:: ocaml

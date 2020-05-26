@@ -1690,8 +1690,6 @@ command to workaround problems with the output directory is not
 allowed when using extraction from Dune; moreover the ``Cd`` command
 will be deprecated in Coq 8.12.
 
-.. _dune-workspace:
-
 mdx (since 2.4)
 ---------------
 
@@ -1731,6 +1729,8 @@ Where ``<optional-fields>`` are:
 - ``(preludes <files>)`` are the prelude files you want to pass to MDX.
   See `MDX's documentation <https://github.com/realworldocaml/mdx>`__ for more
   details on preludes.
+
+.. _dune-workspace:
 
 dune-workspace
 ==============

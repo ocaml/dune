@@ -56,10 +56,12 @@ let long_running_fiber () =
 
 let never_fiber () = Fiber.never
 
+let backtrace_result dyn_of_ok =
+  Result.to_dyn dyn_of_ok (list Exn_with_backtrace.to_dyn)
+
 let%expect_test _ =
   Scheduler.run (Fiber.collect_errors failing_fiber)
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+  |> backtrace_result unit |> print_dyn;
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
@@ -76,54 +78,49 @@ let%expect_test _ =
 Ok ()
 |}]
 
+let test to_dyn f = Scheduler.run f |> to_dyn |> print_dyn
+
 let%expect_test _ =
-  Scheduler.run
+  test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         failing_fiber () >>= fun () -> failing_fiber ()))
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         failing_fiber () >>= fun () -> failing_fiber ()));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
-  Scheduler.run
+  test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:ignore))
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         Fiber.with_error_handler failing_fiber ~on_error:ignore));
   [%expect {|
 Error []
 |}]
 
 let%expect_test _ =
-  Scheduler.run
-    ( Fiber.collect_errors (fun () ->
-          Fiber.with_error_handler failing_fiber ~on_error:ignore)
-    >>| fun _result -> "" )
-  |> string |> print_dyn;
+  test (backtrace_result unit)
+    (Fiber.collect_errors (fun () ->
+         Fiber.with_error_handler failing_fiber ~on_error:ignore));
   [%expect {|
-""
+Error []
 |}]
 
 let%expect_test _ =
-  Scheduler.run
+  test
+    (backtrace_result (pair unit unit))
     (Fiber.collect_errors (fun () ->
-         Fiber.fork_and_join failing_fiber long_running_fiber))
-  |> Result.to_dyn (pair unit unit) (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         Fiber.fork_and_join failing_fiber long_running_fiber));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
-  Scheduler.run
+  test
+    (pair (backtrace_result unit) unit)
     (Fiber.fork_and_join
-       (fun () -> Fiber.collect_errors failing_fiber >>| fun _ -> "")
-       long_running_fiber)
-  |> pair string unit |> print_dyn;
+       (fun () -> Fiber.collect_errors failing_fiber)
+       long_running_fiber);
   [%expect {|
-("", ())
+(Error [ { exn = "Exit"; backtrace = "" } ], ())
 |}]
 
 let flag_set = ref false
@@ -135,7 +132,7 @@ let%expect_test _ =
       Scheduler.run
         (Fiber.fork_and_join_unit never_fiber (fun () ->
              Fiber.collect_errors failing_fiber >>= fun _ ->
-             long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
+             long_running_fiber () >>= fun () -> Fiber.return (flag_set := true)))
     with Scheduler.Never -> never_raised := true );
   [%expect {| |}]
 
@@ -167,7 +164,7 @@ let%expect_test _ =
       Scheduler.run
         (Fiber.fork_and_join_unit never_fiber (fun () ->
              Fiber.collect_errors forking_fiber >>= fun _ ->
-             long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
+             long_running_fiber () >>= fun () -> Fiber.return (flag_set := true)))
     with Scheduler.Never -> never_raised := true )
   |> unit |> print_dyn;
   [%expect {|

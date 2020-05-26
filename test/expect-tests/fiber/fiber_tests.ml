@@ -128,6 +128,31 @@ let%expect_test _ =
 (Error [ { exn = "Exit"; backtrace = "" } ], ())
 |}]
 
+let%expect_test _ =
+  test opaque
+    (Fiber.fork_and_join
+       (fun () ->
+         let log_error by (e : Exn_with_backtrace.t) =
+           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
+         in
+         Fiber.with_error_handler ~on_error:(log_error "outer") (fun () ->
+             Fiber.fork_and_join failing_fiber (fun () ->
+                 Fiber.with_error_handler
+                   ~on_error:(fun e ->
+                     log_error "inner" e;
+                     raise Exit)
+                   failing_fiber)))
+       long_running_fiber);
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  (Dune_fiber_tests.Fiber_tests.Scheduler.Never)
+  Trailing output
+  ---------------
+  outer: raised Exit
+  inner: raised Exit
+  outer: raised Exit |}]
+
 let flag_set = ref false
 
 let never_raised = ref false

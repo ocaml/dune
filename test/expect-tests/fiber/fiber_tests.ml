@@ -88,19 +88,24 @@ let%expect_test _ =
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
+let log_error (e : Exn_with_backtrace.t) =
+  Printf.printf "raised %s\n" (Printexc.to_string e.exn)
+
 let%expect_test _ =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:ignore));
+         Fiber.with_error_handler failing_fiber ~on_error:log_error));
   [%expect {|
+raised Exit
 Error []
 |}]
 
 let%expect_test _ =
   test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:ignore));
+         Fiber.with_error_handler failing_fiber ~on_error:log_error));
   [%expect {|
+raised Exit
 Error []
 |}]
 

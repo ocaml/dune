@@ -502,7 +502,7 @@ Dependencies in ``dune`` files can be specified using one of the following:
 
 .. _source_tree:
 
-- ``(:name <dependencies>)`` will bind the the list of dependencies to the
+- ``(:name <dependencies>)`` will bind the list of dependencies to the
   ``name`` variable. This variable will be available as ``%{name}`` in actions.
 - ``(file <filename>)`` or simply ``<filename>``: depend on this file
 - ``(alias <alias-name>)``: depend on the construction of this alias, for

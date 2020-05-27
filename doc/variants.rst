@@ -158,7 +158,7 @@ Some of these are temporary.
   is, modules that aren't a part of the virtual library's cmi. Consequently, a
   module in an implementation either implements a virtual module or is private.
 
-* It's not possible to load virtual virtual libraries into utop. As a result,
+* It's not possible to load virtual libraries into utop. As a result,
   any directory that contains a virtual library will not work with ``$ dune
   utop``. This is an essential limitation, but it would be best to somehow skip
   these libraries or provide an implementation for them when loading a toplevel.

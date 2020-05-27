@@ -5,23 +5,23 @@ FAQ
 Why do many dune projects contain a Makefile?
 =============================================
 
-Many dune projects contain a root `Makefile`. It is often only there for
+Many dune projects contain a root ``Makefile``. It is often only there for
 convenience, for the following reasons:
 
 1. there are many different build systems out there, all with a different CLI.
    If you have been hacking for a long time, the one true invocation you know is
-   `make && make install`, possibly preceded by `./configure`
+   ``make && make install``, possibly preceded by ``./configure``
 
 2. you often have a few common operations that are not part of the build and
-   `make <blah>` is a good way to provide them
+   ``make <blah>`` is a good way to provide them
 
-3. `make` is shorter to type than `dune build @install`
+3. ``make`` is shorter to type than ``dune build @install``
 
 How to add a configure step to a dune project?
 ==============================================
 
 The with-configure-step_ example shows one way to do it which
-preserves composability; i.e. it doesn't require manually running `./configure`
+preserves composability; i.e. it doesn't require manually running ``./configure``
 script when working on multiple projects at the same time.
 
 .. _with-configure-step: https://github.com/ocaml/dune/tree/master/example/sample-projects/with-configure-step
@@ -100,7 +100,7 @@ printed on the console (and the parallelism is disabled so that the output stays
 readable).
 
 How can I generate an mli file from an ml file?
-=============================================
+===============================================
 
 When a module starts as just an implementation (``.ml`` file), it can be tedious
 to define the corresponding interface (``.mli`` file).

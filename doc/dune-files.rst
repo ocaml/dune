@@ -445,7 +445,7 @@ to use the :ref:`include_subdirs` stanza.
   when constructing the library archive file for the C stubs. ``<flags>`` uses
   the :ref:`ordered-set-language` and supports ``(:include ...)`` forms. When you
   are writing bindings for a C library named ``bar``, you should typically write
-  ``-lbar`` here, or whatever flags are necessary to to link against this
+  ``-lbar`` here, or whatever flags are necessary to link against this
   library
 
 - ``(modules_without_implementation <modules>)`` specifies a list of

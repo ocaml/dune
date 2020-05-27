@@ -19,7 +19,7 @@ Writing documentation
 =====================
 
 Documentation comments will be automatically extracted from your OCaml source
-files following the syntax described in the the section ``Text formatting`` of
+files following the syntax described in the section ``Text formatting`` of
 the `OCaml manual <http://caml.inria.fr/pub/docs/manual-ocaml/ocamldoc.html>`_.
 
 Additional documentation pages may by attached to a package can be attached

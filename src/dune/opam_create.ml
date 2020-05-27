@@ -83,6 +83,31 @@ let package_fields
 
 let dune_name = Package.Name.of_string "dune"
 
+(* dependencies is correct if we can't install wrong version of dune *)
+let is_correct depends dune_version =
+  let f prev { Package.Dependency.name; constraint_ } =
+    let rec map = function
+      | Package.Dependency.Constraint.Bvar (Var "build") -> false
+      | Bvar _ -> true
+      | Uop (op, var) ->
+        true
+        (* ASK: are var always in the form x.x.x ? here we want to check upper
+           bound or = *)
+      | Bop (_, _, _) -> false (* <> always create a invalid_range *)
+      | And c ->
+        List.fold_left ~f:(fun prev dep -> prev || map dep) ~init:true c
+      | Or c ->
+        List.fold_left ~f:(fun prev dep -> prev && map dep) ~init:false c
+    in
+    prev
+    && ( name <> dune_name
+       ||
+       match constraint_ with
+       | None -> false
+       | Some c -> map c )
+  in
+  List.fold_left ~f ~init:true depends
+
 let insert_dune_dep depends dune_version =
   let constraint_ : Package.Dependency.Constraint.t =
     let dune_version = Dune_lang.Syntax.Version.to_string dune_version in
@@ -130,7 +155,9 @@ let opam_fields project (package : Package.t) =
           in
           if dune_in_deps && not (Package.Name.equal package.name dune_name)
           then
-            User_warning.emit ~is_error:true ~loc:package.loc ?hints:None
+            User_warning.emit
+              ~is_error:(not (is_correct package.depends dune_version))
+              ~loc:package.loc ?hints:None
               [ Pp.text
                   "I suggest you to remove dune in the depends field because I \
                    will add myself automatically with the right constraint."

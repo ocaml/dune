@@ -153,6 +153,18 @@ let%expect_test _ =
   inner: raised Exit
   outer: raised Exit |}]
 
+(* Collect errors has a subtle behavior. It can cause a fiber not to terminate
+   if all the sub-fibers spawned aren't awaited *)
+let%expect_test "collect_errors and termination" =
+  let fiber =
+    Fiber.fork_and_join_unit long_running_fiber (fun () ->
+        Fiber.collect_errors (fun () ->
+            let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
+            Fiber.return 50))
+  in
+  test (backtrace_result int) fiber
+  [@@expect.uncaught_exn {| (Dune_fiber_tests.Fiber_tests.Scheduler.Never) |}]
+
 let flag_set = ref false
 
 let never_raised = ref false

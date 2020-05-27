@@ -55,6 +55,8 @@ You can also pass a directory argument to run the tests from a sub-tree. For
 instance ``dune runtest test`` will only run the tests from the ``test``
 directory and any sub-directory of ``test`` recursively.
 
+.. _inline_tests:
+
 Inline tests
 ============
 

@@ -101,15 +101,6 @@ Error []
 |}]
 
 let%expect_test _ =
-  test (backtrace_result unit)
-    (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:log_error));
-  [%expect {|
-raised Exit
-Error []
-|}]
-
-let%expect_test _ =
   test
     (backtrace_result (pair unit unit))
     (Fiber.collect_errors (fun () ->

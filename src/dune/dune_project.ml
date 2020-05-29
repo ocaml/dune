@@ -321,8 +321,6 @@ let lang_stanza = Project_file_edit.lang_stanza
 let ensure_project_file_exists t =
   Project_file_edit.ensure_exists t.project_file
 
-let append_to_project_file t str = Project_file_edit.append t.project_file str
-
 module Extension = struct
   type 'a t = 'a Univ_map.Key.t
 

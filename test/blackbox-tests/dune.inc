@@ -59,11 +59,25 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias bisect-ppx)
- (deps (package dune) (source_tree test-cases/bisect-ppx) (alias test-deps))
+ (alias bisect-ppx-github3473)
+ (deps
+  (package dune)
+  (source_tree test-cases/bisect-ppx/github3473)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/bisect-ppx
+   test-cases/bisect-ppx/github3473
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias bisect-ppx-main)
+ (deps
+  (package dune)
+  (source_tree test-cases/bisect-ppx/main)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/bisect-ppx/main
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2947,7 +2961,8 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
-  (alias bisect-ppx)
+  (alias bisect-ppx-github3473)
+  (alias bisect-ppx-main)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -3239,6 +3254,7 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
+  (alias bisect-ppx-github3473)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)

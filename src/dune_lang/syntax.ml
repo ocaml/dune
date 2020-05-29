@@ -83,16 +83,15 @@ module Supported_versions = struct
         in
         Option.some_if (not (Int.Map.is_empty minors)) minors)
 
-  let rec greatest_supported_version ?dune_lang_ver t =
+  let greatest_supported_version t =
     let open Option.O in
-    match dune_lang_ver with
-    | Some lang_ver ->
-      let compat = remove_uncompatible_versions lang_ver t in
-      greatest_supported_version compat
-    | None ->
-      let* major, minors = Int.Map.max_binding t in
-      let* minor, _ = Int.Map.max_binding minors in
-      Some (major, minor)
+    let* major, minors = Int.Map.max_binding t in
+    let+ minor, _ = Int.Map.max_binding minors in
+    (major, minor)
+
+  let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
+    let compat = remove_uncompatible_versions dune_lang_ver t in
+    greatest_supported_version compat
 
   let get_min_lang_ver t (major, minor) =
     let open Option.O in
@@ -101,11 +100,11 @@ module Supported_versions = struct
 
   let is_supported t (major, minor) lang_ver =
     match Int.Map.find t major with
+    | None -> false
     | Some t -> (
       match Int.Map.find t minor with
       | Some min_lang_ver -> lang_ver >= min_lang_ver
       | None -> false )
-    | None -> false
 
   let supported_ranges lang_ver (t : t) =
     let compat = remove_uncompatible_versions lang_ver t in
@@ -233,9 +232,13 @@ let check_supported ~dune_lang_ver t (loc, ver) =
     let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
     User_warning.emit ~is_error ~loc message
 
-let greatest_supported_version ?dune_lang_ver t =
-  Supported_versions.greatest_supported_version ?dune_lang_ver
-    t.supported_versions
+let greatest_supported_version t =
+  Option.value_exn
+    (Supported_versions.greatest_supported_version t.supported_versions)
+
+let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
+  Supported_versions.greatest_supported_version_for_dune_lang
+    t.supported_versions ~dune_lang_ver
 
 let key t = t.key
 

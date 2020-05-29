@@ -247,9 +247,7 @@ include Dune_lang.Versioned_file.Make (struct
 end)
 
 let default_dune_language_version =
-  ref
-    (Option.value_exn
-       (Dune_lang.Syntax.greatest_supported_version Stanza.syntax))
+  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
 
 let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
@@ -409,8 +407,8 @@ module Extension = struct
                 Some (0, 0)
               else
                 let dune_lang_ver = lang.Lang.Instance.version in
-                Dune_lang.Syntax.greatest_supported_version ~dune_lang_ver
-                  e.syntax
+                Dune_lang.Syntax.greatest_supported_version_for_dune_lang
+                  ~dune_lang_ver e.syntax
             in
             match version with
             | None -> acc

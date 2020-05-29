@@ -157,22 +157,35 @@ let%expect_test "collect_errors and termination" =
   test ~expect_never:true (backtrace_result int) fiber;
   [%expect {| [PASS] Never raised as expected |}]
 
-let flag_set = ref false
+let must_set_flag f =
+  let flag = ref false in
+  let setter () = flag := true in
+  let check_set () =
+    print_endline
+      ( if !flag then
+        "[PASS] flag set"
+      else
+        "[FAIL] flag not ste" )
+  in
+  try
+    f setter;
+    check_set ()
+  with e ->
+    check_set ();
+    raise e
 
 let%expect_test _ =
-  test ~expect_never:true unit
-  @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-         Fiber.collect_errors failing_fiber >>= fun _ ->
-         long_running_fiber () >>= fun () -> Fiber.return (flag_set := true));
-  [%expect {| [PASS] Never raised as expected |}]
-
-let%expect_test _ =
-  !flag_set |> bool |> print_dyn;
-  [%expect {|
-true
-|}]
-
-let flag_set = ref false
+  must_set_flag (fun setter ->
+      test ~expect_never:true unit
+      @@ Fiber.fork_and_join_unit never_fiber (fun () ->
+             Fiber.collect_errors failing_fiber >>= fun res ->
+             print_dyn (backtrace_result unit res);
+             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+  [%expect
+    {|
+    Error [ { exn = "Exit"; backtrace = "" } ]
+    [PASS] Never raised as expected
+    [PASS] flag set |}]
 
 let%expect_test _ =
   let forking_fiber () =
@@ -188,14 +201,20 @@ let%expect_test _ =
             (Option.value_exn (which "false"))
             [])
   in
-  test ~expect_never:true unit
-  @@ Fiber.fork_and_join_unit never_fiber (fun () ->
-         Fiber.collect_errors forking_fiber >>= fun _ ->
-         long_running_fiber () >>= fun () -> Fiber.return (flag_set := true));
-  [%expect {| [PASS] Never raised as expected |}]
-
-let%expect_test _ =
-  !flag_set |> bool |> print_dyn;
-  [%expect {|
-true
-|}]
+  must_set_flag (fun setter ->
+      test ~expect_never:true unit
+      @@ Fiber.fork_and_join_unit never_fiber (fun () ->
+             Fiber.collect_errors forking_fiber >>= fun res ->
+             print_dyn (backtrace_result (list unit) res);
+             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ]
+    [PASS] Never raised as expected
+    [PASS] flag set |}]

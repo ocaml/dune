@@ -300,16 +300,17 @@ module Project_file_edit = struct
       t.exists <- true;
       Created
 
-  let append t str =
+  let append t sexp =
     let what = ensure_exists t in
     let prev = Io.read_file (Path.source t.file) ~binary:false in
+    let sexp = Dune_lang.to_string sexp in
     notify_user
       [ Pp.textf "Appending this line to %s: %s"
           (Path.Source.to_string_maybe_quoted t.file)
-          str
+          sexp
       ];
     Io.with_file_out (Path.source t.file) ~binary:false ~f:(fun oc ->
-        List.iter [ prev; str ] ~f:(fun s ->
+        List.iter [ prev; sexp ] ~f:(fun s ->
             output_string oc s;
             let len = String.length s in
             if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'));
@@ -425,14 +426,13 @@ module Extension = struct
                           dune_project_edited := true;
                           ignore
                             ( Project_file_edit.append project_file
-                                (Dune_lang.to_string
-                                   (List
-                                      [ Dune_lang.atom "using"
-                                      ; Dune_lang.atom name
-                                      ; Dune_lang.atom
-                                          (Dune_lang.Syntax.Version.to_string
-                                             version)
-                                      ]))
+                                (List
+                                   [ Dune_lang.atom "using"
+                                   ; Dune_lang.atom name
+                                   ; Dune_lang.atom
+                                       (Dune_lang.Syntax.Version.to_string
+                                          version)
+                                   ])
                               : created_or_already_exist )
                         );
                         p ))

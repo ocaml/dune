@@ -59,9 +59,10 @@ let never_fiber () = Fiber.never
 let backtrace_result dyn_of_ok =
   Result.to_dyn dyn_of_ok (list Exn_with_backtrace.to_dyn)
 
+let test to_dyn f = Scheduler.run f |> to_dyn |> print_dyn
+
 let%expect_test _ =
-  Scheduler.run (Fiber.collect_errors failing_fiber)
-  |> backtrace_result unit |> print_dyn;
+  test (backtrace_result unit) (Fiber.collect_errors failing_fiber);
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
@@ -77,8 +78,6 @@ let%expect_test _ =
   [%expect {|
 Ok ()
 |}]
-
-let test to_dyn f = Scheduler.run f |> to_dyn |> print_dyn
 
 let%expect_test _ =
   test (backtrace_result unit)

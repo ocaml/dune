@@ -458,19 +458,19 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     User_error.raise ~loc
       [ Pp.textf "Extension %S specified for the second time." name ]
   | Ok map ->
-    let implicit_extensions =
-      Extension.automatic ~lang ~project_file
-        ~explicitly_selected:(String.Map.mem map)
-    in
     let extensions =
+      let implicit_extensions =
+        Extension.automatic ~lang ~project_file
+          ~explicitly_selected:(String.Map.mem map)
+      in
       List.map ~f:(fun e -> (e, true)) explicit_extensions
       @ List.map ~f:(fun e -> (e, false)) implicit_extensions
     in
-    let acc =
-      Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) lang.version
-    in
     let parsing_context =
-      List.fold_left extensions ~init:acc
+      let init =
+        Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) lang.version
+      in
+      List.fold_left extensions ~init
         ~f:(fun acc ((ext : Extension.instance), _) ->
           let syntax =
             let (Extension.Packed ext) = ext.extension in

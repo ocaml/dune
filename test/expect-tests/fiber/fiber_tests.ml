@@ -56,98 +56,136 @@ let long_running_fiber () =
 
 let never_fiber () = Fiber.never
 
+let backtrace_result dyn_of_ok =
+  Result.to_dyn dyn_of_ok (list Exn_with_backtrace.to_dyn)
+
+let test ?(expect_never = false) to_dyn f =
+  let never_raised = ref false in
+  ( try Scheduler.run f |> to_dyn |> print_dyn
+    with Scheduler.Never -> never_raised := true );
+  match (!never_raised, expect_never) with
+  | false, false ->
+    (* We don't raise in this case b/c we assume something else is being tested *)
+    ()
+  | true, true -> print_endline "[PASS] Never raised as expected"
+  | false, true ->
+    print_endline "[FAIL] expected Never to be raised but it wasn't"
+  | true, false -> print_endline "[FAIL] unexpected Never raised"
+
 let%expect_test _ =
-  Scheduler.run (Fiber.collect_errors failing_fiber)
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+  test (backtrace_result unit) (Fiber.collect_errors failing_fiber);
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
-  ( try
-      ignore
-        ( Scheduler.run (Fiber.collect_errors never_fiber)
-          : (unit, Exn_with_backtrace.t list) Result.t );
-      Result.Error "should not reach here"
-    with Scheduler.Never -> Result.ok () )
-  |> Result.to_dyn unit string |> print_dyn;
+  test ~expect_never:true opaque (Fiber.collect_errors never_fiber);
   [%expect {|
-Ok ()
+[PASS] Never raised as expected
 |}]
 
 let%expect_test _ =
-  Scheduler.run
+  test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         failing_fiber () >>= fun () -> failing_fiber ()))
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         failing_fiber () >>= fun () -> failing_fiber ()));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
+let log_error (e : Exn_with_backtrace.t) =
+  Printf.printf "raised %s\n" (Printexc.to_string e.exn)
+
 let%expect_test _ =
-  Scheduler.run
+  test (backtrace_result unit)
     (Fiber.collect_errors (fun () ->
-         Fiber.with_error_handler failing_fiber ~on_error:ignore))
-  |> Result.to_dyn unit (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         Fiber.with_error_handler failing_fiber ~on_error:log_error));
   [%expect {|
+raised Exit
 Error []
 |}]
 
 let%expect_test _ =
-  Scheduler.run
-    ( Fiber.collect_errors (fun () ->
-          Fiber.with_error_handler failing_fiber ~on_error:ignore)
-    >>| fun _result -> "" )
-  |> string |> print_dyn;
-  [%expect {|
-""
-|}]
-
-let%expect_test _ =
-  Scheduler.run
+  test
+    (backtrace_result (pair unit unit))
     (Fiber.collect_errors (fun () ->
-         Fiber.fork_and_join failing_fiber long_running_fiber))
-  |> Result.to_dyn (pair unit unit) (list Exn_with_backtrace.to_dyn)
-  |> print_dyn;
+         Fiber.fork_and_join failing_fiber long_running_fiber));
   [%expect {|
 Error [ { exn = "Exit"; backtrace = "" } ]
 |}]
 
 let%expect_test _ =
-  Scheduler.run
+  test
+    (pair (backtrace_result unit) unit)
     (Fiber.fork_and_join
-       (fun () -> Fiber.collect_errors failing_fiber >>| fun _ -> "")
-       long_running_fiber)
-  |> pair string unit |> print_dyn;
+       (fun () -> Fiber.collect_errors failing_fiber)
+       long_running_fiber);
   [%expect {|
-("", ())
+(Error [ { exn = "Exit"; backtrace = "" } ], ())
 |}]
 
-let flag_set = ref false
+let%expect_test _ =
+  test ~expect_never:true opaque
+    (Fiber.fork_and_join
+       (fun () ->
+         let log_error by (e : Exn_with_backtrace.t) =
+           Printf.printf "%s: raised %s\n" by (Printexc.to_string e.exn)
+         in
+         Fiber.with_error_handler ~on_error:(log_error "outer") (fun () ->
+             Fiber.fork_and_join failing_fiber (fun () ->
+                 Fiber.with_error_handler
+                   ~on_error:(fun e ->
+                     log_error "inner" e;
+                     raise Exit)
+                   failing_fiber)))
+       long_running_fiber);
+  [%expect
+    {|
+    outer: raised Exit
+    inner: raised Exit
+    outer: raised Exit
+    [PASS] Never raised as expected |}]
 
-let never_raised = ref false
+(* Collect errors has a subtle behavior. It can cause a fiber not to terminate
+   if all the sub-fibers spawned aren't awaited *)
+let%expect_test "collect_errors and termination" =
+  let fiber =
+    Fiber.fork_and_join_unit long_running_fiber (fun () ->
+        Fiber.collect_errors (fun () ->
+            let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
+            Fiber.return 50))
+  in
+  test ~expect_never:true (backtrace_result int) fiber;
+  [%expect {| [PASS] Never raised as expected |}]
+
+let must_set_flag f =
+  let flag = ref false in
+  let setter () = flag := true in
+  let check_set () =
+    print_endline
+      ( if !flag then
+        "[PASS] flag set"
+      else
+        "[FAIL] flag not ste" )
+  in
+  try
+    f setter;
+    check_set ()
+  with e ->
+    check_set ();
+    raise e
 
 let%expect_test _ =
-  ( try
-      Scheduler.run
-        (Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors failing_fiber >>= fun _ ->
-             long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
-    with Scheduler.Never -> never_raised := true );
-  [%expect {| |}]
-
-let%expect_test _ =
-  (!flag_set && !never_raised) |> bool |> print_dyn;
-  [%expect {|
-true
-|}]
-
-let flag_set = ref false
-
-let never_raised = ref false
+  must_set_flag (fun setter ->
+      test ~expect_never:true unit
+      @@ Fiber.fork_and_join_unit never_fiber (fun () ->
+             Fiber.collect_errors failing_fiber >>= fun res ->
+             print_dyn (backtrace_result unit res);
+             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+  [%expect
+    {|
+    Error [ { exn = "Exit"; backtrace = "" } ]
+    [PASS] Never raised as expected
+    [PASS] flag set |}]
 
 let%expect_test _ =
   let forking_fiber () =
@@ -163,19 +201,20 @@ let%expect_test _ =
             (Option.value_exn (which "false"))
             [])
   in
-  ( try
-      Scheduler.run
-        (Fiber.fork_and_join_unit never_fiber (fun () ->
-             Fiber.collect_errors forking_fiber >>= fun _ ->
-             long_running_fiber () >>= fun _ -> Fiber.return (flag_set := true)))
-    with Scheduler.Never -> never_raised := true )
-  |> unit |> print_dyn;
-  [%expect {|
-()
-|}]
-
-let%expect_test _ =
-  (!flag_set && !never_raised) |> bool |> print_dyn;
-  [%expect {|
-true
-|}]
+  must_set_flag (fun setter ->
+      test ~expect_never:true unit
+      @@ Fiber.fork_and_join_unit never_fiber (fun () ->
+             Fiber.collect_errors forking_fiber >>= fun res ->
+             print_dyn (backtrace_result (list unit) res);
+             long_running_fiber () >>= fun () -> Fiber.return (setter ())));
+  [%expect
+    {|
+    Error
+      [ { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      ]
+    [PASS] Never raised as expected
+    [PASS] flag set |}]

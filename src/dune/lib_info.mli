@@ -105,8 +105,6 @@ val src_dir : 'path t -> 'path
 
 val status : _ t -> Status.t
 
-val variant : _ t -> Variant.t option
-
 val default_implementation : _ t -> (Loc.t * Lib_name.t) option
 
 val kind : _ t -> Lib_kind.t
@@ -130,8 +128,6 @@ val special_builtin_support : _ t -> Special_builtin_support.t option
 val modes : _ t -> Mode.Dict.Set.t
 
 val implements : _ t -> (Loc.t * Lib_name.t) option
-
-val known_implementations : _ t -> (Loc.t * Lib_name.t) Variant.Map.t
 
 val requires : _ t -> Lib_dep.t list
 
@@ -206,13 +202,13 @@ val create :
   -> dune_version:Dune_lang.Syntax.Version.t option
   -> virtual_:Modules.t Source.t option
   -> implements:(Loc.t * Lib_name.t) option
-  -> variant:Variant.t option
-  -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
   -> default_implementation:(Loc.t * Lib_name.t) option
   -> modes:Mode.Dict.Set.t
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option
   -> 'a t
+
+val package : _ t -> Package.Name.t option
 
 val to_dyn : 'path Dyn.Encoder.t -> 'path t Dyn.Encoder.t

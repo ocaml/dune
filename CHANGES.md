@@ -31,6 +31,9 @@ next
   configuration directly from dune instead of using `.merlin` files. (#3395,
   @voodoos)
 
+- Remove experimental variants feature and make default implementations part of
+  the language (#3491, fixes #3483, @rgrinberg)
+
 2.5.1 (17/04/2020)
 ------------------
 

@@ -2,8 +2,8 @@
  (name bar)
  (libraries vlib))
 
-(alias
- (name default)
+(rule
+ (alias default)
  (action
   (run ./bar.exe)))
 

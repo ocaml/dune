@@ -7,14 +7,6 @@ Simple example to run toplevel
   Foo.x = 42
 
 
-Running toplevel with variants
-  $ dune exec --root variants ./tt.exe -- -init variants/init.ml | sed -E 's/OCaml version .*$/OCaml version REDACTED/g'
-  Entering directory 'variants'
-  Entering directory 'variants'
-          OCaml version REDACTED
-  
-  Foo.x = 42
-
 Running toplevel with preprocessor
   $ dune exec --root preprocessors ./tt.exe -- -init preprocessors/init.ml | sed -E 's/OCaml version .*$/Ocaml version REDACTED/g'
   Entering directory 'preprocessors'

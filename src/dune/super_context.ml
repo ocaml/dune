@@ -406,7 +406,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries ~pps ~dune_version
             ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-            ~variants:exes.variants ~optional:exes.optional
+            ~optional:exes.optional
         in
         let available =
           Result.is_ok (Lib.Compile.direct_requires compile_info)

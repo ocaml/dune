@@ -102,8 +102,7 @@ module Extension : sig
       in their [dune-project] file. [parser] is used to describe what [<args>]
       might be. *)
   val register :
-       ?experimental:bool
-    -> Dune_lang.Syntax.t
+       Dune_lang.Syntax.t
     -> ('a * Stanza.Parser.t list) Dune_lang.Decoder.t
     -> ('a -> Dyn.t)
     -> 'a t
@@ -111,10 +110,11 @@ module Extension : sig
   (** A simple version where the arguments are not used through
       [find_extension_args]. *)
   val register_simple :
-       ?experimental:bool
-    -> Dune_lang.Syntax.t
-    -> Stanza.Parser.t list Dune_lang.Decoder.t
-    -> unit
+    Dune_lang.Syntax.t -> Stanza.Parser.t list Dune_lang.Decoder.t -> unit
+
+  (** Register experimental extensions that were deleted *)
+  val register_deleted :
+    name:string -> deleted_in:Dune_lang.Syntax.Version.t -> unit
 end
 
 (** Load a project description from the following directory. [files] is the set

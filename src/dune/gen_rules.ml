@@ -367,29 +367,11 @@ let filter_out_stanzas_from_hidden_packages ~visible_pkgs =
   List.filter_map ~f:(fun stanza ->
       match Dune_file.stanza_package stanza with
       | None -> Some stanza
-      | Some package -> (
+      | Some package ->
         if Package.Name.Map.mem visible_pkgs package.name then
           Some stanza
         else
-          (* If the stanza is a hidden public implementation of a visible
-             library, turn it into an external variant so that we can correctly
-             compute the set of "knonw implementation" when generating the
-             dune-package file. *)
-          match stanza with
-          | Library
-              { public = Some { name; _ }
-              ; variant = Some variant
-              ; implements = Some virtual_lib
-              ; project
-              ; buildable = { loc; _ }
-              ; _
-              }
-            when Package.Name.Map.mem visible_pkgs
-                   (Lib_name.package_name (snd virtual_lib)) ->
-            Some
-              (External_variant
-                 { implementation = name; virtual_lib; variant; project; loc })
-          | _ -> None ))
+          None)
 
 let gen ~contexts ?only_packages conf =
   let open Fiber.O in

@@ -20,20 +20,9 @@ let relative_file =
       else
         User_error.raise ~loc [ Pp.textf "relative filename expected" ])
 
-let library_variants =
-  let syntax =
-    Dune_lang.Syntax.create ~name:"library_variants"
-      ~desc:"the experimental library variants feature"
-      [ ((0, 1), `Since (1, 9)); ((0, 2), `Since (1, 11)) ]
-  in
-  Dune_project.Extension.register_simple ~experimental:true syntax
-    (Dune_lang.Decoder.return []);
-  syntax
-
-let variants_field =
-  field_o "variants"
-    (let* () = Dune_lang.Syntax.since library_variants (0, 1) in
-     located (repeat Variant.decode >>| Variant.Set.of_list))
+let () =
+  Dune_project.Extension.register_deleted ~name:"library_variants"
+    ~deleted_in:(2, 6)
 
 let bisect_ppx_syntax =
   Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
@@ -702,26 +691,6 @@ module Mode_conf = struct
   end
 end
 
-module External_variant = struct
-  type t =
-    { implementation : Loc.t * Lib_name.t
-    ; virtual_lib : Loc.t * Lib_name.t
-    ; variant : Variant.t
-    ; project : Dune_project.t
-    ; loc : Loc.t
-    }
-
-  let decode =
-    let open Dune_lang.Decoder in
-    fields
-      (let+ loc = loc
-       and+ variant = field "variant" Variant.decode
-       and+ virtual_lib = field "virtual_library" (located Lib_name.decode)
-       and+ implementation = field "implementation" (located Lib_name.decode)
-       and+ project = Dune_project.get_exn () in
-       { implementation; virtual_lib; variant; project; loc })
-end
-
 module Library = struct
   module Wrapped = struct
     include Wrapped
@@ -772,7 +741,6 @@ module Library = struct
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
-    ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
@@ -827,13 +795,9 @@ module Library = struct
          field_o "implements"
            ( Dune_lang.Syntax.since Stanza.syntax (1, 7)
            >>> located Lib_name.decode )
-       and+ variant =
-         field_o "variant"
-           ( Dune_lang.Syntax.since library_variants (0, 1)
-           >>> located Variant.decode )
        and+ default_implementation =
          field_o "default_implementation"
-           ( Dune_lang.Syntax.since library_variants (0, 1)
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 6)
            >>> located Lib_name.decode )
        and+ private_modules =
          field_o "private_modules"
@@ -901,12 +865,6 @@ module Library = struct
                "Only virtual libraries can specify a default implementation."
            ]
        | _ -> () );
-       ( match (implements, variant) with
-       | None, Some (loc, _) ->
-         User_error.raise ~loc
-           [ Pp.text "Only implementations can specify a variant." ]
-       | _ -> () );
-       let variant = Option.map variant ~f:(fun (_, v) -> v) in
        { name
        ; public
        ; synopsis
@@ -926,7 +884,6 @@ module Library = struct
        ; dune_version
        ; virtual_modules
        ; implements
-       ; variant
        ; default_implementation
        ; private_modules
        ; stdlib
@@ -980,7 +937,7 @@ module Library = struct
 
   let to_lib_info conf ~dir
       ~lib_config:({ Lib_config.has_native; ext_lib; ext_dll; _ } as lib_config)
-      ~known_implementations =
+      =
     let _loc, lib_name = conf.name in
     let obj_dir = obj_dir ~dir conf in
     let gen_archive_file ~dir ext =
@@ -1072,7 +1029,6 @@ module Library = struct
     let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
     let implements = conf.implements in
-    let variant = conf.variant in
     let default_implementation = conf.default_implementation in
     let wrapped = Some conf.wrapped in
     let special_builtin_support = conf.special_builtin_support in
@@ -1080,9 +1036,9 @@ module Library = struct
       ~version ~synopsis ~main_module_name ~sub_systems ~requires
       ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
       ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps
-      ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements ~variant
-      ~known_implementations ~default_implementation ~modes ~wrapped
-      ~special_builtin_support ~exit_module
+      ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
+      ~default_implementation ~modes ~wrapped ~special_builtin_support
+      ~exit_module
 end
 
 module Install_conf = struct
@@ -1460,7 +1416,6 @@ module Executables = struct
     ; modes : Loc.t Link_mode.Map.t
     ; optional : bool
     ; buildable : Buildable.t
-    ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
     ; install_conf : Install_conf.t option
@@ -1491,7 +1446,6 @@ module Executables = struct
         ~default:(Link_mode.Map.default_for_exes ~version:dune_version)
     and+ optional =
       field_b "optional" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 0))
-    and+ variants = variants_field
     and+ promote =
       field_o "promote"
         (Dune_lang.Syntax.since Stanza.syntax (1, 11) >>> Promote.decode)
@@ -1580,7 +1534,6 @@ module Executables = struct
       ; modes
       ; optional
       ; buildable
-      ; variants
       ; package = Names.package names
       ; promote
       ; install_conf
@@ -1898,7 +1851,6 @@ module Tests = struct
       (let+ buildable =
          Buildable.decode ~in_library:false ~allow_re_export:false
        and+ link_flags = Ordered_set_lang.Unexpanded.field "link_flags"
-       and+ variants = variants_field
        and+ names = names
        and+ package = field_o "package" Pkg.decode
        and+ locks = field "locks" (repeat String_with_vars.decode) ~default:[]
@@ -1925,7 +1877,6 @@ module Tests = struct
            ; optional = false
            ; buildable
            ; names
-           ; variants
            ; package = None
            ; promote = None
            ; install_conf = None
@@ -1950,7 +1901,6 @@ module Toplevel = struct
   type t =
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
-    ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
     ; pps : Preprocess.t
     }
@@ -1960,7 +1910,6 @@ module Toplevel = struct
     fields
       (let+ loc = loc
        and+ name = field "name" string
-       and+ variants = variants_field
        and+ libraries =
          field "libraries" (repeat (located Lib_name.decode)) ~default:[]
        and+ pps =
@@ -1971,7 +1920,7 @@ module Toplevel = struct
        match pps with
        | Preprocess.Pps _
        | No_preprocessing ->
-         { name; libraries; loc; variants; pps }
+         { name; libraries; loc; pps }
        | Action (loc, _)
        | Future_syntax loc ->
          User_error.raise ~loc
@@ -2075,7 +2024,6 @@ type Stanza.t +=
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
-  | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
 
 module Stanzas = struct
@@ -2149,9 +2097,8 @@ module Stanzas = struct
         and+ t = Tests.single in
         [ Tests t ] )
     ; ( "external_variant"
-      , let+ () = Dune_lang.Syntax.since library_variants (0, 2)
-        and+ t = External_variant.decode in
-        [ External_variant t ] )
+      , let+ () = Dune_lang.Syntax.deleted_in Stanza.syntax (2, 6) in
+        [] )
     ; ( "env"
       , let+ x = Dune_env.Stanza.decode in
         [ Dune_env.T x ] )

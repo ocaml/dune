@@ -181,8 +181,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names
       exes.buildable.libraries ~pps ~dune_version
       ~allow_overlaps:exes.buildable.allow_overlapping_dependencies
-      ~variants:exes.variants ~optional:exes.optional
-      ~forbidden_libraries:exes.forbidden_libraries
+      ~optional:exes.optional ~forbidden_libraries:exes.forbidden_libraries
   in
   let f () =
     executables_rules exes ~sctx ~dir ~dir_contents ~scope ~expander

@@ -47,8 +47,6 @@ module Set : Set.S with type elt = t
 
 module Map : Map.S with type key = t
 
-val package : t -> Package.Name.t option
-
 val equal : t -> t -> bool
 
 val hash : t -> int
@@ -183,11 +181,10 @@ module DB : sig
   module Library_related_stanza : sig
     type t =
       | Library of Path.Build.t * Dune_file.Library.t
-      | External_variant of Dune_file.External_variant.t
       | Deprecated_library_name of Dune_file.Deprecated_library_name.t
   end
 
-  (** Create a database from a list of library/variants stanzas *)
+  (** Create a database from a list of library stanzas *)
   val create_from_stanzas :
        parent:t option
     -> lib_config:Lib_config.t
@@ -221,7 +218,6 @@ module DB : sig
     -> Lib_dep.t list
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t
-    -> variants:(Loc.t * Variant.Set.t) option
     -> optional:bool
     -> Compile.t
 

@@ -254,6 +254,32 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias default-implementation-package-mismatch1-package-mismatch1)
+ (deps
+  (package dune)
+  (source_tree test-cases/default-implementation/package-mismatch1)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/default-implementation/package-mismatch1
+   (progn
+    (run dune-cram run package-mismatch1.t)
+    (diff? package-mismatch1.t package-mismatch1.t.corrected)))))
+
+(rule
+ (alias default-implementation-package-mismatch2-package-mismatch2)
+ (deps
+  (package dune)
+  (source_tree test-cases/default-implementation/package-mismatch2)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/default-implementation/package-mismatch2
+   (progn
+    (run dune-cram run package-mismatch2.t)
+    (diff? package-mismatch2.t package-mismatch2.t.corrected)))))
+
+(rule
  (alias default-targets)
  (deps
   (package dune)
@@ -1296,14 +1322,6 @@
  (action
   (chdir
    test-cases/github3180
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias github3412)
- (deps (package dune) (source_tree test-cases/github3412) (alias test-deps))
- (action
-  (chdir
-   test-cases/github3412
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2544,91 +2562,6 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias variants)
- (deps (package dune) (source_tree test-cases/variants) (alias test-deps))
- (action
-  (chdir
-   test-cases/variants
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variant-dep-stack)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variant-dep-stack)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variant-dep-stack
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-external-declaration)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-external-declaration)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-external-declaration
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-external-declaration-conflict)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-external-declaration-conflict)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-external-declaration-conflict
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-multi-project)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-multi-project)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-multi-project
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-only-package)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-only-package)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-only-package
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-rogue-impl)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-rogue-impl)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-rogue-impl
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias variants-variants-wrong-external-declaration)
- (deps
-  (package dune)
-  (source_tree test-cases/variants/variants-wrong-external-declaration)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/variants/variants-wrong-external-declaration
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
  (alias vendor)
  (deps (package dune) (source_tree test-cases/vendor) (alias test-deps))
  (action
@@ -3031,6 +2964,8 @@
   (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias cycle-detection-symlinks-2863)
+  (alias default-implementation-package-mismatch1-package-mismatch1)
+  (alias default-implementation-package-mismatch2-package-mismatch2)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
@@ -3136,7 +3071,6 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
-  (alias github3412)
   (alias github3440)
   (alias github534)
   (alias github568)
@@ -3260,14 +3194,6 @@
   (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
-  (alias variants)
-  (alias variants-variant-dep-stack)
-  (alias variants-variants-external-declaration)
-  (alias variants-variants-external-declaration-conflict)
-  (alias variants-variants-multi-project)
-  (alias variants-variants-only-package)
-  (alias variants-variants-rogue-impl)
-  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
@@ -3328,6 +3254,8 @@
   (alias custom-cross-compilation)
   (alias cxx-extension)
   (alias cycle-detection-symlinks-2863)
+  (alias default-implementation-package-mismatch1-package-mismatch1)
+  (alias default-implementation-package-mismatch2-package-mismatch2)
   (alias default-targets)
   (alias dep-on-dir-that-does-not-exist)
   (alias dep-vars)
@@ -3428,7 +3356,6 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
-  (alias github3412)
   (alias github3440)
   (alias github534)
   (alias github568)
@@ -3523,14 +3450,6 @@
   (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
-  (alias variants)
-  (alias variants-variant-dep-stack)
-  (alias variants-variants-external-declaration)
-  (alias variants-variants-external-declaration-conflict)
-  (alias variants-variants-multi-project)
-  (alias variants-variants-only-package)
-  (alias variants-variants-rogue-impl)
-  (alias variants-variants-wrong-external-declaration)
   (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)

@@ -165,16 +165,6 @@ module Mode_conf : sig
   end
 end
 
-module External_variant : sig
-  type t =
-    { implementation : Loc.t * Lib_name.t
-    ; virtual_lib : Loc.t * Lib_name.t
-    ; variant : Variant.t
-    ; project : Dune_project.t
-    ; loc : Loc.t
-    }
-end
-
 module Library : sig
   type t =
     { name : Loc.t * Lib_name.Local.t
@@ -201,7 +191,6 @@ module Library : sig
     ; dune_version : Dune_lang.Syntax.Version.t
     ; virtual_modules : Ordered_set_lang.t option
     ; implements : (Loc.t * Lib_name.t) option
-    ; variant : Variant.t option
     ; default_implementation : (Loc.t * Lib_name.t) option
     ; private_modules : Ordered_set_lang.t option
     ; stdlib : Ocaml_stdlib.t option
@@ -240,11 +229,7 @@ module Library : sig
   val main_module_name : t -> Lib_info.Main_module_name.t
 
   val to_lib_info :
-       t
-    -> dir:Path.Build.t
-    -> lib_config:Lib_config.t
-    -> known_implementations:(Loc.t * Lib_name.t) Variant.Map.t
-    -> Lib_info.local
+    t -> dir:Path.Build.t -> lib_config:Lib_config.t -> Lib_info.local
 end
 
 module Install_conf : sig
@@ -295,7 +280,6 @@ module Executables : sig
     ; modes : Loc.t Link_mode.Map.t
     ; optional : bool
     ; buildable : Buildable.t
-    ; variants : (Loc.t * Variant.Set.t) option
     ; package : Package.t option
     ; promote : Rule.Promote.t option
     ; install_conf : Install_conf.t option
@@ -382,7 +366,6 @@ module Toplevel : sig
   type t =
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
-    ; variants : (Loc.t * Variant.Set.t) option
     ; loc : Loc.t
     ; pps : Preprocess.t
     }
@@ -426,7 +409,6 @@ type Stanza.t +=
   | Tests of Tests.t
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
-  | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
 
 val stanza_package : Stanza.t -> Package.t option

@@ -1,9 +1,7 @@
 (executable
  (name exe)
- (libraries vlibfoo)
-)
+ (libraries vlibfoo))
 
-(alias
- (name default)
- (action
-  (run ./exe.exe)))
+(rule
+ (alias default)
+ (action (run ./exe.exe)))

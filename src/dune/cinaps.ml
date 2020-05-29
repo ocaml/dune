@@ -91,7 +91,7 @@ let gen_rules sctx t ~dir ~scope =
       [ (t.loc, name) ]
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
       ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
-      ~dune_version ~variants:None ~optional:false
+      ~dune_version ~optional:false
   in
   let cctx =
     Compilation_context.create () ~super_context:sctx ~expander ~scope ~obj_dir

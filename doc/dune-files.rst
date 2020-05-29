@@ -1523,18 +1523,7 @@ target will be created in ``a/b/bar``:
 external_variant
 -----------------
 
-The ``external_variant`` allow to declare a tagged implementation that does not
-live inside the virtual library project.
-
-.. code:: scheme
-
-   (external_variant
-    (variant foo)
-    (implementation lib-foo)
-    (virtual_library vlib))
-
-This will add `lib-foo` to the list of known implementations of `vlib`. For more
-details see :ref:`dune-variants`
+This stanza was experimental and removed in dune 2.6. see :ref:`dune-variants`
 
 .. _coq-theory:
 

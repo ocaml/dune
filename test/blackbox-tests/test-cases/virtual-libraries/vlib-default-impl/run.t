@@ -14,22 +14,6 @@ Basic sample selecting implementation according to default library.
            bar alias default
   hi from lib.default
 
-Check that ambiguity is handled correctly.
-  $ dune build --root dependency-cycle
-  Entering directory 'dependency-cycle'
-  Error: Default implementation cycle detected between the following libraries:
-     "clock"
-  -> "clock_ocaml"
-  -> "async_ocaml"
-  -> "async"
-  -> "async_c"
-  -> "clock_c"
-  -> "clock"
-  -> "test_default"
-  -> "test"
-  -> required by executable bar in dune:2
-  [1]
-
 Check that default implementation data is installed in the dune package file.
   $ dune build --root dune-package
   Entering directory 'dune-package'

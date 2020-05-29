@@ -64,7 +64,6 @@ module DB = struct
           | Library (_, { project; public = Some p; _ }) ->
             Some (Dune_file.Public_lib.name p, Project project)
           | Library _ -> None
-          | External_variant _ -> None
           | Deprecated_library_name
               { old_public_name = { public = old_public_name; _ }
               ; new_public_name
@@ -114,7 +113,6 @@ module DB = struct
           let project =
             match stanza with
             | Library (_, lib) -> lib.project
-            | External_variant ev -> ev.project
             | Deprecated_library_name x -> x.project
           in
           (Dune_project.root project, stanza))
@@ -181,8 +179,6 @@ module DB = struct
             in
             ( Lib.DB.Library_related_stanza.Library (ctx_dir, lib) :: acc
             , coq_acc )
-          | Dune_file.External_variant ev ->
-            (External_variant ev :: acc, coq_acc)
           | Dune_file.Deprecated_library_name d ->
             (Deprecated_library_name d :: acc, coq_acc)
           | Coq_stanza.Theory.T coq_lib ->

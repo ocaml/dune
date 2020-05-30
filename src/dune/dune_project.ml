@@ -393,7 +393,12 @@ module Extension = struct
   (* Extensions that are not selected in the dune-project file are automatically
      available at their latest version. When used, dune will automatically edit
      the dune-project file. *)
-  let automatic ~lang ~project_file ~explicitly_selected =
+
+  type automatic =
+    | Disabled of packed_extension
+    | Enabled of instance
+
+  let automatic ~lang ~project_file ~explicitly_selected : automatic list =
     Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
         if explicitly_selected name then
           acc
@@ -410,7 +415,7 @@ module Extension = struct
                   ~dune_lang_ver e.syntax
             in
             match version with
-            | None -> acc
+            | None -> Disabled (Packed e) :: acc
             | Some version ->
               let parse_args p =
                 let open Dune_lang.Decoder in
@@ -439,7 +444,8 @@ module Extension = struct
                 in
                 (arg, result_stanzas)
               in
-              { extension = Packed e; version; loc = Loc.none; parse_args }
+              Enabled
+                { extension = Packed e; version; loc = Loc.none; parse_args }
               :: acc ))
 end
 
@@ -463,41 +469,55 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
         Extension.automatic ~lang ~project_file
           ~explicitly_selected:(String.Map.mem map)
       in
-      List.map ~f:(fun e -> (e, true)) explicit_extensions
+      List.map ~f:(fun e -> (Extension.Enabled e, true)) explicit_extensions
       @ List.map ~f:(fun e -> (e, false)) implicit_extensions
     in
     let parsing_context =
       let init =
-        Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) lang.version
+        Univ_map.singleton
+          (Dune_lang.Syntax.key lang.syntax)
+          (Active lang.version)
       in
       List.fold_left extensions ~init
-        ~f:(fun acc ((ext : Extension.instance), _) ->
+        ~f:(fun acc ((ext : Extension.automatic), _) ->
           let syntax =
-            let (Extension.Packed ext) = ext.extension in
+            let (Extension.Packed ext) =
+              match ext with
+              | Extension.Enabled e -> e.extension
+              | Disabled e -> e
+            in
             ext.syntax
           in
-          Univ_map.add acc (Dune_lang.Syntax.key syntax) ext.version)
+          let status : Dune_lang.Syntax.Key.t =
+            match ext with
+            | Enabled ext -> Active ext.version
+            | Disabled _ -> Disabled
+          in
+          Univ_map.add acc (Dune_lang.Syntax.key syntax) status)
     in
     let extension_args, extension_stanzas =
       List.fold_left extensions ~init:(Univ_map.empty, [])
         ~f:(fun (args_acc, stanzas_acc)
-                ((instance : Extension.instance), is_explicit)
+                ((ext : Extension.automatic), is_explicit)
                 ->
-          let (Packed e) = instance.extension in
-          let args =
-            let+ arg, stanzas =
-              Dune_lang.Decoder.set_many parsing_context e.stanzas
+          match ext with
+          | Disabled _ -> (args_acc, stanzas_acc)
+          | Enabled instance ->
+            let (Packed e) = instance.extension in
+            let args =
+              let+ arg, stanzas =
+                Dune_lang.Decoder.set_many parsing_context e.stanzas
+              in
+              let new_args_acc =
+                if is_explicit then
+                  Univ_map.add args_acc e.key arg
+                else
+                  args_acc
+              in
+              (new_args_acc, stanzas)
             in
-            let new_args_acc =
-              if is_explicit then
-                Univ_map.add args_acc e.key arg
-              else
-                args_acc
-            in
-            (new_args_acc, stanzas)
-          in
-          let new_args_acc, stanzas = instance.parse_args args in
-          (new_args_acc, stanzas :: stanzas_acc))
+            let new_args_acc, stanzas = instance.parse_args args in
+            (new_args_acc, stanzas :: stanzas_acc))
     in
     let stanzas = List.concat (lang.data :: extension_stanzas) in
     let stanza_parser =

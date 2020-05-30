@@ -90,7 +90,7 @@ struct
 
   let parse_ast ((lang : Lang.Instance.t), ast) ~f =
     let parsing_context =
-      Univ_map.singleton (Syntax.key lang.syntax) lang.version
+      Univ_map.singleton (Syntax.key lang.syntax) (Active lang.version)
     in
     Decoder.parse (Decoder.enter (f lang)) parsing_context ast
 

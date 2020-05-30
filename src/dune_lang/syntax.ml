@@ -123,10 +123,20 @@ module Supported_versions = struct
            (lower_bound, upper_bound))
 end
 
+module Key = struct
+  type t =
+    | Active of Version.t
+    | Disabled
+
+  let to_dyn = function
+    | Active v -> Version.to_dyn v
+    | Disabled -> Dyn.Encoder.constr "Disabled" []
+end
+
 type t =
   { name : string
   ; desc : string
-  ; key : Version.t Univ_map.Key.t
+  ; key : Key.t Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   ; experimental : bool
   }
@@ -168,6 +178,10 @@ module Error = struct
           ; Pp.text extra_info
           ]
       :: repl )
+
+  let disabled loc ~what =
+    User_error.raise ~loc
+      [ Pp.textf "%s is disabled. Enable it in your dune-project file" what ]
 end
 
 module Warning = struct
@@ -188,7 +202,7 @@ end
 let create ?(experimental = false) ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ~name Version.to_dyn
+  ; key = Univ_map.Key.create ~name Key.to_dyn
   ; supported_versions = Supported_versions.make supported_versions
   ; experimental
   }
@@ -248,17 +262,6 @@ open Decoder
 
 let set t ver parser = set t.key ver parser
 
-let get_exn t =
-  get t.key >>= function
-  | Some x -> return x
-  | None ->
-    let+ context = get_all in
-    Code_error.raise "Syntax identifier is unset"
-      [ ("name", Dyn.Encoder.string t.name)
-      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
-      ; ("context", Univ_map.to_dyn context)
-      ]
-
 let desc () =
   let+ kind = kind in
   match kind with
@@ -266,6 +269,20 @@ let desc () =
   | Fields (loc, None) -> (loc, "This field")
   | Values (loc, Some s) -> (loc, sprintf "'%s'" s)
   | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
+
+let get_exn t =
+  get t.key >>= function
+  | Some (Active x) -> return x
+  | Some Disabled ->
+    let* loc, what = desc () in
+    Error.disabled loc ~what
+  | None ->
+    let+ context = get_all in
+    Code_error.raise "Syntax identifier is unset"
+      [ ("name", Dyn.Encoder.string t.name)
+      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
+      ; ("context", Univ_map.to_dyn context)
+      ]
 
 let deleted_in ?(extra_info = "") t ver =
   let open Version.Infix in

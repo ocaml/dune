@@ -100,10 +100,16 @@ val since : ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
 
 (** {2 Low-level functions} *)
 
-val set : t -> Version.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
+module Key : sig
+  type t =
+    | Active of Version.t
+    | Disabled
+end
+
+val set : t -> Key.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
+
+val key : t -> Key.t Univ_map.Key.t
 
 val get_exn : t -> (Version.t, 'k) Decoder.parser
-
-val key : t -> Version.t Univ_map.Key.t
 
 val experimental : t -> bool

@@ -491,7 +491,10 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
           let status : Dune_lang.Syntax.Key.t =
             match ext with
             | Enabled ext -> Active ext.version
-            | Disabled _ -> Disabled
+            | Disabled (Packed e) ->
+              let dune_lang_ver = lang.Lang.Instance.version in
+              let lang = e.syntax in
+              Disabled { lang; dune_lang_ver }
           in
           Univ_map.add acc (Dune_lang.Syntax.key syntax) status)
     in

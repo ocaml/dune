@@ -101,9 +101,12 @@ val since : ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
 (** {2 Low-level functions} *)
 
 module Key : sig
-  type t =
+  type nonrec t =
     | Active of Version.t
-    | Disabled
+    | Disabled of
+        { lang : t
+        ; dune_lang_ver : Version.t
+        }
 end
 
 val set : t -> Key.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser

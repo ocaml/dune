@@ -19,4 +19,7 @@
   File "dune", line 3, characters 1-13:
   3 |  (bisect_ppx))
        ^^^^^^^^^^^^
-  Error: 'bisect_ppx' is disabled. Enable it in your dune-project file
+  Error: 'bisect_ppx' is available only when bisect_ppx is enabled in the
+  dune-project file. It cannot be enabled automatically because the currently
+  selected version of dune (2.5) does not support this plugin.
+  You must enable it using (using bisect_ppx ..) in your dune-project file.

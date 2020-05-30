@@ -123,23 +123,48 @@ module Supported_versions = struct
            (lower_bound, upper_bound))
 end
 
-module Key = struct
-  type t =
-    | Active of Version.t
-    | Disabled
-
-  let to_dyn = function
-    | Active v -> Version.to_dyn v
-    | Disabled -> Dyn.Encoder.constr "Disabled" []
-end
-
 type t =
   { name : string
   ; desc : string
-  ; key : Key.t Univ_map.Key.t
+  ; key : key Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   ; experimental : bool
   }
+
+and key =
+  | Active of Version.t
+  | Disabled of
+      { lang : t
+      ; dune_lang_ver : Version.t
+      }
+
+let to_dyn { name; desc; key = _; supported_versions; experimental } =
+  let open Dyn.Encoder in
+  record
+    [ ("name", string name)
+    ; ("desc", string desc)
+    ; ("supported_versions", Supported_versions.to_dyn supported_versions)
+    ; ("experimental", bool experimental)
+    ]
+
+module Key = struct
+  type nonrec t = key =
+    | Active of Version.t
+    | Disabled of
+        { lang : t
+        ; dune_lang_ver : Version.t
+        }
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Active v -> Version.to_dyn v
+    | Disabled { lang; dune_lang_ver } ->
+      record
+        [ ("lang", to_dyn lang)
+        ; ("dune_lang_ver", Version.to_dyn dune_lang_ver)
+        ]
+end
 
 module Error_msg = struct
   let since t ver ~what =
@@ -179,9 +204,17 @@ module Error = struct
           ]
       :: repl )
 
-  let disabled loc ~what =
+  let disabled loc ~lang ~dune_lang_ver ~what =
     User_error.raise ~loc
-      [ Pp.textf "%s is disabled. Enable it in your dune-project file" what ]
+      [ Pp.textf
+          "%s is available only when %s is enabled in the dune-project file. \
+           It cannot be enabled automatically because the currently selected \
+           version of dune (%s) does not support this plugin.\n\
+           You must enable it using (using %s ..) in your dune-project file."
+          what lang
+          (Version.to_string dune_lang_ver)
+          lang
+      ]
 end
 
 module Warning = struct
@@ -273,9 +306,9 @@ let desc () =
 let get_exn t =
   get t.key >>= function
   | Some (Active x) -> return x
-  | Some Disabled ->
+  | Some (Disabled { dune_lang_ver; lang }) ->
     let* loc, what = desc () in
-    Error.disabled loc ~what
+    Error.disabled loc ~what ~lang:lang.name ~dune_lang_ver
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"

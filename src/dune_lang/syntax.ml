@@ -204,16 +204,26 @@ module Error = struct
           ]
       :: repl )
 
-  let disabled loc ~lang ~dune_lang_ver ~what =
+  let disabled loc t ~dune_lang_ver ~what =
+    let min_lang_version, min_dune_version =
+      let major, major_map =
+        Option.value_exn (Int.Map.min_binding t.supported_versions)
+      in
+      let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
+      ((major, minor), lang)
+    in
     User_error.raise ~loc
       [ Pp.textf
           "%s is available only when %s is enabled in the dune-project file. \
            It cannot be enabled automatically because the currently selected \
            version of dune (%s) does not support this plugin.\n\
-           You must enable it using (using %s ..) in your dune-project file."
-          what lang
+           You must enable it using (using %s ..) in your dune-project file. \
+           The first version of this plugin %s was introduced in dune %s."
+          what t.name
           (Version.to_string dune_lang_ver)
-          lang
+          t.name
+          (Version.to_string min_lang_version)
+          (Version.to_string min_dune_version)
       ]
 end
 
@@ -308,7 +318,7 @@ let get_exn t =
   | Some (Active x) -> return x
   | Some (Disabled { dune_lang_ver; lang }) ->
     let* loc, what = desc () in
-    Error.disabled loc ~what ~lang:lang.name ~dune_lang_ver
+    Error.disabled loc lang ~what ~dune_lang_ver
   | None ->
     let+ context = get_all in
     Code_error.raise "Syntax identifier is unset"

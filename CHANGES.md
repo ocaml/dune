@@ -4,9 +4,11 @@ next
 - Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
   results in an error. (#3444, fix #3443, @bikallem)
 
-- Add and `enabled_ if` field to the `install` stanza. Enforce the same
-  variable restrictions for `enabled_if` fields in the `executable` and `install`
-  stanzas than in the `library` stanza. (#3408, fixes #3354, @voodoos)
+- Add and `enabled_ if` field to the `install` stanza. Enforce the same variable
+  restrictions for `enabled_if` fields in the `executable` and `install` stanzas
+  than in the `library` stanza. When using dune lang < 2.6, the usage of
+  forbidden variables in executables stanzas with only trigger a warning to
+  maintain compatibility. (#3408 and #3496, fixes #3354, @voodoos)
 
 - Insert a constraint one the version of dune when the user explicitly
   specify the dependency on dune in the `dune-project` file (#3434 ,

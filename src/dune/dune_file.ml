@@ -1484,8 +1484,12 @@ module Executables = struct
              [ Pp.text "This field is reserved for Dune itself" ];
          fname)
     and+ enabled_if =
-      let allowed_vars = Enabled_if.common_vars ~since:(2, 6) in
-      Enabled_if.decode ~allowed_vars ~since:(Some (2, 3)) ()
+      let allowed_vars = Enabled_if.common_vars ~since:(2, 3) in
+      let* syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+      let is_error =
+        Dune_lang.Syntax.Version.Infix.(syntax_version >= (2, 6))
+      in
+      Enabled_if.decode ~allowed_vars ~is_error ~since:(Some (2, 3)) ()
     in
     fun names ~multi ->
       let has_public_name = Names.has_public_name names in
@@ -1668,7 +1672,8 @@ module Rule = struct
          dune. *)
       assert (not fallback)
     and+ mode = field "mode" Mode.decode ~default:Mode.Standard
-    and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
+    and+ enabled_if =
+      Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
     and+ package =
       field_o "package"
         (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Pkg.decode)
@@ -1706,7 +1711,9 @@ module Rule = struct
     <|> fields
           (let+ modules = field "modules" (repeat string)
            and+ mode = Mode.field
-           and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) () in
+           and+ enabled_if =
+             Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
+           in
            { modules; mode; enabled_if })
 
   let ocamlyacc = ocamllex
@@ -1790,7 +1797,8 @@ module Menhir = struct
          field_o_b "infer"
            ~check:(Dune_lang.Syntax.since Menhir_stanza.syntax (2, 0))
        and+ menhir_syntax = Dune_lang.Syntax.get_exn Menhir_stanza.syntax
-       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
+       and+ enabled_if =
+         Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
        and+ loc = loc in
        let infer =
          match infer with
@@ -1859,7 +1867,8 @@ module Tests = struct
            ~default:Executables.Link_mode.Map.default_for_tests
        and+ deps =
          field "deps" (Bindings.decode Dep_conf.decode) ~default:Bindings.empty
-       and+ enabled_if = Enabled_if.decode ~since:(Some (1, 4)) ()
+       and+ enabled_if =
+         Enabled_if.decode ~allowed_vars:Any ~since:(Some (1, 4)) ()
        and+ action =
          field_o "action"
            ( Dune_lang.Syntax.since ~fatal:false Stanza.syntax (1, 2)

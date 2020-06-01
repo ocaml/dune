@@ -58,5 +58,6 @@ This one unse forbidden variables
   3 |  (enabled_if (= %{project_root} "")))
                         ^^^^^^^^^^^^^
   Error: Only architecture, system, model, os_type, ccomp_type, profile and
-  ocaml_version are allowed in this 'enabled_if' field.
+  ocaml_version variables are allowed in this 'enabled_if' field. If you think
+  that project_root should also be allowed, please file an issue about it.
   [1]

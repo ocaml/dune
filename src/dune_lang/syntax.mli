@@ -72,8 +72,10 @@ val name : t -> string
 (** Check that the given version is supported and raise otherwise. *)
 val check_supported : dune_lang_ver:Version.t -> t -> Loc.t * Version.t -> unit
 
-val greatest_supported_version :
-  ?dune_lang_ver:Version.t -> t -> Version.t option
+val greatest_supported_version : t -> Version.t
+
+val greatest_supported_version_for_dune_lang :
+  t -> dune_lang_ver:Version.t -> Version.t option
 
 (** {1 S-expression parsing} *)
 
@@ -98,10 +100,19 @@ val since : ?fatal:bool -> t -> Version.t -> (unit, _) Decoder.parser
 
 (** {2 Low-level functions} *)
 
-val set : t -> Version.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
+module Key : sig
+  type nonrec t =
+    | Active of Version.t
+    | Disabled of
+        { lang : t
+        ; dune_lang_ver : Version.t
+        }
+end
+
+val set : t -> Key.t -> ('a, 'k) Decoder.parser -> ('a, 'k) Decoder.parser
+
+val key : t -> Key.t Univ_map.Key.t
 
 val get_exn : t -> (Version.t, 'k) Decoder.parser
-
-val key : t -> Version.t Univ_map.Key.t
 
 val experimental : t -> bool

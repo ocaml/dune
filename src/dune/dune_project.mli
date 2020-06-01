@@ -145,9 +145,6 @@ val lang_stanza : unit -> string
 (** Check that the dune-project file exists and create it otherwise. *)
 val ensure_project_file_exists : t -> created_or_already_exist
 
-(** Append the following text to the project file *)
-val append_to_project_file : t -> string -> created_or_already_exist
-
 (** Default language version to use for projects that don't have a
     [dune-project] file. The default value is the latest version of the dune
     language. *)

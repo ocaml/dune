@@ -79,7 +79,7 @@ struct
       let t = Table.find_exn langs name in
       { syntax = t.syntax
       ; data = t.data
-      ; version = Option.value_exn (Syntax.greatest_supported_version t.syntax)
+      ; version = Syntax.greatest_supported_version t.syntax
       }
   end
 
@@ -90,7 +90,7 @@ struct
 
   let parse_ast ((lang : Lang.Instance.t), ast) ~f =
     let parsing_context =
-      Univ_map.singleton (Syntax.key lang.syntax) lang.version
+      Univ_map.singleton (Syntax.key lang.syntax) (Active lang.version)
     in
     Decoder.parse (Decoder.enter (f lang)) parsing_context ast
 

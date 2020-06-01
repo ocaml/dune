@@ -83,16 +83,15 @@ module Supported_versions = struct
         in
         Option.some_if (not (Int.Map.is_empty minors)) minors)
 
-  let rec greatest_supported_version ?dune_lang_ver t =
+  let greatest_supported_version t =
     let open Option.O in
-    match dune_lang_ver with
-    | Some lang_ver ->
-      let compat = remove_uncompatible_versions lang_ver t in
-      greatest_supported_version compat
-    | None ->
-      let* major, minors = Int.Map.max_binding t in
-      let* minor, _ = Int.Map.max_binding minors in
-      Some (major, minor)
+    let* major, minors = Int.Map.max_binding t in
+    let+ minor, _ = Int.Map.max_binding minors in
+    (major, minor)
+
+  let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
+    let compat = remove_uncompatible_versions dune_lang_ver t in
+    greatest_supported_version compat
 
   let get_min_lang_ver t (major, minor) =
     let open Option.O in
@@ -101,11 +100,11 @@ module Supported_versions = struct
 
   let is_supported t (major, minor) lang_ver =
     match Int.Map.find t major with
+    | None -> false
     | Some t -> (
       match Int.Map.find t minor with
       | Some min_lang_ver -> lang_ver >= min_lang_ver
       | None -> false )
-    | None -> false
 
   let supported_ranges lang_ver (t : t) =
     let compat = remove_uncompatible_versions lang_ver t in
@@ -127,10 +126,45 @@ end
 type t =
   { name : string
   ; desc : string
-  ; key : Version.t Univ_map.Key.t
+  ; key : key Univ_map.Key.t
   ; supported_versions : Supported_versions.t
   ; experimental : bool
   }
+
+and key =
+  | Active of Version.t
+  | Disabled of
+      { lang : t
+      ; dune_lang_ver : Version.t
+      }
+
+let to_dyn { name; desc; key = _; supported_versions; experimental } =
+  let open Dyn.Encoder in
+  record
+    [ ("name", string name)
+    ; ("desc", string desc)
+    ; ("supported_versions", Supported_versions.to_dyn supported_versions)
+    ; ("experimental", bool experimental)
+    ]
+
+module Key = struct
+  type nonrec t = key =
+    | Active of Version.t
+    | Disabled of
+        { lang : t
+        ; dune_lang_ver : Version.t
+        }
+
+  let to_dyn =
+    let open Dyn.Encoder in
+    function
+    | Active v -> Version.to_dyn v
+    | Disabled { lang; dune_lang_ver } ->
+      record
+        [ ("lang", to_dyn lang)
+        ; ("dune_lang_ver", Version.to_dyn dune_lang_ver)
+        ]
+end
 
 module Error_msg = struct
   let since t ver ~what =
@@ -169,6 +203,28 @@ module Error = struct
           ; Pp.text extra_info
           ]
       :: repl )
+
+  let disabled loc t ~dune_lang_ver ~what =
+    let min_lang_version, min_dune_version =
+      let major, major_map =
+        Option.value_exn (Int.Map.min_binding t.supported_versions)
+      in
+      let minor, lang = Option.value_exn (Int.Map.min_binding major_map) in
+      ((major, minor), lang)
+    in
+    User_error.raise ~loc
+      [ Pp.textf
+          "%s is available only when %s is enabled in the dune-project file. \
+           It cannot be enabled automatically because the currently selected \
+           version of dune (%s) does not support this plugin.\n\
+           You must enable it using (using %s ..) in your dune-project file. \
+           The first version of this plugin %s was introduced in dune %s."
+          what t.name
+          (Version.to_string dune_lang_ver)
+          t.name
+          (Version.to_string min_lang_version)
+          (Version.to_string min_dune_version)
+      ]
 end
 
 module Warning = struct
@@ -189,7 +245,7 @@ end
 let create ?(experimental = false) ~name ~desc supported_versions =
   { name
   ; desc
-  ; key = Univ_map.Key.create ~name Version.to_dyn
+  ; key = Univ_map.Key.create ~name Key.to_dyn
   ; supported_versions = Supported_versions.make supported_versions
   ; experimental
   }
@@ -233,9 +289,13 @@ let check_supported ~dune_lang_ver t (loc, ver) =
     let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
     User_warning.emit ~is_error ~loc message
 
-let greatest_supported_version ?dune_lang_ver t =
-  Supported_versions.greatest_supported_version ?dune_lang_ver
-    t.supported_versions
+let greatest_supported_version t =
+  Option.value_exn
+    (Supported_versions.greatest_supported_version t.supported_versions)
+
+let greatest_supported_version_for_dune_lang t ~dune_lang_ver =
+  Supported_versions.greatest_supported_version_for_dune_lang
+    t.supported_versions ~dune_lang_ver
 
 let key t = t.key
 
@@ -245,17 +305,6 @@ open Decoder
 
 let set t ver parser = set t.key ver parser
 
-let get_exn t =
-  get t.key >>= function
-  | Some x -> return x
-  | None ->
-    let+ context = get_all in
-    Code_error.raise "Syntax identifier is unset"
-      [ ("name", Dyn.Encoder.string t.name)
-      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
-      ; ("context", Univ_map.to_dyn context)
-      ]
-
 let desc () =
   let+ kind = kind in
   match kind with
@@ -263,6 +312,20 @@ let desc () =
   | Fields (loc, None) -> (loc, "This field")
   | Values (loc, Some s) -> (loc, sprintf "'%s'" s)
   | Fields (loc, Some s) -> (loc, sprintf "Field '%s'" s)
+
+let get_exn t =
+  get t.key >>= function
+  | Some (Active x) -> return x
+  | Some (Disabled { dune_lang_ver; lang }) ->
+    let* loc, what = desc () in
+    Error.disabled loc lang ~what ~dune_lang_ver
+  | None ->
+    let+ context = get_all in
+    Code_error.raise "Syntax identifier is unset"
+      [ ("name", Dyn.Encoder.string t.name)
+      ; ("supported_versions", Supported_versions.to_dyn t.supported_versions)
+      ; ("context", Univ_map.to_dyn context)
+      ]
 
 let deleted_in ?(extra_info = "") t ver =
   let open Version.Infix in

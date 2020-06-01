@@ -55,7 +55,8 @@ module Dep = struct
       Some (recursive, dir, alias)
 
   let dep_parser =
-    Dune_lang.Syntax.set Stanza.syntax Stanza.latest_version Dep_conf.decode
+    Dune_lang.Syntax.set Stanza.syntax (Active Stanza.latest_version)
+      Dep_conf.decode
 
   let parser s =
     match parse_alias s with

@@ -118,7 +118,7 @@ module What = struct
     match args with
     | [] -> default
     | _ ->
-      let parse = Dune_lang.Syntax.set Dune.Stanza.syntax lang parse in
+      let parse = Dune_lang.Syntax.set Dune.Stanza.syntax (Active lang) parse in
       let ast =
         Dune_lang.Ast.add_loc ~loc:Loc.none
           (List (List.map args ~f:Dune_lang.atom_or_quoted_string))

@@ -247,9 +247,7 @@ include Dune_lang.Versioned_file.Make (struct
 end)
 
 let default_dune_language_version =
-  ref
-    (Option.value_exn
-       (Dune_lang.Syntax.greatest_supported_version Stanza.syntax))
+  ref (Dune_lang.Syntax.greatest_supported_version Stanza.syntax)
 
 let get_dune_lang () =
   { (Lang.get_exn "dune") with version = !default_dune_language_version }
@@ -302,16 +300,17 @@ module Project_file_edit = struct
       t.exists <- true;
       Created
 
-  let append t str =
+  let append t sexp =
     let what = ensure_exists t in
     let prev = Io.read_file (Path.source t.file) ~binary:false in
+    let sexp = Dune_lang.to_string sexp in
     notify_user
       [ Pp.textf "Appending this line to %s: %s"
           (Path.Source.to_string_maybe_quoted t.file)
-          str
+          sexp
       ];
     Io.with_file_out (Path.source t.file) ~binary:false ~f:(fun oc ->
-        List.iter [ prev; str ] ~f:(fun s ->
+        List.iter [ prev; sexp ] ~f:(fun s ->
             output_string oc s;
             let len = String.length s in
             if len > 0 && s.[len - 1] <> '\n' then output_char oc '\n'));
@@ -322,8 +321,6 @@ let lang_stanza = Project_file_edit.lang_stanza
 
 let ensure_project_file_exists t =
   Project_file_edit.ensure_exists t.project_file
-
-let append_to_project_file t str = Project_file_edit.append t.project_file str
 
 module Extension = struct
   type 'a t = 'a Univ_map.Key.t
@@ -396,7 +393,12 @@ module Extension = struct
   (* Extensions that are not selected in the dune-project file are automatically
      available at their latest version. When used, dune will automatically edit
      the dune-project file. *)
-  let automatic ~lang ~project_file ~explicitly_selected =
+
+  type automatic =
+    | Disabled of packed_extension
+    | Enabled of instance
+
+  let automatic ~lang ~project_file ~explicitly_selected : automatic list =
     Table.foldi extensions ~init:[] ~f:(fun name extension acc ->
         if explicitly_selected name then
           acc
@@ -409,11 +411,11 @@ module Extension = struct
                 Some (0, 0)
               else
                 let dune_lang_ver = lang.Lang.Instance.version in
-                Dune_lang.Syntax.greatest_supported_version ~dune_lang_ver
-                  e.syntax
+                Dune_lang.Syntax.greatest_supported_version_for_dune_lang
+                  ~dune_lang_ver e.syntax
             in
             match version with
-            | None -> acc
+            | None -> Disabled (Packed e) :: acc
             | Some version ->
               let parse_args p =
                 let open Dune_lang.Decoder in
@@ -429,21 +431,21 @@ module Extension = struct
                           dune_project_edited := true;
                           ignore
                             ( Project_file_edit.append project_file
-                                (Dune_lang.to_string
-                                   (List
-                                      [ Dune_lang.atom "using"
-                                      ; Dune_lang.atom name
-                                      ; Dune_lang.atom
-                                          (Dune_lang.Syntax.Version.to_string
-                                             version)
-                                      ]))
+                                (List
+                                   [ Dune_lang.atom "using"
+                                   ; Dune_lang.atom name
+                                   ; Dune_lang.atom
+                                       (Dune_lang.Syntax.Version.to_string
+                                          version)
+                                   ])
                               : created_or_already_exist )
                         );
                         p ))
                 in
                 (arg, result_stanzas)
               in
-              { extension = Packed e; version; loc = Loc.none; parse_args }
+              Enabled
+                { extension = Packed e; version; loc = Loc.none; parse_args }
               :: acc ))
 end
 
@@ -462,46 +464,63 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
     User_error.raise ~loc
       [ Pp.textf "Extension %S specified for the second time." name ]
   | Ok map ->
-    let implicit_extensions =
-      Extension.automatic ~lang ~project_file
-        ~explicitly_selected:(String.Map.mem map)
-    in
     let extensions =
-      List.map ~f:(fun e -> (e, true)) explicit_extensions
+      let implicit_extensions =
+        Extension.automatic ~lang ~project_file
+          ~explicitly_selected:(String.Map.mem map)
+      in
+      List.map ~f:(fun e -> (Extension.Enabled e, true)) explicit_extensions
       @ List.map ~f:(fun e -> (e, false)) implicit_extensions
     in
-    let acc =
-      Univ_map.singleton (Dune_lang.Syntax.key lang.syntax) lang.version
-    in
     let parsing_context =
-      List.fold_left extensions ~init:acc
-        ~f:(fun acc ((ext : Extension.instance), _) ->
+      let init =
+        Univ_map.singleton
+          (Dune_lang.Syntax.key lang.syntax)
+          (Active lang.version)
+      in
+      List.fold_left extensions ~init
+        ~f:(fun acc ((ext : Extension.automatic), _) ->
           let syntax =
-            let (Extension.Packed ext) = ext.extension in
+            let (Extension.Packed ext) =
+              match ext with
+              | Extension.Enabled e -> e.extension
+              | Disabled e -> e
+            in
             ext.syntax
           in
-          Univ_map.add acc (Dune_lang.Syntax.key syntax) ext.version)
+          let status : Dune_lang.Syntax.Key.t =
+            match ext with
+            | Enabled ext -> Active ext.version
+            | Disabled (Packed e) ->
+              let dune_lang_ver = lang.Lang.Instance.version in
+              let lang = e.syntax in
+              Disabled { lang; dune_lang_ver }
+          in
+          Univ_map.add acc (Dune_lang.Syntax.key syntax) status)
     in
     let extension_args, extension_stanzas =
       List.fold_left extensions ~init:(Univ_map.empty, [])
         ~f:(fun (args_acc, stanzas_acc)
-                ((instance : Extension.instance), is_explicit)
+                ((ext : Extension.automatic), is_explicit)
                 ->
-          let (Packed e) = instance.extension in
-          let args =
-            let+ arg, stanzas =
-              Dune_lang.Decoder.set_many parsing_context e.stanzas
+          match ext with
+          | Disabled _ -> (args_acc, stanzas_acc)
+          | Enabled instance ->
+            let (Packed e) = instance.extension in
+            let args =
+              let+ arg, stanzas =
+                Dune_lang.Decoder.set_many parsing_context e.stanzas
+              in
+              let new_args_acc =
+                if is_explicit then
+                  Univ_map.add args_acc e.key arg
+                else
+                  args_acc
+              in
+              (new_args_acc, stanzas)
             in
-            let new_args_acc =
-              if is_explicit then
-                Univ_map.add args_acc e.key arg
-              else
-                args_acc
-            in
-            (new_args_acc, stanzas)
-          in
-          let new_args_acc, stanzas = instance.parse_args args in
-          (new_args_acc, stanzas :: stanzas_acc))
+            let new_args_acc, stanzas = instance.parse_args args in
+            (new_args_acc, stanzas :: stanzas_acc))
     in
     let stanzas = List.concat (lang.data :: extension_stanzas) in
     let stanza_parser =

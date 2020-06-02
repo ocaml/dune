@@ -496,7 +496,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
               let lang = e.syntax in
               Disabled { lang; dune_lang_ver }
           in
-          Univ_map.add acc (Dune_lang.Syntax.key syntax) status)
+          Univ_map.set acc (Dune_lang.Syntax.key syntax) status)
     in
     let extension_args, extension_stanzas =
       List.fold_left extensions ~init:(Univ_map.empty, [])
@@ -513,7 +513,7 @@ let interpret_lang_and_extensions ~(lang : Lang.Instance.t) ~explicit_extensions
               in
               let new_args_acc =
                 if is_explicit then
-                  Univ_map.add args_acc e.key arg
+                  Univ_map.set args_acc e.key arg
                 else
                   args_acc
               in

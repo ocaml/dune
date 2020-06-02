@@ -54,10 +54,28 @@ let empty = Int.Map.empty
 
 let is_empty = Int.Map.is_empty
 
-let add (type a) t (key : a Key.t) x =
+let set (type a) t (key : a Key.t) x =
   let (module M) = key in
   let data = Binding.T (key, x) in
   Int.Map.set t M.id data
+
+let add (type a) t (key : a Key.t) (x : a) : (t, a) Result.t =
+  let (module M) = key in
+  let data = Binding.T (key, x) in
+  match Int.Map.add t M.id data with
+  | Ok x -> Ok x
+  | Error (Binding.T (key', x)) ->
+    let eq = Key.eq key' key in
+    Error (Type_eq.cast eq x)
+
+let update (type a) t (key : a Key.t) ~f =
+  let (module M) = key in
+  Int.Map.update t M.id ~f:(function
+    | None -> f None |> Option.map ~f:(fun x -> Binding.T (key, x))
+    | Some (Binding.T (key', x)) ->
+      let eq = Key.eq key' key in
+      let x = Type_eq.cast eq x in
+      f (Some x) |> Option.map ~f:(fun x -> Binding.T (key, x)))
 
 let mem t key = Int.Map.mem t (Key.id key)
 

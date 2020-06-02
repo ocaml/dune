@@ -120,9 +120,9 @@ let set : type a b k. a Univ_map.Key.t -> a -> (b, k) parser -> (b, k) parser =
  fun key v t ctx state ->
   match ctx with
   | Values (loc, cstr, uc) ->
-    t (Values (loc, cstr, Univ_map.add uc key v)) state
+    t (Values (loc, cstr, Univ_map.set uc key v)) state
   | Fields (loc, cstr, uc) ->
-    t (Fields (loc, cstr, Univ_map.add uc key v)) state
+    t (Fields (loc, cstr, Univ_map.set uc key v)) state
 
 let set_many : type a k. Univ_map.t -> (a, k) parser -> (a, k) parser =
  fun map t ctx state ->

@@ -213,6 +213,24 @@ module Ivar : sig
 end
 with type 'a fiber := 'a t
 
+module Mvar : sig
+  type 'a fiber
+
+  (** Mailbox variable *)
+  type 'a t
+
+  val create : unit -> 'a t
+
+  (** Read and consume the value inside mailbox variable. Blocks until the
+      variable is available *)
+  val read : 'a t -> 'a fiber
+
+  val write : 'a t -> 'a -> unit fiber
+
+  val peek : 'a t -> 'a option fiber
+end
+with type 'a fiber := 'a t
+
 module Mutex : sig
   type 'a fiber = 'a t
 

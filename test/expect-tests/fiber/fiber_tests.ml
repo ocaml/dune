@@ -276,3 +276,114 @@ let%expect_test _ =
       ]
     [PASS] Never raised as expected
     [PASS] flag set |}]
+
+(* Mvar tests *)
+
+module Mvar = Fiber.Mvar
+
+let%expect_test "created mvar is empty" =
+  test unit
+    (let mvar = Mvar.create () in
+     let+ res = Mvar.peek mvar in
+     match res with
+     | None -> print_endline "[PASS] new var is empty"
+     | Some _ -> assert false);
+  [%expect {|
+    [PASS] new var is empty
+    () |}]
+
+let%expect_test "writing to new mvar works" =
+  test unit
+    (let mvar = Mvar.create () in
+     let value = "foo" in
+     let* () = Mvar.write mvar value in
+     let+ res = Mvar.peek mvar in
+     match res with
+     | None -> assert false
+     | Some x ->
+       assert (value = x);
+       print_endline "[PASS] mvar contains expected value");
+  [%expect {|
+    [PASS] mvar contains expected value
+    () |}]
+
+let%expect_test "reading from written mvar consumes value" =
+  test unit
+    (let mvar = Mvar.create () in
+     let value = "foo" in
+     let* () = Mvar.write mvar value in
+     let* x = Mvar.read mvar in
+     assert (value = x);
+     print_endline "[PASS] mvar contains expected value";
+     let+ res = Mvar.peek mvar in
+     match res with
+     | None -> print_endline "[PASS] value was consumed"
+     | Some _ -> assert false);
+  [%expect
+    {|
+    [PASS] mvar contains expected value
+    [PASS] value was consumed
+    () |}]
+
+let%expect_test "reading from empty mvar blocks" =
+  test unit
+    (let mvar = Mvar.create () in
+     let value = "foo" in
+     Fiber.fork_and_join_unit
+       (fun () ->
+         print_endline "reading mvar";
+         let+ x = Mvar.read mvar in
+         assert (value = x);
+         print_endline "[PASS] mvar contains expected value")
+       (fun () ->
+         let* () = long_running_fiber () in
+         print_endline "writing mvar";
+         let+ () = Mvar.write mvar value in
+         print_endline "written mvar"));
+  [%expect
+    {|
+    reading mvar
+    writing mvar
+    [PASS] mvar contains expected value
+    written mvar
+    () |}]
+
+let%expect_test "writing multiple values" =
+  test unit
+    (let mvar = Mvar.create () in
+     let write (n : int) : unit Fiber.t =
+       let+ () = Mvar.write mvar n in
+       Printf.printf "written %d\n" n
+     in
+     let read () =
+       let+ n = Mvar.read mvar in
+       Printf.printf "read %d\n" n;
+       n
+     in
+     let rec loop n =
+       if n = 0 then
+         write n
+       else
+         let* () = write n in
+         loop (n - 1)
+     in
+     let rec consume () =
+       let* n = read () in
+       if n = 0 then
+         Fiber.return ()
+       else
+         consume ()
+     in
+
+     Fiber.fork_and_join_unit (fun () -> loop 3) consume);
+  [%expect
+    {|
+    written 3
+    written 2
+    read 3
+    written 1
+    read 2
+    written 0
+    read 1
+    read 0
+    () |}]

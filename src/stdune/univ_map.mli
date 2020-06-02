@@ -16,7 +16,11 @@ val is_empty : t -> bool
 
 val mem : t -> 'a Key.t -> bool
 
-val add : t -> 'a Key.t -> 'a -> t
+val set : t -> 'a Key.t -> 'a -> t
+
+val add : t -> 'a Key.t -> 'a -> (t, 'a) Result.t
+
+val update : t -> 'a Key.t -> f:('a option -> 'a option) -> t
 
 val remove : t -> 'a Key.t -> t
 

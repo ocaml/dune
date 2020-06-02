@@ -319,9 +319,9 @@ module Var = struct
 
   let get_exn var = Univ_map.find_exn (EC.vars ()) var
 
-  let set_sync var x f = EC.set_vars_sync (Univ_map.add (EC.vars ()) var x) f ()
+  let set_sync var x f = EC.set_vars_sync (Univ_map.set (EC.vars ()) var x) f ()
 
-  let set var x f k = EC.set_vars (Univ_map.add (EC.vars ()) var x) f () k
+  let set var x f k = EC.set_vars (Univ_map.set (EC.vars ()) var x) f () k
 
   let unset_sync var f =
     EC.set_vars_sync (Univ_map.remove (EC.vars ()) var) f ()

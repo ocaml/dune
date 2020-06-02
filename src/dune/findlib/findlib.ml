@@ -325,7 +325,7 @@ end = struct
           (* Here we scan [t.dir] and consider all files named [lib*.ext_lib] to
              be foreign archives, and all other files with the extension
              [ext_lib] to be native archives. The resulting lists of archives
-             will be used to compute appropriate flags for linking dependant
+             will be used to compute appropriate flags for linking dependent
              executables. *)
           match Path.readdir_unsorted t.dir with
           | Error _ ->

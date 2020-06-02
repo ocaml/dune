@@ -1,6 +1,6 @@
 ----------------------------------------------------------------------------------
 Testsuite for https://github.com/ocaml/dune/issues/3043
-`dune init` should sucessfully create lib or exec projects with library stanza 
+`dune init` should successfully create lib or exec projects with library stanza 
 when --libs option is provided.
 ----------------------------------------------------------------------------------
 

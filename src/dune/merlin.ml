@@ -26,7 +26,7 @@ module Preprocess = struct
         (* only No_preprocessing has no loc*)
       in
       warn_dropped_pp loc ~allow_approx_merlin
-        ~reason:"Cannot mix preprocessed and non preprocessed specificiations";
+        ~reason:"Cannot mix preprocessed and non preprocessed specifications";
       Dune_file.Preprocess.No_preprocessing
     | (Future_syntax _ as future_syntax), _
     | _, (Future_syntax _ as future_syntax) ->

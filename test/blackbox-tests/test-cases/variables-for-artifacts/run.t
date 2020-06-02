@@ -92,7 +92,7 @@ Command line version.
   Actual targets:
   - _build/default/a1.cmxa
 
-This test tries to build a non-existant .cma.
+This test tries to build a non-existent .cma.
 
   $ mkdir ex2
   $ echo "(lang dune 2.1)" > ex2/dune-project
@@ -146,7 +146,7 @@ Command line version.
   Actual targets:
   - _build/default/sub/.bar.objs/byte/bar__X.cmo
 
-This test builds a module in a subdirectory (differnet project) belonging to a
+This test builds a module in a subdirectory (different project) belonging to a
 private library.
 
   $ ./sdune clean

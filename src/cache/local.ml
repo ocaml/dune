@@ -276,7 +276,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
          this would have a non-negligible performance cost. A good compromise
          seems to be to add a "paranoid" mode to Dune cache where we always
          check file contents for consistency with the expected digest, so one
-         could enable it when needed. In the paranoid mode, we could futhermore
+         could enable it when needed. In the paranoid mode, we could furthermore
          check for a digest collision via [Io.compare_files in_the_cache tmp]. *)
       match Path.exists in_the_cache with
       | true ->

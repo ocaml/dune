@@ -815,7 +815,7 @@ end = struct
               match Map.find acc vlib with
               | None ->
                 (* we've already traversed the virtual library because it must
-                   have occured earlier in the closure *)
+                   have occurred earlier in the closure *)
                 assert false
               | Some (No_impl _) ->
                 loop (Map.set acc vlib (Impl (lib, stack))) libs

@@ -1,4 +1,4 @@
-Install files for implemenations and virtual libs have all the artifacts:
+Install files for implementations and virtual libs have all the artifacts:
   $ dune build
   lib: [
     "_build/install/default/lib/vlib/META"

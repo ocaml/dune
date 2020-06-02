@@ -1,7 +1,7 @@
 ----------------------------------------------------------------------------------
 Testsuite for https://github.com/ocaml/dune/issues/3046
 `dune init` should raise proper errors when syntacticaly invalid arguments
-are given as paramters
+are given as parameters
 ----------------------------------------------------------------------------------
 
 `dune init exe main --libs="str gsl"` returns an informative parsing error

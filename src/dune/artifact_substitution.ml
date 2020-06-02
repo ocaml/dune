@@ -307,7 +307,7 @@ let buf = Bytes.create buf_len
                 |                                                           |
                 |                                                           |
                 v                                                           |
- was the begining of a placeholder found by [Scanner.run]?                  |
+ was the beginning of a placeholder found by [Scanner.run]?                 |
           (i.e. "%%DUNE_PLACEHOLDER:<len>:")                                |
  and if yes, is the whole placeholder currently in [buf]?                   |
         |                                         |                         |

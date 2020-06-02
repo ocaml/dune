@@ -46,7 +46,7 @@ module V1 : sig
   (** {1 Syntax sugar for applicative subset} *)
 
   (** Syntax sugar for applicative subset of the interface. Syntax sugar for
-      [stage] is not provided to prevent accidential use.*)
+      [stage] is not provided to prevent accidental use.*)
   module O : sig
     (** {[ let+ a = g in h ]} is equivalent to {[ map g ~f:(fun a -> g) ]}. *)
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t

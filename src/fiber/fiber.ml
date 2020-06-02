@@ -18,7 +18,7 @@ module Execution_context : sig
     val run_queue : 'a t Queue.t -> 'a -> unit
   end
 
-  (* Execute a function returning a fiber, passing any raised excetion to the
+  (* Execute a function returning a fiber, passing any raised exception to the
      current execution context. [apply] is guaranteed to not raise. *)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 

@@ -36,7 +36,9 @@ end
 
 module Special_builtin_support : sig
   module Build_info : sig
-    type api_version = V1
+    type api_version =
+      | V1
+      | V2
 
     type t =
       { data_module : string

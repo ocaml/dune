@@ -37,12 +37,15 @@ module Special_builtin_support = struct
            ])
 
   module Build_info = struct
-    type api_version = V1
+    type api_version =
+      | V1
+      | V2
 
     let api_version_to_dyn = function
       | V1 -> Dyn.Encoder.constr "V1" []
+      | V2 -> Dyn.Encoder.constr "V2" []
 
-    let supported_api_versions = [ (1, V1) ]
+    let supported_api_versions = [ (1, V1); (2, V2) ]
 
     type t =
       { data_module : string
@@ -69,7 +72,8 @@ module Special_builtin_support = struct
         [ field "data_module" string data_module
         ; field "api_version" int
             ( match api_version with
-            | V1 -> 1 )
+            | V1 -> 1
+            | V2 -> 2 )
         ]
   end
 

@@ -188,6 +188,9 @@ let static_expand
     | Macro (Artifact a, s) when not artifacts_dynamic ->
       let loc = String_with_vars.Var.loc var in
       expand_artifact ~dir ~loc t a s
+    | Macro (Path_no_dep, s) ->
+      let error_loc = String_with_vars.Var.loc var in
+      Value [ Value.Dir (Path.build (Path.Build.relative ~error_loc dir s)) ]
     | expansion -> Deferred expansion )
 
 let cc_cxx_bindings =

@@ -277,6 +277,7 @@ module Map = struct
         ; ("path-no-dep", deleted_in ~version:(1, 0) Macro.Path_no_dep)
         ; ("ocaml-config", macro Ocaml_config)
         ; ("env", since ~version:(1, 4) Macro.Env)
+        ; ("dir", since ~version:(2, 5) Macro.Path_no_dep)
         ]
       @ List.map ~f:artifact Artifact.all )
 

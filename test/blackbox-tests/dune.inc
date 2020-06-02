@@ -373,6 +373,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dir-form)
+ (deps (package dune) (source_tree test-cases/dir-form) (alias test-deps))
+ (action
+  (chdir
+   test-cases/dir-form
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dir-target-dep)
  (deps
   (package dune)
@@ -2989,6 +2997,7 @@
   (alias deps-conf-vars)
   (alias describe)
   (alias dialects)
+  (alias dir-form)
   (alias dir-target-dep)
   (alias disable-promotion)
   (alias double-echo)
@@ -3280,6 +3289,7 @@
   (alias deps-conf-vars)
   (alias describe)
   (alias dialects)
+  (alias dir-form)
   (alias dir-target-dep)
   (alias disable-promotion)
   (alias double-echo)

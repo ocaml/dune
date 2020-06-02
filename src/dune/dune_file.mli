@@ -231,7 +231,7 @@ module Executables : sig
     ; forbidden_libraries : (Loc.t * Lib_name.t) list
     ; bootstrap_info : string option
     ; enabled_if : Blang.t
-    ; custom_build_info : Custom_build_info.t
+    ; custom_build_info : Custom_build_info.t option
     }
 
   (** Check if the executables have any foreign stubs or archives. *)

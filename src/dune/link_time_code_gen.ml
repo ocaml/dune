@@ -82,6 +82,23 @@ let findlib_init_code ~preds ~libs =
   pr buf "Findlib.record_package_predicates preds;;";
   Buffer.contents buf
 
+let gen_placeholder_var =
+  let n = ref 0 in
+  fun () ->
+    let s = sprintf "p%d" !n in
+    incr n;
+    s
+
+let build_info_code_v2 ~cctx ~custom_build_info buf =
+  match custom_build_info with
+  | Some { Custom_build_info.max_size; _ } ->
+    let var = gen_placeholder_var () in
+    let dir = Obj_dir.obj_dir (CC.obj_dir cctx) in
+    pr buf "let %s = eval %S" var
+      Artifact_substitution.(encode ~min_len:max_size (Custom dir));
+    pr buf "let custom = %s" var
+  | None -> pr buf "let custom = None"
+
 let build_info_code cctx ~libs ~api_version ~custom_build_info =
   ( match api_version with
   | Lib_info.Special_builtin_support.Build_info.V1
@@ -92,13 +109,6 @@ let build_info_code cctx ~libs ~api_version ~custom_build_info =
 
      {[ let v = Placeholder "%%DUNE_PLACEHOLDER:...:vcs-describe:...:p%%" ]} *)
   let placeholders = ref Path.Source.Map.empty in
-  let gen_placeholder_var =
-    let n = ref 0 in
-    fun () ->
-      let s = sprintf "p%d" !n in
-      incr n;
-      s
-  in
   let placeholder p =
     match File_tree.nearest_vcs p with
     | None -> "None"
@@ -179,12 +189,8 @@ let build_info_code cctx ~libs ~api_version ~custom_build_info =
       pr buf "%S, %s" (Lib_name.to_string name) v);
   pr buf "";
   if api_version = Lib_info.Special_builtin_support.Build_info.V2 then
-    (* let var = gen_placeholder_var () in pr buf "let %s = eval %S" var
-       (Artifact_substitution.encode ~min_len:64 Artifact_substitution.Custom); *)
-    pr buf "let custom = %s"
-      ( match custom_build_info with
-      | None -> "Some \"n/a\""
-      | Some _ -> "Some \"some action\"" );
+    build_info_code_v2 ~cctx ~custom_build_info buf;
+  pr buf "";
   Buffer.contents buf
 
 let handle_special_libs ~custom_build_info cctx =
@@ -206,11 +212,12 @@ let handle_special_libs ~custom_build_info cctx =
         match special with
         | Build_info { data_module; api_version } ->
           let module_ =
-            generate_and_compile_module cctx ~name:data_module ~lib
-              ~code:
-                (Build.return
-                   (build_info_code cctx ~libs:all_libs ~api_version
-                      ~custom_build_info))
+            let code =
+              Build.return
+                (build_info_code cctx ~libs:all_libs ~api_version
+                   ~custom_build_info)
+            in
+            generate_and_compile_module cctx ~name:data_module ~lib ~code
               ~requires:(Ok [ lib ])
               ~precompiled_cmi:true
           in

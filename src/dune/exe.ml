@@ -180,7 +180,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          let seq =
            match custom_build_info with
            | None -> seq
-           | Some f -> f (Obj_dir.dir (CC.obj_dir cctx)) :: seq
+           | Some { Custom_build_info.action; _ } ->
+             action (Obj_dir.obj_dir (CC.obj_dir cctx)) :: seq
          in
          Action.progn seq)
 

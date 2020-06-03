@@ -189,14 +189,11 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                Targets.Static
                  { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
              in
-             let action_expanded =
-               Action_unexpanded.expand action ~loc ~dep_kind:Required
-                 ~targets_dir:dir
-                 ~targets:Targets.(Or_forbidden.Targets targets)
-                 ~expander:(CC.expander cctx)
-                 (Build.return Bindings.empty)
-             in
-             action_expanded
+             Action_unexpanded.expand action ~loc ~dep_kind:Required
+               ~targets_dir:dir
+               ~targets:Targets.(Or_forbidden.Targets targets)
+               ~expander:(CC.expander cctx)
+               (Build.return Bindings.empty)
          in
          Action.progn [ cbi; cmd_run ])
 

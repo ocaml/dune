@@ -9,3 +9,7 @@ val output_file : string
 
 val decode :
   unit -> (t option, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser
+
+val to_dyn : t -> Dyn.t
+
+val encode : t -> Dune_lang.t

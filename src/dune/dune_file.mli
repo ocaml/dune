@@ -140,6 +140,7 @@ module Library : sig
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
     ; instrumentation_backend : (Loc.t * Lib_name.t) option
+    ; custom_build_info : Lib_info.Custom_build_info.t option
     }
 
   (** Check if the library has any foreign stubs or archives. *)

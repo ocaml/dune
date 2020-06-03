@@ -255,6 +255,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias custom-build-info-lib)
+ (deps
+  (package dune)
+  (source_tree test-cases/custom-build-info/lib)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/custom-build-info/lib
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias custom-cross-compilation)
  (deps
   (package dune)

@@ -110,6 +110,9 @@ Check what the generated build info module looks like:
     ; "b", p2
     ; "dune-build-info", Some "XXX"
     ]
+  
+  let custom = None
+  
 
 Test --debug-artifact-substitution
 ----------------------------------

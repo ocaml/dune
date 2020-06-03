@@ -1,6 +1,6 @@
 type t =
   { max_size : int
-  ; action : Import.Path.Build.t -> Action.t
+  ; action : Action_dune_lang.t
   }
 
 val output_file : string

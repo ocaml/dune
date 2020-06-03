@@ -1,19 +1,13 @@
-open Import
-
 type t =
   { max_size : int
-  ; action : Path.Build.t -> Action.t
+  ; action : Action_dune_lang.t
   }
 
 let output_file = "custom_build_info.txt-gen"
 
 let action =
   let open Dune_lang.Decoder in
-  field "action"
-    (let+ action = Action.decode in
-     fun dir ->
-       let target = Path.Build.relative dir output_file in
-       Action.with_stdout_to target action)
+  field "action" Action_dune_lang.decode
 
 let decode () =
   let open Dune_lang.Decoder in

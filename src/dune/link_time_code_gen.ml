@@ -93,7 +93,7 @@ let build_info_code_v2 ~cctx ~custom_build_info buf =
   match custom_build_info with
   | Some { Custom_build_info.max_size; _ } ->
     let var = gen_placeholder_var () in
-    let dir = Obj_dir.obj_dir (CC.obj_dir cctx) in
+    let dir = CC.dir cctx in
     pr buf "let %s = eval %S" var
       Artifact_substitution.(encode ~min_len:max_size (Custom dir));
     pr buf "let custom = %s" var

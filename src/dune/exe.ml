@@ -132,6 +132,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
   let exe = exe_path_from_name cctx ~name ~linkage in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode in
   let fdo_linker_script = Fdo.Linker_script.create cctx (Path.build exe) in
+
   SC.add_rule sctx ~loc ~dir
     ~mode:
       ( match promote with
@@ -175,15 +176,29 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
              ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
              ; Fdo.Linker_script.flags fdo_linker_script
              ]
-         in
-         let seq = [ cmd_run ] in
-         let seq =
+         and+ cbi =
            match custom_build_info with
-           | None -> seq
+           | None -> Build.With_targets.return Action.empty
            | Some { Custom_build_info.action; _ } ->
-             action (Obj_dir.obj_dir (CC.obj_dir cctx)) :: seq
+             let filename =
+               String_with_vars.make_text Loc.none Custom_build_info.output_file
+             in
+             let action = Action_unexpanded.with_stdout_to filename action in
+             let path = Path.Build.relative dir Custom_build_info.output_file in
+             let targets =
+               Targets.Static
+                 { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
+             in
+             let action_expanded =
+               Action_unexpanded.expand action ~loc:Loc.none (* todo *)
+                 ~dep_kind:Required ~targets_dir:dir
+                 ~targets:Targets.(Or_forbidden.Targets targets)
+                 ~expander:(CC.expander cctx)
+                 (Build.return Bindings.empty)
+             in
+             action_expanded
          in
-         Action.progn seq)
+         Action.progn [ cbi; cmd_run ])
 
 let link_js ~name ~cm_files ~promote cctx =
   let sctx = CC.super_context cctx in

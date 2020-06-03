@@ -13,4 +13,4 @@
 
   $ _install/bin/foo
   version: 1.0
-  custom: Some custom information accessible with `Build_info.V2.custom
+  custom: Some custom information accessible with `Build_info.V2.custom`

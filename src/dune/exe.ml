@@ -179,7 +179,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          and+ cbi =
            match custom_build_info with
            | None -> Build.With_targets.return Action.empty
-           | Some { Custom_build_info.action; _ } ->
+           | Some { Custom_build_info.action = loc, action; _ } ->
              let filename =
                String_with_vars.make_text Loc.none Custom_build_info.output_file
              in
@@ -190,8 +190,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
                  { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
              in
              let action_expanded =
-               Action_unexpanded.expand action ~loc:Loc.none (* todo *)
-                 ~dep_kind:Required ~targets_dir:dir
+               Action_unexpanded.expand action ~loc ~dep_kind:Required
+                 ~targets_dir:dir
                  ~targets:Targets.(Or_forbidden.Targets targets)
                  ~expander:(CC.expander cctx)
                  (Build.return Bindings.empty)

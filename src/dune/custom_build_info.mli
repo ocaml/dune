@@ -1,6 +1,8 @@
+open! Stdune
+
 type t =
   { max_size : int
-  ; action : Action_dune_lang.t
+  ; action : Loc.t * Action_dune_lang.t
   }
 
 val output_file : string

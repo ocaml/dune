@@ -213,7 +213,7 @@ let link_js ~name ~cm_files ~promote cctx =
     ~flags:(Command.Args.dyn flags) ~promote
 
 let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files
-    ?(custom_build_info = None) ?(embed_in_plugin_libraries = []) cctx =
+    ~custom_build_info ?(embed_in_plugin_libraries = []) cctx =
   let modules = Compilation_context.modules cctx in
   let dep_graphs = Dep_rules.rules cctx ~modules in
   Module_compilation.build_all cctx ~dep_graphs;

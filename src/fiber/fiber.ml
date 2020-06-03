@@ -394,46 +394,46 @@ end
 
 module Mvar = struct
   type 'a t =
-    { writers : ('a * unit Ivar.t) Queue.t
-    ; readers : 'a Ivar.t Queue.t
+    { writers : ('a * unit K.t) Queue.t
+    ; readers : 'a K.t Queue.t
     ; mutable value : 'a option
     }
 
   let create () =
     { value = None; writers = Queue.create (); readers = Queue.create () }
 
-  let next_writer (type a) (t : a t) =
-    if Queue.is_empty t.writers then
-      None
-    else
-      let a, w = Queue.pop t.writers in
-      assert (t.value = None);
+  let rec step t =
+    match t.value with
+    | None when not (Queue.is_empty t.writers) ->
+      let a, wk = Queue.pop t.writers in
       t.value <- Some a;
-      Some w
+      K.run wk ();
+      (* We cannot assume [t.value = Some _] here. K.run may have called read
+         already *)
+      step t
+    | Some x when not (Queue.is_empty t.readers) ->
+      let r = Queue.pop t.readers in
+      t.value <- None;
+      K.run r x;
+      (* Similarly, we can no longer assume [t.value = None] *)
+      step t
+    | _ -> ()
 
   let read (type a) (t : a t) k =
     match t.value with
-    | None ->
-      let ivar = Ivar.create () in
-      Queue.add ivar t.readers;
-      Ivar.read ivar k
-    | Some v -> (
+    | None -> Queue.add (K.create k) t.readers
+    | Some v ->
       t.value <- None;
-      match next_writer t with
-      | None -> k v
-      | Some w -> Ivar.fill w () (fun () -> k v) )
+      k v;
+      step t
 
   let write t x k =
     match t.value with
+    | Some _ -> Queue.add (x, K.create k) t.writers
     | None ->
-      if Queue.is_empty t.readers then
-        k (t.value <- Some x)
-      else
-        Ivar.fill (Queue.pop t.readers) x k
-    | Some _ ->
-      let ivar = Ivar.create () in
-      Queue.add (x, ivar) t.writers;
-      Ivar.read ivar k
+      t.value <- Some x;
+      k ();
+      step t
 
   let peek t k = k t.value
 end

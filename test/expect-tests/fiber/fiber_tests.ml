@@ -297,6 +297,7 @@ let%expect_test "writing to new mvar works" =
     (let mvar = Mvar.create () in
      let value = "foo" in
      let* () = Mvar.write mvar value in
+     let* () = Scheduler.yield () in
      let+ res = Mvar.peek mvar in
      match res with
      | None -> assert false
@@ -344,8 +345,8 @@ let%expect_test "reading from empty mvar blocks" =
     {|
     reading mvar
     writing mvar
-    [PASS] mvar contains expected value
     written mvar
+    [PASS] mvar contains expected value
     () |}]
 
 let%expect_test "writing multiple values" =
@@ -360,12 +361,12 @@ let%expect_test "writing multiple values" =
        Printf.printf "read %d\n" n;
        n
      in
-     let rec loop n =
+     let rec produce n =
+       let* () = write n in
        if n = 0 then
-         write n
+         Fiber.return ()
        else
-         let* () = write n in
-         loop (n - 1)
+         produce (n - 1)
      in
      let rec consume () =
        let* n = read () in
@@ -374,16 +375,15 @@ let%expect_test "writing multiple values" =
        else
          consume ()
      in
-
-     Fiber.fork_and_join_unit (fun () -> loop 3) consume);
+     Fiber.fork_and_join_unit (fun () -> produce 3) consume);
   [%expect
     {|
     written 3
-    written 2
     read 3
-    written 1
+    written 2
     read 2
-    written 0
+    written 1
     read 1
+    written 0
     read 0
     () |}]

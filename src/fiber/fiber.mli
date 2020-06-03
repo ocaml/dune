@@ -226,8 +226,6 @@ module Mvar : sig
   val read : 'a t -> 'a fiber
 
   val write : 'a t -> 'a -> unit fiber
-
-  val peek : 'a t -> 'a option fiber
 end
 with type 'a fiber := 'a t
 

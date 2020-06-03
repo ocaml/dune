@@ -434,8 +434,6 @@ module Mvar = struct
       t.value <- Some x;
       k ();
       step t
-
-  let peek t k = k t.value
 end
 
 module Future = struct

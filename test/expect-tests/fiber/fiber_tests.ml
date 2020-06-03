@@ -282,48 +282,23 @@ let%expect_test _ =
 module Mvar = Fiber.Mvar
 
 let%expect_test "created mvar is empty" =
-  test unit
-    (let mvar = Mvar.create () in
-     let+ res = Mvar.peek mvar in
-     match res with
-     | None -> print_endline "[PASS] new var is empty"
-     | Some _ -> assert false);
+  test ~expect_never:true opaque
+    (let mvar : int Mvar.t = Mvar.create () in
+     Mvar.read mvar);
   [%expect {|
-    [PASS] new var is empty
-    () |}]
-
-let%expect_test "writing to new mvar works" =
-  test unit
-    (let mvar = Mvar.create () in
-     let value = "foo" in
-     let* () = Mvar.write mvar value in
-     let* () = Scheduler.yield () in
-     let+ res = Mvar.peek mvar in
-     match res with
-     | None -> assert false
-     | Some x ->
-       assert (value = x);
-       print_endline "[PASS] mvar contains expected value");
-  [%expect {|
-    [PASS] mvar contains expected value
-    () |}]
+    [PASS] Never raised as expected |}]
 
 let%expect_test "reading from written mvar consumes value" =
   test unit
     (let mvar = Mvar.create () in
      let value = "foo" in
      let* () = Mvar.write mvar value in
-     let* x = Mvar.read mvar in
+     let+ x = Mvar.read mvar in
      assert (value = x);
-     print_endline "[PASS] mvar contains expected value";
-     let+ res = Mvar.peek mvar in
-     match res with
-     | None -> print_endline "[PASS] value was consumed"
-     | Some _ -> assert false);
+     print_endline "[PASS] mvar contains expected value");
   [%expect
     {|
     [PASS] mvar contains expected value
-    [PASS] value was consumed
     () |}]
 
 let%expect_test "reading from empty mvar blocks" =

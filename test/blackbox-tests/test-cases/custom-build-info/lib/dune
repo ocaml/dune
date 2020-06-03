@@ -3,7 +3,7 @@
  (modules lib1)
  (libraries dune-build-info)
  (custom_build_info
-  (max_size 65)
+  (max_size 66)
   (action (run ocaml %{dep:gen_version.ml}))))
 
 (executable

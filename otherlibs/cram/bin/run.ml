@@ -48,14 +48,16 @@ let run_expect_test file ~f =
 
 let remove_at_exit fn = at_exit (fun () -> try Sys.remove fn with _ -> ())
 
+let temp_prefix = "dune-test"
+
 let temp_file suffix =
-  let fn = Filename.temp_file "dune-test" suffix in
+  let fn = Filename.temp_file temp_prefix suffix in
   remove_at_exit fn;
   fn
 
 let open_temp_file suffix =
   let fn, oc =
-    Filename.open_temp_file "dune-test" suffix ~mode:[ Open_binary ]
+    Filename.open_temp_file temp_prefix suffix ~mode:[ Open_binary ]
   in
   remove_at_exit fn;
   (fn, oc)

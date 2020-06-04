@@ -98,22 +98,6 @@ let extend_build_path_prefix_map ~cwd =
 let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
   let script, oc = Temp_dir.open_file temp_dir ~suffix:".main.sh" in
   let prln fmt = Printf.fprintf oc (fmt ^^ "\n") in
-  (* Shell code written by the user might not be properly terminated. For
-     instance the user might forgot to write [EOF] after a [cat <<EOF]. If we
-     wrote this shell code directly in the main script, it would hide the rest
-     of the script. So instead, we dump each user written shell phrase into a
-     file and then source it in the main script. *)
-  let user_shell_code_file = Temp_dir.file temp_dir ~suffix:".sh" in
-  let user_shell_code_file_sh_path =
-    translate_path_for_sh user_shell_code_file
-  in
-  (* Where we store the output of shell code written by the user *)
-  let user_shell_code_output_file_sh_path =
-    let user_shell_code_output_file =
-      Temp_dir.file temp_dir ~suffix:".output"
-    in
-    translate_path_for_sh user_shell_code_output_file
-  in
 
   (* Produce the following shell code:
 
@@ -141,14 +125,14 @@ let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
     prln "%s" sentinel
   in
 
-  let rec loop () =
+  let rec loop i =
     match Cram_lexer.block lexbuf with
     | None -> close_out oc
     | Some block -> (
       match block with
       | Comment lines ->
         cat_eof lines;
-        loop ()
+        loop i
       | Command lines ->
         cat_eof
           (List.mapi lines ~f:(fun i line ->
@@ -156,15 +140,33 @@ let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
                  "  $ " ^ line
                else
                  "  > " ^ line));
+        let file ~ext =
+          let suffix = sprintf "_%d%s" i ext in
+          Temp_dir.file temp_dir ~suffix
+        in
+        (* Shell code written by the user might not be properly terminated. For
+           instance the user might forgot to write [EOF] after a [cat <<EOF]. If
+           we wrote this shell code directly in the main script, it would hide
+           the rest of the script. So instead, we dump each user written shell
+           phrase into a file and then source it in the main script. *)
+        let user_shell_code_file = file ~ext:".sh" in
+        let user_shell_code_file_sh_path =
+          translate_path_for_sh user_shell_code_file
+        in
         cat_eof lines ~dest:user_shell_code_file;
+        (* Where we store the output of shell code written by the user *)
+        let user_shell_code_output_file_sh_path =
+          let user_shell_code_output_file = file ~ext:".output" in
+          translate_path_for_sh user_shell_code_output_file
+        in
         prln ". %s > %s 2>&1"
           (quote_for_sh user_shell_code_file_sh_path)
           (quote_for_sh user_shell_code_output_file_sh_path);
         prln {|%s --exit-code $? < %s|} sanitizer_command
           (quote_for_sh user_shell_code_output_file_sh_path);
-        loop () )
+        loop (succ i) )
   in
-  loop ();
+  loop 1;
   script
 
 let run ~sanitizer ~file lexbuf =

@@ -169,6 +169,9 @@ let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
   loop 1;
   script
 
+let display_with_bars s =
+  List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
+
 let run ~sanitizer ~file lexbuf =
   let sanitizer_command =
     match sanitizer with
@@ -203,9 +206,9 @@ let run ~sanitizer ~file lexbuf =
     Printf.eprintf "Generated cram script exited with code %d!\n" n;
     Printf.eprintf "Script:\n";
     let script = Io.String_path.read_file script in
-    List.iter (String.split_lines script) ~f:(Printf.eprintf "| %s\n");
+    display_with_bars script;
     Printf.eprintf "Script output:\n";
-    List.iter (String.split_lines output) ~f:(Printf.eprintf "| %s\n");
+    display_with_bars output;
     exit 1
   );
   output

@@ -2,6 +2,40 @@ open Stdune
 open Cmdliner
 open Import.Let_syntax
 
+module Temp_dir : sig
+  type t
+
+  val create : for_script:string -> t
+
+  val open_file : t -> suffix:string -> string * out_channel
+
+  val file : t -> suffix:string -> string
+end = struct
+  type t = string
+
+  let prng = lazy (Random.State.make_self_init ())
+
+  let temp_file_name temp_dir prefix suffix =
+    let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
+    Filename.concat temp_dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
+
+  let create ~for_script =
+    let dir = Filename.get_temp_dir_name () in
+    let t = temp_file_name dir ".dune.cram." (Filename.basename for_script) in
+    let path = Path.External.of_string t in
+    Path.External.mkdir_p path;
+    at_exit (fun () -> Path.rm_rf ~allow_external:true (Path.external_ path));
+    t
+
+  let file t ~suffix = Filename.temp_file ~temp_dir:t "" suffix
+
+  let open_file t ~suffix =
+    let fn, oc =
+      Filename.open_temp_file ~temp_dir:t "" suffix ~mode:[ Open_binary ]
+    in
+    (fn, oc)
+end
+
 (* Translate a path for [sh]. On Windows, [sh] will come from Cygwin so if we
    are a real windows program we need to pass the path through [cygpath] *)
 let translate_path_for_sh =
@@ -48,22 +82,6 @@ let run_expect_test file ~f =
     exit 0
   )
 
-let remove_at_exit fn = at_exit (fun () -> try Sys.remove fn with _ -> ())
-
-let temp_prefix = "dune-test"
-
-let temp_file suffix =
-  let fn = Filename.temp_file temp_prefix suffix in
-  remove_at_exit fn;
-  fn
-
-let open_temp_file suffix =
-  let fn, oc =
-    Filename.open_temp_file temp_prefix suffix ~mode:[ Open_binary ]
-  in
-  remove_at_exit fn;
-  (fn, oc)
-
 let extend_build_path_prefix_map ~cwd =
   let var = "BUILD_PATH_PREFIX_MAP" in
   let s =
@@ -77,21 +95,23 @@ let extend_build_path_prefix_map ~cwd =
   in
   Unix.putenv var s
 
-let create_sh_script lexbuf ~sanitizer_command =
-  let script, oc = open_temp_file ".sh" in
+let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
+  let script, oc = Temp_dir.open_file temp_dir ~suffix:".main.sh" in
   let prln fmt = Printf.fprintf oc (fmt ^^ "\n") in
   (* Shell code written by the user might not be properly terminated. For
      instance the user might forgot to write [EOF] after a [cat <<EOF]. If we
      wrote this shell code directly in the main script, it would hide the rest
      of the script. So instead, we dump each user written shell phrase into a
      file and then source it in the main script. *)
-  let user_shell_code_file = temp_file ".sh" in
+  let user_shell_code_file = Temp_dir.file temp_dir ~suffix:".sh" in
   let user_shell_code_file_sh_path =
     translate_path_for_sh user_shell_code_file
   in
   (* Where we store the output of shell code written by the user *)
   let user_shell_code_output_file_sh_path =
-    let user_shell_code_output_file = temp_file ".output" in
+    let user_shell_code_output_file =
+      Temp_dir.file temp_dir ~suffix:".output"
+    in
     translate_path_for_sh user_shell_code_output_file
   in
 
@@ -161,12 +181,13 @@ let run ~sanitizer ~file lexbuf =
       in
       translate_path_for_sh prog |> quote_for_sh
   in
-  let script = create_sh_script lexbuf ~sanitizer_command in
+  let temp_dir = Temp_dir.create ~for_script:file in
+  let script = create_sh_script lexbuf ~temp_dir ~sanitizer_command in
   Sys.chdir (Filename.dirname file);
   let cwd = Sys.getcwd () in
   Unix.putenv "LC_ALL" "C";
   extend_build_path_prefix_map ~cwd;
-  let output_file = temp_file ".output" in
+  let output_file = Temp_dir.file temp_dir ~suffix:".output" in
   let fd = Unix.openfile output_file [ O_WRONLY; O_TRUNC ] 0 in
   let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in
   Unix.close fd;

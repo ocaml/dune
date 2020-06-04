@@ -69,15 +69,13 @@ end = struct
     let t = !current in
     t.fibers := !(t.fibers) + n
 
-  external sys_exit : int -> _ = "caml_sys_exit"
-
   let rec forward_error t exn =
     match t.on_error with
     | None ->
       (* We can't let the exception leak at this point, so we just dump the
          error on stderr and exit *)
       Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
-      sys_exit 42
+      exit 42
     | Some { ctx; run } -> (
       current := ctx;
       try run exn

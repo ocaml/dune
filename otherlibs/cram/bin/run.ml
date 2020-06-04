@@ -36,8 +36,10 @@ let quote_for_sh fn =
 
 let run_expect_test file ~f =
   let file_contents = Io.String_path.read_file file in
-  let lexbuf = Lexbuf.from_string file_contents ~fname:file in
-  let expected = f lexbuf in
+  let expected =
+    let lexbuf = Lexbuf.from_string file_contents ~fname:file in
+    f lexbuf
+  in
   let corrected_file = file ^ ".corrected" in
   if file_contents <> expected then
     Io.String_path.write_file corrected_file expected

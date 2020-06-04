@@ -46,16 +46,18 @@ let run_expect_test file ~f =
     exit 0
   )
 
+let remove_at_exit fn = at_exit (fun () -> try Sys.remove fn with _ -> ())
+
 let temp_file suffix =
   let fn = Filename.temp_file "dune-test" suffix in
-  at_exit (fun () -> try Sys.remove fn with _ -> ());
+  remove_at_exit fn;
   fn
 
 let open_temp_file suffix =
   let fn, oc =
     Filename.open_temp_file "dune-test" suffix ~mode:[ Open_binary ]
   in
-  at_exit (fun () -> try Sys.remove fn with _ -> ());
+  remove_at_exit fn;
   (fn, oc)
 
 let extend_build_path_prefix_map ~cwd =

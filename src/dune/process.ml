@@ -128,25 +128,6 @@ type purpose =
   | Internal_job
   | Build_job of Path.Build.Set.t
 
-module Temp = struct
-  let tmp_files = ref Path.Set.empty
-
-  let () =
-    at_exit (fun () ->
-        let fns = !tmp_files in
-        tmp_files := Path.Set.empty;
-        Path.Set.iter fns ~f:Path.unlink_no_err)
-
-  let create prefix suffix =
-    let fn = Path.of_string (Filename.temp_file prefix suffix) in
-    tmp_files := Path.Set.add !tmp_files fn;
-    fn
-
-  let destroy fn =
-    Path.unlink_no_err fn;
-    tmp_files := Path.Set.remove !tmp_files fn
-end
-
 let command_line_enclosers ~dir ~(stdout_to : Io.output Io.t)
     ~(stderr_to : Io.output Io.t) ~(stdin_from : Io.input Io.t) =
   let quote fn = String.quote_for_shell (Path.to_string fn) in
@@ -483,7 +464,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       match Response_file.get ~prog with
       | Not_supported -> (args, None)
       | Zero_terminated_strings arg ->
-        let fn = Temp.create "responsefile" ".data" in
+        let fn = Temp.create ~prefix:"responsefile" ~suffix:".data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
             List.iter args ~f:(fun arg ->
                 output_string oc arg;
@@ -498,7 +479,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     | Terminal, _
     | _, Terminal
       when !Clflags.capture_outputs ->
-      let fn = Temp.create "dune" ".output" in
+      let fn = Temp.create ~prefix:"dune" ~suffix:".output" in
       let terminal = Io.file fn Io.Out in
       let get (out : Io.output Io.t) =
         if out.kind = Terminal then (
@@ -568,7 +549,7 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
-  let fn = Temp.create "dune" ".output" in
+  let fn = Temp.create ~prefix:"dune" ~suffix:".output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ~env
       ~purpose fail_mode prog args

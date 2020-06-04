@@ -71,24 +71,7 @@ let extend_build_path_prefix_map ~cwd =
   in
   Unix.putenv var s
 
-let run ~sanitizer ~file lexbuf =
-  let sanitizer_command =
-    match sanitizer with
-    | None ->
-      quote_for_sh (translate_path_for_sh Sys.executable_name) ^ " sanitize"
-    | Some prog ->
-      let prog =
-        if Filename.is_relative prog then
-          Filename.concat (Sys.getcwd ()) prog
-        else
-          prog
-      in
-      translate_path_for_sh prog |> quote_for_sh
-  in
-  Sys.chdir (Filename.dirname file);
-  let cwd = Sys.getcwd () in
-  Unix.putenv "LC_ALL" "C";
-  extend_build_path_prefix_map ~cwd;
+let create_sh_script lexbuf ~sanitizer_command =
   let script, oc = open_temp_file ".sh" in
   let prln fmt = Printf.fprintf oc (fmt ^^ "\n") in
   (* Shell code written by the user might not be properly terminated. For
@@ -101,8 +84,8 @@ let run ~sanitizer ~file lexbuf =
     translate_path_for_sh user_shell_code_file
   in
   (* Where we store the output of shell code written by the user *)
-  let user_shell_code_output_file = temp_file ".output" in
   let user_shell_code_output_file_sh_path =
+    let user_shell_code_output_file = temp_file ".output" in
     translate_path_for_sh user_shell_code_output_file
   in
 
@@ -156,6 +139,27 @@ let run ~sanitizer ~file lexbuf =
         loop () )
   in
   loop ();
+  script
+
+let run ~sanitizer ~file lexbuf =
+  let sanitizer_command =
+    match sanitizer with
+    | None ->
+      quote_for_sh (translate_path_for_sh Sys.executable_name) ^ " sanitize"
+    | Some prog ->
+      let prog =
+        if Filename.is_relative prog then
+          Filename.concat (Sys.getcwd ()) prog
+        else
+          prog
+      in
+      translate_path_for_sh prog |> quote_for_sh
+  in
+  let script = create_sh_script lexbuf ~sanitizer_command in
+  Sys.chdir (Filename.dirname file);
+  let cwd = Sys.getcwd () in
+  Unix.putenv "LC_ALL" "C";
+  extend_build_path_prefix_map ~cwd;
   let output_file = temp_file ".output" in
   let fd = Unix.openfile output_file [ O_WRONLY; O_TRUNC ] 0 in
   let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in

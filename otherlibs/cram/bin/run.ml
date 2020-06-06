@@ -143,21 +143,26 @@ let compose_cram_output cram_stanzas =
     Buffer.add_string buf line;
     Buffer.add_char buf '\n'
   in
+  let add_space_line line =
+    Buffer.add_string buf "  ";
+    add_line line
+  in
   List.iter cram_stanzas ~f:(function
     | Comment lines -> List.iter lines ~f:add_line
     | Command { command; output_file } ->
       List.iteri command ~f:(fun i line ->
           let line =
-            sprintf "  %c %s"
+            sprintf "%c %s"
               ( if i = 0 then
                 '$'
               else
                 '>' )
               line
           in
-          add_line line);
-      let output = Io.String_path.read_file output_file in
-      Buffer.add_string buf output);
+          add_space_line line);
+      Io.String_path.read_file output_file
+      |> String.split_lines
+      |> List.iter ~f:add_space_line);
   Buffer.contents buf
 
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
@@ -197,7 +202,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
         fprln oc {|%s < %s > %s|} sanitizer_command
           user_shell_code_output_file_sh_path sanitized_output;
         fprln oc
-          {|([ "$_CRAM_EXIT_CODE" -ne "0" ] && echo "  [$_CRAM_EXIT_CODE]" >> %s) || true|}
+          {|([ "$_CRAM_EXIT_CODE" -ne "0" ] && echo "[$_CRAM_EXIT_CODE]" >> %s) || true|}
           sanitized_output
       in
       Command { command = lines; output_file = sanitized_output }

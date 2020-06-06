@@ -189,10 +189,17 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
       let sanitized_output = file ~ext:".sanitized" in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      (* XXX stderr outputted by the sanitizer command is ignored. That's not
-         good. *)
-      fprln oc {|%s --exit-code $? < %s > %s|} sanitizer_command
-        user_shell_code_output_file_sh_path (sh_path sanitized_output);
+      fprln oc {|_CRAM_EXIT_CODE=$?|};
+      let () =
+        let sanitized_output = sh_path sanitized_output in
+        (* XXX stderr outputted by the sanitizer command is ignored. That's not
+           good. *)
+        fprln oc {|%s < %s > %s|} sanitizer_command
+          user_shell_code_output_file_sh_path sanitized_output;
+        fprln oc
+          {|([ "$_CRAM_EXIT_CODE" -ne "0" ] && echo "  [$_CRAM_EXIT_CODE]" >> %s) || true|}
+          sanitized_output
+      in
       Command { command = lines; output_file = sanitized_output }
   in
   let cram_to_output = List.mapi ~f:loop cram_stanzas in

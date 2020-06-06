@@ -68,6 +68,14 @@ let quote_for_sh fn =
   Buffer.add_char buf '\'';
   Buffer.contents buf
 
+let cram_stanzas lexbuf =
+  let rec loop acc =
+    match Cram_lexer.block lexbuf with
+    | None -> List.rev acc
+    | Some s -> loop (s :: acc)
+  in
+  loop []
+
 let run_expect_test file ~f =
   let file_contents = Io.String_path.read_file file in
   let expected =
@@ -95,79 +103,99 @@ let extend_build_path_prefix_map ~cwd =
   in
   Unix.putenv var s
 
-let create_sh_script lexbuf ~temp_dir ~sanitizer_command =
-  let script, oc = Temp_dir.open_file temp_dir ~suffix:".main.sh" in
-  let prln fmt = Printf.fprintf oc (fmt ^^ "\n") in
+let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 
-  (* Produce the following shell code:
+(* Produce the following shell code:
 
-     {v cat <<"EOF_<n>" <data> EOF_<n> v}
+   {v cat <<"EOF_<n>" <data> EOF_<n> v}
 
-     choosing [<n>] such that [CRAM_EOF_<n>] doesn't appear in [<data>]. *)
-  let cat_eof ?dest lines =
-    let rec loop n =
-      let sentinel =
-        if n = 0 then
-          "EOF"
-        else
-          sprintf "EOF%d" n
-      in
-      if List.mem sentinel ~set:lines then
-        loop (n + 1)
+   choosing [<n>] such that [CRAM_EOF_<n>] doesn't appear in [<data>]. *)
+let cat_eof ~dest oc lines =
+  let prln fmt = fprln oc fmt in
+  let rec loop n =
+    let sentinel =
+      if n = 0 then
+        "EOF"
       else
-        sentinel
+        sprintf "EOF%d" n
     in
-    let sentinel = loop 0 in
-    ( match dest with
-    | None -> prln "cat <<%S" sentinel
-    | Some fn -> prln "cat >%s <<%S" (quote_for_sh fn) sentinel );
-    List.iter lines ~f:(prln "%s");
-    prln "%s" sentinel
+    if List.mem sentinel ~set:lines then
+      loop (n + 1)
+    else
+      sentinel
   in
+  let sentinel = loop 0 in
+  prln "cat >%s <<%S" (quote_for_sh dest) sentinel;
+  List.iter lines ~f:(prln "%s");
+  prln "%s" sentinel
 
-  let rec loop i =
-    match Cram_lexer.block lexbuf with
-    | None -> close_out oc
-    | Some block -> (
-      match block with
-      | Comment lines ->
-        cat_eof lines;
-        loop i
-      | Command lines ->
-        cat_eof
-          (List.mapi lines ~f:(fun i line ->
-               if i = 0 then
-                 "  $ " ^ line
-               else
-                 "  > " ^ line));
-        let file ~ext =
-          let suffix = sprintf "_%d%s" i ext in
-          Temp_dir.file temp_dir ~suffix
-        in
-        (* Shell code written by the user might not be properly terminated. For
-           instance the user might forgot to write [EOF] after a [cat <<EOF]. If
-           we wrote this shell code directly in the main script, it would hide
-           the rest of the script. So instead, we dump each user written shell
-           phrase into a file and then source it in the main script. *)
-        let user_shell_code_file = file ~ext:".sh" in
-        let user_shell_code_file_sh_path =
-          translate_path_for_sh user_shell_code_file
-        in
-        cat_eof lines ~dest:user_shell_code_file;
-        (* Where we store the output of shell code written by the user *)
-        let user_shell_code_output_file_sh_path =
-          let user_shell_code_output_file = file ~ext:".output" in
-          translate_path_for_sh user_shell_code_output_file
-        in
-        prln ". %s > %s 2>&1"
-          (quote_for_sh user_shell_code_file_sh_path)
-          (quote_for_sh user_shell_code_output_file_sh_path);
-        prln {|%s --exit-code $? < %s|} sanitizer_command
-          (quote_for_sh user_shell_code_output_file_sh_path);
-        loop (succ i) )
+type block_with_result =
+  | Comment of string list
+  | Command of
+      { command : string list
+      ; output_file : string
+      }
+
+(* Compose user written cram stanzas to output *)
+let compose_cram_output cram_stanzas =
+  let buf = Buffer.create 256 in
+  let add_line line =
+    Buffer.add_string buf line;
+    Buffer.add_char buf '\n'
   in
-  loop 1;
-  script
+  List.iter cram_stanzas ~f:(function
+    | Comment lines -> List.iter lines ~f:add_line
+    | Command { command; output_file } ->
+      List.iteri command ~f:(fun i line ->
+          let line =
+            sprintf "  %c %s"
+              ( if i = 0 then
+                '$'
+              else
+                '>' )
+              line
+          in
+          add_line line);
+      let output = Io.String_path.read_file output_file in
+      Buffer.add_string buf output);
+  Buffer.contents buf
+
+let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
+    string * block_with_result list =
+  let script, oc = Temp_dir.open_file temp_dir ~suffix:".main.sh" in
+  let loop i block =
+    let i = succ i in
+    match (block : Cram_lexer.block) with
+    | Comment lines -> Comment lines
+    | Command lines ->
+      let file ~ext =
+        let suffix = sprintf "_%d%s" i ext in
+        Temp_dir.file temp_dir ~suffix
+      in
+      (* Shell code written by the user might not be properly terminated. For
+         instance the user might forgot to write [EOF] after a [cat <<EOF]. If
+         we wrote this shell code directly in the main script, it would hide the
+         rest of the script. So instead, we dump each user written shell phrase
+         into a file and then source it in the main script. *)
+      let user_shell_code_file = file ~ext:".sh" in
+      let sh_path path = quote_for_sh (translate_path_for_sh path) in
+      let user_shell_code_file_sh_path = sh_path user_shell_code_file in
+      cat_eof oc lines ~dest:user_shell_code_file;
+      (* Where we store the output of shell code written by the user *)
+      let user_shell_code_output_file = file ~ext:".output" in
+      let user_shell_code_output_file_sh_path =
+        sh_path user_shell_code_output_file
+      in
+      let sanitized_output = file ~ext:".sanitized" in
+      fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
+        user_shell_code_output_file_sh_path;
+      fprln oc {|%s --exit-code $? < %s > %s|} sanitizer_command
+        user_shell_code_output_file_sh_path (sh_path sanitized_output);
+      Command { command = lines; output_file = sanitized_output }
+  in
+  let cram_to_output = List.mapi ~f:loop cram_stanzas in
+  close_out oc;
+  (script, cram_to_output)
 
 let display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
@@ -187,21 +215,26 @@ let run ~sanitizer ~file lexbuf =
       translate_path_for_sh prog |> quote_for_sh
   in
   let temp_dir = Temp_dir.create ~for_script:file in
-  let script = create_sh_script lexbuf ~temp_dir ~sanitizer_command in
+  let cram_stanzas = cram_stanzas lexbuf in
+  let script, cram_result_stanzas =
+    create_sh_script cram_stanzas ~temp_dir ~sanitizer_command
+  in
   Sys.chdir (Filename.dirname file);
   let cwd = Sys.getcwd () in
   Unix.putenv "LC_ALL" "C";
   extend_build_path_prefix_map ~cwd;
-  let output_file = Temp_dir.file temp_dir ~suffix:".output" in
-  let fd = Unix.openfile output_file [ O_WRONLY; O_TRUNC ] 0 in
-  let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in
-  Unix.close fd;
   let n =
-    match snd (Unix.waitpid [] pid) with
-    | WEXITED n -> n
+    let pid =
+      let fd = Unix.openfile "/dev/null" [ O_WRONLY ] 0 in
+      let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in
+      Unix.close fd;
+      pid
+    in
+    match Unix.waitpid [] pid with
+    | _, WEXITED n -> n
     | _ -> 255
   in
-  let output = Io.String_path.read_file output_file in
+  let output = compose_cram_output cram_result_stanzas in
   if n <> 0 then (
     Printf.eprintf "Generated cram script exited with code %d!\n" n;
     Printf.eprintf "Script:\n";

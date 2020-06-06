@@ -98,7 +98,6 @@ module Buildable : sig
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; bisect_ppx : bool
     }
 
   (** Check if the buildable has any foreign stubs or archives. *)
@@ -107,8 +106,7 @@ module Buildable : sig
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
   val single_preprocess : t -> Preprocess.t
 
-  (** Includes bisect_ppx if specified by [lib_config] *)
-  val preprocess : t -> lib_config:Lib_config.t -> Preprocess_map.t
+  val preprocess : t -> lib_config:Lib_config.t -> Lint.t
 end
 
 module Public_lib : sig

@@ -286,7 +286,7 @@ let check_supported ~dune_lang_ver t (loc, ver) =
               Pp.textf "%s to %s" (Version.to_string a) (Version.to_string b))
       ]
     in
-    let is_error = String.is_empty until || dune_lang_ver >= (2, 6) in
+    let is_error = String.is_empty until || dune_lang_ver >= (2, 5) in
     User_warning.emit ~is_error ~loc message
 
 let greatest_supported_version t =

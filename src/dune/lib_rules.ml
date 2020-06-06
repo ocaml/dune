@@ -340,13 +340,10 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let flags = Super_context.ocaml_flags sctx ~dir lib.buildable in
   let obj_dir = Library.obj_dir ~dir lib in
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
-  let ctx = Super_context.context sctx in
-  let preprocess =
-    Dune_file.Buildable.preprocess lib.buildable ~lib_config:ctx.lib_config
-  in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
-    Preprocessing.make sctx ~dir ~dep_kind ~scope ~preprocess ~expander
+    Preprocessing.make sctx ~dir ~dep_kind ~scope
+      ~preprocess:lib.buildable.preprocess ~expander
       ~preprocessor_deps:lib.buildable.preprocessor_deps
       ~lint:lib.buildable.lint
       ~lib_name:(Some (snd lib.name))
@@ -357,6 +354,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let modules = Vimpl.impl_modules vimpl modules in
   let requires_compile = Lib.Compile.direct_requires compile_info in
   let requires_link = Lib.Compile.requires_link compile_info in
+  let ctx = Super_context.context sctx in
   let dynlink =
     Dynlink_supported.get lib.dynlink ctx.supports_shared_libraries
   in

@@ -24,14 +24,6 @@ let () =
   Dune_project.Extension.register_deleted ~name:"library_variants"
     ~deleted_in:(2, 6)
 
-let bisect_ppx_syntax =
-  Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
-    [ ((1, 0), `Since (2, 6)) ]
-
-let () =
-  Dune_project.Extension.register_simple bisect_ppx_syntax
-    (Dune_lang.Decoder.return [])
-
 module Pps_and_flags = struct
   let decode =
     let+ l, flags =
@@ -211,30 +203,6 @@ module Preprocess_map = struct
         List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
             Lib_name.Map.set acc pp loc))
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
-
-  let add_bisect t =
-    let bisect_ppx =
-      let bisect_name = Lib_name.parse_string_exn (Loc.none, "bisect_ppx") in
-      (Loc.none, bisect_name)
-    in
-    Per_module.map t ~f:(fun pp ->
-        match pp with
-        | Preprocess.No_preprocessing ->
-          let loc = Loc.none in
-          let pps = [ bisect_ppx ] in
-          let flags = [] in
-          let staged = false in
-          Preprocess.Pps { loc; pps; flags; staged }
-        | Preprocess.Pps { loc; pps; flags; staged } ->
-          let pps = bisect_ppx :: pps in
-          Preprocess.Pps { loc; pps; flags; staged }
-        | Action (loc, _)
-        | Future_syntax loc ->
-          User_error.raise ~loc
-            [ Pp.text
-                "Preprocessing with actions and future syntax cannot be used \
-                 in conjunction with (bisect_ppx)"
-            ])
 end
 
 module Lint = struct
@@ -380,7 +348,6 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; bisect_ppx : bool
     }
 
   let decode ~in_library ~allow_re_export =
@@ -446,9 +413,6 @@ module Buildable = struct
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
-    and+ bisect_ppx =
-      field_b "bisect_ppx"
-        ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
     let foreign_stubs =
       foreign_stubs
@@ -493,7 +457,6 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
-    ; bisect_ppx
     }
 
   let has_foreign t =
@@ -508,11 +471,8 @@ module Buildable = struct
       else
         Preprocess.No_preprocessing
 
-  let preprocess t ~(lib_config : Lib_config.t) =
-    if t.bisect_ppx && lib_config.bisect_enabled then
-      Preprocess_map.add_bisect t.preprocess
-    else
-      t.preprocess
+  let preprocess t ~lib_config:_ =
+    t.preprocess
 end
 
 module Public_lib = struct
@@ -1013,19 +973,7 @@ module Library = struct
     let synopsis = conf.synopsis in
     let sub_systems = conf.sub_systems in
     let ppx_runtime_deps = conf.ppx_runtime_libraries in
-    let pps =
-      let pps_without_bisect = Preprocess_map.pps conf.buildable.preprocess in
-      if lib_config.bisect_enabled && conf.buildable.bisect_ppx then
-        let bisect_ppx =
-          let bisect_name =
-            Lib_name.parse_string_exn (Loc.none, "bisect_ppx")
-          in
-          (Loc.none, bisect_name)
-        in
-        bisect_ppx :: pps_without_bisect
-      else
-        pps_without_bisect
-    in
+    let pps = Preprocess_map.pps conf.buildable.preprocess in
     let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
     let implements = conf.implements in

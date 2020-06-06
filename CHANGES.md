@@ -17,9 +17,6 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
-
 - Add a `(no-infer ...)` action that prevents inference of targets and
   dependencies in actions. (#3456, fixes #2006, @roddyyaga)
 

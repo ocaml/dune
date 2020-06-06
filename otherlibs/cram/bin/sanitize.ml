@@ -50,12 +50,7 @@ let make_ext_replace config =
         sprintf "%c%s" s.[0] (String.Map.find_exn map (String.drop s 1)))
 
 let term =
-  let+ exit_code =
-    Arg.(
-      value & opt int 0
-      & info [ "exit-code" ] ~docv:"NUM"
-          ~doc:"Exit code of the shell command we are sanitizing the output of.")
-  and+ file =
+  let+ file =
     Arg.(value & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
   in
   let ext_replace =
@@ -66,7 +61,7 @@ let term =
     s
   in
   let sanitize s = s |> Ansi_color.strip |> ext_replace |> rewrite_paths in
-  ( match file with
+  match file with
   | Some fn ->
     Io.String_path.read_file fn
     |> sanitize |> String.split_lines
@@ -79,8 +74,7 @@ let term =
         Printf.printf "  %s\n" (sanitize line);
         if isatty then flush stdout
       done
-    with End_of_file -> () ) );
-  if exit_code <> 0 then Printf.printf "  [%d]\n" exit_code
+    with End_of_file -> () )
 
 let command =
   (term, Term.info "sanitize" ~doc:"Sanitize the output of shell phrases.")

@@ -64,14 +64,13 @@ let term =
   match file with
   | Some fn ->
     Io.String_path.read_file fn
-    |> sanitize |> String.split_lines
-    |> List.iter ~f:(fun line -> Printf.printf "  %s\n" line)
+    |> sanitize |> String.split_lines |> List.iter ~f:print_endline
   | None -> (
     let isatty = Unix.(isatty stdout) in
     try
       while true do
         let line = input_line stdin in
-        Printf.printf "  %s\n" (sanitize line);
+        print_endline (sanitize line);
         if isatty then flush stdout
       done
     with End_of_file -> () )

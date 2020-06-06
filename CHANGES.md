@@ -1,5 +1,5 @@
-next
-----
+2.6.0 (05/06/2020)
+------------------
 
 - Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
   results in an error. (#3444, fix #3443, @bikallem)

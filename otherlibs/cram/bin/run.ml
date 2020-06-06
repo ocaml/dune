@@ -239,7 +239,13 @@ let run ~sanitizer ~file lexbuf =
   extend_build_path_prefix_map ~cwd;
   let n =
     let pid =
-      let fd = Unix.openfile "/dev/null" [ O_WRONLY ] 0 in
+      let null =
+        if Sys.win32 then
+          "nul"
+        else
+          "/dev/null"
+      in
+      let fd = Unix.openfile null [ O_WRONLY ] 0 in
       let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in
       Unix.close fd;
       pid

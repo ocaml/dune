@@ -82,7 +82,10 @@ module Int = struct
   let of_string = int_of_string_opt
 
   module Map = struct
-    include MoreLabels.Map.Make (Int)
+    include MoreLabels.Map.Make (struct
+        type t = int
+        let compare = compare
+      end)
 
     let find m k =
       match find k m with

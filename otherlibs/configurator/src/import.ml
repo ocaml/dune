@@ -11,6 +11,16 @@ let die fmt = Printf.ksprintf (fun s -> raise (Fatal_error s)) fmt
 let warn fmt =
   Printf.ksprintf (fun msg -> prerr_endline ("Warning: " ^ msg)) fmt
 
+module Result = struct
+  type ('a, 'b) t = ('a, 'b) result =
+    | Ok of 'a
+    | Error of 'b
+
+  let to_option = function
+    | Ok x -> Some x
+    | Error _ -> None
+end
+
 module Exn = struct
   external reraise : exn -> _ = "%reraise"
 

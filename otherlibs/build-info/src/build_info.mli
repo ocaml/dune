@@ -41,4 +41,6 @@ module V2 : sig
   end
 
   val custom : unit -> Custom.t option
+
+  val custom_lib : string -> Custom.t option
 end

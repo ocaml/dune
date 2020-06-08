@@ -2,6 +2,8 @@
    executable *)
 val custom : string option
 
+val custom_lib : string -> string option
+
 val version : string option
 
 val statically_linked_libraries : (string * string option) list

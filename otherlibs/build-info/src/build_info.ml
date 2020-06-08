@@ -35,4 +35,6 @@ module V2 = struct
   end
 
   let custom () = Build_info_data.custom
+
+  let custom_lib lib = Build_info_data.custom_lib lib
 end

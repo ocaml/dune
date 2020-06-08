@@ -89,29 +89,15 @@ let gen_placeholder_var =
     incr n;
     s
 
-let build_info_code_v2 ~cctx ~custom_build_info:(exe_cbi, lib_cbis) buf =
-  let dir = CC.dir cctx in
-  ( match exe_cbi with
-  | Some { Custom_build_info.max_size; _ } ->
-    let var = gen_placeholder_var () in
-    pr buf "let %s = eval %S" var
-      Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir)));
-    pr buf "let custom = %s" var
-  | None -> pr buf "let custom = None" );
-  pr buf "";
-  prlist buf "lib_customs" lib_cbis
-    ~f:(fun (name, { Custom_build_info.max_size; _ }) ->
-      let name = Lib_name.to_string name in
-      pr buf "%S, eval %S" name
-        Artifact_substitution.(encode ~min_len:max_size (Custom (name, dir))));
-  pr buf "";
-  pr buf "let custom_lib name = List.assoc name lib_customs"
+let fmt_eval ~cctx code =
+  let context = CC.context cctx in
+  let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
+  if Ocaml_version.has_sys_opaque_identity ocaml_version then
+    Printf.sprintf "eval (Sys.opaque_identity %S)" code
+  else
+    Printf.sprintf "eval %S" code
 
-let build_info_code cctx ~libs ~api_version ~custom_build_info =
-  ( match api_version with
-  | Lib_info.Special_builtin_support.Build_info.V1
-  | Lib_info.Special_builtin_support.Build_info.V2 ->
-    () );
+let build_info_code_v1 ~cctx ~libs buf =
   (* [placeholders] is a mapping from source path to variable names. For each
      binding [(p, v)], we will generate the following code:
 
@@ -164,8 +150,37 @@ let build_info_code cctx ~libs ~api_version ~custom_build_info =
               in
               placeholder p ) ))
   in
-  let context = CC.context cctx in
-  let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
+  Path.Source.Map.iteri !placeholders ~f:(fun path var ->
+      pr buf "let %s = %s" var
+      (fmt_eval ~cctx (Artifact_substitution.encode ~min_len:64 (Vcs_describe path))));
+  if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
+  pr buf "let version = %s" version;
+  pr buf "";
+  prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
+      pr buf "%S, %s" (Lib_name.to_string name) v);
+  pr buf ""
+
+let build_info_code_v2 ~cctx ~custom_build_info:(exe_cbi, lib_cbis) buf =
+  let dir = CC.dir cctx in
+  ( match exe_cbi with
+  | Some { Custom_build_info.max_size; _ } ->
+    let var = gen_placeholder_var () in
+    pr buf "let %s = %s" var
+    (fmt_eval ~cctx (Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir)))));
+    pr buf "let custom = %s" var
+  | None -> pr buf "let custom = None" );
+  pr buf "";
+  prlist buf "lib_customs" lib_cbis
+    ~f:(fun (name, { Custom_build_info.max_size; _ }) ->
+      let name = Lib_name.to_string name in
+      pr buf "%S, %s" name
+        (fmt_eval ~cctx
+           Artifact_substitution.(encode ~min_len:max_size (Custom (name, dir)))));
+  pr buf "";
+  pr buf "let custom_lib name = List.assoc name lib_customs"
+
+let build_info_code cctx ~libs ~api_version ~custom_build_info =
+  let open Lib_info.Special_builtin_support in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
@@ -181,23 +196,13 @@ let build_info_code cctx ~libs ~api_version ~custom_build_info =
   pr buf "    None";
   pr buf "[@@inline never]";
   pr buf "";
-  let fmt_eval : _ format6 =
-    if Ocaml_version.has_sys_opaque_identity ocaml_version then
-      "let %s = eval (Sys.opaque_identity %S)"
-    else
-      "let %s = eval %S"
-  in
-  Path.Source.Map.iteri !placeholders ~f:(fun path var ->
-      pr buf fmt_eval var
-        (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
-  if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
-  pr buf "let version = %s" version;
-  pr buf "";
-  prlist buf "statically_linked_libraries" libs ~f:(fun (name, v) ->
-      pr buf "%S, %s" (Lib_name.to_string name) v);
-  pr buf "";
-  if api_version = Lib_info.Special_builtin_support.Build_info.V2 then
-    build_info_code_v2 ~cctx ~custom_build_info buf;
+
+  ( match api_version with
+  | Build_info.V1 -> build_info_code_v1 ~cctx ~libs buf
+  | Build_info.V2 ->
+    build_info_code_v1 ~cctx ~libs buf;
+    build_info_code_v2 ~cctx ~custom_build_info buf );
+
   pr buf "";
   Buffer.contents buf
 

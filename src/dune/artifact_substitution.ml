@@ -35,7 +35,8 @@ type t =
 
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
-  | Custom (name, dir) -> Dyn.Variant ("Custom", [ String name; Path.Build.to_dyn dir ])
+  | Custom (name, dir) ->
+    Dyn.Variant ("Custom", [ String name; Path.Build.to_dyn dir ])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 
 let eval t ~get_vcs =
@@ -73,9 +74,7 @@ let encode ?(min_len = 0) t =
         sprintf "vcs-describe:%d:%s" (String.length s) s
       | Custom (name, dir) ->
         let s = Path.Build.to_string dir in
-        sprintf "custom:%s:%d:%s"
-        name
-        (String.length s) s
+        sprintf "custom:%s:%d:%s" name (String.length s) s
       | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s )
   in
   let len =

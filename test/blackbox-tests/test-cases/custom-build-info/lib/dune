@@ -1,12 +1,4 @@
 (library
- (name lib1)
- (modules lib1)
- (libraries dune-build-info)
- (custom_build_info
-  (max_size 85)
-  (action (run ocaml %{dep:gen_version.ml}))))
-
-(library
  (name lib2)
  (modules lib2)
  (libraries dune-build-info)

@@ -2,40 +2,6 @@ open Stdune
 open Cmdliner
 open Import.Let_syntax
 
-module Temp_dir : sig
-  type t
-
-  val create : for_script:string -> t
-
-  val open_file : t -> suffix:string -> string * out_channel
-
-  val file : t -> suffix:string -> string
-end = struct
-  type t = string
-
-  let prng = lazy (Random.State.make_self_init ())
-
-  let temp_file_name temp_dir prefix suffix =
-    let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
-    Filename.concat temp_dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
-
-  let create ~for_script =
-    let dir = Filename.get_temp_dir_name () in
-    let t = temp_file_name dir ".dune.cram." (Filename.basename for_script) in
-    let path = Path.External.of_string t in
-    Path.External.mkdir_p path;
-    at_exit (fun () -> Path.rm_rf ~allow_external:true (Path.external_ path));
-    t
-
-  let file t ~suffix = Filename.temp_file ~temp_dir:t "" suffix
-
-  let open_file t ~suffix =
-    let fn, oc =
-      Filename.open_temp_file ~temp_dir:t "" suffix ~mode:[ Open_binary ]
-    in
-    (fn, oc)
-end
-
 (* Translate a path for [sh]. On Windows, [sh] will come from Cygwin so if we
    are a real windows program we need to pass the path through [cygpath] *)
 let translate_path_for_sh =
@@ -167,7 +133,7 @@ let compose_cram_output cram_stanzas =
 
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     string * block_with_result list =
-  let script, oc = Temp_dir.open_file temp_dir ~suffix:".main.sh" in
+  let script, oc = Temp.Dir.open_file temp_dir ~suffix:".main.sh" in
   let loop i block =
     let i = succ i in
     match (block : Cram_lexer.block) with
@@ -175,7 +141,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     | Command lines ->
       let file ~ext =
         let suffix = sprintf "_%d%s" i ext in
-        Temp_dir.file temp_dir ~suffix
+        Temp.Dir.file temp_dir ~suffix
       in
       (* Shell code written by the user might not be properly terminated. For
          instance the user might forgot to write [EOF] after a [cat <<EOF]. If
@@ -228,7 +194,7 @@ let run ~sanitizer ~file lexbuf =
       in
       translate_path_for_sh prog |> quote_for_sh
   in
-  let temp_dir = Temp_dir.create ~for_script:file in
+  let temp_dir = Temp.Dir.create ~for_script:file in
   let cram_stanzas = cram_stanzas lexbuf in
   let script, cram_result_stanzas =
     create_sh_script cram_stanzas ~temp_dir ~sanitizer_command

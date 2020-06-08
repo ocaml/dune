@@ -13,11 +13,12 @@ let default_max_size = 64
 let decode () =
   let open Dune_lang.Decoder in
   field_o "custom_build_info"
-    (fields
-       (let+ max_size =
-          field_o "max_size" int >>| Option.value ~default:default_max_size
-        and+ action = field "action" (located Action_dune_lang.decode) in
-        { max_size; action }))
+    ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
+    >>> fields
+          (let+ max_size =
+             field_o "max_size" int >>| Option.value ~default:default_max_size
+           and+ action = field "action" (located Action_dune_lang.decode) in
+           { max_size; action }) )
 
 let to_dyn { max_size; action = _, action } =
   let open Dyn.Encoder in

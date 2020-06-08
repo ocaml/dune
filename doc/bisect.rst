@@ -14,7 +14,7 @@ like so:
 
 .. code:: scheme
 
-          (lang dune 2.6)
+          (lang dune 2.7)
           (using bisect_ppx 1.0)
 
 Then, we should use the ``(bisect_ppx)`` field. The dune file may look like
@@ -46,7 +46,7 @@ using ``(bisect_ppx)``. To enable code coverage, we can set the
 
 .. code:: scheme
 
-          (lang dune 2.6)
+          (lang dune 2.7)
           (context (default (bisect_enabled true)))
 
 Then, to build the project with code coverage, we can run:
@@ -59,7 +59,7 @@ We can also define different contexts in the ``dune-workspace`` file as follows:
 
 .. code:: scheme
 
-          (lang dune 2.6)
+          (lang dune 2.7)
           (context default)
           (context (default (name coverage) (bisect_enabled true)))
 

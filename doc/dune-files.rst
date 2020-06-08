@@ -12,7 +12,7 @@ like:
 
 .. code:: scheme
 
-          (lang dune 2.6)
+          (lang dune 2.7)
 
 Additionally, they can contains the following stanzas.
 
@@ -1743,7 +1743,7 @@ a typical ``dune-workspace`` file looks like:
 
 .. code:: scheme
 
-    (lang dune 2.6)
+    (lang dune 2.7)
     (context (opam (switch 4.02.3)))
     (context (opam (switch 4.03.0)))
     (context (opam (switch 4.04.0)))
@@ -1755,7 +1755,7 @@ containing exactly:
 
 .. code:: scheme
 
-    (lang dune 2.6)
+    (lang dune 2.7)
     (context default)
 
 This allows you to use an empty ``dune-workspace`` file to mark the root of your

@@ -14,7 +14,7 @@ module Dir : sig
 
   val create : for_script:string -> t
 
-  val open_file : t -> suffix:string -> string * out_channel
+  val open_file : t -> suffix:string -> Path.t * out_channel
 
-  val file : t -> suffix:string -> string
+  val file : t -> suffix:string -> Path.t
 end

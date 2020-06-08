@@ -134,6 +134,7 @@ let compose_cram_output cram_stanzas =
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     string * block_with_result list =
   let script, oc = Temp.Dir.open_file temp_dir ~suffix:".main.sh" in
+  let script = Path.to_string script in
   let loop i block =
     let i = succ i in
     match (block : Cram_lexer.block) with
@@ -141,7 +142,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     | Command lines ->
       let file ~ext =
         let suffix = sprintf "_%d%s" i ext in
-        Temp.Dir.file temp_dir ~suffix
+        Temp.Dir.file temp_dir ~suffix |> Path.to_string
       in
       (* Shell code written by the user might not be properly terminated. For
          instance the user might forgot to write [EOF] after a [cat <<EOF]. If

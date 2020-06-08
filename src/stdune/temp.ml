@@ -16,7 +16,7 @@ let destroy fn =
   tmp_files := Path.Set.remove !tmp_files fn
 
 module Dir = struct
-  type t = string
+  type t = Path.t
 
   let prng = lazy (Random.State.make_self_init ())
 
@@ -29,14 +29,19 @@ module Dir = struct
     let t = temp_file_name dir ".dune.cram." (Filename.basename for_script) in
     let path = Path.External.of_string t in
     Path.External.mkdir_p path;
-    at_exit (fun () -> Path.rm_rf ~allow_external:true (Path.external_ path));
-    t
+    let path = Path.external_ path in
+    at_exit (fun () -> Path.rm_rf ~allow_external:true path);
+    path
 
-  let file t ~suffix = Filename.temp_file ~temp_dir:t "" suffix
+  let file t ~suffix =
+    let t = Path.to_absolute_filename t in
+    Filename.temp_file ~temp_dir:t "" suffix
+    |> Path.External.of_string |> Path.external_
 
   let open_file t ~suffix =
+    let t = Path.to_string t in
     let fn, oc =
       Filename.open_temp_file ~temp_dir:t "" suffix ~mode:[ Open_binary ]
     in
-    (fn, oc)
+    (Path.external_ (Path.External.of_string fn), oc)
 end

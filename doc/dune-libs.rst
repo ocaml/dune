@@ -167,6 +167,55 @@ need to rebuild all the binaries and everything that depend on them,
 such as tests. Instead Dune leaves a placeholder inside the binary and
 fills it during installation or promotion.
 
+.. _custom-build-info:
+
+custom-build-info
+-----------------
+
+Since dune 2.7 it is possible to extend Dune's default build information using
+the ``(custom-build-info)`` field in the libraries and executables stanzas:
+
+.. code-block:: lisp
+
+  (custom_build_info
+   (max_size <int>)
+   (action <action>))
+
+``<action>`` is the action used to produce the desired information during
+link. This action should print this information on it's standard output. See the
+:ref:`user-actions` section for more details. (Paths are resolved relatively to
+the directory of the executable being linked.)
+
+``<int>`` is the maximum size of the action's output. Bigger outputs will be
+truncated. This field is optional and has a default value of `64`. This is
+necessary because the placeholder mechanism described in :ref:`build-info` is
+used to write the information in
+the binary only when it is installed or promoted to the source tree.
+
+It is possible to retrieve the information using ``Build_info.V2.custom :
+unit -> string option`` for executables and ``Build_info.V2.custom_lib : string
+-> string option`` for libraries, where the argument is the name of the library.
+
+Usage example:
+
+.. code-block:: shell
+
+ $ cat dune
+ (library
+  (public_name mylib)
+  (custom_build_info
+   (max_size 40)
+   (action (echo "Custom build info generated during link.")))
+
+ $ cat mylib.ml
+ let my_info = Build_info.V2.custom_lib "mylib" in
+ match my_info with
+ | Some info -> Printf.printf "%s\n" info
+ | None      -> Printf.printf "n/a\n"
+
+Note that even if this system is restricted to a single string,
+structured data can also be transmitted using an appropriate
+marshalling system.
 
 (Experimental) Dune action plugin
 =================================

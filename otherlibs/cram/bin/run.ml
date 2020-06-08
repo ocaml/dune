@@ -133,7 +133,8 @@ let compose_cram_output cram_stanzas =
 
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     string * block_with_result list =
-  let script, oc = Temp.Dir.open_file temp_dir ~suffix:".main.sh" in
+  let script = Path.relative temp_dir "main.sh" in
+  let oc = Io.open_out ~binary:true script in
   let script = Path.to_string script in
   let loop i block =
     let i = succ i in
@@ -141,8 +142,8 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :
     | Comment lines -> Comment lines
     | Command lines ->
       let file ~ext =
-        let suffix = sprintf "_%d%s" i ext in
-        Temp.Dir.file temp_dir ~suffix |> Path.to_string
+        let name = sprintf "%d%s" i ext in
+        Path.relative temp_dir name |> Path.to_absolute_filename
       in
       (* Shell code written by the user might not be properly terminated. For
          instance the user might forgot to write [EOF] after a [cat <<EOF]. If
@@ -195,7 +196,11 @@ let run ~sanitizer ~file lexbuf =
       in
       translate_path_for_sh prog |> quote_for_sh
   in
-  let temp_dir = Temp.Dir.create ~for_script:file in
+
+  let temp_dir =
+    let suffix = Filename.basename file in
+    Temp.dir ~prefix:".dune.cram" ~suffix
+  in
   let cram_stanzas = cram_stanzas lexbuf in
   let script, cram_result_stanzas =
     create_sh_script cram_stanzas ~temp_dir ~sanitizer_command

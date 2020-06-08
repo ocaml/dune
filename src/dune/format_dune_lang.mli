@@ -13,5 +13,8 @@ val write_file : path:Path.t -> Dune_lang.Cst.t list -> unit
 (** Reformat a dune file. [None] corresponds to stdin. *)
 val format_file : input:Path.t option -> unit
 
+(** Reformat a dune file contained in a string. *)
+val format_string : string -> string
+
 (** Pretty-print a list of toplevel s-expressions *)
 val pp_top_sexps : Format.formatter -> Dune_lang.Cst.t list -> unit

@@ -108,3 +108,8 @@ let format_file ~input =
     | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
     )
   | Sexps sexps -> Format.printf "%a%!" pp_top_sexps sexps
+
+let format_string input =
+  match parse_lexbuf @@ Lexing.from_string input with
+  | OCaml_syntax _ -> input
+  | Sexps sexps -> Format.asprintf "%a" pp_top_sexps sexps

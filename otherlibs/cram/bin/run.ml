@@ -56,18 +56,15 @@ let run_expect_test file ~f =
     exit 0
   )
 
-let extend_build_path_prefix_map ~cwd =
+let extend_build_path_prefix_map ~env ~cwd =
   let var = "BUILD_PATH_PREFIX_MAP" in
   let s =
     Build_path_prefix_map.encode_map
       [ Some { source = cwd; target = "$TESTCASE_ROOT" } ]
   in
-  let s =
-    match Sys.getenv var with
-    | exception Not_found -> s
-    | s' -> s ^ ":" ^ s'
-  in
-  Unix.putenv var s
+  Env.update env ~var ~f:(function
+    | None -> Some s
+    | Some s' -> Some (s ^ ":" ^ s'))
 
 let fprln oc fmt = Printf.fprintf oc (fmt ^^ "\n")
 
@@ -207,8 +204,15 @@ let run ~sanitizer ~file lexbuf =
   in
   Sys.chdir (Filename.dirname file);
   let cwd = Sys.getcwd () in
-  Unix.putenv "LC_ALL" "C";
-  extend_build_path_prefix_map ~cwd;
+  let env =
+    let env = Env.initial in
+    let env = Env.add env ~var:"LC_ALL" ~value:"C" in
+    let env = extend_build_path_prefix_map ~env ~cwd in
+    let env =
+      Env.add env ~var:"TMPDIR" ~value:(Path.to_absolute_filename temp_dir)
+    in
+    Env.to_unix env
+  in
   let n =
     let pid =
       let null =
@@ -218,7 +222,9 @@ let run ~sanitizer ~file lexbuf =
           "/dev/null"
       in
       let fd = Unix.openfile null [ O_WRONLY ] 0 in
-      let pid = Unix.create_process "sh" [| "sh"; script |] Unix.stdin fd fd in
+      let pid =
+        Unix.create_process_env "sh" [| "sh"; script |] env Unix.stdin fd fd
+      in
       Unix.close fd;
       pid
     in

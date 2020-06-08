@@ -296,8 +296,7 @@ let%expect_test "reading from written mvar consumes value" =
      let+ x = Mvar.read mvar in
      assert (value = x);
      print_endline "[PASS] mvar contains expected value");
-  [%expect
-    {|
+  [%expect {|
     [PASS] mvar contains expected value
     () |}]
 

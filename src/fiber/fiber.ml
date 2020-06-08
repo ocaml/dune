@@ -402,6 +402,14 @@ module Mvar = struct
   let create () =
     { value = None; writers = Queue.create (); readers = Queue.create () }
 
+  (* [step mvar] makes progress on the passing values to readers/writers. It can
+     detect progress in situations: - pending writes when [value] is empty: we
+     can deque this write and make unblock the writer - pending reads when
+     [value] is present: we can pass a value to the reader and unblock it
+
+     if [step] is able to make progress, it will call itself recursively to make
+     more progress. That's because running a continuation may make it possible
+     to proceed further. *)
   let rec step t =
     match t.value with
     | None when not (Queue.is_empty t.writers) ->

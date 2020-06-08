@@ -7,12 +7,15 @@ type t =
 
 let output_file name = Printf.sprintf "%s_custom_build_info.txt-gen" name
 
-(* TODO add since *)
+let default_max_size = 64
+
+(* TODO ulysse add since *)
 let decode () =
   let open Dune_lang.Decoder in
   field_o "custom_build_info"
     (fields
-       (let+ max_size = field "max_size" int
+       (let+ max_size =
+          field_o "max_size" int >>| Option.value ~default:default_max_size
         and+ action = field "action" (located Action_dune_lang.decode) in
         { max_size; action }))
 

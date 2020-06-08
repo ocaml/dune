@@ -12,5 +12,5 @@
   Installing _install/bin/foo
 
   $ _install/bin/foo
-  version: 1.0
-  custom: Some custom information accessible with `Build_info.V2.custom`
+  custom1: Some custom information in lib1 accessible with `Build_info.V2.custom_lib "lib1"`
+  custom2: Custom info from lib2

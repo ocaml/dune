@@ -93,9 +93,10 @@ module Int = struct
 
   module Map = struct
     include MoreLabels.Map.Make (struct
-        type t = int
-        let compare = compare
-      end)
+      type t = int
+
+      let compare = compare
+    end)
 
     let find m k =
       match find k m with

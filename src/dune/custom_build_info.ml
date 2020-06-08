@@ -5,7 +5,7 @@ type t =
   ; action : Loc.t * Action_dune_lang.t
   }
 
-let output_file = "custom_build_info.txt-gen"
+let output_file name = Printf.sprintf "%s_custom_build_info.txt-gen" name
 
 (* TODO add since *)
 let decode () =

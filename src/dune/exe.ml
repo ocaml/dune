@@ -122,6 +122,25 @@ end
 let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
   Path.Build.relative (CC.dir cctx) (name ^ linkage.ext)
 
+let expand_custom_build_info ~cctx name (loc, action) =
+  let dir = CC.dir cctx in
+  let raw_filename = Custom_build_info.output_file name in
+  let filename =
+    String_with_vars.make_text Loc.none
+      raw_filename
+  in
+  let action = Action_unexpanded.with_stdout_to filename action in
+  let path = Path.Build.relative dir raw_filename in
+  let targets =
+    Targets.Static
+      { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
+  in
+  Action_unexpanded.expand action ~loc ~dep_kind:Required
+    ~targets_dir:dir
+    ~targets:Targets.(Or_forbidden.Targets targets)
+    ~expander:(CC.expander cctx)
+    (Build.return Bindings.empty)
+
 let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
     ~custom_build_info ~promote ?(link_args = Build.return Command.Args.empty)
     ?(o_files = []) cctx =
@@ -179,21 +198,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          and+ cbi =
            match custom_build_info with
            | None -> Build.With_targets.return Action.empty
-           | Some { Custom_build_info.action = loc, action; _ } ->
-             let filename =
-               String_with_vars.make_text Loc.none Custom_build_info.output_file
-             in
-             let action = Action_unexpanded.with_stdout_to filename action in
-             let path = Path.Build.relative dir Custom_build_info.output_file in
-             let targets =
-               Targets.Static
-                 { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
-             in
-             Action_unexpanded.expand action ~loc ~dep_kind:Required
-               ~targets_dir:dir
-               ~targets:Targets.(Or_forbidden.Targets targets)
-               ~expander:(CC.expander cctx)
-               (Build.return Bindings.empty)
+           | Some { Custom_build_info.action; _ } ->
+            expand_custom_build_info ~cctx "exe" action
          in
          Action.progn [ cbi; cmd_run ])
 

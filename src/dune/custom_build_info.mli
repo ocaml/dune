@@ -5,7 +5,7 @@ type t =
   ; action : Loc.t * Action_dune_lang.t
   }
 
-val output_file : string
+val output_file : string -> string
 
 val decode :
   unit -> (t option, Dune_lang.Decoder.fields) Dune_lang.Decoder.parser

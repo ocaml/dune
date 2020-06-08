@@ -125,18 +125,14 @@ let exe_path_from_name cctx ~name ~(linkage : Linkage.t) =
 let expand_custom_build_info ~cctx name (loc, action) =
   let dir = CC.dir cctx in
   let raw_filename = Custom_build_info.output_file name in
-  let filename =
-    String_with_vars.make_text Loc.none
-      raw_filename
-  in
+  let filename = String_with_vars.make_text Loc.none raw_filename in
   let action = Action_unexpanded.with_stdout_to filename action in
   let path = Path.Build.relative dir raw_filename in
   let targets =
     Targets.Static
       { targets = [ path ]; multiplicity = Targets.Multiplicity.One }
   in
-  Action_unexpanded.expand action ~loc ~dep_kind:Required
-    ~targets_dir:dir
+  Action_unexpanded.expand action ~loc ~dep_kind:Required ~targets_dir:dir
     ~targets:Targets.(Or_forbidden.Targets targets)
     ~expander:(CC.expander cctx)
     (Build.return Bindings.empty)
@@ -195,13 +191,23 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
              ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
              ; Fdo.Linker_script.flags fdo_linker_script
              ]
-         and+ cbi =
+         and+ cbi_libs =
+           let all_libs = Result.value ~default:[] (CC.requires_link cctx) in
+           let lib_infos = List.map ~f:Lib.info all_libs in
+           let from_libs = Lib_info.gather_custom_build_info lib_infos in
+           List.map
+             ~f:(fun (name, { Custom_build_info.action; _ }) ->
+               expand_custom_build_info ~cctx (Lib_name.to_string name) action)
+             from_libs
+           |> Build.With_targets.all
+         and+ cbi_exe =
            match custom_build_info with
            | None -> Build.With_targets.return Action.empty
            | Some { Custom_build_info.action; _ } ->
-            expand_custom_build_info ~cctx "exe" action
+             expand_custom_build_info ~cctx "exe" action
          in
-         Action.progn [ cbi; cmd_run ])
+
+         Action.progn (List.concat [ cbi_exe :: cbi_libs; [ cmd_run ] ]))
 
 let link_js ~name ~cm_files ~promote cctx =
   let sctx = CC.super_context cctx in

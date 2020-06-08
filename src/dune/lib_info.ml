@@ -303,6 +303,10 @@ let special_builtin_support t = t.special_builtin_support
 
 let custom_build_info t = t.custom_build_info
 
+let gather_custom_build_info =
+  List.filter_map ~f:(fun info ->
+      custom_build_info info |> Option.map ~f:(fun cbi -> (name info, cbi)))
+
 let jsoo_runtime t = t.jsoo_runtime
 
 let jsoo_archive t = t.jsoo_archive

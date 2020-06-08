@@ -133,6 +133,9 @@ val special_builtin_support : _ t -> Special_builtin_support.t option
 
 val custom_build_info : _ t -> Custom_build_info.t option
 
+val gather_custom_build_info :
+  _ t list -> (Lib_name.t * Custom_build_info.t) list
+
 val modes : _ t -> Mode.Dict.Set.t
 
 val implements : _ t -> (Loc.t * Lib_name.t) option

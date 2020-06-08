@@ -89,15 +89,23 @@ let gen_placeholder_var =
     incr n;
     s
 
-let build_info_code_v2 ~cctx ~custom_build_info buf =
-  match custom_build_info with
+let build_info_code_v2 ~cctx ~custom_build_info:(exe_cbi, lib_cbis) buf =
+  let dir = CC.dir cctx in
+  ( match exe_cbi with
   | Some { Custom_build_info.max_size; _ } ->
     let var = gen_placeholder_var () in
-    let dir = CC.dir cctx in
     pr buf "let %s = eval %S" var
       Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir)));
     pr buf "let custom = %s" var
-  | None -> pr buf "let custom = None"
+  | None -> pr buf "let custom = None" );
+  pr buf "";
+  prlist buf "lib_customs" lib_cbis
+    ~f:(fun (name, { Custom_build_info.max_size; _ }) ->
+      let name = Lib_name.to_string name in
+      pr buf "%S, eval %S" name
+        Artifact_substitution.(encode ~min_len:max_size (Custom (name, dir))));
+  pr buf "";
+  pr buf "let custom_lib name = List.assoc name lib_customs"
 
 let build_info_code cctx ~libs ~api_version ~custom_build_info =
   ( match api_version with
@@ -199,6 +207,10 @@ let handle_special_libs ~custom_build_info cctx =
   let obj_dir = Compilation_context.obj_dir cctx |> Obj_dir.of_local in
   let sctx = CC.super_context cctx in
   let module LM = Lib.Lib_and_module in
+  let cbis =
+    Lib_info.gather_custom_build_info (List.map ~f:Lib.info all_libs)
+  in
+  let custom_build_info = (custom_build_info, cbis) in
   let rec process_libs ~to_link_rev ~force_linkall libs =
     match libs with
     | [] -> { to_link = List.rev to_link_rev; force_linkall }

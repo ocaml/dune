@@ -163,27 +163,35 @@ let build_info_code_v1 ~cctx ~libs buf =
 
 let build_info_code_v2 ~cctx ~custom_build_info:(exe_cbi, lib_cbis) buf =
   let dir = CC.dir cctx in
-  ( match exe_cbi with
-  | Some { Custom_build_info.max_size; _ } ->
-    let var = gen_placeholder_var () in
-    pr buf "let %s = %s" var
-      (fmt_eval ~cctx
-         Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir))));
-    pr buf "let custom = %s" var
-  | None -> pr buf "let custom = None" );
+  let encode min_len name =
+    Artifact_substitution.(encode ~min_len (Custom (name, dir)))
+  in
+  let lib_cbi (name, { Custom_build_info.max_size; _ }) =
+    let name = Lib_name.to_string name in
+    pr buf "%S, %s" name (fmt_eval ~cctx (encode max_size name))
+  in
+  let exe_cbi =
+    match exe_cbi with
+    | Some { Custom_build_info.max_size; _ } ->
+      fmt_eval ~cctx (encode max_size "exe")
+    | None -> "None"
+  in
+  pr buf "let custom = %s" exe_cbi;
   pr buf "";
-  prlist buf "lib_customs" lib_cbis
-    ~f:(fun (name, { Custom_build_info.max_size; _ }) ->
-      let name = Lib_name.to_string name in
-      pr buf "%S, %s" name
-        (fmt_eval ~cctx
-           Artifact_substitution.(encode ~min_len:max_size (Custom (name, dir)))));
+  prlist buf "lib_customs" lib_cbis ~f:lib_cbi;
   pr buf "";
   pr buf "let custom_lib name = List.assoc name lib_customs"
 
 let build_info_code cctx ~libs ~api_version ~custom_build_info =
   let open Lib_info.Special_builtin_support in
   let buf = Buffer.create 1024 in
+  let version_specific () =
+    match api_version with
+    | Build_info.V1 -> build_info_code_v1 ~cctx ~libs buf
+    | Build_info.V2 ->
+      build_info_code_v1 ~cctx ~libs buf;
+      build_info_code_v2 ~cctx ~custom_build_info buf
+  in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
   pr buf "  let len = String.length s in";
@@ -198,13 +206,7 @@ let build_info_code cctx ~libs ~api_version ~custom_build_info =
   pr buf "    None";
   pr buf "[@@inline never]";
   pr buf "";
-
-  ( match api_version with
-  | Build_info.V1 -> build_info_code_v1 ~cctx ~libs buf
-  | Build_info.V2 ->
-    build_info_code_v1 ~cctx ~libs buf;
-    build_info_code_v2 ~cctx ~custom_build_info buf );
-
+  version_specific ();
   pr buf "";
   Buffer.contents buf
 

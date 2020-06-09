@@ -72,6 +72,64 @@ let test ?(expect_never = false) to_dyn f =
     print_endline "[FAIL] expected Never to be raised but it wasn't"
   | true, false -> print_endline "[FAIL] unexpected Never raised"
 
+let%expect_test "execution context of ivars" =
+  (* The point of this test it show that the execution context is restored when
+     a fiber that's blocked on an ivar is resumed. This means that fiber local
+     variables are visible for exmaple*)
+  let open Fiber.O in
+  let ivar = Fiber.Ivar.create () in
+  let run_when_filled () =
+    let var = Fiber.Var.create () in
+    Fiber.Var.set var 42 (fun () ->
+        let* peek = Fiber.Ivar.peek ivar in
+        assert (peek = None);
+        let+ () = Fiber.Ivar.read ivar in
+        let value = Fiber.Var.get_exn var in
+        Printf.printf "var value %d\n" value)
+  in
+  let run = Fiber.fork_and_join_unit run_when_filled (Fiber.Ivar.fill ivar) in
+  test unit run;
+  [%expect {|
+    var value 42
+    () |}]
+
+let%expect_test "fiber vars are preseved across yields" =
+  let var = Fiber.Var.create () in
+  let fiber th () =
+    assert (Fiber.Var.get var = None);
+    Fiber.Var.set var th (fun () ->
+        assert (Fiber.Var.get var = Some th);
+        let+ () = Scheduler.yield () in
+        assert (Fiber.Var.get var = Some th))
+  in
+  let run = Fiber.fork_and_join_unit (fiber 1) (fiber 2) in
+  test unit run;
+  [%expect {|
+    () |}]
+
+let%expect_test "fill returns a fiber that executes when waiters finish" =
+  let ivar = Fiber.Ivar.create () in
+  let open Fiber.O in
+  let waiters () =
+    let waiter n () =
+      let+ () = Fiber.Ivar.read ivar in
+      Format.eprintf "waiter %d finished running@.%!" n
+    in
+    Fiber.fork_and_join_unit (waiter 1) (waiter 2)
+  in
+  let run () =
+    let* () = Scheduler.yield () in
+    let+ () = Fiber.Ivar.fill ivar () in
+    Format.eprintf "waiters finished running@."
+  in
+  test unit (Fiber.fork_and_join_unit waiters run);
+  [%expect
+    {|
+    waiter 1 finished running
+    waiter 2 finished running
+    waiters finished running
+    () |}]
+
 let%expect_test _ =
   test (backtrace_result unit) (Fiber.collect_errors failing_fiber);
   [%expect {|

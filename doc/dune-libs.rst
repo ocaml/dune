@@ -195,22 +195,38 @@ It is possible to retrieve the information using ``Build_info.V2.custom :
 unit -> string option`` for executables and ``Build_info.V2.custom_lib : string
 -> string option`` for libraries, where the argument is the name of the library.
 
-Usage example:
+For example, given the following configuration:
 
 .. code-block:: shell
 
- $ cat dune
- (library
-  (public_name mylib)
-  (custom_build_info
-   (max_size 40)
-   (action (echo "Custom build info generated during link.")))
+  $ cat dune
+  (executable
+   (public_name foo)
+   (custom_build_info
+    (max_size 46)
+    (action (echo "Custom build info generated during link (exe).")))
 
- $ cat mylib.ml
- let my_info = Build_info.V2.custom_lib "mylib" in
- match my_info with
- | Some info -> Printf.printf "%s\n" info
- | None      -> Printf.printf "n/a\n"
+  $ cat lib/dune
+  (library
+   (public_name mylib)
+   (custom_build_info
+    (max_size 48)
+    (action (echo "Custom build info generated during link (mylib).")))
+
+The custom built informations can be access from whether `Foo` or `Mylib` as follows:
+
+.. code-block:: ocaml
+
+  let info_mylib = Build_info.V2.custom_lib "mylib" in
+  match info_mylib with
+  | Some info -> Printf.printf "From mylib: %s\n" info
+  | None      -> Printf.printf "From mylib: n/a\n"
+
+  let info_foo = Build_info.V2.custom in
+  match info_foo with
+  | Some info -> Printf.printf "From foo: %s\n" info
+  | None      -> Printf.printf "From foo: n/a\n"
+
 
 Note that even if this system is restricted to a single string,
 structured data can also be transmitted using an appropriate

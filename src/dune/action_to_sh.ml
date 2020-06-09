@@ -13,6 +13,7 @@ module Simplified = struct
     | Setenv of string * string
     | Redirect_out of t list * Action.Outputs.t * destination
     | Redirect_in of t list * Action.Inputs.t * source
+    | Pipe of t list list * Action.Outputs.t
     | Sh of string
 end
 
@@ -87,6 +88,8 @@ let simplify act =
            (String.quote_for_shell target))
       :: acc
     | No_infer act -> loop act acc
+    | Pipe (outputs, l) ->
+      Pipe (List.map ~f:block l, outputs) :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]
@@ -153,6 +156,14 @@ and pp = function
              | Dev_null -> "/dev/null"
              | File fn -> fn )
          ])
+  | Pipe (l, outputs) ->
+    let pipe =
+      match outputs with
+      | Stdout -> " | "
+      | Outputs -> " 2>&1 | "
+      | Stderr -> " 2>&1 >/dev/null | "
+    in
+    Pp.hovbox ~indent:2 (Pp.concat ~sep:(Pp.verbatim pipe) (List.map l ~f:block))
 
 let rec pp_seq = function
   | [] -> Pp.verbatim "true"

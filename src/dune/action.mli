@@ -1,8 +1,10 @@
 open! Stdune
 open! Import
 
-module Outputs : module type of struct
-  include Action_intf.Outputs
+module Outputs : sig
+  include module type of Action_intf.Outputs
+
+  val to_string : t -> string
 end
 
 module Inputs : module type of struct

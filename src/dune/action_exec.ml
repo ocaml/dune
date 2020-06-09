@@ -351,27 +351,39 @@ let rec exec t ~ectx ~eenv =
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
+  | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
 
 and redirect_out t ~ectx ~eenv outputs fn =
-  let out = Process.Io.file fn Process.Io.Out in
-  let stdout_to, stderr_to =
-    match outputs with
-    | Stdout -> (out, eenv.stderr_to)
-    | Stderr -> (eenv.stdout_to, out)
-    | Outputs -> (out, out)
-  in
-  exec t ~ectx ~eenv:{ eenv with stdout_to; stderr_to } >>| fun result ->
-  Process.Io.release out;
-  result
+  redirect t ~ectx ~eenv ~out:(outputs, fn) ()
 
 and redirect_in t ~ectx ~eenv inputs fn =
-  let in_ = Process.Io.file fn Process.Io.In in
-  let stdin_from =
-    match inputs with
-    | Stdin -> in_
+  redirect t ~ectx ~eenv ~in_:(inputs, fn) ()
+
+and redirect t ~ectx ~eenv ?in_ ?out () =
+  let stdin_from, release_in =
+    match in_ with
+    | None -> (eenv.stdin_from, ignore)
+    | Some (Stdin, fn) ->
+      let in_ = Process.Io.file fn Process.Io.In in
+      (in_, fun () -> Process.Io.release in_)
   in
-  exec t ~ectx ~eenv:{ eenv with stdin_from } >>| fun result ->
-  Process.Io.release in_;
+  let stdout_to, stderr_to, release_out =
+    match out with
+    | None -> (eenv.stdout_to, eenv.stderr_to, ignore)
+    | Some (outputs, fn) ->
+      let out = Process.Io.file fn Process.Io.Out in
+      let stdout_to, stderr_to =
+        match outputs with
+        | Stdout -> (out, eenv.stderr_to)
+        | Stderr -> (eenv.stdout_to, out)
+        | Outputs -> (out, out)
+      in
+      (stdout_to, stderr_to, fun () -> Process.Io.release out)
+  in
+  exec t ~ectx ~eenv:{ eenv with stdin_from; stdout_to; stderr_to }
+  >>| fun result ->
+  release_in ();
+  release_out ();
   result
 
 and exec_list ts ~ectx ~eenv =
@@ -388,6 +400,44 @@ and exec_list ts ~ectx ~eenv =
     match done_or_deps with
     | Need_more_deps _ as need -> Fiber.return need
     | Done -> exec_list rest ~ectx ~eenv )
+
+and exec_pipe outputs ts ~ectx ~eenv =
+  let tmp_file () =
+    Temp.create
+      ~prefix:"dune-pipe-action-"
+      ~suffix:("." ^ Action.Outputs.to_string outputs)
+  in
+  let multi_use_eenv =
+    match outputs with
+    | Outputs -> eenv
+    | Stdout -> { eenv with stderr_to = Process.Io.multi_use eenv.stderr_to }
+    | Stderr -> { eenv with stdout_to = Process.Io.multi_use eenv.stdout_to }
+  in
+  let rec loop ~in_ ts =
+    match ts with
+    | [] -> assert false
+    | [ last_t ] ->
+      let+ result = redirect_in last_t ~ectx ~eenv Stdin in_ in
+      Temp.destroy in_;
+      result
+    | t :: ts -> (
+      let out = tmp_file () in
+      let* done_or_deps =
+        redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_) ~out:(outputs, out) ()
+      in
+      Temp.destroy in_;
+      match done_or_deps with
+      | Need_more_deps _ as need -> Fiber.return need
+      | Done -> loop ~in_:out ts )
+  in
+  match ts with
+  | [] -> assert false
+  | t1 :: ts -> (
+    let out = tmp_file () in
+    let* done_or_deps = redirect_out t1 ~ectx ~eenv outputs out in
+    match done_or_deps with
+    | Need_more_deps _ as need -> Fiber.return need
+    | Done -> loop ~in_:out ts )
 
 let exec_until_all_deps_ready ~ectx ~eenv t =
   let open DAP in

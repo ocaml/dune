@@ -152,7 +152,8 @@ let build_info_code_v1 ~cctx ~libs buf =
   in
   Path.Source.Map.iteri !placeholders ~f:(fun path var ->
       pr buf "let %s = %s" var
-      (fmt_eval ~cctx (Artifact_substitution.encode ~min_len:64 (Vcs_describe path))));
+        (fmt_eval ~cctx
+           (Artifact_substitution.encode ~min_len:64 (Vcs_describe path))));
   if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
   pr buf "let version = %s" version;
   pr buf "";
@@ -166,7 +167,8 @@ let build_info_code_v2 ~cctx ~custom_build_info:(exe_cbi, lib_cbis) buf =
   | Some { Custom_build_info.max_size; _ } ->
     let var = gen_placeholder_var () in
     pr buf "let %s = %s" var
-    (fmt_eval ~cctx (Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir)))));
+      (fmt_eval ~cctx
+         Artifact_substitution.(encode ~min_len:max_size (Custom ("exe", dir))));
     pr buf "let custom = %s" var
   | None -> pr buf "let custom = None" );
   pr buf "";

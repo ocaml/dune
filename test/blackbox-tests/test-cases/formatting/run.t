@@ -30,7 +30,15 @@ Formatting can be checked using the @fmt target:
   >  (enabled_for ocaml))
   > EOF
   $ dune build --display short @fmt
-          dune enabled/dune-ocaml-syntax/.formatted/dune
+  File "enabled/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/dune and
+  _build/default/enabled/.formatted/dune differ.
+  File "enabled/subdir/dune", line 1, characters 0-0:
+  Error: Files _build/default/enabled/subdir/dune and
+  _build/default/enabled/subdir/.formatted/dune differ.
+  File "lang2/default/dune", line 1, characters 0-0:
+  Error: Files _build/default/lang2/default/dune and
+  _build/default/lang2/default/.formatted/dune differ.
       ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d
       ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
         ocamlc fake-tools/.ocamlformat.eobjs/byte/ocamlformat.{cmi,cmo,cmt}
@@ -40,18 +48,6 @@ Formatting can be checked using the @fmt target:
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-          dune enabled/.formatted/dune
-  File "enabled/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/dune and
-  _build/default/enabled/.formatted/dune differ.
-          dune enabled/subdir/.formatted/dune
-  File "enabled/subdir/dune", line 1, characters 0-0:
-  Error: Files _build/default/enabled/subdir/dune and
-  _build/default/enabled/subdir/.formatted/dune differ.
-          dune lang2/default/.formatted/dune
-  File "lang2/default/dune", line 1, characters 0-0:
-  Error: Files _build/default/lang2/default/dune and
-  _build/default/lang2/default/.formatted/dune differ.
         ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
       ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
       ocamlopt fake-tools/refmt.exe
@@ -164,7 +160,6 @@ All .ocamlformat files are considered dependencies:
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-          dune enabled/.formatted/dune
    ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and

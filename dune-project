@@ -75,8 +75,6 @@ no stability guarantee.
 
 (package
  (name dune-configurator)
- (depends
-  (dune-private-libs (= :version)))
  (synopsis "Helper library for gathering system configuration")
  (description "\
 dune-configurator is a small library that helps writing OCaml scripts that

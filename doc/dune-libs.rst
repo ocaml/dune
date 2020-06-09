@@ -187,10 +187,9 @@ link. This action should print this information on it's standard output. See the
 the directory of the executable being linked.)
 
 ``<int>`` is the maximum size of the action's output. Bigger outputs will be
-truncated. This field is optional and has a default value of `64`. This is
-necessary because the placeholder mechanism described in :ref:`build-info` is
-used to write the information in
-the binary only when it is installed or promoted to the source tree.
+truncated. This is necessary because the placeholder mechanism described in
+:ref:`build-info` is used to write the information in the binary only when it
+is installed or promoted to the source tree.
 
 It is possible to retrieve the information using ``Build_info.V2.custom :
 unit -> string option`` for executables and ``Build_info.V2.custom_lib : string

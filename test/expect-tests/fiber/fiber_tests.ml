@@ -93,6 +93,20 @@ let%expect_test "execution context of ivars" =
     var value 42
     () |}]
 
+let%expect_test "fiber vars are preseved across yields" =
+  let var = Fiber.Var.create () in
+  let fiber th () =
+    assert (Fiber.Var.get var = None);
+    Fiber.Var.set var th (fun () ->
+        assert (Fiber.Var.get var = Some th);
+        let+ () = Scheduler.yield () in
+        assert (Fiber.Var.get var = Some th))
+  in
+  let run = Fiber.fork_and_join_unit (fiber 1) (fiber 2) in
+  test unit run;
+  [%expect {|
+    () |}]
+
 let%expect_test "fill returns a fiber that executes when waiters finish" =
   let ivar = Fiber.Ivar.create () in
   let open Fiber.O in

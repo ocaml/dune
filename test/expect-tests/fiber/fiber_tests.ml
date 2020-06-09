@@ -78,12 +78,11 @@ let%expect_test "execution context of ivars" =
      variables are visible for exmaple*)
   let open Fiber.O in
   let ivar = Fiber.Ivar.create () in
-  let var = Fiber.Var.create () in
   let run_when_filled () =
+    let var = Fiber.Var.create () in
     Fiber.Var.set var 42 (fun () ->
         let* peek = Fiber.Ivar.peek ivar in
         assert (peek = None);
-        let* () = long_running_fiber () in
         let+ () = Fiber.Ivar.read ivar in
         let value = Fiber.Var.get_exn var in
         Printf.printf "var value %d\n" value)

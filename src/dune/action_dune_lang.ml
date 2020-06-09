@@ -63,7 +63,8 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Mkdir _
     | Digest_files _
     | Diff _
-    | Merge_files_into _ ->
+    | Merge_files_into _
+    | Format_dune_file _ ->
       false
     | Pipe (_, ts)
     | Progn ts ->

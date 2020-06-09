@@ -90,6 +90,9 @@ let simplify act =
     | No_infer act -> loop act acc
     | Pipe (outputs, l) ->
       Pipe (List.map ~f:block l, outputs) :: acc
+    | Format_dune_file (src, dst) ->
+      Redirect_out ([Run ("dune", ["format-dune-file"; src])], Stdout, File dst)
+      :: acc
   and block act =
     match List.rev (loop act []) with
     | [] -> [ Run ("true", []) ]

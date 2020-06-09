@@ -39,9 +39,8 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
         Option.some @@
         Build.with_targets ~targets:[output] @@
         let open Build.O in
-        let+ contents = Build.contents input in
-        let contents = Format_dune_lang.format_string contents in
-        Action.write_file output contents
+        let+ () = Build.path input in
+        Action.format_dune_file input output
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

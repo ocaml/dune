@@ -320,5 +320,5 @@ module Sexp = struct
   end
 
   include T
-  include Dune_csexp.Csexp.Make (T)
+  include Configurator_csexp.Csexp.Make (T)
 end

@@ -4,7 +4,7 @@
  (name configurator)
  (public_name dune-configurator)
  (private_modules import dune_lang ocaml_config)
- (libraries unix dune-private-libs.dune_csexp)
+ (libraries unix configurator_csexp)
  (flags
   (:standard
    -safe-string

@@ -1,0 +1,3 @@
+(library
+ (name configurator_csexp)
+ (public_name dune-configurator.csexp))

@@ -1,3 +1,5 @@
+(** This module provides parsing for the [(custom-build-info)] field of the
+    library and executable stanzas *)
 open! Stdune
 
 type t =

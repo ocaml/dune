@@ -1,3 +1,5 @@
 (library
  (name configurator_csexp)
  (public_name dune-configurator.csexp))
+
+(copy_files "%{project_root}/vendor/csexp/src/*.ml{,i}")

@@ -297,4 +297,5 @@ let%expect_test "finalize/fork behavior" =
     fork
     after fork
     fiber finished
-    [FAIL] |}]
+    finally
+    [PASS] |}]

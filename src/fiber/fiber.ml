@@ -393,18 +393,26 @@ module Ivar = struct
 end
 
 module Future = struct
-  type 'a t = 'a Ivar.t
+  type 'a t = 'a Ivar.t * unit Lazy.t
 
-  let wait = Ivar.read
+  let create () =
+    EC.add_refs 1;
+    (Ivar.create (), lazy (EC.deref ()))
 
-  let peek = Ivar.peek
+  let fill (ivar, _) v = Ivar.fill ivar v ignore
+
+  let wait (ivar, deref) k =
+    Ivar.read ivar (fun x ->
+        Lazy.force deref;
+        k x)
+
+  let peek (t, _) = Ivar.peek t
 end
 
 let fork f k =
-  let ivar = Ivar.create () in
-  EC.add_refs 1;
-  EC.apply f () (fun x -> Ivar.fill ivar x ignore);
-  k ivar
+  let future = Future.create () in
+  EC.apply f () (Future.fill future);
+  k future
 
 let nfork_map l ~f k =
   match l with
@@ -413,13 +421,13 @@ let nfork_map l ~f k =
   | l ->
     let n = List.length l in
     EC.add_refs (n - 1);
-    let ivars =
+    let futures =
       List.map l ~f:(fun x ->
-          let ivar = Ivar.create () in
-          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-          ivar)
+          let future = Future.create () in
+          EC.apply f x (Future.fill future);
+          future)
     in
-    k ivars
+    k futures
 
 let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
 

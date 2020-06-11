@@ -70,6 +70,16 @@ module Stanza = struct
          { warnings }
   end
 
+  module Coq = struct
+
+    type t = Ordered_set_lang.Unexpanded.t
+
+    let equal = Ordered_set_lang.Unexpanded.equal
+
+    let empty = Ordered_set_lang.Unexpanded.standard
+
+  end
+
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
@@ -78,6 +88,7 @@ module Stanza = struct
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
+    ; coq : Coq.t
     }
 
   let equal_config
@@ -88,6 +99,7 @@ module Stanza = struct
       ; inline_tests
       ; menhir_flags
       ; odoc
+      ; coq
       } t =
     Ocaml_flags.Spec.equal flags t.flags
     && Foreign.Language.Dict.equal Ordered_set_lang.Unexpanded.equal
@@ -97,6 +109,7 @@ module Stanza = struct
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
+    && Coq.equal coq t.coq
 
   let hash_config = Hashtbl.hash
 
@@ -109,6 +122,7 @@ module Stanza = struct
     ; inline_tests = None
     ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     ; odoc = Odoc.empty
+    ; coq = Coq.empty
     }
 
   type pattern =
@@ -155,6 +169,13 @@ module Stanza = struct
     field "odoc" ~default:Odoc.empty
       (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
 
+  let coq_flags =
+    Ordered_set_lang.Unexpanded.field "flags"
+
+  let coq_field =
+    field "coq" ~default:Coq.empty
+      (Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> fields coq_flags)
+
   let config =
     let+ flags = Ocaml_flags.Spec.decode
     and+ foreign_flags = foreign_flags ~since:(Some (1, 7))
@@ -165,7 +186,8 @@ module Stanza = struct
         >>> File_binding.Unexpanded.L.decode )
     and+ inline_tests = inline_tests_field
     and+ menhir_flags = menhir_flags ~since:(Some (2, 1))
-    and+ odoc = odoc_field in
+    and+ odoc = odoc_field
+    and+ coq = coq_field in
     { flags
     ; foreign_flags
     ; env_vars
@@ -173,6 +195,7 @@ module Stanza = struct
     ; inline_tests
     ; menhir_flags
     ; odoc
+    ; coq
     }
 
   let rule =

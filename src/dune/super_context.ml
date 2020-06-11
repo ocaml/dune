@@ -321,6 +321,8 @@ let local_binaries t ~dir = get_node t.env_tree ~dir |> Env_node.local_binaries
 
 let odoc t ~dir = get_node t.env_tree ~dir |> Env_node.odoc
 
+let coq t ~dir = get_node t.env_tree ~dir |> Env_node.coq
+
 let dump_env t ~dir =
   let t = t.env_tree in
   let open Build.O in

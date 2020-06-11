@@ -5,6 +5,13 @@
           coqc foo.vo
           coqc bar.vo
 
+  $ dune build --root base_unsound --display short --profile unsound --debug-dependency-path @all
+  Entering directory 'base_unsound'
+        coqdep bar.v.d
+        coqdep foo.v.d
+          coqc foo.vo
+          coqc bar.vo
+
   $ dune build --root rec_module --display short --debug-dependency-path @all
   Entering directory 'rec_module'
         coqdep a/bar.v.d

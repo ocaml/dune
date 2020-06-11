@@ -79,6 +79,9 @@ val local_binaries : t -> dir:Path.Build.t -> File_binding.Expanded.t list
 (** odoc config in the corresponding [(env)] stanza. *)
 val odoc : t -> dir:Path.Build.t -> Env_node.Odoc.t
 
+(** coq config in the corresponding [(env)] stanza. *)
+val coq : t -> dir:Path.Build.t -> Env_node.Coq.t
+
 (** Dump a directory environment in a readable form *)
 val dump_env : t -> dir:Path.Build.t -> Dune_lang.t list Build.t
 

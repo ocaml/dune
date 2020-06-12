@@ -1,9 +1,3 @@
-module Env = struct
-  type t = string array
-
-  let of_array t = t
-end
-
 external sys_exit : int -> 'a = "caml_sys_exit"
 
 let rec file_descr_not_standard fd =
@@ -29,6 +23,7 @@ let perform_redirections stdin stdout stderr =
 let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
     ?(stderr = Unix.stderr) () =
   let argv = Array.of_list argv in
+  let env = Option.map ~f:Env.to_unix env in
   Pid.of_int
     ( if Sys.win32 then
       match env with

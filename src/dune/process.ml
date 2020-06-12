@@ -497,11 +497,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     let stdout = Io.fd stdout_to in
     let stderr = Io.fd stderr_to in
     let stdin = Io.fd stdin_from in
-    fun () ->
-      let env =
-        Option.map env ~f:(fun env -> Spawn.Env.of_array (Env.to_unix env))
-      in
-      Spawn.spawn () ~prog:prog_str ~argv ?env ~stdout ~stderr ~stdin
+    fun () -> Spawn.spawn () ~prog:prog_str ~argv ?env ~stdout ~stderr ~stdin
   in
   let pid =
     match dir with

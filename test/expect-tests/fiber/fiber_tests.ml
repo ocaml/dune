@@ -213,7 +213,9 @@ let%expect_test "collect_errors and termination" =
             Fiber.return 50))
   in
   test ~expect_never:true (backtrace_result int) fiber;
-  [%expect {| [PASS] Never raised as expected |}]
+  [%expect {|
+    Ok 50
+    [FAIL] expected Never to be raised but it wasn't |}]
 
 let must_set_flag f =
   let flag = ref false in

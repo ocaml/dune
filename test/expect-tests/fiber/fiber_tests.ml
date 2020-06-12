@@ -288,14 +288,12 @@ let%expect_test "finalize/fork behavior" =
         let* () = log "after fork" in
         let* () = Fiber.Future.wait f in
         log "fiber finished")
-    |> Fiber.run
   in
-  ( match fiber with
-  | Some () -> print_endline "[PASS]"
-  | None -> print_endline "[FAIL]" );
-  [%expect {|
+  test unit fiber;
+  [%expect
+    {|
     fork
     after fork
     fiber finished
     finally
-    [PASS] |}]
+    () |}]

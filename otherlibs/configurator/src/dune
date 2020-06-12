@@ -3,9 +3,8 @@
 (library
  (name configurator)
  (public_name dune-configurator)
- (preprocess future_syntax)
- (private_modules import dune_lang ocaml_config)
- (libraries unix dune-private-libs.dune_csexp)
+ (private_modules import dune_lang ocaml_config csexp)
+ (libraries unix)
  (flags
   (:standard
    -safe-string
@@ -13,3 +12,5 @@
  (special_builtin_support
   (configurator
    (api_version 1))))
+
+(copy_files "%{project_root}/vendor/csexp/src/*.ml{,i}")

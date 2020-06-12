@@ -27,9 +27,6 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
   let dir = Path.Build.parent_exn output_dir in
   let source_dir = Path.Build.drop_build_context_exn dir in
   let alias_formatted = Alias.fmt ~dir:output_dir in
-  let resolve_program =
-    Super_context.resolve_program ~dir sctx ~loc:(Some loc)
-  in
   let depend_on_files named = depend_on_files ~named (Path.build dir) in
   let setup_formatting file =
     let input_basename = Path.Source.basename file in
@@ -39,10 +36,11 @@ let gen_rules_output sctx (config : Format_config.t) ~dialects ~expander
       let input = Path.build input in
       match Path.Source.basename file with
       | "dune" when Format_config.includes config Dune ->
-        let exe = resolve_program "dune" in
-        let args = [ Command.Args.A "format-dune-file"; Dep input ] in
-        let dir = Path.build dir in
-        Some (Command.run ~dir ~stdout_to:output exe args)
+        Option.some @@
+        Build.with_targets ~targets:[output] @@
+        let open Build.O in
+        let+ () = Build.path input in
+        Action.format_dune_file input output
       | _ ->
         let ext = Path.Source.extension file in
         let open Option.O in

@@ -22,6 +22,6 @@ let term =
     Arg.(value & pos 0 (some path) None & info [] ~docv ~doc)
   in
   let input = Option.map ~f:Arg.Path.path path_opt in
-  Format_dune_lang.format_file ~input
+  Format_dune_lang.format_file ~input ~output:None
 
 let command = (term, info)

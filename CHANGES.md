@@ -36,6 +36,9 @@ next
 - Remove experimental variants feature and make default implementations part of
   the language (#3491, fixes #3483, @rgrinberg)
 
+- Formatting of dune files is now done in the executing dune process instead of
+  in a separate process. (#3536, @nojb)
+
 2.5.1 (17/04/2020)
 ------------------
 

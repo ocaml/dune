@@ -99,12 +99,21 @@ let write_file ~path sexps =
   in
   Io.with_file_out ~binary:true path ~f
 
-let format_file ~input =
+let format_file ~input ~output =
+  let with_output f =
+    match output with
+    | None -> f stdout
+    | Some output ->
+      Io.with_file_out output ~f
+  in
   match parse_file input with
   | OCaml_syntax loc -> (
     match input with
     | Some path ->
-      Io.with_file_in path ~f:(fun ic -> Io.copy_channels ic stdout)
+      Io.with_file_in path ~f:(fun ic -> with_output (fun oc -> Io.copy_channels ic oc))
     | None -> User_error.raise ~loc [ Pp.text "OCaml syntax is not supported." ]
     )
-  | Sexps sexps -> Format.printf "%a%!" pp_top_sexps sexps
+  | Sexps sexps ->
+    with_output (fun oc ->
+      let oc = Format.formatter_of_out_channel oc in
+      Format.fprintf oc "%a%!" pp_top_sexps sexps)

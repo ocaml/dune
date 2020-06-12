@@ -179,7 +179,8 @@ let fold_one_step t ~init:acc ~f =
   | Mkdir _
   | Digest_files _
   | Diff _
-  | Merge_files_into _ ->
+  | Merge_files_into _
+  | Format_dune_file _ ->
     acc
 
 include Action_mapper.Make (Ast) (Ast)
@@ -224,7 +225,8 @@ let rec is_dynamic = function
   | Diff _
   | Mkdir _
   | Digest_files _
-  | Merge_files_into _ ->
+  | Merge_files_into _
+  | Format_dune_file _ ->
     false
 
 let prepare_managed_paths ~link ~sandboxed deps ~eval_pred =
@@ -308,6 +310,7 @@ let is_useful_to distribute memoize =
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true
+    | Format_dune_file _ -> memoize
   in
   fun t ->
     match loop t with

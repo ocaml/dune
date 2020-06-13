@@ -24,14 +24,6 @@ let () =
   Dune_project.Extension.register_deleted ~name:"library_variants"
     ~deleted_in:(2, 6)
 
-let bisect_ppx_syntax =
-  Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
-    [ ((1, 0), `Since (2, 6)) ]
-
-let () =
-  Dune_project.Extension.register_simple bisect_ppx_syntax
-    (Dune_lang.Decoder.return [])
-
 module Lint = struct
   type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
@@ -176,7 +168,6 @@ module Buildable = struct
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; bisect_ppx : bool
     }
 
   let decode ~in_library ~allow_re_export =
@@ -242,9 +233,6 @@ module Buildable = struct
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
-    and+ bisect_ppx =
-      field_b "bisect_ppx"
-        ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
     and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
     and+ loc_instrumentation, instrumentation =
       located
@@ -304,7 +292,6 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
-    ; bisect_ppx
     }
 
   let has_foreign t =

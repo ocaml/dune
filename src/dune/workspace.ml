@@ -49,7 +49,6 @@ module Context = struct
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
-      ; bisect_enabled : bool
       ; instrument_with : Lib_name.t list
       }
 
@@ -66,7 +65,6 @@ module Context = struct
         ; paths
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
-        ; bisect_enabled
         ; instrument_with
         } t =
       Profile.equal profile t.profile
@@ -81,7 +79,6 @@ module Context = struct
       && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
       && Bool.equal dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
-      && Bool.equal bisect_enabled t.bisect_enabled
       && List.equal Lib_name.equal instrument_with t.instrument_with
 
     let fdo_suffix t =
@@ -139,9 +136,6 @@ module Context = struct
         field "paths" ~default:[]
           ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
-      and+ bisect_enabled =
-        field ~default:false "bisect_enabled"
-          (Dune_lang.Syntax.since syntax (2, 6) >>> bool)
       and+ instrument_with =
         field ~default:instrument_with "instrument_with"
           (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
@@ -165,7 +159,6 @@ module Context = struct
       ; paths
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
-      ; bisect_enabled
       ; instrument_with
       }
   end
@@ -310,7 +303,6 @@ module Context = struct
       ; paths = []
       ; fdo_target_exe = None
       ; dynamically_linked_foreign_archives = true
-      ; bisect_enabled = false
       ; instrument_with = Option.value instrument_with ~default:[]
       }
 end

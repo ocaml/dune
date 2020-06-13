@@ -39,8 +39,8 @@ let setup_env ~capture_outputs =
   Memo.Run.Fdecl.set Global.env env;
   env
 
-let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile ?instrument_with
-    ~ancestor_vcs () =
+let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
+    ?instrument_with ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs in
   let () =

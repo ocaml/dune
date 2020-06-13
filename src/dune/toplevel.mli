@@ -17,10 +17,7 @@ type t
 val setup_rules : t -> unit
 
 val make :
-     cctx:Compilation_context.t
-  -> source:Source.t
-  -> preprocess:Dune_file.Preprocess.t
-  -> t
+  cctx:Compilation_context.t -> source:Source.t -> preprocess:Preprocess.t -> t
 
 val print_toplevel_init_file :
   include_paths:Path.Set.t -> files_to_load:Path.t list -> unit

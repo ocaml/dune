@@ -593,7 +593,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
-        Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp
+        Preprocess.remove_future_syntax ~for_:Compiler pp
           (Super_context.context sctx).version)
   in
   let preprocessor_deps =

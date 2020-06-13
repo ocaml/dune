@@ -4,8 +4,7 @@ open! No_io
 module Pp_spec : sig
   type t
 
-  val make :
-    Dune_file.Preprocess.t Module_name.Per_item.t -> Ocaml_version.t -> t
+  val make : Preprocess.t Module_name.Per_item.t -> Ocaml_version.t -> t
 
   val pped_module : t -> Module.t -> Module.t
 end = struct
@@ -13,7 +12,7 @@ end = struct
 
   let make preprocess v =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
-        match Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp v with
+        match Preprocess.remove_future_syntax ~for_:Compiler pp v with
         | No_preprocessing -> Module.ml_source
         | Action (_, _) -> fun m -> Module.ml_source (Module.pped m)
         | Pps { loc = _; pps = _; flags = _; staged } ->

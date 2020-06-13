@@ -401,7 +401,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           let project = Scope.project d.scope in
           let dune_version = Dune_project.dune_version project in
           let pps =
-            Dune_file.Preprocess_map.pps
+            Preprocess.Per_module.pps
               (Dune_file.Buildable.preprocess exes.buildable
                  ~lib_config:context.lib_config)
           in

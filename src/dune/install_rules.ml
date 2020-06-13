@@ -156,7 +156,7 @@ end = struct
                Scope.project scope |> Dune_project.dune_version
              in
              let pps =
-               Dune_file.Preprocess_map.pps
+               Preprocess.Per_module.pps
                  (Dune_file.Buildable.preprocess exes.buildable
                     ~lib_config:ctx.lib_config)
              in

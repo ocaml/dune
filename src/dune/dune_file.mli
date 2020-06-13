@@ -3,60 +3,8 @@
 open! Stdune
 open Import
 
-module Preprocess : sig
-  module Pps : sig
-    type t =
-      { loc : Loc.t
-      ; pps : (Loc.t * Lib_name.t) list
-      ; flags : String_with_vars.t list
-      ; staged : bool
-      }
-
-    val compare_no_locs : t -> t -> Ordering.t
-  end
-
-  type t =
-    | No_preprocessing
-    | Action of Loc.t * Action_dune_lang.t
-    | Pps of Pps.t
-    | Future_syntax of Loc.t
-
-  module Without_future_syntax : sig
-    type t =
-      | No_preprocessing
-      | Action of Loc.t * Action_dune_lang.t
-      | Pps of Pps.t
-  end
-
-  val loc : t -> Loc.t option
-
-  module Pp_flag_consumer : sig
-    type t =
-      | Compiler
-      | Merlin
-  end
-
-  val remove_future_syntax :
-    t -> for_:Pp_flag_consumer.t -> Ocaml_version.t -> Without_future_syntax.t
-end
-
-module Preprocess_map : sig
-  type t = Preprocess.t Module_name.Per_item.t
-
-  val decode : t Dune_lang.Decoder.t
-
-  val no_preprocessing : t
-
-  val default : t
-
-  (** [find module_name] find the preprocessing specification for a given module *)
-  val find : Module_name.t -> t -> Preprocess.t
-
-  val pps : t -> (Loc.t * Lib_name.t) list
-end
-
 module Lint : sig
-  type t = Preprocess_map.t
+  type t = Preprocess.Per_module.t
 
   val no_lint : t
 end
@@ -82,7 +30,7 @@ end
 
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
-  (Preprocess_map.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
+  (Preprocess.Per_module.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
 
 module Buildable : sig
   type t =
@@ -92,7 +40,7 @@ module Buildable : sig
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess_map.t
+    ; preprocess : Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
@@ -108,7 +56,7 @@ module Buildable : sig
   val single_preprocess : t -> Preprocess.t
 
   (** Includes bisect_ppx if specified by [lib_config] *)
-  val preprocess : t -> lib_config:Lib_config.t -> Preprocess_map.t
+  val preprocess : t -> lib_config:Lib_config.t -> Preprocess.Per_module.t
 end
 
 module Public_lib : sig

@@ -174,7 +174,7 @@ let rules ~sctx ~dir ~dir_contents ~scope ~expander
   let dune_version = Scope.project scope |> Dune_project.dune_version in
   let ctx = SC.context sctx in
   let pps =
-    Dune_file.Preprocess_map.pps
+    Preprocess.Per_module.pps
       (Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config)
   in
   let compile_info =

@@ -88,10 +88,10 @@ let simplify act =
            (String.quote_for_shell target))
       :: acc
     | No_infer act -> loop act acc
-    | Pipe (outputs, l) ->
-      Pipe (List.map ~f:block l, outputs) :: acc
+    | Pipe (outputs, l) -> Pipe (List.map ~f:block l, outputs) :: acc
     | Format_dune_file (src, dst) ->
-      Redirect_out ([Run ("dune", ["format-dune-file"; src])], Stdout, File dst)
+      Redirect_out
+        ([ Run ("dune", [ "format-dune-file"; src ]) ], Stdout, File dst)
       :: acc
   and block act =
     match List.rev (loop act []) with
@@ -166,7 +166,8 @@ and pp = function
       | Outputs -> " 2>&1 | "
       | Stderr -> " 2>&1 >/dev/null | "
     in
-    Pp.hovbox ~indent:2 (Pp.concat ~sep:(Pp.verbatim pipe) (List.map l ~f:block))
+    Pp.hovbox ~indent:2
+      (Pp.concat ~sep:(Pp.verbatim pipe) (List.map l ~f:block))
 
 let rec pp_seq = function
   | [] -> Pp.verbatim "true"

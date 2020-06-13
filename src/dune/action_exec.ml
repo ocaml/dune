@@ -407,8 +407,7 @@ and exec_list ts ~ectx ~eenv =
 
 and exec_pipe outputs ts ~ectx ~eenv =
   let tmp_file () =
-    Temp.create
-      ~prefix:"dune-pipe-action-"
+    Temp.create ~prefix:"dune-pipe-action-"
       ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
   let multi_use_eenv =
@@ -427,7 +426,8 @@ and exec_pipe outputs ts ~ectx ~eenv =
     | t :: ts -> (
       let out = tmp_file () in
       let* done_or_deps =
-        redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_) ~out:(outputs, out) ()
+        redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_)
+          ~out:(outputs, out) ()
       in
       Temp.destroy in_;
       match done_or_deps with

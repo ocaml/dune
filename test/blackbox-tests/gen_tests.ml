@@ -254,6 +254,7 @@ let exclusions =
   ; make "toplevel-integration" ~external_deps:true
   ; make "bisect-ppx/main" ~external_deps:true
   ; make "github3188" ~external_deps:true
+  ; make "instrumentation" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

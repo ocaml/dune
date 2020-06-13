@@ -1649,6 +1649,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias instrumentation)
+ (deps
+  (package dune)
+  (source_tree test-cases/instrumentation)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/instrumentation
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias intf-only)
  (deps (package dune) (source_tree test-cases/intf-only) (alias test-deps))
  (action
@@ -3004,8 +3015,6 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
-  (alias bisect-ppx-github3473)
-  (alias bisect-ppx-main)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -3162,6 +3171,7 @@
   (alias install-single-section)
   (alias install-with-var)
   (alias installable-dup-private-libs)
+  (alias instrumentation)
   (alias intf-only)
   (alias invalid-dune-package)
   (alias invalid-module-name)
@@ -3302,7 +3312,6 @@
   (alias all-promotions)
   (alias bad-alias-error)
   (alias bin-eager-deps)
-  (alias bisect-ppx-github3473)
   (alias block-strings)
   (alias byte-code-only)
   (alias byte_complete)
@@ -3556,7 +3565,12 @@
 
 (alias
  (name runtest-disabled)
- (deps (alias cinaps) (alias env-envs-and-contexts) (alias fdo)))
+ (deps
+  (alias bisect-ppx-github3473)
+  (alias bisect-ppx-main)
+  (alias cinaps)
+  (alias env-envs-and-contexts)
+  (alias fdo)))
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 

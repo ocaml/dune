@@ -542,6 +542,7 @@ module Library = struct
     ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; instrumentation_backend : (Loc.t * Lib_name.t) option
     }
 
   let decode =
@@ -611,6 +612,10 @@ module Library = struct
          let open Enabled_if in
          let allowed_vars = Only Lib_config.allowed_in_enabled_if in
          decode ~allowed_vars ~since:(Some (1, 10)) ()
+       and+ instrumentation_backend =
+         field_o "instrumentation.backend"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
+           >>> fields (field "ppx" (located Lib_name.decode)) )
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -685,6 +690,7 @@ module Library = struct
        ; stdlib
        ; special_builtin_support
        ; enabled_if
+       ; instrumentation_backend
        })
 
   let has_foreign t = Buildable.has_foreign t.buildable

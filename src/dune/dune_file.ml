@@ -170,29 +170,7 @@ module Preprocess = struct
                 @ [ String_with_vars.make_var loc "input-file" ] ) )
 end
 
-module Per_module = struct
-  include Module_name.Per_item
-
-  let decode ~default a =
-    peek_exn >>= function
-    | List (loc, Atom (_, A "per_module") :: _) ->
-      sum
-        [ ( "per_module"
-          , let+ x =
-              repeat
-                (let+ pp, names = pair a (repeat Module_name.decode) in
-                 (names, pp))
-            in
-            of_mapping x ~default |> function
-            | Ok t -> t
-            | Error (name, _, _) ->
-              User_error.raise ~loc
-                [ Pp.textf "module %s present in two different sets"
-                    (Module_name.to_string name)
-                ] )
-        ]
-    | _ -> a >>| for_all
-end
+module Per_module = Module_name.Per_item
 
 module Preprocess_map = struct
   type t = Preprocess.t Per_module.t

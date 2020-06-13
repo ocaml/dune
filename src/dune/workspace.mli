@@ -77,7 +77,12 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 
 val init :
-  ?x:Context_name.t -> ?profile:Profile.t -> ?path:Path.t -> unit -> unit
+     ?x:Context_name.t
+  -> ?profile:Profile.t
+  -> ?instrument_with:string list
+  -> ?path:Path.t
+  -> unit
+  -> unit
 
 (** Default name of workspace files *)
 val filename : string

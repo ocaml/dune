@@ -22,6 +22,7 @@ val scan_workspace :
   -> ?x:Context_name.t
   -> ?capture_outputs:bool
   -> ?profile:Profile.t
+  -> ?instrument_with:string list
   -> ancestor_vcs:Vcs.t option
   -> unit
   -> workspace Fiber.t

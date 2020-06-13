@@ -4,7 +4,7 @@ open! Stdune
 open Import
 
 module Lint : sig
-  type t = Preprocess.Per_module.t
+  type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
   val no_lint : t
 end
@@ -30,7 +30,9 @@ end
 
 (** [preprocess] and [preprocessor_deps] fields *)
 val preprocess_fields :
-  (Preprocess.Per_module.t * Dep_conf.t list) Dune_lang.Decoder.fields_parser
+  ( Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+  * Dep_conf.t list )
+  Dune_lang.Decoder.fields_parser
 
 module Buildable : sig
   type t =
@@ -40,7 +42,7 @@ module Buildable : sig
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess.Per_module.t
+    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
@@ -53,10 +55,13 @@ module Buildable : sig
   val has_foreign : t -> bool
 
   (** Preprocessing specification used by all modules or [No_preprocessing] *)
-  val single_preprocess : t -> Preprocess.t
+  val single_preprocess : t -> Preprocess.Without_instrumentation.t Preprocess.t
 
   (** Includes bisect_ppx if specified by [lib_config] *)
-  val preprocess : t -> lib_config:Lib_config.t -> Preprocess.Per_module.t
+  val preprocess :
+       t
+    -> lib_config:Lib_config.t
+    -> Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 end
 
 module Public_lib : sig
@@ -316,7 +321,7 @@ module Toplevel : sig
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
     ; loc : Loc.t
-    ; pps : Preprocess.t
+    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
 end
 

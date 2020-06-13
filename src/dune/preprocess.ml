@@ -33,14 +33,15 @@ module Pps_and_flags = struct
 end
 
 module Pps = struct
-  type t =
+  type 'a t =
     { loc : Loc.t
-    ; pps : (Loc.t * Lib_name.t) list
+    ; pps : 'a list
     ; flags : String_with_vars.t list
     ; staged : bool
     }
 
-  let compare_no_locs { loc = _; pps = pps1; flags = flags1; staged = s1 }
+  let compare_no_locs compare_pps
+      { loc = _; pps = pps1; flags = flags1; staged = s1 }
       { loc = _; pps = pps2; flags = flags2; staged = s2 } =
     match Bool.compare s1 s2 with
     | (Lt | Gt) as t -> t
@@ -49,16 +50,20 @@ module Pps = struct
         List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc
       with
       | (Lt | Gt) as t -> t
-      | Eq ->
-        List.compare pps1 pps2 ~compare:(fun (_, x) (_, y) ->
-            Lib_name.compare x y) )
+      | Eq -> List.compare pps1 pps2 ~compare:compare_pps )
 end
 
-type t =
+type 'a t =
   | No_preprocessing
   | Action of Loc.t * Action_dune_lang.t
-  | Pps of Pps.t
+  | Pps of 'a Pps.t
   | Future_syntax of Loc.t
+
+module Without_instrumentation = struct
+  type t = Loc.t * Lib_name.t
+
+  let compare_no_locs (_, x) (_, y) = Lib_name.compare x y
+end
 
 let decode =
   sum
@@ -92,10 +97,10 @@ let pps = function
   | _ -> []
 
 module Without_future_syntax = struct
-  type t =
+  type 'a t =
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
-    | Pps of Pps.t
+    | Pps of 'a Pps.t
 end
 
 module Pp_flag_consumer = struct
@@ -106,8 +111,8 @@ module Pp_flag_consumer = struct
     | Merlin
 end
 
-let remove_future_syntax t ~(for_ : Pp_flag_consumer.t) v :
-    Without_future_syntax.t =
+let remove_future_syntax (t : 'a t) ~(for_ : Pp_flag_consumer.t) v :
+    'a Without_future_syntax.t =
   match t with
   | No_preprocessing -> No_preprocessing
   | Action (loc, action) -> Action (loc, action)
@@ -139,17 +144,17 @@ let remove_future_syntax t ~(for_ : Pp_flag_consumer.t) v :
 module Per_module = struct
   module Per_module = Module_name.Per_item
 
-  type preprocess = t
+  type 'a preprocess = 'a t
 
-  type t = preprocess Per_module.t
+  type 'a t = 'a preprocess Per_module.t
 
   let decode = Per_module.decode decode ~default:No_preprocessing
 
-  let no_preprocessing = Per_module.for_all No_preprocessing
+  let no_preprocessing () = Per_module.for_all No_preprocessing
 
   let find module_name t = Per_module.get t module_name
 
-  let default = Per_module.for_all No_preprocessing
+  let default () = Per_module.for_all No_preprocessing
 
   let pps t =
     Per_module.fold t ~init:Lib_name.Map.empty ~f:(fun pp acc ->

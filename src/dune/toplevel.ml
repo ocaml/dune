@@ -60,7 +60,7 @@ end
 type t =
   { cctx : Compilation_context.t
   ; source : Source.t
-  ; preprocess : Preprocess.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
   }
 
 let make ~cctx ~source ~preprocess = { cctx; source; preprocess }

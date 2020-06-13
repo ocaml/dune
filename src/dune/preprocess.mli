@@ -1,32 +1,38 @@
 open Stdune
 
 module Pps : sig
-  type t =
+  type 'a t =
     { loc : Loc.t
-    ; pps : (Loc.t * Lib_name.t) list
+    ; pps : 'a list
     ; flags : String_with_vars.t list
     ; staged : bool
     }
 
+  val compare_no_locs : ('a -> 'a -> Ordering.t) -> 'a t -> 'a t -> Ordering.t
+end
+
+type 'a t =
+  | No_preprocessing
+  | Action of Loc.t * Action_dune_lang.t
+  | Pps of 'a Pps.t
+  | Future_syntax of Loc.t
+
+module Without_instrumentation : sig
+  type t = Loc.t * Lib_name.t
+
   val compare_no_locs : t -> t -> Ordering.t
 end
 
-type t =
-  | No_preprocessing
-  | Action of Loc.t * Action_dune_lang.t
-  | Pps of Pps.t
-  | Future_syntax of Loc.t
-
-val decode : t Dune_lang.Decoder.t
+val decode : Without_instrumentation.t t Dune_lang.Decoder.t
 
 module Without_future_syntax : sig
-  type t =
+  type 'a t =
     | No_preprocessing
     | Action of Loc.t * Action_dune_lang.t
-    | Pps of Pps.t
+    | Pps of 'a Pps.t
 end
 
-val loc : t -> Loc.t option
+val loc : _ t -> Loc.t option
 
 module Pp_flag_consumer : sig
   type t =
@@ -35,24 +41,27 @@ module Pp_flag_consumer : sig
 end
 
 val remove_future_syntax :
-  t -> for_:Pp_flag_consumer.t -> Ocaml_version.t -> Without_future_syntax.t
+     'a t
+  -> for_:Pp_flag_consumer.t
+  -> Ocaml_version.t
+  -> 'a Without_future_syntax.t
 
 module Per_module : sig
-  type preprocess = t
+  type 'a preprocess = 'a t
 
-  type t = preprocess Module_name.Per_item.t
+  type 'a t = 'a preprocess Module_name.Per_item.t
 
-  val decode : t Dune_lang.Decoder.t
+  val decode : Without_instrumentation.t t Dune_lang.Decoder.t
 
-  val no_preprocessing : t
+  val no_preprocessing : unit -> 'a t
 
-  val default : t
+  val default : unit -> 'a t
 
   (** [find module_name] find the preprocessing specification for a given module *)
-  val find : Module_name.t -> t -> preprocess
+  val find : Module_name.t -> 'a t -> 'a preprocess
 
-  val pps : t -> (Loc.t * Lib_name.t) list
+  val pps : Without_instrumentation.t t -> Without_instrumentation.t list
 
-  val add_bisect : t -> t
+  val add_bisect : Without_instrumentation.t t -> Without_instrumentation.t t
 end
-with type preprocess := t
+with type 'a preprocess := 'a t

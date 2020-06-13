@@ -33,11 +33,11 @@ let () =
     (Dune_lang.Decoder.return [])
 
 module Lint = struct
-  type t = Preprocess.Per_module.t
+  type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
   let decode = Preprocess.Per_module.decode
 
-  let default = Preprocess.Per_module.default
+  let default = Preprocess.Per_module.default ()
 
   let no_lint = default
 end
@@ -130,7 +130,7 @@ end
 let preprocess_fields =
   let+ preprocess =
     field "preprocess" Preprocess.Per_module.decode
-      ~default:Preprocess.Per_module.default
+      ~default:(Preprocess.Per_module.default ())
   and+ preprocessor_deps =
     field_o "preprocessor_deps"
       (let+ loc = loc
@@ -143,7 +143,7 @@ let preprocess_fields =
     | Some (loc, deps) ->
       let deps_might_be_used =
         Module_name.Per_item.exists preprocess ~f:(fun p ->
-            match (p : Preprocess.t) with
+            match (p : _ Preprocess.t) with
             | Action _
             | Pps _ ->
               true
@@ -170,9 +170,9 @@ module Buildable = struct
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess.Per_module.t
+    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
-    ; lint : Preprocess.Per_module.t
+    ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
@@ -1715,7 +1715,7 @@ module Toplevel = struct
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
     ; loc : Loc.t
-    ; pps : Preprocess.t
+    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
 
   let decode =

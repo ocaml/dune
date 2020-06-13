@@ -6,7 +6,7 @@ type t =
   { loc : Loc.t
   ; files : Predicate_lang.Glob.t
   ; libraries : Lib_dep.t list
-  ; preprocess : Preprocess.Per_module.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
   }
@@ -78,8 +78,9 @@ let gen_rules sctx t ~dir ~scope =
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
-      ~lint:Preprocess.Per_module.no_preprocessing ~preprocess:t.preprocess
-      ~preprocessor_deps:t.preprocessor_deps ~lib_name:None ~scope
+      ~lint:(Preprocess.Per_module.no_preprocessing ())
+      ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
+      ~lib_name:None ~scope
   in
   let modules =
     Modules.singleton_exe module_

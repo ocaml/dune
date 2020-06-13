@@ -4,7 +4,10 @@ open! No_io
 module Pp_spec : sig
   type t
 
-  val make : Preprocess.t Module_name.Per_item.t -> Ocaml_version.t -> t
+  val make :
+       Preprocess.Without_instrumentation.t Preprocess.t Module_name.Per_item.t
+    -> Ocaml_version.t
+    -> t
 
   val pped_module : t -> Module.t -> Module.t
 end = struct

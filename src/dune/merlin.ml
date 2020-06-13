@@ -14,7 +14,7 @@ let warn_dropped_pp loc ~allow_approx_merlin ~reason =
       ]
 
 module Pp = struct
-  let merge ~allow_approx_merlin (a : Preprocess.t) (b : Preprocess.t) =
+  let merge ~allow_approx_merlin (a : _ Preprocess.t) (b : _ Preprocess.t) =
     match (a, b) with
     | No_preprocessing, No_preprocessing -> Preprocess.No_preprocessing
     | No_preprocessing, pp
@@ -42,7 +42,11 @@ module Pp = struct
         ~reason:"cannot mix action and pps preprocessors";
       No_preprocessing
     | (Pps pp1 as pp), Pps pp2 ->
-      if Ordering.neq (Preprocess.Pps.compare_no_locs pp1 pp2) then (
+      if
+        Ordering.neq
+          (Preprocess.Pps.compare_no_locs
+             Preprocess.Without_instrumentation.compare_no_locs pp1 pp2)
+      then (
         warn_dropped_pp pp1.loc ~allow_approx_merlin
           ~reason:"pps specification isn't identical in all stanzas";
         No_preprocessing
@@ -91,7 +95,7 @@ end
 type t =
   { requires : Lib.Set.t
   ; flags : string list Build.t
-  ; preprocess : Preprocess.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
   ; libname : Lib_name.Local.t option
   ; source_dirs : Path.Source.Set.t
   ; objs_dirs : Path.Set.t

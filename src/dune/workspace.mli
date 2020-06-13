@@ -29,6 +29,7 @@ module Context : sig
                 the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
       ; bisect_enabled : bool
+      ; instrument_with : Lib_name.t list
       }
   end
 

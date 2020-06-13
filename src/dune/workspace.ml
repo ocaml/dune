@@ -50,6 +50,7 @@ module Context = struct
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
       ; bisect_enabled : bool
+      ; instrument_with : Lib_name.t list
       }
 
     let to_dyn = Dyn.Encoder.opaque
@@ -66,6 +67,7 @@ module Context = struct
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
         ; bisect_enabled
+        ; instrument_with
         } t =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -80,6 +82,7 @@ module Context = struct
       && Bool.equal dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
       && Bool.equal bisect_enabled t.bisect_enabled
+      && List.equal Lib_name.equal instrument_with t.instrument_with
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -88,7 +91,7 @@ module Context = struct
         let name, _ = Path.split_extension file in
         "-fdo-" ^ Path.basename name
 
-    let t ~profile =
+    let t ~profile ~instrument_with =
       let+ env = env_field
       and+ targets =
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
@@ -139,6 +142,9 @@ module Context = struct
       and+ bisect_enabled =
         field ~default:false "bisect_enabled"
           (Dune_lang.Syntax.since syntax (2, 6) >>> bool)
+      and+ instrument_with =
+        field ~default:instrument_with "instrument_with"
+          (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
           match targets with
@@ -160,6 +166,7 @@ module Context = struct
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
       ; bisect_enabled
+      ; instrument_with
       }
   end
 
@@ -186,12 +193,12 @@ module Context = struct
       && Option.equal String.equal root t.root
       && Bool.equal merlin t.merlin
 
-    let t ~profile ~x =
+    let t ~profile ~instrument_with ~x =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
-      and+ base = Common.t ~profile in
+      and+ base = Common.t ~profile ~instrument_with in
       let name =
         match name with
         | Some s -> s
@@ -216,8 +223,8 @@ module Context = struct
 
     let to_dyn = Common.to_dyn
 
-    let t ~profile ~x =
-      let+ common = Common.t ~profile
+    let t ~profile ~instrument_with ~x =
+      let+ common = Common.t ~profile ~instrument_with
       and+ name =
         field_o "name"
           ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
@@ -263,10 +270,13 @@ module Context = struct
     | Opam { base = { host_context; _ }; _ } ->
       host_context
 
-  let t ~profile ~x =
+  let t ~profile ~instrument_with ~x =
     sum
-      [ ("default", fields (Default.t ~profile ~x) >>| fun x -> Default x)
-      ; ("opam", fields (Opam.t ~profile ~x) >>| fun x -> Opam x)
+      [ ( "default"
+        , fields (Default.t ~profile ~instrument_with ~x) >>| fun x -> Default x
+        )
+      ; ( "opam"
+        , fields (Opam.t ~profile ~instrument_with ~x) >>| fun x -> Opam x )
       ]
 
   let env = function
@@ -288,7 +298,7 @@ module Context = struct
          | Native -> None
          | Named s -> Some (Context_name.target n ~toolchain:s))
 
-  let default ?x ?profile () =
+  let default ?x ?profile ?instrument_with () =
     Default
       { loc = Loc.of_pos __POS__
       ; targets = [ Option.value x ~default:Target.Native ]
@@ -301,6 +311,7 @@ module Context = struct
       ; fdo_target_exe = None
       ; dynamically_linked_foreign_archives = true
       ; bisect_enabled = false
+      ; instrument_with = Option.value instrument_with ~default:[]
       }
 end
 
@@ -389,7 +400,14 @@ let t ?x ?profile:cmdline_profile () =
   let* env = env_field in
   let* profile = field "profile" Profile.decode ~default:Profile.default in
   let profile = Option.value cmdline_profile ~default:profile in
-  let+ contexts = multi_field "context" (Context.t ~profile ~x) in
+  let* instrument_with =
+    field "instrument_with"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode)
+      ~default:[]
+  in
+  let+ contexts =
+    multi_field "context" (Context.t ~profile ~instrument_with ~x)
+  in
   let defined_names = ref Context_name.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->

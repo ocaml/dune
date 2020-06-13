@@ -42,7 +42,7 @@ module Buildable : sig
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+    ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Lint.t
     ; flags : Ocaml_flags.Spec.t
@@ -53,15 +53,6 @@ module Buildable : sig
 
   (** Check if the buildable has any foreign stubs or archives. *)
   val has_foreign : t -> bool
-
-  (** Preprocessing specification used by all modules or [No_preprocessing] *)
-  val single_preprocess : t -> Preprocess.Without_instrumentation.t Preprocess.t
-
-  (** Includes bisect_ppx if specified by [lib_config] *)
-  val preprocess :
-       t
-    -> lib_config:Lib_config.t
-    -> Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 end
 
 module Public_lib : sig

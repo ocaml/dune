@@ -133,7 +133,7 @@ end = struct
             (Some loc, Install.Entry.make Stublibs a))
       ]
 
-  let keep_if ~(ctx : Context.t) ~external_lib_deps_mode expander =
+  let keep_if ~external_lib_deps_mode expander =
     if external_lib_deps_mode then
       fun ~scope:_ ->
     Option.some
@@ -157,8 +157,10 @@ end = struct
              in
              let pps =
                Preprocess.Per_module.pps
-                 (Dune_file.Buildable.preprocess exes.buildable
-                    ~lib_config:ctx.lib_config)
+                 (Preprocess.Per_module.with_instrumentation
+                    exes.buildable.preprocess
+                    ~instrumentation_backend:
+                      (Lib.DB.instrumentation_backend (Scope.libs scope)))
              in
              Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
                exes.names exes.buildable.libraries ~pps ~dune_version
@@ -234,7 +236,7 @@ end = struct
     in
     let keep_if =
       let external_lib_deps_mode = !Clflags.external_lib_deps_mode in
-      keep_if ~ctx ~external_lib_deps_mode
+      keep_if ~external_lib_deps_mode
     in
     Dir_with_dune.deep_fold stanzas ~init ~f:(fun d stanza acc ->
         let { Dir_with_dune.ctx_dir = dir; scope; _ } = d in

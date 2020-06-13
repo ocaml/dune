@@ -170,7 +170,7 @@ module Buildable = struct
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+    ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
     ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; flags : Ocaml_flags.Spec.t
@@ -245,7 +245,22 @@ module Buildable = struct
     and+ bisect_ppx =
       field_b "bisect_ppx"
         ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
-    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
+    and+ loc_instrumentation, instrumentation =
+      located
+        (multi_field "instrumentation"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
+           >>> fields (field "backend" (located Lib_name.decode)) ))
+    in
+    let preprocess =
+      let init =
+        let f libname = Preprocess.With_instrumentation.Ordinary libname in
+        Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
+      in
+      List.fold_left instrumentation
+        ~f:(Preprocess.Per_module.add_instrumentation ~loc:loc_instrumentation)
+        ~init
+    in
     let foreign_stubs =
       foreign_stubs
       |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
@@ -294,21 +309,6 @@ module Buildable = struct
 
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
-
-  let single_preprocess =
-    (* Any dummy module name works here *)
-    let dummy_name = Module_name.of_string "A" in
-    fun t ->
-      if Module_name.Per_item.is_constant t.preprocess then
-        Module_name.Per_item.get t.preprocess dummy_name
-      else
-        Preprocess.No_preprocessing
-
-  let preprocess t ~(lib_config : Lib_config.t) =
-    if t.bisect_ppx && lib_config.bisect_enabled then
-      Preprocess.Per_module.add_bisect t.preprocess
-    else
-      t.preprocess
 end
 
 module Public_lib = struct
@@ -815,34 +815,21 @@ module Library = struct
     let synopsis = conf.synopsis in
     let sub_systems = conf.sub_systems in
     let ppx_runtime_deps = conf.ppx_runtime_libraries in
-    let pps =
-      let pps_without_bisect =
-        Preprocess.Per_module.pps conf.buildable.preprocess
-      in
-      if lib_config.bisect_enabled && conf.buildable.bisect_ppx then
-        let bisect_ppx =
-          let bisect_name =
-            Lib_name.parse_string_exn (Loc.none, "bisect_ppx")
-          in
-          (Loc.none, bisect_name)
-        in
-        bisect_ppx :: pps_without_bisect
-      else
-        pps_without_bisect
-    in
+    let preprocess = conf.buildable.preprocess in
     let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
     let implements = conf.implements in
     let default_implementation = conf.default_implementation in
     let wrapped = Some conf.wrapped in
     let special_builtin_support = conf.special_builtin_support in
+    let instrumentation_backend = conf.instrumentation_backend in
     Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
       ~version ~synopsis ~main_module_name ~sub_systems ~requires
       ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps
-      ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
+      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
       ~default_implementation ~modes ~wrapped ~special_builtin_support
-      ~exit_module
+      ~exit_module ~instrumentation_backend
 end
 
 module Install_conf = struct

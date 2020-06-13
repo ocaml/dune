@@ -17,10 +17,18 @@ type 'a t =
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
+val map : 'a t -> f:('a -> 'b) -> 'b t
+
 module Without_instrumentation : sig
   type t = Loc.t * Lib_name.t
 
   val compare_no_locs : t -> t -> Ordering.t
+end
+
+module With_instrumentation : sig
+  type t =
+    | Ordinary of Without_instrumentation.t
+    | Instrumentation_backend of (Loc.t * Lib_name.t)
 end
 
 val decode : Without_instrumentation.t t Dune_lang.Decoder.t
@@ -62,6 +70,22 @@ module Per_module : sig
 
   val pps : Without_instrumentation.t t -> Without_instrumentation.t list
 
-  val add_bisect : Without_instrumentation.t t -> Without_instrumentation.t t
+  (** Preprocessing specification used by all modules or [No_preprocessing] *)
+  val single_preprocess : 'a t -> 'a preprocess
+
+  val add_instrumentation :
+       With_instrumentation.t t
+    -> loc:Loc.t
+    -> Loc.t * Lib_name.t
+    -> With_instrumentation.t t
+
+  val without_instrumentation :
+    With_instrumentation.t t -> Without_instrumentation.t t
+
+  val with_instrumentation :
+       With_instrumentation.t t
+    -> instrumentation_backend:
+         (Loc.t * Lib_name.t -> Without_instrumentation.t option)
+    -> Without_instrumentation.t t
 end
 with type 'a preprocess := 'a t

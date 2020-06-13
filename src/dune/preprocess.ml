@@ -59,10 +59,31 @@ type 'a t =
   | Pps of 'a Pps.t
   | Future_syntax of Loc.t
 
+let map t ~f =
+  match t with
+  | Pps t -> Pps { t with pps = List.map t.pps ~f }
+  | (No_preprocessing | Action _ | Future_syntax _) as t -> t
+
+let filter_map t ~f =
+  match t with
+  | Pps t ->
+    let pps = List.filter_map t.pps ~f in
+    if pps = [] then
+      No_preprocessing
+    else
+      Pps { t with pps }
+  | (No_preprocessing | Action _ | Future_syntax _) as t -> t
+
 module Without_instrumentation = struct
   type t = Loc.t * Lib_name.t
 
   let compare_no_locs (_, x) (_, y) = Lib_name.compare x y
+end
+
+module With_instrumentation = struct
+  type t =
+    | Ordinary of Without_instrumentation.t
+    | Instrumentation_backend of (Loc.t * Lib_name.t)
 end
 
 let decode =
@@ -162,27 +183,48 @@ module Per_module = struct
             Lib_name.Map.set acc pp loc))
     |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
 
-  let add_bisect t =
-    let bisect_ppx =
-      let bisect_name = Lib_name.parse_string_exn (Loc.none, "bisect_ppx") in
-      (Loc.none, bisect_name)
-    in
+  (* Any dummy module name works here *)
+  let dummy_name = Module_name.of_string "A"
+
+  let single_preprocess t =
+    if Per_module.is_constant t then
+      Per_module.get t dummy_name
+    else
+      No_preprocessing
+
+  let add_instrumentation t ~loc libname =
     Per_module.map t ~f:(fun pp ->
         match pp with
         | No_preprocessing ->
-          let loc = Loc.none in
-          let pps = [ bisect_ppx ] in
+          let pps = [ With_instrumentation.Instrumentation_backend libname ] in
           let flags = [] in
           let staged = false in
           Pps { loc; pps; flags; staged }
         | Pps { loc; pps; flags; staged } ->
-          let pps = bisect_ppx :: pps in
+          let pps =
+            With_instrumentation.Instrumentation_backend libname :: pps
+          in
           Pps { loc; pps; flags; staged }
         | Action (loc, _)
         | Future_syntax loc ->
           User_error.raise ~loc
             [ Pp.text
                 "Preprocessing with actions and future syntax cannot be used \
-                 in conjunction with (bisect_ppx)"
+                 in conjunction with (instrumentation ...)"
             ])
+
+  let without_instrumentation t =
+    let f = function
+      | With_instrumentation.Ordinary libname -> Some libname
+      | With_instrumentation.Instrumentation_backend _ -> None
+    in
+    Per_module.map t ~f:(filter_map ~f)
+
+  let with_instrumentation t ~instrumentation_backend =
+    let f = function
+      | With_instrumentation.Ordinary libname -> Some libname
+      | With_instrumentation.Instrumentation_backend libname ->
+        instrumentation_backend libname
+    in
+    Per_module.map t ~f:(filter_map ~f)
 end

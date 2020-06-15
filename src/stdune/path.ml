@@ -3,20 +3,27 @@ module Sys = Stdlib.Sys
 module Fpath = struct
   let is_root t = Filename.dirname t = t
 
+  type mkdir_p =
+    | Already_exists
+    | Created
+
   let rec mkdir_p ?(perms = 0o777) t_s =
     if is_root t_s then
-      ()
+      Already_exists
     else
-      try Unix.mkdir t_s perms with
-      | Unix.Unix_error (EEXIST, _, _) -> ()
+      try
+        Unix.mkdir t_s perms;
+        Created
+      with
+      | Unix.Unix_error (EEXIST, _, _) -> Already_exists
       | Unix.Unix_error (ENOENT, _, _) as e ->
         let parent = Filename.dirname t_s in
         if is_root parent then
           raise e
-        else (
-          mkdir_p parent ~perms;
-          Unix.mkdir t_s perms
-        )
+        else
+          let (_ : mkdir_p) = mkdir_p parent ~perms in
+          Unix.mkdir t_s perms;
+          Created
 end
 
 let basename_opt ~is_root ~basename t =
@@ -146,7 +153,7 @@ end = struct
       Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
-  let mkdir_p ?perms p = Fpath.mkdir_p ?perms (to_string p)
+  let mkdir_p ?perms p = ignore (Fpath.mkdir_p ?perms (to_string p))
 
   let extension t = Filename.extension (to_string t)
 
@@ -568,7 +575,7 @@ end = struct
 end
 
 module Relative_to_source_root = struct
-  let mkdir_p ?perms s = Fpath.mkdir_p ?perms (Local.to_string s)
+  let mkdir_p ?perms s = ignore (Fpath.mkdir_p ?perms (Local.to_string s))
 end
 
 module Source0 = Local

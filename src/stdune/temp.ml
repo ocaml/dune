@@ -58,10 +58,10 @@ let temp ~set ~prefix ~suffix ~create =
   set := Path.Set.add !set path;
   path
 
-let create ~prefix ~suffix =
+let file ~prefix ~suffix =
   temp ~set:tmp_files ~prefix ~suffix ~create:create_temp_file
 
-let destroy fn =
+let destroy_file fn =
   Path.unlink_no_err fn;
   tmp_files := Path.Set.remove !tmp_files fn
 

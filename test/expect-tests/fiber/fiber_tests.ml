@@ -279,9 +279,10 @@ let%expect_test _ =
     [PASS] Never raised as expected
     [PASS] flag set |}]
 
+let log s = Fiber.return (print_endline s)
+
 let%expect_test "finalize/fork behavior" =
   let fiber =
-    let log s = Fiber.return (print_endline s) in
     let open Fiber.O in
     Fiber.finalize
       ~finally:(fun () -> log "finally")
@@ -292,10 +293,30 @@ let%expect_test "finalize/fork behavior" =
         log "fiber finished")
   in
   test unit fiber;
-  [%expect
-    {|
+  [%expect {|
     fork
     after fork
     fiber finished
     finally
     () |}]
+
+let%expect_test "finalize/fork behavior (failure)" =
+  let fiber =
+    let open Fiber.O in
+    Fiber.finalize
+      ~finally:(fun () -> log "finally")
+      (fun () ->
+        let* f =
+          Fiber.fork (fun () ->
+              print_endline "fork";
+              failwith "fork failure")
+        in
+        let* () = log "after fork" in
+        let* () = Fiber.Future.wait f in
+        log "fiber finished")
+  in
+  test ~expect_never:true unit fiber;
+  [%expect {|
+    fork
+    after fork
+    [PASS] Never raised as expected |}]

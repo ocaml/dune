@@ -46,6 +46,14 @@ module Unspecified : sig
   type w = Path_intf.Unspecified.w
 end
 
+module Fpath : sig
+  type mkdir_p =
+    | Already_exists
+    | Created
+
+  val mkdir_p : ?perms:int -> string -> mkdir_p
+end
+
 (** Relative path with unspecified root.
 
     Either root, or a '/' separated list of components other that ".", ".." and

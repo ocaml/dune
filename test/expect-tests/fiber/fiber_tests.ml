@@ -208,6 +208,20 @@ let must_set_flag f =
     check_set ();
     raise e
 
+let%expect_test "sequential_iter error handling" =
+  let fiber =
+    Fiber.finalize
+      ~finally:(fun () -> Fiber.return (print_endline "finally"))
+      (fun () ->
+        Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
+            if x = 2 then
+              failwith "bam"
+            else
+              Fiber.return (Printf.printf "count: %d\n" x)))
+  in
+  test unit fiber;
+  [%expect {||}]
+
 let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit

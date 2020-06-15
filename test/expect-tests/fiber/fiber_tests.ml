@@ -223,7 +223,7 @@ let must_set_flag f =
       ( if !flag then
         "[PASS] flag set"
       else
-        "[FAIL] flag not ste" )
+        "[FAIL] flag not set" )
   in
   try
     f setter;

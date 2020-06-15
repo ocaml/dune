@@ -63,44 +63,39 @@ module Pp = struct
         pp
 end
 
-let quote_for_merlin s =
-  let s =
-    if Sys.win32 then
-      (* We need this hack because merlin unescapes backslashes (except when
-         protected by single quotes). It is only a problem on windows because
-         Filename.quote is using double quotes. *)
-      String.escape_only '\\' s
-    else
-      s
-  in
-  if String.need_quoting s then
-    Filename.quote s
-  else
-    s
-
 module Dot_file = struct
-  let b = Buffer.create 256
-
-  let printf f = Printf.bprintf b f
-
-  let print = Buffer.add_string b
-
-  let to_string ~obj_dirs ~src_dirs ~flags ~pp ~remaindir ~extensions =
-    let serialize_path = Path.reach ~from:(Path.source remaindir) in
-    Buffer.clear b;
-    print "EXCLUDE_QUERY_DIR\n";
-    Path.Set.iter obj_dirs ~f:(fun p -> printf "B %s\n" (serialize_path p));
-    Path.Set.iter src_dirs ~f:(fun p -> printf "S %s\n" (serialize_path p));
-    Option.iter pp ~f:(printf "%s\n");
-    ( match flags with
-    | [] -> ()
-    | flags ->
-      print "FLG";
-      List.iter flags ~f:(fun f -> printf " %s" (quote_for_merlin f));
-      print "\n" );
-    Extensions.Set.iter extensions ~f:(fun (impl, intf) ->
-        printf "SUFFIX %s %s\n" (quote_for_merlin impl) (quote_for_merlin intf));
-    Buffer.contents b
+  let to_string ~obj_dirs ~src_dirs ~flags ~pp ~extensions =
+    let serialize_path = Path.to_absolute_filename in
+    let to_atom s = Sexp.Atom s in
+    let make_directive tag value = Sexp.List [ Atom tag; value ] in
+    let make_directive_of_path tag path =
+      make_directive tag (Sexp.Atom (serialize_path path))
+    in
+    let exclude_query_dir = [ Sexp.List [ Atom "EXCLUDE_QUERY_DIR" ] ] in
+    let obj_dirs =
+      Path.Set.to_list obj_dirs |> List.map ~f:(make_directive_of_path "B")
+    in
+    let src_dirs =
+      Path.Set.to_list src_dirs |> List.map ~f:(make_directive_of_path "S")
+    in
+    let flags =
+      let flags =
+        match flags with
+        | [] -> []
+        | flags ->
+          [ make_directive "FLG" (Sexp.List (List.map ~f:to_atom flags)) ]
+      in
+      match pp with
+      | Some (pp_flag, pp_args) ->
+        make_directive "FLG" (Sexp.List [ Atom pp_flag; Atom pp_args ]) :: flags
+      | None -> flags
+    in
+    let suffixes =
+      Extensions.Set.to_list extensions |> List.map ~f:(fun (impl, intf) ->
+          make_directive "SUFFIX" (Sexp.Atom ((Printf.sprintf "%s %s" impl intf))))
+    in
+    Csexp.to_string
+      (Sexp.List (List.concat [ exclude_query_dir; obj_dirs; src_dirs; flags; suffixes ]))
 end
 
 type t =
@@ -164,8 +159,14 @@ let merlin_file_name = ".merlin-conf"
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
 
+let quote_if_needed s =
+  if String.need_quoting s then
+    Filename.quote s
+  else
+    s
+
 let pp_flag_of_action ~expander ~loc ~action :
-    string option Build.With_targets.t =
+    (string * string) option Build.With_targets.t =
   match (action : Action_dune_lang.t) with
   | Run (exe, args) -> (
     let args =
@@ -193,10 +194,12 @@ let pp_flag_of_action ~expander ~loc ~action :
         match exe with
         | Error _ -> None
         | Ok exe ->
-          Path.to_absolute_filename exe :: args
-          |> List.map ~f:quote_for_merlin
-          |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -pp %s"
-          |> Option.some
+          let args =
+            Path.to_absolute_filename exe :: args
+            |> List.map ~f:quote_if_needed
+            |> String.concat ~sep:" "
+          in
+          Some ("-pp", args)
       in
       Build.With_targets.map action ~f:(function
         | Run (exe, args) -> pp_of_action exe args
@@ -206,7 +209,7 @@ let pp_flag_of_action ~expander ~loc ~action :
   | _ -> Build.With_targets.return None
 
 let pp_flags sctx ~expander { preprocess; libname; _ } :
-    string option Build.With_targets.t =
+    (string * string) option Build.With_targets.t =
   let scope = Expander.scope expander in
   match
     Preprocess.remove_future_syntax preprocess ~for_:Merlin
@@ -219,10 +222,12 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
     with
     | Error _exn -> Build.With_targets.return None
     | Ok (exe, flags) ->
-      Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
-      |> List.map ~f:quote_for_merlin
-      |> String.concat ~sep:" " |> Filename.quote |> sprintf "FLG -ppx %s"
-      |> Option.some |> Build.With_targets.return )
+      let args =
+        Path.to_absolute_filename (Path.build exe) :: "--as-ppx" :: flags
+        |> List.map ~f:quote_if_needed
+        |> String.concat ~sep:" "
+      in
+      Build.With_targets.return (Some ("-ppx", args)) )
   | Action (loc, (action : Action_dune_lang.t)) ->
     pp_flag_of_action ~expander ~loc ~action
   | No_preprocessing -> Build.With_targets.return None
@@ -246,49 +251,44 @@ let lib_src_dirs ~sctx lib =
     Path.Set.map ~f:Path.drop_optional_build_context
       (Modules.source_dirs modules)
 
-let dot_merlin sctx ~dir ~more_src_dirs ~expander
-    ({ requires; flags; extensions; _ } as t) =
-  Path.Build.drop_build_context dir
-  |> Option.iter ~f:(fun remaindir ->
-         let open Build.With_targets.O in
-         let merlin_file = Path.Build.relative dir merlin_file_name in
+let dot_merlin sctx ~dir ~more_src_dirs ~expander ({ requires; flags; extensions; _ } as t)
+    =
+  let open Build.With_targets.O in
+  let merlin_file = Path.Build.relative dir merlin_file_name in
 
-         (* We make the compilation of .ml/.mli files depend on the existence of
-            .merlin so that they are always generated, however the command
-            themselves don't read the merlin file, so we don't want to declare a
-            dependency on the contents of the .merlin file.
+  (* We make the compilation of .ml/.mli files depend on the existence of
+     .merlin so that they are always generated, however the command themselves
+     don't read the merlin file, so we don't want to declare a dependency on the
+     contents of the .merlin file.
 
-            Currently dune doesn't support declaring a dependency only on the
-            existence of a file, so we have to use this trick. *)
-         SC.add_rule sctx ~dir
-           ( Build.with_no_targets (Build.path (Path.build merlin_file))
-           >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
-         Path.Set.singleton (Path.build merlin_file)
-         |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
-         let pp_flags = pp_flags sctx ~expander t in
-         let action =
-           Build.With_targets.write_file_dyn merlin_file
-             (let+ flags = Build.with_no_targets flags
-              and+ pp = pp_flags in
-              let src_dirs, obj_dirs =
-                Lib.Set.fold requires
-                  ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
-                  ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
-                    let more_src_dirs = lib_src_dirs ~sctx lib in
-                    ( Path.Set.union src_dirs more_src_dirs
-                    , let public_cmi_dir =
-                        Obj_dir.public_cmi_dir (Lib.obj_dir lib)
-                      in
-                      Path.Set.add obj_dirs public_cmi_dir ))
-              in
-              let src_dirs =
-                Path.Set.union src_dirs
-                  (Path.Set.of_list_map ~f:Path.source more_src_dirs)
-              in
-              Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs
-                ~extensions)
-         in
-         SC.add_rule sctx ~dir action)
+     Currently dune doesn't support declaring a dependency only on the existence
+     of a file, so we have to use this trick. *)
+  SC.add_rule sctx ~dir
+    ( Build.with_no_targets (Build.path (Path.build merlin_file))
+    >>> Build.create_file (Path.Build.relative dir ".merlin-exists") );
+  Path.Set.singleton (Path.build merlin_file)
+  |> Rules.Produce.Alias.add_deps (Alias.check ~dir);
+  let pp_flags = pp_flags sctx ~expander t in
+  let action =
+    Build.With_targets.write_file_dyn merlin_file
+      (let+ flags = Build.with_no_targets flags
+       and+ pp = pp_flags in
+       let src_dirs, obj_dirs =
+         Lib.Set.fold requires
+           ~init:(Path.set_of_source_paths t.source_dirs, t.objs_dirs)
+           ~f:(fun (lib : Lib.t) (src_dirs, obj_dirs) ->
+             let more_src_dirs = lib_src_dirs ~sctx lib in
+             ( Path.Set.union src_dirs more_src_dirs
+             , let public_cmi_dir = Obj_dir.public_cmi_dir (Lib.obj_dir lib) in
+               Path.Set.add obj_dirs public_cmi_dir ))
+       in
+       let src_dirs =
+         Path.Set.union src_dirs
+           (Path.Set.of_list_map ~f:Path.source more_src_dirs)
+       in
+       Dot_file.to_string ~pp ~flags ~src_dirs ~obj_dirs ~extensions)
+  in
+  SC.add_rule sctx ~dir action
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

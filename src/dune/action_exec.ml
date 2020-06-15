@@ -407,7 +407,7 @@ and exec_list ts ~ectx ~eenv =
 
 and exec_pipe outputs ts ~ectx ~eenv =
   let tmp_file () =
-    Temp.create ~prefix:"dune-pipe-action-"
+    Temp.file ~prefix:"dune-pipe-action-"
       ~suffix:("." ^ Action.Outputs.to_string outputs)
   in
   let multi_use_eenv =
@@ -421,7 +421,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
     | [] -> assert false
     | [ last_t ] ->
       let+ result = redirect_in last_t ~ectx ~eenv Stdin in_ in
-      Temp.destroy in_;
+      Temp.destroy_file in_;
       result
     | t :: ts -> (
       let out = tmp_file () in
@@ -429,7 +429,7 @@ and exec_pipe outputs ts ~ectx ~eenv =
         redirect t ~ectx ~eenv:multi_use_eenv ~in_:(Stdin, in_)
           ~out:(outputs, out) ()
       in
-      Temp.destroy in_;
+      Temp.destroy_file in_;
       match done_or_deps with
       | Need_more_deps _ as need -> Fiber.return need
       | Done -> loop ~in_:out ts )

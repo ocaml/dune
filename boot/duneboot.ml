@@ -393,12 +393,12 @@ end = struct
           tmp_files := Files.empty;
           Files.iter fns ~f:(fun fn -> try Sys.remove fn with _ -> ()))
 
-    let create prefix suffix =
+    let file prefix suffix =
       let fn = Filename.temp_file prefix suffix in
       tmp_files := Files.add fn !tmp_files;
       fn
 
-    let destroy fn =
+    let destroy_file fn =
       (try Sys.remove fn with _ -> ());
       tmp_files := Files.remove fn !tmp_files
   end
@@ -444,7 +444,7 @@ end = struct
       done
 
     let open_temp_file () =
-      let out = Temp.create "duneboot-" ".output" in
+      let out = Temp.file "duneboot-" ".output" in
       let fd =
         Unix.openfile out [ O_WRONLY; O_CREAT; O_TRUNC; O_SHARE_DELETE ] 0o666
       in
@@ -452,7 +452,7 @@ end = struct
 
     let read_temp fn =
       let s = read_file fn in
-      Temp.destroy fn;
+      Temp.destroy_file fn;
       s
 
     let initial_cwd = Sys.getcwd ()

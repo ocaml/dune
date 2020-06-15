@@ -106,7 +106,7 @@ let compose_cram_output cram_stanzas =
     Buffer.add_string buf line;
     Buffer.add_char buf '\n'
   in
-  let add_space_line line =
+  let add_line_prefixed_with_two_space line =
     Buffer.add_string buf "  ";
     add_line line
   in
@@ -122,10 +122,10 @@ let compose_cram_output cram_stanzas =
                 '>' )
               line
           in
-          add_space_line line);
+          add_line_prefixed_with_two_space line);
       Io.String_path.read_file output_file
       |> String.split_lines
-      |> List.iter ~f:add_space_line);
+      |> List.iter ~f:add_line_prefixed_with_two_space);
   Buffer.contents buf
 
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command :

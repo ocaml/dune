@@ -159,7 +159,7 @@ let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
   ; extensions
   }
 
-let merlin_file_name = ".merlin"
+let merlin_file_name = ".merlin-conf"
 
 let add_source_dir t dir =
   { t with source_dirs = Path.Source.Set.add t.source_dirs dir }
@@ -288,9 +288,7 @@ let dot_merlin sctx ~dir ~more_src_dirs ~expander
               Dot_file.to_string ~remaindir ~pp ~flags ~src_dirs ~obj_dirs
                 ~extensions)
          in
-         SC.add_rule sctx ~dir
-           ~mode:(Promote { lifetime = Until_clean; into = None; only = None })
-           action)
+         SC.add_rule sctx ~dir action)
 
 let merge_two ~allow_approx_merlin a b =
   { requires = Lib.Set.union a.requires b.requires

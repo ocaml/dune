@@ -56,13 +56,14 @@ let run_expect_test file ~f =
     exit 0
   )
 
+let _BUILD_PATH_PREFIX_MAP = "BUILD_PATH_PREFIX_MAP"
+
 let extend_build_path_prefix_map ~env ~cwd =
-  let var = "BUILD_PATH_PREFIX_MAP" in
   let s =
     Build_path_prefix_map.encode_map
       [ Some { source = cwd; target = "$TESTCASE_ROOT" } ]
   in
-  Env.update env ~var ~f:(function
+  Env.update env ~var:_BUILD_PATH_PREFIX_MAP ~f:(function
     | None -> Some s
     | Some s' -> Some (s ^ ":" ^ s'))
 
@@ -97,10 +98,12 @@ type block_result =
   ; output_file : string
   }
 
-type full_block_result =
-  { block_result : block_result
-  ; exit_code : int
+type metadata_entry =
+  { exit_code : int
+  ; build_path_prefix_map : string
   }
+
+type full_block_result = block_result * metadata_entry
 
 type sh_script =
   { script : string
@@ -108,32 +111,36 @@ type sh_script =
   ; exit_codes_file : string
   }
 
+let read_exit_codes_and_prefix_maps file : metadata_entry list =
+  let contents = Io.String_path.read_file ~binary:true file in
+  let rec loop acc = function
+    | exit_code :: build_path_prefix_map :: xs ->
+      let exit_code = Int.of_string_exn exit_code in
+      loop ({ exit_code; build_path_prefix_map } :: acc) xs
+    | [ "" ]
+    | [] ->
+      List.rev acc
+    | [ _ ] -> Code_error.raise "invalid file" [ ("contents", String contents) ]
+  in
+  loop [] (String.split ~on:'\000' contents)
+
 let read_and_attach_exit_codes (sh_script : sh_script) :
     full_block_result Cram_lexer.block list =
-  let codes =
-    let codes =
-      Io.String_path.read_file ~binary:true sh_script.exit_codes_file
-      |> String.split ~on:'\000'
-    in
-    match List.destruct_last codes with
-    | None -> []
-    | Some (codes, "") -> List.map codes ~f:Int.of_string_exn
-    | Some (_, _) ->
-      Code_error.raise "invalid codes file"
-        [ ("codes", Dyn.Encoder.(list string) codes) ]
+  let metadata_entries =
+    read_exit_codes_and_prefix_maps sh_script.exit_codes_file
   in
-  let rec loop acc (codes : int list) blocks =
-    match (blocks, codes) with
+  let rec loop acc entries blocks =
+    match (blocks, entries) with
     | [], [] -> List.rev acc
     | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
-      loop (comment :: acc) codes blocks
-    | Command block_result :: blocks, exit_code :: codes ->
-      loop (Command { block_result; exit_code } :: acc) codes blocks
+      loop (comment :: acc) entries blocks
+    | Command block_result :: blocks, metadata_entry :: entries ->
+      loop (Command (block_result, metadata_entry) :: acc) entries blocks
     | Cram_lexer.Command _ :: _, [] ->
-      Code_error.raise "command without exit code" []
-    | [], _ :: _ -> Code_error.raise "more blocks than codes" []
+      Code_error.raise "command without metadata" []
+    | [], _ :: _ -> Code_error.raise "more blocks than metadata" []
   in
-  loop [] codes sh_script.cram_to_output
+  loop [] metadata_entries sh_script.cram_to_output
 
 (* Compose user written cram stanzas to output *)
 let compose_cram_output
@@ -150,7 +157,9 @@ let compose_cram_output
   List.iter cram_to_output ~f:(fun block ->
       match (block : full_block_result Cram_lexer.block) with
       | Comment lines -> List.iter lines ~f:add_line
-      | Command { block_result = { command; output_file }; exit_code } -> (
+      | Command
+          ({ command; output_file }, { exit_code; build_path_prefix_map = _ })
+        -> (
         List.iteri command ~f:(fun i line ->
             let line =
               sprintf "%c %s"
@@ -199,7 +208,8 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
       let sanitized_output = file ~ext:".sanitized" in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "$?\0" >> %s|} exit_codes_file_sh_path;
+      fprln oc {|printf "$?\0$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
+        exit_codes_file_sh_path;
       let () =
         let sanitized_output = sh_path sanitized_output in
         (* XXX stderr outputted by the sanitizer command is ignored. That's not

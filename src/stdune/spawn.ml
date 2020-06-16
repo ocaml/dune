@@ -20,6 +20,10 @@ let perform_redirections stdin stdout stderr =
   safe_close stdout;
   safe_close stderr
 
+(** Note that this function's behavior differs between windows and unix.
+
+    - [Unix.create_process{,_env} prog] looks up prog in PATH
+    - [Unix.execv{_,e} does not look up prog in PATH] *)
 let spawn ?env ~prog ~argv ?(stdin = Unix.stdin) ?(stdout = Unix.stdout)
     ?(stderr = Unix.stderr) () =
   let argv = Array.of_list argv in

@@ -111,9 +111,16 @@ type sh_script =
 let read_and_attach_exit_codes (sh_script : sh_script) :
     full_block_result Cram_lexer.block list =
   let codes =
-    Io.String_path.read_file ~binary:true sh_script.exit_codes_file
-    |> String.split_lines
-    |> List.map ~f:Int.of_string_exn
+    let codes =
+      Io.String_path.read_file ~binary:true sh_script.exit_codes_file
+      |> String.split ~on:'\000'
+    in
+    match List.destruct_last codes with
+    | None -> []
+    | Some (codes, "") -> List.map codes ~f:Int.of_string_exn
+    | Some (_, _) ->
+      Code_error.raise "invalid codes file"
+        [ ("codes", Dyn.Encoder.(list string) codes) ]
   in
   let rec loop acc (codes : int list) blocks =
     match (blocks, codes) with
@@ -192,7 +199,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
       let sanitized_output = file ~ext:".sanitized" in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|echo "$?" >> %s|} exit_codes_file_sh_path;
+      fprln oc {|printf "$?\0" >> %s|} exit_codes_file_sh_path;
       let () =
         let sanitized_output = sh_path sanitized_output in
         (* XXX stderr outputted by the sanitizer command is ignored. That's not

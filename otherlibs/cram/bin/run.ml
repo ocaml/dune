@@ -92,21 +92,45 @@ let cat_eof ~dest oc lines =
   List.iter lines ~f:(prln "%s");
   prln "%s" sentinel
 
-type block_with_result =
-  | Comment of string list
-  | Command of
-      { command : string list
-      ; output_file : string
-      }
+type block_result =
+  { command : string list
+  ; output_file : string
+  }
+
+type full_block_result =
+  { block_result : block_result
+  ; exit_code : int
+  }
 
 type sh_script =
   { script : string
-  ; cram_to_output : block_with_result list
+  ; cram_to_output : block_result Cram_lexer.block list
   ; exit_codes_file : string
   }
 
+let read_and_attach_exit_codes (sh_script : sh_script) :
+    full_block_result Cram_lexer.block list =
+  let codes =
+    Io.String_path.read_file ~binary:true sh_script.exit_codes_file
+    |> String.split_lines
+    |> List.map ~f:Int.of_string_exn
+  in
+  let rec loop acc (codes : int list) blocks =
+    match (blocks, codes) with
+    | [], [] -> List.rev acc
+    | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
+      loop (comment :: acc) codes blocks
+    | Command block_result :: blocks, exit_code :: codes ->
+      loop (Command { block_result; exit_code } :: acc) codes blocks
+    | Cram_lexer.Command _ :: _, [] ->
+      Code_error.raise "command without exit code" []
+    | [], _ :: _ -> Code_error.raise "more blocks than codes" []
+  in
+  loop [] codes sh_script.cram_to_output
+
 (* Compose user written cram stanzas to output *)
-let compose_cram_output (sh_script : sh_script) =
+let compose_cram_output
+    (cram_to_output : full_block_result Cram_lexer.block list) =
   let buf = Buffer.create 256 in
   let add_line line =
     Buffer.add_string buf line;
@@ -116,40 +140,26 @@ let compose_cram_output (sh_script : sh_script) =
     Buffer.add_string buf "  ";
     add_line line
   in
-  let next_code =
-    let codes =
-      Io.String_path.read_file ~binary:true sh_script.exit_codes_file
-      |> String.split_lines
-      |> List.map ~f:Int.of_string_exn
-      |> ref
-    in
-    fun () ->
-      match !codes with
-      | [] -> None
-      | x :: xs ->
-        codes := xs;
-        Some x
-  in
-  List.iter sh_script.cram_to_output ~f:(function
-    | Comment lines -> List.iter lines ~f:add_line
-    | Command { command; output_file } -> (
-      List.iteri command ~f:(fun i line ->
-          let line =
-            sprintf "%c %s"
-              ( if i = 0 then
-                '$'
-              else
-                '>' )
-              line
-          in
-          add_line_prefixed_with_two_space line);
-      Io.String_path.read_file output_file
-      |> String.split_lines
-      |> List.iter ~f:add_line_prefixed_with_two_space;
-      match next_code () with
-      | None -> assert false
-      | Some 0 -> ()
-      | Some n -> add_line_prefixed_with_two_space (sprintf "[%d]" n) ));
+  List.iter cram_to_output ~f:(fun block ->
+      match (block : full_block_result Cram_lexer.block) with
+      | Comment lines -> List.iter lines ~f:add_line
+      | Command { block_result = { command; output_file }; exit_code } -> (
+        List.iteri command ~f:(fun i line ->
+            let line =
+              sprintf "%c %s"
+                ( if i = 0 then
+                  '$'
+                else
+                  '>' )
+                line
+            in
+            add_line_prefixed_with_two_space line);
+        Io.String_path.read_file output_file
+        |> String.split_lines
+        |> List.iter ~f:add_line_prefixed_with_two_space;
+        match exit_code with
+        | 0 -> ()
+        | n -> add_line_prefixed_with_two_space (sprintf "[%d]" n) ));
   Buffer.contents buf
 
 let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
@@ -162,8 +172,8 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
   let exit_codes_file_sh_path = sh_path exit_codes_file in
   let loop i block =
     let i = succ i in
-    match (block : Cram_lexer.block) with
-    | Comment lines -> Comment lines
+    match (block : _ Cram_lexer.block) with
+    | Comment _ as comment -> comment
     | Command lines ->
       let file ~ext = file (sprintf "%d%s" i ext) in
       (* Shell code written by the user might not be properly terminated. For
@@ -252,7 +262,7 @@ let run ~sanitizer ~file lexbuf =
     | _, WEXITED n -> n
     | _ -> 255
   in
-  let output = compose_cram_output sh_script in
+  let output = read_and_attach_exit_codes sh_script |> compose_cram_output in
   if n <> 0 then (
     Printf.eprintf "Generated cram script exited with code %d!\n" n;
     Printf.eprintf "Script:\n";

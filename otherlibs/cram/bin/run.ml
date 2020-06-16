@@ -108,7 +108,7 @@ type full_block_result = block_result * metadata_entry
 type sh_script =
   { script : string
   ; cram_to_output : block_result Cram_lexer.block list
-  ; exit_codes_file : string
+  ; metadata_file : string
   }
 
 let read_exit_codes_and_prefix_maps file : metadata_entry list =
@@ -127,7 +127,7 @@ let read_exit_codes_and_prefix_maps file : metadata_entry list =
 let read_and_attach_exit_codes (sh_script : sh_script) :
     full_block_result Cram_lexer.block list =
   let metadata_entries =
-    read_exit_codes_and_prefix_maps sh_script.exit_codes_file
+    read_exit_codes_and_prefix_maps sh_script.metadata_file
   in
   let rec loop acc entries blocks =
     match (blocks, entries) with
@@ -184,8 +184,8 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
   let script = Path.to_string script in
   let file name = Path.relative temp_dir name |> Path.to_absolute_filename in
   let sh_path path = quote_for_sh (translate_path_for_sh path) in
-  let exit_codes_file = file ".exit_codes" in
-  let exit_codes_file_sh_path = sh_path exit_codes_file in
+  let metadata_file = file "cram.metadata" in
+  let metadata_file_sh_path = sh_path metadata_file in
   let loop i block =
     let i = succ i in
     match (block : _ Cram_lexer.block) with
@@ -209,7 +209,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
       fprln oc {|printf "$?\0$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
-        exit_codes_file_sh_path;
+        metadata_file_sh_path;
       let () =
         let sanitized_output = sh_path sanitized_output in
         (* XXX stderr outputted by the sanitizer command is ignored. That's not
@@ -221,7 +221,7 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
   in
   let cram_to_output = List.mapi ~f:loop cram_stanzas in
   close_out oc;
-  { script; cram_to_output; exit_codes_file }
+  { script; cram_to_output; metadata_file }
 
 let display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")

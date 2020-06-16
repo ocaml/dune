@@ -15,3 +15,5 @@ val equal : t -> t -> bool
 val compare : t -> t -> Ordering.t
 
 val of_dyn : Dyn.t -> t
+
+val to_dyn : t -> Dyn.t

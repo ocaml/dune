@@ -132,12 +132,10 @@ end = struct
       && Queue.is_empty dedup_pending )
 
   let dedup () =
-    if Queue.is_empty dedup_pending then
-      false
-    else
-      let (module Caching : Cache.Caching), (file : Cache.File.t) =
-        Queue.pop dedup_pending
-      in
+    match Queue.pop dedup_pending with
+    | None -> false
+    | Some pending ->
+      let (module Caching : Cache.Caching), (file : Cache.File.t) = pending in
       ( match Cached_digest.peek_file (Path.build file.path) with
       | None -> ()
       | Some d when not (Digest.equal d file.digest) -> ()
@@ -163,7 +161,7 @@ end = struct
         | None -> (
           match !files_changed with
           | [] ->
-            let job, status = Queue.pop jobs_completed in
+            let job, status = Queue.pop_exn jobs_completed in
             decr pending_jobs;
             Job_completed (job, status)
           | fns ->
@@ -197,7 +195,7 @@ end = struct
   let send_job_completed job status =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push (job, status) jobs_completed;
+    Queue.push jobs_completed (job, status);
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
@@ -214,7 +212,7 @@ end = struct
   let send_dedup caching file =
     Mutex.lock mutex;
     let avail = available () in
-    Queue.push (caching, file) dedup_pending;
+    Queue.push dedup_pending (caching, file);
     if not avail then Condition.signal cond;
     Mutex.unlock mutex
 
@@ -555,13 +553,13 @@ end = struct
       | Quit
       | Term ->
         let now = Unix.gettimeofday () in
-        Queue.push now last_exit_signals;
+        Queue.push last_exit_signals now;
         (* Discard old signals *)
         while
           Queue.length last_exit_signals >= 0
-          && now -. Queue.peek last_exit_signals > 1.
+          && now -. Queue.peek_exn last_exit_signals > 1.
         do
-          ignore (Queue.pop last_exit_signals : float)
+          ignore (Queue.pop_exn last_exit_signals : float)
         done;
         let n = Queue.length last_exit_signals in
         if n = 2 then prerr_endline warning;
@@ -595,7 +593,7 @@ let wait_for_available_job () =
     Fiber.return t
   else
     let ivar = Fiber.Ivar.create () in
-    Queue.push ivar t.waiting_for_available_job;
+    Queue.push t.waiting_for_available_job ivar;
     Fiber.Ivar.read ivar
 
 let wait_for_process pid =
@@ -612,7 +610,7 @@ let rec restart_waiting_for_available_job t =
   then
     Fiber.return ()
   else
-    let ivar = Queue.pop t.waiting_for_available_job in
+    let ivar = Queue.pop_exn t.waiting_for_available_job in
     let* () = Fiber.Ivar.fill ivar t in
     restart_waiting_for_available_job t
 

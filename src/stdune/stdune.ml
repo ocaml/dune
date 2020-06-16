@@ -68,6 +68,7 @@ module Top_closure = Top_closure
 module Spawn = Spawn
 module Seq = Seq
 module Temp = Temp
+module Queue = Queue
 
 external reraise : exn -> _ = "%reraise"
 

@@ -4,23 +4,19 @@ open Import.Let_syntax
 module Re = Dune_re
 module Configurator = Configurator.V1
 
-let rewrite_paths =
-  let var = "BUILD_PATH_PREFIX_MAP" in
-  match Sys.getenv var with
-  | exception Not_found -> fun s -> s
-  | s -> (
-    match Build_path_prefix_map.decode_map s with
-    | Error msg ->
-      Printf.eprintf "Cannot decode %s: %s\n%!" var msg;
-      exit 2
-    | Ok map ->
-      let abs_path_re =
-        let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
-        Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
-      in
-      fun s ->
-        Re.replace abs_path_re s ~f:(fun g ->
-            Build_path_prefix_map.rewrite map (Re.Group.get g 0)) )
+let rewrite_paths build_path_prefix_map =
+  match Build_path_prefix_map.decode_map build_path_prefix_map with
+  | Error msg ->
+    Printf.eprintf "Cannot decode %s: %s\n%!" build_path_prefix_map msg;
+    exit 2
+  | Ok map ->
+    let abs_path_re =
+      let not_dir = Printf.sprintf " \n\r\t%c" Bin.path_sep in
+      Re.(compile (seq [ char '/'; rep1 (diff any (set not_dir)) ]))
+    in
+    fun s ->
+      Re.replace abs_path_re s ~f:(fun g ->
+          Build_path_prefix_map.rewrite map (Re.Group.get g 0))
 
 let make_ext_replace config =
   let tbl =
@@ -49,10 +45,7 @@ let make_ext_replace config =
         let s = Re.Group.get g 0 in
         sprintf "%c%s" s.[0] (String.Map.find_exn map (String.drop s 1)))
 
-let term =
-  let+ file =
-    Arg.(value & pos 0 (some string) None (Arg.info [] ~docv:"FILE"))
-  in
+let sanitizer =
   let ext_replace =
     if Option.is_some (Env.get Env.initial "INSIDE_DUNE") then
       make_ext_replace (Configurator.create "sanitizer")
@@ -60,20 +53,13 @@ let term =
       fun s ->
     s
   in
-  let sanitize s = s |> Ansi_color.strip |> ext_replace |> rewrite_paths in
-  match file with
-  | Some fn ->
-    Io.String_path.read_file fn
-    |> sanitize |> String.split_lines |> List.iter ~f:print_endline
-  | None -> (
-    let isatty = Unix.(isatty stdout) in
-    try
-      while true do
-        let line = input_line stdin in
-        print_endline (sanitize line);
-        if isatty then flush stdout
-      done
-    with End_of_file -> () )
+  fun (command : Sanitizer.Command.t) ->
+    command.output |> Ansi_color.strip |> ext_replace
+    |> rewrite_paths command.build_path_prefix_map
+
+let term =
+  let+ () = Term.pure () in
+  Sanitizer.impl_sanitizer sanitizer stdin stdout
 
 let command =
   (term, Term.info "sanitize" ~doc:"Sanitize the output of shell phrases.")

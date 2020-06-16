@@ -142,9 +142,31 @@ let read_and_attach_exit_codes (sh_script : sh_script) :
   in
   loop [] metadata_entries sh_script.cram_to_output
 
+let sanitize ~temp_dir ~prog ~argv cram_to_output =
+  let sanitized_outputs =
+    let commands : Sanitizer.Command.t list =
+      List.filter_map cram_to_output ~f:(function
+        | Cram_lexer.Comment _ -> None
+        | Command (block_result, { build_path_prefix_map; exit_code = _ }) ->
+          let output = Io.String_path.read_file block_result.output_file in
+          Some { Sanitizer.Command.output; build_path_prefix_map })
+    in
+    Sanitizer.run_sanitizer ~temp_dir ~prog ~argv commands
+  in
+  let rec loop acc blocks outputs =
+    match (blocks, outputs) with
+    | [], [] -> List.rev acc
+    | (Cram_lexer.Comment _ as comment) :: blocks, _ ->
+      loop (comment :: acc) blocks outputs
+    | Command (result, entry) :: blocks, output :: outputs ->
+      loop (Command (result, entry, output) :: acc) blocks outputs
+    | Command _ :: _, [] -> assert false
+    | [], _ :: _ -> assert false
+  in
+  loop [] cram_to_output sanitized_outputs
+
 (* Compose user written cram stanzas to output *)
-let compose_cram_output
-    (cram_to_output : full_block_result Cram_lexer.block list) =
+let compose_cram_output (cram_to_output : _ Cram_lexer.block list) =
   let buf = Buffer.create 256 in
   let add_line line =
     Buffer.add_string buf line;
@@ -155,11 +177,12 @@ let compose_cram_output
     add_line line
   in
   List.iter cram_to_output ~f:(fun block ->
-      match (block : full_block_result Cram_lexer.block) with
+      match (block : _ Cram_lexer.block) with
       | Comment lines -> List.iter lines ~f:add_line
       | Command
-          ({ command; output_file }, { exit_code; build_path_prefix_map = _ })
-        -> (
+          ( { command; output_file = _ }
+          , { exit_code; build_path_prefix_map = _ }
+          , output ) -> (
         List.iteri command ~f:(fun i line ->
             let line =
               sprintf "%c %s"
@@ -170,15 +193,14 @@ let compose_cram_output
                 line
             in
             add_line_prefixed_with_two_space line);
-        Io.String_path.read_file output_file
-        |> String.split_lines
+        String.split_lines output
         |> List.iter ~f:add_line_prefixed_with_two_space;
         match exit_code with
         | 0 -> ()
         | n -> add_line_prefixed_with_two_space (sprintf "[%d]" n) ));
   Buffer.contents buf
 
-let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
+let create_sh_script cram_stanzas ~temp_dir : sh_script =
   let script = Path.relative temp_dir "main.sh" in
   let oc = Io.open_out ~binary:true script in
   let script = Path.to_string script in
@@ -205,19 +227,11 @@ let create_sh_script cram_stanzas ~temp_dir ~sanitizer_command : sh_script =
       let user_shell_code_output_file_sh_path =
         sh_path user_shell_code_output_file
       in
-      let sanitized_output = file ~ext:".sanitized" in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
       fprln oc {|printf "$?\0$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
         metadata_file_sh_path;
-      let () =
-        let sanitized_output = sh_path sanitized_output in
-        (* XXX stderr outputted by the sanitizer command is ignored. That's not
-           good. *)
-        fprln oc {|%s < %s > %s|} sanitizer_command
-          user_shell_code_output_file_sh_path sanitized_output
-      in
-      Command { command = lines; output_file = sanitized_output }
+      Command { command = lines; output_file = user_shell_code_output_file }
   in
   let cram_to_output = List.mapi ~f:loop cram_stanzas in
   close_out oc;
@@ -227,26 +241,12 @@ let display_with_bars s =
   List.iter (String.split_lines s) ~f:(Printf.eprintf "| %s\n")
 
 let run ~sanitizer ~file lexbuf =
-  let sanitizer_command =
-    match sanitizer with
-    | None ->
-      quote_for_sh (translate_path_for_sh Sys.executable_name) ^ " sanitize"
-    | Some prog ->
-      let prog =
-        if Filename.is_relative prog then
-          Filename.concat (Sys.getcwd ()) prog
-        else
-          prog
-      in
-      translate_path_for_sh prog |> quote_for_sh
-  in
-
   let temp_dir =
     let suffix = Filename.basename file in
     Temp.dir ~prefix:".dune.cram" ~suffix
   in
   let cram_stanzas = cram_stanzas lexbuf in
-  let sh_script = create_sh_script cram_stanzas ~temp_dir ~sanitizer_command in
+  let sh_script = create_sh_script cram_stanzas ~temp_dir in
   Sys.chdir (Filename.dirname file);
   let cwd = Sys.getcwd () in
   let env =
@@ -279,7 +279,25 @@ let run ~sanitizer ~file lexbuf =
     | _, WEXITED n -> n
     | _ -> 255
   in
-  let output = read_and_attach_exit_codes sh_script |> compose_cram_output in
+  let output =
+    let raw = read_and_attach_exit_codes sh_script in
+    let sanitized =
+      let prog, argv =
+        match sanitizer with
+        | None -> (Sys.executable_name, [ "sanitize" ])
+        | Some prog ->
+          let prog =
+            if Filename.is_relative prog then
+              Filename.concat (Sys.getcwd ()) prog
+            else
+              prog
+          in
+          (prog, [])
+      in
+      sanitize ~temp_dir ~prog ~argv raw
+    in
+    compose_cram_output sanitized
+  in
   if n <> 0 then (
     Printf.eprintf "Generated cram script exited with code %d!\n" n;
     Printf.eprintf "Script:\n";

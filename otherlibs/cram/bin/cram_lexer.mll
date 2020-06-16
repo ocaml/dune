@@ -1,6 +1,6 @@
 {
-type block =
-  | Command of string list
+type 'command block =
+  | Command of 'command
   | Comment of string list
 }
 

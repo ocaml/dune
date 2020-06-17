@@ -20,6 +20,5 @@ We have to pass `--diff-command` because otherwise the output is suppressed in
 the test suite; but we do not need to print it so we can grep it out
 (redirecting stderr to /dev/null would also silence the stack overflow message).
 
-  $ dune runtest --diff-command 'diff -u' 2>&1 | grep -v +
+  $ dune runtest --diff-command 'diff -u' 2>&1 | grep -v + | grep -v diff
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'diff -u test test.corrected')

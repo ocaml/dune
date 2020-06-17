@@ -225,9 +225,14 @@ module Options_implied_by_dash_p = struct
 
   let packages =
     let parser s =
-      Ok
-        (Package.Name.Set.of_list_map ~f:Package.Name.of_string
-           (String.split s ~on:','))
+      let parse_one s =
+        match Package.Name.of_string_opt s with
+        | Some x -> Ok x
+        | None ->
+          ksprintf (fun s -> Error (`Msg s)) "Invalid package name: %S" s
+      in
+      String.split s ~on:',' |> List.map ~f:parse_one |> Result.List.all
+      |> Result.map ~f:Package.Name.Set.of_list
     in
     let printer ppf set =
       Format.pp_print_string ppf

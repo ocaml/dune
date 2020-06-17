@@ -111,18 +111,27 @@ type sh_script =
   ; metadata_file : string
   }
 
-let read_exit_codes_and_prefix_maps file : metadata_entry list =
-  let contents = Io.String_path.read_file ~binary:true file in
+let read_exit_codes_and_prefix_maps file =
+  let s = Io.String_path.read_file ~binary:true file in
   let rec loop acc = function
-    | exit_code :: build_path_prefix_map :: xs ->
-      let exit_code = Int.of_string_exn exit_code in
-      loop ({ exit_code; build_path_prefix_map } :: acc) xs
+    | exit_code :: build_path_prefix_map :: entries ->
+      let exit_code =
+        match Int.of_string exit_code with
+        | Some s -> s
+        | None ->
+          Code_error.raise "invalid metadata file"
+            [ ("entries", Dyn.Encoder.string s)
+            ; ("exit_code", Dyn.Encoder.string exit_code)
+            ]
+      in
+      loop ({ exit_code; build_path_prefix_map } :: acc) entries
     | [ "" ]
     | [] ->
       List.rev acc
-    | [ _ ] -> Code_error.raise "invalid file" [ ("contents", String contents) ]
+    | [ _ ] ->
+      Code_error.raise "odd number of elements" [ ("s", Dyn.Encoder.string s) ]
   in
-  loop [] (String.split ~on:'\000' contents)
+  loop [] (String.split ~on:'\000' s)
 
 let read_and_attach_exit_codes (sh_script : sh_script) :
     full_block_result Cram_lexer.block list =

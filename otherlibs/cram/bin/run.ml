@@ -114,13 +114,7 @@ type sh_script =
 let read_exit_codes_and_prefix_maps file =
   let s = Io.String_path.read_file ~binary:true file in
   let rec loop acc = function
-    | [ "" ]
-    | [] ->
-      List.rev acc
-    | entry :: entries ->
-      let exit_code, build_path_prefix_map =
-        String.lsplit2_exn entry ~on:'\n'
-      in
+    | exit_code :: build_path_prefix_map :: entries ->
       let exit_code =
         match Int.of_string exit_code with
         | Some s -> s
@@ -131,6 +125,11 @@ let read_exit_codes_and_prefix_maps file =
             ]
       in
       loop ({ exit_code; build_path_prefix_map } :: acc) entries
+    | [ "" ]
+    | [] ->
+      List.rev acc
+    | [ _ ] ->
+      Code_error.raise "odd number of elements" [ ("s", Dyn.Encoder.string s) ]
   in
   loop [] (String.split ~on:'\000' s)
 
@@ -239,7 +238,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script =
       in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "$?\n$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
+      fprln oc {|printf "$?\0$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
         metadata_file_sh_path;
       Command { command = lines; output_file = user_shell_code_output_file }
   in

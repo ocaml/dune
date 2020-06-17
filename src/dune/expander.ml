@@ -550,13 +550,14 @@ end = struct
       ~(dynamic_expansions : Value.t list Pform.Expansion.Map.t)
       ~(deps_written_by_user : Path.t Bindings.t) ~expand_var t var
       syntax_version =
-    let key = Pform.Map.expand_exn t.bindings var syntax_version in
-    ( match Pform.Expansion.Map.find dynamic_expansions key with
-    | Some v -> Some v
-    | None ->
-      expand_var t var syntax_version
-      |> Expanded.to_value_opt ~on_deferred:(fun exp ->
-             Some (expand_special_vars ~deps_written_by_user ~var exp)) )
+    let open Option.O in
+    (let* key = Pform.Map.expand t.bindings var syntax_version in
+     match Pform.Expansion.Map.find dynamic_expansions key with
+     | Some v -> Some v
+     | None ->
+       expand_var t var syntax_version
+       |> Expanded.to_value_opt ~on_deferred:(fun exp ->
+              Some (expand_special_vars ~deps_written_by_user ~var exp)))
     |> Expanded.of_value_opt
 
   let add_ddeps_and_bindings t ~dynamic_expansions ~deps_written_by_user =

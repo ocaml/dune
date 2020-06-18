@@ -7,6 +7,9 @@ next
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
 
+- Fix crash when an unknown pform is found (such as `%{unknown}`) (#3560,
+  @emillon)
+
 2.6.0 (05/06/2020)
 ------------------
 

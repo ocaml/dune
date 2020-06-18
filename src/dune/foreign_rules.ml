@@ -75,28 +75,33 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
 let build_c_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let flags = Foreign.Source.flags src in
   let ctx = Super_context.context sctx in
+  let output_param =
+    match ctx.lib_config.ccomp_type with
+    | Msvc -> [ Command.Args.Concat ("", [ A "/Fo"; Target dst ]) ]
+    | Other _ -> [ A "-o"; Target dst ]
+  in
   let c_flags =
     Super_context.foreign_flags sctx ~dir ~expander ~flags
       ~language:Foreign.Language.C
   in
   let c_flags = Build.map c_flags ~f:(List.append (Fdo.c_flags ctx)) in
+  let ocamlc_flags =
+    Command.Args.[ A "-fPIC"; A "-D_FILE_OFFSET_BITS=64"; A "-D_REENTRANT" ]
+  in
   Super_context.add_rule sctx ~loc
     ~dir
       (* With sandboxing we get errors like: bar.c:2:19: fatal error: foo.cxx:
          No such file or directory #include "foo.cxx" *)
     ~sandbox:Sandbox_config.no_sandboxing
     (let src = Path.build (Foreign.Source.path src) in
+     let c_compiler = Ocaml_config.c_compiler ctx.ocaml_config in
      Command.run
      (* We have to execute the rule in the library directory as the .o is
         produced in the current directory *) ~dir:(Path.build dir)
-       (Ok ctx.ocamlc)
-       [ A "-g"
-       ; include_flags
-       ; Dyn (Build.map c_flags ~f:(fun x -> Command.quote_args "-ccopt" x))
-       ; A "-o"
-       ; Target dst
-       ; Dep src
-       ]);
+       (Super_context.resolve_program ~loc:None ~dir sctx c_compiler)
+       ( Command.Args.
+           [ S [ A "-I"; Path ctx.stdlib_dir ]; include_flags; dyn c_flags ]
+       @ ocamlc_flags @ output_param @ [ A "-c"; Dep src ] ));
   dst
 
 let build_cxx_file ~sctx ~dir ~expander ~include_flags (loc, src, dst) =

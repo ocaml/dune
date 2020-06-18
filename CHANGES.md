@@ -1,6 +1,15 @@
 next
 ----
 
+- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
+  @stephanieyou)
+
+- Formatting of dune files is now done in the executing dune process instead of
+  in a separate process. (#3536, @nojb)
+
+2.6.0 (05/06/2020)
+------------------
+
 - Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
   results in an error. (#3444, fix #3443, @bikallem)
 
@@ -17,9 +26,6 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
-
 - Add a `(no-infer ...)` action that prevents inference of targets and
   dependencies in actions. (#3456, fixes #2006, @roddyyaga)
 
@@ -35,9 +41,6 @@ next
 
 - Remove experimental variants feature and make default implementations part of
   the language (#3491, fixes #3483, @rgrinberg)
-
-- Formatting of dune files is now done in the executing dune process instead of
-  in a separate process. (#3536, @nojb)
 
 2.5.1 (17/04/2020)
 ------------------

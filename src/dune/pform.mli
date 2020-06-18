@@ -71,8 +71,6 @@ module Map : sig
 
   val expand : t -> Expansion.t option String_with_vars.expander
 
-  val expand_exn : t -> Expansion.t String_with_vars.expander
-
   val empty : t
 
   type stamp

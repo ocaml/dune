@@ -10,6 +10,9 @@ next
 - Fix crash when an unknown pform is found (such as `%{unknown}`) (#3560,
   @emillon)
 
+- Improve error message when invalid package names (such as the empty string)
+  are passed to `dune build -p`. (#3561, @emillon)
+
 2.6.0 (05/06/2020)
 ------------------
 

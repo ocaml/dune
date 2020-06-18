@@ -6,6 +6,9 @@
 - Do not use `-output-complete-exe` until 4.10.1 as it is broken in
   4.10.0 (@jeremiedimino, #3187)
 
+- Fix crash when an unknown pform is found (such as `%{unknown}`) (#3560,
+  @emillon)
+
 2.6.0 (05/06/2020)
 ------------------
 

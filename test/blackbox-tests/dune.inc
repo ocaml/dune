@@ -1633,6 +1633,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias invalid-pform)
+ (deps
+  (package dune)
+  (source_tree test-cases/invalid-pform)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/invalid-pform
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias js_of_ocaml)
  (deps (package dune) (source_tree test-cases/js_of_ocaml) (alias test-deps))
  (action
@@ -3095,6 +3106,7 @@
   (alias intf-only)
   (alias invalid-dune-package)
   (alias invalid-module-name)
+  (alias invalid-pform)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -3377,6 +3389,7 @@
   (alias intf-only)
   (alias invalid-dune-package)
   (alias invalid-module-name)
+  (alias invalid-pform)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)

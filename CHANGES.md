@@ -24,6 +24,9 @@ next
   version not being captured by `dune-build-info` (#3589,
   @jeremiedimino)
 
+- Allow the use of the `context_name` variable in the `enabled_if` fields of
+  executable(s) and install stanzas. (#3568, fixes #3566, @voodoos)
+
 2.6.0 (05/06/2020)
 ------------------
 

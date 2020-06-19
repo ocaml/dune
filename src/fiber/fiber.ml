@@ -156,7 +156,7 @@ end = struct
 
     let run_queue q x =
       let backup = !current in
-      Queue.iter (fun k -> run_k k x) q;
+      Queue.iter ~f:(fun k -> run_k k x) q;
       current := backup
   end
 
@@ -383,7 +383,7 @@ module Ivar = struct
   let read t k =
     match t.state with
     | Full x -> k x
-    | Empty q -> Queue.push (K.create k) q
+    | Empty q -> Queue.push q (K.create k)
 
   let peek t k =
     k
@@ -431,7 +431,7 @@ module Mutex = struct
 
   let lock t k =
     if t.locked then
-      Queue.push (K.create k) t.waiters
+      Queue.push t.waiters (K.create k)
     else (
       t.locked <- true;
       k ()
@@ -439,10 +439,9 @@ module Mutex = struct
 
   let unlock t k =
     assert t.locked;
-    if Queue.is_empty t.waiters then
-      t.locked <- false
-    else
-      K.run (Queue.pop t.waiters) ();
+    ( match Queue.pop t.waiters with
+    | None -> t.locked <- false
+    | Some next -> K.run next () );
     k ()
 
   let with_lock t f =

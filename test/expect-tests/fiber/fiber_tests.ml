@@ -17,14 +17,14 @@ end = struct
 
   let yield () =
     let ivar = Fiber.Ivar.create () in
-    Queue.push ivar suspended;
+    Queue.push suspended ivar;
     Fiber.Ivar.read ivar
 
   let rec restart_suspended () =
-    if Queue.is_empty suspended then
-      Fiber.return ()
-    else
-      let* () = Fiber.Ivar.fill (Queue.pop suspended) () in
+    match Queue.pop suspended with
+    | None -> Fiber.return ()
+    | Some e ->
+      let* () = Fiber.Ivar.fill e () in
       restart_suspended ()
 
   exception Never

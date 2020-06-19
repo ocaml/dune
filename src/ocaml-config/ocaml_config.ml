@@ -81,7 +81,9 @@ type t =
   ; ccomp_type : Ccomp_type.t
   ; c_compiler : string
   ; ocamlc_cflags : string list
+  ; ocamlc_cppflags : string list
   ; ocamlopt_cflags : string list
+  ; ocamlopt_cppflags : string list
   ; bytecomp_c_compiler : Prog_and_args.t
   ; bytecomp_c_libraries : string list
   ; native_c_compiler : Prog_and_args.t
@@ -140,7 +142,11 @@ let c_compiler t = t.c_compiler
 
 let ocamlc_cflags t = t.ocamlc_cflags
 
+let ocamlc_cppflags t = t.ocamlc_cppflags
+
 let ocamlopt_cflags t = t.ocamlopt_cflags
+
+let ocamlopt_cppflags t = t.ocamlopt_cppflags
 
 let bytecomp_c_compiler t = t.bytecomp_c_compiler
 
@@ -230,7 +236,9 @@ let to_list t : (string * Value.t) list =
   ; ("ccomp_type", String (Ccomp_type.to_string t.ccomp_type))
   ; ("c_compiler", String t.c_compiler)
   ; ("ocamlc_cflags", Words t.ocamlc_cflags)
+  ; ("ocamlc_cppflags", Words t.ocamlc_cppflags)
   ; ("ocamlopt_cflags", Words t.ocamlopt_cflags)
+  ; ("ocamlopt_cppflags", Words t.ocamlopt_cppflags)
   ; ("bytecomp_c_compiler", Prog_and_args t.bytecomp_c_compiler)
   ; ("bytecomp_c_libraries", Words t.bytecomp_c_libraries)
   ; ("native_c_compiler", Prog_and_args t.native_c_compiler)
@@ -406,16 +414,30 @@ let make vars =
       get_prog_or_dummy_exn vars "bytecomp_c_compiler"
     in
     let native_c_compiler = get_prog_or_dummy_exn vars "native_c_compiler" in
-    let c_compiler, ocamlc_cflags, ocamlopt_cflags =
+    let ( c_compiler
+        , ocamlc_cflags
+        , ocamlc_cppflags
+        , ocamlopt_cflags
+        , ocamlopt_cppflags ) =
       match get_prog_or_dummy vars "c_compiler" with
       | Some { prog; args } ->
-        (* >= 4.06 *)
+        (* >= 4.06 GPR#1114, GPR#1393, GPR#1429: refine the (ocamlc -config)
+           information on C compilers: the variables
+           {bytecode,native}_c_compiler are deprecated (the distinction is now
+           mostly meaningless) in favor of a single c_compiler variable combined
+           with ocaml{c,opt}_cflags and ocaml{c,opt}_cppflags. *)
         let get_flags var = args @ get_words vars var in
-        (prog, get_flags "ocamlc_cflags", get_flags "ocamlopt_cflags")
+        ( prog
+        , get_flags "ocamlc_cflags"
+        , get_flags "ocamlc_cppflags"
+        , get_flags "ocamlopt_cflags"
+        , get_flags "ocamlopt_cppflags" )
       | None ->
         ( bytecomp_c_compiler.prog
         , bytecomp_c_compiler.args
-        , native_c_compiler.args )
+        , []
+        , native_c_compiler.args
+        , [] )
     in
     let version_string = get vars "version" in
     let version =
@@ -510,7 +532,9 @@ let make vars =
     ; ccomp_type
     ; c_compiler
     ; ocamlc_cflags
+    ; ocamlc_cppflags
     ; ocamlopt_cflags
+    ; ocamlopt_cppflags
     ; bytecomp_c_compiler
     ; bytecomp_c_libraries
     ; native_c_compiler

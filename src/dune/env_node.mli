@@ -10,6 +10,11 @@ module Odoc : sig
   type t = { warnings : warnings }
 end
 
+module Coq : sig
+
+  type t = Ordered_set_lang.Unexpanded.t
+end
+
 type t
 
 val make :
@@ -40,5 +45,7 @@ val local_binaries : t -> File_binding.Expanded.t list
 val bin_artifacts : t -> Artifacts.Bin.t
 
 val odoc : t -> Odoc.t
+
+val coq : t -> Coq.t
 
 val menhir_flags : t -> string list Build.t

@@ -8,6 +8,12 @@ module Odoc = struct
   type t = { warnings : warnings }
 end
 
+module Coq = struct
+
+  type t = Ordered_set_lang.Unexpanded.t
+
+end
+
 type t =
   { scope : Scope.t
   ; local_binaries : File_binding.Expanded.t list Memo.Lazy.t
@@ -18,6 +24,7 @@ type t =
   ; inline_tests : Dune_env.Stanza.Inline_tests.t Memo.Lazy.t
   ; menhir_flags : string list Build.t Memo.Lazy.t
   ; odoc : Odoc.t Memo.Lazy.t
+  ; coq : Coq.t Memo.Lazy.t
   }
 
 let scope t = t.scope
@@ -37,6 +44,8 @@ let inline_tests t = Memo.Lazy.force t.inline_tests
 let menhir_flags t = Memo.Lazy.force t.menhir_flags
 
 let odoc t = Memo.Lazy.force t.odoc
+
+let coq t = Memo.Lazy.force t.coq
 
 let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     ~expander_for_artifacts ~default_context_flags ~default_env
@@ -122,6 +131,7 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
     inherited ~field:odoc ~root (fun { warnings } ->
         { warnings = Option.value config.odoc.warnings ~default:warnings })
   in
+  let coq = inherited ~field:coq ~root:config.coq (fun x -> x) in
   { scope
   ; ocaml_flags
   ; foreign_flags
@@ -131,4 +141,5 @@ let make ~dir ~inherit_from ~scope ~config_stanza ~profile ~expander
   ; inline_tests
   ; menhir_flags
   ; odoc
+  ; coq
   }

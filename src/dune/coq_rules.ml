@@ -93,6 +93,7 @@ module Context = struct
     ; scope : Scope.t
     ; boot_type : Bootstrap.t
     ; build_dir : Path.Build.t
+    ; profile_flags : Ordered_set_lang.Unexpanded.t
     }
 
   let coqc ?stdout_to t args =
@@ -100,8 +101,11 @@ module Context = struct
     Command.run ~dir ?stdout_to (fst t.coqc) args
 
   let coq_flags t =
-    Expander.expand_and_eval_set t.expander t.buildable.flags
-      ~standard:(Build.return [])
+    Build.(map ~f:List.concat (all [
+      Expander.expand_and_eval_set
+        t.expander t.profile_flags ~standard:(Build.return []);
+      Expander.expand_and_eval_set
+        t.expander t.buildable.flags ~standard:(Build.return [])]))
 
   let theories_flags =
     let setup_theory_flag lib =
@@ -169,6 +173,7 @@ module Context = struct
     ; scope
     ; boot_type = Bootstrap.No_boot
     ; build_dir
+    ; profile_flags = Super_context.coq sctx ~dir
     }
 
   let for_module t coq_module =

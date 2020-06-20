@@ -32,6 +32,7 @@ module Stanza : sig
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
+    ; coq : Ordered_set_lang.Unexpanded.t
     }
 
   type pattern =

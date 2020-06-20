@@ -1345,6 +1345,9 @@ Fields supported in ``<settings>`` are:
 - ``(odoc <fields>)``. This allows to pass options to Odoc, see
   :ref:`odoc-options` for more details.
 
+- ``(coq (flags <flags>))``. This allows to pass options to Coq, see
+  :ref:`coq-theory` for more details.
+
 .. _dune-subdirs:
 
 dirs (since 1.6)

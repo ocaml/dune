@@ -1,6 +1,8 @@
 next
 ----
 
+- Read Coq flags from `env` (#3547 , fixes #3486, @gares)
+
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
   @stephanieyou)
 

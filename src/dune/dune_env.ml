@@ -163,8 +163,8 @@ module Stanza = struct
     Ordered_set_lang.Unexpanded.field "flags"
 
   let coq_field =
-    field "coq" ~default:Coq.empty
-      (Dune_lang.Syntax.since Stanza.syntax (2, 6) >>> fields coq_flags)
+    field "coq" ~default:Ordered_set_lang.Unexpanded.standard
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields coq_flags)
 
   let config =
     let+ flags = Ocaml_flags.Spec.decode

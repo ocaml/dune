@@ -10,7 +10,7 @@ end
 
 module Coq = struct
 
-  type t = Dune_env.Stanza.Coq.t
+  type t = Ordered_set_lang.Unexpanded.t
 
 end
 

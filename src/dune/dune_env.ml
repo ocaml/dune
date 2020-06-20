@@ -70,16 +70,6 @@ module Stanza = struct
          { warnings }
   end
 
-  module Coq = struct
-
-    type t = Ordered_set_lang.Unexpanded.t
-
-    let equal = Ordered_set_lang.Unexpanded.equal
-
-    let empty = Ordered_set_lang.Unexpanded.standard
-
-  end
-
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
@@ -88,7 +78,7 @@ module Stanza = struct
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
-    ; coq : Coq.t
+    ; coq : Ordered_set_lang.Unexpanded.t
     }
 
   let equal_config
@@ -109,7 +99,7 @@ module Stanza = struct
     && Option.equal Inline_tests.equal inline_tests t.inline_tests
     && Ordered_set_lang.Unexpanded.equal menhir_flags t.menhir_flags
     && Odoc.equal odoc t.odoc
-    && Coq.equal coq t.coq
+    && Ordered_set_lang.Unexpanded.equal coq t.coq
 
   let hash_config = Hashtbl.hash
 
@@ -122,7 +112,7 @@ module Stanza = struct
     ; inline_tests = None
     ; menhir_flags = Ordered_set_lang.Unexpanded.standard
     ; odoc = Odoc.empty
-    ; coq = Coq.empty
+    ; coq = Ordered_set_lang.Unexpanded.standard
     }
 
   type pattern =

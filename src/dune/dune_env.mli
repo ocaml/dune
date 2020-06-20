@@ -24,12 +24,6 @@ module Stanza : sig
     val decode : t Dune_lang.Decoder.t
   end
 
-  module Coq : sig
-
-    type t = Ordered_set_lang.Unexpanded.t
-
-  end
-
   type config =
     { flags : Ocaml_flags.Spec.t
     ; foreign_flags : Ordered_set_lang.Unexpanded.t Foreign.Language.Dict.t
@@ -38,7 +32,7 @@ module Stanza : sig
     ; inline_tests : Inline_tests.t option
     ; menhir_flags : Ordered_set_lang.Unexpanded.t
     ; odoc : Odoc.t
-    ; coq : Coq.t
+    ; coq : Ordered_set_lang.Unexpanded.t
     }
 
   type pattern =

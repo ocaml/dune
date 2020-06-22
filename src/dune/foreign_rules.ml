@@ -72,17 +72,22 @@ let include_dir_flags ~expander ~dir (stubs : Foreign.Stubs.t) =
          in
          Command.Args.S [ A "-I"; Path include_dir; dep_args ]))
 
-let build_c_or_cxx_file ~language ~sctx ~dir ~expander ~include_flags
-    (loc, src, dst) =
+let build_c ~kind ~sctx ~dir ~expander ~include_flags (loc, src, dst) =
   let ctx = Super_context.context sctx in
   let flags =
     let ctx_flags =
-      match language with
-      | Foreign.Language.C -> Fdo.c_flags ctx
+      match kind with
+      | Foreign.Language.C ->
+        let cfg = ctx.ocaml_config in
+        List.concat
+          [ Ocaml_config.ocamlc_cflags cfg
+          ; Ocaml_config.ocamlc_cppflags cfg
+          ; Fdo.c_flags ctx
+          ]
       | Foreign.Language.Cxx -> Fdo.cxx_flags ctx
     in
     let flags = Foreign.Source.flags src in
-    Super_context.foreign_flags sctx ~dir ~expander ~flags ~language
+    Super_context.foreign_flags sctx ~dir ~expander ~flags ~language:kind
     |> Build.map ~f:(List.append ctx_flags)
   in
   let output_param =
@@ -107,10 +112,6 @@ let build_c_or_cxx_file ~language ~sctx ~dir ~expander ~include_flags
          ]
        @ output_param @ [ A "-c"; Dep src ] ));
   dst
-
-let build_c_file = build_c_or_cxx_file ~language:Foreign.Language.C
-
-let build_cxx_file = build_c_or_cxx_file ~language:Foreign.Language.Cxx
 
 (* TODO: [requires] is a confusing name, probably because it's too general: it
    looks like it's a list of libraries we depend on. *)
@@ -153,7 +154,7 @@ let build_o_files ~sctx ~foreign_sources ~(dir : Path.Build.t) ~expander
          in
          let build_file =
            match Foreign.Source.language src with
-           | C -> build_c_file
-           | Cxx -> build_cxx_file
+           | C -> build_c ~kind:Foreign.Language.C
+           | Cxx -> build_c ~kind:Foreign.Language.Cxx
          in
          build_file ~sctx ~dir ~expander ~include_flags (loc, src, dst))

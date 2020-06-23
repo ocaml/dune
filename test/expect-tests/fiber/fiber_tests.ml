@@ -203,19 +203,60 @@ let%expect_test _ =
     outer: raised Exit
     [PASS] Never raised as expected |}]
 
-(* Collect errors has a subtle behavior. It can cause a fiber not to terminate
-   if all the sub-fibers spawned aren't awaited *)
 let%expect_test "collect_errors and termination" =
+  (* The following tests check that [collect_errors] only returns after all the
+     sub-fibers have terminated *)
   let fiber =
-    Fiber.fork_and_join_unit long_running_fiber (fun () ->
-        Fiber.collect_errors (fun () ->
-            let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
-            Fiber.return 50))
+    Fiber.collect_errors (fun () ->
+        let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
+        Fiber.return 50)
+  in
+  test (backtrace_result int) fiber;
+  [%expect {|
+    Ok 50 |}];
+
+  let fiber =
+    Fiber.collect_errors (fun () ->
+        let* (_ : unit Fiber.Future.t) = Fiber.fork long_running_fiber in
+        Fiber.return 50)
+  in
+  test (backtrace_result int) fiber;
+  [%expect {|
+    Ok 50 |}];
+
+  let fiber =
+    Fiber.collect_errors (fun () ->
+        let* (_ : unit Fiber.Future.t) = Fiber.fork (fun () -> Fiber.never) in
+        Fiber.return 50)
   in
   test ~expect_never:true (backtrace_result int) fiber;
   [%expect {|
-    Ok 50
-    [FAIL] expected Never to be raised but it wasn't |}]
+    [PASS] Never raised as expected |}]
+
+let%expect_test "collect_errors and errors from forks" =
+  (* This is wrong, it should return {[Error [Exit]]} *)
+  let fiber =
+    Fiber.collect_errors (fun () ->
+        let* (_ : unit Fiber.Future.t) = Fiber.fork (fun () -> raise Exit) in
+        Fiber.return 50)
+  in
+  test (backtrace_result int) fiber;
+  [%expect {|
+    Ok 50 |}];
+
+  (* This is wrong, it should return {[Error [Exit]]} *)
+  let fiber =
+    Fiber.collect_errors (fun () ->
+        let* (_ : unit Fiber.Future.t) =
+          Fiber.fork (fun () ->
+              let* () = long_running_fiber () in
+              raise Exit)
+        in
+        Fiber.return 50)
+  in
+  test (backtrace_result int) fiber;
+  [%expect {|
+    Ok 50 |}]
 
 let must_set_flag f =
   let flag = ref false in

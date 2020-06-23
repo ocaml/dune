@@ -37,7 +37,7 @@ let ( concurrency
   , !secondary
   , !force_byte_compilation )
 
-(** {2 General configuration *)
+(** {2 General configuration} *)
 
 let build_dir = "_boot"
 
@@ -53,7 +53,7 @@ let task =
   ; local_libraries = Libs.local_libraries
   }
 
-(** {2 Utility functions *)
+(** {2 Utility functions} *)
 
 open StdLabels
 open Printf
@@ -1186,7 +1186,7 @@ let build_syntax_shims () =
       ]
     >>| fun () -> [ "-pp"; "." ^/ "pp" ^/ "pp.exe" ^ " -dump-ast" ]
 
-(** {2 Bootstrap process *)
+(** {2 Bootstrap process} *)
 let main () =
   rm_rf build_dir;
   Unix.mkdir build_dir 0o777;

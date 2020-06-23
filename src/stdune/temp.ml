@@ -35,7 +35,7 @@ let create_temp_file name =
 let create_temp_dir name =
   match Fpath.mkdir_p name with
   | Created -> ()
-  | Already_exists -> failwith "temp dir exists"
+  | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", name))
 
 let () =
   let iter_and_clear r ~f =

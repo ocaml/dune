@@ -12,12 +12,7 @@ let try_times n ~f =
 
 let prng = lazy (Random.State.make_self_init ())
 
-let temp_file_name ?temp_dir ~prefix ~suffix () =
-  let temp_dir =
-    match temp_dir with
-    | None -> Filename.get_temp_dir_name ()
-    | Some t -> t
-  in
+let temp_file_name ~temp_dir ~prefix ~suffix =
   let rnd = Random.State.bits (Lazy.force prng) land 0xFFFFFF in
   Filename.concat temp_dir (Printf.sprintf "%s%06x%s" prefix rnd suffix)
 
@@ -49,8 +44,9 @@ let () =
 
 let temp ~set ~prefix ~suffix ~create =
   let path =
+    let temp_dir = Filename.get_temp_dir_name () in
     try_times 1000 ~f:(fun _ ->
-        let name = temp_file_name ~prefix ~suffix () in
+        let name = temp_file_name ~temp_dir ~prefix ~suffix in
         create name;
         name)
     |> Path.of_string

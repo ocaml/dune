@@ -1,4 +1,3 @@
-module List = Stdlib.ListLabels
 module String = Stdlib.StringLabels
 
 type t = exn
@@ -24,7 +23,7 @@ let pp_uncaught ~backtrace fmt exn =
   let s =
     Printf.sprintf "%s\n%s" (Printexc.to_string exn) backtrace
     |> String_split.split_lines
-    |> ListLabels.map ~f:(Printf.sprintf "| %s")
+    |> List.map ~f:(Printf.sprintf "| %s")
     |> String.concat ~sep:"\n"
   in
   let line = String.make 71 '-' in

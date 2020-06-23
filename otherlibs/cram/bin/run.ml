@@ -263,6 +263,8 @@ let run ~sanitizer ~file lexbuf =
     let env = Env.add env ~var:"LC_ALL" ~value:"C" in
     let env = extend_build_path_prefix_map ~env ~cwd in
     let env =
+      let temp_dir = Path.relative temp_dir "tmp" in
+      Path.mkdir_p temp_dir;
       Env.add env ~var:Env.Var.temp_dir
         ~value:(Path.to_absolute_filename temp_dir)
     in

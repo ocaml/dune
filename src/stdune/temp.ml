@@ -33,7 +33,7 @@ let create_temp_file name =
   close_desc (open_desc name [ Open_wronly; Open_creat; Open_excl ] 0o600)
 
 let create_temp_dir name =
-  match Path.Fpath.mkdir_p name with
+  match Fpath.mkdir_p name with
   | Created -> ()
   | Already_exists -> failwith "temp dir exists"
 

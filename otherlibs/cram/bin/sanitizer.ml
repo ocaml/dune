@@ -34,7 +34,7 @@ let run_sanitizer ?temp_dir ~prog ~argv commands =
   let stdin =
     let path = fname "sanitizer.stdin" in
     let csexp = List.map commands ~f:Command.to_sexp in
-    Io.with_file_out path ~f:(fun oc ->
+    Io.with_file_out ~binary:true path ~f:(fun oc ->
         List.iter csexp ~f:(Csexp.to_channel oc));
     Unix.openfile (Path.to_string path) [ Unix.O_RDONLY; O_SHARE_DELETE ] 0o666
   in

@@ -20,7 +20,7 @@ let run_sanitizer ?temp_dir ~prog ~argv commands =
   let temp_dir =
     match temp_dir with
     | Some d -> d
-    | None -> Temp.dir ~prefix:"sanitizer" ~suffix:"unspecified"
+    | None -> Temp.create Dir ~prefix:"sanitizer" ~suffix:"unspecified"
   in
   let argv = prog :: argv in
   let fname = Path.relative temp_dir in

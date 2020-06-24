@@ -252,7 +252,7 @@ let display_with_bars s =
 let run ~sanitizer ~file lexbuf =
   let temp_dir =
     let suffix = Filename.basename file in
-    Temp.dir ~prefix:"dune.cram." ~suffix
+    Temp.create Dir ~prefix:"dune.cram." ~suffix
   in
   let cram_stanzas = cram_stanzas lexbuf in
   let sh_script = create_sh_script cram_stanzas ~temp_dir in

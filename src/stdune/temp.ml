@@ -1,3 +1,7 @@
+type what =
+  | Dir
+  | File
+
 let try_times n ~f =
   assert (n > 0);
   let rec loop n =
@@ -23,10 +27,18 @@ let tmp_dirs = ref Path.Set.empty
 let create_temp_file name =
   Unix.close (Unix.openfile name [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] 0o600)
 
+let destroy = function
+  | Dir -> Path.rm_rf ~allow_external:true
+  | File -> Path.unlink_no_err
+
 let create_temp_dir name =
   match Fpath.mkdir_p name with
   | Created -> ()
   | Already_exists -> raise (Unix.Unix_error (ENOENT, "mkdir", name))
+
+let set = function
+  | Dir -> tmp_dirs
+  | File -> tmp_files
 
 let () =
   let iter_and_clear r ~f =
@@ -35,8 +47,9 @@ let () =
     Path.Set.iter tmp ~f
   in
   at_exit (fun () ->
-      iter_and_clear tmp_files ~f:Path.unlink_no_err;
-      iter_and_clear tmp_dirs ~f:(Path.rm_rf ~allow_external:true))
+      List.iter [ Dir; File ] ~f:(fun what ->
+          let set = set what in
+          iter_and_clear set ~f:(destroy what)))
 
 let temp ~set ~prefix ~suffix ~create =
   let path =
@@ -50,12 +63,16 @@ let temp ~set ~prefix ~suffix ~create =
   set := Path.Set.add !set path;
   path
 
-let file ~prefix ~suffix =
-  temp ~set:tmp_files ~prefix ~suffix ~create:create_temp_file
+let create what ~prefix ~suffix =
+  let create =
+    match what with
+    | Dir -> create_temp_dir
+    | File -> create_temp_file
+  in
+  let set = set what in
+  temp ~set ~prefix ~suffix ~create
 
-let destroy_file fn =
-  Path.unlink_no_err fn;
-  tmp_files := Path.Set.remove !tmp_files fn
-
-let dir ~prefix ~suffix =
-  temp ~set:tmp_dirs ~prefix ~suffix ~create:create_temp_dir
+let destroy what fn =
+  destroy what fn;
+  let set = set what in
+  set := Path.Set.remove !set fn

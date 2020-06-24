@@ -464,7 +464,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
       match Response_file.get ~prog with
       | Not_supported -> (args, None)
       | Zero_terminated_strings arg ->
-        let fn = Temp.file ~prefix:"responsefile" ~suffix:".data" in
+        let fn = Temp.create File ~prefix:"responsefile" ~suffix:".data" in
         Stdune.Io.with_file_out fn ~f:(fun oc ->
             List.iter args ~f:(fun arg ->
                 output_string oc arg;
@@ -479,7 +479,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     | Terminal, _
     | _, Terminal
       when !Clflags.capture_outputs ->
-      let fn = Temp.file ~prefix:"dune" ~suffix:".output" in
+      let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
       let terminal = Io.file fn Io.Out in
       let get (out : Io.output Io.t) =
         if out.kind = Terminal then (
@@ -515,7 +515,7 @@ let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     | None -> ""
     | Some fn ->
       let s = Stdune.Io.read_file fn in
-      Temp.destroy_file fn;
+      Temp.destroy File fn;
       s
   in
   Log.command ~command_line ~output ~exit_status;
@@ -545,14 +545,14 @@ let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
 
 let run_capture_gen ?dir ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args ~f =
-  let fn = Temp.file ~prefix:"dune" ~suffix:".output" in
+  let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
   let+ run =
     run_internal ?dir ~stdout_to:(Io.file fn Io.Out) ?stderr_to ?stdin_from ~env
       ~purpose fail_mode prog args
   in
   map_result fail_mode run ~f:(fun () ->
       let x = f fn in
-      Temp.destroy_file fn;
+      Temp.destroy File fn;
       x)
 
 let run_capture = run_capture_gen ~f:Stdune.Io.read_file

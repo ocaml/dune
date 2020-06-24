@@ -21,5 +21,4 @@ SRC=$TMP/csexp
 
 cp -v $SRC/src/csexp.{ml,mli} csexp/src
 
-git checkout csexp/src/dune
 git add -A .

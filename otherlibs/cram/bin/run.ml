@@ -238,7 +238,7 @@ let create_sh_script cram_stanzas ~temp_dir : sh_script =
       in
       fprln oc ". %s > %s 2>&1" user_shell_code_file_sh_path
         user_shell_code_output_file_sh_path;
-      fprln oc {|printf "$?\0$%s\0" >> %s|} _BUILD_PATH_PREFIX_MAP
+      fprln oc {|printf "%%d\0%%s\0" $? $%s >> %s|} _BUILD_PATH_PREFIX_MAP
         metadata_file_sh_path;
       Command { command = lines; output_file = user_shell_code_output_file }
   in

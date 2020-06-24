@@ -56,6 +56,8 @@ let run_sanitizer ?temp_dir ~prog ~argv commands =
   | _ -> Code_error.raise "unexpected termination of sanitizer" []
 
 let impl_sanitizer f in_ out =
+  set_binary_mode_in in_ true;
+  set_binary_mode_out out true;
   let rec loop () =
     match Csexp.input_opt in_ with
     | Error error ->

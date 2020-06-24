@@ -13,7 +13,8 @@ type t =
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; profile : Profile.t
-  ; ocaml_version : string
+  ; ocaml_version_string : string
+  ; ocaml_version : Ocaml_version.t
   ; bisect_enabled : bool
   }
 
@@ -24,7 +25,7 @@ let var_map =
   ; ("os_type", fun t -> Ocaml_config.Os_type.to_string t.os_type)
   ; ("ccomp_type", fun t -> Ocaml_config.Ccomp_type.to_string t.ccomp_type)
   ; ("profile", fun t -> Profile.to_string t.profile)
-  ; ("ocaml_version", fun t -> t.ocaml_version)
+  ; ("ocaml_version", fun t -> t.ocaml_version_string)
   ]
 
 let allowed_in_enabled_if =

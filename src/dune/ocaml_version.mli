@@ -60,3 +60,6 @@ val supports_function_sections : t -> bool
 
 (** [-custom] or [-output-complete-exe] depending on the version of OCaml *)
 val custom_or_output_complete_exe : t -> string
+
+(** ocamlopt -a always calls the native C linker, even for empty archives *)
+val ocamlopt_always_calls_library_linker : t -> bool

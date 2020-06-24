@@ -4,22 +4,31 @@ module type Sexp = sig
     | List of t list
 end
 
+module type Monad = sig
+  type 'a t
+
+  val return : 'a -> 'a t
+
+  val bind : 'a t -> ('a -> 'b t) -> 'b t
+end
+
 module Make (Sexp : Sexp) = struct
   open Sexp
+  include Result
 
   module type Input = sig
     type t
 
-    val read_string : t -> int -> string
+    module Monad : Monad
 
-    val read_char : t -> char
+    val read_string : t -> int -> (string, string) result Monad.t
+
+    val read_char : t -> (char, string) result Monad.t
   end
 
-  exception Parse_error of string
+  let parse_error f = Format.ksprintf (fun msg -> Result.Error msg) f
 
-  let parse_error msg = raise_notrace (Parse_error msg)
-
-  let invalid_character () = parse_error "invalid character"
+  let invalid_character c = parse_error "invalid character %C" c
 
   let missing_left_parenthesis () =
     parse_error "right parenthesis without matching left parenthesis"
@@ -27,46 +36,67 @@ module Make (Sexp : Sexp) = struct
   module Make_parser (Input : Input) = struct
     let int_of_digit c = Char.code c - Char.code '0'
 
+    let ( >>= ) = Input.Monad.bind
+
+    open Input.Monad
+
     let rec parse_atom input len =
-      match Input.read_char input with
-      | '0' .. '9' as c ->
+      Input.read_char input >>= function
+      | Ok ('0' .. '9' as c) ->
         let len = (len * 10) + int_of_digit c in
         if len > Sys.max_string_length then
-          parse_error "atom too big to represent"
+          return @@ parse_error "atom too big to represent"
         else
           parse_atom input len
-      | ':' ->
-        let s = Input.read_string input len in
-        Atom s
-      | _ -> invalid_character ()
+      | Ok ':' -> (
+        Input.read_string input len >>= function
+        | Ok s -> return @@ Ok (Atom s)
+        | Error e -> return @@ Error e )
+      | Ok c -> return @@ invalid_character c
+      | Error e -> return @@ Error e
 
-    let rec parse_many input depth acc =
-      match Input.read_char input with
-      | '(' ->
-        let sexps = parse_many input (depth + 1) [] in
-        parse_many input (depth + 1) (List sexps :: acc)
-      | ')' ->
+    let rec parse_many depth input acc =
+      Input.read_char input >>= function
+      | Ok '(' -> (
+        parse_many (depth + 1) input [] >>= function
+        | Ok sexps -> parse_many (depth + 1) input @@ (List sexps :: acc)
+        | e -> return e )
+      | Ok ')' ->
         if depth = 0 then
-          missing_left_parenthesis ()
+          return @@ missing_left_parenthesis ()
         else
-          List.rev acc
-      | '0' .. '9' as c ->
-        let sexp = parse_atom input (int_of_digit c) in
-        parse_many input depth (sexp :: acc)
-      | _ -> invalid_character ()
+          return @@ Ok (List.rev acc)
+      | Ok c when '0' <= c && c <= '9' -> (
+        parse_atom input (int_of_digit c) >>= function
+        | Ok sexp -> parse_many depth input (sexp :: acc)
+        | Error e -> return @@ Error e )
+      | Ok c -> return @@ invalid_character c
+      | Error e -> return @@ Error e
 
-    let parse_one input =
-      match Input.read_char input with
-      | '(' ->
-        let sexps = parse_many input 1 [] in
-        List sexps
-      | ')' -> missing_left_parenthesis ()
-      | '0' .. '9' as c -> parse_atom input (int_of_digit c)
-      | _ -> invalid_character ()
+    let parse input =
+      Input.read_char input >>= function
+      | Ok '(' -> (
+        parse_many 1 input [] >>= function
+        | Ok sexps -> return @@ Ok (List sexps)
+        | Error e -> return @@ Error e )
+      | Ok ')' -> return @@ missing_left_parenthesis ()
+      | Ok c when '0' <= c && c <= '9' -> parse_atom input (int_of_digit c)
+      | Ok c -> return @@ invalid_character c
+      | Error e -> return @@ Error e
+
+    let parse_many input = parse_many 0 input []
   end
   [@@inlined always]
 
   let premature_end = "premature end of input"
+
+  module Id_monad = struct
+    type 'a t = 'a
+
+    let return x = x
+
+    let bind x f = f x
+  end
 
   module String_input = struct
     type t =
@@ -74,61 +104,70 @@ module Make (Sexp : Sexp) = struct
       ; mutable pos : int
       }
 
+    module Monad = Id_monad
+
     let read_string t len =
       let pos = t.pos in
-      let s = String.sub t.buf pos len in
-      t.pos <- pos + len;
-      s
+      if pos + len <= String.length t.buf then (
+        let s = String.sub t.buf pos len in
+        t.pos <- pos + len;
+        Ok s
+      ) else
+        Error premature_end
 
     let read_char t =
-      let pos = t.pos in
-      let c = t.buf.[pos] in
-      t.pos <- pos + 1;
-      c
-
-    let error_of_exn t = function
-      | Parse_error msg -> Error (t.pos, msg)
-      | _ -> Error (t.pos, premature_end)
+      if t.pos + 1 <= String.length t.buf then (
+        let pos = t.pos in
+        let c = t.buf.[pos] in
+        t.pos <- pos + 1;
+        Ok c
+      ) else
+        Error premature_end
   end
 
   module String_parser = Make_parser (String_input)
 
   let parse_string s =
     let input : String_input.t = { buf = s; pos = 0 } in
-    match String_parser.parse_one input with
-    | x ->
+    match String_parser.parse input with
+    | Ok parsed ->
       if input.pos <> String.length s then
         Error (input.pos, "data after canonical S-expression")
       else
-        Ok x
-    | exception e -> String_input.error_of_exn input e
+        Ok parsed
+    | Error msg -> Error (input.pos, msg)
 
   let parse_string_many s =
     let input : String_input.t = { buf = s; pos = 0 } in
-    match String_parser.parse_many input 0 [] with
-    | l -> Ok (List.rev l)
-    | exception e -> String_input.error_of_exn input e
+    match String_parser.parse_many input with
+    | Ok l -> Ok (List.rev l)
+    | Error e -> Error (input.pos, e)
 
   module In_channel_input = struct
     type t = in_channel
 
-    let read_string = really_input_string
+    module Monad = Id_monad
 
-    let read_char = input_char
+    let read_string size input =
+      try Ok (really_input_string size input)
+      with End_of_file -> Error premature_end
+
+    let read_char input =
+      try Ok (input_char input) with End_of_file -> Error premature_end
   end
 
   module In_channel_parser = Make_parser (In_channel_input)
 
   let input_opt ic =
     let pos = LargeFile.pos_in ic in
-    match In_channel_parser.parse_one ic with
-    | x -> Ok (Some x)
+    match In_channel_parser.parse ic with
+    | Ok x -> Ok (Some x)
+    | Error msg -> Error msg
     | exception End_of_file ->
       if LargeFile.pos_in ic = pos then
         Ok None
       else
         Error premature_end
-    | exception Parse_error msg -> Error msg
 
   let input ic =
     match input_opt ic with

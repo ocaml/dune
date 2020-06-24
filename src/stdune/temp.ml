@@ -20,12 +20,8 @@ let tmp_files = ref Path.Set.empty
 
 let tmp_dirs = ref Path.Set.empty
 
-external open_desc : string -> open_flag list -> int -> int = "caml_sys_open"
-
-external close_desc : int -> unit = "caml_sys_close"
-
 let create_temp_file name =
-  close_desc (open_desc name [ Open_wronly; Open_creat; Open_excl ] 0o600)
+  Unix.close (Unix.openfile name [ O_WRONLY; Unix.O_CREAT; Unix.O_EXCL ] 0o600)
 
 let create_temp_dir name =
   match Fpath.mkdir_p name with

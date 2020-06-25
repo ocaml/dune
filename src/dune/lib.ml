@@ -1550,7 +1550,7 @@ module Compile = struct
       ( List.map pps ~f:(fun (_, pp) -> (pp, kind))
       |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge )
 
-  let for_lib resolve db (t : lib) =
+  let for_lib db (t : lib) =
     let requires =
       (* This makes sure that the default implementation belongs to the same
          package before we build the virtual library *)
@@ -1565,14 +1565,10 @@ module Compile = struct
     in
     let lib_deps_info =
       let pps =
-        (* CHECK *)
-        let db = Option.value_exn db in
-        let resolve = resolve db in
-        Preprocess.Per_module.pps
-          (Preprocess.Per_module.with_instrumentation
-             (Lib_info.preprocess t.info)
-             ~instrumentation_backend:
-               (instrumentation_backend db.instrument_with resolve))
+        match t.pps with
+        | Error exn -> raise exn
+        | Ok pps ->
+          List.map ~f:(fun t -> Loc.none, t.name) pps
       in
       let user_written_deps = Lib_info.user_written_deps t.info in
       let kind : Lib_deps_info.Kind.t =
@@ -1782,7 +1778,7 @@ module DB = struct
         [ ("name", Lib_name.to_dyn name) ]
     | Some lib ->
       let t = Option.some_if (not allow_overlaps) t in
-      Compile.for_lib resolve t lib
+      Compile.for_lib t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =

@@ -8,10 +8,41 @@ Dune!" at the beginning of the module.
   $ cat >dune <<EOF
   > (executable
   >  (name main)
+  >  (modules main)
+  >  (libraries mylib)
+  >  (instrumentation (backend hello)))
+  > 
+  > (library
+  >  (name mylib)
+  >  (modules mylib)
   >  (instrumentation (backend hello)))
   > EOF
 
-An empty file.
+  $ cat >mylib.ml <<EOF
+  > let f () = print_endline "Mylib"
+  > EOF
+
+  $ cat >main.ml <<EOF
+  > let () = Mylib.f ()
+  > EOF
+
+As instrumentation is disabled, this should not print the instrumentation
+message.
+
+  $ dune build
+  $ _build/default/main.exe
+  Mylib
+
+This should print the instrumentation message twice, once for "main" and once
+for "mylib":
+
+  $ dune build --instrument-with hello
+  $ _build/default/main.exe
+  Hello, Dune!
+  Hello, Dune!
+  Mylib
+
+An empty file:
 
   $ cat >main.ml <<EOF
   > EOF
@@ -20,7 +51,7 @@ We build the empty file.
 
   $ dune build
 
-Nothing happens.
+Nothing happens:
 
   $ _build/default/main.exe
 

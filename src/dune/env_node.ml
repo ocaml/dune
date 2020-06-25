@@ -9,9 +9,7 @@ module Odoc = struct
 end
 
 module Coq = struct
-
   type t = Ordered_set_lang.Unexpanded.t
-
 end
 
 type t =

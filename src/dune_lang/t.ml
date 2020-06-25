@@ -80,29 +80,29 @@ module Deprecated = struct
     let tfuncs =
       (Format.pp_get_formatter_tag_functions ppf () [@warning "-3"])
     in
-    (Format.pp_set_formatter_tag_functions ppf
-       { tfuncs with
-         mark_open_tag =
-           (function
-           | "atom" ->
-             state := In_atom :: !state;
-             ""
-           | "makefile-action" ->
-             state := In_makefile_action :: !state;
-             ""
-           | "makefile-stuff" ->
-             state := In_makefile_stuff :: !state;
-             ""
-           | s -> tfuncs.mark_open_tag s)
-       ; mark_close_tag =
-           (function
-           | "atom"
-           | "makefile-action"
-           | "makefile-stuff" ->
-             state := List.tl !state;
-             ""
-           | s -> tfuncs.mark_close_tag s)
-       } [@warning "-3"]);
+    Format.pp_set_formatter_tag_functions ppf
+      { tfuncs with
+        mark_open_tag =
+          (function
+          | "atom" ->
+            state := In_atom :: !state;
+            ""
+          | "makefile-action" ->
+            state := In_makefile_action :: !state;
+            ""
+          | "makefile-stuff" ->
+            state := In_makefile_stuff :: !state;
+            ""
+          | s -> tfuncs.mark_open_tag s)
+      ; mark_close_tag =
+          (function
+          | "atom"
+          | "makefile-action"
+          | "makefile-stuff" ->
+            state := List.tl !state;
+            ""
+          | s -> tfuncs.mark_close_tag s)
+      } [@warning "-3"];
     Format.pp_set_formatter_out_functions ppf
       { ofuncs with
         out_newline =

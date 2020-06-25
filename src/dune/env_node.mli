@@ -11,7 +11,6 @@ module Odoc : sig
 end
 
 module Coq : sig
-
   type t = Ordered_set_lang.Unexpanded.t
 end
 

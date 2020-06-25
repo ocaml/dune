@@ -159,8 +159,7 @@ module Stanza = struct
     field "odoc" ~default:Odoc.empty
       (Dune_lang.Syntax.since Stanza.syntax (2, 4) >>> Odoc.decode)
 
-  let coq_flags =
-    Ordered_set_lang.Unexpanded.field "flags"
+  let coq_flags = Ordered_set_lang.Unexpanded.field "flags"
 
   let coq_field =
     field "coq" ~default:Ordered_set_lang.Unexpanded.standard

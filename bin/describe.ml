@@ -1,6 +1,13 @@
 open Stdune
 open Import
 
+(* This command is not yet versioned, but some people are using it in
+   non-released tools. If you change the format of the output, please contact:
+
+   - rotor people for "describe workspace"
+
+   - duniverse people for "describe opam-files" *)
+
 let doc = "Describe the workspace."
 
 let man =
@@ -98,6 +105,31 @@ module Crawl = struct
     Dyn.List (Lib.Set.to_list libs |> List.filter_map ~f:(library sctx))
 end
 
+module Opam_files = struct
+  let get () =
+    let project = Dune.File_tree.root () |> Dune.File_tree.Dir.project in
+    let packages =
+      Dune_project.packages project |> Dune.Package.Name.Map.values
+    in
+    Dyn.List
+      (List.map packages ~f:(fun pkg ->
+           let opam_file = Path.source (Dune.Package.opam_file pkg) in
+           let contents =
+             if not (Dune_project.generate_opam_files project) then
+               Io.read_file opam_file
+             else
+               let template_file = Dune.Opam_create.template_file opam_file in
+               let template =
+                 if Path.exists template_file then
+                   Some (template_file, Io.read_file template_file)
+                 else
+                   None
+               in
+               Dune.Opam_create.generate project pkg ~template
+           in
+           Dyn.Tuple [ String (Path.to_string opam_file); String contents ]))
+end
+
 (* What to describe. To determine what to describe, we convert the positional
    arguments of the command line to a list of atoms and we parse it using the
    regular [Dune_lang.Decoder].
@@ -106,13 +138,15 @@ end
    machinery. This also allow to easily extend this to arbitrary complex phrases
    without hassle. *)
 module What = struct
-  type t = Workspace
+  type t =
+    | Workspace
+    | Opam_files
 
   let default = Workspace
 
   let parse =
     let open Dune_lang.Decoder in
-    sum [ ("workspace", return Workspace) ]
+    sum [ ("workspace", return Workspace); ("opam-files", return Opam_files) ]
 
   let parse ~lang args =
     match args with
@@ -128,6 +162,7 @@ module What = struct
   let describe t setup context =
     match t with
     | Workspace -> Crawl.workspace setup context
+    | Opam_files -> Opam_files.get ()
 end
 
 module Format = struct

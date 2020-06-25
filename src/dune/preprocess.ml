@@ -3,7 +3,8 @@ open Dune_lang.Decoder
 
 module Pps_and_flags = struct
   let decode =
-    let+ l, flags =
+    let+ loc = loc
+    and+ l, flags =
       until_keyword "--" ~before:String_with_vars.decode
         ~after:(repeat String_with_vars.decode)
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
@@ -29,6 +30,9 @@ module Pps_and_flags = struct
               (String_with_vars.loc flag)
               Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
         all_flags;
+    if pps = [] then
+      User_error.raise ~loc
+        [ Pp.text "You must specify at least one ppx rewriter." ];
     (pps, all_flags)
 end
 

@@ -127,7 +127,8 @@ end = struct
       Code_error.raise "Path.External.parent_exn called on a root path" []
     | Some p -> p
 
-  let mkdir_p ?perms p = ignore (Fpath.mkdir_p ?perms (to_string p))
+  let mkdir_p ?perms p =
+    ignore (Fpath.mkdir_p ?perms (to_string p) : Fpath.mkdir_p)
 
   let extension t = Filename.extension (to_string t)
 
@@ -549,7 +550,8 @@ end = struct
 end
 
 module Relative_to_source_root = struct
-  let mkdir_p ?perms s = ignore (Fpath.mkdir_p ?perms (Local.to_string s))
+  let mkdir_p ?perms s =
+    ignore (Fpath.mkdir_p ?perms (Local.to_string s) : Fpath.mkdir_p)
 end
 
 module Source0 = Local

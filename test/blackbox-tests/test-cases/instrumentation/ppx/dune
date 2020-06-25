@@ -3,7 +3,7 @@
  (public_name hello.ppx)
  (kind ppx_rewriter)
  (ppx_runtime_libraries hello)
- (libraries ocaml-migrate-parsetree)
+ (libraries ppxlib)
  (modules hello_ppx))
 
 (library

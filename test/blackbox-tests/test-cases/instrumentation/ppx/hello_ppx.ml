@@ -1,16 +1,12 @@
-open Ast_mapper
 open Ast_helper
 open Longident
 
-let mapper _ _ =
-  { default_mapper with
-    structure = fun _ str ->
-      Str.eval
-        (Exp.apply (Exp.ident (Location.mknoloc (Ldot (Lident "Hello", "hello"))))
-           [Nolabel, Exp.construct (Location.mknoloc (Lident "()")) None]) :: str
-  }
+let impl str =
+  Str.eval
+    (Exp.apply (Exp.ident (Location.mknoloc (Ldot (Lident "Hello", "hello"))))
+       [Nolabel, Exp.construct (Location.mknoloc (Lident "()")) None]) :: str
 
-open Migrate_parsetree
+open Ppxlib
 
 let () =
-  Driver.register ~name:"hello" Versions.ocaml_current mapper
+  Driver.register_transformation_using_ocaml_current_ast ~impl "hello"

@@ -78,7 +78,7 @@ val hash : t -> int
 val init :
      ?x:Context_name.t
   -> ?profile:Profile.t
-  -> ?instrument_with:string list
+  -> ?instrument_with:Lib_name.t list
   -> ?path:Path.t
   -> unit
   -> unit

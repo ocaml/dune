@@ -49,7 +49,7 @@ type t =
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
-  ; instrument_with : string list option
+  ; instrument_with : Dune.Lib_name.t list option
   }
 
 let workspace_file t = t.workspace_file
@@ -646,7 +646,7 @@ let term =
     in
     Arg.(
       value
-      & opt (some (list string)) None
+      & opt (some (list lib_name)) None
       & info [ "instrument-with" ] ~docs
           ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
           ~docv:"BACKENDS" ~doc)

@@ -122,3 +122,5 @@ let bytes =
   conv (decode, pp_print_int64)
 
 let context_name : Context_name.t conv = conv Context_name.conv
+
+let lib_name = conv Dune.Lib_name.conv

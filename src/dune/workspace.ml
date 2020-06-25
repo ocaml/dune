@@ -470,7 +470,7 @@ module DB = struct
     type t =
       { x : Context_name.t option
       ; profile : Profile.t option
-      ; instrument_with : string list option
+      ; instrument_with : Lib_name.t list option
       ; path : Path.t option
       }
 
@@ -479,7 +479,7 @@ module DB = struct
       record
         [ ("x", option Context_name.to_dyn x)
         ; ("profile", option Profile.to_dyn profile)
-        ; ("instrument_with", option (list string) instrument_with)
+        ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
         ; ("path", option Path.to_dyn path)
         ]
 
@@ -496,9 +496,6 @@ let workspace =
     let (_ : Memo.Run.t) = Memo.current_run () in
     let { DB.Settings.path; profile; instrument_with; x } =
       Memo.Run.Fdecl.get DB.Settings.t
-    in
-    let instrument_with =
-      Option.map ~f:(List.map ~f:Lib_name.of_string) instrument_with
     in
     match path with
     | None -> default ?x ?profile ?instrument_with ()

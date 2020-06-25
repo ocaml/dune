@@ -9,29 +9,6 @@ environment variable. In addition to providing an easy way to toggle
 instrumentation of your code, this setup avoids creating a hard dependency on
 the precise instrumentation backend in your project.
 
-Declaring an instrumentation backend
-====================================
-
-Instrumentation backends are libraries with the special field
-``(instrumentation.backend)``. This field instructs Dune that the library can be
-used as an intrumentation backend and also provides the parameters that are
-specific to this backend.
-
-Currently, Dune will only support ``ppx`` instrumentation tools, and the
-instrumentation library must specify the ``ppx`` rewriters that instruments the
-code. This can be done as follows:
-
-.. code:: scheme
-
-   (library
-    ...
-    (instrumentation.backend
-      (ppx <ppx-rewriter-name>)))
-
-When such an instrumentation backend is activated, Dune will implicitly add the
-mentioned ``ppx`` rewriter to the list of ``ppx`` rewriters for libraries and
-executables that specify this instrumentation backend.
-
 Specifying what to instrument
 =============================
 
@@ -115,6 +92,29 @@ or for each context individually:
 If both the global and local fields are present, the precedence is the same as
 for the ``profile`` field: the per-context setting takes precedence over the
 command-line flag, which takes precedence over the global field.
+
+Declaring an instrumentation backend
+====================================
+
+Instrumentation backends are libraries with the special field
+``(instrumentation.backend)``. This field instructs Dune that the library can be
+used as an intrumentation backend and also provides the parameters that are
+specific to this backend.
+
+Currently, Dune will only support ``ppx`` instrumentation tools, and the
+instrumentation library must specify the ``ppx`` rewriters that instruments the
+code. This can be done as follows:
+
+.. code:: scheme
+
+   (library
+    ...
+    (instrumentation.backend
+      (ppx <ppx-rewriter-name>)))
+
+When such an instrumentation backend is activated, Dune will implicitly add the
+mentioned ``ppx`` rewriter to the list of ``ppx`` rewriters for libraries and
+executables that specify this instrumentation backend.
 
 .. _bisect_ppx: https://github.com/aantron/bisect_ppx
 .. _landmarks: https://github.com/LexiFi/landmarks

@@ -69,3 +69,7 @@ let rec of_dyn : Dyn.t -> t = function
     List (List.map fields ~f:(fun (field, f) -> List [ Atom field; of_dyn f ]))
   | Variant (s, []) -> Atom s
   | Variant (s, xs) -> List (Atom s :: List.map xs ~f:of_dyn)
+
+let rec to_dyn : t -> Dyn.t = function
+  | Atom s -> String s
+  | List xs -> List (List.map ~f:to_dyn xs)

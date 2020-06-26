@@ -12,6 +12,12 @@ module Var = struct
     let to_dyn = Dyn.Encoder.string
   end
 
+  let temp_dir =
+    if Sys.win32 then
+      "TEMP"
+    else
+      "TMPDIR"
+
   include Comparable.Make (T)
   include T
 end

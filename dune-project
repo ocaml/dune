@@ -1,10 +1,12 @@
-(lang dune 2.5)
+(lang dune 2.7)
 ;          ^^^
 ; When changing the version, don't forget to regenerate *.opam files
 ; by running [dune build].
 (name dune)
 
 (generate_opam_files true)
+
+(cram enable)
 
 ; Reserved for Dune itself. This is to help with the bootstrap
 (using dune-bootstrap-info 0.1)

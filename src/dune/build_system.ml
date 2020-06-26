@@ -83,7 +83,7 @@ module Alias0 = struct
   let dep t = Build.path (Path.build (stamp_file t))
 
   let dep_multi_contexts ~dir ~name ~contexts =
-    ignore (find_dir_specified_on_command_line ~dir);
+    ignore (File_tree.find_dir_specified_on_command_line ~dir);
     let context_to_stamp_file ctx =
       let ctx_dir = Context_name.build_dir ctx in
       let dir = Path.Build.(append_source ctx_dir dir) in
@@ -133,7 +133,7 @@ module Alias0 = struct
 
   let dep_rec_multi_contexts ~dir:src_dir ~name ~contexts =
     let open Build.O in
-    let dir = find_dir_specified_on_command_line ~dir:src_dir in
+    let dir = File_tree.find_dir_specified_on_command_line ~dir:src_dir in
     let+ is_empty_list =
       Build.all
         (List.map contexts ~f:(fun ctx ->

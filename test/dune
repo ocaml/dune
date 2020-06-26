@@ -157,9 +157,3 @@
  (action
   (run ./incr.exe y %{targets}))
  (locks m))
-
-(alias
- (name runtest-no-deps)
- (deps
-  (alias_rec blackbox-tests/runtest-no-deps)
-  (alias_rec unit-tests/runtest)))

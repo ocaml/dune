@@ -179,6 +179,7 @@ let fold_one_step t ~init:acc ~f =
   | Digest_files _
   | Diff _
   | Merge_files_into _
+  | Cram _
   | Format_dune_file _ ->
     acc
 
@@ -225,6 +226,7 @@ let rec is_dynamic = function
   | Mkdir _
   | Digest_files _
   | Merge_files_into _
+  | Cram _
   | Format_dune_file _ ->
     false
 
@@ -305,7 +307,9 @@ let is_useful_to distribute memoize =
     | Mkdir _ -> false
     | Digest_files _ -> distribute
     | Merge_files_into _ -> distribute
-    | Run _ -> true
+    | Cram _
+    | Run _ ->
+      true
     | Dynamic_run _ -> true
     | System _ -> true
     | Bash _ -> true

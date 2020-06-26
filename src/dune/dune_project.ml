@@ -167,6 +167,7 @@ type t =
   ; explicit_js_mode : bool
   ; format_config : Format_config.t option
   ; strict_package_deps : bool
+  ; cram : bool
   }
 
 let equal = ( == )
@@ -217,6 +218,7 @@ let to_dyn
     ; explicit_js_mode
     ; format_config
     ; strict_package_deps
+    ; cram
     } =
   let open Dyn.Encoder in
   record
@@ -238,6 +240,7 @@ let to_dyn
     ; ("explicit_js_mode", bool explicit_js_mode)
     ; ("format_config", (option Format_config.to_dyn) format_config)
     ; ("strict_package_deps", bool strict_package_deps)
+    ; ("cram", bool cram)
     ]
 
 let find_extension_args t key = Univ_map.find t.extension_args key
@@ -611,7 +614,34 @@ let infer ~dir packages =
   ; explicit_js_mode
   ; format_config = None
   ; strict_package_deps
+  ; cram = false
   }
+
+module Toggle = struct
+  type t =
+    | Enable
+    | Disable
+
+  let enabled = function
+    | Enable -> true
+    | Disable -> false
+
+  let decode =
+    let open Dune_lang.Decoder in
+    map_validate string ~f:(function
+      | "enable" -> Ok Enable
+      | "disable" -> Ok Disable
+      | _ -> Error (User_error.make [ Pp.text "must be 'disable' or 'enable'" ]))
+
+  let field ?check name =
+    let open Dune_lang.Decoder in
+    let decode =
+      match check with
+      | None -> decode
+      | Some check -> check >>= fun () -> decode
+    in
+    field_o name decode
+end
 
 let anonymous ~dir = infer ~dir Package.Name.Map.empty
 
@@ -655,6 +685,8 @@ let parse ~dir ~lang ~opam_packages ~file =
      and+ strict_package_deps =
        field_o_b "strict_package_deps"
          ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 3))
+     and+ cram =
+       Toggle.field "cram" ~check:(Dune_lang.Syntax.since Stanza.syntax (2, 7))
      in
      let packages =
        if List.is_empty packages then
@@ -758,6 +790,11 @@ let parse ~dir ~lang ~opam_packages ~file =
      let generate_opam_files =
        Option.value ~default:false generate_opam_files
      in
+     let cram =
+       match cram with
+       | None -> false
+       | Some t -> Toggle.enabled t
+     in
      let root = dir in
      let file_key = File_key.make ~name ~root in
      let dialects =
@@ -785,6 +822,7 @@ let parse ~dir ~lang ~opam_packages ~file =
      ; explicit_js_mode
      ; format_config
      ; strict_package_deps
+     ; cram
      })
 
 let load_dune_project ~dir opam_packages =
@@ -831,3 +869,5 @@ let () =
   Extension.register_simple Action_plugin.syntax (return [])
 
 let strict_package_deps t = t.strict_package_deps
+
+let cram t = t.cram

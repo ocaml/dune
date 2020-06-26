@@ -199,13 +199,9 @@ let define_all_alias ~dir ~scope ~js_targets =
   in
   Rules.Produce.Alias.add_deps ~dyn_deps (Alias.all ~dir) Path.Set.empty
 
-let gen_rules sctx dir_contents cctxs
+let gen_rules sctx dir_contents cctxs expander
     { Dir_with_dune.src_dir; ctx_dir; data = stanzas; scope; dune_version = _ }
     =
-  let expander =
-    let expander = Super_context.expander sctx ~dir:ctx_dir in
-    Dir_contents.add_sources_to_expander sctx expander
-  in
   let files_to_install
       { Install_conf.section = _; files; package = _; enabled_if = _ } =
     Path.Set.of_list_map files ~f:(fun fb ->
@@ -284,15 +280,21 @@ let gen_rules sctx dir_contents cctxs
   define_all_alias ~dir:ctx_dir ~scope ~js_targets;
   cctxs
 
-let gen_rules sctx dir_contents cctxs ~dir :
+let gen_rules sctx dir_contents cctxs ~source_dir ~dir :
     (Loc.t * Compilation_context.t) list =
   with_format sctx ~dir ~f:(fun _ -> Format_rules.gen_rules ~dir);
+  let expander =
+    let expander = Super_context.expander sctx ~dir in
+    Dir_contents.add_sources_to_expander sctx expander
+  in
+  (let tests = File_tree.Dir.cram_tests source_dir in
+   Cram_rules.rules ~sctx ~expander ~dir tests);
   match Super_context.stanzas_in sctx ~dir with
+  | Some d -> gen_rules sctx dir_contents cctxs expander d
   | None ->
     define_all_alias ~dir ~js_targets:[]
       ~scope:(Super_context.find_scope_by_dir sctx dir);
     []
-  | Some d -> gen_rules sctx dir_contents cctxs d
 
 let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
     =
@@ -345,15 +347,16 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
             Utop.setup sctx ~dir:(Path.Build.parent_exn dir)
           else if components <> [] then
             Build_system.load_dir ~dir:(Path.parent_exn (Path.build dir))
-        | Some _ -> (
+        | Some source_dir -> (
           (* This interprets "rule" and "copy_files" stanzas. *)
           match Dir_contents.gen_rules sctx ~dir with
           | Group_part root -> Build_system.load_dir ~dir:(Path.build root)
           | Standalone_or_root (dir_contents, subs) ->
-            let cctxs = gen_rules sctx dir_contents [] ~dir in
+            let cctxs = gen_rules sctx dir_contents [] ~source_dir ~dir in
             List.iter subs ~f:(fun dc ->
                 ignore
-                  ( gen_rules sctx dir_contents cctxs ~dir:(Dir_contents.dir dc)
+                  ( gen_rules sctx dir_contents cctxs ~source_dir
+                      ~dir:(Dir_contents.dir dc)
                     : _ list )) ) ) );
       These (String.Set.of_list subdirs)
   in

@@ -134,5 +134,7 @@ module Glob = struct
 
   let of_pred p = Element p
 
+  let true_ = Element (fun _ -> true)
+
   let of_string_set s = Element (String.Set.mem s)
 end

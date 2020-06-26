@@ -1869,6 +1869,7 @@ type Stanza.t +=
   | Include_subdirs of Loc.t * Include_subdirs.t
   | Toplevel of Toplevel.t
   | Deprecated_library_name of Deprecated_library_name.t
+  | Cram of Cram.Stanza.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -1963,6 +1964,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
+    ; ( "cram"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 7)
+        and+ t = Cram.Stanza.decode in
+        [ Cram t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -2032,15 +2037,18 @@ module Stanzas = struct
                         (Pp.textf "included from %s" (line_loc x)))))
           ]
     in
-    match
-      List.filter_map stanzas ~f:(function
-        | Dune_env.T e -> Some e
-        | _ -> None)
-    with
-    | _ :: e :: _ ->
-      User_error.raise ~loc:e.loc
-        [ Pp.text "The 'env' stanza cannot appear more than once" ]
-    | _ -> stanzas
+    let (_ : bool) =
+      List.fold_left stanzas ~init:false ~f:(fun env stanza ->
+          match stanza with
+          | Dune_env.T e ->
+            if env then
+              User_error.raise ~loc:e.loc
+                [ Pp.text "The 'env' stanza cannot appear more than once" ]
+            else
+              true
+          | _ -> env)
+    in
+    stanzas
 end
 
 let stanza_package = function

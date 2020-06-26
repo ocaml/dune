@@ -64,6 +64,7 @@ let ensure_at_most_one_dynamic_run ~loc action =
     | Digest_files _
     | Diff _
     | Merge_files_into _
+    | Cram _
     | Format_dune_file _ ->
       false
     | Pipe (_, ts)

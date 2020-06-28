@@ -10,7 +10,9 @@ type t =
   }
 
 let fake_gc_stat =
-  { Gc.minor_words = 0.
+  let init_gc = Gc.quick_stat () in
+  { init_gc with
+    Gc.minor_words = 0.
   ; promoted_words = 0.
   ; major_words = 0.
   ; minor_collections = 0
@@ -26,7 +28,7 @@ let fake_gc_stat =
   ; compactions = 0
   ; top_heap_words = 0
   ; stack_size = 0
-  }
+  } [@ocaml.warning "-23"]      (* all fiels of record used *)
 
 let fake time_ref buf =
   let print s = Buffer.add_string buf s in

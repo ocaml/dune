@@ -550,13 +550,10 @@ const char *s%i = "BEGIN-%i-false-END";
           match value with
           | Some v -> v
           | None ->
-            let msg =
-              sprintf
-                "Unable to read variable %S of type %s. Invalid value %S in %s \
-                 found"
-                name (Type.name t) raw_val obj_file
-            in
-            raise (Fatal_error msg)
+            die
+              "Unable to read variable %S of type %s. Invalid value %S in %s \
+               found"
+              name (Type.name t) raw_val obj_file
         in
         (name, value))
 

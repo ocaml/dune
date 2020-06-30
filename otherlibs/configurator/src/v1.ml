@@ -262,10 +262,15 @@ type config =
   ; vars : Ocaml_config.Vars.t
   }
 
+let dune_is_too_old ~min:v =
+  die
+    "You seem to be running dune < %s. This version of dune-configurator \
+     requires at least dune %s."
+    v v
+
 let read_dot_dune_configurator_file ~build_dir =
   let file = Filename.concat build_dir ".dune/configurator.v2" in
-  if not (Sys.file_exists file) then
-    die "Cannot find special file %S produced by dune." file;
+  if not (Sys.file_exists file) then dune_is_too_old ~min:"2.6";
   let open Sexp in
   let unable_to_parse err = die "Unable to parse %S.@.%s@." file err in
   let sexp =
@@ -703,10 +708,7 @@ let main ?(args = []) ~name f =
       die
         "Configurator scripts must be run with Dune. To manually run a script, \
          use $ dune exec."
-    | "1" ->
-      die
-        "You seem to be running Dune < 2.3. This version of dune-configurator \
-         requres at lest dune 2.3."
+    | "1" -> dune_is_too_old ~min:"2.3"
     | s -> s
   in
   let verbose = ref false in

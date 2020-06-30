@@ -26,6 +26,7 @@ type t =
   { debug_dep_path : bool
   ; debug_findlib : bool
   ; debug_backtraces : bool
+  ; debug_artifact_substitution : bool
   ; profile : Profile.t option
   ; workspace_file : Arg.Path.t option
   ; root : Workspace_root.t
@@ -81,6 +82,7 @@ let set_common_other ?log_file c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
+  Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
@@ -473,6 +475,12 @@ let term =
       value & flag
       & info [ "debug-backtraces" ] ~docs
           ~doc:{|Always print exception backtraces.|})
+  and+ debug_artifact_substitution =
+    Arg.(
+      value & flag
+      & info
+          [ "debug-artifact-substitution" ]
+          ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
     Arg.(
       value
@@ -652,6 +660,7 @@ let term =
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
+  ; debug_artifact_substitution
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file

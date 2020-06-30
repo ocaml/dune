@@ -111,6 +111,20 @@ Check what the generated build info module looks like:
     ; "dune-build-info", Some "XXX"
     ]
 
+Test --debug-artifact-substitution
+----------------------------------
+
+  $ dune install --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
+  Found placeholder in _build/install/default/bin/c:
+  - placeholder: Vcs_describe "c"
+  - evaluates to: "1.0+c"
+  Found placeholder in _build/install/default/bin/c:
+  - placeholder: Vcs_describe "b"
+  - evaluates to: "1.0+b"
+  Found placeholder in _build/install/default/bin/c:
+  - placeholder: Vcs_describe "a"
+  - evaluates to: "1.0+a"
+
 Test substitution when promoting
 --------------------------------
 

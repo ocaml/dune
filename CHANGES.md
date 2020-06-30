@@ -20,6 +20,10 @@ next
 
 - Fix crash when caching is enabled (@rgrinberg, #3581, fixes #3580)
 
+- Add a `--debug-artifact-substution` flag to help debug problem with
+  version not being captured by `dune-build-info` (#3589,
+  @jeremiedimino)
+
 2.6.0 (05/06/2020)
 ------------------
 

@@ -17,6 +17,9 @@ val capture_outputs : bool ref
 (** Always print backtraces, to help debugging dune itself *)
 val debug_backtraces : bool -> unit
 
+(** Print debug info about artifact substitution *)
+val debug_artifact_substitution : bool ref
+
 (** Command to use to diff things *)
 val diff_command : string option ref
 

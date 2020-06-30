@@ -329,7 +329,7 @@ output the replacement        |                                             |
  |                                                                          |
  \--------------------------------------------------------------------------/
     v} *)
-let copy ~get_vcs ~input ~output =
+let copy ~get_vcs ~input_file ~input ~output =
   let open Fiber.O in
   let rec loop scanner_state ~beginning_of_data ~pos ~end_of_data =
     let scanner_state = Scanner.run scanner_state ~buf ~pos ~end_of_data in
@@ -355,6 +355,16 @@ let copy ~get_vcs ~input ~output =
       match decode placeholder with
       | Some t ->
         let* s = eval t ~get_vcs in
+        ( if !Clflags.debug_artifact_substitution then
+          let open Pp.O in
+          Console.print
+            [ Pp.textf "Found placeholder in %s:"
+                (Path.to_string_maybe_quoted input_file)
+            ; Pp.enumerate ~f:Fun.id
+                [ Pp.text "placeholder: " ++ Dyn.pp (to_dyn t)
+                ; Pp.text "evaluates to: " ++ Dyn.pp (String s)
+                ]
+            ] );
         let s = encode_replacement ~len ~repl:s in
         output (Bytes.unsafe_of_string s) 0 len;
         let pos = placeholder_start + len in
@@ -409,4 +419,5 @@ let copy_file ~get_vcs ?chmod ~src ~dst () =
     ~finally:(fun () ->
       Io.close_both (ic, oc);
       Fiber.return ())
-    (fun () -> copy ~get_vcs ~input:(input ic) ~output:(output oc))
+    (fun () ->
+      copy ~get_vcs ~input_file:src ~input:(input ic) ~output:(output oc))

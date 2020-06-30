@@ -727,16 +727,17 @@ let main ?(args = []) ~name f =
   Arg.parse args anon usage;
   let log_db = ref [] in
   let log s = log_db := s :: !log_db in
-  let t =
-    create_from_inside_dune ~dest_dir:!dest_dir
-      ~log:
-        ( if !verbose then
-          prerr_endline
-        else
-          log )
-      ~build_dir ~name
-  in
-  try f t
+  try
+    let t =
+      create_from_inside_dune ~dest_dir:!dest_dir
+        ~log:
+          ( if !verbose then
+            prerr_endline
+          else
+            log )
+        ~build_dir ~name
+    in
+    f t
   with exn -> (
     let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");

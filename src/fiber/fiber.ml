@@ -403,7 +403,9 @@ end
 let fork f k =
   let ivar = Ivar.create () in
   EC.add_refs 1;
-  EC.apply f () (fun x -> Ivar.fill ivar x ignore);
+  EC.apply f () (fun x ->
+      Ivar.fill ivar x ignore;
+      EC.deref ());
   k ivar
 
 let nfork_map l ~f k =

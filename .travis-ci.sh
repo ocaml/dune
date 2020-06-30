@@ -54,19 +54,19 @@ fi
 case "$TARGET" in
   prepare)
     echo -en "travis_fold:start:ocaml\r"
-    if [ ! -e ~/ocaml/cached-version -o "$(cat ~/ocaml/cached-version)" != "$OCAML_VERSION.$OCAML_RELEASE" ] ; then
+    if [ ! -e ~/ocaml/cached-version -o "$(cat ~/ocaml/cached-version)" != "${OCAML_VERSION}${OCAML_RELEASE}" ] ; then
       rm -rf ~/ocaml
       mkdir -p ~/ocaml/src
       cd ~/ocaml/src
-      wget http://caml.inria.fr/pub/distrib/ocaml-$OCAML_VERSION/ocaml-$OCAML_VERSION.$OCAML_RELEASE.tar.gz
-      tar -xzf ocaml-$OCAML_VERSION.$OCAML_RELEASE.tar.gz
-      cd ocaml-$OCAML_VERSION.$OCAML_RELEASE
+      wget https://github.com/ocaml/ocaml/archive/${OCAML_VERSION}${OCAML_RELEASE}.tar.gz
+      tar -xzf ${OCAML_VERSION}${OCAML_RELEASE}.tar.gz
+      cd ocaml-${OCAML_VERSION}${OCAML_RELEASE}
       ./configure -prefix ~/ocaml
       make world.opt
       make install
       cd ../..
       rm -rf src
-      echo "$OCAML_VERSION.$OCAML_RELEASE" > ~/ocaml/cached-version
+      echo "${OCAML_VERSION}${OCAML_RELEASE}" > ~/ocaml/cached-version
     fi
     echo -en "travis_fold:end:ocaml\r"
     if [ $WITH_OPAM -eq 1 -o $OLD_OCAML -eq 1 ] ; then

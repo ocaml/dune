@@ -31,9 +31,7 @@ let findlib =
     ; instrument_with = []
     }
   in
-  Findlib.create ~paths:[ db_path ]
-    ~version:(Ocaml_version.make (4, 02, 3))
-    ~lib_config
+  Findlib.create ~paths:[ db_path ] ~lib_config
 
 let%expect_test _ =
   let pkg =

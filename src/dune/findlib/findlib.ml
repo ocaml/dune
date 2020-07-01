@@ -566,8 +566,9 @@ let all_packages t =
    - A memoized function for finding packages by names (see [find]).
 
    - A [Memo.Lazy.t] storing the set of all packages (see [root_packages]). *)
-let create ~paths ~version ~lib_config =
-  let stdlib_dir = lib_config.Lib_config.stdlib_dir in
+let create ~paths ~(lib_config : Lib_config.t) =
+  let stdlib_dir = lib_config.stdlib_dir in
+  let version = lib_config.ocaml_version in
   { stdlib_dir
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version

@@ -778,51 +778,46 @@ module Create = struct
        contexts, and we also need to make sure that each context is instantiated
        only once.
 
-       To do all that, the following code works in three steps:
+       To do all that, the following code works in two steps:
 
        - step 1: build a map from context name to their instantiation.
        Instantiating a context requires looking up dependent contexts in this
-       map, so that map itself is stored in an ivar to break the cyclic
-       definition
+       map, so the values in the map are ivars to break the cyclic definition
 
-       - step 2: fill the context map ivar. This allows the various
-       instantiation fibers blocked on it to resume
-
-       - step 3: wait for all instantiation fibers to complete
+       - step 2: read all instantiation ivars in sequence
 
        If there was a cycle between contexts, the below code would dead-lock.
        However, we check at parsing time that there is no such cycle. *)
-    let contexts_map_ivar = Fiber.Ivar.create () in
-    let* contexts =
-      Fiber.parallel_map workspace.contexts ~f:(fun context ->
-          let+ contexts =
-            Fiber.fork (fun () ->
-                let* host_context =
-                  match Workspace.Context.host_context context with
-                  | None -> Fiber.return None
-                  | Some context -> (
-                    let* contexts_map = Fiber.Ivar.read contexts_map_ivar in
-                    let+ contexts =
-                      Fiber.Future.wait
-                        (Context_name.Map.find_exn contexts_map context)
-                    in
-                    match contexts with
-                    | [ x ] -> Some x
-                    | [] -> assert false (* checked by workspace *)
-                    | _ :: _ -> assert false
-                    (* target cannot be host *) )
-                in
-                instantiate_context env workspace ~context ~host_context)
-          in
-          let name = Workspace.Context.name context in
-          (name, contexts))
+    let context_ivars_map =
+      Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun ctx ->
+          (Workspace.Context.name ctx, Fiber.Ivar.create ()))
     in
     let* () =
-      Fiber.Ivar.fill contexts_map_ivar (Context_name.Map.of_list_exn contexts)
+      Fiber.parallel_iter workspace.contexts ~f:(fun context ->
+          let* contexts =
+            let* host_context =
+              match Workspace.Context.host_context context with
+              | None -> Fiber.return None
+              | Some context -> (
+                let+ contexts =
+                  Fiber.Ivar.read
+                    (Context_name.Map.find_exn context_ivars_map context)
+                in
+                match contexts with
+                | [ x ] -> Some x
+                | [] -> assert false (* checked by workspace *)
+                | _ :: _ -> assert false
+                (* target cannot be host *) )
+            in
+            instantiate_context env workspace ~context ~host_context
+          in
+          let name = Workspace.Context.name context in
+          let ivar = Context_name.Map.find_exn context_ivars_map name in
+          Fiber.Ivar.fill ivar contexts)
     in
     let* contexts =
-      Fiber.parallel_map contexts ~f:(fun (_name, context) ->
-          Fiber.Future.wait context)
+      Fiber.parallel_map (Context_name.Map.values context_ivars_map)
+        ~f:(fun ivar -> Fiber.Ivar.read ivar)
     in
     Fiber.return (List.concat contexts)
 

@@ -19,14 +19,14 @@ prefixed and unprefixed modules are built.
   $ ./sdune clean
   $ ./sdune build --display short @t1
       ocamldep .a1.objs/a.ml.d
-        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-        ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
       ocamldep .b.eobjs/b.ml.d
-        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
       ocamldep .c1.objs/c.ml.d
-        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
       ocamldep .c2.objs/d.ml.d
+        ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
+        ocamlc .b.eobjs/byte/dune__exe__B.{cmi,cmo,cmt}
+        ocamlc .c1.objs/byte/c.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2.{cmi,cmo,cmt}
+        ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
         ocamlc .c2.objs/byte/c2__D.{cmi,cmo,cmt}
 
 Command line version.
@@ -80,8 +80,8 @@ The next test builds a native .cmxa.
   $ ./sdune clean
   $ ./sdune build --display short @t4
         ocamlc .a1.objs/byte/a1.{cmi,cmo,cmt}
-      ocamlopt .a1.objs/native/a1.{cmx,o}
       ocamldep .a1.objs/a.ml.d
+      ocamlopt .a1.objs/native/a1.{cmx,o}
         ocamlc .a1.objs/byte/a1__A.{cmi,cmo,cmt}
       ocamlopt .a1.objs/native/a1__A.{cmx,o}
       ocamlopt a1.{a,cmxa}
@@ -213,17 +213,17 @@ of a (rule).
 
   $ ./sdune build --display short _build/default/my.cmxs
       ocamldep .dummy.objs/x3.ml.d
-        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
-        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
-      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
         ocamlc .plugin.objs/byte/plugin.{cmi,cmo,cmt}
-      ocamlopt .plugin.objs/native/plugin.{cmx,o}
       ocamldep .plugin.objs/x1.ml.d
-        ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
-      ocamlopt .plugin.objs/native/plugin__X1.{cmx,o}
       ocamldep .plugin.objs/x2.ml.d
+        ocamlc .dummy.objs/byte/dummy.{cmi,cmo,cmt}
+      ocamlopt .plugin.objs/native/plugin.{cmx,o}
+        ocamlc .plugin.objs/byte/plugin__X1.{cmi,cmo,cmt}
         ocamlc .plugin.objs/byte/plugin__X2.{cmi,cmo,cmt}
+        ocamlc .dummy.objs/byte/dummy__X3.{cmi,cmo,cmt}
+      ocamlopt .plugin.objs/native/plugin__X1.{cmx,o}
       ocamlopt .plugin.objs/native/plugin__X2.{cmx,o}
+      ocamlopt .dummy.objs/native/dummy__X3.{cmx,o}
       ocamlopt plugin.{a,cmxa}
       ocamlopt my.cmxs
 

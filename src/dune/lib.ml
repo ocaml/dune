@@ -911,17 +911,19 @@ let instrumentation_backend instrument_with resolve libname =
   if not (List.mem ~set:instrument_with (snd libname)) then
     None
   else
-    match resolve libname with
-    | Error exn -> raise exn
-    | Ok lib -> (
-      match Lib_info.instrumentation_backend (info lib) with
-      | None ->
-        User_error.raise ~loc:(fst libname)
-          [ Pp.textf
-              "Library %S is not declared to have an instrumentation backend."
-              (Lib_name.to_string (snd libname))
-          ]
-      | Some _ as ppx -> ppx )
+    match
+      resolve libname
+      |> Result.ok_exn
+      |> info
+      |> Lib_info.instrumentation_backend
+    with
+    | Some _ as ppx -> ppx
+    | None ->
+      User_error.raise ~loc:(fst libname)
+        [ Pp.textf
+            "Library %S is not declared to have an instrumentation backend."
+            (Lib_name.to_string (snd libname))
+        ]
 
 module rec Resolve : sig
   val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> Status.t
@@ -1565,10 +1567,8 @@ module Compile = struct
     in
     let lib_deps_info =
       let pps =
-        match t.pps with
-        | Error exn -> raise exn
-        | Ok pps ->
-          List.map ~f:(fun t -> Loc.none, t.name) pps
+        Result.ok_exn t.pps
+        |> List.map ~f:(fun t -> Loc.none, t.name)
       in
       let user_written_deps = Lib_info.user_written_deps t.info in
       let kind : Lib_deps_info.Kind.t =

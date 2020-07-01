@@ -16,10 +16,17 @@ let common_vars_list =
   ; "ccomp_type"
   ; "profile"
   ; "ocaml_version"
+  ; "context_name"
   ]
 
 let common_vars ~since =
-  Only (List.map ~f:(fun var -> (var, since)) common_vars_list)
+  Only
+    (List.map
+       ~f:(fun var ->
+         match var with
+         | "context_name" -> (var, (2, 7))
+         | _ -> (var, since))
+       common_vars_list)
 
 let emit_warning allowed_vars is_error var =
   let loc = String_with_vars.Var.loc var in

@@ -28,9 +28,10 @@ Tests for enabled_if in install stanza using forbidden variable.
   File "dune", line 6, characters 18-31:
   6 |  (enabled_if (= %{project_root} ""))
                         ^^^^^^^^^^^^^
-  Error: Only architecture, system, model, os_type, ccomp_type, profile and
-  ocaml_version variables are allowed in this 'enabled_if' field. If you think
-  that project_root should also be allowed, please file an issue about it.
+  Error: Only architecture, system, model, os_type, ccomp_type, profile,
+  ocaml_version and context_name variables are allowed in this 'enabled_if'
+  field. If you think that project_root should also be allowed, please file an
+  issue about it.
   [1]
 
 The next ones use forbidden variables
@@ -43,9 +44,10 @@ For dune 2.3 -> 2.5 it is a warning
   File "dune", line 3, characters 19-32:
   3 |  (enabled_if (<> %{project_root} "")))
                          ^^^^^^^^^^^^^
-  Warning: Only architecture, system, model, os_type, ccomp_type, profile and
-  ocaml_version variables are allowed in this 'enabled_if' field. If you think
-  that project_root should also be allowed, please file an issue about it.
+  Warning: Only architecture, system, model, os_type, ccomp_type, profile,
+  ocaml_version and context_name variables are allowed in this 'enabled_if'
+  field. If you think that project_root should also be allowed, please file an
+  issue about it.
   Entering directory 'forbidden_var'
   bar
 
@@ -58,7 +60,31 @@ For dune >= 2.6 it is an error
   File "dune", line 3, characters 19-32:
   3 |  (enabled_if (<> %{project_root} "")))
                          ^^^^^^^^^^^^^
-  Error: Only architecture, system, model, os_type, ccomp_type, profile and
-  ocaml_version variables are allowed in this 'enabled_if' field. If you think
-  that project_root should also be allowed, please file an issue about it.
+  Error: Only architecture, system, model, os_type, ccomp_type, profile,
+  ocaml_version and context_name variables are allowed in this 'enabled_if'
+  field. If you think that project_root should also be allowed, please file an
+  issue about it.
   [1]
+
+
+For dune < 2.7 context_name is not allowed
+  $ cat > var_context_name/dune-project <<EOF
+  > (lang dune 2.6)
+  > EOF
+  $ dune exec ./foo.exe --root var_context_name
+  Entering directory 'var_context_name'
+  File "dune", line 3, characters 18-31:
+  3 |  (enabled_if (= %{context_name} "default")))
+                        ^^^^^^^^^^^^^
+  Error: This variable is only available since version 2.7 of the dune
+  language. Please update your dune-project file to have (lang dune 2.7).
+  [1]
+
+For dune >= 2.7 context_name allowed
+  $ cat > var_context_name/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ dune exec ./foo.exe --root var_context_name
+  Entering directory 'var_context_name'
+  Entering directory 'var_context_name'
+  bar

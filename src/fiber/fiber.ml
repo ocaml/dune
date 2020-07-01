@@ -43,6 +43,9 @@ module Execution_context : sig
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 
   val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
+
+  (* Execute a callback with a fresh execution context *)
+  val new_run : (unit -> 'a) -> 'a
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
@@ -170,6 +173,19 @@ end = struct
       current := t
 
   let deref () = deref !current
+
+  let new_run f =
+    let backup = !current in
+    Exn.protect
+      ~finally:(fun () -> current := backup)
+      ~f:(fun () ->
+        current :=
+          { on_error = None
+          ; fibers = ref 1
+          ; vars = Univ_map.empty
+          ; on_release = None
+          };
+        f ())
 end
 
 module EC = Execution_context
@@ -497,7 +513,16 @@ module Throttle = struct
           f ())
 end
 
-let run t =
+let apply_and_set_result f =
   let result = ref None in
-  EC.apply (fun () -> t) () (fun x -> result := Some x);
-  !result
+  EC.apply f () (fun x -> result := Some x);
+  result
+
+let run t = EC.new_run (fun () -> !(apply_and_set_result (fun () -> t)))
+
+let run2 a b =
+  EC.new_run (fun () ->
+      EC.add_refs 1;
+      let result_a = apply_and_set_result a in
+      let result_b = apply_and_set_result b in
+      (!result_a, !result_b))

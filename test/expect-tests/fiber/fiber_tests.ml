@@ -31,15 +31,10 @@ end = struct
 
   let run t =
     match
-      Fiber.run
-        (let* result = Fiber.fork (fun () -> t) in
-         let* () = restart_suspended () in
-         Fiber.Future.peek result)
+      Fiber.run (Fiber.fork_and_join (fun () -> t) restart_suspended >>| fst)
     with
-    | None
-    | Some None ->
-      raise Never
-    | Some (Some x) -> x
+    | None -> raise Never
+    | Some x -> x
 end
 
 let failing_fiber () : unit Fiber.t =

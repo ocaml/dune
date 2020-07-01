@@ -1,12 +1,29 @@
-  $ dune build --root exe @check --display short && ls exe/.merlin
-  Entering directory 'exe'
-      ocamldep .foo.eobjs/foo.ml.d
-        ocamlc .foo.eobjs/byte/foo.{cmi,cmo,cmt}
-  exe/.merlin
+Check that the @check alias builds:
+- the merlin file
+- the cmi/cmo/cmt files
 
-  $ dune build --root lib @check --display short && ls lib/.merlin
-  Entering directory 'lib'
-        ocamlc bar$ext_obj
-      ocamldep .foo.objs/foo.ml.d
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-  lib/.merlin
+A test should be considered successful if it prints the .merlin files
+as well as the foo.{cmi,cmo,cmt} files.
+
+  $ build_check_and_list_interesting_files_in ()
+  > (
+  >   cd $1
+  >   dune build @check
+  >   find _build \( -name '*.cm*' -o -name .merlin \) -printf '%f\n' | LANG=C sort
+  > )
+
+Test the property for executables:
+
+  $ build_check_and_list_interesting_files_in exe
+  .merlin
+  foo.cmi
+  foo.cmo
+  foo.cmt
+
+Test the property for libraries:
+
+  $ build_check_and_list_interesting_files_in lib
+  .merlin
+  foo.cmi
+  foo.cmo
+  foo.cmt

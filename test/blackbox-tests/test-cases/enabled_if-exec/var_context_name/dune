@@ -1,0 +1,3 @@
+(executable
+ (name foo)
+ (enabled_if (= %{context_name} "default")))

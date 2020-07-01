@@ -1,4 +1,4 @@
-(dirs :standard \ forbidden_var install)
+(dirs :standard \ forbidden_var install var_context_name)
 
 (executable
  (name main)

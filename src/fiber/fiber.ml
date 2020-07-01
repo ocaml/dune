@@ -408,39 +408,6 @@ module Ivar = struct
       | Empty _ -> None )
 end
 
-module Future = struct
-  type 'a t = 'a Ivar.t
-
-  let wait = Ivar.read
-
-  let peek = Ivar.peek
-end
-
-let fork f k =
-  let ivar = Ivar.create () in
-  EC.add_refs 1;
-  EC.apply f () (fun x ->
-      Ivar.fill ivar x ignore;
-      EC.deref ());
-  k ivar
-
-let nfork_map l ~f k =
-  match l with
-  | [] -> k []
-  | [ x ] -> fork (fun () -> f x) (fun ivar -> k [ ivar ])
-  | l ->
-    let n = List.length l in
-    EC.add_refs (n - 1);
-    let ivars =
-      List.map l ~f:(fun x ->
-          let ivar = Ivar.create () in
-          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-          ivar)
-    in
-    k ivars
-
-let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
-
 module Mutex = struct
   type t =
     { mutable locked : bool

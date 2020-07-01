@@ -198,61 +198,6 @@ let%expect_test _ =
     outer: raised Exit
     [PASS] Never raised as expected |}]
 
-let%expect_test "collect_errors and termination" =
-  (* The following tests check that [collect_errors] only returns after all the
-     sub-fibers have terminated *)
-  let fiber =
-    Fiber.collect_errors (fun () ->
-        let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
-        Fiber.return 50)
-  in
-  test (backtrace_result int) fiber;
-  [%expect {|
-    Ok 50 |}];
-
-  let fiber =
-    Fiber.collect_errors (fun () ->
-        let* (_ : unit Fiber.Future.t) = Fiber.fork long_running_fiber in
-        Fiber.return 50)
-  in
-  test (backtrace_result int) fiber;
-  [%expect {|
-    Ok 50 |}];
-
-  let fiber =
-    Fiber.collect_errors (fun () ->
-        let* (_ : unit Fiber.Future.t) = Fiber.fork (fun () -> Fiber.never) in
-        Fiber.return 50)
-  in
-  test ~expect_never:true (backtrace_result int) fiber;
-  [%expect {|
-    [PASS] Never raised as expected |}]
-
-let%expect_test "collect_errors and errors from forks" =
-  (* This is wrong, it should return {[Error [Exit]]} *)
-  let fiber =
-    Fiber.collect_errors (fun () ->
-        let* (_ : unit Fiber.Future.t) = Fiber.fork (fun () -> raise Exit) in
-        Fiber.return 50)
-  in
-  test (backtrace_result int) fiber;
-  [%expect {|
-    Ok 50 |}];
-
-  (* This is wrong, it should return {[Error [Exit]]} *)
-  let fiber =
-    Fiber.collect_errors (fun () ->
-        let* (_ : unit Fiber.Future.t) =
-          Fiber.fork (fun () ->
-              let* () = long_running_fiber () in
-              raise Exit)
-        in
-        Fiber.return 50)
-  in
-  test (backtrace_result int) fiber;
-  [%expect {|
-    Ok 50 |}]
-
 let must_set_flag f =
   let flag = ref false in
   let setter () = flag := true in
@@ -316,43 +261,3 @@ let%expect_test _ =
     [PASS] flag set |}]
 
 let log s = Fiber.return (print_endline s)
-
-let%expect_test "finalize/fork behavior" =
-  let fiber =
-    let open Fiber.O in
-    Fiber.finalize
-      ~finally:(fun () -> log "finally")
-      (fun () ->
-        let* f = Fiber.fork (fun () -> log "fork") in
-        let* () = log "after fork" in
-        let* () = Fiber.Future.wait f in
-        log "fiber finished")
-  in
-  test unit fiber;
-  [%expect {|
-    fork
-    after fork
-    fiber finished
-    finally
-    () |}]
-
-let%expect_test "finalize/fork behavior (failure)" =
-  let fiber =
-    let open Fiber.O in
-    Fiber.finalize
-      ~finally:(fun () -> log "finally")
-      (fun () ->
-        let* f =
-          Fiber.fork (fun () ->
-              print_endline "fork";
-              failwith "fork failure")
-        in
-        let* () = log "after fork" in
-        let* () = Fiber.Future.wait f in
-        log "fiber finished")
-  in
-  test ~expect_never:true unit fiber;
-  [%expect {|
-    fork
-    after fork
-    [PASS] Never raised as expected |}]

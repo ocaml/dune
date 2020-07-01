@@ -1,4 +1,8 @@
-(** Concurrency library *)
+(** Concurrency library
+
+    This module implements
+    {{:https://en.wikipedia.org/wiki/Structured_concurrency} "structured
+    concurrency"}. *)
 
 open! Stdune
 
@@ -43,33 +47,6 @@ val map : 'a t -> f:('a -> 'b) -> 'b t
 
 val bind : 'a t -> f:('a -> 'b t) -> 'b t
 
-(** {1 Forking execution} *)
-
-module Future : sig
-  type 'a fiber
-
-  (** A future represent a promise that will eventually yield a value. It is
-      used to represent the result of a fiber running in the background. *)
-  type 'a t
-
-  (** Wait for the given future to yield a value. *)
-  val wait : 'a t -> 'a fiber
-
-  (** Return [Some x] if [t] has already returned. *)
-  val peek : 'a t -> 'a option fiber
-end
-with type 'a fiber := 'a t
-
-(** [fork f] creates a sub-fiber and return a [Future.t] to wait its result. *)
-val fork : (unit -> 'a t) -> 'a Future.t t
-
-(** [nfork l] is similar to [fork] but creates [n] sub-fibers. *)
-val nfork : (unit -> 'a t) list -> 'a Future.t list t
-
-(** [nfork_map l ~f] is the same as [nfork (List.map l ~f:(fun x () -> f x))]
-    but more efficient. *)
-val nfork_map : 'a list -> f:('a -> 'b t) -> 'b Future.t list t
-
 (** {1 Joining} *)
 
 (** The following combinators are helpers to combine the result of several
@@ -84,44 +61,20 @@ val sequential_iter : 'a list -> f:('a -> unit t) -> unit t
 (** {1 Forking + joining} *)
 
 (** The following functions combine forking 2 or more fibers followed by joining
-    the results. For every function, we give an equivalent implementation using
-    the more basic functions as documentation. Note however that these functions
-    are implemented as primitives and so are more efficient that the suggested
-    implementation. *)
+    the results. The execution of the various fibers might be interleaved,
+    however once the combining fiber has terminated, it is guaranteed that there
+    are no fibers lingering around. *)
 
-(** For two fibers and wait for their results:
-
-    {[
-      let fork_and_join f g =
-        fork f >>= fun a ->
-        fork g >>= fun b -> both (Future.wait a) (Future.wait b)
-    ]} *)
+(** Start two fibers and wait for their results. *)
 val fork_and_join : (unit -> 'a t) -> (unit -> 'b t) -> ('a * 'b) t
 
-(** Same but assume the first fiber returns [unit]:
-
-    {[
-      let fork_and_join_unit f g =
-        fork f >>= fun a ->
-        fork g >>= fun b -> Future.wait a >>> Future.wait b
-    ]} *)
+(** Same but assume the first fiber returns [unit]. *)
 val fork_and_join_unit : (unit -> unit t) -> (unit -> 'a t) -> 'a t
 
-(** Map a list in parallel:
-
-    {[
-      let parallel_map l ~f =
-        nfork_map l ~f >>= fun futures -> all (List.map futures ~f:Future.wait)
-    ]} *)
+(** Map a list in parallel. *)
 val parallel_map : 'a list -> f:('a -> 'b t) -> 'b list t
 
-(** Iter over a list in parallel:
-
-    {[
-      let parallel_iter l ~f =
-        nfork_map l ~f >>= fun futures ->
-        all_unit (List.map futures ~f:Future.wait)
-    ]} *)
+(** Iter over a list in parallel. *)
 val parallel_iter : 'a list -> f:('a -> unit t) -> unit t
 
 (** {1 Local storage} *)

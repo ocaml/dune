@@ -47,7 +47,6 @@ module Digest = Digest
 module Fdecl = Fdecl
 module Unit = Unit
 module Monad = Monad
-module Fun = Fun
 module Dyn = Dyn
 module Float = Float
 module Tuple = Tuple

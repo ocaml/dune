@@ -912,9 +912,7 @@ let instrumentation_backend instrument_with resolve libname =
     None
   else
     match
-      resolve libname
-      |> Result.ok_exn
-      |> info
+      resolve libname |> Result.ok_exn |> info
       |> Lib_info.instrumentation_backend
     with
     | Some _ as ppx -> ppx
@@ -1567,8 +1565,7 @@ module Compile = struct
     in
     let lib_deps_info =
       let pps =
-        Result.ok_exn t.pps
-        |> List.map ~f:(fun t -> Loc.none, t.name)
+        Result.ok_exn t.pps |> List.map ~f:(fun t -> (Loc.none, t.name))
       in
       let user_written_deps = Lib_info.user_written_deps t.info in
       let kind : Lib_deps_info.Kind.t =

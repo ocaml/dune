@@ -262,10 +262,15 @@ type config =
   ; vars : Ocaml_config.Vars.t
   }
 
+let dune_is_too_old ~min:v =
+  die
+    "You seem to be running dune < %s. This version of dune-configurator \
+     requires at least dune %s."
+    v v
+
 let read_dot_dune_configurator_file ~build_dir =
   let file = Filename.concat build_dir ".dune/configurator.v2" in
-  if not (Sys.file_exists file) then
-    die "Cannot find special file %S produced by dune." file;
+  if not (Sys.file_exists file) then dune_is_too_old ~min:"2.6";
   let open Sexp in
   let unable_to_parse err = die "Unable to parse %S.@.%s@." file err in
   let sexp =
@@ -545,13 +550,10 @@ const char *s%i = "BEGIN-%i-false-END";
           match value with
           | Some v -> v
           | None ->
-            let msg =
-              sprintf
-                "Unable to read variable %S of type %s. Invalid value %S in %s \
-                 found"
-                name (Type.name t) raw_val obj_file
-            in
-            raise (Fatal_error msg)
+            die
+              "Unable to read variable %S of type %s. Invalid value %S in %s \
+               found"
+              name (Type.name t) raw_val obj_file
         in
         (name, value))
 
@@ -703,10 +705,7 @@ let main ?(args = []) ~name f =
       die
         "Configurator scripts must be run with Dune. To manually run a script, \
          use $ dune exec."
-    | "1" ->
-      die
-        "You seem to be running Dune < 2.3. This version of dune-configurator \
-         requres at lest dune 2.3."
+    | "1" -> dune_is_too_old ~min:"2.3"
     | s -> s
   in
   let verbose = ref false in
@@ -725,16 +724,17 @@ let main ?(args = []) ~name f =
   Arg.parse args anon usage;
   let log_db = ref [] in
   let log s = log_db := s :: !log_db in
-  let t =
-    create_from_inside_dune ~dest_dir:!dest_dir
-      ~log:
-        ( if !verbose then
-          prerr_endline
-        else
-          log )
-      ~build_dir ~name
-  in
-  try f t
+  try
+    let t =
+      create_from_inside_dune ~dest_dir:!dest_dir
+        ~log:
+          ( if !verbose then
+            prerr_endline
+          else
+            log )
+        ~build_dir ~name
+    in
+    f t
   with exn -> (
     let bt = Printexc.get_raw_backtrace () in
     List.iter (List.rev !log_db) ~f:(eprintf "%s\n");

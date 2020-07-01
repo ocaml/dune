@@ -224,6 +224,30 @@ module Mutex : sig
 end
 with type 'a fiber := 'a t
 
+module Throttle : sig
+  (** Limit the number of jobs *)
+
+  type 'a fiber = 'a t
+
+  type t
+
+  (** [create n] creates a throttler that allows to run [n] jobs at once *)
+  val create : int -> t
+
+  (** How many jobs can run at the same time *)
+  val size : t -> int
+
+  (** Change the number of jobs that can run at once *)
+  val resize : t -> int -> unit fiber
+
+  (** Execute a fiber, waiting if too many jobs are already running *)
+  val run : t -> f:(unit -> 'a fiber) -> 'a fiber
+
+  (** Return the number of jobs currently running *)
+  val running : t -> int
+end
+with type 'a fiber := 'a t
+
 (** {1 Running fibers} *)
 
 (** [run t] runs a fiber. If the fiber doesn't complete immediately, [run t]

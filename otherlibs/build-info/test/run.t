@@ -3,7 +3,7 @@ Test embedding of build information
 
   $ mkdir -p a b c
 
-  $ for i in a b c; do
+  $ for i in a b c d; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
   > (lang dune 2.0)
@@ -114,16 +114,25 @@ Check what the generated build info module looks like:
 Test --debug-artifact-substitution
 ----------------------------------
 
-  $ dune install --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
-  Found placeholder in _build/install/default/bin/c:
-  - placeholder: Vcs_describe "c"
-  - evaluates to: "1.0+c"
-  Found placeholder in _build/install/default/bin/c:
-  - placeholder: Vcs_describe "b"
-  - evaluates to: "1.0+b"
-  Found placeholder in _build/install/default/bin/c:
-  - placeholder: Vcs_describe "a"
-  - evaluates to: "1.0+a"
+The order of substitutions printed by `--debug-artifact-substitution`
+is not stable across machines since it depends on the order in which
+the string constant end up in the binary. To make the test stable, we
+craft an example with a single placeholder to make the output stable:
+
+  $ cat >d/dune <<EOF
+  > (executable
+  >  (public_name d)
+  >  (promote (until-clean))
+  >  (libraries dune-build-info))
+  > EOF
+
+  $ cp c/c.ml d/d.ml
+
+  $ dune build d/d.install
+  $ dune install d --prefix _install --debug-artifact-substitution 2>&1|grep -v '^\(Installing\|Deleting\)'
+  Found placeholder in _build/install/default/bin/d:
+  - placeholder: Vcs_describe "d"
+  - evaluates to: "1.0+d"
 
 Test substitution when promoting
 --------------------------------

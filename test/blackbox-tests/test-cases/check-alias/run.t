@@ -9,8 +9,7 @@ as well as the foo.{cmi,cmo,cmt} files.
   > (
   >   cd $1
   >   dune build @check
-  >   find _build \( -name '*.cm*' -o -name .merlin \) |
-  >   xargs basename | LANG=C sort
+  >   find _build \( -name '*.cm*' -o -name .merlin \) -exec basename {} \; | LANG=C sort
   > )
 
 Test the property for executables:

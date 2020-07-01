@@ -253,3 +253,7 @@ with type 'a fiber := 'a t
 (** [run t] runs a fiber. If the fiber doesn't complete immediately, [run t]
     returns [None]. *)
 val run : 'a t -> 'a option
+
+(** Similar to [run] but with two fibers. This function is a bit odd and might
+    eventually be replaced by something more idiomatic. *)
+val run2 : (unit -> 'a t) -> (unit -> 'b t) -> 'a option * 'b option

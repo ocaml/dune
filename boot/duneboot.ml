@@ -554,8 +554,6 @@ module Mode = struct
 end
 
 module Config : sig
-  val ocaml_version : int * int
-
   val compiler : string
 
   val ocamldep : string

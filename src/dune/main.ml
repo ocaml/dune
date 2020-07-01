@@ -120,12 +120,15 @@ let auto_concurrency =
       n
 
 let set_concurrency (config : Config.t) =
-  let+ n =
+  let* n =
     match config.concurrency with
     | Fixed n -> Fiber.return n
     | Auto -> auto_concurrency ()
   in
-  if n >= 1 then Scheduler.set_concurrency n
+  if n >= 1 then
+    Scheduler.set_concurrency n
+  else
+    Fiber.return ()
 
 let find_context_exn t ~name =
   match List.find t.contexts ~f:(fun c -> Context_name.equal c.name name) with

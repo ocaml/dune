@@ -64,12 +64,12 @@ Test for (include_subdir unqualified) with (preprocess (action ...))
       ocamldep .main.eobjs/main.ml.d
         ocamlc .main.eobjs/byte/main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/main.{cmx,o}
+        ocamlc main.bc
       ocamlopt main.exe
           main sub/foo.pp.ml
       ocamldep .foo.objs/foo.pp.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
-        ocamlc main.bc
       ocamlopt .foo.objs/native/foo.{cmx,o}
       ocamlopt foo.{a,cmxa}
       ocamlopt foo.cmxs

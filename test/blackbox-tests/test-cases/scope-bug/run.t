@@ -1,24 +1,24 @@
   $ dune build --display short @install
       ocamldep blib/sub/.sub.objs/sub.ml.d
-        ocamlc blib/sub/.sub.objs/byte/sub.{cmi,cmo,cmt}
-        ocamlc blib/sub/sub.cma
       ocamldep blib/.blib.objs/blib.ml.d
-        ocamlc blib/.blib.objs/byte/blib.{cmi,cmo,cmt}
-        ocamlc blib/blib.cma
       ocamldep alib/.alib.objs/alib.ml.d
         ocamlc alib/.alib.objs/byte/alib__.{cmi,cmo,cmt}
-        ocamlc alib/.alib.objs/byte/alib.{cmi,cmo,cmt}
-      ocamlopt alib/.alib.objs/native/alib.{cmx,o}
       ocamldep alib/.alib.objs/main.ml.d
-        ocamlc alib/.alib.objs/byte/alib__Main.{cmi,cmo,cmt}
-        ocamlc alib/alib.cma
-      ocamlopt blib/sub/.sub.objs/native/sub.{cmx,o}
-      ocamlopt blib/sub/sub.{a,cmxa}
-      ocamlopt blib/sub/sub.cmxs
-      ocamlopt blib/.blib.objs/native/blib.{cmx,o}
-      ocamlopt blib/blib.{a,cmxa}
-      ocamlopt blib/blib.cmxs
+        ocamlc blib/sub/.sub.objs/byte/sub.{cmi,cmo,cmt}
       ocamlopt alib/.alib.objs/native/alib__.{cmx,o}
+        ocamlc blib/sub/sub.cma
+      ocamlopt blib/sub/.sub.objs/native/sub.{cmx,o}
+        ocamlc blib/.blib.objs/byte/blib.{cmi,cmo,cmt}
+      ocamlopt blib/sub/sub.{a,cmxa}
+        ocamlc blib/blib.cma
+      ocamlopt blib/.blib.objs/native/blib.{cmx,o}
+        ocamlc alib/.alib.objs/byte/alib__Main.{cmi,cmo,cmt}
+        ocamlc alib/.alib.objs/byte/alib.{cmi,cmo,cmt}
+      ocamlopt blib/sub/sub.cmxs
+      ocamlopt blib/blib.{a,cmxa}
       ocamlopt alib/.alib.objs/native/alib__Main.{cmx,o}
+        ocamlc alib/alib.cma
+      ocamlopt alib/.alib.objs/native/alib.{cmx,o}
+      ocamlopt blib/blib.cmxs
       ocamlopt alib/alib.{a,cmxa}
       ocamlopt alib/alib.cmxs

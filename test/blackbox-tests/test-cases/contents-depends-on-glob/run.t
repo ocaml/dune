@@ -7,25 +7,8 @@ produce targets in the directory being globbed.
 on the directory listing)
 
   $ dune build @install
-  $ dune_cmd cat _build/default/bar/bar.install
-  lib: [
-    "_build/install/default/lib/bar/META"
-    "_build/install/default/lib/bar/bar$ext_lib"
-    "_build/install/default/lib/bar/bar.cma"
-    "_build/install/default/lib/bar/bar.cmi"
-    "_build/install/default/lib/bar/bar.cmt"
-    "_build/install/default/lib/bar/bar.cmx"
-    "_build/install/default/lib/bar/bar.cmxa"
-    "_build/install/default/lib/bar/bar.cmxs"
-    "_build/install/default/lib/bar/bar.ml"
-    "_build/install/default/lib/bar/bar__.cmi"
-    "_build/install/default/lib/bar/bar__.cmt"
-    "_build/install/default/lib/bar/bar__.cmx"
-    "_build/install/default/lib/bar/bar__.ml"
-    "_build/install/default/lib/bar/bar__Baz.cmi"
-    "_build/install/default/lib/bar/bar__Baz.cmt"
-    "_build/install/default/lib/bar/bar__Baz.cmx"
-    "_build/install/default/lib/bar/baz.ml"
-    "_build/install/default/lib/bar/dune-package"
-    "_build/install/default/lib/bar/opam"
-  ]
+
+Check that the command did build things:
+
+  $ ls _build/install/default/lib/bar/*.cmxa
+  _build/install/default/lib/bar/bar.cmxa

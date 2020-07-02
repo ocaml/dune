@@ -1,4 +1,3 @@
-open Dune
 open Stdune
 open Fiber.O
 open Dyn.Encoder
@@ -222,17 +221,12 @@ let%expect_test _ =
 
 let%expect_test _ =
   let forking_fiber () =
-    let which = Bin.which ~path:(Env.path Env.initial) in
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
         Scheduler.yield () >>= fun () ->
         if x mod 2 = 1 then
-          Process.run Process.Strict ~env:Env.initial
-            (Option.value_exn (which "true"))
-            []
+          Fiber.return ()
         else
-          Process.run Process.Strict ~env:Env.initial
-            (Option.value_exn (which "false"))
-            [])
+          Printf.ksprintf failwith "%d" x)
   in
   must_set_flag (fun setter ->
       test ~expect_never:true unit

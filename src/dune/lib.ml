@@ -907,7 +907,8 @@ end = struct
       res
 end
 
-let instrumentation_backend instrument_with resolve libname =
+let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
+    libname =
   if not (List.mem ~set:instrument_with (snd libname)) then
     None
   else
@@ -917,11 +918,14 @@ let instrumentation_backend instrument_with resolve libname =
     with
     | Some _ as ppx -> ppx
     | None ->
-      User_error.raise ~loc:(fst libname)
-        [ Pp.textf
-            "Library %S is not declared to have an instrumentation backend."
-            (Lib_name.to_string (snd libname))
-        ]
+      if do_not_fail then
+        Some libname
+      else
+        User_error.raise ~loc:(fst libname)
+          [ Pp.textf
+              "Library %S is not declared to have an instrumentation backend."
+              (Lib_name.to_string (snd libname))
+          ]
 
 module rec Resolve : sig
   val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> Status.t
@@ -1550,7 +1554,7 @@ module Compile = struct
       ( List.map pps ~f:(fun (_, pp) -> (pp, kind))
       |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge )
 
-  let for_lib db (t : lib) =
+  let for_lib resolve ~allow_overlaps db (t : lib) =
     let requires =
       (* This makes sure that the default implementation belongs to the same
          package before we build the virtual library *)
@@ -1565,7 +1569,13 @@ module Compile = struct
     in
     let lib_deps_info =
       let pps =
-        Result.ok_exn t.pps |> List.map ~f:(fun t -> (Loc.none, t.name))
+        let resolve = resolve db in
+        Preprocess.Per_module.pps
+          (Preprocess.Per_module.with_instrumentation
+             (Lib_info.preprocess t.info)
+             ~instrumentation_backend:
+               (instrumentation_backend ~do_not_fail:true db.instrument_with
+                  resolve))
       in
       let user_written_deps = Lib_info.user_written_deps t.info in
       let kind : Lib_deps_info.Kind.t =
@@ -1577,6 +1587,7 @@ module Compile = struct
       make_lib_deps_info ~user_written_deps ~pps ~kind
     in
     let requires_link =
+      let db = Option.some_if (not allow_overlaps) db in
       lazy
         ( requires
         >>= Resolve.compile_closure_with_overlap_checks db
@@ -1773,9 +1784,7 @@ module DB = struct
     | None ->
       Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
         [ ("name", Lib_name.to_dyn name) ]
-    | Some lib ->
-      let t = Option.some_if (not allow_overlaps) t in
-      Compile.for_lib t lib
+    | Some lib -> Compile.for_lib resolve ~allow_overlaps t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =

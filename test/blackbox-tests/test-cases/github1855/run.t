@@ -22,22 +22,6 @@ just quietly shadow the module in the virtual library.
   >  (private_modules overlap))
   > EOF
 
-  $ dune build @all --display short
-        ocamlc vlib/.vlib1855.objs/byte/vlib1855.{cmi,cmo,cmt}
-      ocamldep vlib/.vlib1855.objs/dom.mli.d
-      ocamldep vlib/.vlib1855.objs/overlap.ml.d
-      ocamldep impl/.impl1855.objs/dom.ml.d
-        ocamlc impl/.impl1855.objs/byte/vlib1855__impl1855__.{cmi,cmo,cmt}
-      ocamldep impl/.impl1855.objs/overlap.ml.d
-      ocamlopt vlib/.vlib1855.objs/native/vlib1855.{cmx,o}
-        ocamlc vlib/.vlib1855.objs/byte/vlib1855__Dom.{cmi,cmti}
-        ocamlc vlib/.vlib1855.objs/byte/vlib1855__Overlap.{cmi,cmo,cmt}
-      ocamlopt impl/.impl1855.objs/native/vlib1855__impl1855__.{cmx,o}
-      ocamlopt vlib/.vlib1855.objs/native/vlib1855__Overlap.{cmx,o}
-        ocamlc impl/.impl1855.objs/byte/vlib1855__impl1855____Overlap.{cmi,cmo,cmt}
-        ocamlc impl/.impl1855.objs/byte/vlib1855__Dom.{cmo,cmt}
-      ocamlopt impl/.impl1855.objs/native/vlib1855__Dom.{cmx,o}
-      ocamlopt impl/.impl1855.objs/native/vlib1855__impl1855____Overlap.{cmx,o}
-        ocamlc impl/impl1855.cma
-      ocamlopt impl/impl1855.{a,cmxa}
-      ocamlopt impl/impl1855.cmxs
+  $ dune build @all
+  $ ls _build/default/impl/*.cma
+  _build/default/impl/impl1855.cma

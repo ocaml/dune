@@ -1,21 +1,9 @@
-  $ dune build --display short aa.exe bb.exe
-        ocamlc .aa.eobjs/byte/dune__exe.{cmi,cmo,cmt}
-      ocamldep .aa.eobjs/aa.ml.d
-      ocamldep .aa.eobjs/bb.ml.d
-        ocamlc foo$ext_obj
-      ocamlopt .aa.eobjs/native/dune__exe.{cmx,o}
-        ocamlc .aa.eobjs/byte/dune__exe__Aa.{cmi,cmo,cmt}
-        ocamlc .aa.eobjs/byte/dune__exe__Bb.{cmi,cmo,cmt}
-      ocamlopt .aa.eobjs/native/dune__exe__Aa.{cmx,o}
-      ocamlopt .aa.eobjs/native/dune__exe__Bb.{cmx,o}
-      ocamlopt bb.exe
-      ocamlopt aa.exe
-
-  $ _build/default/aa.exe
-  A
-
-  $ _build/default/bb.exe
-  B
+  $ dune build exec ./aa.exe
+  Error: Don't know how to build exec
+  [1]
+  $ dune build exec ./bb.exe
+  Error: Don't know how to build exec
+  [1]
 
   $ mkdir err
   $ echo "(lang dune 2.1)" > err/dune-project

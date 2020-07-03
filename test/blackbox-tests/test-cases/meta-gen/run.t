@@ -1,4 +1,4 @@
-  $ dune runtest --force --display short
+  $ dune runtest --force
   description = "contains \"quotes\""
   requires = "bytes"
   archive(byte) = "foobar.cma"

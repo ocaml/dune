@@ -1,13 +1,12 @@
 public libraries may not have private dependencies
 
-  $ dune build --display short --root private-dep
+  $ dune build --root private-dep
   Entering directory 'private-dep'
   File "dune", line 8, characters 12-22:
   8 |  (libraries privatelib)
                   ^^^^^^^^^^
   Error: Library "privatelib" is private, it cannot be a dependency of a public
   library. You need to give "privatelib" a public name.
-      ocamldep .publiclib.objs/publiclib.ml.d
   [1]
 
 On the other hand, public libraries may have private preprocessors
@@ -26,28 +25,19 @@ On the other hand, public libraries may have private preprocessors
       ocamlopt mylib.cmxs
 
 Unless they introduce private runtime dependencies:
-  $ dune build --display short --root private-runtime-deps
+  $ dune build --root private-runtime-deps
   Entering directory 'private-runtime-deps'
   File "dune", line 16, characters 7-18:
   16 |   (pps private_ppx))
               ^^^^^^^^^^^
   Error: Library "private_runtime_dep" is private, it cannot be a dependency of
   a public library. You need to give "private_runtime_dep" a public name.
-        ocamlc .private_ppx.objs/byte/private_ppx.{cmi,cmo,cmt}
-      ocamlopt .private_ppx.objs/native/private_ppx.{cmx,o}
-      ocamlopt private_ppx.{a,cmxa}
-      ocamlopt .ppx/9ab0f533c010a2f808b2ba93118d36d0/ppx.exe
-           ppx mylib.pp.ml
-      ocamldep .mylib.objs/mylib.pp.ml.d
   [1]
 
 However, public binaries may accept private dependencies
-  $ dune build --display short --root exes
+  $ dune exec --root exes ./publicbin.exe
   Entering directory 'exes'
-      ocamldep .publicbin.eobjs/publicbin.ml.d
-        ocamlc .publicbin.eobjs/byte/publicbin.{cmi,cmo,cmt}
-      ocamlopt .publicbin.eobjs/native/publicbin.{cmx,o}
-      ocamlopt publicbin.exe
+  Entering directory 'exes'
 
 Private dependencies shouldn't make the library optional
   $ dune build @install --display short --root optional

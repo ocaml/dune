@@ -15,4 +15,4 @@ when the rule needs to be used to build a target.
   >  (deps %{bin:doesnotexistbinary})
   >  (action (echo "test")))
   > EOF
-  $ dune build @install --display short
+  $ dune build @install

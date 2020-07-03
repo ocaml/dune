@@ -1,4 +1,4 @@
-  $ dune build --display short
+  $ dune build
   File "dune", line 3, characters 22-26:
   3 |  (modules :standard \ fake))
                             ^^^^

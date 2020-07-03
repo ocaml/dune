@@ -6,12 +6,7 @@ problem. So dune shouldn't crash because of "plop.ca-marche-pas"
 
 We need ocamlfind to run this test
 
-  $ dune build @install --display short --only hello
-        ocamlc root/.hello.objs/byte/hello.{cmi,cmo,cmt}
-        ocamlc root/hello.cma
-      ocamlopt root/.hello.objs/native/hello.{cmx,o}
-      ocamlopt root/hello.{a,cmxa}
-      ocamlopt root/hello.cmxs
+  $ dune build @install --only hello
 
   $ dune build @install --display short --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
         ocamlc root/.pas_de_bol.objs/byte/pas_de_bol.{cmi,cmo,cmt}

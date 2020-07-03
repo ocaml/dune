@@ -1,1 +1,3 @@
-  $ dune build .merlin --display short
+  $ dune build .merlin
+  $ ls .merlin
+  .merlin

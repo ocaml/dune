@@ -1,11 +1,11 @@
-  $ dune runtest --display short
-      ocamldep .f.eobjs/f.ml.d
-        ocamlc .f.eobjs/byte/f.{cmi,cmo,cmt}
-      ocamlopt .f.eobjs/native/f.{cmx,o}
-      ocamlopt f.exe
+Running a test and then forcing a re-run will only re-run the test exe:
+
+  $ dune runtest
              f alias runtest
   Foo Bar
   $ dune runtest
+
+Note that nothing is rebuilt, only the binary is executed again:
   $ dune runtest --force --display short
              f alias runtest
   Foo Bar

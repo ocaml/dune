@@ -1,11 +1,7 @@
-;; We embed a copy of ocaml-syntax-shims until we drop support for
-;; OCaml < 4.08
-
 (env
  (_
   (binaries
-   (otherlibs/cram/bin/dune_cram.exe as dune-cram)
-   (src/ocaml-syntax-shims/pp.exe as ocaml-syntax-shims))))
+   (otherlibs/cram/bin/dune_cram.exe as dune-cram))))
 
 (rule
  (copy dune-private-libs.opam.template dune-configurator.opam.template))

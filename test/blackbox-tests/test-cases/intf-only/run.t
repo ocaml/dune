@@ -21,7 +21,7 @@ Successes:
 
 Errors:
 
-  $ dune build --display short --root a foo.cma
+  $ dune build --root a foo.cma
   Entering directory 'a'
   File "dune", line 1, characters 0-21:
   1 | (library
@@ -31,7 +31,7 @@ Errors:
   
     (modules_without_implementation x y)
   [1]
-  $ dune build --display short --root b foo.cma
+  $ dune build --root b foo.cma
   Entering directory 'b'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
@@ -40,14 +40,14 @@ Errors:
   implementation:
   - Y
   [1]
-  $ dune build --display short --root c foo.cma
+  $ dune build --root c foo.cma
   Entering directory 'c'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))
                                        ^
   Error: Module X doesn't exist.
   [1]
-  $ dune build --display short --root d foo.cma
+  $ dune build --root d foo.cma
   Entering directory 'd'
   File "dune", line 3, characters 33-34:
   3 |  (modules_without_implementation x))

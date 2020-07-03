@@ -29,7 +29,7 @@ Formatting can be checked using the @fmt target:
   > (formatting
   >  (enabled_for ocaml))
   > EOF
-  $ dune build --display short @fmt
+  $ dune build @fmt
   File "enabled/dune", line 1, characters 0-0:
   Error: Files _build/default/enabled/dune and
   _build/default/enabled/.formatted/dune differ.
@@ -39,43 +39,27 @@ Formatting can be checked using the @fmt target:
   File "lang2/default/dune", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/dune and
   _build/default/lang2/default/.formatted/dune differ.
-      ocamldep fake-tools/.ocamlformat.eobjs/ocamlformat.ml.d
-      ocamldep fake-tools/.ocamlformat.eobjs/refmt.ml.d
-        ocamlc fake-tools/.ocamlformat.eobjs/byte/ocamlformat.{cmi,cmo,cmt}
-        ocamlc fake-tools/.ocamlformat.eobjs/byte/refmt.{cmi,cmo,cmt}
-      ocamlopt fake-tools/.ocamlformat.eobjs/native/ocamlformat.{cmx,o}
-      ocamlopt fake-tools/.ocamlformat.eobjs/native/refmt.{cmx,o}
-      ocamlopt fake-tools/ocamlformat.exe
-      ocamlopt fake-tools/refmt.exe
-   ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-   ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
-   ocamlformat lang2/default/.formatted/e.ml
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
-   ocamlformat lang2/partial/.formatted/a.ml
   File "lang2/partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/partial/a.ml and
   _build/default/lang2/partial/.formatted/a.ml differ.
-   ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
-   ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.ml and
   _build/default/enabled/.formatted/ocaml_file.ml differ.
-         refmt enabled/.formatted/reason_file.rei
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.rei and
   _build/default/enabled/.formatted/reason_file.rei differ.
-         refmt enabled/.formatted/reason_file.re
   File "enabled/reason_file.re", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.re and
   _build/default/enabled/.formatted/reason_file.re differ.
@@ -84,7 +68,7 @@ Formatting can be checked using the @fmt target:
 Configuration files are taken into account for this action:
 
   $ touch enabled/.ocamlformat
-  $ dune build --display short @fmt
+  $ dune build @fmt
   File "enabled/reason_file.re", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.re and
   _build/default/enabled/.formatted/reason_file.re differ.
@@ -109,15 +93,12 @@ Configuration files are taken into account for this action:
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
-   ocamlformat enabled/.formatted/ocaml_file.ml
   File "enabled/ocaml_file.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.ml and
   _build/default/enabled/.formatted/ocaml_file.ml differ.
-   ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-   ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
@@ -144,7 +125,7 @@ And fixable files can be promoted:
 All .ocamlformat files are considered dependencies:
 
   $ echo 'margin = 70' > .ocamlformat
-  $ dune build --display short @fmt
+  $ dune build @fmt
   File "enabled/reason_file.rei", line 1, characters 0-0:
   Error: Files _build/default/enabled/reason_file.rei and
   _build/default/enabled/.formatted/reason_file.rei differ.
@@ -154,25 +135,18 @@ All .ocamlformat files are considered dependencies:
   File "lang2/default/dune", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/dune and
   _build/default/lang2/default/.formatted/dune differ.
-         refmt enabled/.formatted/reason_file.re
-   ocamlformat enabled/.formatted/ocaml_file.ml
-   ocamlformat enabled/.formatted/ocaml_file.mli
   File "enabled/ocaml_file.mli", line 1, characters 0-0:
   Error: Files _build/default/enabled/ocaml_file.mli and
   _build/default/enabled/.formatted/ocaml_file.mli differ.
-   ocamlformat enabled/subdir/.formatted/lib.ml
   File "enabled/subdir/lib.ml", line 1, characters 0-0:
   Error: Files _build/default/enabled/subdir/lib.ml and
   _build/default/enabled/subdir/.formatted/lib.ml differ.
-   ocamlformat lang2/default/.formatted/e.ml
   File "lang2/default/e.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/default/e.ml and
   _build/default/lang2/default/.formatted/e.ml differ.
-   ocamlformat lang2/partial/.formatted/a.ml
   File "lang2/partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/lang2/partial/a.ml and
   _build/default/lang2/partial/.formatted/a.ml differ.
-   ocamlformat partial/.formatted/a.ml
   File "partial/a.ml", line 1, characters 0-0:
   Error: Files _build/default/partial/a.ml and
   _build/default/partial/.formatted/a.ml differ.
@@ -183,7 +157,7 @@ But a helpful message is displayed.
 
   $ cp lang2/partial/dune-project lang2/partial/dune-project.bak
   $ echo '(using fmt 1.0)' >> lang2/partial/dune-project
-  $ dune build --display short @fmt
+  $ dune build @fmt
   File "lang2/partial/dune-project", line 5, characters 0-15:
   5 | (using fmt 1.0)
       ^^^^^^^^^^^^^^^
@@ -196,7 +170,7 @@ But a helpful message is displayed.
 Sometimes, the suggestion is to just remove the configuration.
 
   $ echo '(using fmt 1.2)' >> lang2/default/dune-project
-  $ dune build --display short @fmt
+  $ dune build @fmt
   File "lang2/default/dune-project", line 2, characters 0-15:
   2 | (using fmt 1.2)
       ^^^^^^^^^^^^^^^

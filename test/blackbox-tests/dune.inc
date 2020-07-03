@@ -1339,6 +1339,14 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias github3188)
+ (deps (package dune) (source_tree test-cases/github3188) (alias test-deps))
+ (action
+  (chdir
+   test-cases/github3188
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github3440)
  (deps (package dune) (source_tree test-cases/github3440) (alias test-deps))
  (action
@@ -3121,6 +3129,7 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
+  (alias github3188)
   (alias github3440)
   (alias github3490)
   (alias github3530)

@@ -1,30 +1,7 @@
-  $ dune build @doc --display short
-      ocamldep .bar.objs/bar.ml.d
-          odoc _doc/_odoc/pkg/bar/page-index.odoc
-          odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
-      ocamldep .foo.objs/foo.ml.d
-          odoc _doc/_odoc/pkg/foo/page-index.odoc
-      ocamldep .foo.objs/foo2.ml.d
-      ocamldep .foo.objs/foo3.ml.d
-      ocamldep .foo_byte.objs/foo_byte.ml.d
-        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-        ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
-        ocamlc .foo.objs/byte/foo3.{cmi,cmo,cmt}
-        ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
-          odoc .bar.objs/byte/bar.odoc
-          odoc .foo.objs/byte/foo.odoc
-          odoc .foo.objs/byte/foo2.odoc
-          odoc .foo.objs/byte/foo3.odoc
-          odoc .foo_byte.objs/byte/foo_byte.odoc
-          odoc _doc/_html/bar/index.html
-          odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
-          odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
-          odoc _doc/_html/foo/Foo3/.dune-keep,_doc/_html/foo/Foo3/index.html
-          odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
-          odoc _doc/_html/foo/index.html
-          odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html
-  $ dune runtest --display short
+This test generates documentation using odoc for a library:
+
+  $ dune build @doc
+  $ dune runtest
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">
     <head>
@@ -46,7 +23,7 @@
     </body>
   </html>
 
-  $ dune build @foo-mld --display short
+  $ dune build @foo-mld
   {0 foo index}
   {1 Library foo}
   This library exposes the following toplevel modules:
@@ -55,7 +32,7 @@
   The entry point of this library is the module:
   {!module-Foo_byte}.
 
-  $ dune build @bar-mld --display short
+  $ dune build @bar-mld
   {0 bar index}
   {1 Library bar}
   The entry point of this library is the module:

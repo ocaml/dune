@@ -20,21 +20,13 @@ end = struct
     Queue.push suspended ivar;
     Fiber.Ivar.read ivar
 
-  let rec restart_suspended () =
-    match Queue.pop suspended with
-    | None -> Fiber.return ()
-    | Some e ->
-      let* () = Fiber.Ivar.fill e () in
-      restart_suspended ()
-
   exception Never
 
   let run t =
-    match
-      Fiber.run (Fiber.fork_and_join (fun () -> t) restart_suspended >>| fst)
-    with
-    | None -> raise Never
-    | Some x -> x
+    Fiber.run t ~iter:(fun () ->
+        match Queue.pop suspended with
+        | None -> raise Never
+        | Some e -> Fiber.Fill (e, ()))
 end
 
 let failing_fiber () : unit Fiber.t =
@@ -102,27 +94,27 @@ let%expect_test "fiber vars are preseved across yields" =
   [%expect {|
     () |}]
 
-let%expect_test "fill returns a fiber that executes when waiters finish" =
+let%expect_test "fill returns a fiber that executes before waiters are awoken" =
   let ivar = Fiber.Ivar.create () in
   let open Fiber.O in
   let waiters () =
     let waiter n () =
       let+ () = Fiber.Ivar.read ivar in
-      Format.eprintf "waiter %d finished running@.%!" n
+      Printf.printf "waiter %d resumed\n" n
     in
     Fiber.fork_and_join_unit (waiter 1) (waiter 2)
   in
   let run () =
     let* () = Scheduler.yield () in
     let+ () = Fiber.Ivar.fill ivar () in
-    Format.eprintf "waiters finished running@."
+    Printf.printf "ivar filled\n"
   in
   test unit (Fiber.fork_and_join_unit waiters run);
   [%expect
     {|
-    waiter 1 finished running
-    waiter 2 finished running
-    waiters finished running
+    ivar filled
+    waiter 1 resumed
+    waiter 2 resumed
     () |}]
 
 let%expect_test _ =

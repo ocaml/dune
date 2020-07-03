@@ -33,10 +33,10 @@ just quietly shadow the module in the virtual library.
         ocamlc vlib/.vlib1855.objs/byte/vlib1855__Dom.{cmi,cmti}
         ocamlc vlib/.vlib1855.objs/byte/vlib1855__Overlap.{cmi,cmo,cmt}
       ocamlopt impl/.impl1855.objs/native/vlib1855__impl1855__.{cmx,o}
-      ocamlopt vlib/.vlib1855.objs/native/vlib1855__Overlap.{cmx,o}
+      ocamlopt impl/.impl1855.objs/native/vlib1855__Dom.{cmx,o}
         ocamlc impl/.impl1855.objs/byte/vlib1855__impl1855____Overlap.{cmi,cmo,cmt}
         ocamlc impl/.impl1855.objs/byte/vlib1855__Dom.{cmo,cmt}
-      ocamlopt impl/.impl1855.objs/native/vlib1855__Dom.{cmx,o}
+      ocamlopt vlib/.vlib1855.objs/native/vlib1855__Overlap.{cmx,o}
       ocamlopt impl/.impl1855.objs/native/vlib1855__impl1855____Overlap.{cmx,o}
         ocamlc impl/impl1855.cma
       ocamlopt impl/impl1855.{a,cmxa}

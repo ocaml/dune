@@ -21,8 +21,8 @@
         ocamlc .main.eobjs/byte/bar.{cmi,cmo,cmt}
         ocamlc .main.eobjs/byte/foo.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/bar.{cmx,o}
-        ocamlc .main.eobjs/byte/main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/foo.{cmx,o}
+        ocamlc .main.eobjs/byte/main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/main.{cmx,o}
       ocamlopt main.exe
           main alias runtest
@@ -47,12 +47,12 @@
 
   $ dune runtest --display short
         ocamlc .main.eobjs/byte/dune__exe.{cmi,cmo,cmt}
+      ocamlopt .main.eobjs/native/dune__exe.{cmx,o}
         ocamlc .main.eobjs/byte/dune__exe__Bar.{cmi,cmo,cmt}
         ocamlc .main.eobjs/byte/dune__exe__Foo.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/dune__exe.{cmx,o}
       ocamlopt .main.eobjs/native/dune__exe__Bar.{cmx,o}
-        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/dune__exe__Foo.{cmx,o}
+        ocamlc .main.eobjs/byte/dune__exe__Main.{cmi,cmo,cmt}
       ocamlopt .main.eobjs/native/dune__exe__Main.{cmx,o}
       ocamlopt main.exe
           main alias runtest

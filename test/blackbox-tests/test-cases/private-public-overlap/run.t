@@ -20,8 +20,8 @@ On the other hand, public libraries may have private preprocessors
            ppx mylib.pp.ml
       ocamldep .mylib.objs/mylib.pp.ml.d
         ocamlc .mylib.objs/byte/mylib.{cmi,cmo,cmt}
-        ocamlc mylib.cma
       ocamlopt .mylib.objs/native/mylib.{cmx,o}
+        ocamlc mylib.cma
       ocamlopt mylib.{a,cmxa}
       ocamlopt mylib.cmxs
 

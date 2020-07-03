@@ -347,8 +347,8 @@ Can init and build a new library project
   | (lang dune <version>)
   | (name test_lib_proj)
         ocamlc lib/.test_lib_proj.objs/byte/test_lib_proj.{cmi,cmo,cmt}
-        ocamlc lib/test_lib_proj.cma
       ocamlopt lib/.test_lib_proj.objs/native/test_lib_proj.{cmx,o}
+        ocamlc lib/test_lib_proj.cma
       ocamlopt lib/test_lib_proj.{a,cmxa}
       ocamlopt lib/test_lib_proj.cmxs
 

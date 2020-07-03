@@ -203,10 +203,9 @@ with type 'a fiber := 'a t
 
 (** {1 Running fibers} *)
 
-(** [run t] runs a fiber. If the fiber doesn't complete immediately, [run t]
-    returns [None]. *)
-val run : 'a t -> 'a option
+type fill = Fill : 'a Ivar.t * 'a -> fill
 
-(** Similar to [run] but with two fibers. This function is a bit odd and might
-    eventually be replaced by something more idiomatic. *)
-val run2 : (unit -> 'a t) -> (unit -> 'b t) -> 'a option * 'b option
+(** [run t ~iter] runs a fiber until it terminates. [iter] is used to implement
+    the scheduler, it should block waiting for an event and return an ivar to
+    fill. *)
+val run : 'a t -> iter:(unit -> fill) -> 'a

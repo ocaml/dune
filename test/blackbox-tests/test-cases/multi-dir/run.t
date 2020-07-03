@@ -59,17 +59,7 @@ Test some error cases
 Test for (include_subdir unqualified) with (preprocess (action ...))
 --------------------------------------------------------------------
 
-  $ dune build --display short --root test4 @all
+  $ dune exec ./main.exe --root test4 @all
   Entering directory 'test4'
-      ocamldep .main.eobjs/main.ml.d
-        ocamlc .main.eobjs/byte/main.{cmi,cmo,cmt}
-      ocamlopt .main.eobjs/native/main.{cmx,o}
-        ocamlc main.bc
-      ocamlopt main.exe
-          main sub/foo.pp.ml
-      ocamldep .foo.objs/foo.pp.ml.d
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
-        ocamlc foo.cma
-      ocamlopt .foo.objs/native/foo.{cmx,o}
-      ocamlopt foo.{a,cmxa}
-      ocamlopt foo.cmxs
+  Entering directory 'test4'
+  print_endline "foo"

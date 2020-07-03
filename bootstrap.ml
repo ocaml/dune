@@ -65,9 +65,9 @@ let read_file fn =
   s
 
 let () =
-  let v = Scanf.sscanf Sys.ocaml_version "%d.%d" (fun a b -> (a, b)) in
+  let v, p = Scanf.sscanf Sys.ocaml_version "%d.%d%s@+%s" (fun a b c d -> (a, b), d) in
   let compiler, which =
-    if v >= min_supported_natively then
+    if v >= min_supported_natively && p <> "multicore" then
       ("ocamlc", None)
     else
       let compiler = "ocamlfind -toolchain secondary ocamlc" in

@@ -420,10 +420,13 @@ module Mutex = struct
 
   let unlock t k =
     assert t.locked;
-    ( match Queue.pop t.waiters with
-    | None -> t.locked <- false
-    | Some next -> K.run next () );
-    k ()
+    match Queue.pop t.waiters with
+    | None ->
+      t.locked <- false;
+      k ()
+    | Some next ->
+      k ();
+      K.run next ()
 
   let with_lock t f =
     let* () = lock t in

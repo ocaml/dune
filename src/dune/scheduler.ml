@@ -672,7 +672,7 @@ module Run_once : sig
     | Got_signal
     | Files_changed
     | Never
-    | Exn of Exn.t * Printexc.raw_backtrace
+    | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
@@ -703,7 +703,7 @@ end = struct
     | Got_signal
     | Files_changed
     | Never
-    | Exn of Exn.t * Printexc.raw_backtrace
+    | Exn of Exn_with_backtrace.t
 
   let run t f =
     let fiber =
@@ -711,7 +711,7 @@ end = struct
     in
     match Fiber.run2 (fun () -> fiber) (fun () -> pump_events t) with
     | _, None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
-    | exception exn -> Error (Exn (exn, Printexc.get_raw_backtrace ()))
+    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
     | a, Some b -> (
       match (b, a) with
       | Done, None -> Error Never
@@ -738,7 +738,7 @@ let go ?config f =
   let t = prepare ?config () in
   let res = Run_once.run_and_cleanup t f in
   match res with
-  | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
+  | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
   | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
   | Error Files_changed ->
@@ -799,7 +799,7 @@ let poll ?config ~once ~finally () =
       wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
     | Error Files_changed -> loop ()
-    | Error (Exn (exn, bt)) -> (exn, Some bt)
+    | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
   and after_wait = function
     | Exit -> (Dune_util.Report_error.Already_reported, None)
     | Continue -> loop ()

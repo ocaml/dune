@@ -8,8 +8,8 @@ We need ocamlfind to run this test
 
   $ dune build @install --display short --only hello
         ocamlc root/.hello.objs/byte/hello.{cmi,cmo,cmt}
-        ocamlc root/hello.cma
       ocamlopt root/.hello.objs/native/hello.{cmx,o}
+        ocamlc root/hello.cma
       ocamlopt root/hello.{a,cmxa}
       ocamlopt root/hello.cmxs
 

@@ -6,19 +6,19 @@
       ocamldep alib/.alib.objs/main.ml.d
         ocamlc blib/sub/.sub.objs/byte/sub.{cmi,cmo,cmt}
       ocamlopt alib/.alib.objs/native/alib__.{cmx,o}
-        ocamlc blib/sub/sub.cma
-      ocamlopt blib/sub/.sub.objs/native/sub.{cmx,o}
         ocamlc blib/.blib.objs/byte/blib.{cmi,cmo,cmt}
-      ocamlopt blib/sub/sub.{a,cmxa}
-        ocamlc blib/blib.cma
-      ocamlopt blib/.blib.objs/native/blib.{cmx,o}
-        ocamlc alib/.alib.objs/byte/alib__Main.{cmi,cmo,cmt}
+      ocamlopt blib/sub/.sub.objs/native/sub.{cmx,o}
+        ocamlc blib/sub/sub.cma
         ocamlc alib/.alib.objs/byte/alib.{cmi,cmo,cmt}
-      ocamlopt blib/sub/sub.cmxs
-      ocamlopt blib/blib.{a,cmxa}
+        ocamlc alib/.alib.objs/byte/alib__Main.{cmi,cmo,cmt}
+      ocamlopt blib/.blib.objs/native/blib.{cmx,o}
+        ocamlc blib/blib.cma
+      ocamlopt blib/sub/sub.{a,cmxa}
+      ocamlopt alib/.alib.objs/native/alib.{cmx,o}
       ocamlopt alib/.alib.objs/native/alib__Main.{cmx,o}
         ocamlc alib/alib.cma
-      ocamlopt alib/.alib.objs/native/alib.{cmx,o}
-      ocamlopt blib/blib.cmxs
+      ocamlopt blib/blib.{a,cmxa}
+      ocamlopt blib/sub/sub.cmxs
       ocamlopt alib/alib.{a,cmxa}
+      ocamlopt blib/blib.cmxs
       ocamlopt alib/alib.cmxs

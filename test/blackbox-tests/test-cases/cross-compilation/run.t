@@ -5,20 +5,20 @@
       ocamldep bin/.blah.eobjs/blah.ml.d
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt} [default.foo]
         ocamlc lib/.p.objs/byte/p.{cmi,cmo,cmt}
-        ocamlc lib/p.cma [default.foo]
       ocamlopt lib/.p.objs/native/p.{cmx,o} [default.foo]
+        ocamlc lib/p.cma [default.foo]
       ocamlopt lib/.p.objs/native/p.{cmx,o}
       ocamlopt lib/p.{a,cmxa} [default.foo]
       ocamlopt lib/p.{a,cmxa}
-      ocamlopt lib/p.cmxs [default.foo]
         ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt} [default.foo]
+      ocamlopt lib/p.cmxs [default.foo]
         ocamlc bin/.blah.eobjs/byte/blah.{cmi,cmo,cmt}
       ocamlopt bin/.blah.eobjs/native/blah.{cmx,o} [default.foo]
       ocamlopt bin/.blah.eobjs/native/blah.{cmx,o}
       ocamlopt bin/blah.exe [default.foo]
       ocamlopt bin/blah.exe
-          blah file
           blah file [default.foo]
+          blah file
   $ cat _build/default.foo/file
   42
   $ ls *.install

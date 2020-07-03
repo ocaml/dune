@@ -17,13 +17,13 @@
           odoc .foo.objs/byte/foo2.odoc
           odoc .foo.objs/byte/foo3.odoc
           odoc .foo_byte.objs/byte/foo_byte.odoc
-          odoc _doc/_html/bar/index.html
           odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
+          odoc _doc/_html/bar/index.html
+          odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html
           odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
           odoc _doc/_html/foo/Foo3/.dune-keep,_doc/_html/foo/Foo3/index.html
-          odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
           odoc _doc/_html/foo/index.html
-          odoc _doc/_html/foo/Foo/.dune-keep,_doc/_html/foo/Foo/index.html
+          odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
   $ dune runtest --display short
   <!DOCTYPE html>
   <html xmlns="http://www.w3.org/1999/xhtml">

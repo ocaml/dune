@@ -3,8 +3,8 @@
       ocamldep .bar.objs/bar.ml.d
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc bar.cma
       ocamlopt .bar.objs/native/bar.{cmx,o}
+        ocamlc bar.cma
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
       ocamlopt .foo.objs/native/foo.{cmx,o}

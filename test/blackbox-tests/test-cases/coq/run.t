@@ -50,7 +50,7 @@
       ocamlopt src_b/ml_plugin_b.cmxs
           coqc theories/a.vo
 
-  $ dune build --root base --display short --debug-dependency-path @default
+  $ dune build --root base --debug-dependency-path @default
   Entering directory 'base'
   lib: [
     "_build/install/default/lib/base/META"
@@ -64,7 +64,7 @@
     "_build/install/default/lib/coq/user-contrib/basic/foo.vo" {"coq/user-contrib/basic/foo.vo"}
   ]
 
-  $ dune build --root rec_module --display short --debug-dependency-path @default
+  $ dune build --root rec_module --debug-dependency-path @default
   Entering directory 'rec_module'
   lib: [
     "_build/install/default/lib/rec/META"
@@ -147,7 +147,7 @@
   -> required by alias default
   [1]
 
-  $ dune build --root compose_cycle/ --display short --debug-dependency-path
+  $ dune build --root compose_cycle/ --debug-dependency-path
   Entering directory 'compose_cycle'
   File "a/dune", line 2, characters 7-8:
   2 |  (name a)
@@ -195,7 +195,7 @@
     "_build/install/default/lib/coq/user-contrib/foo/a/a.vo" {"coq/user-contrib/foo/a/a.vo"}
   ]
 
-  $ dune build --root compose_two_scopes/ --display short --debug-dependency-path
+  $ dune build --root compose_two_scopes/ --debug-dependency-path
   Entering directory 'compose_two_scopes'
   File "b/dune", line 4, characters 11-12:
   4 |  (theories a))

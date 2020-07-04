@@ -60,7 +60,7 @@ The next test tries to build a module that does not exist.
   >  (name t)
   >  (deps %{cmo:foo}))
   > EOF
-  $ ./sdune build --root ex1 --display short @t
+  $ ./sdune build --root ex1 @t
   Entering directory 'ex1'
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cmo:foo}))
@@ -101,7 +101,7 @@ This test tries to build a non-existent .cma.
   >  (name t)
   >  (deps %{cma:bar}))
   > EOF
-  $ ./sdune build --root ex2 --display short @t
+  $ ./sdune build --root ex2 @t
   Entering directory 'ex2'
   File "dune", line 3, characters 9-17:
   3 |  (deps %{cma:bar}))
@@ -238,7 +238,7 @@ field of a (rule).
   >  (deps %{cmo:x2})
   >  (action (with-stdout-to %{target} (progn))))
   > EOF
-  $ ./sdune build --root deps-fail --display short t
+  $ ./sdune build --root deps-fail t
   Entering directory 'deps-fail'
   File "dune", line 3, characters 9-16:
   3 |  (deps %{cmo:x2})

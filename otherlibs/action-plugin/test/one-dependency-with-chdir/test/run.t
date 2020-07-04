@@ -24,7 +24,6 @@ when we 'chdir' into different directory.
   > EOF
 
   $ cp ../bin/foo.exe ./some_dir
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
            foo alias runtest
   Hello from some_dependency!

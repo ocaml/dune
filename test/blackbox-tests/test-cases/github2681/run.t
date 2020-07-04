@@ -9,7 +9,7 @@ dependency of the alias.
   >  (action (with-stdout-to foo (echo "hello world")))
   >  (alias bar))
   > EOF
-  $ dune build @bar --display short
+  $ dune build @bar
   $ cat _build/default/foo
   hello world
   $ (cd ..)
@@ -24,5 +24,5 @@ A rule may now have an empty set of targets if it has an alias field
   >  (action (echo "hello world"))
   >  (alias bar))
   > EOF
-  $ dune build @bar --display short
+  $ dune build @bar
   hello world

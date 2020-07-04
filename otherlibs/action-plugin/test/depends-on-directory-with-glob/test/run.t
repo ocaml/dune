@@ -36,8 +36,7 @@
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
   Building some_file!
   Building some_file_but_different!
            foo alias runtest

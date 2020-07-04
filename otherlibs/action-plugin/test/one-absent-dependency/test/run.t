@@ -14,8 +14,7 @@ and requires dependency that can not be build fails.
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
   File "dune", line 1, characters 0-57:
   1 | (rule
   2 |  (alias runtest)

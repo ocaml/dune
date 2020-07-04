@@ -19,6 +19,5 @@
 
   $ cp ../bin/foo.exe ./some_dir/
 
-  $ dune runtest --display short
-           foo some_file
+  $ dune runtest
   Hello from some_file!

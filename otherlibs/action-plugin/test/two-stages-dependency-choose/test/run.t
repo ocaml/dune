@@ -32,9 +32,7 @@ on based on dependency from the previous stage.
 
   $ cp ../bin/client.exe ./
 
-  $ dune runtest --display short
-        client alias runtest
-        client alias runtest
+  $ dune runtest
   Building bar!
         client alias runtest
   Hello from bar!

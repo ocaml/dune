@@ -16,6 +16,5 @@
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo some_target
+  $ dune runtest
   Hello from some_target!

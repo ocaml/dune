@@ -3,19 +3,19 @@ General tests
 
   $ printf titi > x
 
-  $ dune build --display short @blah
+  $ dune build @blah
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
   [1]
   $ cat x
   titi
 
-  $ dune promote --display short
+  $ dune promote
   Promoting _build/default/x.gen to x.
   $ cat x
   toto
 
-  $ dune build --display short @blah
+  $ dune build @blah
   $ cat x
   toto
 
@@ -26,7 +26,7 @@ can be depended on by other actions.
   toto
 
   $ printf titi > x
-  $ dune build --display short @blah x.gen.copy
+  $ dune build @blah x.gen.copy
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
   [1]
@@ -34,17 +34,17 @@ can be depended on by other actions.
   toto
 
 Otherwise this test fails on OSX
-  $ dune clean --display short
+  $ dune clean
 
   $ printf titi > x
-  $ dune build --display short @blah --auto-promote
+  $ dune build @blah --auto-promote
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
   Promoting _build/default/x.gen to x.
   [1]
   $ cat x
   toto
-  $ dune build --display short @blah
+  $ dune build @blah
   $ cat x
   toto
 
@@ -53,7 +53,7 @@ Test single file promotion
 
   $ printf a > x
   $ printf a > y
-  $ dune build --display short @blah @blah2
+  $ dune build @blah @blah2
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
   File "y", line 1, characters 0-0:
@@ -80,7 +80,7 @@ Reproduction case for #1772
 
   $ printf a > x
   $ printf a > y
-  $ dune build --display short @blah @blah2
+  $ dune build @blah @blah2
   File "x", line 1, characters 0-0:
   Error: Files _build/default/x and _build/default/x.gen differ.
   File "y", line 1, characters 0-0:

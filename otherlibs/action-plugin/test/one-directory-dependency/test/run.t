@@ -31,8 +31,7 @@ directory to be build.
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
            foo alias runtest
   dune
   some_file1

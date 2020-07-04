@@ -23,11 +23,10 @@ they were forced to rebuild.
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
   Building some_file!
            foo alias runtest
   Hello from some_file!
 
-  $ dune runtest --display short
+  $ dune runtest
   Building some_file!

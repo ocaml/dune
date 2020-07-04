@@ -1,2 +1,2 @@
-  $ dune runtest --force --display short
+  $ dune runtest --force
   ocaml syntax

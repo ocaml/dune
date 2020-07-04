@@ -18,7 +18,6 @@ and requires one dependency can be successfully run.
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
-           foo alias runtest
+  $ dune runtest
            foo alias runtest
   Hello from some_dependency!

@@ -14,7 +14,7 @@ ordinary executable instead of one linked against dune-action-plugin.
 
   $ cp ../bin/foo.exe ./
 
-  $ dune runtest --display short
+  $ dune runtest
            foo alias runtest
   Hello from foo!
   File "dune", line 1, characters 0-57:

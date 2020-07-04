@@ -1,23 +1,7 @@
-  $ dune build src/test.exe --display short --debug-dependency-path
-      ocamllex src/lexer1.ml
-      ocamllex src/lexer2.ml
-      ocamldep src/.test.eobjs/test.ml.d
-        menhir src/test_base.{ml,mli}
-        menhir src/test_menhir1.{ml,mli}
-      ocamldep src/.test.eobjs/lexer1.ml.d
-      ocamldep src/.test.eobjs/lexer2.ml.d
-      ocamldep src/.test.eobjs/test_base.mli.d
-      ocamldep src/.test.eobjs/test_base.ml.d
-      ocamldep src/.test.eobjs/test_menhir1.mli.d
-      ocamldep src/.test.eobjs/test_menhir1.ml.d
-        ocamlc src/.test.eobjs/byte/test_menhir1.{cmi,cmti}
-        ocamlc src/.test.eobjs/byte/test_base.{cmi,cmti}
-      ocamlopt src/.test.eobjs/native/test_menhir1.{cmx,o}
-        ocamlc src/.test.eobjs/byte/lexer1.{cmi,cmo,cmt}
-      ocamlopt src/.test.eobjs/native/test_base.{cmx,o}
-        ocamlc src/.test.eobjs/byte/lexer2.{cmi,cmo,cmt}
-      ocamlopt src/.test.eobjs/native/lexer1.{cmx,o}
-        ocamlc src/.test.eobjs/byte/test.{cmi,cmo,cmt}
-      ocamlopt src/.test.eobjs/native/lexer2.{cmx,o}
-      ocamlopt src/.test.eobjs/native/test.{cmx,o}
-      ocamlopt src/test.exe
+Build and run a source file that requires a menhir parser.
+
+(Running the executable fails, but it doesn't matter since we only care about compilation)
+
+  $ dune exec ./src/test.exe --debug-dependency-path
+  Fatal error: exception Failure("lexing: empty token")
+  [2]

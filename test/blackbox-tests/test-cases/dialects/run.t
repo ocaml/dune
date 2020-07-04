@@ -1,21 +1,17 @@
 Test the (dialect ...) stanza inside the dune-project file.
 
-  $ dune build --root good --display short @install
+  $ dune exec --root good ./main.exe
   Entering directory 'good'
-      ocamldep .fmt.eobjs/fmt.ml.d
-      ocamldep .main.eobjs/main.mf.d
-        ocamlc .fmt.eobjs/byte/fmt.{cmi,cmo,cmt}
-      ocamldep .main.eobjs/main.mfi.d
-      ocamlopt .fmt.eobjs/native/fmt.{cmx,o}
-        ocamlc .main.eobjs/byte/main.{cmi,cmti}
-      ocamlopt fmt.exe
-      ocamlopt .main.eobjs/native/main.{cmx,o}
-      ocamlopt main.exe
+  Entering directory 'good'
 
   $ dune build --root good --display short @fmt
   Entering directory 'good'
-           fmt .formatted/main.mf
+      ocamldep .fmt.eobjs/fmt.ml.d
+        ocamlc .fmt.eobjs/byte/fmt.{cmi,cmo,cmt}
+      ocamlopt .fmt.eobjs/native/fmt.{cmx,o}
+      ocamlopt fmt.exe
            fmt .formatted/main.mfi
+           fmt .formatted/main.mf
 
   $ dune build --root bad1
   Entering directory 'bad1'

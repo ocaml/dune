@@ -8,14 +8,9 @@ We need ocamlfind to run this test
 
   $ dune build @install --only hello
 
-  $ dune build @install --display short --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
-        ocamlc root/.pas_de_bol.objs/byte/pas_de_bol.{cmi,cmo,cmt}
-      ocamldep root/.pas_de_bol.objs/a.ml.d
+  $ dune build @install --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'
   File ".../plop/META", line 1, characters 0-0:
   Error: Library "une-lib-qui-nexiste-pas" not found.
   -> required by library "plop.ca-marche-pas" in
      .../plop
-  Hint: try:
-  dune external-lib-deps --missing --only pas-de-bol --display short @install
-      ocamldep root/.pas_de_bol.objs/b.ml.d
-      ocamlopt root/.pas_de_bol.objs/native/pas_de_bol.{cmx,o}
+  Hint: try: dune external-lib-deps --missing --only pas-de-bol @install

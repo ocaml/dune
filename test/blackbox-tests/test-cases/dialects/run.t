@@ -4,14 +4,12 @@ Test the (dialect ...) stanza inside the dune-project file.
   Entering directory 'good'
   Entering directory 'good'
 
-  $ dune build --root good --display short @fmt
+  $ dune build --root good @fmt
   Entering directory 'good'
-      ocamldep .fmt.eobjs/fmt.ml.d
-        ocamlc .fmt.eobjs/byte/fmt.{cmi,cmo,cmt}
-      ocamlopt .fmt.eobjs/native/fmt.{cmx,o}
-      ocamlopt fmt.exe
            fmt .formatted/main.mfi
+  Formatting main.mfi
            fmt .formatted/main.mf
+  Formatting main.mf
 
   $ dune build --root bad1
   Entering directory 'bad1'

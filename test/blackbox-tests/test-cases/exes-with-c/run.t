@@ -1,9 +1,7 @@
-  $ dune build exec ./aa.exe
-  Error: Don't know how to build exec
-  [1]
-  $ dune build exec ./bb.exe
-  Error: Don't know how to build exec
-  [1]
+  $ dune exec ./aa.exe
+  A
+  $ dune exec ./bb.exe
+  B
 
   $ mkdir err
   $ echo "(lang dune 2.1)" > err/dune-project

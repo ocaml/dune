@@ -65,7 +65,15 @@ let line_directive ~filename:fn ~line_number =
 
 let local_bin p = Path.Build.relative p ".bin"
 
+let esc_symbol =
+  if Sys.win32 then
+    '^'
+  else
+    '\\'
+
 let pp_command_hint command =
+  let esc = Format.sprintf " %c" esc_symbol in
+  let sep = Pp.custom_break ~fits:("", 1, "") ~breaks:(esc, 0, "") in
   let open Pp.O in
   Pp.textf "try:" ++ Pp.newline ++ Pp.cut
-  ++ Pp.hbox (Pp.textf "  " ++ Pp.verbatim command)
+  ++ Pp.hbox (Pp.textf "  " ++ Pp.concat ~sep (List.map ~f:Pp.verbatim command))

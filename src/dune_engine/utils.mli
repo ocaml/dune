@@ -27,4 +27,4 @@ val line_directive : filename:string -> line_number:int -> string
 val local_bin : Path.Build.t -> Path.Build.t
 
 (** Pretty-printer for suggesting a given shell command to the user *)
-val pp_command_hint : string -> _ Pp.t
+val pp_command_hint : string list -> _ Pp.t

@@ -81,8 +81,7 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ]
                ~hints:
                  [ Dune_engine.Utils.pp_command_hint
-                     ( "opam install" :: required_package_names
-                     |> String.concat ~sep:" " )
+                     ("opam install" :: required_package_names)
                  ]);
           true
       ) else if sexp then (

@@ -36,11 +36,7 @@ module Error = struct
   let external_lib_deps_hint () =
     match !Clflags.external_lib_deps_hint with
     | [] -> []
-    | l ->
-      [ l
-        |> List.map ~f:String.quote_for_shell
-        |> String.concat ~sep:" " |> Utils.pp_command_hint
-      ]
+    | l -> [ l |> List.map ~f:String.quote_for_shell |> Utils.pp_command_hint ]
 
   let not_found ~loc ~name =
     make ~loc

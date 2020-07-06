@@ -22,6 +22,8 @@ next
 - `$ dune utop` no longer tries to load optional libraries that are unavailable
   (#3612, fixes #3188, @anuragsoni)
 
+- Fix dune-build-info on 4.10.0+flambda (#3599, @emillon, @jeremiedimino).
+
 2.6.1 (02/07/2020)
 ------------------
 

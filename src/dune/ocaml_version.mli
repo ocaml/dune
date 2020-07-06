@@ -63,3 +63,6 @@ val custom_or_output_complete_exe : t -> string
 
 (** ocamlopt -a always calls the native C linker, even for empty archives *)
 val ocamlopt_always_calls_library_linker : t -> bool
+
+(** Whether [Sys.opaque_identity] is in the standard library *)
+val has_sys_opaque_identity : t -> bool

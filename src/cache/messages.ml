@@ -24,25 +24,7 @@ let hint_supported version = version_at_least ~min:hint_min_version version
 let sexp_of_message : type a. version -> a message -> Sexp.t =
  fun version ->
   let cmd name args = Sexp.List (Sexp.Atom name :: args) in
-  function
-  | Hint keys ->
-    if not (hint_supported version) then
-      Code_error.raise "tried sending a not yet supported hint message"
-        [ ("current version", dyn_of_version version)
-        ; ("minimum version", dyn_of_version hint_min_version)
-        ];
-    let f k = Sexp.Atom (Digest.to_string k) in
-    cmd "hint" @@ List.map ~f keys
-  | Lang versions ->
-    cmd "lang"
-      ( Sexp.Atom "dune-cache-protocol"
-      :: (List.map ~f:(fun { major; minor } ->
-              Sexp.List
-                [ Sexp.Atom (string_of_int major)
-                ; Sexp.Atom (string_of_int minor)
-                ]))
-           versions )
-  | Promote promotion ->
+  let promote_message name promotion =
     let key = Key.to_string promotion.key
     and f (path, digest) =
       Sexp.List
@@ -73,11 +55,32 @@ let sexp_of_message : type a. version -> a message -> Sexp.t =
         Sexp.List [ Sexp.Atom "repo"; Sexp.Atom (string_of_int idx) ] :: rest
       | None -> rest
     in
-    cmd "promote"
+    cmd name
       ( Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
       :: Sexp.List (Sexp.Atom "files" :: List.map ~f promotion.files)
       :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List promotion.metadata ]
       :: rest )
+  in
+  function
+  | Hint keys ->
+    if not (hint_supported version) then
+      Code_error.raise "tried sending a not yet supported hint message"
+        [ ("current version", dyn_of_version version)
+        ; ("minimum version", dyn_of_version hint_min_version)
+        ];
+    let f k = Sexp.Atom (Digest.to_string k) in
+    cmd "hint" @@ List.map ~f keys
+  | Lang versions ->
+    cmd "lang"
+      ( Sexp.Atom "dune-cache-protocol"
+      :: (List.map ~f:(fun { major; minor } ->
+              Sexp.List
+                [ Sexp.Atom (string_of_int major)
+                ; Sexp.Atom (string_of_int minor)
+                ]))
+           versions )
+  | Promote promotion -> promote_message "promote" promotion
+  | Promoted promotion -> promote_message "promoted" promotion
   | SetBuildRoot root ->
     cmd "set-build-root" [ Sexp.Atom (Path.to_absolute_filename root) ]
   | SetCommonMetadata metadata -> cmd "set-common-metadata" metadata

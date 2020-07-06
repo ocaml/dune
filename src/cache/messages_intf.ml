@@ -45,6 +45,8 @@ type _ message =
           workspace along with the associated commit identifiers. *)
   | Promote : promotion -> outgoing message
       (** Promote files produced by a build rule into the cache. *)
+  | Promoted : promotion -> outgoing message
+      (** Files have been promoted into the cache. *)
   | Hint : Digest.t list -> outgoing message
       (** The cache daemon a rule is going to be built *)
   | Dedup : File.t -> incoming message

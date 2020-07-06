@@ -142,6 +142,7 @@ let client_thread (events, (client : client)) =
             ~repository ~duplication
         in
         client
+      | Promoted _ -> Result.Ok client
       | SetBuildRoot root ->
         let+ cache = Cache.Local.set_build_dir client.cache root in
         { client with cache }

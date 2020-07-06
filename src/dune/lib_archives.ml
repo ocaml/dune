@@ -11,6 +11,7 @@ let dll_files t = t.dll_files
 
 let has_native_archive lib config contents =
   Lib_config.linker_can_create_empty_archives config
+  && Ocaml_version.ocamlopt_always_calls_library_linker config.ocaml_version
   ||
   let name = Dune_file.Library.best_name lib in
   let ml_sources = Dir_contents.ocaml contents in

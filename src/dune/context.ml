@@ -503,7 +503,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
-      ; ocaml_version = Ocaml_config.version_string ocfg
+      ; ocaml_version_string = Ocaml_config.version_string ocfg
+      ; ocaml_version = Ocaml_version.of_ocaml_config ocfg
       ; bisect_enabled
       }
     in

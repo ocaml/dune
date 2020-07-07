@@ -15,7 +15,7 @@ Welcome to dune's documentation!
    dune-files
    concepts
    tests
-   bisect
+   instrumentation
    foreign-code
    documentation
    jsoo

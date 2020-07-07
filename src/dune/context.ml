@@ -269,7 +269,7 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -505,7 +505,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; profile
       ; ocaml_version_string = Ocaml_config.version_string ocfg
       ; ocaml_version = Ocaml_version.of_ocaml_config ocfg
-      ; bisect_enabled
+      ; instrument_with
       }
     in
     if Option.is_some fdo_target_exe then
@@ -554,8 +554,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib = get_ocaml_tool "ocamlmklib"
       ; ocamlobjinfo = get_ocaml_tool "ocamlobjinfo"
       ; env
-      ; findlib =
-          Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
+      ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
       ; arch_sixtyfour
       ; install_prefix
@@ -618,10 +617,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled
+    ~dynamically_linked_foreign_archives ~instrument_with
 
 let opam_version =
   let f opam =
@@ -652,7 +651,7 @@ let opam_version =
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let opam =
     match Memo.Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -703,7 +702,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
-    ~bisect_enabled
+    ~instrument_with
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -723,7 +722,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; loc = _
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
-      ; bisect_enabled
+      ; instrument_with
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -739,7 +738,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
-      ~bisect_enabled
+      ~instrument_with
   | Opam
       { base =
           { targets
@@ -752,7 +751,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; loc = _
           ; fdo_target_exe
           ; dynamically_linked_foreign_archives
-          ; bisect_enabled
+          ; instrument_with
           }
       ; switch
       ; root
@@ -761,7 +760,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
-      ~dynamically_linked_foreign_archives ~bisect_enabled
+      ~dynamically_linked_foreign_archives ~instrument_with
 
 module Create = struct
   module Output = struct

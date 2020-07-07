@@ -17,7 +17,9 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
   in
   let ctx = SC.context sctx in
   let preprocess =
-    Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config
+    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   let pp =
     Preprocessing.make sctx ~dir ~dep_kind:Required ~scope ~expander ~preprocess
@@ -162,20 +164,26 @@ let executables_rules ~sctx ~dir ~expander ~dir_contents ~scope ~compile_info
       o_files
   in
   let requires_compile = Compilation_context.requires_compile cctx in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  in
   Exe.build_and_link_many cctx ~programs ~linkages ~link_args ~o_files
     ~promote:exes.promote ~embed_in_plugin_libraries;
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
-      ~preprocess:(Dune_file.Buildable.single_preprocess exes.buildable)
+      ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~obj_dir )
 
 let rules ~sctx ~dir ~dir_contents ~scope ~expander
     (exes : Dune_file.Executables.t) =
   let dune_version = Scope.project scope |> Dune_project.dune_version in
-  let ctx = SC.context sctx in
   let pps =
-    Dune_file.Preprocess_map.pps
-      (Dune_file.Buildable.preprocess exes.buildable ~lib_config:ctx.lib_config)
+    Preprocess.Per_module.pps
+      (Preprocess.Per_module.with_instrumentation exes.buildable.preprocess
+         ~instrumentation_backend:
+           (Lib.DB.instrumentation_backend (Scope.libs scope)))
   in
   let compile_info =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope) exes.names

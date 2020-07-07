@@ -56,7 +56,7 @@ module DB = struct
       Lib.DB.Resolve_result.redirect (Some scope.db) (Loc.none, name)
     | Some (Name name) -> Lib.DB.Resolve_result.redirect None name
 
-  let public_libs t ~stdlib_dir ~installed_libs stanzas =
+  let public_libs t ~installed_libs ~lib_config stanzas =
     let public_libs =
       List.filter_map stanzas
         ~f:(fun (stanza : Lib.DB.Library_related_stanza.t) ->
@@ -96,9 +96,9 @@ module DB = struct
             ] )
     in
     let resolve = resolve t public_libs in
-    Lib.DB.create ~stdlib_dir ~parent:(Some installed_libs) ~resolve
+    Lib.DB.create ~parent:(Some installed_libs) ~resolve
       ~all:(fun () -> Lib_name.Map.keys public_libs)
-      ()
+      ~lib_config ()
 
   let scopes_by_dir context ~projects ~lib_config ~public_libs stanzas
       coq_stanzas =
@@ -147,10 +147,7 @@ module DB = struct
   let create ~projects ~context ~installed_libs ~lib_config stanzas coq_stanzas
       =
     let t = Fdecl.create Dyn.Encoder.opaque in
-    let public_libs =
-      public_libs t ~stdlib_dir:lib_config.Lib_config.stdlib_dir ~installed_libs
-        stanzas
-    in
+    let public_libs = public_libs t ~installed_libs ~lib_config stanzas in
     let by_dir =
       scopes_by_dir context ~projects ~lib_config
         ~public_libs:(Some public_libs) stanzas coq_stanzas

@@ -75,9 +75,11 @@ module Main = struct
     in
     let x = Common.x common in
     let profile = Common.profile common in
+    let instrument_with = Common.instrument_with common in
     let capture_outputs = Common.capture_outputs common in
     let ancestor_vcs = (Common.root common).ancestor_vcs in
-    scan_workspace ?workspace_file ?x ?profile ~capture_outputs ~ancestor_vcs ()
+    scan_workspace ?workspace_file ?x ?profile ?instrument_with ~capture_outputs
+      ~ancestor_vcs ()
 
   let setup common =
     let open Fiber.O in

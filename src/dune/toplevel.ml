@@ -60,7 +60,7 @@ end
 type t =
   { cctx : Compilation_context.t
   ; source : Source.t
-  ; preprocess : Dune_file.Preprocess.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
   }
 
 let make ~cctx ~source ~preprocess = { cctx; source; preprocess }
@@ -143,7 +143,7 @@ module Stanza = struct
     let dune_version = Scope.project scope |> Dune_project.dune_version in
     let pps =
       match toplevel.pps with
-      | Dune_file.Preprocess.Pps pps -> pps.pps
+      | Preprocess.Pps pps -> pps.pps
       | Action _
       | Future_syntax _ ->
         assert false (* Error in parsing *)

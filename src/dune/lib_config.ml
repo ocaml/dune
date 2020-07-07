@@ -15,7 +15,7 @@ type t =
   ; profile : Profile.t
   ; ocaml_version_string : string
   ; ocaml_version : Ocaml_version.t
-  ; bisect_enabled : bool
+  ; instrument_with : Lib_name.t list
   }
 
 let var_map =

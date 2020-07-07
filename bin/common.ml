@@ -49,6 +49,7 @@ type t =
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
+  ; instrument_with : Dune.Lib_name.t list option
   }
 
 let workspace_file t = t.workspace_file
@@ -70,6 +71,8 @@ let watch t = t.watch
 let default_target t = t.default_target
 
 let prefix_target common s = common.target_prefix ^ s
+
+let instrument_with t = t.instrument_with
 
 let set_dirs c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
@@ -634,7 +637,20 @@ let term =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
-  and+ () = build_info in
+  and+ () = build_info
+  and+ instrument_with =
+    let doc =
+      {|"Enable instrumentation by $(b,BACKENDS).
+        $(b,BACKENDS) is a comma-separated list of library names,
+        each one of which must declare an instrumentation backend.|}
+    in
+    Arg.(
+      value
+      & opt (some (list lib_name)) None
+      & info [ "instrument-with" ] ~docs
+          ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
+          ~docv:"BACKENDS" ~doc)
+  in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let config = config_of_file config_file in
@@ -683,6 +699,7 @@ let term =
   ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files
+  ; instrument_with
   }
 
 let term =

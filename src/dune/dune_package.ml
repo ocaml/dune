@@ -155,7 +155,7 @@ module Lib = struct
          let main_module_name = Lib_info.Inherited.This main_module_name in
          let foreign_objects = Lib_info.Source.External foreign_objects in
          let jsoo_archive = None in
-         let pps = [] in
+         let preprocess = Preprocess.Per_module.no_preprocessing () in
          let virtual_deps = [] in
          let dune_version = None in
          let virtual_ =
@@ -173,9 +173,10 @@ module Lib = struct
            ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
            ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
            ~foreign_archives ~native_archives ~foreign_dll_files:[]
-           ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version
-           ~virtual_ ~implements ~default_implementation ~modes ~wrapped
-           ~special_builtin_support ~exit_module:None
+           ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled ~virtual_deps
+           ~dune_version ~virtual_ ~implements ~default_implementation ~modes
+           ~wrapped ~special_builtin_support ~exit_module:None
+           ~instrumentation_backend:None
        in
        { info; main_module_name; modules })
 

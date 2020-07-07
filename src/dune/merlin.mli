@@ -8,7 +8,7 @@ type t
 val make :
      ?requires:Lib.t list Or_exn.t
   -> flags:Ocaml_flags.t
-  -> ?preprocess:Dune_file.Preprocess.t
+  -> ?preprocess:Preprocess.Without_instrumentation.t Preprocess.t
   -> ?libname:Lib_name.Local.t
   -> ?source_dirs:Path.Source.Set.t
   -> modules:Modules.t

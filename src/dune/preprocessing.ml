@@ -255,36 +255,31 @@ module Driver = struct
     | Ok _ as x -> x
     | Error No_backend_found ->
       let msg =
-        match libs with
-        | [] -> "You must specify at least one ppx rewriter."
-        | _ -> (
-          match
-            List.filter_map libs ~f:(fun lib ->
-                match Lib_name.to_string (Lib.name lib) with
-                | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s ->
-                  Some s
-                | _ -> None)
-          with
-          | [] ->
-            let pps =
-              match loc with
-              | User_file (_, pps) -> List.map pps ~f:snd
-              | Dot_ppx (_, pps) -> pps
-            in
-            sprintf
-              "No ppx driver were found. It seems that %s %s not compatible \
-               with Dune. Examples of ppx rewriters that are compatible with \
-               Dune are ones using ocaml-migrate-parsetree, ppxlib or \
-               ppx_driver."
-              (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
-              ( match pps with
-              | [ _ ] -> "is"
-              | _ -> "are" )
-          | names ->
-            sprintf
-              "No ppx driver were found.\n\
-               Hint: Try upgrading or reinstalling %s."
-              (String.enumerate_and names) )
+        match
+          List.filter_map libs ~f:(fun lib ->
+              match Lib_name.to_string (Lib.name lib) with
+              | ("ocaml-migrate-parsetree" | "ppxlib" | "ppx_driver") as s ->
+                Some s
+              | _ -> None)
+        with
+        | [] ->
+          let pps =
+            match loc with
+            | User_file (_, pps) -> List.map pps ~f:snd
+            | Dot_ppx (_, pps) -> pps
+          in
+          sprintf
+            "No ppx driver were found. It seems that %s %s not compatible with \
+             Dune. Examples of ppx rewriters that are compatible with Dune are \
+             ones using ocaml-migrate-parsetree, ppxlib or ppx_driver."
+            (String.enumerate_and (List.map pps ~f:Lib_name.to_string))
+            ( match pps with
+            | [ _ ] -> "is"
+            | _ -> "are" )
+        | names ->
+          sprintf
+            "No ppx driver were found.\nHint: Try upgrading or reinstalling %s."
+            (String.enumerate_and names)
       in
       make_error loc msg
     | Error (Too_many_backends ts) ->
@@ -593,7 +588,7 @@ let make sctx ~dir ~expander ~dep_kind ~lint ~preprocess ~preprocessor_deps
     ~lib_name ~scope =
   let preprocess =
     Module_name.Per_item.map preprocess ~f:(fun pp ->
-        Dune_file.Preprocess.remove_future_syntax ~for_:Compiler pp
+        Preprocess.remove_future_syntax ~for_:Compiler pp
           (Super_context.context sctx).version)
   in
   let preprocessor_deps =

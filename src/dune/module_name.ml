@@ -60,7 +60,30 @@ let of_local_lib_name s = of_string (Lib_name.Local.to_string s)
 
 let to_local_lib_name s = Lib_name.Local.of_string s
 
-module Per_item = Per_item.Make (String)
+module Per_item = struct
+  include Per_item.Make (String)
+  open Dune_lang.Decoder
+
+  let decode ~default a =
+    peek_exn >>= function
+    | List (loc, Atom (_, A "per_module") :: _) ->
+      sum
+        [ ( "per_module"
+          , let+ x =
+              repeat
+                (let+ pp, names = pair a (repeat decode) in
+                 (names, pp))
+            in
+            of_mapping x ~default |> function
+            | Ok t -> t
+            | Error (name, _, _) ->
+              User_error.raise ~loc
+                [ Pp.textf "module %s present in two different sets"
+                    (to_string name)
+                ] )
+        ]
+    | _ -> a >>| for_all
+end
 
 let of_string_allow_invalid (_loc, s) =
   (* TODO add a warning here that is possible to disable *)

@@ -252,8 +252,10 @@ let exclusions =
   ; make "env/env-bins" ~disable_sandboxing:true
   ; make "mdx-stanza" ~external_deps:true
   ; make "toplevel-integration" ~external_deps:true
-  ; make "bisect-ppx/main" ~external_deps:true
+  ; make "bisect-ppx/main" ~external_deps:true ~enabled:false
+  ; make "bisect-ppx/github3473" ~external_deps:true ~enabled:false
   ; make "github3188" ~external_deps:true
+  ; make "instrumentation" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

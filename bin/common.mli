@@ -28,6 +28,8 @@ val default_target : t -> Arg.Dep.t
 
 val prefix_target : t -> string -> string
 
+val instrument_with : t -> Dune.Lib_name.t list option
+
 (** [set_common ?log common ~targets ~external_lib_deps_mode] is
     [set_dirs common] followed by [set_common_other common ~targets]. In
     general, [set_common] executes sequence of side-effecting actions to

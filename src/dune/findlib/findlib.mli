@@ -8,12 +8,7 @@ type t
 
 val meta_fn : string
 
-val create :
-     stdlib_dir:Path.t
-  -> paths:Path.t list
-  -> version:Ocaml_version.t
-  -> lib_config:Lib_config.t
-  -> t
+val create : paths:Path.t list -> lib_config:Lib_config.t -> t
 
 (** The search path for this DB *)
 val paths : t -> Path.t list

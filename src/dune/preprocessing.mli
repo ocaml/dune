@@ -13,8 +13,8 @@ val make :
   -> dir:Path.Build.t
   -> expander:Expander.t
   -> dep_kind:Lib_deps_info.Kind.t
-  -> lint:Dune_file.Preprocess_map.t
-  -> preprocess:Dune_file.Preprocess_map.t
+  -> lint:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
+  -> preprocess:Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   -> preprocessor_deps:Dep_conf.t list
   -> lib_name:Lib_name.Local.t option
   -> scope:Scope.t

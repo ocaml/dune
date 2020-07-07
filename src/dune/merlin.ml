@@ -13,21 +13,19 @@ let warn_dropped_pp loc ~allow_approx_merlin ~reason =
            warning by adding (allow_approximate_merlin) to your dune-project."
       ]
 
-module Preprocess = struct
-  let merge ~allow_approx_merlin (a : Dune_file.Preprocess.t)
-      (b : Dune_file.Preprocess.t) =
+module Pp = struct
+  let merge ~allow_approx_merlin (a : _ Preprocess.t) (b : _ Preprocess.t) =
     match (a, b) with
-    | No_preprocessing, No_preprocessing ->
-      Dune_file.Preprocess.No_preprocessing
+    | No_preprocessing, No_preprocessing -> Preprocess.No_preprocessing
     | No_preprocessing, pp
     | pp, No_preprocessing ->
       let loc =
-        Dune_file.Preprocess.loc pp |> Option.value_exn
+        Preprocess.loc pp |> Option.value_exn
         (* only No_preprocessing has no loc*)
       in
       warn_dropped_pp loc ~allow_approx_merlin
         ~reason:"Cannot mix preprocessed and non preprocessed specifications";
-      Dune_file.Preprocess.No_preprocessing
+      Preprocess.No_preprocessing
     | (Future_syntax _ as future_syntax), _
     | _, (Future_syntax _ as future_syntax) ->
       future_syntax
@@ -44,7 +42,11 @@ module Preprocess = struct
         ~reason:"cannot mix action and pps preprocessors";
       No_preprocessing
     | (Pps pp1 as pp), Pps pp2 ->
-      if Ordering.neq (Dune_file.Preprocess.Pps.compare_no_locs pp1 pp2) then (
+      if
+        Ordering.neq
+          (Preprocess.Pps.compare_no_locs
+             Preprocess.Without_instrumentation.compare_no_locs pp1 pp2)
+      then (
         warn_dropped_pp pp1.loc ~allow_approx_merlin
           ~reason:"pps specification isn't identical in all stanzas";
         No_preprocessing
@@ -93,15 +95,14 @@ end
 type t =
   { requires : Lib.Set.t
   ; flags : string list Build.t
-  ; preprocess : Dune_file.Preprocess.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.t
   ; libname : Lib_name.Local.t option
   ; source_dirs : Path.Source.Set.t
   ; objs_dirs : Path.Set.t
   }
 
-let make ?(requires = Ok []) ~flags
-    ?(preprocess = Dune_file.Preprocess.No_preprocessing) ?libname
-    ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
+let make ?(requires = Ok []) ~flags ?(preprocess = Preprocess.No_preprocessing)
+    ?libname ?(source_dirs = Path.Source.Set.empty) ~modules ~obj_dir () =
   (* Merlin shouldn't cause the build to fail, so we just ignore errors *)
   let requires =
     match requires with
@@ -178,7 +179,7 @@ let pp_flags sctx ~expander { preprocess; libname; _ } :
     string option Build.With_targets.t =
   let scope = Expander.scope expander in
   match
-    Dune_file.Preprocess.remove_future_syntax preprocess ~for_:Merlin
+    Preprocess.remove_future_syntax preprocess ~for_:Merlin
       (Super_context.context sctx).version
   with
   | Pps { loc; pps; flags; staged = _ } -> (
@@ -266,7 +267,7 @@ let merge_two ~allow_approx_merlin a b =
       (let+ a = a.flags
        and+ b = b.flags in
        a @ b)
-  ; preprocess = Preprocess.merge ~allow_approx_merlin a.preprocess b.preprocess
+  ; preprocess = Pp.merge ~allow_approx_merlin a.preprocess b.preprocess
   ; libname =
       ( match a.libname with
       | Some _ as x -> x

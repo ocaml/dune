@@ -1,9 +1,19 @@
 No ppx driver found
 
-  $ dune build --root driver-tests foo1.cma
-  Entering directory 'driver-tests'
-  File "dune", line 6, characters 13-18:
-  6 |  (preprocess (pps)))
+  $ mkdir -p no-driver
+  $ cat >no-driver/dune <<EOF
+  > (library
+  >  (name foo1)
+  >  (public_name foo.1)
+  >  (modules foo1)
+  >  (preprocess (pps)))
+  > EOF
+  $ dune build --root no-driver
+  Entering directory 'no-driver'
+  Info: Creating file dune-project with this contents:
+  | (lang dune 2.7)
+  File "dune", line 5, characters 13-18:
+  5 |  (preprocess (pps)))
                    ^^^^^
   Error: You must specify at least one ppx rewriter.
   [1]
@@ -12,9 +22,9 @@ Too many drivers
 
   $ dune build --root driver-tests foo2.cma
   Entering directory 'driver-tests'
-  File "dune", line 13, characters 13-28:
-  13 |  (preprocess (pps ppx1 ppx2)))
-                    ^^^^^^^^^^^^^^^
+  File "dune", line 6, characters 13-28:
+  6 |  (preprocess (pps ppx1 ppx2)))
+                   ^^^^^^^^^^^^^^^
   Error: Too many incompatible ppx drivers were found: foo.driver2 and
   foo.driver1.
   [1]
@@ -23,8 +33,8 @@ Not compatible with Dune
 
   $ dune build --root driver-tests foo3.cma
   Entering directory 'driver-tests'
-  File "dune", line 20, characters 13-28:
-  20 |  (preprocess (pps ppx_other)))
+  File "dune", line 13, characters 13-28:
+  13 |  (preprocess (pps ppx_other)))
                     ^^^^^^^^^^^^^^^
   Error: No ppx driver were found. It seems that ppx_other is not compatible
   with Dune. Examples of ppx rewriters that are compatible with Dune are ones
@@ -35,8 +45,8 @@ Incompatible Cookies
 
   $ dune build --root driver-tests foo4.cma
   Entering directory 'driver-tests'
-  File "dune", line 27, characters 13-28:
-  27 |  (preprocess (pps ppx3 ppx4)))
+  File "dune", line 20, characters 13-28:
+  20 |  (preprocess (pps ppx3 ppx4)))
                     ^^^^^^^^^^^^^^^
   Error: foo.ppx3 and foo.ppx4 have inconsistent requests for cookie "germany";
   foo.ppx3 requests "spritzgeback" and foo.ppx4 requests "lebkuchen"
@@ -77,9 +87,9 @@ Test the argument syntax
   --impl
   test_ppx_args.ml
   --as-ppx
-  File "dune", line 101, characters 3-138:
-  101 |    (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
-  102 |     -foo bar %{env:ENGLAND=undefined})))
+  File "dune", line 94, characters 3-138:
+  94 |    (pps -arg1 driver_print_args ppx_with_cookies_print_args -arg2 -arg3=%{env:AMERICA=undefined} --
+  95 |     -foo bar %{env:ENGLAND=undefined})))
   Error: Rule failed to generate the following targets:
   - test_ppx_args.pp.ml
   [1]

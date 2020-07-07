@@ -33,7 +33,7 @@ let make ?finally ?duplication_mode ~command_handler () =
     Result.map_error ~f:err
       (Local.make ?duplication_mode ~command_handler:ignore ())
   in
-  let* port =
+  let* endpoint =
     let cmd =
       Format.sprintf "%s cache start --display progress --exit-no-client"
         Sys.executable_name
@@ -45,20 +45,37 @@ let make ?finally ?duplication_mode ~command_handler () =
     and finally stdout = ignore (Unix.close_process_in stdout) (* FIXME *) in
     Exn.protectx (Unix.open_process_in cmd) ~finally ~f
   in
-  let* addr, port =
-    match String.split_on_char ~sep:':' port with
-    | [ addr; port ] -> (
-      match Int.of_string port with
-      | Some i -> (
-        try Result.Ok (Unix.inet_addr_of_string addr, i)
-        with Failure _ ->
-          Result.Error (errf [ Pp.textf "invalid address: %s" addr ]) )
-      | None -> Result.Error (errf [ Pp.textf "invalid port: %s" port ]) )
-    | _ -> Result.Error (errf [ Pp.textf "invalid endpoint: %s" port ])
-  in
-  let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-  let* _ =
-    Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_INET (addr, port)))
+  let* fd =
+    match
+      ( String.drop_prefix ~prefix:"unix:" endpoint
+      , String.drop_prefix ~prefix:"tcp://" endpoint )
+    with
+    | Some path, None ->
+      let fd = Unix.socket Unix.PF_UNIX Unix.SOCK_STREAM 0 in
+      let+ () =
+        Result.try_with (fun () -> Unix.connect fd (Unix.ADDR_UNIX path))
+      in
+      fd
+    | None, Some host_port ->
+      let* addr, port =
+        match String.split_on_char ~sep:':' host_port with
+        | [ addr; port ] -> (
+          match Int.of_string port with
+          | Some i -> (
+            try Result.Ok (Unix.inet_addr_of_string addr, i)
+            with Failure _ ->
+              Result.Error (errf [ Pp.textf "invalid address: %s" addr ]) )
+          | None -> Result.Error (errf [ Pp.textf "invalid port: %s" port ]) )
+        | _ ->
+          Result.Error (errf [ Pp.textf "invalid TCP endpoint: %s" host_port ])
+      in
+      let fd = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+      let+ () =
+        Result.try_with (fun () ->
+            Unix.connect fd (Unix.ADDR_INET (addr, port)))
+      in
+      fd
+    | _ -> Result.Error (errf [ Pp.textf "invalid endpoint: %s" endpoint ])
   in
   let socket = Unix.out_channel_of_descr fd in
   let input = Unix.in_channel_of_descr fd in

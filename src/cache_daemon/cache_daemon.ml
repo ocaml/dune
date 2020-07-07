@@ -28,7 +28,7 @@ let default_port_file () =
          difference. *)
       Path.relative (Cache.Local.default_root ()) "runtime"
   in
-  Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
+  Path.L.relative runtime_dir [ "dune-cache-daemon"; "endpoint" ]
 
 let send_sexp output sexp =
   Csexp.to_channel output sexp;
@@ -222,7 +222,7 @@ let run ?(port_f = ignore) ?(port = 0) daemon =
     Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_of_string "127.0.0.1", port));
     let addr, port = getsockname (Unix.getsockname sock) in
     let endpoint =
-      Printf.sprintf "%s:%i" (Unix.string_of_inet_addr addr) port
+      Printf.sprintf "tcp://%s:%i" (Unix.string_of_inet_addr addr) port
     in
     daemon.endpoint <- Some endpoint;
     port_f endpoint;

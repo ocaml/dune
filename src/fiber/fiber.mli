@@ -201,6 +201,34 @@ module Throttle : sig
 end
 with type 'a fiber := 'a t
 
+module Sequence : sig
+  type 'a fiber = 'a t
+
+  type 'a t = 'a node fiber
+
+  and 'a node =
+    | Nil
+    | Cons of 'a * 'a t
+
+  val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+  (** [parallel_iter t ~f] is the same as:
+
+      {[
+        let rec loop t ~f =
+          t >>= function
+          | Nil -> return ()
+          | Cons (x, t) ->
+            fork_and_join_unit (fun () -> f x) (fun () -> loop t ~f)
+      ]}
+
+      except that if the sequence is infinite, the above code would leak memory
+      while [parallel_iter] does not. This function can typically be used to
+      process a sequence of events. *)
+  val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+end
+with type 'a fiber := 'a t
+
 (** {1 Running fibers} *)
 
 type fill = Fill : 'a Ivar.t * 'a -> fill

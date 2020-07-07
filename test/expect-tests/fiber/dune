@@ -5,7 +5,6 @@
   dune_tests_common
   stdune
   fiber
-  dune
   ;; This is because of the (implicit_transitive_deps false)
   ;; in dune-project
   ppx_expect.config

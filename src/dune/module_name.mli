@@ -13,7 +13,11 @@ val uncapitalize : t -> string
 
 val pp_quote : Format.formatter -> t -> unit
 
-module Per_item : Per_item_intf.S with type key = t
+module Per_item : sig
+  include Per_item_intf.S with type key = t
+
+  val decode : default:'a -> 'a Dune_lang.Decoder.t -> 'a t Dune_lang.Decoder.t
+end
 
 module Infix : Comparator.OPS with type t = t
 

@@ -26,6 +26,7 @@ type t =
   { debug_dep_path : bool
   ; debug_findlib : bool
   ; debug_backtraces : bool
+  ; debug_artifact_substitution : bool
   ; profile : Profile.t option
   ; workspace_file : Arg.Path.t option
   ; root : Workspace_root.t
@@ -48,6 +49,7 @@ type t =
   ; stats_trace_file : string option
   ; always_show_command_line : bool
   ; promote_install_files : bool
+  ; instrument_with : Dune.Lib_name.t list option
   }
 
 let workspace_file t = t.workspace_file
@@ -70,6 +72,8 @@ let default_target t = t.default_target
 
 let prefix_target common s = common.target_prefix ^ s
 
+let instrument_with t = t.instrument_with
+
 let set_dirs c =
   if c.root.dir <> Filename.current_dir_name then Sys.chdir c.root.dir;
   Path.set_root (Path.External.cwd ());
@@ -81,6 +85,7 @@ let set_common_other ?log_file c ~targets =
   Clflags.debug_dep_path := c.debug_dep_path;
   Clflags.debug_findlib := c.debug_findlib;
   Clflags.debug_backtraces c.debug_backtraces;
+  Clflags.debug_artifact_substitution := c.debug_artifact_substitution;
   Clflags.capture_outputs := c.capture_outputs;
   Clflags.diff_command := c.diff_command;
   Clflags.promote := c.promote;
@@ -225,9 +230,14 @@ module Options_implied_by_dash_p = struct
 
   let packages =
     let parser s =
-      Ok
-        (Package.Name.Set.of_list_map ~f:Package.Name.of_string
-           (String.split s ~on:','))
+      let parse_one s =
+        match Package.Name.of_string_opt s with
+        | Some x -> Ok x
+        | None ->
+          ksprintf (fun s -> Error (`Msg s)) "Invalid package name: %S" s
+      in
+      String.split s ~on:',' |> List.map ~f:parse_one |> Result.List.all
+      |> Result.map ~f:Package.Name.Set.of_list
     in
     let printer ppf set =
       Format.pp_print_string ppf
@@ -468,6 +478,12 @@ let term =
       value & flag
       & info [ "debug-backtraces" ] ~docs
           ~doc:{|Always print exception backtraces.|})
+  and+ debug_artifact_substitution =
+    Arg.(
+      value & flag
+      & info
+          [ "debug-artifact-substitution" ]
+          ~docs ~doc:"Print debugging info about artifact substitution")
   and+ terminal_persistence =
     Arg.(
       value
@@ -621,7 +637,20 @@ let term =
           ~docs
           ~env:(Arg.env_var ~doc "DUNE_CACHE_CHECK_PROBABILITY")
           ~doc)
-  and+ () = build_info in
+  and+ () = build_info
+  and+ instrument_with =
+    let doc =
+      {|"Enable instrumentation by $(b,BACKENDS).
+        $(b,BACKENDS) is a comma-separated list of library names,
+        each one of which must declare an instrumentation backend.|}
+    in
+    Arg.(
+      value
+      & opt (some (list lib_name)) None
+      & info [ "instrument-with" ] ~docs
+          ~env:(Arg.env_var ~doc "DUNE_INSTRUMENT_WITH")
+          ~docv:"BACKENDS" ~doc)
+  in
   let build_dir = Option.value ~default:default_build_dir build_dir in
   let root = Workspace_root.create ~specified_by_user:root in
   let config = config_of_file config_file in
@@ -647,6 +676,7 @@ let term =
   { debug_dep_path
   ; debug_findlib
   ; debug_backtraces
+  ; debug_artifact_substitution
   ; profile
   ; capture_outputs = not no_buffer
   ; workspace_file
@@ -669,6 +699,7 @@ let term =
   ; stats_trace_file
   ; always_show_command_line
   ; promote_install_files
+  ; instrument_with
   }
 
 let term =

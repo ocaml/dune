@@ -471,10 +471,6 @@ to use the :ref:`include_subdirs` stanza.
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
-- ``(no_keep_locs)`` does nothing. It used to be a necessary hack when
-  we were waiting for proper support for virtual libraries. Do not use
-  in new code, it will be deleted in dune 2.0
-
 - ``(enabled_if <blang expression>)`` conditionally disables
   a library. A disabled library cannot be built and will not be
   installed. The condition is specified using the :ref:`blang`, and the
@@ -888,7 +884,7 @@ There are two use cases for promote rules. The first one is when the
 generated code is easier to review than the generator, so it's easier
 to commit the generated code and review it. The second is to cut down
 dependencies during releases: by passing ``--ignore-promoted-rules``
-to dune, rules will ``(mode promote)`` will be ignored and the source
+to dune, rules with ``(mode promote)`` will be ignored and the source
 files will be used instead. The ``-p/--for-release-of-packages`` flag
 implies ``--ignore-promote-rules``. However, rules that promotes only
 a subset of their targets via ``(only ...)`` are never ignored.
@@ -1344,6 +1340,9 @@ Fields supported in ``<settings>`` are:
 
 - ``(odoc <fields>)``. This allows to pass options to Odoc, see
   :ref:`odoc-options` for more details.
+
+- ``(coq (flags <flags>))``. This allows to pass options to Coq, see
+  :ref:`coq-theory` for more details.
 
 .. _dune-subdirs:
 

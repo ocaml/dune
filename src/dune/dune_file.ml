@@ -24,225 +24,12 @@ let () =
   Dune_project.Extension.register_deleted ~name:"library_variants"
     ~deleted_in:(2, 6)
 
-let bisect_ppx_syntax =
-  Dune_lang.Syntax.create ~name:"bisect_ppx" ~desc:"the bisect_ppx extension"
-    [ ((1, 0), `Since (2, 6)) ]
-
-let () =
-  Dune_project.Extension.register_simple bisect_ppx_syntax
-    (Dune_lang.Decoder.return [])
-
-module Pps_and_flags = struct
-  let decode =
-    let+ l, flags =
-      until_keyword "--" ~before:String_with_vars.decode
-        ~after:(repeat String_with_vars.decode)
-    and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    let pps, more_flags =
-      List.partition_map l ~f:(fun s ->
-          match String_with_vars.is_prefix ~prefix:"-" s with
-          | Yes -> Right s
-          | No
-          | Unknown _ -> (
-            let loc = String_with_vars.loc s in
-            match String_with_vars.text_only s with
-            | None ->
-              User_error.raise ~loc
-                [ Pp.text "No variables allowed in ppx library names" ]
-            | Some txt -> Left (loc, Lib_name.parse_string_exn (loc, txt)) ))
-    in
-    let all_flags = more_flags @ Option.value flags ~default:[] in
-    if syntax_version < (1, 10) then
-      List.iter
-        ~f:(fun flag ->
-          if String_with_vars.has_vars flag then
-            Dune_lang.Syntax.Error.since
-              (String_with_vars.loc flag)
-              Stanza.syntax (1, 10) ~what:"Using variables in pps flags")
-        all_flags;
-    (pps, all_flags)
-end
-
-module Preprocess = struct
-  module Pps = struct
-    type t =
-      { loc : Loc.t
-      ; pps : (Loc.t * Lib_name.t) list
-      ; flags : String_with_vars.t list
-      ; staged : bool
-      }
-
-    let compare_no_locs { loc = _; pps = pps1; flags = flags1; staged = s1 }
-        { loc = _; pps = pps2; flags = flags2; staged = s2 } =
-      match Bool.compare s1 s2 with
-      | (Lt | Gt) as t -> t
-      | Eq -> (
-        match
-          List.compare flags1 flags2 ~compare:String_with_vars.compare_no_loc
-        with
-        | (Lt | Gt) as t -> t
-        | Eq ->
-          List.compare pps1 pps2 ~compare:(fun (_, x) (_, y) ->
-              Lib_name.compare x y) )
-  end
-
-  type t =
-    | No_preprocessing
-    | Action of Loc.t * Action_dune_lang.t
-    | Pps of Pps.t
-    | Future_syntax of Loc.t
-
-  let decode =
-    sum
-      [ ("no_preprocessing", return No_preprocessing)
-      ; ( "action"
-        , located Action_dune_lang.decode >>| fun (loc, x) -> Action (loc, x) )
-      ; ( "pps"
-        , let+ loc = loc
-          and+ pps, flags = Pps_and_flags.decode in
-          Pps { loc; pps; flags; staged = false } )
-      ; ( "staged_pps"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 1)
-          and+ loc = loc
-          and+ pps, flags = Pps_and_flags.decode in
-          Pps { loc; pps; flags; staged = true } )
-      ; ( "future_syntax"
-        , let+ () = Dune_lang.Syntax.since Stanza.syntax (1, 8)
-          and+ loc = loc in
-          Future_syntax loc )
-      ]
-
-  let loc = function
-    | No_preprocessing -> None
-    | Action (loc, _)
-    | Pps { loc; _ }
-    | Future_syntax loc ->
-      Some loc
-
-  let pps = function
-    | Pps { pps; _ } -> pps
-    | _ -> []
-
-  module Without_future_syntax = struct
-    type t =
-      | No_preprocessing
-      | Action of Loc.t * Action_dune_lang.t
-      | Pps of Pps.t
-  end
-
-  module Pp_flag_consumer = struct
-    (* Compiler allows the output of [-pp] to be a binary AST. Merlin requires
-       that to be a text file instead. *)
-    type t =
-      | Compiler
-      | Merlin
-  end
-
-  let remove_future_syntax t ~(for_ : Pp_flag_consumer.t) v :
-      Without_future_syntax.t =
-    match t with
-    | No_preprocessing -> No_preprocessing
-    | Action (loc, action) -> Action (loc, action)
-    | Pps pps -> Pps pps
-    | Future_syntax loc ->
-      if Ocaml_version.supports_let_syntax v then
-        No_preprocessing
-      else
-        Action
-          ( loc
-          , Run
-              ( String_with_vars.make_var loc "bin" ~payload:"ocaml-syntax-shims"
-              , ( match for_ with
-                | Compiler -> [ String_with_vars.make_text loc "-dump-ast" ]
-                | Merlin ->
-                  (* We generate a text file instead of AST. That gives you less
-                     precise locations, but at least Merlin doesn't fail
-                     outright.
-
-                     In general this hack should be applied to all -pp commands
-                     that might produce an AST, not just to Future_syntax. But
-                     doing so means we need to change dune language so the user
-                     can provide two versions of the command.
-
-                     Hopefully this will be fixed in merlin before that becomes
-                     a necessity. *)
-                  [] )
-                @ [ String_with_vars.make_var loc "input-file" ] ) )
-end
-
-module Per_module = struct
-  include Module_name.Per_item
-
-  let decode ~default a =
-    peek_exn >>= function
-    | List (loc, Atom (_, A "per_module") :: _) ->
-      sum
-        [ ( "per_module"
-          , let+ x =
-              repeat
-                (let+ pp, names = pair a (repeat Module_name.decode) in
-                 (names, pp))
-            in
-            of_mapping x ~default |> function
-            | Ok t -> t
-            | Error (name, _, _) ->
-              User_error.raise ~loc
-                [ Pp.textf "module %s present in two different sets"
-                    (Module_name.to_string name)
-                ] )
-        ]
-    | _ -> a >>| for_all
-end
-
-module Preprocess_map = struct
-  type t = Preprocess.t Per_module.t
-
-  let decode =
-    Per_module.decode Preprocess.decode ~default:Preprocess.No_preprocessing
-
-  let no_preprocessing = Per_module.for_all Preprocess.No_preprocessing
-
-  let find module_name t = Per_module.get t module_name
-
-  let default = Per_module.for_all Preprocess.No_preprocessing
-
-  let pps t =
-    Per_module.fold t ~init:Lib_name.Map.empty ~f:(fun pp acc ->
-        List.fold_left (Preprocess.pps pp) ~init:acc ~f:(fun acc (loc, pp) ->
-            Lib_name.Map.set acc pp loc))
-    |> Lib_name.Map.foldi ~init:[] ~f:(fun pp loc acc -> (loc, pp) :: acc)
-
-  let add_bisect t =
-    let bisect_ppx =
-      let bisect_name = Lib_name.parse_string_exn (Loc.none, "bisect_ppx") in
-      (Loc.none, bisect_name)
-    in
-    Per_module.map t ~f:(fun pp ->
-        match pp with
-        | Preprocess.No_preprocessing ->
-          let loc = Loc.none in
-          let pps = [ bisect_ppx ] in
-          let flags = [] in
-          let staged = false in
-          Preprocess.Pps { loc; pps; flags; staged }
-        | Preprocess.Pps { loc; pps; flags; staged } ->
-          let pps = bisect_ppx :: pps in
-          Preprocess.Pps { loc; pps; flags; staged }
-        | Action (loc, _)
-        | Future_syntax loc ->
-          User_error.raise ~loc
-            [ Pp.text
-                "Preprocessing with actions and future syntax cannot be used \
-                 in conjunction with (bisect_ppx)"
-            ])
-end
-
 module Lint = struct
-  type t = Preprocess_map.t
+  type t = Preprocess.Without_instrumentation.t Preprocess.Per_module.t
 
-  let decode = Preprocess_map.decode
+  let decode = Preprocess.Per_module.decode
 
-  let default = Preprocess_map.default
+  let default = Preprocess.Per_module.default ()
 
   let no_lint = default
 end
@@ -334,7 +121,8 @@ end
 
 let preprocess_fields =
   let+ preprocess =
-    field "preprocess" Preprocess_map.decode ~default:Preprocess_map.default
+    field "preprocess" Preprocess.Per_module.decode
+      ~default:(Preprocess.Per_module.default ())
   and+ preprocessor_deps =
     field_o "preprocessor_deps"
       (let+ loc = loc
@@ -346,8 +134,8 @@ let preprocess_fields =
     | None -> []
     | Some (loc, deps) ->
       let deps_might_be_used =
-        Per_module.exists preprocess ~f:(fun p ->
-            match (p : Preprocess.t) with
+        Module_name.Per_item.exists preprocess ~f:(fun p ->
+            match (p : _ Preprocess.t) with
             | Action _
             | Pps _ ->
               true
@@ -374,13 +162,12 @@ module Buildable = struct
     ; libraries : Lib_dep.t list
     ; foreign_archives : (Loc.t * Foreign.Archive.t) list
     ; foreign_stubs : Foreign.Stubs.t list
-    ; preprocess : Preprocess_map.t
+    ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
     ; preprocessor_deps : Dep_conf.t list
-    ; lint : Preprocess_map.t
+    ; lint : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
     ; flags : Ocaml_flags.Spec.t
     ; js_of_ocaml : Js_of_ocaml.t
     ; allow_overlapping_dependencies : bool
-    ; bisect_ppx : bool
     }
 
   let decode ~in_library ~allow_re_export =
@@ -446,10 +233,22 @@ module Buildable = struct
       field "js_of_ocaml" Js_of_ocaml.decode ~default:Js_of_ocaml.default
     and+ allow_overlapping_dependencies =
       field_b "allow_overlapping_dependencies"
-    and+ bisect_ppx =
-      field_b "bisect_ppx"
-        ~check:(Dune_lang.Syntax.since bisect_ppx_syntax (1, 0))
-    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    and+ version = Dune_lang.Syntax.get_exn Stanza.syntax
+    and+ loc_instrumentation, instrumentation =
+      located
+        (multi_field "instrumentation"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
+           >>> fields (field "backend" (located Lib_name.decode)) ))
+    in
+    let preprocess =
+      let init =
+        let f libname = Preprocess.With_instrumentation.Ordinary libname in
+        Module_name.Per_item.map preprocess ~f:(Preprocess.map ~f)
+      in
+      List.fold_left instrumentation
+        ~f:(Preprocess.Per_module.add_instrumentation ~loc:loc_instrumentation)
+        ~init
+    in
     let foreign_stubs =
       foreign_stubs
       |> add_stubs C ~loc:c_names_loc ~names:c_names ~flags:c_flags
@@ -493,26 +292,10 @@ module Buildable = struct
     ; flags
     ; js_of_ocaml
     ; allow_overlapping_dependencies
-    ; bisect_ppx
     }
 
   let has_foreign t =
     List.is_non_empty t.foreign_stubs || List.is_non_empty t.foreign_archives
-
-  let single_preprocess =
-    (* Any dummy module name works here *)
-    let dummy_name = Module_name.of_string "A" in
-    fun t ->
-      if Per_module.is_constant t.preprocess then
-        Per_module.get t.preprocess dummy_name
-      else
-        Preprocess.No_preprocessing
-
-  let preprocess t ~(lib_config : Lib_config.t) =
-    if t.bisect_ppx && lib_config.bisect_enabled then
-      Preprocess_map.add_bisect t.preprocess
-    else
-      t.preprocess
 end
 
 module Public_lib = struct
@@ -746,6 +529,7 @@ module Library = struct
     ; stdlib : Ocaml_stdlib.t option
     ; special_builtin_support : Lib_info.Special_builtin_support.t option
     ; enabled_if : Blang.t
+    ; instrumentation_backend : (Loc.t * Lib_name.t) option
     }
 
   let decode =
@@ -815,6 +599,10 @@ module Library = struct
          let open Enabled_if in
          let allowed_vars = Only Lib_config.allowed_in_enabled_if in
          decode ~allowed_vars ~since:(Some (1, 10)) ()
+       and+ instrumentation_backend =
+         field_o "instrumentation.backend"
+           ( Dune_lang.Syntax.since Stanza.syntax (2, 7)
+           >>> fields (field "ppx" (located Lib_name.decode)) )
        in
        let wrapped =
          Wrapped.make ~wrapped ~implements ~special_builtin_support
@@ -889,6 +677,7 @@ module Library = struct
        ; stdlib
        ; special_builtin_support
        ; enabled_if
+       ; instrumentation_backend
        })
 
   let has_foreign t = Buildable.has_foreign t.buildable
@@ -1013,32 +802,21 @@ module Library = struct
     let synopsis = conf.synopsis in
     let sub_systems = conf.sub_systems in
     let ppx_runtime_deps = conf.ppx_runtime_libraries in
-    let pps =
-      let pps_without_bisect = Preprocess_map.pps conf.buildable.preprocess in
-      if lib_config.bisect_enabled && conf.buildable.bisect_ppx then
-        let bisect_ppx =
-          let bisect_name =
-            Lib_name.parse_string_exn (Loc.none, "bisect_ppx")
-          in
-          (Loc.none, bisect_name)
-        in
-        bisect_ppx :: pps_without_bisect
-      else
-        pps_without_bisect
-    in
+    let preprocess = conf.buildable.preprocess in
     let virtual_deps = conf.virtual_deps in
     let dune_version = Some conf.dune_version in
     let implements = conf.implements in
     let default_implementation = conf.default_implementation in
     let wrapped = Some conf.wrapped in
     let special_builtin_support = conf.special_builtin_support in
+    let instrumentation_backend = conf.instrumentation_backend in
     Lib_info.create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir
       ~version ~synopsis ~main_module_name ~sub_systems ~requires
       ~foreign_objects ~plugins ~archives ~ppx_runtime_deps ~foreign_archives
-      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps
-      ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
+      ~native_archives ~foreign_dll_files ~jsoo_runtime ~jsoo_archive
+      ~preprocess ~enabled ~virtual_deps ~dune_version ~virtual_ ~implements
       ~default_implementation ~modes ~wrapped ~special_builtin_support
-      ~exit_module
+      ~exit_module ~instrumentation_backend
 end
 
 module Install_conf = struct
@@ -1911,7 +1689,7 @@ module Toplevel = struct
     { name : string
     ; libraries : (Loc.t * Lib_name.t) list
     ; loc : Loc.t
-    ; pps : Preprocess.t
+    ; pps : Preprocess.Without_instrumentation.t Preprocess.t
     }
 
   let decode =

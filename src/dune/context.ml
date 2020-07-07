@@ -269,7 +269,7 @@ let write_dot_dune_dir ~build_dir ~ocamlc ~ocaml_config_vars =
 
 let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
     ~host_context ~host_toolchain ~profile ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let prog_not_found_in_path prog =
     Utils.program_not_found prog ~context:name ~loc:None
   in
@@ -503,8 +503,9 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; stdlib_dir
       ; ccomp_type = Ocaml_config.ccomp_type ocfg
       ; profile
-      ; ocaml_version = Ocaml_config.version_string ocfg
-      ; bisect_enabled
+      ; ocaml_version_string = Ocaml_config.version_string ocfg
+      ; ocaml_version = Ocaml_version.of_ocaml_config ocfg
+      ; instrument_with
       }
     in
     if Option.is_some fdo_target_exe then
@@ -553,8 +554,7 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
       ; ocamlmklib = get_ocaml_tool "ocamlmklib"
       ; ocamlobjinfo = get_ocaml_tool "ocamlobjinfo"
       ; env
-      ; findlib =
-          Findlib.create ~stdlib_dir ~paths:findlib_paths ~version ~lib_config
+      ; findlib = Findlib.create ~paths:findlib_paths ~lib_config
       ; findlib_toolchain
       ; arch_sixtyfour
       ; install_prefix
@@ -617,10 +617,10 @@ let extend_paths t ~env =
   Env.extend ~vars env
 
 let default ~merlin ~env_nodes ~env ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let path = Env.path env in
   create ~kind:Default ~path ~env ~env_nodes ~merlin ~targets ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled
+    ~dynamically_linked_foreign_archives ~instrument_with
 
 let opam_version =
   let f opam =
@@ -651,7 +651,7 @@ let opam_version =
 
 let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~merlin ~host_context ~host_toolchain ~fdo_target_exe
-    ~dynamically_linked_foreign_archives ~bisect_enabled =
+    ~dynamically_linked_foreign_archives ~instrument_with =
   let opam =
     match Memo.Lazy.force opam with
     | None -> Utils.program_not_found "opam" ~loc:None
@@ -702,7 +702,7 @@ let create_for_opam ~root ~env ~env_nodes ~targets ~profile ~switch ~name
     ~kind:(Opam { root; switch })
     ~profile ~targets ~path ~env ~env_nodes ~name ~merlin ~host_context
     ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
-    ~bisect_enabled
+    ~instrument_with
 
 let instantiate_context env (workspace : Workspace.t)
     ~(context : Workspace.Context.t) ~host_context =
@@ -722,7 +722,7 @@ let instantiate_context env (workspace : Workspace.t)
       ; loc = _
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
-      ; bisect_enabled
+      ; instrument_with
       } ->
     let merlin =
       workspace.merlin_context = Some (Workspace.Context.name context)
@@ -738,7 +738,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     default ~env ~env_nodes ~profile ~targets ~name ~merlin ~host_context
       ~host_toolchain ~fdo_target_exe ~dynamically_linked_foreign_archives
-      ~bisect_enabled
+      ~instrument_with
   | Opam
       { base =
           { targets
@@ -751,7 +751,7 @@ let instantiate_context env (workspace : Workspace.t)
           ; loc = _
           ; fdo_target_exe
           ; dynamically_linked_foreign_archives
-          ; bisect_enabled
+          ; instrument_with
           }
       ; switch
       ; root
@@ -760,7 +760,7 @@ let instantiate_context env (workspace : Workspace.t)
     let env = extend_paths ~env paths in
     create_for_opam ~root ~env_nodes ~env ~profile ~switch ~name ~merlin
       ~targets ~host_context ~host_toolchain:toolchain ~fdo_target_exe
-      ~dynamically_linked_foreign_archives ~bisect_enabled
+      ~dynamically_linked_foreign_archives ~instrument_with
 
 module Create = struct
   module Output = struct
@@ -778,51 +778,46 @@ module Create = struct
        contexts, and we also need to make sure that each context is instantiated
        only once.
 
-       To do all that, the following code works in three steps:
+       To do all that, the following code works in two steps:
 
        - step 1: build a map from context name to their instantiation.
        Instantiating a context requires looking up dependent contexts in this
-       map, so that map itself is stored in an ivar to break the cyclic
-       definition
+       map, so the values in the map are ivars to break the cyclic definition
 
-       - step 2: fill the context map ivar. This allows the various
-       instantiation fibers blocked on it to resume
-
-       - step 3: wait for all instantiation fibers to complete
+       - step 2: read all instantiation ivars in sequence
 
        If there was a cycle between contexts, the below code would dead-lock.
        However, we check at parsing time that there is no such cycle. *)
-    let contexts_map_ivar = Fiber.Ivar.create () in
-    let* contexts =
-      Fiber.parallel_map workspace.contexts ~f:(fun context ->
-          let+ contexts =
-            Fiber.fork (fun () ->
-                let* host_context =
-                  match Workspace.Context.host_context context with
-                  | None -> Fiber.return None
-                  | Some context -> (
-                    let* contexts_map = Fiber.Ivar.read contexts_map_ivar in
-                    let+ contexts =
-                      Fiber.Future.wait
-                        (Context_name.Map.find_exn contexts_map context)
-                    in
-                    match contexts with
-                    | [ x ] -> Some x
-                    | [] -> assert false (* checked by workspace *)
-                    | _ :: _ -> assert false
-                    (* target cannot be host *) )
-                in
-                instantiate_context env workspace ~context ~host_context)
-          in
-          let name = Workspace.Context.name context in
-          (name, contexts))
+    let context_ivars_map =
+      Context_name.Map.of_list_map_exn workspace.contexts ~f:(fun ctx ->
+          (Workspace.Context.name ctx, Fiber.Ivar.create ()))
     in
     let* () =
-      Fiber.Ivar.fill contexts_map_ivar (Context_name.Map.of_list_exn contexts)
+      Fiber.parallel_iter workspace.contexts ~f:(fun context ->
+          let* contexts =
+            let* host_context =
+              match Workspace.Context.host_context context with
+              | None -> Fiber.return None
+              | Some context -> (
+                let+ contexts =
+                  Fiber.Ivar.read
+                    (Context_name.Map.find_exn context_ivars_map context)
+                in
+                match contexts with
+                | [ x ] -> Some x
+                | [] -> assert false (* checked by workspace *)
+                | _ :: _ -> assert false
+                (* target cannot be host *) )
+            in
+            instantiate_context env workspace ~context ~host_context
+          in
+          let name = Workspace.Context.name context in
+          let ivar = Context_name.Map.find_exn context_ivars_map name in
+          Fiber.Ivar.fill ivar contexts)
     in
     let* contexts =
-      Fiber.parallel_map contexts ~f:(fun (_name, context) ->
-          Fiber.Future.wait context)
+      Fiber.parallel_map (Context_name.Map.values context_ivars_map)
+        ~f:(fun ivar -> Fiber.Ivar.read ivar)
     in
     Fiber.return (List.concat contexts)
 

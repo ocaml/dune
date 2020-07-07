@@ -1,4 +1,5 @@
 open Stdune
+module Re = Dune_re
 
 let commands = Table.create (module String) 10
 
@@ -60,6 +61,29 @@ module Cat = struct
     | _ -> raise (Arg.Bad "Usage: dune_arg cat <file>")
 
   let run (File p) = print_string (Io.read_file p)
+
+  let () = register name of_args run
+end
+
+module Expand_lines = struct
+  let name = "expand_lines"
+
+  let of_args = function
+    | [] -> ()
+    | _ -> raise (Arg.Bad ("Usage: dune_arg " ^ name))
+
+  let run () =
+    let re = Re.compile (Re.str "\\n") in
+    set_binary_mode_in stdin true;
+    set_binary_mode_out stdout true;
+    let rec loop () =
+      match input_line stdin with
+      | exception End_of_file -> ()
+      | s ->
+        print_endline (Re.replace_string ~all:true re s ~by:"\n");
+        loop ()
+    in
+    loop ()
 
   let () = register name of_args run
 end

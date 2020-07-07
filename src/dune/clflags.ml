@@ -8,6 +8,8 @@ let debug_findlib = ref false
 
 let debug_dep_path = ref false
 
+let debug_artifact_substitution = ref false
+
 let external_lib_deps_hint = ref []
 
 let external_lib_deps_mode = ref false

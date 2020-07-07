@@ -4,6 +4,10 @@
     that all temporary files created by the application are systematically
     cleaned up on exit. *)
 
-val create : prefix:string -> suffix:string -> Path.t
+type what =
+  | Dir
+  | File
 
-val destroy : Path.t -> unit
+val create : what -> prefix:string -> suffix:string -> Path.t
+
+val destroy : what -> Path.t -> unit

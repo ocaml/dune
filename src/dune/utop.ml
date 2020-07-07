@@ -51,7 +51,15 @@ let libs_and_ppx_under_dir sctx ~db ~dir =
                  Implementations are selected using the default implementation
                  feature. *)
               let not_impl = Option.is_none (Lib_info.implements info) in
-              if not_impl && Path.is_descendant ~of_:(Path.build dir) src_dir
+              let not_hidden =
+                match Lib_info.enabled info with
+                | Normal -> true
+                | Optional -> Result.is_ok (Lib.requires lib)
+                | Disabled_because_of_enabled_if -> false
+              in
+              if
+                not_impl && not_hidden
+                && Path.is_descendant ~of_:(Path.build dir) src_dir
               then
                 match Lib_info.kind info with
                 | Lib_kind.Ppx_rewriter _
@@ -73,10 +81,9 @@ let setup sctx ~dir =
   let libs, pps = libs_and_ppx_under_dir sctx ~db ~dir:(Path.build dir) in
   let pps =
     if List.is_empty pps then
-      Dune_file.Preprocess.No_preprocessing
+      Preprocess.No_preprocessing
     else
-      Dune_file.Preprocess.Pps
-        { loc = Loc.none; pps; flags = []; staged = false }
+      Preprocess.Pps { loc = Loc.none; pps; flags = []; staged = false }
   in
   let preprocess = Module_name.Per_item.for_all pps in
   let preprocessing =

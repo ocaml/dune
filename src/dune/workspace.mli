@@ -28,7 +28,7 @@ module Context : sig
                 will be built with all foreign archives statically linked into
                 the runtime system. *)
       ; dynamically_linked_foreign_archives : bool
-      ; bisect_enabled : bool
+      ; instrument_with : Lib_name.t list
       }
   end
 
@@ -76,7 +76,12 @@ val to_dyn : t -> Dyn.t
 val hash : t -> int
 
 val init :
-  ?x:Context_name.t -> ?profile:Profile.t -> ?path:Path.t -> unit -> unit
+     ?x:Context_name.t
+  -> ?profile:Profile.t
+  -> ?instrument_with:Lib_name.t list
+  -> ?path:Path.t
+  -> unit
+  -> unit
 
 (** Default name of workspace files *)
 val filename : string

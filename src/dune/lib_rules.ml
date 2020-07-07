@@ -342,7 +342,9 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
   let vimpl = Virtual_rules.impl sctx ~lib ~scope in
   let ctx = Super_context.context sctx in
   let preprocess =
-    Dune_file.Buildable.preprocess lib.buildable ~lib_config:ctx.lib_config
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
   in
   (* Preprocess before adding the alias module as it doesn't need preprocessing *)
   let pp =
@@ -391,6 +393,11 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
   gen_wrapped_compat_modules lib cctx;
   Module_compilation.build_all cctx ~dep_graphs;
   let expander = Super_context.expander sctx ~dir in
+  let preprocess =
+    Preprocess.Per_module.with_instrumentation lib.buildable.preprocess
+      ~instrumentation_backend:
+        (Lib.DB.instrumentation_backend (Scope.libs scope))
+  in
   if not (Library.is_virtual lib) then
     setup_build_archives lib ~dir_contents ~cctx ~dep_graphs ~expander;
   let () =
@@ -410,7 +417,7 @@ let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents
     };
   ( cctx
   , Merlin.make () ~requires:requires_compile ~flags ~modules
-      ~preprocess:(Buildable.single_preprocess lib.buildable)
+      ~preprocess:(Preprocess.Per_module.single_preprocess preprocess)
       ~libname:(snd lib.name) ~obj_dir )
 
 let rules (lib : Library.t) ~sctx ~dir_contents ~dir ~expander ~scope :

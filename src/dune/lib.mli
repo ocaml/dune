@@ -172,9 +172,9 @@ module DB : sig
       [all] returns the list of names of libraries available in this database. *)
   val create :
        parent:t option
-    -> stdlib_dir:Path.t
     -> resolve:(Lib_name.t -> Resolve_result.t)
     -> all:(unit -> Lib_name.t list)
+    -> lib_config:Lib_config.t
     -> unit
     -> t
 
@@ -191,7 +191,7 @@ module DB : sig
     -> Library_related_stanza.t list
     -> t
 
-  val create_from_findlib : stdlib_dir:Path.t -> Findlib.t -> t
+  val create_from_findlib : lib_config:Lib_config.t -> Findlib.t -> t
 
   val find : t -> Lib_name.t -> lib option
 
@@ -226,6 +226,9 @@ module DB : sig
   (** Return the list of all libraries in this database. If [recursive] is true,
       also include libraries in parent databases recursively. *)
   val all : ?recursive:bool -> t -> Set.t
+
+  val instrumentation_backend :
+    t -> Loc.t * Lib_name.t -> Preprocess.Without_instrumentation.t option
 end
 with type lib := t
 

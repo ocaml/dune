@@ -99,6 +99,8 @@ val foreign_objects : 'path t -> 'path list Source.t
     the [Std_exit] module of the stdlib. *)
 val exit_module : _ t -> Module_name.t option
 
+val instrumentation_backend : _ t -> (Loc.t * Lib_name.t) option
+
 val plugins : 'path t -> 'path list Mode.Dict.t
 
 val src_dir : 'path t -> 'path
@@ -133,7 +135,8 @@ val requires : _ t -> Lib_dep.t list
 
 val ppx_runtime_deps : _ t -> (Loc.t * Lib_name.t) list
 
-val pps : _ t -> (Loc.t * Lib_name.t) list
+val preprocess :
+  _ t -> Preprocess.With_instrumentation.t Preprocess.Per_module.t
 
 val sub_systems : _ t -> Sub_system_info.t Sub_system_name.Map.t
 
@@ -196,7 +199,7 @@ val create :
   -> foreign_dll_files:'a list
   -> jsoo_runtime:'a list
   -> jsoo_archive:'a option
-  -> pps:(Loc.t * Lib_name.t) list
+  -> preprocess:Preprocess.With_instrumentation.t Preprocess.Per_module.t
   -> enabled:Enabled_status.t
   -> virtual_deps:(Loc.t * Lib_name.t) list
   -> dune_version:Dune_lang.Syntax.Version.t option
@@ -207,6 +210,7 @@ val create :
   -> wrapped:Wrapped.t Inherited.t option
   -> special_builtin_support:Special_builtin_support.t option
   -> exit_module:Module_name.t option
+  -> instrumentation_backend:(Loc.t * Lib_name.t) option
   -> 'a t
 
 val package : _ t -> Package.Name.t option

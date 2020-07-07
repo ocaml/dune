@@ -33,9 +33,13 @@ val copy_file :
 
 (** Generic version of [copy_file]. Rather than filenames, it takes an input and
     output functions. Their semantic must match the ones of the [input] and
-    [output] functions from the OCaml standard library. *)
+    [output] functions from the OCaml standard library.
+
+    [input_file] is used only for debugging purposes. It must be the name of the
+    source file. *)
 val copy :
      get_vcs:(Path.Source.t -> Vcs.t option)
+  -> input_file:Path.t
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
   -> unit Fiber.t

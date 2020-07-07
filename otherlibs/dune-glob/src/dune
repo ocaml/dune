@@ -4,7 +4,6 @@
  (libraries dune-private-libs.stdune dune-private-libs.dune_re)
  (flags
   (:standard -w -50))
- (synopsis "The glob language as understood by dune.")
- (preprocess future_syntax))
+ (synopsis "The glob language as understood by dune."))
 
 (ocamllex lexer)

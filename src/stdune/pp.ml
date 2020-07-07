@@ -1,4 +1,9 @@
-module List = Stdlib.ListLabels
+module List = struct
+  include Stdlib.ListLabels
+
+  let map ~f t = rev (rev_map ~f t)
+end
+
 module String = Stdlib.StringLabels
 
 type +'a t =

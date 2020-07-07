@@ -1,0 +1,19 @@
+(dirs :standard \ forbidden_var install var_context_name)
+
+(executable
+ (name main)
+ (modules main)
+ (enabled_if true))
+
+(executable
+ (name dis)
+ (public_name dis)
+ (modules dis)
+ (enabled_if false))
+
+; Github3494 : Enabled if with allowed variable
+; in dune 2.3 to 2.5 should not raise an error
+(executable
+ (name foo)
+ (modules foo)
+ (enabled_if (<> %{os_type} "")))

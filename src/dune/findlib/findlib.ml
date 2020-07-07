@@ -317,7 +317,7 @@ end = struct
         let plugins = plugins t in
         let jsoo_runtime = jsoo_runtime t in
         let jsoo_archive = None in
-        let pps = [] in
+        let preprocess = Preprocess.Per_module.no_preprocessing () in
         let virtual_ = None in
         let default_implementation = None in
         let wrapped = None in
@@ -363,9 +363,10 @@ end = struct
           ~obj_dir ~version ~synopsis ~main_module_name ~sub_systems ~requires
           ~foreign_objects ~plugins ~archives ~ppx_runtime_deps
           ~foreign_archives ~native_archives ~foreign_dll_files:[] ~jsoo_runtime
-          ~jsoo_archive ~pps ~enabled ~virtual_deps ~dune_version ~virtual_
-          ~implements ~default_implementation ~modes ~wrapped
+          ~jsoo_archive ~preprocess ~enabled ~virtual_deps ~dune_version
+          ~virtual_ ~implements ~default_implementation ~modes ~wrapped
           ~special_builtin_support ~exit_module:None
+          ~instrumentation_backend:None
       in
       Dune_package.Lib.make ~info ~modules:None ~main_module_name:None
   end
@@ -565,7 +566,9 @@ let all_packages t =
    - A memoized function for finding packages by names (see [find]).
 
    - A [Memo.Lazy.t] storing the set of all packages (see [root_packages]). *)
-let create ~stdlib_dir ~paths ~version ~lib_config =
+let create ~paths ~(lib_config : Lib_config.t) =
+  let stdlib_dir = lib_config.stdlib_dir in
+  let version = lib_config.ocaml_version in
   { stdlib_dir
   ; paths
   ; builtins = Meta.builtins ~stdlib_dir ~version

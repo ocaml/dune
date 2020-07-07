@@ -6,7 +6,7 @@ type t =
   { loc : Loc.t
   ; files : Predicate_lang.Glob.t
   ; libraries : Lib_dep.t list
-  ; preprocess : Dune_file.Preprocess_map.t
+  ; preprocess : Preprocess.Without_instrumentation.t Preprocess.Per_module.t
   ; preprocessor_deps : Dep_conf.t list
   ; flags : Ocaml_flags.Spec.t
   }
@@ -78,8 +78,9 @@ let gen_rules sctx t ~dir ~scope =
   let expander = Super_context.expander sctx ~dir in
   let preprocess =
     Preprocessing.make sctx ~dir ~expander ~dep_kind:Required
-      ~lint:Dune_file.Preprocess_map.no_preprocessing ~preprocess:t.preprocess
-      ~preprocessor_deps:t.preprocessor_deps ~lib_name:None ~scope
+      ~lint:(Preprocess.Per_module.no_preprocessing ())
+      ~preprocess:t.preprocess ~preprocessor_deps:t.preprocessor_deps
+      ~lib_name:None ~scope
   in
   let modules =
     Modules.singleton_exe module_
@@ -90,7 +91,7 @@ let gen_rules sctx t ~dir ~scope =
     Lib.DB.resolve_user_written_deps_for_exes (Scope.libs scope)
       [ (t.loc, name) ]
       (Lib_dep.Direct (loc, Lib_name.of_string "cinaps.runtime") :: t.libraries)
-      ~pps:(Dune_file.Preprocess_map.pps t.preprocess)
+      ~pps:(Preprocess.Per_module.pps t.preprocess)
       ~dune_version ~optional:false
   in
   let cctx =

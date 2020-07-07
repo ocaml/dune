@@ -1,6 +1,49 @@
 next
 ----
 
+- Read Coq flags from `env` (#3547 , fixes #3486, @gares)
+
+- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
+  @stephanieyou)
+
+- Formatting of dune files is now done in the executing dune process instead of
+  in a separate process. (#3536, @nojb)
+
+- Add a `--debug-artifact-substution` flag to help debug problem with
+  version not being captured by `dune-build-info` (#3589,
+  @jeremiedimino)
+
+- Allow the use of the `context_name` variable in the `enabled_if` fields of
+  executable(s) and install stanzas. (#3568, fixes #3566, @voodoos)
+
+- Fix compatibility with OCaml 4.12.0 when compiling empty archives; no .a file
+  is generated. (#3576, @dra27)
+
+- `$ dune utop` no longer tries to load optional libraries that are unavailable
+  (#3612, fixes #3188, @anuragsoni)
+
+- Fix dune-build-info on 4.10.0+flambda (#3599, @emillon, @jeremiedimino).
+
+2.6.1 (02/07/2020)
+------------------
+
+- Fix crash when caching is enabled (@rgrinberg, #3581, fixes #3580)
+
+- Do not use `-output-complete-exe` until 4.10.1 as it is broken in
+  4.10.0 (@jeremiedimino, #3187)
+
+- Fix crash when an unknown pform is found (such as `%{unknown}`) (#3560,
+  @emillon)
+
+- Improve error message when invalid package names (such as the empty string)
+  are passed to `dune build -p`. (#3561, @emillon)
+
+- Fix a stack overflow when displaying large outputs (including diffs) (#3537,
+  fixes #2767, #3490, @emillon)
+
+2.6.0 (05/06/2020)
+------------------
+
 - Fix a bug where valid lib names in `dune init exec --libs=lib1,lib2`
   results in an error. (#3444, fix #3443, @bikallem)
 
@@ -17,9 +60,6 @@ next
 - Generate correct META files for sub-libraries (of the form `lib.foo`) that
   contain .js runtime files. (#3445, @hhugo)
 
-- Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
-  @stephanieyou)
-
 - Add a `(no-infer ...)` action that prevents inference of targets and
   dependencies in actions. (#3456, fixes #2006, @roddyyaga)
 
@@ -35,9 +75,6 @@ next
 
 - Remove experimental variants feature and make default implementations part of
   the language (#3491, fixes #3483, @rgrinberg)
-
-- Formatting of dune files is now done in the executing dune process instead of
-  in a separate process. (#3536, @nojb)
 
 2.5.1 (17/04/2020)
 ------------------

@@ -19,7 +19,7 @@ val setup_rules : t -> unit
 val make :
      cctx:Compilation_context.t
   -> source:Source.t
-  -> preprocess:Dune_file.Preprocess.t
+  -> preprocess:Preprocess.Without_instrumentation.t Preprocess.t
   -> t
 
 val print_toplevel_init_file :

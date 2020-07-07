@@ -30,27 +30,6 @@ let default_port_file () =
   in
   Path.L.relative runtime_dir [ "dune-cache-daemon"; "port" ]
 
-let max_port_size = 1024
-
-let check_port_file ?(close = true) p =
-  let p = Path.to_string p in
-  match Result.try_with (fun () -> Unix.openfile p [ Unix.O_RDONLY ] 0o600) with
-  | Result.Ok fd ->
-    let f () =
-      retry (fun () ->
-          match Fcntl.lock_get fd Fcntl.Write with
-          | None -> Some None
-          | Some (Fcntl.Read, pid) -> Some (Some pid)
-          | Some (Fcntl.Write, _) -> None)
-      >>| Option.map ~f:(fun pid ->
-              let buf = Bytes.make max_port_size ' ' in
-              let read = Unix.read fd buf 0 max_port_size in
-              (Bytes.sub_string buf ~pos:0 ~len:read, pid, fd))
-    and finally () = if close then Unix.close fd in
-    Exn.protect ~f ~finally
-  | Result.Error (Unix.Unix_error (Unix.ENOENT, _, _)) -> Result.Ok None
-  | Result.Error e -> Result.Error e
-
 let send_sexp output sexp =
   Csexp.to_channel output sexp;
   flush output

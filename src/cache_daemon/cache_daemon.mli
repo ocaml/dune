@@ -14,11 +14,6 @@ val make : ?root:Path.t -> config:config -> unit -> t
 
 val default_port_file : unit -> Path.t
 
-val check_port_file :
-     ?close:bool
-  -> Path.t
-  -> ((string * int * Unix.file_descr) option, exn) Result.t
-
 val run : ?port_f:(string -> unit) -> ?port:int -> t -> unit
 
 val stop : t -> unit

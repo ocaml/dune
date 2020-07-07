@@ -12,7 +12,7 @@
   S $LIB_PREFIX/lib/ocaml
   S .
   S ../lib
-  FLG -pp '$PP/_build/default/pp/pp.exe'
+  FLG -pp '$TESTCASE_ROOT/_build/default/pp/pp.exe'
   FLG -w -40
   # Processing lib/.merlin
   EXCLUDE_QUERY_DIR
@@ -41,7 +41,7 @@ Make sure pp flag is correct and variables are expanded
   EXCLUDE_QUERY_DIR
   B ../_build/default/pp-with-expand/.foobar.eobjs/byte
   S .
-  FLG -pp '$PP/_build/default/pp/pp.exe -nothing'
+  FLG -pp '$TESTCASE_ROOT/_build/default/pp/pp.exe -nothing'
   FLG -w @1..3@5..28@30..39@43@46..47@49..57@61..62-40 -strict-sequence -strict-formats -short-paths -keep-locs
 
 We want future-syntax to either be applied, or not, depending on OCaml version.

@@ -2,147 +2,150 @@
  (alias action-modifying-a-dependency)
  (deps
   (package dune)
-  (source_tree test-cases/action-modifying-a-dependency)
+  (source_tree test-cases/action-modifying-a-dependency.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/action-modifying-a-dependency
+   test-cases/action-modifying-a-dependency.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias aliases)
- (deps (package dune) (source_tree test-cases/aliases) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/aliases.t) (alias test-deps))
  (action
   (chdir
-   test-cases/aliases
+   test-cases/aliases.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias all-alias)
- (deps (package dune) (source_tree test-cases/all-alias) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/all-alias.t) (alias test-deps))
  (action
   (chdir
-   test-cases/all-alias
+   test-cases/all-alias.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias all-promotions)
  (deps
   (package dune)
-  (source_tree test-cases/all-promotions)
+  (source_tree test-cases/all-promotions.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/all-promotions
+   test-cases/all-promotions.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias bad-alias-error)
  (deps
   (package dune)
-  (source_tree test-cases/bad-alias-error)
+  (source_tree test-cases/bad-alias-error.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/bad-alias-error
+   test-cases/bad-alias-error.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias bin-eager-deps)
  (deps
   (package dune)
-  (source_tree test-cases/bin-eager-deps)
+  (source_tree test-cases/bin-eager-deps.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/bin-eager-deps
+   test-cases/bin-eager-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias bisect-ppx-github3473)
  (deps
   (package dune)
-  (source_tree test-cases/bisect-ppx/github3473)
+  (source_tree test-cases/bisect-ppx/github3473.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/bisect-ppx/github3473
+   test-cases/bisect-ppx/github3473.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias bisect-ppx-main)
  (deps
   (package dune)
-  (source_tree test-cases/bisect-ppx/main)
+  (source_tree test-cases/bisect-ppx/main.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/bisect-ppx/main
+   test-cases/bisect-ppx/main.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias block-strings)
  (deps
   (package dune)
-  (source_tree test-cases/block-strings)
+  (source_tree test-cases/block-strings.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/block-strings
+   test-cases/block-strings.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias byte-code-only)
  (deps
   (package dune)
-  (source_tree test-cases/byte-code-only)
+  (source_tree test-cases/byte-code-only.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/byte-code-only
+   test-cases/byte-code-only.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias byte_complete)
  (deps
   (package dune)
-  (source_tree test-cases/byte_complete)
+  (source_tree test-cases/byte_complete.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/byte_complete
+   test-cases/byte_complete.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias c-stubs)
- (deps (package dune) (source_tree test-cases/c-stubs) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/c-stubs.t) (alias test-deps))
  (action
   (chdir
-   test-cases/c-stubs
+   test-cases/c-stubs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias check-alias)
- (deps (package dune) (source_tree test-cases/check-alias) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/check-alias.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/check-alias
+   test-cases/check-alias.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cinaps)
- (deps (package dune) (source_tree test-cases/cinaps) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps
+   test-cases/cinaps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cinaps-include-subdirs)
- (deps (package dune) (source_tree test-cases/cinaps) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps
+   test-cases/cinaps.t
    (progn
     (run dune-cram run include-subdirs.t)
     (diff? include-subdirs.t include-subdirs.t.corrected)))))
@@ -151,131 +154,137 @@
  (alias cmdliner-dep-conf)
  (deps
   (package dune)
-  (source_tree test-cases/cmdliner-dep-conf)
+  (source_tree test-cases/cmdliner-dep-conf.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/cmdliner-dep-conf
+   test-cases/cmdliner-dep-conf.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias contents-depends-on-glob)
  (deps
   (package dune)
-  (source_tree test-cases/contents-depends-on-glob)
+  (source_tree test-cases/contents-depends-on-glob.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/contents-depends-on-glob
+   test-cases/contents-depends-on-glob.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias copy-files-non-sub-dir-error)
  (deps
   (package dune)
-  (source_tree test-cases/copy-files-non-sub-dir-error)
+  (source_tree test-cases/copy-files-non-sub-dir-error.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/copy-files-non-sub-dir-error
+   test-cases/copy-files-non-sub-dir-error.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias copy_files)
- (deps (package dune) (source_tree test-cases/copy_files) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/copy_files.t) (alias test-deps))
  (action
   (chdir
-   test-cases/copy_files
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias coq)
- (deps (package dune) (source_tree test-cases/coq) (alias test-deps))
- (action
-  (chdir
-   test-cases/coq
+   test-cases/copy_files.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias coq-extract)
- (deps (package dune) (source_tree test-cases/coq/extract) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/coq/extract.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/coq/extract
+   test-cases/coq/extract.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias coq-main)
+ (deps (package dune) (source_tree test-cases/coq/main.t) (alias test-deps))
+ (action
+  (chdir
+   test-cases/coq/main.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias corrections)
- (deps (package dune) (source_tree test-cases/corrections) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/corrections.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/corrections
+   test-cases/corrections.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cross-compilation)
  (deps
   (package dune)
-  (source_tree test-cases/cross-compilation)
+  (source_tree test-cases/cross-compilation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/cross-compilation
+   test-cases/cross-compilation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias custom-build-dir)
  (deps
   (package dune)
-  (source_tree test-cases/custom-build-dir)
+  (source_tree test-cases/custom-build-dir.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/custom-build-dir
+   test-cases/custom-build-dir.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias custom-cross-compilation)
  (deps
   (package dune)
-  (source_tree test-cases/custom-cross-compilation)
+  (source_tree test-cases/custom-cross-compilation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/custom-cross-compilation
+   test-cases/custom-cross-compilation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cxx-extension)
  (deps
   (package dune)
-  (source_tree test-cases/cxx-extension)
+  (source_tree test-cases/cxx-extension.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/cxx-extension
+   test-cases/cxx-extension.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cycle-detection-symlinks-2863)
  (deps
   (package dune)
-  (source_tree test-cases/cycle-detection-symlinks-2863)
+  (source_tree test-cases/cycle-detection-symlinks-2863.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/cycle-detection-symlinks-2863
+   test-cases/cycle-detection-symlinks-2863.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias default-implementation-package-mismatch1-package-mismatch1)
  (deps
   (package dune)
-  (source_tree test-cases/default-implementation/package-mismatch1)
+  (source_tree test-cases/default-implementation/package-mismatch1.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/default-implementation/package-mismatch1
+   test-cases/default-implementation/package-mismatch1.t
    (progn
     (run dune-cram run package-mismatch1.t)
     (diff? package-mismatch1.t package-mismatch1.t.corrected)))))
@@ -284,11 +293,11 @@
  (alias default-implementation-package-mismatch2-package-mismatch2)
  (deps
   (package dune)
-  (source_tree test-cases/default-implementation/package-mismatch2)
+  (source_tree test-cases/default-implementation/package-mismatch2.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/default-implementation/package-mismatch2
+   test-cases/default-implementation/package-mismatch2.t
    (progn
     (run dune-cram run package-mismatch2.t)
     (diff? package-mismatch2.t package-mismatch2.t.corrected)))))
@@ -297,301 +306,296 @@
  (alias default-targets)
  (deps
   (package dune)
-  (source_tree test-cases/default-targets)
+  (source_tree test-cases/default-targets.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/default-targets
+   test-cases/default-targets.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dep-on-dir-that-does-not-exist)
  (deps
   (package dune)
-  (source_tree test-cases/dep-on-dir-that-does-not-exist)
+  (source_tree test-cases/dep-on-dir-that-does-not-exist.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dep-on-dir-that-does-not-exist
+   test-cases/dep-on-dir-that-does-not-exist.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dep-vars)
- (deps (package dune) (source_tree test-cases/dep-vars) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/dep-vars.t) (alias test-deps))
  (action
   (chdir
-   test-cases/dep-vars
+   test-cases/dep-vars.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias depend-on-the-universe)
  (deps
   (package dune)
-  (source_tree test-cases/depend-on-the-universe)
+  (source_tree test-cases/depend-on-the-universe.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/depend-on-the-universe
+   test-cases/depend-on-the-universe.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias deprecated-library-name)
  (deps
   (package dune)
-  (source_tree test-cases/deprecated-library-name)
+  (source_tree test-cases/deprecated-library-name.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/deprecated-library-name
+   test-cases/deprecated-library-name.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias deps-conf-vars)
  (deps
   (package dune)
-  (source_tree test-cases/deps-conf-vars)
+  (source_tree test-cases/deps-conf-vars.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/deps-conf-vars
+   test-cases/deps-conf-vars.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias describe)
- (deps (package dune) (source_tree test-cases/describe) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/describe.t) (alias test-deps))
  (action
   (chdir
-   test-cases/describe
+   test-cases/describe.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dialects)
- (deps (package dune) (source_tree test-cases/dialects) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/dialects.t) (alias test-deps))
  (action
   (chdir
-   test-cases/dialects
+   test-cases/dialects.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dir-target-dep)
  (deps
   (package dune)
-  (source_tree test-cases/dir-target-dep)
+  (source_tree test-cases/dir-target-dep.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dir-target-dep
+   test-cases/dir-target-dep.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias disable-promotion)
  (deps
   (package dune)
-  (source_tree test-cases/disable-promotion)
+  (source_tree test-cases/disable-promotion.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/disable-promotion
+   test-cases/disable-promotion.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias double-echo)
- (deps (package dune) (source_tree test-cases/double-echo) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/double-echo.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/double-echo
+   test-cases/double-echo.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-build-dir-exec-1101)
  (deps
   (package dune)
-  (source_tree test-cases/dune-build-dir-exec-1101)
+  (source_tree test-cases/dune-build-dir-exec-1101.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-build-dir-exec-1101
+   test-cases/dune-build-dir-exec-1101.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/dedup)
+  (source_tree test-cases/dune-cache/dedup.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/dedup
+   test-cases/dune-cache/dedup.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup-direct)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/dedup-direct)
+  (source_tree test-cases/dune-cache/dedup-direct.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/dedup-direct
+   test-cases/dune-cache/dedup-direct.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-dedup-direct-copy)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/dedup-direct-copy)
+  (source_tree test-cases/dune-cache/dedup-direct-copy.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/dedup-direct-copy
+   test-cases/dune-cache/dedup-direct-copy.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promote)
+  (source_tree test-cases/dune-cache/promote.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/promote
+   test-cases/dune-cache/promote.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-copy)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promote-copy)
+  (source_tree test-cases/dune-cache/promote-copy.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/promote-copy
+   test-cases/dune-cache/promote-copy.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-direct)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promote-direct)
+  (source_tree test-cases/dune-cache/promote-direct.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/promote-direct
+   test-cases/dune-cache/promote-direct.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promote-direct-copy)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promote-direct-copy)
+  (source_tree test-cases/dune-cache/promote-direct-copy.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/promote-direct-copy
+   test-cases/dune-cache/promote-direct-copy.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-promotion-in-source-tree)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/promotion-in-source-tree)
+  (source_tree test-cases/dune-cache/promotion-in-source-tree.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/promotion-in-source-tree
+   test-cases/dune-cache/promotion-in-source-tree.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-symlink)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/symlink)
+  (source_tree test-cases/dune-cache/symlink.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/symlink
+   test-cases/dune-cache/symlink.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-symlink-direct)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/symlink-direct)
+  (source_tree test-cases/dune-cache/symlink-direct.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/symlink-direct
+   test-cases/dune-cache/symlink-direct.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-cache-trim)
  (deps
   (package dune)
-  (source_tree test-cases/dune-cache/trim)
+  (source_tree test-cases/dune-cache/trim.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-cache/trim
+   test-cases/dune-cache/trim.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-init)
- (deps (package dune) (source_tree test-cases/dune-init) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/dune-init.t) (alias test-deps))
  (action
   (chdir
-   test-cases/dune-init
+   test-cases/dune-init.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-jbuild-var-case)
  (deps
   (package dune)
-  (source_tree test-cases/dune-jbuild-var-case)
+  (source_tree test-cases/dune-jbuild-var-case.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-jbuild-var-case
+   test-cases/dune-jbuild-var-case.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-package)
- (deps (package dune) (source_tree test-cases/dune-package) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-package.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/dune-package
+   test-cases/dune-package.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-ppx-driver-system)
  (deps
   (package dune)
-  (source_tree test-cases/dune-ppx-driver-system)
+  (source_tree test-cases/dune-ppx-driver-system.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-ppx-driver-system
+   test-cases/dune-ppx-driver-system.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune-project-edition)
  (deps
   (package dune)
-  (source_tree test-cases/dune-project-edition)
+  (source_tree test-cases/dune-project-edition.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-project-edition
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias dune-project-meta)
- (deps
-  (package dune)
-  (source_tree test-cases/dune-project-meta)
-  (alias test-deps))
- (action
-  (chdir
-   test-cases/dune-project-meta
+   test-cases/dune-project-edition.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -606,171 +610,185 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias dune-project-no-opam)
+ (alias dune-project-meta-main)
  (deps
   (package dune)
-  (source_tree test-cases/dune-project-no-opam)
+  (source_tree test-cases/dune-project-meta/main)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune-project-no-opam
+   test-cases/dune-project-meta/main
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias dune-project-no-opam)
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-project-no-opam.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/dune-project-no-opam.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dune_memory-and-the-universe)
  (deps
   (package dune)
-  (source_tree test-cases/dune_memory-and-the-universe)
+  (source_tree test-cases/dune_memory-and-the-universe.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/dune_memory-and-the-universe
+   test-cases/dune_memory-and-the-universe.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias dup-fields)
- (deps (package dune) (source_tree test-cases/dup-fields) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/dup-fields.t) (alias test-deps))
  (action
   (chdir
-   test-cases/dup-fields
+   test-cases/dup-fields.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-c-cxx)
  (deps
   (package dune)
-  (source_tree test-cases/duplicate-c-cxx)
+  (source_tree test-cases/duplicate-c-cxx.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/duplicate-c-cxx
+   test-cases/duplicate-c-cxx.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-c-cxx-obj)
  (deps
   (package dune)
-  (source_tree test-cases/duplicate-c-cxx-obj)
+  (source_tree test-cases/duplicate-c-cxx-obj.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/duplicate-c-cxx-obj
+   test-cases/duplicate-c-cxx-obj.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-project-names)
  (deps
   (package dune)
-  (source_tree test-cases/duplicate-project-names)
+  (source_tree test-cases/duplicate-project-names.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/duplicate-project-names
+   test-cases/duplicate-project-names.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias duplicate-target-no-loc)
  (deps
   (package dune)
-  (source_tree test-cases/duplicate-target-no-loc)
+  (source_tree test-cases/duplicate-target-no-loc.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/duplicate-target-no-loc
+   test-cases/duplicate-target-no-loc.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias embed-jbuild)
- (deps (package dune) (source_tree test-cases/embed-jbuild) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/embed-jbuild.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/embed-jbuild
+   test-cases/embed-jbuild.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias empty-package-name)
  (deps
   (package dune)
-  (source_tree test-cases/empty-package-name)
+  (source_tree test-cases/empty-package-name.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/empty-package-name
+   test-cases/empty-package-name.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias enabled_if)
- (deps (package dune) (source_tree test-cases/enabled_if) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/enabled_if.t) (alias test-deps))
  (action
   (chdir
-   test-cases/enabled_if
+   test-cases/enabled_if.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias enabled_if-exec)
  (deps
   (package dune)
-  (source_tree test-cases/enabled_if-exec)
+  (source_tree test-cases/enabled_if-exec.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/enabled_if-exec
+   test-cases/enabled_if-exec.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-affects-expander-affects-env)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-affects-expander-affects-env)
+  (source_tree test-cases/env/env-affects-expander-affects-env.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-affects-expander-affects-env
+   test-cases/env/env-affects-expander-affects-env.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-and-flags-include)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-and-flags-include)
+  (source_tree test-cases/env/env-and-flags-include.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-and-flags-include
+   test-cases/env/env-and-flags-include.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-bin-pform)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-bin-pform)
+  (source_tree test-cases/env/env-bin-pform.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-bin-pform
+   test-cases/env/env-bin-pform.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-bins)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-bins)
+  (source_tree test-cases/env/env-bins.t)
   (alias test-deps)
   (sandbox none))
  (action
   (chdir
-   test-cases/env/env-bins
+   test-cases/env/env-bins.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-cflags)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-cflags)
+  (source_tree test-cases/env/env-cflags.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-cflags
+   test-cases/env/env-cflags.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.06.0)))
 
@@ -778,22 +796,22 @@
  (alias env-env-dune-file)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-dune-file)
+  (source_tree test-cases/env/env-dune-file.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-dune-file
+   test-cases/env/env-dune-file.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-simple)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-simple)
+  (source_tree test-cases/env/env-simple.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-simple
+   test-cases/env/env-simple.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.06.0)))
 
@@ -801,123 +819,129 @@
  (alias env-env-tracking)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-tracking)
+  (source_tree test-cases/env/env-tracking.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-tracking
+   test-cases/env/env-tracking.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-var-expansion)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-var-expansion)
+  (source_tree test-cases/env/env-var-expansion.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-var-expansion
+   test-cases/env/env-var-expansion.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-env-variables)
  (deps
   (package dune)
-  (source_tree test-cases/env/env-variables)
+  (source_tree test-cases/env/env-variables.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/env-variables
+   test-cases/env/env-variables.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias env-envs-and-contexts)
  (deps
   (package dune)
-  (source_tree test-cases/env/envs-and-contexts)
+  (source_tree test-cases/env/envs-and-contexts.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/env/envs-and-contexts
+   test-cases/env/envs-and-contexts.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exclude-missing-module)
  (deps
   (package dune)
-  (source_tree test-cases/exclude-missing-module)
+  (source_tree test-cases/exclude-missing-module.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/exclude-missing-module
+   test-cases/exclude-missing-module.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exe-name-mangle)
  (deps
   (package dune)
-  (source_tree test-cases/exe-name-mangle)
+  (source_tree test-cases/exe-name-mangle.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/exe-name-mangle
+   test-cases/exe-name-mangle.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exec-cmd)
- (deps (package dune) (source_tree test-cases/exec-cmd) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/exec-cmd.t) (alias test-deps))
  (action
   (chdir
-   test-cases/exec-cmd
+   test-cases/exec-cmd.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exec-missing)
- (deps (package dune) (source_tree test-cases/exec-missing) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/exec-missing.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/exec-missing
+   test-cases/exec-missing.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias exes-with-c)
- (deps (package dune) (source_tree test-cases/exes-with-c) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/exes-with-c.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/exes-with-c
+   test-cases/exes-with-c.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias explicit_js_mode)
  (deps
   (package dune)
-  (source_tree test-cases/explicit_js_mode)
+  (source_tree test-cases/explicit_js_mode.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/explicit_js_mode
+   test-cases/explicit_js_mode.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias extensions-versionning)
  (deps
   (package dune)
-  (source_tree test-cases/extensions-versionning)
+  (source_tree test-cases/extensions-versionning.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/extensions-versionning
+   test-cases/extensions-versionning.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias external-lib-deps-github3143)
  (deps
   (package dune)
-  (source_tree test-cases/external-lib-deps/github3143)
+  (source_tree test-cases/external-lib-deps/github3143.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/external-lib-deps/github3143
+   test-cases/external-lib-deps/github3143.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -935,1112 +959,1127 @@
  (alias external-lib-deps-simple)
  (deps
   (package dune)
-  (source_tree test-cases/external-lib-deps/simple)
+  (source_tree test-cases/external-lib-deps/simple.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/external-lib-deps/simple
+   test-cases/external-lib-deps/simple.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias extra-lang-line)
  (deps
   (package dune)
-  (source_tree test-cases/extra-lang-line)
+  (source_tree test-cases/extra-lang-line.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/extra-lang-line
+   test-cases/extra-lang-line.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias fallback-dune)
  (deps
   (package dune)
-  (source_tree test-cases/fallback-dune)
+  (source_tree test-cases/fallback-dune.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/fallback-dune
+   test-cases/fallback-dune.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias fdo)
- (deps (package dune) (source_tree test-cases/fdo) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/fdo.t) (alias test-deps))
  (action
   (chdir
-   test-cases/fdo
+   test-cases/fdo.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.11.0)))
 
 (rule
  (alias findlib)
- (deps (package dune) (source_tree test-cases/findlib) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/findlib.t) (alias test-deps))
  (action
   (chdir
-   test-cases/findlib
+   test-cases/findlib.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias findlib-dynload)
  (deps
   (package dune)
-  (source_tree test-cases/findlib-dynload)
+  (source_tree test-cases/findlib-dynload.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/findlib-dynload
+   test-cases/findlib-dynload.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias findlib-error)
  (deps
   (package dune)
-  (source_tree test-cases/findlib-error)
+  (source_tree test-cases/findlib-error.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/findlib-error
+   test-cases/findlib-error.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias forbidden_libraries)
  (deps
   (package dune)
-  (source_tree test-cases/forbidden_libraries)
+  (source_tree test-cases/forbidden_libraries.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/forbidden_libraries
+   test-cases/forbidden_libraries.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias force-test)
- (deps (package dune) (source_tree test-cases/force-test) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/force-test.t) (alias test-deps))
  (action
   (chdir
-   test-cases/force-test
+   test-cases/force-test.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias foreign-library)
  (deps
   (package dune)
-  (source_tree test-cases/foreign-library)
+  (source_tree test-cases/foreign-library.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/foreign-library
+   test-cases/foreign-library.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias foreign-stubs)
  (deps
   (package dune)
-  (source_tree test-cases/foreign-stubs)
+  (source_tree test-cases/foreign-stubs.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/foreign-stubs
+   test-cases/foreign-stubs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias format-dune-file)
  (deps
   (package dune)
-  (source_tree test-cases/format-dune-file)
+  (source_tree test-cases/format-dune-file.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/format-dune-file
+   test-cases/format-dune-file.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias formatting)
- (deps (package dune) (source_tree test-cases/formatting) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/formatting.t) (alias test-deps))
  (action
   (chdir
-   test-cases/formatting
+   test-cases/formatting.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias gen-opam-install-file)
  (deps
   (package dune)
-  (source_tree test-cases/gen-opam-install-file)
+  (source_tree test-cases/gen-opam-install-file.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/gen-opam-install-file
+   test-cases/gen-opam-install-file.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1019)
- (deps (package dune) (source_tree test-cases/github1019) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1019.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1019
+   test-cases/github1019.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1099)
- (deps (package dune) (source_tree test-cases/github1099) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1099.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1099
+   test-cases/github1099.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1231)
- (deps (package dune) (source_tree test-cases/github1231) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1231.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1231
+   test-cases/github1231.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1342)
- (deps (package dune) (source_tree test-cases/github1342) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1342.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1342
+   test-cases/github1342.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1372)
- (deps (package dune) (source_tree test-cases/github1372) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1372.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1372
+   test-cases/github1372.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1395)
- (deps (package dune) (source_tree test-cases/github1395) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1395.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1395
+   test-cases/github1395.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1426)
- (deps (package dune) (source_tree test-cases/github1426) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1426.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1426
+   test-cases/github1426.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1529)
- (deps (package dune) (source_tree test-cases/github1529) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1529.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1529
+   test-cases/github1529.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1541)
- (deps (package dune) (source_tree test-cases/github1541) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1541.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1541
+   test-cases/github1541.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1549)
- (deps (package dune) (source_tree test-cases/github1549) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1549.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1549
+   test-cases/github1549.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1560)
- (deps (package dune) (source_tree test-cases/github1560) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1560.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1560
+   test-cases/github1560.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1616)
- (deps (package dune) (source_tree test-cases/github1616) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1616.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1616
+   test-cases/github1616.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1811)
- (deps (package dune) (source_tree test-cases/github1811) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1811.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1811
+   test-cases/github1811.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1855)
- (deps (package dune) (source_tree test-cases/github1855) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1855.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1855
+   test-cases/github1855.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1856)
- (deps (package dune) (source_tree test-cases/github1856) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1856.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1856
+   test-cases/github1856.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github1946)
- (deps (package dune) (source_tree test-cases/github1946) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github1946.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github1946
+   test-cases/github1946.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github20)
- (deps (package dune) (source_tree test-cases/github20) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github20.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github20
+   test-cases/github20.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2033)
- (deps (package dune) (source_tree test-cases/github2033) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2033.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2033
+   test-cases/github2033.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2061)
- (deps (package dune) (source_tree test-cases/github2061) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2061.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2061
+   test-cases/github2061.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2123)
- (deps (package dune) (source_tree test-cases/github2123) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2123.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2123
+   test-cases/github2123.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2206)
- (deps (package dune) (source_tree test-cases/github2206) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2206.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2206
+   test-cases/github2206.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2228)
- (deps (package dune) (source_tree test-cases/github2228) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2228.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2228
+   test-cases/github2228.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2272)
- (deps (package dune) (source_tree test-cases/github2272) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2272.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2272
+   test-cases/github2272.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github24)
- (deps (package dune) (source_tree test-cases/github24) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github24.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github24
+   test-cases/github24.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2499)
- (deps (package dune) (source_tree test-cases/github2499) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2499.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2499
+   test-cases/github2499.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github25)
- (deps (package dune) (source_tree test-cases/github25) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github25.t) (alias test-deps))
  (action
   (setenv
    OCAMLPATH
    ./findlib-packages
    (chdir
-    test-cases/github25
+    test-cases/github25.t
     (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
 
 (rule
  (alias github2584)
- (deps (package dune) (source_tree test-cases/github2584) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2584.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2584
+   test-cases/github2584.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2629)
- (deps (package dune) (source_tree test-cases/github2629) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2629.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2629
+   test-cases/github2629.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2681)
- (deps (package dune) (source_tree test-cases/github2681) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2681.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2681
+   test-cases/github2681.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2848)
- (deps (package dune) (source_tree test-cases/github2848) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2848.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2848
+   test-cases/github2848.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2990)
- (deps (package dune) (source_tree test-cases/github2990) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github2990.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github2990
+   test-cases/github2990.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3043)
- (deps (package dune) (source_tree test-cases/github3043) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3043.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3043
+   test-cases/github3043.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3046)
- (deps (package dune) (source_tree test-cases/github3046) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3046.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3046
+   test-cases/github3046.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3180)
- (deps (package dune) (source_tree test-cases/github3180) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3180.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3180
+   test-cases/github3180.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3188)
- (deps (package dune) (source_tree test-cases/github3188) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3188.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3188
+   test-cases/github3188.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3440)
- (deps (package dune) (source_tree test-cases/github3440) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3440.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3440
+   test-cases/github3440.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3490)
- (deps (package dune) (source_tree test-cases/github3490) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3490.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3490
+   test-cases/github3490.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github3530)
- (deps (package dune) (source_tree test-cases/github3530) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github3530.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github3530
+   test-cases/github3530.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github534)
- (deps (package dune) (source_tree test-cases/github534) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github534.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github534
+   test-cases/github534.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github568)
- (deps (package dune) (source_tree test-cases/github568) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github568.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github568
+   test-cases/github568.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github597)
- (deps (package dune) (source_tree test-cases/github597) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github597.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github597
+   test-cases/github597.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github644)
- (deps (package dune) (source_tree test-cases/github644) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github644.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github644
+   test-cases/github644.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github660)
- (deps (package dune) (source_tree test-cases/github660) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github660.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github660
+   test-cases/github660.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github734)
- (deps (package dune) (source_tree test-cases/github734) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github734.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github734
+   test-cases/github734.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github759)
- (deps (package dune) (source_tree test-cases/github759) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github759.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github759
+   test-cases/github759.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github761)
- (deps (package dune) (source_tree test-cases/github761) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github761.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github761
+   test-cases/github761.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github764)
- (deps (package dune) (source_tree test-cases/github764) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github764.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github764
+   test-cases/github764.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml-config:system} win)))
 
 (rule
  (alias github784)
- (deps (package dune) (source_tree test-cases/github784) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github784.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github784
+   test-cases/github784.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github992)
- (deps (package dune) (source_tree test-cases/github992) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/github992.t) (alias test-deps))
  (action
   (chdir
-   test-cases/github992
+   test-cases/github992.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias glob-deps)
- (deps (package dune) (source_tree test-cases/glob-deps) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/glob-deps.t) (alias test-deps))
  (action
   (chdir
-   test-cases/glob-deps
+   test-cases/glob-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias glob-deps-change)
  (deps
   (package dune)
-  (source_tree test-cases/glob-deps-change)
+  (source_tree test-cases/glob-deps-change.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/glob-deps-change
+   test-cases/glob-deps-change.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias hints-root-executables)
  (deps
   (package dune)
-  (source_tree test-cases/hints-root-executables)
+  (source_tree test-cases/hints-root-executables.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/hints-root-executables
+   test-cases/hints-root-executables.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ignored_subdirs)
  (deps
   (package dune)
-  (source_tree test-cases/ignored_subdirs)
+  (source_tree test-cases/ignored_subdirs.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/ignored_subdirs
+   test-cases/ignored_subdirs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias include-loop)
- (deps (package dune) (source_tree test-cases/include-loop) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/include-loop.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/include-loop
+   test-cases/include-loop.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias include-qualified)
  (deps
   (package dune)
-  (source_tree test-cases/include-qualified)
+  (source_tree test-cases/include-qualified.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/include-qualified
+   test-cases/include-qualified.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias incremental-rebuilds)
  (deps
   (package dune)
-  (source_tree test-cases/incremental-rebuilds)
+  (source_tree test-cases/incremental-rebuilds.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/incremental-rebuilds
+   test-cases/incremental-rebuilds.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias inline_tests)
- (deps (package dune) (source_tree test-cases/inline_tests) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/inline_tests
+   test-cases/inline_tests.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias inline_tests-multi-mode)
  (deps
   (package dune)
-  (source_tree test-cases/inline_tests-multi-mode)
+  (source_tree test-cases/inline_tests-multi-mode.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/inline_tests-multi-mode
+   test-cases/inline_tests-multi-mode.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-dry-run)
  (deps
   (package dune)
-  (source_tree test-cases/install-dry-run)
+  (source_tree test-cases/install-dry-run.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-dry-run
+   test-cases/install-dry-run.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-libdir)
  (deps
   (package dune)
-  (source_tree test-cases/install-libdir)
+  (source_tree test-cases/install-libdir.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-libdir
+   test-cases/install-libdir.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-mandir)
  (deps
   (package dune)
-  (source_tree test-cases/install-mandir)
+  (source_tree test-cases/install-mandir.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-mandir
+   test-cases/install-mandir.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-multiple-contexts)
  (deps
   (package dune)
-  (source_tree test-cases/install-multiple-contexts)
+  (source_tree test-cases/install-multiple-contexts.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-multiple-contexts
+   test-cases/install-multiple-contexts.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-partial-package)
  (deps
   (package dune)
-  (source_tree test-cases/install-partial-package)
+  (source_tree test-cases/install-partial-package.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-partial-package
+   test-cases/install-partial-package.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-rule-order)
  (deps
   (package dune)
-  (source_tree test-cases/install-rule-order)
+  (source_tree test-cases/install-rule-order.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-rule-order
+   test-cases/install-rule-order.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-single-section)
  (deps
   (package dune)
-  (source_tree test-cases/install-single-section)
+  (source_tree test-cases/install-single-section.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-single-section
+   test-cases/install-single-section.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias install-with-var)
  (deps
   (package dune)
-  (source_tree test-cases/install-with-var)
+  (source_tree test-cases/install-with-var.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/install-with-var
+   test-cases/install-with-var.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias installable-dup-private-libs)
  (deps
   (package dune)
-  (source_tree test-cases/installable-dup-private-libs)
+  (source_tree test-cases/installable-dup-private-libs.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/installable-dup-private-libs
+   test-cases/installable-dup-private-libs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias instrumentation)
  (deps
   (package dune)
-  (source_tree test-cases/instrumentation)
+  (source_tree test-cases/instrumentation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/instrumentation
+   test-cases/instrumentation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias intf-only)
- (deps (package dune) (source_tree test-cases/intf-only) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/intf-only.t) (alias test-deps))
  (action
   (chdir
-   test-cases/intf-only
+   test-cases/intf-only.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias invalid-dune-package)
  (deps
   (package dune)
-  (source_tree test-cases/invalid-dune-package)
+  (source_tree test-cases/invalid-dune-package.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/invalid-dune-package
+   test-cases/invalid-dune-package.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias invalid-module-name)
  (deps
   (package dune)
-  (source_tree test-cases/invalid-module-name)
+  (source_tree test-cases/invalid-module-name.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/invalid-module-name
+   test-cases/invalid-module-name.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias invalid-pform)
  (deps
   (package dune)
-  (source_tree test-cases/invalid-pform)
+  (source_tree test-cases/invalid-pform.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/invalid-pform
+   test-cases/invalid-pform.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias js_of_ocaml)
- (deps (package dune) (source_tree test-cases/js_of_ocaml) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/js_of_ocaml.t)
+  (alias test-deps))
  (action
   (setenv
    NODE
    %{bin:node}
    (chdir
-    test-cases/js_of_ocaml
+    test-cases/js_of_ocaml.t
     (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
 
 (rule
  (alias lib)
- (deps (package dune) (source_tree test-cases/lib) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/lib.t) (alias test-deps))
  (action
   (chdir
-   test-cases/lib
+   test-cases/lib.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib-available)
  (deps
   (package dune)
-  (source_tree test-cases/lib-available)
+  (source_tree test-cases/lib-available.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/lib-available
+   test-cases/lib-available.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib-errors)
- (deps (package dune) (source_tree test-cases/lib-errors) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/lib-errors.t) (alias test-deps))
  (action
   (chdir
-   test-cases/lib-errors
+   test-cases/lib-errors.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias link-deps)
- (deps (package dune) (source_tree test-cases/link-deps) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/link-deps.t) (alias test-deps))
  (action
   (chdir
-   test-cases/link-deps
+   test-cases/link-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias link-includes)
  (deps
   (package dune)
-  (source_tree test-cases/link-includes)
+  (source_tree test-cases/link-includes.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/link-includes
+   test-cases/link-includes.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lint)
- (deps (package dune) (source_tree test-cases/lint) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/lint.t) (alias test-deps))
  (action
   (chdir
-   test-cases/lint
+   test-cases/lint.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias loop)
- (deps (package dune) (source_tree test-cases/loop) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/loop.t) (alias test-deps))
  (action
   (chdir
-   test-cases/loop
+   test-cases/loop.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias macro-expand-error)
  (deps
   (package dune)
-  (source_tree test-cases/macro-expand-error)
+  (source_tree test-cases/macro-expand-error.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/macro-expand-error
+   test-cases/macro-expand-error.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias mdx-stanza)
- (deps (package dune) (source_tree test-cases/mdx-stanza) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/mdx-stanza.t) (alias test-deps))
  (action
   (chdir
-   test-cases/mdx-stanza
+   test-cases/mdx-stanza.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-cmly)
- (deps (package dune) (source_tree test-cases/menhir/cmly) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/menhir/cmly.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/menhir/cmly
+   test-cases/menhir/cmly.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-env)
- (deps (package dune) (source_tree test-cases/menhir/env) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/menhir/env.t) (alias test-deps))
  (action
   (chdir
-   test-cases/menhir/env
+   test-cases/menhir/env.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-general)
  (deps
   (package dune)
-  (source_tree test-cases/menhir/general)
+  (source_tree test-cases/menhir/general.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/menhir/general
+   test-cases/menhir/general.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-general-2.0)
  (deps
   (package dune)
-  (source_tree test-cases/menhir/general-2.0)
+  (source_tree test-cases/menhir/general-2.0.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/menhir/general-2.0
+   test-cases/menhir/general-2.0.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias menhir-promote)
  (deps
   (package dune)
-  (source_tree test-cases/menhir/promote)
+  (source_tree test-cases/menhir/promote.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/menhir/promote
+   test-cases/menhir/promote.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-allow_approximate_merlin)
  (deps
   (package dune)
-  (source_tree test-cases/merlin/allow_approximate_merlin)
+  (source_tree test-cases/merlin/allow_approximate_merlin.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/merlin/allow_approximate_merlin
+   test-cases/merlin/allow_approximate_merlin.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-merlin-tests)
  (deps
   (package dune)
-  (source_tree test-cases/merlin/merlin-tests)
+  (source_tree test-cases/merlin/merlin-tests.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/merlin/merlin-tests
+   test-cases/merlin/merlin-tests.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-server)
  (deps
   (package dune)
-  (source_tree test-cases/merlin/server)
+  (source_tree test-cases/merlin/server.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/merlin/server
+   test-cases/merlin/server.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias merlin-src-dirs-of-deps)
  (deps
   (package dune)
-  (source_tree test-cases/merlin/src-dirs-of-deps)
+  (source_tree test-cases/merlin/src-dirs-of-deps.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/merlin/src-dirs-of-deps
+   test-cases/merlin/src-dirs-of-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias meta-gen)
- (deps (package dune) (source_tree test-cases/meta-gen) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/meta-gen.t) (alias test-deps))
  (action
   (chdir
-   test-cases/meta-gen
+   test-cases/meta-gen.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias misc)
- (deps (package dune) (source_tree test-cases/misc) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/misc.t) (alias test-deps))
  (action
   (chdir
-   test-cases/misc
+   test-cases/misc.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias missing-loc-run)
  (deps
   (package dune)
-  (source_tree test-cases/missing-loc-run)
+  (source_tree test-cases/missing-loc-run.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/missing-loc-run
+   test-cases/missing-loc-run.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias multi-dir)
- (deps (package dune) (source_tree test-cases/multi-dir) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/multi-dir.t) (alias test-deps))
  (action
   (chdir
-   test-cases/multi-dir
+   test-cases/multi-dir.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias multiple-targets)
  (deps
   (package dune)
-  (source_tree test-cases/multiple-targets)
+  (source_tree test-cases/multiple-targets.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/multiple-targets
+   test-cases/multiple-targets.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias name-field-validation)
  (deps
   (package dune)
-  (source_tree test-cases/name-field-validation)
+  (source_tree test-cases/name-field-validation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/name-field-validation
+   test-cases/name-field-validation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias no-infer)
- (deps (package dune) (source_tree test-cases/no-infer) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/no-infer.t) (alias test-deps))
  (action
   (chdir
-   test-cases/no-infer
+   test-cases/no-infer.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias no-installable-mode)
  (deps
   (package dune)
-  (source_tree test-cases/no-installable-mode)
+  (source_tree test-cases/no-installable-mode.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/no-installable-mode
+   test-cases/no-installable-mode.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias no-name-field)
  (deps
   (package dune)
-  (source_tree test-cases/no-name-field)
+  (source_tree test-cases/no-name-field.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/no-name-field
+   test-cases/no-name-field.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias null-dep)
- (deps (package dune) (source_tree test-cases/null-dep) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/null-dep.t) (alias test-deps))
  (action
   (chdir
-   test-cases/null-dep
+   test-cases/null-dep.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocaml-config-macro)
  (deps
   (package dune)
-  (source_tree test-cases/ocaml-config-macro)
+  (source_tree test-cases/ocaml-config-macro.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/ocaml-config-macro
+   test-cases/ocaml-config-macro.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocaml-syntax)
- (deps (package dune) (source_tree test-cases/ocaml-syntax) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/ocaml-syntax.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/ocaml-syntax
+   test-cases/ocaml-syntax.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ocamldep-multi-stanzas)
  (deps
   (package dune)
-  (source_tree test-cases/ocamldep-multi-stanzas)
+  (source_tree test-cases/ocamldep-multi-stanzas.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/ocamldep-multi-stanzas
+   test-cases/ocamldep-multi-stanzas.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias odig-files-workspace)
  (deps
   (package dune)
-  (source_tree test-cases/odig-files-workspace)
+  (source_tree test-cases/odig-files-workspace.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odig-files-workspace
+   test-cases/odig-files-workspace.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias odoc-github717-odoc-index)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/github717-odoc-index)
+  (source_tree test-cases/odoc/github717-odoc-index.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/github717-odoc-index
+   test-cases/odoc/github717-odoc-index.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2048,11 +2087,11 @@
  (alias odoc-multiple-private-libs)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/multiple-private-libs)
+  (source_tree test-cases/odoc/multiple-private-libs.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/multiple-private-libs
+   test-cases/odoc/multiple-private-libs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2060,11 +2099,11 @@
  (alias odoc-odoc-package-mld-link)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/odoc-package-mld-link)
+  (source_tree test-cases/odoc/odoc-package-mld-link.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/odoc-package-mld-link
+   test-cases/odoc/odoc-package-mld-link.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2072,11 +2111,11 @@
  (alias odoc-odoc-simple)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/odoc-simple)
+  (source_tree test-cases/odoc/odoc-simple.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/odoc-simple
+   test-cases/odoc/odoc-simple.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2084,11 +2123,11 @@
  (alias odoc-odoc-unique-mlds)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/odoc-unique-mlds)
+  (source_tree test-cases/odoc/odoc-unique-mlds.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/odoc-unique-mlds
+   test-cases/odoc/odoc-unique-mlds.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2096,11 +2135,11 @@
  (alias odoc-warnings)
  (deps
   (package dune)
-  (source_tree test-cases/odoc/warnings)
+  (source_tree test-cases/odoc/warnings.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/odoc/warnings
+   test-cases/odoc/warnings.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2108,38 +2147,38 @@
  (alias old-dune-subsystem)
  (deps
   (package dune)
-  (source_tree test-cases/old-dune-subsystem)
+  (source_tree test-cases/old-dune-subsystem.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/old-dune-subsystem
+   test-cases/old-dune-subsystem.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias optional)
- (deps (package dune) (source_tree test-cases/optional) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/optional.t) (alias test-deps))
  (action
   (chdir
-   test-cases/optional
+   test-cases/optional.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias optional-executable)
  (deps
   (package dune)
-  (source_tree test-cases/optional-executable)
+  (source_tree test-cases/optional-executable.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/optional-executable
+   test-cases/optional-executable.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias output-obj)
- (deps (package dune) (source_tree test-cases/output-obj) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/output-obj.t) (alias test-deps))
  (action
   (chdir
-   test-cases/output-obj
+   test-cases/output-obj.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if
   (and
@@ -2148,45 +2187,57 @@
 
 (rule
  (alias package-dep)
- (deps (package dune) (source_tree test-cases/package-dep) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/package-dep.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/package-dep
+   test-cases/package-dep.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias path-variables)
  (deps
   (package dune)
-  (source_tree test-cases/path-variables)
+  (source_tree test-cases/path-variables.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/path-variables
+   test-cases/path-variables.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias pipe-actions)
- (deps (package dune) (source_tree test-cases/pipe-actions) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/pipe-actions.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/pipe-actions
+   test-cases/pipe-actions.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias plugin-mode)
- (deps (package dune) (source_tree test-cases/plugin-mode) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/plugin-mode.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/plugin-mode
+   test-cases/plugin-mode.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias ppx-rewriter)
- (deps (package dune) (source_tree test-cases/ppx-rewriter) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/ppx-rewriter.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/ppx-rewriter
+   test-cases/ppx-rewriter.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (<> %{ocaml_version} 4.02.3)))
 
@@ -2194,402 +2245,411 @@
  (alias ppx-runtime-dependencies)
  (deps
   (package dune)
-  (source_tree test-cases/ppx-runtime-dependencies)
+  (source_tree test-cases/ppx-runtime-dependencies.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/ppx-runtime-dependencies
+   test-cases/ppx-runtime-dependencies.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias preprocess-with-action)
  (deps
   (package dune)
-  (source_tree test-cases/preprocess-with-action)
+  (source_tree test-cases/preprocess-with-action.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/preprocess-with-action
+   test-cases/preprocess-with-action.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias private-modules)
  (deps
   (package dune)
-  (source_tree test-cases/private-modules)
+  (source_tree test-cases/private-modules.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/private-modules
+   test-cases/private-modules.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias private-public-overlap)
  (deps
   (package dune)
-  (source_tree test-cases/private-public-overlap)
+  (source_tree test-cases/private-public-overlap.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/private-public-overlap
+   test-cases/private-public-overlap.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias project-root)
- (deps (package dune) (source_tree test-cases/project-root) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/project-root.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/project-root
+   test-cases/project-root.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias promote)
- (deps (package dune) (source_tree test-cases/promote) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/promote.t) (alias test-deps))
  (action
   (chdir
-   test-cases/promote
+   test-cases/promote.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias quoting)
- (deps (package dune) (source_tree test-cases/quoting) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/quoting.t) (alias test-deps))
  (action
   (chdir
-   test-cases/quoting
+   test-cases/quoting.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias re-exported-deps)
  (deps
   (package dune)
-  (source_tree test-cases/re-exported-deps)
+  (source_tree test-cases/re-exported-deps.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/re-exported-deps
+   test-cases/re-exported-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias reason)
- (deps (package dune) (source_tree test-cases/reason) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/reason.t) (alias test-deps))
  (action
   (chdir
-   test-cases/reason
+   test-cases/reason.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias redirections)
- (deps (package dune) (source_tree test-cases/redirections) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/redirections.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/redirections
+   test-cases/redirections.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias reporting-of-cycles)
  (deps
   (package dune)
-  (source_tree test-cases/reporting-of-cycles)
+  (source_tree test-cases/reporting-of-cycles.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/reporting-of-cycles
+   test-cases/reporting-of-cycles.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias rule-target-external)
  (deps
   (package dune)
-  (source_tree test-cases/rule-target-external)
+  (source_tree test-cases/rule-target-external.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/rule-target-external
+   test-cases/rule-target-external.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias rule-target-inferrence)
  (deps
   (package dune)
-  (source_tree test-cases/rule-target-inferrence)
+  (source_tree test-cases/rule-target-inferrence.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/rule-target-inferrence
+   test-cases/rule-target-inferrence.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias sandboxing)
- (deps (package dune) (source_tree test-cases/sandboxing) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/sandboxing.t) (alias test-deps))
  (action
   (chdir
-   test-cases/sandboxing
+   test-cases/sandboxing.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias scope-bug)
- (deps (package dune) (source_tree test-cases/scope-bug) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/scope-bug.t) (alias test-deps))
  (action
   (chdir
-   test-cases/scope-bug
+   test-cases/scope-bug.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias scope-ppx-bug)
  (deps
   (package dune)
-  (source_tree test-cases/scope-ppx-bug)
+  (source_tree test-cases/scope-ppx-bug.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/scope-ppx-bug
+   test-cases/scope-ppx-bug.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias select)
- (deps (package dune) (source_tree test-cases/select) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/select.t) (alias test-deps))
  (action
   (chdir
-   test-cases/select
+   test-cases/select.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias select-2-0-rules)
  (deps
   (package dune)
-  (source_tree test-cases/select-2-0-rules)
+  (source_tree test-cases/select-2-0-rules.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/select-2-0-rules
+   test-cases/select-2-0-rules.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias several-packages)
  (deps
   (package dune)
-  (source_tree test-cases/several-packages)
+  (source_tree test-cases/several-packages.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/several-packages
+   test-cases/several-packages.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias shadow-bindings)
  (deps
   (package dune)
-  (source_tree test-cases/shadow-bindings)
+  (source_tree test-cases/shadow-bindings.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/shadow-bindings
+   test-cases/shadow-bindings.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias stale-artifact-removal)
  (deps
   (package dune)
-  (source_tree test-cases/stale-artifact-removal)
+  (source_tree test-cases/stale-artifact-removal.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/stale-artifact-removal
+   test-cases/stale-artifact-removal.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias stdlib-compilation)
  (deps
   (package dune)
-  (source_tree test-cases/stdlib-compilation)
+  (source_tree test-cases/stdlib-compilation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/stdlib-compilation
+   test-cases/stdlib-compilation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias strict-package-deps)
  (deps
   (package dune)
-  (source_tree test-cases/strict-package-deps)
+  (source_tree test-cases/strict-package-deps.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/strict-package-deps
+   test-cases/strict-package-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias subdir-stanza)
  (deps
   (package dune)
-  (source_tree test-cases/subdir-stanza)
+  (source_tree test-cases/subdir-stanza.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/subdir-stanza
+   test-cases/subdir-stanza.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias subst)
- (deps (package dune) (source_tree test-cases/subst) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/subst.t) (alias test-deps))
  (action
   (chdir
-   test-cases/subst
+   test-cases/subst.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias syntax-versioning)
  (deps
   (package dune)
-  (source_tree test-cases/syntax-versioning)
+  (source_tree test-cases/syntax-versioning.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/syntax-versioning
+   test-cases/syntax-versioning.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias target-dir-alias)
  (deps
   (package dune)
-  (source_tree test-cases/target-dir-alias)
+  (source_tree test-cases/target-dir-alias.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/target-dir-alias
+   test-cases/target-dir-alias.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias targets-with-vars)
  (deps
   (package dune)
-  (source_tree test-cases/targets-with-vars)
+  (source_tree test-cases/targets-with-vars.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/targets-with-vars
+   test-cases/targets-with-vars.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza)
- (deps (package dune) (source_tree test-cases/tests-stanza) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/tests-stanza.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/tests-stanza
+   test-cases/tests-stanza.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza-action)
  (deps
   (package dune)
-  (source_tree test-cases/tests-stanza-action)
+  (source_tree test-cases/tests-stanza-action.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/tests-stanza-action
+   test-cases/tests-stanza-action.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias tests-stanza-action-syntax-version)
  (deps
   (package dune)
-  (source_tree test-cases/tests-stanza-action-syntax-version)
+  (source_tree test-cases/tests-stanza-action-syntax-version.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/tests-stanza-action-syntax-version
+   test-cases/tests-stanza-action-syntax-version.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias toplevel-integration)
  (deps
   (package dune)
-  (source_tree test-cases/toplevel-integration)
+  (source_tree test-cases/toplevel-integration.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/toplevel-integration
+   test-cases/toplevel-integration.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias toplevel-stanza)
  (deps
   (package dune)
-  (source_tree test-cases/toplevel-stanza)
+  (source_tree test-cases/toplevel-stanza.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/toplevel-stanza
+   test-cases/toplevel-stanza.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
 (rule
  (alias trace-file)
- (deps (package dune) (source_tree test-cases/trace-file) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/trace-file.t) (alias test-deps))
  (action
   (chdir
-   test-cases/trace-file
+   test-cases/trace-file.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias transitive-deps-mode)
  (deps
   (package dune)
-  (source_tree test-cases/transitive-deps-mode)
+  (source_tree test-cases/transitive-deps-mode.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/transitive-deps-mode
+   test-cases/transitive-deps-mode.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias unreadable-src)
  (deps
   (package dune)
-  (source_tree test-cases/unreadable-src)
+  (source_tree test-cases/unreadable-src.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/unreadable-src
+   test-cases/unreadable-src.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias unused-preprocessor-deps)
  (deps
   (package dune)
-  (source_tree test-cases/unused-preprocessor-deps)
+  (source_tree test-cases/unused-preprocessor-deps.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/unused-preprocessor-deps
+   test-cases/unused-preprocessor-deps.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias upgrader)
- (deps (package dune) (source_tree test-cases/upgrader) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/upgrader.t) (alias test-deps))
  (action
   (chdir
-   test-cases/upgrader
+   test-cases/upgrader.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias use-meta)
- (deps (package dune) (source_tree test-cases/use-meta) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/use-meta.t) (alias test-deps))
  (action
   (chdir
-   test-cases/use-meta
+   test-cases/use-meta.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias utop-utop-default)
  (deps
   (package dune)
-  (source_tree test-cases/utop/utop-default)
+  (source_tree test-cases/utop/utop-default.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/utop/utop-default
+   test-cases/utop/utop-default.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2597,11 +2657,11 @@
  (alias utop-utop-default-implementation)
  (deps
   (package dune)
-  (source_tree test-cases/utop/utop-default-implementation)
+  (source_tree test-cases/utop/utop-default-implementation.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/utop/utop-default-implementation
+   test-cases/utop/utop-default-implementation.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2609,11 +2669,11 @@
  (alias utop-utop-ppx-rewriters)
  (deps
   (package dune)
-  (source_tree test-cases/utop/utop-ppx-rewriters)
+  (source_tree test-cases/utop/utop-ppx-rewriters.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/utop/utop-ppx-rewriters
+   test-cases/utop/utop-ppx-rewriters.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2621,11 +2681,11 @@
  (alias utop-utop-simple)
  (deps
   (package dune)
-  (source_tree test-cases/utop/utop-simple)
+  (source_tree test-cases/utop/utop-simple.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/utop/utop-simple
+   test-cases/utop/utop-simple.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.05.0)))
 
@@ -2633,19 +2693,11 @@
  (alias variables-for-artifacts)
  (deps
   (package dune)
-  (source_tree test-cases/variables-for-artifacts)
+  (source_tree test-cases/variables-for-artifacts.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/variables-for-artifacts
-   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
-
-(rule
- (alias vendor)
- (deps (package dune) (source_tree test-cases/vendor) (alias test-deps))
- (action
-  (chdir
-   test-cases/vendor
+   test-cases/variables-for-artifacts.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2668,6 +2720,14 @@
  (action
   (chdir
    test-cases/vendor/do-not-install-vendored-packages
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias vendor-main)
+ (deps (package dune) (source_tree test-cases/vendor/main) (alias test-deps))
+ (action
+  (chdir
+   test-cases/vendor/main
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -2914,95 +2974,98 @@
 
 (rule
  (alias windows-diff)
- (deps (package dune) (source_tree test-cases/windows-diff) (alias test-deps))
+ (deps
+  (package dune)
+  (source_tree test-cases/windows-diff.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/windows-diff
+   test-cases/windows-diff.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-exit-codes)
  (deps
   (package dune)
-  (source_tree test-cases/with-exit-codes)
+  (source_tree test-cases/with-exit-codes.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/with-exit-codes
+   test-cases/with-exit-codes.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-nested-exit-codes)
  (deps
   (package dune)
-  (source_tree test-cases/with-nested-exit-codes)
+  (source_tree test-cases/with-nested-exit-codes.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/with-nested-exit-codes
+   test-cases/with-nested-exit-codes.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-stdin-from)
  (deps
   (package dune)
-  (source_tree test-cases/with-stdin-from)
+  (source_tree test-cases/with-stdin-from.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/with-stdin-from
+   test-cases/with-stdin-from.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias with-unsupported-nested-exit-codes)
  (deps
   (package dune)
-  (source_tree test-cases/with-unsupported-nested-exit-codes)
+  (source_tree test-cases/with-unsupported-nested-exit-codes.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/with-unsupported-nested-exit-codes
+   test-cases/with-unsupported-nested-exit-codes.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias workspace-paths)
  (deps
   (package dune)
-  (source_tree test-cases/workspace-paths)
+  (source_tree test-cases/workspace-paths.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/workspace-paths
+   test-cases/workspace-paths.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias workspaces)
- (deps (package dune) (source_tree test-cases/workspaces) (alias test-deps))
+ (deps (package dune) (source_tree test-cases/workspaces.t) (alias test-deps))
  (action
   (chdir
-   test-cases/workspaces
+   test-cases/workspaces.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias wrapped-false-main-module-name)
  (deps
   (package dune)
-  (source_tree test-cases/wrapped-false-main-module-name)
+  (source_tree test-cases/wrapped-false-main-module-name.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/wrapped-false-main-module-name
+   test-cases/wrapped-false-main-module-name.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias wrapped-transition)
  (deps
   (package dune)
-  (source_tree test-cases/wrapped-transition)
+  (source_tree test-cases/wrapped-transition.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/wrapped-transition
+   test-cases/wrapped-transition.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))
  (enabled_if (>= %{ocaml_version} 4.06.0)))
 
@@ -3010,11 +3073,11 @@
  (alias write-permissions)
  (deps
   (package dune)
-  (source_tree test-cases/write-permissions)
+  (source_tree test-cases/write-permissions.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/write-permissions
+   test-cases/write-permissions.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (alias
@@ -3072,8 +3135,8 @@
   (alias dune-package)
   (alias dune-ppx-driver-system)
   (alias dune-project-edition)
-  (alias dune-project-meta)
   (alias dune-project-meta-github2927)
+  (alias dune-project-meta-main)
   (alias dune-project-no-opam)
   (alias dune_memory-and-the-universe)
   (alias dup-fields)
@@ -3279,9 +3342,9 @@
   (alias utop-utop-ppx-rewriters)
   (alias utop-utop-simple)
   (alias variables-for-artifacts)
-  (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
+  (alias vendor-main)
   (alias virtual-libraries-double-implementation)
   (alias virtual-libraries-dune-package-info)
   (alias virtual-libraries-github2896)
@@ -3368,8 +3431,8 @@
   (alias dune-jbuild-var-case)
   (alias dune-package)
   (alias dune-project-edition)
-  (alias dune-project-meta)
   (alias dune-project-meta-github2927)
+  (alias dune-project-meta-main)
   (alias dune-project-no-opam)
   (alias dune_memory-and-the-universe)
   (alias dup-fields)
@@ -3540,9 +3603,9 @@
   (alias unused-preprocessor-deps)
   (alias upgrader)
   (alias variables-for-artifacts)
-  (alias vendor)
   (alias vendor-dash-p-and-vendored-packages)
   (alias vendor-do-not-install-vendored-packages)
+  (alias vendor-main)
   (alias virtual-libraries-double-implementation)
   (alias virtual-libraries-dune-package-info)
   (alias virtual-libraries-github2896)
@@ -3587,4 +3650,4 @@
 
 (alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
 
-(alias (name runtest-coq) (deps (alias coq) (alias coq-extract)))
+(alias (name runtest-coq) (deps (alias coq-extract) (alias coq-main)))

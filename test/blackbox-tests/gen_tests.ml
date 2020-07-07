@@ -94,7 +94,13 @@ module Test = struct
               Filename.chop_suffix x ".t" :: acc
           in
           loop acc []
-        | x :: xs -> loop (x :: acc) xs
+        | x :: xs ->
+          loop
+            (let x =
+               String.drop_suffix x ~suffix:".t" |> Option.value ~default:x
+             in
+             x :: acc)
+            xs
       in
       String.concat ~sep:"-" (loop [] dirs)
 
@@ -197,65 +203,69 @@ let exclusions =
     let name = Filename.concat "menhir" name in
     make ~external_deps:true name
   in
-  [ make "js_of_ocaml" ~external_deps:true ~js:true
+  let coq name =
+    let name = Filename.concat "coq" name in
+    make ~external_deps:true name ~coq:true
+  in
+  [ make "js_of_ocaml.t" ~external_deps:true ~js:true
       ~env:("NODE", Sexp.parse "%{bin:node}")
-  ; make "coq" ~coq:true
-  ; make "coq/extract" ~coq:true
-  ; make "github25" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
-  ; odoc "odoc-simple"
-  ; odoc "odoc-package-mld-link"
-  ; odoc "odoc-unique-mlds"
-  ; odoc "github717-odoc-index"
-  ; odoc "multiple-private-libs"
-  ; odoc "warnings"
-  ; make "cinaps" ~external_deps:true ~enabled:false
-  ; make "fdo" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
-  ; make "ppx-rewriter" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
-  ; make "cross-compilation" ~external_deps:true
-  ; make "dune-ppx-driver-system" ~external_deps:true
-  ; make "github1372" ~external_deps:true
-  ; make "install-dry-run" ~external_deps:true
-  ; make "install-libdir" ~external_deps:true
-  ; make "lint" ~external_deps:true
-  ; make "ppx-runtime-dependencies" ~external_deps:true
-  ; make "foreign-library" ~external_deps:true
-  ; make "package-dep" ~external_deps:true
-  ; make "merlin/merlin-tests" ~external_deps:true
-  ; make "use-meta" ~external_deps:true
-  ; make "output-obj" ~skip_platforms:[ Mac; Win ] ~only_ocaml:(">=", "4.06.0")
-  ; make "dune-cache/trim"
-  ; make "github644" ~external_deps:true
-  ; make "private-public-overlap" ~external_deps:true
-  ; make "reason" ~external_deps:true
-  ; menhir "cmly"
-  ; menhir "general"
-  ; menhir "general-2.0"
-  ; menhir "promote"
-  ; utop "utop-simple"
-  ; utop "utop-default"
-  ; utop "utop-default-implementation"
-  ; utop "utop-ppx-rewriters"
-  ; make "toplevel-stanza" ~only_ocaml:(">=", "4.05.0") ~external_deps:true
-  ; make "github764" ~skip_platforms:[ Win ]
-  ; make "gen-opam-install-file" ~external_deps:true
-  ; make "scope-ppx-bug" ~external_deps:true
-  ; make "findlib-dynload" ~external_deps:true
+  ; coq "main.t"
+  ; coq "extract.t"
+  ; make "github25.t" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
+  ; odoc "odoc-simple.t"
+  ; odoc "odoc-package-mld-link.t"
+  ; odoc "odoc-unique-mlds.t"
+  ; odoc "github717-odoc-index.t"
+  ; odoc "multiple-private-libs.t"
+  ; odoc "warnings.t"
+  ; make "cinaps.t" ~external_deps:true ~enabled:false
+  ; make "fdo.t" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
+  ; make "ppx-rewriter.t" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
+  ; make "cross-compilation.t" ~external_deps:true
+  ; make "dune-ppx-driver-system.t" ~external_deps:true
+  ; make "github1372.t" ~external_deps:true
+  ; make "install-dry-run.t" ~external_deps:true
+  ; make "install-libdir.t" ~external_deps:true
+  ; make "lint.t" ~external_deps:true
+  ; make "ppx-runtime-dependencies.t" ~external_deps:true
+  ; make "foreign-library.t" ~external_deps:true
+  ; make "package-dep.t" ~external_deps:true
+  ; make "merlin/merlin-tests.t" ~external_deps:true
+  ; make "use-meta.t" ~external_deps:true
+  ; make "output-obj.t" ~skip_platforms:[ Mac; Win ] ~only_ocaml:(">=", "4.06.0")
+  ; make "dune-cache/trim.t"
+  ; make "github644.t" ~external_deps:true
+  ; make "private-public-overlap.t" ~external_deps:true
+  ; make "reason.t" ~external_deps:true
+  ; menhir "cmly.t"
+  ; menhir "general.t"
+  ; menhir "general-2.0.t"
+  ; menhir "promote.t"
+  ; utop "utop-simple.t"
+  ; utop "utop-default.t"
+  ; utop "utop-default-implementation.t"
+  ; utop "utop-ppx-rewriters.t"
+  ; make "toplevel-stanza.t" ~only_ocaml:(">=", "4.05.0") ~external_deps:true
+  ; make "github764.t" ~skip_platforms:[ Win ]
+  ; make "gen-opam-install-file.t" ~external_deps:true
+  ; make "scope-ppx-bug.t" ~external_deps:true
+  ; make "findlib-dynload.t" ~external_deps:true
     (* The next test is disabled as it relies on configured opam swtiches and
        it's hard to get that working properly *)
-  ; make "env/envs-and-contexts" ~external_deps:true ~enabled:false
-  ; make "env/env-simple" ~only_ocaml:(">=", "4.06.0")
-  ; make "env/env-cflags" ~only_ocaml:(">=", "4.06.0")
-  ; make "wrapped-transition" ~only_ocaml:(">=", "4.06.0")
-  ; make "explicit_js_mode" ~external_deps:true ~js:true
+  ; make "env/envs-and-contexts.t" ~external_deps:true ~enabled:false
+  ; make "env/env-simple.t" ~only_ocaml:(">=", "4.06.0")
+  ; make "env/env-cflags.t" ~only_ocaml:(">=", "4.06.0")
+  ; make "wrapped-transition.t" ~only_ocaml:(">=", "4.06.0")
+  ; make "explicit_js_mode.t" ~external_deps:true ~js:true
     (* for the following tests sandboxing is disabled because absolute paths end
        up appearing in the output if we sandbox *)
-  ; make "env/env-bins" ~disable_sandboxing:true
-  ; make "mdx-stanza" ~external_deps:true
-  ; make "toplevel-integration" ~external_deps:true
-  ; make "bisect-ppx/main" ~external_deps:true ~enabled:false
-  ; make "bisect-ppx/github3473" ~external_deps:true ~enabled:false
-  ; make "github3188" ~external_deps:true
-  ; make "instrumentation" ~external_deps:true
+  ; make "env/env-bins.t" ~disable_sandboxing:true
+  ; make "mdx-stanza.t" ~external_deps:true
+  ; make "bisect-ppx/main.t" ~external_deps:true ~enabled:false
+  ; make "bisect-ppx/github3473.t" ~external_deps:true ~enabled:false
+  ; make "github3188.t" ~external_deps:true
+  ; make "toplevel-integration.t" ~external_deps:true
+  ; make "instrumentation.t" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

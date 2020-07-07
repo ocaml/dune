@@ -1,9 +1,26 @@
-  $ dune build @install @runtest --display short
-         ocaml config.full
-      ocamldep src/.plop.eobjs/plop.ml.d
-      ocamldep src/.plop.eobjs/config.ml.d
-        ocamlc src/.plop.eobjs/byte/config.{cmi,cmo,cmt}
-      ocamlopt src/.plop.eobjs/native/config.{cmx,o}
-        ocamlc src/.plop.eobjs/byte/plop.{cmi,cmo,cmt}
-      ocamlopt src/.plop.eobjs/native/plop.{cmx,o}
-      ocamlopt src/plop.exe
+This example creates a configuration file using a fallback rule.
+See README.org for details
+
+By default, config is set:
+
+  $ dune exec ./src/plop.exe
+  Built with support for blah: true
+  Path to blah is:             "/path/to/blah"
+
+Print generated config:
+
+  $ cat _build/default/config.full
+  
+  let with_blah = true
+  let blah_path = "/path/to/blah"
+
+Now, we disable it, and re-run:
+
+  $ echo "let enable_blah = No" > config
+  $ dune exec ./src/plop.exe
+  Built with support for blah: false
+  Path to blah is:             "<no support for blah>"
+  $ cat _build/default/config.full
+  
+  let with_blah = false
+  let blah_path = "<no support for blah>"

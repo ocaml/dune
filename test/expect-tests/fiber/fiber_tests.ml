@@ -351,8 +351,10 @@ let%expect_test "writing multiple values" =
     reader1: reading
     reader2: writing
     reader2: reading
-    reader2: got 2
-    [FAIL] unexpected Never raised |}]
+    reader1: got 2
+    reader1: writing
+    reader2: got 1
+    () |}]
 
 let%expect_test "Sequence.parallel_iter is indeed parallel" =
   let test ~iter_function =

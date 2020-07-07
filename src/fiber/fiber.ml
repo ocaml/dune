@@ -451,32 +451,24 @@ module Mvar = struct
   let create () =
     { value = None; writers = Queue.create (); readers = Queue.create () }
 
-  (** [step mvar] makes progress on the passing values to readers/writers. It
-      can detect progress in situations:
+  let next_reader t k x =
+    match Queue.pop t.readers with
+    | None -> k x
+    | Some r ->
+      Queue.push t.readers (K.create k);
+      K.run r x
 
-      - pending writes when [value] is empty: we can deque this write and make
-        unblock the writer
-
-      - pending reads when [value] is present: we can pass a value to the reader
-        and unblock it
-
-      if [step] is able to make progress, it will call itself recursively to
-      make more progress. That's because running a continuation may make it
-      possible to proceed further. *)
   let rec step t =
     match t.value with
-    | None when not (Queue.is_empty t.writers) ->
-      let a, wk = Queue.pop_exn t.writers in
-      t.value <- Some a;
-      K.run wk ();
-      (* We cannot assume [t.value = Some _] here. K.run may have called read
-         already *)
-      step t
-    | Some x when not (Queue.is_empty t.readers) ->
+    | Some v when not (Queue.is_empty t.readers) ->
       let r = Queue.pop_exn t.readers in
       t.value <- None;
-      K.run r x;
-      (* Similarly, we can no longer assume [t.value = None] *)
+      K.run r v;
+      step t
+    | None when not (Queue.is_empty t.writers) ->
+      let v, w = Queue.pop_exn t.writers in
+      t.value <- Some v;
+      K.run w ();
       step t
     | _ -> ()
 
@@ -485,13 +477,14 @@ module Mvar = struct
     | None -> Queue.push t.readers (K.create k)
     | Some v ->
       t.value <- None;
-      k v;
+      next_reader t k v;
       step t
 
   let write t x k =
     match t.value with
     | Some _ -> Queue.push t.writers (x, K.create k)
     | None ->
+      assert (Queue.is_empty t.writers);
       t.value <- Some x;
       k ();
       step t

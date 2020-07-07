@@ -13,7 +13,8 @@ type t =
   ; stdlib_dir : Path.t
   ; ccomp_type : Ocaml_config.Ccomp_type.t
   ; profile : Profile.t
-  ; ocaml_version : string
+  ; ocaml_version_string : string
+  ; ocaml_version : Ocaml_version.t
   ; bisect_enabled : bool
   }
 

@@ -1,11 +1,11 @@
   $ dune build @print-merlins --display short --profile release
       ocamldep pp/.pp.eobjs/pp.ml.d
-        ocamlc pp/.pp.eobjs/byte/pp.{cmi,cmo,cmt}
-      ocamlopt pp/.pp.eobjs/native/pp.{cmx,o}
-      ocamlopt pp/pp.exe
       ocamldep sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/sanitize_dot_merlin.ml.d
+        ocamlc pp/.pp.eobjs/byte/pp.{cmi,cmo,cmt}
         ocamlc sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/byte/sanitize_dot_merlin.{cmi,cmo,cmt}
+      ocamlopt pp/.pp.eobjs/native/pp.{cmx,o}
       ocamlopt sanitize-dot-merlin/.sanitize_dot_merlin.eobjs/native/sanitize_dot_merlin.{cmx,o}
+      ocamlopt pp/pp.exe
       ocamlopt sanitize-dot-merlin/sanitize_dot_merlin.exe
   sanitize_dot_merlin alias print-merlins
   # Processing exe/.merlin

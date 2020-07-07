@@ -32,7 +32,7 @@ let ooi_supports_no_code version = version >= (4, 05, 0)
 
 let supports_let_syntax version = version >= (4, 08, 0)
 
-let supports_output_complete_exe version = version >= (4, 10, 0)
+let supports_output_complete_exe version = version >= (4, 10, 1)
 
 let supports_function_sections version = version > (4, 10, 0)
 
@@ -43,3 +43,7 @@ let custom_or_output_complete_exe version =
     "-output-complete-exe"
   else
     "-custom"
+
+let ocamlopt_always_calls_library_linker version = version < (4, 12, 0)
+
+let has_sys_opaque_identity version = version >= (4, 3, 0)

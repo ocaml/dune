@@ -4,19 +4,13 @@ Basic test that we can use private binaries as public ones
           priv alias using-priv/runtest
   Executing priv as priv
   PATH:
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/private-bin-import/_build/default/using-priv/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/private-bin-import/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
-  	_build/default/.bin
-  	_build/install/default/bin
+  	$TESTCASE_ROOT/private-bin-import/_build/default/using-priv/.bin
+  	$TESTCASE_ROOT/private-bin-import/_build/install/default/bin
   priv-renamed alias using-priv/runtest
   Executing priv as priv-renamed
   PATH:
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/private-bin-import/_build/default/using-priv/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/private-bin-import/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
-  	_build/default/.bin
-  	_build/install/default/bin
+  	$TESTCASE_ROOT/private-bin-import/_build/default/using-priv/.bin
+  	$TESTCASE_ROOT/private-bin-import/_build/install/default/bin
 
 Override public binary in env
   $ dune build --root override-bins
@@ -32,27 +26,18 @@ Nest env binaries
           priv alias using-priv/nested/runtest
   Executing priv as priv
   PATH:
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/nested/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
-  	_build/default/.bin
-  	_build/install/default/bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/nested/.bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/.bin
+  	$TESTCASE_ROOT/nested-env/_build/install/default/bin
   priv-renamed alias using-priv/nested/runtest
   Executing priv as priv-renamed
   PATH:
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/nested/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
-  	_build/default/.bin
-  	_build/install/default/bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/nested/.bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/.bin
+  	$TESTCASE_ROOT/nested-env/_build/install/default/bin
   priv-renamed-nested alias using-priv/nested/runtest
   Executing priv as priv-renamed-nested
   PATH:
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/nested/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/default/using-priv/.bin
-  	_build/default/test/blackbox-tests/test-cases/env/env-bins/nested-env/_build/install/default/bin
-  	_build/default/test/blackbox-tests/.bin
-  	_build/default/.bin
-  	_build/install/default/bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/nested/.bin
+  	$TESTCASE_ROOT/nested-env/_build/default/using-priv/.bin
+  	$TESTCASE_ROOT/nested-env/_build/install/default/bin

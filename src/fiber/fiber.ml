@@ -43,6 +43,9 @@ module Execution_context : sig
   val set_vars : Univ_map.t -> ('a -> 'b t) -> 'a -> 'b t
 
   val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
+
+  (* Execute a callback with a fresh execution context *)
+  val new_run : (unit -> 'a) -> 'a
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
@@ -170,6 +173,19 @@ end = struct
       current := t
 
   let deref () = deref !current
+
+  let new_run f =
+    let backup = !current in
+    Exn.protect
+      ~finally:(fun () -> current := backup)
+      ~f:(fun () ->
+        current :=
+          { on_error = None
+          ; fibers = ref 1
+          ; vars = Univ_map.empty
+          ; on_release = None
+          };
+        f ())
 end
 
 module EC = Execution_context
@@ -392,37 +408,6 @@ module Ivar = struct
       | Empty _ -> None )
 end
 
-module Future = struct
-  type 'a t = 'a Ivar.t
-
-  let wait = Ivar.read
-
-  let peek = Ivar.peek
-end
-
-let fork f k =
-  let ivar = Ivar.create () in
-  EC.add_refs 1;
-  EC.apply f () (fun x -> Ivar.fill ivar x ignore);
-  k ivar
-
-let nfork_map l ~f k =
-  match l with
-  | [] -> k []
-  | [ x ] -> fork (fun () -> f x) (fun ivar -> k [ ivar ])
-  | l ->
-    let n = List.length l in
-    EC.add_refs (n - 1);
-    let ivars =
-      List.map l ~f:(fun x ->
-          let ivar = Ivar.create () in
-          EC.apply f x (fun x -> Ivar.fill ivar x ignore);
-          ivar)
-    in
-    k ivars
-
-let nfork l : _ Future.t list t = nfork_map l ~f:(fun f -> f ())
-
 module Mutex = struct
   type t =
     { mutable locked : bool
@@ -451,7 +436,60 @@ module Mutex = struct
   let create () = { locked = false; waiters = Queue.create () }
 end
 
-let run t =
+module Throttle = struct
+  type t =
+    { mutable size : int
+    ; mutable running : int
+    ; waiting : unit Ivar.t Queue.t
+    }
+
+  let create size = { size; running = 0; waiting = Queue.create () }
+
+  let size t = t.size
+
+  let running t = t.running
+
+  let rec restart t =
+    if t.running >= t.size then
+      return ()
+    else
+      match Queue.pop t.waiting with
+      | None -> return ()
+      | Some ivar ->
+        t.running <- t.running + 1;
+        let* () = Ivar.fill ivar () in
+        restart t
+
+  let resize t n =
+    t.size <- n;
+    restart t
+
+  let run t ~f =
+    finalize
+      ~finally:(fun () ->
+        t.running <- t.running - 1;
+        restart t)
+      (fun () ->
+        if t.running < t.size then (
+          t.running <- t.running + 1;
+          f ()
+        ) else
+          let waiting = Ivar.create () in
+          Queue.push t.waiting waiting;
+          let* () = Ivar.read waiting in
+          f ())
+end
+
+let apply_and_set_result f =
   let result = ref None in
-  EC.apply (fun () -> t) () (fun x -> result := Some x);
-  !result
+  EC.apply f () (fun x -> result := Some x);
+  result
+
+let run t = EC.new_run (fun () -> !(apply_and_set_result (fun () -> t)))
+
+let run2 a b =
+  EC.new_run (fun () ->
+      EC.add_refs 1;
+      let result_a = apply_and_set_result a in
+      let result_b = apply_and_set_result b in
+      (!result_a, !result_b))

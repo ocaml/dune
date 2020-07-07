@@ -27,7 +27,9 @@ module Trimming_result = struct
 end
 
 let default_root () =
-  Path.L.relative (Path.of_string Xdg.cache_dir) [ "dune"; "db" ]
+  Path.L.relative
+    (Path.of_filename_relative_to_initial_cwd Xdg.cache_dir)
+    [ "dune"; "db" ]
 
 let file_store_version = "v3"
 

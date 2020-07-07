@@ -1,25 +1,25 @@
   $ dune build @doc --display short
       ocamldep .bar.objs/bar.ml.d
-        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
           odoc _doc/_odoc/pkg/bar/page-index.odoc
-          odoc .bar.objs/byte/bar.odoc
-          odoc _doc/_html/bar/index.html
           odoc _doc/_html/highlight.pack.js,_doc/_html/odoc.css
       ocamldep .foo.objs/foo.ml.d
-        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
           odoc _doc/_odoc/pkg/foo/page-index.odoc
-          odoc .foo.objs/byte/foo.odoc
       ocamldep .foo.objs/foo2.ml.d
-        ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
-          odoc .foo.objs/byte/foo2.odoc
       ocamldep .foo.objs/foo3.ml.d
-        ocamlc .foo.objs/byte/foo3.{cmi,cmo,cmt}
-          odoc .foo.objs/byte/foo3.odoc
       ocamldep .foo_byte.objs/foo_byte.ml.d
+        ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
+        ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
+        ocamlc .foo.objs/byte/foo2.{cmi,cmo,cmt}
+        ocamlc .foo.objs/byte/foo3.{cmi,cmo,cmt}
         ocamlc .foo_byte.objs/byte/foo_byte.{cmi,cmo,cmt}
+          odoc .bar.objs/byte/bar.odoc
+          odoc .foo.objs/byte/foo.odoc
+          odoc .foo.objs/byte/foo2.odoc
+          odoc .foo.objs/byte/foo3.odoc
           odoc .foo_byte.objs/byte/foo_byte.odoc
-          odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
+          odoc _doc/_html/bar/index.html
           odoc _doc/_html/bar/Bar/.dune-keep,_doc/_html/bar/Bar/index.html
+          odoc _doc/_html/foo/Foo2/.dune-keep,_doc/_html/foo/Foo2/index.html
           odoc _doc/_html/foo/Foo3/.dune-keep,_doc/_html/foo/Foo3/index.html
           odoc _doc/_html/foo/Foo_byte/.dune-keep,_doc/_html/foo/Foo_byte/index.html
           odoc _doc/_html/foo/index.html

@@ -9,6 +9,29 @@ next
 - Formatting of dune files is now done in the executing dune process instead of
   in a separate process. (#3536, @nojb)
 
+- Add a `--debug-artifact-substution` flag to help debug problem with
+  version not being captured by `dune-build-info` (#3589,
+  @jeremiedimino)
+
+- Allow the use of the `context_name` variable in the `enabled_if` fields of
+  executable(s) and install stanzas. (#3568, fixes #3566, @voodoos)
+
+- Fix compatibility with OCaml 4.12.0 when compiling empty archives; no .a file
+  is generated. (#3576, @dra27)
+
+- `$ dune utop` no longer tries to load optional libraries that are unavailable
+  (#3612, fixes #3188, @anuragsoni)
+
+- Fix dune-build-info on 4.10.0+flambda (#3599, @emillon, @jeremiedimino).
+
+2.6.1 (02/07/2020)
+------------------
+
+- Fix crash when caching is enabled (@rgrinberg, #3581, fixes #3580)
+
+- Do not use `-output-complete-exe` until 4.10.1 as it is broken in
+  4.10.0 (@jeremiedimino, #3187)
+
 - Fix crash when an unknown pform is found (such as `%{unknown}`) (#3560,
   @emillon)
 

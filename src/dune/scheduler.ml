@@ -573,28 +573,23 @@ end
 
 type t =
   { original_cwd : string
-  ; mutable concurrency : int
-  ; waiting_for_available_job : t Fiber.Ivar.t Queue.t
+  ; mutable job_throttle : Fiber.Throttle.t
   }
-
-let with_chdir t ~dir ~f =
-  Sys.chdir (Path.to_string dir);
-  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
 
 let t_var : t Fiber.Var.t = Fiber.Var.create ()
 
+let with_chdir ~dir ~f =
+  let t = Fiber.Var.get_exn t_var in
+  Sys.chdir (Path.to_string dir);
+  protectx () ~finally:(fun () -> Sys.chdir t.original_cwd) ~f
+
 let set_concurrency n =
   let t = Fiber.Var.get_exn t_var in
-  t.concurrency <- n
+  Fiber.Throttle.resize t.job_throttle n
 
-let wait_for_available_job () =
+let with_job_slot f =
   let t = Fiber.Var.get_exn t_var in
-  if Event.pending_jobs () < t.concurrency then
-    Fiber.return t
-  else
-    let ivar = Fiber.Ivar.create () in
-    Queue.push t.waiting_for_available_job ivar;
-    Fiber.Ivar.read ivar
+  Fiber.Throttle.run t.job_throttle ~f
 
 let wait_for_process pid =
   let ivar = Fiber.Ivar.create () in
@@ -602,17 +597,6 @@ let wait_for_process pid =
   Fiber.Ivar.read ivar
 
 let wait_for_dune_cache () = Event.flush_dedup ()
-
-let rec restart_waiting_for_available_job t =
-  if
-    Queue.is_empty t.waiting_for_available_job
-    || Event.pending_jobs () >= t.concurrency
-  then
-    Fiber.return ()
-  else
-    let ivar = Queue.pop_exn t.waiting_for_available_job in
-    let* () = Fiber.Ivar.fill ivar t in
-    restart_waiting_for_available_job t
 
 let got_signal signal =
   if !Log.verbose then
@@ -623,7 +607,9 @@ type saw_signal =
   | Got_signal
 
 let kill_and_wait_for_all_processes t () =
-  Queue.clear t.waiting_for_available_job;
+  (* Re-create the throttle so that we don't keep old ivars from one run to the
+     next *)
+  t.job_throttle <- Fiber.Throttle.create (Fiber.Throttle.size t.job_throttle);
   Process_watcher.killall Sys.sigkill;
   let saw_signal = ref Ok in
   while Event.pending_jobs () > 0 do
@@ -672,11 +658,11 @@ let prepare ?(config = Config.default) () =
         cwd );
   let t =
     { original_cwd = cwd
-    ; concurrency =
-        ( match config.concurrency with
-        | Auto -> 1
-        | Fixed n -> n )
-    ; waiting_for_available_job = Queue.create ()
+    ; job_throttle =
+        Fiber.Throttle.create
+          ( match config.concurrency with
+          | Auto -> 1
+          | Fixed n -> n )
     }
   in
   t
@@ -686,7 +672,7 @@ module Run_once : sig
     | Got_signal
     | Files_changed
     | Never
-    | Exn of Exn.t * Printexc.raw_backtrace
+    | Exn of Exn_with_backtrace.t
 
   (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
@@ -706,7 +692,6 @@ end = struct
       match Event.next () with
       | Job_completed (job, status) ->
         let* () = Fiber.Ivar.fill job.ivar status in
-        let* () = restart_waiting_for_available_job t in
         pump_events t
       | Files_changed -> Fiber.return Files_changed
       | Signal signal ->
@@ -718,23 +703,17 @@ end = struct
     | Got_signal
     | Files_changed
     | Never
-    | Exn of Exn.t * Printexc.raw_backtrace
+    | Exn of Exn_with_backtrace.t
 
   let run t f =
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    match
-      Fiber.run
-        (let* user_action_result = Fiber.fork (fun () -> fiber) in
-         let* pump_events_result = pump_events t in
-         let* user_action_result = Fiber.Future.peek user_action_result in
-         Fiber.return (pump_events_result, user_action_result))
-    with
-    | None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
-    | exception exn -> Error (Exn (exn, Printexc.get_raw_backtrace ()))
-    | Some (a, b) -> (
-      match (a, b) with
+    match Fiber.run2 (fun () -> fiber) (fun () -> pump_events t) with
+    | _, None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
+    | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
+    | a, Some b -> (
+      match (b, a) with
       | Done, None -> Error Never
       | Done, Some res -> Ok res
       | Got_signal, _ -> Error Got_signal
@@ -759,7 +738,7 @@ let go ?config f =
   let t = prepare ?config () in
   let res = Run_once.run_and_cleanup t f in
   match res with
-  | Error (Exn (exn, bt)) -> Exn.raise_with_backtrace exn bt
+  | Error (Exn exn) -> Exn_with_backtrace.reraise exn
   | Ok res -> res
   | Error (Got_signal | Never) -> raise Dune_util.Report_error.Already_reported
   | Error Files_changed ->
@@ -820,7 +799,7 @@ let poll ?config ~once ~finally () =
       wait (Pp.tag User_message.Style.Error (Pp.verbatim "Had errors"))
       |> after_wait
     | Error Files_changed -> loop ()
-    | Error (Exn (exn, bt)) -> (exn, Some bt)
+    | Error (Exn exn_with_bt) -> (exn_with_bt.exn, Some exn_with_bt.backtrace)
   and after_wait = function
     | Exit -> (Dune_util.Report_error.Already_reported, None)
     | Continue -> loop ()

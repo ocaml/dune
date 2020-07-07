@@ -1,17 +1,17 @@
   $ dune build @install --display short
       ocamlopt mli-only/foobar.{a,cmxa}
-      ocamlopt mli-only/foobar.cmxs
         ocamlc mli-only/foobar.cma
       ocamldep mli-only/.foobar.objs/foobar.mli.d
-        ocamlc mli-only/.foobar.objs/byte/foobar.{cmi,cmti}
       ocamldep impl/.foobar_impl.objs/foobar.mli.d
-        ocamlc impl/.foobar_impl.objs/byte/foobar.{cmi,cmti}
       ocamldep impl/.foobar_impl.objs/foobar.ml.d
+      ocamlopt mli-only/foobar.cmxs
+        ocamlc mli-only/.foobar.objs/byte/foobar.{cmi,cmti}
+        ocamlc impl/.foobar_impl.objs/byte/foobar.{cmi,cmti}
+        ocamlc impl/.foobar_impl.objs/byte/foobar.{cmo,cmt}
       ocamlopt impl/.foobar_impl.objs/native/foobar.{cmx,o}
+        ocamlc impl/foobar_impl.cma
       ocamlopt impl/foobar_impl.{a,cmxa}
       ocamlopt impl/foobar_impl.cmxs
-        ocamlc impl/.foobar_impl.objs/byte/foobar.{cmo,cmt}
-        ocamlc impl/foobar_impl.cma
   $ dune runtest
           test alias test/runtest
   testing

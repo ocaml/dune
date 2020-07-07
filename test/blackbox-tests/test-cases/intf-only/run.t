@@ -4,18 +4,18 @@ Successes:
   Entering directory 'foo'
       ocamldep .foo.objs/foo.ml.d
         ocamlc .foo.objs/byte/foo__.{cmi,cmo,cmt}
-      ocamlopt .foo.objs/native/foo__.{cmx,o}
       ocamldep .foo.objs/intf.mli.d
+      ocamldep test/.bar.objs/bar.ml.d
+      ocamlopt .foo.objs/native/foo__.{cmx,o}
         ocamlc .foo.objs/byte/foo__Intf.{cmi,cmti}
         ocamlc .foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc foo.cma
-      ocamldep test/.bar.objs/bar.ml.d
-        ocamlc test/.bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc test/bar.cma
       ocamlopt .foo.objs/native/foo.{cmx,o}
+        ocamlc test/.bar.objs/byte/bar.{cmi,cmo,cmt}
       ocamlopt foo.{a,cmxa}
-      ocamlopt foo.cmxs
+        ocamlc test/bar.cma
       ocamlopt test/.bar.objs/native/bar.{cmx,o}
+      ocamlopt foo.cmxs
       ocamlopt test/bar.{a,cmxa}
       ocamlopt test/bar.cmxs
 

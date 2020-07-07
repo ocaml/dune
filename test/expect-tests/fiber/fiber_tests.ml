@@ -31,15 +31,10 @@ end = struct
 
   let run t =
     match
-      Fiber.run
-        (let* result = Fiber.fork (fun () -> t) in
-         let* () = restart_suspended () in
-         Fiber.Future.peek result)
+      Fiber.run (Fiber.fork_and_join (fun () -> t) restart_suspended >>| fst)
     with
-    | None
-    | Some None ->
-      raise Never
-    | Some (Some x) -> x
+    | None -> raise Never
+    | Some x -> x
 end
 
 let failing_fiber () : unit Fiber.t =
@@ -203,18 +198,6 @@ let%expect_test _ =
     outer: raised Exit
     [PASS] Never raised as expected |}]
 
-(* Collect errors has a subtle behavior. It can cause a fiber not to terminate
-   if all the sub-fibers spawned aren't awaited *)
-let%expect_test "collect_errors and termination" =
-  let fiber =
-    Fiber.fork_and_join_unit long_running_fiber (fun () ->
-        Fiber.collect_errors (fun () ->
-            let* (_ : unit Fiber.Future.t) = Fiber.fork Fiber.return in
-            Fiber.return 50))
-  in
-  test ~expect_never:true (backtrace_result int) fiber;
-  [%expect {| [PASS] Never raised as expected |}]
-
 let must_set_flag f =
   let flag = ref false in
   let setter () = flag := true in
@@ -276,3 +259,5 @@ let%expect_test _ =
       ]
     [PASS] Never raised as expected
     [PASS] flag set |}]
+
+let log s = Fiber.return (print_endline s)

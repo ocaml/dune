@@ -426,114 +426,116 @@ end
 
 let run_internal ?dir ?(stdout_to = Io.stdout) ?(stderr_to = Io.stderr)
     ?(stdin_from = Io.stdin) ~env ~purpose fail_mode prog args =
-  let* scheduler = Scheduler.wait_for_available_job () in
-  let display = (Config.t ()).display in
-  let dir =
-    match dir with
-    | None -> dir
-    | Some p ->
-      if Path.is_root p then
-        None
-      else
-        Some p
-  in
-  let id = gen_id () in
-  let ok_codes = accepted_codes fail_mode in
-  let prog_str = Path.reach_for_running ?from:dir prog in
-  let command_line =
-    command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
-  in
-  let fancy_command_line =
-    match display with
-    | Verbose ->
-      let open Pp.O in
-      let cmdline =
-        Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
-          ~stdin_from
+  Scheduler.with_job_slot (fun () ->
+      let display = (Config.t ()).display in
+      let dir =
+        match dir with
+        | None -> dir
+        | Some p ->
+          if Path.is_root p then
+            None
+          else
+            Some p
       in
-      Console.print_user_message
-        (User_message.make
-           [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
-             ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
-           ]);
-      cmdline
-    | _ -> Pp.nop
-  in
-  let args, response_file =
-    if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
-      match Response_file.get ~prog with
-      | Not_supported -> (args, None)
-      | Zero_terminated_strings arg ->
-        let fn = Temp.create File ~prefix:"responsefile" ~suffix:".data" in
-        Stdune.Io.with_file_out fn ~f:(fun oc ->
-            List.iter args ~f:(fun arg ->
-                output_string oc arg;
-                output_char oc '\000'));
-        ([ arg; Path.to_string fn ], Some fn)
-    ) else
-      (args, None)
-  in
-  let argv = prog_str :: args in
-  let output_filename, stdout_to, stderr_to =
-    match (stdout_to.kind, stderr_to.kind) with
-    | Terminal, _
-    | _, Terminal
-      when !Clflags.capture_outputs ->
-      let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
-      let terminal = Io.file fn Io.Out in
-      let get (out : Io.output Io.t) =
-        if out.kind = Terminal then (
-          Io.flush out;
-          terminal
+      let id = gen_id () in
+      let ok_codes = accepted_codes fail_mode in
+      let prog_str = Path.reach_for_running ?from:dir prog in
+      let command_line =
+        command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to ~stdin_from
+      in
+      let fancy_command_line =
+        match display with
+        | Verbose ->
+          let open Pp.O in
+          let cmdline =
+            Fancy.command_line ~prog:prog_str ~args ~dir ~stdout_to ~stderr_to
+              ~stdin_from
+          in
+          Console.print_user_message
+            (User_message.make
+               [ Pp.tag User_message.Style.Kwd (Pp.verbatim "Running")
+                 ++ pp_id id ++ Pp.verbatim ": " ++ cmdline
+               ]);
+          cmdline
+        | _ -> Pp.nop
+      in
+      let args, response_file =
+        if Sys.win32 && cmdline_approximate_length prog_str args >= 1024 then (
+          match Response_file.get ~prog with
+          | Not_supported -> (args, None)
+          | Zero_terminated_strings arg ->
+            let fn = Temp.create File ~prefix:"responsefile" ~suffix:".data" in
+            Stdune.Io.with_file_out fn ~f:(fun oc ->
+                List.iter args ~f:(fun arg ->
+                    output_string oc arg;
+                    output_char oc '\000'));
+            ([ arg; Path.to_string fn ], Some fn)
         ) else
-          out
+          (args, None)
       in
-      (Some fn, get stdout_to, get stderr_to)
-    | _ -> (None, stdout_to, stderr_to)
-  in
-  let run =
-    (* Output.fd might create the file with Unix.openfile. We need to make sure
-       to call it before doing the chdir as the path might be relative. *)
-    let stdout = Io.fd stdout_to in
-    let stderr = Io.fd stderr_to in
-    let stdin = Io.fd stdin_from in
-    fun () -> Spawn.spawn () ~prog:prog_str ~argv ?env ~stdout ~stderr ~stdin
-  in
-  let pid =
-    match dir with
-    | None -> run ()
-    | Some dir -> Scheduler.with_chdir scheduler ~dir ~f:run
-  in
-  Io.release stdout_to;
-  Io.release stderr_to;
-  let+ exit_status =
-    Stats.with_process ~program:prog_str ~args (Scheduler.wait_for_process pid)
-  in
-  Option.iter response_file ~f:Path.unlink;
-  let output =
-    match output_filename with
-    | None -> ""
-    | Some fn ->
-      let s = Stdune.Io.read_file fn in
-      Temp.destroy File fn;
-      s
-  in
-  Log.command ~command_line ~output ~exit_status;
-  let exit_status : Exit_status.t =
-    match exit_status with
-    | WEXITED n when ok_codes n -> Ok n
-    | WEXITED n -> Error (Failed n)
-    | WSIGNALED n -> Error (Signaled (Signal.name n))
-    | WSTOPPED _ -> assert false
-  in
-  match (display, exit_status, output) with
-  | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
-  | Verbose, _, _ ->
-    Exit_status.handle_verbose exit_status ~ok_codes ~id
-      ~command_line:fancy_command_line ~output
-  | _ ->
-    Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
-      ~output ~purpose ~display
+      let argv = prog_str :: args in
+      let output_filename, stdout_to, stderr_to =
+        match (stdout_to.kind, stderr_to.kind) with
+        | Terminal, _
+        | _, Terminal
+          when !Clflags.capture_outputs ->
+          let fn = Temp.create File ~prefix:"dune" ~suffix:".output" in
+          let terminal = Io.file fn Io.Out in
+          let get (out : Io.output Io.t) =
+            if out.kind = Terminal then (
+              Io.flush out;
+              terminal
+            ) else
+              out
+          in
+          (Some fn, get stdout_to, get stderr_to)
+        | _ -> (None, stdout_to, stderr_to)
+      in
+      let run =
+        (* Output.fd might create the file with Unix.openfile. We need to make
+           sure to call it before doing the chdir as the path might be relative. *)
+        let stdout = Io.fd stdout_to in
+        let stderr = Io.fd stderr_to in
+        let stdin = Io.fd stdin_from in
+        fun () ->
+          Spawn.spawn () ~prog:prog_str ~argv ?env ~stdout ~stderr ~stdin
+      in
+      let pid =
+        match dir with
+        | None -> run ()
+        | Some dir -> Scheduler.with_chdir ~dir ~f:run
+      in
+      Io.release stdout_to;
+      Io.release stderr_to;
+      let+ exit_status =
+        Stats.with_process ~program:prog_str ~args
+          (Scheduler.wait_for_process pid)
+      in
+      Option.iter response_file ~f:Path.unlink;
+      let output =
+        match output_filename with
+        | None -> ""
+        | Some fn ->
+          let s = Stdune.Io.read_file fn in
+          Temp.destroy File fn;
+          s
+      in
+      Log.command ~command_line ~output ~exit_status;
+      let exit_status : Exit_status.t =
+        match exit_status with
+        | WEXITED n when ok_codes n -> Ok n
+        | WEXITED n -> Error (Failed n)
+        | WSIGNALED n -> Error (Signaled (Signal.name n))
+        | WSTOPPED _ -> assert false
+      in
+      match (display, exit_status, output) with
+      | (Quiet | Progress), Ok n, "" -> n (* Optimisation for the common case *)
+      | Verbose, _, _ ->
+        Exit_status.handle_verbose exit_status ~ok_codes ~id
+          ~command_line:fancy_command_line ~output
+      | _ ->
+        Exit_status.handle_non_verbose exit_status ~prog:prog_str ~command_line
+          ~output ~purpose ~display)
 
 let run ?dir ?stdout_to ?stderr_to ?stdin_from ?env ?(purpose = Internal_job)
     fail_mode prog args =

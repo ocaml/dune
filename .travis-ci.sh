@@ -3,7 +3,7 @@
 PATH=~/ocaml/bin:$PATH; export PATH
 OPAMYES="true"; export OPAMYES
 
-OPAM_VERSION="2.0.5"
+OPAM_VERSION="2.0.7"
 
 # This allows a specific version of odoc to be selected if necessary
 ODOC="odoc>=1.5.0"
@@ -29,7 +29,7 @@ opam_install_test_deps () {
          menhir \
          ocaml-migrate-parsetree \
          result.1.4 \
-         utop.2.4.2 \
+         "utop>=2.6.0" \
          mdx.1.6.0 \
          bisect_ppx
     # We install Coq separatedly as to be more resistant w.r.t. the 10

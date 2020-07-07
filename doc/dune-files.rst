@@ -471,10 +471,6 @@ to use the :ref:`include_subdirs` stanza.
 - ``(allow_overlapping_dependencies)`` allows external dependencies to
   overlap with libraries that are present in the workspace
 
-- ``(no_keep_locs)`` does nothing. It used to be a necessary hack when
-  we were waiting for proper support for virtual libraries. Do not use
-  in new code, it will be deleted in dune 2.0
-
 - ``(enabled_if <blang expression>)`` conditionally disables
   a library. A disabled library cannot be built and will not be
   installed. The condition is specified using the :ref:`blang`, and the

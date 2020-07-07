@@ -95,7 +95,7 @@ This feature requires [opam][opam].
 Requirements
 ------------
 
-Dune requires OCaml version 4.07.0 to build itself and can build OCaml
+Dune requires OCaml version 4.08.0 to build itself and can build OCaml
 projects using ocaml 4.02.3 or greater.
 
 Installation

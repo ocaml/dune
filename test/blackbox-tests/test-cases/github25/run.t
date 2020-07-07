@@ -21,6 +21,6 @@ We need ocamlfind to run this test
   -> required by library "plop.ca-marche-pas" in
      .../plop
   Hint: try:
-  dune external-lib-deps --missing --only pas-de-bol --display short @install
+    dune external-lib-deps --missing --only pas-de-bol --display short @install
       ocamldep root/.pas_de_bol.objs/b.ml.d
       ocamlopt root/.pas_de_bol.objs/native/pas_de_bol.{cmx,o}

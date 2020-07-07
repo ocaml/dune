@@ -144,6 +144,8 @@ let build_info_code cctx ~libs ~api_version =
               in
               placeholder p ) ))
   in
+  let context = CC.context cctx in
+  let ocaml_version = Ocaml_version.of_ocaml_config context.ocaml_config in
   let buf = Buffer.create 1024 in
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   pr buf "let eval s =";
@@ -159,8 +161,14 @@ let build_info_code cctx ~libs ~api_version =
   pr buf "    None";
   pr buf "[@@inline never]";
   pr buf "";
+  let fmt_eval : _ format6 =
+    if Ocaml_version.has_sys_opaque_identity ocaml_version then
+      "let %s = eval (Sys.opaque_identity %S)"
+    else
+      "let %s = eval %S"
+  in
   Path.Source.Map.iteri !placeholders ~f:(fun path var ->
-      pr buf "let %s = eval %S" var
+      pr buf fmt_eval var
         (Artifact_substitution.encode ~min_len:64 (Vcs_describe path)));
   if not (Path.Source.Map.is_empty !placeholders) then pr buf "";
   pr buf "let version = %s" version;

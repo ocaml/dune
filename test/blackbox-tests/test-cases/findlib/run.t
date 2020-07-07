@@ -11,7 +11,8 @@ Reproduction case for #484. The error should point to src/dune
   4 |  (libraries   a b c))
                         ^
   Error: Library "c" not found.
-  Hint: try: dune external-lib-deps --missing @install
+  Hint: try:
+    dune external-lib-deps --missing @install
   [1]
 
 Note that the hint above is wrong. It doesn't matter too much as this
@@ -25,5 +26,6 @@ With dune and an explicit profile, it is the same:
   4 |  (libraries   a b c))
                         ^
   Error: Library "c" not found.
-  Hint: try: dune external-lib-deps --missing --profile dev @install
+  Hint: try:
+    dune external-lib-deps --missing --profile dev @install
   [1]

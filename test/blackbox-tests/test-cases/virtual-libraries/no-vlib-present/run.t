@@ -4,5 +4,6 @@ Test that implementing vlibs that aren't present is impossible
   3 |  (implements foobar12312414))
                    ^^^^^^^^^^^^^^
   Error: Library "foobar12312414" not found.
-  Hint: try: dune external-lib-deps --missing @@default
+  Hint: try:
+    dune external-lib-deps --missing @@default
   [1]

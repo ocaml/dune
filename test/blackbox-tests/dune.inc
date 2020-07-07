@@ -921,6 +921,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias external-lib-deps-missing)
+ (deps
+  (package dune)
+  (source_tree test-cases/external-lib-deps/missing)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/external-lib-deps/missing
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias external-lib-deps-simple)
  (deps
   (package dune)
@@ -1336,6 +1347,14 @@
  (action
   (chdir
    test-cases/github3180
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias github3188)
+ (deps (package dune) (source_tree test-cases/github3188) (alias test-deps))
+ (action
+  (chdir
+   test-cases/github3188
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -3074,6 +3093,7 @@
   (alias exes-with-c)
   (alias extensions-versionning)
   (alias external-lib-deps-github3143)
+  (alias external-lib-deps-missing)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)
@@ -3121,6 +3141,7 @@
   (alias github3043)
   (alias github3046)
   (alias github3180)
+  (alias github3188)
   (alias github3440)
   (alias github3490)
   (alias github3530)
@@ -3368,6 +3389,7 @@
   (alias exes-with-c)
   (alias extensions-versionning)
   (alias external-lib-deps-github3143)
+  (alias external-lib-deps-missing)
   (alias external-lib-deps-simple)
   (alias extra-lang-line)
   (alias fallback-dune)

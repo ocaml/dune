@@ -27,7 +27,8 @@ let findlib =
     ; stdlib_dir = Path.root
     ; ccomp_type = Other "gcc"
     ; profile = Profile.Dev
-    ; ocaml_version = "4.02.3"
+    ; ocaml_version_string = "4.02.3"
+    ; ocaml_version = Ocaml_version.make (4, 2, 3)
     ; bisect_enabled = false
     }
   in

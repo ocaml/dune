@@ -43,3 +43,7 @@ let custom_or_output_complete_exe version =
     "-output-complete-exe"
   else
     "-custom"
+
+let ocamlopt_always_calls_library_linker version = version < (4, 12, 0)
+
+let has_sys_opaque_identity version = version >= (4, 3, 0)

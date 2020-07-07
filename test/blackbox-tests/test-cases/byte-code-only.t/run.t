@@ -8,13 +8,13 @@
         ocamlc src/.foo.objs/byte/foo.{cmi,cmo,cmt}
         ocamlc build-info/build_info.cma
         ocamlc build-info/.build_info.objs/byte/build_info__Build_info_data.{cmi,cmti}
-        ocamlc bin/toto.bc
         ocamlc bin/toto.exe
+        ocamlc bin/toto.bc
         ocamlc src/foo.cma
-        ocamlc bin-with-build-info/.print_version.eobjs/byte/dune__exe__Print_version.{cmi,cmo,cmt}
         ocamlc bin-with-build-info/.print_version.eobjs/byte/build_info__Build_info_data.{cmo,cmt}
-        ocamlc bin-with-build-info/print_version.exe
+        ocamlc bin-with-build-info/.print_version.eobjs/byte/dune__exe__Print_version.{cmi,cmo,cmt}
         ocamlc bin-with-build-info/print_version.bc
+        ocamlc bin-with-build-info/print_version.exe
 
   $ _build/default/bin-with-build-info/print_version.exe
   <version missing>

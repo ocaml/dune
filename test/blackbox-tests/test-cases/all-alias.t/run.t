@@ -14,8 +14,8 @@
   Entering directory 'private-lib'
       ocamldep .bar.objs/bar.ml.d
         ocamlc .bar.objs/byte/bar.{cmi,cmo,cmt}
-        ocamlc bar.cma
       ocamlopt .bar.objs/native/bar.{cmx,o}
+        ocamlc bar.cma
       ocamlopt bar.{a,cmxa}
       ocamlopt bar.cmxs
 

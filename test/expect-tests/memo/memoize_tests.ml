@@ -17,19 +17,7 @@ let int_fn_create name =
     ~visibility:(Public Dune_lang.Decoder.int) Async
 
 (* to run a computation *)
-let run f v =
-  let exn = ref None in
-  match
-    Fiber.run
-      (Fiber.with_error_handler
-         (fun () -> f v)
-         ~on_error:(fun e -> exn := Some e))
-  with
-  | Some x -> x
-  | None -> (
-    match !exn with
-    | Some exn -> Exn_with_backtrace.reraise exn
-    | None -> assert false )
+let run f v = Fiber.run ~iter:(fun () -> assert false) (f v)
 
 let run_memo f v = run (Memo.exec f) v
 

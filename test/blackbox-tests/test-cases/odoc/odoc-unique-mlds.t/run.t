@@ -7,9 +7,9 @@ Duplicate mld's in the same scope
         ocamlc lib2/.root_lib2.objs/byte/root_lib2.{cmi,cmo,cmt}
           odoc lib1/.root_lib1.objs/byte/root_lib1.odoc
           odoc lib2/.root_lib2.objs/byte/root_lib2.odoc
-          odoc _doc/_html/root/Root_lib2/.dune-keep,_doc/_html/root/Root_lib2/index.html
-          odoc _doc/_html/root/index.html
           odoc _doc/_html/root/Root_lib1/.dune-keep,_doc/_html/root/Root_lib1/index.html
+          odoc _doc/_html/root/index.html
+          odoc _doc/_html/root/Root_lib2/.dune-keep,_doc/_html/root/Root_lib2/index.html
 
 Duplicate mld's in different scope
   $ rm -rf diff-scope/_build
@@ -22,7 +22,7 @@ Duplicate mld's in different scope
           odoc _doc/_odoc/pkg/scope2/page-index.odoc
           odoc scope1/.scope1.objs/byte/scope1.odoc
           odoc scope2/.scope2.objs/byte/scope2.odoc
-          odoc _doc/_html/scope1/index.html
           odoc _doc/_html/scope1/Scope1/.dune-keep,_doc/_html/scope1/Scope1/index.html
-          odoc _doc/_html/scope2/index.html
+          odoc _doc/_html/scope1/index.html
           odoc _doc/_html/scope2/Scope2/.dune-keep,_doc/_html/scope2/Scope2/index.html
+          odoc _doc/_html/scope2/index.html

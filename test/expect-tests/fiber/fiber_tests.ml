@@ -1,4 +1,3 @@
-open Dune
 open Stdune
 open Fiber.O
 open Dyn.Encoder
@@ -20,21 +19,13 @@ end = struct
     Queue.push suspended ivar;
     Fiber.Ivar.read ivar
 
-  let rec restart_suspended () =
-    match Queue.pop suspended with
-    | None -> Fiber.return ()
-    | Some e ->
-      let* () = Fiber.Ivar.fill e () in
-      restart_suspended ()
-
   exception Never
 
   let run t =
-    match
-      Fiber.run (Fiber.fork_and_join (fun () -> t) restart_suspended >>| fst)
-    with
-    | None -> raise Never
-    | Some x -> x
+    Fiber.run t ~iter:(fun () ->
+        match Queue.pop suspended with
+        | None -> raise Never
+        | Some e -> Fiber.Fill (e, ()))
 end
 
 let failing_fiber () : unit Fiber.t =
@@ -102,27 +93,27 @@ let%expect_test "fiber vars are preseved across yields" =
   [%expect {|
     () |}]
 
-let%expect_test "fill returns a fiber that executes when waiters finish" =
+let%expect_test "fill returns a fiber that executes before waiters are awoken" =
   let ivar = Fiber.Ivar.create () in
   let open Fiber.O in
   let waiters () =
     let waiter n () =
       let+ () = Fiber.Ivar.read ivar in
-      Format.eprintf "waiter %d finished running@.%!" n
+      Printf.printf "waiter %d resumed\n" n
     in
     Fiber.fork_and_join_unit (waiter 1) (waiter 2)
   in
   let run () =
     let* () = Scheduler.yield () in
     let+ () = Fiber.Ivar.fill ivar () in
-    Format.eprintf "waiters finished running@."
+    Printf.printf "ivar filled\n"
   in
   test unit (Fiber.fork_and_join_unit waiters run);
   [%expect
     {|
-    waiter 1 finished running
-    waiter 2 finished running
-    waiters finished running
+    ivar filled
+    waiter 1 resumed
+    waiter 2 resumed
     () |}]
 
 let%expect_test _ =
@@ -230,17 +221,12 @@ let%expect_test _ =
 
 let%expect_test _ =
   let forking_fiber () =
-    let which = Bin.which ~path:(Env.path Env.initial) in
     Fiber.parallel_map [ 1; 2; 3; 4; 5 ] ~f:(fun x ->
         Scheduler.yield () >>= fun () ->
         if x mod 2 = 1 then
-          Process.run Process.Strict ~env:Env.initial
-            (Option.value_exn (which "true"))
-            []
+          Fiber.return ()
         else
-          Process.run Process.Strict ~env:Env.initial
-            (Option.value_exn (which "false"))
-            [])
+          Printf.ksprintf failwith "%d" x)
   in
   must_set_flag (fun setter ->
       test ~expect_never:true unit
@@ -251,13 +237,131 @@ let%expect_test _ =
   [%expect
     {|
     Error
-      [ { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
-      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
-      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
-      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
-      ; { exn = "(Failure Univ_map.find_exn)"; backtrace = "" }
+      [ { exn = "(Failure 2)"; backtrace = "" }
+      ; { exn = "(Failure 4)"; backtrace = "" }
       ]
     [PASS] Never raised as expected
     [PASS] flag set |}]
 
-let log s = Fiber.return (print_endline s)
+let%expect_test "Sequence.parallel_iter is indeed parallel" =
+  let test ~iter_function =
+    let rec sequence n =
+      if n = 4 then
+        Fiber.return Fiber.Sequence.Nil
+      else
+        Fiber.return (Fiber.Sequence.Cons (n, sequence (n + 1)))
+    in
+    Scheduler.run
+      (iter_function (sequence 1) ~f:(fun n ->
+           Printf.printf "%d: enter\n" n;
+           let* () = long_running_fiber () in
+           Printf.printf "%d: leave\n" n;
+           Fiber.return ()))
+  in
+
+  (* The [enter] amd [leave] messages must be interleaved to indicate that the
+     calls to [f] are executed in parallel: *)
+  test ~iter_function:Fiber.Sequence.parallel_iter;
+  [%expect
+    {|
+    1: enter
+    2: enter
+    3: enter
+    1: leave
+    2: leave
+    3: leave |}];
+
+  (* With [sequential_iter] however, The [enter] amd [leave] messages must be
+     paired in sequence: *)
+  test ~iter_function:Fiber.Sequence.sequential_iter;
+  [%expect
+    {|
+    1: enter
+    1: leave
+    2: enter
+    2: leave
+    3: enter
+    3: leave |}]
+
+let%expect_test "Sequence.*_iter can be finalized" =
+  let test ~iter_function =
+    let rec sequence n =
+      if n = 4 then
+        Fiber.return Fiber.Sequence.Nil
+      else
+        Fiber.return (Fiber.Sequence.Cons (n, sequence (n + 1)))
+    in
+    Scheduler.run
+      (Fiber.finalize
+         ~finally:(fun () ->
+           Printf.printf "finalized";
+           Fiber.return ())
+         (fun () -> iter_function (sequence 1) ~f:(fun _ -> Fiber.return ())))
+  in
+  test ~iter_function:Fiber.Sequence.sequential_iter;
+  [%expect {| finalized |}];
+
+  test ~iter_function:Fiber.Sequence.parallel_iter;
+  [%expect {| finalized |}]
+
+let rec naive_sequence_parallel_iter (t : _ Fiber.Sequence.t) ~f =
+  t >>= function
+  | Nil -> Fiber.return ()
+  | Cons (x, t) ->
+    Fiber.fork_and_join_unit
+      (fun () -> f x)
+      (fun () -> naive_sequence_parallel_iter t ~f)
+
+let%expect_test "Sequence.parallel_iter doesn't leak" =
+  (* Check that a naive [parallel_iter] functions on sequences leaks memory,
+     while [Fiber.Sequence.parallel_iter] does not. To do that, we construct a
+     long sequence and iterate over it. At each iteration, we do a full major GC
+     and count the number of live words. With the naive implementation, we check
+     that this number increases while with the right one we check that this
+     number is constant.
+
+     This test is carefully crafted to avoid creating new live words as we
+     iterate through the sequence. As a result, the only new live words that can
+     appear are because of the iteration function. *)
+  let test ~iter_function ~check =
+    let rec sequence n =
+      (* This yield is to ensure that we don't build the whole sequence upfront,
+         which would cause the number of live words to decrease as we iterate
+         through the sequence. *)
+      let* () = Scheduler.yield () in
+      if n = 0 then
+        Fiber.return Fiber.Sequence.Nil
+      else
+        Fiber.return (Fiber.Sequence.Cons ((), sequence (n - 1)))
+    in
+    (* We use [-1] as a [None] value to avoid going from [None] to [Some _],
+       which would case the number of live words to change *)
+    let prev = ref (-1) in
+    let ok = ref true in
+    let f () =
+      Gc.full_major ();
+      let curr = (Gc.stat ()).live_words in
+      if !prev >= 0 then
+        if not (check ~prev:!prev ~curr) then (
+          Printf.printf
+            "[FAIL] live words not changing as expected: prev=%d, curr=%d\n"
+            !prev curr;
+          ok := false
+        );
+      prev := curr;
+      Fiber.return ()
+    in
+    Scheduler.run (iter_function (sequence 100) ~f);
+    if !ok then print_string "PASS"
+  in
+
+  (* Check that the number of live words keeps on increasing because we are
+     leaking memory: *)
+  test ~iter_function:naive_sequence_parallel_iter ~check:(fun ~prev ~curr ->
+      prev < curr);
+  [%expect {| PASS |}];
+
+  (* Check that the number of live words is constant with this iter function: *)
+  test ~iter_function:Fiber.Sequence.parallel_iter ~check:(fun ~prev ~curr ->
+      prev = curr);
+  [%expect {| PASS |}]

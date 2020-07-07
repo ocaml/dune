@@ -201,12 +201,39 @@ module Throttle : sig
 end
 with type 'a fiber := 'a t
 
+module Sequence : sig
+  type 'a fiber = 'a t
+
+  type 'a t = 'a node fiber
+
+  and 'a node =
+    | Nil
+    | Cons of 'a * 'a t
+
+  val sequential_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+
+  (** [parallel_iter t ~f] is the same as:
+
+      {[
+        let rec loop t ~f =
+          t >>= function
+          | Nil -> return ()
+          | Cons (x, t) ->
+            fork_and_join_unit (fun () -> f x) (fun () -> loop t ~f)
+      ]}
+
+      except that if the sequence is infinite, the above code would leak memory
+      while [parallel_iter] does not. This function can typically be used to
+      process a sequence of events. *)
+  val parallel_iter : 'a t -> f:('a -> unit fiber) -> unit fiber
+end
+with type 'a fiber := 'a t
+
 (** {1 Running fibers} *)
 
-(** [run t] runs a fiber. If the fiber doesn't complete immediately, [run t]
-    returns [None]. *)
-val run : 'a t -> 'a option
+type fill = Fill : 'a Ivar.t * 'a -> fill
 
-(** Similar to [run] but with two fibers. This function is a bit odd and might
-    eventually be replaced by something more idiomatic. *)
-val run2 : (unit -> 'a t) -> (unit -> 'b t) -> 'a option * 'b option
+(** [run t ~iter] runs a fiber until it terminates. [iter] is used to implement
+    the scheduler, it should block waiting for an event and return an ivar to
+    fill. *)
+val run : 'a t -> iter:(unit -> fill) -> 'a

@@ -37,14 +37,14 @@
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmi,cmti}
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Simple.{cmi,cmo,cmt}
       ocamldep src_a/.ml_plugin_a.objs/gram.ml.d
-      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Simple.{cmx,o}
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b__Simple_b.{cmi,cmo,cmt}
-        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmo,cmt}
+      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Simple.{cmx,o}
       ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Gram.{cmx,o}
-        ocamlc src_b/ml_plugin_b.cma
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmo,cmt}
       ocamlopt src_b/.ml_plugin_b.objs/native/ml_plugin_b__Simple_b.{cmx,o}
-        ocamlc src_a/ml_plugin_a.cma
+        ocamlc src_b/ml_plugin_b.cma
       ocamlopt src_a/ml_plugin_a.{a,cmxa}
+        ocamlc src_a/ml_plugin_a.cma
       ocamlopt src_b/ml_plugin_b.{a,cmxa}
       ocamlopt src_a/ml_plugin_a.cmxs
       ocamlopt src_b/ml_plugin_b.cmxs
@@ -115,14 +115,14 @@
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmi,cmti}
         ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Simple.{cmi,cmo,cmt}
       ocamldep src_a/.ml_plugin_a.objs/gram.ml.d
-      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Simple.{cmx,o}
         ocamlc src_b/.ml_plugin_b.objs/byte/ml_plugin_b__Simple_b.{cmi,cmo,cmt}
-        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmo,cmt}
+      ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Simple.{cmx,o}
       ocamlopt src_a/.ml_plugin_a.objs/native/ml_plugin_a__Gram.{cmx,o}
-        ocamlc src_b/ml_plugin_b.cma
+        ocamlc src_a/.ml_plugin_a.objs/byte/ml_plugin_a__Gram.{cmo,cmt}
       ocamlopt src_b/.ml_plugin_b.objs/native/ml_plugin_b__Simple_b.{cmx,o}
-        ocamlc src_a/ml_plugin_a.cma
+        ocamlc src_b/ml_plugin_b.cma
       ocamlopt src_a/ml_plugin_a.{a,cmxa}
+        ocamlc src_a/ml_plugin_a.cma
       ocamlopt src_b/ml_plugin_b.{a,cmxa}
       ocamlopt src_a/ml_plugin_a.cmxs
       ocamlopt src_b/ml_plugin_b.cmxs

@@ -74,11 +74,7 @@ end = struct
 
   let rec forward_error t exn =
     match t.on_error with
-    | None ->
-      (* We can't let the exception leak at this point, so we just dump the
-         error on stderr and exit *)
-      Format.eprintf "%a@.%!" Exn_with_backtrace.pp_uncaught exn;
-      exit 42
+    | None -> Exn_with_backtrace.reraise exn
     | Some { ctx; run } -> (
       current := ctx;
       try run exn
@@ -279,6 +275,43 @@ let fork_and_join_unit fa fb k =
       | Got_a () -> k b
       | Got_b _ -> assert false)
 
+module Sequence = struct
+  type 'a fiber = 'a t
+
+  type 'a t = 'a node fiber
+
+  and 'a node =
+    | Nil
+    | Cons of 'a * 'a t
+
+  let rec sequential_iter t ~f =
+    t >>= function
+    | Nil -> return ()
+    | Cons (x, t) ->
+      let* () = f x in
+      sequential_iter t ~f
+
+  let parallel_iter t ~f k =
+    let n = ref 1 in
+    let k () =
+      decr n;
+      if !n = 0 then
+        k ()
+      else
+        EC.deref ()
+    in
+    let rec loop t =
+      t (function
+        | Nil -> k ()
+        | Cons (x, t) ->
+          EC.add_refs 1;
+          incr n;
+          EC.apply f x k;
+          loop t)
+    in
+    loop t
+end
+
 let list_of_option_array =
   let rec loop arr i acc =
     if i = 0 then
@@ -393,8 +426,8 @@ module Ivar = struct
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      K.run_queue q x;
-      k ()
+      k ();
+      K.run_queue q x
 
   let read t k =
     match t.state with
@@ -424,10 +457,13 @@ module Mutex = struct
 
   let unlock t k =
     assert t.locked;
-    ( match Queue.pop t.waiters with
-    | None -> t.locked <- false
-    | Some next -> K.run next () );
-    k ()
+    match Queue.pop t.waiters with
+    | None ->
+      t.locked <- false;
+      k ()
+    | Some next ->
+      k ();
+      K.run next ()
 
   let with_lock t f =
     let* () = lock t in
@@ -480,16 +516,18 @@ module Throttle = struct
           f ())
 end
 
-let apply_and_set_result f =
-  let result = ref None in
-  EC.apply f () (fun x -> result := Some x);
-  result
+type fill = Fill : 'a Ivar.t * 'a -> fill
 
-let run t = EC.new_run (fun () -> !(apply_and_set_result (fun () -> t)))
-
-let run2 a b =
+let run t ~iter =
   EC.new_run (fun () ->
-      EC.add_refs 1;
-      let result_a = apply_and_set_result a in
-      let result_b = apply_and_set_result b in
-      (!result_a, !result_b))
+      let result = ref None in
+      EC.apply (fun () -> t) () (fun x -> result := Some x);
+      let rec loop () =
+        match !result with
+        | Some res -> res
+        | None ->
+          let (Fill (ivar, v)) = iter () in
+          Ivar.fill ivar v ignore;
+          loop ()
+      in
+      loop ())

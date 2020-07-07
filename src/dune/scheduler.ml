@@ -2,7 +2,6 @@ let on_error = Report_error.report
 
 open! Stdune
 open Import
-open Fiber.O
 
 type job =
   { pid : Pid.t
@@ -677,47 +676,39 @@ module Run_once : sig
   (** Run the build and clean up after it (kill any stray processes etc). *)
   val run_and_cleanup : t -> (unit -> 'a Fiber.t) -> ('a, run_error) Result.t
 end = struct
-  type pump_events_result =
-    | Done
-    | Got_signal
-    | Files_changed
-
-  let rec pump_events t =
-    let count = Event.pending_jobs () in
-    if count = 0 then (
-      Console.Status_line.set (Fun.const None);
-      Fiber.return Done
-    ) else (
-      Console.Status_line.refresh ();
-      match Event.next () with
-      | Job_completed (job, status) ->
-        let* () = Fiber.Ivar.fill job.ivar status in
-        pump_events t
-      | Files_changed -> Fiber.return Files_changed
-      | Signal signal ->
-        got_signal signal;
-        Fiber.return Got_signal
-    )
-
   type run_error =
     | Got_signal
     | Files_changed
     | Never
     | Exn of Exn_with_backtrace.t
 
-  let run t f =
+  exception Abort of run_error
+
+  let iter () =
+    let count = Event.pending_jobs () in
+    if count = 0 then
+      raise (Abort Never)
+    else (
+      Console.Status_line.refresh ();
+      match Event.next () with
+      | Job_completed (job, status) -> Fiber.Fill (job.ivar, status)
+      | Files_changed -> raise (Abort Files_changed)
+      | Signal signal ->
+        got_signal signal;
+        raise (Abort Got_signal)
+    )
+
+  let run t f : _ result =
     let fiber =
       Fiber.Var.set t_var t (fun () -> Fiber.with_error_handler f ~on_error)
     in
-    match Fiber.run2 (fun () -> fiber) (fun () -> pump_events t) with
-    | _, None -> Code_error.raise "[Scheduler.pump_events] got stuck somehow" []
+    Console.Status_line.set (Fun.const None);
+    match Fiber.run fiber ~iter with
+    | res ->
+      assert (Event.pending_jobs () = 0);
+      Ok res
+    | exception Abort err -> Error err
     | exception exn -> Error (Exn (Exn_with_backtrace.capture exn))
-    | a, Some b -> (
-      match (b, a) with
-      | Done, None -> Error Never
-      | Done, Some res -> Ok res
-      | Got_signal, _ -> Error Got_signal
-      | Files_changed, _ -> Error Files_changed )
 
   let run_and_cleanup t f =
     let res = run t f in

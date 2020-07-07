@@ -46,5 +46,6 @@ The following command should fail because the executable is not optional:
   4 |  (libraries lib_that_doesn't_exist))
                   ^^^^^^^^^^^^^^^^^^^^^^
   Error: Library "lib_that_doesn't_exist" not found.
-  Hint: try: dune external-lib-deps --missing @install
+  Hint: try:
+    dune external-lib-deps --missing @install
   [1]

@@ -36,8 +36,7 @@ module Util = struct
 end
 
 let resolve_program sctx ~loc ~dir prog =
-  SC.resolve_program ~dir sctx prog ~loc:(Some loc)
-    ~hint:"try: opam install coq"
+  SC.resolve_program ~dir sctx prog ~loc:(Some loc) ~hint:"opam install coq"
 
 module Bootstrap = struct
   (* the internal boot flag determines if the Coq "standard library" is being

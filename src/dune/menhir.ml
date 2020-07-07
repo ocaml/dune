@@ -98,8 +98,7 @@ module Run (P : PARAMS) : sig end = struct
   (* Rule generation. *)
 
   let menhir_binary =
-    SC.resolve_program sctx ~dir "menhir" ~loc:None
-      ~hint:"try: opam install menhir"
+    SC.resolve_program sctx ~dir "menhir" ~loc:None ~hint:"opam install menhir"
 
   (* Reminder (from command.mli):
 

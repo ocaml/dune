@@ -8,8 +8,8 @@
         ocamlc .aa.eobjs/byte/dune__exe__Bb.{cmi,cmo,cmt}
       ocamlopt .aa.eobjs/native/dune__exe__Aa.{cmx,o}
       ocamlopt .aa.eobjs/native/dune__exe__Bb.{cmx,o}
-      ocamlopt bb.exe
       ocamlopt aa.exe
+      ocamlopt bb.exe
 
   $ _build/default/aa.exe
   A

@@ -36,11 +36,9 @@ module Error = struct
     match !Clflags.external_lib_deps_hint with
     | [] -> []
     | l ->
-      let open Pp.O in
-      [ Pp.text "try:" ++ Pp.space
-        ++ Pp.box
-             (Pp.concat_map l ~sep:Pp.space ~f:(fun x ->
-                  Pp.verbatim (String.quote_for_shell x)))
+      [ l
+        |> List.map ~f:String.quote_for_shell
+        |> String.concat ~sep:" " |> Utils.pp_command_hint
       ]
 
   let not_found ~loc ~name =

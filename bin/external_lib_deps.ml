@@ -61,7 +61,16 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ; pp_external_libs missing
                ]);
           false
-        ) else (
+        ) else
+          let required_package_names =
+            Lib_name.Map.to_list missing
+            |> List.filter_map ~f:(fun (name, kind) ->
+                   match (kind : Lib_deps_info.Kind.t) with
+                   | Optional -> None
+                   | Required -> Some (Lib_name.package_name name))
+            |> Package.Name.Set.of_list |> Package.Name.Set.to_list
+            |> List.map ~f:Package.Name.to_string
+          in
           User_message.prerr
             (User_error.make
                [ Pp.textf
@@ -70,19 +79,11 @@ let run ~lib_deps ~by_dir ~setup ~only_missing ~sexp =
                ; pp_external_libs missing
                ]
                ~hints:
-                 [ Pp.concat ~sep:Pp.space
-                     ( Pp.textf "try: opam install"
-                     :: ( Lib_name.Map.to_list missing
-                        |> List.filter_map ~f:(fun (name, kind) ->
-                               match (kind : Lib_deps_info.Kind.t) with
-                               | Optional -> None
-                               | Required -> Some (Lib_name.package_name name))
-                        |> Package.Name.Set.of_list |> Package.Name.Set.to_list
-                        |> List.map ~f:(fun p ->
-                               Pp.verbatim (Package.Name.to_string p)) ) )
+                 [ Dune.Utils.pp_command_hint
+                     ( "opam install" :: required_package_names
+                     |> String.concat ~sep:" " )
                  ]);
           true
-        )
       ) else if sexp then (
         if not by_dir then
           User_error.raise [ Pp.textf "--sexp requires --unstable-by-dir" ];

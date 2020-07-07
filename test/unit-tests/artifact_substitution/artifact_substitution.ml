@@ -144,21 +144,21 @@ let compress_string s =
 let test input =
   let expected = simple_subst input in
   let buf = Buffer.create (String.length expected) in
-  Option.value_exn
-  @@ Fiber.run
-       (let ofs = ref 0 in
-        let input buf pos len =
-          let to_copy = min len (String.length input - !ofs) in
-          Bytes.blit_string ~src:input ~dst:buf ~src_pos:!ofs ~dst_pos:pos
-            ~len:to_copy;
-          ofs := !ofs + to_copy;
-          to_copy
-        in
-        let output = Buffer.add_subbytes buf in
-        Artifact_substitution.copy
-          ~get_vcs:(fun _ -> None)
-          ~input_file:(Path.of_string "<memory>")
-          ~input ~output);
+  Fiber.run
+    ~iter:(fun () -> assert false)
+    (let ofs = ref 0 in
+     let input buf pos len =
+       let to_copy = min len (String.length input - !ofs) in
+       Bytes.blit_string ~src:input ~dst:buf ~src_pos:!ofs ~dst_pos:pos
+         ~len:to_copy;
+       ofs := !ofs + to_copy;
+       to_copy
+     in
+     let output = Buffer.add_subbytes buf in
+     Artifact_substitution.copy
+       ~get_vcs:(fun _ -> None)
+       ~input_file:(Path.of_string "<memory>")
+       ~input ~output);
   let result = Buffer.contents buf in
   if result <> expected then
     fail

@@ -144,7 +144,7 @@ end
 let odoc sctx =
   SC.resolve_program sctx
     ~dir:(Super_context.build_dir sctx)
-    "odoc" ~loc:None ~hint:"try: opam install odoc"
+    "odoc" ~loc:None ~hint:"opam install odoc"
 
 let odoc_base_flags sctx build_dir =
   let conf = Super_context.odoc sctx ~dir:build_dir in

@@ -40,7 +40,7 @@ let setup_env ~capture_outputs =
   env
 
 let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
-    ~ancestor_vcs () =
+    ?instrument_with ~ancestor_vcs () =
   let env = setup_env ~capture_outputs in
   let conf = Dune_load.load ~ancestor_vcs in
   let () =
@@ -57,7 +57,7 @@ let scan_workspace ?workspace_file ?x ?(capture_outputs = true) ?profile
             ];
         Some p
     in
-    Workspace.init ?x ?profile ?path ()
+    Workspace.init ?x ?profile ?instrument_with ?path ()
   in
   let+ contexts = Context.DB.all () in
   List.iter contexts ~f:(fun (ctx : Context.t) ->

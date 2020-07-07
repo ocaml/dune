@@ -261,9 +261,11 @@ let exclusions =
        up appearing in the output if we sandbox *)
   ; make "env/env-bins.t" ~disable_sandboxing:true
   ; make "mdx-stanza.t" ~external_deps:true
-  ; make "toplevel-integration.t" ~external_deps:true
-  ; make "bisect-ppx/main.t" ~external_deps:true
+  ; make "bisect-ppx/main.t" ~external_deps:true ~enabled:false
+  ; make "bisect-ppx/github3473.t" ~external_deps:true ~enabled:false
   ; make "github3188.t" ~external_deps:true
+  ; make "toplevel-integration.t" ~external_deps:true
+  ; make "instrumentation.t" ~external_deps:true
   ]
   |> String_map.of_list_map_exn ~f:(fun (test : Test.t) -> (test.path, test))
 

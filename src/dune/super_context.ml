@@ -401,9 +401,11 @@ let get_installed_binaries stanzas ~(context : Context.t) =
           let project = Scope.project d.scope in
           let dune_version = Dune_project.dune_version project in
           let pps =
-            Dune_file.Preprocess_map.pps
-              (Dune_file.Buildable.preprocess exes.buildable
-                 ~lib_config:context.lib_config)
+            Preprocess.Per_module.pps
+              (Preprocess.Per_module.with_instrumentation
+                 exes.buildable.preprocess
+                 ~instrumentation_backend:
+                   (Lib.DB.instrumentation_backend (Scope.libs d.scope)))
           in
           Lib.DB.resolve_user_written_deps_for_exes (Scope.libs d.scope)
             exes.names exes.buildable.libraries ~pps ~dune_version
@@ -421,10 +423,7 @@ let get_installed_binaries stanzas ~(context : Context.t) =
 
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
-  let installed_libs =
-    let stdlib_dir = context.stdlib_dir in
-    Lib.DB.create_from_findlib context.findlib ~stdlib_dir
-  in
+  let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
   let scopes, public_libs =
     Scope.DB.create_from_stanzas ~projects ~context ~installed_libs ~lib_config
       stanzas

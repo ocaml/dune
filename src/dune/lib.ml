@@ -318,6 +318,7 @@ type db =
   ; table : (Lib_name.t, Status.t) Table.t
   ; all : Lib_name.t list Lazy.t
   ; stdlib_dir : Path.t
+  ; instrument_with : Lib_name.t list
   }
 
 and resolve_result =
@@ -904,6 +905,26 @@ end = struct
       res
 end
 
+let instrumentation_backend ?(do_not_fail = false) instrument_with resolve
+    libname =
+  if not (List.mem ~set:instrument_with (snd libname)) then
+    None
+  else
+    match
+      resolve libname |> Result.ok_exn |> info
+      |> Lib_info.instrumentation_backend
+    with
+    | Some _ as ppx -> ppx
+    | None ->
+      if do_not_fail then
+        Some libname
+      else
+        User_error.raise ~loc:(fst libname)
+          [ Pp.textf
+              "Library %S is not declared to have an instrumentation backend."
+              (Lib_name.to_string (snd libname))
+          ]
+
 module rec Resolve : sig
   val find_internal : db -> Lib_name.t -> stack:Dep_stack.t -> Status.t
 
@@ -1024,7 +1045,12 @@ end = struct
                         ] )))
     in
     let { requires; pps; selects = resolved_selects; re_exports } =
-      let pps = Lib_info.pps info in
+      let pps =
+        Preprocess.Per_module.pps
+          (Preprocess.Per_module.with_instrumentation (Lib_info.preprocess info)
+             ~instrumentation_backend:
+               (instrumentation_backend db.instrument_with resolve))
+      in
       let dune_version = Lib_info.dune_version info in
       Lib_info.requires info
       |> resolve_deps_and_add_runtime_deps db ~allow_private_deps ~dune_version
@@ -1526,7 +1552,7 @@ module Compile = struct
       ( List.map pps ~f:(fun (_, pp) -> (pp, kind))
       |> Lib_name.Map.of_list_reduce ~f:Lib_deps_info.Kind.merge )
 
-  let for_lib db (t : lib) =
+  let for_lib resolve ~allow_overlaps db (t : lib) =
     let requires =
       (* This makes sure that the default implementation belongs to the same
          package before we build the virtual library *)
@@ -1540,7 +1566,15 @@ module Compile = struct
       t.requires
     in
     let lib_deps_info =
-      let pps = Lib_info.pps t.info in
+      let pps =
+        let resolve = resolve db in
+        Preprocess.Per_module.pps
+          (Preprocess.Per_module.with_instrumentation
+             (Lib_info.preprocess t.info)
+             ~instrumentation_backend:
+               (instrumentation_backend ~do_not_fail:true db.instrument_with
+                  resolve))
+      in
       let user_written_deps = Lib_info.user_written_deps t.info in
       let kind : Lib_deps_info.Kind.t =
         let enabled = Lib_info.enabled t.info in
@@ -1551,6 +1585,7 @@ module Compile = struct
       make_lib_deps_info ~user_written_deps ~pps ~kind
     in
     let requires_link =
+      let db = Option.some_if (not allow_overlaps) db in
       lazy
         ( requires
         >>= Resolve.compile_closure_with_overlap_checks db
@@ -1610,12 +1645,13 @@ module DB = struct
 
   (* CR-soon amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
-  let create ~parent ~stdlib_dir ~resolve ~all () =
+  let create ~parent ~resolve ~all ~lib_config () =
     { parent
     ; resolve
     ; table = Table.create (module Lib_name) 1024
     ; all = Lazy.from_fun all
-    ; stdlib_dir
+    ; stdlib_dir = lib_config.Lib_config.stdlib_dir
+    ; instrument_with = lib_config.Lib_config.instrument_with
     }
 
   module Library_related_stanza = struct
@@ -1682,16 +1718,17 @@ module DB = struct
                  ; Pp.textf "- %s" (Loc.to_file_colon_line loc2)
                  ])
     in
-    create () ~parent ~stdlib_dir:lib_config.stdlib_dir
+    create () ~parent
       ~resolve:(fun name ->
         match Lib_name.Map.find map name with
         | None -> Not_found
         | Some (Redirect lib) -> Redirect (None, lib)
         | Some (Found lib) -> Found lib)
       ~all:(fun () -> Lib_name.Map.keys map)
+      ~lib_config
 
-  let create_from_findlib ~stdlib_dir findlib =
-    create () ~parent:None ~stdlib_dir
+  let create_from_findlib ~lib_config findlib =
+    create () ~parent:None ~lib_config
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
@@ -1745,9 +1782,7 @@ module DB = struct
     | None ->
       Code_error.raise "Lib.DB.get_compile_info got library that doesn't exist"
         [ ("name", Lib_name.to_dyn name) ]
-    | Some lib ->
-      let t = Option.some_if (not allow_overlaps) t in
-      Compile.for_lib t lib
+    | Some lib -> Compile.for_lib resolve ~allow_overlaps t lib
 
   let resolve_user_written_deps_for_exes t exes ?(allow_overlaps = false)
       ?(forbidden_libraries = []) deps ~pps ~dune_version ~optional =
@@ -1816,6 +1851,9 @@ module DB = struct
     match (recursive, t.parent) with
     | true, Some t -> Set.union (all ~recursive t) l
     | _ -> l
+
+  let instrumentation_backend t libname =
+    instrumentation_backend t.instrument_with (resolve t) libname
 end
 
 (* META files *)

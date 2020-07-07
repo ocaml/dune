@@ -49,7 +49,7 @@ module Context = struct
       ; paths : (string * Ordered_set_lang.t) list
       ; fdo_target_exe : Path.t option
       ; dynamically_linked_foreign_archives : bool
-      ; bisect_enabled : bool
+      ; instrument_with : Lib_name.t list
       }
 
     let to_dyn = Dyn.Encoder.opaque
@@ -65,7 +65,7 @@ module Context = struct
         ; paths
         ; fdo_target_exe
         ; dynamically_linked_foreign_archives
-        ; bisect_enabled
+        ; instrument_with
         } t =
       Profile.equal profile t.profile
       && List.equal Target.equal targets t.targets
@@ -79,7 +79,7 @@ module Context = struct
       && Option.equal Path.equal fdo_target_exe t.fdo_target_exe
       && Bool.equal dynamically_linked_foreign_archives
            t.dynamically_linked_foreign_archives
-      && Bool.equal bisect_enabled t.bisect_enabled
+      && List.equal Lib_name.equal instrument_with t.instrument_with
 
     let fdo_suffix t =
       match t.fdo_target_exe with
@@ -88,7 +88,7 @@ module Context = struct
         let name, _ = Path.split_extension file in
         "-fdo-" ^ Path.basename name
 
-    let t ~profile =
+    let t ~profile ~instrument_with =
       let+ env = env_field
       and+ targets =
         field "targets" (repeat Target.t) ~default:[ Target.Native ]
@@ -136,9 +136,9 @@ module Context = struct
         field "paths" ~default:[]
           ( Dune_lang.Syntax.since Stanza.syntax (1, 12)
           >>> map ~f (repeat (pair (located string) Ordered_set_lang.decode)) )
-      and+ bisect_enabled =
-        field ~default:false "bisect_enabled"
-          (Dune_lang.Syntax.since syntax (2, 6) >>> bool)
+      and+ instrument_with =
+        field ~default:instrument_with "instrument_with"
+          (Dune_lang.Syntax.since syntax (2, 7) >>> repeat Lib_name.decode)
       and+ loc = loc in
       Option.iter host_context ~f:(fun _ ->
           match targets with
@@ -159,7 +159,7 @@ module Context = struct
       ; paths
       ; fdo_target_exe
       ; dynamically_linked_foreign_archives
-      ; bisect_enabled
+      ; instrument_with
       }
   end
 
@@ -186,12 +186,12 @@ module Context = struct
       && Option.equal String.equal root t.root
       && Bool.equal merlin t.merlin
 
-    let t ~profile ~x =
+    let t ~profile ~instrument_with ~x =
       let+ loc_switch, switch = field "switch" (located string)
       and+ name = field_o "name" Context_name.decode
       and+ root = field_o "root" string
       and+ merlin = field_b "merlin"
-      and+ base = Common.t ~profile in
+      and+ base = Common.t ~profile ~instrument_with in
       let name =
         match name with
         | Some s -> s
@@ -216,8 +216,8 @@ module Context = struct
 
     let to_dyn = Common.to_dyn
 
-    let t ~profile ~x =
-      let+ common = Common.t ~profile
+    let t ~profile ~instrument_with ~x =
+      let+ common = Common.t ~profile ~instrument_with
       and+ name =
         field_o "name"
           ( Dune_lang.Syntax.since syntax (1, 10) >>= fun () ->
@@ -263,10 +263,13 @@ module Context = struct
     | Opam { base = { host_context; _ }; _ } ->
       host_context
 
-  let t ~profile ~x =
+  let t ~profile ~instrument_with ~x =
     sum
-      [ ("default", fields (Default.t ~profile ~x) >>| fun x -> Default x)
-      ; ("opam", fields (Opam.t ~profile ~x) >>| fun x -> Opam x)
+      [ ( "default"
+        , fields (Default.t ~profile ~instrument_with ~x) >>| fun x -> Default x
+        )
+      ; ( "opam"
+        , fields (Opam.t ~profile ~instrument_with ~x) >>| fun x -> Opam x )
       ]
 
   let env = function
@@ -288,7 +291,7 @@ module Context = struct
          | Native -> None
          | Named s -> Some (Context_name.target n ~toolchain:s))
 
-  let default ?x ?profile () =
+  let default ?x ?profile ?instrument_with () =
     Default
       { loc = Loc.of_pos __POS__
       ; targets = [ Option.value x ~default:Target.Native ]
@@ -300,7 +303,7 @@ module Context = struct
       ; paths = []
       ; fdo_target_exe = None
       ; dynamically_linked_foreign_archives = true
-      ; bisect_enabled = false
+      ; instrument_with = Option.value instrument_with ~default:[]
       }
 end
 
@@ -384,12 +387,22 @@ let top_sort contexts =
   | Ok topo_contexts -> topo_contexts
   | Error _ -> assert false
 
-let t ?x ?profile:cmdline_profile () =
+let t ?x ?profile:cmdline_profile ?instrument_with:cmdline_instrument_with () =
   let* () = Dune_lang.Versioned_file.no_more_lang in
   let* env = env_field in
   let* profile = field "profile" Profile.decode ~default:Profile.default in
   let profile = Option.value cmdline_profile ~default:profile in
-  let+ contexts = multi_field "context" (Context.t ~profile ~x) in
+  let* instrument_with =
+    field "instrument_with"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> repeat Lib_name.decode)
+      ~default:[]
+  in
+  let instrument_with =
+    Option.value cmdline_instrument_with ~default:instrument_with
+  in
+  let+ contexts =
+    multi_field "context" (Context.t ~profile ~instrument_with ~x)
+  in
   let defined_names = ref Context_name.Set.empty in
   let merlin_context =
     List.fold_left contexts ~init:None ~f:(fun acc ctx ->
@@ -411,7 +424,7 @@ let t ?x ?profile:cmdline_profile () =
   in
   let contexts =
     match contexts with
-    | [] -> [ Context.default ?x ~profile () ]
+    | [] -> [ Context.default ?x ~profile ~instrument_with () ]
     | _ -> contexts
   in
   let merlin_context =
@@ -429,25 +442,26 @@ let t ?x ?profile:cmdline_profile () =
   in
   { merlin_context; contexts = top_sort (List.rev contexts); env }
 
-let t ?x ?profile () = fields (t ?x ?profile ())
+let t ?x ?profile ?instrument_with () =
+  fields (t ?x ?profile ?instrument_with ())
 
-let default ?x ?profile () =
+let default ?x ?profile ?instrument_with () =
   { merlin_context = Some Context_name.default
-  ; contexts = [ Context.default ?x ?profile () ]
+  ; contexts = [ Context.default ?x ?profile ?instrument_with () ]
   ; env = Dune_env.Stanza.empty
   }
 
-let load ?x ?profile p =
+let load ?x ?profile ?instrument_with p =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
   Io.with_lexbuf_from_file p ~f:(fun lb ->
       if Dune_lexer.eof_reached lb then
-        default ?x ?profile ()
+        default ?x ?profile ?instrument_with ()
       else
-        parse_contents lb ~f:(fun _lang -> t ?x ?profile ()))
+        parse_contents lb ~f:(fun _lang -> t ?x ?profile ?instrument_with ()))
 
-let default ?x ?profile () =
+let default ?x ?profile ?instrument_with () =
   let x = Option.map x ~f:(fun s -> Context.Target.Named s) in
-  default ?x ?profile ()
+  default ?x ?profile ?instrument_with ()
 
 let filename = "dune-workspace"
 
@@ -456,14 +470,16 @@ module DB = struct
     type t =
       { x : Context_name.t option
       ; profile : Profile.t option
+      ; instrument_with : Lib_name.t list option
       ; path : Path.t option
       }
 
-    let to_dyn { x; profile; path } =
+    let to_dyn { x; profile; instrument_with; path } =
       let open Dyn.Encoder in
       record
         [ ("x", option Context_name.to_dyn x)
         ; ("profile", option Profile.to_dyn profile)
+        ; ("instrument_with", option (list Lib_name.to_dyn) instrument_with)
         ; ("path", option Path.to_dyn path)
         ]
 
@@ -471,16 +487,19 @@ module DB = struct
   end
 end
 
-let init ?x ?profile ?path () =
-  Memo.Run.Fdecl.set DB.Settings.t { DB.Settings.x; profile; path }
+let init ?x ?profile ?instrument_with ?path () =
+  Memo.Run.Fdecl.set DB.Settings.t
+    { DB.Settings.x; profile; instrument_with; path }
 
 let workspace =
   let f () =
     let (_ : Memo.Run.t) = Memo.current_run () in
-    let { DB.Settings.path; profile; x } = Memo.Run.Fdecl.get DB.Settings.t in
+    let { DB.Settings.path; profile; instrument_with; x } =
+      Memo.Run.Fdecl.get DB.Settings.t
+    in
     match path with
-    | None -> default ?x ?profile ()
-    | Some p -> load ?x ?profile p
+    | None -> default ?x ?profile ?instrument_with ()
+    | Some p -> load ?x ?profile ?instrument_with p
   in
   let memo =
     Memo.create "workspaces-db" ~doc:"get all workspaces" ~visibility:Hidden

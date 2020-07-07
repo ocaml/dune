@@ -222,7 +222,7 @@ type 'path t =
   ; jsoo_archive : 'path option
   ; requires : Lib_dep.t list
   ; ppx_runtime_deps : (Loc.t * Lib_name.t) list
-  ; pps : (Loc.t * Lib_name.t) list
+  ; preprocess : Preprocess.With_instrumentation.t Preprocess.Per_module.t
   ; enabled : Enabled_status.t
   ; virtual_deps : (Loc.t * Lib_name.t) list
   ; dune_version : Dune_lang.Syntax.Version.t option
@@ -235,6 +235,7 @@ type 'path t =
   ; modes : Mode.Dict.Set.t
   ; special_builtin_support : Special_builtin_support.t option
   ; exit_module : Module_name.t option
+  ; instrumentation_backend : (Loc.t * Lib_name.t) option
   }
 
 let name t = t.name
@@ -247,7 +248,7 @@ let loc t = t.loc
 
 let requires t = t.requires
 
-let pps t = t.pps
+let preprocess t = t.preprocess
 
 let ppx_runtime_deps t = t.ppx_runtime_deps
 
@@ -266,6 +267,8 @@ let foreign_dll_files t = t.foreign_dll_files
 let foreign_objects t = t.foreign_objects
 
 let exit_module t = t.exit_module
+
+let instrumentation_backend t = t.instrumentation_backend
 
 let plugins t = t.plugins
 
@@ -338,9 +341,10 @@ let user_written_deps t =
 let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
     ~synopsis ~main_module_name ~sub_systems ~requires ~foreign_objects ~plugins
     ~archives ~ppx_runtime_deps ~foreign_archives ~native_archives
-    ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~pps ~enabled ~virtual_deps
-    ~dune_version ~virtual_ ~implements ~default_implementation ~modes ~wrapped
-    ~special_builtin_support ~exit_module =
+    ~foreign_dll_files ~jsoo_runtime ~jsoo_archive ~preprocess ~enabled
+    ~virtual_deps ~dune_version ~virtual_ ~implements ~default_implementation
+    ~modes ~wrapped ~special_builtin_support ~exit_module
+    ~instrumentation_backend =
   { loc
   ; name
   ; kind
@@ -361,7 +365,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; foreign_dll_files
   ; jsoo_runtime
   ; jsoo_archive
-  ; pps
+  ; preprocess
   ; enabled
   ; virtual_deps
   ; dune_version
@@ -373,6 +377,7 @@ let create ~loc ~name ~kind ~status ~src_dir ~orig_src_dir ~obj_dir ~version
   ; wrapped
   ; special_builtin_support
   ; exit_module
+  ; instrumentation_backend
   }
 
 type external_ = Path.t t
@@ -425,7 +430,7 @@ let to_dyn path
     ; foreign_dll_files
     ; jsoo_runtime
     ; jsoo_archive
-    ; pps
+    ; preprocess = _
     ; enabled
     ; virtual_deps
     ; dune_version
@@ -437,6 +442,7 @@ let to_dyn path
     ; wrapped
     ; special_builtin_support
     ; exit_module
+    ; instrumentation_backend
     } =
   let open Dyn.Encoder in
   let snd f (_, x) = f x in
@@ -460,7 +466,6 @@ let to_dyn path
     ; ("jsoo_archive", option path jsoo_archive)
     ; ("requires", list Lib_dep.to_dyn requires)
     ; ("ppx_runtime_deps", list (snd Lib_name.to_dyn) ppx_runtime_deps)
-    ; ("pps", list (snd Lib_name.to_dyn) pps)
     ; ("enabled", Enabled_status.to_dyn enabled)
     ; ("virtual_deps", list (snd Lib_name.to_dyn) virtual_deps)
     ; ("dune_version", option Dune_lang.Syntax.Version.to_dyn dune_version)
@@ -475,6 +480,8 @@ let to_dyn path
     ; ( "special_builtin_support"
       , option Special_builtin_support.to_dyn special_builtin_support )
     ; ("exit_module", option Module_name.to_dyn exit_module)
+    ; ( "instrumentation_backend"
+      , option (snd Lib_name.to_dyn) instrumentation_backend )
     ]
 
 let package t =

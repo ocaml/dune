@@ -3,6 +3,8 @@ open Fiber.O
 open Dyn.Encoder
 open Dune_tests_common
 
+let printf = Printf.printf
+
 let () = init ()
 
 module Scheduler : sig
@@ -327,6 +329,30 @@ let%expect_test "writing multiple values" =
     written 0
     read 0
     () |}]
+
+let%expect_test "writing multiple values" =
+  test unit
+    (let m = Mvar.create () in
+     Fiber.fork_and_join_unit
+       (fun () ->
+         print_endline "reader1: reading";
+         let* x = Mvar.read m in
+         printf "reader1: got %d\n" x;
+         print_endline "reader1: writing";
+         Mvar.write m 1)
+       (fun () ->
+         let* () = Scheduler.yield () in
+         print_endline "reader2: writing";
+         let* () = Mvar.write m 2 in
+         print_endline "reader2: reading";
+         let+ x = Mvar.read m in
+         printf "reader2: got %d\n" x));
+  [%expect {|
+    reader1: reading
+    reader2: writing
+    reader2: reading
+    reader2: got 2
+    [FAIL] unexpected Never raised |}]
 
 let%expect_test "Sequence.parallel_iter is indeed parallel" =
   let test ~iter_function =

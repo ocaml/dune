@@ -295,8 +295,8 @@ let%expect_test "writing multiple values" =
   test unit
     (let mvar = Mvar.create () in
      let write (n : int) : unit Fiber.t =
-       let+ () = Mvar.write mvar n in
-       Printf.printf "written %d\n" n
+       Printf.printf "writing %d\n" n;
+       Mvar.write mvar n
      in
      let read () =
        let+ n = Mvar.read mvar in
@@ -318,15 +318,18 @@ let%expect_test "writing multiple values" =
          consume ()
      in
      Fiber.fork_and_join_unit (fun () -> produce 3) consume);
+  (* Writing to a mvar only blocks if the mvar is full. Similarly, reading from
+     a mvar only blocks if the mvar is empty. This is why [write] and [read]
+     operations in the output bellow are grouped two by two. *)
   [%expect
     {|
-    written 3
+    writing 3
+    writing 2
     read 3
-    written 2
     read 2
-    written 1
+    writing 1
+    writing 0
     read 1
-    written 0
     read 0
     () |}]
 
@@ -347,7 +350,8 @@ let%expect_test "writing multiple values" =
          print_endline "reader2: reading";
          let+ x = Mvar.read m in
          printf "reader2: got %d\n" x));
-  [%expect {|
+  [%expect
+    {|
     reader1: reading
     reader2: writing
     reader2: reading

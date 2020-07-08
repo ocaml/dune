@@ -166,16 +166,24 @@ module Ivar : sig
 end
 with type 'a fiber := 'a t
 
+(** Mailbox variables *)
 module Mvar : sig
   type 'a fiber
 
-  (** Mailbox variable *)
+  (** A mailbox variable can be thought of as a box that is either empty or
+      full. [create ()] creates a new empty box, and [create_full x] creates a
+      new full box containing [x].
+
+      [read] removes the value from a full mailbox variable and returns it, but
+      blocks if the mvar is currently empty. Symmetrically, [write] puts a value
+      into the mvar but blocks if the mvar is already full. *)
+
   type 'a t
 
   val create : unit -> 'a t
 
-  (** Read and consume the value inside mailbox variable. Blocks until the
-      variable is available *)
+  val create_full : 'a -> 'a t
+
   val read : 'a t -> 'a fiber
 
   val write : 'a t -> 'a -> unit fiber

@@ -451,43 +451,52 @@ module Mvar = struct
   let create () =
     { value = None; writers = Queue.create (); readers = Queue.create () }
 
+  let step t =
+    match t.value with
+    | Some v when not (Queue.is_empty t.readers) ->
+      let r = Queue.pop_exn t.readers in
+      t.value <- None;
+      K.run r v
+    | None when not (Queue.is_empty t.writers) ->
+      let v, w = Queue.pop_exn t.writers in
+      t.value <- Some v;
+      K.run w ()
+    | _ -> ()
+
   let next_reader t k x =
+    let k a =
+      k a;
+      step t
+    in
     match Queue.pop t.readers with
     | None -> k x
     | Some r ->
       Queue.push t.readers (K.create k);
       K.run r x
 
-  let rec step t =
-    match t.value with
-    | Some v when not (Queue.is_empty t.readers) ->
-      let r = Queue.pop_exn t.readers in
-      t.value <- None;
-      K.run r v;
-      step t
-    | None when not (Queue.is_empty t.writers) ->
-      let v, w = Queue.pop_exn t.writers in
-      t.value <- Some v;
-      K.run w ();
-      step t
-    | _ -> ()
-
   let read (type a) (t : a t) k =
     match t.value with
-    | None -> Queue.push t.readers (K.create k)
+    | None ->
+      let k a =
+        k a;
+        step t
+      in
+      Queue.push t.readers (K.create k)
     | Some v ->
       t.value <- None;
-      next_reader t k v;
-      step t
+      next_reader t k v
 
   let write t x k =
+    let k () =
+      k ();
+      step t
+    in
     match t.value with
     | Some _ -> Queue.push t.writers (x, K.create k)
     | None ->
       assert (Queue.is_empty t.writers);
       t.value <- Some x;
-      k ();
-      step t
+      k ()
 end
 
 module Mutex = struct

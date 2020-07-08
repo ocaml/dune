@@ -441,6 +441,52 @@ module Ivar = struct
       | Empty _ -> None )
 end
 
+module Mvar = struct
+  type 'a t =
+    { writers : ('a * unit K.t) Queue.t
+    ; readers : 'a K.t Queue.t
+    ; mutable value : 'a option
+    }
+
+  (* Invariant enforced on mvars. We don't actually call this function, but we
+     keep it here for documentation and to help understand the implementation: *)
+  let _invariant t =
+    match t.value with
+    | None -> Queue.is_empty t.writers
+    | Some _ -> Queue.is_empty t.readers
+
+  let create () =
+    { value = None; writers = Queue.create (); readers = Queue.create () }
+
+  let create_full x =
+    { value = Some x; writers = Queue.create (); readers = Queue.create () }
+
+  let read t k =
+    match t.value with
+    | None -> Queue.push t.readers (K.create k)
+    | Some v -> (
+      match Queue.pop t.writers with
+      | None ->
+        t.value <- None;
+        k v
+      | Some (v', w) ->
+        t.value <- Some v';
+        k v;
+        K.run w () )
+
+  let write t x k =
+    match t.value with
+    | Some _ -> Queue.push t.writers (x, K.create k)
+    | None -> (
+      match Queue.pop t.readers with
+      | None ->
+        t.value <- Some x;
+        k ()
+      | Some r ->
+        k ();
+        K.run r x )
+end
+
 module Mutex = struct
   type t =
     { mutable locked : bool

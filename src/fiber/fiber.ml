@@ -451,23 +451,23 @@ module Mvar = struct
   let create () =
     { value = None; writers = Queue.create (); readers = Queue.create () }
 
-  let step t =
+  let try_write t =
     match t.value with
-    | Some v when not (Queue.is_empty t.readers) ->
-      let r = Queue.pop_exn t.readers in
-      t.value <- None;
-      K.run r v
     | None when not (Queue.is_empty t.writers) ->
       let v, w = Queue.pop_exn t.writers in
       t.value <- Some v;
       K.run w ()
     | _ -> ()
 
+  let try_read t =
+    match t.value with
+    | Some v when not (Queue.is_empty t.readers) ->
+      let r = Queue.pop_exn t.readers in
+      t.value <- None;
+      K.run r v
+    | _ -> ()
+
   let next_reader t k x =
-    let k a =
-      k a;
-      step t
-    in
     match Queue.pop t.readers with
     | None -> k x
     | Some r ->
@@ -475,13 +475,12 @@ module Mvar = struct
       K.run r x
 
   let read (type a) (t : a t) k =
+    let k a =
+      k a;
+      try_write t
+    in
     match t.value with
-    | None ->
-      let k a =
-        k a;
-        step t
-      in
-      Queue.push t.readers (K.create k)
+    | None -> Queue.push t.readers (K.create k)
     | Some v ->
       t.value <- None;
       next_reader t k v
@@ -489,7 +488,7 @@ module Mvar = struct
   let write t x k =
     let k () =
       k ();
-      step t
+      try_read t
     in
     match t.value with
     | Some _ -> Queue.push t.writers (x, K.create k)

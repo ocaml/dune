@@ -461,7 +461,7 @@ module Mvar = struct
   let create_full x =
     { value = Some x; writers = Queue.create (); readers = Queue.create () }
 
-  let read (type a) (t : a t) k =
+  let read t k =
     match t.value with
     | None -> Queue.push t.readers (K.create k)
     | Some v -> (

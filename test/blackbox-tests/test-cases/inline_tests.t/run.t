@@ -37,7 +37,7 @@ The expected behavior for the following three tests is to output nothing: the te
            run alias many-backends-choose/runtest
   backend_mbc1
 
-  $ dune runtest dune-file | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune runtest dune-file | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
            run alias dune-file/runtest
   414243
   (lang dune <version>)
@@ -77,10 +77,10 @@ The expected behavior for the following three tests is to output nothing: the te
       (echo "\n")
       (echo "let () = print_int 43;;")))))
 
-  $ dune build dune-file/foo.install && dune install foo --prefix install
+  $ dune build dune-file/foo.install && dune install foo --prefix install | dune_cmd sanitize
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
-  Installing install/lib/foo/foo$ext_lib
+  Installing install/lib/foo/foo.a
   Installing install/lib/foo/foo.cma
   Installing install/lib/foo/foo.cmi
   Installing install/lib/foo/foo.cmt

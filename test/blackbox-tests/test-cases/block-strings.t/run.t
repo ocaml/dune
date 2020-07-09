@@ -10,9 +10,9 @@
     ARFLAGS="$ARFLAGS" \
     CXX="$CXX" \
     CXXFLAGS="$CXXFLAGS" \
-    obj/libre2$ext_lib obj/so/libre2$ext_dll
-  cp libre2/obj/libre2$ext_lib libre2_c_stubs$ext_lib
-  cp libre2/obj/so/libre2$ext_dll dllre2_c_stubs$ext_dll
+    obj/libre2.a obj/so/libre2.so
+  cp libre2/obj/libre2.a libre2_c_stubs.a
+  cp libre2/obj/so/libre2.so dllre2_c_stubs.so
   ${.MAKE} -s -C libre2 clean
 
   $ dune build @new
@@ -27,9 +27,9 @@
     ARFLAGS="$ARFLAGS" \
     CXX="$CXX" \
     CXXFLAGS="$CXXFLAGS" \
-    obj/libre2$ext_lib obj/so/libre2$ext_dll
-  cp libre2/obj/libre2$ext_lib libre2_c_stubs$ext_lib
-  cp libre2/obj/so/libre2$ext_dll dllre2_c_stubs$ext_dll
+    obj/libre2.a obj/so/libre2.so
+  cp libre2/obj/libre2.a libre2_c_stubs.a
+  cp libre2/obj/so/libre2.so dllre2_c_stubs.so
   ${.MAKE} -s -C libre2 clean
 
   $ dune build @quoting-test

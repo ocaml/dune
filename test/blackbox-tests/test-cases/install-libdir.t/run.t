@@ -4,7 +4,7 @@
 `dune install` should handle destination directories that don't exist
 
   $ dune build @install
-  $ dune install --prefix install --libdir lib
+  $ dune install --prefix install --libdir lib 2>&1 | dune_cmd sanitize
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
   Installing install/lib/foo/foo$ext_lib
@@ -23,7 +23,7 @@
 
 If prefix is passed, the default for libdir is `$prefix/lib`:
 
-  $ dune install --prefix install --dry-run
+  $ dune install --prefix install --dry-run 2>&1 | dune_cmd sanitize
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
   Installing install/lib/foo/foo$ext_lib
@@ -89,8 +89,8 @@ If prefix is not passed, libdir defaults to the output of `ocamlfind printconf
 destdir`:
 
   $ (export OCAMLFIND_DESTDIR=/OCAMLFIND_DESTDIR
-  >  dune install --dry-run
-  >  dune uninstall --dry-run)
+  >  dune install --dry-run 2>&1 | dune_cmd sanitize
+  >  dune uninstall --dry-run 2>&1 | dune_cmd sanitize)
   Installing /OCAMLFIND_DESTDIR/foo/META
   Installing /OCAMLFIND_DESTDIR/foo/dune-package
   Installing /OCAMLFIND_DESTDIR/foo/foo$ext_lib
@@ -175,7 +175,7 @@ destdir`:
 If only libdir is passed, binaries are installed under prefix/bin and libraries
 in libdir:
 
-  $ dune install --libdir /LIBDIR --dry-run
+  $ dune install --libdir /LIBDIR --dry-run 2>&1 | dune_cmd sanitize
   > dune uninstall --libdir /LIBDIR --dry-run
   Installing /LIBDIR/foo/META
   Installing /LIBDIR/foo/dune-package
@@ -239,7 +239,7 @@ in libdir:
   Copying _build/install/default/man/man3/another-man-page.3 to /OPAM_PREFIX/man/man3/another-man-page.3 (executable: false)
   Removing (if it exists) /LIBDIR/foo/META
   Removing (if it exists) /LIBDIR/foo/dune-package
-  Removing (if it exists) /LIBDIR/foo/foo$ext_lib
+  Removing (if it exists) /LIBDIR/foo/foo.a
   Removing (if it exists) /LIBDIR/foo/foo.cma
   Removing (if it exists) /LIBDIR/foo/foo.cmi
   Removing (if it exists) /LIBDIR/foo/foo.cmt
@@ -261,7 +261,7 @@ in libdir:
 The DESTDIR var is supported. When set, it is prepended to the prefix.
 This is the case when the prefix is implicit:
 
-  $ DESTDIR=DESTDIR dune install --dry-run
+  $ DESTDIR=DESTDIR dune install --dry-run 2>&1 | dune_cmd sanitize
   Installing DESTDIR/OPAM_PREFIX/lib/foo/META
   Installing DESTDIR/OPAM_PREFIX/lib/foo/dune-package
   Installing DESTDIR/OPAM_PREFIX/lib/foo/foo$ext_lib
@@ -325,7 +325,7 @@ This is the case when the prefix is implicit:
 
 But also when the prefix is explicit:
 
-  $ DESTDIR=DESTDIR dune install --prefix prefix --dry-run
+  $ DESTDIR=DESTDIR dune install --prefix prefix --dry-run 2>&1 | dune_cmd sanitize
   Installing DESTDIR/prefix/lib/foo/META
   Installing DESTDIR/prefix/lib/foo/dune-package
   Installing DESTDIR/prefix/lib/foo/foo$ext_lib
@@ -389,7 +389,7 @@ But also when the prefix is explicit:
 
 DESTDIR can also be passed as a command line flag.
 
-  $ dune install --destdir DESTDIR --prefix prefix --dry-run
+  $ dune install --destdir DESTDIR --prefix prefix --dry-run 2>&1 | dune_cmd sanitize
   Installing DESTDIR/prefix/lib/foo/META
   Installing DESTDIR/prefix/lib/foo/dune-package
   Installing DESTDIR/prefix/lib/foo/foo$ext_lib

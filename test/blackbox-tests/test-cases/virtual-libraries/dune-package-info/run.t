@@ -1,5 +1,5 @@
 Include variants and implementation information in dune-package
-  $ dune build | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune build | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name foo)
   (library

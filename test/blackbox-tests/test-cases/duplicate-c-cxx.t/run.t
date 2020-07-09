@@ -14,7 +14,7 @@ c_names and cxx_names with overlapping names in the same stanza
   [1]
 
 c_names with overlapping names in different stanzas
-  $ dune build --root diff-stanza @all
+  $ dune build --root diff-stanza @all 2>&1 | dune_cmd sanitize
   Entering directory 'diff-stanza'
   File "dune", line 4, characters 10-13:
   4 |  (c_names foo))
@@ -23,4 +23,3 @@ c_names with overlapping names in different stanzas
   definition at dune:9.
   Hint: You can avoid the name clash by renaming one of the objects, or by
   placing it into a different directory.
-  [1]

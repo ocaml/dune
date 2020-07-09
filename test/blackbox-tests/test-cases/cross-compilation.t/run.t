@@ -23,7 +23,7 @@
   42
   $ ls *.install
   p-foo.install
-  $ dune_cmd cat p-foo.install
+  $ dune_cmd cat p-foo.install | dune_cmd sanitize
   lib: [
     "_build/install/default.foo/lib/p/META" {"../../foo-sysroot/lib/p/META"}
     "_build/install/default.foo/lib/p/dune-package" {"../../foo-sysroot/lib/p/dune-package"}

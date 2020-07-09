@@ -1,6 +1,6 @@
 stubs and js files installed
 
-  $ dune build --root stubs
+  $ dune build --root stubs | dune_cmd sanitize
   Entering directory 'stubs'
   lib: [
     "_build/install/default/lib/foo/META"
@@ -64,7 +64,7 @@ mld files are installed
 
 unwrapped libraries have the correct artifacts
 
-  $ dune build --root lib-unwrapped
+  $ dune build --root lib-unwrapped | dune_cmd sanitize
   Entering directory 'lib-unwrapped'
   lib: [
     "_build/install/default/lib/foo/META"
@@ -84,7 +84,7 @@ unwrapped libraries have the correct artifacts
 
 wrapped lib with lib interface module
 
-  $ dune build --root lib-wrapped-alias
+  $ dune build --root lib-wrapped-alias | dune_cmd sanitize
   Entering directory 'lib-wrapped-alias'
   lib: [
     "_build/install/default/lib/foo/META"
@@ -112,7 +112,7 @@ wrapped lib with lib interface module
 
 wrapped lib without lib interface module
 
-  $ dune build --root lib-wrapped-no-alias
+  $ dune build --root lib-wrapped-no-alias | dune_cmd sanitize
   Entering directory 'lib-wrapped-no-alias'
   lib: [
     "_build/install/default/lib/foo/META"

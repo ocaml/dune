@@ -1,5 +1,5 @@
   $ dune build @install
-  $ dune install --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune install --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' | dune_cmd sanitize
   Installing OPAM_PREFIX/lib/mylib/META
   Installing OPAM_PREFIX/lib/mylib/dune-package
   Installing OPAM_PREFIX/lib/mylib/mylib$ext_lib
@@ -45,7 +45,7 @@
   Creating directory OPAM_PREFIX/lib/mylib
   Copying _build/install/default/lib/mylib/opam to OPAM_PREFIX/lib/mylib/opam (executable: false)
 
-  $ dune uninstall --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#'
+  $ dune uninstall --dry-run 2>&1 | sed 's#'$(opam config var prefix)'#OPAM_PREFIX#' | dune_cmd sanitize
   Removing (if it exists) OPAM_PREFIX/lib/mylib/META
   Removing (if it exists) OPAM_PREFIX/lib/mylib/dune-package
   Removing (if it exists) OPAM_PREFIX/lib/mylib/mylib$ext_lib

@@ -1,5 +1,5 @@
   $ dune build @all
-  $ dune build @runtest
+  $ dune build @runtest 2>&1 | dune_cmd sanitize
         static alias runtest
   OK: ./static.exe
        dynamic alias runtest

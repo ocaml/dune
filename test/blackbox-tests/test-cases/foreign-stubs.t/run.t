@@ -116,10 +116,9 @@ Testsuite for the (foreign_stubs ...) field.
   > value foo(value unit) { return Val_int(9); }
   > EOF
 
-  $ ./sdune build
+  $ ./sdune build 2>&1 | dune_cmd sanitize
   File "dune", line 1, characters 0-0:
   Error: No rule found for libbar$ext_lib
-  [1]
 
 ----------------------------------------------------------------------------------
 * Build succeeds when a self-built archive exists.
@@ -476,7 +475,7 @@ setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
 * Make sure no rules are generated for foreign dynamically linked archives
 
   $ ./sdune build _build/default/dlltime.so
-  Error: Don't know how to build _build/default/dlltime$ext_dll
+  Error: Don't know how to build _build/default/dlltime.so
   [1]
 
 ----------------------------------------------------------------------------------
@@ -527,7 +526,7 @@ setting [disable_dynamically_linked_foreign_archives] is [true] in the workspace
   3 |  (name clock)
   4 |  (modules clock)
   5 |  (self_build_stubs_archive (time)))
-  Error: No rule found for dlltime_stubs$ext_dll
+  Error: No rule found for dlltime_stubs.so
   [1]
 
 ----------------------------------------------------------------------------------

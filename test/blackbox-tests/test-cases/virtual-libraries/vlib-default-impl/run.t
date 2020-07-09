@@ -17,7 +17,7 @@ Basic sample selecting implementation according to default library.
 Check that default implementation data is installed in the dune package file.
   $ dune build --root dune-package
   Entering directory 'dune-package'
-  $ dune_cmd cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/"
+  $ dune_cmd cat dune-package/_build/install/default/lib/a/dune-package | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   (lang dune <version>)
   (name a)
   (library

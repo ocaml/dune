@@ -1,5 +1,5 @@
 Install files for implementations and virtual libs have all the artifacts:
-  $ dune build
+  $ dune build 2>&1 | dune_cmd sanitize
   lib: [
     "_build/install/default/lib/vlib/META"
     "_build/install/default/lib/vlib/dune-package"

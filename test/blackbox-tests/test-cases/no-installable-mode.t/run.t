@@ -17,7 +17,7 @@ message is displayed:
 
 However, it is possible to build a private one explicitly.
 
-  $ dune build --root=private --display=short myprivatelib.so
+  $ dune build --root=private --display=short myprivatelib.so 2>&1 | dune_cmd sanitize
   Entering directory 'private'
       ocamldep .myprivatelib.eobjs/myprivatelib.ml.d
         ocamlc .myprivatelib.eobjs/byte/myprivatelib.{cmi,cmo,cmt}

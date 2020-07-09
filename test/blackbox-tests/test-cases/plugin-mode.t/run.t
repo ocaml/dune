@@ -79,7 +79,7 @@ Testsuite for (mode plugin).
   >   Dynlink.loadfile (Dynlink.adapt_filename "b.cma")
   > EOF
 
-  $ dune build --display short @all
+  $ dune build --display short @all 2>&1 | dune_cmd sanitize
       ocamldep foo/.foo.objs/foo.ml.d
       ocamldep $ext_lib.eobjs/a.ml.d
       ocamldep foo/.bar.objs/bar.ml.d

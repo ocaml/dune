@@ -309,7 +309,7 @@ module Public_lib = struct
 
   let package t = t.package
 
-  let make ?(allow_deprecated_names = false) project ((_, s) as loc_name) =
+  let make ~allow_deprecated_names project ((_, s) as loc_name) =
     let pkg, rest = Lib_name.split s in
     let x =
       if not allow_deprecated_names then
@@ -338,13 +338,13 @@ module Public_lib = struct
              ; name = loc_name
              })
 
-  let decode ?allow_deprecated_names () =
+  let decode ~allow_deprecated_names =
     map_validate
       (let+ project = Dune_project.get_exn ()
        and+ loc_name = located Lib_name.decode in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
-        make ?allow_deprecated_names project loc_name)
+        make ~allow_deprecated_names project loc_name)
 end
 
 module Mode_conf = struct
@@ -540,7 +540,8 @@ module Library = struct
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
        let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
-       and+ public = field_o "public_name" (Public_lib.decode ())
+       and+ public =
+         field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
@@ -1773,7 +1774,7 @@ module Deprecated_library_name = struct
       }
 
     let decode =
-      let+ public = Public_lib.decode ~allow_deprecated_names:true () in
+      let+ public = Public_lib.decode ~allow_deprecated_names:true in
       let deprecated =
         not
           (Package.Name.equal

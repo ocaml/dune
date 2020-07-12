@@ -27,8 +27,7 @@ Create a dummy backend and two libraries with inline_tests
 try to run them:
 
   $ env -u OCAMLRUNPARAM dune runtest
-  Error: Multiple rules generated for
-  _build/.aliases/default/runtest-b11519c7100cda2ee17e767e4ea9f6b3:
-  - dune:15
-  - dune:10
-  [1]
+  inline_test_runner_foo_simple1 alias runtest
+  test
+  inline_test_runner_foo_simple2 alias runtest
+  test

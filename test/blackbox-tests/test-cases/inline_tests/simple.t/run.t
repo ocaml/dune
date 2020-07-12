@@ -24,9 +24,9 @@
   > EOF
 
   $ env -u OCAMLRUNPARAM dune runtest
-           run alias runtest (exit 2)
-  (cd _build/default && .foo_simple.inline-tests/run.exe)
-  Fatal error: exception File ".foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
+  inline_test_runner_foo_simple alias runtest (exit 2)
+  (cd _build/default && .foo_simple.inline-tests/inline_test_runner_foo_simple.exe)
+  Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
   [1]
 
 The expected behavior for the following three tests is to output nothing: the tests are disabled or ignored.
@@ -37,7 +37,7 @@ The expected behavior for the following three tests is to output nothing: the te
   $ env -u OCAMLRUNPARAM dune runtest --profile ignore-inline-tests
 
   $ env -u OCAMLRUNPARAM dune runtest --profile enable-inline-tests
-           run alias runtest (exit 2)
-  (cd _build/default && .foo_simple.inline-tests/run.exe)
-  Fatal error: exception File ".foo_simple.inline-tests/run.ml-gen", line 1, characters 40-46: Assertion failed
+  inline_test_runner_foo_simple alias runtest (exit 2)
+  (cd _build/default && .foo_simple.inline-tests/inline_test_runner_foo_simple.exe)
+  Fatal error: exception File ".foo_simple.inline-tests/inline_test_runner_foo_simple.ml-gen", line 1, characters 40-46: Assertion failed
   [1]

@@ -1,5 +1,5 @@
   $ dune runtest dune-file | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
-           run alias dune-file/runtest
+  inline_test_runner_foo_tests alias dune-file/runtest
   414243
   (lang dune <version>)
   (name foo)
@@ -55,5 +55,5 @@ Make sure we can read generated dune-package files:
 
   $ export OCAMLPATH=$PWD/install/lib; dune runtest --root dune-file-user
   Entering directory 'dune-file-user'
-           run alias runtest
+  inline_test_runner_foo_tests alias runtest
   414243

@@ -21,5 +21,5 @@
   > EOF
 
   $ dune runtest
-           run alias runtest
+  inline_test_runner_foo_mbc alias runtest
   backend_mbc1

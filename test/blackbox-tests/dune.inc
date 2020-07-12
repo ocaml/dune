@@ -1613,6 +1613,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias inline_tests-multiple-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/multiple-inline-tests.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/multiple-inline-tests.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias inline_tests-simple)
  (deps
   (package dune)
@@ -3283,6 +3294,7 @@
   (alias inline_tests-many-backends-choose)
   (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
   (alias inline_tests-simple)
   (alias inline_tests-too-many-backends)
   (alias install-dry-run)
@@ -3577,6 +3589,7 @@
   (alias inline_tests-many-backends-choose)
   (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
   (alias inline_tests-simple)
   (alias inline_tests-too-many-backends)
   (alias install-mandir)

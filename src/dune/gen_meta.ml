@@ -146,9 +146,9 @@ let gen_lib pub_name lib ~path ~version =
         ] )
     ]
 
-let gen ~package ~version ?(add_directory_entry = true) entries =
+let gen ~(package : Package.t) ?(add_directory_entry = true) entries =
   let version =
-    match version with
+    match package.version with
     | None -> []
     | Some s -> [ rule "version" [] Set s ]
   in
@@ -201,4 +201,4 @@ let gen ~package ~version ?(add_directory_entry = true) entries =
     ; entries = entries @ subs
     }
   in
-  loop package pkgs
+  loop (Package.Name.to_string package.name) pkgs

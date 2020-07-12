@@ -496,11 +496,7 @@ end = struct
     Super_context.add_rule sctx ~dir:ctx.build_dir
       (let open Build.O in
       (let+ template = template in
-       let meta =
-         Gen_meta.gen
-           ~package:(Package.Name.to_string pkg.name)
-           ~version:pkg.version entries
-       in
+       let meta = Gen_meta.gen ~package:pkg entries in
        let pp =
          Pp.vbox
            (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->
@@ -527,9 +523,7 @@ end = struct
                  | None -> []
                  | Some entries -> entries
                in
-               Gen_meta.gen
-                 ~package:(Package.Name.to_string pkg.name)
-                 ~version:pkg.version entries ~add_directory_entry:false
+               Gen_meta.gen ~package:pkg entries ~add_directory_entry:false
              in
              let pp =
                let open Pp.O in

@@ -327,7 +327,7 @@ end = struct
                   { public = old_public_name; deprecated = false }
               ; new_public_name = _, new_public_name
               ; loc
-              ; _
+              ; project = _
               } ->
             let _loc, old_public_name =
               Dune_file.Public_lib.name old_public_name

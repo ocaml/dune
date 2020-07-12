@@ -55,15 +55,15 @@ module Buildable : sig
 end
 
 module Public_lib : sig
-  type t =
-    { name : Loc.t * Lib_name.t  (** Full public name *)
-    ; package : Package.t  (** Package it is part of *)
-    ; sub_dir : string option
-          (** Subdirectory inside the installation directory *)
-    }
+  type t
 
-  val name : t -> Lib_name.t
+  (** Subdirectory inside the installation directory *)
+  val sub_dir : t -> string option
 
+  (** Full public name *)
+  val name : t -> Loc.t * Lib_name.t
+
+  (** Package it is part of *)
   val package : t -> Package.t
 end
 

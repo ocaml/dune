@@ -266,7 +266,9 @@ end = struct
                   let dst = File_binding.Expanded.dst fb in
                   (Some loc, Install.Entry.make section src ?dst))
             | Dune_file.Library lib ->
-              let sub_dir = (Option.value_exn lib.public).sub_dir in
+              let sub_dir =
+                Option.value_exn lib.public |> Dune_file.Public_lib.sub_dir
+              in
               let dir_contents = Dir_contents.get sctx ~dir in
               lib_install_files sctx ~scope ~dir ~sub_dir lib ~dir_contents
             | Coq_stanza.Theory.T coqlib ->
@@ -327,7 +329,9 @@ end = struct
               ; loc
               ; _
               } ->
-            let old_public_name = Dune_file.Public_lib.name old_public_name in
+            let _loc, old_public_name =
+              Dune_file.Public_lib.name old_public_name
+            in
             Lib_name.Map.add_exn acc old_public_name
               (Dune_package.Entry.Deprecated_library_name
                  { loc; old_public_name; new_public_name })
@@ -394,7 +398,8 @@ end = struct
               ; _
               } as t ) ->
           Some
-            ( Lib_name.package_name (Dune_file.Public_lib.name old_public_name)
+            ( Lib_name.package_name
+                (snd (Dune_file.Public_lib.name old_public_name))
             , t )
         | _ -> None)
       |> Package.Name.Map.of_list_multi
@@ -414,7 +419,7 @@ end = struct
                         ; _
                         }
                         ->
-                  let old_public_name =
+                  let _loc, old_public_name =
                     Dune_file.Public_lib.name old_public_name
                   in
                   Lib_name.Map.add_exn acc old_public_name
@@ -444,13 +449,13 @@ end = struct
       let entries = Super_context.lib_entries_of_package sctx pkg.name in
       List.partition_map entries ~f:(function
         | Super_context.Lib_entry.Deprecated_library_name
-            { old_public_name =
-                { deprecated = true
-                ; public = { sub_dir = None; name = _, name; _ }
-                }
-            ; _
-            } as entry ->
-          Left (Lib_name.package_name name, entry)
+            { old_public_name = { deprecated = true; public }; _ } as entry -> (
+          match Dune_file.Public_lib.sub_dir public with
+          | None ->
+            Left
+              ( Lib_name.package_name (snd (Dune_file.Public_lib.name public))
+              , entry )
+          | Some _ -> Right entry )
         | entry -> Right entry)
     in
     let template =

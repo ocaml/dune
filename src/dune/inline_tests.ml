@@ -280,7 +280,7 @@ include Sub_system.Register_end_point (struct
         ~requires_link:(lazy runner_libs)
         ~flags:(Ocaml_flags.of_list [ "-w"; "-24"; "-g" ])
         ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
-        ~package:(Option.map lib.public ~f:(fun p -> p.package))
+        ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
     in
     let linkages =
       let modes =

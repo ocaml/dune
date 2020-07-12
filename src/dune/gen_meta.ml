@@ -167,7 +167,7 @@ let gen ~(package : Package.t) ?(add_directory_entry = true) entries =
             ; new_public_name = _, new_public_name
             ; _
             } ->
-          ( Pub_name.parse (Dune_file.Public_lib.name old_public_name)
+          ( Pub_name.parse (snd (Dune_file.Public_lib.name old_public_name))
           , version @ [ requires (Lib_name.Set.singleton new_public_name) ] ))
   in
   let pkgs =

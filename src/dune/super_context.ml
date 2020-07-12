@@ -171,7 +171,7 @@ module Lib_entry = struct
     | Library lib -> Lib.Local.to_lib lib |> Lib.name
     | Deprecated_library_name
         { old_public_name = { public = old_public_name; _ }; _ } ->
-      Dune_file.Public_lib.name old_public_name
+      snd (Dune_file.Public_lib.name old_public_name)
 end
 
 type t =
@@ -231,7 +231,8 @@ let internal_lib_names t =
           Lib_name.Set.add
             ( match lib.public with
             | None -> acc
-            | Some { name = _, name; _ } -> Lib_name.Set.add acc name )
+            | Some public ->
+              Lib_name.Set.add acc (snd (Dune_file.Public_lib.name public)) )
             (Lib_name.of_local lib.name)
         | _ -> acc))
 
@@ -507,10 +508,12 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
       Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
           match stanza with
           | Dune_file.Library { public = Some pub; _ } -> (
-            match Lib.DB.find public_libs (snd pub.name) with
+            match
+              Lib.DB.find public_libs (snd (Dune_file.Public_lib.name pub))
+            with
             | None -> acc
             | Some lib ->
-              ( pub.package.name
+              ( (Dune_file.Public_lib.package pub).name
               , Lib_entry.Library (Option.value_exn (Lib.Local.of_lib lib)) )
               :: acc )
           | Dune_file.Deprecated_library_name

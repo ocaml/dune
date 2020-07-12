@@ -305,7 +305,9 @@ module Public_lib = struct
     ; sub_dir : string option
     }
 
-  let name t = snd t.name
+  let sub_dir t = t.sub_dir
+
+  let name t = t.name
 
   let package t = t.package
 
@@ -1778,7 +1780,7 @@ module Deprecated_library_name = struct
       let deprecated =
         not
           (Package.Name.equal
-             (Lib_name.package_name (Public_lib.name public))
+             (Lib_name.package_name (snd (Public_lib.name public)))
              (Public_lib.package public).name)
       in
       { deprecated; public }

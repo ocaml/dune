@@ -305,90 +305,85 @@ end
 module Meta_and_dune_package : sig
   val meta_and_dune_package_rules : Super_context.t -> dir:Path.Build.t -> unit
 end = struct
+  let make_dune_package sctx lib_entries (pkg : Package.t) =
+    let ctx = Super_context.context sctx in
+    let pkg_root =
+      Config.local_install_lib_dir ~context:ctx.name ~package:pkg.name
+    in
+    let lib_root lib =
+      let _, subdir = Lib_name.split (Lib.name lib) in
+      Path.Build.L.relative pkg_root subdir
+    in
+    let entries =
+      List.fold_left lib_entries ~init:Lib_name.Map.empty ~f:(fun acc stanza ->
+          match stanza with
+          | Super_context.Lib_entry.Deprecated_library_name
+              { old_public_name = { deprecated = true; _ }; _ } ->
+            acc
+          | Super_context.Lib_entry.Deprecated_library_name
+              { old_public_name =
+                  { public = old_public_name; deprecated = false }
+              ; new_public_name = _, new_public_name
+              ; loc
+              ; _
+              } ->
+            let old_public_name = Dune_file.Public_lib.name old_public_name in
+            Lib_name.Map.add_exn acc old_public_name
+              (Dune_package.Entry.Deprecated_library_name
+                 { loc; old_public_name; new_public_name })
+          | Library lib ->
+            let dir_contents =
+              let info = Lib.Local.info lib in
+              let dir = Lib_info.src_dir info in
+              Dir_contents.get sctx ~dir
+            in
+            let obj_dir = Lib.Local.obj_dir lib in
+            let lib = Lib.Local.to_lib lib in
+            let name = Lib.name lib in
+            let foreign_objects =
+              (* We are writing the list of .o files to dune-package, but we
+                 actually only install them for virtual libraries. See
+                 [Lib_archives.make] *)
+              let dir = Obj_dir.obj_dir obj_dir in
+              Dir_contents.foreign_sources dir_contents
+              |> Foreign_sources.for_lib ~name
+              |> Foreign.Sources.object_files ~dir
+                   ~ext_obj:ctx.lib_config.ext_obj
+              |> List.map ~f:Path.build
+            in
+            let modules =
+              Dir_contents.ocaml dir_contents
+              |> Ml_sources.modules_of_library ~name
+            in
+            Lib_name.Map.add_exn acc name
+              (Library
+                 (Result.ok_exn
+                    (Lib.to_dune_lib lib
+                       ~dir:(Path.build (lib_root lib))
+                       ~modules ~foreign_objects))))
+    in
+    Dune_package.Or_meta.Dune_package
+      { Dune_package.version = pkg.version
+      ; name = pkg.name
+      ; entries
+      ; dir = Path.build pkg_root
+      }
+
   let gen_dune_package sctx (pkg : Package.t) =
     let ctx = Super_context.context sctx in
-    let name = pkg.name in
     let dune_version =
       Dune_lang.Syntax.greatest_supported_version Stanza.syntax
     in
     let lib_entries = Super_context.lib_entries_of_package sctx pkg.name in
     let action =
-      let gen_dune_package () =
-        let dune_package =
-          let pkg_root =
-            Config.local_install_lib_dir ~context:ctx.name ~package:name
-          in
-          let lib_root lib =
-            let _, subdir = Lib_name.split (Lib.name lib) in
-            Path.Build.L.relative pkg_root subdir
-          in
-          let entries =
-            List.fold_left lib_entries ~init:Lib_name.Map.empty
-              ~f:(fun acc stanza ->
-                match stanza with
-                | Super_context.Lib_entry.Deprecated_library_name
-                    { old_public_name = { deprecated = true; _ }; _ } ->
-                  acc
-                | Super_context.Lib_entry.Deprecated_library_name
-                    { old_public_name =
-                        { public = old_public_name; deprecated = false }
-                    ; new_public_name = _, new_public_name
-                    ; loc
-                    ; _
-                    } ->
-                  let old_public_name =
-                    Dune_file.Public_lib.name old_public_name
-                  in
-                  Lib_name.Map.add_exn acc old_public_name
-                    (Dune_package.Entry.Deprecated_library_name
-                       { loc; old_public_name; new_public_name })
-                | Library lib ->
-                  let dir_contents =
-                    let info = Lib.Local.info lib in
-                    let dir = Lib_info.src_dir info in
-                    Dir_contents.get sctx ~dir
-                  in
-                  let obj_dir = Lib.Local.obj_dir lib in
-                  let lib = Lib.Local.to_lib lib in
-                  let name = Lib.name lib in
-                  let foreign_objects =
-                    (* We are writing the list of .o files to dune-package, but
-                       we actually only install them for virtual libraries. See
-                       [Lib_archives.make] *)
-                    let dir = Obj_dir.obj_dir obj_dir in
-                    Dir_contents.foreign_sources dir_contents
-                    |> Foreign_sources.for_lib ~name
-                    |> Foreign.Sources.object_files ~dir
-                         ~ext_obj:ctx.lib_config.ext_obj
-                    |> List.map ~f:Path.build
-                  in
-                  let modules =
-                    Dir_contents.ocaml dir_contents
-                    |> Ml_sources.modules_of_library ~name
-                  in
-                  Lib_name.Map.add_exn acc name
-                    (Library
-                       (Result.ok_exn
-                          (Lib.to_dune_lib lib
-                             ~dir:(Path.build (lib_root lib))
-                             ~modules ~foreign_objects))))
-          in
-          Dune_package.Or_meta.Dune_package
-            { Dune_package.version = pkg.version
-            ; name
-            ; entries
-            ; dir = Path.build pkg_root
-            }
-        in
-        dune_package
-      in
       let dune_package_file = Package_paths.dune_package_file ctx pkg in
       let meta_template = Package_paths.meta_template ctx pkg in
       Build.write_file_dyn dune_package_file
         (let+ pkg =
            Build.if_file_exists (Path.build meta_template)
              ~then_:(Build.return Dune_package.Or_meta.Use_meta)
-             ~else_:(Build.delayed gen_dune_package)
+             ~else_:
+               (Build.delayed (fun () -> make_dune_package sctx lib_entries pkg))
          in
          Format.asprintf "%a" (Dune_package.Or_meta.pp ~dune_version) pkg)
     in

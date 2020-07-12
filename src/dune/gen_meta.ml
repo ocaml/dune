@@ -146,7 +146,7 @@ let gen_lib pub_name lib ~path ~version =
         ] )
     ]
 
-let gen ~(package : Package.t) ?(add_directory_entry = true) entries =
+let gen ~(package : Package.t) ~add_directory_entry entries =
   let version =
     match package.version with
     | None -> []

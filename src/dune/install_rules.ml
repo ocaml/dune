@@ -496,7 +496,7 @@ end = struct
     Super_context.add_rule sctx ~dir:ctx.build_dir
       (let open Build.O in
       (let+ template = template in
-       let meta = Gen_meta.gen ~package:pkg entries in
+       let meta = Gen_meta.gen ~package:pkg ~add_directory_entry:true entries in
        let pp =
          Pp.vbox
            (Pp.concat_map template ~sep:Pp.newline ~f:(fun s ->

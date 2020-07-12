@@ -315,26 +315,28 @@ module Public_lib = struct
       if not allow_deprecated_names then
         None
       else
-        List.find_map
-          (Package.Name.Map.values (Dune_project.packages project))
-          ~f:(fun ({ deprecated_package_names; _ } as package) ->
-            if Package.Name.Map.mem deprecated_package_names pkg then
-              Some { package; sub_dir = None; name = loc_name }
-            else
-              None)
+        Dune_project.packages project
+        |> Package.Name.Map.values
+        |> List.find_map
+             ~f:(fun ({ Package.deprecated_package_names; _ } as package) ->
+               if Package.Name.Map.mem deprecated_package_names pkg then
+                 Some { package; sub_dir = None; name = loc_name }
+               else
+                 None)
     in
     match x with
     | Some x -> Ok x
     | None ->
-      Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
-          { package = pkg
-          ; sub_dir =
-              ( if rest = [] then
-                None
-              else
-                Some (String.concat rest ~sep:"/") )
-          ; name = loc_name
-          })
+      Pkg.resolve project pkg
+      |> Result.map ~f:(fun pkg ->
+             { package = pkg
+             ; sub_dir =
+                 ( if rest = [] then
+                   None
+                 else
+                   Some (String.concat rest ~sep:"/") )
+             ; name = loc_name
+             })
 
   let decode ?allow_deprecated_names () =
     map_validate

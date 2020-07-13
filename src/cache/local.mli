@@ -13,9 +13,15 @@ val default_root : unit -> Path.t
     at which the [files] were built, which makes it possible to exchange cache
     entries relevant to a specific commit between local and distributed caches. *)
 module Metadata_file : sig
+  type contents =
+    | Files of File.t list
+    | Value of Digest.t
+        (** Jenga values. We do not support values but we do not want to choke
+            on them either for interoperability, mostly in the cache daemon. *)
+
   type t =
     { metadata : Sexp.t list
-    ; files : File.t list
+    ; contents : contents
     }
 
   val to_sexp : t -> Sexp.t

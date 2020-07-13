@@ -120,41 +120,56 @@ let metadata_path cache key =
 let file_path cache key = FSSchemeImpl.path ~root:(file_store_root cache) key
 
 module Metadata_file = struct
+  type contents =
+    | Files of File.t list
+    | Value of Digest.t
+
   type t =
     { metadata : Sexp.t list
-    ; files : File.t list
+    ; contents : contents
     }
 
-  let to_sexp { metadata; files } =
+  let to_sexp { metadata; contents } =
     let open Sexp in
-    let f ({ path; digest } : File.t) =
-      Sexp.List
-        [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
-        ; Sexp.Atom (Digest.to_string digest)
-        ]
+    let contents =
+      match contents with
+      | Files files ->
+        let f ({ path; digest } : File.t) =
+          Sexp.List
+            [ Sexp.Atom (Path.Local.to_string (Path.Build.local path))
+            ; Sexp.Atom (Digest.to_string digest)
+            ]
+        in
+        List (Atom "files" :: List.map ~f files)
+      | Value h -> List [ Atom "value"; Atom (Digest.to_string h) ]
     in
-    List
-      [ List (Atom "metadata" :: metadata)
-      ; List (Atom "files" :: List.map ~f files)
-      ]
+    List [ List (Atom "metadata" :: metadata); contents ]
 
   let of_sexp = function
-    | Sexp.List
-        [ List (Atom "metadata" :: metadata); List (Atom "files" :: produced) ]
-      ->
-      let+ files =
-        Result.List.map produced ~f:(function
-          | List [ Atom path; Atom digest ] ->
-            let path = Path.Build.of_string path in
-            let+ digest =
-              match Digest.from_hex digest with
-              | Some digest -> Ok digest
-              | None -> Error "Invalid digest in cache metadata"
-            in
-            { File.path; digest }
-          | _ -> Error "Invalid list of produced files in cache metadata")
-      in
-      { metadata; files }
+    | Sexp.List [ List (Atom "metadata" :: metadata); contents ] -> (
+      match contents with
+      | List (Atom "files" :: produced) ->
+        let+ files =
+          Result.List.map produced ~f:(function
+            | List [ Atom path; Atom digest ] ->
+              let path = Path.Build.of_string path in
+              let+ digest =
+                match Digest.from_hex digest with
+                | Some digest -> Ok digest
+                | None -> Error "Invalid digest in cache metadata"
+              in
+              { File.path; digest }
+            | _ -> Error "Invalid list of produced files in cache metadata")
+        in
+        { metadata; contents = Files files }
+      | List [ Atom "value"; Atom h ] ->
+        let+ h =
+          match Digest.from_hex h with
+          | Some h -> Result.Ok h
+          | None -> Error "Invalid value hash in cache metadata"
+        in
+        { metadata; contents = Value h }
+      | _ -> Error "Invalid cache metadata" )
     | _ -> Error "Invalid cache metadata"
 
   let of_string s =
@@ -307,7 +322,7 @@ let promote_sync cache paths key metadata ~repository ~duplication =
         | Promoted f
         -> f)
   in
-  let metadata_file : Metadata_file.t = { metadata; files } in
+  let metadata_file : Metadata_file.t = { metadata; contents = Files files } in
   let metadata = Csexp.to_string (Metadata_file.to_sexp metadata_file) in
   Io.write_file metadata_tmp_path metadata;
   let () =
@@ -341,19 +356,22 @@ let search cache key =
     try Io.with_file_in path ~f:Csexp.input
     with Sys_error _ -> Error "no cached file"
   in
-  let+ metadata = Metadata_file.of_sexp sexp in
-  (* Touch cache files so they are removed last by LRU trimming. *)
-  let () =
-    let f (file : File.t) =
-      (* There is no point in trying to trim out files that are missing : dune
-         will have to check when hardlinking anyway since they could disappear
-         inbetween. *)
-      try Path.touch ~create:false (file_path cache file.digest)
-      with Unix.(Unix_error (ENOENT, _, _)) -> ()
+  let* metadata = Metadata_file.of_sexp sexp in
+  match metadata.contents with
+  | Files files ->
+    (* Touch cache files so they are removed last by LRU trimming. *)
+    let () =
+      let f (file : File.t) =
+        (* There is no point in trying to trim out files that are missing : dune
+           will have to check when hardlinking anyway since they could disappear
+           inbetween. *)
+        try Path.touch ~create:false (file_path cache file.digest)
+        with Unix.(Unix_error (ENOENT, _, _)) -> ()
+      in
+      List.iter ~f files
     in
-    List.iter ~f metadata.files
-  in
-  (metadata.metadata, metadata.files)
+    Result.Ok (metadata.metadata, files)
+  | Value _ -> Error "cached artifact is a Jenga value"
 
 let set_build_dir cache p = Result.Ok { cache with build_root = Some p }
 
@@ -419,7 +437,7 @@ let _garbage_collect cache ~trimmed_so_far =
                 msg
             ];
           true
-        | Result.Ok { Metadata_file.files; _ } ->
+        | Result.Ok { Metadata_file.contents = Files files; _ } ->
           if
             List.for_all
               ~f:(fun { File.digest; _ } ->
@@ -434,6 +452,9 @@ let _garbage_collect cache ~trimmed_so_far =
               ];
             true
           )
+        | Result.Ok { Metadata_file.contents = Value _; _ } ->
+          (* ignore jenga values since we do not support them *)
+          false
       in
       if should_be_removed then (
         let bytes = (Path.stat path).st_size in

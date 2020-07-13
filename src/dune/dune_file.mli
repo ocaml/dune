@@ -327,8 +327,12 @@ end
 
 module Deprecated_library_name : sig
   module Old_public_name : sig
+    type kind =
+      | Not_deprecated
+      | Deprecated of { deprecated_package : Package.Name.t }
+
     type t =
-      { deprecated : bool
+      { kind : kind
       ; public : Public_lib.t
       }
   end

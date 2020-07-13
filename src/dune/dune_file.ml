@@ -1770,20 +1770,29 @@ end
 
 module Deprecated_library_name = struct
   module Old_public_name = struct
+    type kind =
+      | Not_deprecated
+      | Deprecated of { deprecated_package : Package.Name.t }
+
     type t =
-      { deprecated : bool
+      { kind : kind
       ; public : Public_lib.t
       }
 
     let decode =
       let+ public = Public_lib.decode ~allow_deprecated_names:true in
-      let deprecated =
-        not
-          (Package.Name.equal
-             (Lib_name.package_name (snd (Public_lib.name public)))
-             (Public_lib.package public).name)
+      let kind =
+        let deprecated_package =
+          Lib_name.package_name (snd (Public_lib.name public))
+        in
+        if
+          Package.Name.equal deprecated_package (Public_lib.package public).name
+        then
+          Not_deprecated
+        else
+          Deprecated { deprecated_package }
       in
-      { deprecated; public }
+      { kind; public }
   end
 
   type t =

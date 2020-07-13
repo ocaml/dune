@@ -1,3 +1,8 @@
+This test makes sure that inline_tests backends are functional when they are
+externally installed.
+
+First we build the backend:
+
   $ dune runtest dune-file | sed "s/(lang dune .*)/(lang dune <version>)/" | dune_cmd sanitize
   inline_test_runner_foo_tests alias dune-file/runtest
   414243
@@ -38,6 +43,8 @@
       (echo "\n")
       (echo "let () = print_int 43;;")))))
 
+Then we install the backend:
+
   $ dune build dune-file/foo.install && dune install foo --prefix install | dune_cmd sanitize
   Installing install/lib/foo/META
   Installing install/lib/foo/dune-package
@@ -51,7 +58,8 @@
   Installing install/lib/foo/foo.ml
   Installing install/lib/foo/opam
 
-Make sure we can read generated dune-package files:
+Now we make sure that we can use the backend when it's available as an external
+package:
 
   $ export OCAMLPATH=$PWD/install/lib; dune runtest --root dune-file-user
   Entering directory 'dune-file-user'

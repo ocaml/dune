@@ -24,6 +24,9 @@ next
 
 - Fix dune-build-info on 4.10.0+flambda (#3599, @emillon, @jeremiedimino).
 
+- Allow multiple libraries with `inline_tests` to be defined in the same
+  directory (#3621, @rgrinberg)
+
 2.6.1 (02/07/2020)
 ------------------
 

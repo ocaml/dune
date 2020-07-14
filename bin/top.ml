@@ -17,9 +17,8 @@ let man =
 
 let info = Term.info "top" ~doc ~man
 
-let link_deps link ~lib_config =
-  List.concat_map link ~f:(fun t ->
-      Dune.Lib.link_deps t Dune.Link_mode.Byte lib_config)
+let link_deps link =
+  List.concat_map link ~f:(fun t -> Dune.Lib.link_deps t Dune.Link_mode.Byte)
 
 let term =
   let+ common = Common.term
@@ -44,8 +43,7 @@ let term =
       let libs = Dune.Utop.libs_under_dir sctx ~db ~dir:(Path.build dir) in
       let requires = Dune.Lib.closure ~linking:true libs |> Result.ok_exn in
       let include_paths = Dune.Lib.L.include_paths requires in
-      let lib_config = sctx |> Super_context.context |> Context.lib_config in
-      let files = link_deps requires ~lib_config in
+      let files = link_deps requires in
       let* () = do_build (List.map files ~f:(fun f -> Target.File f)) in
       let files_to_load =
         List.filter files ~f:(fun p ->

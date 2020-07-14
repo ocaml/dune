@@ -12,6 +12,8 @@ val to_dyn : t -> Dyn.t
     or the [name] if not. *)
 val name : t -> Lib_name.t
 
+val lib_config : t -> Lib_config.t
+
 val implements : t -> t Or_exn.t option
 
 (** Directory where the object files for the library are located. *)
@@ -53,7 +55,7 @@ val hash : t -> int
 
 (** The list of files that will be read by the compiler when linking an
     executable against this library *)
-val link_deps : t -> Link_mode.t -> Lib_config.t -> Path.t list
+val link_deps : t -> Link_mode.t -> Path.t list
 
 (** Operations on list of libraries *)
 module L : sig
@@ -70,11 +72,7 @@ module L : sig
   val c_include_flags : t -> _ Command.Args.t
 
   val compile_and_link_flags :
-       compile:t
-    -> link:t
-    -> mode:Link_mode.t
-    -> lib_config:Lib_config.t
-    -> _ Command.Args.t
+    compile:t -> link:t -> mode:Link_mode.t -> _ Command.Args.t
 
   val jsoo_runtime_files : t -> Path.t list
 

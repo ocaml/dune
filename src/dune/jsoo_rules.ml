@@ -153,7 +153,10 @@ let setup_separate_compilation_rules sctx components =
              META *)
           match lib_name with
           | "stdlib" ->
-            let archive = Path.relative ctx.stdlib_dir in
+            let archive =
+              let stdlib_dir = (Lib.lib_config pkg).stdlib_dir in
+              Path.relative stdlib_dir
+            in
             archive "stdlib.cma" :: archive "std_exit.cmo" :: archives
           | _ -> archives
         in

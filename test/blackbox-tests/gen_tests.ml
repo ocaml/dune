@@ -207,8 +207,12 @@ let exclusions =
     let name = Filename.concat "coq" name in
     make ~external_deps:true name ~coq:true
   in
-  [ make "js_of_ocaml.t" ~external_deps:true ~js:true
-      ~env:("NODE", Sexp.parse "%{bin:node}")
+  let jsoo name =
+    let name = Filename.concat "jsoo" name in
+    make ~external_deps:true name ~env:("NODE", Sexp.parse "%{bin:node}")
+  in
+  [ jsoo "simple.t"
+  ; jsoo "inline-tests.t"
   ; coq "main.t"
   ; coq "extract.t"
   ; make "github25.t" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")

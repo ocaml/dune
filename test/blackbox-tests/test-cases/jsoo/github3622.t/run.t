@@ -22,5 +22,6 @@ Test with separate compilation:
 
   $ dune build --profile=dev ./main.bc.js
   $ $NODE _build/default/main.bc.js
+  bla
 
 The result should be the same

@@ -27,6 +27,9 @@ next
 - Allow multiple libraries with `inline_tests` to be defined in the same
   directory (#3621, @rgrinberg)
 
+- Run exit hooks in jsoo separate compilation mode (#3626, fixes #3622,
+  @rgrinberg)
+
 2.6.1 (02/07/2020)
 ------------------
 

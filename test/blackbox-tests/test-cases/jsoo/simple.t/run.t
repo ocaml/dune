@@ -4,6 +4,7 @@ Compilation using jsoo
         ocamlc lib/stubs.o
       ocamlopt .ppx/7b799aed44581cc79b02033532c5f775/ppx.exe
         ocamlc lib/.x.objs/byte/x__.{cmi,cmo,cmt}
+   js_of_ocaml .js/stdlib/std_exit.cmo.js
    js_of_ocaml bin/technologic.bc.runtime.js
     ocamlmklib lib/dllx_stubs.so,lib/libx_stubs.a
            ppx lib/x.pp.ml

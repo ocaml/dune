@@ -1797,6 +1797,20 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias jsoo-github3622)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/github3622.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/github3622.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
  (alias jsoo-inline-tests)
  (deps
   (package dune)
@@ -3325,6 +3339,7 @@
   (alias invalid-dune-package)
   (alias invalid-module-name)
   (alias invalid-pform)
+  (alias jsoo-github3622)
   (alias jsoo-inline-tests)
   (alias jsoo-simple)
   (alias lib)

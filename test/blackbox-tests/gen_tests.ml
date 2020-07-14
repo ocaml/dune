@@ -213,6 +213,7 @@ let exclusions =
   in
   [ jsoo "simple.t"
   ; jsoo "inline-tests.t"
+  ; jsoo "github3622.t"
   ; coq "main.t"
   ; coq "extract.t"
   ; make "github25.t" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")

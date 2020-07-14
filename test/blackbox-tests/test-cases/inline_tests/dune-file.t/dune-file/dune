@@ -17,7 +17,3 @@
 (library
  (name foo_tests)
  (inline_tests (backend foo)))
-
-(alias
- (name runtest)
- (action (echo %{read:foo.dune-package})))

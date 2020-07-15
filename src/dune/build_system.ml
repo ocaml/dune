@@ -1012,9 +1012,8 @@ end = struct
       match allowed_by_parent with
       | Unrestricted ->
         (* In this case the parent isn't going to be able to create any
-           generated granddescendant directories. (rules that attempt
-           to do so may run into the [allowed_by_parent] check or will be
-           simply ignored) *)
+           generated granddescendant directories. (rules that attempt to do so
+           may run into the [allowed_by_parent] check or will be simply ignored) *)
         Dir_set.empty
       | Restricted restriction -> Memo.Lazy.force restriction
     in

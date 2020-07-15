@@ -216,7 +216,9 @@ include Sub_system.Register_end_point (struct
     let obj_dir =
       Obj_dir.make_exe ~dir:inline_test_dir ~name:inline_test_name
     in
-    let name = sprintf "inline_test_runner_%s" (Lib_name.Local.to_string (snd lib.name)) in
+    let name =
+      sprintf "inline_test_runner_%s" (Lib_name.Local.to_string (snd lib.name))
+    in
     let main_module =
       let name = Module_name.of_string name in
       let src_dir = Path.build inline_test_dir in
@@ -280,7 +282,7 @@ include Sub_system.Register_end_point (struct
         ~requires_link:(lazy runner_libs)
         ~flags:(Ocaml_flags.of_list [ "-w"; "-24"; "-g" ])
         ~js_of_ocaml:(Some lib.buildable.js_of_ocaml) ~dynlink:false
-        ~package:(Option.map lib.public ~f:(fun p -> p.package))
+        ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
     in
     let linkages =
       let modes =

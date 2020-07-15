@@ -1690,8 +1690,9 @@ module DB = struct
               if Lib_name.equal name (Lib_name.of_local conf.name) then
                 [ (name, Found info) ]
               else
+                let loc = Dune_file.Public_lib.loc p in
                 [ (name, Found info)
-                ; (Lib_name.of_local conf.name, Redirect p.name)
+                ; (Lib_name.of_local conf.name, Redirect (loc, name))
                 ] ))
       |> Lib_name.Map.of_list_reducei
            ~f:(fun name (v1 : Found_or_redirect.t) v2 ->

@@ -244,7 +244,7 @@ module T = struct
     ; resolved_selects : Resolved_select.t list
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements : t Or_exn.t option
-    ; stdlib_dir : Path.t
+    ; lib_config : Lib_config.t
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Or_exn.t Lazy.t option
     ; (* This is mutable to avoid this error:
@@ -317,7 +317,7 @@ type db =
   ; resolve : Lib_name.t -> resolve_result
   ; table : (Lib_name.t, Status.t) Table.t
   ; all : Lib_name.t list Lazy.t
-  ; stdlib_dir : Path.t
+  ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
   }
 
@@ -327,6 +327,8 @@ and resolve_result =
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of exn
   | Redirect of db option * (Loc.t * Lib_name.t)
+
+let lib_config (t : lib) = t.lib_config
 
 let name t = t.name
 
@@ -390,7 +392,7 @@ module Link_params = struct
              not appear on the command line *)
     }
 
-  let get t (mode : Link_mode.t) (lib_config : Lib_config.t) =
+  let get t (mode : Link_mode.t) =
     let lib_files = Lib_info.foreign_archives t.info
     and dll_files = Lib_info.foreign_dll_files t.info in
     (* OCaml library archives [*.cma] and [*.cmxa] are directly listed in the
@@ -440,14 +442,14 @@ module Link_params = struct
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmo) :: hidden_deps
         | Native ->
           Path.extend_basename obj_name ~suffix:(Cm_kind.ext Cmx)
-          :: Path.extend_basename obj_name ~suffix:lib_config.ext_obj
+          :: Path.extend_basename obj_name ~suffix:t.lib_config.ext_obj
           :: hidden_deps )
     in
     { deps; hidden_deps; include_dirs }
 end
 
-let link_deps t mode lib_config =
-  let x = Link_params.get t mode lib_config in
+let link_deps t mode =
+  let x = Link_params.get t mode in
   List.rev_append x.hidden_deps x.deps
 
 module L = struct
@@ -470,7 +472,7 @@ module L = struct
     in
     match ts with
     | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
+    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
 
   let include_flags ts = to_iflags (include_paths ts)
 
@@ -482,14 +484,12 @@ module L = struct
     in
     match ts with
     | [] -> dirs
-    | x :: _ -> Path.Set.remove dirs x.stdlib_dir
+    | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
 
   let c_include_flags ts = to_iflags (c_include_paths ts)
 
-  let compile_and_link_flags ~compile ~link ~mode ~lib_config =
-    let params =
-      List.map link ~f:(fun t -> Link_params.get t mode lib_config)
-    in
+  let compile_and_link_flags ~compile ~link ~mode =
+    let params = List.map link ~f:(fun t -> Link_params.get t mode) in
     let dirs =
       let dirs =
         Path.Set.union (include_paths compile) (c_include_paths link)
@@ -534,7 +534,7 @@ module Lib_and_module = struct
       Command.Args.S
         (List.map ts ~f:(function
           | Lib t ->
-            let p = Link_params.get t mode lib_config in
+            let p = Link_params.get t mode in
             Command.Args.S
               ( Deps p.deps
               :: Hidden_deps (Dep.Set.of_files p.hidden_deps)
@@ -1088,7 +1088,7 @@ end = struct
       ; sub_systems = Sub_system_name.Map.empty
       ; implements
       ; default_implementation
-      ; stdlib_dir = db.stdlib_dir
+      ; lib_config = db.lib_config
       ; re_exports
       }
     in
@@ -1650,7 +1650,7 @@ module DB = struct
     ; resolve
     ; table = Table.create (module Lib_name) 1024
     ; all = Lazy.from_fun all
-    ; stdlib_dir = lib_config.Lib_config.stdlib_dir
+    ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
     }
 

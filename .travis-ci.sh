@@ -31,6 +31,8 @@ opam_install_test_deps () {
          result.1.4 \
          "utop>=2.6.0" \
          mdx.1.6.0 \
+         js_of_ocaml-ppx \
+         js_of_ocaml-compiler \
          bisect_ppx \
          cinaps
     # We install Coq separatedly as to be more resistant w.r.t. the 10

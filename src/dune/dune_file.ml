@@ -313,6 +313,8 @@ module Public_lib = struct
 
   let package t = t.package
 
+  (** if [~allow_deprecated_names] is set, then we allow the package name to be
+      attached to one of the deprecated packages *)
   let make ~allow_deprecated_names project ((_, s) as loc_name) =
     let pkg, rest = Lib_name.split s in
     let x =

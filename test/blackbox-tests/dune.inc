@@ -1580,14 +1580,36 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias inline_tests)
+ (alias inline_tests-dune-file)
  (deps
   (package dune)
-  (source_tree test-cases/inline_tests.t)
+  (source_tree test-cases/inline_tests/dune-file.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/inline_tests.t
+   test-cases/inline_tests/dune-file.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-many-backends-choose)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/many-backends-choose.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/many-backends-choose.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-missing-backend)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/missing-backend.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/missing-backend.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1599,6 +1621,39 @@
  (action
   (chdir
    test-cases/inline_tests-multi-mode.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-multiple-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/multiple-inline-tests.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/multiple-inline-tests.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/simple.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-too-many-backends)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/too-many-backends.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/too-many-backends.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1753,17 +1808,45 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias js_of_ocaml)
+ (alias jsoo-github3622)
  (deps
   (package dune)
-  (source_tree test-cases/js_of_ocaml.t)
+  (source_tree test-cases/jsoo/github3622.t)
   (alias test-deps))
  (action
   (setenv
    NODE
    %{bin:node}
    (chdir
-    test-cases/js_of_ocaml.t
+    test-cases/jsoo/github3622.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/inline-tests.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/inline-tests.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/simple.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/simple.t
     (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
 
 (rule
@@ -3247,8 +3330,13 @@
   (alias include-loop)
   (alias include-qualified)
   (alias incremental-rebuilds)
-  (alias inline_tests)
+  (alias inline_tests-dune-file)
+  (alias inline_tests-many-backends-choose)
+  (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
+  (alias inline_tests-simple)
+  (alias inline_tests-too-many-backends)
   (alias install-dry-run)
   (alias install-libdir)
   (alias install-mandir)
@@ -3263,6 +3351,9 @@
   (alias invalid-dune-package)
   (alias invalid-module-name)
   (alias invalid-pform)
+  (alias jsoo-github3622)
+  (alias jsoo-inline-tests)
+  (alias jsoo-simple)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -3538,8 +3629,13 @@
   (alias include-loop)
   (alias include-qualified)
   (alias incremental-rebuilds)
-  (alias inline_tests)
+  (alias inline_tests-dune-file)
+  (alias inline_tests-many-backends-choose)
+  (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
+  (alias inline_tests-simple)
+  (alias inline_tests-too-many-backends)
   (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
@@ -3661,6 +3757,6 @@
   (alias env-envs-and-contexts)
   (alias fdo)))
 
-(alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
+(alias (name runtest-js) (deps (alias explicit_js_mode)))
 
 (alias (name runtest-coq) (deps (alias coq-extract) (alias coq-main)))

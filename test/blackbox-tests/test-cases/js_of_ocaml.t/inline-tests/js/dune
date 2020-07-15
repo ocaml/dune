@@ -1,3 +1,0 @@
-(library
-  (name inline_tests_js)
-  (inline_tests (modes js) (backend fake_backend)))

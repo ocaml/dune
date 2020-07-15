@@ -1,0 +1,3 @@
+(library
+ (name inline_tests_byte)
+ (inline_tests (modes byte) (backend fake_backend)))

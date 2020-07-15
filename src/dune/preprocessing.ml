@@ -347,7 +347,7 @@ let build_ppx_driver sctx ~dep_kind ~target ~pps ~pp_names =
               (Result.map driver_and_libs ~f:(fun (_driver, libs) ->
                    Command.Args.S
                      [ Lib.L.compile_and_link_flags ~mode:link_mode
-                         ~compile:libs ~link:libs ~lib_config:ctx.lib_config
+                         ~compile:libs ~link:libs
                      ; Hidden_deps
                          (Lib_file_deps.deps libs ~groups:[ Cmi; Cmx ])
                      ]))

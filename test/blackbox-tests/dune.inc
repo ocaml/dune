@@ -1099,6 +1099,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias generated-source-dir-overlap)
+ (deps
+  (package dune)
+  (source_tree test-cases/generated-source-dir-overlap.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/generated-source-dir-overlap.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github1019)
  (deps (package dune) (source_tree test-cases/github1019.t) (alias test-deps))
  (action
@@ -3234,6 +3245,7 @@
   (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)
@@ -3532,6 +3544,7 @@
   (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)

@@ -1729,11 +1729,31 @@ end
 module Copy_files = struct
   type t =
     { add_line_directive : bool
+    ; alias : Alias.Name.t option
+    ; mode : Rule.Mode.t
     ; glob : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
 
-  let decode = String_with_vars.decode
+  let long_form =
+    let+ alias = field_o "alias" Alias.Name.decode
+    and+ mode = field "mode" ~default:Rule.Mode.Standard Rule.Mode.decode
+    and+ glob = field "glob" String_with_vars.decode
+    and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+    { add_line_directive = false; alias; mode; glob; syntax_version }
+
+  let decode =
+    peek_exn >>= function
+    | List _ -> Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields long_form
+    | _ ->
+      let+ glob = String_with_vars.decode
+      and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
+      { add_line_directive = false
+      ; alias = None
+      ; mode = Standard
+      ; glob
+      ; syntax_version
+      }
 end
 
 module Documentation = struct
@@ -1875,13 +1895,11 @@ module Stanzas = struct
       , let+ x = Alias_conf.decode in
         [ Alias x ] )
     ; ( "copy_files"
-      , let+ glob = Copy_files.decode
-        and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-        [ Copy_files { add_line_directive = false; glob; syntax_version } ] )
+      , let+ x = Copy_files.decode in
+        [ Copy_files x ] )
     ; ( "copy_files#"
-      , let+ glob = Copy_files.decode
-        and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-        [ Copy_files { add_line_directive = true; glob; syntax_version } ] )
+      , let+ x = Copy_files.decode in
+        [ Copy_files { x with add_line_directive = true } ] )
     ; ( "include"
       , let+ loc = loc
         and+ fn = relative_file in

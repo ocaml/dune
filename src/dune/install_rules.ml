@@ -329,9 +329,7 @@ end = struct
               ; loc
               ; project = _
               } ->
-            let _loc, old_public_name =
-              Dune_file.Public_lib.name old_public_name
-            in
+            let old_public_name = Dune_file.Public_lib.name old_public_name in
             Lib_name.Map.add_exn acc old_public_name
               (Dune_package.Entry.Deprecated_library_name
                  { loc; old_public_name; new_public_name })
@@ -399,8 +397,7 @@ end = struct
               ; _
               } as t ) ->
           Some
-            ( Lib_name.package_name
-                (snd (Dune_file.Public_lib.name old_public_name))
+            ( Lib_name.package_name (Dune_file.Public_lib.name old_public_name)
             , t )
         | _ -> None)
       |> Package.Name.Map.of_list_multi
@@ -420,7 +417,7 @@ end = struct
                         ; _
                         }
                         ->
-                  let _loc, old_public_name =
+                  let old_public_name =
                     Dune_file.Public_lib.name old_public_name
                   in
                   Lib_name.Map.add_exn acc old_public_name

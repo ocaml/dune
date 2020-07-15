@@ -307,7 +307,9 @@ module Public_lib = struct
 
   let sub_dir t = t.sub_dir
 
-  let name t = t.name
+  let loc t = fst t.name
+
+  let name t = snd t.name
 
   let package t = t.package
 
@@ -1783,7 +1785,7 @@ module Deprecated_library_name = struct
       let+ public = Public_lib.decode ~allow_deprecated_names:true in
       let kind =
         let deprecated_package =
-          Lib_name.package_name (snd (Public_lib.name public))
+          Lib_name.package_name (Public_lib.name public)
         in
         if
           Package.Name.equal deprecated_package (Public_lib.package public).name

@@ -62,7 +62,7 @@ module DB = struct
         ~f:(fun (stanza : Lib.DB.Library_related_stanza.t) ->
           match stanza with
           | Library (_, { project; public = Some p; _ }) ->
-            Some (snd (Dune_file.Public_lib.name p), Project project)
+            Some (Dune_file.Public_lib.name p, Project project)
           | Library _ -> None
           | Deprecated_library_name
               { old_public_name = { public = old_public_name; _ }
@@ -70,8 +70,7 @@ module DB = struct
               ; _
               } ->
             Some
-              ( snd (Dune_file.Public_lib.name old_public_name)
-              , Name new_public_name ))
+              (Dune_file.Public_lib.name old_public_name, Name new_public_name))
       |> Lib_name.Map.of_list
       |> function
       | Ok x -> x
@@ -82,7 +81,7 @@ module DB = struct
               | Library (_, { buildable = { loc; _ }; public = Some p; _ })
               | Deprecated_library_name
                   { loc; old_public_name = { public = p; _ }; _ } ->
-                Option.some_if (name = snd (Dune_file.Public_lib.name p)) loc
+                Option.some_if (name = Dune_file.Public_lib.name p) loc
               | _ -> None)
         with
         | []

@@ -1675,7 +1675,7 @@ module DB = struct
               ; new_public_name
               ; _
               } ->
-            [ ( snd (Dune_file.Public_lib.name old_public_name)
+            [ ( Dune_file.Public_lib.name old_public_name
               , Found_or_redirect.Redirect new_public_name )
             ]
           | Library (dir, (conf : Dune_file.Library.t)) -> (
@@ -1686,10 +1686,11 @@ module DB = struct
             match conf.public with
             | None -> [ (Dune_file.Library.best_name conf, Found info) ]
             | Some p ->
-              let loc, name = Dune_file.Public_lib.name p in
+              let name = Dune_file.Public_lib.name p in
               if Lib_name.equal name (Lib_name.of_local conf.name) then
                 [ (name, Found info) ]
               else
+                let loc = Dune_file.Public_lib.loc p in
                 [ (name, Found info)
                 ; (Lib_name.of_local conf.name, Redirect (loc, name))
                 ] ))

@@ -223,7 +223,7 @@ let exclusions =
   ; odoc "github717-odoc-index.t"
   ; odoc "multiple-private-libs.t"
   ; odoc "warnings.t"
-  ; make "cinaps.t" ~external_deps:true ~enabled:false
+  ; make "cinaps.t" ~external_deps:true
   ; make "fdo.t" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
   ; make "ppx-rewriter.t" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
   ; make "cross-compilation.t" ~external_deps:true

@@ -3188,6 +3188,7 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
+  (alias cinaps)
   (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
@@ -3753,7 +3754,6 @@
  (deps
   (alias bisect-ppx-github3473)
   (alias bisect-ppx-main)
-  (alias cinaps)
   (alias env-envs-and-contexts)
   (alias fdo)))
 

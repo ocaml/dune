@@ -16,6 +16,7 @@ odoc \
 ppx_expect \
 ppx_inline_test \
 ppxlib \
+cinaps \
 utop
 
 -include Makefile.dev

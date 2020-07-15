@@ -17,21 +17,19 @@ Test of cinaps integration
 
 The cinaps actions should be attached to the runtest alias:
 
-  $ dune runtest --diff-command diff
+  $ dune runtest --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'diff test.ml test.ml.cinaps-corrected')
+  (cd _build/default && $sh -c 'diff test.ml test.ml.cinaps-corrected')
   1a2
   > hello
-  [1]
 
 but also to the cinaps alias:
 
-  $ dune build @cinaps --diff-command diff
+  $ dune build @cinaps --diff-command diff 2>&1 | sed -E 's/[^ ]+sh/\$sh/'
             sh (internal) (exit 1)
-  (cd _build/default && /usr/bin/sh -c 'diff test.ml test.ml.cinaps-corrected')
+  (cd _build/default && $sh -c 'diff test.ml test.ml.cinaps-corrected')
   1a2
   > hello
-  [1]
 
 The cinaps stanza offers a promotion workflow:
 

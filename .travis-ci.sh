@@ -34,7 +34,8 @@ opam_install_test_deps () {
          mdx.1.6.0 \
          js_of_ocaml-ppx \
          js_of_ocaml-compiler \
-         bisect_ppx
+         bisect_ppx \
+         cinaps
     # We install Coq separatedly as to be more resistant w.r.t. the 10
     # minutes Travis timeout; the travis_wait hack doesn't work well
     # with Dune's current setup. Note that Travis caching should help

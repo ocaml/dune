@@ -211,6 +211,10 @@ let exclusions =
     let name = Filename.concat "jsoo" name in
     make ~external_deps:true name ~env:("NODE", Sexp.parse "%{bin:node}")
   in
+  let cinaps name =
+    let name = Filename.concat "cinaps" name in
+    make ~external_deps:true name
+  in
   [ jsoo "simple.t"
   ; jsoo "inline-tests.t"
   ; jsoo "github3622.t"
@@ -223,7 +227,8 @@ let exclusions =
   ; odoc "github717-odoc-index.t"
   ; odoc "multiple-private-libs.t"
   ; odoc "warnings.t"
-  ; make "cinaps.t" ~external_deps:true
+  ; cinaps "include-subdirs.t"
+  ; cinaps "simple.t"
   ; make "fdo.t" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
   ; make "ppx-rewriter.t" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
   ; make "cross-compilation.t" ~external_deps:true

@@ -13,7 +13,7 @@ Test of cinaps integration
   > (*$ print_endline "\nhello" *)
   > (*$*)
   > let x = 1
-  > "EOF"
+  > EOF
 
 The cinaps actions should be attached to the runtest alias:
 
@@ -45,4 +45,3 @@ The cinaps stanza offers a promotion workflow:
   hello
   (*$*)
   let x = 1
-  "EOF"

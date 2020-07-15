@@ -133,22 +133,26 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias cinaps)
- (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
+ (alias cinaps-include-subdirs)
+ (deps
+  (package dune)
+  (source_tree test-cases/cinaps/include-subdirs.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps.t
+   test-cases/cinaps/include-subdirs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias cinaps-include-subdirs)
- (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
+ (alias cinaps-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/cinaps/simple.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps.t
-   (progn
-    (run dune-cram run include-subdirs.t)
-    (diff? include-subdirs.t include-subdirs.t.corrected)))))
+   test-cases/cinaps/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cmdliner-dep-conf)
@@ -1096,6 +1100,17 @@
  (action
   (chdir
    test-cases/gen-opam-install-file.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias generated-source-dir-overlap)
+ (deps
+  (package dune)
+  (source_tree test-cases/generated-source-dir-overlap.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/generated-source-dir-overlap.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -3177,8 +3192,8 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps)
   (alias cinaps-include-subdirs)
+  (alias cinaps-simple)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -3263,6 +3278,7 @@
   (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)
@@ -3484,7 +3500,6 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -3564,6 +3579,7 @@
   (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)

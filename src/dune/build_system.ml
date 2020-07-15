@@ -827,25 +827,11 @@ end = struct
               ; pp_paths (Path.set_of_source_paths absent_targets)
               ])
 
-  (** If both [a] and [a/b] are source directories, we don't allow the rules for
-      [a] to define generated directories under [a/b] (e.g.
-      [a/b/.generated-by-a]).
+  (** A directory is only allowed to be generated if its parent knows about it.
+      This restriction is necessary to prevent stale artifact deletion from
+      removing that directory.
 
-      The purpose is to avoid dependency cycles when computing the list of
-      subdirectories of [b]: you'd need to load rules for [a], for which you
-      often need to load rules for [a/b], at which point you need to do stale
-      artifact deletion, so you need to have computed the set of children of [b]
-      already.
-
-      One reasonable alternative is to delay stale artifact deletion until it's
-      actually necessary and I (aalekseyev) believe it to be a better approach,
-      but for now this restriction gives us an easier and more incremental way
-      forward.
-
-      This is in addition to another more general restriction: a directory is
-      only allowed to be generated if its parent knows about it.
-
-      This module encodes those restrictions. *)
+      This module encodes that restriction. *)
   module Generated_directory_restrictions : sig
     type restriction =
       | Unrestricted
@@ -853,11 +839,6 @@ end = struct
 
     (** Used by the child to ask about the restrictions placed by the parent. *)
     val allowed_by_parent : dir:Path.Build.t -> restriction
-
-    (** Used by the parent to check what are the subdirs that it's allowed to
-        generate rules in. *)
-    val is_allowed_to_generate_rules_in :
-      dir:Path.Build.t -> subdir:Path.Build.t -> bool
   end = struct
     type restriction =
       | Unrestricted
@@ -875,27 +856,6 @@ end = struct
       match corresponding_source_dir ~dir with
       | None -> String.Set.empty
       | Some dir -> File_tree.Dir.sub_dir_names dir
-
-    let is_allowed_to_generate_rules_in ~dir ~subdir =
-      match Path.Local_gen.descendant ~of_:dir subdir with
-      | None -> true
-      | Some reach -> (
-        match Path.Local_gen.split_first_component reach with
-        | None ->
-          (* allowed to generate rules inside itself *)
-          true
-        | Some (child, _) ->
-          if
-            Option.is_none
-              (corresponding_source_dir
-                 ~dir:(Path.Local_gen.relative dir child))
-          then
-            (* allowed to generate directories inside itself *)
-            true
-          else
-            (* allowed to generate rules in child directories as long as the
-               directory itself is not generated *)
-            Option.is_some (corresponding_source_dir ~dir:subdir) )
 
     let allowed_dirs ~dir ~subdir : restriction =
       if String.Set.mem (source_subdirs_of_build_dir ~dir) subdir then
@@ -1051,8 +1011,10 @@ end = struct
     let allowed_granddescendants_of_parent =
       match allowed_by_parent with
       | Unrestricted ->
-        (* in this case the parent isn't allowed to create any generated
-           granddescendant directories *)
+        (* In this case the parent isn't going to be able to create any
+           generated granddescendant directories. (rules that attempt
+           to do so may run into the [allowed_by_parent] check or will be
+           simply ignored) *)
         Dir_set.empty
       | Restricted restriction -> Memo.Lazy.force restriction
     in
@@ -1063,24 +1025,6 @@ end = struct
         ; allowed_granddescendants_of_parent
         ]
     in
-    let violations =
-      Path.Build.Map.filter_mapi (Rules.to_map rules_produced)
-        ~f:(fun key data ->
-          let allowed =
-            Generated_directory_restrictions.is_allowed_to_generate_rules_in
-              ~dir ~subdir:key
-          in
-          Option.some_if (not allowed) data)
-    in
-    if not (Path.Build.Map.is_empty violations) then
-      Code_error.raise
-        "Directory creates generated directories inside its descendant source \
-         directories. This is not allowed."
-        [ ("dir", Path.Build.to_dyn dir)
-        ; ( "creates-rules-in"
-          , Dyn.Encoder.(list (pair Path.Build.to_dyn Rules.Dir_rules.to_dyn))
-              (Path.Build.Map.to_list violations) )
-        ];
     let subdirs_to_keep = Subdir_set.of_dir_set descendants_to_keep in
     remove_old_artifacts ~dir ~rules_here ~subdirs_to_keep;
     let alias_targets =

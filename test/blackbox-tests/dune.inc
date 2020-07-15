@@ -3500,8 +3500,6 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps-include-subdirs)
-  (alias cinaps-simple)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)

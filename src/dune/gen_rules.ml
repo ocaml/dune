@@ -304,7 +304,7 @@ let gen_rules ~sctx ~dir components : Build_system.extra_sub_directories_to_keep
         (Build.write_file (Path.Build.relative dir "configurator") "");
       These String.Set.empty
     | ".js" :: rest -> (
-      Js_of_ocaml_rules.setup_separate_compilation_rules sctx rest;
+      Jsoo_rules.setup_separate_compilation_rules sctx rest;
       match rest with
       | [] -> All
       | _ -> These String.Set.empty )

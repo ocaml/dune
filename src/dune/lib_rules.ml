@@ -325,7 +325,7 @@ let setup_build_archives (lib : Dune_file.Library.t) ~dir_contents ~cctx
          Path.Build.relative (Obj_dir.obj_dir obj_dir) (Path.Build.basename src)
          |> Path.Build.extend_basename ~suffix:".js"
        in
-       Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target);
+       Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target);
   if Dynlink_supported.By_the_os.get natdynlink_supported && modes.native then
     build_shared ~dir_contents ~sctx lib ~dir ~flags
 

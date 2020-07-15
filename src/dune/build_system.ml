@@ -827,25 +827,11 @@ end = struct
               ; pp_paths (Path.set_of_source_paths absent_targets)
               ])
 
-  (** If both [a] and [a/b] are source directories, we don't allow the rules for
-      [a] to define generated directories under [a/b] (e.g.
-      [a/b/.generated-by-a]).
+  (** A directory is only allowed to be generated if its parent knows about it.
+      This restriction is necessary to prevent stale artifact deletion from
+      removing that directory.
 
-      The purpose is to avoid dependency cycles when computing the list of
-      subdirectories of [b]: you'd need to load rules for [a], for which you
-      often need to load rules for [a/b], at which point you need to do stale
-      artifact deletion, so you need to have computed the set of children of [b]
-      already.
-
-      One reasonable alternative is to delay stale artifact deletion until it's
-      actually necessary and I (aalekseyev) believe it to be a better approach,
-      but for now this restriction gives us an easier and more incremental way
-      forward.
-
-      This is in addition to another more general restriction: a directory is
-      only allowed to be generated if its parent knows about it.
-
-      This module encodes those restrictions. *)
+      This module encodes that restriction. *)
   module Generated_directory_restrictions : sig
     type restriction =
       | Unrestricted
@@ -1025,8 +1011,10 @@ end = struct
     let allowed_granddescendants_of_parent =
       match allowed_by_parent with
       | Unrestricted ->
-        (* in this case the parent isn't allowed to create any generated
-           granddescendant directories *)
+        (* In this case the parent isn't going to be able to create any
+           generated granddescendant directories. (rules that attempt
+           to do so may run into the [allowed_by_parent] check or will be
+           simply ignored) *)
         Dir_set.empty
       | Restricted restriction -> Memo.Lazy.force restriction
     in

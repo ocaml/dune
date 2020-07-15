@@ -24,6 +24,7 @@ opam_install_test_deps () {
     opam install \
          ocamlfind \
          ppxlib \
+         cinaps \
          ppx_expect.v0.13.1 \
          "$ODOC" \
          menhir \

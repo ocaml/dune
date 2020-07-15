@@ -1797,17 +1797,45 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias js_of_ocaml)
+ (alias jsoo-github3622)
  (deps
   (package dune)
-  (source_tree test-cases/js_of_ocaml.t)
+  (source_tree test-cases/jsoo/github3622.t)
   (alias test-deps))
  (action
   (setenv
    NODE
    %{bin:node}
    (chdir
-    test-cases/js_of_ocaml.t
+    test-cases/jsoo/github3622.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/inline-tests.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/inline-tests.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/simple.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/simple.t
     (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
 
 (rule
@@ -3311,6 +3339,9 @@
   (alias invalid-dune-package)
   (alias invalid-module-name)
   (alias invalid-pform)
+  (alias jsoo-github3622)
+  (alias jsoo-inline-tests)
+  (alias jsoo-simple)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -3713,6 +3744,6 @@
   (alias env-envs-and-contexts)
   (alias fdo)))
 
-(alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
+(alias (name runtest-js) (deps (alias explicit_js_mode)))
 
 (alias (name runtest-coq) (deps (alias coq-extract) (alias coq-main)))

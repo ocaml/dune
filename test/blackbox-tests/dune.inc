@@ -133,22 +133,26 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias cinaps)
- (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
+ (alias cinaps-include-subdirs)
+ (deps
+  (package dune)
+  (source_tree test-cases/cinaps/include-subdirs.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps.t
+   test-cases/cinaps/include-subdirs.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias cinaps-include-subdirs)
- (deps (package dune) (source_tree test-cases/cinaps.t) (alias test-deps))
+ (alias cinaps-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/cinaps/simple.t)
+  (alias test-deps))
  (action
   (chdir
-   test-cases/cinaps.t
-   (progn
-    (run dune-cram run include-subdirs.t)
-    (diff? include-subdirs.t include-subdirs.t.corrected)))))
+   test-cases/cinaps/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias cmdliner-dep-conf)
@@ -1099,6 +1103,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias generated-source-dir-overlap)
+ (deps
+  (package dune)
+  (source_tree test-cases/generated-source-dir-overlap.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/generated-source-dir-overlap.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias github1019)
  (deps (package dune) (source_tree test-cases/github1019.t) (alias test-deps))
  (action
@@ -1569,14 +1584,36 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias inline_tests)
+ (alias inline_tests-dune-file)
  (deps
   (package dune)
-  (source_tree test-cases/inline_tests.t)
+  (source_tree test-cases/inline_tests/dune-file.t)
   (alias test-deps))
  (action
   (chdir
-   test-cases/inline_tests.t
+   test-cases/inline_tests/dune-file.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-many-backends-choose)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/many-backends-choose.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/many-backends-choose.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-missing-backend)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/missing-backend.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/missing-backend.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1588,6 +1625,39 @@
  (action
   (chdir
    test-cases/inline_tests-multi-mode.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-multiple-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/multiple-inline-tests.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/multiple-inline-tests.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/simple.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
+ (alias inline_tests-too-many-backends)
+ (deps
+  (package dune)
+  (source_tree test-cases/inline_tests/too-many-backends.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/inline_tests/too-many-backends.t
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
@@ -1742,17 +1812,45 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
- (alias js_of_ocaml)
+ (alias jsoo-github3622)
  (deps
   (package dune)
-  (source_tree test-cases/js_of_ocaml.t)
+  (source_tree test-cases/jsoo/github3622.t)
   (alias test-deps))
  (action
   (setenv
    NODE
    %{bin:node}
    (chdir
-    test-cases/js_of_ocaml.t
+    test-cases/jsoo/github3622.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-inline-tests)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/inline-tests.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/inline-tests.t
+    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+
+(rule
+ (alias jsoo-simple)
+ (deps
+  (package dune)
+  (source_tree test-cases/jsoo/simple.t)
+  (alias test-deps))
+ (action
+  (setenv
+   NODE
+   %{bin:node}
+   (chdir
+    test-cases/jsoo/simple.t
     (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
 
 (rule
@@ -3095,6 +3193,7 @@
   (alias c-stubs)
   (alias check-alias)
   (alias cinaps-include-subdirs)
+  (alias cinaps-simple)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -3179,6 +3278,7 @@
   (alias format-dune-file)
   (alias formatting)
   (alias gen-opam-install-file)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)
@@ -3235,8 +3335,13 @@
   (alias include-loop)
   (alias include-qualified)
   (alias incremental-rebuilds)
-  (alias inline_tests)
+  (alias inline_tests-dune-file)
+  (alias inline_tests-many-backends-choose)
+  (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
+  (alias inline_tests-simple)
+  (alias inline_tests-too-many-backends)
   (alias install-dry-run)
   (alias install-libdir)
   (alias install-mandir)
@@ -3251,6 +3356,9 @@
   (alias invalid-dune-package)
   (alias invalid-module-name)
   (alias invalid-pform)
+  (alias jsoo-github3622)
+  (alias jsoo-inline-tests)
+  (alias jsoo-simple)
   (alias lib)
   (alias lib-available)
   (alias lib-errors)
@@ -3392,7 +3500,6 @@
   (alias byte_complete)
   (alias c-stubs)
   (alias check-alias)
-  (alias cinaps-include-subdirs)
   (alias cmdliner-dep-conf)
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
@@ -3472,6 +3579,7 @@
   (alias foreign-stubs)
   (alias format-dune-file)
   (alias formatting)
+  (alias generated-source-dir-overlap)
   (alias github1019)
   (alias github1099)
   (alias github1231)
@@ -3525,8 +3633,13 @@
   (alias include-loop)
   (alias include-qualified)
   (alias incremental-rebuilds)
-  (alias inline_tests)
+  (alias inline_tests-dune-file)
+  (alias inline_tests-many-backends-choose)
+  (alias inline_tests-missing-backend)
   (alias inline_tests-multi-mode)
+  (alias inline_tests-multiple-inline-tests)
+  (alias inline_tests-simple)
+  (alias inline_tests-too-many-backends)
   (alias install-mandir)
   (alias install-multiple-contexts)
   (alias install-partial-package)
@@ -3644,10 +3757,9 @@
  (deps
   (alias bisect-ppx-github3473)
   (alias bisect-ppx-main)
-  (alias cinaps)
   (alias env-envs-and-contexts)
   (alias fdo)))
 
-(alias (name runtest-js) (deps (alias explicit_js_mode) (alias js_of_ocaml)))
+(alias (name runtest-js) (deps (alias explicit_js_mode)))
 
 (alias (name runtest-coq) (deps (alias coq-extract) (alias coq-main)))

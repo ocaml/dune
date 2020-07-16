@@ -224,7 +224,7 @@ let build_module ~dep_graphs ?(precompiled_cmi = false) cctx m =
          let src = Obj_dir.Module.cm_file_unsafe obj_dir m ~kind:Cm_kind.Cmo in
          let target = Path.Build.extend_basename src ~suffix:".js" in
          SC.add_rules sctx ~dir
-           (Js_of_ocaml_rules.build_cm cctx ~js_of_ocaml ~src ~target))
+           (Jsoo_rules.build_cm cctx ~js_of_ocaml ~src ~target))
 
 let ocamlc_i ?(flags = []) ~dep_graphs cctx (m : Module.t) ~output =
   let sctx = CC.super_context cctx in

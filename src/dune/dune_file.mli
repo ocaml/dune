@@ -55,15 +55,17 @@ module Buildable : sig
 end
 
 module Public_lib : sig
-  type t =
-    { name : Loc.t * Lib_name.t  (** Full public name *)
-    ; package : Package.t  (** Package it is part of *)
-    ; sub_dir : string option
-          (** Subdirectory inside the installation directory *)
-    }
+  type t
 
+  (** Subdirectory inside the installation directory *)
+  val sub_dir : t -> string option
+
+  val loc : t -> Loc.t
+
+  (** Full public name *)
   val name : t -> Lib_name.t
 
+  (** Package it is part of *)
   val package : t -> Package.t
 end
 
@@ -327,8 +329,12 @@ end
 
 module Deprecated_library_name : sig
   module Old_public_name : sig
+    type kind =
+      | Not_deprecated
+      | Deprecated of { deprecated_package : Package.Name.t }
+
     type t =
-      { deprecated : bool
+      { kind : kind
       ; public : Public_lib.t
       }
   end

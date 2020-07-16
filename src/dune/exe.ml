@@ -184,10 +184,10 @@ let link_js ~name ~cm_files ~promote cctx =
   let src = exe_path_from_name cctx ~name ~linkage:Linkage.byte in
   let flags =
     Expander.expand_and_eval_set expander js_of_ocaml.flags
-      ~standard:(Build.return (Js_of_ocaml_rules.standard sctx))
+      ~standard:(Build.return (Jsoo_rules.standard sctx))
   in
   let top_sorted_cms = Cm_files.top_sorted_cms cm_files ~mode:Mode.Byte in
-  Js_of_ocaml_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
+  Jsoo_rules.build_exe cctx ~js_of_ocaml ~src ~cm:top_sorted_cms
     ~flags:(Command.Args.dyn flags) ~promote
 
 let build_and_link_many ~programs ~linkages ~promote ?link_args ?o_files

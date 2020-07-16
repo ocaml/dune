@@ -305,44 +305,52 @@ module Public_lib = struct
     ; sub_dir : string option
     }
 
+  let sub_dir t = t.sub_dir
+
+  let loc t = fst t.name
+
   let name t = snd t.name
 
   let package t = t.package
 
-  let make ?(allow_deprecated_names = false) project ((_, s) as loc_name) =
+  (** if [~allow_deprecated_names] is set, then we allow the package name to be
+      attached to one of the deprecated packages *)
+  let make ~allow_deprecated_names project ((_, s) as loc_name) =
     let pkg, rest = Lib_name.split s in
     let x =
       if not allow_deprecated_names then
         None
       else
-        List.find_map
-          (Package.Name.Map.values (Dune_project.packages project))
-          ~f:(fun ({ deprecated_package_names; _ } as package) ->
-            if Package.Name.Map.mem deprecated_package_names pkg then
-              Some { package; sub_dir = None; name = loc_name }
-            else
-              None)
+        Dune_project.packages project
+        |> Package.Name.Map.values
+        |> List.find_map
+             ~f:(fun ({ Package.deprecated_package_names; _ } as package) ->
+               if Package.Name.Map.mem deprecated_package_names pkg then
+                 Some { package; sub_dir = None; name = loc_name }
+               else
+                 None)
     in
     match x with
     | Some x -> Ok x
     | None ->
-      Result.map (Pkg.resolve project pkg) ~f:(fun pkg ->
-          { package = pkg
-          ; sub_dir =
-              ( if rest = [] then
-                None
-              else
-                Some (String.concat rest ~sep:"/") )
-          ; name = loc_name
-          })
+      Pkg.resolve project pkg
+      |> Result.map ~f:(fun pkg ->
+             { package = pkg
+             ; sub_dir =
+                 ( if rest = [] then
+                   None
+                 else
+                   Some (String.concat rest ~sep:"/") )
+             ; name = loc_name
+             })
 
-  let decode ?allow_deprecated_names () =
+  let decode ~allow_deprecated_names =
     map_validate
       (let+ project = Dune_project.get_exn ()
        and+ loc_name = located Lib_name.decode in
        (project, loc_name))
       ~f:(fun (project, loc_name) ->
-        make ?allow_deprecated_names project loc_name)
+        make ~allow_deprecated_names project loc_name)
 end
 
 module Mode_conf = struct
@@ -538,7 +546,8 @@ module Library = struct
        let* dune_version = Dune_lang.Syntax.get_exn Stanza.syntax in
        let+ buildable = Buildable.decode ~in_library:true ~allow_re_export:true
        and+ name = field_o "name" Lib_name.Local.decode_loc
-       and+ public = field_o "public_name" (Public_lib.decode ())
+       and+ public =
+         field_o "public_name" (Public_lib.decode ~allow_deprecated_names:false)
        and+ synopsis = field_o "synopsis" string
        and+ install_c_headers =
          field "install_c_headers" (repeat string) ~default:[]
@@ -1765,20 +1774,29 @@ end
 
 module Deprecated_library_name = struct
   module Old_public_name = struct
+    type kind =
+      | Not_deprecated
+      | Deprecated of { deprecated_package : Package.Name.t }
+
     type t =
-      { deprecated : bool
+      { kind : kind
       ; public : Public_lib.t
       }
 
     let decode =
-      let+ public = Public_lib.decode ~allow_deprecated_names:true () in
-      let deprecated =
-        not
-          (Package.Name.equal
-             (Lib_name.package_name (Public_lib.name public))
-             (Public_lib.package public).name)
+      let+ public = Public_lib.decode ~allow_deprecated_names:true in
+      let kind =
+        let deprecated_package =
+          Lib_name.package_name (Public_lib.name public)
+        in
+        if
+          Package.Name.equal deprecated_package (Public_lib.package public).name
+        then
+          Not_deprecated
+        else
+          Deprecated { deprecated_package }
       in
-      { deprecated; public }
+      { kind; public }
   end
 
   type t =

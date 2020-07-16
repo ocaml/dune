@@ -1815,12 +1815,9 @@
   (source_tree test-cases/jsoo/github3622.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/github3622.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/github3622.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias jsoo-inline-tests)
@@ -1829,12 +1826,9 @@
   (source_tree test-cases/jsoo/inline-tests.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/inline-tests.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/inline-tests.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias jsoo-simple)
@@ -1843,12 +1837,9 @@
   (source_tree test-cases/jsoo/simple.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/simple.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib)

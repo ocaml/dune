@@ -220,7 +220,7 @@ let exclusions =
   ; jsoo "github3622.t"
   ; coq "main.t"
   ; coq "extract.t"
-  ; make "github25.t" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
+  ; make "github25.t"
   ; odoc "odoc-simple.t"
   ; odoc "odoc-package-mld-link.t"
   ; odoc "odoc-unique-mlds.t"

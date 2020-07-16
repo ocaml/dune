@@ -1317,12 +1317,9 @@
  (alias github25)
  (deps (package dune) (source_tree test-cases/github25.t) (alias test-deps))
  (action
-  (setenv
-   OCAMLPATH
-   ./findlib-packages
-   (chdir
-    test-cases/github25.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/github25.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2584)

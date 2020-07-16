@@ -1202,7 +1202,7 @@ The syntax is as follows:
 
     (copy_files
      <optional-fields>
-     (glob <glob>))
+     (files <glob>))
 
 ``<glob>`` represents the set of files to copy, see the :ref:`glob
 <glob>` for details.
@@ -1224,7 +1224,7 @@ is equivalent to
 
 .. code:: scheme
 
-    (copy_files (glob <glob>))
+    (copy_files (files <glob>))
 
 The difference between ``copy_files`` and ``copy_files#`` is the same
 as the difference between the ``copy`` and ``copy#`` action. See the

@@ -1731,27 +1731,27 @@ module Copy_files = struct
     { add_line_directive : bool
     ; alias : Alias.Name.t option
     ; mode : Rule.Mode.t
-    ; glob : String_with_vars.t
+    ; files : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
 
   let long_form =
     let+ alias = field_o "alias" Alias.Name.decode
     and+ mode = field "mode" ~default:Rule.Mode.Standard Rule.Mode.decode
-    and+ glob = field "glob" String_with_vars.decode
+    and+ files = field "files" String_with_vars.decode
     and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
-    { add_line_directive = false; alias; mode; glob; syntax_version }
+    { add_line_directive = false; alias; mode; files; syntax_version }
 
   let decode =
     peek_exn >>= function
     | List _ -> Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> fields long_form
     | _ ->
-      let+ glob = String_with_vars.decode
+      let+ files = String_with_vars.decode
       and+ syntax_version = Dune_lang.Syntax.get_exn Stanza.syntax in
       { add_line_directive = false
       ; alias = None
       ; mode = Standard
-      ; glob
+      ; files
       ; syntax_version
       }
 end

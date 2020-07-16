@@ -129,9 +129,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       Path.Build.Set.empty )
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
-  let loc = String_with_vars.loc def.glob in
+  let loc = String_with_vars.loc def.files in
   let glob_in_src =
-    let src_glob = Expander.expand_str expander def.glob in
+    let src_glob = Expander.expand_str expander def.files in
     Path.Source.relative src_dir src_glob ~error_loc:loc
   in
   let since = (1, 3) in
@@ -146,9 +146,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.Source.parent_exn glob_in_src in
   let pred =
-    Path.Source.basename glob_in_src
-    |> Glob.of_string_exn (String_with_vars.loc def.glob)
-    |> Glob.to_pred
+    Path.Source.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
   if not (File_tree.dir_exists src_in_src) then
     User_error.raise ~loc

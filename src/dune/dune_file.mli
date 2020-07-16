@@ -260,7 +260,7 @@ module Copy_files : sig
     { add_line_directive : bool
     ; alias : Alias.Name.t option
     ; mode : Rule.Mode.t
-    ; glob : String_with_vars.t
+    ; files : String_with_vars.t
     ; syntax_version : Dune_lang.Syntax.Version.t
     }
 end

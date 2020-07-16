@@ -17,13 +17,19 @@ let () =
   let anon s = files := s :: !files in
   let usage = sprintf "%s [FILES]" (Filename.basename Sys.executable_name) in
   Arg.parse [] anon usage;
-  List.iter (fun f ->
-    Printf.printf "# Processing %s\n" f;
-    let ch = open_in f in
-    let rec loop () =
-      match input_line ch with
-      | exception End_of_file -> ()
-      | line -> print_endline (process_line line); loop () in
-    loop ();
-    close_in ch
-  ) !files
+  let lines = ref [] in
+  List.iter
+    (fun f ->
+      Printf.printf "# Processing %s\n" f;
+      let ch = open_in f in
+      let rec loop () =
+        match input_line ch with
+        | exception End_of_file -> ()
+        | line ->
+            lines := process_line line :: !lines;
+            loop ()
+      in
+      loop ();
+      !lines |> List.sort_uniq compare |> List.iter (fun s -> print_endline s);
+      close_in ch)
+    !files

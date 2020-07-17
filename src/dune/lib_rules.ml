@@ -370,7 +370,7 @@ let cctx (lib : Library.t) ~sctx ~source_modules ~dir ~expander ~scope
     ~modules ~flags ~requires_compile ~requires_link ~preprocessing:pp
     ~opaque:Inherit_from_settings ~js_of_ocaml:(Some lib.buildable.js_of_ocaml)
     ~dynlink ?stdlib:lib.stdlib
-    ~package:(Option.map lib.public ~f:(fun p -> p.package))
+    ~package:(Option.map lib.public ~f:Dune_file.Public_lib.package)
     ?vimpl ~modes
 
 let library_rules (lib : Library.t) ~cctx ~source_modules ~dir_contents

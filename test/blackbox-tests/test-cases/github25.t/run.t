@@ -6,6 +6,8 @@ problem. So dune shouldn't crash because of "plop.ca-marche-pas"
 
 We need ocamlfind to run this test
 
+  $ export OCAMLPATH="./findlib-packages"
+
   $ dune build @install --only hello
 
   $ dune build @install --only pas-de-bol 2>&1 | sed 's/[^ "]*findlib-packages/.../'

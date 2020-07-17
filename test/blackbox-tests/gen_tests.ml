@@ -63,7 +63,6 @@ module Test = struct
 
   type t =
     { path : string
-    ; env : (string * Dune_lang.t) option
     ; only_ocaml : (string * string) option
     ; skip_platforms : Platform.t list
     ; enabled : bool
@@ -108,12 +107,11 @@ module Test = struct
 
   let dir t = Filename.dirname t.path
 
-  let make ?env ?only_ocaml ?(skip_platforms = []) ?(enabled = true)
-      ?(js = false) ?(coq = false) ?(external_deps = false)
-      ?(disable_sandboxing = false) ?(additional_deps = []) path =
+  let make ?only_ocaml ?(skip_platforms = []) ?(enabled = true) ?(js = false)
+      ?(coq = false) ?(external_deps = false) ?(disable_sandboxing = false)
+      ?(additional_deps = []) path =
     let external_deps = external_deps || coq || js in
     { path
-    ; env
     ; only_ocaml
     ; skip_platforms
     ; external_deps
@@ -124,9 +122,9 @@ module Test = struct
     ; additional_deps
     }
 
-  let make_run_t ?env ?only_ocaml ?skip_platforms ?enabled ?js ?coq
-      ?external_deps ?disable_sandboxing ?additional_deps path =
-    make ?env ?only_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
+  let make_run_t ?only_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
+      ?disable_sandboxing ?additional_deps path =
+    make ?only_ocaml ?skip_platforms ?enabled ?js ?coq ?external_deps
       ?disable_sandboxing ?additional_deps
       (Filename.concat root_dir (Filename.concat path "run.t"))
 
@@ -154,12 +152,6 @@ module Test = struct
             ; Sexp.strings [ "diff?"; filename; filename ^ ".corrected" ]
             ]
         ]
-    in
-    let action =
-      match t.env with
-      | None -> action
-      | Some (k, v) ->
-        List [ atom "setenv"; atom_or_quoted_string k; v; action ]
     in
     let enabled_if =
       match t.only_ocaml with
@@ -209,21 +201,26 @@ let exclusions =
   in
   let jsoo name =
     let name = Filename.concat "jsoo" name in
-    make ~external_deps:true name ~env:("NODE", Sexp.parse "%{bin:node}")
+    make ~external_deps:true name
+  in
+  let cinaps name =
+    let name = Filename.concat "cinaps" name in
+    make ~external_deps:true name
   in
   [ jsoo "simple.t"
   ; jsoo "inline-tests.t"
   ; jsoo "github3622.t"
   ; coq "main.t"
   ; coq "extract.t"
-  ; make "github25.t" ~env:("OCAMLPATH", Dune_lang.atom "./findlib-packages")
+  ; make "github25.t"
   ; odoc "odoc-simple.t"
   ; odoc "odoc-package-mld-link.t"
   ; odoc "odoc-unique-mlds.t"
   ; odoc "github717-odoc-index.t"
   ; odoc "multiple-private-libs.t"
   ; odoc "warnings.t"
-  ; make "cinaps.t" ~external_deps:true ~enabled:false
+  ; cinaps "include-subdirs.t"
+  ; cinaps "simple.t"
   ; make "fdo.t" ~external_deps:true ~enabled:false ~only_ocaml:(">=", "4.11.0")
   ; make "ppx-rewriter.t" ~only_ocaml:("<>", "4.02.3") ~external_deps:true
   ; make "cross-compilation.t" ~external_deps:true

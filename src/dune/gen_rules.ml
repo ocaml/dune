@@ -110,7 +110,7 @@ end = struct
       ; js = None
       ; source_dirs = None
       }
-    | Copy_files { glob; _ } ->
+    | Copy_files { files = glob; _ } ->
       let source_dir =
         let loc = String_with_vars.loc glob in
         let src_glob = Expander.expand_str expander glob in

@@ -31,7 +31,7 @@ Compilation using jsoo
       ocamlopt lib/x.cmxs
    js_of_ocaml bin/.technologic.eobjs/byte/technologic.cmo.js
    js_of_ocaml bin/technologic.bc.js
-  $ $NODE ./_build/default/bin/technologic.bc.js
+  $ node ./_build/default/bin/technologic.bc.js
   buy it
   use it
   break it
@@ -50,7 +50,7 @@ Compilation using jsoo
       ocamlopt lib/x.cmxs
         ocamlc bin/technologic.bc
    js_of_ocaml bin/technologic.bc.js
-  $ $NODE ./_build/default/bin/technologic.bc.js
+  $ node ./_build/default/bin/technologic.bc.js
   buy it
   use it
   break it

@@ -30,6 +30,8 @@ next
 - Run exit hooks in jsoo separate compilation mode (#3626, fixes #3622,
   @rgrinberg)
 
+- Add (alias ...), (mode ...) fields to (copy_fields ...) stanza (#3631, @nojb)
+
 2.6.1 (02/07/2020)
 ------------------
 

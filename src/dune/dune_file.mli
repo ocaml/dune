@@ -255,6 +255,16 @@ module Menhir : sig
   type Stanza.t += T of t
 end
 
+module Copy_files : sig
+  type t =
+    { add_line_directive : bool
+    ; alias : Alias.Name.t option
+    ; mode : Rule.Mode.t
+    ; files : String_with_vars.t
+    ; syntax_version : Dune_lang.Syntax.Version.t
+    }
+end
+
 module Rule : sig
   type t =
     { targets : String_with_vars.t Targets.t
@@ -278,14 +288,6 @@ module Alias_conf : sig
     ; package : Package.t option
     ; enabled_if : Blang.t
     ; loc : Loc.t
-    }
-end
-
-module Copy_files : sig
-  type t =
-    { add_line_directive : bool
-    ; glob : String_with_vars.t
-    ; syntax_version : Dune_lang.Syntax.Version.t
     }
 end
 

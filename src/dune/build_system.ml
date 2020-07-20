@@ -1474,6 +1474,9 @@ end = struct
                     f
                 ];
               false
+            | exception Sys_error m ->
+              Log.info [ Pp.textf "error retrieving data file: %s" m ];
+              false
             | () -> true )
           | _ -> false
         in

@@ -129,9 +129,9 @@ let user_rule sctx ?extra_bindings ~dir ~expander (rule : Rule.t) =
       Path.Build.Set.empty )
 
 let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
-  let loc = String_with_vars.loc def.glob in
+  let loc = String_with_vars.loc def.files in
   let glob_in_src =
-    let src_glob = Expander.expand_str expander def.glob in
+    let src_glob = Expander.expand_str expander def.files in
     Path.Source.relative src_dir src_glob ~error_loc:loc
   in
   let since = (1, 3) in
@@ -146,9 +146,7 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
            (Path.Source.to_string_maybe_quoted src_dir));
   let src_in_src = Path.Source.parent_exn glob_in_src in
   let pred =
-    Path.Source.basename glob_in_src
-    |> Glob.of_string_exn (String_with_vars.loc def.glob)
-    |> Glob.to_pred
+    Path.Source.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
   if not (File_tree.dir_exists src_in_src) then
     User_error.raise ~loc
@@ -169,16 +167,22 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
     Build_system.eval_pred
       (File_selector.create ~dir:(Path.build src_in_build) pred)
   in
-  Path.Set.map files ~f:(fun file_src ->
-      let basename = Path.basename file_src in
-      let file_dst = Path.Build.relative dir basename in
-      SC.add_rule sctx ~loc ~dir
-        (( if def.add_line_directive then
-           Build.copy_and_add_line_directive
-         else
-           Build.copy )
-           ~src:file_src ~dst:file_dst);
-      Path.build file_dst)
+  let targets =
+    Path.Set.map files ~f:(fun file_src ->
+        let basename = Path.basename file_src in
+        let file_dst = Path.Build.relative dir basename in
+        SC.add_rule sctx ~loc ~dir ~mode:def.mode
+          (( if def.add_line_directive then
+             Build.copy_and_add_line_directive
+           else
+             Build.copy )
+             ~src:file_src ~dst:file_dst);
+        Path.build file_dst)
+  in
+  Option.iter def.alias ~f:(fun alias ->
+      let alias = Alias.make alias ~dir in
+      Rules.Produce.Alias.add_deps alias targets);
+  targets
 
 let alias sctx ?extra_bindings ~dir ~expander (alias_conf : Alias_conf.t) =
   let alias = Alias.make ~dir alias_conf.name in

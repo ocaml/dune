@@ -463,6 +463,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias dune-cache-missing-data)
+ (deps
+  (package dune)
+  (source_tree test-cases/dune-cache/missing-data)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/dune-cache/missing-data
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias dune-cache-promote)
  (deps
   (package dune)
@@ -1317,12 +1328,9 @@
  (alias github25)
  (deps (package dune) (source_tree test-cases/github25.t) (alias test-deps))
  (action
-  (setenv
-   OCAMLPATH
-   ./findlib-packages
-   (chdir
-    test-cases/github25.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/github25.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias github2584)
@@ -1818,12 +1826,9 @@
   (source_tree test-cases/jsoo/github3622.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/github3622.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/github3622.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias jsoo-inline-tests)
@@ -1832,12 +1837,9 @@
   (source_tree test-cases/jsoo/inline-tests.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/inline-tests.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/inline-tests.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias jsoo-simple)
@@ -1846,12 +1848,9 @@
   (source_tree test-cases/jsoo/simple.t)
   (alias test-deps))
  (action
-  (setenv
-   NODE
-   %{bin:node}
-   (chdir
-    test-cases/jsoo/simple.t
-    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected))))))
+  (chdir
+   test-cases/jsoo/simple.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
  (alias lib)
@@ -3221,6 +3220,7 @@
   (alias dune-cache-dedup)
   (alias dune-cache-dedup-direct)
   (alias dune-cache-dedup-direct-copy)
+  (alias dune-cache-missing-data)
   (alias dune-cache-promote)
   (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)
@@ -3526,6 +3526,7 @@
   (alias dune-cache-dedup)
   (alias dune-cache-dedup-direct)
   (alias dune-cache-dedup-direct-copy)
+  (alias dune-cache-missing-data)
   (alias dune-cache-promote)
   (alias dune-cache-promote-copy)
   (alias dune-cache-promote-direct)

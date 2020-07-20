@@ -1200,10 +1200,31 @@ The syntax is as follows:
 
 .. code:: scheme
 
-    (copy_files <glob>)
+    (copy_files
+     <optional-fields>
+     (files <glob>))
 
 ``<glob>`` represents the set of files to copy, see the :ref:`glob
 <glob>` for details.
+
+``<optional-fields>`` are:
+
+- ``(alias <alias-name>)`` to specify an alias to which to attach the targets.
+
+- ``(mode <mode>)`` to specify how to handle the targets, see `modes`_
+  for details.
+
+The short form
+
+.. code:: scheme
+
+    (copy_files <glob>)
+
+is equivalent to
+
+.. code:: scheme
+
+    (copy_files (files <glob>))
 
 The difference between ``copy_files`` and ``copy_files#`` is the same
 as the difference between the ``copy`` and ``copy#`` action. See the
@@ -1682,8 +1703,8 @@ mdx (since 2.4)
 ---------------
 
 MDX is a tool that helps you keep your markdown documentation up to date by
-checking that the code examples it contains are correct. When setting an MDX 
-stanza, the checks carried out by MDX are automatically attached to the 
+checking that the code examples it contains are correct. When setting an MDX
+stanza, the checks carried out by MDX are automatically attached to the
 ``runtest`` alias of the stanza's directory.
 
 See `MDX's repository <https://github.com/realworldocaml/mdx>`__ for more details.

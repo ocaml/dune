@@ -5,7 +5,7 @@ include Messages_intf
 
 let invalid_args args =
   Result.Error
-    (Printf.sprintf "invalid arguments:%s"
+    (Printf.sprintf "invalid arguments: %s"
        (String.concat ~sep:" " (List.map ~f:Sexp.to_string args)))
 
 let version_at_least ~min v =
@@ -173,41 +173,52 @@ let outgoing_message_of_sexp version =
           (Printf.sprintf "invalid repo: %s" (Sexp.to_string invalid))
     in
     Result.List.map ~f:convert args
-  and promote_of_sexp = function
-    | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ]
-      :: Sexp.List (Sexp.Atom "files" :: files)
-         :: Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata ] :: rest as
-      cmd ->
-      let file = function
-        | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
-          let+ d = Key.of_string hash in
-          (Path.Build.of_local (Path.Local.of_string path), d)
-        | sexp ->
-          Result.Error
-            (Printf.sprintf "invalid file in promotion message: %s"
-               (Sexp.to_string sexp))
+  and promote_of_sexp args =
+    let* key, files, metadata, repository, duplication =
+      let f (key, files, metadata, repo, duplication) = function
+        | Sexp.List [ Sexp.Atom "key"; Sexp.Atom _ ] when Option.is_some key ->
+          Result.Error "duplicate key argument"
+        | Sexp.List [ Sexp.Atom "key"; Sexp.Atom key ] ->
+          let+ key = Key.of_string key in
+          (Some key, files, metadata, repo, duplication)
+        | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom _ ] when Option.is_some repo
+          ->
+          Result.Error "duplicate repo argument"
+        | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] ->
+          let+ repo = int_of_string ~where:"repository index" repo in
+          (key, files, metadata, Some repo, duplication)
+        | Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom _ ]
+          when Option.is_some duplication ->
+          Result.Error "duplicate duplication argument"
+        | Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ->
+          let+ duplication = Duplication_mode.of_string mode in
+          (key, files, metadata, repo, Some duplication)
+        | Sexp.List (Sexp.Atom "files" :: files_new) ->
+          let+ files_new =
+            let f = function
+              | Sexp.List [ Sexp.Atom path; Sexp.Atom hash ] ->
+                let+ d = Key.of_string hash in
+                (Path.Build.of_local (Path.Local.of_string path), d)
+              | sexp ->
+                Result.Error
+                  (Printf.sprintf "invalid file in promotion message: %s"
+                     (Sexp.to_string sexp))
+            in
+            Result.List.map ~f files_new
+          in
+          (key, files_new @ files, metadata, repo, duplication)
+        | Sexp.List [ Sexp.Atom "metadata"; Sexp.List metadata_new ] ->
+          Result.return (key, files, metadata_new @ metadata, repo, duplication)
+        | arg -> invalid_args [ arg ]
       in
-      let* repository, rest =
-        match rest with
-        | Sexp.List [ Sexp.Atom "repo"; Sexp.Atom repo ] :: rest ->
-          Result.map
-            ~f:(fun repo -> (Some repo, rest))
-            (int_of_string ~where:"repository index" repo)
-        | _ -> Result.Ok (None, rest)
-      in
-      let+ duplication =
-        match rest with
-        | [ Sexp.List [ Sexp.Atom "duplication"; Sexp.Atom mode ] ] ->
-          Result.map ~f:Option.some (Duplication_mode.of_string mode)
-        | [] -> Result.Ok None
-        | _ ->
-          Result.Error
-            (Printf.sprintf "invalid promotion message: %s"
-               (Sexp.to_string (Sexp.List cmd)))
-      and+ files = Result.List.map ~f:file files
-      and+ key = Key.of_string key in
-      { repository; files; key; metadata; duplication }
-    | args -> invalid_args args
+      Result.List.fold_left ~f ~init:(None, [], [], None, None) args
+    in
+    let+ key =
+      match key with
+      | None -> Result.Error "missing key argument"
+      | Some key -> Result.return key
+    in
+    { repository; files; key; metadata; duplication }
   and path_of_sexp = function
     | [ Sexp.Atom dir ] -> Result.ok (Path.of_string dir)
     | args -> invalid_args args
@@ -234,8 +245,11 @@ let outgoing_message_of_sexp version =
         let+ keys = hint_of_sexp args in
         Hint keys
       | "promote" ->
-        let+ promotions = promote_of_sexp args in
-        Promote promotions
+        let+ promotion = promote_of_sexp args in
+        Promote promotion
+      | "promoted" ->
+        let+ promotion = promote_of_sexp args in
+        Promoted promotion
       | "set-build-root" ->
         let+ path = path_of_sexp args in
         SetBuildRoot path

@@ -134,31 +134,51 @@ end = struct
     let modes = Dune_file.Mode_conf.Set.eval lib.modes ~has_native in
     let { Mode.Dict.byte; native } = modes in
     let module_files =
+      let inside_subdir f =
+        match lib_subdir with
+        | None -> f
+        | Some d -> Filename.concat d f
+      in
+      let external_obj_dir =
+        Obj_dir.convert_to_external obj_dir ~dir:(Path.build dir)
+      in
+      let cm_dir m cm_kind =
+        let visibility = Module.visibility m in
+        let dir' = Obj_dir.cm_dir external_obj_dir cm_kind visibility in
+        if Path.equal (Path.build dir) dir' then
+          None
+        else
+          Path.basename dir' |> inside_subdir |> Option.some
+      in
       let virtual_library = Library.is_virtual lib in
       List.concat_map installable_modules ~f:(fun m ->
-          let cmi_file =
-            (Module.visibility m, Obj_dir.Module.cm_file_exn obj_dir m ~kind:Cmi)
-          in
           let cm_file kind = Obj_dir.Module.cm_file obj_dir m ~kind in
-          let if_ b x =
+          let if_ b (cm_kind, f) =
             if b then
-              Option.to_list x
+              match f with
+              | None -> []
+              | Some f -> [ (cm_kind, f) ]
             else
               []
           in
+          let cm_dir = cm_dir m in
           let other_cm_files =
-            [ if_ native (cm_file Cmx)
-            ; if_ (byte && virtual_library) (cm_file Cmo)
+            let open Cm_kind in
+            [ if_ true (Cmi, cm_file Cmi)
+            ; if_ native (Cmx, cm_file Cmx)
+            ; if_ (byte && virtual_library) (Cmo, cm_file Cmo)
             ; if_
                 (native && virtual_library)
-                (Obj_dir.Module.o_file obj_dir m ~ext_obj)
+                (Cmx, Obj_dir.Module.o_file obj_dir m ~ext_obj)
             ; List.filter_map Ml_kind.all ~f:(fun ml_kind ->
-                  Obj_dir.Module.cmt_file obj_dir m ~ml_kind)
+                  let open Option.O in
+                  let+ cmt = Obj_dir.Module.cmt_file obj_dir m ~ml_kind in
+                  (Cmi, cmt))
             ]
             |> List.concat
-            |> List.map ~f:(fun f -> (Visibility.Public, f))
+            |> List.map ~f:(fun (cm_kind, f) -> (cm_dir cm_kind, f))
           in
-          cmi_file :: other_cm_files)
+          other_cm_files)
     in
     let lib_files, dll_files =
       let lib_files = lib_files ~modes ~dir ~dir_contents ~lib_config info in
@@ -174,13 +194,7 @@ end = struct
     in
     List.concat
       [ sources
-      ; List.map module_files ~f:(fun (visibility, file) ->
-            let sub_dir =
-              match ((visibility : Visibility.t), lib_subdir) with
-              | Public, _ -> lib_subdir
-              | Private, None -> Some ".private"
-              | Private, Some dir -> Some (Filename.concat dir ".private")
-            in
+      ; List.map module_files ~f:(fun (sub_dir, file) ->
             make_entry ?sub_dir Lib file)
       ; List.map lib_files ~f:(make_entry Lib)
       ; List.map execs ~f:(make_entry Libexec)
@@ -372,7 +386,18 @@ end = struct
       Config.local_install_lib_dir ~context:ctx.name ~package:pkg.name
     in
     let lib_root lib =
-      let _, subdir = Lib_name.split (Lib.name lib) in
+      let subdir =
+        let name = Lib.name lib in
+        let _, subdir = Lib_name.split name in
+        match
+          let info = Lib.info lib in
+          Lib_info.status info
+        with
+        | Private (_, Some _) ->
+          Lib_name.Local.mangled_path_under_package (Lib_name.to_local_exn name)
+          @ subdir
+        | _ -> subdir
+      in
       Path.Build.L.relative pkg_root subdir
     in
     let entries =

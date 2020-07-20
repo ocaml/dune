@@ -246,6 +246,7 @@ module T = struct
     ; user_written_deps : Dune_file.Lib_deps.t
     ; implements : t Or_exn.t option
     ; lib_config : Lib_config.t
+    ; project : Dune_project.t option
     ; (* these fields cannot be forced until the library is instantiated *)
       default_implementation : t Or_exn.t Lazy.t option
     ; (* This is mutable to avoid this error:
@@ -320,6 +321,7 @@ type db =
   ; all : Lib_name.t list Lazy.t
   ; lib_config : Lib_config.t
   ; instrument_with : Lib_name.t list
+  ; projects_by_package : Dune_project.t Package.Name.Map.t
   }
 
 and resolve_result =
@@ -327,7 +329,9 @@ and resolve_result =
   | Found of Lib_info.external_
   | Hidden of Lib_info.external_ Hidden.t
   | Invalid of exn
-  | Redirect of db option * (Loc.t * Lib_name.t)
+  | (* Redirect (None, lib) looks up lib in the same database *)
+      Redirect of
+      db option * (Loc.t * Lib_name.t)
 
 let lib_config (t : lib) = t.lib_config
 
@@ -462,20 +466,41 @@ module L = struct
             Command.Args.Path dir :: A "-I" :: acc)
       |> List.rev )
 
-  let include_paths ts =
+  let include_paths ?project ts =
+    let visible_cmi =
+      match project with
+      | None -> fun _ -> true
+      | Some project -> (
+        let check_project lib =
+          match lib.project with
+          | None -> false
+          | Some project' -> Dune_project.equal project project'
+        in
+        fun lib ->
+          match Lib_info.status lib.info with
+          | Private (_, Some _)
+          | Installed_private ->
+            check_project lib
+          | _ -> true )
+    in
     let dirs =
       List.fold_left ts ~init:Path.Set.empty ~f:(fun acc t ->
           let obj_dir = Lib_info.obj_dir t.info in
-          let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
+          let acc =
+            if visible_cmi t then
+              let public_cmi_dir = Obj_dir.public_cmi_dir obj_dir in
+              Path.Set.add acc public_cmi_dir
+            else
+              acc
+          in
           let native_dir = Obj_dir.native_dir obj_dir in
-          List.fold_left ~f:Path.Set.add ~init:acc
-            [ public_cmi_dir; native_dir ])
+          Path.Set.add acc native_dir)
     in
     match ts with
     | [] -> dirs
     | x :: _ -> Path.Set.remove dirs x.lib_config.stdlib_dir
 
-  let include_flags ts = to_iflags (include_paths ts)
+  let include_flags ?project ts = to_iflags (include_paths ?project ts)
 
   let c_include_paths ts =
     let dirs =
@@ -717,12 +742,23 @@ module Dep_stack = struct
       Ok { stack = x :: t.stack; seen = Id.Set.add t.seen x; implements_via }
 end
 
-let check_private_deps lib ~loc ~allow_private_deps =
-  let status = Lib_info.status lib.info in
-  if (not allow_private_deps) && Lib_info.Status.is_private status then
-    Error.private_deps_not_allowed ~loc lib.info
-  else
-    Ok lib
+type private_deps =
+  | From_project of Dune_project.t
+  | Allow_all
+
+let check_private_deps lib ~loc ~(allow_private_deps : private_deps) =
+  match allow_private_deps with
+  | Allow_all -> Ok lib
+  | From_project project -> (
+    match Lib_info.status lib.info with
+    | Private (_, Some (package : Package.t)) ->
+      let packages = Dune_project.packages project in
+      if Package.Name.Map.mem packages package.name then
+        Ok lib
+      else
+        Error.private_deps_not_allowed ~loc lib.info
+    | Private (_, None) -> Error.private_deps_not_allowed ~loc lib.info
+    | _ -> Ok lib )
 
 let already_in_table info name x =
   let to_dyn = Dyn.Encoder.(pair Path.to_dyn Lib_name.to_dyn) in
@@ -932,7 +968,7 @@ module rec Resolve : sig
   val resolve_dep :
        db
     -> Loc.t * Lib_name.t
-    -> allow_private_deps:bool
+    -> allow_private_deps:private_deps
     -> stack:Dep_stack.t
     -> lib Or_exn.t
 
@@ -943,7 +979,7 @@ module rec Resolve : sig
   val resolve_simple_deps :
        db
     -> (Loc.t * Lib_name.t) list
-    -> allow_private_deps:bool
+    -> allow_private_deps:private_deps
     -> stack:Dep_stack.t
     -> (t list, exn) Result.t
 
@@ -957,7 +993,7 @@ module rec Resolve : sig
   val resolve_deps_and_add_runtime_deps :
        db
     -> Lib_dep.t list
-    -> allow_private_deps:bool
+    -> allow_private_deps:private_deps
     -> pps:(Loc.t * Lib_name.t) list
     -> dune_version:Dune_lang.Syntax.Version.t option
     -> stack:Dep_stack.t
@@ -989,7 +1025,14 @@ end = struct
     (* Add [id] to the table, to detect loops *)
     Table.add_exn db.table name (Status.Initializing unique_id);
     let status = Lib_info.status info in
-    let allow_private_deps = Lib_info.Status.is_private status in
+    let allow_private_deps =
+      match status with
+      | Installed_private
+      | Private _
+      | Installed ->
+        Allow_all
+      | Public (project, _) -> From_project project
+    in
     let resolve name = resolve_dep db name ~allow_private_deps ~stack in
     let implements =
       let open Option.O in
@@ -1077,6 +1120,11 @@ end = struct
     in
     let requires = map_error requires in
     let ppx_runtime_deps = map_error ppx_runtime_deps in
+    let project =
+      let open Option.O in
+      let* package = Lib_info.package info in
+      Package.Name.Map.find db.projects_by_package package
+    in
     let t =
       { info
       ; name
@@ -1091,6 +1139,7 @@ end = struct
       ; default_implementation
       ; lib_config = db.lib_config
       ; re_exports
+      ; project
       }
     in
     t.sub_systems <-
@@ -1165,7 +1214,7 @@ end = struct
       | _ -> instantiate db name info ~stack ~hidden:(Some hidden) )
 
   let available_internal db (name : Lib_name.t) ~stack =
-    resolve_dep db (Loc.none, name) ~allow_private_deps:true ~stack
+    resolve_dep db (Loc.none, name) ~allow_private_deps:Allow_all ~stack
     |> Result.is_ok
 
   let resolve_simple_deps db names ~allow_private_deps ~stack =
@@ -1295,7 +1344,7 @@ end = struct
         let* pps =
           Result.List.map pps ~f:(fun (loc, name) ->
               let* lib =
-                resolve_dep db (loc, name) ~allow_private_deps:true ~stack
+                resolve_dep db (loc, name) ~allow_private_deps:Allow_all ~stack
               in
               match (allow_only_ppx_deps, Lib_info.kind lib.info) with
               | true, Normal -> Error.only_ppx_deps_allowed ~loc lib.info
@@ -1467,17 +1516,24 @@ end = struct
             match t.db with
             | None -> Ok ()
             | Some db -> (
-              match find_internal db lib.name ~stack with
-              | Status.Found lib' ->
-                if lib = lib' then
-                  Ok ()
-                else
-                  let req_by =
-                    Dep_stack.to_required_by stack ~stop_at:t.orig_stack
-                  in
-                  Error.overlap ~in_workspace:lib'.info
-                    ~installed:(lib.info, req_by)
-              | _ -> assert false )
+              match Lib_info.status lib.info with
+              | Private (_, Some _) -> Ok ()
+              | _ -> (
+                match find_internal db lib.name ~stack with
+                | Status.Found lib' ->
+                  if lib = lib' then
+                    Ok ()
+                  else
+                    let req_by =
+                      Dep_stack.to_required_by stack ~stop_at:t.orig_stack
+                    in
+                    Error.overlap ~in_workspace:lib'.info
+                      ~installed:(lib.info, req_by)
+                | found ->
+                  Code_error.raise "Unexpected find result"
+                    [ ("found", Status.to_dyn found)
+                    ; ("lib.name", Lib_name.to_dyn lib.name)
+                    ] ) )
           in
           let* new_stack = Dep_stack.push stack ~implements_via (to_id lib) in
           let* deps = lib.requires in
@@ -1648,17 +1704,18 @@ module DB = struct
 
   (* CR-soon amokhov: this whole module should be rewritten using the
      memoization framework instead of using mutable state. *)
-  let create ~parent ~resolve ~all ~lib_config () =
+  let create ~parent ~resolve ~projects_by_package ~all ~lib_config () =
     { parent
     ; resolve
     ; table = Table.create (module Lib_name) 1024
     ; all = Lazy.from_fun all
     ; lib_config
     ; instrument_with = lib_config.Lib_config.instrument_with
+    ; projects_by_package
     }
 
-  let create_from_findlib ~lib_config findlib =
-    create () ~parent:None ~lib_config
+  let create_from_findlib ~lib_config ~projects_by_package findlib =
+    create () ~parent:None ~lib_config ~projects_by_package
       ~resolve:(fun name ->
         match Findlib.find findlib name with
         | Ok (Library pkg) -> Found (Dune_package.Lib.info pkg)
@@ -1735,7 +1792,7 @@ module DB = struct
         ; re_exports = _
         } =
       Resolve.resolve_deps_and_add_runtime_deps t deps ~pps
-        ~allow_private_deps:true ~stack:Dep_stack.empty
+        ~allow_private_deps:Allow_all ~stack:Dep_stack.empty
         ~dune_version:(Some dune_version)
     in
     let requires_link =
@@ -1771,7 +1828,7 @@ module DB = struct
   (* Here we omit the [only_ppx_deps_allowed] check because by the time we reach
      this point, all preprocess dependencies should have been checked already. *)
   let resolve_pps t pps =
-    Resolve.resolve_simple_deps t ~allow_private_deps:true pps
+    Resolve.resolve_simple_deps t ~allow_private_deps:Allow_all pps
       ~stack:Dep_stack.empty
 
   let rec all ?(recursive = false) t =
@@ -1816,7 +1873,13 @@ end
 
 let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let loc = Lib_info.loc info in
-  let add_loc = List.map ~f:(fun x -> (loc, x.name)) in
+  let mangled_name lib =
+    match Lib_info.status lib.info with
+    | Private (_, Some pkg) ->
+      Lib_name.mangled pkg.name (Lib_name.to_local_exn lib.name)
+    | _ -> lib.name
+  in
+  let add_loc = List.map ~f:(fun x -> (loc, mangled_name x)) in
   let obj_dir =
     match Obj_dir.to_local (obj_dir lib) with
     | None -> assert false
@@ -1835,7 +1898,7 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
     | Some (loc, _), Some field ->
       let open Result.O in
       let+ field = field in
-      Some (loc, field.name)
+      Some (loc, mangled_name field)
   in
   let open Result.O in
   let+ implements =
@@ -1854,13 +1917,14 @@ let to_dune_lib ({ info; _ } as lib) ~modules ~foreign_objects ~dir =
   let requires =
     List.map requires ~f:(fun lib ->
         if List.exists re_exports ~f:(fun r -> r = lib) then
-          Lib_dep.Re_export (loc, lib.name)
+          Lib_dep.Re_export (loc, mangled_name lib)
         else
-          Direct (loc, lib.name))
+          Direct (loc, mangled_name lib))
   in
+  let name = mangled_name lib in
   let info =
-    Lib_info.for_dune_package info ~ppx_runtime_deps ~requires ~foreign_objects
-      ~obj_dir ~implements ~default_implementation ~sub_systems
+    Lib_info.for_dune_package info ~name ~ppx_runtime_deps ~requires
+      ~foreign_objects ~obj_dir ~implements ~default_implementation ~sub_systems
   in
   Dune_package.Lib.make ~info ~modules:(Some modules) ~main_module_name
 

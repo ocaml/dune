@@ -114,7 +114,7 @@ end
 module Library : sig
   type visibility =
     | Public of Public_lib.t
-    | Private
+    | Private of Package.t option
 
   type t =
     { name : Loc.t * Lib_name.Local.t

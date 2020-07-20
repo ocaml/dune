@@ -256,7 +256,7 @@ let internal_lib_names t =
         | Dune_file.Library lib ->
           Lib_name.Set.add
             ( match lib.visibility with
-            | Private -> acc
+            | Private _ -> acc
             | Public public ->
               Lib_name.Set.add acc (Dune_file.Public_lib.name public) )
             (Lib_name.of_local lib.name)
@@ -452,8 +452,16 @@ let get_installed_binaries stanzas ~(context : Context.t) =
       | _ -> acc)
 
 let create_lib_entries_by_package ~public_libs stanzas =
-  Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun _ stanza acc ->
+  Dir_with_dune.deep_fold stanzas ~init:[] ~f:(fun d stanza acc ->
       match stanza with
+      | Dune_file.Library ({ visibility = Private (Some pkg); _ } as lib) -> (
+        match
+          let db = Scope.libs d.scope in
+          Lib.DB.find db (Dune_file.Library.best_name lib)
+        with
+        | None -> acc
+        | Some lib ->
+          (pkg.name, Lib_entry.Library (Lib.Local.of_lib_exn lib)) :: acc )
       | Dune_file.Library { visibility = Public pub; _ } -> (
         match Lib.DB.find public_libs (Dune_file.Public_lib.name pub) with
         | None ->
@@ -476,11 +484,22 @@ let create_lib_entries_by_package ~public_libs stanzas =
          (List.sort ~compare:(fun a b ->
               Lib_name.compare (Lib_entry.name a) (Lib_entry.name b)))
 
+let create_projects_by_package projects : Dune_project.t Package.Name.Map.t =
+  List.concat_map projects ~f:(fun project ->
+      Dune_project.packages project
+      |> Package.Name.Map.values
+      |> List.map ~f:(fun (pkg : Package.t) -> (pkg.name, project)))
+  |> Package.Name.Map.of_list_exn
+
 let create ~(context : Context.t) ?host ~projects ~packages ~stanzas =
   let lib_config = Context.lib_config context in
-  let installed_libs = Lib.DB.create_from_findlib context.findlib ~lib_config in
+  let projects_by_package = create_projects_by_package projects in
+  let installed_libs =
+    Lib.DB.create_from_findlib context.findlib ~lib_config ~projects_by_package
+  in
   let scopes, public_libs =
-    Scope.DB.create_from_stanzas ~projects ~context ~installed_libs stanzas
+    Scope.DB.create_from_stanzas ~projects ~projects_by_package ~context
+      ~installed_libs stanzas
   in
   let stanzas =
     List.map stanzas ~f:(fun { Dune_load.Dune_file.dir; project; stanzas } ->

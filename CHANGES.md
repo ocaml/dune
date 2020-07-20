@@ -40,6 +40,10 @@ Unreleased
 - Fix cram tests inside vendored directories not being interpreted correctly.
   (@rgrinberg, #3860)
 
+- Add `package` field to private libraries. This allows such libraries to be
+  installed and to be usable by other public libraries in the same project
+  (#3655, fixes #1017, @rgrinberg)
+
 2.7.1 (2/09/2020)
 -----------------
 

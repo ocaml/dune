@@ -135,7 +135,9 @@ let build_info_code cctx ~libs ~api_version =
           | Some v -> sprintf "Some %S" v
           | None -> (
             match Lib_info.status (Lib.info lib) with
-            | Installed -> "None"
+            | Installed_private
+            | Installed ->
+              "None"
             | Public (_, p) -> version_of_package p
             | Private _ ->
               let p =

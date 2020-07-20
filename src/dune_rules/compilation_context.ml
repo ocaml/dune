@@ -6,12 +6,12 @@ module SC = Super_context
 module Includes = struct
   type t = Command.Args.dynamic Command.Args.t Cm_kind.Dict.t
 
-  let make ~opaque ~requires : _ Cm_kind.Dict.t =
+  let make ~project ~opaque ~requires : _ Cm_kind.Dict.t =
     match requires with
     | Error exn ->
       Cm_kind.Dict.make_all (Command.Args.Fail { fail = (fun () -> raise exn) })
     | Ok libs ->
-      let iflags = Lib.L.include_flags libs in
+      let iflags = Lib.L.include_flags ~project libs in
       let cmi_includes =
         Command.Args.memo
           (Command.Args.S
@@ -118,8 +118,9 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
     ~requires_compile ~requires_link ?(preprocessing = Preprocessing.dummy)
     ~opaque ?stdlib ~js_of_ocaml ~dynlink ~package ?vimpl ?modes
     ?(bin_annot = true) () =
+  let project = Scope.project scope in
   let requires_compile =
-    if Dune_project.implicit_transitive_deps (Scope.project scope) then
+    if Dune_project.implicit_transitive_deps project then
       Lazy.force requires_link
     else
       requires_compile
@@ -146,7 +147,7 @@ let create ~super_context ~scope ~expander ~obj_dir ~modules ~flags
   ; flags
   ; requires_compile
   ; requires_link
-  ; includes = Includes.make ~opaque ~requires:requires_compile
+  ; includes = Includes.make ~project ~opaque ~requires:requires_compile
   ; preprocessing
   ; opaque
   ; stdlib

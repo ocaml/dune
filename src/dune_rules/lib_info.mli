@@ -11,9 +11,10 @@ open Stdune
 
 module Status : sig
   type t =
+    | Installed_private
     | Installed
     | Public of Dune_project.t * Package.t
-    | Private of Dune_project.t
+    | Private of Dune_project.t * Package.t option
 
   val is_private : t -> bool
 
@@ -175,6 +176,7 @@ val set_version : 'a t -> string option -> 'a t
 
 val for_dune_package :
      Path.t t
+  -> name:Lib_name.t
   -> ppx_runtime_deps:(Loc.t * Lib_name.t) list
   -> requires:Lib_dep.t list
   -> foreign_objects:Path.t list

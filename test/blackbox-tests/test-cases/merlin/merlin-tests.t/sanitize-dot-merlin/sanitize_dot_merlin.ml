@@ -1,4 +1,5 @@
 open Printf
+open List
 
 let process_line =
   let path_re = Str.regexp {|^\([SB]\) /.+/lib/\(.+\)$|} in
@@ -13,23 +14,16 @@ let process_line =
     |> Str.global_replace special_pp_re {|FLG -pp '$BIN/\1|}
 
 let () =
-  let files = ref [] in
-  let anon s = files := s :: !files in
-  let usage = sprintf "%s [FILES]" (Filename.basename Sys.executable_name) in
-  Arg.parse [] anon usage;
-  let lines = ref [] in
-  List.iter
+  let files = Sys.argv |> Array.to_list |> tl |> sort compare in
+  iter
     (fun f ->
-      Printf.printf "# Processing %s\n" f;
+      printf "# Processing %s\n" f;
       let ch = open_in f in
-      let rec loop () =
+      let rec all_lines lines =
         match input_line ch with
-        | exception End_of_file -> ()
-        | line ->
-            lines := process_line line :: !lines;
-            loop ()
+        | exception End_of_file -> lines
+        | line -> all_lines (process_line line :: lines)
       in
-      loop ();
-      !lines |> List.sort_uniq compare |> List.iter (fun s -> print_endline s);
+      all_lines [] |> sort compare |> iter print_endline;
       close_in ch)
-    !files
+    files

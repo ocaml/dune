@@ -213,14 +213,26 @@ let%expect_test "sequential_iter error handling" =
     Fiber.finalize
       ~finally:(fun () -> Fiber.return (print_endline "finally"))
       (fun () ->
-        Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
-            if x = 2 then
-              failwith "bam"
-            else
-              Fiber.return (Printf.printf "count: %d\n" x)))
+        Fiber.with_error_handler
+          (fun () ->
+            Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
+                if x = 2 then
+                  failwith "bam"
+                else
+                  Fiber.return (Printf.printf "count: %d\n" x)))
+          ~on_error:(fun exn_with_bt ->
+            printf "exn: %s\n" (Printexc.to_string exn_with_bt.exn)))
   in
   test unit fiber;
-  [%expect {||}]
+  [%expect.unreachable]
+  [@@expect.uncaught_exn
+    {|
+  "Assert_failure src/fiber/fiber.ml:87:4"
+  Trailing output
+  ---------------
+  count: 1
+  exn: (Failure bam)
+  finally |}]
 
 let%expect_test _ =
   must_set_flag (fun setter ->

@@ -39,6 +39,10 @@ next
   Configuration flags `ocamlc_cflags` and `ocamlc_cppflags` are always prepended
   to the compiler arguments. (#3565, fixes #3346, @voodoos)
 
+- Revert the build optimization in #2268. This optimization slows down building
+  individual executables when they're part of an `executables` stanza group
+  (#3644, @rgrinberg)
+
 2.6.1 (02/07/2020)
 ------------------
 

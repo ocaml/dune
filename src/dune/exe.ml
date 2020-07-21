@@ -139,16 +139,8 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
       | Some p -> Promote p )
     (let ocaml_flags = Ocaml_flags.get (CC.flags cctx) mode in
      let prefix =
-       let dune_version =
-         let scope = CC.scope cctx in
-         let project = Scope.project scope in
-         Dune_project.dune_version project
-       in
-       if dune_version >= (2, 0) then
-         Cm_files.unsorted_objects_and_cms cm_files ~mode |> Build.paths
-       else
-         Cm_files.top_sorted_objects_and_cms cm_files ~mode
-         |> Build.dyn_paths_unit
+       Cm_files.top_sorted_objects_and_cms cm_files ~mode
+       |> Build.dyn_paths_unit
      in
      let open Build.With_targets.O in
      (* NB. Below we take care to pass [link_args] last on the command-line for

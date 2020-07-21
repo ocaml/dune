@@ -32,6 +32,9 @@ next
 
 - Add (alias ...), (mode ...) fields to (copy_fields ...) stanza (#3631, @nojb)
 
+- (copy_files ...) now supports copying files from outside the workspace using
+  absolute file names (#3639, @nojb)
+
 2.6.1 (02/07/2020)
 ------------------
 

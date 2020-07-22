@@ -14,8 +14,8 @@ let process_line =
     |> Str.global_replace special_pp_re {|FLG -pp '$BIN/\1|}
 
 let () =
-  let files = Sys.argv |> Array.to_list |> tl |> sort compare in
-  iter
+  let files = Sys.argv |> Array.to_list |> List.tl |> List.sort compare in
+  List.iter
     (fun f ->
       printf "# Processing %s\n" f;
       let ch = open_in f in
@@ -24,6 +24,6 @@ let () =
         | exception End_of_file -> lines
         | line -> all_lines (process_line line :: lines)
       in
-      all_lines [] |> sort compare |> iter print_endline;
+      all_lines [] |> List.sort compare |> List.iter print_endline;
       close_in ch)
     files

@@ -971,6 +971,10 @@ module Executables = struct
       let stanza = pluralize stanza ~multi in
       let names =
         let open Dune_lang.Syntax.Version.Infix in
+        Option.iter names
+          ~f:
+            (List.iter ~f:(fun name ->
+                 ignore (Module_name.parse_string_exn name)));
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->
@@ -980,7 +984,19 @@ module Executables = struct
                 | None ->
                   User_error.raise ~loc
                     [ Pp.text "This executable must have a name field" ]
-                | Some s -> (loc, s))
+                | Some s -> (
+                  match Module_name.of_string_opt s with
+                  | Some _ -> (loc, s)
+                  | None ->
+                    User_error.raise ~loc
+                      [ Pp.textf "Invalid module name."
+                      ; Pp.text
+                          "Public executable names don't have this \
+                           restriction. You can either change this public name \
+                           to be a valid module name or add a \"name\" field \
+                           with a valid module name."
+                      ]
+                      ~hints:[ Module_name.valid_format_doc ] ))
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"

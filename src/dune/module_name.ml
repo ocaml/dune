@@ -1,5 +1,10 @@
 open Stdune
 
+let valid_format_doc =
+  Pp.text
+    "Module names must be non-empty and composed only of the following \
+     characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'."
+
 include Stringlike.Make (struct
   type t = string
 
@@ -9,7 +14,7 @@ include Stringlike.Make (struct
 
   let module_ = "Module_name"
 
-  let description_of_valid_string = None
+  let description_of_valid_string = Some valid_format_doc
 
   let is_valid_module_name name =
     match name with

@@ -132,27 +132,38 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
   let loc = String_with_vars.loc def.files in
   let glob_in_src =
     let src_glob = Expander.expand_str expander def.files in
-    Path.Source.relative src_dir src_glob ~error_loc:loc
+    if Filename.is_relative src_glob then
+      Path.Source.relative src_dir src_glob ~error_loc:loc |> Path.source
+    else
+      let since = (2, 7) in
+      if def.syntax_version < since then
+        Dune_lang.Syntax.Error.since loc Stanza.syntax since
+          ~what:(sprintf "%s is an absolute path. This" src_glob);
+      Path.external_ (Path.External.of_string src_glob)
   in
   let since = (1, 3) in
   if
     def.syntax_version < since
-    && not (Path.Source.is_descendant glob_in_src ~of_:src_dir)
+    && not (Path.is_descendant glob_in_src ~of_:(Path.source src_dir))
   then
     Dune_lang.Syntax.Error.since loc Stanza.syntax since
       ~what:
         (sprintf "%s is not a sub-directory of %s. This"
-           (Path.Source.to_string_maybe_quoted glob_in_src)
+           (Path.to_string_maybe_quoted glob_in_src)
            (Path.Source.to_string_maybe_quoted src_dir));
-  let src_in_src = Path.Source.parent_exn glob_in_src in
+  let src_in_src = Path.parent_exn glob_in_src in
   let pred =
-    Path.Source.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
+    Path.basename glob_in_src |> Glob.of_string_exn loc |> Glob.to_pred
   in
-  if not (File_tree.dir_exists src_in_src) then
+  let exists =
+    match Path.as_in_source_tree src_in_src with
+    | None -> Path.exists src_in_src
+    | Some src_in_src -> File_tree.dir_exists src_in_src
+  in
+  if not exists then
     User_error.raise ~loc
-      [ Pp.textf "Cannot find directory: %s" (Path.Source.to_string src_in_src)
-      ];
-  if Path.Source.equal src_in_src src_dir then
+      [ Pp.textf "Cannot find directory: %s" (Path.to_string src_in_src) ];
+  if Path.equal src_in_src (Path.source src_dir) then
     User_error.raise ~loc
       [ Pp.textf
           "Cannot copy files onto themselves. The format is <dir>/<glob> where \
@@ -160,12 +171,14 @@ let copy_files sctx ~dir ~expander ~src_dir (def : Copy_files.t) =
       ];
   (* add rules *)
   let src_in_build =
-    let context = Context.DB.get dir in
-    Path.Build.append_source context.build_dir src_in_src
+    match Path.as_in_source_tree src_in_src with
+    | None -> src_in_src
+    | Some src_in_src ->
+      let context = Context.DB.get dir in
+      Path.Build.append_source context.build_dir src_in_src |> Path.build
   in
   let files =
-    Build_system.eval_pred
-      (File_selector.create ~dir:(Path.build src_in_build) pred)
+    Build_system.eval_pred (File_selector.create ~dir:src_in_build pred)
   in
   let targets =
     Path.Set.map files ~f:(fun file_src ->

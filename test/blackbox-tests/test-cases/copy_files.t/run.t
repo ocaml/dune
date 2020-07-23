@@ -44,3 +44,19 @@ Test (alias ...) and (mode ...) fields:
 
   $ cat test3/foo.txt
   Foo
+
+Test external paths:
+
+  $ mkdir -p test4
+  $ cat >test4/dune-project <<EOF
+  > (lang dune 2.7)
+  > EOF
+  $ P=$(mktemp)
+  $ echo Hola > $P
+  $ cat >test4/dune <<EOF
+  > (copy_files $P)
+  > EOF
+  $ dune build --root test4 $(basename $P)
+  Entering directory 'test4'
+  $ cat test4/_build/default/$(basename $P)
+  Hola

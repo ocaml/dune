@@ -37,6 +37,7 @@ there's only a public name but it's invalid as a name
   library name.
   Hint: Library names must be non-empty and composed only of the following
   characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Hint: c_find would be a correct library name
   [1]
 
 there's only a public name which is invalid, and the library is unwrapped
@@ -53,6 +54,7 @@ this is an error since 2.0.0, it was only a warning before
   library name.
   Hint: Library names must be non-empty and composed only of the following
   characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Hint: foo_bar would be a correct library name
   [1]
 
 lib: invalid name
@@ -64,6 +66,7 @@ lib: invalid name
   Error: "foo.bar" is an invalid library name.
   Library names must be non-empty and composed only of the following
   characters: 'A'..'Z', 'a'..'z', '_' or '0'..'9'.
+  Hint: foo_bar would be a correct library name
   [1]
 
 
@@ -76,6 +79,7 @@ exe: invalid name
   Error: "a.b" is an invalid module name.
   Module names must be non-empty and composed only of the following characters:
   'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Hint: a_b would be a correct module name
   [1]
 
 exe: invalid public-name
@@ -90,4 +94,5 @@ exe: invalid public-name
   module name.
   Hint: Module names must be non-empty and composed only of the following
   characters: 'A'..'Z', 'a'..'z', '_', ''' or '0'..'9'.
+  Hint: a_b would be a correct module name
   [1]

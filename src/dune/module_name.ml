@@ -8,6 +8,15 @@ let valid_format_doc =
 include Stringlike.Make (struct
   type t = string
 
+  let valid_char = function
+    | 'A' .. 'Z'
+    | 'a' .. 'z'
+    | '0' .. '9'
+    | '\''
+    | '_' ->
+      true
+    | _ -> false
+
   let to_string s = s
 
   let description = "module name"
@@ -15,6 +24,21 @@ include Stringlike.Make (struct
   let module_ = "Module_name"
 
   let description_of_valid_string = Some valid_format_doc
+
+  let hint_valid =
+    Some
+      (fun name ->
+        String.to_seq name
+        |> Seq.filter_map ~f:(fun c ->
+               if not (valid_char c) then
+                 match c with
+                 | '.'
+                 | '-' ->
+                   Some '_'
+                 | _ -> None
+               else
+                 Some c)
+        |> String.of_seq)
 
   let is_valid_module_name name =
     match name with
@@ -26,14 +50,8 @@ include Stringlike.Make (struct
         | 'a' .. 'z' ->
           ()
         | _ -> raise_notrace Exit );
-        String.iter s ~f:(function
-          | 'A' .. 'Z'
-          | 'a' .. 'z'
-          | '0' .. '9'
-          | '\''
-          | '_' ->
-            ()
-          | _ -> raise_notrace Exit);
+        String.iter s ~f:(fun c ->
+            if not (valid_char c) then raise_notrace Exit);
         true
       with Exit -> false )
 

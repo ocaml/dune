@@ -622,9 +622,9 @@ module Library = struct
          | Some (loc, res), _ -> (loc, res)
          | None, Some { name = loc, name; _ } ->
            if dune_version >= (1, 1) then
-             match Lib_name.to_local name with
-             | Some m -> (loc, m)
-             | None ->
+             match Lib_name.to_local (loc, name) with
+             | Ok m -> (loc, m)
+             | Error user_message ->
                User_error.raise ~loc
                  [ Pp.textf "Invalid library name."
                  ; Pp.text
@@ -632,7 +632,7 @@ module Library = struct
                       can either change this public name to be a valid library \
                       name or add a \"name\" field with a valid library name."
                  ]
-                 ~hints:[ Lib_name.Local.valid_format_doc ]
+                 ~hints:(Lib_name.Local.valid_format_doc :: user_message.hints)
            else
              User_error.raise ~loc
                [ Pp.text
@@ -985,9 +985,9 @@ module Executables = struct
                   User_error.raise ~loc
                     [ Pp.text "This executable must have a name field" ]
                 | Some s -> (
-                  match Module_name.of_string_opt s with
-                  | Some _ -> (loc, s)
-                  | None ->
+                  match Module_name.of_string_user_error (loc, s) with
+                  | Ok _ -> (loc, s)
+                  | Error user_message ->
                     User_error.raise ~loc
                       [ Pp.textf "Invalid module name."
                       ; Pp.text
@@ -996,7 +996,8 @@ module Executables = struct
                            to be a valid module name or add a \"name\" field \
                            with a valid module name."
                       ]
-                      ~hints:[ Module_name.valid_format_doc ] ))
+                      ~hints:(Module_name.valid_format_doc :: user_message.hints)
+                  ))
           else
             User_error.raise ~loc
               [ Pp.textf "%s field may not be omitted before dune version %s"

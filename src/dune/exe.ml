@@ -151,6 +151,26 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
          |> Build.dyn_paths_unit
      in
      let open Build.With_targets.O in
+     (* NB. Below we take care to pass [link_args] last on the command-line for
+        the following reason: [link_args] contains the list of foreign libraries
+        being linked into the executable; on some systems (eg Linux), the linker
+        discards symbols of libraries passed on the command-line if those
+        symbols have not yet been referenced when the library is processed (even
+        if they are referenced by objects coming later on the command-line). In
+        particular, this can cause the link operation to fail if some of the
+        symbols in the foreign libraries are referenced only from foreign stubs
+        (which are in [o_files]) if [o_files] appears after [link_args].
+
+        While this fix works, more principled solutions should be explored:
+
+        - Having foreign stubs declare dependencies on foreign libraries
+        explicitly in the dune file.
+
+        - Implicitly declaring a dependency of all foreign stubs on all foreign
+        libraries.
+
+        In each case, we could then pass the argument in dependency order, which
+        would provide a better fix for this issue. *)
      Build.with_no_targets prefix
      >>> Command.run ~dir:(Path.build ctx.build_dir)
            (Context.compiler ctx mode)
@@ -158,7 +178,6 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            ; A "-o"
            ; Target exe
            ; As linkage.flags
-           ; Dyn link_args
            ; Command.of_result_map link_time_code_gen
                ~f:(fun { Link_time_code_gen.to_link; force_linkall } ->
                  S
@@ -173,6 +192,7 @@ let link_exe ~loc ~name ~(linkage : Linkage.t) ~cm_files ~link_time_code_gen
            ; Deps o_files
            ; Dyn (Build.map top_sorted_cms ~f:(fun x -> Command.Args.Deps x))
            ; Fdo.Linker_script.flags fdo_linker_script
+           ; Dyn link_args
            ])
 
 let link_js ~name ~cm_files ~promote cctx =

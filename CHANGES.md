@@ -35,6 +35,10 @@ next
 - (copy_files ...) now supports copying files from outside the workspace using
   absolute file names (#3639, @nojb)
 
+- Dune does not use `ocamlc` as an intermediary to call C compiler anymore.
+  Configuration flags `ocamlc_cflags` and `ocamlc_cppflags` are always prepended
+  to the compiler arguments. (#3565, fixes #3346, @voodoos)
+
 2.6.1 (02/07/2020)
 ------------------
 

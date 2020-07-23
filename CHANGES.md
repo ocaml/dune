@@ -43,6 +43,9 @@ next
   individual executables when they're part of an `executables` stanza group
   (#3644, @rgrinberg)
 
+- Use `{dev}` rather than `{pinned}` in the generated `.opam` file. (#3647,
+  @kit-ty-kate)
+
 2.6.1 (02/07/2020)
 ------------------
 

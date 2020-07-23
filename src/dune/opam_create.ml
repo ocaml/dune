@@ -13,7 +13,7 @@ let default_build_command =
   [ "dune" "build" "-p" name "@doc"] {with-doc}
 ]
 |}))
-  and from_1_11 =
+  and from_1_11_before_2_7 =
     lazy
       (Opam_file.parse_value
          (Lexbuf.from_string ~fname:"<internal>"
@@ -27,13 +27,29 @@ let default_build_command =
   ]
 ]
 |}))
+  and from_2_7 =
+    lazy
+      (Opam_file.parse_value
+         (Lexbuf.from_string ~fname:"<internal>"
+            {|
+[
+  [ "dune" "subst" ] {dev}
+  [ "dune" "build" "-p" name "-j" jobs
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+  ]
+]
+|}))
   in
   fun project ->
     Lazy.force
       ( if Dune_project.dune_version project < (1, 11) then
-        before_1_11
-      else
-        from_1_11 )
+          before_1_11
+        else if Dune_project.dune_version project < (2, 7) then
+          from_1_11_before_2_7
+        else
+          from_2_7 )
 
 let package_fields
     { Package.synopsis

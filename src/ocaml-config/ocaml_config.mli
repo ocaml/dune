@@ -84,7 +84,11 @@ val c_compiler : t -> string
 
 val ocamlc_cflags : t -> string list
 
+val ocamlc_cppflags : t -> string list
+
 val ocamlopt_cflags : t -> string list
+
+val ocamlopt_cppflags : t -> string list
 
 val bytecomp_c_compiler : t -> Prog_and_args.t
 

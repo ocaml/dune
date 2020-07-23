@@ -2,9 +2,16 @@ open! Stdune
 open Import
 
 let default_context_flags (ctx : Context.t) =
-  let c = Ocaml_config.ocamlc_cflags ctx.ocaml_config in
+  (* TODO (v3) Current flag behavior is different when calling the C compiler or
+     the C++ compiler: 1.[ocamlc_cflags] and [ocamlc_cppflags] are always
+     prenpended to the C compiler arguments to reproduce [ocamlc]'s behavior, 2.
+     [ocamlc_cflags] are present in [:standard] and prepended to the C++
+     compiler arguments only if the user didn't redefined them (or used
+     [:standard] to extend them) *)
+  let c = [] in
   let cxx =
-    List.filter c ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
+    Ocaml_config.ocamlc_cflags ctx.ocaml_config
+    |> List.filter ~f:(fun s -> not (String.is_prefix s ~prefix:"-std="))
   in
   Foreign.Language.Dict.make ~c ~cxx
 

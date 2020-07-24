@@ -433,7 +433,8 @@ module Extension = struct
                             ( Project_file_edit.append project_file
                                 (List
                                    [ Dune_lang.atom "using"
-                                   ; Dune_lang.atom name
+                                   ; Dune_lang.atom
+                                       (Dune_lang.Syntax.name e.syntax)
                                    ; Dune_lang.atom
                                        (Dune_lang.Syntax.Version.to_string
                                           version)

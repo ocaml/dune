@@ -1143,7 +1143,7 @@ let rec rm_rf fn =
   | _ -> Unix.unlink fn
   | exception Unix.Unix_error (ENOENT, _, _) -> ()
 
-(** {2 Bootstrap process *)
+(** {2 Bootstrap process} *)
 let main () =
   rm_rf build_dir;
   Unix.mkdir build_dir 0o777;

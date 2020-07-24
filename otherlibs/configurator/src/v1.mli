@@ -143,8 +143,9 @@ module Process : sig
       status together with the content of stdout and stderr. The action is
       logged.
 
-      @param dir change to [dir] before running the command. @param env specify
-      additional environment variables as a list of the form NAME=VALUE. *)
+      @param dir change to [dir] before running the command.
+      @param env specify additional environment variables as a list of the form
+      NAME=VALUE. *)
   val run :
     t -> ?dir:string -> ?env:string list -> string -> string list -> result
 

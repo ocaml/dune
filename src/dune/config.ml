@@ -263,8 +263,8 @@ let decode =
       (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Caching.Transport.decode)
       ~default:default.cache_transport
   and+ cache_check_probability =
-    field "cache-check-probablity"
-      (Dune_lang.Syntax.since Stanza.syntax (2, 0) >>> Dune_lang.Decoder.float)
+    field "cache-check-probability"
+      (Dune_lang.Syntax.since Stanza.syntax (2, 7) >>> Dune_lang.Decoder.float)
       ~default:default.cache_check_probability
   and+ cache_duplication =
     field "cache-duplication"

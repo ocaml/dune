@@ -55,7 +55,7 @@ module V1 : sig
 
         is equivalent to:
 
-        {[ map g ~f:(fun a -> g) ]} *)
+        {[ map g ~f:(fun a -> h) ]} *)
     val ( let+ ) : 'a t -> ('a -> 'b) -> 'b t
 
     (** {[
@@ -66,7 +66,7 @@ module V1 : sig
 
         is equivalent to:
 
-        {[ both g1 g2 |> map ~f:(fun (a1, a2) -> g) ]} *)
+        {[ both g1 g2 |> map ~f:(fun (a1, a2) -> h) ]} *)
     val ( and+ ) : 'a t -> 'b t -> ('a * 'b) t
   end
 

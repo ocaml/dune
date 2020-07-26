@@ -397,3 +397,30 @@ Same with version of the language >= 2.6, we now add the constraint:
   depends: [
     "dune" {>= "2.6"}
   ]
+
+When the version of the language >= 2.7 we use dev instead of pinned
+when calling dune subst:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A13 ^build: foo.opam
+  build: [
+    ["dune" "subst"] {dev}
+    [
+      "dune"
+      "build"
+      "-p"
+      name
+      "-j"
+      jobs
+      "@install"
+      "@runtest" {with-test}
+      "@doc" {with-doc}
+    ]
+  ]

@@ -28,18 +28,15 @@ include Stringlike.Make (struct
   let hint_valid =
     Some
       (fun name ->
-        String.to_seq name
-        |> Seq.filter_map ~f:(fun c ->
-               if valid_char c then
-                 Some c
-               else
-                 match c with
-                 | '.'
-                 | '-' ->
-                   Some '_'
-                 | _ -> None
-        )
-        |> String.of_seq)
+        String.filter_map name ~f:(fun c ->
+            if valid_char c then
+              Some c
+            else
+              match c with
+              | '.'
+              | '-' ->
+                Some '_'
+              | _ -> None))
 
   let is_valid_module_name name =
     match name with

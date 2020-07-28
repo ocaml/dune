@@ -30,14 +30,15 @@ include Stringlike.Make (struct
       (fun name ->
         String.to_seq name
         |> Seq.filter_map ~f:(fun c ->
-               if not (valid_char c) then
+               if valid_char c then
+                 Some c
+               else
                  match c with
                  | '.'
                  | '-' ->
                    Some '_'
                  | _ -> None
-               else
-                 Some c)
+        )
         |> String.of_seq)
 
   let is_valid_module_name name =

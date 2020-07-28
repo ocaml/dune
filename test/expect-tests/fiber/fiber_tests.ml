@@ -234,6 +234,22 @@ let%expect_test "sequential_iter error handling" =
   exn: (Failure bam)
   finally |}]
 
+let%expect_test "sequential_iter" =
+  let fiber =
+    Fiber.finalize
+      ~finally:(fun () -> Fiber.return (print_endline "finally"))
+      (fun () ->
+        Fiber.sequential_iter [ 1; 2; 3 ] ~f:(fun x ->
+            Fiber.return (Printf.printf "count: %d\n" x)))
+  in
+  test unit fiber;
+  [%expect {|
+    count: 1
+    count: 2
+    count: 3
+    finally
+    () |}]
+
 let%expect_test _ =
   must_set_flag (fun setter ->
       test ~expect_never:true unit

@@ -118,7 +118,7 @@ end
 type t =
   { loc : Loc.t
   ; files : Predicate_lang.Glob.t
-  ; packages : Package.Name.t list
+  ; packages : (Loc.t * Package.Name.t) list
   ; preludes : Prelude.t list
   }
 
@@ -139,7 +139,8 @@ let decode =
     (let+ loc = loc
      and+ files =
        field "files" Predicate_lang.Glob.decode ~default:default_files
-     and+ packages = field ~default:[] "packages" (repeat Package.Name.decode)
+     and+ packages =
+       field ~default:[] "packages" (repeat (located Package.Name.decode))
      and+ preludes = field ~default:[] "preludes" (repeat Prelude.decode) in
      { loc; files; packages; preludes })
 
@@ -181,7 +182,7 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
     let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
     let pkg_deps =
       stanza.packages
-      |> List.map ~f:(fun pkg ->
+      |> List.map ~f:(fun (loc, pkg) ->
              Dep_conf.Package
                (Package.Name.to_string pkg |> String_with_vars.make_text loc))
     in

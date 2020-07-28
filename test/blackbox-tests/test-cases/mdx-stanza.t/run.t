@@ -57,10 +57,9 @@ Dune does not fail if the `packages` are not available at evaluation time
 Dune fails if the `packages` are not avaliable at execution time
 
   $ cd local-package-unrelated && dune runtest -p unrelated-package; cd ../
-  File "dune", line 1, characters 0-40:
-  1 | (mdx
-  2 |  (files README.md)
+  File "dune", line 3, characters 11-14:
   3 |  (packages pkg))
+                 ^^^
   Error: Package pkg does not exist
 
 You can set MDX preludes using the preludes field of the stanza

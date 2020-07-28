@@ -4,19 +4,24 @@ open! Stdune
    current one *)
 type 'a t = ('a -> unit) -> unit
 
+type 'a fiber = 'a t
+
 let of_thunk f k = f () k
 
 module Execution_context : sig
   module K : sig
+    (* Represent a suspended fiber *)
     type 'a t
 
     (* Create a continuation that captures the current execution context *)
     val create : ('a -> unit) -> 'a t
 
+    (* [run] doesn't preserve the current execution context and must always be
+       called last, i.e. after calling the current continuation. *)
     val run : 'a t -> 'a -> unit
-
-    val run_queue : 'a t Queue.t -> 'a -> unit
   end
+
+  val safe_run_k : ('a -> unit) -> 'a -> unit
 
   (* Execute a function returning a fiber, passing any raised exception to the
      current execution context. [apply] is guaranteed to not raise. *)
@@ -50,10 +55,19 @@ end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
           (* This handler must never raise *)
-    ; fibers : int ref (* Number of fibers running in this execution context *)
     ; vars : Univ_map.t
-    ; on_release : unit k option
+    ; on_release : on_release
     }
+
+  and 'a on_release_exec =
+    { k : ('a, unit) result k
+    ; mutable result : ('a, unit) result
+    ; mutable ref_count : int
+    }
+
+  and on_release =
+    | Do_nothing : on_release
+    | Exec : _ on_release_exec -> on_release
 
   and 'a k =
     { run : 'a -> unit
@@ -61,82 +75,79 @@ end = struct
     }
 
   let current =
-    ref
-      { on_error = None
-      ; fibers = ref 1
-      ; vars = Univ_map.empty
-      ; on_release = None
-      }
+    ref { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
 
   let add_refs n =
     let t = !current in
-    t.fibers := !(t.fibers) + n
+    match t.on_release with
+    | Do_nothing -> ()
+    | Exec r -> r.ref_count <- r.ref_count + n
 
-  let rec forward_error t exn =
-    match t.on_error with
-    | None -> Exn_with_backtrace.reraise exn
-    | Some { ctx; run } -> (
-      current := ctx;
-      try run exn
-      with exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        forward_error ctx exn )
+  let deref t =
+    match t.on_release with
+    | Do_nothing -> ()
+    | Exec r ->
+      let n = r.ref_count - 1 in
+      assert (n >= 0);
+      r.ref_count <- n;
+      if n = 0 then (
+        current := r.k.ctx;
+        r.k.run r.result
+      )
 
-  let rec deref t =
-    let n = !(t.fibers) - 1 in
-    assert (n >= 0);
-    t.fibers := n;
-    if n = 0 then
-      match t.on_release with
-      | None -> ()
-      | Some h -> run_k h ()
-
-  and run_k : type a. a k -> a -> unit =
-   fun k x ->
-    current := k.ctx;
-    try k.run x
-    with exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      forward_error k.ctx exn;
-      deref k.ctx
-
-  let exec_in ~parent ~child f x k =
-    let k x =
-      current := parent;
-      k x
+  let forward_error =
+    let rec loop t exn =
+      match t.on_error with
+      | None -> Exn_with_backtrace.reraise exn
+      | Some { ctx; run } -> (
+        current := ctx;
+        try run exn
+        with exn ->
+          let exn = Exn_with_backtrace.capture exn in
+          loop ctx exn )
     in
-    current := child;
-    ( try f x k
-      with exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        forward_error child exn;
-        deref child );
-    current := parent
+    fun exn ->
+      let exn = Exn_with_backtrace.capture exn in
+      let t = !current in
+      loop t exn;
+      deref t
+
+  let deref () = deref !current
 
   let fork_and_wait_errors f x k =
     let t = !current in
-    let result = ref (Result.Error ()) in
-    let on_release = Some { ctx = t; run = (fun () -> k !result) } in
-    let child = { t with on_release; fibers = ref 1 } in
-    exec_in ~parent:t ~child f x (fun x ->
-        result := Ok x;
-        deref child)
+    let on_release =
+      { k = { ctx = t; run = k }; ref_count = 1; result = Error () }
+    in
+    let child = { t with on_release = Exec on_release } in
+    current := child;
+    f x (fun x ->
+        on_release.result <- Ok x;
+        deref ())
 
   let set_error_handler ~on_error f x k =
     let t = !current in
     let on_error = Some { run = on_error; ctx = t } in
-    exec_in ~parent:t ~child:{ t with on_error } f x k
+    current := { t with on_error };
+    f x (fun x ->
+        current := t;
+        k x)
 
   let vars () = !current.vars
 
   let set_vars vars f x k =
     let t = !current in
-    exec_in ~parent:t ~child:{ t with vars } f x k
+    current := { t with vars };
+    f x (fun x ->
+        current := t;
+        k x)
 
   let set_vars_sync (type b) vars f x : b =
     let t = !current in
     current := { t with vars };
     Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
+
+  let safe_run_k k x = try k x with exn -> forward_error exn
 
   module K = struct
     type 'a t = 'a k
@@ -144,31 +155,14 @@ end = struct
     let create run = { run; ctx = !current }
 
     let run { run; ctx } x =
-      let backup = !current in
       current := ctx;
-      ( try run x
-        with exn ->
-          let exn = Exn_with_backtrace.capture exn in
-          forward_error ctx exn;
-          deref ctx );
-      current := backup
-
-    let run_queue q x =
-      let backup = !current in
-      Queue.iter ~f:(fun k -> run_k k x) q;
-      current := backup
+      safe_run_k run x
   end
 
   let apply f x k =
-    let t = !current in
-    try f x k
-    with exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      forward_error t exn;
-      deref t;
-      current := t
-
-  let deref () = deref !current
+    let backup = !current in
+    (try f x k with exn -> forward_error exn);
+    current := backup
 
   let new_run f =
     let backup = !current in
@@ -176,11 +170,7 @@ end = struct
       ~finally:(fun () -> current := backup)
       ~f:(fun () ->
         current :=
-          { on_error = None
-          ; fibers = ref 1
-          ; vars = Univ_map.empty
-          ; on_release = None
-          };
+          { on_error = None; vars = Univ_map.empty; on_release = Do_nothing };
         f ())
 end
 
@@ -409,8 +399,9 @@ let finalize f ~finally =
   match res with
   | Ok x -> return x
   | Error l ->
-    let+ () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
-    assert false
+    let* () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
+    (* We might reach this point if all raised errors were handled by the user *)
+    never
 
 module Ivar = struct
   type 'a state =
@@ -426,8 +417,8 @@ module Ivar = struct
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      k ();
-      K.run_queue q x
+      EC.safe_run_k k ();
+      Queue.iter q ~f:(fun k -> K.run k x)
 
   let read t k =
     match t.state with
@@ -471,7 +462,7 @@ module Mvar = struct
         k v
       | Some (v', w) ->
         t.value <- Some v';
-        k v;
+        EC.safe_run_k k v;
         K.run w () )
 
   let write t x k =
@@ -483,7 +474,7 @@ module Mvar = struct
         t.value <- Some x;
         k ()
       | Some r ->
-        k ();
+        EC.safe_run_k k ();
         K.run r x )
 end
 
@@ -508,7 +499,7 @@ module Mutex = struct
       t.locked <- false;
       k ()
     | Some next ->
-      k ();
+      EC.safe_run_k k ();
       K.run next ()
 
   let with_lock t f =

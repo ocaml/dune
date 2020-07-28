@@ -49,6 +49,9 @@ next
 - Insert correct extension name when editing `dune-project` files. Previously,
   dune would just insert the stanza name. (#3649, fixes #3624, @rgrinberg)
 
+- Fix crash when evaluating an `mdx` stanza that depends on unavailable
+  packages. (#3650, @CraigFe)
+
 2.6.1 (02/07/2020)
 ------------------
 

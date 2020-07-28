@@ -169,7 +169,7 @@ let files_to_mdx t ~sctx ~dir =
 
 (** Generates the rules for a single [src] file covered covered by the given
     [stanza]. *)
-let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
+let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   let loc = stanza.loc in
   let files = Files.from_source_file src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
@@ -180,17 +180,15 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
     let deps = Build.map (Deps.read files) ~f:(Deps.to_dep_set ~dir) in
     let dyn_deps = Build.map deps ~f:(fun d -> ((), d)) in
     let pkg_deps =
-      let context = Super_context.context sctx in
-      let packages = Super_context.packages sctx in
       stanza.packages
       |> List.map ~f:(fun pkg ->
-             let pkg = Package.Name.Map.find_exn packages pkg in
-             Build.alias (Build_system.Alias.package_install ~context ~pkg))
+             Dep_conf.Package
+               (Package.Name.to_string pkg |> String_with_vars.make_text loc))
     in
     let prelude_args =
       List.concat_map stanza.preludes ~f:(Prelude.to_args ~dir)
     in
-    Build.(with_no_targets (all_unit pkg_deps))
+    Build.(with_no_targets (Dep_conf_eval.unnamed ~expander pkg_deps))
     >>> Build.with_no_targets (Build.dyn_deps dyn_deps)
     >>> Command.run ~dir:(Path.build dir) mdx_prog
           ( [ Command.Args.A "test" ] @ prelude_args
@@ -204,10 +202,11 @@ let gen_rules_for_single_file stanza ~sctx ~dir ~mdx_prog src =
     (Build.with_no_targets diff_action)
 
 (** Generates the rules for a given mdx stanza *)
-let gen_rules t ~sctx ~dir =
+let gen_rules t ~sctx ~dir ~expander =
   let files_to_mdx = files_to_mdx t ~sctx ~dir in
   let mdx_prog =
     Super_context.resolve_program sctx ~dir ~loc:(Some t.loc)
       ~hint:"opam install mdx" "ocaml-mdx"
   in
-  List.iter files_to_mdx ~f:(gen_rules_for_single_file t ~sctx ~dir ~mdx_prog)
+  List.iter files_to_mdx
+    ~f:(gen_rules_for_single_file t ~sctx ~dir ~expander ~mdx_prog)

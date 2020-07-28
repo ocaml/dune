@@ -45,11 +45,11 @@ let default_build_command =
   fun project ->
     Lazy.force
       ( if Dune_project.dune_version project < (1, 11) then
-          before_1_11
-        else if Dune_project.dune_version project < (2, 7) then
-          from_1_11_before_2_7
-        else
-          from_2_7 )
+        before_1_11
+      else if Dune_project.dune_version project < (2, 7) then
+        from_1_11_before_2_7
+      else
+        from_2_7 )
 
 let package_fields
     { Package.synopsis

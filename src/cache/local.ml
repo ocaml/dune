@@ -223,11 +223,11 @@ let deduplicate cache (file : File.t) =
       rm tmpname;
       Unix.link path_in_cache tmpname;
       Unix.rename tmpname path
-    with Unix.Unix_error (e, syscall, _) ->
+    with Unix.Unix_error (e, syscall, arg) ->
       rm tmpname;
       cache.warn
-        [ Pp.textf "error handling dune-cache command: %s: %s" syscall
-            (Unix.error_message e)
+        [ Pp.textf "error deduplicating %S to %S: %s(%S): %s" path_in_cache path
+            syscall arg (Unix.error_message e)
         ] )
 
 let apply ~f o v =

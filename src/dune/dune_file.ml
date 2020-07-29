@@ -974,7 +974,7 @@ module Executables = struct
         Option.iter names
           ~f:
             (List.iter ~f:(fun name ->
-                 ignore (Module_name.parse_string_exn name)));
+                 ignore (Module_name.parse_string_exn name : Module_name.t)));
         match (names, public_names) with
         | Some names, _ -> names
         | None, Some public_names ->

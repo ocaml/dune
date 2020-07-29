@@ -355,8 +355,13 @@ let rec exec t ~ectx ~eenv =
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
   | Using_terminal t ->
-    (* CR cwong: Unbuffer the output of this job *)
-    Fiber.Mutex.with_lock terminal_lock (fun () -> exec t ~ectx ~eenv)
+    Fiber.Mutex.with_lock terminal_lock (fun () ->
+        exec t ~ectx
+          ~eenv:
+            { eenv with
+              stdout_to = Process.Io.stdout
+            ; stderr_to = Process.Io.stderr
+            })
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Format_dune_file (src, dst) ->
     Format_dune_lang.format_file ~input:(Some src)

@@ -201,6 +201,7 @@ module Partial = struct
         , List.map ~f:(E.string ~expander) extras
         , E.target ~expander target )
     | No_infer t -> No_infer (expand t ~expander)
+    | Using_terminal t -> Using_terminal (expand t ~expander)
     | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(expand ~expander))
     | Format_dune_file (src, dst) ->
       Format_dune_file (E.path ~expander src, E.target ~expander dst)
@@ -316,6 +317,7 @@ let rec partial_expand t ~expander : Partial.t =
       , List.map extras ~f:(E.string ~expander)
       , E.target ~expander target )
   | No_infer t -> No_infer (partial_expand t ~expander)
+  | Using_terminal t -> Using_terminal (partial_expand t ~expander)
   | Pipe (outputs, l) -> Pipe (outputs, List.map l ~f:(partial_expand ~expander))
   | Format_dune_file (src, dst) ->
     Format_dune_file (E.path ~expander src, E.target ~expander dst)
@@ -422,7 +424,8 @@ end = struct
         acc +< src +@+ dst
       | Chdir (_, t)
       | Setenv (_, _, t)
-      | Ignore (_, t) ->
+      | Ignore (_, t)
+      | Using_terminal t ->
         infer acc t
       | Progn l
       | Pipe (_, l) ->

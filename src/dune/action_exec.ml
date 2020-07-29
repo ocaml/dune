@@ -3,6 +3,9 @@ open Import
 open Fiber.O
 module DAP = Dune_action_plugin.Private.Protocol
 
+(* This feels like the wrong place for this, but I'm not sure of a better one. *)
+let terminal_lock = Fiber.Mutex.create ()
+
 (** A version of [Dune_action_plugin.Private.Protocol.Dependency] where all
     relative paths are replaced by [Path.t]. (except the protocol doesn't
     support Globs yet) *)
@@ -351,6 +354,9 @@ let rec exec t ~ectx ~eenv =
     Io.write_lines target (String.Set.to_list lines);
     Fiber.return Done
   | No_infer t -> exec t ~ectx ~eenv
+  | Using_terminal t ->
+    (* CR cwong: Unbuffer the output of this job *)
+    Fiber.Mutex.with_lock terminal_lock (fun () -> exec t ~ectx ~eenv)
   | Pipe (outputs, l) -> exec_pipe ~ectx ~eenv outputs l
   | Format_dune_file (src, dst) ->
     Format_dune_lang.format_file ~input:(Some src)

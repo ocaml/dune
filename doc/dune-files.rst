@@ -6,9 +6,9 @@ dune-project
 ============
 
 These files are used to mark the root of projects as well as define project-wide
-parameters. These files are required to have a ``lang`` which controls the names
-and contents of all configuration files read by Dune. The ``lang`` stanza looks
-like:
+parameters. The first line of ``dune-project`` must be a ``lang`` stanza with no
+extra whitespace or comments. The ``lang`` stanza controls the names and
+contents of all configuration files read by Dune and looks like:
 
 .. code:: scheme
 

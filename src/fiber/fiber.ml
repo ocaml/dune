@@ -1,10 +1,29 @@
 open! Stdune
 
-(* Invariant: the execution contxt passed to the continuation is the same as the
-   current one *)
 type 'a t = ('a -> unit) -> unit
 
-type 'a fiber = 'a t
+(* This module tries to enforce the following invariants:
+
+   - the execution context passed to a continuation is the same as the current
+   one
+
+   - the execution of a fiber always ends with [deref]
+
+   - when an exception is raised by the user code, the exception must be
+   forwarded to the execution context that was active at the time the exception
+   was raised
+
+   - when an exception is raised by the user code, then we assume that the
+   current fiber didn't reach the [deref] point. As a result we have to call
+   [deref] at this point on the current execution context
+
+   Remarks:
+
+   - most of the code assumes that errors will be caught by the caller, so when
+   we do a context switch, we simply change the current execution context and
+   chain to the continuation without catching errors. The current [try..with]
+   will catch any raised error and forward to the current execution context. The
+   only place we add a [try..with] is at the toplevel or when forking. *)
 
 let of_thunk f k = f () k
 
@@ -16,15 +35,20 @@ module Execution_context : sig
     (* Create a continuation that captures the current execution context *)
     val create : ('a -> unit) -> 'a t
 
-    (* [run] doesn't preserve the current execution context and must always be
-       called last, i.e. after calling the current continuation. *)
+    (* Restart a suspended fiber. [run] doesn't preserve the current execution
+       context and should always be called last. *)
     val run : 'a t -> 'a -> unit
   end
 
+  (* Execute the current continuation, making sure to forward errors to the
+     current execution context. This function doesn't preserve the current
+     execution context. It should be used to execute the current continuation
+     before calling [K.run] *)
   val safe_run_k : ('a -> unit) -> 'a -> unit
 
   (* Execute a function returning a fiber, passing any raised exception to the
-     current execution context. [apply] is guaranteed to not raise. *)
+     current execution context. This function preserve the current execution
+     context. It should be called when creating forks.*)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 
   (* Add [n] references to the current execution context *)
@@ -33,10 +57,10 @@ module Execution_context : sig
   (* Decrese the reference count of the current execution context *)
   val deref : unit -> unit
 
-  (* [fork_and_wait_errors f x] executes [f x] inside a new execution contexts.
-     Returns a fiber that terminates when all the fiber in the sub-context have
+  (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a
+     fiber that terminates when all the fiber in the sub-context have
      terminated. *)
-  val fork_and_wait_errors : ('a -> 'b t) -> 'a -> ('b, unit) result t
+  val wait_errors : (unit -> 'a t) -> ('a, unit) result t
 
   (* Set the current error handler. [on_error] is called in the current
      execution context. *)
@@ -49,7 +73,8 @@ module Execution_context : sig
 
   val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
 
-  (* Execute a callback with a fresh execution context *)
+  (* Execute a callback with a fresh execution context. For the toplevel
+     [Fiber.run] function. *)
   val new_run : (unit -> 'a) -> 'a
 end = struct
   type t =
@@ -114,14 +139,14 @@ end = struct
 
   let deref () = deref !current
 
-  let fork_and_wait_errors f x k =
+  let wait_errors f k =
     let t = !current in
     let on_release =
       { k = { ctx = t; run = k }; ref_count = 1; result = Error () }
     in
     let child = { t with on_release = Exec on_release } in
     current := child;
-    f x (fun x ->
+    f () (fun x ->
         on_release.result <- Ok x;
         deref ())
 
@@ -370,7 +395,7 @@ end
 
 let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
 
-let wait_errors f k = EC.fork_and_wait_errors f () k
+let wait_errors f k = EC.wait_errors f k
 
 let fold_errors f ~init ~on_error =
   let acc = ref init in

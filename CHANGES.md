@@ -52,6 +52,9 @@ next
 - Fix crash when evaluating an `mdx` stanza that depends on unavailable
   packages. (#3650, @CraigFe)
 
+- Fix typo in `cache-check-probablity` field in dune config files. This field
+  now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
+
 2.6.1 (02/07/2020)
 ------------------
 

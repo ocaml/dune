@@ -15,9 +15,11 @@ module Files = struct
   let deps_file build_path =
     Path.Build.extend_basename ~suffix:".mdx.deps" build_path
 
-  let from_source_file src =
-    let deps = deps_file src in
-    let corrected = corrected_file src in
+  let from_source_file ~mdx_dir src =
+    let basename = Path.Build.basename src in
+    let dot_mdx_path = Path.Build.relative mdx_dir basename in
+    let deps = deps_file dot_mdx_path in
+    let corrected = corrected_file dot_mdx_path in
     { src; deps; corrected }
 
   let diff_action { src; corrected; deps = _ } =
@@ -172,7 +174,8 @@ let files_to_mdx t ~sctx ~dir =
     [stanza]. *)
 let gen_rules_for_single_file stanza ~sctx ~dir ~expander ~mdx_prog src =
   let loc = stanza.loc in
-  let files = Files.from_source_file src in
+  let mdx_dir = Path.Build.relative dir ".mdx" in
+  let files = Files.from_source_file ~mdx_dir src in
   (* Add the rule for generating the .mdx.deps file with ocaml-mdx deps *)
   Super_context.add_rule sctx ~loc ~dir (Deps.rule ~dir ~mdx_prog files);
   (* Add the rule for generating the .corrected file using ocaml-mdx test *)

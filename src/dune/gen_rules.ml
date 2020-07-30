@@ -111,13 +111,17 @@ end = struct
       ; source_dirs = None
       }
     | Copy_files { files = glob; _ } ->
-      let source_dir =
+      let source_dirs =
         let loc = String_with_vars.loc glob in
         let src_glob = Expander.expand_str expander glob in
-        Path.Source.relative src_dir src_glob ~error_loc:loc
-        |> Path.Source.parent_exn
+        if Filename.is_relative src_glob then
+          Some
+            ( Path.Source.relative src_dir src_glob ~error_loc:loc
+            |> Path.Source.parent_exn )
+        else
+          None
       in
-      { merlin = None; cctx = None; js = None; source_dirs = Some source_dir }
+      { merlin = None; cctx = None; js = None; source_dirs }
     | Install i ->
       files_to_install i;
       empty_none
@@ -125,7 +129,7 @@ end = struct
       Cinaps.gen_rules sctx cinaps ~dir ~scope;
       empty_none
     | Mdx.T mdx ->
-      Mdx.gen_rules ~sctx ~dir mdx;
+      Mdx.gen_rules ~sctx ~dir ~expander mdx;
       empty_none
     | _ -> empty_none
 

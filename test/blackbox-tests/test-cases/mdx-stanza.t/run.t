@@ -46,8 +46,21 @@ or mli to-be-mdxed file depends upon
 You can make local packages available to mdx by using the `packages` field of
 the stanza
 
-  $ dune runtest --root local-packages
-  Entering directory 'local-packages'
+  $ dune runtest --root local-package
+  Entering directory 'local-package'
+
+Dune does not fail if the `packages` are not available at evaluation time
+(regression test fixed by ocaml/dune#3650)
+
+  $ cd local-package-unrelated && dune build -p unrelated-package; cd ../
+
+Dune fails if the `packages` are not avaliable at execution time
+
+  $ cd local-package-unrelated && dune runtest -p unrelated-package; cd ../
+  File "dune", line 3, characters 11-14:
+  3 |  (packages pkg))
+                 ^^^
+  Error: Package pkg does not exist
 
 You can set MDX preludes using the preludes field of the stanza
 

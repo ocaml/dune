@@ -207,6 +207,17 @@
    (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
 
 (rule
+ (alias coq-github3624)
+ (deps
+  (package dune)
+  (source_tree test-cases/coq/github3624.t)
+  (alias test-deps))
+ (action
+  (chdir
+   test-cases/coq/github3624.t
+   (progn (run dune-cram run run.t) (diff? run.t run.t.corrected)))))
+
+(rule
  (alias coq-main)
  (deps (package dune) (source_tree test-cases/coq/main.t) (alias test-deps))
  (action
@@ -3197,6 +3208,7 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias coq-github3624)
   (alias corrections)
   (alias cross-compilation)
   (alias custom-build-dir)
@@ -3504,6 +3516,7 @@
   (alias contents-depends-on-glob)
   (alias copy-files-non-sub-dir-error)
   (alias copy_files)
+  (alias coq-github3624)
   (alias corrections)
   (alias custom-build-dir)
   (alias custom-cross-compilation)

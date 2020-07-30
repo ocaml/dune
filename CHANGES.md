@@ -32,6 +32,29 @@ next
 
 - Add (alias ...), (mode ...) fields to (copy_fields ...) stanza (#3631, @nojb)
 
+- (copy_files ...) now supports copying files from outside the workspace using
+  absolute file names (#3639, @nojb)
+
+- Dune does not use `ocamlc` as an intermediary to call C compiler anymore.
+  Configuration flags `ocamlc_cflags` and `ocamlc_cppflags` are always prepended
+  to the compiler arguments. (#3565, fixes #3346, @voodoos)
+
+- Revert the build optimization in #2268. This optimization slows down building
+  individual executables when they're part of an `executables` stanza group
+  (#3644, @rgrinberg)
+
+- Use `{dev}` rather than `{pinned}` in the generated `.opam` file. (#3647,
+  @kit-ty-kate)
+
+- Insert correct extension name when editing `dune-project` files. Previously,
+  dune would just insert the stanza name. (#3649, fixes #3624, @rgrinberg)
+
+- Fix crash when evaluating an `mdx` stanza that depends on unavailable
+  packages. (#3650, @CraigFe)
+
+- Fix typo in `cache-check-probablity` field in dune config files. This field
+  now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
+
 2.6.1 (02/07/2020)
 ------------------
 

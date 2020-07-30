@@ -56,6 +56,18 @@ Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
 
+In some situations, it's desirable to selectively preserve the behavior of
+transitive dependencies being available to users of a library. For example, if
+we define a library ``core``, that extends ``core_kernel``, we'd like users of
+``core`` to immediately have ``core_kernel`` available as well. To do this, we
+must define the dependency on ``core_kernel`` as re-exported:
+
+.. code:: scheme
+
+   (library
+    (name core)
+    (libraries (re_export core_kernel)))
+
 .. _wrapped-executables:
 
 wrapped_executables

@@ -56,11 +56,12 @@ Note that you must use ``threads.posix`` instead of ``threads`` when using this
 mode. This is not an important limitation as ``threads.vm`` are deprecated
 anyways.
 
-In some situations, it's desirable to selectively preserve the behavior of
-transitive dependencies being available to users of a library. For example, if
-we define a library ``foo_more``, that extends ``foo``, we'd like users of
-``foo_more`` to immediately have ``foo`` available as well. To do this, we must
-define the dependency on ``foo`` as re-exported:
+In some situations, it's desirable to selectively preserve the
+behavior of transitive dependencies being available to users of a
+library. For example, if we define a library ``foo_more``, that
+extends ``foo``, we might want users of ``foo_more`` to immediately
+have ``foo`` available as well. To do this, we must define the
+dependency on ``foo`` as re-exported:
 
 .. code:: scheme
 

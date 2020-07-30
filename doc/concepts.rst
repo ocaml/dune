@@ -350,16 +350,28 @@ selectable. You can add a fallback by adding a clause of the form ``(->
 Re-exported dependencies
 ------------------------
 
-A dependency ``foo`` may be marked as *re-exportable* using the following
-syntax:
+A dependency ``foo`` may be marked as always *re-exported* using the
+following syntax:
 
 .. code:: scheme
 
    (re_export foo)
 
-This states that this library explicitly re-exports the interface of ``foo``.
-This is primarily useful when :ref:`implicit transitive dependencies<implicit_transitive_deps>`
-are disallowed, so it's documented along with the general feature.
+For insance:
+
+.. code:: scheme
+
+   (library
+    (name bar)
+    (libraries (re_export foo)))
+
+This states that this library explicitly re-exports the interface of
+``foo``.  Concretely, when something depends on ``bar`` it will also
+be able to see ``foo`` independently of whether :ref:`implicit
+transitive dependencies<implicit_transitive_deps>` are allowed or
+not. When they are allowed, which is the default, all transitive
+dependencies are visible whether they are marked as re-exported or
+not.
 
 .. _preprocessing-spec:
 

@@ -58,15 +58,15 @@ anyways.
 
 In some situations, it's desirable to selectively preserve the behavior of
 transitive dependencies being available to users of a library. For example, if
-we define a library ``core``, that extends ``core_kernel``, we'd like users of
-``core`` to immediately have ``core_kernel`` available as well. To do this, we
-must define the dependency on ``core_kernel`` as re-exported:
+we define a library ``foo_more``, that extends ``foo``, we'd like users of
+``foo_more`` to immediately have ``foo`` available as well. To do this, we must
+define the dependency on ``foo`` as re-exported:
 
 .. code:: scheme
 
    (library
-    (name core)
-    (libraries (re_export core_kernel)))
+    (name foo_more)
+    (libraries (re_export foo)))
 
 .. _wrapped-executables:
 

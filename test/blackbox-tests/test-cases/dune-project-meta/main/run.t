@@ -424,3 +424,96 @@ when calling dune subst:
       "@doc" {with-doc}
     ]
   ]
+
+When the version of the language >= 2.7, odoc is automatically added to
+the doc dependencies:
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A3 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-doc}
+  ]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends something))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A4 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "something"
+    "odoc" {with-doc}
+  ]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends odoc something))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A4 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc"
+    "something"
+  ]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (odoc :with-doc) something))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A4 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-doc}
+    "something"
+  ]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (odoc (and :with-doc (>= 1.5.0))) something))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A4 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-doc & >= "1.5.0"}
+    "something"
+  ]
+
+  $ cat > dune-project <<EOF
+  > (lang dune 2.7)
+  > (name foo)
+  > (generate_opam_files true)
+  > (package (name foo) (depends (odoc :with-test) something))
+  > EOF
+
+  $ dune build foo.opam
+  $ grep -A5 ^depends: foo.opam
+  depends: [
+    "dune" {>= "2.7"}
+    "odoc" {with-test}
+    "something"
+    "odoc" {with-doc}
+  ]

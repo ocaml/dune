@@ -1,25 +1,54 @@
 open! Stdune
 
-(* Invariant: the execution contxt passed to the continuation is the same as the
-   current one *)
 type 'a t = ('a -> unit) -> unit
+
+(* This module tries to enforce the following invariants:
+
+   - the execution context passed to a continuation is the same as the current
+   one
+
+   - the execution of a fiber always ends with [deref]
+
+   - when an exception is raised by the user code, the exception must be
+   forwarded to the execution context that was active at the time the exception
+   was raised
+
+   - when an exception is raised by the user code, then we assume that the
+   current fiber didn't reach the [deref] point. As a result we have to call
+   [deref] at this point on the current execution context
+
+   Remarks:
+
+   - most of the code assumes that errors will be caught by the caller, so when
+   we do a context switch, we simply change the current execution context and
+   chain to the continuation without catching errors. The current [try..with]
+   will catch any raised error and forward to the current execution context. The
+   only place we add a [try..with] is at the toplevel or when forking. *)
 
 let of_thunk f k = f () k
 
 module Execution_context : sig
   module K : sig
+    (* Represent a suspended fiber *)
     type 'a t
 
     (* Create a continuation that captures the current execution context *)
     val create : ('a -> unit) -> 'a t
 
+    (* Restart a suspended fiber. [run] doesn't preserve the current execution
+       context and should always be called last. *)
     val run : 'a t -> 'a -> unit
-
-    val run_queue : 'a t Queue.t -> 'a -> unit
   end
 
+  (* Execute the current continuation, making sure to forward errors to the
+     current execution context. This function doesn't preserve the current
+     execution context. It should be used to execute the current continuation
+     before calling [K.run] *)
+  val safe_run_k : ('a -> unit) -> 'a -> unit
+
   (* Execute a function returning a fiber, passing any raised exception to the
-     current execution context. [apply] is guaranteed to not raise. *)
+     current execution context. This function preserve the current execution
+     context. It should be called when creating forks.*)
   val apply : ('a -> 'b t) -> 'a -> 'b t
 
   (* Add [n] references to the current execution context *)
@@ -28,10 +57,10 @@ module Execution_context : sig
   (* Decrese the reference count of the current execution context *)
   val deref : unit -> unit
 
-  (* [fork_and_wait_errors f x] executes [f x] inside a new execution contexts.
-     Returns a fiber that terminates when all the fiber in the sub-context have
+  (* [wait_errors f] executes [f ()] inside a new execution contexts. Returns a
+     fiber that terminates when all the fiber in the sub-context have
      terminated. *)
-  val fork_and_wait_errors : ('a -> 'b t) -> 'a -> ('b, unit) result t
+  val wait_errors : (unit -> 'a t) -> ('a, unit) result t
 
   (* Set the current error handler. [on_error] is called in the current
      execution context. *)
@@ -44,16 +73,26 @@ module Execution_context : sig
 
   val set_vars_sync : Univ_map.t -> ('a -> 'b) -> 'a -> 'b
 
-  (* Execute a callback with a fresh execution context *)
+  (* Execute a callback with a fresh execution context. For the toplevel
+     [Fiber.run] function. *)
   val new_run : (unit -> 'a) -> 'a
 end = struct
   type t =
     { on_error : Exn_with_backtrace.t k option
           (* This handler must never raise *)
-    ; fibers : int ref (* Number of fibers running in this execution context *)
     ; vars : Univ_map.t
-    ; on_release : unit k option
+    ; on_release : on_release
     }
+
+  and 'a on_release_exec =
+    { k : ('a, unit) result k
+    ; mutable result : ('a, unit) result
+    ; mutable ref_count : int
+    }
+
+  and on_release =
+    | Do_nothing : on_release
+    | Exec : _ on_release_exec -> on_release
 
   and 'a k =
     { run : 'a -> unit
@@ -61,82 +100,79 @@ end = struct
     }
 
   let current =
-    ref
-      { on_error = None
-      ; fibers = ref 1
-      ; vars = Univ_map.empty
-      ; on_release = None
-      }
+    ref { on_error = None; vars = Univ_map.empty; on_release = Do_nothing }
 
   let add_refs n =
     let t = !current in
-    t.fibers := !(t.fibers) + n
+    match t.on_release with
+    | Do_nothing -> ()
+    | Exec r -> r.ref_count <- r.ref_count + n
 
-  let rec forward_error t exn =
-    match t.on_error with
-    | None -> Exn_with_backtrace.reraise exn
-    | Some { ctx; run } -> (
-      current := ctx;
-      try run exn
-      with exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        forward_error ctx exn )
+  let deref t =
+    match t.on_release with
+    | Do_nothing -> ()
+    | Exec r ->
+      let n = r.ref_count - 1 in
+      assert (n >= 0);
+      r.ref_count <- n;
+      if n = 0 then (
+        current := r.k.ctx;
+        r.k.run r.result
+      )
 
-  let rec deref t =
-    let n = !(t.fibers) - 1 in
-    assert (n >= 0);
-    t.fibers := n;
-    if n = 0 then
-      match t.on_release with
-      | None -> ()
-      | Some h -> run_k h ()
-
-  and run_k : type a. a k -> a -> unit =
-   fun k x ->
-    current := k.ctx;
-    try k.run x
-    with exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      forward_error k.ctx exn;
-      deref k.ctx
-
-  let exec_in ~parent ~child f x k =
-    let k x =
-      current := parent;
-      k x
+  let forward_error =
+    let rec loop t exn =
+      match t.on_error with
+      | None -> Exn_with_backtrace.reraise exn
+      | Some { ctx; run } -> (
+        current := ctx;
+        try run exn
+        with exn ->
+          let exn = Exn_with_backtrace.capture exn in
+          loop ctx exn )
     in
-    current := child;
-    ( try f x k
-      with exn ->
-        let exn = Exn_with_backtrace.capture exn in
-        forward_error child exn;
-        deref child );
-    current := parent
+    fun exn ->
+      let exn = Exn_with_backtrace.capture exn in
+      let t = !current in
+      loop t exn;
+      deref t
 
-  let fork_and_wait_errors f x k =
+  let deref () = deref !current
+
+  let wait_errors f k =
     let t = !current in
-    let result = ref (Result.Error ()) in
-    let on_release = Some { ctx = t; run = (fun () -> k !result) } in
-    let child = { t with on_release; fibers = ref 1 } in
-    exec_in ~parent:t ~child f x (fun x ->
-        result := Ok x;
-        deref child)
+    let on_release =
+      { k = { ctx = t; run = k }; ref_count = 1; result = Error () }
+    in
+    let child = { t with on_release = Exec on_release } in
+    current := child;
+    f () (fun x ->
+        on_release.result <- Ok x;
+        deref ())
 
   let set_error_handler ~on_error f x k =
     let t = !current in
     let on_error = Some { run = on_error; ctx = t } in
-    exec_in ~parent:t ~child:{ t with on_error } f x k
+    current := { t with on_error };
+    f x (fun x ->
+        current := t;
+        k x)
 
   let vars () = !current.vars
 
   let set_vars vars f x k =
     let t = !current in
-    exec_in ~parent:t ~child:{ t with vars } f x k
+    current := { t with vars };
+    f x (fun x ->
+        current := t;
+        k x)
 
   let set_vars_sync (type b) vars f x : b =
     let t = !current in
     current := { t with vars };
     Exn.protect ~finally:(fun () -> current := t) ~f:(fun () -> f x)
+
+  let safe_run_k k x = try k x with exn -> forward_error exn
 
   module K = struct
     type 'a t = 'a k
@@ -144,31 +180,14 @@ end = struct
     let create run = { run; ctx = !current }
 
     let run { run; ctx } x =
-      let backup = !current in
       current := ctx;
-      ( try run x
-        with exn ->
-          let exn = Exn_with_backtrace.capture exn in
-          forward_error ctx exn;
-          deref ctx );
-      current := backup
-
-    let run_queue q x =
-      let backup = !current in
-      Queue.iter ~f:(fun k -> run_k k x) q;
-      current := backup
+      safe_run_k run x
   end
 
   let apply f x k =
-    let t = !current in
-    try f x k
-    with exn ->
-      let exn = Exn_with_backtrace.capture exn in
-      forward_error t exn;
-      deref t;
-      current := t
-
-  let deref () = deref !current
+    let backup = !current in
+    (try f x k with exn -> forward_error exn);
+    current := backup
 
   let new_run f =
     let backup = !current in
@@ -176,11 +195,7 @@ end = struct
       ~finally:(fun () -> current := backup)
       ~f:(fun () ->
         current :=
-          { on_error = None
-          ; fibers = ref 1
-          ; vars = Univ_map.empty
-          ; on_release = None
-          };
+          { on_error = None; vars = Univ_map.empty; on_release = Do_nothing };
         f ())
 end
 
@@ -380,7 +395,7 @@ end
 
 let with_error_handler f ~on_error k = EC.set_error_handler ~on_error f () k
 
-let wait_errors f k = EC.fork_and_wait_errors f () k
+let wait_errors f k = EC.wait_errors f k
 
 let fold_errors f ~init ~on_error =
   let acc = ref init in
@@ -409,8 +424,9 @@ let finalize f ~finally =
   match res with
   | Ok x -> return x
   | Error l ->
-    let+ () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
-    assert false
+    let* () = parallel_iter l ~f:(fun exn -> Exn_with_backtrace.reraise exn) in
+    (* We might reach this point if all raised errors were handled by the user *)
+    never
 
 module Ivar = struct
   type 'a state =
@@ -426,8 +442,8 @@ module Ivar = struct
     | Full _ -> failwith "Fiber.Ivar.fill"
     | Empty q ->
       t.state <- Full x;
-      k ();
-      K.run_queue q x
+      EC.safe_run_k k ();
+      Queue.iter q ~f:(fun k -> K.run k x)
 
   let read t k =
     match t.state with
@@ -471,7 +487,7 @@ module Mvar = struct
         k v
       | Some (v', w) ->
         t.value <- Some v';
-        k v;
+        EC.safe_run_k k v;
         K.run w () )
 
   let write t x k =
@@ -483,7 +499,7 @@ module Mvar = struct
         t.value <- Some x;
         k ()
       | Some r ->
-        k ();
+        EC.safe_run_k k ();
         K.run r x )
 end
 
@@ -508,7 +524,7 @@ module Mutex = struct
       t.locked <- false;
       k ()
     | Some next ->
-      k ();
+      EC.safe_run_k k ();
       K.run next ()
 
   let with_lock t f =

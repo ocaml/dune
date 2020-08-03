@@ -1,6 +1,10 @@
 next
 ----
 
+- Write intermediate files in a `.mdx` folder for each `mdx` stanza
+  to prevent the corresponding actions to be executed as part of the `@all`
+  alias (#3659, @NathanReb)
+
 - Read Coq flags from `env` (#3547 , fixes #3486, @gares)
 
 - Allow bisect_ppx to be enabled/disabled via dune-workspace. (#3404,
@@ -51,6 +55,9 @@ next
 
 - Fix crash when evaluating an `mdx` stanza that depends on unavailable
   packages. (#3650, @CraigFe)
+
+- Fix typo in `cache-check-probablity` field in dune config files. This field
+  now requires 2.7 as it wasn't usable before this version. (#3652, @edwintorok)
 
 2.6.1 (02/07/2020)
 ------------------

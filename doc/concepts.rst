@@ -347,6 +347,32 @@ all the literals evaluate to true. It is an error if none of the clauses are
 selectable. You can add a fallback by adding a clause of the form ``(->
 <file>)`` at the end of the list.
 
+Re-exported dependencies
+------------------------
+
+A dependency ``foo`` may be marked as always *re-exported* using the
+following syntax:
+
+.. code:: scheme
+
+   (re_export foo)
+
+For insance:
+
+.. code:: scheme
+
+   (library
+    (name bar)
+    (libraries (re_export foo)))
+
+This states that this library explicitly re-exports the interface of
+``foo``.  Concretely, when something depends on ``bar`` it will also
+be able to see ``foo`` independently of whether :ref:`implicit
+transitive dependencies<implicit_transitive_deps>` are allowed or
+not. When they are allowed, which is the default, all transitive
+dependencies are visible whether they are marked as re-exported or
+not.
+
 .. _preprocessing-spec:
 
 Preprocessing specification

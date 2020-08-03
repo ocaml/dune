@@ -82,7 +82,7 @@ module Unexpanded : sig
 
   (** Fold a function over all strings in a set. The callback receive whether
       the string is in position or negative position, i.e. on the left or right
-      of a [\] operator. *)
+      of a \ operator. *)
   val fold_strings :
     t -> init:'a -> f:(position -> String_with_vars.t -> 'a -> 'a) -> 'a
 end

@@ -9,6 +9,7 @@
 #include <dirent.h>
 typedef struct dirent directory_entry;
 
+#ifndef _WIN32
 value val_file_type(int typ) {
   switch(typ)
     {
@@ -54,3 +55,10 @@ CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
   Field(v_tuple, 1) = val_file_type(e->d_type);
   CAMLreturn(v_tuple);
 }
+
+#else
+CAMLprim value caml__dune_filesystem_stubs__readdir(value vd)
+{
+  unix_error(ENOSYS, "readdir", Nothing);
+}
+#endif

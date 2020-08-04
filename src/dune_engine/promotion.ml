@@ -109,7 +109,7 @@ let do_promote db files_to_promote =
           if fn = "" || fn.[0] = '.' || fn = "install" then
             None
           else
-            Some path
+            Some (Path.(relative build_dir) fn)
         | _ -> None)
   in
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in

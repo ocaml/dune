@@ -576,7 +576,7 @@ let remove_old_artifacts ~dir ~rules_here ~(subdirs_to_keep : Subdir_set.t) =
           ()
         else
           match kind with
-          | S_DIR -> (
+          | Unix.S_DIR -> (
             match subdirs_to_keep with
             | All -> ()
             | These set ->

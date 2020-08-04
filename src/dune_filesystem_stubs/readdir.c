@@ -6,13 +6,8 @@
 
 #include <errno.h>
 #include <sys/types.h>
-#ifdef HAS_DIRENT
 #include <dirent.h>
 typedef struct dirent directory_entry;
-#else
-#include <sys/dir.h>
-typedef struct direct directory_entry;
-#endif
 
 value val_file_type(int typ) {
   switch(typ)

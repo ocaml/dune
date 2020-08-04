@@ -72,3 +72,21 @@ In conjunction with dune generated files:
   $ dune build ./sub/bar
   $ cat _build/default/sub/bar
   parent
+
+subdir stanzas can also appear in included files
+
+  $ mkdir -p include/subdir; cd include
+  $ cat >dune-project <<EOF
+  > (lang dune 2.5)
+  > EOF
+  $ cat >dune <<EOF
+  > (include dune.inc)
+  > EOF
+  $ cat >dune.inc <<EOF
+  > (subdir subdir
+  >  (rule
+  >   (action (with-stdout-to hello.txt (echo "Hello from subdir\n")))))
+  > EOF
+  $ dune build --root . subdir/hello.txt
+  $ cat _build/default/subdir/hello.txt
+  Hello from subdir

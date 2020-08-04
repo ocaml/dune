@@ -76,6 +76,8 @@ next
 - Fix a stack overflow when displaying large outputs (including diffs) (#3537,
   fixes #2767, #3490, @emillon)
 
+- Pass `-g` when compiling ppx preprocessors (#3671, @rgrinberg)
+
 2.6.0 (05/06/2020)
 ------------------
 

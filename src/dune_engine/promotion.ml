@@ -100,16 +100,17 @@ type files_to_promote =
 let do_promote db files_to_promote =
   let by_targets = group_by_targets db in
   let potential_build_contexts =
-    match Path.readdir_unsorted Path.build_dir with
+    match Path.readdir_unsorted_with_kinds Path.build_dir with
     | exception _ -> []
     | Error _ -> []
     | Ok files ->
-      List.filter_map files ~f:(fun fn ->
+      List.filter_map files ~f:(function
+        | (fn, Unix.S_DIR) ->
           if fn = "" || fn.[0] = '.' || fn = "install" then
             None
           else
-            let path = Path.(relative build_dir) fn in
-            Option.some_if (Path.is_directory path) path)
+            Some path
+        | _ -> None)
   in
   let dirs_to_clear_from_cache = Path.root :: potential_build_contexts in
   let promote_one dst srcs =

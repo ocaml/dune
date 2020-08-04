@@ -298,6 +298,8 @@ val exists : t -> bool
 
 val readdir_unsorted : t -> (string list, Unix.error) Result.t
 
+val readdir_unsorted_with_kinds : t -> ((string * Unix.file_kind) list, Unix.error) Result.t
+
 val is_dir_sep : char -> bool
 
 val is_directory : t -> bool

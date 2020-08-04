@@ -1074,25 +1074,11 @@ let explode_exn t =
 
 let exists t = try Sys.file_exists (to_string t) with Sys_error _ -> false
 
-let readdir_unsorted =
-  let rec loop dh acc =
-    match Unix.readdir dh with
-    | "."
-    | ".." ->
-      loop dh acc
-    | s -> loop dh (s :: acc)
-    | exception End_of_file -> acc
-  in
-  fun t ->
-    try
-      let dh = Unix.opendir (to_string t) in
-      Exn.protect
-        ~f:(fun () ->
-          match loop dh [] with
-          | exception Unix.Unix_error (e, _, _) -> Error e
-          | s -> Result.Ok s)
-        ~finally:(fun () -> Unix.closedir dh)
-    with Unix.Unix_error (e, _, _) -> Error e
+let readdir_unsorted t =
+  Dune_filesystem_stubs.read_directory (to_string t)
+
+let readdir_unsorted_with_kinds t =
+  Dune_filesystem_stubs.read_directory_with_kinds (to_string t)
 
 let is_directory t =
   try Sys.is_directory (to_string t) with Sys_error _ -> false
@@ -1164,11 +1150,16 @@ let insert_after_build_dir_exn =
       error a b
 
 let rec clear_dir dir =
-  Array.iter (Sys.readdir dir) ~f:(fun fn ->
-      let fn = Filename.concat dir fn in
-      match Unix.lstat fn with
-      | { st_kind = S_DIR; _ } -> rm_rf_dir fn
-      | _ -> unlink_operation fn)
+  match Dune_filesystem_stubs.read_directory_with_kinds dir with
+  | Error ENOENT -> ()
+  | Error error ->
+    raise (Unix.Unix_error
+             (error, dir, "Stdune.Path.rm_rf: read_directory_with_kinds"))
+  | Ok listing ->
+    List.iter listing
+      ~f:(function
+        | (fn, Unix.S_DIR) -> rm_rf_dir fn
+        | (fn, _) -> unlink_operation fn);
 
 and rm_rf_dir path =
   clear_dir path;
